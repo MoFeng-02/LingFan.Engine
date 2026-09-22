@@ -5,6 +5,8 @@ export {
   baseName,
   isSingleColumnFile,
   parseStory,
+  parseStoryFile,
   StoryFormatError,
 } from "./format";
 export { assembleProject, ProjectAssemblyError } from "./project";
+export { generateText, parseTextStory, TextFormatError } from "./text";
