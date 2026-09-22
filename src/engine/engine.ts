@@ -4,6 +4,7 @@
  * 框架无关：只写状态与事件，渲染归 UI 层（08-U1）。
  */
 import type {
+  CharacterDef,
   ColumnCoordinate,
   EventListener,
   OutboundEvent,
@@ -141,6 +142,8 @@ export class StoryEngine {
   private started = false;
   private pendingTimer: ReturnType<typeof setTimeout> | null = null;
   private waitSkipable = false;
+  /** 08-U4 角色定义注册表（character op 注册，say speaker 匹配自动套样式） */
+  private readonly characters = new Map<string, CharacterDef>();
   /** 04 §一.7 函数注册表（func 执行期注册，call 按名查表；随快照恢复） */
   private functions = new Map<
     string,
@@ -199,6 +202,8 @@ export class StoryEngine {
       return;
     }
     this.started = true;
+    // 08-U5：NVL 模式从 start 起恒有定义（静默初始化——事件流只承载离散变化，§六.2）
+    this.state.set(SYS.nvlMode, "none");
     // 01 §一.6：顶层 defines 无条件 Set（全局层 = SSOT Map）
     for (const [key, value] of Object.entries(this.story.defines ?? {})) {
       this.setGlobal(key, value);
@@ -494,6 +499,14 @@ export class StoryEngine {
           if (!this.execRandom(cmd)) return;
           frame.index += 1;
           continue;
+        case "nvl":
+          this.execNvl(cmd);
+          frame.index += 1;
+          continue;
+        case "character":
+          this.execCharacter(cmd);
+          frame.index += 1;
+          continue;
         default:
           // E3 fail-closed：未知/未实现 op 不静默跳过
           this.fail("unknown-op", `未知或未实现的命令：${cmd.op}`);
@@ -540,6 +553,15 @@ export class StoryEngine {
     this.setSystem(SYS.currentDialogText, text);
     this.setSystem(SYS.dialogClickable, cmd.clickable === true);
     this.setSystem(SYS.dialogNoskip, cmd.noskip === true);
+    // 08-U5：NVL 激活时当前句追加进累积缓冲（新引用，观察者可感知；随状态快照走）
+    // 重放期不追加——buffer 已由快照恢复，重放只重建当前对话键
+    if (this.get(SYS.nvlMode) === "active" && !this.rollbackActive) {
+      const buffer = this.get(SYS.nvlBuffer);
+      this.setSystem(SYS.nvlBuffer, [
+        ...(Array.isArray(buffer) ? (buffer as string[]) : []),
+        text,
+      ]);
+    }
     this.setSystem(SYS.waiting, "dialog");
     // 重放落点（rollbackActive）即检查点 k 本体：live 视为已入档——back() 才能继续向前回退
     this.liveCheckpointed = this.rollbackActive;
@@ -1026,6 +1048,46 @@ export class StoryEngine {
     }
   }
 
+  /** 08-U5 NVL：进入/清屏/退出累积层（01 §二.2 → 08 §五）；累积文本进核心状态（回溯/存档自动一致） */
+  private execNvl(cmd: StoryCommand): void {
+    const mode = typeof cmd.mode === "string" ? cmd.mode : "enter";
+    switch (mode) {
+      case "clear":
+        // 清屏保留窗口：累积清空，NVL 仍激活
+        this.setSystem(SYS.nvlBuffer, []);
+        this.setSystem(SYS.nvlMode, "active");
+        break;
+      case "exit":
+        this.setSystem(SYS.nvlBuffer, []);
+        this.setSystem(SYS.nvlMode, "none");
+        break;
+      default:
+        // enter / auto：进入累积层
+        this.setSystem(SYS.nvlMode, "active");
+    }
+  }
+
+  /** 08-U4 character：注册/更新角色定义（灵泛 DefineCharacter 语义：可覆盖更新） */
+  private execCharacter(cmd: StoryCommand): void {
+    const key = cmd.key as string;
+    const def: CharacterDef = { key };
+    if (typeof cmd.name === "string") def.name = cmd.name;
+    if (typeof cmd.color === "string") def.color = cmd.color;
+    if (typeof cmd.size === "string") def.size = cmd.size;
+    if (typeof cmd.font === "string") def.font = cmd.font;
+    if (typeof cmd.textColor === "string") def.textColor = cmd.textColor;
+    this.characters.set(key, def);
+  }
+
+  /** 08-U4 查询角色定义（UI 渲染 say speaker 时套用） */
+  getCharacter(key: string): CharacterDef | undefined {
+    return this.characters.get(key);
+  }
+
+  getCharacters(): CharacterDef[] {
+    return [...this.characters.values()];
+  }
+
   /** notify：出站 toast 事件（01 §二.1 → 08 §二.4 覆盖层）；文本插值与 say 同语义 */
   private execNotify(cmd: StoryCommand): void {
     const { text, errors } = interpolateText(
@@ -1054,11 +1116,11 @@ export class StoryEngine {
       body: cmd.body as StoryCommand[],
     };
     if (registered !== undefined) {
-      // 确定性重放（回溯/读档重入）携带同一故事体 → 引用相等即幂等放行；内容不同才是真重复
+      // 读档重放跨 JSON 序列化 → body 引用必然不同，须按语义比较（params 逐位 + body 序列化一致）
       const identical =
-        registered.body === next.body &&
         registered.params.length === next.params.length &&
-        registered.params.every((p, i) => p === next.params[i]);
+        registered.params.every((p, i) => p === next.params[i]) &&
+        JSON.stringify(registered.body) === JSON.stringify(next.body);
       if (!identical && !this.rollbackActive) {
         this.fail("func-duplicate", `函数重复注册：${name}`);
         return false;

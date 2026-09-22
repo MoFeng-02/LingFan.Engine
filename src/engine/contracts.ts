@@ -108,12 +108,27 @@ export const SYS = {
   menuSelected: "__menu_selected",
   inputPrompt: "__input_prompt",
   rollbackActive: "__rollback_active",
+  nvlMode: "__nvl_mode",
+  nvlBuffer: "__nvl_buffer",
   waiting: "__waiting",
 } as const;
 
 /** 02 §二.2 等待状态（`__waiting` 取值全集） */
 export type WaitingState =
   "none" | "dialog" | "menu" | "wait" | "minigame" | "input";
+
+/** 08-U5 NVL 模式（`__nvl_mode` 取值）：累积层开关与清屏动作 */
+export type NvlMode = "none" | "active" | "clear" | "exit";
+
+/** 08-U4 角色定义（character op 注册；say speaker 匹配自动套样式） */
+export interface CharacterDef {
+  key: string;
+  name?: string;
+  color?: string;
+  size?: string;
+  font?: string;
+  textColor?: string;
+}
 
 // —— 05 存档编排（TS 侧）契约：安全（加密/AAD/高水位）在 Rust 层（K7） ——
 

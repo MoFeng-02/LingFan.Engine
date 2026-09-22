@@ -5,6 +5,7 @@
  * - 单列原子文件：{ formatVersion, id, kind, commands/elements/entry…, defines? }
  * 任何结构不符 = 整次拒绝（抛 StoryFormatError，issues 带来源定位）。
  */
+import { parseTextStory } from "./text";
 import type { Story, StoryColumn, StoryCommand } from "./contracts";
 
 export class StoryFormatError extends Error {
@@ -321,7 +322,6 @@ export function parseStory(json: unknown, sourceName = "story"): Story {
   const issues: string[] = [];
   if (!isPlainObject(json))
     throw new StoryFormatError([`${sourceName}: 根节点必须是对象`]);
-
   if (json.formatVersion !== 1) {
     issues.push(
       `${sourceName}: formatVersion 必须为 1，收到 ${JSON.stringify(json.formatVersion)}`,
@@ -401,4 +401,19 @@ export function parseStory(json: unknown, sourceName = "story"): Story {
   throw new StoryFormatError([
     `${sourceName}: 无法识别的文件形态——需要 columns[]（多列）或 id+kind（单列原子文件）`,
   ]);
+}
+
+/** 07-T4 混存识别：内容以 { 开头 = JSON 投影，否则 = 文本投影（老 StoryLoader 内容识别语义） */
+export function parseStoryFile(source: string, sourceName: string): Story {
+  if (source.trimStart().startsWith("{")) {
+    try {
+      return parseStory(JSON.parse(source), sourceName);
+    } catch (e) {
+      if (e instanceof StoryFormatError) throw e;
+      throw new StoryFormatError([
+        `${sourceName}: JSON 解析失败：${String(e)}`,
+      ]);
+    }
+  }
+  return parseTextStory(source, sourceName);
 }

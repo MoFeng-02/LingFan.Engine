@@ -1071,21 +1071,34 @@ describe("func/call/return（04 §一.7，老规范 §6.1/6.2）", () => {
     h2.dispose();
   });
 
-  it("重复注册 / 函数外 return → fail-closed；break 不跨函数边界", () => {
-    const { engine, errors, dispose } = makeEngine([
-      { op: "func", name: "fx", params: [], body: [] },
-      { op: "func", name: "fx", params: [], body: [] },
+  it("重复注册：同体幂等放行 / 异体 fail-closed；函数外 return；break 不跨函数边界", () => {
+    // 同体重复注册（确定性重放重入场景）→ 幂等放行
+    const same = makeEngine([
+      { op: "func", name: "fx", params: [], body: [{ op: "say", text: "v1" }] },
+      { op: "func", name: "fx", params: [], body: [{ op: "say", text: "v1" }] },
       { op: "say", text: "s" },
     ]);
-    engine.start();
-    expect(errorPayload(errors[0]).code).toBe("func-duplicate");
-    dispose();
+    same.engine.start();
+    expect(same.engine.get(SYS.currentDialogText)).toBe("s");
+    same.dispose();
 
+    // 异体重复注册 → fail-closed
+    const diff = makeEngine([
+      { op: "func", name: "fx", params: [], body: [{ op: "say", text: "v1" }] },
+      { op: "func", name: "fx", params: [], body: [{ op: "say", text: "v2" }] },
+      { op: "say", text: "s" },
+    ]);
+    diff.engine.start();
+    expect(errorPayload(diff.errors[0]).code).toBe("func-duplicate");
+    diff.dispose();
+
+    // 函数外 return → fail-closed
     const h2 = makeEngine([{ op: "return" }, { op: "say", text: "s" }]);
     h2.engine.start();
     expect(errorPayload(h2.errors[0]).code).toBe("return-outside-func");
     h2.dispose();
 
+    // break 不跨函数边界
     const h3 = makeEngine([
       { op: "func", name: "fx", params: [], body: [{ op: "break" }] },
       { op: "call", target: "fx" },
@@ -1808,5 +1821,98 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     ).toBe(false);
     expect(errorPayload(errors.at(-1)).code).toBe("save-format");
     dispose();
+  });
+});
+
+describe("08 NVL 累积与角色样式（U5/U4）", () => {
+  it("nvl 进入/清屏/退出：buffer 追加与清空序列正确", () => {
+    const { engine, dispose } = makeEngine([
+      { op: "nvl" },
+      { op: "say", text: "第一段" },
+      { op: "say", text: "第二段" },
+      { op: "nvl", mode: "clear" },
+      { op: "say", text: "清屏后" },
+      { op: "nvl", mode: "exit" },
+      { op: "say", text: "普通" },
+    ]);
+    engine.start();
+    // start → nvl active → say 第一段上屏 → buffer=[第一段]
+    expect(engine.get(SYS.nvlMode)).toBe("active");
+    expect(engine.get(SYS.nvlBuffer)).toEqual(["第一段"]);
+    engine.advance(); // 第一段解除 → 第二段上屏 → buffer=[第一段,第二段]
+    expect(engine.get(SYS.nvlBuffer)).toEqual(["第一段", "第二段"]);
+    engine.advance(); // 第二段解除 → nvl clear（buffer清空）→ say 清屏后上屏 → buffer=[清屏后]
+    expect(engine.get(SYS.nvlBuffer)).toEqual(["清屏后"]);
+    expect(engine.get(SYS.nvlMode)).toBe("active");
+    engine.advance(); // 清屏后解除 → nvl exit → say 普通上屏（非 NVL，不追加 buffer）
+    expect(engine.get(SYS.nvlMode)).toBe("none");
+    expect(engine.get(SYS.nvlBuffer)).toEqual([]);
+    expect(engine.get(SYS.currentDialogText)).toBe("普通");
+    dispose();
+  });
+
+  it("character 注册/覆盖更新 + 查询", () => {
+    const { engine, dispose } = makeEngine([
+      { op: "character", key: "灵泛", name: "灵泛", color: "#7aa2f7" },
+      { op: "character", key: "灵泛", name: "灵泛改", color: "#9ece6a" },
+      { op: "say", speaker: "灵泛", text: "s" },
+    ]);
+    engine.start();
+    expect(engine.getCharacter("灵泛")).toEqual({
+      key: "灵泛",
+      name: "灵泛改",
+      color: "#9ece6a",
+    });
+    expect(engine.getCharacter("无")).toBeUndefined();
+    expect(engine.getCharacters()).toHaveLength(1);
+    dispose();
+  });
+
+  it("NVL 下回溯：buffer 随快照恢复一致", () => {
+    const story = parseStory({
+      formatVersion: 1,
+      id: "d",
+      columns: [
+        {
+          id: "start",
+          kind: "flow",
+          commands: [
+            { op: "say", text: "开场" },
+            { op: "nvl" },
+            { op: "say", text: "甲" },
+            { op: "say", text: "乙" },
+          ],
+        },
+      ],
+    });
+    const e = new StoryEngine(story, { rngSeed: 3 });
+    e.start();
+    e.advance(); // 开场解除 → cp0 → nvl → say 甲
+    expect(e.get(SYS.nvlBuffer)).toEqual(["甲"]);
+    e.advance(); // 甲解除 → cp1 → say 乙
+    expect(e.get(SYS.nvlBuffer)).toEqual(["甲", "乙"]);
+    e.rollbackTo(1); // 回到甲（cp1 快照含 buffer=[甲]）
+    expect(e.get(SYS.nvlBuffer)).toEqual(["甲"]);
+    expect(e.get(SYS.currentDialogText)).toBe("甲");
+    e.rollbackTo(0); // 回到开场（cp0 快照：nvl 未激活，buffer 未设）
+    expect(e.get(SYS.nvlMode)).toBe("none");
+    expect(e.get(SYS.nvlBuffer)).toBeUndefined();
+  });
+
+  it("nvl auto 等同 enter；缺省 mode = enter", () => {
+    const { engine, dispose } = makeEngine([
+      { op: "nvl", mode: "auto" },
+      { op: "say", text: "auto 模式" },
+    ]);
+    engine.start();
+    expect(engine.get(SYS.nvlMode)).toBe("active");
+    expect(engine.get(SYS.nvlBuffer)).toEqual(["auto 模式"]);
+    dispose();
+
+    const h2 = makeEngine([{ op: "nvl" }, { op: "say", text: "缺省" }]);
+    h2.engine.start();
+    expect(h2.engine.get(SYS.nvlMode)).toBe("active");
+    expect(h2.engine.get(SYS.nvlBuffer)).toEqual(["缺省"]);
+    h2.dispose();
   });
 });

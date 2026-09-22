@@ -3,6 +3,7 @@ import { computed, onUnmounted, ref } from "vue";
 import { assembleProject, SYS, StoryEngine } from "./engine";
 import { renderInlineMarkup } from "./ui/inline";
 import { createSavePort } from "./infra/savePort";
+import { Typewriter } from "./ui/typewriter";
 
 // —— 多文件工程演示（07 §三）：单列原子文件 + project.json 工程清单 ——
 // 此处以内存文件映射模拟磁盘布局；正式形态由 Rust 侧读取 Stories/** 后走同一组装器
@@ -24,6 +25,7 @@ const files = new Map<string, unknown>([
       kind: "flow",
       commands: [
         { op: "set", key: "player.gold", value: "+= {20}" },
+        { op: "character", key: "灵泛", name: "灵泛", color: "#7aa2f7" },
         {
           op: "say",
           speaker: "灵泛",
@@ -62,6 +64,12 @@ const files = new Map<string, unknown>([
         },
         { op: "wait", seconds: 1.5, skipable: true },
         { op: "say", text: "（等待 1.5 秒可点击跳过）" },
+        { op: "nvl" },
+        { op: "say", text: "NVL 累积：第一段。" },
+        { op: "say", text: "第二段（滚动累积）。" },
+        { op: "say", text: "第三段。" },
+        { op: "nvl", mode: "exit" },
+        { op: "say", text: "NVL 退出，回到普通对话。" },
         {
           op: "menu",
           prompt: "接下来去哪里？",
@@ -141,17 +149,40 @@ const menuOptions = computed(() =>
 );
 const notifications = ref<Array<{ id: number; text: string }>>([]);
 let notifySeq = 0;
-
+// —— 08-U3 打字机 / U5 NVL / §四 历史面板 / U4 角色样式 ——
+const shownText = ref(""); // 打字机可见前缀（渲染层 v-html）
+const speakerColor = ref(""); // U4：角色样式自动应用
+const nvlMode = ref("none");
+const nvlBuffer = ref<string[]>([]);
+const showHistory = ref(false);
+const historyEntries = ref<
+  Array<{ index: number; speaker: string; text: string }>
+>([]);
+let typewriter: Typewriter | null = null;
+let rafId = 0;
+let lastFrame = 0;
 let engine: StoryEngine;
 let offState: (() => void) | undefined;
 let offEvent: (() => void) | undefined;
 
+function tickLoop(now: number): void {
+  const dt = lastFrame > 0 ? (now - lastFrame) / 1000 : 0;
+  lastFrame = now;
+  typewriter?.tick(dt);
+  shownText.value = typewriter?.visible ?? text.value;
+  rafId = requestAnimationFrame(tickLoop);
+}
+
 function handleState({ key, value }: { key: string; value: unknown }): void {
-  if (key === SYS.currentDialogSpeaker && typeof value === "string")
+  if (key === SYS.currentDialogSpeaker && typeof value === "string") {
     speaker.value = value;
-  else if (key === SYS.currentDialogText && typeof value === "string")
+    // 08-U4：角色样式自动应用——查注册表取 speaker 色
+    const def = engine.getCharacter(value);
+    speakerColor.value = def?.color ?? "";
+  } else if (key === SYS.currentDialogText && typeof value === "string") {
     text.value = value;
-  else if (key === SYS.waiting) {
+    typewriter = new Typewriter(value, 30); // 每句重建打字机（30 字/秒）
+  } else if (key === SYS.waiting) {
     canAdvance.value = value === "dialog";
     inMenu.value = value === "menu";
     inWait.value = value === "wait";
@@ -167,7 +198,7 @@ function handleState({ key, value }: { key: string; value: unknown }): void {
 }
 
 function syncFromEngine(): void {
-  // 03-R4 / 05：回放或读档后，渲染状态与引擎对齐（回溯/读档重写了对话系统键）
+  // 03-R4 / 05 / 08-U5：回放或读档后，渲染状态与引擎对齐（回溯/读档重写了对话与 NVL 系统键）
   const sp = engine.get(SYS.currentDialogSpeaker);
   const tx = engine.get(SYS.currentDialogText);
   speaker.value = typeof sp === "string" ? sp : "";
@@ -185,6 +216,15 @@ function syncFromEngine(): void {
   rawTexts.value = Array.isArray(opts) ? (opts as string[]) : [];
   const tgts = engine.get(SYS.menuTargets);
   rawTargets.value = Array.isArray(tgts) ? (tgts as string[]) : [];
+  const nm = engine.get(SYS.nvlMode);
+  nvlMode.value = typeof nm === "string" ? nm : "none";
+  const nb = engine.get(SYS.nvlBuffer);
+  nvlBuffer.value = Array.isArray(nb) ? (nb as string[]) : [];
+  // U4：说话人色随恢复同步
+  const def = engine.getCharacter(speaker.value);
+  speakerColor.value = def?.color ?? "";
+  // 打字机随恢复文本重建
+  typewriter = new Typewriter(text.value, 30);
 }
 
 function handleEvent({
@@ -228,6 +268,7 @@ function restart(): void {
   bindEngine(engine);
   speaker.value = "";
   text.value = "";
+  shownText.value = "";
   canAdvance.value = false;
   inMenu.value = false;
   inWait.value = false;
@@ -238,12 +279,29 @@ function restart(): void {
   error.value = "";
   rawTexts.value = [];
   rawTargets.value = [];
+  nvlMode.value = "none";
+  nvlBuffer.value = [];
+  typewriter = null;
   engine.start();
 }
 
 engine = new StoryEngine(story);
 bindEngine(engine);
 engine.start();
+
+// —— 08-U3：rAF 帧循环驱动打字机（08 §三.1）——
+rafId = requestAnimationFrame(tickLoop);
+
+// —— 08 §七 键位映射：Space/Enter=推进（语义归核心层），H=历史面板 ——
+function onKeydown(e: KeyboardEvent): void {
+  if (e.key === " " || e.key === "Enter") {
+    e.preventDefault();
+    onStageClick();
+  } else if (e.key === "h" || e.key === "H") {
+    toggleHistory();
+  }
+}
+window.addEventListener("keydown", onKeydown);
 
 // —— 05 存档：TS 编排 + SavePort 适配器（Tauri=K7 Rust 安全；浏览器演示=localStorage 兜底）——
 const savePort = createSavePort();
@@ -282,9 +340,36 @@ async function loadGame(): Promise<void> {
   }
 }
 
-/** 08-U8：仅在对应等待态发送命令（advance 兼带 skipable wait 的点击解除；守卫仍在引擎） */
+/** 08-U3/U8：打字机二段式点击（未完成=瞬间完成/越过停顿，完成=advance）；仅在对话等待中发 advance */
 function onStageClick(): void {
-  if (canAdvance.value || inWait.value) engine.advance();
+  if (canAdvance.value) {
+    if (typewriter !== null && !typewriter.done) {
+      typewriter.click(); // 瞬间完成/越过停顿
+      shownText.value = typewriter.visible;
+      return;
+    }
+    engine.advance();
+  } else if (inWait.value) {
+    engine.advance();
+  }
+}
+
+/** 打开历史面板时刷新快照（§四：历史面板是回溯的 UI 皮） */
+function refreshHistory(): void {
+  historyEntries.value = engine
+    .historyView()
+    .filter((h) => h.text !== "" || h.speaker !== "");
+}
+
+function toggleHistory(): void {
+  showHistory.value = !showHistory.value;
+  if (showHistory.value) refreshHistory();
+}
+
+function rollbackToEntry(index: number): void {
+  engine.rollbackTo(index);
+  showHistory.value = false;
+  syncFromEngine();
 }
 
 /** 03 §四.4：滚轮上=回退、下=前进（历史面板是回溯的 UI 皮，核心层只暴露坐标回溯） */
@@ -306,6 +391,8 @@ onUnmounted(() => {
   offState?.();
   offEvent?.();
   engine.dispose(); // 清挂起的 wait 定时器
+  cancelAnimationFrame(rafId); // 停 rAF 帧循环
+  window.removeEventListener("keydown", onKeydown);
 });
 </script>
 
@@ -319,6 +406,15 @@ onUnmounted(() => {
       @click.stop="restart"
     >
       ↻
+    </button>
+    <!-- 08 §四 历史面板开关（H 键） -->
+    <button
+      class="history-toggle"
+      type="button"
+      title="历史（H）"
+      @click.stop="toggleHistory"
+    >
+      ☰
     </button>
     <!-- 05 存档：TS 编排 + SavePort（Tauri=加密在 Rust；浏览器演示=localStorage） -->
     <div class="save-load">
@@ -363,11 +459,41 @@ onUnmounted(() => {
     </section>
     <!-- RenderTargets.dialogue 挂载点（08 §一）；menu/input 等待时让位 -->
     <section v-show="!inMenu && !inInput" class="dialogue" aria-live="polite">
-      <p v-if="speaker" class="speaker">{{ speaker }}</p>
-      <!-- 08 §四.3：内联标记由 UI 解析渲染（核心层透传） -->
-      <p class="text" v-html="renderInlineMarkup(text)"></p>
+      <p
+        v-if="speaker"
+        class="speaker"
+        :style="speakerColor ? { color: speakerColor } : {}"
+      >
+        {{ speaker }}
+      </p>
+      <!-- 08-U5：NVL 累积层（激活时显示累积缓冲，替代单句） -->
+      <div v-if="nvlMode === 'active'" class="nvl-body">
+        <p
+          v-for="(line, idx) in nvlBuffer"
+          :key="idx"
+          class="text"
+          v-html="renderInlineMarkup(line)"
+        ></p>
+      </div>
+      <!-- 08-U3/U4：打字机逐字 + 内联标记由 UI 解析渲染（核心层透传） -->
+      <p v-else class="text" v-html="renderInlineMarkup(shownText)"></p>
       <span v-if="canAdvance" class="advance-hint">▼</span>
       <span v-else-if="inWait" class="advance-hint">···</span>
+    </section>
+    <!-- 08 §四 历史面板（回溯的 UI 皮：点击条目 = rollbackTo） -->
+    <section v-if="showHistory" class="history-panel">
+      <p class="layer-prompt">历史</p>
+      <ul>
+        <li
+          v-for="entry in historyEntries"
+          :key="entry.index"
+          @click.stop="rollbackToEntry(entry.index)"
+        >
+          <span v-if="entry.speaker" class="history-speaker"
+            >{{ entry.speaker }}：</span
+          >{{ entry.text }}
+        </li>
+      </ul>
     </section>
     <p v-if="error" class="error">{{ error }}</p>
   </main>
@@ -462,6 +588,70 @@ body,
 .save-load button:hover {
   border-color: #9ece6a;
   color: #9ece6a;
+}
+
+.history-toggle {
+  position: fixed;
+  top: 16px;
+  left: 112px;
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #4448;
+  border-radius: 10px;
+  background: #1e1e2ecc;
+  color: #9aa5ce;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.history-toggle:hover {
+  border-color: #7aa2f7;
+  color: #7aa2f7;
+}
+
+.history-panel {
+  position: fixed;
+  top: 60px;
+  left: 16px;
+  z-index: 10;
+  width: min(80vw, 360px);
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid #4448;
+  border-radius: 12px;
+  background: #1e1e2eee;
+  box-sizing: border-box;
+  padding: 12px;
+}
+
+.history-panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-panel li {
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  color: #a9b1d6;
+}
+
+.history-panel li:hover {
+  background: #26263a;
+}
+
+.history-speaker {
+  font-weight: 600;
+  color: #7aa2f7;
+}
+
+.nvl-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .dialogue {
