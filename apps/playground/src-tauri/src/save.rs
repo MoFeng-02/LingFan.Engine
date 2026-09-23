@@ -5,10 +5,7 @@
 //! `MAGIC(4) | version u16 | mode u8 | save_count u64 | timestamp u64 | dek_len u32 | dek_part | ciphertext`
 //! ciphertext = AES-256-GCM(payload, key=DEK, AAD="LFS3:payload:{slot}")——K3 写档即绑槽。
 
-use aes_gcm::aead::{Aead, Payload};
-use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
-use base64::engine::general_purpose::STANDARD as B64;
-use base64::Engine as _;
+use crate::crypto::{gcm_open, gcm_seal, kek_from_keyring, random_bytes, KEK_SERVICE, KEK_USER};
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -16,8 +13,6 @@ use tauri::Manager;
 
 const MAGIC: &[u8; 4] = b"LFS3";
 const FORMAT_VERSION: u16 = 1;
-const KEK_SERVICE: &str = "lingfanengine";
-const KEK_USER: &str = "kek";
 const AAD_PAYLOAD_PREFIX: &str = "LFS3:payload:";
 const AAD_DEK_MACHINE_BOUND: &[u8] = b"LFS3:dek:machine-bound";
 const AAD_HIGH_WATER: &[u8] = b"LFS3:highwater";
@@ -111,89 +106,6 @@ impl CryptoMode {
     }
 }
 
-fn random_bytes(n: usize) -> Result<Vec<u8>, SaveError> {
-    let mut buf = vec![0u8; n];
-    getrandom::fill(&mut buf).map_err(|e| SaveError::Crypto(format!("随机源失败：{e}")))?;
-    Ok(buf)
-}
-
-/// K1：KEK 首次生成后写入 OS 凭据（keyring 统一 DPAPI/Keychain/libsecret），零明文密钥落盘。
-/// 进程内互斥 + 缓存：消除首次运行多线程并发创建 KEK 的覆盖竞争（实测暴露过）。
-static KEK_CACHE: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
-static KEK_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-fn kek_from_keyring(service: &str, user: &str) -> Result<Vec<u8>, SaveError> {
-    if let Some(cached) = KEK_CACHE.get() {
-        return Ok(cached.clone());
-    }
-    let _guard = KEK_LOCK
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if let Some(cached) = KEK_CACHE.get() {
-        return Ok(cached.clone());
-    }
-    let entry =
-        keyring::Entry::new(service, user).map_err(|e| SaveError::Keyring(e.to_string()))?;
-    let kek = match entry.get_password() {
-        Ok(b64) => B64.decode(b64.as_bytes()).map_err(|e| {
-            SaveError::Keyring(format!("KEK 解码失败：{e}"))
-        })?,
-        Err(keyring::Error::NoEntry) => {
-            let generated = random_bytes(32)?;
-            entry
-                .set_password(&B64.encode(&generated))
-                .map_err(|e| SaveError::Keyring(e.to_string()))?;
-            generated
-        }
-        Err(e) => return Err(SaveError::Keyring(e.to_string())),
-    };
-    KEK_CACHE
-        .set(kek.clone())
-        .map_err(|_| SaveError::Keyring("KEK 缓存冲突".into()))?;
-    Ok(kek)
-}
-
-fn gcm_seal(key: &[u8], plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>, SaveError> {
-    let cipher =
-        Aes256Gcm::new_from_slice(key).map_err(|e| SaveError::Crypto(format!("密钥长度错误：{e}")))?;
-    let nonce_bytes = random_bytes(12)?;
-    let nonce =
-        Nonce::try_from(nonce_bytes.as_slice()).map_err(|_| SaveError::Crypto("nonce 长度错误".into()))?;
-    let ciphertext = cipher
-        .encrypt(
-            &nonce,
-            Payload {
-                msg: plaintext,
-                aad,
-            },
-        )
-        .map_err(|_| SaveError::Crypto("GCM 加密失败".into()))?;
-    let mut out = nonce_bytes;
-    out.extend_from_slice(&ciphertext);
-    Ok(out)
-}
-
-fn gcm_open(key: &[u8], sealed: &[u8], aad: &[u8], context: &str) -> Result<Vec<u8>, SaveError> {
-    if sealed.len() < 12 {
-        return Err(SaveError::Crypto(format!("{context}: 密文过短")));
-    }
-    let (nonce, ciphertext) = sealed.split_at(12);
-    let cipher =
-        Aes256Gcm::new_from_slice(key).map_err(|e| SaveError::Crypto(format!("密钥长度错误：{e}")))?;
-    let nonce = Nonce::try_from(nonce).map_err(|_| SaveError::Crypto("nonce 长度错误".into()))?;
-    cipher
-        .decrypt(
-            &nonce,
-            Payload {
-                msg: ciphertext,
-                aad,
-            },
-        )
-        .map_err(|_| {
-            SaveError::Crypto(format!("{context}: GCM 认证失败（密钥不匹配或数据被篡改）"))
-        })
-}
-
 fn validate_slot(slot: &str) -> Result<(), SaveError> {
     if slot.is_empty()
         || slot.len() > 64
@@ -224,7 +136,8 @@ fn read_high_water(base: &Path, kek: &[u8]) -> Result<u64, SaveError> {
         return Ok(0);
     }
     let sealed = fs::read(&path).map_err(|e| SaveError::Io(e.to_string()))?;
-    let plain = gcm_open(kek, &sealed, AAD_HIGH_WATER, "高水位")?;
+    let plain = gcm_open(kek, &sealed, AAD_HIGH_WATER)
+        .map_err(|e| SaveError::Crypto(format!("高水位：{e}")))?;
     let bytes: [u8; 8] = plain
         .try_into()
         .map_err(|_| SaveError::BadFormat("高水位长度不符".into()))?;
@@ -232,7 +145,7 @@ fn read_high_water(base: &Path, kek: &[u8]) -> Result<u64, SaveError> {
 }
 
 fn write_high_water(base: &Path, kek: &[u8], count: u64) -> Result<(), SaveError> {
-    let sealed = gcm_seal(kek, &count.to_be_bytes(), AAD_HIGH_WATER)?;
+    let sealed = gcm_seal(kek, &count.to_be_bytes(), AAD_HIGH_WATER).map_err(SaveError::Crypto)?;
     fs::create_dir_all(saves_dir(base)).map_err(|e| SaveError::Io(e.to_string()))?;
     fs::write(high_water_path(base), &sealed).map_err(|e| SaveError::Io(e.to_string()))
 }
@@ -269,16 +182,19 @@ pub fn write_save(
     mode: CryptoMode,
 ) -> Result<SlotSummary, SaveError> {
     validate_slot(slot)?;
-    let kek = kek_from_keyring(KEK_SERVICE, KEK_USER)?;
+    let kek = kek_from_keyring(KEK_SERVICE, KEK_USER).map_err(SaveError::Keyring)?;
     let high_water = read_high_water(base, &kek)?;
     let save_count = high_water + 1;
 
-    let dek = random_bytes(32)?; // K2：每档独立随机 DEK
+    let dek = random_bytes(32).map_err(SaveError::Crypto)?; // K2：每档独立随机 DEK
     let aad = format!("{AAD_PAYLOAD_PREFIX}{slot}");
-    let ciphertext = gcm_seal(&dek, payload.as_bytes(), aad.as_bytes())?;
+    let ciphertext =
+        gcm_seal(&dek, payload.as_bytes(), aad.as_bytes()).map_err(SaveError::Crypto)?;
     let dek_part = match mode {
         // K5：MachineBound = KEK 封装（跨机不可解）；Portable = DEK 明文进档（仅存档可分享）
-        CryptoMode::MachineBound => gcm_seal(&kek, &dek, AAD_DEK_MACHINE_BOUND)?,
+        CryptoMode::MachineBound => {
+            gcm_seal(&kek, &dek, AAD_DEK_MACHINE_BOUND).map_err(SaveError::Crypto)?
+        }
         CryptoMode::Portable => dek,
     };
 
@@ -316,18 +232,21 @@ pub fn read_save(base: &Path, slot: &str) -> Result<String, SaveError> {
     }
     let file = fs::read(&path).map_err(|e| SaveError::Io(e.to_string()))?;
     let (mode, save_count, _timestamp, dek_part, ciphertext) = parse_envelope(&file)?;
-    let kek = kek_from_keyring(KEK_SERVICE, KEK_USER)?;
+    let kek = kek_from_keyring(KEK_SERVICE, KEK_USER).map_err(SaveError::Keyring)?;
     let dek = match mode {
-        CryptoMode::MachineBound => {
-            gcm_open(&kek, &dek_part, AAD_DEK_MACHINE_BOUND, "DEK 解封")?
-        }
+        CryptoMode::MachineBound => gcm_open(&kek, &dek_part, AAD_DEK_MACHINE_BOUND)
+            .map_err(|e| SaveError::Crypto(format!("DEK 解封：{e}")))?,
         CryptoMode::Portable => dek_part,
     };
     let aad = format!("{AAD_PAYLOAD_PREFIX}{slot}");
-    let plaintext = gcm_open(&dek, &ciphertext, aad.as_bytes(), "存档负载")?;
+    let plaintext = gcm_open(&dek, &ciphertext, aad.as_bytes())
+        .map_err(|e| SaveError::Crypto(format!("存档负载：{e}")))?;
     let high_water = read_high_water(base, &kek)?;
     if save_count < high_water {
-        return Err(SaveError::RollbackDetected { save_count, high_water });
+        return Err(SaveError::RollbackDetected {
+            save_count,
+            high_water,
+        });
     }
     if save_count > high_water {
         write_high_water(base, &kek, save_count)?; // K4：读档成功后认领新高水位

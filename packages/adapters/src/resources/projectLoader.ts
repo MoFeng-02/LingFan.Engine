@@ -48,10 +48,14 @@ export function createFetchProjectFilesPort(
   };
 }
 
-/** 便捷装载：供给端口 → 引擎纯函数组装 */
+/** 便捷装载：供给端口 → 引擎纯函数组装（平台无关；组合根按构建模式选端口实现） */
+export async function loadProject(port: ProjectFilesPort): Promise<Story> {
+  return assembleProject(await port.manifest(), await port.stories());
+}
+
+/** fetch 便捷装载：浏览器/WebView 平台 */
 export async function loadProjectFromFetch(
   options: FetchProjectFilesOptions,
 ): Promise<Story> {
-  const port = createFetchProjectFilesPort(options);
-  return assembleProject(await port.manifest(), await port.stories());
+  return loadProject(createFetchProjectFilesPort(options));
 }

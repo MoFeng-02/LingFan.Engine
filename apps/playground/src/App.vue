@@ -289,6 +289,12 @@ audioRenderer = createRenderer();
 videoRenderer = createVideo();
 engine.start();
 
+// 07 对应章节.2 热重载：组合根重新组装后注入新 story → 保运行态（变量/历史）重入当前列
+watch(
+  () => props.story,
+  (fresh) => engine.reloadStory(fresh),
+);
+
 // —— 08-U3：rAF 帧循环驱动打字机（08 对应章节.1）——
 rafId = requestAnimationFrame(tickLoop);
 

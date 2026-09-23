@@ -344,6 +344,19 @@ function parseSimpleStatement(
     case "jump":
       if (tokens.length < 1) return fail("jump 需要 target");
       return { op: "jump", target: tokens[0]! } as StoryCommand;
+    case "navigate": {
+      // 老 DSL 语法照搬：navigate "p" [scene "n"]——path 必填，scene 可选
+      if (tokens.length < 1) return fail("navigate 需要 path");
+      const path = quoted(0);
+      if (path === "") return fail("navigate 需要 path");
+      const cmd: StoryCommand = { op: "navigate", path };
+      if (tokens[1] === "scene") {
+        const scene = quoted(2);
+        if (scene === "") return fail("navigate scene 需要名称");
+        cmd.scene = scene;
+      }
+      return cmd;
+    }
     case "call":
       if (tokens.length < 1) return fail("call 需要 target");
       return { op: "call", target: tokens[0]! } as StoryCommand;
@@ -864,6 +877,13 @@ function generateCommand(
       return;
     case "jump":
       out.push(`${pad}jump ${cmd.target}`);
+      return;
+    case "navigate":
+      out.push(
+        cmd.scene === undefined
+          ? `${pad}navigate ${quoteForText(cmd.path as string)}`
+          : `${pad}navigate ${quoteForText(cmd.path as string)} scene ${quoteForText(cmd.scene as string)}`,
+      );
       return;
     case "call":
       out.push(`${pad}call ${cmd.target}`);
