@@ -1,0 +1,21 @@
+{
+  "name": "@lingfan/editor-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "灵泛编辑器（规约 06 §一.1 视图族）：时间线/属性面板/诊断/JSON 视图——EditorSession 统一中枢，一次提交一个 undo 单元",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@lingfan/editor": "workspace:*",
+    "@lingfan/engine": "workspace:*",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.7",
+    "vite": "^8.0.16"
+  }
+}
