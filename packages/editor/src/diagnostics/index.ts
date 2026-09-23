@@ -58,9 +58,10 @@ const EXPR_BUILTINS = new Set([
   "true",
   "false",
 ]);
-const IDENT_RE = /[A-Za-z_][A-Za-z0-9_]*/g;
+const IDENT_PATH_RE =
+  /[A-Za-z_\u4e00-\u9fa5][A-Za-z0-9_\u4e00-\u9fa5]*(?:\.[A-Za-z_][A-Za-z0-9_\u4e00-\u9fa5]*)*/g;
 
-/** 表达式中的根标识符引用（成员访问取根；跳过字符串字面量/数字尾巴/内置名） */
+/** 表达式中的变量键引用（点路径整键 = 全局键路径/字典下钻，04 §二.9；跳过字符串字面量/数字尾巴/内置名） */
 export function extractExpressionRefs(expr: string): string[] {
   let stripped = "";
   for (let i = 0; i < expr.length; i += 1) {
@@ -80,10 +81,9 @@ export function extractExpressionRefs(expr: string): string[] {
     stripped += ch;
   }
   const refs: string[] = [];
-  for (const match of stripped.matchAll(IDENT_RE)) {
+  for (const match of stripped.matchAll(IDENT_PATH_RE)) {
     const name = match[0];
     const prev = stripped.slice(0, match.index ?? 0).trimEnd();
-    if (prev.endsWith(".")) continue;
     if (/\d$/.test(prev)) continue;
     if (EXPR_BUILTINS.has(name)) continue;
     if (!refs.includes(name)) refs.push(name);

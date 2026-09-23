@@ -58,6 +58,25 @@ importers:
         specifier: ^3.3.5
         version: 3.3.11(typescript@6.0.3)
 
+  apps/editor:
+    dependencies:
+      '@lingfan/editor':
+        specifier: workspace:*
+        version: link:../../packages/editor
+      '@lingfan/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
+      vue:
+        specifier: ^3.5.13
+        version: 3.5.43(typescript@6.0.3)
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.7
+        version: 6.0.9(vite@8.0.16)(vue@3.5.43(typescript@6.0.3))
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16
+
   apps/playground:
     dependencies:
       '@lingfan/adapters':
@@ -1755,6 +1774,12 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.70.0
       eslint-visitor-keys: 5.0.1
+
+  '@vitejs/plugin-vue@6.0.9(vite@8.0.16)(vue@3.5.43(typescript@6.0.3))':
+    dependencies:
+      '@rolldown/pluginutils': 1.0.1
+      vite: 8.0.16
+      vue: 3.5.43(typescript@6.0.3)
 
   '@vitejs/plugin-vue@6.0.9(vite@8.3.0)(vue@3.5.43(typescript@6.0.3))':
     dependencies:

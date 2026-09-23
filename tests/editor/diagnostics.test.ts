@@ -149,6 +149,27 @@ describe("诊断集（analyzeStory）", () => {
     expectPointersResolvable(story, diagnostics);
   });
 
+  it("点路径整键语义（04 §二.9）：defines/player.gold 与表达式 player.gold 视为同一键", () => {
+    const ok = baseStory([
+      { op: "set", key: "player.gold", value: 10 },
+      { op: "if", cond: "{player.gold >= 10}", then: [] },
+      { op: "say", text: "余额 {player.gold}" },
+    ]);
+    expect(
+      analyzeStory(ok).filter((d) => d.code === "undefined-variable"),
+    ).toEqual([]);
+    // 只有 "player"（非 "player.gold"）→ 点路径未定义，诊断指向整路径
+    const missing = baseStory([
+      { op: "set", key: "player", value: 1 },
+      { op: "if", cond: "{player.gold >= 10}", then: [] },
+    ]);
+    const undefinedVars = analyzeStory(missing)
+      .map((d) => d.code === "undefined-variable" && d.message)
+      .filter((m): m is string => typeof m === "string");
+    expect(undefinedVars.some((m) => m.includes("player.gold"))).toBe(true);
+    expectPointersResolvable(missing, analyzeStory(missing));
+  });
+
   it("D4 `_` 前缀豁免", () => {
     const story = baseStory([
       { op: "if", cond: "{_internal > 0}", then: [] },
