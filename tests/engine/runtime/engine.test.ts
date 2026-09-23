@@ -5,10 +5,13 @@
  * define-once-vs-let / scope-nested-lifetime / goto-unknown-column-fails
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { OutboundEvent, ValueChanged, VideoCommand } from "../contracts";
-import { SYS } from "../contracts";
-import { StoryEngine } from "./engine";
-import { parseStory } from "../data";
+import type {
+  OutboundEvent,
+  SaveDataV1,
+  ValueChanged,
+  VideoCommand,
+} from "@lingfan/engine";
+import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
 
 interface Harness {
   engine: StoryEngine;
@@ -1490,9 +1493,7 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     const data = engine.exportSave();
     expect(data).not.toBeNull();
     // 模拟 JSON 序列化链路（Rust 层拿到的就是这段 JSON）
-    const restored = JSON.parse(
-      JSON.stringify(data),
-    ) as import("../contracts").SaveDataV1;
+    const restored = JSON.parse(JSON.stringify(data)) as SaveDataV1;
     expect(restored.functions).toHaveLength(1); // fx 已注册
     const e2 = new StoryEngine(
       parseStory({
@@ -1548,9 +1549,7 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     expect(data).not.toBeNull();
 
     const e2 = new StoryEngine(story, { rngSeed: 3 });
-    e2.importSave(
-      JSON.parse(JSON.stringify(data)) as import("../contracts").SaveDataV1,
-    );
+    e2.importSave(JSON.parse(JSON.stringify(data)) as SaveDataV1);
     expect(e2.historyView().map((h) => h.text)).toEqual(["一", "二"]); // R8：历史随档
     e2.rollbackTo(0); // 读档后继续回溯
     expect(e2.get(SYS.currentDialogText)).toBe("一");
@@ -1584,9 +1583,7 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
 
     const e2 = new StoryEngine(story);
     const h2 = instrument(e2);
-    e2.importSave(
-      JSON.parse(JSON.stringify(data)) as import("../contracts").SaveDataV1,
-    );
+    e2.importSave(JSON.parse(JSON.stringify(data)) as SaveDataV1);
     e2.advance(); // end 解除 → 下一句引用 x → 列级作用域已随 S3 丢弃
     expect(e2.get(SYS.currentDialogText)).toBe("{x}"); // S8 保留原文
     expect(hasError(h2.errors, "unknown-variable")).toBe(true);
@@ -1599,22 +1596,20 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     expect(data).not.toBeNull();
     expect(
       engine.importSave({
-        ...(data as import("../contracts").SaveDataV1),
+        ...(data as SaveDataV1),
         formatVersion: 2 as never,
       }),
     ).toBe(false); // 拒绝必须以 false 回报，调用方不得误报成功
     expect(errorPayload(errors.at(-1)).code).toBe("save-format");
     expect(
       engine.importSave({
-        ...(data as import("../contracts").SaveDataV1),
+        ...(data as SaveDataV1),
         storyId: "other-story",
       }),
     ).toBe(false);
     expect(errorPayload(errors.at(-1)).code).toBe("save-story-mismatch");
     // 合法载荷 → true
-    expect(engine.importSave(data as import("../contracts").SaveDataV1)).toBe(
-      true,
-    );
+    expect(engine.importSave(data as SaveDataV1)).toBe(true);
     dispose();
   });
 
@@ -1725,11 +1720,9 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
 
     const e2 = new StoryEngine(story, { rngSeed: 5 });
     const h2 = instrument(e2);
-    expect(
-      e2.importSave(
-        JSON.parse(JSON.stringify(data)) as import("../contracts").SaveDataV1,
-      ),
-    ).toBe(true);
+    expect(e2.importSave(JSON.parse(JSON.stringify(data)) as SaveDataV1)).toBe(
+      true,
+    );
     expect(
       h2.errors.filter((x) => x.payload.kind === "engine.error"),
     ).toHaveLength(0);
@@ -1767,9 +1760,7 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     expect(data).not.toBeNull();
 
     // 模拟用户残缺存档：历史缺 input 站（旧结构产物）
-    const gappy = JSON.parse(
-      JSON.stringify(data),
-    ) as import("../contracts").SaveDataV1;
+    const gappy = JSON.parse(JSON.stringify(data)) as SaveDataV1;
     gappy.history = gappy.history.filter((h) => h.coord.index !== 1);
     expect(gappy.history).toHaveLength(2); // [一, 二]
 
@@ -1796,7 +1787,7 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     engine.start();
     const good = engine.exportSave();
     expect(good).not.toBeNull();
-    const base = good as import("../contracts").SaveDataV1;
+    const base = good as SaveDataV1;
 
     // 历史检查点引用不存在的列（旧结构存档）→ save-story-mismatch，绝不上抛 TypeError
     expect(
@@ -1816,9 +1807,7 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     // 结构不完整（缺 history）→ save-format
     const broken = { ...base } as Record<string, unknown>;
     delete broken.history;
-    expect(
-      engine.importSave(broken as unknown as import("../contracts").SaveDataV1),
-    ).toBe(false);
+    expect(engine.importSave(broken as unknown as SaveDataV1)).toBe(false);
     expect(errorPayload(errors.at(-1)).code).toBe("save-format");
     dispose();
   });

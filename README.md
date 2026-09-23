@@ -20,10 +20,11 @@ packages/
 ├── engine/       @lingfan/engine     框架无关核心（零资源、零依赖）
 │   └── src/{contracts, data, runtime}   契约 / 01 数据层 / 02-04 执行（禁平铺，按功能域归类）
 ├── adapters/     @lingfan/adapters   预设适配器：save / resources / media 三域
-└── ui/           @lingfan/ui         参考展示层：dialogue / audio 两域（可测纯逻辑）
+└── ui/           @lingfan/ui         参考展示层：dialogue / audio / video 三域（可测纯逻辑）
 apps/
 └── playground/   @lingfan/playground 参考宿主（Vue 3 + Tauri 2）= 模板的第一个实例
 template/v1/                          脚手架：新工程骨架（含最小可跑宿主）
+tests/                                集中测试目录：按「包 → 功能域」归类，不与源码混放
 ```
 
 **零构建步骤**：三个包以 TS 源码出口（`exports: "./src/index.ts"`）被消费方直接编译——

@@ -62,7 +62,8 @@ export default defineConfigWithVueTs(
   {
     name: "lingfan/core-boundaries",
     // 规约 00 §3.2-1：核心层框架无关——可用 Web 标准 API，禁止 UI 框架 / Tauri API / Node
-    files: ["packages/engine/**/*.{ts,vue}"],
+    // tests/engine/**（集中测试目录）同样受核心层边界约束（agent.md §3 测试集中化）
+    files: ["packages/engine/**/*.{ts,vue}", "tests/engine/**/*.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -90,6 +91,10 @@ export default defineConfigWithVueTs(
       "packages/ui/**/*.ts",
       "apps/*/src/**/*.{ts,vue}",
       "template/**/src/**/*.{ts,vue}",
+      "tests/adapters/**/*.ts",
+      "tests/ui/**/*.ts",
+      "tests/playground/**/*.ts",
+      "tests/template/**/*.ts",
     ],
     rules: {
       "no-restricted-imports": [

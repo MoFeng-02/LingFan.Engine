@@ -4,8 +4,8 @@
  * 渲染协同：任意前缀经 renderInlineMarkup 不得残留裸 `{`。
  */
 import { describe, expect, it } from "vitest";
-import { renderInlineMarkup } from "./inline";
-import { Typewriter, tokenizeStream } from "./typewriter";
+import { renderInlineMarkup, Typewriter } from "@lingfan/ui";
+import { tokenizeStream } from "../../../packages/ui/src/dialogue/typewriter";
 
 describe("tokenizeStream（标记分词）", () => {
   it("剥离 {p}/{w} 并记录可见坐标，{fast} 直接删除", () => {

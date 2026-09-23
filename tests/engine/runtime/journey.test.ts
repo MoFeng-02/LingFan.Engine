@@ -4,10 +4,8 @@
  * 拒绝后引擎状态保持原样；等待态取值恒合法；历史检查点坐标恒指向存在的列。
  */
 import { describe, expect, it } from "vitest";
-import type { OutboundEvent, SaveDataV1, SlotSummary } from "../contracts";
-import { SYS } from "../contracts";
-import { StoryEngine } from "./engine";
-import { parseStory } from "../data";
+import type { OutboundEvent, SaveDataV1, SlotSummary } from "@lingfan/engine";
+import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
 
 const VALID_WAITING = [
   undefined,

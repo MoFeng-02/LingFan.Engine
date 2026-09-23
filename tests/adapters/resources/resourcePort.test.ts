@@ -2,7 +2,7 @@
  * 08-U7 静态资源端口测试：逻辑路径 → 应用资源根 URL（不依赖工作目录）+ 路径穿越拒绝。
  */
 import { describe, expect, it } from "vitest";
-import { createStaticResourcePort } from "./resourcePort";
+import { createStaticResourcePort } from "@lingfan/adapters";
 
 describe("08-U7 资源寻址（锚点: resource-root-resolution）", () => {
   it("项目根相对逻辑路径 → 应用资源根 URL", async () => {

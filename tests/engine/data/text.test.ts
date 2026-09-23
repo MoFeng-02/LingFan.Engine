@@ -4,8 +4,14 @@
  * T3 JSON 唯一真相源（JSON → text → JSON 结构等价）/ T4 混存识别
  */
 import { describe, expect, it } from "vitest";
-import { parseStory, parseStoryFile, StoryFormatError } from "./format";
-import { generateText, parseTextStory, TextFormatError } from "./text";
+import {
+  generateText,
+  parseStory,
+  parseStoryFile,
+  parseTextStory,
+  StoryFormatError,
+  TextFormatError,
+} from "@lingfan/engine";
 
 /** 覆盖全部已实现 op 的规范文本（生成器的规范形 = 2 空格缩进、字段序固定） */
 const canonical = `define "player.gold" 100

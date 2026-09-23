@@ -27,6 +27,6 @@
     "apps/*/src/**/*.vue",
     "apps/*/*.ts",
     "template/**/src/**/*.ts",
-    "template/*.test.ts"
+    "tests/**/*.ts"
   ]
 }
