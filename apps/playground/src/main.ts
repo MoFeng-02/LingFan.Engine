@@ -11,21 +11,27 @@ import {
   createFetchProjectFilesPort,
   createStaticResourcePort,
   createTauriEncryptedResourcePort,
+  createTauriI18nPort,
+  createTauriPreferencesPort,
   createTauriProjectFilesPort,
   createTauriSavePort,
   createWebAudioPort,
+  createWebStoragePreferencesPort,
   createWebStorageSavePort,
   createWebVideoPort,
   loadProject,
   watchTauriProjectFiles,
 } from "@lingfan/adapters";
-import type {
-  AudioPort,
-  ProjectFilesPort,
-  ResourcePort,
-  SavePort,
-  Story,
-  VideoPort,
+import {
+  PlayerPreferences,
+  type AudioPort,
+  type I18nPort,
+  type PreferencesPort,
+  type ProjectFilesPort,
+  type ResourcePort,
+  type SavePort,
+  type Story,
+  type VideoPort,
 } from "@lingfan/engine";
 import App from "./App.vue";
 
@@ -66,11 +72,24 @@ async function boot(): Promise<void> {
     createWebAudioPort({ onError });
   const createVideoPort = (onError: (message: string) => void): VideoPort =>
     createWebVideoPort({ onError });
+  // 01 §四.3 I18N 装配：Tauri 形态走 Rust overlay 供给（按需加载）；浏览器形态暂无
+  // 静态根供给（未注入 = 原文直出，引擎契约缺省语义）
+  const i18nPort: I18nPort | undefined =
+    import.meta.env.MODE === "tauri" ? createTauriI18nPort() : undefined;
+  // 08 §八.2 / U10 玩家偏好（与存档分离）：boot 时载入上次退出状态，滑块改动防抖落盘
+  const preferencesPort: PreferencesPort =
+    import.meta.env.MODE === "tauri"
+      ? createTauriPreferencesPort()
+      : createWebStoragePreferencesPort();
+  const preferences = new PlayerPreferences(preferencesPort);
+  await preferences.hydrate();
 
   const app = createApp(App, {
     story,
     savePort,
     resourcePort,
+    i18nPort,
+    preferences,
     createAudioPort,
     createVideoPort,
   });

@@ -150,7 +150,10 @@ fn write_high_water(base: &Path, kek: &[u8], count: u64) -> Result<(), SaveError
     fs::write(high_water_path(base), &sealed).map_err(|e| SaveError::Io(e.to_string()))
 }
 
-fn parse_envelope(file: &[u8]) -> Result<(CryptoMode, u64, u64, Vec<u8>, Vec<u8>), SaveError> {
+/// LFS3 信封解析产物：模式、save_count、timestamp、nonce、密文体
+type EnvelopeParts = (CryptoMode, u64, u64, Vec<u8>, Vec<u8>);
+
+fn parse_envelope(file: &[u8]) -> Result<EnvelopeParts, SaveError> {
     const HEADER: usize = 4 + 2 + 1 + 8 + 8 + 4;
     if file.len() < HEADER {
         return Err(SaveError::BadFormat("文件过短".into()));
@@ -254,6 +257,16 @@ pub fn read_save(base: &Path, slot: &str) -> Result<String, SaveError> {
     String::from_utf8(plaintext).map_err(|_| SaveError::BadFormat("payload 非 UTF-8".into()))
 }
 
+/// K4：删档——槽位文件删除，高水位不动（防回档基准不随删档回退）
+pub fn delete_save(base: &Path, slot: &str) -> Result<(), SaveError> {
+    validate_slot(slot)?;
+    let path = save_path(base, slot);
+    if !path.exists() {
+        return Err(SaveError::UnknownSlot(slot.to_string()));
+    }
+    fs::remove_file(&path).map_err(|e| SaveError::Io(e.to_string()))
+}
+
 /// §五 save_list：仅解析头部（不解密），供槽位列表展示
 pub fn list_saves(base: &Path) -> Result<Vec<SlotSummary>, SaveError> {
     let dir = saves_dir(base);
@@ -277,7 +290,7 @@ pub fn list_saves(base: &Path) -> Result<Vec<SlotSummary>, SaveError> {
             mode: mode.as_str().to_string(),
         });
     }
-    out.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+    out.sort_by_key(|s| std::cmp::Reverse(s.timestamp));
     Ok(out)
 }
 
@@ -316,6 +329,15 @@ pub fn save_list(app: tauri::AppHandle) -> Result<Vec<SlotSummary>, SaveError> {
         .app_data_dir()
         .map_err(|e| SaveError::Io(e.to_string()))?;
     list_saves(&base)
+}
+
+#[tauri::command]
+pub fn save_delete(app: tauri::AppHandle, slot: String) -> Result<(), SaveError> {
+    let base = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| SaveError::Io(e.to_string()))?;
+    delete_save(&base, &slot)
 }
 
 #[cfg(test)]
@@ -443,6 +465,38 @@ mod tests {
         assert!(matches!(
             write_save(&base, "../evil", "x", CryptoMode::MachineBound),
             Err(SaveError::InvalidSlot(_))
+        ));
+    }
+
+    #[test]
+    fn delete_slot_keeps_high_water() {
+        // K4 锚点 delete-keeps-high-watermark：删档后高水位不回退——新档计数继续、旧档重放仍被拒
+        let base = test_base("del");
+        write_save(&base, "slot_1", "old", CryptoMode::MachineBound).unwrap();
+        let before = fs::read(save_path(&base, "slot_1")).unwrap();
+        write_save(&base, "slot_1", "new", CryptoMode::MachineBound).unwrap();
+        delete_save(&base, "slot_1").unwrap();
+        assert!(matches!(
+            read_save(&base, "slot_1"),
+            Err(SaveError::UnknownSlot(_))
+        ));
+        // 删后重写：计数从高水位继续（未被删除重置）
+        let meta = write_save(&base, "slot_1", "fresh", CryptoMode::MachineBound).unwrap();
+        assert_eq!(meta.save_count, 3);
+        // 删除前的旧档放回 = 回档仍被拒（高水位 3 > 档内 1）
+        fs::write(save_path(&base, "slot_1"), &before).unwrap();
+        assert!(matches!(
+            read_save(&base, "slot_1"),
+            Err(SaveError::RollbackDetected { .. })
+        ));
+    }
+
+    #[test]
+    fn delete_unknown_slot_fails() {
+        let base = test_base("del-unknown");
+        assert!(matches!(
+            delete_save(&base, "ghost"),
+            Err(SaveError::UnknownSlot(_))
         ));
     }
 }

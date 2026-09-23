@@ -170,11 +170,14 @@ fn read_project_files_inner(
     Ok(ProjectFiles { manifest, stories })
 }
 
-/// 工程文件供给命令：资源根 = `$RESOURCE/Resources`（bundle.resources 映射，dev/prod 同路径）。
-/// Android/iOS 资源在安装包 asset 内（`asset://` 前缀）不能以 std::fs 读取——
-/// 移动端待接 fs 插件（tauri-plugin-fs）走 asset 协议，当前 fail-closed 显式报错。
-#[tauri::command]
-pub fn project_files(app: tauri::AppHandle) -> Result<ProjectFiles, ProjectFilesError> {
+/// 命令面公共前置：资源根定位（dev/prod 同路径）+ 清单加密形态判定 → (资源根, 可选 DEK)。
+/// Android/iOS 资源在安装包 asset 内（`asset://` 前缀）不能以 std::fs 读取——移动端待接
+/// fs 插件（tauri-plugin-fs）走 asset 协议，当前 fail-closed 显式报错。
+/// 清单恒明文（形态判定与组合根装配依赖清单先可读）：缺失 = 明文形态（显式报错归主流程）；
+/// 坏清单 fail-closed；resourceEncryption = 取 DEK 解密供给（05 §二）。
+fn resource_root_with_key(
+    app: &tauri::AppHandle,
+) -> Result<(std::path::PathBuf, Option<Vec<u8>>), ProjectFilesError> {
     let resource = app
         .path()
         .resource_dir()
@@ -185,10 +188,9 @@ pub fn project_files(app: tauri::AppHandle) -> Result<ProjectFiles, ProjectFiles
             root.to_string_lossy().into_owned(),
         ));
     }
-    // 清单恒明文：先读清单判定加密形态（resourceEncryption）——加密则取 DEK 解密供给（05 §二）
     let manifest_path = root.join(MANIFEST_FILE);
     if !manifest_path.is_file() {
-        return Err(ProjectFilesError::MissingManifest);
+        return Ok((root, None));
     }
     let manifest_raw =
         fs::read_to_string(&manifest_path).map_err(|e| ProjectFilesError::Io(e.to_string()))?;
@@ -205,9 +207,136 @@ pub fn project_files(app: tauri::AppHandle) -> Result<ProjectFiles, ProjectFiles
             .map_err(|e| ProjectFilesError::Io(e.to_string()))?;
         let key = crate::resource_crypto::resource_dek(&app_data, &root)
             .map_err(|e| ProjectFilesError::Decrypt(e.to_string()))?;
-        return read_project_files_with_key(&root, &key);
+        return Ok((root, Some(key)));
     }
-    read_project_files(&root)
+    Ok((root, None))
+}
+
+/// 工程文件供给命令：资源根 = `$RESOURCE/Resources`（bundle.resources 映射，dev/prod 同路径）。
+#[tauri::command]
+pub fn project_files(app: tauri::AppHandle) -> Result<ProjectFiles, ProjectFilesError> {
+    let (root, key) = resource_root_with_key(&app)?;
+    match key {
+        Some(k) => read_project_files_with_key(&root, &k),
+        None => read_project_files(&root),
+    }
+}
+
+const LANG_ROOT: &str = "Lang";
+
+/// 01 §四.3 单个 overlay 译文文件：overlay 根内相对路径（`/` 分隔；`main.json` = 全局兜底）
+/// → 原文→译文映射。BTreeMap<String, String> 反序列化（老引擎 DictionaryStringString 同构）：
+/// 含非字符串值/坏 JSON 的文件整体无效 → 跳过（宽松，老引擎 LoadFile 同语义）。
+#[derive(Debug, Serialize, Clone)]
+pub struct OverlayFile {
+    pub path: String,
+    pub entries: BTreeMap<String, String>,
+}
+
+/// lang 路径段校验（E3 fail-closed：字母数字/_/-，1..32，防路径穿越）
+fn valid_lang(lang: &str) -> bool {
+    !lang.is_empty()
+        && lang.len() <= 32
+        && lang
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
+/// 01 §四.3 读取某语言 overlay 文件（老引擎 I18nService 加载策略）：
+/// 目录形式 `Lang/{lang}/` 递归收集 .json（含 `.json.enc` 加密译文），按路径排序输出确定性；
+/// 目录缺失 → 降级单文件 `Lang/{lang}.json`（以 `main.json` 供给 = 全局兜底语义）。
+/// 合并序（main.json 最先、其余按序覆盖）归引擎 TS 侧（mergeOverlayFiles——叙事语义引擎可测）；
+/// key = 清单声明 resourceEncryption 时的 DEK（`.enc` 译文解密，AAD 与故事同规则 = 资源根相对路径去 .enc）。
+pub fn load_overlay_files(
+    root: &Path,
+    lang: &str,
+    key: Option<&[u8]>,
+) -> Result<Vec<OverlayFile>, ProjectFilesError> {
+    if !valid_lang(lang) {
+        return Err(ProjectFilesError::Io(format!("非法语言段：{lang}")));
+    }
+    let lang_dir = root.join(LANG_ROOT).join(lang);
+    let single = root.join(LANG_ROOT).join(format!("{lang}.json"));
+    let mut paths: Vec<std::path::PathBuf> = Vec::new();
+    if lang_dir.is_dir() {
+        let mut stack = vec![lang_dir];
+        while let Some(dir) = stack.pop() {
+            let entries = fs::read_dir(&dir).map_err(|e| ProjectFilesError::Io(e.to_string()))?;
+            for entry in entries {
+                let path = entry
+                    .map_err(|e| ProjectFilesError::Io(e.to_string()))?
+                    .path();
+                let name = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                if name.starts_with('.') {
+                    continue;
+                }
+                if path.is_dir() {
+                    stack.push(path);
+                } else if name.ends_with(".json") || name.ends_with(".json.enc") {
+                    paths.push(path);
+                }
+            }
+        }
+    } else if single.is_file() {
+        paths.push(single);
+    }
+    paths.sort();
+    let lang_prefix = format!("{LANG_ROOT}/{lang}/");
+    let mut out = Vec::new();
+    for path in paths {
+        let root_rel = path
+            .strip_prefix(root)
+            .unwrap_or(&path)
+            .to_string_lossy()
+            .replace('\\', "/");
+        let bytes = fs::read(&path).map_err(|e| ProjectFilesError::Io(e.to_string()))?;
+        let (logical, text) = if let Some(stripped) = root_rel.strip_suffix(".enc") {
+            let k = key.ok_or_else(|| {
+                ProjectFilesError::Decrypt(format!(
+                    "加密译文 {root_rel} 但清单未声明 resourceEncryption（K6 fail-closed）"
+                ))
+            })?;
+            let plain = crate::resource_crypto::decrypt_resource_bytes(&bytes, k, stripped)
+                .map_err(|e| ProjectFilesError::Decrypt(format!("{root_rel}：{e}")))?;
+            (
+                stripped.to_string(),
+                String::from_utf8(plain).map_err(|_| {
+                    ProjectFilesError::Decrypt(format!("{root_rel} 解密后非 UTF-8"))
+                })?,
+            )
+        } else {
+            (
+                root_rel.clone(),
+                String::from_utf8(bytes)
+                    .map_err(|_| ProjectFilesError::Io(format!("非 UTF-8 译文文件：{root_rel}")))?,
+            )
+        };
+        // overlay 内相对路径：`Lang/{lang}/` 前缀剥离；单文件降级（Lang/{lang}.json）→ "main.json"
+        let overlay_rel = logical
+            .strip_prefix(&lang_prefix)
+            .map_or_else(|| "main.json".to_string(), str::to_string);
+        let Ok(entries) = serde_json::from_str::<BTreeMap<String, String>>(&text) else {
+            continue; // 单文件宽松：坏 JSON / 含非字符串值 → 跳过（老引擎 LoadFile 同语义）
+        };
+        out.push(OverlayFile {
+            path: overlay_rel,
+            entries,
+        });
+    }
+    Ok(out)
+}
+
+/// 01 §四.3 I18N overlay 供给命令（按需：setLanguage 时调用，启动零成本——老引擎同思想）
+#[tauri::command]
+pub fn load_i18n_overlay(
+    app: tauri::AppHandle,
+    lang: String,
+) -> Result<Vec<OverlayFile>, ProjectFilesError> {
+    let (root, key) = resource_root_with_key(&app)?;
+    load_overlay_files(&root, &lang, key.as_deref())
 }
 
 /// 防抖循环：事件突发 → 静默窗（quiet）内无新事件 → 回调一次；
@@ -481,5 +610,82 @@ mod tests {
         drop(tx);
         std::thread::sleep(std::time::Duration::from_millis(200));
         assert_eq!(fired.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+
+    // —— 01 §四.3 I18N overlay 供给 ——
+
+    #[test]
+    fn overlay_dir_files_recursed_and_sorted() {
+        // 目录形式递归收集（子文件夹分类合法），仅 .json，路径排序输出确定性
+        let root = test_root("i18n-dir");
+        write(&root, "Lang/en/main.json", r#"{"你好":"Hello"}"#);
+        write(&root, "Lang/en/ui/battle.json", r#"{"攻击":"Attack"}"#);
+        write(&root, "Lang/en/notes.txt", "not json");
+        let files = load_overlay_files(&root, "en", None).unwrap();
+        assert_eq!(files.len(), 2);
+        assert_eq!(files[0].path, "main.json");
+        assert_eq!(files[1].path, "ui/battle.json");
+        assert_eq!(files[0].entries["你好"], "Hello");
+    }
+
+    #[test]
+    fn overlay_single_file_fallback_supplies_main_json() {
+        // 降级：无 Lang/{lang}/ 目录 → 单文件 Lang/{lang}.json，以 "main.json" 供给（全局兜底语义）
+        let root = test_root("i18n-single");
+        write(&root, "Lang/ja.json", r#"{"早上好":"おはよう"}"#);
+        let files = load_overlay_files(&root, "ja", None).unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "main.json");
+        assert_eq!(files[0].entries["早上好"], "おはよう");
+    }
+
+    #[test]
+    fn overlay_invalid_lang_fails_closed() {
+        // E3：lang 路径段校验（防路径穿越），fail-closed 显式报错
+        let root = test_root("i18n-bad-lang");
+        assert!(load_overlay_files(&root, "../etc", None).is_err());
+        assert!(load_overlay_files(&root, "", None).is_err());
+        assert!(load_overlay_files(&root, "a/b", None).is_err());
+    }
+
+    #[test]
+    fn overlay_bad_or_nonstring_json_skipped() {
+        // 老引擎 LoadFile 宽松语义：损坏 / 含非字符串值的文件跳过，其余照常供给
+        let root = test_root("i18n-lenient");
+        write(&root, "Lang/en/main.json", r#"{"ok":"Yes"}"#);
+        write(&root, "Lang/en/broken.json", "{ not json");
+        write(&root, "Lang/en/nonstring.json", r#"{"num":42}"#);
+        let files = load_overlay_files(&root, "en", None).unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "main.json");
+    }
+
+    #[test]
+    fn overlay_encrypted_translations_decrypt() {
+        // 加密译文与故事同机制：LFEN2 + AAD = 资源根相对路径（去 .enc）
+        let root = test_root("i18n-enc");
+        write(&root, "project.json", r#"{"resourceEncryption":true}"#);
+        let key = [9u8; 32];
+        let plain = r#"{"你好":"Hi"}"#;
+        let sealed =
+            crate::resource_crypto::encrypt_lfen2(plain.as_bytes(), &key, "Lang/en/main.json")
+                .unwrap();
+        fs::create_dir_all(root.join("Lang/en")).unwrap();
+        fs::write(root.join("Lang/en/main.json.enc"), &sealed).unwrap();
+        let files = load_overlay_files(&root, "en", Some(&key)).unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "main.json");
+        assert_eq!(files[0].entries["你好"], "Hi");
+    }
+
+    #[test]
+    fn overlay_encrypted_without_key_fails_closed() {
+        // K6：无钥遇加密译文 fail-closed，不喂引擎密文
+        let root = test_root("i18n-enc-nokey");
+        write(&root, "Lang/en/main.json.enc", "LFEN2garbage");
+        assert!(matches!(
+            load_overlay_files(&root, "en", None),
+            Err(ProjectFilesError::Decrypt(_))
+        ));
     }
 }

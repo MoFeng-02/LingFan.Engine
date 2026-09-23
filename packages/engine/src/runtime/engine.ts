@@ -8,9 +8,14 @@ import type {
   CharacterDef,
   ColumnCoordinate,
   EventListener,
+  I18nOverlayFile,
+  I18nPort,
+  MinigameResult,
   OutboundEvent,
   OutboundPayload,
   SaveDataV1,
+  SaveMode,
+  SavePort,
   StateListener,
   Story,
   StoryColumn,
@@ -26,6 +31,7 @@ import {
   interpolateText,
   type ExprValue,
 } from "./expr";
+import { mergeOverlayFiles } from "./i18n";
 import type { NameResolver } from "./resolver";
 import { Scope } from "./scope";
 
@@ -81,6 +87,24 @@ const VIDEO_FIELDS: Record<string, ReadonlySet<string>> = {
   video_skipable: new Set(["op", "value"]),
 };
 
+/** 06 §二.1 minigame 已知负载字段（未知字段 fail-closed，E3/F5） */
+const MINIGAME_FIELDS = new Set([
+  "op",
+  "game",
+  "config",
+  "on_success",
+  "on_fail",
+  "reward",
+]);
+
+/** 01 §二.3 存档类 op 已知负载字段（未知字段 fail-closed，E3/F5；权威：JSON故事格式_V1 §6） */
+const SAVE_FIELDS: Record<string, ReadonlySet<string>> = {
+  save: new Set(["op", "slot", "title"]),
+  load: new Set(["op", "slot"]),
+  auto_save: new Set(["op", "enabled"]),
+  save_delete: new Set(["op", "slot"]),
+};
+
 /** set 复合赋值前缀（老规范 §6.2：value 支持 {expr} 与 += 等复合赋值） */
 const COMPOUND_PREFIX = /^\s*(\+=|-=|\*=|\/=|%=)\s*([\s\S]+)$/;
 
@@ -111,6 +135,17 @@ export interface EngineOptions {
   historyLimit?: number;
   /** 03-R6 确定性随机：初始 rng 种子（缺省按当前时间） */
   rngSeed?: number;
+  /** 05 §五 存档编排端口（save/load/auto_save/save_delete op 与命令面 save/load 的依赖；缺省 = 存档类 op fail-closed） */
+  savePort?: SavePort;
+  /** 05 §五 存档模式（缺省 machine-bound；Rust 层同缺省） */
+  saveMode?: SaveMode;
+  /** 01 §四.3 I18N overlay 供给端口（setLanguage 按需加载译文；缺省 = 原文直出） */
+  i18nPort?: I18nPort;
+}
+
+/** 05 槽位信任边界（与 Rust validate_slot 同判）：字母数字/_/-，1..64 */
+function validSlot(slot: string): boolean {
+  return slot.length > 0 && slot.length <= 64 && /^[A-Za-z0-9_-]+$/.test(slot);
 }
 
 function cloneFrame(f: Frame): Frame {
@@ -211,11 +246,33 @@ export class StoryEngine {
   private mediaSeq = 0;
   /** 08 §六.5 视频命令序号：单调递增且不进快照（渲染器按 seq 执行/去重） */
   private videoSeq = 0;
+  /** 06 §二.1 小游戏挂载序号：单调递增且不进快照（重放重新挂载与旧挂载可分辨） */
+  private minigameSeq = 0;
+  /** 06 §二.1 挂起的小游戏等待：分流目标与已求值奖励（resolveMinigame 消费；中断即清除） */
+  private pendingMinigame: {
+    onSuccess?: string;
+    onFail?: string;
+    reward: { key: string; value: unknown }[];
+  } | null = null;
+  /** 06 §二.1 当前挂载的中断信号源：回溯/读档/导航/销毁时 abort（UI 据此卸载，D5） */
+  private minigameController: AbortController | null = null;
+
+  /** 05 §五 存档编排端口与模式（组合根注入；缺省 = 存档类 op/命令面 fail-closed） */
+  private savePort: SavePort | undefined;
+  private saveMode: SaveMode;
+  /** 01 §二.3 save op 的一次性存档声明：载荷在下一玩家所见等待画面落档（05 §四 coord=等待点） */
+  private pendingSave: { slot: string; title?: string } | null = null;
+  /** 01 §四.3 I18N 端口与当前语言译文表（null = 原文直出；切换 = 整表重建，老引擎「清缓存」同语义） */
+  private i18nPort: I18nPort | undefined;
+  private overlay: Map<string, string> | null = null;
 
   constructor(story: Story, options?: EngineOptions) {
     this.story = story;
     this.historyLimit = options?.historyLimit ?? 200;
     this.rngState = (options?.rngSeed ?? Date.now()) | 0;
+    this.savePort = options?.savePort;
+    this.saveMode = options?.saveMode ?? "machine-bound";
+    this.i18nPort = options?.i18nPort;
   }
 
   // —— 观察接缝 ——
@@ -252,6 +309,8 @@ export class StoryEngine {
     this.started = true;
     // 08-U5：NVL 模式从 start 起恒有定义（静默初始化——事件流只承载离散变化，§六.2）
     this.state.set(SYS.nvlMode, "none");
+    // 01 §四.3：当前语言从 start 起恒有定义（空串 = 默认语言/原文直出）
+    this.state.set(SYS.currentLanguage, "");
     // 01 §一.6：顶层 defines 无条件 Set（全局层 = SSOT Map）
     for (const [key, value] of Object.entries(this.story.defines ?? {})) {
       this.setGlobal(key, value);
@@ -374,6 +433,7 @@ export class StoryEngine {
     }
     this.flushPendingCheckpoint(); // 离开当前画面：已上屏未入档的 say 即所见（03-R1/R5）
     this.clearTimer(); // 打断任意等待（wait 定时器废弃，等待画面由新列重建）
+    this.abortMinigame(); // 导航打断小游戏：abort 挂载信号（D5 等待期可回溯同语义）
     this.waitSkipable = false;
     this.liveCheckpointed = false;
     this.setSystem(SYS.waiting, "none");
@@ -384,10 +444,163 @@ export class StoryEngine {
     this.run();
   }
 
+  /**
+   * 02 §三.2 会话命令 save：编排写档（05 §五——载荷编排在 TS，安全在 Rust，K7）。
+   * 非等待语义：kick 异步写档后立即返回；写档失败经 engine.error 可观测（不吞）。
+   */
+  save(slot: string, title?: string): boolean {
+    if (!this.started) {
+      this.fail("save-invalid", "故事尚未启动");
+      return false;
+    }
+    if (!validSlot(slot)) {
+      this.fail(
+        "save-invalid-slot",
+        `槽位名非法：${slot}（字母数字/_/-，1..64）`,
+      );
+      return false;
+    }
+    if (this.savePort === undefined) {
+      this.fail(
+        "save-unavailable",
+        "未装配 SavePort（组合根经 EngineOptions 注入）",
+      );
+      return false;
+    }
+    const data = this.exportSave();
+    if (data === null) return false; // exportSave 已发 engine.error（不在等待点）
+    const payload: SaveDataV1 = title === undefined ? data : { ...data, title };
+    void this.savePort
+      .write(slot, JSON.stringify(payload), this.saveMode)
+      .catch((e: unknown) => {
+        this.fail("save-write-failed", `槽位 ${slot} 写档失败：${String(e)}`);
+      });
+    return true;
+  }
+
+  /**
+   * 02 §三.2 会话命令 load：读档 → importSave（成功即传送到档内等待点；
+   * 异步完成，失败 fail-closed 状态原样）。
+   */
+  load(slot: string): boolean {
+    if (!this.started) {
+      this.fail("load-invalid", "故事尚未启动");
+      return false;
+    }
+    if (!validSlot(slot)) {
+      this.fail("load-invalid-slot", `槽位名非法：${slot}`);
+      return false;
+    }
+    if (this.savePort === undefined) {
+      this.fail("load-unavailable", "未装配 SavePort");
+      return false;
+    }
+    void this.savePort
+      .read(slot)
+      .then((raw) => {
+        const data = JSON.parse(raw) as SaveDataV1;
+        this.importSave(data); // 校验失败由 importSave 发 engine.error 并返回 false
+      })
+      .catch((e: unknown) => {
+        this.fail("load-failed", `槽位 ${slot} 读取或解析失败：${String(e)}`);
+      });
+    return true;
+  }
+
+  /**
+   * 01 §四.3 setLanguage：切换当前语言（老引擎 SwitchLanguage 同语义——
+   * 清缓存 + 写系统键，**当前画面不重放**，下次 Translate 生效）。空串 = 默认语言/原文直出。
+   * 供给失败 fail-closed：保持原语言与译文表不变，engine.error 上报。
+   * 可在 start 前调用（标题画面选语言）：状态键写入与译文装配不依赖启动态。
+   */
+  async setLanguage(lang: string): Promise<void> {
+    if (typeof lang !== "string") {
+      this.fail(
+        "i18n-lang-invalid",
+        "setLanguage 参数必须为字符串（空串 = 默认语言/原文直出）",
+      );
+      return;
+    }
+    if (lang === "" || this.i18nPort === undefined) {
+      // 默认语言或未装配端口：无译文表 = 原文直出（01 §四.3 缺省；语言状态照记供 UI 观察）
+      this.overlay = null;
+      this.setSystem(SYS.currentLanguage, lang);
+      return;
+    }
+    let files: I18nOverlayFile[];
+    try {
+      files = await this.i18nPort.loadOverlayFiles(lang);
+    } catch (e: unknown) {
+      this.fail(
+        "i18n-overlay-failed",
+        `载入 ${lang} 译文 overlay 失败（保持原语言）：${String(e)}`,
+      );
+      return;
+    }
+    this.overlay = mergeOverlayFiles(files); // 整表重建 = 老引擎「清缓存再载入」同语义
+    this.setSystem(SYS.currentLanguage, lang);
+  }
+
   /** 释放挂起定时器（UI 卸载/测试收尾）；监听器退订走 onXxx 返回的函数 */
   dispose(): void {
     this.clearTimer();
+    this.abortMinigame(); // 挂载 signal abort → UI 卸载小游戏
     this.waitSkipable = false;
+  }
+
+  /**
+   * 06 §二.1 会话命令 resolveMinigame：UI 小游戏完成后回填结果（02 §三.2 命令面）。
+   * success → 奖励写状态（走 ValueChanged 事件流，历史可溯）→ on_success 分流；
+   * fail → on_fail 分流；目标缺省 = 原列继续。非等待期/畸形结果 fail-closed（D5）。
+   */
+  resolveMinigame(result: MinigameResult): boolean {
+    if (this.get(SYS.waiting) !== "minigame") {
+      this.fail(
+        "minigame-resolve-invalid",
+        `resolveMinigame 仅在小游戏等待中有效（当前 __waiting=${String(this.get(SYS.waiting))}）`,
+      );
+      return false;
+    }
+    if (
+      typeof result !== "object" ||
+      result === null ||
+      (result.outcome !== "success" && result.outcome !== "fail")
+    ) {
+      this.fail(
+        "minigame-result-invalid",
+        "resolveMinigame 需要 outcome = success | fail",
+      );
+      return false;
+    }
+    if (
+      result.score !== undefined &&
+      (typeof result.score !== "number" || !Number.isFinite(result.score))
+    ) {
+      this.fail(
+        "minigame-result-invalid",
+        "resolveMinigame.score 必须为有限数字",
+      );
+      return false;
+    }
+    const pending = this.pendingMinigame;
+    if (pending === null) {
+      this.fail("minigame-state-corrupt", "__waiting=minigame 但挂起状态缺失");
+      return false;
+    }
+    this.pendingMinigame = null;
+    this.minigameController = null; // 正常完成：不 abort（UI 已自行收尾）
+    this.setSystem(SYS.waiting, "none");
+    this.liveCheckpointed = false; // live 已越过该检查点（对齐 wait 完成语义）
+    if (result.outcome === "success") {
+      for (const entry of pending.reward) {
+        this.setGlobal(entry.key, entry.value); // 奖励即状态变更（06 §二.2.4：历史可溯）
+      }
+    }
+    const target =
+      result.outcome === "success" ? pending.onSuccess : pending.onFail;
+    if (target !== undefined && !this.enterColumn(target)) return false;
+    this.run();
+    return true;
   }
 
   // —— 内部实现 ——
@@ -397,6 +610,15 @@ export class StoryEngine {
       clearTimeout(this.pendingTimer);
       this.pendingTimer = null;
     }
+  }
+
+  /** 06 §二.2.3 回溯联动：中断小游戏等待 = abort 挂载信号（UI 卸载），重放到该坐标重新挂载 */
+  private abortMinigame(): void {
+    if (this.minigameController !== null) {
+      this.minigameController.abort();
+      this.minigameController = null;
+    }
+    this.pendingMinigame = null;
   }
 
   private setSystem(key: string, value: unknown): void {
@@ -424,6 +646,17 @@ export class StoryEngine {
     };
     const event: OutboundEvent = { v: 1, kind: "event", payload };
     for (const listener of this.eventListeners) listener(event);
+  }
+
+  /**
+   * 01 §四.3 Translate（老引擎 I18nService 同语义）：命中即用译文（含空串译文），未命中/
+   * 无 overlay 回退原文；空原文直返。调用点必须**先于插值**——overlay 键可含 {var} 占位符
+   * （插值在译文上进行，老引擎 hook 点同序）。
+   */
+  private translate(original: string): string {
+    if (original === "" || this.overlay === null) return original;
+    const hit = this.overlay.get(original);
+    return hit === undefined ? original : hit;
   }
 
   private columnById(id: string): StoryColumn | undefined {
@@ -508,6 +741,18 @@ export class StoryEngine {
           continue;
         case "navigate":
           if (!this.execNavigate(cmd)) return;
+          continue;
+        case "save":
+          if (!this.execSaveOp(frame, cmd)) return;
+          continue;
+        case "load":
+          if (!this.execLoadOp(frame, cmd)) return;
+          continue;
+        case "auto_save":
+          if (!this.execAutoSaveOp(frame, cmd)) return;
+          continue;
+        case "save_delete":
+          if (!this.execSaveDeleteOp(frame, cmd)) return;
           continue;
         case "if":
           if (!this.execIf(frame, cmd)) return;
@@ -628,6 +873,9 @@ export class StoryEngine {
         case "cutscene":
           if (!this.execVideo(frame, cmd, true)) return;
           return; // 进入视频等待（ended/跳过解除；index 已前移）
+        case "minigame":
+          this.execMinigame(frame, cmd);
+          return; // 进入小游戏等待（resolveMinigame 解除）
         default:
           // E3 fail-closed：未知/未实现 op 不静默跳过
           this.fail("unknown-op", `未知或未实现的命令：${cmd.op}`);
@@ -652,10 +900,22 @@ export class StoryEngine {
       );
       return;
     }
-    // 文本/说话人插值 + {var:00} 格式化（F7：仅文本命令）；行内标记 {b}{p} 原样透传；失败保留原文 + error（S8）
-    // speaker 与 text 同语义插值——动态说话人（如 func 实参）经此获得真实名字
+    if (
+      cmd.template !== undefined &&
+      (typeof cmd.template !== "string" || cmd.template === "")
+    ) {
+      this.fail(
+        "say-invalid-template",
+        "say.template 必须为非空字符串（模板注册名）",
+      );
+      return;
+    }
+    // 01 §四.3 先 Translate 后插值（overlay 键可含 {var} 占位符）+ {var:00} 格式化（F7：仅文本命令）；
+    // 行内标记 {b}{p} 原样透传；失败保留原文 + error（S8）
+    // speaker 与 text 同语义插值——动态说话人（如 func 实参）经此获得真实名字；
+    // speaker 不走 Translate（老引擎 hook 点不含说话人——角色名归 character 注册表/NameResolver）
     const { text, errors } = interpolateText(
-      cmd.text,
+      this.translate(cmd.text),
       this.resolveName,
       this.draw,
     );
@@ -671,6 +931,15 @@ export class StoryEngine {
     // 02 §二.3 竞态防护：进入等待前清上一句残留的完成标记（防双击/快速点击跳句）
     this.setSystem(SYS.dialogComplete, false);
     this.setSystem(SYS.currentDialogSpeaker, speakerText);
+    // 08 §四.5 模板三级优先级（老引擎 Phase 65 同语义）：
+    // say template > character screen（按插值后说话人查表，与 UI 侧 U4 样式查表一致）> null(全局默认)
+    const characterScreen = this.characters.get(speakerText)?.screen;
+    this.setSystem(
+      SYS.dialogTemplate,
+      typeof cmd.template === "string"
+        ? cmd.template
+        : (characterScreen ?? null),
+    );
     this.setSystem(SYS.currentDialogText, text);
     this.setSystem(SYS.dialogClickable, cmd.clickable === true);
     this.setSystem(SYS.dialogNoskip, cmd.noskip === true);
@@ -700,6 +969,7 @@ export class StoryEngine {
     // 03-R1：快照在上屏时刻捕获（= 玩家所见画面，帧栈定位在本等待命令上），等待解除后才提交入档。
     // 重放期同样捕获：同坐标提交由 commitCheckpoint 原位替换（幂等），历史在回溯/读档路径上自愈完整
     this.pendingSay = this.takeSnapshot(this.checkpointCoord(frame));
+    this.autoSaveAtCheckpoint(); // 05 §四：say 等待画面建立 = 玩家所见稳定点，auto_save 开关消费
     // 坐标推进：say 进入等待即前移，坐标恒指「下一待执行命令」——与 03-R1「检查点在用户所见之后」对齐
     frame.index += 1;
   }
@@ -748,18 +1018,140 @@ export class StoryEngine {
     return this.enterColumn(target);
   }
 
+  /**
+   * 01 §二.3 save op：声明存档点——载荷落到**下一玩家所见等待画面**（05 §四：存档坐标
+   * 必须是可重放重建的等待点；灵泛「命令位置快照」与此不同构，重放侧效即由此规避）。
+   * 槽位/端口校验立即 fail-closed；声明本身非等待命令，故事立即继续。
+   */
+  private execSaveOp(frame: Frame, cmd: StoryCommand): boolean {
+    const unknownFields = Object.keys(cmd).filter(
+      (k) => !SAVE_FIELDS.save.has(k),
+    );
+    if (unknownFields.length > 0) {
+      this.fail(
+        "save-unknown-field",
+        `save 未知负载字段：${unknownFields.join(", ")}`,
+      );
+      return false;
+    }
+    if (typeof cmd.slot !== "string" || !validSlot(cmd.slot)) {
+      this.fail(
+        "save-invalid-slot",
+        "save.slot 必填且槽位名合法（字母数字/_/-，1..64）",
+      );
+      return false;
+    }
+    if (cmd.title !== undefined && typeof cmd.title !== "string") {
+      this.fail("save-invalid", "save.title 必须为字符串");
+      return false;
+    }
+    if (this.savePort === undefined) {
+      this.fail(
+        "save-unavailable",
+        "未装配 SavePort（组合根经 EngineOptions 注入）",
+      );
+      return false;
+    }
+    this.pendingSave = {
+      slot: cmd.slot,
+      title: typeof cmd.title === "string" ? cmd.title : undefined,
+    };
+    frame.index += 1; // 非等待命令：推进游标（run 循环 continue 后取下一条）
+    return true;
+  }
+
+  /** 01 §二.3 load op：读档传送（复用会话命令 load；异步 importSave 后即传送） */
+  private execLoadOp(frame: Frame, cmd: StoryCommand): boolean {
+    const unknownFields = Object.keys(cmd).filter(
+      (k) => !SAVE_FIELDS.load.has(k),
+    );
+    if (unknownFields.length > 0) {
+      this.fail(
+        "load-unknown-field",
+        `load 未知负载字段：${unknownFields.join(", ")}`,
+      );
+      return false;
+    }
+    if (typeof cmd.slot !== "string" || cmd.slot === "") {
+      this.fail("load-invalid", "load.slot 必填（槽位名）");
+      return false;
+    }
+    const kicked = this.load(cmd.slot);
+    if (kicked) frame.index += 1; // kick 成功即推进（异步传送由 importSave 接管后续）
+    return kicked;
+  }
+
+  /**
+   * 01 §二.3 auto_save op：开关系统键 `__auto_save`（灵泛编译为 SetVariableCommand 同语义）。
+   * 消费点 = 等待画面建立时（autoSaveAtCheckpoint）；开关是系统键 → 不进用户存档、读档后复位。
+   */
+  private execAutoSaveOp(frame: Frame, cmd: StoryCommand): boolean {
+    const unknownFields = Object.keys(cmd).filter(
+      (k) => !SAVE_FIELDS.auto_save.has(k),
+    );
+    if (unknownFields.length > 0) {
+      this.fail(
+        "auto_save-unknown-field",
+        `auto_save 未知负载字段：${unknownFields.join(", ")}`,
+      );
+      return false;
+    }
+    if (cmd.enabled !== true && cmd.enabled !== false) {
+      this.fail(
+        "auto_save-invalid",
+        "auto_save.enabled 必须为布尔（true/false）",
+      );
+      return false;
+    }
+    this.setSystem(SYS.autoSave, cmd.enabled);
+    frame.index += 1; // 非等待命令：推进游标
+    return true;
+  }
+
+  /** 01 §二.3 save_delete op：删除槽位（异步 kick；05 K4：删档不动高水位——防回档基准不随删档回退） */
+  private execSaveDeleteOp(frame: Frame, cmd: StoryCommand): boolean {
+    const unknownFields = Object.keys(cmd).filter(
+      (k) => !SAVE_FIELDS.save_delete.has(k),
+    );
+    if (unknownFields.length > 0) {
+      this.fail(
+        "save_delete-unknown-field",
+        `save_delete 未知负载字段：${unknownFields.join(", ")}`,
+      );
+      return false;
+    }
+    if (typeof cmd.slot !== "string" || !validSlot(cmd.slot)) {
+      this.fail("save_delete-invalid", "save_delete.slot 必填且槽位名合法");
+      return false;
+    }
+    if (this.savePort === undefined) {
+      this.fail(
+        "save-unavailable",
+        "未装配 SavePort（组合根经 EngineOptions 注入）",
+      );
+      return false;
+    }
+    const slot = cmd.slot;
+    void this.savePort.remove(slot).catch((e: unknown) => {
+      this.fail("save-delete-failed", `槽位 ${slot} 删除失败：${String(e)}`);
+    });
+    frame.index += 1; // 非等待命令：推进游标
+    return true;
+  }
+
   /** menu：写菜单系统键 → 进入 menu 等待（02 §二.2；清对话残留 08 §二.6） */
   private execMenu(frame: Frame, cmd: StoryCommand): void {
     const options = cmd.options as Array<{ text: string; target: string }>; // 解析器已验证结构
     this.setSystem(SYS.currentDialogText, "");
     this.setSystem(SYS.currentDialogSpeaker, "");
+    // 01 §四.3：prompt/选项文案先 Translate（目标列名不翻译——menuTargets 原样）
     this.setSystem(
       SYS.menuPrompt,
-      typeof cmd.prompt === "string" ? cmd.prompt : "",
+      typeof cmd.prompt === "string" ? this.translate(cmd.prompt) : "",
     );
     this.setSystem(
       SYS.menuOptions,
-      options.map((o) => o.text),
+      options.map((o) => this.translate(o.text)),
     );
     this.setSystem(
       SYS.menuTargets,
@@ -770,6 +1162,7 @@ export class StoryEngine {
     // 03 §三：菜单展示时建检查点（展示中 live == 检查点，回退落回菜单重选）；重放期同坐标原位替换
     this.commitCheckpoint(this.takeSnapshot(this.checkpointCoord(frame)));
     this.liveCheckpointed = true;
+    this.autoSaveAtCheckpoint(); // 05 §四：菜单等待画面建立 = auto_save 消费点
     frame.index += 1;
   }
 
@@ -789,6 +1182,7 @@ export class StoryEngine {
     // 03 §三：wait 检查点在等待建立时；重放期同坐标原位替换
     this.commitCheckpoint(this.takeSnapshot(this.checkpointCoord(frame)));
     this.liveCheckpointed = true;
+    this.autoSaveAtCheckpoint(); // 05 §四：wait 等待画面建立 = auto_save 消费点
     frame.index += 1;
     this.pendingTimer = setTimeout(
       () => {
@@ -1234,6 +1628,7 @@ export class StoryEngine {
     if (typeof cmd.size === "string") def.size = cmd.size;
     if (typeof cmd.font === "string") def.font = cmd.font;
     if (typeof cmd.textColor === "string") def.textColor = cmd.textColor;
+    if (typeof cmd.screen === "string") def.screen = cmd.screen;
     this.characters.set(key, def);
   }
 
@@ -1405,6 +1800,7 @@ export class StoryEngine {
         this.setSystem(SYS.waiting, "video");
         this.commitCheckpoint(this.takeSnapshot(this.checkpointCoord(frame)));
         this.liveCheckpointed = true;
+        this.autoSaveAtCheckpoint(); // 05 §四：cutscene 等待画面建立 = auto_save 消费点
         frame.index += 1;
       }
       return true;
@@ -1472,7 +1868,7 @@ export class StoryEngine {
   /** notify：出站 toast 事件（01 §二.1 → 08 §二.4 覆盖层）；文本插值与 say 同语义 */
   private execNotify(cmd: StoryCommand): void {
     const { text, errors } = interpolateText(
-      cmd.text as string,
+      this.translate(cmd.text as string),
       this.resolveName,
       this.draw,
     );
@@ -1483,6 +1879,117 @@ export class StoryEngine {
       text,
       ...(typeof cmd.type === "string" ? { notifyType: cmd.type } : {}),
       ...(typeof cmd.duration === "number" ? { duration: cmd.duration } : {}),
+    };
+    const event: OutboundEvent = { v: 1, kind: "event", payload };
+    for (const listener of this.eventListeners) listener(event);
+  }
+
+  /**
+   * 06 §二.1 minigame op：建立小游戏等待（同 menu/wait/input 建立检查点），
+   * 发布挂载事件（signal 供回溯/中断卸载，D5）。语义裁定：reward.value 执行期求值
+   * （支持 {expr}，重放经 rngState 恢复保持确定性）；on_success/on_fail 缺省 = 原列继续。
+   */
+  private execMinigame(frame: Frame, cmd: StoryCommand): void {
+    const unknownFields = Object.keys(cmd).filter(
+      (k) => !MINIGAME_FIELDS.has(k),
+    );
+    if (unknownFields.length > 0) {
+      this.fail(
+        "minigame-unknown-field",
+        `minigame 未知负载字段：${unknownFields.join(", ")}`,
+      );
+      return;
+    }
+    if (typeof cmd.game !== "string" || cmd.game === "") {
+      this.fail(
+        "minigame-invalid",
+        "minigame 需要非空 game 字符串（注册 gameId）",
+      );
+      return;
+    }
+    if (
+      cmd.config !== undefined &&
+      (typeof cmd.config !== "object" ||
+        cmd.config === null ||
+        Array.isArray(cmd.config))
+    ) {
+      this.fail("minigame-invalid", "minigame.config 必须为对象");
+      return;
+    }
+    for (const field of ["on_success", "on_fail"] as const) {
+      const target = cmd[field];
+      if (
+        target !== undefined &&
+        (typeof target !== "string" || target === "")
+      ) {
+        this.fail(
+          "minigame-invalid",
+          `minigame.${field} 必须为非空字符串（目标列）`,
+        );
+        return;
+      }
+    }
+    const reward: { key: string; value: unknown }[] = [];
+    if (cmd.reward !== undefined) {
+      if (!Array.isArray(cmd.reward)) {
+        this.fail("minigame-invalid", "minigame.reward 必须为键值数组");
+        return;
+      }
+      for (const [i, entry] of cmd.reward.entries()) {
+        if (
+          typeof entry !== "object" ||
+          entry === null ||
+          Array.isArray(entry) ||
+          typeof (entry as { key?: unknown }).key !== "string" ||
+          (entry as { key: string }).key === "" ||
+          !("value" in entry)
+        ) {
+          this.fail(
+            "minigame-invalid",
+            `minigame.reward[${i}] 必须为 { key, value }（key 非空字符串，value 必填）`,
+          );
+          return;
+        }
+        try {
+          reward.push({
+            key: (entry as { key: string }).key,
+            value: this.evalValue((entry as { value: unknown }).value),
+          });
+        } catch (e) {
+          if (e instanceof ExpressionError) {
+            this.fail(e.code, e.message);
+            return;
+          }
+          throw e;
+        }
+      }
+    }
+    this.minigameSeq += 1;
+    const seq = this.minigameSeq;
+    this.minigameController = new AbortController();
+    this.pendingMinigame = {
+      onSuccess:
+        typeof cmd.on_success === "string" ? cmd.on_success : undefined,
+      onFail: typeof cmd.on_fail === "string" ? cmd.on_fail : undefined,
+      reward,
+    };
+    this.setSystem(SYS.minigame, {
+      game: cmd.game,
+      config: (cmd.config ?? {}) as Record<string, unknown>,
+      seq,
+    });
+    this.setSystem(SYS.waiting, "minigame");
+    // 03 §三：等待建立时提交检查点；重放期同坐标原位替换（重放重新挂载 = 新 seq 新 signal）
+    this.commitCheckpoint(this.takeSnapshot(this.checkpointCoord(frame)));
+    this.liveCheckpointed = true;
+    this.autoSaveAtCheckpoint(); // 05 §四：小游戏等待画面建立 = auto_save 消费点
+    frame.index += 1;
+    const payload: OutboundPayload = {
+      kind: "minigame.mount",
+      game: cmd.game,
+      config: (cmd.config ?? {}) as Record<string, unknown>,
+      signal: this.minigameController.signal,
+      seq,
     };
     const event: OutboundEvent = { v: 1, kind: "event", payload };
     for (const listener of this.eventListeners) listener(event);
@@ -1572,13 +2079,14 @@ export class StoryEngine {
     this.setSystem(SYS.currentDialogSpeaker, "");
     this.setSystem(
       SYS.inputPrompt,
-      typeof cmd.prompt === "string" ? cmd.prompt : "",
+      typeof cmd.prompt === "string" ? this.translate(cmd.prompt) : "",
     );
     this.inputStore = cmd.store as string;
     this.setSystem(SYS.waiting, "input");
     // 03 §三：input 检查点在等待建立时；重放期同坐标原位替换
     this.commitCheckpoint(this.takeSnapshot(this.checkpointCoord(frame)));
     this.liveCheckpointed = true;
+    this.autoSaveAtCheckpoint(); // 05 §四：input 等待画面建立 = auto_save 消费点
     frame.index += 1;
   }
 
@@ -1707,6 +2215,7 @@ export class StoryEngine {
       return false;
     }
     this.clearTimer();
+    this.abortMinigame(); // 读档打断小游戏：abort 挂载信号（重放重新挂载）
     this.state = new Map(data.state);
     this.rngState = data.rngState;
     this.functions = new Map(data.functions);
@@ -1757,6 +2266,7 @@ export class StoryEngine {
     this.pendingSay = null;
     // 回溯清挂起的 wait 定时器：重放若落在另一 wait 上，旧定时器不得提前双触发
     this.clearTimer();
+    this.abortMinigame(); // 回溯打断小游戏：abort 挂载信号，重放重新挂载（06 §二.2.3）
     this.waitSkipable = false;
     this.liveCheckpointed = true; // 检查点 k 即当前 live 位置（重放中的等待点会自行改写）
     this.setSystem(SYS.waiting, "none");
@@ -1806,6 +2316,44 @@ export class StoryEngine {
     }
     this.history.push(cp);
     this.cursor = this.history.length - 1;
+  }
+
+  /**
+   * 05 §四 存档点消费：等待画面建立（say 上屏 / menu / wait / input）= 玩家所见稳定点。
+   * ①save op 的一次性声明（pendingSave）优先落档（一画面一写）；②auto_save 开关持续写专用
+   * `auto` 槽。解除时提交（waiting=none）与重放期（rollbackActive）不触发；
+   * 异步失败经 engine.error 可观测（不吞）。
+   */
+  private autoSaveAtCheckpoint(): void {
+    if (this.rollbackActive) return;
+    if (this.savePort === undefined) return;
+    const waiting = this.get(SYS.waiting);
+    if (waiting === undefined || waiting === "none") return;
+    const pending = this.pendingSave;
+    if (pending !== null) {
+      this.pendingSave = null;
+      const data = this.exportSave();
+      if (data === null) return; // 不在等待点（理论不可达，防御；exportSave 已发错误）
+      const payload: SaveDataV1 =
+        pending.title === undefined ? data : { ...data, title: pending.title };
+      void this.savePort
+        .write(pending.slot, JSON.stringify(payload), this.saveMode)
+        .catch((e: unknown) => {
+          this.fail(
+            "save-write-failed",
+            `槽位 ${pending.slot} 写档失败：${String(e)}`,
+          );
+        });
+      return; // pending 消费即本画面已写，不叠加 auto 写
+    }
+    if (this.get(SYS.autoSave) !== true) return;
+    const data = this.exportSave();
+    if (data === null) return;
+    void this.savePort
+      .write("auto", JSON.stringify(data), this.saveMode)
+      .catch((e: unknown) => {
+        this.fail("save-write-failed", `自动存档写入失败：${String(e)}`);
+      });
   }
 
   /**
@@ -1933,6 +2481,7 @@ export class StoryEngine {
     }
     this.flushPendingCheckpoint(); // 离开当前画面：所见即入档
     this.clearTimer();
+    this.abortMinigame(); // 热重载打断小游戏：abort 挂载信号
     this.waitSkipable = false;
     this.liveCheckpointed = false;
     this.setSystem(SYS.waiting, "none");

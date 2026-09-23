@@ -61,12 +61,19 @@ export class Typewriter {
 
   constructor(
     text: string,
-    private readonly cps: number,
+    private cps: number,
   ) {
     const tokenized = tokenizeStream(text);
     this.stream = tokenized.stream;
     this.pausePoints = tokenized.pausePoints;
     this.visibleTotal = tokenized.visibleTotal;
+  }
+
+  /** 08 §四.1 SetTextSpeed：玩家偏好即时调整当前句打字速度（非法值忽略，下限 1） */
+  setSpeed(cps: number): void {
+    if (typeof cps === "number" && Number.isFinite(cps)) {
+      this.cps = Math.max(1, cps);
+    }
   }
 
   /** 下一个未消费停顿点的可见坐标（无则 null） */

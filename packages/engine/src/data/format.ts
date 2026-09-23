@@ -119,6 +119,21 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
         requireNonEmptyString(cmd.scene, `${at}.scene`, issues);
       }
       break;
+    case "save":
+      requireNonEmptyString(cmd.slot, `${at}.slot`, issues);
+      if (cmd.title !== undefined && typeof cmd.title !== "string") {
+        issues.push(`${at}.title 必须为字符串`);
+      }
+      break;
+    case "load":
+    case "save_delete":
+      requireNonEmptyString(cmd.slot, `${at}.slot`, issues);
+      break;
+    case "auto_save":
+      if (cmd.enabled !== true && cmd.enabled !== false) {
+        issues.push(`${at}.enabled 必须为布尔`);
+      }
+      break;
     case "notify":
       requireNonEmptyString(cmd.text, `${at}.text`, issues);
       if (cmd.type !== undefined && typeof cmd.type !== "string") {
@@ -241,6 +256,34 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
       requireNonEmptyString(cmd.var, `${at}.var`, issues);
       break;
     }
+    case "minigame": {
+      requireNonEmptyString(cmd.game, `${at}.game`, issues);
+      if (cmd.config !== undefined && !isPlainObject(cmd.config)) {
+        issues.push(`${at}.config 必须为对象`);
+      }
+      for (const field of ["on_success", "on_fail"] as const) {
+        if (cmd[field] !== undefined) {
+          requireNonEmptyString(cmd[field], `${at}.${field}`, issues);
+        }
+      }
+      if (cmd.reward !== undefined) {
+        if (!Array.isArray(cmd.reward)) {
+          issues.push(`${at}.reward 必须为键值数组`);
+        } else {
+          for (const [j, entry] of cmd.reward.entries()) {
+            if (!isPlainObject(entry)) {
+              issues.push(`${at}.reward[${j}] 必须为 { key, value } 对象`);
+              continue;
+            }
+            requireNonEmptyString(entry.key, `${at}.reward[${j}].key`, issues);
+            if (!("value" in entry)) {
+              issues.push(`${at}.reward[${j}].value 必填`);
+            }
+          }
+        }
+      }
+      break;
+    }
     default:
       break; // 未实现 op：结构从简，执行器 fail-closed（E3）
   }
@@ -336,6 +379,9 @@ export function parseStory(json: unknown, sourceName = "story"): Story {
   if (json.defines !== undefined && !isPlainObject(json.defines)) {
     issues.push(`${sourceName}: defines 必须为对象`);
   }
+  if (json.lang !== undefined && typeof json.lang !== "string") {
+    issues.push(`${sourceName}: lang 必须为字符串（01 §四.2 信封语言声明）`);
+  }
 
   const hasColumns = Array.isArray(json.columns);
   const single = isSingleColumnFile(json);
@@ -387,6 +433,7 @@ export function parseStory(json: unknown, sourceName = "story"): Story {
       entry,
       columns,
       defines: json.defines as Record<string, unknown> | undefined,
+      lang: typeof json.lang === "string" ? json.lang : undefined,
     };
   }
 
@@ -401,6 +448,7 @@ export function parseStory(json: unknown, sourceName = "story"): Story {
       entry: column.id,
       columns: [column],
       defines: json.defines as Record<string, unknown> | undefined,
+      lang: typeof json.lang === "string" ? json.lang : undefined,
     };
   }
 

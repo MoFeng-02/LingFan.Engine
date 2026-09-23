@@ -22,7 +22,7 @@ export interface TauriProjectFiles {
   stories: Record<string, string>;
 }
 
-const defaultInvoke: TauriInvoke = async <T>(
+export const defaultInvoke: TauriInvoke = async <T>(
   command: string,
   args?: Record<string, unknown>,
 ): Promise<T> => {

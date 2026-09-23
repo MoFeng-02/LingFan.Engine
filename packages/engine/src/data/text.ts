@@ -204,6 +204,33 @@ function parseArrayLiteral(raw: string): unknown[] {
   return items;
 }
 
+/** 提取 `keyword {…}` 字典字面量（花括号计数支持嵌套/引号内大括号）；返回字面量与剥离后的余文 */
+function extractDictLiteral(
+  source: string,
+  keyword: string,
+): { literal: string; remainder: string } | null {
+  const at = source.indexOf(`${keyword} {`);
+  if (at < 0) return null;
+  let depth = 0;
+  let end = -1;
+  for (let i = at + keyword.length; i < source.length; i += 1) {
+    const ch = source[i]!;
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
+  }
+  if (end < 0) return null;
+  return {
+    literal: source.slice(at + keyword.length, end + 1).trim(),
+    remainder: source.slice(0, at) + source.slice(end + 1),
+  };
+}
+
 /** {"f":v} 字典字面量 → 对象（字段值走 parseValueLiteral 语义） */
 function parseDictLiteral(raw: string): Record<string, unknown> {
   const inner = raw.trim().replace(/^\{/, "").replace(/\}$/, "");
@@ -357,6 +384,30 @@ function parseSimpleStatement(
       }
       return cmd;
     }
+    case "save": {
+      // `save "s" [title "t"]`（screenshot 08-U9 延后）
+      if (tokens.length < 1) return fail("save 需要 slot");
+      const cmd: StoryCommand = { op: "save", slot: quoted(0) };
+      if (tokens[1] === "title") {
+        const title = quoted(2);
+        if (title === "") return fail("save title 需要标题文本");
+        cmd.title = title;
+      }
+      return cmd;
+    }
+    case "load":
+      if (tokens.length < 1) return fail("load 需要 slot");
+      return { op: "load", slot: quoted(0) } as StoryCommand;
+    case "auto_save":
+      if (tokens.length < 1)
+        return fail("auto_save 需要 enabled（true/false）");
+      if (tokens[0] !== "true" && tokens[0] !== "false") {
+        return fail("auto_save 需要 enabled（true/false）");
+      }
+      return { op: "auto_save", enabled: tokens[0] === "true" } as StoryCommand;
+    case "save_delete":
+      if (tokens.length < 1) return fail("save_delete 需要 slot");
+      return { op: "save_delete", slot: quoted(0) } as StoryCommand;
     case "call":
       if (tokens.length < 1) return fail("call 需要 target");
       return { op: "call", target: tokens[0]! } as StoryCommand;
@@ -379,7 +430,7 @@ function parseSimpleStatement(
         if (eq < 0) continue;
         const key = token.slice(0, eq);
         const value = token.slice(eq + 1);
-        if (key === "type") cmd.notifyType = unquote(value);
+        if (key === "type") cmd.type = unquote(value);
         else if (key === "duration") cmd.duration = Number(value);
       }
       return cmd;
@@ -488,6 +539,38 @@ function parseSimpleStatement(
         mode: sub === "enter" ? "auto" : sub,
       } as StoryCommand;
     }
+    case "minigame": {
+      // `minigame "game" [on_success "col"] [on_fail "col"] [config {…}] [reward {…}]`
+      // reward 键值数组以字典字面量投影（键序即条目序）；config 值为标量/{expr} 字面量
+      const gameMatch = /^"([^"]*)"/.exec(rest);
+      const game = gameMatch === null ? "" : gameMatch[1]!;
+      if (game === "") {
+        return fail(
+          'minigame 文法：minigame "game" [on_success "col"] [on_fail "col"] [config {…}] [reward {…}]',
+        );
+      }
+      const cmd: StoryCommand = { op: "minigame", game };
+      let remainder = rest.slice(gameMatch![0]!.length);
+      const configDict = extractDictLiteral(remainder, "config");
+      if (configDict !== null) {
+        remainder = configDict.remainder;
+        cmd.config = parseDictLiteral(configDict.literal);
+      }
+      const rewardDict = extractDictLiteral(remainder, "reward");
+      if (rewardDict !== null) {
+        remainder = rewardDict.remainder;
+        cmd.reward = Object.entries(parseDictLiteral(rewardDict.literal)).map(
+          ([key, value]) => ({ key, value }),
+        );
+      }
+      for (const field of ["on_success", "on_fail"] as const) {
+        const m = new RegExp(`\\b${field}\\s+"([^"]*)"`).exec(remainder);
+        if (m === null) continue;
+        if (m[1] === "") return fail(`minigame ${field} 需要非空目标列`);
+        cmd[field] = m[1];
+      }
+      return cmd;
+    }
     case "character": {
       const key = tokens.find((t) => t.startsWith('"'));
       if (key === undefined) return fail("character 需要 key");
@@ -497,7 +580,11 @@ function parseSimpleStatement(
         if (eq < 0) continue;
         const field = token.slice(0, eq);
         const value = unquote(token.slice(eq + 1));
-        if (["name", "color", "size", "font", "textColor"].includes(field)) {
+        if (
+          ["name", "color", "size", "font", "textColor", "screen"].includes(
+            field,
+          )
+        ) {
           cmd[field] = value;
         }
       }
@@ -885,6 +972,22 @@ function generateCommand(
           : `${pad}navigate ${quoteForText(cmd.path as string)} scene ${quoteForText(cmd.scene as string)}`,
       );
       return;
+    case "save":
+      out.push(
+        cmd.title === undefined
+          ? `${pad}save ${quoteForText(cmd.slot as string)}`
+          : `${pad}save ${quoteForText(cmd.slot as string)} title ${quoteForText(cmd.title as string)}`,
+      );
+      return;
+    case "load":
+      out.push(`${pad}load ${quoteForText(cmd.slot as string)}`);
+      return;
+    case "auto_save":
+      out.push(`${pad}auto_save ${cmd.enabled === true ? "true" : "false"}`);
+      return;
+    case "save_delete":
+      out.push(`${pad}save_delete ${quoteForText(cmd.slot as string)}`);
+      return;
     case "call":
       out.push(`${pad}call ${cmd.target}`);
       return;
@@ -903,8 +1006,8 @@ function generateCommand(
       return;
     case "notify": {
       let line = `${pad}notify ${quoteForText(cmd.text as string)}`;
-      if (cmd.notifyType !== undefined)
-        line += ` type=${quoteForText(cmd.notifyType as string)}`;
+      if (cmd.type !== undefined)
+        line += ` type=${quoteForText(cmd.type as string)}`;
       if (cmd.duration !== undefined) line += ` duration=${cmd.duration}`;
       out.push(line);
       return;
@@ -961,6 +1064,28 @@ function generateCommand(
         `${pad}video_skipable ${cmd.value === false ? "false" : "true"}`,
       );
       return;
+    case "minigame": {
+      // reward 键值数组以字典字面量投影（键序 = 条目序，与解析端 Object.entries 对称）
+      let line = `${pad}minigame ${quoteForText(cmd.game as string)}`;
+      if (cmd.on_success !== undefined)
+        line += ` on_success ${quoteForText(cmd.on_success as string)}`;
+      if (cmd.on_fail !== undefined)
+        line += ` on_fail ${quoteForText(cmd.on_fail as string)}`;
+      if (cmd.config !== undefined)
+        line += ` config ${generateDictLiteral(cmd.config as Record<string, unknown>)}`;
+      if (cmd.reward !== undefined) {
+        const dict: Record<string, unknown> = {};
+        for (const entry of cmd.reward as Array<{
+          key: string;
+          value: unknown;
+        }>) {
+          dict[entry.key] = entry.value;
+        }
+        line += ` reward ${generateDictLiteral(dict)}`;
+      }
+      out.push(line);
+      return;
+    }
     case "pause":
       out.push(`${pad}pause ${cmd.seconds}`);
       return;
@@ -1014,6 +1139,8 @@ function generateCommand(
       if (def.size !== undefined) line += ` size=${quoteForText(def.size)}`;
       if (def.textColor !== undefined)
         line += ` textColor=${quoteForText(def.textColor)}`;
+      if (def.screen !== undefined)
+        line += ` screen=${quoteForText(def.screen)}`;
       if (def.font !== undefined) line += ` font=${quoteForText(def.font)}`;
       out.push(line);
       return;

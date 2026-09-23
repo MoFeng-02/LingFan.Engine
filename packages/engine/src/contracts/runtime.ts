@@ -33,8 +33,21 @@ export interface RollbackDonePayload {
   coordinate: ColumnCoordinate;
 }
 
+/** 06 §二.1 小游戏挂载事件：UI 据此挂载（注册表 fail-closed，D5）；signal abort = 立即卸载 */
+export interface MinigameMountPayload {
+  kind: "minigame.mount";
+  game: string;
+  config: Record<string, unknown>;
+  signal: AbortSignal;
+  /** 单调序号：重放重新挂载与旧挂载可分辨 */
+  seq: number;
+}
+
 export type OutboundPayload =
-  EngineErrorPayload | NotifyPayload | RollbackDonePayload;
+  | EngineErrorPayload
+  | NotifyPayload
+  | RollbackDonePayload
+  | MinigameMountPayload;
 
 /** 02 §三.1 出站统一信封：核心层出站全部 `{v, kind:'event', payload}` */
 export interface OutboundEvent {
@@ -50,6 +63,8 @@ export type EventListener = (event: OutboundEvent) => void;
 export const SYS = {
   currentDialogText: "__current_dialog_text",
   currentDialogSpeaker: "__current_dialog_speaker",
+  /** 08 §四.5 对话框模板名（老引擎 __dialog_template 同语义；null = 全局默认） */
+  dialogTemplate: "__dialog_template",
   currentSceneColumn: "__current_scene_column",
   dialogComplete: "__dialog_complete",
   dialogClickable: "__dialog_clickable",
@@ -60,6 +75,10 @@ export const SYS = {
   menuSelected: "__menu_selected",
   inputPrompt: "__input_prompt",
   rollbackActive: "__rollback_active",
+  /** 01 §四 I18N 当前语言（02 §一.4；setLanguage 命令写入，空串 = 默认语言/原文直出） */
+  currentLanguage: "__current_language",
+  /** 05 §四 auto_save 开关（auto_save op / 灵泛 PlaybackControl.AutoSave 同语义：检查点建立时消费） */
+  autoSave: "__auto_save",
   nvlMode: "__nvl_mode",
   nvlBuffer: "__nvl_buffer",
   waiting: "__waiting",
@@ -74,6 +93,8 @@ export const SYS = {
   video: "__video",
   /** video_skipable op 的持久开关（后续 video/cutscene 的缺省 skipable） */
   videoSkipable: "__video_skipable",
+  /** 06 §二.1 小游戏挂载信息（game/config/seq；signal 走事件不进 SSOT——运行时对象不可快照） */
+  minigame: "__minigame",
 } as const;
 
 /** 02 §二.2 等待状态（`__waiting` 取值全集） */
@@ -91,4 +112,6 @@ export interface CharacterDef {
   size?: string;
   font?: string;
   textColor?: string;
+  /** 08 §四.5 角色级对话框模板（say.template 优先于此；老引擎 screen 同语义） */
+  screen?: string;
 }

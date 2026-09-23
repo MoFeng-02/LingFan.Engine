@@ -7,6 +7,7 @@ import type {
   AudioChannel,
   AudioChannelState,
   AudioPort,
+  PlayerPreferences,
   ResourcePort,
   StoryEngine,
 } from "@lingfan/engine";
@@ -100,13 +101,39 @@ function channelState(
   };
 }
 
-export function readAudioView(engine: StoryEngine): AudioView {
+/** 有效音量合成末端：op 音量 × 通道偏好（prefs 缺省/偏好 1 = 原样，不复制对象） */
+function withPrefs(
+  state: AudioChannelState | null,
+  pref: number | undefined,
+): AudioChannelState | null {
+  if (state === null || state.kind !== "play") return state;
+  if (pref === undefined || pref === 1) return state;
+  return { ...state, volume: Math.min(1, Math.max(0, state.volume * pref)) };
+}
+
+/** 08 §八.2：prefs 存在时各通道合成玩家有效音量（偏好在视图层落地，planAudioActions 差量自动感知） */
+export function readAudioView(
+  engine: StoryEngine,
+  prefs?: PlayerPreferences,
+): AudioView {
   const position = engine.get(SYS.bgmPosition);
   return {
-    bgm: channelState(engine, SYS.audioBgm),
-    ambient: channelState(engine, SYS.audioAmbient),
-    voice: channelState(engine, SYS.audioVoice),
-    se: channelState(engine, SYS.audioSe),
+    bgm: withPrefs(
+      channelState(engine, SYS.audioBgm),
+      prefs?.effectiveVolume("bgm"),
+    ),
+    ambient: withPrefs(
+      channelState(engine, SYS.audioAmbient),
+      prefs?.effectiveVolume("ambient"),
+    ),
+    voice: withPrefs(
+      channelState(engine, SYS.audioVoice),
+      prefs?.effectiveVolume("voice"),
+    ),
+    se: withPrefs(
+      channelState(engine, SYS.audioSe),
+      prefs?.effectiveVolume("se"),
+    ),
     bgmPosition: typeof position === "number" ? position : 0,
   };
 }
@@ -233,6 +260,8 @@ export interface AudioRenderer {
 export interface AudioRendererOptions {
   /** 资源解析失败诊断（08-U7 报错诊断：不静默吞错） */
   onError?: (message: string) => void;
+  /** 08 §八.2 玩家偏好（可选）：合成通道有效音量；偏好变化即时重规划（滑块/静音即时生效） */
+  preferences?: PlayerPreferences;
 }
 
 export function createAudioRenderer(
@@ -302,14 +331,16 @@ export function createAudioRenderer(
   }
 
   function sync(): void {
-    const next = readAudioView(engine);
+    const next = readAudioView(engine, options.preferences);
     apply(planAudioActions(view, next));
     view = next;
   }
 
-  const off = engine.onStateChanged((change) => {
+  const offState = engine.onStateChanged((change) => {
     if (audioKeys.has(change.key)) sync();
   });
+  // 08 §八.2：偏好变化（滑块/静音）→ 合成音量差量 → play 更新动作（同资源不重播）
+  const offPrefs = options.preferences?.onChange(() => sync()) ?? null;
   sync();
 
   return {
@@ -324,7 +355,8 @@ export function createAudioRenderer(
       view = { ...view, bgmPosition: seconds };
     },
     dispose(): void {
-      off();
+      offState();
+      offPrefs?.();
       for (const url of urls.values()) resources.release(url);
       urls.clear();
       generations.clear();

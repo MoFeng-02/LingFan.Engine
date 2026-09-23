@@ -28,3 +28,8 @@ export {
   type TauriListen,
   type TauriProjectFiles,
 } from "./resources";
+export { createTauriI18nPort, type TauriOverlayFile } from "./i18n";
+export {
+  createTauriPreferencesPort,
+  createWebStoragePreferencesPort,
+} from "./preferences";

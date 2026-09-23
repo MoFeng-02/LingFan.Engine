@@ -10,6 +10,14 @@ export {
   type DialogueLineView,
 } from "./dialogue";
 export {
+  builtinBubbleTemplate,
+  createDialogueTemplateRegistry,
+  DialogueTemplateRegistry,
+  type DialogueTemplateFn,
+  type DialogueTemplateInput,
+  type DialogueTemplateView,
+} from "./dialogue/templates";
+export {
   EMPTY_AUDIO_VIEW,
   createAudioRenderer,
   planAudioActions,
@@ -24,3 +32,4 @@ export {
   type VideoRenderer,
   type VideoRendererOptions,
 } from "./video";
+export { createMinigameRegistry, type MinigameRegistry } from "./minigame";

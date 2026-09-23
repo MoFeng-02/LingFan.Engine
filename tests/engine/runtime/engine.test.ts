@@ -84,6 +84,7 @@ describe("最小闭环主链路（锚点: ssot-only-observation）", () => {
       // say 1（进入等待前清残留完成标记——锚点: race-stale-complete-flag）
       SYS.dialogComplete,
       SYS.currentDialogSpeaker,
+      SYS.dialogTemplate, // 08 §四.5：模板三级优先级解析结果（无 template 无角色 → null）
       SYS.currentDialogText,
       SYS.dialogClickable,
       SYS.dialogNoskip,
@@ -96,6 +97,7 @@ describe("最小闭环主链路（锚点: ssot-only-observation）", () => {
       // say 2
       SYS.dialogComplete,
       SYS.currentDialogSpeaker,
+      SYS.dialogTemplate,
       SYS.currentDialogText,
       SYS.dialogClickable,
       SYS.dialogNoskip,
@@ -108,6 +110,7 @@ describe("最小闭环主链路（锚点: ssot-only-observation）", () => {
       // say 3
       SYS.dialogComplete,
       SYS.currentDialogSpeaker,
+      SYS.dialogTemplate,
       SYS.currentDialogText,
       SYS.dialogClickable,
       SYS.dialogNoskip,
@@ -127,11 +130,12 @@ describe("最小闭环主链路（锚点: ssot-only-observation）", () => {
       scope: "system",
     });
     expect(changes[2]?.value).toBe("灵泛");
-    expect(changes[3]?.value).toBe("第一句");
+    expect(changes[3]?.value).toBeNull(); // 08 §四.5：无 template 无角色 → null（全局默认）
+    expect(changes[4]?.value).toBe("第一句");
     // say 2 无 speaker → 清空，不残留上一句
-    expect(changes[12]?.key).toBe(SYS.currentDialogSpeaker);
-    expect(changes[12]?.value).toBe("");
-    expect(changes[13]?.value).toBe("第二句");
+    expect(changes[13]?.key).toBe(SYS.currentDialogSpeaker);
+    expect(changes[13]?.value).toBe("");
+    expect(changes[15]?.value).toBe("第二句");
     // 末次 advance 后回到 none
     expect(changes[changes.length - 1]).toEqual({
       key: SYS.waiting,

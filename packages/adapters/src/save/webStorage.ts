@@ -31,6 +31,9 @@ export function createWebStorageSavePort(): SavePort {
         throw new Error("回档尝试被拒绝（演示高水位）");
       return record.payload;
     },
+    async remove(slot): Promise<void> {
+      localStorage.removeItem(slotKey(slot)); // K4：删档不动高水位（演示同语义）
+    },
     async list(): Promise<SlotSummary[]> {
       const out: SlotSummary[] = [];
       for (let i = 0; i < localStorage.length; i += 1) {

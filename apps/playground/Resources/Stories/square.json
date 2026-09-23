@@ -4,6 +4,13 @@
   "kind": "flow",
   "commands": [
     { "op": "say", "text": "广场上只有风声。" },
+    {
+      "op": "minigame",
+      "game": "click3",
+      "config": { "target": 3 },
+      "reward": [{ "key": "player.gold", "value": 10 }]
+    },
+    { "op": "say", "text": "你活动了一下手腕（小游戏演示完成，金币 +10）。" },
     { "op": "jump", "target": "end" }
   ]
 }

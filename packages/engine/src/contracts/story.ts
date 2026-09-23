@@ -30,6 +30,8 @@ export interface Story {
   columns: StoryColumn[];
   /** 01 §一.6 顶层结构化定义：无条件 Set，后加载覆盖先加载 */
   defines?: Record<string, unknown>;
+  /** 01 §四.2 信封语言声明（多版本列文件 `{id}_{lang}` 的文件内声明；缺省 = 默认语言） */
+  lang?: string;
 }
 
 /** 07 §三 工程清单（project.json）：结构化/原子化多文件工程的组装契约 */
@@ -49,6 +51,24 @@ export interface ProjectManifest {
   resourceEncryption?: boolean;
   /** 工程级 defines：无条件 Set，先于故事文件应用（后加载覆盖） */
   defines?: Record<string, unknown>;
+}
+
+/** 01 §四.3 overlay 译文文件：overlay 根内相对路径（`/` 分隔；`main.json` = 全局兜底，最先合并）
+ *  → 原文→译文映射。非字符串值 = 文件整体无效（供给侧跳过，老引擎反序列化同语义）。 */
+export interface I18nOverlayFile {
+  path: string;
+  entries: Record<string, string>;
+}
+
+/**
+ * 01 §四.3 I18N overlay 供给端口（按需加载；组合根经 EngineOptions 注入；缺省 = 原文直出）。
+ * 文件列举/解密归供给侧（Rust `load_i18n_overlay`：目录 `Lang/{lang}/` 递归收集 +
+ * 降级单文件 `Lang/{lang}.json` 以 `main.json` 供给）；main.json 兜底合并序归引擎
+ * （mergeOverlayFiles——叙事语义，引擎侧可测）。返回列表顺序必须确定（适配器保证）；
+ * Promise 拒绝 = 载入失败（引擎 fail-closed 保持原语言不变）。
+ */
+export interface I18nPort {
+  loadOverlayFiles(lang: string): Promise<I18nOverlayFile[]>;
 }
 
 /** 01 §一.4 坐标：故事流唯一位置 `(columnId, index)` */

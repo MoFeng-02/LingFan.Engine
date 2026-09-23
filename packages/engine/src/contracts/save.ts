@@ -8,6 +8,8 @@ import type { ColumnCoordinate, StoryCommand } from "./story";
 export interface SaveDataV1 {
   formatVersion: 1;
   storyId: string;
+  /** 存档标题（save op 的 title 参数，槽位列表展示用；可选） */
+  title?: string;
   /** 等待点命令坐标：读档时从该命令重放，重建等待画面 */
   coord: ColumnCoordinate;
   state: [string, unknown][];
@@ -37,5 +39,7 @@ export interface SlotSummary {
 export interface SavePort {
   write(slot: string, payload: string, mode: SaveMode): Promise<void>;
   read(slot: string): Promise<string>;
+  /** 删除槽位（05 K4：删档不动高水位——防回档基准不随删档回退） */
+  remove(slot: string): Promise<void>;
   list(): Promise<SlotSummary[]>;
 }

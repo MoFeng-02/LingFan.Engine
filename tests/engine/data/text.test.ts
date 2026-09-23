@@ -50,6 +50,12 @@ label start:
   jump inn
   navigate "inn"
   navigate "square" scene "square"
+  save "slot_1" title "第一章"
+  save "quick"
+  auto_save true
+  auto_save false
+  load "auto"
+  save_delete "quick"
 label inn:
   say "酒馆线" speaker="老板"
   return
@@ -207,6 +213,21 @@ describe("07 nvl/character 文法往返", () => {
 `;
     const story = parseTextStory(text, "d.story");
     expect(generateText(story)).toBe(text);
+  });
+
+  it("08 §四.5 say template + character screen 往返等价", () => {
+    const text = `label a:
+  character "少女" name="少女" screen="char-screen"
+  say "你好" template="center"
+  say "回默认"
+`;
+    const story = parseTextStory(text, "d.story");
+    expect(generateText(story)).toBe(text);
+    // 投影语义：template/screen 字段进命令负载（执行层三级优先级的输入）
+    const charCmd = story.columns[0]!.commands![0]!;
+    expect(charCmd.screen).toBe("char-screen");
+    const sayCmd = story.columns[0]!.commands![1]!;
+    expect(sayCmd.template).toBe("center");
   });
 
   it("nvl 未知子命令 → TextFormatError", () => {

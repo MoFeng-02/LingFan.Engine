@@ -100,6 +100,10 @@ class MemorySavePort {
     return record.payload;
   }
 
+  async remove(slot: string): Promise<void> {
+    this.slots.delete(slot); // K4：删档不动高水位
+  }
+
   async list(): Promise<SlotSummary[]> {
     return [...this.slots.entries()].map(([slot, r]) => ({
       slot,

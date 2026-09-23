@@ -3,7 +3,10 @@ import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import {
   SYS,
   StoryEngine,
+  type AudioChannel,
   type AudioPort,
+  type I18nPort,
+  type PlayerPreferences,
   type ResourcePort,
   type SavePort,
   type Story,
@@ -11,9 +14,13 @@ import {
 } from "@lingfan/engine";
 import {
   Typewriter,
+  builtinBubbleTemplate,
   createAudioRenderer,
+  createDialogueTemplateRegistry,
+  createMinigameRegistry,
   createVideoRenderer,
   renderDialogueLine,
+  type DialogueTemplateView,
   type AudioRenderer,
   type VideoRenderer,
 } from "@lingfan/ui";
@@ -24,6 +31,10 @@ const props = defineProps<{
   story: Story;
   savePort: SavePort;
   resourcePort: ResourcePort;
+  /** 01 §四.3 I18N overlay 供给（可选：浏览器形态未装配 = 原文直出） */
+  i18nPort?: I18nPort;
+  /** 08 §八.2 / U10 玩家偏好（组合根装配：hydrate 后注入，与存档分离） */
+  preferences: PlayerPreferences;
   /** 端口工厂而非实例：restart 重建音频/视频通道时保持「选择权在组合根」 */
   createAudioPort: (onError: (message: string) => void) => AudioPort;
   createVideoPort: (onError: (message: string) => void) => VideoPort;
@@ -36,6 +47,8 @@ const inMenu = ref(false);
 const inWait = ref(false);
 const inInput = ref(false);
 const inVideo = ref(false);
+const inMinigame = ref(false);
+const minigameHostEl = ref<HTMLElement | null>(null);
 const menuPrompt = ref("");
 const inputPrompt = ref("");
 const inputValue = ref("");
@@ -68,6 +81,66 @@ watch(nvlBuffer, () => {
   void nextTick(() => {
     const body = nvlBody.value;
     if (body !== null) body.scrollTop = body.scrollHeight; // 累积层贴底（阅读最新句）
+  });
+});
+// —— 08 §四.5 对话框模板注册制：宿主装配注册表（作者扩展入口；编辑器可视化创作
+// 未来产出同构描述装配到同一注册表）。核心层解析模板名三级优先级 → __dialog_template，
+// 此处按名解析（未知名/null 回退默认）。NVL 累积层保持固定骨架（增量渲染纪律）。
+const dialogueTemplates = createDialogueTemplateRegistry();
+dialogueTemplates.register("bubble", builtinBubbleTemplate, {
+  makeDefault: true,
+});
+// 演示自定义模板（作者纯 TS 创作形态）：居中独白——隐藏说话人行 + 皮肤类
+dialogueTemplates.register("center", (input) => ({
+  rootClass: "tpl-center",
+  speakerHtml: "",
+  bodyHtml: input.lineHtml,
+  hintHtml: input.canAdvance ? "▼" : "",
+}));
+const dialogTemplateName = ref<string | null>("");
+// —— 06 §二/D5 小游戏注册表：宿主注册（任意技术实现工厂）；未注册 = fail-closed 不伪造完成 ——
+const minigames = createMinigameRegistry();
+// 演示小游戏「点够次数」：config.target 次点击后成功（signal abort = 立即收尾不回填）
+minigames.register("click3", (host, ctx) => {
+  return new Promise((resolve) => {
+    const target =
+      typeof ctx.config.target === "number" ? ctx.config.target : 3;
+    host.innerHTML = "";
+    host.classList.add("minigame-demo");
+    const label = document.createElement("p");
+    label.className = "minigame-label";
+    label.textContent = `演示小游戏：点 ${target} 次完成`;
+    const counter = document.createElement("div");
+    counter.className = "minigame-count";
+    counter.textContent = `0 / ${target}`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "点我";
+    let clicks = 0;
+    button.addEventListener("click", () => {
+      clicks += 1;
+      counter.textContent = `${clicks} / ${target}`;
+      if (clicks >= target) resolve({ outcome: "success", score: clicks });
+    });
+    ctx.signal.addEventListener(
+      "abort",
+      () => {
+        host.innerHTML = ""; // 回溯/导航/销毁：立即收尾（不回填结果）
+      },
+      { once: true },
+    );
+    host.append(label, counter, button);
+  });
+});
+const dialogView = computed<DialogueTemplateView>(() => {
+  const template =
+    dialogueTemplates.resolve(dialogTemplateName.value) ??
+    builtinBubbleTemplate;
+  return template({
+    speaker: speaker.value,
+    speakerColor: speakerColor.value,
+    lineHtml: renderDialogueLine({ text: shownText.value }).html,
+    canAdvance: canAdvance.value,
   });
 });
 const showHistory = ref(false);
@@ -133,6 +206,7 @@ let videoRenderer: VideoRenderer | null = null;
 function createRenderer(): AudioRenderer {
   return createAudioRenderer(engine, audioPort, props.resourcePort, {
     onError: reportAudioError,
+    preferences: props.preferences, // 08 §八.2：通道有效音量合成 + 偏好变化即时重规划
   });
 }
 
@@ -160,13 +234,15 @@ function handleState({ key, value }: { key: string; value: unknown }): void {
     speakerColor.value = def?.color ?? "";
   } else if (key === SYS.currentDialogText && typeof value === "string") {
     text.value = value;
-    typewriter = new Typewriter(value, 30); // 每句重建打字机（30 字/秒）
+    // 08 §四.1：打字速度 = 玩家偏好（SetTextSpeed 语义；每句重建取最新值）
+    typewriter = new Typewriter(value, props.preferences.textSpeed);
   } else if (key === SYS.waiting) {
     canAdvance.value = value === "dialog";
     inMenu.value = value === "menu";
     inWait.value = value === "wait";
     inInput.value = value === "input";
     inVideo.value = value === "video"; // 08 §六.5：cutscene 等待（点击/空格 = 跳过）
+    inMinigame.value = value === "minigame"; // 06 §二：小游戏等待（宿主经注册表挂载）
   } else if (key === SYS.menuPrompt && typeof value === "string")
     menuPrompt.value = value;
   else if (key === SYS.inputPrompt && typeof value === "string")
@@ -175,6 +251,9 @@ function handleState({ key, value }: { key: string; value: unknown }): void {
     rawTexts.value = value as string[];
   else if (key === SYS.menuTargets && Array.isArray(value))
     rawTargets.value = value as string[];
+  // 08 §四.5：模板名（三级优先级解析结果；null = 全局默认回退）
+  else if (key === SYS.dialogTemplate)
+    dialogTemplateName.value = typeof value === "string" ? value : null;
   // 08 §五 NVL 系统键（用户实测回归：前进播放时 NVL 累积不显示——
   // 此前只有回溯/读档的 syncFromEngine 才同步这两个键）
   else if (key === SYS.nvlMode && typeof value === "string")
@@ -194,6 +273,7 @@ function syncFromEngine(): void {
   inMenu.value = w === "menu";
   inWait.value = w === "wait";
   inInput.value = w === "input";
+  inMinigame.value = w === "minigame";
   const mp = engine.get(SYS.menuPrompt);
   menuPrompt.value = typeof mp === "string" ? mp : "";
   const ip = engine.get(SYS.inputPrompt);
@@ -206,11 +286,14 @@ function syncFromEngine(): void {
   nvlMode.value = typeof nm === "string" ? nm : "none";
   const nb = engine.get(SYS.nvlBuffer);
   nvlBuffer.value = Array.isArray(nb) ? (nb as string[]) : [];
+  // 08 §四.5：模板名随恢复对齐（回溯/读档后模板随快照走）
+  const dt = engine.get(SYS.dialogTemplate);
+  dialogTemplateName.value = typeof dt === "string" ? dt : null;
   // U4：说话人色随恢复同步
   const def = engine.getCharacter(speaker.value);
   speakerColor.value = def?.color ?? "";
-  // 打字机随恢复文本重建
-  typewriter = new Typewriter(text.value, 30);
+  // 打字机随恢复文本重建（速度 = 玩家偏好）
+  typewriter = new Typewriter(text.value, props.preferences.textSpeed);
 }
 
 function handleEvent({
@@ -224,6 +307,31 @@ function handleEvent({
     setTimeout(() => {
       notifications.value = notifications.value.filter((n) => n.id !== id);
     }, payload.duration ?? 3000);
+  } else if (payload.kind === "minigame.mount") {
+    // 06 §二/D5：宿主经注册表解析工厂挂载；未注册 fail-closed（不伪造完成，等待保持）
+    const factory = minigames.get(payload.game);
+    if (factory === undefined) {
+      error.value = `小游戏未注册：${payload.game}（D5 fail-closed，可回溯/导航离开）`;
+      return;
+    }
+    const host = minigameHostEl.value;
+    if (host === null) return;
+    const onAbort = (): void => {
+      payload.signal.removeEventListener("abort", onAbort);
+      host.innerHTML = "";
+      inMinigame.value = false;
+    };
+    payload.signal.addEventListener("abort", onAbort, { once: true });
+    void factory(host, { config: payload.config, signal: payload.signal })
+      .then((result) => {
+        if (payload.signal.aborted) return; // 中断竞态：以 abort 收尾为准
+        onAbort();
+        engine.resolveMinigame(result);
+      })
+      .catch((e: unknown) => {
+        error.value = `小游戏异常：${String(e)}`;
+        onAbort();
+      });
   } else if (payload.kind === "rollback.done") {
     error.value = "";
     syncFromEngine(); // 03-R4：回放完成解除输入锁并同步渲染
@@ -259,7 +367,7 @@ function restart(): void {
   videoRenderer?.dispose();
   videoPort = props.createVideoPort(reportAudioError);
   engine.dispose();
-  engine = new StoryEngine(props.story);
+  engine = new StoryEngine(props.story, { i18nPort: props.i18nPort });
   bindEngine(engine);
   audioRenderer = createRenderer();
   videoRenderer = createVideo();
@@ -271,19 +379,22 @@ function restart(): void {
   inWait.value = false;
   inInput.value = false;
   inVideo.value = false;
+  inMinigame.value = false;
+  minigameHostEl.value?.replaceChildren();
   menuPrompt.value = "";
   inputPrompt.value = "";
   inputValue.value = "";
   error.value = "";
   rawTexts.value = [];
   rawTargets.value = [];
+  dialogTemplateName.value = ""; // 08 §四.5：重启回全局默认
   nvlMode.value = "none";
   nvlBuffer.value = [];
   typewriter = null;
   engine.start();
 }
 
-engine = new StoryEngine(props.story);
+engine = new StoryEngine(props.story, { i18nPort: props.i18nPort });
 bindEngine(engine);
 audioRenderer = createRenderer();
 videoRenderer = createVideo();
@@ -308,6 +419,38 @@ function onKeydown(e: KeyboardEvent): void {
   }
 }
 window.addEventListener("keydown", onKeydown);
+
+// —— 08 §八.2 / U10 玩家偏好：状态归核心层（PlayerPreferences），面板只是 UI 皮 ——
+const showPrefs = ref(false);
+const prefsView = ref(props.preferences.snapshot()); // 响应式镜像（onChange 同步）
+const offPrefs = props.preferences.onChange(() => {
+  prefsView.value = props.preferences.snapshot();
+  // 速度偏好即时生效于当前句（SetTextSpeed；下句重建自然取新值）
+  typewriter?.setSpeed(props.preferences.textSpeed);
+});
+const PREF_CHANNELS: Array<{ channel: AudioChannel; label: string }> = [
+  { channel: "bgm", label: "BGM" },
+  { channel: "se", label: "音效" },
+  { channel: "ambient", label: "环境" },
+  { channel: "voice", label: "语音" },
+];
+
+function setPrefVolume(channel: AudioChannel, event: Event): void {
+  props.preferences.setVolume(
+    channel,
+    Number((event.target as HTMLInputElement).value),
+  );
+}
+
+function setPrefMuted(event: Event): void {
+  props.preferences.setMuted((event.target as HTMLInputElement).checked);
+}
+
+function setPrefTextSpeed(event: Event): void {
+  props.preferences.setTextSpeed(
+    Number((event.target as HTMLInputElement).value),
+  );
+}
 
 // —— 05 存档：TS 编排 + SavePort 适配器（Tauri=K7 Rust 安全；浏览器演示=localStorage 兜底）——
 const savePort = props.savePort;
@@ -398,6 +541,8 @@ function submitInput(): void {
 onUnmounted(() => {
   offState?.();
   offEvent?.();
+  offPrefs?.();
+  props.preferences.dispose(); // 08 §八.2：补发未落盘的末次偏好修改（防抖尾结算）
   audioPort.dispose(); // 先停播
   videoPort.dispose();
   audioRenderer?.dispose(); // 再释放已解析资源
@@ -440,6 +585,16 @@ onUnmounted(() => {
       >
         ☰
       </button>
+      <!-- 08 §八.2 玩家偏好面板开关 -->
+      <button
+        class="history-toggle"
+        type="button"
+        title="设置"
+        aria-label="设置面板"
+        @click.stop="showPrefs = !showPrefs"
+      >
+        ⚙
+      </button>
     </div>
     <!-- RenderTargets.overlay（notify toast，08 §二.4） -->
     <ul class="notifications">
@@ -473,21 +628,18 @@ onUnmounted(() => {
         <button type="submit" @click.stop>确定</button>
       </form>
     </section>
+    <!-- RenderTargets.minigame（06 §二：宿主经注册表挂载；等待期可回溯 → signal abort 卸载） -->
+    <section v-show="inMinigame" class="choices" aria-live="polite" @click.stop>
+      <div ref="minigameHostEl" class="minigame-host"></div>
+    </section>
     <!-- RenderTargets.dialogue 挂载点（08 §一）；menu/input 等待时让位 -->
     <section
       v-show="!inMenu && !inInput"
       class="dialogue"
-      :class="{ 'nvl-mode': nvlMode === 'active' }"
+      :class="[nvlMode === 'active' ? 'nvl-mode' : dialogView.rootClass]"
       aria-live="polite"
     >
-      <p
-        v-if="speaker"
-        class="speaker"
-        :style="speakerColor ? { color: speakerColor } : {}"
-      >
-        {{ speaker }}
-      </p>
-      <!-- 08-U5/§五：NVL 累积层——已打完的行静态 memo，最新一行走打字机（统一渲染接缝） -->
+      <!-- 08-U5/§五：NVL 累积层——增量渲染纪律保持固定骨架（不走模板全量重渲） -->
       <div v-if="nvlMode === 'active'" ref="nvlBody" class="nvl-body">
         <p
           v-for="(html, idx) in nvlPastLines"
@@ -502,14 +654,23 @@ onUnmounted(() => {
           "
         ></p>
       </div>
-      <!-- 08-U3/U4：打字机逐字 + 内联标记（统一渲染接缝：核心层透传，本组件只消费契约） -->
-      <p
-        v-else
-        class="text"
-        v-html="renderDialogueLine({ text: shownText }).html"
-      ></p>
-      <span v-if="canAdvance" class="advance-hint">▼</span>
-      <span v-else-if="inWait" class="advance-hint">···</span>
+      <!-- 08 §四.5 模板骨架：speaker 行 / 正文 / 推进指示器三挂点（内容 = 注册模板产出；
+           speaker/hint 随输入稳定，打字帧只有正文变化——Vue diff 不动稳定挂点） -->
+      <template v-else>
+        <p
+          v-if="dialogView.speakerHtml"
+          class="speaker"
+          :style="speakerColor ? { color: speakerColor } : {}"
+          v-html="dialogView.speakerHtml"
+        ></p>
+        <p class="text" v-html="dialogView.bodyHtml"></p>
+        <span
+          v-if="canAdvance && dialogView.hintHtml"
+          class="advance-hint"
+          v-html="dialogView.hintHtml"
+        ></span>
+      </template>
+      <span v-if="inWait" class="advance-hint">···</span>
     </section>
     <!-- 08 §四 历史面板（回溯的 UI 皮：NVL 段聚合为块，块级回溯 = 块尾检查点；同走统一渲染接缝） -->
     <section v-if="showHistory" class="history-panel">
@@ -537,6 +698,47 @@ onUnmounted(() => {
           </div>
         </li>
       </ul>
+    </section>
+    <!-- 08 §八.2 玩家偏好面板（与存档分离：独立持久化，不随档变动） -->
+    <section v-if="showPrefs" class="history-panel prefs-panel" @click.stop>
+      <p class="layer-prompt">设置</p>
+      <label v-for="c in PREF_CHANNELS" :key="c.channel" class="prefs-row">
+        <span class="prefs-label">{{ c.label }}</span>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          :value="prefsView.volumes[c.channel]"
+          :disabled="prefsView.muted"
+          @input="setPrefVolume(c.channel, $event)"
+        />
+        <span class="prefs-value"
+          >{{ Math.round(prefsView.volumes[c.channel] * 100) }}%</span
+        >
+      </label>
+      <label class="prefs-row">
+        <span class="prefs-label">静音</span>
+        <input
+          type="checkbox"
+          :checked="prefsView.muted"
+          @change="setPrefMuted"
+        />
+      </label>
+      <label class="prefs-row">
+        <span class="prefs-label">文字速度</span>
+        <input
+          type="range"
+          min="1"
+          max="80"
+          step="1"
+          :value="prefsView.textSpeed"
+          @input="setPrefTextSpeed($event)"
+        />
+        <span class="prefs-value"
+          >{{ Math.round(prefsView.textSpeed) }} 字/秒</span
+        >
+      </label>
     </section>
     <p v-if="error" class="error">{{ error }}</p>
   </main>
@@ -806,5 +1008,72 @@ body,
   50% {
     opacity: 0.2;
   }
+}
+
+/* 08 §八.2 偏好面板：行式布局（label + 滑块 + 数值） */
+.prefs-panel label.prefs-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  font-size: 0.85em;
+  color: #a9b1d6;
+}
+
+.prefs-row .prefs-label {
+  width: 4.5em;
+  flex: none;
+}
+
+.prefs-row input[type="range"] {
+  flex: 1;
+  accent-color: #7aa2f7;
+}
+
+.prefs-row .prefs-value {
+  width: 3.5em;
+  flex: none;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 08 §四.5 模板皮肤（演示自定义模板 center：居中独白形态——骨架固定，皮肤类 + 挂点内容可换） */
+.dialogue.tpl-center {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-size: 1.15em;
+  background: #16161ecc;
+  border-color: #7aa2f755;
+}
+
+/* 06 §二 小游戏挂载层：choices 层之上的宿主容器（内容归注册的工厂，骨架归宿主） */
+.minigame-host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.minigame-demo .minigame-label {
+  margin: 0;
+  color: #a9b1d6;
+  font-size: 0.9em;
+}
+
+.minigame-demo .minigame-count {
+  font-size: 1.6em;
+  font-variant-numeric: tabular-nums;
+  color: #7aa2f7;
+}
+
+.minigame-demo button {
+  padding: 8px 22px;
+  font-size: 1em;
+  border-radius: 8px;
+  border: 1px solid #7aa2f755;
+  background: #24283b;
+  color: #c0caf5;
+  cursor: pointer;
 }
 </style>

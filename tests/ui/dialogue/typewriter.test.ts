@@ -132,3 +132,30 @@ describe("样式标记零宽（用户实测回归：打字中裸 `{color=#` 上�
     expect(renderInlineMarkup(tw.visible)).toContain("<b>粗</b>");
   });
 });
+
+describe("setSpeed（08 §四.1 SetTextSpeed：玩家偏好即时调整当前句）", () => {
+  it("setSpeed 即时改变推进速度", () => {
+    const tw = new Typewriter("ABCDEFGHIJ", 10); // 10 字/秒
+    tw.tick(0.5); // 5 字
+    expect(tw.visible).toBe("ABCDE");
+    tw.setSpeed(40); // 提速到 40 字/秒
+    tw.tick(0.5); // 再 20 字
+    expect(tw.visible).toBe("ABCDEFGHIJ");
+  });
+
+  it("非法值忽略（NaN/Infinity），有限值下限钳制 1（与偏好层 setTextSpeed 同构）", () => {
+    const tw = new Typewriter("ABC", 10);
+    tw.setSpeed(Number.NaN);
+    tw.setSpeed(Number.POSITIVE_INFINITY);
+    tw.tick(1); // 速度仍 10（非法值未生效）
+    expect(tw.visible).toBe("ABC");
+    const twSlow = new Typewriter("ABC", 10);
+    twSlow.setSpeed(0.2); // 有限数 → 钳到 1
+    twSlow.tick(1);
+    expect(twSlow.visible).toBe("A"); // 1 字/秒
+    const twZero = new Typewriter("ABC", 10);
+    twZero.setSpeed(0); // 0 是有限数 → 钳到 1（非忽略）
+    twZero.tick(1);
+    expect(twZero.visible).toBe("A");
+  });
+});
