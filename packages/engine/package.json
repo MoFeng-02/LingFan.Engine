@@ -1,0 +1,15 @@
+{
+  "name": "@lingfan/engine",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "灵泛叙事引擎核心：框架无关的叙事语义（格式/执行/回溯/作用域/存档编排）",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "!src/**/*.test.ts"
+  ],
+  "sideEffects": false
+}

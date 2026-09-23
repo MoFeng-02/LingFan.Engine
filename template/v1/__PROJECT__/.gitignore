@@ -1,0 +1,4 @@
+// 运行期产物不进版本库（存档由 Rust 安全层落盘，见规约 05）
+Resources/Saves/
+node_modules/
+dist/

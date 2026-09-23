@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "id": "end",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "say",
+      "speaker": "灵泛",
+      "text": "本列播完——列尾之后点击不再推进。"
+    }
+  ]
+}

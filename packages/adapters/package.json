@@ -1,0 +1,19 @@
+{
+  "name": "@lingfan/adapters",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "灵泛叙事引擎预设适配器：SavePort（Tauri/localStorage）、ResourcePort（静态资源根）、AudioPort（WebView 解码）",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "!src/**/*.test.ts"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@lingfan/engine": "workspace:*",
+    "@tauri-apps/api": "^2"
+  }
+}

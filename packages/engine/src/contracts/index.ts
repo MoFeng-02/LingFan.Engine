@@ -1,0 +1,6 @@
+/** 契约出口（模块单一公共入口，分层纪律 对应章节）：按功能域分文件，消费方只从这里取契约。 */
+export * from "./story";
+export * from "./runtime";
+export * from "./media";
+export * from "./save";
+export * from "./platform";

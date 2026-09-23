@@ -1,0 +1,9 @@
+{
+  "formatVersion": 1,
+  "id": "square",
+  "kind": "flow",
+  "commands": [
+    { "op": "say", "text": "广场上只有风声。" },
+    { "op": "jump", "target": "end" }
+  ]
+}

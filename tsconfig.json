@@ -3,16 +3,17 @@
     "target": "ES2022",
     "useDefineForClassFields": true,
     "module": "ESNext",
-    "lib": ["ES2022", "DOM"],
-    "skipLibCheck": true,
-
-    /* Bundler mode */
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "preserve",
+    "skipLibCheck": true,
+
+    /* 类型边界：workspace 包经 exports 指向 TS 源码（source-exports，零构建步骤） */
+    "types": ["vite/client"],
 
     /* Linting */
     "strict": true,
@@ -20,6 +21,12 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": [
+    "packages/*/src/**/*.ts",
+    "apps/*/src/**/*.ts",
+    "apps/*/src/**/*.vue",
+    "apps/*/*.ts",
+    "template/**/src/**/*.ts",
+    "template/*.test.ts"
+  ]
 }
