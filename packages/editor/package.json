@@ -1,0 +1,14 @@
+{
+  "name": "@lingfan/editor",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "灵泛编辑器核心（规约 06）：op schema 单一事实源 + 编辑期诊断 + 故事树纯映射器——只读写故事 JSON，不碰运行时与 Rust",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@lingfan/engine": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}

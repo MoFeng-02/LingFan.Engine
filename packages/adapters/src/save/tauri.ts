@@ -22,6 +22,10 @@ export function createTauriSavePort(): SavePort {
       const { invoke } = await import("@tauri-apps/api/core");
       return await invoke<string>("save_read", { slot });
     },
+    async remove(slot): Promise<void> {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("save_delete", { slot }); // K4：删档不动高水位
+    },
     async list(): Promise<SlotSummary[]> {
       const { invoke } = await import("@tauri-apps/api/core");
       const rows = await invoke<RustSlotSummary[]>("save_list");

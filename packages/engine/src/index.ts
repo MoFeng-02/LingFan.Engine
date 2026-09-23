@@ -13,3 +13,5 @@ export {
 } from "./data";
 export { assembleProject, ProjectAssemblyError } from "./data";
 export { generateText, parseTextStory, TextFormatError } from "./data";
+export { mergeOverlayFiles } from "./runtime/i18n";
+export { PlayerPreferences } from "./runtime/preferences";
