@@ -1,0 +1,6 @@
+{
+  "version": "1.0.0",
+  "minEngineVersion": "0.1.0",
+  "placeholder": "__PROJECT__",
+  "_comment": "模板版本唯一来源，独立于引擎版本：仅当 template/v1 内容真正变化时才手动 bump（避免每次引擎发版都抬高模板版本）。placeholder 是目录/文件内的工程名占位符，生成时整体替换为工程名（对齐老引擎 _LingFanEngineTemplateTitle_ 语义）。minEngineVersion 表示此模板要求的最低引擎版本。"
+}

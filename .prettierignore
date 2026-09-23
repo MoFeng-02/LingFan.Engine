@@ -1,0 +1,10 @@
+node_modules
+dist
+pnpm-lock.yaml
+target
+
+# 本机私有文档与规则（不随仓库分发，格式保持人工排版）
+私有文档
+.rules.md
+.rules.ai.md
+agent.md

@@ -1,26 +1,23 @@
 {
-  "name": "lingfanengine",
+  "name": "lingfan-engine",
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "description": "灵泛叙事引擎：框架无关核心 + 预设适配器 + 参考宿主 + 脚手架",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "tauri": "tauri",
+    "dev": "pnpm --filter @lingfan/playground dev",
+    "build": "pnpm --filter @lingfan/playground build",
+    "preview": "pnpm --filter @lingfan/playground preview",
+    "tauri": "pnpm --filter @lingfan/playground exec tauri",
     "lint": "eslint .",
-    "format": "prettier --write src eslint.config.js index.html",
+    "format": "prettier --write .",
     "test:unit": "vitest run",
     "typecheck": "vue-tsc --noEmit"
   },
-  "dependencies": {
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-opener": "^2",
-    "vue": "^3.5.13"
-  },
   "devDependencies": {
-    "@tauri-apps/cli": "^2",
-    "@vitejs/plugin-vue": "^6.0.7",
+    "@lingfan/adapters": "workspace:*",
+    "@lingfan/engine": "workspace:*",
+    "@lingfan/ui": "workspace:*",
     "@vue/eslint-config-typescript": "^14.9.0",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
@@ -29,7 +26,7 @@
     "prettier": "^3.9.8",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.70.0",
-    "vite": "^8.0.16",
+    "vite": "8.0.16",
     "vitest": "^5.0.1",
     "vue-tsc": "^3.3.5"
   }

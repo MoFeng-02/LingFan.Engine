@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>__PROJECT__</title>
+    <style>
+      /* 08 §二 RenderTargets 的最小落地：stage（舞台）+ dialogue（对话层） */
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        background: #10131a;
+        color: #e6e6e6;
+        font-family: system-ui, "Microsoft YaHei", sans-serif;
+      }
+      #stage {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 24px;
+        cursor: pointer;
+      }
+      #dialogue {
+        border: 1px solid #2a3140;
+        border-radius: 10px;
+        background: rgba(20, 24, 33, 0.92);
+        padding: 16px 20px;
+        min-height: 96px;
+      }
+      #speaker {
+        color: #7aa2f7;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      #text {
+        line-height: 1.7;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="stage">
+      <div id="dialogue">
+        <div id="speaker"></div>
+        <div id="text">加载中……</div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

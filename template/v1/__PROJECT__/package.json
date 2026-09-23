@@ -1,0 +1,21 @@
+{
+  "name": "__project__",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lingfan/adapters": "^0.1.0",
+    "@lingfan/engine": "^0.1.0",
+    "@lingfan/ui": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16"
+  }
+}
