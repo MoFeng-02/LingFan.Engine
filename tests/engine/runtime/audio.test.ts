@@ -10,10 +10,8 @@ import type {
   OutboundEvent,
   SaveDataV1,
   ValueChanged,
-} from "../contracts";
-import { SYS } from "../contracts";
-import { StoryEngine } from "./engine";
-import { parseStory } from "../data";
+} from "@lingfan/engine";
+import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
 
 interface Harness {
   engine: StoryEngine;

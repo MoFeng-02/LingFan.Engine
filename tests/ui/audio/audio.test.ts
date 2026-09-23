@@ -18,7 +18,7 @@ import {
   createAudioRenderer,
   planAudioActions,
   type AudioView,
-} from "./audio";
+} from "@lingfan/ui";
 
 function play(
   resource: string,

@@ -4,11 +4,11 @@
  * 用 `?raw` 与 `import.meta.glob`（不碰 fs：前端禁 Node，规约 00 §3.2）。
  */
 import { describe, expect, it } from "vitest";
-import manifestRaw from "../Resources/project.json?raw";
-import startRaw from "../Resources/Stories/start.json?raw";
-import innRaw from "../Resources/Stories/inn.json?raw";
-import squareRaw from "../Resources/Stories/square.json?raw";
-import endRaw from "../Resources/Stories/end.json?raw";
+import manifestRaw from "../../apps/playground/Resources/project.json?raw";
+import startRaw from "../../apps/playground/Resources/Stories/start.json?raw";
+import innRaw from "../../apps/playground/Resources/Stories/inn.json?raw";
+import squareRaw from "../../apps/playground/Resources/Stories/square.json?raw";
+import endRaw from "../../apps/playground/Resources/Stories/end.json?raw";
 import type { Story, StoryCommand } from "@lingfan/engine";
 import { assembleProject, parseStoryFile } from "@lingfan/engine";
 
@@ -59,12 +59,18 @@ describe("示例工程防腐（锚点: resource-root-resolution）", () => {
   it("故事引用的媒体在资源根内真实存在（不存在 = 运行期 fail-closed 诊断）", () => {
     // import.meta.glob 的键即资源根内真实存在的文件（无需 fs，也不真正加载）；
     // glob 必须是静态字面量（Vite 编译期展开），三个类型目录各写一条
-    const audio = Object.keys(import.meta.glob("../Resources/Audio/*"));
-    const images = Object.keys(import.meta.glob("../Resources/Images/*"));
-    const video = Object.keys(import.meta.glob("../Resources/Video/*"));
+    const audio = Object.keys(
+      import.meta.glob("../../apps/playground/Resources/Audio/*"),
+    );
+    const images = Object.keys(
+      import.meta.glob("../../apps/playground/Resources/Images/*"),
+    );
+    const video = Object.keys(
+      import.meta.glob("../../apps/playground/Resources/Video/*"),
+    );
     const available = new Set(
       [...audio, ...images, ...video].map((path) =>
-        path.replace("../Resources/", ""),
+        path.replace("../../apps/playground/Resources/", ""),
       ),
     );
     const referenced = new Set<string>();

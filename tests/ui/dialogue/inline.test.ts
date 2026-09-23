@@ -1,6 +1,6 @@
 /** 08 §四.3 内联标记渲染测试（UI 层职责：核心层透传 → UI 上屏） */
 import { describe, expect, it } from "vitest";
-import { renderInlineMarkup } from "./inline";
+import { renderInlineMarkup } from "@lingfan/ui";
 
 describe("renderInlineMarkup", () => {
   it("b/i/u 样式化与嵌套", () => {

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { ResourcePort, VideoPort } from "@lingfan/engine";
 import { SYS, StoryEngine } from "@lingfan/engine";
 import { parseStory } from "@lingfan/engine";
-import { createVideoRenderer } from "./videoView";
+import { createVideoRenderer } from "@lingfan/ui";
 
 function makeStoryEngine(commands: object[]): StoryEngine {
   return new StoryEngine(

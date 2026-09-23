@@ -5,7 +5,7 @@ import {
   isSingleColumnFile,
   parseStory,
   StoryFormatError,
-} from "./format";
+} from "@lingfan/engine";
 
 const validStory = {
   formatVersion: 1,

@@ -1,7 +1,10 @@
 /** 07 §三 工程组装测试：混合形态、确定性、F1 跨文件唯一、入口校验、defines 覆盖序 */
 import { describe, expect, it } from "vitest";
-import { assembleProject, ProjectAssemblyError } from "./project";
-import { StoryEngine } from "../index";
+import {
+  assembleProject,
+  ProjectAssemblyError,
+  StoryEngine,
+} from "@lingfan/engine";
 
 const manifest = { formatVersion: 1, id: "demo", entry: "start" };
 

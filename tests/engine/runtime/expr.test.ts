@@ -1,7 +1,11 @@
 /** 04-表达式求值测试（锚点：S4 非链式 / S5 类型错误 / S7 短路 / F4 转义） */
 import { describe, expect, it } from "vitest";
-import { evaluateExpression, ExpressionError, interpolateText } from "./expr";
-import type { NameResolver } from "./resolver";
+import {
+  evaluateExpression,
+  ExpressionError,
+  interpolateText,
+} from "../../../packages/engine/src/runtime/expr";
+import type { NameResolver } from "../../../packages/engine/src/runtime/resolver";
 
 const vars = new Map<string, unknown>([
   ["gold", 7],

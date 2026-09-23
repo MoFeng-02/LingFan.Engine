@@ -4,11 +4,11 @@
  * 用 `?raw` 导入（不碰 fs：前端与核心层禁 Node，规约 00 §3.2）。
  */
 import { describe, expect, it } from "vitest";
-import projectJson from "./v1/__PROJECT__/Resources/project.json?raw";
-import viteConfig from "./v1/__PROJECT__/vite.config.ts?raw";
-import mainTs from "./v1/__PROJECT__/src/main.ts?raw";
-import templatePkg from "./v1/__PROJECT__/package.json?raw";
-import storySource from "./v1/__PROJECT__/Resources/Stories/title/title_main.story?raw";
+import projectJson from "../../template/v1/__PROJECT__/Resources/project.json?raw";
+import viteConfig from "../../template/v1/__PROJECT__/vite.config.ts?raw";
+import mainTs from "../../template/v1/__PROJECT__/src/main.ts?raw";
+import templatePkg from "../../template/v1/__PROJECT__/package.json?raw";
+import storySource from "../../template/v1/__PROJECT__/Resources/Stories/title/title_main.story?raw";
 import type { ProjectManifest } from "@lingfan/engine";
 import { parseStory, parseTextStory } from "@lingfan/engine";
 
