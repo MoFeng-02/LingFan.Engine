@@ -113,6 +113,12 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
     case "jump":
       requireNonEmptyString(cmd.target, `${at}.target`, issues);
       break;
+    case "navigate":
+      requireNonEmptyString(cmd.path, `${at}.path`, issues);
+      if (cmd.scene !== undefined) {
+        requireNonEmptyString(cmd.scene, `${at}.scene`, issues);
+      }
+      break;
     case "notify":
       requireNonEmptyString(cmd.text, `${at}.text`, issues);
       if (cmd.type !== undefined && typeof cmd.type !== "string") {

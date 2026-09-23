@@ -42,6 +42,11 @@ export interface ProjectManifest {
   name?: string;
   /** 默认语言（01 §四 I18N 三层） */
   lang?: string;
+  /**
+   * 05 §二 资源加密形态声明：true = 资源根为 `.enc` 加密包（LFEN2/LFEN），
+   * 组合根据此装配加密 ResourcePort 与 Rust 供给密钥（清单恒明文——形态判定的前提）。
+   */
+  resourceEncryption?: boolean;
   /** 工程级 defines：无条件 Set，先于故事文件应用（后加载覆盖） */
   defines?: Record<string, unknown>;
 }

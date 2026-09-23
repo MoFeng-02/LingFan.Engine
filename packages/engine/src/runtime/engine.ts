@@ -176,7 +176,7 @@ interface Frame {
 }
 
 export class StoryEngine {
-  private readonly story: Story;
+  private story: Story; // 热重载（07 §三.2）原子替换：private 字段非公共契约
   /** 02 §一.1 SSOT：系统键 + 全局用户键（块/列级变量在 Scope 树，不进此 Map——S3）；值写时复制 → 快照浅拷贝安全 */
   private state = new Map<string, unknown>();
   private coord: ColumnCoordinate = { columnId: "", index: 0 };
@@ -362,6 +362,28 @@ export class StoryEngine {
     this.run();
   }
 
+  /**
+   * 02 §三.3 会话命令 navigate：坐标切换（columnId 校验 fail-closed）——
+   * UI/元素 nav 按钮与热重载重入的接缝。纯切换不建检查点（与 op navigate 的
+   * 叙事节点检查点相区分；老引擎 UI nav 走 NavigateHandler 不建 DSL 检查点，同语义）。
+   */
+  navigate(columnId: string): void {
+    if (!this.started) {
+      this.fail("navigate-invalid", "故事尚未启动");
+      return;
+    }
+    this.flushPendingCheckpoint(); // 离开当前画面：已上屏未入档的 say 即所见（03-R1/R5）
+    this.clearTimer(); // 打断任意等待（wait 定时器废弃，等待画面由新列重建）
+    this.waitSkipable = false;
+    this.liveCheckpointed = false;
+    this.setSystem(SYS.waiting, "none");
+    this.setSystem(SYS.currentDialogText, ""); // 清旧对话镜像（老引擎导航清屏语义）
+    this.setSystem(SYS.currentDialogSpeaker, "");
+    this.setSystem(SYS.dialogComplete, false);
+    if (!this.enterColumn(columnId)) return;
+    this.run();
+  }
+
   /** 释放挂起定时器（UI 卸载/测试收尾）；监听器退订走 onXxx 返回的函数 */
   dispose(): void {
     this.clearTimer();
@@ -483,6 +505,9 @@ export class StoryEngine {
             !this.enterColumn(typeof cmd.target === "string" ? cmd.target : "")
           )
             return;
+          continue;
+        case "navigate":
+          if (!this.execNavigate(cmd)) return;
           continue;
         case "if":
           if (!this.execIf(frame, cmd)) return;
@@ -695,6 +720,32 @@ export class StoryEngine {
       }
     }
     return { ...this.coord };
+  }
+
+  /**
+   * 01 §二.1 navigate op：跨列导航。目标列 = scene ?? path（老引擎 NavigateHandler
+   * 优先级语义），二者都是 columnId（01 §一.2：列名即标签，「文件」在组装模型中坍缩为列）。
+   * 与 jump 的语义差异 = 清旧列对话镜像（导航 = 画面边界，老引擎导航清屏语义）+
+   * path/scene 词汇（灵泛 JSON v1 契约照搬）。**不建检查点**（裁定）：老引擎 navigate
+   * 建检查点的语义在新引擎检查点模型下产生回溯陷阱——导航站重放必重建下一站的等待画面，
+   * flush 提交命中前向同坐标站使 cursor 前移，back 原地循环；03-R1「检查点=玩家所见」
+   * 下导航边界由前后所见站界定。
+   */
+  private execNavigate(cmd: StoryCommand): boolean {
+    const scene =
+      typeof cmd.scene === "string" && cmd.scene !== "" ? cmd.scene : null;
+    const target = scene ?? (typeof cmd.path === "string" ? cmd.path : "");
+    if (target === "") {
+      this.fail(
+        "navigate-invalid",
+        "navigate 需要 path（scene 可选；二者皆为目标列 id）",
+      );
+      return false;
+    }
+    this.setSystem(SYS.currentDialogText, ""); // 清旧列对话镜像（老引擎导航清屏语义）
+    this.setSystem(SYS.currentDialogSpeaker, "");
+    this.setSystem(SYS.dialogComplete, false);
+    return this.enterColumn(target);
   }
 
   /** menu：写菜单系统键 → 进入 menu 等待（02 §二.2；清对话残留 08 §二.6） */
@@ -1855,6 +1906,38 @@ export class StoryEngine {
       return;
     }
     this.rollbackTo(this.cursor + 1);
+  }
+
+  /**
+   * 07 §三.2 热重载（灵泛 StoryHotReload 语义）：原子替换故事树，运行态保留
+   * （变量/函数/历史检查点不动——回溯按新列内容重放，文案即改即所见），
+   * 当前列重入（等待打断，画面由重放重建）；当前列在新树中不存在 → engine.error 后回入口列。
+   */
+  reloadStory(story: Story): void {
+    if (!this.started) {
+      this.fail("reload-invalid", "故事尚未启动");
+      return;
+    }
+    this.story = story;
+    const current = this.get(SYS.currentSceneColumn);
+    const currentId = typeof current === "string" ? current : "";
+    let targetId = currentId;
+    if (currentId === "" || this.columnById(currentId) === undefined) {
+      if (currentId !== "") {
+        this.fail(
+          "reload-column-missing",
+          `当前列 ${currentId} 在新故事中不存在，回退入口列 ${story.entry}`,
+        );
+      }
+      targetId = story.entry;
+    }
+    this.flushPendingCheckpoint(); // 离开当前画面：所见即入档
+    this.clearTimer();
+    this.waitSkipable = false;
+    this.liveCheckpointed = false;
+    this.setSystem(SYS.waiting, "none");
+    if (!this.enterColumn(targetId)) return; // 入口列也缺失 = 兜底 fail-closed（组装器已保证存在）
+    this.run();
   }
 
   /**

@@ -48,6 +48,8 @@ label start:
     default
       say "default"
   jump inn
+  navigate "inn"
+  navigate "square" scene "square"
 label inn:
   say "酒馆线" speaker="老板"
   return

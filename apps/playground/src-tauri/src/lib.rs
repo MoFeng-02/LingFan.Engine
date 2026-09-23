@@ -1,9 +1,6 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
+pub mod crypto;
+pub mod project_files;
+pub mod resource_crypto;
 pub mod save;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -11,7 +8,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            greet,
+            project_files::project_files,
+            project_files::watch_project_files,
+            resource_crypto::decrypt_resource,
+            resource_crypto::decrypt_story,
             save::save_write,
             save::save_read,
             save::save_list

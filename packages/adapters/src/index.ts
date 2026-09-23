@@ -13,8 +13,18 @@ export {
   type WebVideoPortOptions,
 } from "./media/videoPort";
 export { createStaticResourcePort } from "./resources";
+export { createTauriEncryptedResourcePort } from "./resources";
 export {
   createFetchProjectFilesPort,
+  loadProject,
   loadProjectFromFetch,
   type FetchProjectFilesOptions,
+} from "./resources";
+export {
+  createTauriProjectFilesPort,
+  watchTauriProjectFiles,
+  type StoryWatcher,
+  type TauriInvoke,
+  type TauriListen,
+  type TauriProjectFiles,
 } from "./resources";
