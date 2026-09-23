@@ -54,7 +54,7 @@ export default defineConfigWithVueTs(
   eslintConfigPrettier,
   {
     name: "lingfan/allow-single-word-app",
-    files: ["apps/playground/src/App.vue"],
+    files: ["apps/playground/src/App.vue", "apps/editor/src/App.vue"],
     rules: {
       "vue/multi-word-component-names": "off",
     },
