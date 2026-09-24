@@ -69,6 +69,12 @@ export interface I18nOverlayFile {
  */
 export interface I18nPort {
   loadOverlayFiles(lang: string): Promise<I18nOverlayFile[]>;
+  /**
+   * 01 §四.3 可用语言列表（老引擎 I18nService.GetAvailableLanguages 对应物：
+   * 扫描 `Lang/` 子目录与单文件，恒含默认语言 zh-CN）。可选——缺省 = ["zh-CN"]
+   * （组合根未实现时语言选择器只显默认语言）。
+   */
+  listLanguages?(): Promise<string[]>;
 }
 
 /** 01 §一.4 坐标：故事流唯一位置 `(columnId, index)` */

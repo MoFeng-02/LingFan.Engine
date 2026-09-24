@@ -47,4 +47,17 @@ describe("01 §四.3 createTauriI18nPort（invoke 契约替身）", () => {
     const port = createTauriI18nPort(invoke);
     await expect(port.loadOverlayFiles("de")).rejects.toThrow("资源根不可用");
   });
+
+  it("listLanguages 透传 list_i18n_languages 命令（老引擎 GetAvailableLanguages 对应物）", async () => {
+    const calls: Array<{ command: string; args?: Record<string, unknown> }> = [];
+    const invoke: TauriInvoke = async (command) => {
+      calls.push({ command });
+      return ["zh-CN", "en-US"] as never;
+    };
+    const port = createTauriI18nPort(invoke);
+    const langs = (await port.listLanguages?.()) ?? [];
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.command).toBe("list_i18n_languages");
+    expect(langs).toEqual(["zh-CN", "en-US"]);
+  });
 });

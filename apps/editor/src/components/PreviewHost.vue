@@ -6,13 +6,15 @@ import {
   builtinBubbleTemplate,
   createDialogueTemplateRegistry,
   renderDialogueLine,
+  Typewriter,
   type DialogueTemplateView,
 } from "@lingfan/ui";
 
 /**
  * 06 §一.1 预览视图：当前故事快照跑真引擎（无端口——音频/视频键不观察即静音，
  * I18N/存档缺省）。预览为打开时刻的快照运行，编辑不实时渗入。
- * 打字机简化为即时显示（预览目的是验证剧情流；完整链路见 playground）。
+ * 打字机（08-U3）：单句对话层 Typewriter + rAF 帧驱动；NVL 累积层即时显示
+ * （增量渲染优化随 playground 级打磨，预览规模不需要）。
  */
 const props = defineProps<{ story: Story }>();
 const emit = defineEmits<{ close: [] }>();
@@ -49,7 +51,7 @@ const dialogView = computed<DialogueTemplateView>(() => {
   return template({
     speaker: speaker.value,
     speakerColor: "",
-    lineHtml: renderDialogueLine({ text: dialogText.value }).html,
+    lineHtml: renderDialogueLine({ text: shownText.value }).html,
     canAdvance: canAdvance.value,
   });
 });
@@ -57,6 +59,30 @@ const dialogView = computed<DialogueTemplateView>(() => {
 const nvlHtmlLines = computed(() =>
   nvlBuffer.value.map((line) => renderDialogueLine({ text: line }).html),
 );
+
+// —— 08-U3 打字机：单句对话层（rAF 帧驱动；NVL 即时显示） ——
+const shownText = ref("");
+let typewriter: Typewriter | null = null;
+let rafId = 0;
+let lastTs = 0;
+
+function frame(ts: number): void {
+  const tw = typewriter;
+  if (tw !== null) {
+    if (lastTs !== 0 && !tw.done) tw.tick((ts - lastTs) / 1000);
+    lastTs = ts;
+    shownText.value = tw.visible;
+  } else {
+    lastTs = 0;
+  }
+  rafId = window.requestAnimationFrame(frame);
+}
+rafId = window.requestAnimationFrame(frame);
+
+function retype(text: string): void {
+  typewriter = new Typewriter(text, 30); // 预览固定 30 cps（完整偏好链随 playground 装配）
+  shownText.value = typewriter.visible;
+}
 
 function syncMenu(): void {
   const options = (engine.get(SYS.menuOptions) as string[] | undefined) ?? [];
@@ -68,8 +94,10 @@ function syncMenu(): void {
 }
 
 const offState = engine.onStateChanged((c: ValueChanged) => {
-  if (c.key === SYS.currentDialogText) dialogText.value = String(c.value ?? "");
-  else if (c.key === SYS.currentDialogSpeaker)
+  if (c.key === SYS.currentDialogText) {
+    dialogText.value = String(c.value ?? "");
+    retype(dialogText.value);
+  } else if (c.key === SYS.currentDialogSpeaker)
     speaker.value = String(c.value ?? "");
   else if (c.key === SYS.dialogTemplate)
     templateName.value = c.value as string | null;
@@ -105,7 +133,14 @@ engine.start();
 
 function onStageClick(): void {
   if (errorText.value !== "") return;
-  if (waiting.value === "dialog") engine.advance();
+  if (waiting.value !== "dialog") return;
+  // 08-U3 二段式点击：停在 {p}/{w} → 越过；打字未完 → 瞬间完成；已完 → advance
+  if (typewriter !== null && !typewriter.done) {
+    typewriter.click();
+    shownText.value = typewriter.visible;
+    return;
+  }
+  engine.advance();
 }
 
 function choose(target: string): void {
@@ -125,6 +160,7 @@ function finishVideo(): void {
 
 onBeforeUnmount(() => {
   window.clearTimeout(toastTimer);
+  window.cancelAnimationFrame(rafId);
   offState();
   offEvent();
   engine.dispose();

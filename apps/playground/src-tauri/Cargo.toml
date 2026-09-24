@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
+# 多 bin crate（app 主程序 + lfenpack 打包 CLI）：tauri dev 的 `cargo run` 需要显式默认
+default-run = "lingfanengine"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -27,6 +29,7 @@ keyring = "4.2.0"
 base64 = "0.23.1"
 getrandom = "0.4.3"
 notify = "8.2.0"
+sha2 = "0.11.0"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

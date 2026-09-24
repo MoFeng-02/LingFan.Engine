@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed, inject, ref, watch } from "vue";
 import type { Story } from "@lingfan/engine";
-import { TextFormatError, generateText, parseTextStory } from "@lingfan/engine";
+import { parseTextStory, projectText, TextFormatError } from "@lingfan/engine";
 
-/** 06 §一.1 文本模式：text.ts 双向投影——生成只读快照 + 显式「应用」（整树替换 = 一个 undo 单元） */
+/**
+ * 06 §一.1 文本模式：text.ts 双向投影。容错投影（projectText）——
+ * scene 列/未知 op 收集为警告清单（部分内容可见可改），不整视图崩塌。
+ * 「应用到故事」= parseTextStory 整树替换，一个 undo 单元；解析失败整次拒绝。
+ */
 const props = defineProps<{ story: Story }>();
 
 interface EditorApi {
@@ -11,19 +15,24 @@ interface EditorApi {
 }
 const api = inject<EditorApi>("editorApi")!;
 
-const draft = ref(generateText(props.story));
+const projection = ref(projectText(props.story));
+const draft = ref(projection.value.text);
 const dirty = ref(false);
 const errors = ref<string[]>([]);
 
 watch(
   () => props.story,
   () => {
-    if (!dirty.value) draft.value = generateText(props.story);
+    if (!dirty.value) {
+      projection.value = projectText(props.story);
+      draft.value = projection.value.text;
+    }
   },
 );
 
 function regenerate(): void {
-  draft.value = generateText(props.story);
+  projection.value = projectText(props.story);
+  draft.value = projection.value.text;
   dirty.value = false;
   errors.value = [];
 }
@@ -63,12 +72,15 @@ const stats = computed(() => {
 <template>
   <div class="text-mode">
     <div class="text-toolbar">
-      <button @click="regenerate" :disabled="!dirty">⟳ 重新生成</button>
+      <button :disabled="!dirty" @click="regenerate">⟳ 重新生成</button>
       <span class="stats">{{ stats }}</span>
       <span v-if="dirty" class="dirty">未应用改动</span>
       <span class="spacer"></span>
       <button class="apply" @click="apply">✓ 应用到故事</button>
     </div>
+    <ul v-if="projection.issues.length > 0" class="text-warn">
+      <li v-for="issue in projection.issues" :key="issue">{{ issue }}</li>
+    </ul>
     <ul v-if="errors.length > 0" class="text-errors">
       <li v-for="issue in errors" :key="issue">{{ issue }}</li>
     </ul>
@@ -79,8 +91,8 @@ const stats = computed(() => {
       @change="onEdit"
     ></textarea>
     <p class="text-note">
-      label "列名": → 列；define "k" v → defines；scene
-      列暂无文本投影（元素系统未实现）
+      label "列名": → 列；define "k" v → defines；menu 选项行 = "文本" -&gt;
+      目标列
     </p>
   </div>
 </template>
@@ -112,6 +124,17 @@ const stats = computed(() => {
 button.apply {
   border-color: #9ece6a88;
   color: #9ece6a;
+}
+.text-warn {
+  margin: 0;
+  padding: 6px 10px;
+  background: #2a2415;
+  border: 1px solid #e0af6866;
+  border-radius: 6px;
+  color: #e0af68;
+  font-size: 11px;
+  max-height: 90px;
+  overflow: auto;
 }
 .text-errors {
   margin: 0;

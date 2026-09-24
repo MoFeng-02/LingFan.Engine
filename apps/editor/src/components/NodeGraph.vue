@@ -1,12 +1,20 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, ref } from "vue";
+import {
+  computed,
+  inject,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+} from "vue";
 import type { Story } from "@lingfan/engine";
 import { indexStory } from "@lingfan/editor";
 
 /**
- * 06 §一.1 节点图（简版）：列 = 节点，jump/menu/navigate 的列目标 = 边。
- * 布局 = 入口 BFS 分层（确定性）；拖拽位置存 localStorage（按 story.id 键，
- * 不入故事 JSON——D1 编辑器只读写故事树）。舞台编辑随元素系统另立增量。
+ * 06 §一.1 节点图：列 = 节点，jump/menu/navigate 的列目标 = 边。
+ * 视图操作：节点拖拽（位置按故事记忆入 localStorage）+ 背景拖拽平移 +
+ * Ctrl+滚轮/按钮缩放（视口中心稳定）；缩放不入故事 JSON——D1 编辑器只读写故事树。
+ * 舞台编辑随元素系统另立增量。
  */
 const props = defineProps<{ story: Story; selectedId: string }>();
 
@@ -19,6 +27,8 @@ const NODE_W = 156;
 const NODE_H = 46;
 const GAP_X = 80;
 const GAP_Y = 28;
+const ZOOM_MIN = 0.4;
+const ZOOM_MAX = 2.5;
 
 const selectedColumnId = computed(() => props.selectedId);
 
@@ -36,7 +46,12 @@ interface GraphEdge {
 }
 
 const positions = ref<Map<string, { x: number; y: number }>>(new Map());
+const zoom = ref(1);
+const scrollEl = ref<HTMLDivElement | null>(null);
 const dragging = ref<{ id: string; dx: number; dy: number } | null>(null);
+const panState = ref<{ x: number; y: number; sl: number; st: number } | null>(
+  null,
+);
 const svgRoot = ref<SVGSVGElement | null>(null);
 
 const storageKey = computed(() => `lingfan-editor-nodepos:${props.story.id}`);
@@ -45,20 +60,40 @@ onMounted(() => {
   try {
     const raw = localStorage.getItem(storageKey.value);
     if (raw !== null) {
-      const saved = JSON.parse(raw) as Record<string, { x: number; y: number }>;
-      for (const [id, pos] of Object.entries(saved)) {
-        positions.value.set(id, pos);
+      const saved = JSON.parse(raw) as Record<string, unknown>;
+      if (typeof saved.zoom === "number") {
+        zoom.value = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, saved.zoom));
+      }
+      const nodes = (saved.nodes ?? saved) as Record<
+        string,
+        { x: number; y: number }
+      >;
+      for (const [id, pos] of Object.entries(nodes)) {
+        if (
+          pos !== null &&
+          typeof pos === "object" &&
+          typeof pos.x === "number"
+        ) {
+          positions.value.set(id, pos);
+        }
       }
     }
   } catch {
     /* 布局缓存损坏 = 忽略，退回自动布局 */
   }
+  scrollEl.value?.addEventListener("wheel", onWheel, { passive: false });
+});
+
+onBeforeUnmount(() => {
+  scrollEl.value?.removeEventListener("wheel", onWheel);
 });
 
 function persist(): void {
   try {
-    const data: Record<string, { x: number; y: number }> = {};
-    for (const [id, pos] of positions.value) data[id] = pos;
+    const data: Record<string, unknown> = { zoom: zoom.value, nodes: {} };
+    for (const [id, pos] of positions.value) {
+      (data.nodes as Record<string, { x: number; y: number }>)[id] = pos;
+    }
     localStorage.setItem(storageKey.value, JSON.stringify(data));
   } catch {
     /* 存储不可用（隐私模式）= 布局仅本次会话有效 */
@@ -165,31 +200,125 @@ function edgeClass(kind: GraphEdge["kind"]): string {
   return `edge-${kind}`;
 }
 
+/* —— 视图操作：节点拖拽 / 背景平移 / 缩放 —— */
+
+/** 屏幕坐标 → 画布逻辑坐标（含缩放换算） */
+function toLogical(clientX: number, clientY: number): { x: number; y: number } {
+  const rect = svgRoot.value?.getBoundingClientRect();
+  const z = zoom.value;
+  if (rect === undefined) return { x: 0, y: 0 };
+  return { x: (clientX - rect.left) / z, y: (clientY - rect.top) / z };
+}
+
 function startDrag(node: GraphNode, event: PointerEvent): void {
-  const svg = svgRoot.value;
-  if (svg === null) return;
-  const rect = svg.getBoundingClientRect();
+  const cursor = toLogical(event.clientX, event.clientY);
   dragging.value = {
     id: node.id,
-    dx: event.clientX - rect.left - node.x,
-    dy: event.clientY - rect.top - node.y,
+    dx: cursor.x - node.x,
+    dy: cursor.y - node.y,
   };
   window.addEventListener("pointermove", onDragMove);
   window.addEventListener("pointerup", endDrag, { once: true });
 }
+
 function onDragMove(event: PointerEvent): void {
   const drag = dragging.value;
-  const svg = svgRoot.value;
-  if (drag === null || svg === null) return;
-  const rect = svg.getBoundingClientRect();
+  if (drag === null) return;
+  const cursor = toLogical(event.clientX, event.clientY);
   positions.value.set(drag.id, {
-    x: Math.max(4, event.clientX - rect.left - drag.dx),
-    y: Math.max(4, event.clientY - rect.top - drag.dy),
+    x: Math.max(4, cursor.x - drag.dx),
+    y: Math.max(4, cursor.y - drag.dy),
   });
 }
+
 function endDrag(): void {
   dragging.value = null;
+  window.removeEventListener("pointermove", onDragMove);
   persist();
+}
+
+/** 背景拖拽 = 平移视口（调整容器滚动位；节点 pointerdown 已 stop 冒泡） */
+function startPan(event: PointerEvent): void {
+  const el = scrollEl.value;
+  if (el === null) return;
+  panState.value = {
+    x: event.clientX,
+    y: event.clientY,
+    sl: el.scrollLeft,
+    st: el.scrollTop,
+  };
+  window.addEventListener("pointermove", onPanMove);
+  window.addEventListener("pointerup", endPan, { once: true });
+}
+
+function onPanMove(event: PointerEvent): void {
+  const pan = panState.value;
+  const el = scrollEl.value;
+  if (pan === null || el === null) return;
+  el.scrollLeft = pan.sl - (event.clientX - pan.x);
+  el.scrollTop = pan.st - (event.clientY - pan.y);
+}
+
+function endPan(): void {
+  panState.value = null;
+  window.removeEventListener("pointermove", onPanMove);
+}
+
+/** Ctrl+滚轮缩放（视口中心稳定）；普通滚轮 = 原生滚动 */
+function onWheel(event: WheelEvent): void {
+  if (!event.ctrlKey) return;
+  event.preventDefault();
+  const el = scrollEl.value;
+  if (el === null) return;
+  setZoom(
+    zoom.value * (event.deltaY < 0 ? 1.1 : 0.9),
+    el.scrollLeft + el.clientWidth / 2,
+    el.scrollTop + el.clientHeight / 2,
+  );
+}
+
+function setZoom(next: number, anchorX: number, anchorY: number): void {
+  const el = scrollEl.value;
+  if (el === null) return;
+  const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+  if (clamped === zoom.value) return;
+  const ratio = clamped / zoom.value;
+  zoom.value = clamped;
+  void nextTick(() => {
+    el.scrollLeft = anchorX * ratio - el.clientWidth / 2;
+    el.scrollTop = anchorY * ratio - el.clientHeight / 2;
+    persist();
+  });
+}
+
+function zoomIn(): void {
+  const el = scrollEl.value;
+  if (el === null) return;
+  setZoom(
+    zoom.value * 1.2,
+    el.scrollLeft + el.clientWidth / 2,
+    el.scrollTop + el.clientHeight / 2,
+  );
+}
+
+function zoomOut(): void {
+  const el = scrollEl.value;
+  if (el === null) return;
+  setZoom(
+    zoom.value / 1.2,
+    el.scrollLeft + el.clientWidth / 2,
+    el.scrollTop + el.clientHeight / 2,
+  );
+}
+
+function zoomReset(): void {
+  const el = scrollEl.value;
+  if (el === null) return;
+  setZoom(
+    1,
+    el.scrollLeft + el.clientWidth / 2,
+    el.scrollTop + el.clientHeight / 2,
+  );
 }
 
 function selectNode(id: string): void {
@@ -204,39 +333,64 @@ export default { name: "StoryNodeGraph" };
 <template>
   <div class="node-graph">
     <p class="graph-hint">
-      拖拽排列（按故事记忆）；边：蓝=跳转 · 黄=选项 · 绿=导航 · 点击节点选列
+      拖节点排列 · 拖背景平移 · Ctrl+滚轮缩放；边：蓝=跳转 · 黄=选项 · 绿=导航 ·
+      点击节点选列
     </p>
-    <div class="graph-scroll">
-      <svg ref="svgRoot" :width="svgSize.w" :height="svgSize.h">
-        <path
-          v-for="edge in graph.edges"
-          :key="edge.key"
-          class="edge"
-          :class="edgeClass(edge.kind)"
-          :d="edgePath(edge)"
-        />
-      </svg>
+    <div
+      ref="scrollEl"
+      class="graph-scroll"
+      :class="{ panning: panState !== null }"
+      @pointerdown="startPan"
+    >
       <div
-        v-for="node in graph.nodes"
-        :key="node.id"
-        class="node"
-        :class="{ entry: node.isEntry, selected: node.id === selectedColumnId }"
+        class="graph-outer"
         :style="{
-          left: `${node.x}px`,
-          top: `${node.y}px`,
-          width: `${NODE_W}px`,
-          height: `${NODE_H}px`,
+          width: `${svgSize.w * zoom}px`,
+          height: `${svgSize.h * zoom}px`,
         }"
-        @pointerdown.prevent="startDrag(node, $event)"
-        @click="selectNode(node.id)"
       >
-        <span v-if="node.isEntry" class="entry-dot" title="入口列"></span>
-        <span class="node-id">{{ node.id }}</span>
-        <span class="node-kind">{{
-          story.columns.find((c) => c.id === node.id)?.kind === "flow"
-            ? "流"
-            : "景"
-        }}</span>
+        <div class="graph-canvas" :style="{ transform: `scale(${zoom})` }">
+          <svg ref="svgRoot" :width="svgSize.w" :height="svgSize.h">
+            <path
+              v-for="edge in graph.edges"
+              :key="edge.key"
+              class="edge"
+              :class="edgeClass(edge.kind)"
+              :d="edgePath(edge)"
+            />
+          </svg>
+          <div
+            v-for="node in graph.nodes"
+            :key="node.id"
+            class="node"
+            :class="{
+              entry: node.isEntry,
+              selected: node.id === selectedColumnId,
+            }"
+            :style="{
+              left: `${node.x}px`,
+              top: `${node.y}px`,
+              width: `${NODE_W}px`,
+              height: `${NODE_H}px`,
+            }"
+            @pointerdown.stop.prevent="startDrag(node, $event)"
+            @click="selectNode(node.id)"
+          >
+            <span v-if="node.isEntry" class="entry-dot" title="入口列"></span>
+            <span class="node-id">{{ node.id }}</span>
+            <span class="node-kind">{{
+              story.columns.find((c) => c.id === node.id)?.kind === "flow"
+                ? "流"
+                : "景"
+            }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="zoom-controls" @pointerdown.stop>
+        <button class="mini" title="缩小" @click="zoomOut">−</button>
+        <span class="zoom-value">{{ Math.round(zoom * 100) }}%</span>
+        <button class="mini" title="放大" @click="zoomIn">＋</button>
+        <button class="mini" title="重置缩放" @click="zoomReset">⟲</button>
       </div>
     </div>
   </div>
@@ -262,6 +416,15 @@ export default { name: "StoryNodeGraph" };
   background: radial-gradient(circle, #24283b22 1px, transparent 1px) 0 0 / 22px
     22px;
   border-radius: 6px;
+  cursor: grab;
+}
+.graph-scroll.panning {
+  cursor: grabbing;
+}
+.graph-canvas {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
 }
 svg {
   position: absolute;
@@ -325,5 +488,29 @@ svg {
 .node-kind {
   font-size: 10px;
   color: #565f89;
+}
+.zoom-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #16161eee;
+  border: 1px solid #3b4261;
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+.zoom-value {
+  color: #9aa5ce;
+  font-size: 11px;
+  min-width: 38px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+button.mini {
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 18px;
 }
 </style>

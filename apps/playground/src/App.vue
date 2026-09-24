@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch, type Ref } from "vue";
 import {
   SYS,
   StoryEngine,
@@ -28,7 +28,8 @@ import {
 // —— 08-U1：核心层只写状态，UI 只经 ValueChanged 订阅渲染 ——
 // 工程与平台端口都由组合根（main.ts）装配注入：本组件只消费契约，不知道任何具体实现
 const props = defineProps<{
-  story: Story;
+  /** 07 §三.2 热重载：宿主以 ref 包装供给（换 value = 注入新 Story），消费方显式 .value */
+  story: Ref<Story>;
   savePort: SavePort;
   resourcePort: ResourcePort;
   /** 01 §四.3 I18N overlay 供给（可选：浏览器形态未装配 = 原文直出） */
@@ -49,6 +50,13 @@ const inInput = ref(false);
 const inVideo = ref(false);
 const inMinigame = ref(false);
 const minigameHostEl = ref<HTMLElement | null>(null);
+// —— 01 §四.3 语言选择：可用语言 = Lang/ 目录扫描（供给侧 API）；切换 = setLanguage 按需载入 ——
+const currentLang = ref("");
+const availableLangs = ref<string[]>([]);
+// 扫描失败（资源根缺失等）宽容降级：语言列表保持空 = 选择器不出现（与 command 侧降级同语义）
+void props.i18nPort?.listLanguages?.().then((langs) => {
+  if (langs.length > 0) availableLangs.value = langs;
+}).catch(() => {});
 const menuPrompt = ref("");
 const inputPrompt = ref("");
 const inputValue = ref("");
@@ -367,7 +375,7 @@ function restart(): void {
   videoRenderer?.dispose();
   videoPort = props.createVideoPort(reportAudioError);
   engine.dispose();
-  engine = new StoryEngine(props.story, { i18nPort: props.i18nPort });
+  engine = new StoryEngine(props.story.value, { i18nPort: props.i18nPort });
   bindEngine(engine);
   audioRenderer = createRenderer();
   videoRenderer = createVideo();
@@ -388,23 +396,22 @@ function restart(): void {
   rawTexts.value = [];
   rawTargets.value = [];
   dialogTemplateName.value = ""; // 08 §四.5：重启回全局默认
+  currentLang.value = ""; // 引擎状态重建：语言回默认（显示态与运行态一致）
   nvlMode.value = "none";
   nvlBuffer.value = [];
   typewriter = null;
   engine.start();
 }
 
-engine = new StoryEngine(props.story, { i18nPort: props.i18nPort });
+engine = new StoryEngine(props.story.value, { i18nPort: props.i18nPort });
 bindEngine(engine);
 audioRenderer = createRenderer();
 videoRenderer = createVideo();
 engine.start();
 
 // 07 §三.2 热重载：组合根重新组装后注入新 story → 保运行态（变量/历史）重入当前列
-watch(
-  () => props.story,
-  (fresh) => engine.reloadStory(fresh),
-);
+// 监听 ref 本身（value 变化才触发；() => props.story 监听恒定 Ref 引用 = 永不触发）
+watch(props.story, (fresh) => engine.reloadStory(fresh));
 
 // —— 08-U3：rAF 帧循环驱动打字机（08 §三.1）——
 rafId = requestAnimationFrame(tickLoop);
@@ -538,6 +545,13 @@ function submitInput(): void {
   inputValue.value = "";
 }
 
+/** 01 §四.3 语言切换：setLanguage 按需载入 overlay（供给失败引擎 fail-closed 上报，显示态回退） */
+async function changeLang(lang: string): Promise<void> {
+  currentLang.value = lang;
+  await engine.setLanguage(lang);
+  if (engine.get(SYS.currentLanguage) !== lang) currentLang.value = String(engine.get(SYS.currentLanguage) ?? "");
+}
+
 onUnmounted(() => {
   offState?.();
   offEvent?.();
@@ -595,6 +609,20 @@ onUnmounted(() => {
       >
         ⚙
       </button>
+      <!-- 01 §四.3 语言选择（Lang/ 目录扫描供给；切换 = setLanguage 按需载入译文） -->
+      <select
+        v-if="availableLangs.length > 1"
+        class="lang-select"
+        :value="currentLang"
+        title="语言"
+        @click.stop
+        @change.stop="changeLang(($event.target as HTMLSelectElement).value)"
+      >
+        <option value="">默认</option>
+        <option v-for="lang in availableLangs" :key="lang" :value="lang">
+          {{ lang }}
+        </option>
+      </select>
     </div>
     <!-- RenderTargets.overlay（notify toast，08 §二.4） -->
     <ul class="notifications">
@@ -819,6 +847,16 @@ body,
 .save-load {
   display: flex;
   gap: 6px;
+}
+
+.lang-select {
+  padding: 5px 8px;
+  border: 1px solid #4448;
+  border-radius: 10px;
+  background: #1e1e2ecc;
+  color: #9aa5ce;
+  font-size: 12px;
+  cursor: pointer;
 }
 
 .save-load button {

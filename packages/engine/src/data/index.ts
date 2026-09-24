@@ -7,4 +7,10 @@ export {
   StoryFormatError,
 } from "./format";
 export { assembleProject, ProjectAssemblyError } from "./project";
-export { generateText, parseTextStory, TextFormatError } from "./text";
+export {
+  generateText,
+  parseTextStory,
+  projectText,
+  TextFormatError,
+  type TextProjection,
+} from "./text";

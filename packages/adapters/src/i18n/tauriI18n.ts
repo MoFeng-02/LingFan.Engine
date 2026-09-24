@@ -3,6 +3,7 @@
  * （目录形式 `Lang/{lang}/` 递归收集 + 降级单文件 `Lang/{lang}.json` 在 Rust 侧；
  * main.json 兜底合并序归引擎）。invoke 可注入（默认动态 import `@tauri-apps/api/core`）：
  * 组合根无需注入，测试以契约替身注入（不依赖 Tauri 运行时，两侧各测一半的边界即在此）。
+ * listLanguages = Rust `list_i18n_languages`（老引擎 GetAvailableLanguages 对应物）。
  */
 import type { I18nOverlayFile, I18nPort } from "@lingfan/engine";
 import {
@@ -25,6 +26,9 @@ export function createTauriI18nPort(
         lang,
       });
       return files.map((f) => ({ path: f.path, entries: { ...f.entries } }));
+    },
+    async listLanguages(): Promise<string[]> {
+      return invoke<string[]>("list_i18n_languages");
     },
   };
 }

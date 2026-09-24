@@ -1,12 +1,13 @@
 /**
- * 05 §二 资源加密 ResourcePort 原生实现：逻辑路径 → Rust `decrypt_resource`
- * （LFEN2/LFEN 解密，`tauri::ipc::Response` 原始字节通道）→ Blob + createObjectURL。
- * 短生命周期（§一威胁模型：解密资源仅以 Blob URL 存在，用后 revoke，无法批量落盘）；
- * 契约不变（resolve/release），组合根按清单 `resourceEncryption` 装配。
+ * 05 §二 资源加密 ResourcePort 原生实现（⑨-4c 流式形态）：逻辑路径 → Rust
+ * `decrypt_resource`（解密到 app data 临时流缓存，同资源幂等复用）→ 返回
+ * `{"file":"<hex64.ext>"}` → `convertFileSrc(file, "lfstream")` 构造自定义协议 URL。
+ * lfstream 协议（Rust 注册）带 Range/206——video/audio seek 流式，大资源（4K 500MB 级）
+ * 不再受 IPC 32MB 护栏限制；Content-Type 由协议响应携带。
  *
- * invoke 可注入（契约替身，测试不依赖 Tauri 运行时）；返回字节兼容
- * ArrayBuffer / Uint8Array / number[]（`tauri::ipc::Response` 的 JS 形态跨版本稳妥处理）。
- * MIME 由扩展名映射（媒体元素对无类型 Blob 的嗅探不可靠）。
+ * 旧「IPC 全量字节 + Blob revoke」形态废弃：短生命周期语义改为「缓存随应用启动清理，
+ * 进程内同资源幂等复用」（解密结果的明文只存在于受管临时目录，§一威胁模型不降级）。
+ * 契约不变（resolve/release）；invoke 与 URL 构造均可注入（契约替身测试不依赖 Tauri 运行时）。
  */
 import type { ResourcePort } from "@lingfan/engine";
 import type { TauriInvoke } from "./projectFilesTauri";
@@ -19,50 +20,37 @@ const defaultInvoke: TauriInvoke = async <T>(
   return invoke<T>(command, args);
 };
 
-const MIME_BY_EXT: Record<string, string> = {
-  mp3: "audio/mpeg",
-  ogg: "audio/ogg",
-  wav: "audio/wav",
-  m4a: "audio/mp4",
-  flac: "audio/flac",
-  mp4: "video/mp4",
-  webm: "video/webm",
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  gif: "image/gif",
-  webp: "image/webp",
+/** convertFileSrc 生成跨平台自定义协议 URL（Windows/Linux = http://lfstream.localhost/…） */
+const defaultToStreamUrl = async (file: string): Promise<string> => {
+  const { convertFileSrc } = await import("@tauri-apps/api/core");
+  return convertFileSrc(file, "lfstream");
 };
 
-function mimeFor(id: string): string {
-  const dot = id.lastIndexOf(".");
-  const ext = dot >= 0 ? id.slice(dot + 1).toLowerCase() : "";
-  return MIME_BY_EXT[ext] ?? "application/octet-stream";
-}
-
-function toBytes(
-  payload: ArrayBuffer | Uint8Array | number[],
-): Uint8Array<ArrayBuffer> {
-  if (payload instanceof Uint8Array) return new Uint8Array(payload); // 拷贝归一（BlobPart 类型边界）
-  return new Uint8Array(payload);
+interface StreamPayload {
+  file: string;
 }
 
 export function createTauriEncryptedResourcePort(
   invoke: TauriInvoke = defaultInvoke,
+  toStreamUrl: (file: string) => Promise<string> = defaultToStreamUrl,
 ): ResourcePort {
   return {
     async resolve(id: string): Promise<string> {
       // 解密失败必须抛错（K6 fail-closed，不静默返回坏 URL）；路径信任边界在 Rust 侧二次校验
-      const payload = await invoke<ArrayBuffer | Uint8Array | number[]>(
-        "decrypt_resource",
-        { path: id },
-      );
-      const blob = new Blob([toBytes(payload)], { type: mimeFor(id) });
-      return URL.createObjectURL(blob);
+      const raw = await invoke<string>("decrypt_resource", { path: id });
+      let payload: StreamPayload;
+      try {
+        payload = JSON.parse(raw) as StreamPayload;
+      } catch {
+        throw new Error(`decrypt_resource 负载异常（非 JSON）：${raw.slice(0, 64)}`);
+      }
+      if (typeof payload?.file !== "string" || payload.file === "") {
+        throw new Error("decrypt_resource 负载缺 file 字段");
+      }
+      return toStreamUrl(payload.file);
     },
-    release(url: string): void {
-      // Blob 短生命周期：用后 revoke（§一「运行时抓资源」防线）
-      URL.revokeObjectURL(url);
+    release(): void {
+      // 临时流缓存生命周期归 Rust（应用启动清理）：URL 非 blob 形态，无需 revoke
     },
   };
 }

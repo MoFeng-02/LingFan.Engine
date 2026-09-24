@@ -10,7 +10,7 @@
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tauri::Manager;
 
 const MANIFEST_FILE: &str = "project.json";
@@ -170,27 +170,62 @@ fn read_project_files_inner(
     Ok(ProjectFiles { manifest, stories })
 }
 
-/// 命令面公共前置：资源根定位（dev/prod 同路径）+ 清单加密形态判定 → (资源根, 可选 DEK)。
+/// 命令面公共前置：资源根定位 + 清单加密形态判定 → (资源根, 可选 DEK)。
+/// **dev（debug 构建）直连源工程根**：resource_dir() 在 dev 是 target 拷贝，cargo
+/// 增量编译不重拷资源——新建/修改 Lang、Stories 运行时不可见，且与 07 §三.2
+/// watcher「监视源根」不一致（监视源根/读取拷贝 = 重供给读旧内容）。release
+/// （桌面安装形态与移动 asset）走 resource_dir() 不变。
 /// Android/iOS 资源在安装包 asset 内（`asset://` 前缀）不能以 std::fs 读取——移动端待接
 /// fs 插件（tauri-plugin-fs）走 asset 协议，当前 fail-closed 显式报错。
-/// 清单恒明文（形态判定与组合根装配依赖清单先可读）：缺失 = 明文形态（显式报错归主流程）；
-/// 坏清单 fail-closed；resourceEncryption = 取 DEK 解密供给（05 §二）。
+/// **资源根定位（单一定位事实源，project_files 与 resource_crypto 共用）**：
+/// dev（debug 构建）= `LFEN_DEV_RESOURCE_ROOT` env 覆盖（加密包真窗冒烟入口）→
+/// 编译期源工程根（resource_dir() 在 dev 是 target 拷贝，cargo 增量编译不重拷资源，
+/// 且与 07 §三.2 watcher「监视源根」不一致）；release（桌面安装形态与移动 asset）
+/// 走 resource_dir() 不变。移动 asset:// 形态由调用方（resource_root_with_key）报错。
+pub(crate) fn locate_resource_root(app: &tauri::AppHandle) -> PathBuf {
+    #[cfg(debug_assertions)]
+    {
+        let _ = app;
+        if let Ok(env_root) = std::env::var("LFEN_DEV_RESOURCE_ROOT") {
+            return PathBuf::from(env_root);
+        }
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../Resources")
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        app.path()
+            .resource_dir()
+            .unwrap_or_else(|_| PathBuf::new())
+            .join("Resources")
+    }
+}
+
 fn resource_root_with_key(
     app: &tauri::AppHandle,
 ) -> Result<(std::path::PathBuf, Option<Vec<u8>>), ProjectFilesError> {
-    let resource = app
+    let app_data = app
         .path()
-        .resource_dir()
+        .app_data_dir()
         .map_err(|e| ProjectFilesError::Io(e.to_string()))?;
-    let root = resource.join("Resources");
+    let root = locate_resource_root(app);
     if root.to_string_lossy().starts_with("asset://") {
         return Err(ProjectFilesError::MobileAsset(
             root.to_string_lossy().into_owned(),
         ));
     }
+    root_state_with_key(&root, &app_data)
+}
+
+/// 资源根已定位后的公共段：清单加密形态判定 → DEK。
+/// 清单恒明文（形态判定与组合根装配依赖清单先可读）：缺失 = 明文形态（显式报错归主流程）；
+/// 坏清单 fail-closed；resourceEncryption = 取 DEK 解密供给（05 §二）。
+fn root_state_with_key(
+    root: &std::path::Path,
+    app_data: &std::path::Path,
+) -> Result<(std::path::PathBuf, Option<Vec<u8>>), ProjectFilesError> {
     let manifest_path = root.join(MANIFEST_FILE);
     if !manifest_path.is_file() {
-        return Ok((root, None));
+        return Ok((root.to_path_buf(), None));
     }
     let manifest_raw =
         fs::read_to_string(&manifest_path).map_err(|e| ProjectFilesError::Io(e.to_string()))?;
@@ -201,15 +236,11 @@ fn resource_root_with_key(
         .and_then(serde_json::Value::as_bool)
         == Some(true)
     {
-        let app_data = app
-            .path()
-            .app_data_dir()
-            .map_err(|e| ProjectFilesError::Io(e.to_string()))?;
-        let key = crate::resource_crypto::resource_dek(&app_data, &root)
+        let key = crate::resource_crypto::resource_dek(app_data, root)
             .map_err(|e| ProjectFilesError::Decrypt(e.to_string()))?;
-        return Ok((root, Some(key)));
+        return Ok((root.to_path_buf(), Some(key)));
     }
-    Ok((root, None))
+    Ok((root.to_path_buf(), None))
 }
 
 /// 工程文件供给命令：资源根 = `$RESOURCE/Resources`（bundle.resources 映射，dev/prod 同路径）。
@@ -337,6 +368,53 @@ pub fn load_i18n_overlay(
 ) -> Result<Vec<OverlayFile>, ProjectFilesError> {
     let (root, key) = resource_root_with_key(&app)?;
     load_overlay_files(&root, &lang, key.as_deref())
+}
+
+/// 01 §四.3 可用语言列表（老引擎 I18nService.GetAvailableLanguages 对应物）：
+/// 扫描资源根 `Lang/` 的子目录名与单文件名（.json 与 .json.enc 均识别——
+/// 老引擎通配 *.json 在加密形态会漏 .json.enc 单文件语言，此处修正）；
+/// 恒含默认语言 "zh-CN"（OrdinalIgnoreCase 去重）；其余按字典序输出确定性。
+/// `Lang/` 缺失 = 仅默认语言（老引擎 Directory.Exists 同语义，不报错）。
+pub fn scan_i18n_languages(root: &Path) -> Vec<String> {
+    const DEFAULT_LANG: &str = "zh-CN";
+    let mut langs: Vec<String> = vec![DEFAULT_LANG.to_string()];
+    let entries = match fs::read_dir(root.join(LANG_ROOT)) {
+        Ok(entries) => entries,
+        Err(_) => return langs,
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Some(name) = path.file_name().map(|n| n.to_string_lossy().into_owned()) else {
+            continue;
+        };
+        if name.starts_with('.') {
+            continue;
+        }
+        let lang = if path.is_dir() {
+            Some(name)
+        } else {
+            name.strip_suffix(".json.enc")
+                .or_else(|| name.strip_suffix(".json"))
+                .map(|s| s.to_string())
+        };
+        if let Some(lang) = lang {
+            if !lang.is_empty() && !langs.iter().any(|l| l.eq_ignore_ascii_case(&lang)) {
+                langs.push(lang);
+            }
+        }
+    }
+    langs[1..].sort();
+    langs
+}
+
+/// 可用语言列表命令：资源根定位失败（含移动端 asset 形态）宽容降级 = 仅默认语言
+/// （语言选择器恒可用；供给能力归 load_i18n_overlay 自己 fail-closed）。
+#[tauri::command]
+pub fn list_i18n_languages(app: tauri::AppHandle) -> Vec<String> {
+    match resource_root_with_key(&app) {
+        Ok((root, _)) => scan_i18n_languages(&root),
+        Err(_) => vec!["zh-CN".to_string()],
+    }
 }
 
 /// 防抖循环：事件突发 → 静默窗（quiet）内无新事件 → 回调一次；
@@ -566,6 +644,99 @@ mod tests {
             read_project_files(&root),
             Err(ProjectFilesError::Decrypt(_))
         ));
+    }
+
+    #[test]
+    fn packed_output_feeds_runtime_supply() {
+        // ⑨-4b 互锁：打包产物（清单 resourceEncryption=true + 内容 .enc + seed）
+        // → 运行时供给链零改动可读（故事/多语言 overlay/媒体解密同规则）
+        let base = std::env::temp_dir().join(format!(
+            "lf3-pack-runtime-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let input = base.join("in");
+        let output = base.join("out");
+        fs::create_dir_all(input.join("Stories")).unwrap();
+        fs::create_dir_all(input.join("Lang/en")).unwrap();
+        fs::write(
+            input.join("project.json"),
+            r#"{"formatVersion":1,"id":"demo","entry":"start"}"#,
+        )
+        .unwrap();
+        fs::write(
+            input.join("Stories/start.json"),
+            r#"{"formatVersion":1,"id":"start","kind":"flow","commands":[]}"#,
+        )
+        .unwrap();
+        fs::write(input.join("Lang/en/main.json"), "{\"你好\":\"Hello\"}").unwrap();
+
+        let report = crate::resource_crypto::pack_project(&input, &output).unwrap();
+        assert_eq!(report.files, 2);
+        let seed = fs::read(output.join("__key__.seed")).unwrap();
+
+        // 故事供给：清单形态判定 → .enc 解密 → 逻辑路径（去 .enc）
+        let files = read_project_files_with_key(&output, &seed).unwrap();
+        assert_eq!(
+            files.manifest["resourceEncryption"],
+            serde_json::Value::Bool(true)
+        );
+        assert_eq!(files.stories.len(), 1);
+        assert_eq!(
+            files.stories["Stories/start.json"],
+            r#"{"formatVersion":1,"id":"start","kind":"flow","commands":[]}"#
+        );
+
+        // 多语言 overlay 供给：main.json 兜底优先（明文源 → .enc 包 → 解密）
+        let overlays = load_overlay_files(&output, "en", Some(&seed)).unwrap();
+        assert_eq!(overlays.len(), 1);
+        assert_eq!(overlays[0].path, "main.json");
+        assert_eq!(overlays[0].entries["你好"], "Hello");
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn list_languages_without_lang_root_is_default_only() {
+        // 老引擎 Directory.Exists 同语义：无 Lang/ 目录 = 仅默认语言，不报错
+        let root = test_root("langs-none");
+        write(&root, "project.json", "{}");
+        assert_eq!(scan_i18n_languages(&root), vec!["zh-CN".to_string()]);
+    }
+
+    #[test]
+    fn list_languages_scans_dirs_and_files_deterministically() {
+        // 老引擎 GetAvailableLanguages：子目录名 + 单文件名（去扩展名）；恒含 zh-CN 居首；
+        // .json.enc 单文件也识别（对老引擎通配 *.json 漏加密形态的修正）；其余字典序
+        let root = test_root("langs-scan");
+        write(&root, "project.json", "{}");
+        fs::create_dir_all(root.join("Lang/en-US")).unwrap();
+        fs::create_dir_all(root.join("Lang/ja")).unwrap();
+        write(&root, "Lang/fr.json.enc", "x");
+        write(&root, "Lang/zh-TW.json", "x");
+        write(&root, "Lang/notes.txt", "x"); // 非 json 文件不算语言
+        fs::create_dir_all(root.join("Lang/.hidden")).unwrap(); // 点目录不算
+        let langs = scan_i18n_languages(&root);
+        assert_eq!(
+            langs,
+            vec![
+                "zh-CN".to_string(),
+                "en-US".to_string(),
+                "fr".to_string(),
+                "ja".to_string(),
+                "zh-TW".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn list_languages_ignores_case_duplicates() {
+        // OrdinalIgnoreCase 去重（老引擎 HashSet(StringComparer.OrdinalIgnoreCase) 同语义）
+        let root = test_root("langs-case");
+        write(&root, "project.json", "{}");
+        fs::create_dir_all(root.join("Lang/ZH-cn")).unwrap();
+        assert_eq!(scan_i18n_languages(&root), vec!["zh-CN".to_string()]);
     }
 
     fn dummy_event() -> notify::Result<notify::Event> {
