@@ -65,8 +65,14 @@ jobs:
       - name: 安装 Tauri CLI（必须是 cargo 子命令形态）
         uses: taiki-e/install-action@v2
         with:
-          # 预编译二进制直下：`cargo binstall tauri-cli` 在无匹配资产时会回退源码编译（实测 11 分钟）
-          tool: cargo-tauri
+          tool: cargo-binstall
+
+      # 注意：crate 名是 `tauri-cli`（二进制才是 cargo-tauri）——按 cargo-tauri 查会找不到 crate。
+      # 带 GITHUB_TOKEN 让 binstall 直接命中 release 预编译资产；无 token 时限流会回退源码编译（实测约 11 分钟）。
+      - name: 安装 tauri-cli
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo binstall tauri-cli --version "^2" --no-confirm
 
       # 本机（Windows）无法编译 target_os = "ios" 的分支——这一步是 ⑨-7 唯一的 Rust 侧编译验证
       # 失败时把错误塞进 check-run annotation：无凭据环境下 Workflow 日志不可下载，annotation 可匿名读
