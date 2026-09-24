@@ -76,7 +76,7 @@ class ShellPlugin: Plugin {
     let base: AnyClass = type(of: viewController)
     let name = "LingFanOrientation_\(NSStringFromClass(base).replacingOccurrences(of: ".", with: "_"))"
     let dynamic: AnyClass
-    if let existing = objc_getClass(name) as? AnyClass {
+    if let existing = objc_lookUpClass(name) {
       dynamic = existing
     } else {
       guard let created = objc_allocateClassPair(base, name, 0) else { return }
@@ -86,10 +86,10 @@ class ShellPlugin: Plugin {
       let rotateBlock: @convention(block) (AnyObject) -> Bool = { _ in true }
       replaceMethod(
         in: created, selector: #selector(getter: UIViewController.supportedInterfaceOrientations),
-        block: maskBlock)
+        block: unsafeBitCast(maskBlock, to: AnyObject.self))
       replaceMethod(
         in: created, selector: #selector(getter: UIViewController.shouldAutorotate),
-        block: rotateBlock)
+        block: unsafeBitCast(rotateBlock, to: AnyObject.self))
       objc_registerClassPair(created)
       dynamic = created
     }
