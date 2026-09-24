@@ -79,19 +79,9 @@ jobs:
         working-directory: apps/playground
         run: cargo tauri ios init --ci
 
-      - name: 落位 Swift 原生插件
-        working-directory: apps/playground/src-tauri
-        run: |
-          set -euo pipefail
-          # 仓库暂存位 → 生成的 iOS 工程 Sources（XcodeGen 的 sources: [Sources] 纳入编译）
-          target_dir=$(ls -d gen/apple/Sources/*/ | head -1)
-          test -n "$target_dir"
-          cp ios/ShellPlugin.swift "$target_dir/ShellPlugin.swift"
-          echo "已复制到: $target_dir"
-
-      - name: 重新生成 Xcode 工程（让新 Swift 文件进入编译目标）
-        working-directory: apps/playground/src-tauri/gen/apple
-        run: xcodegen
+      # Swift 插件源在 src-tauri/ios/（Swift 包），由 build.rs 经 link_apple_library 于 cargo
+      # 构建期编译并链接——**不需要**复制进 gen/apple 或重跑 xcodegen（Rust 先于 app Swift 链接，
+      # 放 Xcode 工程 Sources 反而会 Undefined symbol _init_plugin_shell）。
 
       - name: 构建 iOS 模拟器 app（debug，免签名）
         working-directory: apps/playground

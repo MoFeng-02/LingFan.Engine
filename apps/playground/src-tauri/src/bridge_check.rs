@@ -362,10 +362,28 @@ mod tests {
         // 锚点: bridge-swift-plugin-interlock——iOS 侧与 Rust 同样是纯字符串契约
         // （C 入口符号 = ios_plugin_binding! 的 ident / 命令名 = @objc 方法名 / 参数键 / 模式字面量）。
         // Swift 无法在本机（Windows）编译，本测试是当前唯一可自动化的防线：符号与字面量漂移即刻暴露。
-        // 源落点：src-tauri/ios/（暂存）→ ios init 后复制进 gen/apple/Sources/<app>/。
-        let swift = fs::read_to_string(crate_dir().join("ios/ShellPlugin.swift"))
-            .expect("读 ios/ShellPlugin.swift");
+        // 源落点：src-tauri/ios/（Swift 包：build.rs 经 link_apple_library 于 cargo 构建期编译链接；
+        // 不能放进 Xcode 工程 Sources——Rust 先于 app target 的 Swift 链接，符号会未定义）
+        let swift = fs::read_to_string(crate_dir().join("ios/Sources/ShellPlugin.swift"))
+            .expect("读 ios/Sources/ShellPlugin.swift");
+        let package = fs::read_to_string(crate_dir().join("ios/Package.swift"))
+            .expect("读 ios/Package.swift");
+        let build_rs = fs::read_to_string(crate_dir().join("build.rs")).expect("读 build.rs");
         let shell_rs = rust_source("shell.rs");
+
+        // Swift 包名：Package.swift 的 package/product 名 == build.rs 传给 link_apple_library 的名字
+        assert!(
+            package.contains("name: \"lfen-shell\""),
+            "Package.swift 包名漂移（须与 build.rs 的 PACKAGE 常量一致）"
+        );
+        assert!(
+            build_rs.contains("const PACKAGE: &str = \"lfen-shell\""),
+            "build.rs 的 Swift 包名与 Package.swift 失配"
+        );
+        assert!(
+            build_rs.contains("link_apple_library"),
+            "build.rs 缺 link_apple_library（iOS 链接期符号将未定义）"
+        );
 
         // C 入口符号：Swift @_cdecl 名 == Rust ios_plugin_binding! 的 ident
         assert!(
