@@ -1,0 +1,153 @@
+# iOS 构建与冒烟验证（macOS runner）
+#
+# 为什么需要它：iOS 只能在 macOS + Xcode 上编译，本机是 Windows——本工作流是 iOS 侧
+# 唯一的编译/运行验证途径（Swift 插件、Rust ios 分支、Info.plist 声明、端到端冒烟）。
+#
+# 三条关键约束（实测/社区一致，勿随意改动）：
+# 1. 必须用 `cargo tauri`（cargo-binstall 安装的 tauri-cli）——`ios init` 生成的 Xcode 工程
+#    会把 `cargo tauri ios xcode-script` 烘进构建阶段；用 npm 版 CLI 初始化会写入无法解析的调用。
+# 2. `xcodegen` 不在 runner 镜像内，需 brew 安装（cocoapods 自带）。
+# 3. 模拟器目标（aarch64-sim）免签名；真机/导出 IPA 才需要 Apple 证书——本工作流只做前者。
+#
+# 触发：手动（Actions → Run workflow）或推送触及移动端/引擎源码时。
+
+name: iOS Verify
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "apps/playground/src-tauri/**"
+      - "apps/playground/src/**"
+      - "packages/**"
+      - ".github/workflows/ios-verify.yml"
+
+concurrency:
+  group: ios-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-smoke:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      CI: "true"
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust 工具链（含 iOS 模拟器目标）
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios-sim,aarch64-apple-ios
+
+      - name: Rust 缓存
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/playground/src-tauri
+
+      - name: pnpm 与 Node
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: 安装 JS 依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 安装 iOS 工程工具
+        run: brew install xcodegen
+
+      - name: 安装 Tauri CLI（必须是 cargo 子命令形态）
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-binstall
+
+      - name: 安装 tauri-cli
+        run: cargo binstall tauri-cli --version "^2" --no-confirm
+
+      # 本机（Windows）无法编译 target_os = "ios" 的分支——这一步是 ⑨-7 唯一的 Rust 侧编译验证
+      - name: Rust iOS 目标编译检查
+        working-directory: apps/playground/src-tauri
+        run: cargo check --target aarch64-apple-ios --lib
+
+      - name: 初始化 iOS 工程
+        working-directory: apps/playground
+        run: cargo tauri ios init --ci
+
+      - name: 落位 Swift 原生插件
+        working-directory: apps/playground/src-tauri
+        run: |
+          set -euo pipefail
+          # 仓库暂存位 → 生成的 iOS 工程 Sources（XcodeGen 的 sources: [Sources] 纳入编译）
+          target_dir=$(ls -d gen/apple/Sources/*/ | head -1)
+          test -n "$target_dir"
+          cp ios/ShellPlugin.swift "$target_dir/ShellPlugin.swift"
+          echo "已复制到: $target_dir"
+
+      - name: 重新生成 Xcode 工程（让新 Swift 文件进入编译目标）
+        working-directory: apps/playground/src-tauri/gen/apple
+        run: xcodegen
+
+      - name: 构建 iOS 模拟器 app（debug，免签名）
+        working-directory: apps/playground
+        run: cargo tauri ios build --debug --target aarch64-sim
+
+      - name: 列出构建产物（定位排错用）
+        working-directory: apps/playground/src-tauri
+        run: find gen/apple/build -maxdepth 4 -name "*.app" -o -maxdepth 4 -name "*.a" 2>/dev/null | head -20 || true
+
+      - name: 上传 .app 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-app
+          if-no-files-found: error
+          path: apps/playground/src-tauri/gen/apple/build/**/*.app
+
+      - name: 模拟器冒烟（安装 → 启动 → 截图）
+        working-directory: apps/playground/src-tauri
+        run: |
+          set -euo pipefail
+          app=$(find gen/apple/build -maxdepth 3 -name "*.app" -type d | head -1)
+          test -n "$app"
+          echo "APP=$app"
+
+          # 取第一个可用 iPhone 模拟器（device 行形如 `    iPhone 15 (UDID) (Shutdown)`）
+          udid=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {print $2; exit}')
+          test -n "$udid"
+          echo "SIM_UDID=$udid"
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b
+
+          xcrun simctl install "$udid" "$app"
+          # 启动并抓取进程控制台；失败即判失败（App 崩溃/无法启动）
+          xcrun simctl launch --console-pty "$udid" com.langfeng.lingfanengine > /tmp/ios-launch.log 2>&1 &
+          sleep 25
+
+          # 进程存活检查：启动 25s 后仍能查到进程（未崩溃）
+          if ! xcrun simctl spawn "$udid" launchctl list | grep -qi "com.langfeng.lingfanengine"; then
+            echo "::error::iOS 冒烟失败——App 启动后未存活（见 launch 日志）"
+            cat /tmp/ios-launch.log || true
+            exit 1
+          fi
+
+          xcrun simctl io "$udid" screenshot /tmp/ios-smoke.png
+          # 证据清单输出（判读归人工/视觉：截图应显示工程内容而非「工程加载失败」）
+          echo "=== 冒烟证据 ==="
+          ls -la /tmp/ios-smoke.png
+          echo "=== App 控制台（末尾 40 行）==="
+          tail -40 /tmp/ios-launch.log || true
+
+      - name: 上传冒烟证据
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-smoke-evidence
+          if-no-files-found: warn
+          path: |
+            /tmp/ios-smoke.png
+            /tmp/ios-launch.log
