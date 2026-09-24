@@ -47,6 +47,10 @@ pub fn run() {
     #[cfg(target_os = "android")]
     let builder = builder.plugin(shell::android_plugin());
 
+    // 08 §八.2 屏幕方向：Swift ShellPlugin 注册（iOS 专用；源在 src-tauri/ios/，随 ios init 落位）
+    #[cfg(target_os = "ios")]
+    let builder = builder.plugin(shell::ios_plugin());
+
     builder
         .setup(|app| {
             // 临时流缓存随启动清理（同 DEK 同路径 → 内容确定性可重建）

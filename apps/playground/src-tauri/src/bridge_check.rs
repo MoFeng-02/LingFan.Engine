@@ -356,4 +356,55 @@ mod tests {
             "Rust 响应结构缺 path"
         );
     }
+
+    #[test]
+    fn swift_plugin_string_contracts_match_rust() {
+        // 锚点: bridge-swift-plugin-interlock——iOS 侧与 Rust 同样是纯字符串契约
+        // （C 入口符号 = ios_plugin_binding! 的 ident / 命令名 = @objc 方法名 / 参数键 / 模式字面量）。
+        // Swift 无法在本机（Windows）编译，本测试是当前唯一可自动化的防线：符号与字面量漂移即刻暴露。
+        // 源落点：src-tauri/ios/（暂存）→ ios init 后复制进 gen/apple/Sources/<app>/。
+        let swift = fs::read_to_string(crate_dir().join("ios/ShellPlugin.swift"))
+            .expect("读 ios/ShellPlugin.swift");
+        let shell_rs = rust_source("shell.rs");
+
+        // C 入口符号：Swift @_cdecl 名 == Rust ios_plugin_binding! 的 ident
+        assert!(
+            swift.contains("@_cdecl(\"init_plugin_shell\")"),
+            "Swift 缺 @_cdecl(\"init_plugin_shell\") 入口"
+        );
+        assert!(
+            shell_rs.contains("ios_plugin_binding!(init_plugin_shell)"),
+            "Rust ios_plugin_binding! 符号与 Swift @_cdecl 失配"
+        );
+
+        // 命令名 == Swift @objc 方法名；参数键 == Decodable 字段名
+        assert!(
+            swift.contains("func setOrientation(_ invoke: Invoke)"),
+            "Swift 缺 setOrientation 命令"
+        );
+        assert!(
+            shell_rs.contains("\"setOrientation\""),
+            "Rust 调用的命令名与 Swift 失配"
+        );
+        assert!(swift.contains("let mode: String"), "Swift 缺 mode 参数");
+        assert!(shell_rs.contains("\"mode\""), "Rust 负载键 mode 缺失");
+
+        // 方向模式字面量三态一致
+        for mode in ["auto", "portrait", "landscape"] {
+            assert!(
+                swift.contains(&format!("\"{mode}\"")),
+                "Swift 缺方向模式 {mode}"
+            );
+            assert!(
+                shell_rs.contains(&format!("\"{mode}\"")),
+                "Rust 缺方向模式 {mode}"
+            );
+        }
+
+        // 响应键（Rust 侧只判成功，不解字段）——锁定 Swift 侧回报形态，避免静默改协议
+        assert!(
+            swift.contains("\"applied\""),
+            "Swift 回报缺 applied 键（Rust/TS 契约面）"
+        );
+    }
 }

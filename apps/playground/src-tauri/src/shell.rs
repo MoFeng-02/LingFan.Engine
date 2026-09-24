@@ -108,13 +108,61 @@ mod android {
 #[cfg(target_os = "android")]
 pub use android::plugin as android_plugin;
 
+/// iOS：Swift 插件 C 入口声明（`ios/ShellPlugin.swift` 的 `@_cdecl("init_plugin_shell")`）
+/// 与自注册插件（lib.rs 装配用）。
+#[cfg(target_os = "ios")]
+mod ios {
+    use super::OrientationMode;
+    use tauri::Manager;
+
+    tauri::ios_plugin_binding!(init_plugin_shell);
+
+    /// Kotlin 侧的 Swift 对应物：ShellPlugin 句柄（setup 期注册后入 managed state）
+    pub struct ShellBridge(pub tauri::plugin::PluginHandle<tauri::Wry>);
+
+    /// 注册 Swift ShellPlugin 的内联 tauri 插件（iOS 专用）
+    pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+        tauri::plugin::Builder::<tauri::Wry>::new("lfen-shell")
+            .setup(|app, api| {
+                let handle = api.register_ios_plugin(init_plugin_shell)?;
+                app.manage(std::sync::Arc::new(ShellBridge(handle)));
+                Ok(())
+            })
+            .build()
+    }
+
+    pub fn apply(
+        app: &tauri::AppHandle,
+        mode: OrientationMode,
+    ) -> Result<bool, super::ShellError> {
+        use super::ShellError;
+        let bridge = app.state::<std::sync::Arc<ShellBridge>>();
+        bridge
+            .0
+            .run_mobile_plugin::<serde_json::Value>(
+                "setOrientation",
+                serde_json::json!({ "mode": mode.as_str() }),
+            )
+            .map(|_| true)
+            .map_err(|e| ShellError::Native(e.to_string()))
+    }
+}
+
+#[cfg(target_os = "ios")]
+pub use ios::plugin as ios_plugin;
+
 /// 方向应用分平台：Android 走原生插件；其余平台 no-op（未应用 = false）
 #[cfg(target_os = "android")]
 fn apply_orientation(app: &tauri::AppHandle, mode: OrientationMode) -> Result<bool, ShellError> {
     android::apply(app, mode)
 }
 
-#[cfg(not(target_os = "android"))]
+#[cfg(target_os = "ios")]
+fn apply_orientation(app: &tauri::AppHandle, mode: OrientationMode) -> Result<bool, ShellError> {
+    ios::apply(app, mode)
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 fn apply_orientation(_app: &tauri::AppHandle, _mode: OrientationMode) -> Result<bool, ShellError> {
     Ok(false)
 }

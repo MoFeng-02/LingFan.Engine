@@ -18,10 +18,16 @@ const STORIES_DIR: &str = "Stories";
 /// 07 §三.2 热重载事件名：工程文件变更（防抖后）→ 前端重新供给+组装并 reloadStory
 pub const STORY_CHANGED_EVENT: &str = "story-changed";
 /// 防抖静默窗：编辑器保存常产生截断+写入/替换等多事件，静默窗内合并为一次通知
-#[cfg(all(debug_assertions, not(target_os = "android")))]
+#[cfg(all(
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
 const WATCH_QUIET: std::time::Duration = std::time::Duration::from_millis(250);
 /// 监视启动幂等锁（Once 保证线程与 watcher 只建一次）
-#[cfg(all(debug_assertions, not(target_os = "android")))]
+#[cfg(all(
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
 static WATCH_STARTED: std::sync::Once = std::sync::Once::new();
 
 #[derive(Debug, Serialize, Clone)]
@@ -192,10 +198,14 @@ fn read_utf8(resfs: &dyn ResourceFs, path: &Path) -> Result<String, ProjectFiles
 /// 桌面 dev（debug 构建）= `LFEN_DEV_RESOURCE_ROOT` env 覆盖（加密包真窗冒烟入口）→
 /// 编译期源工程根（resource_dir() 在 dev 是 target 拷贝，cargo 增量编译不重拷资源，
 /// 且与 07 §三.2 watcher「监视源根」不一致）；release（桌面安装形态）走 resource_dir()。
-/// Android 恒走安装包 asset 根（resource_dir() = `asset://localhost/`）——debug 也
-/// 不允许指向宿主 `CARGO_MANIFEST_DIR`（那是构建机路径，移动端无意义）。
+/// 移动端一律走安装包内资源：Android = `asset://localhost/`（asset 协议，经 Kotlin 枚举 +
+/// fs 插件读取）；iOS = app bundle 内真实路径（std::fs 直读，无需插件）。
+/// **两条移动端都不得命中宿主 `CARGO_MANIFEST_DIR` 分支**（那是构建机路径，设备上不存在）。
 pub(crate) fn locate_resource_root(app: &tauri::AppHandle) -> PathBuf {
-    #[cfg(all(debug_assertions, not(target_os = "android")))]
+    #[cfg(all(
+        debug_assertions,
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
     {
         let _ = app;
         if let Ok(env_root) = std::env::var("LFEN_DEV_RESOURCE_ROOT") {
@@ -203,7 +213,11 @@ pub(crate) fn locate_resource_root(app: &tauri::AppHandle) -> PathBuf {
         }
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../Resources")
     }
-    #[cfg(any(not(debug_assertions), target_os = "android"))]
+    #[cfg(any(
+        not(debug_assertions),
+        target_os = "android",
+        target_os = "ios"
+    ))]
     {
         app.path()
             .resource_dir()
@@ -481,17 +495,24 @@ pub fn run_event_debouncer<F: Fn() + Send + 'static>(
 /// 07 §三.2 热重载监视（dev 工具）：递归监视**源**工程根——编译期定位
 /// `CARGO_MANIFEST_DIR/../Resources`（dev 下即创作者编辑的目录；target 副本只在
 /// cargo 重编时更新，监视副本取不到保存事件）。防抖后发 `story-changed` 事件，
-/// 前端重新供给+组装并 reloadStory。仅桌面 debug 构建有效（release 与 Android
-/// 显式 fail-closed——移动端资源在安装包内只读，监视宿主路径无意义）；
+/// 前端重新供给+组装并 reloadStory。仅桌面 debug 构建有效（release 与移动端
+/// 显式 fail-closed——移动端资源在安装包内只读，且宿主路径在设备上不存在）；
 /// 重复调用幂等（Once 保证线程与 watcher 只建一次）。
 #[tauri::command]
 pub fn watch_project_files(app: tauri::AppHandle) -> Result<(), ProjectFilesError> {
-    #[cfg(any(not(debug_assertions), target_os = "android"))]
+    #[cfg(any(
+        not(debug_assertions),
+        target_os = "android",
+        target_os = "ios"
+    ))]
     {
         let _ = &app;
         return Err(ProjectFilesError::WatchDevOnly);
     }
-    #[cfg(all(debug_assertions, not(target_os = "android")))]
+    #[cfg(all(
+        debug_assertions,
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
     {
         use notify::Watcher;
         use std::sync::mpsc;
