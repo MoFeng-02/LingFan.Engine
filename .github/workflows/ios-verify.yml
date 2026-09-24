@@ -59,8 +59,17 @@ jobs:
       - name: 安装 JS 依赖
         run: pnpm install --frozen-lockfile
 
-      - name: 安装 iOS 工程工具
-        run: brew install xcodegen
+      # tauri ios init 会自检 Apple 依赖（xcodegen / libimobiledevice / cocoapods），缺了它会自己
+      # 调 `brew reinstall`——而那次调用处在 Rosetta(x86_64) 上下文，brew 会拒绝装进 ARM 前缀
+      # （/opt/homebrew）而失败。这里先用 `arch -arm64` 装好，让自检直接通过、不再触发它自己装。
+      - name: 安装 iOS 工程工具（含 tauri 自检的 Apple 依赖）
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: |
+          set -euo pipefail
+          arch -arm64 brew install xcodegen libimobiledevice || brew install xcodegen libimobiledevice
+          arch -arm64 brew list --versions xcodegen libimobiledevice || true
+          pod --version || true
 
       - name: 安装 Tauri CLI（必须是 cargo 子命令形态）
         uses: taiki-e/install-action@v2
