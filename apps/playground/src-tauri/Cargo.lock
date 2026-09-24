@@ -2251,6 +2251,7 @@ name = "lingfanengine"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
+ "apple-native-keyring-store",
  "base64 0.23.1",
  "getrandom 0.4.3",
  "keyring",
