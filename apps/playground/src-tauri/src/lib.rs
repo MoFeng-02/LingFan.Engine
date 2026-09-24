@@ -2,6 +2,7 @@ pub mod crypto;
 pub mod preferences;
 pub mod project_files;
 pub mod resource_crypto;
+pub mod resource_fs;
 pub mod save;
 
 #[cfg(test)]
@@ -11,8 +12,11 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        // ⑨-5 移动端供给：fs 插件 = asset:// 读取原语（Rust 侧经 FsExt 取可 seek fd）。
+        // 其 JS 命令不在 capabilities 授权面内（default.json 仅 core+opener），对 webview 默认拒绝。
+        .plugin(tauri_plugin_fs::init())
         // ⑨-4c 大资源流式：lfstream 协议双路径——v2 分块按需解密（Range/206，明文不落盘）
         // + v1 token 缓存；缓存文件名信任边界（hex64.ext / v2/逻辑路径 validate）在 handler 内。
         .register_uri_scheme_protocol("lfstream", |ctx, request| {
@@ -31,7 +35,13 @@ pub fn run() {
             save::save_read,
             save::save_list,
             save::save_delete
-        ])
+        ]);
+
+    // ⑨-5 移动端供给：Kotlin AssetListPlugin（asset 递归枚举）+ AssetFs 装配（Android 专用）
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(resource_fs::asset_list_plugin());
+
+    builder
         .setup(|app| {
             // 临时流缓存随启动清理（同 DEK 同路径 → 内容确定性可重建）
             if let Ok(data) = app.path().app_data_dir() {

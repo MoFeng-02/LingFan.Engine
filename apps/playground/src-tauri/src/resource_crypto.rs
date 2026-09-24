@@ -11,6 +11,7 @@
 //! 加密包内文件名 = 原逻辑路径 + `.enc`（灵泛 ResourceEncryptor 语义照搬）。
 
 use crate::crypto::{gcm_open, gcm_seal, kek_from_keyring, random_bytes, KEK_SERVICE, KEK_USER};
+use crate::resource_fs::{seek_len, ResourceFs};
 use aes_gcm::aead::{Aead, Payload};
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use percent_encoding::percent_decode_str;
@@ -271,8 +272,6 @@ fn decrypt_v2_all(file: &[u8], key: &[u8], path: &str) -> Result<Vec<u8>, Resour
     let (base, chunk_log2, total) = v2_parse_header(file)
         .ok_or_else(|| ResourceCryptoError::BadFormat("LFEN2 v2 头不完整".into()))?;
     let (chunk, blocks) = v2_validate(total, chunk_log2)?;
-    let cipher = Aes256Gcm::new_from_slice(key)
-        .map_err(|e| ResourceCryptoError::Crypto(format!("密钥长度错误：{e}")))?;
     let mut out = Vec::with_capacity(total as usize);
     for index in 0..blocks {
         let plain_len = (total - index * chunk).min(chunk) as usize;
@@ -297,8 +296,10 @@ fn decrypt_v2_all(file: &[u8], key: &[u8], path: &str) -> Result<Vec<u8>, Resour
 }
 
 /// v2 按需块级解密（lfstream 协议 Range 路径）：只解 [start, end_incl] 覆盖的块，
-/// 明文永不全量落盘/进内存——内存 = 覆盖块之和（≤ 2 块典型场景）
+/// 明文永不全量落盘/进内存——内存 = 覆盖块之和（≤ 2 块典型场景）。
+/// 密文文件经资源文件系统抽象打开（Android = asset 内可 seek fd）。
 pub fn decrypt_v2_block_range(
+    resfs: &dyn ResourceFs,
     enc_file: &Path,
     key: &[u8],
     logical: &str,
@@ -310,12 +311,12 @@ pub fn decrypt_v2_block_range(
     if start > end_incl {
         return Err(ResourceCryptoError::BadFormat("Range 区间倒置".into()));
     }
-    let mut fin = fs::File::open(enc_file).map_err(io)?;
+    let mut fin = resfs.open(enc_file).map_err(io)?;
     let mut head = [0u8; V2_HEADER_LEN];
     fin.read_exact(&mut head).map_err(io)?;
     let (base, chunk_log2, total) = v2_parse_header(&head)
         .ok_or_else(|| ResourceCryptoError::BadFormat("LFEN2 v2 头不完整".into()))?;
-    let (chunk, blocks) = v2_validate(total, chunk_log2)?;
+    let (chunk, _) = v2_validate(total, chunk_log2)?;
     if total == 0 || end_incl >= total {
         return Err(ResourceCryptoError::BadFormat(
             "Range 越界（超出明文总长，B3v2）".into(),
@@ -373,7 +374,14 @@ fn verify_v2_file(
         // 复用按需解密（块对齐区间）
         let start = index * chunk;
         let end = start + plain_len as u64 - 1;
-        let actual = decrypt_v2_block_range(out_enc, key, logical, start, end)?;
+        let actual = decrypt_v2_block_range(
+            &crate::resource_fs::StdFs,
+            out_enc,
+            key,
+            logical,
+            start,
+            end,
+        )?;
         if actual != expect {
             return Err(ResourceCryptoError::Io(format!(
                 "打包自检失败（v2 块 {index} 回读 ≠ 源明文）：{logical}"
@@ -392,11 +400,16 @@ pub fn generate_resource_seed() -> Result<Vec<u8>, ResourceCryptoError> {
 /// 每次启动若包内有 seed，幂等重导入（重加密写信封）——**包更新 = 新 seed 自动跟随**
 /// （否则旧信封 DEK 永远解不开新包，升级即坏，实测踩坑）；无 seed（运行时产出形态）
 /// 回退信封；两者皆无 = MissingKey。运行态信封 KEK 封装，零明文密钥落盘（K1）。
-pub fn resource_dek(app_data: &Path, resource_root: &Path) -> Result<Vec<u8>, ResourceCryptoError> {
+/// seed 读取经资源文件系统抽象（Android = asset 内）；信封在 app_data 真实路径走 std::fs。
+pub fn resource_dek(
+    app_data: &Path,
+    resource_root: &Path,
+    resfs: &dyn ResourceFs,
+) -> Result<Vec<u8>, ResourceCryptoError> {
     let envelope = app_data.join(DEK_ENVELOPE);
     let seed_path = resource_root.join(DEK_SEED);
-    if seed_path.is_file() {
-        let dek = fs::read(&seed_path).map_err(io)?;
+    if resfs.is_file(&seed_path) {
+        let dek = resfs.read(&seed_path).map_err(io)?;
         if dek.len() != DEK_LEN {
             return Err(ResourceCryptoError::Crypto(
                 "seed 长度不符（须 32 字节）".into(),
@@ -429,25 +442,29 @@ pub fn resource_dek(app_data: &Path, resource_root: &Path) -> Result<Vec<u8>, Re
 
 /// 读取并解密单个加密资源（`逻辑路径` → `逻辑路径.enc`；明文文件不落回——K6 fail-closed）
 fn read_encrypted(
+    resfs: &dyn ResourceFs,
     resource_root: &Path,
     key: &[u8],
     path: &str,
 ) -> Result<Vec<u8>, ResourceCryptoError> {
     validate_resource_path(path)?;
     let file = resource_root.join(format!("{path}.enc"));
-    if !file.is_file() {
+    if !resfs.is_file(&file) {
         return Err(ResourceCryptoError::Io(format!(
             "加密资源不存在：{path}.enc"
         )));
     }
-    let size = file.metadata().map_err(io)?.len();
+    let mut fin = resfs.open(&file).map_err(io)?;
+    let size = seek_len(&mut *fin).map_err(io)?;
     if size > IPC_SIZE_LIMIT {
         return Err(ResourceCryptoError::TooLarge {
             size,
             limit: IPC_SIZE_LIMIT,
         });
     }
-    let data = fs::read(&file).map_err(io)?;
+    let mut data = Vec::new();
+    use std::io::Read;
+    fin.read_to_end(&mut data).map_err(io)?;
     decrypt_resource_bytes(&data, key, path)
 }
 
@@ -465,22 +482,24 @@ pub fn decrypt_resource(
     use std::io::Read;
     let root = resource_root(&app)?;
     let app_data = app_data(&app);
-    let key = resource_dek(&app_data, &root)?;
+    let resfs = crate::resource_fs::resource_fs(&app);
+    let key = resource_dek(&app_data, &root, &*resfs)?;
     let sealed_path = root.join(format!("{path}.enc"));
-    if !sealed_path.is_file() {
+    if !resfs.is_file(&sealed_path) {
         return Err(ResourceCryptoError::Io(format!(
             "加密资源不存在：{path}.enc"
         )));
     }
     // 读头探测形态（v2 头 26B；v1 文件最小 34B ≥ 26）
     let mut head = [0u8; V2_HEADER_LEN];
-    let n = fs::File::open(&sealed_path)
+    let n = resfs
+        .open(&sealed_path)
         .map_err(io)?
         .read(&mut head)
         .map_err(io)?;
     if n == V2_HEADER_LEN && head.starts_with(MAGIC_LFEN2) && head[5] == FORMAT_VERSION_V2 {
         // 预检：试解首块（DEK 失配提前 fail-closed，而非等到媒体拉流）
-        decrypt_v2_block_range(&sealed_path, &key, &path, 0, 0)?;
+        decrypt_v2_block_range(&*resfs, &sealed_path, &key, &path, 0, 0)?;
         let url = format!(
             "{}/v2/{}",
             protocol_base(),
@@ -491,7 +510,7 @@ pub fn decrypt_resource(
     let _guard = STREAM_DECRYPT_LOCK
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let file = stream_decrypt_to_cache(&root, &app_data, &key, &path)?;
+    let file = stream_decrypt_to_cache(&*resfs, &root, &app_data, &key, &path)?;
     let url = format!("{}/{}", protocol_base(), file);
     Ok(serde_json::json!({ "file": file, "url": url }).to_string())
 }
@@ -552,7 +571,9 @@ fn stream_cache_name(path: &str) -> Result<String, ResourceCryptoError> {
 }
 
 /// 解密单个加密资源到临时流缓存（存在即复用；进程内 DEK 不变 → 同路径内容确定性一致）
+/// 源密文经资源文件系统抽象读取（Android = asset）；缓存目录 app_data 真实路径走 std::fs。
 pub fn stream_decrypt_to_cache(
+    resfs: &dyn ResourceFs,
     root: &Path,
     app_data: &Path,
     key: &[u8],
@@ -566,19 +587,22 @@ pub fn stream_decrypt_to_cache(
         return Ok(name);
     }
     let sealed_path = root.join(format!("{path}.enc"));
-    if !sealed_path.is_file() {
+    if !resfs.is_file(&sealed_path) {
         return Err(ResourceCryptoError::Io(format!(
             "加密资源不存在：{path}.enc"
         )));
     }
-    let size = sealed_path.metadata().map_err(io)?.len();
+    let mut fin = resfs.open(&sealed_path).map_err(io)?;
+    let size = seek_len(&mut *fin).map_err(io)?;
     if size > STREAM_SIZE_LIMIT {
         return Err(ResourceCryptoError::TooLarge {
             size,
             limit: STREAM_SIZE_LIMIT,
         });
     }
-    let buf = fs::read(&sealed_path).map_err(io)?;
+    use std::io::Read;
+    let mut buf = Vec::new();
+    fin.read_to_end(&mut buf).map_err(io)?;
     // 复用通用解密器（LFEN2 版本校验/LFEN 兼容 K8/AAD 绑路径全在内部）；
     // 内存峰值 = 密文 + 明文双倍——分块流式解密（格式 v2）待后续批次
     let plain = decrypt_resource_bytes(&buf, key, path)?;
@@ -773,15 +797,17 @@ fn handle_v2_range(
         Ok(r) => r,
         Err(_) => return not_found(),
     };
-    let key = match resource_dek(&app_data(app), &root) {
+    let resfs = crate::resource_fs::resource_fs(app);
+    let key = match resource_dek(&app_data(app), &root, &*resfs) {
         Ok(k) => k,
         Err(_) => return not_found(),
     };
-    handle_v2_range_with(request, &encoded, &root, &key)
+    handle_v2_range_with(&*resfs, request, &encoded, &root, &key)
 }
 
 /// v2 range 核心（与 AppHandle 解耦，可单测）：root/.enc + DEK 由调用方解析
 fn handle_v2_range_with(
+    resfs: &dyn ResourceFs,
     request: tauri::http::Request<Vec<u8>>,
     encoded: &str,
     root: &Path,
@@ -792,7 +818,7 @@ fn handle_v2_range_with(
         return bad_request();
     }
     let enc = root.join(format!("{logical}.enc"));
-    let total = match decrypt_v2_total_len(&enc) {
+    let total = match decrypt_v2_total_len(resfs, &enc) {
         Some(t) => t,
         None => return not_found(),
     };
@@ -808,7 +834,7 @@ fn handle_v2_range_with(
             .expect("静态 416 响应构造不可失败"),
         RangeSpec::Full => {
             // 全量兜底（webview 对 mp4 初始请求恒带 bytes=0-，实际不触发）——流式拼装到总量护栏内
-            match decrypt_v2_block_range(&enc, &key, &logical, 0, total.saturating_sub(1)) {
+            match decrypt_v2_block_range(resfs, &enc, key, &logical, 0, total.saturating_sub(1)) {
                 Ok(body) => tauri::http::Response::builder()
                     .status(tauri::http::StatusCode::OK)
                     .header(tauri::http::header::CONTENT_TYPE, mime_for(&logical))
@@ -825,7 +851,7 @@ fn handle_v2_range_with(
             // 自动发后续 Range，实际一次响应 ≤ 1MB。
             const MAX_LEN: u64 = 1000 * 1024;
             let end = start + (end - start).min(MAX_LEN - 1);
-            match decrypt_v2_block_range(&enc, &key, &logical, start, end) {
+            match decrypt_v2_block_range(resfs, &enc, key, &logical, start, end) {
                 Ok(body) => {
                     let len = body.len();
                     tauri::http::Response::builder()
@@ -864,10 +890,10 @@ fn bad_request() -> tauri::http::Response<Vec<u8>> {
 }
 
 /// 读 v2 头取明文总长（非 v2 或读失败 = None）
-fn decrypt_v2_total_len(enc_file: &Path) -> Option<u64> {
+fn decrypt_v2_total_len(resfs: &dyn ResourceFs, enc_file: &Path) -> Option<u64> {
     use std::io::Read;
     let mut head = [0u8; V2_HEADER_LEN];
-    let mut f = fs::File::open(enc_file).ok()?;
+    let mut f = resfs.open(enc_file).ok()?;
     f.read_exact(&mut head).ok()?;
     v2_parse_header(&head).map(|(_, _, total)| total)
 }
@@ -877,8 +903,9 @@ fn decrypt_v2_total_len(enc_file: &Path) -> Option<u64> {
 pub fn decrypt_story(app: tauri::AppHandle, path: String) -> Result<String, ResourceCryptoError> {
     let root = resource_root(&app)?;
     let app_data = app_data(&app);
-    let key = resource_dek(&app_data, &root)?;
-    let plain = read_encrypted(&root, &key, &path)?;
+    let resfs = crate::resource_fs::resource_fs(&app);
+    let key = resource_dek(&app_data, &root, &*resfs)?;
+    let plain = read_encrypted(&*resfs, &root, &key, &path)?;
     String::from_utf8(plain).map_err(|_| ResourceCryptoError::BadFormat("故事资源非 UTF-8".into()))
 }
 
@@ -1065,6 +1092,7 @@ fn resource_root(app: &tauri::AppHandle) -> Result<PathBuf, ResourceCryptoError>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::resource_fs::StdFs;
 
     const KEY: &[u8; 32] = b"0123456789abcdef0123456789abcdef";
 
@@ -1379,19 +1407,19 @@ mod tests {
         )
         .unwrap();
 
-        let name = stream_decrypt_to_cache(&root, &app_data, KEY, "Video/m2.mp4").unwrap();
+        let name = stream_decrypt_to_cache(&StdFs, &root, &app_data, KEY, "Video/m2.mp4").unwrap();
         assert!(name.ends_with(".mp4"));
         let cached = tmp_stream_dir(&app_data).join(&name);
         assert_eq!(fs::read(&cached).unwrap(), plain);
 
         // 幂等：第二次调用直接命中缓存（改坏源包不影响已缓存——进程内 DEK 不变）
-        let name2 = stream_decrypt_to_cache(&root, &app_data, KEY, "Video/m2.mp4").unwrap();
+        let name2 = stream_decrypt_to_cache(&StdFs, &root, &app_data, KEY, "Video/m2.mp4").unwrap();
         assert_eq!(name, name2);
 
         // 启动清理后可重建
         cleanup_tmp_stream(&app_data);
         assert!(!cached.exists());
-        let name3 = stream_decrypt_to_cache(&root, &app_data, KEY, "Video/m2.mp4").unwrap();
+        let name3 = stream_decrypt_to_cache(&StdFs, &root, &app_data, KEY, "Video/m2.mp4").unwrap();
         assert_eq!(
             fs::read(tmp_stream_dir(&app_data).join(&name3)).unwrap(),
             plain
@@ -1423,16 +1451,16 @@ mod tests {
 
         // 块对齐区间 / 跨块区间 / 后缀区间
         assert_eq!(
-            decrypt_v2_block_range(&out, KEY, "Video/m.mp4", 1024, 2047).unwrap(),
+            decrypt_v2_block_range(&StdFs, &out, KEY, "Video/m.mp4", 1024, 2047).unwrap(),
             plain[1024..2048]
         );
         assert_eq!(
-            decrypt_v2_block_range(&out, KEY, "Video/m.mp4", 1000, 3000).unwrap(),
+            decrypt_v2_block_range(&StdFs, &out, KEY, "Video/m.mp4", 1000, 3000).unwrap(),
             plain[1000..3001]
         );
         let total = plain.len() as u64;
         assert_eq!(
-            decrypt_v2_block_range(&out, KEY, "Video/m.mp4", total - 5, total - 1).unwrap(),
+            decrypt_v2_block_range(&StdFs, &out, KEY, "Video/m.mp4", total - 5, total - 1).unwrap(),
             plain[plain.len() - 5..]
         );
         fs::remove_dir_all(&base).ok();
@@ -1520,6 +1548,7 @@ mod tests {
 
         // 206：跨块区间字节精确
         let resp = handle_v2_range_with(
+            &StdFs,
             req_for(Some("bytes=100-2059".into())),
             "Video%2Fm2.mp4",
             &root,
@@ -1535,6 +1564,7 @@ mod tests {
 
         // 越界 Range → 416
         let bad = handle_v2_range_with(
+            &StdFs,
             req_for(Some("bytes=999999-".into())),
             "Video%2Fm2.mp4",
             &root,
@@ -1543,7 +1573,7 @@ mod tests {
         assert_eq!(bad.status(), tauri::http::StatusCode::RANGE_NOT_SATISFIABLE);
 
         // 无 Range → 200 全量
-        let full = handle_v2_range_with(req_for(None), "Video%2Fm2.mp4", &root, KEY);
+        let full = handle_v2_range_with(&StdFs, req_for(None), "Video%2Fm2.mp4", &root, KEY);
         assert_eq!(full.status(), tauri::http::StatusCode::OK);
         assert_eq!(full.body().as_slice(), plain.as_slice());
         fs::remove_dir_all(&base).ok();
@@ -1566,24 +1596,24 @@ mod tests {
         let seed = generate_resource_seed().unwrap();
         fs::write(resource_root.join(DEK_SEED), &seed).unwrap();
         // resource_dek 走 keyring（本机 KEK）——信封写入后 seed 仍在，但信封优先路径生效
-        let dek = resource_dek(&base, &resource_root).unwrap();
+        let dek = resource_dek(&base, &resource_root, &StdFs).unwrap();
         assert_eq!(dek, seed);
         assert!(base.join(DEK_ENVELOPE).is_file());
         // 信封已存在 → seed 删除后仍可取（运行时产出形态回退信封）
         fs::remove_file(resource_root.join(DEK_SEED)).unwrap();
-        let dek2 = resource_dek(&base, &resource_root).unwrap();
+        let dek2 = resource_dek(&base, &resource_root, &StdFs).unwrap();
         assert_eq!(dek2, seed);
         // ⑨-4c 包更新语义：seed 换新 → DEK 跟随新 seed（信封幂等重导入，覆盖旧 DEK）
         fs::remove_file(base.join(DEK_ENVELOPE)).unwrap();
         let new_seed = generate_resource_seed().unwrap();
         fs::write(resource_root.join(DEK_SEED), &new_seed).unwrap();
-        let dek3 = resource_dek(&base, &resource_root).unwrap();
+        let dek3 = resource_dek(&base, &resource_root, &StdFs).unwrap();
         assert_eq!(dek3, new_seed);
         // 无信封无 seed → MissingKey
         fs::remove_file(base.join(DEK_ENVELOPE)).unwrap();
         fs::remove_file(resource_root.join(DEK_SEED)).unwrap();
         assert!(matches!(
-            resource_dek(&base, &resource_root),
+            resource_dek(&base, &resource_root, &StdFs),
             Err(ResourceCryptoError::MissingKey)
         ));
         fs::remove_dir_all(&base).ok();

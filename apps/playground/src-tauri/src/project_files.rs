@@ -7,9 +7,9 @@
 //! tauri.conf.json 的 `bundle.resources = {"../Resources/": "Resources/"}`
 //! 把工程资源复制到 `$RESOURCE/Resources/**`（dev 下由 tauri-build 复制到 target 目录，prod 由打包器复制）。
 
+use crate::resource_fs::ResourceFs;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::Manager;
 
@@ -18,8 +18,10 @@ const STORIES_DIR: &str = "Stories";
 /// 07 §三.2 热重载事件名：工程文件变更（防抖后）→ 前端重新供给+组装并 reloadStory
 pub const STORY_CHANGED_EVENT: &str = "story-changed";
 /// 防抖静默窗：编辑器保存常产生截断+写入/替换等多事件，静默窗内合并为一次通知
+#[cfg(all(debug_assertions, not(target_os = "android")))]
 const WATCH_QUIET: std::time::Duration = std::time::Duration::from_millis(250);
 /// 监视启动幂等锁（Once 保证线程与 watcher 只建一次）
+#[cfg(all(debug_assertions, not(target_os = "android")))]
 static WATCH_STARTED: std::sync::Once = std::sync::Once::new();
 
 #[derive(Debug, Serialize, Clone)]
@@ -84,16 +86,20 @@ pub struct ProjectFiles {
 /// key 存在时（清单声明 resourceEncryption）：`.enc` 加密故事解密后以**去 .enc 的逻辑路径**供给；
 /// 无 key 时遇 `.enc` = fail-closed（不给组装器喂密文垃圾）。非 UTF-8 fail-closed。
 fn collect_story_files(
+    resfs: &dyn ResourceFs,
     root: &Path,
     dir: &Path,
     key: Option<&[u8]>,
     into: &mut BTreeMap<String, String>,
 ) -> Result<(), ProjectFilesError> {
-    let entries = fs::read_dir(dir).map_err(|e| ProjectFilesError::Io(e.to_string()))?;
-    for entry in entries {
-        let path = entry
-            .map_err(|e| ProjectFilesError::Io(e.to_string()))?
-            .path();
+    for entry in resfs
+        .walk(dir)
+        .map_err(|e| ProjectFilesError::Io(e.to_string()))?
+    {
+        if entry.is_dir {
+            continue; // walk 已递归下钻，目录本身不再是遍历单位
+        }
+        let path = &entry.path;
         let name = path
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
@@ -101,89 +107,95 @@ fn collect_story_files(
         if name.starts_with('.') {
             continue;
         }
-        if path.is_dir() {
-            collect_story_files(root, &path, key, into)?;
+        let rel = path.strip_prefix(root).unwrap_or(path);
+        let rel = rel.to_string_lossy().replace('\\', "/");
+        let bytes = resfs
+            .read(path)
+            .map_err(|e| ProjectFilesError::Io(e.to_string()))?;
+        let (logical, text) = if let Some(stripped) = rel.strip_suffix(".enc") {
+            let k = key.ok_or_else(|| {
+                ProjectFilesError::Decrypt(format!(
+                    "存在加密故事 {rel}，但清单未声明 resourceEncryption（K6 fail-closed）"
+                ))
+            })?;
+            let plain = crate::resource_crypto::decrypt_resource_bytes(&bytes, k, stripped)
+                .map_err(|e| ProjectFilesError::Decrypt(format!("{rel}：{e}")))?;
+            (
+                stripped.to_string(),
+                String::from_utf8(plain)
+                    .map_err(|_| ProjectFilesError::Decrypt(format!("{rel} 解密后非 UTF-8")))?,
+            )
         } else {
-            let rel = path.strip_prefix(root).unwrap_or(&path);
-            let rel = rel.to_string_lossy().replace('\\', "/");
-            let bytes = fs::read(&path).map_err(|e| ProjectFilesError::Io(e.to_string()))?;
-            let (logical, text) = if let Some(stripped) = rel.strip_suffix(".enc") {
-                let k = key.ok_or_else(|| {
-                    ProjectFilesError::Decrypt(format!(
-                        "存在加密故事 {rel}，但清单未声明 resourceEncryption（K6 fail-closed）"
-                    ))
-                })?;
-                let plain = crate::resource_crypto::decrypt_resource_bytes(&bytes, k, stripped)
-                    .map_err(|e| ProjectFilesError::Decrypt(format!("{rel}：{e}")))?;
-                (
-                    stripped.to_string(),
-                    String::from_utf8(plain)
-                        .map_err(|_| ProjectFilesError::Decrypt(format!("{rel} 解密后非 UTF-8")))?,
-                )
-            } else {
-                (
-                    rel.clone(),
-                    String::from_utf8(bytes)
-                        .map_err(|_| ProjectFilesError::Io(format!("非 UTF-8 故事文件：{rel}")))?,
-                )
-            };
-            into.insert(logical, text);
-        }
+            (
+                rel.clone(),
+                String::from_utf8(bytes)
+                    .map_err(|_| ProjectFilesError::Io(format!("非 UTF-8 故事文件：{rel}")))?,
+            )
+        };
+        into.insert(logical, text);
     }
     Ok(())
 }
 
 /// 供给核心：清单解析为 JSON 对象、故事以原始文本供给（解析归引擎组装器）。
 /// 清单恒明文（加密形态判定与组合根装配都依赖清单先可读）；加密故事供给见 `read_project_files_with_key`。
-pub fn read_project_files(root: &Path) -> Result<ProjectFiles, ProjectFilesError> {
-    read_project_files_inner(root, None)
+pub fn read_project_files(
+    resfs: &dyn ResourceFs,
+    root: &Path,
+) -> Result<ProjectFiles, ProjectFilesError> {
+    read_project_files_inner(resfs, root, None)
 }
 
 /// 加密工程供给（05 §二，清单声明 resourceEncryption）：`.enc` 故事解密为文本后供给；
 /// 与明文故事混存合法（05 §一.1「文本不防」——故事加密可选）。
 pub fn read_project_files_with_key(
+    resfs: &dyn ResourceFs,
     root: &Path,
     key: &[u8],
 ) -> Result<ProjectFiles, ProjectFilesError> {
-    read_project_files_inner(root, Some(key))
+    read_project_files_inner(resfs, root, Some(key))
 }
 
 fn read_project_files_inner(
+    resfs: &dyn ResourceFs,
     root: &Path,
     key: Option<&[u8]>,
 ) -> Result<ProjectFiles, ProjectFilesError> {
     let manifest_path = root.join(MANIFEST_FILE);
-    if !manifest_path.is_file() {
+    if !resfs.is_file(&manifest_path) {
         return Err(ProjectFilesError::MissingManifest);
     }
-    let raw =
-        fs::read_to_string(&manifest_path).map_err(|e| ProjectFilesError::Io(e.to_string()))?;
+    let raw = read_utf8(resfs, &manifest_path)?;
     let manifest =
         serde_json::from_str(&raw).map_err(|e| ProjectFilesError::BadManifest(e.to_string()))?;
 
     let stories_dir = root.join(STORIES_DIR);
-    if !stories_dir.is_dir() {
+    if !resfs.is_dir(&stories_dir) {
         return Err(ProjectFilesError::MissingStories);
     }
     let mut stories = BTreeMap::new();
-    collect_story_files(root, &stories_dir, key, &mut stories)?;
+    collect_story_files(resfs, root, &stories_dir, key, &mut stories)?;
     Ok(ProjectFiles { manifest, stories })
 }
 
+/// 经资源文件系统整读 UTF-8 文本（非 UTF-8 fail-closed，语义同旧 `fs::read_to_string`）。
+fn read_utf8(resfs: &dyn ResourceFs, path: &Path) -> Result<String, ProjectFilesError> {
+    let bytes = resfs
+        .read(path)
+        .map_err(|e| ProjectFilesError::Io(e.to_string()))?;
+    String::from_utf8(bytes)
+        .map_err(|_| ProjectFilesError::Io(format!("非 UTF-8 文件：{}", path.display())))
+}
+
 /// 命令面公共前置：资源根定位 + 清单加密形态判定 → (资源根, 可选 DEK)。
-/// **dev（debug 构建）直连源工程根**：resource_dir() 在 dev 是 target 拷贝，cargo
-/// 增量编译不重拷资源——新建/修改 Lang、Stories 运行时不可见，且与 07 §三.2
-/// watcher「监视源根」不一致（监视源根/读取拷贝 = 重供给读旧内容）。release
-/// （桌面安装形态与移动 asset）走 resource_dir() 不变。
-/// Android/iOS 资源在安装包 asset 内（`asset://` 前缀）不能以 std::fs 读取——移动端待接
-/// fs 插件（tauri-plugin-fs）走 asset 协议，当前 fail-closed 显式报错。
 /// **资源根定位（单一定位事实源，project_files 与 resource_crypto 共用）**：
-/// dev（debug 构建）= `LFEN_DEV_RESOURCE_ROOT` env 覆盖（加密包真窗冒烟入口）→
+/// 桌面 dev（debug 构建）= `LFEN_DEV_RESOURCE_ROOT` env 覆盖（加密包真窗冒烟入口）→
 /// 编译期源工程根（resource_dir() 在 dev 是 target 拷贝，cargo 增量编译不重拷资源，
-/// 且与 07 §三.2 watcher「监视源根」不一致）；release（桌面安装形态与移动 asset）
-/// 走 resource_dir() 不变。移动 asset:// 形态由调用方（resource_root_with_key）报错。
+/// 且与 07 §三.2 watcher「监视源根」不一致）；release（桌面安装形态）走 resource_dir()。
+/// Android 恒走安装包 asset 根（resource_dir() = `asset://localhost/`）——debug 也
+/// 不允许指向宿主 `CARGO_MANIFEST_DIR`（那是构建机路径，移动端无意义）。
 pub(crate) fn locate_resource_root(app: &tauri::AppHandle) -> PathBuf {
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, not(target_os = "android")))]
     {
         let _ = app;
         if let Ok(env_root) = std::env::var("LFEN_DEV_RESOURCE_ROOT") {
@@ -191,7 +203,7 @@ pub(crate) fn locate_resource_root(app: &tauri::AppHandle) -> PathBuf {
         }
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../Resources")
     }
-    #[cfg(not(debug_assertions))]
+    #[cfg(any(not(debug_assertions), target_os = "android"))]
     {
         app.path()
             .resource_dir()
@@ -208,27 +220,33 @@ fn resource_root_with_key(
         .app_data_dir()
         .map_err(|e| ProjectFilesError::Io(e.to_string()))?;
     let root = locate_resource_root(app);
-    if root.to_string_lossy().starts_with("asset://") {
-        return Err(ProjectFilesError::MobileAsset(
-            root.to_string_lossy().into_owned(),
-        ));
+    // Android：asset://localhost/Resources = 合法资源根（Kotlin 枚举 + fs 插件可 seek 读取）。
+    // 其余平台出现该前缀 = 意外形态，维持 fail-closed 显式报错（iOS 供给接入前同界）。
+    #[cfg(not(target_os = "android"))]
+    {
+        if root.to_string_lossy().starts_with("asset://") {
+            return Err(ProjectFilesError::MobileAsset(
+                root.to_string_lossy().into_owned(),
+            ));
+        }
     }
-    root_state_with_key(&root, &app_data)
+    let resfs = crate::resource_fs::resource_fs(app);
+    root_state_with_key(&*resfs, &root, &app_data)
 }
 
 /// 资源根已定位后的公共段：清单加密形态判定 → DEK。
 /// 清单恒明文（形态判定与组合根装配依赖清单先可读）：缺失 = 明文形态（显式报错归主流程）；
 /// 坏清单 fail-closed；resourceEncryption = 取 DEK 解密供给（05 §二）。
 fn root_state_with_key(
+    resfs: &dyn ResourceFs,
     root: &std::path::Path,
     app_data: &std::path::Path,
 ) -> Result<(std::path::PathBuf, Option<Vec<u8>>), ProjectFilesError> {
     let manifest_path = root.join(MANIFEST_FILE);
-    if !manifest_path.is_file() {
+    if !resfs.is_file(&manifest_path) {
         return Ok((root.to_path_buf(), None));
     }
-    let manifest_raw =
-        fs::read_to_string(&manifest_path).map_err(|e| ProjectFilesError::Io(e.to_string()))?;
+    let manifest_raw = read_utf8(resfs, &manifest_path)?;
     let manifest: serde_json::Value = serde_json::from_str(&manifest_raw)
         .map_err(|e| ProjectFilesError::BadManifest(e.to_string()))?;
     if manifest
@@ -236,7 +254,7 @@ fn root_state_with_key(
         .and_then(serde_json::Value::as_bool)
         == Some(true)
     {
-        let key = crate::resource_crypto::resource_dek(app_data, root)
+        let key = crate::resource_crypto::resource_dek(app_data, root, resfs)
             .map_err(|e| ProjectFilesError::Decrypt(e.to_string()))?;
         return Ok((root.to_path_buf(), Some(key)));
     }
@@ -247,9 +265,10 @@ fn root_state_with_key(
 #[tauri::command]
 pub fn project_files(app: tauri::AppHandle) -> Result<ProjectFiles, ProjectFilesError> {
     let (root, key) = resource_root_with_key(&app)?;
+    let resfs = crate::resource_fs::resource_fs(&app);
     match key {
-        Some(k) => read_project_files_with_key(&root, &k),
-        None => read_project_files(&root),
+        Some(k) => read_project_files_with_key(&*resfs, &root, &k),
+        None => read_project_files(&*resfs, &root),
     }
 }
 
@@ -279,6 +298,7 @@ fn valid_lang(lang: &str) -> bool {
 /// 合并序（main.json 最先、其余按序覆盖）归引擎 TS 侧（mergeOverlayFiles——叙事语义引擎可测）；
 /// key = 清单声明 resourceEncryption 时的 DEK（`.enc` 译文解密，AAD 与故事同规则 = 资源根相对路径去 .enc）。
 pub fn load_overlay_files(
+    resfs: &dyn ResourceFs,
     root: &Path,
     lang: &str,
     key: Option<&[u8]>,
@@ -289,29 +309,27 @@ pub fn load_overlay_files(
     let lang_dir = root.join(LANG_ROOT).join(lang);
     let single = root.join(LANG_ROOT).join(format!("{lang}.json"));
     let mut paths: Vec<std::path::PathBuf> = Vec::new();
-    if lang_dir.is_dir() {
-        let mut stack = vec![lang_dir];
-        while let Some(dir) = stack.pop() {
-            let entries = fs::read_dir(&dir).map_err(|e| ProjectFilesError::Io(e.to_string()))?;
-            for entry in entries {
-                let path = entry
-                    .map_err(|e| ProjectFilesError::Io(e.to_string()))?
-                    .path();
-                let name = path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_default();
-                if name.starts_with('.') {
-                    continue;
-                }
-                if path.is_dir() {
-                    stack.push(path);
-                } else if name.ends_with(".json") || name.ends_with(".json.enc") {
-                    paths.push(path);
-                }
+    if resfs.is_dir(&lang_dir) {
+        for entry in resfs
+            .walk(&lang_dir)
+            .map_err(|e| ProjectFilesError::Io(e.to_string()))?
+        {
+            if entry.is_dir {
+                continue; // walk 已递归下钻
+            }
+            let name = entry
+                .path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            if name.starts_with('.') {
+                continue;
+            }
+            if name.ends_with(".json") || name.ends_with(".json.enc") {
+                paths.push(entry.path);
             }
         }
-    } else if single.is_file() {
+    } else if resfs.is_file(&single) {
         paths.push(single);
     }
     paths.sort();
@@ -323,7 +341,9 @@ pub fn load_overlay_files(
             .unwrap_or(&path)
             .to_string_lossy()
             .replace('\\', "/");
-        let bytes = fs::read(&path).map_err(|e| ProjectFilesError::Io(e.to_string()))?;
+        let bytes = resfs
+            .read(&path)
+            .map_err(|e| ProjectFilesError::Io(e.to_string()))?;
         let (logical, text) = if let Some(stripped) = root_rel.strip_suffix(".enc") {
             let k = key.ok_or_else(|| {
                 ProjectFilesError::Decrypt(format!(
@@ -367,7 +387,8 @@ pub fn load_i18n_overlay(
     lang: String,
 ) -> Result<Vec<OverlayFile>, ProjectFilesError> {
     let (root, key) = resource_root_with_key(&app)?;
-    load_overlay_files(&root, &lang, key.as_deref())
+    let resfs = crate::resource_fs::resource_fs(&app);
+    load_overlay_files(&*resfs, &root, &lang, key.as_deref())
 }
 
 /// 01 §四.3 可用语言列表（老引擎 I18nService.GetAvailableLanguages 对应物）：
@@ -375,22 +396,33 @@ pub fn load_i18n_overlay(
 /// 老引擎通配 *.json 在加密形态会漏 .json.enc 单文件语言，此处修正）；
 /// 恒含默认语言 "zh-CN"（OrdinalIgnoreCase 去重）；其余按字典序输出确定性。
 /// `Lang/` 缺失 = 仅默认语言（老引擎 Directory.Exists 同语义，不报错）。
-pub fn scan_i18n_languages(root: &Path) -> Vec<String> {
+pub fn scan_i18n_languages(resfs: &dyn ResourceFs, root: &Path) -> Vec<String> {
     const DEFAULT_LANG: &str = "zh-CN";
     let mut langs: Vec<String> = vec![DEFAULT_LANG.to_string()];
-    let entries = match fs::read_dir(root.join(LANG_ROOT)) {
+    let lang_root = root.join(LANG_ROOT);
+    let entries = match resfs.walk(&lang_root) {
         Ok(entries) => entries,
         Err(_) => return langs,
     };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        let Some(name) = path.file_name().map(|n| n.to_string_lossy().into_owned()) else {
+    for entry in entries {
+        // 仅直接子项（单层扫描语义不变；walk 是递归的，深层条目在此剔除）
+        let Ok(rel) = entry.path.strip_prefix(&lang_root) else {
+            continue;
+        };
+        if rel.components().count() != 1 {
+            continue;
+        }
+        let Some(name) = entry
+            .path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+        else {
             continue;
         };
         if name.starts_with('.') {
             continue;
         }
-        let lang = if path.is_dir() {
+        let lang = if entry.is_dir {
             Some(name)
         } else {
             name.strip_suffix(".json.enc")
@@ -411,8 +443,9 @@ pub fn scan_i18n_languages(root: &Path) -> Vec<String> {
 /// （语言选择器恒可用；供给能力归 load_i18n_overlay 自己 fail-closed）。
 #[tauri::command]
 pub fn list_i18n_languages(app: tauri::AppHandle) -> Vec<String> {
+    let resfs = crate::resource_fs::resource_fs(&app);
     match resource_root_with_key(&app) {
-        Ok((root, _)) => scan_i18n_languages(&root),
+        Ok((root, _)) => scan_i18n_languages(&*resfs, &root),
         Err(_) => vec!["zh-CN".to_string()],
     }
 }
@@ -448,16 +481,17 @@ pub fn run_event_debouncer<F: Fn() + Send + 'static>(
 /// 07 §三.2 热重载监视（dev 工具）：递归监视**源**工程根——编译期定位
 /// `CARGO_MANIFEST_DIR/../Resources`（dev 下即创作者编辑的目录；target 副本只在
 /// cargo 重编时更新，监视副本取不到保存事件）。防抖后发 `story-changed` 事件，
-/// 前端重新供给+组装并 reloadStory。仅 debug 构建有效（release 显式 fail-closed）；
+/// 前端重新供给+组装并 reloadStory。仅桌面 debug 构建有效（release 与 Android
+/// 显式 fail-closed——移动端资源在安装包内只读，监视宿主路径无意义）；
 /// 重复调用幂等（Once 保证线程与 watcher 只建一次）。
 #[tauri::command]
 pub fn watch_project_files(app: tauri::AppHandle) -> Result<(), ProjectFilesError> {
-    #[cfg(not(debug_assertions))]
+    #[cfg(any(not(debug_assertions), target_os = "android"))]
     {
         let _ = &app;
         return Err(ProjectFilesError::WatchDevOnly);
     }
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, not(target_os = "android")))]
     {
         use notify::Watcher;
         use std::sync::mpsc;
@@ -492,6 +526,8 @@ pub fn watch_project_files(app: tauri::AppHandle) -> Result<(), ProjectFilesErro
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::resource_fs::StdFs;
+    use std::fs;
     use std::path::PathBuf;
 
     fn test_root(tag: &str) -> PathBuf {
@@ -531,7 +567,7 @@ mod tests {
             "Stories/chapter1/tail.story",
             "label tail:\n  say \"text\"\n",
         );
-        let files = read_project_files(&root).unwrap();
+        let files = read_project_files(&StdFs, &root).unwrap();
         assert_eq!(files.manifest["entry"], "start");
         assert_eq!(files.stories.len(), 2);
         assert_eq!(
@@ -546,7 +582,7 @@ mod tests {
         let root = test_root("paths");
         write(&root, "project.json", "{}");
         write(&root, "Stories/a/b/c.story", "x");
-        let files = read_project_files(&root).unwrap();
+        let files = read_project_files(&StdFs, &root).unwrap();
         assert!(files.stories.contains_key("Stories/a/b/c.story"));
     }
 
@@ -556,7 +592,7 @@ mod tests {
         let root = test_root("no-manifest");
         write(&root, "Stories/start.json", "{}");
         assert!(matches!(
-            read_project_files(&root),
+            read_project_files(&StdFs, &root),
             Err(ProjectFilesError::MissingManifest)
         ));
     }
@@ -566,7 +602,7 @@ mod tests {
         let root = test_root("bad-manifest");
         write(&root, "project.json", "{ not json");
         assert!(matches!(
-            read_project_files(&root),
+            read_project_files(&StdFs, &root),
             Err(ProjectFilesError::BadManifest(_))
         ));
     }
@@ -583,7 +619,7 @@ mod tests {
         fs::create_dir_all(&root).unwrap();
         write(&root, "project.json", "{}");
         assert!(matches!(
-            read_project_files(&root),
+            read_project_files(&StdFs, &root),
             Err(ProjectFilesError::MissingStories)
         ));
     }
@@ -595,7 +631,7 @@ mod tests {
         write(&root, "project.json", "{}");
         write(&root, "Stories/.DS_Store", "junk");
         write(&root, "Stories/real.story", "x");
-        let files = read_project_files(&root).unwrap();
+        let files = read_project_files(&StdFs, &root).unwrap();
         assert_eq!(files.stories.len(), 1);
         assert!(files.stories.contains_key("Stories/real.story"));
     }
@@ -608,7 +644,7 @@ mod tests {
         let path = root.join("Stories/binary.story");
         fs::write(&path, [0xFFu8, 0xFE, 0x00, 0xD8]).unwrap();
         assert!(matches!(
-            read_project_files(&root),
+            read_project_files(&StdFs, &root),
             Err(ProjectFilesError::Io(_))
         ));
     }
@@ -628,7 +664,7 @@ mod tests {
         .unwrap();
         fs::write(root.join("Stories/start.json.enc"), &sealed).unwrap();
         write(&root, "Stories/plain.story", "label plain:\n  say \"x\"\n");
-        let files = read_project_files_with_key(&root, &key).unwrap();
+        let files = read_project_files_with_key(&StdFs, &root, &key).unwrap();
         assert_eq!(files.stories.len(), 2);
         assert_eq!(files.stories["Stories/start.json"], plain_story); // 去后缀逻辑路径
         assert!(files.stories.contains_key("Stories/plain.story")); // 明文混存（T4 扩展）
@@ -641,7 +677,7 @@ mod tests {
         write(&root, "project.json", "{}");
         fs::write(root.join("Stories/x.json.enc"), b"LFEN2garbage").unwrap();
         assert!(matches!(
-            read_project_files(&root),
+            read_project_files(&StdFs, &root),
             Err(ProjectFilesError::Decrypt(_))
         ));
     }
@@ -678,7 +714,7 @@ mod tests {
         let seed = fs::read(output.join("__key__.seed")).unwrap();
 
         // 故事供给：清单形态判定 → .enc 解密 → 逻辑路径（去 .enc）
-        let files = read_project_files_with_key(&output, &seed).unwrap();
+        let files = read_project_files_with_key(&StdFs, &output, &seed).unwrap();
         assert_eq!(
             files.manifest["resourceEncryption"],
             serde_json::Value::Bool(true)
@@ -690,7 +726,7 @@ mod tests {
         );
 
         // 多语言 overlay 供给：main.json 兜底优先（明文源 → .enc 包 → 解密）
-        let overlays = load_overlay_files(&output, "en", Some(&seed)).unwrap();
+        let overlays = load_overlay_files(&StdFs, &output, "en", Some(&seed)).unwrap();
         assert_eq!(overlays.len(), 1);
         assert_eq!(overlays[0].path, "main.json");
         assert_eq!(overlays[0].entries["你好"], "Hello");
@@ -702,7 +738,10 @@ mod tests {
         // 老引擎 Directory.Exists 同语义：无 Lang/ 目录 = 仅默认语言，不报错
         let root = test_root("langs-none");
         write(&root, "project.json", "{}");
-        assert_eq!(scan_i18n_languages(&root), vec!["zh-CN".to_string()]);
+        assert_eq!(
+            scan_i18n_languages(&StdFs, &root),
+            vec!["zh-CN".to_string()]
+        );
     }
 
     #[test]
@@ -717,7 +756,7 @@ mod tests {
         write(&root, "Lang/zh-TW.json", "x");
         write(&root, "Lang/notes.txt", "x"); // 非 json 文件不算语言
         fs::create_dir_all(root.join("Lang/.hidden")).unwrap(); // 点目录不算
-        let langs = scan_i18n_languages(&root);
+        let langs = scan_i18n_languages(&StdFs, &root);
         assert_eq!(
             langs,
             vec![
@@ -736,7 +775,10 @@ mod tests {
         let root = test_root("langs-case");
         write(&root, "project.json", "{}");
         fs::create_dir_all(root.join("Lang/ZH-cn")).unwrap();
-        assert_eq!(scan_i18n_languages(&root), vec!["zh-CN".to_string()]);
+        assert_eq!(
+            scan_i18n_languages(&StdFs, &root),
+            vec!["zh-CN".to_string()]
+        );
     }
 
     fn dummy_event() -> notify::Result<notify::Event> {
@@ -792,7 +834,7 @@ mod tests {
         write(&root, "Lang/en/main.json", r#"{"你好":"Hello"}"#);
         write(&root, "Lang/en/ui/battle.json", r#"{"攻击":"Attack"}"#);
         write(&root, "Lang/en/notes.txt", "not json");
-        let files = load_overlay_files(&root, "en", None).unwrap();
+        let files = load_overlay_files(&StdFs, &root, "en", None).unwrap();
         assert_eq!(files.len(), 2);
         assert_eq!(files[0].path, "main.json");
         assert_eq!(files[1].path, "ui/battle.json");
@@ -804,7 +846,7 @@ mod tests {
         // 降级：无 Lang/{lang}/ 目录 → 单文件 Lang/{lang}.json，以 "main.json" 供给（全局兜底语义）
         let root = test_root("i18n-single");
         write(&root, "Lang/ja.json", r#"{"早上好":"おはよう"}"#);
-        let files = load_overlay_files(&root, "ja", None).unwrap();
+        let files = load_overlay_files(&StdFs, &root, "ja", None).unwrap();
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].path, "main.json");
         assert_eq!(files[0].entries["早上好"], "おはよう");
@@ -814,9 +856,9 @@ mod tests {
     fn overlay_invalid_lang_fails_closed() {
         // E3：lang 路径段校验（防路径穿越），fail-closed 显式报错
         let root = test_root("i18n-bad-lang");
-        assert!(load_overlay_files(&root, "../etc", None).is_err());
-        assert!(load_overlay_files(&root, "", None).is_err());
-        assert!(load_overlay_files(&root, "a/b", None).is_err());
+        assert!(load_overlay_files(&StdFs, &root, "../etc", None).is_err());
+        assert!(load_overlay_files(&StdFs, &root, "", None).is_err());
+        assert!(load_overlay_files(&StdFs, &root, "a/b", None).is_err());
     }
 
     #[test]
@@ -826,7 +868,7 @@ mod tests {
         write(&root, "Lang/en/main.json", r#"{"ok":"Yes"}"#);
         write(&root, "Lang/en/broken.json", "{ not json");
         write(&root, "Lang/en/nonstring.json", r#"{"num":42}"#);
-        let files = load_overlay_files(&root, "en", None).unwrap();
+        let files = load_overlay_files(&StdFs, &root, "en", None).unwrap();
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].path, "main.json");
     }
@@ -843,7 +885,7 @@ mod tests {
                 .unwrap();
         fs::create_dir_all(root.join("Lang/en")).unwrap();
         fs::write(root.join("Lang/en/main.json.enc"), &sealed).unwrap();
-        let files = load_overlay_files(&root, "en", Some(&key)).unwrap();
+        let files = load_overlay_files(&StdFs, &root, "en", Some(&key)).unwrap();
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].path, "main.json");
         assert_eq!(files[0].entries["你好"], "Hi");
@@ -855,7 +897,7 @@ mod tests {
         let root = test_root("i18n-enc-nokey");
         write(&root, "Lang/en/main.json.enc", "LFEN2garbage");
         assert!(matches!(
-            load_overlay_files(&root, "en", None),
+            load_overlay_files(&StdFs, &root, "en", None),
             Err(ProjectFilesError::Decrypt(_))
         ));
     }
