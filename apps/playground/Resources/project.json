@@ -3,5 +3,6 @@
   "id": "demo",
   "entry": "start",
   "name": "灵泛演示",
-  "defines": { "player.gold": 7 }
+  "defines": { "player.gold": 7 },
+  "shell": { "orientation": "auto" }
 }

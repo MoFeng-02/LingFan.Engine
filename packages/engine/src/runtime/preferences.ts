@@ -7,10 +7,11 @@
  */
 import type {
   AudioChannel,
+  OrientationMode,
   PlayerPrefsData,
   PreferencesPort,
 } from "../contracts";
-import { DEFAULT_PLAYER_PREFS } from "../contracts";
+import { DEFAULT_PLAYER_PREFS, isOrientationMode } from "../contracts";
 
 type PrefsListener = (data: PlayerPrefsData) => void;
 
@@ -52,6 +53,8 @@ function sanitize(raw: unknown): PlayerPrefsData {
   ) {
     data.textSpeed = Math.max(1, source.textSpeed);
   }
+  // 方向偏好：合法三态才采纳；非法值 = 未设置（跟随工程默认，绝不翻译成非法方向）
+  if (isOrientationMode(source.orientation)) data.orientation = source.orientation;
   return data;
 }
 
@@ -64,14 +67,18 @@ export class PlayerPreferences {
     this.data = sanitize(undefined);
   }
 
-  /** 只读快照（新引用——UI 可安全持有做响应式镜像） */
+  /** 只读快照（新引用——UI 可安全持有做响应式镜像）；orientation 缺省 = 键不存在 */
   snapshot(): PlayerPrefsData {
-    return {
+    const snap: PlayerPrefsData = {
       v: 1,
       volumes: { ...this.data.volumes },
       muted: this.data.muted,
       textSpeed: this.data.textSpeed,
     };
+    if (this.data.orientation !== undefined) {
+      snap.orientation = this.data.orientation;
+    }
+    return snap;
   }
 
   get muted(): boolean {
@@ -80,6 +87,11 @@ export class PlayerPreferences {
 
   get textSpeed(): number {
     return this.data.textSpeed;
+  }
+
+  /** 方向偏好（undefined = 未设置，跟随工程默认/auto；壳应用由组合根负责） */
+  get orientation(): OrientationMode | undefined {
+    return this.data.orientation;
   }
 
   volume(channel: AudioChannel): number {
@@ -108,6 +120,21 @@ export class PlayerPreferences {
   setTextSpeed(value: number): void {
     if (typeof value !== "number" || !Number.isFinite(value)) return;
     this.update({ ...this.data, textSpeed: Math.max(1, value) });
+  }
+
+  /** 设置方向偏好（非法模式忽略——fail-closed；应用归组合根订阅者） */
+  setOrientation(mode: OrientationMode): void {
+    if (!isOrientationMode(mode)) return;
+    if (this.data.orientation === mode) return;
+    this.update({ ...this.data, orientation: mode });
+  }
+
+  /** 清除方向偏好 = 回到「跟随工程默认」（面板「跟随工程」项） */
+  clearOrientation(): void {
+    if (this.data.orientation === undefined) return;
+    const next: PlayerPrefsData = { ...this.data };
+    delete next.orientation;
+    this.update(next);
   }
 
   /** 订阅偏好变化（UI 响应式镜像/渲染层重规划）；返回退订函数 */

@@ -8,6 +8,9 @@
 //!    Tauri 2 自动转换，参数名含下划线时两侧书写即分叉——互锁点）
 //! 4. 负载形状：Rust serde 输出键必须与 TS 期待接口键一致（SlotSummary 锚点——
 //!    save_count/slot/timestamp/mode 曾是无测试的隐性契约）
+//! 5. Kotlin 自注册插件字符串契约（gen/android 平台适配层）：插件标识（= Kotlin 包名）/
+//!    命令名（= @Command 方法名）/参数与响应键/方向模式字面量——Rust ↔ Kotlin 之间同样是
+//!    编译期不可见的字符串契约，失配只在真机运行时炸
 //! TS 侧编组行为已由契约替身测试覆盖（tests/adapters/**），本模块只补跨边界字符串契约；
 //! 局限注明：invoke 泛型提取不支持嵌套尖括号（当前代码库无此形态）。
 
@@ -228,8 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn rust_payload_keys_match_ts_expectations() {
-        // 锚点: bridge-payload-keys——serde 输出键必须与 TS 期待接口键一致
+    fn rust_payload_keys_match_ts_expectations() {        // 锚点: bridge-payload-keys——serde 输出键必须与 TS 期待接口键一致
         // （SlotSummary：Rust save_count ↔ TS 显式映射 saveCount 的隐性契约，本轮起锁定）
         use crate::save::SlotSummary;
         let value = serde_json::to_value(SlotSummary {
@@ -267,6 +269,91 @@ mod tests {
         assert_eq!(
             rust_keys, ts_keys,
             "Rust serde 负载键与 TS 期待键失配（跨边界运行时才炸）"
+        );
+    }
+
+    /// 自注册 Kotlin 插件源（gen/android 平台适配层）
+    fn kotlin_plugin_source(pkg: &str, file: &str) -> String {
+        let path = crate_dir()
+            .join("gen/android/app/src/main/java/com/langfeng/lingfanengine")
+            .join(pkg)
+            .join(file);
+        fs::read_to_string(&path).unwrap_or_else(|e| panic!("读 Kotlin 插件源 {pkg}/{file}：{e}"))
+    }
+
+    fn rust_source(file: &str) -> String {
+        fs::read_to_string(crate_dir().join("src").join(file))
+            .unwrap_or_else(|e| panic!("读 {file}：{e}"))
+    }
+
+    #[test]
+    fn kotlin_plugin_string_contracts_match_rust() {
+        // 锚点: bridge-kotlin-plugin-interlock——自注册 Kotlin 插件与 Rust 之间同样是纯字符串
+        // 契约（插件标识 = Kotlin 包名 / 命令名 = @Command 方法名 / 参数与响应键 / 模式字面量），
+        // 编译期不可见：此前无任何互锁，失配只在真机运行时炸。
+        let shell_kt = kotlin_plugin_source("shell", "ShellPlugin.kt");
+        let shell_rs = rust_source("shell.rs");
+        let assets_kt = kotlin_plugin_source("assets", "AssetListPlugin.kt");
+        let fs_rs = rust_source("resource_fs.rs");
+
+        // 插件标识必须等于 Kotlin 包名（register_android_plugin 内 replace('.', '/') 拼类路径）
+        assert!(
+            shell_kt.contains("package com.langfeng.lingfanengine.shell"),
+            "ShellPlugin.kt 包名漂移"
+        );
+        assert!(
+            shell_rs.contains("\"com.langfeng.lingfanengine.shell\""),
+            "Rust 注册的 shell 插件标识与 Kotlin 包名失配（运行时找不到类）"
+        );
+        assert!(
+            assets_kt.contains("package com.langfeng.lingfanengine.assets"),
+            "AssetListPlugin.kt 包名漂移"
+        );
+        assert!(
+            fs_rs.contains("\"com.langfeng.lingfanengine.assets\""),
+            "Rust 注册的 asset 插件标识与 Kotlin 包名失配"
+        );
+
+        // 命令名 == Kotlin @Command 方法名；参数键 == @InvokeArg 字段名
+        assert!(shell_kt.contains("fun setOrientation("), "Kotlin 缺 setOrientation 命令");
+        assert!(
+            shell_rs.contains("\"setOrientation\""),
+            "Rust 调用的命令名与 Kotlin 失配"
+        );
+        assert!(shell_kt.contains("mode: String"), "Kotlin 缺 mode 参数");
+        assert!(shell_rs.contains("\"mode\""), "Rust 负载键 mode 缺失");
+        assert!(assets_kt.contains("fun list("), "Kotlin 缺 list 命令");
+        assert!(fs_rs.contains("\"list\""), "Rust 调用的枚举命令名失配");
+        assert!(assets_kt.contains("path: String"), "Kotlin 缺 path 参数");
+        assert!(fs_rs.contains("\"path\""), "Rust 枚举负载键 path 缺失");
+
+        // 方向模式字面量：Rust OrientationMode 三态 == Kotlin when 分支
+        for mode in ["auto", "portrait", "landscape"] {
+            assert!(
+                shell_kt.contains(&format!("\"{mode}\"")),
+                "Kotlin 缺方向模式 {mode}"
+            );
+            assert!(
+                shell_rs.contains(&format!("\"{mode}\"")),
+                "Rust 缺方向模式 {mode}"
+            );
+        }
+
+        // 响应键：Kotlin JSObject 键 == Rust serde 结构体字段
+        for key in ["entries", "dir", "path"] {
+            assert!(
+                assets_kt.contains(&format!("\"{key}\"")),
+                "Kotlin 响应缺键 {key}"
+            );
+        }
+        assert!(
+            fs_rs.contains("entries: Vec<AssetListEntry>"),
+            "Rust 响应结构缺 entries"
+        );
+        assert!(fs_rs.contains("pub dir: bool"), "Rust 响应结构缺 dir");
+        assert!(
+            fs_rs.contains("pub path: String"),
+            "Rust 响应结构缺 path"
         );
     }
 }
