@@ -9,6 +9,7 @@ import {
   parseStory,
   parseStoryFile,
   parseTextStory,
+  projectText,
   StoryFormatError,
   TextFormatError,
 } from "@lingfan/engine";
@@ -175,6 +176,35 @@ describe("07-T2 投影失败整次拒绝 + 行列定位", () => {
       columns: [{ id: "sc", kind: "scene", elements: [] }],
     });
     expect(() => generateText(story)).toThrow(TextFormatError);
+  });
+
+  it("06 projectText 容错投影：scene 列收为 issues，其余列照常输出（generateText 的非抛形态）", () => {
+    const story = parseStory({
+      formatVersion: 1,
+      id: "d",
+      entry: "a",
+      columns: [
+        { id: "a", kind: "flow", commands: [{ op: "say", text: "hi" }] },
+        { id: "sc", kind: "scene", elements: [] },
+      ],
+    });
+    const projection = projectText(story);
+    expect(projection.issues).toEqual([
+      "scene 列（sc）暂无文本投影（元素系统未实现）",
+    ]);
+    expect(projection.text).toContain("label a:");
+    expect(projection.text).toContain('say "hi"');
+    expect(projection.text).not.toContain("sc");
+    // 无 issues 时与 generateText 完全一致
+    const clean = parseStory({
+      formatVersion: 1,
+      id: "d",
+      columns: [
+        { id: "a", kind: "flow", commands: [{ op: "say", text: "hi" }] },
+      ],
+    });
+    expect(projectText(clean).text).toBe(generateText(clean));
+    expect(projectText(clean).issues).toEqual([]);
   });
 });
 

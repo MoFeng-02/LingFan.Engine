@@ -1298,8 +1298,13 @@ export function parseTextStory(source: string, sourceName = "story"): Story {
   };
 }
 
-/** 07-T1/T3：Story → 文本（确定性输出）。scene 列暂无文本投影（元素系统未实现）→ fail-closed */
-export function generateText(story: Story): string {
+/** 06 编辑器文本模式契约：容错投影——不可投影部分（scene 列/未知 op）收集为 issues，其余照常输出 */
+export interface TextProjection {
+  text: string;
+  issues: string[];
+}
+
+export function projectText(story: Story): TextProjection {
   const issues: string[] = [];
   const out: string[] = [];
   for (const [key, value] of Object.entries(story.defines ?? {})) {
@@ -1320,6 +1325,12 @@ export function generateText(story: Story): string {
       }
     }
   }
+  return { text: `${out.join("\n")}\n`, issues };
+}
+
+/** 07-T1/T3：Story → 文本（确定性输出）。scene 列暂无文本投影（元素系统未实现）→ fail-closed */
+export function generateText(story: Story): string {
+  const { text, issues } = projectText(story);
   if (issues.length > 0) throw new TextFormatError(issues);
-  return `${out.join("\n")}\n`;
+  return text;
 }

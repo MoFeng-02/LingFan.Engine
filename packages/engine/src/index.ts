@@ -12,6 +12,12 @@ export {
   StoryFormatError,
 } from "./data";
 export { assembleProject, ProjectAssemblyError } from "./data";
-export { generateText, parseTextStory, TextFormatError } from "./data";
+export {
+  generateText,
+  parseTextStory,
+  projectText,
+  TextFormatError,
+  type TextProjection,
+} from "./data";
 export { mergeOverlayFiles } from "./runtime/i18n";
 export { PlayerPreferences } from "./runtime/preferences";

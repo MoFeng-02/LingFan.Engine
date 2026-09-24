@@ -16,6 +16,9 @@ target
 # 运行期产物：存档由 Rust 安全层落盘（规约 05），不进版本库
 **/Resources/Saves/
 
+# 超大测试素材（>100MB）：本地提供，不进版本库（lfenpack 打包测试用）
+apps/playground/Resources/Video/m2.mp4
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -30,3 +33,4 @@ target
 /.rules.ai.md
 /.rules.md
 /agent.md
+/tmp-pack-4k
