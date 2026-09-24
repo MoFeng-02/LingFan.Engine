@@ -33,6 +33,13 @@ sha2 = "0.11.0"
 percent-encoding = "2.3.2"
 tauri-plugin-fs = "2"
 
+# 移动端 OS 凭据（K1 的 KEK 落点）：keyring 4.x 的 v1 API 只在 macOS/Windows/linux 装配 store，
+# iOS 上其 apple 后端还要求 `protected` 特性（否则 apple-native-keyring-store 直接 compile_error 拒绝编译）。
+# 这里显式引入该 store 以解锁 iOS 构建；运行期仍需按官方范式 set_default_store
+# （`apple_native_keyring_store::protected::Store`）——见 crypto.rs 的移动端装配说明。
+[target.'cfg(target_os = "ios")'.dependencies]
+apple-native-keyring-store = { version = "1", features = ["protected"] }
+
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]
