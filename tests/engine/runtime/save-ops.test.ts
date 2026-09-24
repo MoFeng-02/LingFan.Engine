@@ -6,6 +6,8 @@
  * - load-op-teleports（op load 异步传送回档内等待点）
  * - save-delete-keeps-high-water（K4：删档不动防回档基准——Rust 侧 delete_save 同锚点）
  * - save-ops-fail-closed（无 SavePort / 槽名非法 / enabled 非布尔 → engine.error，状态原样）
+ * - save-load-command-completion（命令面 save/load 完成信号 save.done/load.done：成功才发、
+ *   守卫与校验失败不发；故事 save op 的等待点落档不发——信号归属命令面）
  * SavePort 为契约替身（内存实现）；Rust 侧安全校验在 cargo 侧测（save.rs），两侧各测一半。
  */
 import { describe, expect, it, vi } from "vitest";
@@ -250,6 +252,96 @@ describe("01 §二.3 save_delete op（锚点: save-delete-keeps-high-water）", 
     h.engine.start();
     h.engine.advance();
     expect(h.errors).toContain("save-unavailable");
+    h.dispose();
+  });
+});
+
+describe("02 §三.2 命令面 save/load 完成信号（锚点: save-load-command-completion）", () => {
+  function kindsOf(h: Harness): string[] {
+    const kinds: string[] = [];
+    h.engine.onEvent((e) => kinds.push(e.payload.kind));
+    return kinds;
+  }
+
+  it("save(slot,title)：写档成功发 save.done（含槽位）；title/模式与 op 路径同构", async () => {
+    const h = makeHarness([column("a", [say("一")])]);
+    const kinds = kindsOf(h);
+    h.engine.start(); // 「一」等待 = 合法存档坐标
+    expect(h.engine.save("slot_1", "手动存")).toBe(true); // kick 立即返回
+    await vi.waitFor(() => expect(kinds).toContain("save.done"));
+    const w = h.port.writes[0]!;
+    expect(w.slot).toBe("slot_1");
+    expect(w.data.title).toBe("手动存");
+    expect(w.mode).toBe("machine-bound");
+    h.dispose();
+  });
+
+  it("save 守卫失败不发完成信号：未启动 / 槽名非法 / 无端口（E3 fail-closed）", () => {
+    const h = makeHarness([column("a", [say("一")])]);
+    const kinds = kindsOf(h);
+    expect(h.engine.save("slot_1")).toBe(false); // 未启动
+    h.engine.start();
+    expect(h.engine.save("../evil")).toBe(false); // 槽名非法
+    expect(kinds).not.toContain("save.done");
+    expect(h.port.writes.length).toBe(0);
+    const h2 = makeHarness([column("a", [say("一")])], false);
+    const kinds2 = kindsOf(h2);
+    h2.engine.start();
+    expect(h2.engine.save("slot_1")).toBe(false); // 无端口
+    expect(kinds2).not.toContain("save.done");
+    h.dispose();
+    h2.dispose();
+  });
+
+  it("load(slot)：读档重放完成发 load.done，状态与画面回到存档时刻", async () => {
+    const h = makeHarness([
+      column("a", [
+        { op: "set", key: "n", value: 1 },
+        say("一"),
+        { op: "set", key: "n", value: 2 },
+        say("二"),
+      ]),
+    ]);
+    const kinds = kindsOf(h);
+    h.engine.start(); // 「一」等待，n = 1
+    expect(h.engine.get("n")).toBe(1);
+    expect(h.engine.save("slot_1")).toBe(true);
+    await vi.waitFor(() => expect(h.port.writes.length).toBe(1));
+    h.engine.advance(); // 「二」等待，n = 2
+    expect(h.engine.get("n")).toBe(2);
+    expect(h.engine.load("slot_1")).toBe(true);
+    await vi.waitFor(() => expect(kinds).toContain("load.done"));
+    expect(h.engine.get("n")).toBe(1); // 状态回档
+    expect(h.engine.get(SYS.currentDialogText)).toBe("一"); // 画面回档（重放重建）
+    h.dispose();
+  });
+
+  it("load 失败不发完成信号：坏载荷（版本不符）/ 槽位不存在", async () => {
+    const h = makeHarness([column("a", [say("一")])]);
+    const kinds = kindsOf(h);
+    h.engine.start();
+    await h.port.write(
+      "bad",
+      JSON.stringify({ formatVersion: 99 }),
+      "machine-bound",
+    );
+    expect(h.engine.load("bad")).toBe(true); // kick 接受，失败在异步侧
+    await vi.waitFor(() => expect(h.errors).toContain("save-format"));
+    expect(h.engine.load("ghost")).toBe(true);
+    await vi.waitFor(() => expect(h.errors).toContain("load-failed"));
+    expect(kinds).not.toContain("load.done");
+    h.dispose();
+  });
+
+  it("完成信号只来自命令面：故事 save op（等待点落档）不发 save.done（作用域裁定）", async () => {
+    const h = makeHarness([
+      column("a", [say("一"), { op: "save", slot: "slot_1" }, say("二")]),
+    ]);
+    const kinds = kindsOf(h);
+    h.engine.start();
+    h.engine.advance();
+    await vi.waitFor(() => expect(h.port.writes.length).toBe(1));
+    expect(kinds).not.toContain("save.done");
     h.dispose();
   });
 });

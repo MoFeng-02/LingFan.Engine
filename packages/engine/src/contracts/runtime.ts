@@ -43,10 +43,24 @@ export interface MinigameMountPayload {
   seq: number;
 }
 
+/** 05 存档命令面完成信号：`save(slot, title)` 写档成功（UI 据此提示；写失败走 engine.error） */
+export interface SaveDonePayload {
+  kind: "save.done";
+  slot: string;
+}
+
+/** 05 存档命令面完成信号：`load(slot)` 读档并恢复完成（UI 据此同步渲染与媒体） */
+export interface LoadDonePayload {
+  kind: "load.done";
+  slot: string;
+}
+
 export type OutboundPayload =
   | EngineErrorPayload
   | NotifyPayload
   | RollbackDonePayload
+  | SaveDonePayload
+  | LoadDonePayload
   | MinigameMountPayload;
 
 /** 02 §三.1 出站统一信封：核心层出站全部 `{v, kind:'event', payload}` */

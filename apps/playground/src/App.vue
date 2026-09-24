@@ -340,6 +340,16 @@ function handleEvent({
         error.value = `小游戏异常：${String(e)}`;
         onAbort();
       });
+  } else if (payload.kind === "save.done") {
+    // 05 §五：写档成功（失败走 engine.error 分支，不提示成功）
+    toast(`已保存到 ${payload.slot}`);
+  } else if (payload.kind === "load.done") {
+    // 05 §五：读档完成（引擎已重放到存档坐标）——清错误、同步渲染与媒体
+    error.value = "";
+    syncFromEngine();
+    audioRenderer?.sync(); // 05 §四：读档恢复媒体状态（bgm 曲目 + 播放位置）
+    videoRenderer?.sync();
+    toast(`已读取 ${payload.slot}（回到存档时刻）`, 2500);
   } else if (payload.kind === "rollback.done") {
     error.value = "";
     syncFromEngine(); // 03-R4：回放完成解除输入锁并同步渲染
@@ -375,7 +385,10 @@ function restart(): void {
   videoRenderer?.dispose();
   videoPort = props.createVideoPort(reportAudioError);
   engine.dispose();
-  engine = new StoryEngine(props.story.value, { i18nPort: props.i18nPort });
+  engine = new StoryEngine(props.story.value, {
+    i18nPort: props.i18nPort,
+    savePort: props.savePort,
+  });
   bindEngine(engine);
   audioRenderer = createRenderer();
   videoRenderer = createVideo();
@@ -403,7 +416,12 @@ function restart(): void {
   engine.start();
 }
 
-engine = new StoryEngine(props.story.value, { i18nPort: props.i18nPort });
+// 05 §五：SavePort 注入引擎——存档编排（槽位校验/坐标/写读/错误出站）归核心层命令面，
+  // UI 只发 save/load 命令并反应完成信号（save.done / load.done）
+  engine = new StoryEngine(props.story.value, {
+    i18nPort: props.i18nPort,
+    savePort: props.savePort,
+  });
 bindEngine(engine);
 audioRenderer = createRenderer();
 videoRenderer = createVideo();
@@ -459,8 +477,8 @@ function setPrefTextSpeed(event: Event): void {
   );
 }
 
-// —— 05 存档：TS 编排 + SavePort 适配器（Tauri=K7 Rust 安全；浏览器演示=localStorage 兜底）——
-const savePort = props.savePort;
+// —— 05 存档：编排归引擎命令面（槽位校验/写读/错误出站都在核心层）——
+// UI 只发 save/load 命令并反应完成信号（save.done / load.done）；端口经装配通道注入引擎。
 
 function toast(text: string, duration = 1500): void {
   const id = ++notifySeq;
@@ -470,32 +488,14 @@ function toast(text: string, duration = 1500): void {
   }, duration);
 }
 
-async function saveGame(): Promise<void> {
-  const data = engine.exportSave();
-  if (data === null) return; // fail-closed：不在等待点，错误已出站
-  try {
-    await savePort.write("slot_1", JSON.stringify(data), "machine-bound");
-    toast("已保存到槽位 1");
-  } catch (e) {
-    error.value = `保存失败：${String(e)}`;
-  }
+/** 05 §五 save(slot)：引擎内校验槽位/坐标（非等待点 fail-closed 出站）→ 异步写档 → save.done */
+function saveGame(): void {
+  engine.save("slot_1");
 }
 
-async function loadGame(): Promise<void> {
-  try {
-    const payload = await savePort.read("slot_1");
-    const ok = engine.importSave(
-      JSON.parse(payload) as import("@lingfan/engine").SaveDataV1,
-    );
-    if (!ok) return; // 引擎已拒绝（fail-closed），错误横幅已出站——不得清空、不得报成功
-    error.value = "";
-    syncFromEngine();
-    audioRenderer?.sync(); // 05 §四：读档恢复媒体状态（bgm 曲目 + 播放位置）
-    videoRenderer?.sync();
-    toast("已读取槽位 1（回到存档时刻）", 2500);
-  } catch (e) {
-    error.value = `读取失败：${String(e)}`;
-  }
+/** 05 §五 load(slot)：引擎内读档 + 全量预校验 + 确定性重放 → load.done（UI 在该分支同步渲染） */
+function loadGame(): void {
+  engine.load("slot_1");
 }
 
 /** 08-U3/U8：打字机二段式点击（未完成=瞬间完成/越过停顿，完成=advance）；仅在对话等待中发 advance */

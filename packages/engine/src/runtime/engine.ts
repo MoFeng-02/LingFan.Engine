@@ -472,6 +472,7 @@ export class StoryEngine {
     const payload: SaveDataV1 = title === undefined ? data : { ...data, title };
     void this.savePort
       .write(slot, JSON.stringify(payload), this.saveMode)
+      .then(() => this.emitEvent({ kind: "save.done", slot })) // 完成信号：UI 据此提示
       .catch((e: unknown) => {
         this.fail("save-write-failed", `槽位 ${slot} 写档失败：${String(e)}`);
       });
@@ -499,7 +500,8 @@ export class StoryEngine {
       .read(slot)
       .then((raw) => {
         const data = JSON.parse(raw) as SaveDataV1;
-        this.importSave(data); // 校验失败由 importSave 发 engine.error 并返回 false
+        // 校验失败由 importSave 发 engine.error 并返回 false（此时不发完成信号）
+        if (this.importSave(data)) this.emitEvent({ kind: "load.done", slot });
       })
       .catch((e: unknown) => {
         this.fail("load-failed", `槽位 ${slot} 读取或解析失败：${String(e)}`);
@@ -636,16 +638,20 @@ export class StoryEngine {
     for (const listener of this.stateListeners) listener(change);
   }
 
+  /** 02 §三.1 出站事件统一发射：信封 `{v,kind:'event',payload}` + 广播全体监听者 */
+  private emitEvent(payload: OutboundPayload): void {
+    const event: OutboundEvent = { v: 1, kind: "event", payload };
+    for (const listener of this.eventListeners) listener(event);
+  }
+
   /** E3：engine.error 事件出站，绝不静默 */
   private fail(code: string, message: string): void {
-    const payload: OutboundPayload = {
+    this.emitEvent({
       kind: "engine.error",
       code,
       message,
       coordinate: { ...this.coord },
-    };
-    const event: OutboundEvent = { v: 1, kind: "event", payload };
-    for (const listener of this.eventListeners) listener(event);
+    });
   }
 
   /**
@@ -2420,12 +2426,7 @@ export class StoryEngine {
     this.setSystem(SYS.rollbackActive, false);
     // 03-R5：重放落点即检查点 k 的等待点——live 视为已入档，back() 才能继续向前回退
     this.liveCheckpointed = true;
-    const event: OutboundEvent = {
-      v: 1,
-      kind: "event",
-      payload: { kind: "rollback.done", coordinate: { ...this.coord } },
-    };
-    for (const listener of this.eventListeners) listener(event);
+    this.emitEvent({ kind: "rollback.done", coordinate: { ...this.coord } });
   }
 
   /** 03 §四.4 滚轮上：回退一步。live 已入档 → 退到前一个；未入档（如菜单选择后）→ 落回当前检查点（重选菜单，R5） */
