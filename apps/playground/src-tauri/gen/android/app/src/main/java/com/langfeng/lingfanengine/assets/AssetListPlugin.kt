@@ -43,7 +43,8 @@ class AssetListPlugin(private val activity: Activity) : Plugin(activity) {
         val children = activity.assets.list(path) ?: return
         for (child in children) {
             val sub = if (path.isEmpty()) child else "$path/$child"
-            val isDir = !(activity.assets.list(sub).isEmpty())
+            val grandChildren = activity.assets.list(sub)
+            val isDir = grandChildren != null && grandChildren.isNotEmpty()
             if (isDir) {
                 walk(sub, out)
             }

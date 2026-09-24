@@ -37,3 +37,6 @@ apps/playground/Resources/Video/m2.mp4
 
 # Tauri Android 构建期资源拷贝（gen 内 ~513MB，构建时自动生成；脚手架本体正常入库）
 apps/playground/src-tauri/gen/android/app/src/main/assets/Resources/
+
+# 工作区记忆（与 agent.md / 私有文档 同规：本机保留，不入版本库）
+/.workbuddy/
