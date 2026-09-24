@@ -9,11 +9,13 @@
 import { createApp, ref } from "vue";
 import {
   createFetchProjectFilesPort,
+  createNoopOrientationPort,
   createStaticResourcePort,
   createTauriEncryptedResourcePort,
   createTauriI18nPort,
   createTauriPreferencesPort,
   createTauriProjectFilesPort,
+  createTauriOrientationPort,
   createTauriSavePort,
   createWebAudioPort,
   createWebStoragePreferencesPort,
@@ -26,6 +28,8 @@ import {
   PlayerPreferences,
   type AudioPort,
   type I18nPort,
+  type OrientationMode,
+  type OrientationPort,
   type PreferencesPort,
   type ProjectFilesPort,
   type ResourcePort,
@@ -34,6 +38,7 @@ import {
   type VideoPort,
 } from "@lingfan/engine";
 import App from "./App.vue";
+import { manifestOrientation, resolveOrientationMode } from "./shell/orientation";
 
 const MANIFEST = "project.json";
 const STORIES = [
@@ -83,6 +88,34 @@ async function boot(): Promise<void> {
       : createWebStoragePreferencesPort();
   const preferences = new PlayerPreferences(preferencesPort);
   await preferences.hydrate();
+
+  // 08 §八.2 屏幕方向装配：工程默认（project.json shell.orientation）× 玩家偏好 →
+  // 壳端口。**落壳归组合根**（组件不碰平台桥接，宪法 §6）：启动即应用一次（早于内容绘制，
+  // 尽量规避首帧先竖后横），此后订阅偏好变化实时应用。未生效（平台忽略/无壳形态）
+  // 只记诊断，不视作错误（apply 的「尽力而为」契约）。
+  const orientationPort: OrientationPort =
+    import.meta.env.MODE === "tauri"
+      ? createTauriOrientationPort()
+      : createNoopOrientationPort();
+  let appliedOrientation: OrientationMode | undefined;
+  const applyOrientation = (): void => {
+    const mode = resolveOrientationMode(
+      preferences.orientation,
+      manifestOrientation(manifest),
+    );
+    if (mode === appliedOrientation) return; // 其他偏好变化（音量/速度）不重复落壳
+    appliedOrientation = mode;
+    void orientationPort.apply(mode).then(
+      (applied) => {
+        if (!applied) console.info(`[orientation] ${mode} 未被当前平台应用`);
+      },
+      (error: unknown) => {
+        console.error("[orientation] 应用失败：", error);
+      },
+    );
+  };
+  applyOrientation();
+  preferences.onChange(applyOrientation);
 
   const app = createApp(App, {
     story,

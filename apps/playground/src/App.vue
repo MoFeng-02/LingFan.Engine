@@ -6,6 +6,7 @@ import {
   type AudioChannel,
   type AudioPort,
   type I18nPort,
+  type OrientationMode,
   type PlayerPreferences,
   type ResourcePort,
   type SavePort,
@@ -477,6 +478,19 @@ function setPrefTextSpeed(event: Event): void {
   );
 }
 
+/**
+ * 08 §八.2 方向偏好：面板只写偏好（空值 = 清除 = 跟随工程默认）；
+ * 落壳（OrientationPort）归组合根——组件不碰平台桥接（宪法 §6）。
+ */
+function setPrefOrientation(event: Event): void {
+  const value = (event.target as HTMLSelectElement).value;
+  if (value === "") {
+    props.preferences.clearOrientation();
+    return;
+  }
+  props.preferences.setOrientation(value as OrientationMode);
+}
+
 // —— 05 存档：编排归引擎命令面（槽位校验/写读/错误出站都在核心层）——
 // UI 只发 save/load 命令并反应完成信号（save.done / load.done）；端口经装配通道注入引擎。
 
@@ -766,6 +780,18 @@ onUnmounted(() => {
         <span class="prefs-value"
           >{{ Math.round(prefsView.textSpeed) }} 字/秒</span
         >
+      </label>
+      <label class="prefs-row">
+        <span class="prefs-label">屏幕方向</span>
+        <select
+          :value="prefsView.orientation ?? ''"
+          @change="setPrefOrientation"
+        >
+          <option value="">跟随工程</option>
+          <option value="auto">跟随系统</option>
+          <option value="portrait">竖屏</option>
+          <option value="landscape">横屏</option>
+        </select>
       </label>
     </section>
     <p v-if="error" class="error">{{ error }}</p>

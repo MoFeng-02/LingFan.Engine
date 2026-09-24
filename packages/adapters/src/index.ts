@@ -33,3 +33,7 @@ export {
   createTauriPreferencesPort,
   createWebStoragePreferencesPort,
 } from "./preferences";
+export {
+  createNoopOrientationPort,
+  createTauriOrientationPort,
+} from "./shell";

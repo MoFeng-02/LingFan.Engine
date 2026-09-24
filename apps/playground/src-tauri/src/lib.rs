@@ -4,6 +4,7 @@ pub mod project_files;
 pub mod resource_crypto;
 pub mod resource_fs;
 pub mod save;
+pub mod shell;
 
 #[cfg(test)]
 mod bridge_check;
@@ -34,12 +35,17 @@ pub fn run() {
             save::save_write,
             save::save_read,
             save::save_list,
-            save::save_delete
+            save::save_delete,
+            shell::set_orientation
         ]);
 
     // ⑨-5 移动端供给：Kotlin AssetListPlugin（asset 递归枚举）+ AssetFs 装配（Android 专用）
     #[cfg(target_os = "android")]
     let builder = builder.plugin(resource_fs::asset_list_plugin());
+
+    // 08 §八.2 屏幕方向：Kotlin ShellPlugin 注册（Android 专用；其余平台命令走 no-op）
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(shell::android_plugin());
 
     builder
         .setup(|app| {

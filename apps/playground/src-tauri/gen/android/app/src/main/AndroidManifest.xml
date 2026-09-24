@@ -5,10 +5,13 @@
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
+    <!-- appCategory=game：叙事引擎按游戏归类 → Android 16 起 sw≥600dp 大屏忽略方向限制时的
+         游戏豁免（保留作者声明的横竖屏锁定能力；见 08 §八.2 屏幕方向） -->
     <application
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/Theme.lingfanengine"
+        android:appCategory="game"
         android:usesCleartextTraffic="${usesCleartextTraffic}">
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"

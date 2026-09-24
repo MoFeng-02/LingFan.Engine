@@ -4,6 +4,7 @@
  * fail-closed：清单、文件、columnId 唯一（F1）、入口存在性（01 §一.7）任何不符 = 整次拒绝。
  */
 import type { Story, StoryColumn } from "../contracts";
+import { isOrientationMode } from "../contracts";
 import {
   baseName,
   isSingleColumnFile,
@@ -62,6 +63,20 @@ export function assembleProject(
   }
   if (manifest.lang !== undefined && typeof manifest.lang !== "string") {
     issues.push("project.json: lang 必须为字符串");
+  }
+  // 08 §八.2 工程级壳配置（作者声明的作品形态）：方向非法即拒绝（fail-closed，不带病起航）
+  if (manifest.shell !== undefined) {
+    if (!isPlainObject(manifest.shell)) {
+      issues.push("project.json: shell 必须为对象");
+    } else {
+      const orientation = (manifest.shell as { orientation?: unknown })
+        .orientation;
+      if (orientation !== undefined && !isOrientationMode(orientation)) {
+        issues.push(
+          `project.json: shell.orientation 必须为 auto|portrait|landscape，收到 ${JSON.stringify(orientation)}`,
+        );
+      }
+    }
   }
   if (issues.length > 0) throw new ProjectAssemblyError(issues);
 

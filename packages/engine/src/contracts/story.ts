@@ -2,6 +2,7 @@
  * 01-故事格式契约（渐进子集）+ 07 工程清单。
  * op 全集按规约 01 §二渐进补齐；契约只增不改（宪法 §3.1）。
  */
+import type { ProjectShellConfig } from "./shell";
 
 /** 命令：已知 op 的负载由解析器/执行器窄化校验，未知字段/未知 op fail-closed（02-E3） */
 export interface StoryCommand {
@@ -49,6 +50,11 @@ export interface ProjectManifest {
    * 组合根据此装配加密 ResourcePort 与 Rust 供给密钥（清单恒明文——形态判定的前提）。
    */
   resourceEncryption?: boolean;
+  /**
+   * 08 §八.2 工程级壳配置：作品默认屏幕方向（缺省 = auto）。玩家偏好可覆盖，
+   * 方向不进存档/快照（壳配置非叙事语义）。
+   */
+  shell?: ProjectShellConfig;
   /** 工程级 defines：无条件 Set，先于故事文件应用（后加载覆盖） */
   defines?: Record<string, unknown>;
 }

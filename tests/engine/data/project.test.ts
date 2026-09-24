@@ -139,6 +139,27 @@ describe("assembleProject", () => {
     ).toContain("defines");
   });
 
+  it("08 §八.2 清单 shell 段：合法方向接受，非法形状/非法方向整次拒绝（fail-closed）", () => {
+    const files = new Map([["Stories/start.json", singleColumn("start")]]);
+    // 锚点: orientation-config-resolution——作者声明的作品形态随组装通过
+    for (const orientation of ["auto", "portrait", "landscape"]) {
+      const story = assembleProject(
+        { ...manifest, shell: { orientation } },
+        new Map([["Stories/start.json", singleColumn("start")]]),
+      );
+      expect(story.entry).toBe("start");
+    }
+    for (const bad of [
+      { shell: "landscape" },
+      { shell: { orientation: "diagonal" } },
+      { shell: { orientation: 90 } },
+    ]) {
+      expect(issuesOf(() => assembleProject({ ...manifest, ...bad }, files)).join("\n")).toMatch(
+        /shell/,
+      );
+    }
+  });
+
   it("坏文件整批拒绝且带文件定位", () => {
     const files = new Map<string, unknown>([
       ["Stories/bad.json", { formatVersion: 2 }],

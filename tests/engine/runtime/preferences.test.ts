@@ -218,3 +218,93 @@ describe("U10 与存档分离（锚点: preferences-separate-from-save）", () =
     expect(engine.get(SYS.autoSave)).toBeUndefined(); // 引擎状态零污染旁证
   });
 });
+
+describe("08 §八.2 屏幕方向偏好（锚点: orientation-preference）", () => {
+  it("缺省 = 未设置：默认偏好与快照都不含 orientation 键（可回落到工程默认）", () => {
+    const prefs = new PlayerPreferences();
+    expect(prefs.orientation).toBeUndefined();
+    expect("orientation" in prefs.snapshot()).toBe(false);
+    expect(prefs.snapshot()).toEqual(DEFAULT_PLAYER_PREFS);
+  });
+
+  it("三态写入生效并计入快照；同值重复设置不触发变更", () => {
+    const prefs = new PlayerPreferences();
+    const seen: Array<string | undefined> = [];
+    prefs.onChange((snap) => seen.push(snap.orientation));
+    prefs.setOrientation("landscape");
+    expect(prefs.orientation).toBe("landscape");
+    expect(prefs.snapshot().orientation).toBe("landscape");
+    prefs.setOrientation("landscape"); // 同值 no-op
+    expect(seen).toEqual(["landscape"]);
+    prefs.setOrientation("auto");
+    expect(seen).toEqual(["landscape", "auto"]);
+  });
+
+  it("非法模式忽略（fail-closed）：不猜测用户意图，状态原样", () => {
+    const prefs = new PlayerPreferences();
+    prefs.setOrientation("landscape");
+    // 运行时越界输入（UI 之外调用方/构造异常载荷）
+    for (const bad of ["", "Landscape", "sensor", "  ", null, 42]) {
+      prefs.setOrientation(bad as never);
+      expect(prefs.orientation).toBe("landscape");
+    }
+  });
+
+  it("clearOrientation 回到未设置（面板「跟随工程」项），清除后键消失", () => {
+    const prefs = new PlayerPreferences();
+    prefs.setOrientation("portrait");
+    prefs.clearOrientation();
+    expect(prefs.orientation).toBeUndefined();
+    expect("orientation" in prefs.snapshot()).toBe(false);
+    prefs.clearOrientation(); // 幂等
+    expect(prefs.orientation).toBeUndefined();
+  });
+
+  it("畸形持久化载荷：非法 orientation 不采纳（未设置），其余合法字段照常应用", async () => {
+    const port = new MemoryPrefsPort({
+      v: 1,
+      volumes: { ...DEFAULT_PLAYER_PREFS.volumes },
+      muted: true,
+      textSpeed: 45,
+      orientation: "diagonal" as never,
+    });
+    const prefs = new PlayerPreferences(port);
+    await prefs.hydrate();
+    expect(prefs.orientation).toBeUndefined(); // 非法值 → 未设置（跟随工程默认）
+    expect(prefs.textSpeed).toBe(45);
+    expect(prefs.muted).toBe(true);
+  });
+
+  it("合法持久化载荷：orientation 随 hydrate 生效（跨启动记忆）", async () => {
+    const port = new MemoryPrefsPort({
+      v: 1,
+      volumes: { ...DEFAULT_PLAYER_PREFS.volumes },
+      muted: false,
+      textSpeed: 30,
+      orientation: "landscape",
+    });
+    const prefs = new PlayerPreferences(port);
+    await prefs.hydrate();
+    expect(prefs.orientation).toBe("landscape");
+    expect(prefs.snapshot().orientation).toBe("landscape");
+  });
+
+  it("方向偏好同样不进存档（U10：与存档分离）", () => {
+    const prefs = new PlayerPreferences();
+    prefs.setOrientation("portrait");
+    const engine = new StoryEngine(
+      parseStory({
+        formatVersion: 1,
+        id: "t",
+        entry: "a",
+        columns: [
+          { id: "a", kind: "flow", commands: [{ op: "say", text: "x" }] },
+        ],
+      }),
+    );
+    engine.start();
+    const payload = JSON.stringify(engine.exportSave());
+    expect(payload).not.toContain("orientation");
+    expect(payload).not.toContain("portrait");
+  });
+});

@@ -6,3 +6,4 @@ export * from "./save";
 export * from "./platform";
 export * from "./preferences";
 export * from "./minigame";
+export * from "./shell";
