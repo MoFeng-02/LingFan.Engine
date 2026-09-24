@@ -34,3 +34,6 @@ apps/playground/Resources/Video/m2.mp4
 /.rules.md
 /agent.md
 /tmp-*
+
+# Tauri Android 构建期资源拷贝（gen 内 ~513MB，构建时自动生成；脚手架本体正常入库）
+apps/playground/src-tauri/gen/android/app/src/main/assets/Resources/
