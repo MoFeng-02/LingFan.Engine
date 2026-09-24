@@ -213,7 +213,12 @@ pub fn asset_list_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             let asset_fs = asset::AssetFs::new(
                 Box::new(move |path| {
                     use tauri_plugin_fs::{FsExt, OpenOptions};
-                    fs_app.fs().open(path, OpenOptions::default())
+                    // 只读打开：`OpenOptions` 的 `read: true` 只是 serde 反序列化默认，
+                    // derive(Default) 全为 false——Android 侧 android_mode() 会退化成空串
+                    // 并被 ParcelFileDescriptor.parseMode 拒绝（Bad mode），故显式置 read。
+                    let mut opts = OpenOptions::new();
+                    opts.read(true);
+                    fs_app.fs().open(path, opts)
                 }),
                 Box::new(move |rel| {
                     handle
