@@ -20,19 +20,17 @@ const defaultInvoke: TauriInvoke = async <T>(
   return invoke<T>(command, args);
 };
 
-/** convertFileSrc 生成跨平台自定义协议 URL（Windows/Linux = http://lfstream.localhost/…） */
-const defaultToStreamUrl = async (file: string): Promise<string> => {
-  const { convertFileSrc } = await import("@tauri-apps/api/core");
-  return convertFileSrc(file, "lfstream");
-};
-
 interface StreamPayload {
-  file: string;
+  /** LFEN2 v2 分块形态标记（05 §二.1）：协议按 Range 按需解密，明文不落盘 */
+  v2?: string;
+  /** v1 token 缓存形态标记 */
+  file?: string;
+  /** lfstream 协议 URL（Rust 侧按平台构造：Windows/Android = http://lfstream.localhost/…） */
+  url?: string;
 }
 
 export function createTauriEncryptedResourcePort(
   invoke: TauriInvoke = defaultInvoke,
-  toStreamUrl: (file: string) => Promise<string> = defaultToStreamUrl,
 ): ResourcePort {
   return {
     async resolve(id: string): Promise<string> {
@@ -44,10 +42,10 @@ export function createTauriEncryptedResourcePort(
       } catch {
         throw new Error(`decrypt_resource 负载异常（非 JSON）：${raw.slice(0, 64)}`);
       }
-      if (typeof payload?.file !== "string" || payload.file === "") {
-        throw new Error("decrypt_resource 负载缺 file 字段");
+      if (typeof payload?.url === "string" && payload.url !== "") {
+        return payload.url; // 平台 URL 构造归 Rust（协议段编码 + wry 形态差异）
       }
-      return toStreamUrl(payload.file);
+      throw new Error("decrypt_resource 负载缺 url 字段");
     },
     release(): void {
       // 临时流缓存生命周期归 Rust（应用启动清理）：URL 非 blob 形态，无需 revoke

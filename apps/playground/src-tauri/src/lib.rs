@@ -13,18 +13,10 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        // ⑨-4c 大资源流式：lfstream 协议把临时流缓存以 Range/206 提供给 webview 媒体元素
-        // （video/audio seek 不再整段过 IPC）；缓存文件名 = hex64.ext 信任边界（协议入口校验）。
+        // ⑨-4c 大资源流式：lfstream 协议双路径——v2 分块按需解密（Range/206，明文不落盘）
+        // + v1 token 缓存；缓存文件名信任边界（hex64.ext / v2/逻辑路径 validate）在 handler 内。
         .register_uri_scheme_protocol("lfstream", |ctx, request| {
-            let app_data = ctx
-                .app_handle()
-                .path()
-                .app_data_dir()
-                .unwrap_or_else(|_| std::path::PathBuf::from("lfstream-orphan"));
-            resource_crypto::lfstream_protocol_handler(
-                request,
-                &resource_crypto::tmp_stream_dir(&app_data),
-            )
+            resource_crypto::lfstream_protocol_handler(request, ctx.app_handle())
         })
         .invoke_handler(tauri::generate_handler![
             project_files::project_files,
