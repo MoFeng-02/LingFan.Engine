@@ -18,6 +18,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+# iOS 原生插件（Swift 包）的编译与链接：build.rs 用 tauri_utils::build::link_apple_library，
+# 与 tauri-plugin 的 ios_path() 同一实现（feature 取 build-2 以与 tauri-build 的依赖集一致）
+tauri-utils = { version = "2.9.3", features = ["build-2"] }
 
 [dependencies]
 tauri = { version = "2", features = [] }

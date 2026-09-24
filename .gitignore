@@ -40,3 +40,6 @@ apps/playground/src-tauri/gen/android/app/src/main/assets/Resources/
 
 # 工作区记忆（与 agent.md / 私有文档 同规：本机保留，不入版本库）
 /.workbuddy/
+
+# iOS 插件 Swift 包的 tauri-api 拷贝（build.rs 生成，与 gen/ 同类产物）
+/apps/playground/src-tauri/.tauri/
