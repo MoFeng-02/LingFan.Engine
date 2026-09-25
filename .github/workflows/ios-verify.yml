@@ -39,7 +39,8 @@ jobs:
       - name: Rust 工具链（含 iOS 模拟器目标）
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-ios-sim,aarch64-apple-ios
+          # project.yml 固定 ARCHS=[arm64, x86_64]：模拟器两个切片都要有对应 Rust 静态库
+          targets: aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-ios
 
       - name: Rust 缓存
         uses: Swatinem/rust-cache@v2
@@ -81,7 +82,12 @@ jobs:
       - name: 安装 tauri-cli
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo binstall tauri-cli --version "^2" --no-confirm
+        run: |
+          set -euo pipefail
+          # 必须显式指定 aarch64 资产：默认可能取到 x86_64-apple-darwin，其派生的 brew 调用会被
+          # Homebrew 判定为 Rosetta 而拒绝安装（runner 实为 arm64）
+          cargo binstall tauri-cli --version "^2" --target aarch64-apple-darwin --no-confirm
+          file -b "$(command -v cargo-tauri)" | grep -q arm64 || { echo "::error::cargo-tauri 不是 arm64 二进制：$(file -b "$(command -v cargo-tauri)")"; exit 1; }
 
       # 本机（Windows）无法编译 target_os = "ios" 的分支——这一步是 ⑨-7 唯一的 Rust 侧编译验证
       # 失败时把错误塞进 check-run annotation：无凭据环境下 Workflow 日志不可下载，annotation 可匿名读
@@ -127,14 +133,14 @@ jobs:
         working-directory: apps/playground
         run: |
           set +e
-          cargo tauri ios build --debug --target aarch64-sim > /tmp/ios-build.log 2>&1
+          cargo tauri ios build --debug --target aarch64-sim x86_64 > /tmp/ios-build.log 2>&1
           status=$?
           # 去 ANSI + 只留诊断行（<200 字符）：命令回显里含 -Werror 会污染 "error" 过滤
           sed -e 's/\x1b\[[0-9;]*m//g' /tmp/ios-build.log | tail -60
           if [ "$status" -ne 0 ]; then
             body=$(sed -e 's/\x1b\[[0-9;]*m//g' /tmp/ios-build.log \
-              | awk 'length($0) < 200 && (/error:|Undefined symbols|BUILD FAILED|fatal error|reason: |The following build commands failed/)' \
-              | tail -14 | sed -e 's/%/%25/g' -e 's/\r//g' | awk '{printf "%s%%0A", $0}')
+              | awk 'length($0) < 800 && (/error:|Undefined symbols|BUILD FAILED|fatal error|reason: |The following build commands failed|library not found|could not find/)' \
+              | tail -12 | cut -c1-400 | sed -e 's/%/%25/g' -e 's/\r//g' | awk '{printf "%s%%0A", $0}')
             [ -n "$body" ] || body="（未提取到诊断行，见 step 输出末尾）"
             echo "::error title=iOS 构建失败::$body"
           fi
