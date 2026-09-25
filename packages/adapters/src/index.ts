@@ -37,3 +37,8 @@ export {
   createNoopOrientationPort,
   createTauriOrientationPort,
 } from "./shell";
+export {
+  createHostPort,
+  readTauriPlatform,
+  type HostPortOptions,
+} from "./host";
