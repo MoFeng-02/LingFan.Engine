@@ -29,6 +29,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 aes-gcm = "0.11.1"
 keyring = "4.2.0"
+# 凭据访问统一走 keyring-core（keyring 的 v1 facade 编译期拒绝 iOS/Android，见 crypto.rs 说明）；
+# 桌面亦经它取条目——由 keyring 的 v1 装配把平台 store 设为默认（无额外成本，keyring 本就依赖它）
+keyring-core = "1.0.0"
 base64 = "0.23.1"
 getrandom = "0.4.3"
 notify = "8.2.0"
@@ -36,12 +39,16 @@ sha2 = "0.11.0"
 percent-encoding = "2.3.2"
 tauri-plugin-fs = "2"
 
-# 移动端 OS 凭据（K1 的 KEK 落点）：keyring 4.x 的 v1 API 只在 macOS/Windows/linux 装配 store，
-# iOS 上其 apple 后端还要求 `protected` 特性（否则 apple-native-keyring-store 直接 compile_error 拒绝编译）。
-# 这里显式引入该 store 以解锁 iOS 构建；运行期仍需按官方范式 set_default_store
-# （`apple_native_keyring_store::protected::Store`）——见 crypto.rs 的移动端装配说明。
+# 移动端 OS 凭据（K1 的 KEK 落点）：keyring 4.x 的 **v1 facade 在编译期就拒绝 iOS/Android**
+# （`keyring::Entry::new` 只看平台判定，与是否自设 store 无关），故移动端直接用 keyring-core
+# 并显式 `set_default_store`（见 crypto.rs::ensure_credential_store）。
+# iOS 额外要求 `protected` 特性（否则 apple-native-keyring-store 直接 compile_error 拒绝编译）。
+# Android 的 ndk-context 由 Tauri 侧已初始化（官方 README 明示 Tauri Mobile 已提供），无需额外 Kotlin 类。
 [target.'cfg(target_os = "ios")'.dependencies]
 apple-native-keyring-store = { version = "1", features = ["protected"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+android-native-keyring-store = "1"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
