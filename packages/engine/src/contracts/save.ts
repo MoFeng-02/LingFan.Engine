@@ -17,6 +17,8 @@ export interface SaveDataV1 {
   functions: [string, { params: string[]; body: StoryCommand[] }][];
   /** 03-R8：检查点序列随档，读档后可继续回溯 */
   cursor: number;
+  /** ⑨-12 存档缩略图（data URL，槽位面板展示用；可选——旧档无此字段） */
+  screenshot?: string;
   history: Array<{
     coord: ColumnCoordinate;
     state: [string, unknown][];
@@ -26,6 +28,14 @@ export interface SaveDataV1 {
 
 /** 05 §五 K5 存档模式：MachineBound 默认（跨机不可解）/ Portable 可选（仅存档） */
 export type SaveMode = "machine-bound" | "portable";
+
+/** ⑨-12 存档附加项（引擎 save 的可选载荷增强；undefined 字段不进档） */
+export interface SaveOptions {
+  /** 存档标题（槽位面板展示） */
+  title?: string;
+  /** 存档缩略图（data URL，由宿主合成——渲染层截图策略归宿主） */
+  screenshot?: string;
+}
 
 /** 槽位摘要（Rust save_list 头部解析，适配器已转驼峰） */
 export interface SlotSummary {

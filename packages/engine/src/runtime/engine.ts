@@ -20,6 +20,7 @@ import type {
   Story,
   StoryColumn,
   StoryCommand,
+  SaveOptions,
   ValueChanged,
   VideoCommand,
 } from "../contracts";
@@ -448,7 +449,7 @@ export class StoryEngine {
    * 02 §三.2 会话命令 save：编排写档（05 §五——载荷编排在 TS，安全在 Rust，K7）。
    * 非等待语义：kick 异步写档后立即返回；写档失败经 engine.error 可观测（不吞）。
    */
-  save(slot: string, title?: string): boolean {
+  save(slot: string, options?: SaveOptions): boolean {
     if (!this.started) {
       this.fail("save-invalid", "故事尚未启动");
       return false;
@@ -469,7 +470,7 @@ export class StoryEngine {
     }
     const data = this.exportSave();
     if (data === null) return false; // exportSave 已发 engine.error（不在等待点）
-    const payload: SaveDataV1 = title === undefined ? data : { ...data, title };
+    const payload: SaveDataV1 = { ...data, ...options };
     void this.savePort
       .write(slot, JSON.stringify(payload), this.saveMode)
       .then(() => this.emitEvent({ kind: "save.done", slot })) // 完成信号：UI 据此提示

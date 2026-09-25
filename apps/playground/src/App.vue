@@ -10,6 +10,7 @@ import {
   type OrientationMode,
   type PlayerPreferences,
   type ResourcePort,
+  type SaveDataV1,
   type SavePort,
   type Story,
   type VideoPort,
@@ -27,6 +28,8 @@ import {
   type VideoRenderer,
 } from "@lingfan/ui";
 import type { LayerZTable } from "./shell/layers";
+import { slotIds, type SavesConfig } from "./shell/saves";
+import { captureSaveThumbnail, stripHtml } from "./shell/thumbnail";
 
 // —— 08-U1：核心层只写状态，UI 只经 ValueChanged 订阅渲染 ——
 // 工程与平台端口都由组合根（main.ts）装配注入：本组件只消费契约，不知道任何具体实现
@@ -37,6 +40,8 @@ const props = defineProps<{
   host: HostInfo;
   /** ⑨-11 层级（z 序）：内建默认 × 工程覆盖（shell.layers），组合根解析后注入 */
   layerZ: LayerZTable;
+  /** ⑨-12 存档壳配置：槽位数与缩略图参数（project.json shell.saves 可覆盖） */
+  saves: SavesConfig;
   savePort: SavePort;
   resourcePort: ResourcePort;
   /** 01 §四.3 I18N overlay 供给（可选：浏览器形态未装配 = 原文直出） */
@@ -508,14 +513,73 @@ function toast(text: string, duration = 1500): void {
   }, duration);
 }
 
-/** 05 §五 save(slot)：引擎内校验槽位/坐标（非等待点 fail-closed 出站）→ 异步写档 → save.done */
-function saveGame(): void {
-  engine.save("slot_1");
+/**
+ * ⑨-12 多槽位：存/读共用槽位面板（槽位数与缩略图参数来自 shell.saves 配置）。
+ * 打开时 list() + 逐槽 read() 取标题/缩略图（读取失败按空槽呈现，点选时再走引擎 fail-closed）。
+ * 存 = 合成缩略图（canvas 卡片）+ engine.save(slot, { screenshot })；读 = engine.load(slot)。
+ */
+type SlotPanelMode = "save" | "load";
+interface SlotView {
+  id: string;
+  label: string;
+  empty: boolean;
+  timestamp?: number;
+  title?: string;
+  screenshot?: string;
+}
+const slotPanel = ref<SlotPanelMode | null>(null);
+const slotViews = ref<SlotView[]>([]);
+
+async function openSlotPanel(mode: SlotPanelMode): Promise<void> {
+  slotPanel.value = mode;
+  const summaries = await props.savePort.list().catch(() => []);
+  const byId = new Map(summaries.map((s) => [s.slot, s]));
+  const views: SlotView[] = [];
+  for (const id of slotIds(props.saves.slots)) {
+    const summary = byId.get(id);
+    let title: string | undefined;
+    let screenshot: string | undefined;
+    if (summary !== undefined) {
+      try {
+        const parsed = JSON.parse(await props.savePort.read(id)) as Partial<SaveDataV1>;
+        title = typeof parsed.title === "string" ? parsed.title : undefined;
+        screenshot =
+          typeof parsed.screenshot === "string" ? parsed.screenshot : undefined;
+      } catch {
+        // 读取失败按空槽呈现（真实读档失败由引擎 fail-closed 上报）
+      }
+    }
+    views.push({
+      id,
+      label: id.replace("slot_", "槽位 "),
+      empty: summary === undefined,
+      timestamp: summary?.timestamp,
+      title,
+      screenshot,
+    });
+  }
+  slotViews.value = views;
 }
 
-/** 05 §五 load(slot)：引擎内读档 + 全量预校验 + 确定性重放 → load.done（UI 在该分支同步渲染） */
-function loadGame(): void {
-  engine.load("slot_1");
+async function chooseSlot(view: SlotView): Promise<void> {
+  const mode = slotPanel.value;
+  slotPanel.value = null;
+  if (mode === "save") {
+    const shot = captureSaveThumbnail({
+      width: props.saves.thumbnail.width,
+      height: props.saves.thumbnail.height,
+      quality: props.saves.thumbnail.quality,
+      showText: props.saves.thumbnail.showText,
+      speaker: dialogView.value.speakerHtml
+        ? stripHtml(dialogView.value.speakerHtml)
+        : undefined,
+      text: stripHtml(dialogView.value.bodyHtml),
+      timestamp: Date.now(),
+    });
+    engine.save(view.id, { screenshot: shot }); // 标题沿用 save op 参数（如有）
+  } else if (mode === "load") {
+    engine.load(view.id);
+  }
 }
 
 /** 08-U3/U8：打字机二段式点击（未完成=瞬间完成/越过停顿，完成=advance）；仅在对话等待中发 advance */
@@ -602,10 +666,10 @@ onUnmounted(() => {
       </button>
       <!-- 05 存档：TS 编排 + SavePort（Tauri=加密在 Rust；浏览器演示=localStorage） -->
       <div class="save-load">
-        <button type="button" title="保存到槽位 1" @click.stop="saveGame">
+        <button type="button" title="保存到槽位" @click.stop="openSlotPanel('save')">
           存
         </button>
-        <button type="button" title="读取槽位 1" @click.stop="loadGame">
+        <button type="button" title="读取槽位" @click.stop="openSlotPanel('load')">
           读
         </button>
       </div>
@@ -830,6 +894,27 @@ onUnmounted(() => {
         <span class="prefs-value">{{ host.os }} · {{ host.form }}</span>
       </label>
     </section>
+    <!-- ⑨-12 多槽位面板（存/读共用；槽位数 = shell.saves.slots，缩略图随档存储） -->
+    <section v-if="slotPanel" class="history-panel saves-panel" @click.stop>
+      <p class="layer-prompt">{{ slotPanel === "save" ? "保存到槽位" : "读取槽位" }}</p>
+      <div class="slot-grid">
+        <button
+          v-for="v in slotViews"
+          :key="v.id"
+          type="button"
+          class="slot-cell"
+          @click.stop="chooseSlot(v)"
+        >
+          <img v-if="v.screenshot" :src="v.screenshot" alt="" />
+          <span v-else class="slot-empty">空</span>
+          <span class="slot-label">{{ v.label }}</span>
+          <span v-if="v.title" class="slot-title">{{ v.title }}</span>
+          <span v-if="v.timestamp" class="slot-time">{{
+            new Date(v.timestamp).toLocaleString()
+          }}</span>
+        </button>
+      </div>
+    </section>
     <p v-if="error" class="error">{{ error }}</p>
   </main>
 </template>
@@ -846,6 +931,53 @@ body,
 </style>
 
 <style scoped>
+.saves-panel {
+  width: min(92vw, 560px);
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.slot-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid #4448;
+  border-radius: 10px;
+  background: #16161f;
+  color: #a9b1d6;
+  font-size: 0.8em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.slot-cell:hover {
+  border-color: #7aa2f7;
+}
+
+.slot-cell img {
+  width: 100%;
+  border-radius: 6px;
+}
+
+.slot-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  border: 1px dashed #4448;
+  border-radius: 6px;
+  color: #565f89;
+}
+
+.slot-title {
+  color: #e6e6f0;
+}
+
 .stage {
   position: fixed;
   inset: 0;

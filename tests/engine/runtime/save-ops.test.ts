@@ -267,7 +267,7 @@ describe("02 §三.2 命令面 save/load 完成信号（锚点: save-load-comman
     const h = makeHarness([column("a", [say("一")])]);
     const kinds = kindsOf(h);
     h.engine.start(); // 「一」等待 = 合法存档坐标
-    expect(h.engine.save("slot_1", "手动存")).toBe(true); // kick 立即返回
+    expect(h.engine.save("slot_1", { title: "手动存" })).toBe(true); // kick 立即返回
     await vi.waitFor(() => expect(kinds).toContain("save.done"));
     const w = h.port.writes[0]!;
     expect(w.slot).toBe("slot_1");

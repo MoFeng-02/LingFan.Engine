@@ -42,6 +42,7 @@ import {
 } from "@lingfan/engine";
 import App from "./App.vue";
 import { resolveLayerZ, type LayerZTable } from "./shell/layers";
+import { resolveSavesConfig, type SavesConfig } from "./shell/saves";
 import { manifestOrientation, resolveOrientationMode } from "./shell/orientation";
 
 const MANIFEST = "project.json";
@@ -80,6 +81,8 @@ async function boot(): Promise<void> {
   // ⑨-11 层级（z 序）：内建默认 × 工程覆盖（project.json shell.layers）——层级不写死。
   // 视频适配器与舞台各层只消费解析结果（App 经 props 注入）。
   const layerZ: LayerZTable = resolveLayerZ(manifest);
+  // ⑨-12 存档壳配置：槽位数与缩略图参数（project.json shell.saves 可覆盖）
+  const saves: SavesConfig = resolveSavesConfig(manifest);
   const createAudioPort = (onError: (message: string) => void): AudioPort =>
     createWebAudioPort({ onError });
   const createVideoPort = (onError: (message: string) => void): VideoPort =>
@@ -136,6 +139,7 @@ async function boot(): Promise<void> {
     story,
     host,
     layerZ,
+    saves,
     savePort,
     resourcePort,
     i18nPort,
