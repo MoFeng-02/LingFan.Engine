@@ -106,15 +106,36 @@ jobs:
       # 构建期编译并链接——**不需要**复制进 gen/apple 或重跑 xcodegen（Rust 先于 app Swift 链接，
       # 放 Xcode 工程 Sources 反而会 Undefined symbol _init_plugin_shell）。
 
+      - name: 诊断环境与工程架构设置（排错用；以 notice annotation 回传，匿名可读）
+        working-directory: apps/playground/src-tauri
+        run: |
+          set +e
+          {
+            echo "uname=$(uname -m) proc_translated=$(sysctl -n sysctl.proc_translated 2>/dev/null || echo n/a)"
+            echo "sw_vers=$(sw_vers -productVersion 2>/dev/null) xcodebuild=$(xcodebuild -version 2>/dev/null | head -1)"
+            echo "brew=$(brew --prefix 2>/dev/null) pod=$(command -v pod) xcodegen=$(command -v xcodegen)"
+            echo "cargo-tauri=$(command -v cargo-tauri) $(file -b "$(command -v cargo-tauri)" 2>/dev/null | cut -c1-70)"
+            echo "rustc_host=$(rustc -vV | sed -n 's/^host: //p')"
+            echo "--- gen/apple/project.yml 架构相关 ---"
+            grep -nE "ARCHS|EXCLUDED_ARCHS|ONLY_ACTIVE_ARCH|deploymentTarget|iOS:" gen/apple/project.yml 2>/dev/null | head -12
+          } > /tmp/ios-diag.log 2>&1
+          cat /tmp/ios-diag.log
+          body=$(sed -e 's/\x1b\[[0-9;]*m//g' /tmp/ios-diag.log | awk '{printf "%s%%0A", $0}')
+          echo "::notice title=iOS 环境诊断::$body"
+
       - name: 构建 iOS 模拟器 app（debug，免签名）
         working-directory: apps/playground
         run: |
           set +e
           cargo tauri ios build --debug --target aarch64-sim > /tmp/ios-build.log 2>&1
           status=$?
-          tail -60 /tmp/ios-build.log
+          # 去 ANSI + 只留诊断行（<200 字符）：命令回显里含 -Werror 会污染 "error" 过滤
+          sed -e 's/\x1b\[[0-9;]*m//g' /tmp/ios-build.log | tail -60
           if [ "$status" -ne 0 ]; then
-            body=$(grep -E "error|Error|Undefined|failed|ld:" /tmp/ios-build.log | tail -25 | sed -e 's/%/%25/g' -e 's/\r//g' | awk '{printf "%s%%0A", $0}')
+            body=$(sed -e 's/\x1b\[[0-9;]*m//g' /tmp/ios-build.log \
+              | awk 'length($0) < 200 && (/error:|Undefined symbols|BUILD FAILED|fatal error|reason: |The following build commands failed/)' \
+              | tail -14 | sed -e 's/%/%25/g' -e 's/\r//g' | awk '{printf "%s%%0A", $0}')
+            [ -n "$body" ] || body="（未提取到诊断行，见 step 输出末尾）"
             echo "::error title=iOS 构建失败::$body"
           fi
           exit "$status"
