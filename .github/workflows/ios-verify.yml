@@ -146,6 +146,23 @@ jobs:
           fi
           exit "$status"
 
+      - name: 产物结构自述（白屏类问题验尸用；notice annotation 匿名可读）
+        working-directory: apps/playground/src-tauri
+        run: |
+          set +e
+          app=$(find gen/apple/build -maxdepth 3 -name "*.app" -type d | head -1)
+          {
+            echo "APP=$app"
+            echo "--- 顶层 ---"
+            ls -1 "$app" 2>/dev/null | head -30
+            echo "--- index.html / js / assets（证明前端是否打进去）---"
+            find "$app" -maxdepth 4 \( -name "index.html" -o -name "*.js" -o -name "assets" -o -name "dist" \) 2>/dev/null | sed "s|$app|<app>|" | head -20
+            echo "--- 资源目录 ---"
+            find "$app" -maxdepth 3 -type d \( -name "Resources" -o -name "_up_" \) 2>/dev/null | sed "s|$app|<app>|" | head -10
+          } > /tmp/ios-app-structure.txt 2>&1
+          cat /tmp/ios-app-structure.txt
+          echo "::notice title=iOS 产物结构::$(awk '{printf "%s%%0A", $0}' /tmp/ios-app-structure.txt | cut -c1-6000)"
+
       - name: 列出构建产物（定位排错用）
         working-directory: apps/playground/src-tauri
         run: find gen/apple/build -maxdepth 4 -name "*.app" -o -maxdepth 4 -name "*.a" 2>/dev/null | head -20 || true
@@ -185,11 +202,23 @@ jobs:
           fi
 
           xcrun simctl io "$udid" screenshot /tmp/ios-smoke.png
-          # 证据清单输出（判读归人工/视觉：截图应显示工程内容而非「工程加载失败」）
+
+          # 启动期系统日志（WebKit 资源加载错误/Rust stderr 都在这）：白屏类问题靠它定位
+          xcrun simctl spawn "$udid" log show --last 2m --style compact \
+            --predicate 'process == "lingfanengine" OR eventMessage CONTAINS "lingfanengine"' \
+            > /tmp/ios-oslog.txt 2>&1 || true
+
           echo "=== 冒烟证据 ==="
           ls -la /tmp/ios-smoke.png
           echo "=== App 控制台（末尾 40 行）==="
           tail -40 /tmp/ios-launch.log || true
+          {
+            echo "--- launch 控制台（末尾 25 行）---"
+            tail -25 /tmp/ios-launch.log 2>/dev/null
+            echo "--- os_log 过滤（Failed to load / WebKit / error / lfen）---"
+            grep -aiE "failed to load|WebKit|error|exception|lfen|panic|not found" /tmp/ios-oslog.txt 2>/dev/null | tail -25
+          } > /tmp/ios-smoke-diag.txt
+          echo "::notice title=iOS 冒烟诊断::$(awk '{printf "%s%%0A", $0}' /tmp/ios-smoke-diag.txt | cut -c1-6000)"
 
       - name: 上传冒烟证据
         if: always()
