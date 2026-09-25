@@ -60,6 +60,22 @@ class ShellPlugin: Plugin {
         invoke.reject("视图控制器不可用")
         return
       }
+      #if DEBUG
+        // 白屏类问题的决定性证据：WebView 的 view 尺寸与子视图树（0×0 / 缺失 = 尺寸或层级问题；
+        // 满屏而画面空白 = DOM/CSS 渲染问题）。随 os_log 带出，无需下载产物即可判读。
+        let subviews = viewController.view.subviews.map {
+          "\(type(of: $0))[\(NSCoder.string(for: $0.frame))]"
+        }.joined(separator: " ")
+        NSLog(
+          "[lfen] orientation mode=%@ vc=%@ viewFrame=%@ bounds=%@ subviews(%d): %@",
+          args.mode,
+          String(describing: type(of: viewController)),
+          NSCoder.string(for: viewController.view.frame),
+          NSCoder.string(for: viewController.view.bounds),
+          viewController.view.subviews.count,
+          subviews
+        )
+      #endif
       self?.installOrientationOverride(on: viewController)
       self?.applyMask(mask, on: viewController)
       invoke.resolve(["applied": true])

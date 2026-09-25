@@ -221,8 +221,10 @@ jobs:
             echo "alive=$alive shot=$(ls -la /tmp/ios-smoke.png 2>/dev/null | awk '{print $5}')"
             echo "--- launch 控制台（末尾 40 行）---"
             tail -40 /tmp/ios-launch.log 2>/dev/null
-            echo "--- os_log 过滤（崩溃/断言/WebKit/lfen/error）---"
-            grep -aiE "fatal|crash|uncaught|assert|exception|panic|lfen|failed to load|WebKit|error" /tmp/ios-oslog.txt 2>/dev/null | tail -30
+            echo "--- lfen 标记（Rust 命令 / Swift 插件视图树）---"
+            grep -a "lfen" /tmp/ios-oslog.txt 2>/dev/null | tail -15
+            echo "--- os_log 过滤（崩溃/断言/WebKit/error；末 20 行）---"
+            grep -aiE "fatal|crash|uncaught|assert|exception|panic|failed to load|WebKit|error" /tmp/ios-oslog.txt 2>/dev/null | tail -20
           } > /tmp/ios-smoke-diag.txt
           cat /tmp/ios-smoke-diag.txt
           echo "::notice title=iOS 冒烟诊断::$(awk '{printf "%s%%0A", $0}' /tmp/ios-smoke-diag.txt | cut -c1-6000)"
