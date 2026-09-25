@@ -63,6 +63,16 @@ jobs:
       # tauri ios init 会自检 Apple 依赖（xcodegen / libimobiledevice / cocoapods），缺了它会自己
       # 调 `brew reinstall`——而那次调用处在 Rosetta(x86_64) 上下文，brew 会拒绝装进 ARM 前缀
       # （/opt/homebrew）而失败。这里先用 `arch -arm64` 装好，让自检直接通过、不再触发它自己装。
+      # 必须先构建前端：Tauri 在编译期把 `frontendDist` 嵌进 Rust 静态库；若先跑 cargo check
+      # （本步之后）再构建前端，产物里嵌的是空/旧资源 → 应用启动后白屏（无任何 JS 可执行）
+      - name: 预构建前端（供 Rust 编译期嵌入）
+        working-directory: apps/playground
+        run: |
+          set -euo pipefail
+          pnpm build --mode tauri
+          test -f dist/index.html || { echo "::error::dist/index.html 缺失"; exit 1; }
+          ls -la dist | head -10
+
       - name: 安装 iOS 工程工具（含 tauri 自检的 Apple 依赖）
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
