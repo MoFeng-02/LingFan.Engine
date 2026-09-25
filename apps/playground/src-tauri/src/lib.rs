@@ -1,4 +1,5 @@
 pub mod crypto;
+pub mod diagnostics;
 pub mod preferences;
 pub mod project_files;
 pub mod resource_crypto;
@@ -36,7 +37,8 @@ pub fn run() {
             save::save_read,
             save::save_list,
             save::save_delete,
-            shell::set_orientation
+            shell::set_orientation,
+            diagnostics::lfen_diag
         ]);
 
     // ⑨-5 移动端供给：Kotlin AssetListPlugin（asset 递归枚举）+ AssetFs 装配（Android 专用）
@@ -57,6 +59,8 @@ pub fn run() {
             if let Ok(data) = app.path().app_data_dir() {
                 resource_crypto::cleanup_tmp_stream(&data);
             }
+            // 诊断探针（仅当 LFEN_IOS_DIAG=1；默认零行为）——CI 冒烟排「跑得起来但画面空白」用
+            diagnostics::arm(app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())
