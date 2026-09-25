@@ -19,5 +19,6 @@ export {
   TextFormatError,
   type TextProjection,
 } from "./data";
+export { resolveHost } from "./runtime/host";
 export { mergeOverlayFiles } from "./runtime/i18n";
 export { PlayerPreferences } from "./runtime/preferences";

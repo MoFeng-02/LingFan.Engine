@@ -4,6 +4,7 @@ export * from "./runtime";
 export * from "./media";
 export * from "./save";
 export * from "./platform";
+export * from "./host";
 export * from "./preferences";
 export * from "./minigame";
 export * from "./shell";

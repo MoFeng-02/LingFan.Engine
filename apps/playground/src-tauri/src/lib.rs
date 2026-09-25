@@ -1,5 +1,6 @@
 pub mod crypto;
 pub mod diagnostics;
+pub mod host;
 pub mod preferences;
 pub mod project_files;
 pub mod resource_crypto;
@@ -38,7 +39,8 @@ pub fn run() {
             save::save_list,
             save::save_delete,
             shell::set_orientation,
-            diagnostics::lfen_diag
+            diagnostics::lfen_diag,
+            host::host_platform
         ]);
 
     // ⑨-5 移动端供给：Kotlin AssetListPlugin（asset 递归枚举）+ AssetFs 装配（Android 专用）

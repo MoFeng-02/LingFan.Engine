@@ -31,7 +31,11 @@ export default defineConfig(() => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
+      // ③ 平台区分的宿主取数走 Rust 命令（host_platform）——TAURI_ENV_* 未注入 beforeBuildCommand，编译期路线不可靠
+  // 移动端兼容：构建语法目标按 Tauri 官方建议 = safari13（老 WebView 可解析）；
+  // esbuild 只转语法不补内建方法（如 Array.prototype.at）——那是 lint 守卫的事
+  build: { target: "safari13" },
+  // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
   },

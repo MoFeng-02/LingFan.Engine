@@ -5,6 +5,7 @@ import {
   StoryEngine,
   type AudioChannel,
   type AudioPort,
+  type HostInfo,
   type I18nPort,
   type OrientationMode,
   type PlayerPreferences,
@@ -31,6 +32,8 @@ import {
 const props = defineProps<{
   /** 07 §三.2 热重载：宿主以 ref 包装供给（换 value = 注入新 Story），消费方显式 .value */
   story: Ref<Story>;
+  /** ③ 平台区分：宿主事实（os/form，组合根装配；只读，用于展示与按端分支） */
+  host: HostInfo;
   savePort: SavePort;
   resourcePort: ResourcePort;
   /** 01 §四.3 I18N overlay 供给（可选：浏览器形态未装配 = 原文直出） */
@@ -84,7 +87,7 @@ const nvlPastLines = computed(() =>
     .slice(0, -1)
     .map((line) => renderDialogueLine({ text: line }).html),
 );
-const nvlTypingLine = computed(() => nvlBuffer.value.at(-1) ?? "");
+const nvlTypingLine = computed(() => nvlBuffer.value[nvlBuffer.value.length - 1] ?? "");
 const nvlBody = ref<HTMLElement | null>(null);
 watch(nvlBuffer, () => {
   void nextTick(() => {
@@ -177,7 +180,7 @@ interface HistoryBlock {
 const historyBlocks = computed<HistoryBlock[]>(() => {
   const blocks: HistoryBlock[] = [];
   for (const entry of historyEntries.value) {
-    const prev = blocks.at(-1);
+    const prev = blocks[blocks.length - 1];
     if (
       entry.nvl &&
       prev?.nvl === true &&
@@ -792,6 +795,10 @@ onUnmounted(() => {
           <option value="portrait">竖屏</option>
           <option value="landscape">横屏</option>
         </select>
+      </label>
+      <label class="prefs-row">
+        <span class="prefs-label">宿主</span>
+        <span class="prefs-value">{{ host.os }} · {{ host.form }}</span>
       </label>
     </section>
     <p v-if="error" class="error">{{ error }}</p>

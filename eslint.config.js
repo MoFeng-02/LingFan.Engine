@@ -111,4 +111,22 @@ export default defineConfigWithVueTs(
       ],
     },
   },
+  {
+    name: "lingfan/legacy-webview-compat",
+    // ③ 移动端兼容：目标 WebView 含 Chrome 91（Android 9 镜像，雷电实测）/ Safari 13-15——
+    // Array/String.prototype.at 是 ES2022（Chrome 92+/Safari 15.4+），老 WebView 直接
+    // TypeError → 模块执行中断 → #app 空 → 白屏。用 arr[arr.length - 1] 替代；
+    // 语法层兼容由 vite build.target=safari13 负责（esbuild 不补内建方法，守卫在这里）。
+    files: ["packages/**/*.ts", "apps/*/src/**/*.{ts,vue}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "MemberExpression[property.name='at']",
+          message:
+            "Array/String.prototype.at 是 ES2022（Chrome 92+/Safari 15.4+），目标 WebView 含 Chrome 91——用 arr[arr.length - 1] 替代",
+        },
+      ],
+    },
+  },
 );

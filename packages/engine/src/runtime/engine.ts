@@ -698,7 +698,7 @@ export class StoryEngine {
   /** 02 §二.1 逐命令解释执行：取命令 → 执行 → 前进；遇等待点即停（调用方保证 __waiting=none） */
   private run(): void {
     for (;;) {
-      const frame = this.frames.at(-1);
+      const frame = this.frames[this.frames.length - 1];
       if (frame === undefined) return; // 全部帧结束 = 本故事段结束
       if (frame.index >= frame.commands.length) {
         const loop = frame.loop;
@@ -789,7 +789,7 @@ export class StoryEngine {
             this.frames.length = depth; // 弹出循环帧与其内部块帧（作用域随之销毁）
           } else {
             this.frames.length = depth + 1; // 保留循环帧，弹内部块帧
-            const loopFrame = this.frames.at(-1)!;
+            const loopFrame = this.frames[this.frames.length - 1]!;
             loopFrame.index = loopFrame.commands.length; // 走到帧耗尽分支 → 重判/推进
           }
           continue;
@@ -1255,7 +1255,7 @@ export class StoryEngine {
       scope: frame.scope,
       loop,
     });
-    return this.beginLoopIteration(this.frames.at(-1)!, loop);
+    return this.beginLoopIteration(this.frames[this.frames.length - 1]!, loop);
   }
 
   /** for（老规范 §6.1）：`in` 表达式执行期求值 → 必须为数组，逐元素迭代 */
@@ -1322,7 +1322,7 @@ export class StoryEngine {
       scope: frame.scope,
       loop,
     });
-    return this.beginLoopIteration(this.frames.at(-1)!, loop);
+    return this.beginLoopIteration(this.frames[this.frames.length - 1]!, loop);
   }
 
   /** 开始一轮迭代：每轮新块作用域（S1），声明循环变量，游标归零；超上限 fail-closed */
@@ -1442,7 +1442,7 @@ export class StoryEngine {
         value = this.evalValue(cmd.value);
       }
       if (op === "set") {
-        const scope = this.frames.at(-1)?.scope;
+        const scope = this.frames[this.frames.length - 1]?.scope;
         // 装载顺序声明层优先；未声明落全局（SSOT Map）
         if (scope !== undefined && scope.assignExisting(key, value)) {
           this.emit(key, value, frame.columnId === null ? "block" : "column");
@@ -2598,7 +2598,7 @@ export class StoryEngine {
   private resolveName = ((
     name: string,
   ): { found: true; value: unknown } | { found: false } => {
-    const scope = this.frames.at(-1)?.scope;
+    const scope = this.frames[this.frames.length - 1]?.scope;
     if (scope !== undefined) {
       const hit = scope.lookup(name);
       if (hit.found) return hit;
