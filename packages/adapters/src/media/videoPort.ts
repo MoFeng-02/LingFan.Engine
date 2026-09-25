@@ -10,6 +10,8 @@ import type { VideoPort } from "@lingfan/engine";
 export interface WebVideoPortOptions {
   /** 播放失败诊断（缺失/损坏资源不静默：08-U7 报错诊断） */
   onError?: (message: string) => void;
+  /** 层 z 序（⑨-11 层级契约）：组合根传入解析后的层表值；缺省 5 = 旧行为 */
+  zIndex?: number;
 }
 
 export function createWebVideoPort(
@@ -24,7 +26,7 @@ export function createWebVideoPort(
       // 舞台层覆盖（RenderTargets.stage 之上的呈现层）；点击穿透：跳过走命令面
       element.style.cssText =
         "position:fixed;inset:0;width:100%;height:100%;object-fit:contain;" +
-        "background:#000;z-index:5;display:none;pointer-events:none;";
+        `background:#000;z-index:${portOptions.zIndex ?? 5};display:none;pointer-events:none;`;
       element.addEventListener("error", () => {
         portOptions.onError?.("视频资源无法解码或缺失");
       });

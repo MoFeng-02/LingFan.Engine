@@ -41,6 +41,7 @@ import {
   type VideoPort,
 } from "@lingfan/engine";
 import App from "./App.vue";
+import { resolveLayerZ, type LayerZTable } from "./shell/layers";
 import { manifestOrientation, resolveOrientationMode } from "./shell/orientation";
 
 const MANIFEST = "project.json";
@@ -76,10 +77,13 @@ async function boot(): Promise<void> {
     import.meta.env.MODE === "tauri" && encrypted
       ? createTauriEncryptedResourcePort()
       : createStaticResourcePort();
+  // ⑨-11 层级（z 序）：内建默认 × 工程覆盖（project.json shell.layers）——层级不写死。
+  // 视频适配器与舞台各层只消费解析结果（App 经 props 注入）。
+  const layerZ: LayerZTable = resolveLayerZ(manifest);
   const createAudioPort = (onError: (message: string) => void): AudioPort =>
     createWebAudioPort({ onError });
   const createVideoPort = (onError: (message: string) => void): VideoPort =>
-    createWebVideoPort({ onError });
+    createWebVideoPort({ onError, zIndex: layerZ.video });
   // 01 §四.3 I18N 装配：Tauri 形态走 Rust overlay 供给（按需加载）；浏览器形态暂无
   // 静态根供给（未注入 = 原文直出，引擎契约缺省语义）
   const i18nPort: I18nPort | undefined =
@@ -131,6 +135,7 @@ async function boot(): Promise<void> {
   const app = createApp(App, {
     story,
     host,
+    layerZ,
     savePort,
     resourcePort,
     i18nPort,

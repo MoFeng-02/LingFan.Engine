@@ -26,6 +26,7 @@ import {
   type AudioRenderer,
   type VideoRenderer,
 } from "@lingfan/ui";
+import type { LayerZTable } from "./shell/layers";
 
 // —— 08-U1：核心层只写状态，UI 只经 ValueChanged 订阅渲染 ——
 // 工程与平台端口都由组合根（main.ts）装配注入：本组件只消费契约，不知道任何具体实现
@@ -34,6 +35,8 @@ const props = defineProps<{
   story: Ref<Story>;
   /** ③ 平台区分：宿主事实（os/form，组合根装配；只读，用于展示与按端分支） */
   host: HostInfo;
+  /** ⑨-11 层级（z 序）：内建默认 × 工程覆盖（shell.layers），组合根解析后注入 */
+  layerZ: LayerZTable;
   savePort: SavePort;
   resourcePort: ResourcePort;
   /** 01 §四.3 I18N overlay 供给（可选：浏览器形态未装配 = 原文直出） */
@@ -586,7 +589,7 @@ onUnmounted(() => {
 <template>
   <main class="stage" @click="onStageClick" @wheel="onWheel">
     <!-- 固定工具条：单条 flex 行（布局由构造保证不重叠；safe-area 适配移动端） -->
-    <div class="toolbar">
+    <div class="toolbar" :style="{ zIndex: layerZ.toolbar }">
       <!-- fail-closed 停机恢复入口：整体重建引擎（正式形态为读档/回标题命令面） -->
       <button
         class="restart"
@@ -642,11 +645,16 @@ onUnmounted(() => {
       </select>
     </div>
     <!-- RenderTargets.overlay（notify toast，08 §二.4） -->
-    <ul class="notifications">
+    <ul class="notifications" :style="{ zIndex: layerZ.notifications }">
       <li v-for="n in notifications" :key="n.id">{{ n.text }}</li>
     </ul>
     <!-- RenderTargets.choices 挂载点（08 §一：选择层在对话层上方） -->
-    <section v-if="inMenu" class="choices" aria-live="polite">
+    <section
+      v-if="inMenu"
+      class="choices"
+      :style="{ zIndex: layerZ.choices }"
+      aria-live="polite"
+    >
       <p v-if="menuPrompt" class="layer-prompt">{{ menuPrompt }}</p>
       <div class="choice-row">
         <button
@@ -660,7 +668,12 @@ onUnmounted(() => {
       </div>
     </section>
     <!-- RenderTargets.choices：输入形态（input 等待） -->
-    <section v-if="inInput" class="choices" aria-live="polite">
+    <section
+      v-if="inInput"
+      class="choices"
+      :style="{ zIndex: layerZ.choices }"
+      aria-live="polite"
+    >
       <p class="layer-prompt">{{ inputPrompt }}</p>
       <form class="input-row" @submit.stop.prevent="submitInput">
         <input
@@ -674,13 +687,20 @@ onUnmounted(() => {
       </form>
     </section>
     <!-- RenderTargets.minigame（06 §二：宿主经注册表挂载；等待期可回溯 → signal abort 卸载） -->
-    <section v-show="inMinigame" class="choices" aria-live="polite" @click.stop>
+    <section
+      v-show="inMinigame"
+      class="choices"
+      :style="{ zIndex: layerZ.minigame }"
+      aria-live="polite"
+      @click.stop
+    >
       <div ref="minigameHostEl" class="minigame-host"></div>
     </section>
     <!-- RenderTargets.dialogue 挂载点（08 §一）；menu/input 等待时让位 -->
     <section
-      v-show="!inMenu && !inInput"
+      v-show="!inMenu && !inInput && !inVideo"
       class="dialogue"
+      :style="{ zIndex: layerZ.dialogue }"
       :class="[nvlMode === 'active' ? 'nvl-mode' : dialogView.rootClass]"
       aria-live="polite"
     >
@@ -718,7 +738,11 @@ onUnmounted(() => {
       <span v-if="inWait" class="advance-hint">···</span>
     </section>
     <!-- 08 §四 历史面板（回溯的 UI 皮：NVL 段聚合为块，块级回溯 = 块尾检查点；同走统一渲染接缝） -->
-    <section v-if="showHistory" class="history-panel">
+    <section
+      v-if="showHistory"
+      class="history-panel"
+      :style="{ zIndex: layerZ.history }"
+    >
       <p class="layer-prompt">历史</p>
       <ul>
         <li
@@ -745,7 +769,12 @@ onUnmounted(() => {
       </ul>
     </section>
     <!-- 08 §八.2 玩家偏好面板（与存档分离：独立持久化，不随档变动） -->
-    <section v-if="showPrefs" class="history-panel prefs-panel" @click.stop>
+    <section
+      v-if="showPrefs"
+      class="history-panel prefs-panel"
+      :style="{ zIndex: layerZ.prefs }"
+      @click.stop
+    >
       <p class="layer-prompt">设置</p>
       <label v-for="c in PREF_CHANNELS" :key="c.channel" class="prefs-row">
         <span class="prefs-label">{{ c.label }}</span>
@@ -841,7 +870,6 @@ body,
   margin: 0;
   padding: 0;
   list-style: none;
-  z-index: 10;
 }
 
 .notifications li {
@@ -856,7 +884,6 @@ body,
   position: fixed;
   top: calc(16px + env(safe-area-inset-top));
   left: calc(16px + env(safe-area-inset-left));
-  z-index: 10;
   display: flex;
   gap: 8px;
   align-items: stretch;
@@ -926,7 +953,6 @@ body,
   position: fixed;
   top: calc(60px + env(safe-area-inset-top));
   left: calc(16px + env(safe-area-inset-left));
-  z-index: 10;
   width: min(80vw, 360px);
   max-height: 60vh;
   overflow-y: auto;
@@ -967,6 +993,7 @@ body,
 }
 
 .dialogue {
+  position: relative;
   position: relative;
   width: min(100%, 960px);
   margin: 0 auto;
@@ -1014,6 +1041,7 @@ body,
 }
 
 .choices {
+  position: relative;
   width: min(100%, 960px);
   margin: 0 auto;
   box-sizing: border-box;
