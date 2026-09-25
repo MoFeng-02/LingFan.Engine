@@ -201,8 +201,9 @@ jobs:
 
           xcrun simctl install "$udid" "$app" || { echo "::error::安装失败"; exit 1; }
           # 启动并抓取进程控制台（--console-pty 收 stdout/stderr，含 Rust panic）
-          xcrun simctl launch --console-pty "$udid" com.langfeng.lingfanengine > /tmp/ios-launch.log 2>&1 &
-          sleep 25
+          # SIMCTL_CHILD_ 前缀把环境变量注入被测 App → 打开 DOM/媒体诊断探针（Rust 侧 eval，默认零行为）
+          SIMCTL_CHILD_LFEN_IOS_DIAG=1 xcrun simctl launch --console-pty "$udid" com.langfeng.lingfanengine > /tmp/ios-launch.log 2>&1 &
+          sleep 30
 
           # 存活检查带重试（simctl launch 与进程注册偶有竞态；实测同代码有 1 次误判）
           alive=no
