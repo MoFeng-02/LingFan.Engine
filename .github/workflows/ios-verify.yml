@@ -184,51 +184,46 @@ jobs:
           if-no-files-found: error
           path: apps/playground/src-tauri/gen/apple/build/**/*.app
 
-      - name: 模拟器冒烟（安装 → 启动 → 截图）
+      - name: 模拟器冒烟（安装 → 启动 → 截图 → 先取证再断言）
         working-directory: apps/playground/src-tauri
         run: |
-          set -euo pipefail
+          set +e
           app=$(find gen/apple/build -maxdepth 3 -name "*.app" -type d | head -1)
-          test -n "$app"
+          test -n "$app" || { echo "::error::未找到 .app"; exit 1; }
           echo "APP=$app"
 
           # 取第一个可用 iPhone 模拟器（device 行形如 `    iPhone 15 (UDID) (Shutdown)`）
           udid=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {print $2; exit}')
-          test -n "$udid"
+          test -n "$udid" || { echo "::error::无可用模拟器"; exit 1; }
           echo "SIM_UDID=$udid"
           xcrun simctl boot "$udid" || true
           xcrun simctl bootstatus "$udid" -b
 
-          xcrun simctl install "$udid" "$app"
-          # 启动并抓取进程控制台；失败即判失败（App 崩溃/无法启动）
+          xcrun simctl install "$udid" "$app" || { echo "::error::安装失败"; exit 1; }
+          # 启动并抓取进程控制台（--console-pty 收 stdout/stderr，含 Rust panic）
           xcrun simctl launch --console-pty "$udid" com.langfeng.lingfanengine > /tmp/ios-launch.log 2>&1 &
           sleep 25
 
-          # 进程存活检查：启动 25s 后仍能查到进程（未崩溃）
-          if ! xcrun simctl spawn "$udid" launchctl list | grep -qi "com.langfeng.lingfanengine"; then
-            echo "::error::iOS 冒烟失败——App 启动后未存活（见 launch 日志）"
-            cat /tmp/ios-launch.log || true
-            exit 1
-          fi
-
-          xcrun simctl io "$udid" screenshot /tmp/ios-smoke.png
-
-          # 启动期系统日志（WebKit 资源加载错误/Rust stderr 都在这）：白屏类问题靠它定位
+          alive=no
+          xcrun simctl spawn "$udid" launchctl list 2>/dev/null | grep -qi "com.langfeng.lingfanengine" && alive=yes
+          xcrun simctl io "$udid" screenshot /tmp/ios-smoke.png 2>/dev/null || true
+          # 启动期系统日志（WebKit 资源加载错误 / 崩溃 / Rust stderr 都在这里）
           xcrun simctl spawn "$udid" log show --last 2m --style compact \
             --predicate 'process == "lingfanengine" OR eventMessage CONTAINS "lingfanengine"' \
             > /tmp/ios-oslog.txt 2>&1 || true
 
-          echo "=== 冒烟证据 ==="
-          ls -la /tmp/ios-smoke.png
-          echo "=== App 控制台（末尾 40 行）==="
-          tail -40 /tmp/ios-launch.log || true
+          # **先取证再断言**：无论存活与否都把诊断回传（否则崩溃日志会随失败一起丢掉）
           {
-            echo "--- launch 控制台（末尾 25 行）---"
-            tail -25 /tmp/ios-launch.log 2>/dev/null
-            echo "--- os_log 过滤（Failed to load / WebKit / error / lfen）---"
-            grep -aiE "failed to load|WebKit|error|exception|lfen|panic|not found" /tmp/ios-oslog.txt 2>/dev/null | tail -25
+            echo "alive=$alive shot=$(ls -la /tmp/ios-smoke.png 2>/dev/null | awk '{print $5}')"
+            echo "--- launch 控制台（末尾 40 行）---"
+            tail -40 /tmp/ios-launch.log 2>/dev/null
+            echo "--- os_log 过滤（崩溃/断言/WebKit/lfen/error）---"
+            grep -aiE "fatal|crash|uncaught|assert|exception|panic|lfen|failed to load|WebKit|error" /tmp/ios-oslog.txt 2>/dev/null | tail -30
           } > /tmp/ios-smoke-diag.txt
+          cat /tmp/ios-smoke-diag.txt
           echo "::notice title=iOS 冒烟诊断::$(awk '{printf "%s%%0A", $0}' /tmp/ios-smoke-diag.txt | cut -c1-6000)"
+
+          [ "$alive" = yes ] || { echo "::error::App 启动后未存活（诊断见上方 notice）"; exit 1; }
 
       - name: 上传冒烟证据
         if: always()
