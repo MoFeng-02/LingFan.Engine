@@ -279,6 +279,19 @@ fn root_state_with_key(
 #[tauri::command]
 pub fn project_files(app: tauri::AppHandle) -> Result<ProjectFiles, ProjectFilesError> {
     let (root, key) = resource_root_with_key(&app)?;
+    // 移动端白屏类问题的决定性判据：前端 boot 必调本命令，日志里有这行 = JS 真跑起来了
+    // （debug 期诊断，release 不带；stderr 在 iOS/Android 均可见于系统日志）
+    #[cfg(debug_assertions)]
+    {
+        static FIRST_CALL: std::sync::Once = std::sync::Once::new();
+        FIRST_CALL.call_once(|| {
+            eprintln!(
+                "[lfen] project_files 首次调用：资源根={} 加密形态={}",
+                root.display(),
+                key.is_some()
+            );
+        });
+    }
     let resfs = crate::resource_fs::resource_fs(&app);
     match key {
         Some(k) => read_project_files_with_key(&*resfs, &root, &k),
