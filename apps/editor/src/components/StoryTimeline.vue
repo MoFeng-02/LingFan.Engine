@@ -2,7 +2,7 @@
 import { computed, inject, ref } from "vue";
 import type { Story } from "@lingfan/engine";
 import {
-  describeForm,
+  describeNodeLabel,
   getAtPointer,
   listOps,
   type OpGroup,
@@ -62,13 +62,9 @@ function rowsOf(field: "commands" | "elements" | "entry"): Row[] {
   if (!Array.isArray(list)) return [];
   return list.map((cmd, i): Row => {
     const pointer = `/columns/${index}/${field}/${i}`;
-    const op = (cmd as Record<string, unknown>)?.op;
-    return {
-      pointer,
-      cmd: cmd as Record<string, unknown>,
-      label:
-        typeof op === "string" ? (describeForm(op)?.label ?? op) : "（坏命令）",
-    };
+    const record = cmd as Record<string, unknown>;
+    // 标签走单一事实源：命令按 op、元素按类型（元素没有 op）——见 describeNodeLabel
+    return { pointer, cmd: record, label: describeNodeLabel(record) };
   });
 }
 const containers = computed(() => {

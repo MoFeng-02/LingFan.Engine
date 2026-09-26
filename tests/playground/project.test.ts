@@ -2,22 +2,31 @@
  * 示例工程防腐：playground 的 `Resources/` 是可跑的工程内容——
  * 清单 + 故事必须能被组装器接受，且故事引用的媒体必须在资源根内真实存在（08-U7）。
  * 用 `?raw` 与 `import.meta.glob`（不碰 fs：前端禁 Node，规约 00 §3.2）。
+ *
+ * 锚点: resource-root-resolution / story-manifest-lock
  */
 import { describe, expect, it } from "vitest";
 import manifestRaw from "../../apps/playground/Resources/project.json?raw";
-import startRaw from "../../apps/playground/Resources/Stories/start.json?raw";
-import innRaw from "../../apps/playground/Resources/Stories/inn.json?raw";
-import squareRaw from "../../apps/playground/Resources/Stories/square.json?raw";
-import endRaw from "../../apps/playground/Resources/Stories/end.json?raw";
+import mainSource from "../../apps/playground/src/main.ts?raw";
 import type { Story, StoryCommand } from "@lingfan/engine";
 import { assembleProject, parseStoryFile } from "@lingfan/engine";
 
-const FILES: Record<string, string> = {
-  "Stories/start.json": startRaw,
-  "Stories/inn.json": innRaw,
-  "Stories/square.json": squareRaw,
-  "Stories/end.json": endRaw,
-};
+/** 磁盘真实存在的故事文件（glob 键即文件清单）→ `Stories/<file>` 逻辑路径 */
+const STORY_MODULES = import.meta.glob(
+  "../../apps/playground/Resources/Stories/*.json",
+  { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
+
+function logicalPath(globKey: string): string {
+  return globKey.replace(
+    "../../apps/playground/Resources/",
+    "",
+  );
+}
+
+const FILES: Record<string, string> = Object.fromEntries(
+  Object.entries(STORY_MODULES).map(([key, text]) => [logicalPath(key), text]),
+);
 
 function assemble(): Story {
   return assembleProject(
@@ -43,7 +52,7 @@ function collectResources(commands: StoryCommand[], into: Set<string>): void {
 }
 
 describe("示例工程防腐（锚点: resource-root-resolution）", () => {
-  it("清单 + 四个故事文件可组装；入口与分支列齐全", () => {
+  it("清单 + 全部故事文件可组装；入口与分支列齐全", () => {
     const story = assemble();
     expect(story.entry).toBe("start");
     // 组装通过即断言了：单列文件名 = 列 id、columnId 唯一（F1）；
@@ -52,13 +61,24 @@ describe("示例工程防腐（锚点: resource-root-resolution）", () => {
       "end",
       "inn",
       "square",
+      "stage_demo",
       "start",
     ]);
   });
 
+  it("main.ts 的浏览器故事清单 ↔ 磁盘文件（回归锚定：新增故事文件必须同步）", () => {
+    // 浏览器形态按显式清单取文件（Tauri 形态走 Rust 目录枚举）——
+    // 漏登记会让该列在浏览器形态不存在，跳转报 unknown-column（实测缺陷）
+    const block = /const STORIES = \[([^\]]*)\]/.exec(mainSource)?.[1];
+    expect(block, "未在 main.ts 中找到 STORIES 清单").toBeDefined();
+    const declared = [...String(block).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    expect(declared.length).toBeGreaterThan(0); // 防提取失效空跑
+    expect([...declared].sort()).toEqual(
+      Object.keys(FILES).sort(),
+    );
+  });
+
   it("故事引用的媒体在资源根内真实存在（不存在 = 运行期 fail-closed 诊断）", () => {
-    // import.meta.glob 的键即资源根内真实存在的文件（无需 fs，也不真正加载）；
-    // glob 必须是静态字面量（Vite 编译期展开），三个类型目录各写一条
     const audio = Object.keys(
       import.meta.glob("../../apps/playground/Resources/Audio/*"),
     );

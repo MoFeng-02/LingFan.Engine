@@ -20,7 +20,12 @@ export type {
 } from "./contracts";
 export { escapePointerToken, joinPointer } from "./contracts";
 
-export { describeForm, listOps } from "./schema/forms";
+export {
+  coerceFieldValue,
+  describeForm,
+  describeNodeLabel,
+  listOps,
+} from "./schema/forms";
 export {
   describeElement,
   elementLabel,

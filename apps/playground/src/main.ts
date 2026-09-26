@@ -46,11 +46,17 @@ import { resolveSavesConfig, type SavesConfig } from "./shell/saves";
 import { manifestOrientation, resolveOrientationMode } from "./shell/orientation";
 
 const MANIFEST = "project.json";
+/**
+ * 浏览器形态的故事清单（Tauri 形态由 Rust `project_files` 枚举目录，不用此表）。
+ * **新增故事文件必须同步此处**——否则该列在浏览器形态不存在（跳转报 unknown-column）；
+ * 防漂移由 `tests/playground/project.test.ts` 的「本表 ↔ 磁盘文件」互锁测试守护。
+ */
 const STORIES = [
   "Stories/start.json",
   "Stories/inn.json",
   "Stories/square.json",
   "Stories/end.json",
+  "Stories/stage_demo.json",
 ];
 
 async function boot(): Promise<void> {

@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from "vue";
-import type { Story, ValueChanged } from "@lingfan/engine";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import type { ElementInstance, Story, ValueChanged } from "@lingfan/engine";
 import { SYS, StoryEngine, type OutboundPayload } from "@lingfan/engine";
 import {
   builtinBubbleTemplate,
   createDialogueTemplateRegistry,
+  createElementRegistry,
+  registerBuiltinElementRenderers,
   renderDialogueLine,
+  renderElementTree,
+  resolveElementAction,
   Typewriter,
   type DialogueTemplateView,
 } from "@lingfan/ui";
@@ -15,6 +19,9 @@ import {
  * I18N/存档缺省）。预览为打开时刻的快照运行，编辑不实时渗入。
  * 打字机（08-U3）：单句对话层 Typewriter + rAF 帧驱动；NVL 累积层即时显示
  * （增量渲染优化随 playground 级打磨，预览规模不需要）。
+ * 元素层（08 §二.1）：按 `__elements` 经注册表渲染；**资源不解析**（编辑器尚无资源供给
+ * 模型，同「预览音频延后」裁定——图像类元素显示替代文本，布局/文本/交互照常可验）。
+ * 帧驱动表现（animate/transition/shake）仍只在 playground 落地。
  */
 const props = defineProps<{ story: Story }>();
 const emit = defineEmits<{ close: [] }>();
@@ -35,12 +42,51 @@ const nvlBuffer = ref<string[]>([]);
 const toasts = ref<Array<{ id: number; text: string }>>([]);
 const errorText = ref("");
 const minigameBanner = ref("");
+const elementBanner = ref("");
 let notifySeq = 0;
 let toastTimer = 0;
 
 const dialogueTemplates = createDialogueTemplateRegistry();
 dialogueTemplates.register("bubble", builtinBubbleTemplate, {
   makeDefault: true,
+});
+
+// —— 08 §二.1 元素层：核心只写 `__elements`，此处经注册表渲染（未注册类型 fail-closed 上报） ——
+const elements = ref<ElementInstance[]>([]);
+const elementLayerEl = ref<HTMLElement | null>(null);
+const elementRegistry = createElementRegistry();
+registerBuiltinElementRenderers(elementRegistry);
+
+function renderElements(): void {
+  const host = elementLayerEl.value;
+  if (host === null) return;
+  renderElementTree({
+    registry: elementRegistry,
+    container: host,
+    elements: elements.value,
+    activate: activateElement,
+    // 编辑器无资源供给模型：不解析 = 图像类显示替代文本（不伪造 URL）
+    resolveResource: () => undefined,
+    onUnknownType: (type) => {
+      elementBanner.value = `元素类型未注册：${type}（fail-closed：不伪造渲染）`;
+    },
+  });
+}
+
+/** F6 意图 → 命令：`nav` → 核心 navigate；`cmd` → 预览无命令注册表 → fail-closed 上报 */
+function activateElement(element: ElementInstance): void {
+  const action = resolveElementAction(element.props);
+  if (action.kind === "nav") {
+    engine.navigate(action.target);
+    return;
+  }
+  if (action.kind === "cmd") {
+    elementBanner.value = `元素命令未注册：${action.name}（预览不带命令注册表——fail-closed）`;
+  }
+}
+
+watch(elements, () => {
+  void nextTick(renderElements); // 容器挂载后再渲染
 });
 
 const canAdvance = computed(() => waiting.value === "dialog");
@@ -111,6 +157,8 @@ const offState = engine.onStateChanged((c: ValueChanged) => {
     nvlBuffer.value = (c.value as string[] | undefined) ?? [];
   else if (c.key === SYS.currentSceneColumn)
     column.value = String(c.value ?? "");
+  else if (c.key === SYS.elements)
+    elements.value = (c.value as ElementInstance[] | undefined) ?? [];
 });
 
 const offEvent = engine.onEvent((event) => {
@@ -172,15 +220,21 @@ onBeforeUnmount(() => {
     <header class="preview-bar">
       <strong>预览</strong>
       <span class="preview-column">{{ column }}</span>
-      <span class="preview-note">打开时刻的快照 · 音视频静音</span>
+      <span class="preview-note">打开时刻的快照 · 音视频与元素资源不解析</span>
       <span class="spacer"></span>
       <button @click="emit('close')">退出预览</button>
     </header>
 
     <div class="preview-stage" @click="onStageClick">
+      <!-- 08 §二.1 舞台元素层（容器 pointer-events:none，可交互元素自身恢复） -->
+      <div ref="elementLayerEl" class="element-layer"></div>
+
       <p v-if="errorText !== ''" class="preview-error">{{ errorText }}</p>
       <p v-if="minigameBanner !== ''" class="preview-banner">
         {{ minigameBanner }}
+      </p>
+      <p v-if="elementBanner !== ''" class="preview-banner">
+        {{ elementBanner }}
       </p>
 
       <!-- NVL 累积层 -->
@@ -283,6 +337,12 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   padding: 8px 12px;
   margin: 0 0 12px;
+}
+/* 08 §二.1 元素层：不阻塞舞台推进（可交互元素自身恢复 pointer-events） */
+.element-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 .preview-banner {
   color: #e0af68;

@@ -1730,8 +1730,24 @@ function elementValueText(value: unknown): string {
 /**
  * `ElementNode` → 元素行（08 §二.1）：`类型 "内容" key=value …`。
  * 确定性输出：位置参（`source` 优先，其次 `text`）紧接类型名，其余键按插入序；children 缩进 2 空格。
+ *
+ * **投影不对称（有意，不静默）**：类型与 op 同名的元素（`ELEMENT_OP_CONFLICTS`）在文本里
+ * 必被「语句优先」解析回命令（见 `parseCommands`）——该行仍照常输出（**不能省略**：省略会让
+ * 文本模式「应用」静默删掉元素），但收集一条 issue 明示不可往返，交调用方决定（容错投影显示警告、
+ * 严格投影 fail-closed）。
  */
-function generateElement(node: ElementNode, pad: string, out: string[]): void {
+function generateElement(
+  node: ElementNode,
+  pad: string,
+  out: string[],
+  issues: string[],
+): void {
+  if (ELEMENT_OP_CONFLICTS.has(node.type)) {
+    issues.push(
+      `元素类型「${node.type}」与命令同名：文本形态按语句优先解析为命令，无法往返——` +
+        `请用 JSON 视图编辑该元素（或改用其他类型）`,
+    );
+  }
   const tokens: string[] = [node.type];
   const positional =
     typeof node.source === "string"
@@ -1748,7 +1764,7 @@ function generateElement(node: ElementNode, pad: string, out: string[]): void {
   out.push(`${pad}${tokens.join(" ")}`);
   if (Array.isArray(node.children)) {
     for (const child of node.children) {
-      generateElement(child as ElementNode, `${pad}  `, out);
+      generateElement(child as ElementNode, `${pad}  `, out, issues);
     }
   }
 }
@@ -1770,7 +1786,7 @@ export function projectText(story: Story): TextProjection {
       // 08 §二.1 scene 列：元素行在前、entry 命令在后（与装载语义一致——先声明空间层再执行）
       out.push(`scene ${column.id}`);
       for (const node of column.elements ?? []) {
-        generateElement(node, "  ", out);
+        generateElement(node, "  ", out, issues);
       }
       for (const cmd of column.entry ?? []) {
         try {
