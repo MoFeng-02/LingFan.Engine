@@ -83,7 +83,7 @@ const api = {
   moveCommand(pointer: string, delta: number): void {
     session.apply(`移动 ${pointer}`, (s) => {
       const segments = pointer.split("/");
-      const index = Number(segments.at(-1));
+      const index = Number(segments[segments.length - 1]);
       if (Number.isNaN(index)) return null;
       return moveAtPointer(s, pointer, index + delta);
     });
