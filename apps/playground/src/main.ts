@@ -28,22 +28,25 @@ import {
 } from "@lingfan/adapters";
 import {
   PlayerPreferences,
+  manifestOrientation,
+  resolveLayerZ,
+  resolveOrientationMode,
+  resolveSavesConfig,
   type AudioPort,
   type HostInfo,
   type I18nPort,
+  type LayerZTable,
   type OrientationMode,
   type OrientationPort,
   type PreferencesPort,
   type ProjectFilesPort,
   type ResourcePort,
   type SavePort,
+  type SavesConfig,
   type Story,
   type VideoPort,
 } from "@lingfan/engine";
 import App from "./App.vue";
-import { resolveLayerZ, type LayerZTable } from "./shell/layers";
-import { resolveSavesConfig, type SavesConfig } from "./shell/saves";
-import { manifestOrientation, resolveOrientationMode } from "./shell/orientation";
 
 const MANIFEST = "project.json";
 /**

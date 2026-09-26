@@ -22,5 +22,25 @@ export {
 export { resolveHost } from "./runtime/host";
 export { mergeOverlayFiles } from "./runtime/i18n";
 export { PlayerPreferences } from "./runtime/preferences";
+/**
+ * 壳配置解析（⑨-6 方向默认 / ⑨-11 层 z 表 / ⑨-12 存档壳）：**契约与解析同在引擎**，
+ * 所有宿主（playground / 模板脚手架）一律从这里取，禁止各自复制（单一事实源）。
+ */
+export {
+  DEFAULT_LAYER_Z,
+  DEFAULT_SAVES_CONFIG,
+  LAYER_IDS,
+  manifestOrientation,
+  resolveInstanceZ,
+  resolveLayerZ,
+  resolveOrientationMode,
+  resolveSavesConfig,
+  slotIds,
+  type LayerId,
+  type LayerZOverrides,
+  type LayerZTable,
+  type SavesConfig,
+  type SavesThumbnailConfig,
+} from "./runtime/shell";
 /** 08 §二.1 元素形状校验（F5）：编辑器编辑期与运行期**同口径**的单一事实源 */
 export { validateElement, validateElementNode } from "./data";

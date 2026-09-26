@@ -3,16 +3,19 @@ import { computed, nextTick, onUnmounted, ref, watch, type Ref } from "vue";
 import {
   SYS,
   StoryEngine,
+  slotIds,
   type AudioChannel,
   type AudioPort,
   type ElementInstance,
   type HostInfo,
   type I18nPort,
+  type LayerZTable,
   type OrientationMode,
   type PlayerPreferences,
   type ResourcePort,
   type SaveDataV1,
   type SavePort,
+  type SavesConfig,
   type Story,
   type VideoPort,
 } from "@lingfan/engine";
@@ -36,8 +39,6 @@ import {
   type AudioRenderer,
   type VideoRenderer,
 } from "@lingfan/ui";
-import type { LayerZTable } from "./shell/layers";
-import { slotIds, type SavesConfig } from "./shell/saves";
 import { captureSaveThumbnail, stripHtml } from "./shell/thumbnail";
 
 // —— 08-U1：核心层只写状态，UI 只经 ValueChanged 订阅渲染 ——
@@ -70,6 +71,8 @@ const inWait = ref(false);
 const inInput = ref(false);
 const inVideo = ref(false);
 const inMinigame = ref(false);
+// 08 §二.6 window auto|show|hide：hide 即隐藏对话框（叙事语义归核心层，DOM 可见性归 UI）
+const dialogHidden = ref(false);
 const minigameHostEl = ref<HTMLElement | null>(null);
 // —— 08 §二.1 元素系统：舞台元素（声明式空间层；核心层只写 __elements，UI 只经槽位渲染） ——
 const elements = ref<ElementInstance[]>([]);
@@ -432,6 +435,8 @@ function handleState({ key, value }: { key: string; value: unknown }): void {
     inInput.value = value === "input";
     inVideo.value = value === "video"; // 08 §六.5：cutscene 等待（点击/空格 = 跳过）
     inMinigame.value = value === "minigame"; // 06 §二：小游戏等待（宿主经注册表挂载）
+  } else if (key === SYS.dialogVisible) {
+    dialogHidden.value = value === "hide"; // 08 §二.6：window hide/show/auto
   } else if (key === SYS.menuPrompt && typeof value === "string")
     menuPrompt.value = value;
   else if (key === SYS.inputPrompt && typeof value === "string")
@@ -466,6 +471,7 @@ function syncFromEngine(): void {
   inWait.value = w === "wait";
   inInput.value = w === "input";
   inMinigame.value = w === "minigame";
+  dialogHidden.value = engine.get(SYS.dialogVisible) === "hide"; // 08 §二.6（随快照/存档回档）
   const mp = engine.get(SYS.menuPrompt);
   menuPrompt.value = typeof mp === "string" ? mp : "";
   const ip = engine.get(SYS.inputPrompt);
@@ -951,7 +957,7 @@ onUnmounted(() => {
     </section>
     <!-- RenderTargets.dialogue 挂载点（08 §一）；menu/input 等待时让位 -->
     <section
-      v-show="!inMenu && !inInput && !inVideo"
+      v-show="!inMenu && !inInput && !inVideo && !dialogHidden"
       class="dialogue"
       :style="{ zIndex: layerZ.dialogue }"
       :class="[nvlMode === 'active' ? 'nvl-mode' : dialogView.rootClass]"
