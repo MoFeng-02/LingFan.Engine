@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
-import { describeForm, listOps, type FieldDescriptor } from "@lingfan/editor";
+import {
+  coerceFieldValue,
+  describeNodeLabel,
+  listOps,
+  type FieldDescriptor,
+} from "@lingfan/editor";
 
 /**
  * 06-D2 属性面板字段行：由表单描述符驱动渲染（kind → 控件），
@@ -28,28 +33,31 @@ const bodyOp = ref("say");
 
 const opOptions = listOps().map((m) => ({ op: m.op, label: m.label }));
 
+/**
+ * 标量文本族：`value` 也走文本输入（智能字面量由 `coerceFieldValue` 还原）——
+ * 漏掉 `value` 会让 set/define 的值、元素 x/width 等字段**没有任何控件**。
+ */
 const isScalarText = computed(() =>
-  ["string", "identifier", "resource", "expression", "text"].includes(
+  ["string", "identifier", "resource", "expression", "text", "value"].includes(
     props.field.kind,
   ),
 );
 
-function coerce(raw: string): unknown {
-  switch (props.field.kind) {
-    case "number":
-    case "integer":
-      return Number(raw);
-    case "boolean":
-      return raw === "true";
-    case "value":
-      if (raw === "true") return true;
-      if (raw === "false") return false;
-      if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw);
-      return raw;
-    default:
-      return raw;
+const coerce = (raw: string): unknown =>
+  coerceFieldValue(props.field.kind, raw);
+
+/**
+ * 标量文本控件的显示值：字符串原样；**数字/布尔转字面量**——
+ * 否则既有数字值（如 `set value: 10`）在输入框里显示为空，看着像丢字段。
+ */
+const scalarText = computed(() => {
+  const value = props.value;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
   }
-}
+  return "";
+});
 
 function onTextChange(event: Event): void {
   const raw = (event.target as HTMLInputElement).value;
@@ -128,15 +136,14 @@ interface BodyRow {
 const bodyRows = computed<BodyRow[]>(() => {
   if (!isBody.value || !Array.isArray(props.value)) return [];
   return props.value.map((cmd, i): BodyRow => {
-    const op = (cmd as Record<string, unknown>)?.op;
-    return {
-      pointer: `${props.pointer}/${i}`,
-      label:
-        typeof op === "string" ? (describeForm(op)?.label ?? op) : "（坏命令）",
-      summary: bodySummary(cmd as Record<string, unknown>),
-      cmd: cmd as Record<string, unknown>,
-    };
-  });
+      const record = cmd as Record<string, unknown>;
+      return {
+        pointer: `${props.pointer}/${i}`,
+        label: describeNodeLabel(record), // 与时间线同源（命令按 op、元素按类型）
+        summary: bodySummary(record),
+        cmd: record,
+      };
+    });
 });
 function bodySummary(cmd: Record<string, unknown>): string {
   const text = cmd.text ?? cmd.prompt ?? cmd.target ?? cmd.key ?? cmd.game;
@@ -172,7 +179,7 @@ function moveBody(pointer: string, delta: number): void {
       v-else-if="isScalarText"
       class="control grow"
       type="text"
-      :value="typeof value === 'string' ? value : ''"
+      :value="scalarText"
       :placeholder="
         field.kind === 'expression'
           ? '{表达式}'

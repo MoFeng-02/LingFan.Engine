@@ -10,6 +10,7 @@ import {
   generateText,
   parseStory,
   parseTextStory,
+  projectText,
   type Story,
 } from "@lingfan/engine";
 
@@ -241,5 +242,48 @@ describe("回归锚定：同名冲突按语句优先（与老引擎一致）", (
     expect(col.kind).toBe("scene");
     expect(col.elements?.map((e) => e.type)).toEqual(["text"]);
     expect(col.entry?.map((c) => c.op)).toEqual(["background", "say"]);
+  });
+});
+
+describe("投影不对称：类型与 op 同名的元素（锚点: element-op-conflict-projection）", () => {
+  function sceneStory(): Story {
+    return parseStory({
+      formatVersion: 1,
+      id: "d",
+      columns: [
+        {
+          id: "s",
+          kind: "scene",
+          elements: [
+            { type: "background", source: "Images/bg.png", x: 10 },
+            { type: "text", text: "标题" },
+          ],
+        },
+      ],
+    });
+  }
+
+  it("容错投影：给出警告，但该行照常输出（不得省略——省略会让「应用」静默删元素）", () => {
+    const projection = projectText(sceneStory());
+    expect(projection.issues).toHaveLength(1);
+    expect(projection.issues[0]).toContain("与命令同名");
+    expect(projection.text).toContain('background "Images/bg.png"');
+    expect(projection.text).toContain('text "标题"');
+  });
+
+  it("严格投影 fail-closed（generateText 抛 TextFormatError）", () => {
+    expect(() => generateText(sceneStory())).toThrow(TextFormatError);
+  });
+
+  it("无冲突类型的故事不受影响（边界：issues 为空，与 generateText 一致）", () => {
+    const clean = parseStory({
+      formatVersion: 1,
+      id: "d",
+      columns: [
+        { id: "s", kind: "scene", elements: [{ type: "text", text: "t" }] },
+      ],
+    });
+    expect(projectText(clean).issues).toEqual([]);
+    expect(projectText(clean).text).toBe(generateText(clean));
   });
 });

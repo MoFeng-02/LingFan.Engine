@@ -5,8 +5,9 @@
  */
 
 import type { z } from "zod";
-import type { FieldDescriptor, OpFormDescriptor } from "../contracts";
+import type { FieldDescriptor, FieldKind, OpFormDescriptor } from "../contracts";
 import { FIELD_META, OP_META } from "./catalog";
+import { elementLabel } from "./elementForms";
 import { OP_SCHEMAS } from "./opSchemas";
 
 interface Unwrapped {
@@ -132,4 +133,47 @@ export function describeForm(op: string): OpFormDescriptor | undefined {
 /** op 目录（时间线插入菜单/节点图调色板用） */
 export function listOps(): typeof OP_META {
   return OP_META;
+}
+
+/**
+ * 行标签（时间线/命令体列表共用，单一事实源）：
+ * 命令取 op 标签；**元素取元素类型标签**（元素没有 `op`——按 op 取会让整个元素层显示「（坏命令）」）；
+ * 两者都不是才是真正无法识别的节点。
+ */
+export function describeNodeLabel(
+  node: Record<string, unknown> | undefined,
+): string {
+  const op = node?.op;
+  if (typeof op === "string") return describeForm(op)?.label ?? op;
+  const type = node?.type;
+  if (typeof type === "string") return elementLabel(type);
+  return "（坏命令）";
+}
+
+/**
+ * 表单控件的原始文本 → 落树值（06-D2 的 kind 语义，与 `describeField` 同域故放此处）。
+ *
+ * - `number`/`integer`：`Number`（NaN 由诊断层兜）
+ * - `boolean`：字面 `"true"`
+ * - `value`：智能字面量——`true`/`false`/纯数字还原为对应类型，其余保持字符串（`{expr}` 等）
+ * - 其余（string/identifier/resource/expression/text…）：原样字符串
+ *
+ * **注意 `value` 的智能还原**：`x`/`width` 这类「数字或 CSS 长度」字段靠它把 `120`
+ * 还原为数字（运行时 `len()` 才会补 `px`；退化成字符串 `"120"` 会被 CSS 判为非法而静默丢弃）。
+ */
+export function coerceFieldValue(kind: FieldKind, raw: string): unknown {
+  switch (kind) {
+    case "number":
+    case "integer":
+      return Number(raw);
+    case "boolean":
+      return raw === "true";
+    case "value":
+      if (raw === "true") return true;
+      if (raw === "false") return false;
+      if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw);
+      return raw;
+    default:
+      return raw;
+  }
 }

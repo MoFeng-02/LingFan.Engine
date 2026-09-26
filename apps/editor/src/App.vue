@@ -98,8 +98,14 @@ const api = {
       if (typeof column?.id === "string") selectedColumnId.value = column.id;
     }
   },
+  /**
+   * 选中列：**同时把命令指针指向列本身**（`/columns/<i>`）——
+   * 舞台视图按 pointer 判定所属 scene 列；只设 selectedColumnId 会让舞台永远提示「未选中列」。
+   */
   selectColumn(id: string): void {
     selectedColumnId.value = id;
+    const index = story.value.columns.findIndex((c) => c.id === id);
+    selectedPointer.value = index >= 0 ? `/columns/${index}` : null;
   },
   renameColumn(from: string, to: string): void {
     session.apply(`重命名 ${from} → ${to}`, (s) => renameColumn(s, from, to));
