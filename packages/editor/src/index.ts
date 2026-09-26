@@ -21,9 +21,17 @@ export type {
 export { escapePointerToken, joinPointer } from "./contracts";
 
 export { describeForm, listOps } from "./schema/forms";
+export {
+  describeElement,
+  elementLabel,
+  listElementTypes,
+  specificAttrsOf,
+  type ElementFormDescriptor,
+} from "./schema/elementForms";
+export { draggedPosition, parseNumericPosition } from "./element/drag";
 export { OP_SCHEMAS, validateCommand } from "./schema/opSchemas";
 export { validateStory } from "./schema/validation";
-export { walkStoryCommands } from "./schema/walk";
+export { walkStoryCommands, walkStoryElements } from "./schema/walk";
 
 export { analyzeStory, extractExpressionRefs, indexStory } from "./diagnostics";
 

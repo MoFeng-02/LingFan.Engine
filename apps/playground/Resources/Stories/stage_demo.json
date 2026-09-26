@@ -1,0 +1,93 @@
+{
+  "formatVersion": 1,
+  "id": "stage_demo",
+  "kind": "scene",
+  "elements": [
+    {
+      "type": "background",
+      "id": "bg",
+      "source": "Images/lingfan.png",
+      "x": "0",
+      "y": "0",
+      "width": "100%",
+      "height": "100%",
+      "opacity": 0.35
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "text": "元素系统 · P1 最小闭环",
+      "x": "5%",
+      "y": "12%",
+      "width": "90%",
+      "size": 34,
+      "color": "#FFD700",
+      "halign": "center",
+      "zindex": 10
+    },
+    {
+      "type": "panel",
+      "id": "box",
+      "x": "5%",
+      "y": "32%",
+      "width": "90%",
+      "direction": "vertical",
+      "spacing": 12,
+      "zindex": 20,
+      "children": [
+        {
+          "type": "text",
+          "text": "容器内子元素（panel → children）",
+          "color": "#9ece6a"
+        },
+        {
+          "type": "button",
+          "id": "btn_back",
+          "text": "回到故事",
+          "nav": "start"
+        }
+      ]
+    }
+  ],
+  "entry": [
+    {
+      "op": "say",
+      "speaker": "灵泛",
+      "text": "这里是元素舞台——背景、标题、容器与按钮都是声明式元素（声明式空间层）。"
+    },
+    {
+      "op": "say",
+      "text": "点击后依次执行：追加元素 → 淡入动画 → 样式与层级调整 → 屏幕震动 → 全屏转场。"
+    },
+    {
+      "op": "show",
+      "target": "Images/lingfan.png",
+      "id": "hero",
+      "name": "cast",
+      "x": 40,
+      "y": 120,
+      "background": false
+    },
+    {
+      "op": "animate",
+      "target": "hero",
+      "property": "opacity",
+      "value": 0.9,
+      "duration": 1,
+      "easing": "EaseOutQuad"
+    },
+    {
+      "op": "style",
+      "target": "title",
+      "props": { "color": "#9ece6a" }
+    },
+    { "op": "zindex", "target": "title", "value": 30 },
+    { "op": "shake", "intensity": 6, "duration": 0.4 },
+    { "op": "transition", "type": "fade", "duration": 0.6 },
+    { "op": "say", "text": "完成：标题已改绿、层级已提升，追加的图已淡入。" },
+    { "op": "hide", "target": "cast" },
+    { "op": "say", "text": "按 name 批量隐藏（cast 组）已完成，可看到图消失。" },
+    { "op": "bg_switch", "resource": "Images/lingfan.png" },
+    { "op": "say", "text": "背景已切换（bg_switch）。回「开始故事」列可继续。" }
+  ]
+}

@@ -33,3 +33,28 @@ export {
   type VideoRendererOptions,
 } from "./video";
 export { createMinigameRegistry, type MinigameRegistry } from "./minigame";
+export {
+  createElementRegistry,
+  easingFn,
+  easingNames,
+  elementClassName,
+  elementSource,
+  elementStyle,
+  hasElementInteraction,
+  interpolateAnimation,
+  registerBuiltinElementRenderers,
+  renderElementTree,
+  resolveElementAction,
+  shakeOffset,
+  transitionOpacity,
+  type ElementAction,
+  type ElementRegistry,
+  type ElementRenderer,
+  type ElementRenderContext,
+  type ElementTreeRenderOptions,
+} from "./element";
+export {
+  createCommandRegistry,
+  type CommandRegistry,
+  type NamedCommandHandler,
+} from "./commands";

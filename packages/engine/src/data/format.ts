@@ -5,8 +5,14 @@
  * - 单列原子文件：{ formatVersion, id, kind, commands/elements/entry…, defines? }
  * 任何结构不符 = 整次拒绝（抛 StoryFormatError，issues 带来源定位）。
  */
+import { validateElement } from "./element";
 import { parseTextStory } from "./text";
-import type { Story, StoryColumn, StoryCommand } from "../contracts";
+import type {
+  ElementNode,
+  Story,
+  StoryColumn,
+  StoryCommand,
+} from "../contracts";
 
 export class StoryFormatError extends Error {
   readonly issues: string[];
@@ -284,6 +290,75 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
       }
       break;
     }
+    case "show":
+      requireNonEmptyString(cmd.target, `${at}.target`, issues);
+      if (cmd.background !== undefined && typeof cmd.background !== "boolean") {
+        issues.push(`${at}.background 必须为布尔`);
+      }
+      break;
+    case "hide":
+      requireNonEmptyString(cmd.target, `${at}.target`, issues);
+      break;
+    case "background":
+    case "bg_switch":
+      requireNonEmptyString(cmd.resource, `${at}.resource`, issues);
+      break;
+    case "zindex":
+      requireNonEmptyString(cmd.target, `${at}.target`, issues);
+      if (typeof cmd.value !== "number" || !Number.isFinite(cmd.value)) {
+        issues.push(`${at}.value 必须为有限数字`);
+      }
+      break;
+    case "style":
+      requireNonEmptyString(cmd.target, `${at}.target`, issues);
+      if (!isPlainObject(cmd.props)) issues.push(`${at}.props 必须为对象`);
+      break;
+    case "window":
+      if (cmd.mode !== "auto" && cmd.mode !== "show" && cmd.mode !== "hide") {
+        issues.push(`${at}.mode 必须为 "auto" | "show" | "hide"`);
+      }
+      break;
+    case "animate":
+      requireNonEmptyString(cmd.target, `${at}.target`, issues);
+      requireNonEmptyString(cmd.property, `${at}.property`, issues);
+      if (typeof cmd.value !== "number" || !Number.isFinite(cmd.value)) {
+        issues.push(`${at}.value 必须为有限数字`);
+      }
+      break;
+    case "animate_block": {
+      requireNonEmptyString(cmd.target, `${at}.target`, issues);
+      for (const field of ["x", "y", "opacity", "rotation", "scale"]) {
+        const value = cmd[field];
+        if (
+          value !== undefined &&
+          (typeof value !== "number" || !Number.isFinite(value))
+        ) {
+          issues.push(`${at}.${field} 必须为有限数字`);
+        }
+      }
+      break;
+    }
+    case "transition":
+      requireNonEmptyString(cmd.type, `${at}.type`, issues);
+      break;
+    case "shake":
+      break; // intensity / duration 均可选（执行器给缺省）
+    case "text_typewriter":
+      if (cmd.enabled !== undefined && typeof cmd.enabled !== "boolean") {
+        issues.push(`${at}.enabled 必须为布尔`);
+      }
+      if (
+        cmd.speed !== undefined &&
+        (typeof cmd.speed !== "number" ||
+          !Number.isFinite(cmd.speed) ||
+          cmd.speed <= 0)
+      ) {
+        issues.push(`${at}.speed 必须为正数（字符/秒）`);
+      }
+      if (cmd.enabled === undefined && cmd.speed === undefined) {
+        issues.push(`${at} 至少需要 enabled 或 speed`);
+      }
+      break;
     default:
       break; // 未实现 op：结构从简，执行器 fail-closed（E3）
   }
@@ -341,8 +416,18 @@ function parseColumn(
       issues.push(`${at}（scene）必须有 elements 数组`);
       return null;
     }
-    for (const [j, cmd] of raw.elements.entries()) {
-      validateCommand(cmd, `${at}.elements[${j}]`, issues);
+    const seenElementIds = new Set<string>();
+    for (const [j, node] of raw.elements.entries()) {
+      validateElement(node, `${at}.elements[${j}]`, issues);
+      if (isPlainObject(node) && typeof node.id === "string" && node.id !== "") {
+        if (seenElementIds.has(node.id)) {
+          issues.push(
+            `${at}.elements[${j}].id 重复：${node.id}（同列内元素 id 必须唯一，寻址前提）`,
+          );
+        } else {
+          seenElementIds.add(node.id);
+        }
+      }
     }
     if (raw.entry !== undefined) {
       if (!Array.isArray(raw.entry)) {
@@ -357,7 +442,7 @@ function parseColumn(
   return {
     id: raw.id,
     kind,
-    elements: raw.elements as StoryCommand[],
+    elements: raw.elements as ElementNode[] | undefined,
     entry: raw.entry as StoryCommand[] | undefined,
     commands: raw.commands as StoryCommand[] | undefined,
   };

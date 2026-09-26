@@ -8,6 +8,13 @@ export {
 } from "./format";
 export { assembleProject, ProjectAssemblyError } from "./project";
 export {
+  findElements,
+  loadElements,
+  removeElements,
+  validateElement,
+  validateElementNode,
+} from "./element";
+export {
   generateText,
   parseTextStory,
   projectText,
