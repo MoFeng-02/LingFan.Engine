@@ -222,6 +222,12 @@ describe("字段值落树（锚点: field-value-coercion）", () => {
     );
     expect(text.get("size")?.kind).toBe("value");
     expect(text.get("color")?.kind).toBe("string"); // 颜色不是长度，保持字符串
+    // Grid 轨道与长度同类（renderers.toTrack 数字 → repeat(n, 1fr)）
+    const grid = new Map(
+      (describeElement("grid")?.fields ?? []).map((f) => [f.key, f]),
+    );
+    expect(grid.get("columns")?.kind).toBe("value");
+    expect(grid.get("rows")?.kind).toBe("value");
   });
 
   it("FieldRow 渲染面覆盖全部 FieldKind（回归锚定：value 曾无控件，整行不可编辑）", () => {

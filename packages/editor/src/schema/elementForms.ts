@@ -116,8 +116,9 @@ const ELEMENT_FIELD_META: Readonly<
   borderThickness: { label: "边框宽度", kind: "value" },
   spacing: { label: "间距", kind: "number" },
   direction: { label: "方向（vertical/horizontal）", kind: "string" },
-  columns: { label: "列（数量或 CSS 轨道）", kind: "string" },
-  rows: { label: "行（数量或 CSS 轨道）", kind: "string" },
+  // Grid 轨道：数字 → repeat(n, 1fr)（renderers 的 toTrack），故与长度类同用 value
+  columns: { label: "列（数量或 CSS 轨道）", kind: "value" },
+  rows: { label: "行（数量或 CSS 轨道）", kind: "value" },
   col: { label: "Grid 列（0 基）", kind: "number" },
   row: { label: "Grid 行（0 基）", kind: "number" },
   colspan: { label: "跨列", kind: "number" },

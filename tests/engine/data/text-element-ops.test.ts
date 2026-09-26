@@ -228,7 +228,7 @@ describe("回归锚定：同名冲突按语句优先（与老引擎一致）", (
     ]);
   });
 
-  it("scene 列内同名类型同样按 op（元素行不可达）；无冲突类型走元素行", () => {
+  it("scene 列内裸写的同名类型按 op；无冲突类型走元素行（显式前缀见下一 describe）", () => {
     const back = parseTextStory(
       [
         "scene s",
@@ -245,7 +245,7 @@ describe("回归锚定：同名冲突按语句优先（与老引擎一致）", (
   });
 });
 
-describe("投影不对称：类型与 op 同名的元素（锚点: element-op-conflict-projection）", () => {
+describe("同名冲突类型的显式 element 前缀（锚点: element-op-conflict-projection）", () => {
   function sceneStory(): Story {
     return parseStory({
       formatVersion: 1,
@@ -263,27 +263,83 @@ describe("投影不对称：类型与 op 同名的元素（锚点: element-op-co
     });
   }
 
-  it("容错投影：给出警告，但该行照常输出（不得省略——省略会让「应用」静默删元素）", () => {
+  it("投影器对冲突类型加 element 前缀，非冲突类型照旧裸写；无 issues", () => {
     const projection = projectText(sceneStory());
-    expect(projection.issues).toHaveLength(1);
-    expect(projection.issues[0]).toContain("与命令同名");
-    expect(projection.text).toContain('background "Images/bg.png"');
+    expect(projection.issues).toEqual([]);
+    expect(projection.text).toContain('element background "Images/bg.png"');
     expect(projection.text).toContain('text "标题"');
   });
 
-  it("严格投影 fail-closed（generateText 抛 TextFormatError）", () => {
-    expect(() => generateText(sceneStory())).toThrow(TextFormatError);
+  it("回读后冲突类型仍是元素（不是同名 op）——文本 ↔ JSON 往返精确", () => {
+    const story = sceneStory();
+    const back = parseTextStory(generateText(story), "rt.story");
+    expect(back.columns[0]?.elements).toEqual(story.columns[0]?.elements);
+    expect(back.columns[0]?.entry ?? []).toEqual([]);
   });
 
-  it("无冲突类型的故事不受影响（边界：issues 为空，与 generateText 一致）", () => {
-    const clean = parseStory({
+  it("同一文本里 op 与同名元素可共存（两侧都可达）", () => {
+    const back = parseTextStory(
+      [
+        "scene s",
+        '  element background "Images/bg.png" id=bg',
+        '  background "Images/op.png"',
+      ].join("\n"),
+      "b.story",
+    );
+    const col = back.columns[0]!;
+    expect(col.elements?.map((e) => e.type)).toEqual(["background"]);
+    expect(col.elements?.[0]?.id).toBe("bg");
+    expect(col.entry?.map((c) => c.op)).toEqual(["background"]);
+  });
+
+  it("element 前缀对非冲突类型同样可用（显式写法等价）", () => {
+    const back = parseTextStory(
+      'scene s\n  element text "标题" id=t',
+      "b.story",
+    );
+    expect(back.columns[0]?.elements).toEqual([
+      { type: "text", text: "标题", id: "t" },
+    ]);
+  });
+
+  it("嵌套子元素同样加前缀（边界）", () => {
+    const story = parseStory({
       formatVersion: 1,
       id: "d",
       columns: [
-        { id: "s", kind: "scene", elements: [{ type: "text", text: "t" }] },
+        {
+          id: "s",
+          kind: "scene",
+          elements: [
+            { type: "panel", children: [{ type: "window", x: 5 }] },
+          ],
+        },
       ],
     });
-    expect(projectText(clean).issues).toEqual([]);
-    expect(projectText(clean).text).toBe(generateText(clean));
+    const text = generateText(story);
+    expect(text).toContain("    element window x=5");
+    // 只比元素树（parseStory 会给列塞 `commands: undefined` 归一化键，非文本往返差异）
+    expect(parseTextStory(text, "rt.story").columns[0]?.elements).toEqual(
+      story.columns[0]?.elements,
+    );
+  });
+
+  it("element 前缀后不是元素类型 → 整次拒绝并带行列定位（故意错误）", () => {
+    let error: unknown;
+    try {
+      parseTextStory("scene s\n  element teleporter", "bad.story");
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(TextFormatError);
+    const issues = (error as TextFormatError).issues;
+    expect(issues.join("\n")).toContain("element 前缀后不是已知元素类型");
+    expect(issues[0]).toContain("bad.story:2");
+  });
+
+  it("flow 列体里 element 前缀不是元素语法（边界：元素只属 scene 列）", () => {
+    expect(() =>
+      parseTextStory('label a:\n  element text "x"', "bad.story"),
+    ).toThrow(TextFormatError);
   });
 });

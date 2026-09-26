@@ -1027,25 +1027,42 @@ function parseCommands(
       continue;
     }
 
-    // 元素行（语句优先：与 op 同名的元素类型一律按 op 解析，见 ELEMENT_OP_CONFLICTS）
-    if (allowElements && isElementType(op) && !ELEMENT_OP_CONFLICTS.has(op)) {
-      const node = parseElementLine(splitTokens(text), at, state.issues);
-      if (node !== null) {
-        // 嵌套：紧随其后更深缩进的行归 children（容器专有；子层只允许元素行）
-        if (i + 1 < state.lines.length && state.lines[i + 1]!.indent > indent) {
-          const childIndent = state.lines[i + 1]!.indent;
-          const child = parseCommands(state, i + 1, childIndent, true);
-          if (child.commands.length > 0) {
-            state.issues.push(`${at}: 元素内只允许子元素行，不允许命令`);
-          }
-          node.children = child.elements;
-          elements.push(node);
-          i = child.end;
+    // 元素行（两种写法，07 §一.2）：
+    //   ① 显式前缀 `element <type> …`——**与 op 同名的元素类型只能这样写**
+    //      （`ELEMENT_OP_CONFLICTS`：video/background/window）；投影器对这类元素恒加前缀，
+    //      故「文本 ↔ JSON」往返精确（省略前缀会让元素在回读时变成同名命令）
+    //   ② 裸 `<type> …`——**语句优先**：与 op 同名的类型按 op 解析（对齐老引擎），其余按元素
+    if (allowElements) {
+      const explicit = op === "element";
+      const bare = isElementType(op) && !ELEMENT_OP_CONFLICTS.has(op);
+      if (explicit || bare) {
+        const source = explicit ? rest : text;
+        const type = /^([a-z_]+)/.exec(source)?.[1] ?? "";
+        if (explicit && !isElementType(type)) {
+          state.issues.push(
+            `${at}: element 前缀后不是已知元素类型：${type === "" ? source : type}`,
+          );
+          i += 1;
           continue;
         }
-        elements.push(node);
-        i += 1;
-        continue;
+        const node = parseElementLine(splitTokens(source), at, state.issues);
+        if (node !== null) {
+          // 嵌套：紧随其后更深缩进的行归 children（容器专有；子层只允许元素行）
+          if (i + 1 < state.lines.length && state.lines[i + 1]!.indent > indent) {
+            const childIndent = state.lines[i + 1]!.indent;
+            const child = parseCommands(state, i + 1, childIndent, true);
+            if (child.commands.length > 0) {
+              state.issues.push(`${at}: 元素内只允许子元素行，不允许命令`);
+            }
+            node.children = child.elements;
+            elements.push(node);
+            i = child.end;
+            continue;
+          }
+          elements.push(node);
+          i += 1;
+          continue;
+        }
       }
     }
 
@@ -1731,24 +1748,14 @@ function elementValueText(value: unknown): string {
  * `ElementNode` → 元素行（08 §二.1）：`类型 "内容" key=value …`。
  * 确定性输出：位置参（`source` 优先，其次 `text`）紧接类型名，其余键按插入序；children 缩进 2 空格。
  *
- * **投影不对称（有意，不静默）**：类型与 op 同名的元素（`ELEMENT_OP_CONFLICTS`）在文本里
- * 必被「语句优先」解析回命令（见 `parseCommands`）——该行仍照常输出（**不能省略**：省略会让
- * 文本模式「应用」静默删掉元素），但收集一条 issue 明示不可往返，交调用方决定（容错投影显示警告、
- * 严格投影 fail-closed）。
+ * **同名冲突类型加 `element ` 前缀**（`ELEMENT_OP_CONFLICTS`）：裸写会被「语句优先」回读成同名
+ * op（见 `parseCommands`），加前缀后元素与 op 两侧都可达，往返精确（07 §一.2）。其余类型裸写，
+ * 与既有文本/老引擎写法保持一致（不制造无谓改动）。
  */
-function generateElement(
-  node: ElementNode,
-  pad: string,
-  out: string[],
-  issues: string[],
-): void {
-  if (ELEMENT_OP_CONFLICTS.has(node.type)) {
-    issues.push(
-      `元素类型「${node.type}」与命令同名：文本形态按语句优先解析为命令，无法往返——` +
-        `请用 JSON 视图编辑该元素（或改用其他类型）`,
-    );
-  }
-  const tokens: string[] = [node.type];
+function generateElement(node: ElementNode, pad: string, out: string[]): void {
+  const tokens: string[] = ELEMENT_OP_CONFLICTS.has(node.type)
+    ? ["element", node.type]
+    : [node.type];
   const positional =
     typeof node.source === "string"
       ? node.source
@@ -1764,7 +1771,7 @@ function generateElement(
   out.push(`${pad}${tokens.join(" ")}`);
   if (Array.isArray(node.children)) {
     for (const child of node.children) {
-      generateElement(child as ElementNode, `${pad}  `, out, issues);
+      generateElement(child as ElementNode, `${pad}  `, out);
     }
   }
 }
@@ -1786,7 +1793,7 @@ export function projectText(story: Story): TextProjection {
       // 08 §二.1 scene 列：元素行在前、entry 命令在后（与装载语义一致——先声明空间层再执行）
       out.push(`scene ${column.id}`);
       for (const node of column.elements ?? []) {
-        generateElement(node, "  ", out, issues);
+        generateElement(node, "  ", out);
       }
       for (const cmd of column.entry ?? []) {
         try {
