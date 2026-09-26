@@ -8,3 +8,4 @@ export * from "./host";
 export * from "./preferences";
 export * from "./minigame";
 export * from "./shell";
+export * from "./element";

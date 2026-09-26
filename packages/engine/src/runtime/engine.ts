@@ -4,9 +4,11 @@
  * 框架无关：只写状态与事件，渲染归 UI 层（08-U1）。
  */
 import type {
+  AnimationSpec,
   AudioChannelState,
   CharacterDef,
   ColumnCoordinate,
+  ElementInstance,
   EventListener,
   I18nOverlayFile,
   I18nPort,
@@ -24,7 +26,12 @@ import type {
   ValueChanged,
   VideoCommand,
 } from "../contracts";
-import { SYS } from "../contracts";
+import { ELEMENT_ATTRIBUTES, SYS } from "../contracts";
+import {
+  findElements as findElementsIn,
+  loadElements,
+  removeElements,
+} from "../data/element";
 import {
   ExpressionError,
   evaluateExpression,
@@ -62,6 +69,47 @@ const AUDIO_FIELDS: Record<string, ReadonlySet<string>> = {
   voice: new Set(["op", "resource", "volume", "auto_stop", "restart"]),
   stop_voice: new Set(["op", "fade"]),
 };
+
+/**
+ * 08 §二.1 元素增删 op 已知负载字段（未知字段 fail-closed，E3/F5）。
+ * `show.target` = 资源路径（对齐老引擎 `ShowHideCommand.Target` → `props.source`）。
+ */
+const ELEMENT_OP_FIELDS: Record<string, ReadonlySet<string>> = {
+  show: new Set(["op", "target", "x", "y", "id", "name", "background"]),
+  hide: new Set(["op", "target"]),
+  background: new Set(["op", "resource"]),
+  bg_switch: new Set(["op", "resource"]),
+  zindex: new Set(["op", "target", "value"]),
+  style: new Set(["op", "target", "props"]),
+  window: new Set(["op", "mode"]),
+  animate: new Set(["op", "target", "property", "value", "duration", "easing"]),
+  animate_block: new Set([
+    "op",
+    "target",
+    "x",
+    "y",
+    "opacity",
+    "rotation",
+    "scale",
+    "duration",
+    "easing",
+  ]),
+  transition: new Set(["op", "type", "duration"]),
+  shake: new Set(["op", "intensity", "duration"]),
+  text_typewriter: new Set(["op", "enabled", "speed"]),
+};
+
+/** `animate_block` 可承载的属性（与老引擎 `ParseAnimateBlock` 的属性集一致） */
+const ANIMATE_BLOCK_PROPS: readonly string[] = [
+  "x",
+  "y",
+  "opacity",
+  "rotation",
+  "scale",
+];
+
+/** 背景元素固定底层序（老引擎 ShowHideHandler / BgSwitchHandler：`Order = -1000`） */
+const BACKGROUND_Z = -1000;
 
 /** 停止类 op → 目标常驻通道系统键 */
 const AUDIO_STOP_KEY: Record<string, string> = {
@@ -247,6 +295,11 @@ export class StoryEngine {
   private mediaSeq = 0;
   /** 08 §六.5 视频命令序号：单调递增且不进快照（渲染器按 seq 执行/去重） */
   private videoSeq = 0;
+  /** 08 §二.2 元素动画序号：单调递增且不进快照（连续动画与重放后的同命令可分辨） */
+  private animationSeq = 0;
+  /** 08 §二.2 转场 / 震动启动序号：同上（UI 据此判定「新的一次」） */
+  private transitionSeq = 0;
+  private shakeSeq = 0;
   /** 06 §二.1 小游戏挂载序号：单调递增且不进快照（重放重新挂载与旧挂载可分辨） */
   private minigameSeq = 0;
   /** 06 §二.1 挂起的小游戏等待：分流目标与已求值奖励（resolveMinigame 消费；中断即清除） */
@@ -556,6 +609,39 @@ export class StoryEngine {
    * success → 奖励写状态（走 ValueChanged 事件流，历史可溯）→ on_success 分流；
    * fail → on_fail 分流；目标缺省 = 原列继续。非等待期/畸形结果 fail-closed（D5）。
    */
+  // —— 08 §二.1 元素系统公共接缝（UI 侧交互与宿主扩展经此接入） ——
+
+  /** 当前舞台元素（只读；核心层所有元素写入都经 `SYS.elements`，随快照/存档/回溯） */
+  elements(): ElementInstance[] {
+    const value = this.state.get(SYS.elements);
+    return Array.isArray(value) ? (value as ElementInstance[]) : [];
+  }
+
+  /**
+   * 元素寻址（08 §二.1）：`id` 精确匹配优先，未命中再 `name` 批量匹配（递归含 children）。
+   * 未命中返回空数组 —— 调用方 fail-closed（不静默、不伪造目标）。
+   */
+  findElements(target: string): ElementInstance[] {
+    return findElementsIn(this.elements(), target);
+  }
+
+  /**
+   * 01 §三 表达式插值公开接缝：宿主侧文本（如元素 `cmd` 的 `value`）按**点击时**求值，
+   * 取最新变量（老引擎 `InteractionBinder.ResolveValue` 同语义）。
+   * 失败保留原文并出站 `engine.error`（S8：不静默吞错）。
+   */
+  interpolate(source: string): string {
+    if (typeof source !== "string" || source === "") return "";
+    const { text, errors } = interpolateText(
+      source,
+      this.resolveName,
+      this.draw,
+    );
+    for (const e of errors)
+      this.fail(e.code, `插值失败（保留原文）：${e.message}`);
+    return text;
+  }
+
   resolveMinigame(result: MinigameResult): boolean {
     if (this.get(SYS.waiting) !== "minigame") {
       this.fail(
@@ -681,18 +767,24 @@ export class StoryEngine {
       return false;
     }
     this.coord = { columnId, index: 0 };
+    this.setSystem(SYS.currentSceneColumn, columnId);
+    // 08 §二.1 空间层：scene 列的元素是**声明式装载**（不进命令流），entry 才是进入后
+    // 按序执行的命令流；列切换整体替换 __elements（空间层属于列），回溯由快照还原。
+    this.setSystem(
+      SYS.elements,
+      column.kind === "scene"
+        ? loadElements(column.elements ?? [], columnId)
+        : [],
+    );
     this.frames = [
       {
         columnId,
         commands:
-          column.kind === "flow"
-            ? column.commands!
-            : [...(column.elements ?? []), ...(column.entry ?? [])],
+          column.kind === "flow" ? column.commands! : (column.entry ?? []),
         index: 0,
         scope: Scope.root(), // 列级作用域
       },
     ];
-    this.setSystem(SYS.currentSceneColumn, columnId);
     return true;
   }
 
@@ -883,6 +975,38 @@ export class StoryEngine {
         case "minigame":
           this.execMinigame(frame, cmd);
           return; // 进入小游戏等待（resolveMinigame 解除）
+        case "show":
+        case "hide":
+        case "background":
+        case "bg_switch":
+        case "zindex":
+        case "style":
+          // 08 §二.1 元素增删改：非阻塞（写 SYS.elements，随快照/回溯），故事继续
+          if (!this.execElementVisual(cmd)) return;
+          frame.index += 1;
+          continue;
+        case "window":
+          // 08 §二.6 对话框显隐三态（写 SYS.dialogVisible，UI 据此控层）
+          if (!this.execWindow(cmd)) return;
+          frame.index += 1;
+          continue;
+        case "animate":
+        case "animate_block":
+          // 08 §二.2 元素动画：核心只写动画描述（UI 每帧插值，播毕回调写回终值）
+          if (!this.execAnimate(cmd)) return;
+          frame.index += 1;
+          continue;
+        case "transition":
+        case "shake":
+          // 08 §二.2 屏幕级效果：写启动键（UI 帧驱动，播毕回调清除）
+          if (!this.execScreenEffect(cmd)) return;
+          frame.index += 1;
+          continue;
+        case "text_typewriter":
+          // 08 §四.1 故事级打字机设置（玩家偏好可覆盖，U10）
+          if (!this.execTextTypewriter(cmd)) return;
+          frame.index += 1;
+          continue;
         default:
           // E3 fail-closed：未知/未实现 op 不静默跳过
           this.fail("unknown-op", `未知或未实现的命令：${cmd.op}`);
@@ -1850,6 +1974,437 @@ export class StoryEngine {
   }
 
   /**
+  /**
+   * 08 §二.1 元素增删（`show` / `hide` / `background` / `bg_switch`）：老引擎
+   * `ShowHideHandler` / `BgSwitchHandler` 语义照搬，但统一进**同一元素表** `SYS.elements`
+   * （老引擎分 `Scene.Elements` 与 `RuntimeElements` 两处并在读档时重放重建；新引擎合并为
+   * 纯数据，随快照/存档/回溯自动随行）。
+   *
+   * - `show`：追加元素；`background=true` 先清旧背景并固定底层序（`BACKGROUND_Z`）
+   * - `hide`：按 `id`/`name`/`source` 移除，递归含 children；未命中**幂等不报错**（老引擎同语义）
+   * - `background` / `bg_switch`：换背景（先清旧背景 → 追加，固定底层序）
+   */
+  private execElementVisual(cmd: StoryCommand): boolean {
+    const known = ELEMENT_OP_FIELDS[cmd.op]!;
+    const unknown = Object.keys(cmd).filter((k) => !known.has(k));
+    if (unknown.length > 0) {
+      this.fail(
+        `${cmd.op}-unknown-field`,
+        `${cmd.op} 未知负载字段：${unknown.join(", ")}`,
+      );
+      return false;
+    }
+    const current = this.elements();
+
+    if (cmd.op === "hide") {
+      const target = typeof cmd.target === "string" ? cmd.target : "";
+      if (target === "") {
+        this.fail(
+          "hide-invalid",
+          "hide.target 必须为非空目标（id / name / source 任一）",
+        );
+        return false;
+      }
+      this.setSystem(SYS.elements, removeElements(current, target).next);
+      return true;
+    }
+
+    if (cmd.op === "show") {
+      const target = typeof cmd.target === "string" ? cmd.target : "";
+      if (target === "") {
+        this.fail("show-invalid", "show.target 必须为非空资源路径（写入 source）");
+        return false;
+      }
+      for (const key of ["x", "y"] as const) {
+        const value = cmd[key];
+        if (
+          value !== undefined &&
+          typeof value !== "number" &&
+          typeof value !== "string"
+        ) {
+          this.fail(
+            "show-invalid",
+            `show.${key} 必须为数字或字符串（CSS 长度）`,
+          );
+          return false;
+        }
+      }
+      return this.appendElement(current, target, {
+        isBackground: cmd.background === true,
+        id: typeof cmd.id === "string" && cmd.id !== "" ? cmd.id : undefined,
+        name:
+          typeof cmd.name === "string" && cmd.name !== "" ? cmd.name : undefined,
+        x: cmd.x,
+        y: cmd.y,
+      });
+    }
+
+    if (cmd.op === "zindex") {
+      const target = typeof cmd.target === "string" ? cmd.target : "";
+      const value = cmd.value;
+      if (target === "" || typeof value !== "number" || !Number.isFinite(value)) {
+        this.fail(
+          "zindex-invalid",
+          "zindex 需要 target（非空）与 value（有限数字）",
+        );
+        return false;
+      }
+      const hits = this.findElements(target);
+      if (hits.length === 0) {
+        this.fail("zindex-target-not-found", `zindex 未命中任何元素：${target}`);
+        return false;
+      }
+      this.setSystem(
+        SYS.elements,
+        this.mapElements((el) => (hits.includes(el) ? { ...el, z: value } : el)),
+      );
+      return true;
+    }
+
+    if (cmd.op === "style") {
+      const target = typeof cmd.target === "string" ? cmd.target : "";
+      const raw = cmd.props;
+      if (
+        target === "" ||
+        raw === null ||
+        typeof raw !== "object" ||
+        Array.isArray(raw)
+      ) {
+        this.fail("style-invalid", "style 需要 target（非空）与 props（对象）");
+        return false;
+      }
+      const styleProps = raw as Record<string, unknown>;
+      // F5 同口径：样式键必须在元素属性全集内（未知属性 fail-closed）
+      const unknown = Object.keys(styleProps).filter(
+        (k) => !ELEMENT_ATTRIBUTES.has(k),
+      );
+      if (unknown.length > 0) {
+        this.fail(
+          "style-unknown-attr",
+          `style 未知元素属性：${unknown.join(", ")}（F5）`,
+        );
+        return false;
+      }
+      const hits = this.findElements(target);
+      if (hits.length === 0) {
+        this.fail("style-target-not-found", `style 未命中任何元素：${target}`);
+        return false;
+      }
+      this.setSystem(
+        SYS.elements,
+        this.mapElements((el) =>
+          hits.includes(el)
+            ? { ...el, props: { ...el.props, ...styleProps } }
+            : el,
+        ),
+      );
+      return true;
+    }
+
+    // background / bg_switch：换背景
+    const resource = typeof cmd.resource === "string" ? cmd.resource : "";
+    if (resource === "") {
+      this.fail(`${cmd.op}-invalid`, `${cmd.op}.resource 必须为非空资源路径`);
+      return false;
+    }
+    return this.appendElement(current, resource, { isBackground: true });
+  }
+
+  /**
+   * 元素表递归映射（含 children）。命中判定按**引用**：寻址结果与 `this.elements()`
+   * 同源同引用，故 `hits.includes(el)` 即可精确命中（无需按 id 反查，避免派生 id 重名歧义）。
+   */
+  private mapElements(
+    mapper: (el: ElementInstance) => ElementInstance,
+  ): ElementInstance[] {
+    const walk = (list: readonly ElementInstance[]): ElementInstance[] =>
+      list.map((el) => {
+        const mapped = mapper(el);
+        if (mapped.children.length === 0) return mapped;
+        return { ...mapped, children: walk(mapped.children) };
+      });
+    return walk(this.elements());
+  }
+
+  /**
+   * 08 §二.6 对话框显隐三态：`auto`（跟随对话态，默认）| `show`（强制显示）| `hide`（强制隐藏）。
+   * 只写状态；DOM 可见性归 UI 层（U1：核心只写状态）。
+   */
+  private execWindow(cmd: StoryCommand): boolean {
+    const mode = cmd.mode;
+    if (mode !== "auto" && mode !== "show" && mode !== "hide") {
+      this.fail(
+        "window-invalid",
+        'window.mode 必须为 "auto" | "show" | "hide"（08 §二.6）',
+      );
+      return false;
+    }
+    this.setSystem(SYS.dialogVisible, mode);
+    return true;
+  }
+
+  /**
+   * 08 §二.2 元素动画（`animate` / `animate_block`）：核心只写**动画描述**进 `SYS.animations`，
+   * UI 每帧插值（08 §三.2），播毕调 `animationFinished(seq)` 写回终值。
+   *
+   * - `from` 取目标元素当前属性值；非有限数字或未设 = `0`（对齐老引擎 `Get<double>` 语义）
+   * - `animate_block` 的多个属性**并行**（同 duration）：JSON 键序对作者不可控，序列语义请用多条
+   *   `animate` 表达——此为与老引擎「按解析序序列执行」的**有意差异**
+   */
+  private execAnimate(cmd: StoryCommand): boolean {
+    const target = typeof cmd.target === "string" ? cmd.target : "";
+    if (target === "") {
+      this.fail(`${cmd.op}-invalid`, `${cmd.op}.target 必须为非空目标`);
+      return false;
+    }
+    const hits = this.findElements(target);
+    if (hits.length === 0) {
+      this.fail(
+        `${cmd.op}-target-not-found`,
+        `${cmd.op} 未命中任何元素：${target}`,
+      );
+      return false;
+    }
+    const element = hits[0]!;
+    const duration =
+      typeof cmd.duration === "number" &&
+      Number.isFinite(cmd.duration) &&
+      cmd.duration >= 0
+        ? cmd.duration
+        : 0.3;
+    const easing =
+      typeof cmd.easing === "string" && cmd.easing !== ""
+        ? cmd.easing
+        : "EaseOutQuad";
+
+    if (cmd.op === "animate") {
+      const property = typeof cmd.property === "string" ? cmd.property : "";
+      const value = cmd.value;
+      if (
+        property === "" ||
+        typeof value !== "number" ||
+        !Number.isFinite(value)
+      ) {
+        this.fail(
+          "animate-invalid",
+          "animate 需要 property（非空）与 value（有限数字）",
+        );
+        return false;
+      }
+      const spec = this.makeAnimation(element, property, value, duration, easing);
+      this.setSystem(SYS.animations, [...this.animations(), spec]);
+      return true;
+    }
+
+    // animate_block：多属性同时开始
+    const specs: AnimationSpec[] = [];
+    for (const property of ANIMATE_BLOCK_PROPS) {
+      const value = cmd[property];
+      if (value === undefined) continue;
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        this.fail(
+          "animate_block-invalid",
+          `animate_block.${property} 必须为有限数字`,
+        );
+        return false;
+      }
+      specs.push(this.makeAnimation(element, property, value, duration, easing));
+    }
+    if (specs.length === 0) {
+      this.fail(
+        "animate_block-invalid",
+        "animate_block 至少需要一个属性（x / y / opacity / rotation / scale）",
+      );
+      return false;
+    }
+    this.setSystem(SYS.animations, [...this.animations(), ...specs]);
+    return true;
+  }
+
+  /** 构造动画描述（`from` 取元素当前值，缺省 0）；`target` 固化为元素 id，避免回溯后寻址漂移 */
+  private makeAnimation(
+    element: ElementInstance,
+    property: string,
+    to: number,
+    duration: number,
+    easing: string,
+  ): AnimationSpec {
+    const raw = element.props[property];
+    const from = typeof raw === "number" && Number.isFinite(raw) ? raw : 0;
+    this.animationSeq += 1;
+    return {
+      target: element.id,
+      property,
+      from,
+      to,
+      duration,
+      easing,
+      seq: this.animationSeq,
+    };
+  }
+
+  /** —— 帧驱动消费侧接缝（UI 每帧读取 / 播毕回调）—— */
+
+  /** 08 §二.2 动画队列（UI 每帧按 elapsed 插值应用到 DOM，不逐帧写 SSOT） */
+  animations(): AnimationSpec[] {
+    const value = this.state.get(SYS.animations);
+    return Array.isArray(value) ? (value as AnimationSpec[]) : [];
+  }
+
+  /**
+   * 08 §二.2 动画播毕（UI 回调）：终值写回元素 `props` 并移除条目 ——
+   * 使快照 / 存档 / 回溯看到的是**终态**而非中间值。
+   */
+  animationFinished(seq: number): void {
+    const list = this.animations();
+    const done = list.filter((a) => a.seq === seq);
+    if (done.length === 0) return;
+    this.setSystem(
+      SYS.animations,
+      list.filter((a) => a.seq !== seq),
+    );
+    this.setSystem(
+      SYS.elements,
+      this.mapElements((el) => {
+        const settle = done.filter((a) => a.target === el.id);
+        if (settle.length === 0) return el;
+        const props = { ...el.props };
+        for (const a of settle) props[a.property] = a.to;
+        return { ...el, props };
+      }),
+    );
+  }
+
+  /**
+   * 08 §二.2 屏幕级效果启动：
+   * - `transition { type, duration }` → `SYS.transition`（UI 全屏遮罩动画）
+   * - `shake { intensity, duration }` → `SYS.shake`（UI 抖动偏移）
+   */
+  private execScreenEffect(cmd: StoryCommand): boolean {
+    const duration =
+      typeof cmd.duration === "number" &&
+      Number.isFinite(cmd.duration) &&
+      cmd.duration >= 0
+        ? cmd.duration
+        : 0.5;
+    if (cmd.op === "transition") {
+      const type = typeof cmd.type === "string" ? cmd.type : "";
+      if (type === "") {
+        this.fail(
+          "transition-invalid",
+          "transition.type 必须为非空效果名（别名表见 01 §二.2）",
+        );
+        return false;
+      }
+      this.transitionSeq += 1;
+      this.setSystem(SYS.transition, {
+        type,
+        duration,
+        seq: this.transitionSeq,
+      });
+      return true;
+    }
+    const intensity =
+      typeof cmd.intensity === "number" && Number.isFinite(cmd.intensity)
+        ? cmd.intensity
+        : 8;
+    this.shakeSeq += 1;
+    this.setSystem(SYS.shake, {
+      intensity,
+      duration,
+      seq: this.shakeSeq,
+    });
+    return true;
+  }
+
+  /** 08 §二.2 转场播毕（UI 回调）：清除启动键 */
+  transitionFinished(): void {
+    this.setSystem(SYS.transition, null);
+  }
+
+  /** 08 §二.2 震动播毕（UI 回调）：清除启动键 */
+  shakeFinished(): void {
+    this.setSystem(SYS.shake, null);
+  }
+
+  /**
+   * 08 §四.1 故事级打字机设置（`text_typewriter`）：`enabled`（开关）与/或
+   * `speed`（字符/秒）。与玩家偏好（U10，独立存储）分离——偏好优先级更高，由 UI 合成
+   * （老引擎 `SetTextSpeed` 语义）。
+   */
+  private execTextTypewriter(cmd: StoryCommand): boolean {
+    const enabled = cmd.enabled;
+    const speed = cmd.speed;
+    if (enabled !== undefined && typeof enabled !== "boolean") {
+      this.fail("text_typewriter-invalid", "text_typewriter.enabled 必须为布尔");
+      return false;
+    }
+    if (
+      speed !== undefined &&
+      (typeof speed !== "number" || !Number.isFinite(speed) || speed <= 0)
+    ) {
+      this.fail(
+        "text_typewriter-invalid",
+        "text_typewriter.speed 必须为正数（字符/秒）",
+      );
+      return false;
+    }
+    if (enabled === undefined && speed === undefined) {
+      this.fail(
+        "text_typewriter-invalid",
+        "text_typewriter 至少需要 enabled 或 speed",
+      );
+      return false;
+    }
+    const next: Record<string, unknown> = {};
+    if (enabled !== undefined) next.enabled = enabled;
+    if (speed !== undefined) next.speed = speed;
+    this.setSystem(SYS.typewriter, next);
+    return true;
+  }
+
+  /**
+   * 追加元素到空间层（背景先清旧背景 + 固定底层序）。
+   * `id` 缺省按**追加序**派生（确定性：同序重放得到同 id），显式 `id` 优先。
+   */
+  private appendElement(
+    current: readonly ElementInstance[],
+    source: string,
+    options: {
+      isBackground: boolean;
+      id?: string;
+      name?: string;
+      x?: unknown;
+      y?: unknown;
+    },
+  ): boolean {
+    const base = options.isBackground
+      ? current.filter((e) => e.type !== "background")
+      : [...current];
+    const props: Record<string, unknown> = { source };
+    if (options.isBackground) {
+      props.x = 0;
+      props.y = 0;
+    } else {
+      if (options.x !== undefined) props.x = options.x;
+      if (options.y !== undefined) props.y = options.y;
+    }
+    const element: ElementInstance = {
+      id:
+        options.id ??
+        (options.isBackground ? "background" : `show#${base.length}`),
+      type: options.isBackground ? "background" : "image",
+      props,
+      z: options.isBackground ? BACKGROUND_Z : base.length,
+      children: [],
+    };
+    if (options.name !== undefined) element.name = options.name;
+    base.push(element);
+    this.setSystem(SYS.elements, base);
+    return true;
+  }
+
+  /**
    * 08 §六.5 过场完成（UI 播放结束回调）：解除 video 等待，故事继续。
    * 检查点已在过场建立时提交（重放不再重看）。
    */
@@ -2134,9 +2689,7 @@ export class StoryEngine {
     return {
       columnId: coord.columnId,
       commands:
-        column.kind === "flow"
-          ? column.commands!
-          : [...(column.elements ?? []), ...(column.entry ?? [])],
+        column.kind === "flow" ? column.commands! : (column.entry ?? []),
       index: coord.index,
       scope: Scope.root(), // S3
     };

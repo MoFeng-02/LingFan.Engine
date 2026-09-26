@@ -8,8 +8,9 @@
 import { z } from "zod";
 import type { Diagnostic } from "../contracts";
 import { escapePointerToken } from "../contracts";
+import { validateElementNode } from "@lingfan/engine";
 import { validateCommand } from "./opSchemas";
-import { walkStoryCommands } from "./walk";
+import { walkStoryCommands, walkStoryElements } from "./walk";
 
 const NonEmpty = z.string().min(1);
 
@@ -61,6 +62,21 @@ export function validateStory(story: unknown): Diagnostic[] {
   }
   walkStoryCommands(story, (cmd, pointer) => {
     out.push(...validateCommand(cmd, pointer));
+  });
+  // 08 §二.1 scene 列元素：复用引擎 F5 单一事实源（编辑期与运行期同口径）。
+  // 逐节点遍历 + `validateElementNode`（**单节点**版）——不能用带递归的 `validateElement`，
+  // 否则与遍历叠加会双报同一子元素问题。
+  walkStoryElements(story, (node, pointer) => {
+    const issues: string[] = [];
+    validateElementNode(node, pointer, issues);
+    for (const message of issues) {
+      out.push({
+        code: "invalid-element",
+        severity: "error",
+        message,
+        pointer,
+      });
+    }
   });
   return out;
 }

@@ -22,3 +22,5 @@ export {
 export { resolveHost } from "./runtime/host";
 export { mergeOverlayFiles } from "./runtime/i18n";
 export { PlayerPreferences } from "./runtime/preferences";
+/** 08 §二.1 元素形状校验（F5）：编辑器编辑期与运行期**同口径**的单一事实源 */
+export { validateElement, validateElementNode } from "./data";

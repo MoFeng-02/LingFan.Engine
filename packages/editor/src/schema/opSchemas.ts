@@ -205,6 +205,59 @@ const minigameSchema = z.strictObject({
   reward: z.array(z.strictObject({ key: NonEmpty, value: Value })).optional(),
 });
 
+// ====== 08 §二.1 / §二.2 元素系统（元素增删改 + 表现类）======
+// 字段面以执行器为权威（engine.ts 的 ELEMENT_OP_FIELDS）；x/y 允许数字或 CSS 长度串。
+
+/** 元素增删改（`show` / `hide` / `background` / `bg_switch` / `zindex` / `style` / `window`） */
+const showSchema = z.strictObject({
+  target: NonEmpty,
+  x: z.union([Finite, z.string()]).optional(),
+  y: z.union([Finite, z.string()]).optional(),
+  id: NonEmpty.optional(),
+  name: NonEmpty.optional(),
+  background: z.boolean().optional(),
+});
+const hideSchema = z.strictObject({ target: NonEmpty });
+const backgroundSchema = z.strictObject({ resource: NonEmpty });
+const bgSwitchSchema = z.strictObject({ resource: NonEmpty });
+const zindexSchema = z.strictObject({ target: NonEmpty, value: Finite });
+const styleSchema = z.strictObject({
+  target: NonEmpty,
+  props: z.record(z.string(), Value),
+});
+const windowSchema = z.strictObject({ mode: z.enum(["auto", "show", "hide"]) });
+
+/** 帧驱动表现类（`animate` / `animate_block` / `transition` / `shake` / `text_typewriter`） */
+const animateSchema = z.strictObject({
+  target: NonEmpty,
+  property: NonEmpty,
+  value: Finite,
+  duration: Fade.optional(),
+  easing: NonEmpty.optional(),
+});
+const animateBlockSchema = z.strictObject({
+  target: NonEmpty,
+  x: Finite.optional(),
+  y: Finite.optional(),
+  opacity: Finite.optional(),
+  rotation: Finite.optional(),
+  scale: Finite.optional(),
+  duration: Fade.optional(),
+  easing: NonEmpty.optional(),
+});
+const transitionSchema = z.strictObject({
+  type: NonEmpty,
+  duration: Fade.optional(),
+});
+const shakeSchema = z.strictObject({
+  intensity: Finite.optional(),
+  duration: Fade.optional(),
+});
+const textTypewriterSchema = z.strictObject({
+  enabled: z.boolean().optional(),
+  speed: z.number().finite().positive().optional(),
+});
+
 /** op → 负载 schema（不含 op 键本身）；新增 op = 加条目 = 表单与校验自动出现（D2） */
 export const OP_SCHEMAS: Readonly<Record<string, z.ZodType>> = {
   say: saySchema,
@@ -256,6 +309,19 @@ export const OP_SCHEMAS: Readonly<Record<string, z.ZodType>> = {
   stop_video: emptySchema,
   video_skipable: videoSkipableSchema,
   minigame: minigameSchema,
+  // 08 §二.1 / §二.2 元素系统
+  show: showSchema,
+  hide: hideSchema,
+  background: backgroundSchema,
+  bg_switch: bgSwitchSchema,
+  zindex: zindexSchema,
+  style: styleSchema,
+  window: windowSchema,
+  animate: animateSchema,
+  animate_block: animateBlockSchema,
+  transition: transitionSchema,
+  shake: shakeSchema,
+  text_typewriter: textTypewriterSchema,
 };
 
 function issueToDiagnostic(

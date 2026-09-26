@@ -109,6 +109,29 @@ export const SYS = {
   videoSkipable: "__video_skipable",
   /** 06 §二.1 小游戏挂载信息（game/config/seq；signal 走事件不进 SSOT——运行时对象不可快照） */
   minigame: "__minigame",
+  /**
+   * 08 §二.1 舞台元素（声明式空间层，ElementInstance[]）：进入 scene 列时整体装载，
+   * 列切换清空（空间层属于列），随快照/存档/回溯自动随行（整体 state Map 快照）。
+   */
+  elements: "__elements",
+  /**
+   * 08 §二.6 `window auto|show|hide`：对话框显隐三态（UI 层据此控制对话层可见性；
+   * 叙事语义归核心层，DOM 操作归 UI）。
+   */
+  dialogVisible: "__dialog_visible",
+  // —— 08 §二.2 表现类（帧驱动）：核心只写「启动/动画描述」，UI 每帧插值（08 §三.2） ——
+  /**
+   * 元素动画队列（`animate` / `animate_block` 写入）：`AnimationSpec[]`。
+   * UI 每帧插值应用到 DOM（**不逐帧写 SSOT**），完成后调 `animationFinished(seq)`
+   * 由核心把终值写回元素 `props` 并移除条目（快照/回溯自然随行）。
+   */
+  animations: "__animations",
+  /** 全屏转场（`transition`）：`{ type, duration, seq }`；UI 播放完毕调 `transitionFinished()` 清除 */
+  transition: "__transition",
+  /** 屏幕震动（`shake`）：`{ intensity, duration, seq }`；UI 驱动偏移，播毕调 `shakeFinished()` */
+  shake: "__shake",
+  /** 故事级打字机设置（`text_typewriter`）：`{ enabled?, speed? }`；玩家偏好可覆盖（U10） */
+  typewriter: "__typewriter",
 } as const;
 
 /** 02 §二.2 等待状态（`__waiting` 取值全集） */

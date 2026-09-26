@@ -62,6 +62,19 @@ const DEEP_FORMAT_OPS = new Set([
   "input",
   "random",
   "minigame",
+  // 08 §二.1 / §二.2 元素系统（format.ts 均已加深校验分支）
+  "show",
+  "hide",
+  "background",
+  "bg_switch",
+  "zindex",
+  "style",
+  "window",
+  "animate",
+  "animate_block",
+  "transition",
+  "shake",
+  "text_typewriter",
 ]);
 
 const CANONICAL: Record<string, Record<string, unknown>> = {
@@ -203,6 +216,48 @@ const CANONICAL: Record<string, Record<string, unknown>> = {
       { key: "badge", value: "智者" },
     ],
   },
+  // —— 08 §二.1 元素增删改 ——
+  show: {
+    op: "show",
+    target: "Images/hero.png",
+    x: 40,
+    y: 120,
+    id: "hero",
+    name: "cast",
+    background: false,
+  },
+  hide: { op: "hide", target: "hero" },
+  background: { op: "background", resource: "Images/bg.png" },
+  bg_switch: { op: "bg_switch", resource: "Images/bg2.png" },
+  zindex: { op: "zindex", target: "hero", value: 42 },
+  style: {
+    op: "style",
+    target: "hero",
+    props: { opacity: 0.5, color: "#ffffff" },
+  },
+  window: { op: "window", mode: "auto" },
+  // —— 08 §二.2 帧驱动表现 ——
+  animate: {
+    op: "animate",
+    target: "hero",
+    property: "opacity",
+    value: 1,
+    duration: 0.5,
+    easing: "EaseOutQuad",
+  },
+  animate_block: {
+    op: "animate_block",
+    target: "hero",
+    x: 10,
+    y: 20,
+    opacity: 1,
+    rotation: 0,
+    scale: 1,
+    duration: 0.6,
+  },
+  transition: { op: "transition", type: "fade", duration: 0.5 },
+  shake: { op: "shake", intensity: 8, duration: 0.4 },
+  text_typewriter: { op: "text_typewriter", enabled: true, speed: 30 },
 };
 
 function columnOf(id: string, commands: StoryCommand[]): StoryColumn {

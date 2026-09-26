@@ -71,19 +71,56 @@ function walkCommands(
   });
 }
 
-/** 遍历整棵故事树的全部命令（含嵌套块体）；visit 按命令指针回调 */
+/**
+ * 遍历整棵故事树的全部**命令**（含嵌套块体）；visit 按命令指针回调。
+ *
+ * 注意：scene 列的 `elements` **不在**命令遍历内——元素是声明式空间层（08 §二.1），
+ * 其形状/属性校验走 `walkStoryElements` + `validateElement`（F5）。
+ * 混进命令遍历会被误报 `unknown-op`（元素只有 `type`，没有 `op`）。
+ */
 export function walkStoryCommands(story: unknown, visit: CommandVisitor): void {
   if (!isPlainObject(story) || !Array.isArray(story.columns)) return;
   story.columns.forEach((column, columnIndex) => {
     if (!isPlainObject(column)) return;
     const columnPointer = `/columns/${columnIndex}`;
-    const fields =
-      column.kind === "flow" ? ["commands"] : ["elements", "entry"];
+    const fields = column.kind === "flow" ? ["commands"] : ["entry"];
     for (const field of fields) {
       const list = column[field];
       if (Array.isArray(list)) {
         walkCommands(list, `${columnPointer}/${field}`, visit);
       }
+    }
+  });
+}
+
+export type ElementVisitor = (
+  node: Record<string, unknown>,
+  pointer: string,
+) => void;
+
+function walkElementList(
+  list: readonly unknown[],
+  pointer: string,
+  visit: ElementVisitor,
+): void {
+  list.forEach((node, index) => {
+    const nodePointer = `${pointer}/${index}`;
+    // 非对象也回调（由 validateElement 报「必须为对象」，保持诊断口径统一）
+    visit(node as Record<string, unknown>, nodePointer);
+    if (isPlainObject(node) && Array.isArray(node.children)) {
+      walkElementList(node.children, `${nodePointer}/children`, visit);
+    }
+  });
+}
+
+/** 遍历 scene 列的舞台元素（含 `children` 递归）；visit 按元素指针回调（校验与索引共用） */
+export function walkStoryElements(story: unknown, visit: ElementVisitor): void {
+  if (!isPlainObject(story) || !Array.isArray(story.columns)) return;
+  story.columns.forEach((column, columnIndex) => {
+    if (!isPlainObject(column) || column.kind !== "scene") return;
+    const list = column.elements;
+    if (Array.isArray(list)) {
+      walkElementList(list, `/columns/${columnIndex}/elements`, visit);
     }
   });
 }

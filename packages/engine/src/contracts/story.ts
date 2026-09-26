@@ -3,6 +3,7 @@
  * op 全集按规约 01 §二渐进补齐；契约只增不改（宪法 §3.1）。
  */
 import type { ProjectShellConfig } from "./shell";
+import type { ElementNode } from "./element";
 
 /** 命令：已知 op 的负载由解析器/执行器窄化校验，未知字段/未知 op fail-closed（02-E3） */
 export interface StoryCommand {
@@ -14,8 +15,9 @@ export interface StoryCommand {
 export interface StoryColumn {
   id: string;
   kind: "scene" | "flow";
-  /** scene 专有：元素命令数组（元素系统按规约 01 §二.2 延后实现） */
-  elements?: StoryCommand[];
+  /** scene 专有：08 §二.1 舞台元素声明（36 类型 + 属性全集，F5 fail-closed）。
+   *  进入列时由引擎装载为 `SYS.elements`（声明式空间层，不走命令流） */
+  elements?: ElementNode[];
   /** scene 专有：入口命令，元素后按序执行 */
   entry?: StoryCommand[];
   /** flow 专有：纯流程命令 */

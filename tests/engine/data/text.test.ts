@@ -169,16 +169,41 @@ describe("07-T2 投影失败整次拒绝 + 行列定位", () => {
     );
   });
 
-  it("scene 列无文本投影 → fail-closed（元素系统未实现）", () => {
+  it("scene 列支持文本投影：元素行 + entry 命令，且往返可解析回 scene 列", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "d",
-      columns: [{ id: "sc", kind: "scene", elements: [] }],
+      columns: [
+        {
+          id: "sc",
+          kind: "scene",
+          elements: [
+            { type: "text", id: "t", text: "标题" },
+            {
+              type: "panel",
+              x: 5,
+              children: [{ type: "button", text: "开始", nav: "sc" }],
+            },
+          ],
+          entry: [{ op: "say", text: "hi" }],
+        },
+      ],
     });
-    expect(() => generateText(story)).toThrow(TextFormatError);
+    const text = generateText(story);
+    expect(text).toContain("scene sc");
+    expect(text).toContain('text "标题" id=t');
+    expect(text).toContain("panel x=5");
+    expect(text).toContain('  button "开始" nav=sc'); // 嵌套缩进
+    expect(text).toContain('say "hi"');
+
+    // 往返：生成文本可解析回同构 scene 列（T1）
+    const back = parseTextStory(text, "roundtrip.story");
+    expect(back.columns[0]?.kind).toBe("scene");
+    expect(back.columns[0]?.elements).toHaveLength(2);
+    expect(back.columns[0]?.entry).toEqual([{ op: "say", text: "hi" }]);
   });
 
-  it("06 projectText 容错投影：scene 列收为 issues，其余列照常输出（generateText 的非抛形态）", () => {
+  it("06 projectText 容错投影：scene 列已支持，无不可投影项时 issues 为空", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "d",
@@ -189,12 +214,10 @@ describe("07-T2 投影失败整次拒绝 + 行列定位", () => {
       ],
     });
     const projection = projectText(story);
-    expect(projection.issues).toEqual([
-      "scene 列（sc）暂无文本投影（元素系统未实现）",
-    ]);
+    expect(projection.issues).toEqual([]);
     expect(projection.text).toContain("label a:");
     expect(projection.text).toContain('say "hi"');
-    expect(projection.text).not.toContain("sc");
+    expect(projection.text).toContain("scene sc");
     // 无 issues 时与 generateText 完全一致
     const clean = parseStory({
       formatVersion: 1,

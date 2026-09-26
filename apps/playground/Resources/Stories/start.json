@@ -64,7 +64,8 @@
       "prompt": "接下来去哪里？",
       "options": [
         { "text": "酒馆", "target": "inn" },
-        { "text": "广场", "target": "square" }
+        { "text": "广场", "target": "square" },
+        { "text": "元素舞台", "target": "stage_demo" }
       ]
     }
   ]

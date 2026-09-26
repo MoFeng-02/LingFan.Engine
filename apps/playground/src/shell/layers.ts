@@ -17,6 +17,7 @@
 
 /** 舞台渲染层 id（与 08 §一 RenderTargets 及舞台 DOM 一一对应） */
 export type LayerId =
+  | "stage"
   | "video"
   | "dialogue"
   | "choices"
@@ -30,6 +31,7 @@ export type LayerZTable = Record<LayerId, number>;
 export type LayerZOverrides = Partial<Record<LayerId, number>>;
 
 export const LAYER_IDS: readonly LayerId[] = [
+  "stage",
   "video",
   "dialogue",
   "choices",
@@ -40,8 +42,13 @@ export const LAYER_IDS: readonly LayerId[] = [
   "prefs",
 ];
 
-/** 内建默认 z（语义化基线，见模块注释） */
+/**
+ * 内建默认 z（语义化基线，见模块注释）。
+ * `stage` = 舞台容器（背景 + 元素），默认 0：位于 video(100) 之下（既有「video 盖舞台」语义不变），
+ * 元素间的叠放由各自的 `zindex`/到达序在舞台内部独立比较（§3.1 两级叠放）。
+ */
 export const DEFAULT_LAYER_Z: LayerZTable = {
+  stage: 0,
   video: 100,
   dialogue: 999,
   choices: 1100,

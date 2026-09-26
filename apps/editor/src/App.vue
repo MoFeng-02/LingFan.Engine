@@ -16,6 +16,7 @@ import {
 import { sampleStory } from "./sample";
 import ColumnList from "./components/ColumnList.vue";
 import StoryTimeline from "./components/StoryTimeline.vue";
+import StageEditor from "./components/StageEditor.vue";
 import PropertyPanel from "./components/PropertyPanel.vue";
 import DiagnosticsPanel from "./components/DiagnosticsPanel.vue";
 import JsonView from "./components/JsonView.vue";
@@ -31,7 +32,7 @@ const redoDepth = ref(0);
 const selectedColumnId = ref<string>(session.story.entry);
 const selectedPointer = ref<string | null>(null);
 const rightTab = ref<"diagnostics" | "json" | "text">("diagnostics");
-const centerView = ref<"timeline" | "graph">("timeline");
+const centerView = ref<"timeline" | "stage" | "graph">("timeline");
 const previewing = ref(false);
 
 session.subscribe((s) => {
@@ -177,6 +178,12 @@ function onExport(): void {
           时间线
         </button>
         <button
+          :class="{ active: centerView === 'stage' }"
+          @click="centerView = 'stage'"
+        >
+          舞台
+        </button>
+        <button
           :class="{ active: centerView === 'graph' }"
           @click="centerView = 'graph'"
         >
@@ -219,6 +226,11 @@ function onExport(): void {
           />
           <PropertyPanel :story="story" :pointer="selectedPointer" />
         </template>
+        <StageEditor
+          v-else-if="centerView === 'stage'"
+          :story="story"
+          :pointer="selectedPointer"
+        />
         <NodeGraph v-else :story="story" :selected-id="selectedColumnId" />
       </section>
 

@@ -3,14 +3,16 @@
  * - parseTextStory：文本 → Story（缩进块无 end、{…} 包表达式、// 与 # 注释、行列定位 fail-closed）
  * - generateText：Story → 文本（确定性输出：键序按字段序、缩进 2 空格、转义按老规范投影器规则）
  * - T1 往返等价 / T2 投影失败整次拒绝 / T3 JSON 树唯一真相源 / T4 与 JSON 混存（按内容识别）
- * 覆盖引擎已实现 op 全集；scene 元素行随元素系统实现（fail-closed 提示）。
+ * 覆盖引擎已实现 op 全集；scene 列支持元素行（08 §二.1：`类型 "内容" key=value …`，嵌套用缩进）。
  */
 import type {
   CharacterDef,
+  ElementNode,
   Story,
   StoryColumn,
   StoryCommand,
 } from "../contracts";
+import { isElementType } from "../contracts";
 import { baseName } from "./format";
 
 export class TextFormatError extends Error {
@@ -231,6 +233,36 @@ function extractDictLiteral(
   };
 }
 
+/** 提取 `key={…}` 形式的字典字面量（与 `extractDictLiteral` 同法计花括号，便于 `key=值` 语法） */
+function extractKeyedDictLiteral(
+  source: string,
+  key: string,
+): { literal: string; remainder: string } | null {
+  const at = source.indexOf(`${key}=`);
+  if (at < 0) return null;
+  const braceAt = source.indexOf("{", at + key.length + 1);
+  if (braceAt < 0) return null;
+  let depth = 0;
+  let end = -1;
+  for (let i = braceAt; i < source.length; i += 1) {
+    const ch = source[i]!;
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
+  }
+  if (end < 0) return null;
+  return {
+    literal: source.slice(braceAt, end + 1),
+    // 保留 key= 之前的内容（目标等位置参）与闭合花括号之后的内容
+    remainder: `${source.slice(0, at)} ${source.slice(end + 1)}`,
+  };
+}
+
 /** {"f":v} 字典字面量 → 对象（字段值走 parseValueLiteral 语义） */
 function parseDictLiteral(raw: string): Record<string, unknown> {
   const inner = raw.trim().replace(/^\{/, "").replace(/\}$/, "");
@@ -333,6 +365,56 @@ function parseSay(
   }
   if (!sawText) issues.push(`${at}: say 缺少 text 字符串`);
   return cmd;
+}
+
+// ====== 08 §二.1 元素行（scene 列内）：`类型 "内容" key=value …` ======
+
+/**
+ * 同时是「元素类型」与「语句 op」的名字——老引擎语句优先于元素兜底（规约 01 §二.2 亦记录
+ * `popup` 元素行不可达）。这些名字在文本里一律按 op 解析；要写同名元素请用 JSON 形态。
+ */
+const ELEMENT_OP_CONFLICTS = new Set(["video", "background", "window"]);
+
+/** 图像类元素的位置参归属 `source`，其余归 `text`（老引擎 DslParser.BuildEntity:290-294） */
+const ELEMENT_SOURCE_TYPES = new Set(["image", "background", "portrait"]);
+
+/** 属性值：true/false → 布尔；纯数字 → 数字；其余去引号原样（老引擎 DslParser.BoolValue 同语义） */
+function parseElementAttrValue(raw: string): unknown {
+  const text = raw.startsWith('"') ? unquote(raw) : raw;
+  if (text === "true") return true;
+  if (text === "false") return false;
+  if (/^-?\d+(\.\d+)?$/.test(text)) return Number(text);
+  return text;
+}
+
+/**
+ * 元素行 → `ElementNode`（08 §二.1：36 类型 + 属性全集）。
+ * 位置参 `"内容"` 按类型归属（图像类 → `source`，其余 → `text`）；属性合法性由解析期 F5 兜底。
+ */
+function parseElementLine(
+  tokens: string[],
+  at: string,
+  issues: string[],
+): ElementNode | null {
+  const type = tokens[0] ?? "";
+  if (!isElementType(type)) return null;
+  const node: ElementNode = { type };
+  for (const token of tokens.slice(1)) {
+    if (token.startsWith('"')) {
+      const content = unquote(token);
+      if (ELEMENT_SOURCE_TYPES.has(type)) node.source = content;
+      else node.text = content;
+      continue;
+    }
+    const eq = token.indexOf("=");
+    if (eq <= 0) {
+      issues.push(`${at}: 元素行无法识别的参数：${token}`);
+      continue;
+    }
+    const key = token.slice(0, eq);
+    node[key] = parseElementAttrValue(token.slice(eq + 1));
+  }
+  return node;
 }
 
 /** 单命令行 → StoryCommand（不支持块体的 op） */
@@ -685,6 +767,208 @@ function parseSimpleStatement(
         return fail("video_skipable 需要 true|false");
       return { op: "video_skipable", value: raw === "true" } as StoryCommand;
     }
+    // ====== 08 §二.1 元素增删改 ======
+    case "show": {
+      const positional = tokens[0];
+      if (positional === undefined || !positional.startsWith('"'))
+        return fail("show 需要资源路径字符串（写入 target → source）");
+      const cmd: StoryCommand = { op: "show", target: unquote(positional) };
+      for (const token of tokens.slice(1)) {
+        const eq = token.indexOf("=");
+        if (eq <= 0) return fail(`show 未知参数：${token}`);
+        const key = token.slice(0, eq);
+        const raw = token.slice(eq + 1);
+        if (key === "x" || key === "y") {
+          cmd[key] = parseElementAttrValue(raw); // 数字或 CSS 长度串
+          continue;
+        }
+        if (key === "id" || key === "name") {
+          cmd[key] = unquote(raw);
+          continue;
+        }
+        if (key === "background") {
+          if (raw !== "true" && raw !== "false")
+            return fail("show.background 需要 true|false");
+          cmd.background = raw === "true";
+          continue;
+        }
+        return fail(`show 未知参数：${key}`);
+      }
+      return cmd;
+    }
+    case "hide": {
+      const target = tokens[0];
+      if (target === undefined || !target.startsWith('"'))
+        return fail("hide 需要目标字符串（id / name / source 任一）");
+      if (tokens.length > 1) return fail(`hide 未知参数：${tokens[1]}`);
+      return { op: "hide", target: unquote(target) } as StoryCommand;
+    }
+    case "background":
+    case "bg_switch": {
+      const resource = tokens[0];
+      if (resource === undefined || !resource.startsWith('"'))
+        return fail(`${op} 需要资源路径字符串`);
+      if (tokens.length > 1) return fail(`${op} 未知参数：${tokens[1]}`);
+      return { op, resource: unquote(resource) } as StoryCommand;
+    }
+    case "zindex": {
+      const target = tokens[0];
+      if (target === undefined || !target.startsWith('"'))
+        return fail("zindex 需要目标字符串");
+      const token = tokens[1];
+      if (token === undefined || !token.startsWith("value="))
+        return fail("zindex 需要 value=数字");
+      const value = Number(token.slice("value=".length));
+      if (Number.isNaN(value)) return fail("zindex.value 必须为数字");
+      if (tokens.length > 2) return fail(`zindex 未知参数：${tokens[2]}`);
+      return { op: "zindex", target: unquote(target), value } as StoryCommand;
+    }
+    case "style": {
+      const dict = extractKeyedDictLiteral(rest, "props");
+      if (dict === null) return fail("style 需要 props={…}");
+      const target = splitTokens(dict.remainder)[0] ?? "";
+      if (!target.startsWith('"')) return fail("style 需要目标字符串");
+      return {
+        op: "style",
+        target: unquote(target),
+        props: parseDictLiteral(dict.literal),
+      } as StoryCommand;
+    }
+    case "window": {
+      const mode = tokens[0];
+      if (mode !== "auto" && mode !== "show" && mode !== "hide")
+        return fail("window 需要 auto|show|hide");
+      if (tokens.length > 1) return fail(`window 未知参数：${tokens[1]}`);
+      return { op: "window", mode } as StoryCommand;
+    }
+    // ====== 08 §二.2 帧驱动表现 ======
+    case "animate": {
+      const target = tokens[0];
+      if (target === undefined || !target.startsWith('"'))
+        return fail("animate 需要目标字符串");
+      const cmd: StoryCommand = { op: "animate", target: unquote(target) };
+      for (const token of tokens.slice(1)) {
+        const eq = token.indexOf("=");
+        if (eq <= 0) return fail(`animate 未知参数：${token}`);
+        const key = token.slice(0, eq);
+        const raw = token.slice(eq + 1);
+        if (key === "property") {
+          cmd.property = unquote(raw);
+          continue;
+        }
+        if (key === "easing") {
+          cmd.easing = unquote(raw);
+          continue;
+        }
+        if (key === "value" || key === "duration") {
+          const n = Number(raw);
+          if (Number.isNaN(n)) return fail(`animate.${key} 必须为数字`);
+          cmd[key] = n;
+          continue;
+        }
+        return fail(`animate 未知参数：${key}`);
+      }
+      if (cmd.property === undefined) return fail("animate 需要 property=属性名");
+      if (cmd.value === undefined) return fail("animate 需要 value=数字");
+      return cmd;
+    }
+    case "animate_block": {
+      const target = tokens[0];
+      if (target === undefined || !target.startsWith('"'))
+        return fail("animate_block 需要目标字符串");
+      const cmd: StoryCommand = { op: "animate_block", target: unquote(target) };
+      for (const token of tokens.slice(1)) {
+        const eq = token.indexOf("=");
+        if (eq <= 0) return fail(`animate_block 未知参数：${token}`);
+        const key = token.slice(0, eq);
+        const raw = token.slice(eq + 1);
+        if (key === "easing") {
+          cmd.easing = unquote(raw);
+          continue;
+        }
+        if (
+          key === "x" ||
+          key === "y" ||
+          key === "opacity" ||
+          key === "rotation" ||
+          key === "scale" ||
+          key === "duration"
+        ) {
+          const n = Number(raw);
+          if (Number.isNaN(n)) return fail(`animate_block.${key} 必须为数字`);
+          cmd[key] = n;
+          continue;
+        }
+        return fail(`animate_block 未知参数：${key}`);
+      }
+      if (
+        cmd.x === undefined &&
+        cmd.y === undefined &&
+        cmd.opacity === undefined &&
+        cmd.rotation === undefined &&
+        cmd.scale === undefined
+      )
+        return fail(
+          "animate_block 至少需要一个属性（x/y/opacity/rotation/scale）",
+        );
+      return cmd;
+    }
+    case "transition": {
+      const type = tokens[0];
+      if (type === undefined || !type.startsWith('"'))
+        return fail("transition 需要效果名字符串");
+      const cmd: StoryCommand = { op: "transition", type: unquote(type) };
+      for (const token of tokens.slice(1)) {
+        const eq = token.indexOf("=");
+        if (eq <= 0) return fail(`transition 未知参数：${token}`);
+        const key = token.slice(0, eq);
+        if (key !== "duration") return fail(`transition 未知参数：${key}`);
+        const n = Number(token.slice(eq + 1));
+        if (Number.isNaN(n)) return fail("transition.duration 必须为数字");
+        cmd.duration = n;
+      }
+      return cmd;
+    }
+    case "shake": {
+      const cmd: StoryCommand = { op: "shake" };
+      for (const token of tokens) {
+        const eq = token.indexOf("=");
+        if (eq <= 0) return fail(`shake 未知参数：${token}`);
+        const key = token.slice(0, eq);
+        if (key !== "intensity" && key !== "duration")
+          return fail(`shake 未知参数：${key}`);
+        const n = Number(token.slice(eq + 1));
+        if (Number.isNaN(n)) return fail(`shake.${key} 必须为数字`);
+        cmd[key] = n;
+      }
+      return cmd;
+    }
+    case "text_typewriter": {
+      const cmd: StoryCommand = { op: "text_typewriter" };
+      for (const token of tokens) {
+        const eq = token.indexOf("=");
+        if (eq <= 0) return fail(`text_typewriter 未知参数：${token}`);
+        const key = token.slice(0, eq);
+        const raw = token.slice(eq + 1);
+        if (key === "enabled") {
+          if (raw !== "true" && raw !== "false")
+            return fail("text_typewriter.enabled 需要 true|false");
+          cmd.enabled = raw === "true";
+          continue;
+        }
+        if (key === "speed") {
+          const n = Number(raw);
+          if (Number.isNaN(n) || n <= 0)
+            return fail("text_typewriter.speed 必须为正数");
+          cmd.speed = n;
+          continue;
+        }
+        return fail(`text_typewriter 未知参数：${key}`);
+      }
+      if (cmd.enabled === undefined && cmd.speed === undefined)
+        return fail("text_typewriter 至少需要 enabled 或 speed");
+      return cmd;
+    }
     default:
       return fail(`文本投影暂不支持的语句：${op}`);
   }
@@ -710,12 +994,19 @@ function collectBody(
   return parseCommands(state, start, lines[start]!.indent);
 }
 
+/**
+ * 缩进体解析。`allowElements` = 允许元素行（仅 scene 列体开启；08 §二.1 元素是**声明式空间层**，
+ * 与 entry 命令分组收集：元素行归 `elements`，其余语句归 `commands`——对齐老引擎 StoryLoader
+ * 「非 define 非元素行 → EntryScript」的分组语义）。
+ */
 function parseCommands(
   state: ParseState,
   start: number,
   indent: number,
-): { commands: StoryCommand[]; end: number } {
+  allowElements = false,
+): { commands: StoryCommand[]; elements: ElementNode[]; end: number } {
   const commands: StoryCommand[] = [];
+  const elements: ElementNode[] = [];
   let i = start;
   for (;;) {
     if (i >= state.lines.length) break;
@@ -736,6 +1027,28 @@ function parseCommands(
       continue;
     }
 
+    // 元素行（语句优先：与 op 同名的元素类型一律按 op 解析，见 ELEMENT_OP_CONFLICTS）
+    if (allowElements && isElementType(op) && !ELEMENT_OP_CONFLICTS.has(op)) {
+      const node = parseElementLine(splitTokens(text), at, state.issues);
+      if (node !== null) {
+        // 嵌套：紧随其后更深缩进的行归 children（容器专有；子层只允许元素行）
+        if (i + 1 < state.lines.length && state.lines[i + 1]!.indent > indent) {
+          const childIndent = state.lines[i + 1]!.indent;
+          const child = parseCommands(state, i + 1, childIndent, true);
+          if (child.commands.length > 0) {
+            state.issues.push(`${at}: 元素内只允许子元素行，不允许命令`);
+          }
+          node.children = child.elements;
+          elements.push(node);
+          i = child.end;
+          continue;
+        }
+        elements.push(node);
+        i += 1;
+        continue;
+      }
+    }
+
     const cmd = parseSimpleStatement(
       op,
       rest,
@@ -746,7 +1059,7 @@ function parseCommands(
     if (cmd !== null) commands.push(cmd);
     i += 1;
   }
-  return { commands, end: i };
+  return { commands, elements, end: i };
 }
 
 /** 块体语句：if/elif/else、while、for、foreach、switch、menu、func */
@@ -1204,6 +1517,79 @@ function generateCommand(
       );
       generateBody(cmd.body as StoryCommand[], indent, out);
       return;
+    // ====== 08 §二.1 元素增删改 ======
+    case "show": {
+      let line = `${pad}show ${quoteForText(cmd.target as string)}`;
+      if (cmd.x !== undefined) line += ` x=${elementValueText(cmd.x)}`;
+      if (cmd.y !== undefined) line += ` y=${elementValueText(cmd.y)}`;
+      if (cmd.id !== undefined) line += ` id=${elementValueText(cmd.id)}`;
+      if (cmd.name !== undefined) line += ` name=${elementValueText(cmd.name)}`;
+      if (cmd.background === true) line += " background=true";
+      else if (cmd.background === false) line += " background=false";
+      out.push(line);
+      return;
+    }
+    case "hide":
+      out.push(`${pad}hide ${quoteForText(cmd.target as string)}`);
+      return;
+    case "background":
+    case "bg_switch":
+      out.push(`${pad}${cmd.op} ${quoteForText(cmd.resource as string)}`);
+      return;
+    case "zindex":
+      out.push(
+        `${pad}zindex ${quoteForText(cmd.target as string)} value=${cmd.value}`,
+      );
+      return;
+    case "style":
+      out.push(
+        `${pad}style ${quoteForText(cmd.target as string)} props=${generateDictLiteral(cmd.props as Record<string, unknown>)}`,
+      );
+      return;
+    case "window":
+      out.push(`${pad}window ${cmd.mode as string}`);
+      return;
+    // ====== 08 §二.2 帧驱动表现 ======
+    case "animate": {
+      let line = `${pad}animate ${quoteForText(cmd.target as string)} property=${elementValueText(cmd.property)} value=${cmd.value}`;
+      if (cmd.duration !== undefined) line += ` duration=${cmd.duration}`;
+      if (cmd.easing !== undefined)
+        line += ` easing=${elementValueText(cmd.easing)}`;
+      out.push(line);
+      return;
+    }
+    case "animate_block": {
+      let line = `${pad}animate_block ${quoteForText(cmd.target as string)}`;
+      for (const key of ["x", "y", "opacity", "rotation", "scale"]) {
+        if (cmd[key] !== undefined) line += ` ${key}=${cmd[key]}`;
+      }
+      if (cmd.duration !== undefined) line += ` duration=${cmd.duration}`;
+      if (cmd.easing !== undefined)
+        line += ` easing=${elementValueText(cmd.easing)}`;
+      out.push(line);
+      return;
+    }
+    case "transition": {
+      let line = `${pad}transition ${quoteForText(cmd.type as string)}`;
+      if (cmd.duration !== undefined) line += ` duration=${cmd.duration}`;
+      out.push(line);
+      return;
+    }
+    case "shake": {
+      let line = `${pad}shake`;
+      if (cmd.intensity !== undefined) line += ` intensity=${cmd.intensity}`;
+      if (cmd.duration !== undefined) line += ` duration=${cmd.duration}`;
+      out.push(line);
+      return;
+    }
+    case "text_typewriter": {
+      let line = `${pad}text_typewriter`;
+      if (cmd.enabled !== undefined)
+        line += ` enabled=${cmd.enabled ? "true" : "false"}`;
+      if (cmd.speed !== undefined) line += ` speed=${cmd.speed}`;
+      out.push(line);
+      return;
+    }
     default:
       // 未支持文本投影的 op：fail-closed（T2 不静默）
       throw new TextFormatError([`op "${cmd.op}" 暂无文本投影`]);
@@ -1263,6 +1649,41 @@ export function parseTextStory(source: string, sourceName = "story"): Story {
       i = body.end;
       continue;
     }
+    // 08 §二.1 scene 列（空间层）：`scene "列名"` + 缩进体（元素行归 elements，其余归 entry）
+    const scene = /^scene\s+(.+?)\s*$/.exec(line.text);
+    if (scene !== null) {
+      const sceneTokens = splitTokens(line.text);
+      const name = unquote(sceneTokens[1] ?? "");
+      if (name === "" || columns.some((c) => c.id === name)) {
+        state.issues.push(`${at}: scene 名为空或重复：${name}`);
+      }
+      if (sceneTokens.length > 2) {
+        // 老引擎 scene 头的 type/layout 在新列模型无对应字段 → 接受但忽略（投影不生成）
+        state.issues.push(
+          `${at}: scene 头仅支持名称，忽略额外参数：${sceneTokens.slice(2).join(" ")}`,
+        );
+      }
+      const bodyIndent =
+        i + 1 < state.lines.length && state.lines[i + 1]!.indent > 0
+          ? state.lines[i + 1]!.indent
+          : -1;
+      const body =
+        bodyIndent < 0
+          ? {
+              commands: [] as StoryCommand[],
+              elements: [] as ElementNode[],
+              end: i + 1,
+            }
+          : parseCommands(state, i + 1, bodyIndent, true);
+      columns.push({
+        id: name,
+        kind: "scene",
+        elements: body.elements,
+        entry: body.commands,
+      });
+      i = body.end;
+      continue;
+    }
     const topOp = /^([a-z_]+)\s+/.exec(line.text)?.[1] ?? "";
     if (topOp === "define" || topOp === "set") {
       const cmd = parseSimpleStatement(
@@ -1298,7 +1719,41 @@ export function parseTextStory(source: string, sourceName = "story"): Story {
   };
 }
 
-/** 06 编辑器文本模式契约：容错投影——不可投影部分（scene 列/未知 op）收集为 issues，其余照常输出 */
+/** 元素属性值 → 文本（布尔/数字裸串；含空白的字符串加引号，保证往返等价） */
+function elementValueText(value: unknown): string {
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") return String(value);
+  const text = String(value);
+  return /\s/.test(text) ? quoteForText(text) : text;
+}
+
+/**
+ * `ElementNode` → 元素行（08 §二.1）：`类型 "内容" key=value …`。
+ * 确定性输出：位置参（`source` 优先，其次 `text`）紧接类型名，其余键按插入序；children 缩进 2 空格。
+ */
+function generateElement(node: ElementNode, pad: string, out: string[]): void {
+  const tokens: string[] = [node.type];
+  const positional =
+    typeof node.source === "string"
+      ? node.source
+      : typeof node.text === "string"
+        ? node.text
+        : undefined;
+  if (positional !== undefined) tokens.push(quoteForText(positional));
+  for (const [key, value] of Object.entries(node)) {
+    if (key === "type" || key === "children") continue;
+    if (key === "text" || key === "source") continue; // 已作位置参输出
+    tokens.push(`${key}=${elementValueText(value)}`);
+  }
+  out.push(`${pad}${tokens.join(" ")}`);
+  if (Array.isArray(node.children)) {
+    for (const child of node.children) {
+      generateElement(child as ElementNode, `${pad}  `, out);
+    }
+  }
+}
+
+/** 06 编辑器文本模式契约：容错投影——不可投影部分（未知 op）收集为 issues，其余照常输出 */
 export interface TextProjection {
   text: string;
   issues: string[];
@@ -1311,8 +1766,20 @@ export function projectText(story: Story): TextProjection {
     out.push(`define ${quoteForText(key)} ${generateValue(value)}`);
   }
   for (const column of story.columns) {
-    if (column.kind !== "flow") {
-      issues.push(`scene 列（${column.id}）暂无文本投影（元素系统未实现）`);
+    if (column.kind === "scene") {
+      // 08 §二.1 scene 列：元素行在前、entry 命令在后（与装载语义一致——先声明空间层再执行）
+      out.push(`scene ${column.id}`);
+      for (const node of column.elements ?? []) {
+        generateElement(node, "  ", out);
+      }
+      for (const cmd of column.entry ?? []) {
+        try {
+          generateCommand(cmd, "  ", out);
+        } catch (e) {
+          if (e instanceof TextFormatError) issues.push(...e.issues);
+          else throw e;
+        }
+      }
       continue;
     }
     out.push(`label ${column.id}:`);
@@ -1328,7 +1795,7 @@ export function projectText(story: Story): TextProjection {
   return { text: `${out.join("\n")}\n`, issues };
 }
 
-/** 07-T1/T3：Story → 文本（确定性输出）。scene 列暂无文本投影（元素系统未实现）→ fail-closed */
+/** 07-T1/T3：Story → 文本（确定性输出）。不可投影部分收集为 issues 后整次拒绝（fail-closed） */
 export function generateText(story: Story): string {
   const { text, issues } = projectText(story);
   if (issues.length > 0) throw new TextFormatError(issues);

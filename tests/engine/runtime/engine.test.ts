@@ -81,6 +81,8 @@ describe("最小闭环主链路（锚点: ssot-only-observation）", () => {
 
     const expectedKeys = [
       SYS.currentSceneColumn,
+      // 08 §二.1 元素系统：进入 scene 列随即装载空间层（声明式，不进命令流）
+      SYS.elements,
       // say 1（进入等待前清残留完成标记——锚点: race-stale-complete-flag）
       SYS.dialogComplete,
       SYS.currentDialogSpeaker,
@@ -129,13 +131,13 @@ describe("最小闭环主链路（锚点: ssot-only-observation）", () => {
       value: "start",
       scope: "system",
     });
-    expect(changes[2]?.value).toBe("灵泛");
-    expect(changes[3]?.value).toBeNull(); // 08 §四.5：无 template 无角色 → null（全局默认）
-    expect(changes[4]?.value).toBe("第一句");
+    expect(changes[3]?.value).toBe("灵泛");
+    expect(changes[4]?.value).toBeNull(); // 08 §四.5：无 template 无角色 → null（全局默认）
+    expect(changes[5]?.value).toBe("第一句");
     // say 2 无 speaker → 清空，不残留上一句
-    expect(changes[13]?.key).toBe(SYS.currentDialogSpeaker);
-    expect(changes[13]?.value).toBe("");
-    expect(changes[15]?.value).toBe("第二句");
+    expect(changes[14]?.key).toBe(SYS.currentDialogSpeaker);
+    expect(changes[14]?.value).toBe("");
+    expect(changes[16]?.value).toBe("第二句");
     // 末次 advance 后回到 none
     expect(changes[changes.length - 1]).toEqual({
       key: SYS.waiting,
@@ -235,7 +237,10 @@ describe("fail-closed（锚点: unknown-op-fail-closed）", () => {
     engine.start();
     expect(errorPayload(errors[0]).code).toBe("say-unknown-field");
     // 先校验后写入：除列坐标外无任何对话键写入
-    expect(changes.map((c) => c.key)).toEqual([SYS.currentSceneColumn]);
+    expect(changes.map((c) => c.key)).toEqual([
+      SYS.currentSceneColumn,
+      SYS.elements, // 08 §二.1：进入列即装载空间层（无元素声明 = 空数组）
+    ]);
     expect(engine.get(SYS.currentDialogText)).toBeUndefined();
     dispose();
   });
@@ -258,6 +263,7 @@ describe("defines（01 §一.6：顶层无条件 Set）", () => {
     });
     expect(changes[1]).toEqual({ key: "npc.trust", value: 3, scope: "global" });
     expect(changes[2]?.key).toBe(SYS.currentSceneColumn);
+    expect(changes[3]?.key).toBe(SYS.elements); // 08 §二.1：列坐标之后随即装载空间层
     dispose();
   });
 });

@@ -5,6 +5,7 @@ import {
   StoryEngine,
   type AudioChannel,
   type AudioPort,
+  type ElementInstance,
   type HostInfo,
   type I18nPort,
   type OrientationMode,
@@ -19,10 +20,18 @@ import {
   Typewriter,
   builtinBubbleTemplate,
   createAudioRenderer,
+  createCommandRegistry,
   createDialogueTemplateRegistry,
+  createElementRegistry,
   createMinigameRegistry,
   createVideoRenderer,
+  interpolateAnimation,
+  registerBuiltinElementRenderers,
   renderDialogueLine,
+  renderElementTree,
+  resolveElementAction,
+  shakeOffset,
+  transitionOpacity,
   type DialogueTemplateView,
   type AudioRenderer,
   type VideoRenderer,
@@ -62,6 +71,16 @@ const inInput = ref(false);
 const inVideo = ref(false);
 const inMinigame = ref(false);
 const minigameHostEl = ref<HTMLElement | null>(null);
+// —— 08 §二.1 元素系统：舞台元素（声明式空间层；核心层只写 __elements，UI 只经槽位渲染） ——
+const elements = ref<ElementInstance[]>([]);
+const elementLayerEl = ref<HTMLElement | null>(null);
+// 08 §二.2 帧驱动：舞台根（震动偏移）与全屏转场遮罩
+const stageEl = ref<HTMLElement | null>(null);
+const transitionEl = ref<HTMLElement | null>(null);
+const elementRegistry = createElementRegistry();
+registerBuiltinElementRenderers(elementRegistry);
+// ⑨-2 命令注册制：元素 `cmd` 的业务命令由宿主注册（未注册 fail-closed，不静默吞掉）
+const commands = createCommandRegistry();
 // —— 01 §四.3 语言选择：可用语言 = Lang/ 目录扫描（供给侧 API）；切换 = setLanguage 按需载入 ——
 const currentLang = ref("");
 const availableLangs = ref<string[]>([]);
@@ -243,7 +262,157 @@ function tickLoop(now: number): void {
   typewriter?.tick(dt);
   shownText.value = typewriter?.visible ?? text.value;
   audioRenderer?.pollPosition(); // 08 §三.2：媒体位置帧级回写
+  driveVisualEffects(dt); // 08 §二.2：元素动画 / 转场 / 震动
   rafId = requestAnimationFrame(tickLoop);
+}
+
+// —— 08 §二.1 元素渲染：核心层只写 __elements，此处经注册表渲染到舞台层 ——
+const elementUrls = new Map<string, string>(); // 已解析资源 URL（ResourcePort 结果缓存）
+const elementPending = new Set<string>();
+
+/** 资源解析：命中缓存同步返回；未命中启动异步解析并在落地后重渲染（P1 整体重建语义） */
+function resolveElementResource(path: string): string | undefined {
+  const cached = elementUrls.get(path);
+  if (cached !== undefined) return cached;
+  if (!elementPending.has(path)) {
+    elementPending.add(path);
+    void props.resourcePort
+      .resolve(path)
+      .then((url) => {
+        elementUrls.set(path, url);
+        elementPending.delete(path);
+        renderElements();
+      })
+      .catch(() => {
+        elementPending.delete(path); // 失败保持原文 alt（诊断归端口/宿主，不静默伪造）
+      });
+  }
+  return undefined;
+}
+
+/**
+ * 元素意图 → 命令。点击分支走 F6 纯函数 `resolveElementAction`
+ * （`disabled` > `nav` > `cmd`，与 UI 侧渲染器同源）；`nav` → 核心 `navigate`，
+ * `cmd` → 宿主命令注册表，`value` 按**点击时**插值取最新变量
+ * （老引擎 `InteractionBinder.ResolveValue` 同语义）。
+ */
+function activateElement(element: ElementInstance): void {
+  const action = resolveElementAction(element.props);
+  if (action.kind === "nav") {
+    engine.navigate(action.target);
+    return;
+  }
+  if (action.kind !== "cmd") return;
+  const handler = commands.get(action.name);
+  if (handler === undefined) {
+    error.value = `元素命令未注册：${action.name}（fail-closed：宿主需经命令注册表提供）`;
+    return;
+  }
+  handler(
+    action.value === undefined ? undefined : engine.interpolate(action.value),
+    element,
+  );
+}
+
+function renderElements(): void {
+  const host = elementLayerEl.value;
+  if (host === null) return;
+  renderElementTree({
+    registry: elementRegistry,
+    container: host,
+    elements: elements.value,
+    activate: activateElement,
+    resolveResource: resolveElementResource,
+    onUnknownType: (type) => {
+      error.value = `元素类型未注册：${type}（fail-closed：不伪造渲染）`;
+    },
+  });
+}
+
+watch(elements, () => {
+  void nextTick(renderElements); // 容器挂载后再渲染（首帧容器可能尚未就绪）
+});
+
+// —— 08 §二.2 帧驱动：元素动画 / 全屏转场 / 屏幕震动 ——
+// 核心只写「描述」（离散、进快照），逐帧插值在此完成（不逐帧写 SSOT，08 §三.2）。
+const animationElapsed = new Map<number, number>(); // seq → 已播秒数
+let transitionElapsed = 0;
+let shakeClock = 0;
+
+/** 数值属性 → CSS（与 `elementStyle` 的映射口径一致） */
+function applyAnimatedProperty(
+  node: HTMLElement,
+  property: string,
+  value: number,
+): void {
+  if (property === "x") node.style.left = `${value}px`;
+  else if (property === "y") node.style.top = `${value}px`;
+  else if (property === "opacity") node.style.opacity = String(value);
+  else if (property === "rotation") node.style.transform = `rotate(${value}deg)`;
+  else if (property === "scale") node.style.transform = `scale(${value})`;
+}
+
+function driveVisualEffects(dt: number): void {
+  // ① 元素动画：累计 elapsed → 插值写 DOM → 播毕交回引擎（终值写回 props）
+  const anims = engine.animations();
+  if (anims.length > 0) {
+    const host = elementLayerEl.value;
+    for (const spec of anims) {
+      const elapsed = (animationElapsed.get(spec.seq) ?? 0) + dt;
+      animationElapsed.set(spec.seq, elapsed);
+      const { value, done } = interpolateAnimation(spec, elapsed);
+      const node = host?.querySelector<HTMLElement>(
+        `[data-lf-id="${spec.target}"]`,
+      );
+      if (node != null) applyAnimatedProperty(node, spec.property, value);
+      if (done) {
+        animationElapsed.delete(spec.seq);
+        engine.animationFinished(spec.seq);
+      }
+    }
+  }
+
+  // ② 全屏转场：读启动键按进度改遮罩，播毕清除
+  const transition = engine.get(SYS.transition) as
+    | { duration: number }
+    | null
+    | undefined;
+  const overlay = transitionEl.value;
+  if (overlay != null) {
+    if (transition != null) {
+      transitionElapsed += dt;
+      const progress =
+        transition.duration > 0 ? transitionElapsed / transition.duration : 1;
+      overlay.style.opacity = String(transitionOpacity(progress));
+      overlay.style.display = "block";
+      if (progress >= 1) {
+        transitionElapsed = 0;
+        overlay.style.display = "none";
+        engine.transitionFinished();
+      }
+    } else if (transitionElapsed !== 0) {
+      transitionElapsed = 0;
+      overlay.style.display = "none";
+    }
+  }
+
+  // ③ 屏幕震动：对舞台根施加衰减偏移，播毕归位
+  const shake = engine.get(SYS.shake) as
+    | { intensity: number; duration: number }
+    | null
+    | undefined;
+  const stage = stageEl.value;
+  if (shake != null && stage != null) {
+    shakeClock += dt;
+    const progress = shake.duration > 0 ? shakeClock / shake.duration : 1;
+    const { x, y } = shakeOffset(shake.intensity, progress, shakeClock);
+    stage.style.transform = `translate(${x}px, ${y}px)`;
+    if (progress >= 1) {
+      shakeClock = 0;
+      stage.style.transform = "";
+      engine.shakeFinished();
+    }
+  }
 }
 
 function handleState({ key, value }: { key: string; value: unknown }): void {
@@ -280,6 +449,9 @@ function handleState({ key, value }: { key: string; value: unknown }): void {
     nvlMode.value = value;
   else if (key === SYS.nvlBuffer && Array.isArray(value))
     nvlBuffer.value = value;
+  // 08 §二.1 舞台元素：进列整体装载 / 列切换清空 / 回溯随快照还原（语义在核心层）
+  else if (key === SYS.elements && Array.isArray(value))
+    elements.value = value as ElementInstance[];
 }
 
 function syncFromEngine(): void {
@@ -306,6 +478,9 @@ function syncFromEngine(): void {
   nvlMode.value = typeof nm === "string" ? nm : "none";
   const nb = engine.get(SYS.nvlBuffer);
   nvlBuffer.value = Array.isArray(nb) ? (nb as string[]) : [];
+  // 08 §二.1 元素：回溯/读档后元素随快照还原（渲染随 elements 变化重建）
+  const els = engine.get(SYS.elements);
+  elements.value = Array.isArray(els) ? (els as ElementInstance[]) : [];
   // 08 §四.5：模板名随恢复对齐（回溯/读档后模板随快照走）
   const dt = engine.get(SYS.dialogTemplate);
   dialogTemplateName.value = typeof dt === "string" ? dt : null;
@@ -424,6 +599,8 @@ function restart(): void {
   currentLang.value = ""; // 引擎状态重建：语言回默认（显示态与运行态一致）
   nvlMode.value = "none";
   nvlBuffer.value = [];
+  elements.value = [];
+  elementLayerEl.value?.replaceChildren();
   typewriter = null;
   engine.start();
 }
@@ -636,6 +813,14 @@ async function changeLang(lang: string): Promise<void> {
   if (engine.get(SYS.currentLanguage) !== lang) currentLang.value = String(engine.get(SYS.currentLanguage) ?? "");
 }
 
+// ⑨-2 命令注册制示例：元素 `cmd="history"` / `cmd="prefs"` / `cmd="restart"` 由此分发
+// （未注册的 cmd 由 activateElement fail-closed 上报，不静默吞掉）
+commands.register("history", () => toggleHistory());
+commands.register("prefs", () => {
+  showPrefs.value = !showPrefs.value;
+});
+commands.register("restart", () => restart());
+
 onUnmounted(() => {
   offState?.();
   offEvent?.();
@@ -651,7 +836,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="stage" @click="onStageClick" @wheel="onWheel">
+  <main ref="stageEl" class="stage" @click="onStageClick" @wheel="onWheel">
+    <!-- 08 §二.1 舞台元素层：声明式空间层（z 由 shell.layers.stage 决定，默认 0 = 位于 video 之下） -->
+    <div ref="elementLayerEl" class="element-layer" :style="{ zIndex: layerZ.stage }"></div>
+    <!-- 08 §二.2 全屏转场遮罩（屏幕级效果，恒在最上；透明度由帧驱动写入） -->
+    <div ref="transitionEl" class="transition-overlay" aria-hidden="true"></div>
     <!-- 固定工具条：单条 flex 行（布局由构造保证不重叠；safe-area 适配移动端） -->
     <div class="toolbar" :style="{ zIndex: layerZ.toolbar }">
       <!-- fail-closed 停机恢复入口：整体重建引擎（正式形态为读档/回标题命令面） -->
@@ -990,6 +1179,24 @@ body,
   background: #12121a;
   color: #e6e6f0;
   font-size: clamp(14px, 1.4vw + 8px, 17px);
+}
+
+/* 08 §二.1 舞台元素层：容器不阻塞舞台点击（可交互元素自身恢复 pointer-events） */
+.element-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* 08 §二.2 全屏转场遮罩：屏幕级效果恒在 HUD 之上，透明度由帧驱动写入 */
+.transition-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5000;
 }
 
 .notifications {
