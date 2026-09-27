@@ -198,10 +198,12 @@ const stopSchema = z.strictObject({ fade: Fade.optional() });
 const videoSchema = z.strictObject({
   ...playFields,
   loop: z.boolean().optional(),
+  z: InstanceZ, // video 层实例 z
 });
 const cutsceneSchema = z.strictObject({
   ...playFields,
   skipable: z.boolean().optional(),
+  z: InstanceZ, // video 层实例 z
 });
 const seekVideoSchema = z.strictObject({
   seconds: z.number().finite().min(0),

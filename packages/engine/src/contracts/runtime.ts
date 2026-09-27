@@ -106,6 +106,8 @@ export const SYS = {
   choicesZ: "__choices_z",
   notificationsZ: "__notifications_z",
   minigameZ: "__minigame_z",
+  /** 视频层（`video`/`cutscene`）：宿主解析后交给 `VideoPort.setZIndex` */
+  videoZ: "__video_z",
   // 08 §六 媒体（四音频通道）：状态入 SSOT → 快照/存档自动随行（03-R7 / 05 §四）
   audioBgm: "__audio_bgm",
   audioSe: "__audio_se",

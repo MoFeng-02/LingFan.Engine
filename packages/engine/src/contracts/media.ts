@@ -96,4 +96,10 @@ export interface VideoPort {
   seek(seconds: number): void;
   stop(): void;
   dispose(): void;
+  /**
+   * 08 §八.3 实例级 z：**运行期**改本层 z（源 = `video`/`cutscene` 命令上的 `z`；
+   * 宿主在实例 z 变化时调用，值由 `resolveInstanceZ("video", 实例z, 表)` 解析）。
+   * 可选能力：未实现者保持构造期 `zIndex` 行为（调用方用 `?.` 容错）。
+   */
+  setZIndex?(z: number): void;
 }

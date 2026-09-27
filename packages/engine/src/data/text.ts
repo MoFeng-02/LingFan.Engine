@@ -765,6 +765,9 @@ function parseSimpleStatement(
           if (raw !== "true" && raw !== "false")
             return fail(`${op} 的 ${key} 需要 true|false`);
           cmd[key] = raw === "true";
+        } else if (key === "z" || key === "z-index") {
+          // 08 §八.3 实例级 z（视频层）
+          cmd.z = Number(raw);
         } else {
           return fail(`${op} 未知参数：${token}`);
         }
@@ -1418,6 +1421,7 @@ function generateCommand(
       if (cmd.volume !== undefined) line += ` volume=${cmd.volume}`;
       if (cmd.loop !== undefined) line += ` loop=${cmd.loop}`;
       if (cmd.skipable !== undefined) line += ` skipable=${cmd.skipable}`;
+      line += instanceZText(cmd);
       out.push(line);
       return;
     }

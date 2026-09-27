@@ -127,6 +127,10 @@ async function main(): Promise<void> {
     onError: reportError,
     zIndex: layerZ.video,
   });
+  // 08 §八.3 视频层实例 z：端口内部 z（与 DOM 层不同，需单独下发）
+  const applyVideoZ = (): void => {
+    videoPort.setZIndex?.(resolveInstanceZ("video", zOverride.video, layerZ));
+  };
 
   // —— ⑨-12 存档壳配置：槽位数（project.json shell.saves.slots 可覆盖）——
   const saves = resolveSavesConfig(manifest);
@@ -280,6 +284,7 @@ async function main(): Promise<void> {
       if (typeof value === "number") zOverride[zLayer] = value;
       else delete zOverride[zLayer];
       applyLayerZ();
+      if (zLayer === "video") applyVideoZ(); // 视频层在端口内部
       return;
     }
     if (key === SYS.currentDialogSpeaker) {

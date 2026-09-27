@@ -57,7 +57,8 @@
       "op": "cutscene",
       "resource": "Video/m1.mp4",
       "volume": 0.8,
-      "skipable": true
+      "skipable": true,
+      "z": 1450
     },
     { "op": "say", "text": "过场结束——播完或点击跳过都会继续。" },
     {

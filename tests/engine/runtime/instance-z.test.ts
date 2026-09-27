@@ -138,6 +138,41 @@ describe("实例级 z：层映射（锚点: instance-z-layer-mapping）", () => 
     expect(h.engine.get(SYS.minigameZ)).toBe(9);
     h.dispose();
   });
+
+  it("video / cutscene → video 层（宿主解析后交 VideoPort.setZIndex）", () => {
+    // video 是**非等待** op（发播放命令即继续）；cutscene 才进等待态
+    const video = makeHarness([
+      column("a", [{ op: "video", resource: "Video/x.mp4", z: 120 }]),
+    ]);
+    video.engine.start();
+    expect(video.engine.get(SYS.videoZ)).toBe(120);
+    expect(video.engine.get(SYS.dialogueZ)).toBeUndefined(); // 不串层
+    video.dispose();
+
+    const cutscene = makeHarness([
+      column("a", [{ op: "cutscene", resource: "Video/x.mp4", z: 130 }]),
+    ]);
+    cutscene.engine.start();
+    expect(cutscene.engine.get(SYS.waiting)).toBe("video");
+    expect(cutscene.engine.get(SYS.videoZ)).toBe(130);
+    cutscene.dispose();
+  });
+
+  it("video 层同样「下一条不带 z 即回默认」（以 cutscene 演示等待序列）", () => {
+    const h = makeHarness([
+      column("a", [
+        { op: "cutscene", resource: "Video/a.mp4", z: 120 },
+        { op: "cutscene", resource: "Video/b.mp4" },
+      ]),
+    ]);
+    h.engine.start();
+    expect(h.engine.get(SYS.waiting)).toBe("video");
+    expect(h.engine.get(SYS.videoZ)).toBe(120);
+    h.engine.videoFinished(); // 解除过场等待 → 下一条 cutscene
+    expect(h.engine.get(SYS.waiting)).toBe("video");
+    expect(h.engine.get(SYS.videoZ)).toBeUndefined(); // 未指定 → 删键回层默认
+    h.dispose();
+  });
 });
 
 describe("实例级 z：fail-closed（锚点: instance-z-fail-closed）", () => {
@@ -198,11 +233,13 @@ describe("实例级 z：文本投影往返（锚点: instance-z-text-roundtrip�
         { op: "input", prompt: "名", store: "n", z: 8 },
         { op: "notify", text: "提示", z: 50 },
         { op: "minigame", game: "g", z: 9 },
+        { op: "video", resource: "Video/x.mp4", z: 120 },
+        { op: "cutscene", resource: "Video/y.mp4", skipable: true, z: 130 },
       ]),
     ],
   };
 
-  it("生成 → 解析：五个 op 的 z 都不丢（含 menu prompt 不被污染）", () => {
+  it("生成 → 解析：七个 op 的 z 都不丢（含 menu prompt 不被污染）", () => {
     const story = parseStory(json);
     const text = generateText(story);
     expect(text).toContain('say "一" z=20');
@@ -210,6 +247,8 @@ describe("实例级 z：文本投影往返（锚点: instance-z-text-roundtrip�
     expect(text).toContain('input "名" store="n" z=8');
     expect(text).toContain('notify "提示" z=50');
     expect(text).toContain('minigame "g" z=9');
+    expect(text).toContain('video "Video/x.mp4" z=120');
+    expect(text).toContain('cutscene "Video/y.mp4" skipable=true z=130');
     // 解析回来结构等价（T1 往返：JSON 树唯一真相源）
     expect(parseTextStory(text, "t")).toEqual(story);
   });

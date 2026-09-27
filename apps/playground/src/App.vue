@@ -425,6 +425,8 @@ function handleState({ key, value }: { key: string; value: unknown }): void {
       ...zOverride.value,
       [zLayer]: typeof value === "number" ? value : undefined,
     };
+    // video 层的 z 不在 DOM 上而在端口内部（08 §八.3）：解析后交 VideoPort
+    if (zLayer === "video") videoPort.setZIndex?.(zOf("video"));
     return;
   }
   if (key === SYS.currentDialogSpeaker && typeof value === "string") {
@@ -505,6 +507,8 @@ function syncFromEngine(): void {
     if (typeof z === "number") zNext[layer] = z;
   }
   zOverride.value = zNext;
+  // video 层：端口内部 z 也要跟着回档（08 §八.3）
+  videoPort.setZIndex?.(resolveInstanceZ("video", zNext.video, props.layerZ));
   // U4：说话人色随恢复同步
   const def = engine.getCharacter(speaker.value);
   speakerColor.value = def?.color ?? "";
@@ -592,6 +596,7 @@ function restart(): void {
   videoPort.dispose();
   videoRenderer?.dispose();
   videoPort = props.createVideoPort(reportAudioError);
+  videoPort.setZIndex?.(zOf("video")); // 08 §八.3：重建端口后补上当前实例 z
   engine.dispose();
   engine = new StoryEngine(props.story.value, {
     i18nPort: props.i18nPort,

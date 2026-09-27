@@ -19,6 +19,8 @@ export function createWebVideoPort(
 ): VideoPort {
   let element: HTMLVideoElement | null = null;
   let endedHandler: (() => void) | null = null;
+  // 08 §八.3：运行期可改（实例级 z）；缺省 5 = 旧行为
+  let zIndex = portOptions.zIndex ?? 5;
 
   function ensure(): HTMLVideoElement {
     if (element === null) {
@@ -26,7 +28,7 @@ export function createWebVideoPort(
       // 舞台层覆盖（RenderTargets.stage 之上的呈现层）；点击穿透：跳过走命令面
       element.style.cssText =
         "position:fixed;inset:0;width:100%;height:100%;object-fit:contain;" +
-        `background:#000;z-index:${portOptions.zIndex ?? 5};display:none;pointer-events:none;`;
+        `background:#000;z-index:${zIndex};display:none;pointer-events:none;`;
       element.addEventListener("error", () => {
         portOptions.onError?.("视频资源无法解码或缺失");
       });
@@ -36,6 +38,11 @@ export function createWebVideoPort(
   }
 
   return {
+    // 08 §八.3 实例级 z：运行期改本层 z（元素未创建则只记值，ensure 时生效）
+    setZIndex(next: number): void {
+      zIndex = next;
+      if (element !== null) element.style.zIndex = String(next);
+    },
     play(url, options, onEnded): void {
       const video = ensure();
       endedHandler = onEnded ?? null;

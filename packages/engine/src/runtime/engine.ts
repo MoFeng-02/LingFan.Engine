@@ -128,8 +128,8 @@ const AUDIO_CHANNEL_KEY: Record<string, string> = {
 
 /** 08 §六.5 视频族已知负载字段（未知字段 fail-closed，E3/F5） */
 const VIDEO_FIELDS: Record<string, ReadonlySet<string>> = {
-  video: new Set(["op", "resource", "volume", "loop"]),
-  cutscene: new Set(["op", "resource", "volume", "skipable"]),
+  video: new Set(["op", "resource", "volume", "loop", "z"]),
+  cutscene: new Set(["op", "resource", "volume", "skipable", "z"]),
   seek_video: new Set(["op", "seconds"]),
   pause_video: new Set(["op"]),
   resume_video: new Set(["op"]),
@@ -1944,6 +1944,8 @@ export class StoryEngine {
     this.videoSeq += 1;
     const seq = this.videoSeq;
     if (cmd.op === "video" || cmd.op === "cutscene") {
+      if (this.rejectBadInstanceZ(cmd)) return false; // 08 §八.3：先拒非法 z（不动状态）
+      this.setInstanceZ(SYS.videoZ, cmd.z); // 视频层实例 z（宿主解析后交 VideoPort.setZIndex）
       if (typeof cmd.resource !== "string" || cmd.resource === "") {
         this.fail(
           `${cmd.op}-invalid-resource`,

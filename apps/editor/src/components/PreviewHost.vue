@@ -220,6 +220,8 @@ const offState = engine.onStateChanged((c: ValueChanged) => {
       ...zOverride.value,
       [zLayer]: typeof c.value === "number" ? c.value : undefined,
     };
+    // video 层的 z 在端口内部（08 §八.3）：解析后交 VideoPort
+    if (zLayer === "video") videoPort?.setZIndex?.(zOf("video"));
     return;
   }
   if (c.key === SYS.currentDialogText) {
