@@ -288,3 +288,53 @@ describe("EditorSession（统一 undo 锚点）", () => {
     expect(seenB).toHaveLength(3);
   });
 });
+
+describe("EditorSession dirty（09-16 未保存标记）", () => {
+  it("打开即干净；提交变脏；撤销回已保存引用 = 干净；重做再脏", () => {
+    const session = new EditorSession(sample);
+    expect(session.dirty).toBe(false);
+    const edited = setAtPointer(sample, "/columns/0/commands/0/text", "A")!;
+    session.commit("改 A", edited);
+    expect(session.dirty).toBe(true);
+    session.undo();
+    expect(session.story).toBe(sample);
+    expect(session.dirty).toBe(false); // 撤销回已保存引用（引用比较的语义）
+    session.redo();
+    expect(session.dirty).toBe(true);
+  });
+
+  it("markSaved 钉在传入引用上：当前引用不同则仍脏（保存期间又被编辑）", () => {
+    const session = new EditorSession(sample);
+    const first = setAtPointer(sample, "/columns/0/commands/0/text", "A")!;
+    session.commit("A", first);
+    const second = setAtPointer(first, "/columns/0/commands/0/text", "B")!;
+    session.commit("B", second);
+    session.markSaved(first); // 写出的是 first，但当前已是 second
+    expect(session.story).toBe(second);
+    expect(session.dirty).toBe(true);
+    session.markSaved(second);
+    expect(session.dirty).toBe(false);
+  });
+
+  it("markSaved 同引用 no-op（不产生通知噪声）", () => {
+    const session = new EditorSession(sample);
+    const seen: Story[] = [];
+    session.subscribe((s) => seen.push(s));
+    session.markSaved(sample);
+    expect(seen).toHaveLength(0);
+    expect(session.dirty).toBe(false);
+    session.markSaved(); // 缺省 = 当前引用（已干净 → 仍 no-op）
+    expect(seen).toHaveLength(0);
+  });
+
+  it("markSaved 变更基线会通知（界面据以重算未保存指示）", () => {
+    const session = new EditorSession(sample);
+    const edited = setAtPointer(sample, "/entry", "inn")!;
+    session.commit("改入口", edited);
+    const seen: Story[] = [];
+    session.subscribe((s) => seen.push(s));
+    session.markSaved(edited);
+    expect(seen).toEqual([edited]);
+    expect(session.dirty).toBe(false);
+  });
+});

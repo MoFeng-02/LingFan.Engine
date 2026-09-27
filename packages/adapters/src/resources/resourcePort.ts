@@ -12,8 +12,9 @@ const RESOURCE_ROOT = "/";
 /**
  * 路径规范化：剥前导斜杠，拒绝空段与 `..` 逃逸——
  * 资源只能落在应用资源根之内（路径穿越在信任边界上拒绝，不靠调用方自觉）。
+ * 供全部 ResourcePort 实现（静态根 / 加密 / 目录句柄）共用，避免各写一份口径。
  */
-function normalize(id: string): string {
+export function normalizeResourceId(id: string): string {
   const trimmed = id.trim().replace(/^\/+/, "");
   if (trimmed === "") throw new Error("资源路径为空");
   if (
@@ -29,7 +30,7 @@ export function createStaticResourcePort(
 ): ResourcePort {
   return {
     async resolve(id: string): Promise<string> {
-      return `${root}${normalize(id)}`;
+      return `${root}${normalizeResourceId(id)}`;
     },
     release(): void {
       // 静态 URL 无常驻句柄：空实现（Blob URL 适配器在此 revoke）

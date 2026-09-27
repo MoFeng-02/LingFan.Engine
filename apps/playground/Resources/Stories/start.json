@@ -14,7 +14,8 @@
     {
       "op": "say",
       "speaker": "灵泛",
-      "text": "你有 {player.gold:000} 枚金币（插值 + 补零格式化）。"
+      "text": "你有 {player.gold:000} 枚金币（插值 + 补零格式化）。",
+      "z": 2000
     },
     {
       "op": "say",

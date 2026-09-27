@@ -27,3 +27,20 @@ export interface ProjectFilesPort {
   /** 故事文件**原始文本**（JSON v1 或 .story），键 = 逻辑路径（相对资源根） */
   stories(): Promise<Map<string, string>>;
 }
+
+/** 一次写回的实际结果（供界面提示；路径均为逻辑路径，码元序） */
+export interface ProjectWriteReport {
+  readonly written: readonly string[];
+  readonly deleted: readonly string[];
+}
+
+/**
+ * 工程文件写回端口（09-16）：期望文件全集（引擎 `serializeProject` 产出）交给适配器，
+ * 由适配器与**打开基线**求最小差量后落盘（只写变化、删陈旧）。
+ * `writable = false` = 只读取径（目录 input 快照等）→ 宿主必须禁用保存。
+ * 实现：浏览器 = File System Access 目录句柄；Tauri 桌面 = Rust 命令（同一契约，只换适配器）。
+ */
+export interface ProjectWriterPort {
+  readonly writable: boolean;
+  apply(files: ReadonlyMap<string, string>): Promise<ProjectWriteReport>;
+}

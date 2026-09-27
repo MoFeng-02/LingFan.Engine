@@ -12,6 +12,8 @@ const DEFAULT_UNDO_CAPACITY = 100;
 
 export class EditorSession {
   private current: Story;
+  /** 已保存基线（引用比较：commit 恒换引用、undo 恢复原引用 → 撤销回已保存态即干净） */
+  private saved: Story;
   private readonly undoStack: UndoEntry[] = [];
   private readonly redoStack: UndoEntry[] = [];
   private readonly listeners = new Set<StoryListener>();
@@ -19,11 +21,30 @@ export class EditorSession {
 
   constructor(story: Story, options: { undoCapacity?: number } = {}) {
     this.current = story;
+    this.saved = story;
     this.capacity = Math.max(1, options.undoCapacity ?? DEFAULT_UNDO_CAPACITY);
   }
 
   get story(): Story {
     return this.current;
+  }
+
+  /**
+   * 有未保存更改（09-16）。引用比较：唯一代价是「内容相同的不同引用」会多亮一次按钮，
+   * **不会漏报**未保存（安全方向正确）；深比较每次渲染全树遍历，不划算。
+   */
+  get dirty(): boolean {
+    return this.current !== this.saved;
+  }
+
+  /**
+   * 保存成功：把基线钉到**实际写出的那个引用**（不是当前引用）——
+   * 保存期间用户又编辑时，`current !== reference` → 仍 dirty，不会误清。
+   */
+  markSaved(reference: Story = this.current): void {
+    if (this.saved === reference) return;
+    this.saved = reference;
+    this.notify();
   }
 
   get canUndo(): boolean {

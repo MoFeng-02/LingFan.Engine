@@ -31,6 +31,7 @@ export {
   elementLabel,
   listElementTypes,
   specificAttrsOf,
+  UNIMPLEMENTED_ELEMENT_ATTRS,
   type ElementFormDescriptor,
 } from "./schema/elementForms";
 export { draggedPosition, parseNumericPosition } from "./element/drag";

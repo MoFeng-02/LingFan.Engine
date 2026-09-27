@@ -10,8 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@lingfan/adapters": "workspace:*",
     "@lingfan/editor": "workspace:*",
     "@lingfan/engine": "workspace:*",
+    "@lingfan/ui": "workspace:*",
     "vue": "^3.5.13"
   },
   "devDependencies": {

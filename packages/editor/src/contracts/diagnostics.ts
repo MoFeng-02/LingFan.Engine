@@ -6,7 +6,7 @@
 export type DiagnosticSeverity = "error" | "warning";
 
 export interface Diagnostic {
-  /** 诊断码：unknown-op / unknown-field / missing-required / invalid-value / duplicate-column / missing-target / unknown-function / undefined-variable / missing-resource / missing-entry / invalid-structure / unused-translation */
+  /** 诊断码：unknown-op / unknown-field / missing-required / invalid-value / duplicate-column / missing-target / unknown-function / undefined-variable / missing-resource / missing-entry / invalid-structure / unused-translation / invalid-element / unimplemented-element-attr */
   code: string;
   severity: DiagnosticSeverity;
   message: string;

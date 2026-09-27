@@ -35,6 +35,7 @@ export {
 export { createMinigameRegistry, type MinigameRegistry } from "./minigame";
 export {
   createElementRegistry,
+  createElementResourceResolver,
   easingFn,
   easingNames,
   elementClassName,
@@ -51,6 +52,7 @@ export {
   type ElementRegistry,
   type ElementRenderer,
   type ElementRenderContext,
+  type ElementResourceResolver,
   type ElementTreeRenderOptions,
 } from "./element";
 export {

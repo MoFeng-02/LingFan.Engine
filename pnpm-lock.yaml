@@ -60,12 +60,18 @@ importers:
 
   apps/editor:
     dependencies:
+      '@lingfan/adapters':
+        specifier: workspace:*
+        version: link:../../packages/adapters
       '@lingfan/editor':
         specifier: workspace:*
         version: link:../../packages/editor
       '@lingfan/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@lingfan/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       vue:
         specifier: ^3.5.13
         version: 3.5.43(typescript@6.0.3)

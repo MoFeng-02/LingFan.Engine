@@ -12,8 +12,23 @@ export {
   createWebVideoPort,
   type WebVideoPortOptions,
 } from "./media/videoPort";
-export { createStaticResourcePort } from "./resources";
-export { createTauriEncryptedResourcePort } from "./resources";
+export {
+  createStaticResourcePort,
+  createTauriEncryptedResourcePort,
+} from "./resources";
+// 编辑器工程模型：目录取径（FSA 句柄 / 目录 input 快照）供给工程与资源
+export {
+  createFileListFileSource,
+  createHandleFileSource,
+  createHandleProjectWriter,
+  createSourceProjectFilesPort,
+  createSourceResourcePort,
+  locateResourceRootFromPaths,
+  pickProjectDirectory,
+  supportsDirectoryPicker,
+  type BlobUrlOptions,
+  type ProjectFileSource,
+} from "./resources";
 export {
   createFetchProjectFilesPort,
   loadProject,

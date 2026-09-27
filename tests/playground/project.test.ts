@@ -9,7 +9,14 @@ import { describe, expect, it } from "vitest";
 import manifestRaw from "../../apps/playground/Resources/project.json?raw";
 import mainSource from "../../apps/playground/src/main.ts?raw";
 import type { Story, StoryCommand } from "@lingfan/engine";
-import { assembleProject, parseStoryFile } from "@lingfan/engine";
+import {
+  assembleProject,
+  diffProjectFiles,
+  MANIFEST_FILE,
+  parseStoryFile,
+  projectText,
+  serializeProject,
+} from "@lingfan/engine";
 
 /** 磁盘真实存在的故事文件（glob 键即文件清单）→ `Stories/<file>` 逻辑路径 */
 const STORY_MODULES = import.meta.glob(
@@ -78,6 +85,18 @@ describe("示例工程防腐（锚点: resource-root-resolution）", () => {
     );
   });
 
+  it("文本投影（projectText）对示例工程不抛错：编辑器文本模式打开真实工程不崩", () => {
+    // 实测缺陷（P2 编辑器工程模型）：编辑器「文本」视图对示例工程投影时崩在
+    // `escapeForText(undefined)`——projectText 的契约是**降级为 issues**，不许抛
+    const projection = projectText(assemble());
+    expect(projection.text.length).toBeGreaterThan(0);
+    // 每一条 issue 都必须是可读的定位信息（空串/undefined 说明生成器漏了字段名）
+    for (const issue of projection.issues) {
+      expect(typeof issue).toBe("string");
+      expect(issue.length).toBeGreaterThan(0);
+    }
+  });
+
   it("故事引用的媒体在资源根内真实存在（不存在 = 运行期 fail-closed 诊断）", () => {
     const audio = Object.keys(
       import.meta.glob("../../apps/playground/Resources/Audio/*"),
@@ -104,5 +123,32 @@ describe("示例工程防腐（锚点: resource-root-resolution）", () => {
     for (const resource of referenced) {
       expect(available).toContain(resource);
     }
+  });
+
+  it("写回零抖动（真实语料）：无编辑保存时故事文件逐字节不变、清单语义不变", () => {
+    // 09-16 写回：以磁盘真文本为基线做差量——期望「零写零删」，
+    // 否则编辑器每次保存都会无谓重写文件（playground 热重载抖动）。
+    const story = assemble();
+    const { files } = serializeProject(story, JSON.parse(manifestRaw));
+    const baseline = new Map<string, string>([
+      [MANIFEST_FILE, manifestRaw],
+      ...Object.entries(FILES),
+    ]);
+    const diff = diffProjectFiles(files, baseline);
+    expect([...diff.changes.keys()]).toEqual([]);
+    expect(diff.deletes).toEqual([]);
+    expect([...files.keys()].sort()).toEqual([...baseline.keys()].sort());
+  });
+
+  it("写回往返（真实语料）：序列化产物再组装深等于原故事", () => {
+    const story = assemble();
+    const { files } = serializeProject(story, JSON.parse(manifestRaw));
+    let writtenManifest: unknown;
+    const stories = new Map<string, string>();
+    for (const [path, text] of files) {
+      if (path === MANIFEST_FILE) writtenManifest = JSON.parse(text);
+      else stories.set(path, text);
+    }
+    expect(assembleProject(writtenManifest, stories)).toEqual(story);
   });
 });
