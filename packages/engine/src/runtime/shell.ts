@@ -115,6 +115,7 @@ export function resolveInstanceZ(
  * ```
  */
 export const INSTANCE_Z_KEYS: Readonly<Partial<Record<LayerId, string>>> = {
+  video: SYS.videoZ,
   dialogue: SYS.dialogueZ,
   choices: SYS.choicesZ,
   notifications: SYS.notificationsZ,
