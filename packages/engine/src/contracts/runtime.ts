@@ -96,6 +96,16 @@ export const SYS = {
   nvlMode: "__nvl_mode",
   nvlBuffer: "__nvl_buffer",
   waiting: "__waiting",
+  /**
+   * 08 §八.3 实例级 z（T01-03）：**单控件实例显式指定**的层级（story 命令上的 `z`）。
+   * 进 SSOT → 随快照 / 存档 / 回溯自动随行（重放到同一条命令即重新写入同一值）。
+   * 宿主用 `resolveInstanceZ(层, 该值, 表)` 解析（**实例 > 层默认 > 内建**）；键不存在 = 未指定 = 层默认。
+   * 键 ↔ 层映射单一事实源 = `runtime/shell.ts` 的 `INSTANCE_Z_KEYS`。
+   */
+  dialogueZ: "__dialogue_z",
+  choicesZ: "__choices_z",
+  notificationsZ: "__notifications_z",
+  minigameZ: "__minigame_z",
   // 08 §六 媒体（四音频通道）：状态入 SSOT → 快照/存档自动随行（03-R7 / 05 §四）
   audioBgm: "__audio_bgm",
   audioSe: "__audio_se",

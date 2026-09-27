@@ -1,0 +1,587 @@
+/**
+ * 编辑器工程供给（浏览器形态）：**目录取径**两类——File System Access 真目录句柄
+ * （Chromium：可枚举、可读、可写）与目录 input 的只读文件快照
+ * （`<input webkitdirectory>`，全浏览器兜底）。两类共用同一组端口实现，
+ * **`ProjectFilesPort` / `ResourcePort` 契约零改动**。
+ *
+ * 逻辑路径一律相对**资源根**（含 `project.json` 的那一层，07 §三）——与 fetch / Tauri 两种
+ * 供给实现的键完全一致（组装器是唯一解析点，本模块只负责「取」）。
+ * 枚举口径照 Rust `collect_story_files`：`Stories/**` 递归、跳过点文件名、不设扩展名白名单。
+ * **唯一有意差异 = 加密形态**：`.enc` 需密钥解密（安全永远 Rust，00 §3.2）→ 浏览器形态
+ * 显式 fail-closed，不猜、不跳过。
+ *
+ * 资源供给 = 文件对象 → 短生命周期 Blob URL（08 §六.3「Blob URL 用后 revoke」），
+ * `release` 即 revoke——与加密适配器同一契约形态（静态根与加密形态各自空实现/归 Rust）。
+ *
+ * **写回（09-16）**：仅 FSA 取径可写（`createHandleProjectWriter`）——打开时仍只申请 `read`，
+ * 保存时（按钮点击 = 真实用户手势）才申请 `readwrite`；目录 input 快照无写权限，宿主据
+ * `writable` 禁用保存。写回顺序固定「先写后删」，永不先删后写。
+ */
+import {
+  diffProjectFiles,
+  MANIFEST_FILE,
+  STORIES_DIR,
+  type ProjectFilesPort,
+  type ProjectWriteReport,
+  type ProjectWriterPort,
+  type ResourcePort,
+} from "@lingfan/engine";
+import { normalizeResourceId } from "./resourcePort";
+
+/**
+ * 目录取径的统一供给面：逻辑路径 → 原始文本 / 文件对象。
+ * 两类取径各一实现（FSA 句柄 / 目录 input 文件表），端口构造只依赖此面。
+ */
+export interface ProjectFileSource {
+  /** 资源根名（诊断与界面显示；FSA = 句柄名，文件表 = 路径前缀末段） */
+  readonly name: string;
+  /** 资源根内全部文件逻辑路径（`/` 分隔、字典序确定、已跳点文件） */
+  paths(): Promise<readonly string[]>;
+  /** 按逻辑路径读原始文本（UTF-8；不存在/不可读必须抛错，不静默降级） */
+  text(path: string): Promise<string>;
+  /** 按逻辑路径取文件对象（Blob URL 供给用；不存在必须抛错） */
+  file(path: string): Promise<File>;
+}
+
+/** 点文件/点目录（任何一层）：资源根里 `.*` 一律不是工程内容（Rust 跳点文件同口径，目录一并跳） */
+function isDotName(name: string): boolean {
+  return name.startsWith(".");
+}
+
+function segmentDepth(path: string): number {
+  return path.split("/").length;
+}
+
+function dirOf(path: string): string {
+  const at = path.lastIndexOf("/");
+  return at < 0 ? "" : path.slice(0, at + 1);
+}
+
+// —— 取径一：File System Access 目录句柄 ——
+
+/** 目录选择器（`showDirectoryPicker` 尚未进 lib.dom：只声明我们用到的这一面） */
+interface DirectoryPickerHost {
+  showDirectoryPicker?: (options?: {
+    id?: string;
+    mode?: "read" | "readwrite";
+  }) => Promise<FileSystemDirectoryHandle>;
+}
+
+function pickerHost(): DirectoryPickerHost {
+  return window as unknown as DirectoryPickerHost;
+}
+
+/** FSA 取径是否可用（不可用 → 宿主应走目录 input 兜底） */
+export function supportsDirectoryPicker(): boolean {
+  return typeof pickerHost().showDirectoryPicker === "function";
+}
+
+/**
+ * 选择工程目录（必须由用户手势触发）。用户取消 → `undefined`（不视作错误）；
+ * 其余失败原样抛出（权限/平台异常不吞）。
+ */
+export async function pickProjectDirectory(): Promise<
+  FileSystemDirectoryHandle | undefined
+> {
+  const pick = pickerHost().showDirectoryPicker;
+  if (pick === undefined) return undefined;
+  try {
+    // mode=read：打开只要读权限；写权限留到「保存」时按需申请（不提前要权限）
+    return await pick.call(window, { id: "lingfan-project", mode: "read" });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+/** 句柄缺失（未找到/类型不符）判定：其余异常（权限等）不吞 */
+function isMissingHandle(error: unknown): boolean {
+  return (
+    error instanceof DOMException &&
+    (error.name === "NotFoundError" || error.name === "TypeMismatchError")
+  );
+}
+
+async function tryFileHandle(
+  dir: FileSystemDirectoryHandle,
+  name: string,
+): Promise<FileSystemFileHandle | undefined> {
+  try {
+    return await dir.getFileHandle(name);
+  } catch (error) {
+    if (isMissingHandle(error)) return undefined;
+    throw error;
+  }
+}
+
+async function tryDirectoryHandle(
+  dir: FileSystemDirectoryHandle,
+  name: string,
+): Promise<FileSystemDirectoryHandle | undefined> {
+  try {
+    return await dir.getDirectoryHandle(name);
+  } catch (error) {
+    if (isMissingHandle(error)) return undefined;
+    throw error;
+  }
+}
+
+/**
+ * 资源根定位（FSA）：所选目录含清单即资源根；否则下探一层 `Resources/`
+ * （工程惯例里资源根就在该子目录）。都不含 → fail-closed 报可操作的话。
+ */
+async function locateResourceRootHandle(
+  picked: FileSystemDirectoryHandle,
+): Promise<{ root: FileSystemDirectoryHandle; name: string }> {
+  if ((await tryFileHandle(picked, MANIFEST_FILE)) !== undefined) {
+    return { root: picked, name: picked.name };
+  }
+  const resources = await tryDirectoryHandle(picked, "Resources");
+  if (
+    resources !== undefined &&
+    (await tryFileHandle(resources, MANIFEST_FILE)) !== undefined
+  ) {
+    return { root: resources, name: resources.name };
+  }
+  throw new Error(
+    `所选目录（${picked.name}）内未找到 ${MANIFEST_FILE}：请选择工程资源根（含 ${MANIFEST_FILE} 的 Resources/ 目录）`,
+  );
+}
+
+async function walkHandle(
+  dir: FileSystemDirectoryHandle,
+  prefix: string,
+  into: string[],
+): Promise<void> {
+  for await (const entry of dir.values()) {
+    if (isDotName(entry.name)) continue;
+    if (entry.kind === "file") {
+      into.push(`${prefix}${entry.name}`);
+      continue;
+    }
+    await walkHandle(entry, `${prefix}${entry.name}/`, into);
+  }
+}
+
+/**
+ * 目录句柄取径（Chromium FSA）：只枚举**资源根之内**（不扫所选目录的整棵子树，
+ * 避免误选上层目录时白扫一堆无关文件）。
+ */
+export async function createHandleFileSource(
+  picked: FileSystemDirectoryHandle,
+): Promise<ProjectFileSource> {
+  const { root, name } = await locateResourceRootHandle(picked);
+  let listing: Promise<readonly string[]> | null = null;
+  const list = (): Promise<readonly string[]> => {
+    listing ??= (async () => {
+      const out: string[] = [];
+      await walkHandle(root, "", out);
+      return out.sort(); // 路径码元序确定（照 07 §三组装器前的确定性要求）
+    })();
+    return listing;
+  };
+  const resolveHandle = async (
+    path: string,
+  ): Promise<FileSystemFileHandle> => {
+    const segments = normalizeResourceId(path).split("/");
+    let dir: FileSystemDirectoryHandle = root;
+    for (const segment of segments.slice(0, -1)) {
+      const next = await tryDirectoryHandle(dir, segment);
+      if (next === undefined) throw new Error(`资源不存在：${path}`);
+      dir = next;
+    }
+    const file = await tryFileHandle(dir, segments[segments.length - 1] ?? "");
+    if (file === undefined) throw new Error(`资源不存在：${path}`);
+    return file;
+  };
+  return {
+    name,
+    paths: list,
+    async text(path: string): Promise<string> {
+      const file = await resolveHandle(path);
+      return (await file.getFile()).text();
+    },
+    async file(path: string): Promise<File> {
+      const file = await resolveHandle(path);
+      return file.getFile();
+    },
+  };
+}
+
+// —— 取径二：目录 input 的只读文件快照 ——
+
+/** 目录 input 给的相对路径（`webkitRelativePath`；缺省退回文件名） */
+function relativePathOf(file: File): string {
+  const raw = (file as { webkitRelativePath?: string }).webkitRelativePath;
+  const path = raw !== undefined && raw !== "" ? raw : file.name;
+  return path.replace(/\\/g, "/").replace(/^\.\//, "");
+}
+
+/**
+ * 资源根定位（文件快照）：清单所在层即资源根（07 §三「清单必须在资源根内」的推论）。
+ * 同深出现多个清单 = 无法判定 → fail-closed 让用户直接选资源根，不替用户猜。
+ */
+export function locateResourceRootFromPaths(paths: readonly string[]): {
+  /** 资源根前缀（`""` 或 `Resources/`） */
+  root: string;
+  /** 清单逻辑路径（资源根相对） */
+  manifest: string;
+} {
+  const candidates = paths.filter(
+    (path) => path === MANIFEST_FILE || path.endsWith(`/${MANIFEST_FILE}`),
+  );
+  if (candidates.length === 0) {
+    throw new Error(
+      `所选目录内未找到 ${MANIFEST_FILE}：请选择工程资源根（含 ${MANIFEST_FILE} 的 Resources/ 目录）`,
+    );
+  }
+  const sorted = [...candidates].sort((a, b) => {
+    const depth = segmentDepth(a) - segmentDepth(b);
+    return depth !== 0 ? depth : a.localeCompare(b);
+  });
+  const first = sorted[0] ?? MANIFEST_FILE;
+  const ambiguous = sorted.filter(
+    (path) =>
+      segmentDepth(path) === segmentDepth(first) && dirOf(path) !== dirOf(first),
+  );
+  if (ambiguous.length > 0) {
+    throw new Error(
+      `发现多个 ${MANIFEST_FILE}（${first}、${ambiguous[0] ?? ""}）：请直接选择工程资源根目录`,
+    );
+  }
+  return { root: dirOf(first), manifest: MANIFEST_FILE };
+}
+
+/** 目录 input 取径：路径剥资源根前缀，文件按逻辑路径查表 */
+export async function createFileListFileSource(
+  files: readonly File[],
+): Promise<ProjectFileSource> {
+  const entries = new Map<string, File>();
+  for (const file of files) {
+    const path = relativePathOf(file);
+    const segments = path.split("/");
+    const last = segments[segments.length - 1] ?? "";
+    if (isDotName(last)) continue;
+    entries.set(path, file);
+  }
+  const { root } = locateResourceRootFromPaths([...entries.keys()]);
+  const rootSegments = root === "" ? [] : root.replace(/\/$/, "").split("/");
+  const rootName = rootSegments[rootSegments.length - 1] ?? "Resources";
+  const relative = new Map<string, File>();
+  const all = [...entries.entries()];
+  for (const [path, file] of all) {
+    const segments = path.split("/");
+    if (segments.length <= rootSegments.length) continue;
+    const prefix = segments.slice(0, rootSegments.length).join("/");
+    if (prefix !== root.replace(/\/$/, "")) continue;
+    relative.set(segments.slice(rootSegments.length).join("/"), file);
+  }
+  const paths = [...relative.keys()].sort();
+  const lookup = (path: string): File => {
+    const file = relative.get(normalizeResourceId(path));
+    if (file === undefined) throw new Error(`资源不存在：${path}`);
+    return file;
+  };
+  return {
+    name: rootName,
+    async paths(): Promise<readonly string[]> {
+      return paths;
+    },
+    async text(path: string): Promise<string> {
+      return lookup(path).text();
+    },
+    async file(path: string): Promise<File> {
+      return lookup(path);
+    },
+  };
+}
+
+// —— 端口构造（两类取径共用） ——
+
+/**
+ * `ProjectFilesPort` 实现：一次装载 memo（失败粘滞 fail-closed，不降级空工程——
+ * 与 Tauri 供给同语义；编辑器把「打开工程」当快照，不隐式改读磁盘）。
+ */
+export function createSourceProjectFilesPort(
+  source: ProjectFileSource,
+): ProjectFilesPort {
+  let loaded: Promise<{ manifest: unknown; stories: Map<string, string> }> | null =
+    null;
+  const load = (): Promise<{
+    manifest: unknown;
+    stories: Map<string, string>;
+  }> => {
+    loaded ??= readProject(source);
+    return loaded;
+  };
+  return {
+    async manifest(): Promise<unknown> {
+      return (await load()).manifest;
+    },
+    async stories(): Promise<Map<string, string>> {
+      return new Map((await load()).stories);
+    },
+  };
+}
+
+async function readProject(
+  source: ProjectFileSource,
+): Promise<{ manifest: unknown; stories: Map<string, string> }> {
+  const paths = await source.paths();
+  if (!paths.includes(MANIFEST_FILE)) {
+    throw new Error(`资源根（${source.name}）缺少 ${MANIFEST_FILE}`);
+  }
+  const raw = await source.text(MANIFEST_FILE);
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(raw);
+  } catch (error: unknown) {
+    throw new Error(`${MANIFEST_FILE} 不是合法 JSON：${String(error)}`);
+  }
+  const storyPaths = paths.filter((path) => path.startsWith(`${STORIES_DIR}/`));
+  if (storyPaths.length === 0) {
+    throw new Error(`资源根（${source.name}）缺少 ${STORIES_DIR}/ 目录`);
+  }
+  const stories = new Map<string, string>();
+  for (const path of storyPaths) {
+    if (path.endsWith(".enc")) {
+      throw new Error(
+        `故事 ${path} 为加密形态：浏览器形态编辑器不支持加密工程（解密归 Rust，00 §3.2）`,
+      );
+    }
+    stories.set(path, await source.text(path));
+  }
+  return { manifest, stories };
+}
+
+/** Blob URL 构造/释放（缺省 `URL.createObjectURL`；测试以契约替身注入） */
+export interface BlobUrlOptions {
+  createObjectURL?: (file: File) => string;
+  revokeObjectURL?: (url: string) => void;
+}
+
+/**
+ * `ResourcePort` 实现：逻辑路径 → 文件对象 → Blob URL（同路径复用同一 URL，
+ * `release` 才 revoke）。解析失败必须抛错——调用方 fail-closed 不播放/不显示（08-U7）。
+ */
+export function createSourceResourcePort(
+  source: ProjectFileSource,
+  options: BlobUrlOptions = {},
+): ResourcePort {
+  const create = options.createObjectURL ?? ((file: File) => URL.createObjectURL(file));
+  const revoke = options.revokeObjectURL ?? ((url: string) => URL.revokeObjectURL(url));
+  /** 逻辑路径 → 已解析 URL（release 时反查并清空） */
+  const resolved = new Map<string, string>();
+  const inFlight = new Map<string, Promise<string>>();
+  return {
+    async resolve(id: string): Promise<string> {
+      const path = normalizeResourceId(id);
+      const cached = resolved.get(path);
+      if (cached !== undefined) return cached;
+      const pending = inFlight.get(path);
+      if (pending !== undefined) return pending;
+      const task = source.file(path).then((file) => {
+        const url = create(file);
+        resolved.set(path, url);
+        inFlight.delete(path);
+        return url;
+      });
+      inFlight.set(path, task);
+      try {
+        return await task;
+      } catch (error: unknown) {
+        inFlight.delete(path); // 失败不粘滞：允许修好资源后重试
+        throw error;
+      }
+    },
+    release(url: string): void {
+      for (const [path, known] of resolved) {
+        if (known !== url) continue; // 只释放本端口产出的 URL
+        resolved.delete(path);
+        revoke(url);
+        return;
+      }
+    },
+  };
+}
+
+// —— 写回（09-16）：FSA 目录句柄 ——
+
+/** 未获写权限时的统一可操作文案（requestPermission 被拒 / createWritable 抛 NotAllowedError 同一句） */
+const WRITE_PERMISSION_HINT =
+  "未获得写入权限：请重新点击「打开工程」选择该目录，并在浏览器询问时选择「允许编辑」";
+
+/** 可写文件句柄（lib.dom 版本不一：只声明我们用到的这一面） */
+interface WritableFileHost {
+  createWritable(options?: { keepExistingData?: boolean }): Promise<{
+    write(data: string): Promise<void>;
+    close(): Promise<void>;
+    abort(): Promise<void>;
+  }>;
+}
+
+/** 可写目录句柄（建文件/建目录/删除/权限查询——一律窄化，避免 lib 漂移） */
+interface WritableDirectoryHost {
+  getFileHandle(
+    name: string,
+    options?: { create?: boolean },
+  ): Promise<FileSystemFileHandle>;
+  getDirectoryHandle(
+    name: string,
+    options?: { create?: boolean },
+  ): Promise<FileSystemDirectoryHandle>;
+  removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
+  queryPermission?(descriptor?: {
+    mode?: "read" | "readwrite";
+  }): Promise<PermissionState>;
+  requestPermission?(descriptor?: {
+    mode?: "read" | "readwrite";
+  }): Promise<PermissionState>;
+}
+
+function asWritableDir(handle: FileSystemDirectoryHandle): WritableDirectoryHost {
+  return handle as unknown as WritableDirectoryHost;
+}
+
+function asWritableFile(handle: FileSystemFileHandle): WritableFileHost {
+  return handle as unknown as WritableFileHost;
+}
+
+/** 写权限被拒的两种表现归一（用户可见文案不分叉） */
+function normalizeWriteError(error: unknown): unknown {
+  if (error instanceof DOMException && error.name === "NotAllowedError") {
+    return new Error(WRITE_PERMISSION_HINT);
+  }
+  return error;
+}
+
+/**
+ * 申请写权限：`queryPermission` 已 granted 直接放行；否则 `requestPermission`。
+ * **必须是 `apply()` 里第一个 await**——保存按钮点击是真实用户手势，浏览器要求
+ * transient activation 才能弹权限询问；先做别的异步再申请会被拒。
+ * 老 Chromium 无 permission API：不预检，由 `createWritable` 的 NotAllowedError 归一。
+ */
+async function ensureWriteAccess(root: FileSystemDirectoryHandle): Promise<void> {
+  const dir = asWritableDir(root);
+  if (dir.queryPermission !== undefined) {
+    if ((await dir.queryPermission({ mode: "readwrite" })) === "granted") return;
+  }
+  if (dir.requestPermission !== undefined) {
+    const state = await dir.requestPermission({ mode: "readwrite" });
+    if (state === "granted") return;
+    throw new Error(WRITE_PERMISSION_HINT);
+  }
+}
+
+/** 逻辑路径 → 安全段（复用资源路径口径：剥前导斜杠、拒空段与 `..` 逃逸） */
+function safeSegments(path: string): string[] {
+  const segments = normalizeResourceId(path).split("/");
+  for (const segment of segments) {
+    if (segment === "." || segment === ".." || segment.includes("\\")) {
+      throw new Error(`工程路径非法（越出资源根）：${path}`);
+    }
+  }
+  return segments;
+}
+
+/** 写入单个文件（中间目录缺则创建；失败 abort 不落半截） */
+async function writeFileAt(
+  root: FileSystemDirectoryHandle,
+  path: string,
+  text: string,
+): Promise<void> {
+  const segments = safeSegments(path);
+  let dir = asWritableDir(root);
+  for (const segment of segments.slice(0, -1)) {
+    dir = asWritableDir(await dir.getDirectoryHandle(segment, { create: true }));
+  }
+  const file = await dir.getFileHandle(segments[segments.length - 1] ?? "", {
+    create: true,
+  });
+  const writable = await asWritableFile(file).createWritable();
+  try {
+    await writable.write(text);
+    await writable.close();
+  } catch (error: unknown) {
+    await writable.abort();
+    throw error;
+  }
+}
+
+/** 删除单个文件（缺失 = 已删，幂等；目录缺失同样吞掉） */
+async function removeFileAt(
+  root: FileSystemDirectoryHandle,
+  path: string,
+): Promise<void> {
+  const segments = safeSegments(path);
+  let dir = asWritableDir(root);
+  for (const segment of segments.slice(0, -1)) {
+    let next: FileSystemDirectoryHandle;
+    try {
+      next = await dir.getDirectoryHandle(segment);
+    } catch (error: unknown) {
+      if (isMissingHandle(error)) return;
+      throw error;
+    }
+    dir = asWritableDir(next);
+  }
+  try {
+    await dir.removeEntry(segments[segments.length - 1] ?? "");
+  } catch (error: unknown) {
+    if (isMissingHandle(error)) return;
+    throw error;
+  }
+}
+
+/**
+ * `ProjectWriterPort` 实现（FSA 真目录）：与**打开基线**求最小差量 → 先写后删。
+ *
+ * 顺序固定：申请写权限 → 建 `Stories/` → 写列文件 → 写 `project.json` → 删陈旧文件。
+ * 永不先删后写：任一步失败时磁盘上最坏只是「多出文件」，工程仍可加载；失败不更新基线，
+ * 重试即幂等收敛。
+ */
+export async function createHandleProjectWriter(
+  picked: FileSystemDirectoryHandle,
+  previous: ReadonlyMap<string, string>,
+): Promise<ProjectWriterPort> {
+  const { root } = await locateResourceRootHandle(picked);
+  let baseline = new Map(previous);
+  return {
+    writable: true,
+    async apply(files: ReadonlyMap<string, string>): Promise<ProjectWriteReport> {
+      const { changes, deletes } = diffProjectFiles(files, baseline);
+      const written: string[] = [];
+      const deleted: string[] = [];
+      try {
+        await ensureWriteAccess(root); // 手势窗口：保持为第一个 await
+        // `Stories/` 可能不存在（首次写回 / 用户清空）→ 建之
+        await asWritableDir(root).getDirectoryHandle(STORIES_DIR, {
+          create: true,
+        });
+        // 列文件先写，`project.json` 最后写（= 提交点：入口列改名在删除前已指向新 id）
+        const columnPaths = [...changes.keys()].filter(
+          (path) => path !== MANIFEST_FILE,
+        );
+        const manifestText = changes.get(MANIFEST_FILE);
+        const ordered =
+          manifestText === undefined
+            ? columnPaths
+            : [...columnPaths, MANIFEST_FILE];
+        for (const path of ordered) {
+          await writeFileAt(root, path, changes.get(path) ?? "");
+          written.push(path);
+        }
+        for (const path of deletes) {
+          await removeFileAt(root, path);
+          deleted.push(path);
+        }
+      } catch (error: unknown) {
+        throw normalizeWriteError(error);
+      }
+      baseline = new Map(files); // 成功才更新基线 → 二次保存不重复写
+      return { written, deleted };
+    },
+  };
+}

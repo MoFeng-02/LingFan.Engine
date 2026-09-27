@@ -56,6 +56,30 @@ const ELEMENT_LABELS: Readonly<Record<string, string>> = {
   spacer: "留白",
 };
 
+/**
+ * 已声明但**当前无渲染语义**的属性（T01-01 止血清单；R1 裁定 = 先止血、补实现按需）。
+ *
+ * 判定依据（代码事实）：这些键只在 `contracts/element.ts` 的 `ELEMENT_ATTRIBUTES` 里声明，
+ * `packages/ui` **零消费**（`elementStyle` / `renderers` 都不读）——写进故事**不生效也不报错**。
+ *
+ * 处置三条：① **保留在契约里**（`ELEMENT_ATTRIBUTES` 不动，避免历史工程解析失败）；
+ * ② **表单不下发**（`describeElement` 过滤掉，不再给作者"看起来能用"的控件）；
+ * ③ **编辑期 warning**（诊断码 `unimplemented-element-attr`）。
+ *
+ * 与 T02-03「三面对齐互锁」的关系：该测试独立推导"契约 − 消费者"的差集，本清单是它的**显式白名单**，
+ * 两边不一致即测试变红（这正是 D-01 长期潜伏的原因——此前没有任何测试同时看这三面）。
+ */
+export const UNIMPLEMENTED_ELEMENT_ATTRS: ReadonlySet<string> = new Set([
+  "valign",
+  "xalign",
+  "yalign",
+  "order",
+  "xoffset",
+  "yoffset",
+  "xanchor",
+  "yanchor",
+]);
+
 /** 属性 → 呈现语义（未列出者回退 `string`） */
 const ELEMENT_FIELD_META: Readonly<
   Record<string, { label: string; kind: FieldKind }>
@@ -225,10 +249,15 @@ export function describeElement(
   type: string,
 ): ElementFormDescriptor | undefined {
   if (!(ELEMENT_TYPES as readonly string[]).includes(type)) return undefined;
-  const allowed = new Set<string>([...ELEMENT_ATTRIBUTES, "id", "name"]);
+  // T01-01：不下发「已声明但无渲染语义」的属性（作者填了不生效 → 表单一律不给）
+  const allowed = new Set<string>(
+    [...ELEMENT_ATTRIBUTES, "id", "name"].filter(
+      (key) => !UNIMPLEMENTED_ELEMENT_ATTRS.has(key),
+    ),
+  );
   const ordered = [
     ...FIELD_ORDER.filter((key) => allowed.has(key)),
-    ...[...ELEMENT_ATTRIBUTES].filter((key) => !FIELD_ORDER.includes(key)),
+    ...[...allowed].filter((key) => !FIELD_ORDER.includes(key)),
   ];
   return {
     type,

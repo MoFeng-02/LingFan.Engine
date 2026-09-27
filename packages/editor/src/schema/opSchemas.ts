@@ -19,6 +19,8 @@ const Value = z.union([z.string(), z.number(), z.boolean()]);
 const Body = z.array(z.unknown());
 const Finite = z.number().finite();
 const Fade = z.number().finite().min(0);
+/** 08 §八.3 实例级 z（T01-03）：非负有限数；仅拥有独立渲染层的命令接受 */
+const InstanceZ = z.number().finite().min(0).optional();
 
 const saySchema = z.strictObject({
   text: NonEmpty,
@@ -29,22 +31,26 @@ const saySchema = z.strictObject({
   typewriter: z.number().optional(),
   voice: NonEmpty.optional(),
   template: NonEmpty.optional(),
+  z: InstanceZ, // dialogue 层实例 z
 });
 
 const menuSchema = z.strictObject({
   prompt: z.string().optional(),
   options: z.array(z.strictObject({ text: NonEmpty, target: NonEmpty })).min(1),
+  z: InstanceZ, // choices 层实例 z
 });
 
 const inputSchema = z.strictObject({
   prompt: NonEmpty,
   store: NonEmpty,
+  z: InstanceZ, // choices 层实例 z
 });
 
 const notifySchema = z.strictObject({
   text: NonEmpty,
   type: z.string().optional(),
   duration: z.number().optional(),
+  z: InstanceZ, // notifications 层实例 z
 });
 
 const nvlSchema = z.strictObject({
@@ -92,6 +98,12 @@ const callSchema = z.strictObject({
 
 const returnSchema = z.strictObject({
   value: Value.optional(),
+});
+/** 函数定义（04 §一.7）：name/params/body 三者引擎均必填（format.ts `case "func"`） */
+const funcSchema = z.strictObject({
+  name: NonEmpty,
+  params: z.array(NonEmpty),
+  body: Body,
 });
 
 const ifSchema = z.strictObject({
@@ -203,6 +215,7 @@ const minigameSchema = z.strictObject({
   on_success: NonEmpty.optional(),
   on_fail: NonEmpty.optional(),
   reward: z.array(z.strictObject({ key: NonEmpty, value: Value })).optional(),
+  z: InstanceZ, // minigame 层实例 z
 });
 
 // ====== 08 §二.1 / §二.2 元素系统（元素增删改 + 表现类）======
@@ -271,6 +284,7 @@ export const OP_SCHEMAS: Readonly<Record<string, z.ZodType>> = {
   random: randomSchema,
   jump: jumpSchema,
   navigate: navigateSchema,
+  func: funcSchema,
   call: callSchema,
   return: returnSchema,
   if: ifSchema,

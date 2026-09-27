@@ -10,7 +10,7 @@
  * 逐键合并工程覆盖 `project.json shell.*`，非法键/值一律忽略回默认（不猜、不抛）。
  */
 
-import { isOrientationMode, type OrientationMode } from "../contracts";
+import { isOrientationMode, SYS, type OrientationMode } from "../contracts";
 
 /* ============================ ⑨-11 层级（z 序）============================ */
 
@@ -99,6 +99,34 @@ export function resolveInstanceZ(
   table: LayerZTable = DEFAULT_LAYER_Z,
 ): number {
   return isFiniteNonNegative(instanceZ) ? instanceZ : table[layer];
+}
+
+/**
+ * 实例级 z 的 **SSOT 键 ↔ 渲染层** 映射（08 §八.3 的接线点，T01-03）。
+ *
+ * 仅「**拥有独立渲染层**」的命令参与：`say`→dialogue、`menu`/`input`→choices、
+ * `notify`→notifications、`minigame`→minigame。
+ * （舞台元素实例 z 走另一条路：`ElementInstance.z` = 元素 `zindex` > 到达序，舞台内部叠放。）
+ *
+ * 宿主用法（三行）：
+ * ```ts
+ * // 1) ValueChanged 里收纳：const layer = instanceZLayer(key); if (layer) zOverride[layer] = value;
+ * // 2) 模板里解析：zIndex: resolveInstanceZ("dialogue", zOverride.dialogue, layerZ)
+ * ```
+ */
+export const INSTANCE_Z_KEYS: Readonly<Partial<Record<LayerId, string>>> = {
+  dialogue: SYS.dialogueZ,
+  choices: SYS.choicesZ,
+  notifications: SYS.notificationsZ,
+  minigame: SYS.minigameZ,
+};
+
+/** 由 SSOT 键反查渲染层（宿主在 ValueChanged 中据此收纳实例 z；非实例 z 键 → undefined） */
+export function instanceZLayer(key: string): LayerId | undefined {
+  for (const [layer, instanceKey] of Object.entries(INSTANCE_Z_KEYS)) {
+    if (instanceKey === key) return layer as LayerId;
+  }
+  return undefined;
 }
 
 /* ============================ ⑨-12 存档壳配置 ============================ */

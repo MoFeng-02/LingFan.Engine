@@ -54,6 +54,7 @@ const SAY_KNOWN_FIELDS = new Set([
   "typewriter",
   "voice",
   "template",
+  "z", // 08 §八.3 实例级 z（dialogue 层）
 ]);
 
 const WAIT_FIELDS = new Set(["op", "seconds", "skipable"]);
@@ -144,6 +145,7 @@ const MINIGAME_FIELDS = new Set([
   "on_success",
   "on_fail",
   "reward",
+  "z", // 08 §八.3 实例级 z（minigame 层）
 ]);
 
 /** 01 §二.3 存档类 op 已知负载字段（未知字段 fail-closed，E3/F5；权威：JSON故事格式_V1 §6） */
@@ -720,6 +722,41 @@ export class StoryEngine {
     this.emit(key, value, "global");
   }
 
+  /**
+   * 08 §八.3 实例级 z 的**执行期防御**（解析期 `format.ts` 已拒；这里是纵深防御）：
+   * 非法（负数 / NaN / Infinity / 非数字）→ `engine.error` 且**不动任何状态**，调用方立即 return。
+   * 返回 `true` = 已拒绝（调用方必须 `return`）。
+   */
+  private rejectBadInstanceZ(cmd: StoryCommand): boolean {
+    if (cmd.z === undefined) return false;
+    if (typeof cmd.z === "number" && Number.isFinite(cmd.z) && cmd.z >= 0) {
+      return false;
+    }
+    this.fail(
+      "instance-z-invalid",
+      `实例级 z 必须为非负有限数，收到 ${String(cmd.z)}（08 §八.3）`,
+    );
+    return true;
+  }
+
+  /**
+   * 08 §八.3 实例级 z（T01-03）：把命令上的 `z` 写进 SSOT（键 ↔ 层见 `INSTANCE_Z_KEYS`）。
+   *
+   * - **有值**（非负有限数）→ `setSystem`（进事件流，宿主据此改该层 z）；
+   * - **缺省/非法** → **删除键**（回层默认）并广播 `undefined` —— 保证「不带 z 的下一条命令」
+   *   不会沿用上一条的覆盖（这正是需求 #3 的「只影响这一个，不影响其他 say」）。
+   *
+   * 进 SSOT 的收益：随快照 / 存档 / 回溯自动随行（重放到同一条命令重新写入同一值）。
+   * 前置：调用方已用 `rejectBadInstanceZ` 拒掉非法值。
+   */
+  private setInstanceZ(key: string, raw: unknown): void {
+    if (typeof raw === "number" && Number.isFinite(raw) && raw >= 0) {
+      this.setSystem(key, raw);
+      return;
+    }
+    if (this.state.delete(key)) this.emit(key, undefined, "system");
+  }
+
   private emit(key: string, value: unknown, scope: string): void {
     const change: ValueChanged = { key, value, scope };
     for (const listener of this.stateListeners) listener(change);
@@ -1017,6 +1054,7 @@ export class StoryEngine {
 
   /** say：写对话系统键 → 进入 dialog 等待（02 §二.2/3；插值见 01 §三.4/S8/F7） */
   private execSay(frame: Frame, cmd: StoryCommand): void {
+    if (this.rejectBadInstanceZ(cmd)) return; // 08 §八.3：先拒非法 z（不动状态）
     if (typeof cmd.text !== "string" || cmd.text === "") {
       this.fail("say-invalid", "say 负载必须有非空 text 字符串");
       return;
@@ -1074,6 +1112,7 @@ export class StoryEngine {
     this.setSystem(SYS.currentDialogText, text);
     this.setSystem(SYS.dialogClickable, cmd.clickable === true);
     this.setSystem(SYS.dialogNoskip, cmd.noskip === true);
+    this.setInstanceZ(SYS.dialogueZ, cmd.z); // 08 §八.3：本句的实例 z（仅影响这一句）
     // 08-U5：NVL 激活时当前句追加进累积缓冲（新引用，观察者可感知；随状态快照走）
     // 重放期不追加——buffer 已由快照恢复，重放只重建当前对话键
     if (this.get(SYS.nvlMode) === "active" && !this.rollbackActive) {
@@ -1272,6 +1311,7 @@ export class StoryEngine {
 
   /** menu：写菜单系统键 → 进入 menu 等待（02 §二.2；清对话残留 08 §二.6） */
   private execMenu(frame: Frame, cmd: StoryCommand): void {
+    if (this.rejectBadInstanceZ(cmd)) return; // 08 §八.3：先拒非法 z（不动状态）
     const options = cmd.options as Array<{ text: string; target: string }>; // 解析器已验证结构
     this.setSystem(SYS.currentDialogText, "");
     this.setSystem(SYS.currentDialogSpeaker, "");
@@ -1289,6 +1329,7 @@ export class StoryEngine {
       options.map((o) => o.target),
     );
     this.setSystem(SYS.menuSelected, -1);
+    this.setInstanceZ(SYS.choicesZ, cmd.z); // 08 §八.3：本次菜单的实例 z（choices 层）
     this.setSystem(SYS.waiting, "menu");
     // 03 §三：菜单展示时建检查点（展示中 live == 检查点，回退落回菜单重选）；重放期同坐标原位替换
     this.commitCheckpoint(this.takeSnapshot(this.checkpointCoord(frame)));
@@ -2429,6 +2470,7 @@ export class StoryEngine {
 
   /** notify：出站 toast 事件（01 §二.1 → 08 §二.4 覆盖层）；文本插值与 say 同语义 */
   private execNotify(cmd: StoryCommand): void {
+    if (this.rejectBadInstanceZ(cmd)) return; // 08 §八.3：先拒非法 z（不动状态）
     const { text, errors } = interpolateText(
       this.translate(cmd.text as string),
       this.resolveName,
@@ -2436,6 +2478,7 @@ export class StoryEngine {
     );
     for (const e of errors)
       this.fail(e.code, `插值失败（保留原文）：${e.message}`);
+    this.setInstanceZ(SYS.notificationsZ, cmd.z); // 08 §八.3：本条通知的实例 z（notifications 层）
     const payload: OutboundPayload = {
       kind: "notify",
       text,
@@ -2452,6 +2495,7 @@ export class StoryEngine {
    * （支持 {expr}，重放经 rngState 恢复保持确定性）；on_success/on_fail 缺省 = 原列继续。
    */
   private execMinigame(frame: Frame, cmd: StoryCommand): void {
+    if (this.rejectBadInstanceZ(cmd)) return; // 08 §八.3：先拒非法 z（不动状态）
     const unknownFields = Object.keys(cmd).filter(
       (k) => !MINIGAME_FIELDS.has(k),
     );
@@ -2535,6 +2579,7 @@ export class StoryEngine {
       onFail: typeof cmd.on_fail === "string" ? cmd.on_fail : undefined,
       reward,
     };
+    this.setInstanceZ(SYS.minigameZ, cmd.z); // 08 §八.3：本次挂载的实例 z（minigame 层）
     this.setSystem(SYS.minigame, {
       game: cmd.game,
       config: (cmd.config ?? {}) as Record<string, unknown>,
@@ -2636,6 +2681,7 @@ export class StoryEngine {
 
   /** input（老规范 §6.1：prompt + store）→ 进入 input 等待；options 选项式输入延后（解析层拒绝） */
   private execInput(frame: Frame, cmd: StoryCommand): void {
+    if (this.rejectBadInstanceZ(cmd)) return; // 08 §八.3：先拒非法 z（不动状态）
     // 输入态清对话残留（与 menu 同语义，08 §二.6）
     this.setSystem(SYS.currentDialogText, "");
     this.setSystem(SYS.currentDialogSpeaker, "");
@@ -2644,6 +2690,7 @@ export class StoryEngine {
       typeof cmd.prompt === "string" ? this.translate(cmd.prompt) : "",
     );
     this.inputStore = cmd.store as string;
+    this.setInstanceZ(SYS.choicesZ, cmd.z); // 08 §八.3：输入形态的实例 z（choices 层）
     this.setSystem(SYS.waiting, "input");
     // 03 §三：input 检查点在等待建立时；重放期同坐标原位替换
     this.commitCheckpoint(this.takeSnapshot(this.checkpointCoord(frame)));

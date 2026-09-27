@@ -6,7 +6,18 @@ export {
   parseStoryFile,
   StoryFormatError,
 } from "./format";
-export { assembleProject, ProjectAssemblyError } from "./project";
+export {
+  assembleProject,
+  ProjectAssemblyError,
+  diffProjectFiles,
+  isSafeFileNameSegment,
+  MANIFEST_FILE,
+  ProjectSerializationError,
+  serializeProject,
+  STORIES_DIR,
+  type ProjectFileDiff,
+  type SerializedProject,
+} from "./project";
 export {
   findElements,
   loadElements,

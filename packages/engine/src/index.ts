@@ -12,6 +12,20 @@ export {
   StoryFormatError,
 } from "./data";
 export { assembleProject, ProjectAssemblyError } from "./data";
+/**
+ * 09-16 工程写回（`assembleProject` 的逆函数）：Story + 原始清单 → 期望文件全集，
+ * 以及与打开基线的最小差量。编辑器保存经此（格式知识单点，禁在适配器复制）。
+ */
+export {
+  diffProjectFiles,
+  isSafeFileNameSegment,
+  MANIFEST_FILE,
+  ProjectSerializationError,
+  serializeProject,
+  STORIES_DIR,
+  type ProjectFileDiff,
+  type SerializedProject,
+} from "./data";
 export {
   generateText,
   parseTextStory,
@@ -29,6 +43,8 @@ export { PlayerPreferences } from "./runtime/preferences";
 export {
   DEFAULT_LAYER_Z,
   DEFAULT_SAVES_CONFIG,
+  INSTANCE_Z_KEYS,
+  instanceZLayer,
   LAYER_IDS,
   manifestOrientation,
   resolveInstanceZ,

@@ -1,30 +1,69 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
-import type { ElementInstance, Story, ValueChanged } from "@lingfan/engine";
-import { SYS, StoryEngine, type OutboundPayload } from "@lingfan/engine";
+import type {
+  AudioPort,
+  ElementInstance,
+  ResourcePort,
+  Story,
+  ValueChanged,
+  VideoPort,
+} from "@lingfan/engine";
+import {
+  SYS,
+  StoryEngine,
+  instanceZLayer,
+  resolveInstanceZ,
+  type LayerZTable,
+  type OutboundPayload,
+} from "@lingfan/engine";
 import {
   builtinBubbleTemplate,
+  createAudioRenderer,
   createDialogueTemplateRegistry,
   createElementRegistry,
+  createElementResourceResolver,
+  createVideoRenderer,
   registerBuiltinElementRenderers,
   renderDialogueLine,
   renderElementTree,
   resolveElementAction,
   Typewriter,
+  type AudioRenderer,
   type DialogueTemplateView,
+  type VideoRenderer,
 } from "@lingfan/ui";
 
 /**
- * 06 §一.1 预览视图：当前故事快照跑真引擎（无端口——音频/视频键不观察即静音，
- * I18N/存档缺省）。预览为打开时刻的快照运行，编辑不实时渗入。
+ * 06 §一.1 预览视图：当前故事快照跑真引擎。预览为打开时刻的快照运行，编辑不实时渗入。
  * 打字机（08-U3）：单句对话层 Typewriter + rAF 帧驱动；NVL 累积层即时显示
  * （增量渲染优化随 playground 级打磨，预览规模不需要）。
- * 元素层（08 §二.1）：按 `__elements` 经注册表渲染；**资源不解析**（编辑器尚无资源供给
- * 模型，同「预览音频延后」裁定——图像类元素显示替代文本，布局/文本/交互照常可验）。
+ * 元素层（08 §二.1）：按 `__elements` 经注册表渲染。
+ *
+ * **资源供给（P2 编辑器工程模型）**：打开工程后 `resourcePort` 由组合根注入 →
+ * 音频/视频渲染器与元素资源一并接上（08 §六/U6/U7）；未打开工程（示例故事）时
+ * 保持原语义——媒体静音、图像类元素显示替代文本（不伪造 URL）。
  * 帧驱动表现（animate/transition/shake）仍只在 playground 落地。
  */
-const props = defineProps<{ story: Story }>();
+const props = defineProps<{
+  story: Story;
+  /** 已打开工程的资源供给端口（缺省 = 未打开工程：不接媒体与元素资源） */
+  resourcePort?: ResourcePort;
+  /** 08 §八.3 层级表（未打开工程 = 内建默认）——预览据此解析实例级 z */
+  layerZ?: LayerZTable;
+  createAudioPort: (onError: (message: string) => void) => AudioPort;
+  createVideoPort: (onError: (message: string) => void) => VideoPort;
+}>();
 const emit = defineEmits<{ close: [] }>();
+
+/**
+ * 08 §八.3 实例级 z（T01-03）：命令参数 `z` 进 SSOT → 该层实例覆盖；
+ * `undefined` = 未指定 = 回层默认（`resolveInstanceZ` 三级链）。
+ */
+const zOverride = ref<Partial<Record<string, number>>>({});
+/** 层最终 z = 实例 > 工程层默认 > 内建（render 期调用 → 读 zOverride 建响应式依赖） */
+function zOf(layer: keyof LayerZTable): number {
+  return resolveInstanceZ(layer, zOverride.value[layer], props.layerZ);
+}
 
 // 预览不接小游戏注册表：挂载事件按 D5 fail-closed 显示横幅（不伪造完成）
 const engine = new StoryEngine(props.story);
@@ -51,11 +90,45 @@ dialogueTemplates.register("bubble", builtinBubbleTemplate, {
   makeDefault: true,
 });
 
+/** 媒体渲染错误（含元素资源解析失败以外的端口诊断）汇入停机横幅 */
+function reportMediaError(message: string): void {
+  errorText.value = message;
+}
+
+// —— 08 §六 音频/视频：仅在打开工程（有资源供给）时接上 ——
+// 端口实例归本视图创建（卸载即 dispose），实现在组合根注入的工厂里
+const resourcePort = props.resourcePort;
+const audioPort: AudioPort | null =
+  resourcePort === undefined ? null : props.createAudioPort(reportMediaError);
+const videoPort: VideoPort | null =
+  resourcePort === undefined ? null : props.createVideoPort(reportMediaError);
+const audioRenderer: AudioRenderer | null =
+  resourcePort === undefined || audioPort === null
+    ? null
+    : createAudioRenderer(engine, audioPort, resourcePort, {
+        onError: reportMediaError,
+      });
+const videoRenderer: VideoRenderer | null =
+  resourcePort === undefined || videoPort === null
+    ? null
+    : createVideoRenderer(engine, videoPort, resourcePort, {
+        onError: reportMediaError,
+        onVideoFinished: () => engine.videoFinished(), // 播放结束 → 引擎解除 video 等待
+      });
+
 // —— 08 §二.1 元素层：核心只写 `__elements`，此处经注册表渲染（未注册类型 fail-closed 上报） ——
 const elements = ref<ElementInstance[]>([]);
 const elementLayerEl = ref<HTMLElement | null>(null);
 const elementRegistry = createElementRegistry();
 registerBuiltinElementRenderers(elementRegistry);
+// 资源解析缓存 = @lingfan/ui 共用实现（未打开工程 = 不解析 → 替代文本）
+const elementResources = createElementResourceResolver({
+  resolve: (path) =>
+    resourcePort === undefined
+      ? Promise.reject(new Error("未打开工程：无资源根"))
+      : resourcePort.resolve(path),
+  onResolved: renderElements,
+});
 
 function renderElements(): void {
   const host = elementLayerEl.value;
@@ -65,8 +138,7 @@ function renderElements(): void {
     container: host,
     elements: elements.value,
     activate: activateElement,
-    // 编辑器无资源供给模型：不解析 = 图像类显示替代文本（不伪造 URL）
-    resolveResource: () => undefined,
+    resolveResource: elementResources.resolveForElement,
     onUnknownType: (type) => {
       elementBanner.value = `元素类型未注册：${type}（fail-closed：不伪造渲染）`;
     },
@@ -121,6 +193,7 @@ function frame(ts: number): void {
   } else {
     lastTs = 0;
   }
+  audioRenderer?.pollPosition(); // 08 §三.2：媒体位置帧级回写（BGM seek/循环差量归渲染器）
   rafId = window.requestAnimationFrame(frame);
 }
 rafId = window.requestAnimationFrame(frame);
@@ -140,6 +213,15 @@ function syncMenu(): void {
 }
 
 const offState = engine.onStateChanged((c: ValueChanged) => {
+  // 08 §八.3 实例级 z（T01-03）：命令参数进 SSOT → 预览该层跟随（缺省 = 回层默认）
+  const zLayer = instanceZLayer(c.key);
+  if (zLayer !== undefined) {
+    zOverride.value = {
+      ...zOverride.value,
+      [zLayer]: typeof c.value === "number" ? c.value : undefined,
+    };
+    return;
+  }
   if (c.key === SYS.currentDialogText) {
     dialogText.value = String(c.value ?? "");
     retype(dialogText.value);
@@ -181,14 +263,18 @@ engine.start();
 
 function onStageClick(): void {
   if (errorText.value !== "") return;
-  if (waiting.value !== "dialog") return;
-  // 08-U3 二段式点击：停在 {p}/{w} → 越过；打字未完 → 瞬间完成；已完 → advance
-  if (typewriter !== null && !typewriter.done) {
-    typewriter.click();
-    shownText.value = typewriter.visible;
+  if (waiting.value === "dialog") {
+    // 08-U3 二段式点击：停在 {p}/{w} → 越过；打字未完 → 瞬间完成；已完 → advance
+    if (typewriter !== null && !typewriter.done) {
+      typewriter.click();
+      shownText.value = typewriter.visible;
+      return;
+    }
+    engine.advance();
     return;
   }
-  engine.advance();
+  // ⑨-14 纪律「每个等待态都必须有出口」：wait 跳过 / cutscene 跳过（可跳过性由引擎裁定）
+  if (waiting.value === "wait" || waiting.value === "video") engine.advance();
 }
 
 function choose(target: string): void {
@@ -202,15 +288,15 @@ function submitInput(): void {
   inputValue.value = "";
 }
 
-function finishVideo(): void {
-  engine.videoFinished(); // 预览不含媒体渲染：手动模拟视频结束以继续剧情
-}
-
 onBeforeUnmount(() => {
   window.clearTimeout(toastTimer);
   window.cancelAnimationFrame(rafId);
   offState();
   offEvent();
+  audioPort?.dispose(); // 先停播
+  videoPort?.dispose(); // （视频元素挂在 body 上，必须显式卸除）
+  audioRenderer?.dispose(); // 再释放已解析 URL（先停播后回收，Blob 场景才安全）
+  videoRenderer?.dispose();
   engine.dispose();
 });
 </script>
@@ -220,7 +306,13 @@ onBeforeUnmount(() => {
     <header class="preview-bar">
       <strong>预览</strong>
       <span class="preview-column">{{ column }}</span>
-      <span class="preview-note">打开时刻的快照 · 音视频与元素资源不解析</span>
+      <span class="preview-note">
+        {{
+          resourcePort === undefined
+            ? "打开时刻的快照 · 未打开工程：音视频与元素资源不解析"
+            : "打开时刻的快照 · 资源已接（音视频 / 元素）"
+        }}
+      </span>
       <span class="spacer"></span>
       <button @click="emit('close')">退出预览</button>
     </header>
@@ -237,8 +329,12 @@ onBeforeUnmount(() => {
         {{ elementBanner }}
       </p>
 
-      <!-- NVL 累积层 -->
-      <div v-if="nvlMode !== 'none' && nvlBuffer.length > 0" class="nvl-layer">
+      <!-- NVL 累积层（08 §一：video 等待期内容层让位——video 不盖 say 靠让位而非压层） -->
+      <div
+        v-if="nvlMode !== 'none' && nvlBuffer.length > 0 && waiting !== 'video'"
+        class="nvl-layer"
+        :style="{ zIndex: zOf('dialogue') }"
+      >
         <p v-for="(line, i) in nvlHtmlLines" :key="i" v-html="line"></p>
       </div>
 
@@ -247,6 +343,7 @@ onBeforeUnmount(() => {
         v-if="nvlMode === 'none' && waiting === 'dialog'"
         class="dialogue"
         :class="dialogView.rootClass"
+        :style="{ zIndex: zOf('dialogue') }"
       >
         <div class="speaker" v-html="dialogView.speakerHtml"></div>
         <div class="body" v-html="dialogView.bodyHtml"></div>
@@ -255,14 +352,24 @@ onBeforeUnmount(() => {
 
       <!-- 等待/输入/视频/小游戏横幅 -->
       <p v-if="waiting === 'wait'" class="waiting-note">等待中…（点击跳过）</p>
-      <div v-if="waiting === 'input'" class="choices" @click.stop>
+      <div
+        v-if="waiting === 'input'"
+        class="choices"
+        :style="{ zIndex: zOf('choices') }"
+        @click.stop
+      >
         <p class="layer-prompt">{{ inputPrompt }}</p>
         <form class="input-row" @submit.stop.prevent="submitInput">
           <input v-model="inputValue" type="text" maxlength="20" @click.stop />
           <button type="submit">确定</button>
         </form>
       </div>
-      <div v-if="waiting === 'menu'" class="choices" @click.stop>
+      <div
+        v-if="waiting === 'menu'"
+        class="choices"
+        :style="{ zIndex: zOf('choices') }"
+        @click.stop
+      >
         <p class="layer-prompt">{{ menuPrompt }}</p>
         <button
           v-for="choice in menuChoices"
@@ -273,17 +380,27 @@ onBeforeUnmount(() => {
           {{ choice.text }}
         </button>
       </div>
-      <div v-if="waiting === 'video'" class="choices" @click.stop>
-        <p class="layer-prompt">视频播放中（预览不含媒体）</p>
-        <button @click="finishVideo">模拟视频结束</button>
+      <div v-if="waiting === 'video'" class="choices" :style="{ zIndex: zOf('choices') }">
+        <p class="layer-prompt">
+          {{
+            resourcePort === undefined
+              ? "视频等待中（未打开工程，无资源供给——点击跳过）"
+              : "视频播放中……（点击跳过）"
+          }}
+        </p>
       </div>
-      <div v-if="waiting === 'minigame'" class="choices" @click.stop>
+      <div
+        v-if="waiting === 'minigame'"
+        class="choices"
+        :style="{ zIndex: zOf('minigame') }"
+        @click.stop
+      >
         <p class="layer-prompt">{{ minigameBanner }}</p>
         <button @click="emit('close')">退出预览</button>
       </div>
 
       <!-- 通知 toast -->
-      <div class="toasts">
+      <div class="toasts" :style="{ zIndex: zOf('notifications') }">
         <p v-for="toast in toasts" :key="toast.id" class="toast">
           {{ toast.text }}
         </p>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, inject, ref } from "vue";
-import type { Story } from "@lingfan/engine";
+import { computed, inject, ref, type CSSProperties } from "vue";
+import type { ResourcePort, Story } from "@lingfan/engine";
 import {
   describeElement,
   draggedPosition,
@@ -8,17 +8,54 @@ import {
   getAtPointer,
   type FieldDescriptor,
 } from "@lingfan/editor";
+import { elementSource } from "@lingfan/ui";
 import FieldRow from "./FieldRow.vue";
 
 /**
  * 06 §一.1 舞台编辑（scene 列的空间布局视图）：
  * - **画布**：把目标 scene 列的 `elements[]` 按 `x/y/width/height/zindex/opacity` 摆成可拖拽方块。
- *   这是**占位表现**——真实外观归预览视图；本视图只负责布局编辑。
+ *   编辑仍以布局为主（占位方块 + 尺寸/层级）。
+ * - **资源缩略（P2 编辑器工程模型）**：打开工程后，带 `source/src/path` 的元素把已解析
+ *   资源铺成方块背景（`@lingfan/ui` 的 `elementSource` 取路径，与渲染器同源判定）；
+ *   未打开工程 = 无资源根 → 保持占位方块。
  * - **拖拽**：拖拽中仅本地预览（transform），**松手才写回一次** `x`/`y`，避免每帧污染 undo。
  *   字符串坐标（如 `"50%"`）保持原值不动（像素位移无法与百分比相加）。
  * - **属性**：选中元素 → 契约驱动的 `describeElement` 字段表（直接复用 `FieldRow`）。
  */
-const props = defineProps<{ story: Story; pointer: string | null }>();
+const props = defineProps<{
+  story: Story;
+  pointer: string | null;
+  /** 已打开工程的资源供给端口（缺省 = 未打开工程：不解析缩略） */
+  resourcePort?: ResourcePort;
+}>();
+
+/**
+ * 资源缩略缓存：声明式侧缓存（`@lingfan/ui` 的 `createElementResourceResolver` 面向
+ * 「解析落地后重渲染 DOM」的命令式宿主；这里需要**响应式**失效，故就地维护）。
+ * 失败保持占位方块（不伪造 URL）。
+ */
+const thumbUrls = ref<Record<string, string>>({});
+const thumbPending = new Set<string>();
+
+function elementThumb(element: Record<string, unknown>): string | undefined {
+  const path = elementSource(element);
+  if (path === undefined || props.resourcePort === undefined) return undefined;
+  const cached = thumbUrls.value[path];
+  if (cached !== undefined) return cached;
+  if (!thumbPending.has(path)) {
+    thumbPending.add(path);
+    void props.resourcePort.resolve(path).then(
+      (url) => {
+        thumbPending.delete(path);
+        thumbUrls.value = { ...thumbUrls.value, [path]: url };
+      },
+      () => {
+        thumbPending.delete(path);
+      },
+    );
+  }
+  return undefined;
+}
 
 interface EditorApi {
   update(pointer: string, value: unknown): void;
@@ -68,6 +105,26 @@ function cssSize(value: unknown, fallback: number): string {
   if (typeof value === "number" && Number.isFinite(value)) return `${value}px`;
   if (typeof value === "string" && value !== "") return value;
   return `${fallback}px`;
+}
+
+/** 方块样式（含资源缩略背景；`elementThumb` 每次渲染只调一次，避免重复发起解析） */
+function blockStyle(
+  element: Record<string, unknown>,
+  index: number,
+): CSSProperties {
+  const thumb = elementThumb(element);
+  return {
+    left: cssPos(element.x, 24 + index * 16),
+    top: cssPos(element.y, 24 + index * 16),
+    width: cssSize(element.width, 120),
+    height: cssSize(element.height, 44),
+    opacity: typeof element.opacity === "number" ? element.opacity : 1,
+    zIndex: typeof element.zindex === "number" ? element.zindex : index,
+    backgroundImage: thumb === undefined ? undefined : `url("${thumb}")`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    ...previewStyle(index),
+  };
 }
 
 const drag = ref<{ index: number; dx: number; dy: number } | null>(null);
@@ -139,16 +196,7 @@ const fields = computed<readonly FieldDescriptor[]>(
           :key="index"
           class="element"
           :class="{ selected: index === selectedIndex }"
-          :style="{
-            left: cssPos(element.x, 24 + index * 16),
-            top: cssPos(element.y, 24 + index * 16),
-            width: cssSize(element.width, 120),
-            height: cssSize(element.height, 44),
-            opacity:
-              typeof element.opacity === 'number' ? element.opacity : 1,
-            zIndex: typeof element.zindex === 'number' ? element.zindex : index,
-            ...previewStyle(index),
-          }"
+          :style="blockStyle(element, index)"
           @pointerdown.prevent="onPointerDown(index, $event)"
         >
           <span class="tag">{{ elementLabel(String(element.type ?? "")) }}</span>
@@ -209,6 +257,13 @@ const fields = computed<readonly FieldDescriptor[]>(
 .element.selected {
   border-color: #7aa2f7;
   box-shadow: 0 0 0 1px #7aa2f7;
+}
+/* 资源缩略作背景时的可读性底衬（无缩略时观感不变） */
+.element .tag,
+.element .id {
+  background: #16161ed9;
+  border-radius: 4px;
+  padding: 1px 4px;
 }
 .element .tag {
   color: #e6e6f0;

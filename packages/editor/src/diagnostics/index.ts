@@ -4,7 +4,7 @@
  *   循环变量 + input.store（并集保守策略：let/local 块级精度为已知限界，不误报优先）；
  *   `_` 前缀豁免（D4）；行内标记白名单镜像执行器语义（已定义变量 > 行内标记）。
  * - 跳转目标不存在（F1）、未知函数、重复 columnId、入口列缺失、资源路径缺失、
- *   未使用翻译键（overlay 键 − 可翻译原文）。
+ *   未使用翻译键（overlay 键 − 可翻译原文）、已声明但无渲染语义的元素属性（T01-01）。
  * 锚点: diagnostics-with-pointer / undefined-var-underscore-exempt
  */
 
@@ -15,8 +15,9 @@ import type {
   FieldDescriptor,
   SymbolIndex,
 } from "../contracts";
-import { joinPointer } from "../contracts";
-import { walkStoryCommands } from "../schema/walk";
+import { escapePointerToken, joinPointer } from "../contracts";
+import { UNIMPLEMENTED_ELEMENT_ATTRS } from "../schema/elementForms";
+import { walkStoryCommands, walkStoryElements } from "../schema/walk";
 import { validateStory } from "../schema/validation";
 
 /** 行内富文本标记（镜像 packages/engine/src/runtime/expr.ts；行为互锁见 tests/editor/schema.test.ts） */
@@ -446,6 +447,20 @@ export function analyzeStory(
       }
     }
   }
+  // T01-01 止血：已声明但**当前无渲染语义**的元素属性（写了不生效，且此前完全静默）→ warning。
+  // 指针精确到该属性；清单与表单下架同源（`UNIMPLEMENTED_ELEMENT_ATTRS`），避免两份事实。
+  walkStoryElements(story, (node, pointer) => {
+    if (!isPlainObject(node)) return; // 非对象由 invalid-element 负责
+    for (const attr of UNIMPLEMENTED_ELEMENT_ATTRS) {
+      if (node[attr] === undefined) continue;
+      out.push({
+        code: "unimplemented-element-attr",
+        severity: "warning",
+        message: `元素属性 ${attr} 已声明但当前无渲染语义（写入不生效）`,
+        pointer: `${pointer}/${escapePointerToken(attr)}`,
+      });
+    }
+  });
   return out;
 }
 

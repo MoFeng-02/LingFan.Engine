@@ -4,6 +4,7 @@
  * T3 JSON 唯一真相源（JSON → text → JSON 结构等价）/ T4 混存识别
  */
 import { describe, expect, it } from "vitest";
+import type { StoryCommand } from "@lingfan/engine";
 import {
   generateText,
   parseStory,
@@ -301,5 +302,51 @@ describe("07 nvl/character 文法往返", () => {
       mode: "auto",
     });
     expect(generateText(story)).toBe(text);
+  });
+});
+
+/**
+ * 06 编辑器容错投影（P2 编辑器工程模型实测缺陷回归）：
+ * 编辑器里「插入命令但必填字段还空着」是常态（插入即入树，校验是编辑期诊断）——
+ * 半个命令必须降级为 issue，**不许**把整棵树带崩（原缺陷：`escapeForText(undefined)`
+ * 抛 TypeError → 文本视图崩 → 整页失活）。
+ */
+describe("06 半成品命令的容错投影（不允许抛非契约异常）", () => {
+  /** 合法故事 + 一条「刚插入还没填字段」的命令 */
+  function withHalfFilled(command: Record<string, unknown>) {
+    const story = parseTextStory('label start:\n  say "甲"\n', "half.story");
+    const column = story.columns[0];
+    if (column === undefined) throw new Error("投影测试：故事缺少列");
+    column.commands = [...(column.commands ?? []), command as StoryCommand];
+    return story;
+  }
+
+  it("必填字符串字段缺失（navigate 无 path）→ issue，其余照常投影", () => {
+    const projection = projectText(withHalfFilled({ op: "navigate" }));
+    expect(projection.issues).toHaveLength(1);
+    expect(projection.issues[0]).toContain("缺少字符串字段");
+    expect(projection.text).toContain('say "甲"');
+  });
+
+  it("必填字典字段缺失（style 无 props）→ issue", () => {
+    const projection = projectText(
+      withHalfFilled({ op: "style", target: "#bg" }),
+    );
+    expect(projection.issues).toHaveLength(1);
+    expect(projection.issues[0]).toContain("缺少字典字段");
+  });
+
+  it("必填数组字段缺失（if 无 then）→ issue 带 op 定位（生成器内部异常同样降级）", () => {
+    const projection = projectText(
+      withHalfFilled({ op: "if", cond: "{player.gold >= 1}" }),
+    );
+    expect(projection.issues).toHaveLength(1);
+    expect(projection.issues[0]).toContain('op "if"');
+  });
+
+  it("严格路径 generateText 仍整次拒绝（fail-closed 不放松）", () => {
+    expect(() => generateText(withHalfFilled({ op: "navigate" }))).toThrow(
+      TextFormatError,
+    );
   });
 });

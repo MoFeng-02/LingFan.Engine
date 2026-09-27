@@ -21,11 +21,14 @@
 import {
   SYS,
   StoryEngine,
+  instanceZLayer,
+  resolveInstanceZ,
   resolveLayerZ,
   resolveSavesConfig,
   slotIds,
   type AudioPort,
   type ElementInstance,
+  type LayerId,
   type ResourcePort,
   type SavePort,
   type Story,
@@ -44,6 +47,7 @@ import {
   createAudioRenderer,
   createCommandRegistry,
   createElementRegistry,
+  createElementResourceResolver,
   createVideoRenderer,
   interpolateAnimation,
   registerBuiltinElementRenderers,
@@ -106,12 +110,19 @@ async function main(): Promise<void> {
 
   // —— ⑨-11 层级（z 序）：内建默认 × 工程覆盖（project.json shell.layers）——
   const layerZ = resolveLayerZ(manifest);
-  stageEl.style.zIndex = String(layerZ.stage);
-  dialogueEl.style.zIndex = String(layerZ.dialogue);
-  nvlEl.style.zIndex = String(layerZ.dialogue);
-  choicesEl.style.zIndex = String(layerZ.choices);
-  notificationsEl.style.zIndex = String(layerZ.notifications);
-  toolbarEl.style.zIndex = String(layerZ.toolbar);
+  // 08 §八.3 实例级 z（T01-03）：命令参数 `z` → 该层实例覆盖（缺省 = 回层默认）
+  const zOverride: Partial<Record<string, number>> = {};
+  function applyLayerZ(): void {
+    const z = (layer: LayerId): number =>
+      resolveInstanceZ(layer, zOverride[layer], layerZ);
+    stageEl.style.zIndex = String(z("stage"));
+    dialogueEl.style.zIndex = String(z("dialogue"));
+    nvlEl.style.zIndex = String(z("dialogue"));
+    choicesEl.style.zIndex = String(z("choices"));
+    notificationsEl.style.zIndex = String(z("notifications"));
+    toolbarEl.style.zIndex = String(z("toolbar"));
+  }
+  applyLayerZ();
   const videoPort: VideoPort = createWebVideoPort({
     onError: reportError,
     zIndex: layerZ.video,
@@ -140,27 +151,11 @@ async function main(): Promise<void> {
   registerBuiltinElementRenderers(elementRegistry);
   // 元素 `cmd` 的业务命令注册表：未注册 fail-closed（不静默吞掉）
   const commands = createCommandRegistry();
-  const elementUrls = new Map<string, string>();
-  const elementPending = new Set<string>();
-
-  function resolveElementResource(path: string): string | undefined {
-    const cached = elementUrls.get(path);
-    if (cached !== undefined) return cached;
-    if (!elementPending.has(path)) {
-      elementPending.add(path);
-      void resourcePort
-        .resolve(path)
-        .then((url) => {
-          elementUrls.set(path, url);
-          elementPending.delete(path);
-          renderElements();
-        })
-        .catch(() => {
-          elementPending.delete(path); // 失败保持替代文本（不伪造 URL）
-        });
-    }
-    return undefined;
-  }
+  // 资源解析缓存 = @lingfan/ui 共用实现（宿主只提供端口与重渲染回调）
+  const elementResources = createElementResourceResolver({
+    resolve: (path) => resourcePort.resolve(path),
+    onResolved: renderElements,
+  });
 
   /** F6 意图 → 命令：`nav` → 核心 navigate；`cmd` → 宿主命令注册表（`value` 点击时插值） */
   function activateElement(element: ElementInstance): void {
@@ -188,7 +183,7 @@ async function main(): Promise<void> {
       container: stageEl,
       elements,
       activate: activateElement,
-      resolveResource: resolveElementResource,
+      resolveResource: elementResources.resolveForElement,
       onUnknownType: (type) => reportError(`元素类型未注册：${type}`),
     });
   }
@@ -279,6 +274,14 @@ async function main(): Promise<void> {
   }
 
   engine.onStateChanged(({ key, value }) => {
+    // 08 §八.3 实例级 z：命令参数进 SSOT → 重算该层（`undefined` = 回层默认）
+    const zLayer = instanceZLayer(key);
+    if (zLayer !== undefined) {
+      if (typeof value === "number") zOverride[zLayer] = value;
+      else delete zOverride[zLayer];
+      applyLayerZ();
+      return;
+    }
     if (key === SYS.currentDialogSpeaker) {
       speakerEl.textContent = typeof value === "string" ? value : "";
       const color = engine.getCharacter(speakerEl.textContent)?.color;

@@ -2,7 +2,13 @@
  * 08 §二.1 元素属性 → CSS 映射（纯函数，可测）。
  *
  * 只做「属性名/值 → 样式声明」的机械映射：属性合法性在解析期已 fail-closed（F5），
- * 此处不重复校验；**尚未实现语义的属性被忽略**（不报错，P2 按 36 类型补齐）。
+ * 此处不重复校验；**未覆盖的属性一律不出现在结果中**。
+ *
+ * ⚠️ 「未覆盖」有两类，别混为一谈：
+ * ① **由渲染器消费**而非 CSS 的属性（`text` / `source` / `orientation` / `checked` / `nav` / `cmd` / Grid 轨道…）——正常分工；
+ * ② **已声明但当前无语义的属性**（`valign` / `xalign` / `yalign` / `order` / `xoffset` / `yoffset` / `xanchor` / `yanchor`）——
+ *    写了不生效；清单单一事实源 = `@lingfan/editor` 的 `UNIMPLEMENTED_ELEMENT_ATTRS`
+ *    （T01-01 起编辑器不再下发这些控件，并对已存在的写出 warning；T02-03 会用三面对齐互锁守住差集）。
  *
  * 定位语义对齐老引擎 `LayoutHelper`：`x`/`y` 支持百分比（老引擎换算为像素 Margin，
  * DOM 侧直接交给 CSS，`left: 50%` 天然按父容器尺寸解析）。

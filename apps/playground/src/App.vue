@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, watch, type Ref } from "vue";
 import {
+  INSTANCE_Z_KEYS,
   SYS,
   StoryEngine,
+  instanceZLayer,
+  resolveInstanceZ,
   slotIds,
   type AudioChannel,
   type AudioPort,
@@ -26,6 +29,7 @@ import {
   createCommandRegistry,
   createDialogueTemplateRegistry,
   createElementRegistry,
+  createElementResourceResolver,
   createMinigameRegistry,
   createVideoRenderer,
   interpolateAnimation,
@@ -270,28 +274,11 @@ function tickLoop(now: number): void {
 }
 
 // —— 08 §二.1 元素渲染：核心层只写 __elements，此处经注册表渲染到舞台层 ——
-const elementUrls = new Map<string, string>(); // 已解析资源 URL（ResourcePort 结果缓存）
-const elementPending = new Set<string>();
-
-/** 资源解析：命中缓存同步返回；未命中启动异步解析并在落地后重渲染（P1 整体重建语义） */
-function resolveElementResource(path: string): string | undefined {
-  const cached = elementUrls.get(path);
-  if (cached !== undefined) return cached;
-  if (!elementPending.has(path)) {
-    elementPending.add(path);
-    void props.resourcePort
-      .resolve(path)
-      .then((url) => {
-        elementUrls.set(path, url);
-        elementPending.delete(path);
-        renderElements();
-      })
-      .catch(() => {
-        elementPending.delete(path); // 失败保持原文 alt（诊断归端口/宿主，不静默伪造）
-      });
-  }
-  return undefined;
-}
+// 资源解析缓存 = @lingfan/ui 共用实现（宿主只提供端口与重渲染回调）
+const elementResources = createElementResourceResolver({
+  resolve: (path) => props.resourcePort.resolve(path),
+  onResolved: renderElements,
+});
 
 /**
  * 元素意图 → 命令。点击分支走 F6 纯函数 `resolveElementAction`
@@ -325,7 +312,7 @@ function renderElements(): void {
     container: host,
     elements: elements.value,
     activate: activateElement,
-    resolveResource: resolveElementResource,
+    resolveResource: elementResources.resolveForElement,
     onUnknownType: (type) => {
       error.value = `元素类型未注册：${type}（fail-closed：不伪造渲染）`;
     },
@@ -418,7 +405,28 @@ function driveVisualEffects(dt: number): void {
   }
 }
 
+/**
+ * 08 §八.3 实例级 z（T01-03）：命令参数 `z` 进 SSOT → 该**层**的实例覆盖。
+ * `undefined` = 未指定 = 回层默认（`resolveInstanceZ` 三级链：实例 > 工程层默认 > 内建）。
+ */
+const zOverride = ref<Partial<Record<string, number>>>({});
+/** 层最终 z（实例 > 层默认 > 内建）——模板直接用 |
+ *
+ * 注：在 render 期调用 → 读 `zOverride` 建立响应式依赖 ✓
+ */
+function zOf(layer: keyof LayerZTable): number {
+  return resolveInstanceZ(layer, zOverride.value[layer], props.layerZ);
+}
+
 function handleState({ key, value }: { key: string; value: unknown }): void {
+  const zLayer = instanceZLayer(key);
+  if (zLayer !== undefined) {
+    zOverride.value = {
+      ...zOverride.value,
+      [zLayer]: typeof value === "number" ? value : undefined,
+    };
+    return;
+  }
   if (key === SYS.currentDialogSpeaker && typeof value === "string") {
     speaker.value = value;
     // 08-U4：角色样式自动应用——查注册表取 speaker 色
@@ -490,6 +498,13 @@ function syncFromEngine(): void {
   // 08 §四.5：模板名随恢复对齐（回溯/读档后模板随快照走）
   const dt = engine.get(SYS.dialogTemplate);
   dialogTemplateName.value = typeof dt === "string" ? dt : null;
+  // 08 §八.3 实例级 z：随快照/存档回档（T01-03）
+  const zNext: Partial<Record<string, number>> = {};
+  for (const [layer, zKey] of Object.entries(INSTANCE_Z_KEYS)) {
+    const z = engine.get(zKey as string);
+    if (typeof z === "number") zNext[layer] = z;
+  }
+  zOverride.value = zNext;
   // U4：说话人色随恢复同步
   const def = engine.getCharacter(speaker.value);
   speakerColor.value = def?.color ?? "";
@@ -904,14 +919,14 @@ onUnmounted(() => {
       </select>
     </div>
     <!-- RenderTargets.overlay（notify toast，08 §二.4） -->
-    <ul class="notifications" :style="{ zIndex: layerZ.notifications }">
+    <ul class="notifications" :style="{ zIndex: zOf('notifications') }">
       <li v-for="n in notifications" :key="n.id">{{ n.text }}</li>
     </ul>
     <!-- RenderTargets.choices 挂载点（08 §一：选择层在对话层上方） -->
     <section
       v-if="inMenu"
       class="choices"
-      :style="{ zIndex: layerZ.choices }"
+      :style="{ zIndex: zOf('choices') }"
       aria-live="polite"
     >
       <p v-if="menuPrompt" class="layer-prompt">{{ menuPrompt }}</p>
@@ -930,7 +945,7 @@ onUnmounted(() => {
     <section
       v-if="inInput"
       class="choices"
-      :style="{ zIndex: layerZ.choices }"
+      :style="{ zIndex: zOf('choices') }"
       aria-live="polite"
     >
       <p class="layer-prompt">{{ inputPrompt }}</p>
@@ -949,7 +964,7 @@ onUnmounted(() => {
     <section
       v-show="inMinigame"
       class="choices"
-      :style="{ zIndex: layerZ.minigame }"
+      :style="{ zIndex: zOf('minigame') }"
       aria-live="polite"
       @click.stop
     >
@@ -959,7 +974,7 @@ onUnmounted(() => {
     <section
       v-show="!inMenu && !inInput && !inVideo && !dialogHidden"
       class="dialogue"
-      :style="{ zIndex: layerZ.dialogue }"
+      :style="{ zIndex: zOf('dialogue') }"
       :class="[nvlMode === 'active' ? 'nvl-mode' : dialogView.rootClass]"
       aria-live="polite"
     >

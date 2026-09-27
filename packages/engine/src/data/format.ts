@@ -49,6 +49,22 @@ export function isSingleColumnFile(json: unknown): boolean {
   );
 }
 
+/**
+ * 08 §八.3 实例级 z（T01-03）：命令上的可选 `z` = **单控件实例**的层级覆盖。
+ * 只允许**非负有限数**（fail-closed：负数 / NaN / Infinity / 字符串一律拒绝）。
+ * 仅「拥有独立渲染层」的命令接受该字段（say / menu / input / notify / minigame）。
+ */
+function validateInstanceZ(
+  cmd: Record<string, unknown>,
+  at: string,
+  issues: string[],
+): void {
+  if (cmd.z === undefined) return;
+  if (typeof cmd.z !== "number" || !Number.isFinite(cmd.z) || cmd.z < 0) {
+    issues.push(`${at}.z 必须为非负有限数（08 §八.3 实例级层级）`);
+  }
+}
+
 /** 命令负载结构校验（已知 op；未实现 op 交执行器 fail-closed，E3） */
 function validateCommand(cmd: unknown, at: string, issues: string[]): void {
   if (!isPlainObject(cmd)) {
@@ -62,6 +78,7 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
   switch (cmd.op) {
     case "say":
       requireNonEmptyString(cmd.text, `${at}.text`, issues);
+      validateInstanceZ(cmd, at, issues); // 08 §八.3：say 的实例 z（dialogue 层）
       break;
     case "if": {
       requireNonEmptyString(cmd.cond, `${at}.cond`, issues);
@@ -104,6 +121,7 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
           );
         }
       }
+      validateInstanceZ(cmd, at, issues); // 08 §八.3：menu 的实例 z（choices 层）
       break;
     }
     case "set":
@@ -148,6 +166,7 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
       if (cmd.duration !== undefined && typeof cmd.duration !== "number") {
         issues.push(`${at}.duration 必须为数字`);
       }
+      validateInstanceZ(cmd, at, issues); // 08 §八.3：notify 的实例 z（notifications 层）
       break;
     case "wait":
       if (typeof cmd.seconds !== "number")
@@ -245,6 +264,7 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
       if (cmd.options !== undefined) {
         issues.push(`${at}.options 选项式输入暂未实现（fail-closed）`);
       }
+      validateInstanceZ(cmd, at, issues); // 08 §八.3：input 的实例 z（choices 层）
       break;
     case "random": {
       if (typeof cmd.seed !== "number" || !Number.isInteger(cmd.seed)) {
@@ -264,6 +284,7 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
     }
     case "minigame": {
       requireNonEmptyString(cmd.game, `${at}.game`, issues);
+      validateInstanceZ(cmd, at, issues); // 08 §八.3：minigame 的实例 z（minigame 层）
       if (cmd.config !== undefined && !isPlainObject(cmd.config)) {
         issues.push(`${at}.config 必须为对象`);
       }

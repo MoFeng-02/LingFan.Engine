@@ -11,6 +11,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  analyzeStory,
   coerceFieldValue,
   describeElement,
   describeForm,
@@ -21,10 +22,15 @@ import {
   listOps,
   parseNumericPosition,
   specificAttrsOf,
+  UNIMPLEMENTED_ELEMENT_ATTRS,
   validateStory,
   type FieldDescriptor,
 } from "@lingfan/editor";
-import { ELEMENT_ATTRIBUTES, ELEMENT_TYPES } from "@lingfan/engine";
+import {
+  ELEMENT_ATTRIBUTES,
+  ELEMENT_TYPES,
+  type Story,
+} from "@lingfan/engine";
 import { sampleStory } from "../../apps/editor/src/sample";
 import fieldRowSource from "../../apps/editor/src/components/FieldRow.vue?raw";
 
@@ -52,12 +58,19 @@ describe("元素表单描述符（锚点: schema-driven-forms）", () => {
     }
   });
 
-  it("通用属性全集不漏字段（含结构字段 id/name）", () => {
+  it("通用属性全集不漏字段（含结构字段 id/name）——扣除 T01-01 的失真清单", () => {
     const keys = new Set(
       (describeElement("text")?.fields ?? []).map((f) => f.key),
     );
+    // 契约里有、且**有消费者**的属性必须全部下发
     for (const attr of ELEMENT_ATTRIBUTES) {
+      if (UNIMPLEMENTED_ELEMENT_ATTRS.has(attr)) continue;
       expect(keys.has(attr), attr).toBe(true);
+    }
+    // 失真清单：契约保留（可解析）但表单一律不下发（T01-01 止血）
+    for (const attr of UNIMPLEMENTED_ELEMENT_ATTRS) {
+      expect(ELEMENT_ATTRIBUTES.has(attr), attr).toBe(true);
+      expect(keys.has(attr), attr).toBe(false);
     }
     expect(keys.has("id")).toBe(true);
     expect(keys.has("name")).toBe(true);
@@ -167,6 +180,54 @@ describe("编辑期元素校验（锚点: edit-time-validation）", () => {
     });
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]?.pointer).toBe("/columns/0/elements/0/children/0");
+  });
+
+  it("已声明但无渲染语义的属性 → warning 且表单不下发（T01-01 止血，锚点: unimplemented-element-attr）", () => {
+    const story: Story = {
+      formatVersion: 1,
+      id: "demo",
+      entry: "start",
+      columns: [
+        { id: "start", kind: "flow", commands: [{ op: "say", text: "hi" }] },
+        {
+          id: "stage",
+          kind: "scene",
+          elements: [
+            { type: "text", text: "标题", valign: "center" },
+            { type: "text", text: "干净的那个" },
+          ],
+        },
+      ],
+    };
+    const findings = analyzeStory(story).filter(
+      (d) => d.code === "unimplemented-element-attr",
+    );
+    // 只报写了的那一条，指针精确到属性（第二个元素零诊断）
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.severity).toBe("warning");
+    expect(findings[0]?.pointer).toBe("/columns/1/elements/0/valign");
+    // 嵌套元素里的失真属性同样被捕获（边界）
+    const nested: Story = {
+      formatVersion: 1,
+      id: "demo",
+      entry: "start",
+      columns: [
+        { id: "start", kind: "flow", commands: [{ op: "say", text: "hi" }] },
+        {
+          id: "stage",
+          kind: "scene",
+          elements: [
+            { type: "panel", children: [{ type: "text", xanchor: "1" }] },
+          ],
+        },
+      ],
+    };
+    const deep = analyzeStory(nested).filter(
+      (d) => d.code === "unimplemented-element-attr",
+    );
+    expect(deep.map((d) => d.pointer)).toEqual([
+      "/columns/1/elements/0/children/0/xanchor",
+    ]);
   });
 });
 

@@ -1,6 +1,7 @@
 /**
  * 06-D2/D3 op schema 单一事实源测试：
- * - 全 49 op canonical 样本「引擎 parseStory 与编辑器 schema 双接受」跨包互锁
+ * - 引擎 op 面 ⊆ 编辑器 schema（读 format.ts 源提取，防「引擎有、编辑器漏」）
+ * - 全 op canonical 样本「引擎 parseStory 与编辑器 schema 双接受」跨包互锁
  * - 必填字段删除「两侧同拒」（format.ts 深校验子集）
  * - 未知字段 / 未知 op / 类型错 fail-closed（E3/F5 编辑期）
  * - 表单描述符派生 + 目录×schema 字段名集合互锁（D2）
@@ -24,6 +25,8 @@ import {
   parseStory,
   StoryFormatError,
 } from "../../packages/engine/src/data/format";
+/** 引擎深校验源（只读提取 op 面；跨包字符串契约互锁，同 bridge_check.rs 手法） */
+import ENGINE_FORMAT_SOURCE from "../../packages/engine/src/data/format.ts?raw";
 import { interpolateText } from "../../packages/engine/src/runtime/expr";
 
 /** format.ts 深校验 op 集（validateCommand switch 覆盖面）——必填删除需两侧同拒 */
@@ -115,6 +118,12 @@ const CANONICAL: Record<string, Record<string, unknown>> = {
   random: { op: "random", seed: 42, range: [1, 6], var: "roll" },
   jump: { op: "jump", target: "inn" },
   navigate: { op: "navigate", path: "square", scene: "plaza" },
+  func: {
+    op: "func",
+    name: "greet",
+    params: ["who"],
+    body: [{ op: "say", text: "{who}", speaker: "{who}" }],
+  },
   call: { op: "call", target: "greet", args: ["{player.name}", 1, true] },
   return: { op: "return", value: 1 },
   if: {
@@ -283,8 +292,28 @@ function corpusStory(): Story {
   };
 }
 
+/**
+ * 引擎 op 面（format.ts 深校验 switch 的 `case "op"`）——**只读源码提取**：
+ * 与 Rust `bridge_check.rs` 同一手法（跨语言/跨包字符串契约靠读源互锁）。
+ * 作用：堵住「引擎有、编辑器 schema 漏」的静默缺口——`func` 就是这么漏的
+ * （canonical 语料两侧都没有它，双向互锁自然发现不了；编辑器打开真实工程才报假红）。
+ */
+const ENGINE_OPS = [
+  ...new Set(
+    [...ENGINE_FORMAT_SOURCE.matchAll(/^\s*case "([a-z_]+)":/gm)].map(
+      (match) => match[1] ?? "",
+    ),
+  ),
+];
+
 describe("op 全集 canonical 语料：引擎解析与编辑器 schema 双接受（跨包互锁）", () => {
-  it("全部 50 op：parseStory 不抛 + validateStory 零诊断", () => {
+  it("引擎 op 集 ⊆ 编辑器 op 集（防漏 op：引擎能跑的故事编辑器必须能编）", () => {
+    expect(ENGINE_OPS.length).toBeGreaterThan(40); // 防提取失效空跑
+    const missing = ENGINE_OPS.filter((op) => OP_SCHEMAS[op] === undefined);
+    expect(missing).toEqual([]);
+  });
+
+  it("全部 op：parseStory 不抛 + validateStory 零诊断", () => {
     expect(Object.keys(CANONICAL)).toHaveLength(listOps().length);
     const story = corpusStory();
     expect(() => parseStory(structuredClone(story), "corpus")).not.toThrow();

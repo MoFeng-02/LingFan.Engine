@@ -1,6 +1,14 @@
 <script setup lang="ts">
-import { computed, provide, ref } from "vue";
-import type { Story } from "@lingfan/engine";
+import { computed, provide, ref, useTemplateRef } from "vue";
+import type {
+  AudioPort,
+  LayerZTable,
+  ProjectWriteReport,
+  ResourcePort,
+  Story,
+  VideoPort,
+} from "@lingfan/engine";
+import { DEFAULT_LAYER_Z } from "@lingfan/engine";
 import {
   EditorSession,
   addColumn,
@@ -23,9 +31,24 @@ import JsonView from "./components/JsonView.vue";
 import TextModeView from "./components/TextModeView.vue";
 import NodeGraph from "./components/NodeGraph.vue";
 import PreviewHost from "./components/PreviewHost.vue";
+import type { OpenedProject, ProjectOpener } from "./ports";
+
+/**
+ * 组合根注入（本组件不碰任何平台 API / 适配器）：
+ * - `initialStory` = 未打开工程时的示例故事；
+ * - `opener` = 「打开工程」取径（目录选择与文件读取都在 main.ts）；
+ * - 媒体端口工厂 = 视频层 z 等实现细节留在组合根。
+ */
+const props = defineProps<{
+  /** 启动时的故事（未打开工程 = 内存示例；「打开工程」后由会话中枢换基线） */
+  initialStory: Story;
+  opener: ProjectOpener;
+  createAudioPort: (onError: (message: string) => void) => AudioPort;
+  createVideoPort: (onError: (message: string) => void) => VideoPort;
+}>();
 
 /** 06 §一.1：EditorSession = 视图族共享中枢（一处改动全视图同步 + 统一 undo） */
-const session = new EditorSession(sampleStory());
+let session = new EditorSession(props.initialStory);
 const story = ref<Story>(session.story);
 const undoDepth = ref(0);
 const redoDepth = ref(0);
@@ -34,12 +57,109 @@ const selectedPointer = ref<string | null>(null);
 const rightTab = ref<"diagnostics" | "json" | "text">("diagnostics");
 const centerView = ref<"timeline" | "stage" | "graph">("timeline");
 const previewing = ref(false);
+/** 已打开工程：资源供给端口（未打开 = undefined → 预览不解析资源，维持示例语义） */
+const resourcePort = ref<ResourcePort | undefined>(undefined);
+/** 已打开工程的资源根名（界面显示；空 = 示例故事） */
+const projectRoot = ref("");
+/** 08 §八.3 层级表：打开工程 = 清单 `shell.layers` 覆盖；未打开 = 内建默认（预览解析实例级 z 用） */
+const layerZ = ref<LayerZTable>(DEFAULT_LAYER_Z);
+const openError = ref("");
+/** 保存回磁盘（09-16）：`undefined` = 未打开工程或只读取径 → 保存禁用 */
+const saveFn = ref<((s: Story) => Promise<ProjectWriteReport>) | undefined>(
+  undefined,
+);
+/** 不可保存时的可操作提示（按钮 title） */
+const saveHint = ref("");
+const saving = ref(false);
+const dirty = ref(false);
+const saveError = ref("");
+const saveNotice = ref("");
+const fallbackInput = useTemplateRef<HTMLInputElement>("fallbackInput");
 
-session.subscribe((s) => {
-  story.value = s;
-  undoDepth.value = session.undoDepth;
-  redoDepth.value = session.redoDepth;
-});
+/** 未绑定磁盘工程时的提示（状态口径：不携带「刚点了新建/导入」这类历史） */
+const UNBOUND_HINT =
+  "未绑定磁盘工程：请用「打开工程」选择目录以启用保存";
+
+/**
+ * 换会话基线与绑定订阅：打开工程 = **新基线**（不是一次 undo——
+ * 否则撤销会退回上一个工程的树）。
+ */
+function attachSession(next: EditorSession): void {
+  session = next;
+  story.value = next.story;
+  undoDepth.value = next.undoDepth;
+  redoDepth.value = next.redoDepth;
+  dirty.value = next.dirty;
+  next.subscribe((s) => {
+    story.value = s;
+    undoDepth.value = next.undoDepth;
+    redoDepth.value = next.redoDepth;
+    dirty.value = next.dirty;
+  });
+}
+attachSession(session);
+
+/** 打开工程（两种取径都经组合根注入的 opener；失败只提示，不动当前工程） */
+async function openProject(): Promise<void> {
+  openError.value = "";
+  if (!props.opener.supportsPicker) {
+    fallbackInput.value?.click(); // 无 FSA（Firefox/Safari）→ 目录 input 兜底
+    return;
+  }
+  try {
+    await applyOpened(await props.opener.pick());
+  } catch (error: unknown) {
+    openError.value = `打开工程失败：${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
+async function onFallbackFiles(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files ?? []);
+  input.value = ""; // 允许重复选同一目录
+  if (files.length === 0) return;
+  openError.value = "";
+  try {
+    await applyOpened(await props.opener.fromFiles(files));
+  } catch (error: unknown) {
+    openError.value = `打开工程失败：${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
+function applyOpened(opened: OpenedProject | undefined): void {
+  if (opened === undefined) return; // 用户取消
+  attachSession(new EditorSession(opened.story));
+  selectedPointer.value = null;
+  selectedColumnId.value = opened.story.entry;
+  resourcePort.value = opened.resourcePort;
+  layerZ.value = opened.layerZ; // 08 §八.3：预览用工程层级表解析实例级 z
+  projectRoot.value = opened.root;
+  saveFn.value = opened.save;
+  saveHint.value = opened.saveHint ?? "";
+  saveError.value = "";
+  saveNotice.value = "";
+}
+
+/**
+ * 解绑磁盘工程（09-16 裁定）：「新建 / 导入」是内存态故事，若保持绑定，
+ * 一次误点保存会把示例/导入内容覆盖真实工程——故一律解绑。
+ * 提示用**状态口径**（「未绑定」而非「你刚点了新建」）：绑定状态不随 undo 回滚，
+ * 若文案携带历史，撤销「新建」后就会留下过期说明。
+ */
+function unbindProject(): void {
+  saveFn.value = undefined;
+  saveHint.value = UNBOUND_HINT;
+  projectRoot.value = "";
+  resourcePort.value = undefined;
+  layerZ.value = DEFAULT_LAYER_Z; // 解绑后回内建层级表
+  saveError.value = "";
+  saveNotice.value = "";
+}
+
+function onNew(): void {
+  api.replaceAll(sampleStory(), "新建");
+  unbindProject();
+}
 
 const diagnostics = computed(() => analyzeStory(story.value));
 const errorCount = computed(
@@ -48,6 +168,25 @@ const errorCount = computed(
 const warningCount = computed(
   () => diagnostics.value.filter((d) => d.severity === "warning").length,
 );
+
+/** 保存可用性：未绑定工程 / 只读取径 / 保存中 / 无改动 / 有错误 → 禁用（fail-closed） */
+const canSave = computed(
+  () =>
+    saveFn.value !== undefined &&
+    !saving.value &&
+    dirty.value &&
+    errorCount.value === 0,
+);
+const saveTooltip = computed(() => {
+  if (saveFn.value === undefined) {
+    return saveHint.value !== "" ? saveHint.value : UNBOUND_HINT;
+  }
+  if (errorCount.value > 0) {
+    return `存在 ${errorCount.value} 个错误，先修复再保存（fail-closed）`;
+  }
+  if (!dirty.value) return "无未保存更改";
+  return `保存到 ${projectRoot.value}`;
+});
 
 /** 编辑 API：provide 给全部视图（FieldRow/时间线/列侧栏共用一套会话提交） */
 const api = {
@@ -139,11 +278,38 @@ function onImportFile(event: Event): void {
     try {
       const parsed = JSON.parse(String(reader.result)) as Story;
       api.replaceAll(parsed, `导入 ${file.name}`);
+      unbindProject();
     } catch (e) {
       alert(`导入失败：${String(e)}`);
     }
   };
   reader.readAsText(file);
+}
+
+/**
+ * 保存回磁盘（09-16）：捕获**实际写出的那个引用**（乐观并发——await 期间用户又改，
+ * 基线钉在 target 上仍 dirty，不误清）；成功后 `markSaved(target)`。
+ */
+async function onSave(): Promise<void> {
+  const run = saveFn.value;
+  if (run === undefined || saving.value) return;
+  const target = story.value;
+  saving.value = true;
+  saveError.value = "";
+  saveNotice.value = "";
+  try {
+    const report = await run(target);
+    session.markSaved(target);
+    saveNotice.value =
+      `已保存：写入 ${report.written.length} 个文件` +
+      (report.deleted.length > 0
+        ? `，删除 ${report.deleted.length} 个旧文件`
+        : "");
+  } catch (error: unknown) {
+    saveError.value = `保存失败：${error instanceof Error ? error.message : String(error)}`;
+  } finally {
+    saving.value = false;
+  }
 }
 
 function onExport(): void {
@@ -164,6 +330,23 @@ function onExport(): void {
     <header class="toolbar">
       <strong class="brand">灵泛编辑器</strong>
       <span class="story-id">{{ story.id }}</span>
+      <button class="open-button" title="打开真实工程目录" @click="openProject">
+        打开工程
+      </button>
+      <span v-if="projectRoot !== ''" class="project-root" title="已打开工程的资源根">
+        {{ projectRoot }}
+      </span>
+      <button
+        class="save-button"
+        :disabled="!canSave"
+        :title="saveTooltip"
+        @click="onSave"
+      >
+        {{ saving ? "保存中…" : "保存" }}
+      </button>
+      <span v-if="dirty" class="dirty-dot" title="有未保存的更改">
+        ● 未保存
+      </span>
       <button
         :disabled="undoDepth === 0"
         title="撤销（Ctrl+Z）"
@@ -205,7 +388,7 @@ function onExport(): void {
         诊断 {{ errorCount }}/{{ warningCount }}
       </button>
       <button class="preview-button" @click="previewing = true">▶ 预览</button>
-      <button @click="api.replaceAll(sampleStory(), '新建')">新建</button>
+      <button @click="onNew">新建</button>
       <label class="file-button">
         导入
         <input
@@ -215,7 +398,31 @@ function onExport(): void {
         />
       </label>
       <button @click="onExport">导出</button>
+      <!-- 目录 input 兜底取径（无 FSA 的浏览器 / 自动化测试）：恒在 DOM，触发点由脚本决定 -->
+      <input
+        ref="fallbackInput"
+        class="fallback-input"
+        type="file"
+        webkitdirectory
+        multiple
+        @change="onFallbackFiles"
+      />
     </header>
+
+    <p v-if="openError !== ''" class="open-error">
+      {{ openError }}
+      <button @click="openError = ''">关闭</button>
+    </p>
+
+    <p v-if="saveError !== ''" class="save-error">
+      {{ saveError }}
+      <button @click="saveError = ''">关闭</button>
+    </p>
+
+    <p v-if="saveNotice !== ''" class="save-notice">
+      {{ saveNotice }}
+      <button @click="saveNotice = ''">关闭</button>
+    </p>
 
     <main class="workspace">
       <aside class="pane columns-pane">
@@ -236,6 +443,7 @@ function onExport(): void {
           v-else-if="centerView === 'stage'"
           :story="story"
           :pointer="selectedPointer"
+          :resource-port="resourcePort"
         />
         <NodeGraph v-else :story="story" :selected-id="selectedColumnId" />
       </section>
@@ -270,7 +478,15 @@ function onExport(): void {
       </aside>
     </main>
 
-    <PreviewHost v-if="previewing" :story="story" @close="previewing = false" />
+    <PreviewHost
+      v-if="previewing"
+      :story="story"
+      :resource-port="resourcePort"
+      :layer-z="layerZ"
+      :create-audio-port="createAudioPort"
+      :create-video-port="createVideoPort"
+      @close="previewing = false"
+    />
   </div>
 </template>
 
@@ -326,6 +542,46 @@ textarea {
 }
 .story-id {
   color: #565f89;
+}
+.open-button {
+  color: #7aa2f7;
+  border-color: #7aa2f766;
+}
+.project-root {
+  color: #565f89;
+  font-size: 11px;
+}
+/* 目录 input 兜底取径：不进布局，但必须在 DOM 里（脚本可触发） */
+.fallback-input {
+  display: none;
+}
+.open-error,
+.save-error,
+.save-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 12px;
+}
+.open-error,
+.save-error {
+  color: #f7768e;
+  border-bottom: 1px solid #f7768e44;
+  background: #1a1218;
+}
+.save-notice {
+  color: #9ece6a;
+  border-bottom: 1px solid #9ece6a44;
+  background: #121a14;
+}
+.save-button {
+  color: #9ece6a;
+  border-color: #9ece6a66;
+}
+.dirty-dot {
+  color: #e0af68;
+  font-size: 11px;
 }
 .undo-hint {
   color: #565f89;

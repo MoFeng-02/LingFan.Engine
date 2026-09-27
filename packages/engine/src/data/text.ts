@@ -312,6 +312,14 @@ interface ParseState {
   sourceName: string;
 }
 
+/**
+ * 08 §八.3 实例级 z 的文本投影（T01-03）：`z=20`（写端统一用 `z=`；读端兼容别名 `z-index=`）。
+ * 未指定 → 不输出（保持既有文本逐字节稳定）。
+ */
+function instanceZText(cmd: StoryCommand): string {
+  return typeof cmd.z === "number" ? ` z=${cmd.z}` : "";
+}
+
 const SAY_FLAGS = new Set(["clickable", "okey", "noskip", "instant"]);
 
 function parseSay(
@@ -345,6 +353,10 @@ function parseSay(
           continue;
         case "voice":
           cmd.voice = unquote(value);
+          continue;
+        case "z":
+        case "z-index": // 08 §八.3 实例级 z（别名：统一收敛为 `z`）
+          cmd.z = Number(value);
           continue;
         case "clickable":
         case "noskip":
@@ -514,6 +526,7 @@ function parseSimpleStatement(
         const value = token.slice(eq + 1);
         if (key === "type") cmd.type = unquote(value);
         else if (key === "duration") cmd.duration = Number(value);
+        else if (key === "z" || key === "z-index") cmd.z = Number(value); // 08 §八.3 实例级 z
       }
       return cmd;
     }
@@ -531,11 +544,18 @@ function parseSimpleStatement(
       const storeEq = tokens.find((t) => t.startsWith("store="));
       if (prompt === undefined || storeEq === undefined)
         return fail("input 需要 prompt 与 store");
-      return {
+      const cmd: StoryCommand = {
         op: "input",
         prompt: unquote(prompt),
         store: unquote(storeEq.slice(6)),
-      } as StoryCommand;
+      };
+      const zEq = tokens.find(
+        (t) => t.startsWith("z=") || t.startsWith("z-index="),
+      );
+      if (zEq !== undefined) {
+        cmd.z = Number(zEq.slice(zEq.indexOf("=") + 1)); // 08 §八.3 实例级 z
+      }
+      return cmd as StoryCommand;
     }
     case "array_push": {
       if (tokens.length < 2) return fail("array_push 需要 key 与 value");
@@ -651,6 +671,8 @@ function parseSimpleStatement(
         if (m[1] === "") return fail(`minigame ${field} 需要非空目标列`);
         cmd[field] = m[1];
       }
+      const zMatch = /(?:^|\s)(?:z|z-index)=(-?[\d.]+)/.exec(remainder); // 08 §八.3 实例级 z
+      if (zMatch !== null) cmd.z = Number(zMatch[1]);
       return cmd;
     }
     case "character": {
@@ -1167,7 +1189,16 @@ function parseBlockStatement(
 
   if (op === "menu") {
     const options: Array<{ text: string; target: string }> = [];
-    const cmd: StoryCommand = { op: "menu", prompt: unquote(rest), options };
+    // 08 §八.3 实例级 z：`menu "提示" z=20` —— 先从行尾摘掉，避免混进 prompt
+    let menuRest = rest;
+    let menuZ: number | undefined;
+    const menuZMatch = /(?:^|\s)(?:z|z-index)=(-?[\d.]+)\s*$/.exec(menuRest);
+    if (menuZMatch !== null) {
+      menuZ = Number(menuZMatch[1]);
+      menuRest = menuRest.slice(0, menuZMatch.index).trim();
+    }
+    const cmd: StoryCommand = { op: "menu", prompt: unquote(menuRest), options };
+    if (menuZ !== undefined) cmd.z = menuZ;
     let i = start + 1;
     for (;;) {
       if (i >= lines.length || lines[i]!.indent <= line.indent) break;
@@ -1243,8 +1274,19 @@ function parseBlockStatement(
 
 // —— 生成器 ——
 
-function quoteForText(s: string): string {
-  return `"${escapeForText(s)}"`;
+/**
+ * 字符串字段投影（**生成器唯一字符串入口**）：非字符串 = 该命令不可投影，
+ * 抛 `TextFormatError` 让 `projectText` 降级为 issue——
+ * 编辑器里「插入了命令但必填字段还空着」是常态，绝不能让半个命令把整棵树带崩
+ * （实测缺陷：`escapeForText(undefined)` 抛 TypeError，编辑器文本视图崩、整页失活）。
+ */
+function quoteForText(value: unknown): string {
+  if (typeof value !== "string") {
+    throw new TextFormatError([
+      `文本投影缺少字符串字段（收到 ${value === undefined ? "缺失" : typeof value}）`,
+    ]);
+  }
+  return `"${escapeForText(value)}"`;
 }
 
 function generateValue(value: unknown): string {
@@ -1278,6 +1320,7 @@ function generateCommand(
         line += ` template=${quoteForText(cmd.template as string)}`;
       if (cmd.voice !== undefined)
         line += ` voice=${quoteForText(cmd.voice as string)}`;
+      line += instanceZText(cmd);
       out.push(line);
       return;
     }
@@ -1339,6 +1382,7 @@ function generateCommand(
       if (cmd.type !== undefined)
         line += ` type=${quoteForText(cmd.type as string)}`;
       if (cmd.duration !== undefined) line += ` duration=${cmd.duration}`;
+      line += instanceZText(cmd);
       out.push(line);
       return;
     }
@@ -1413,6 +1457,7 @@ function generateCommand(
         }
         line += ` reward ${generateDictLiteral(dict)}`;
       }
+      line += instanceZText(cmd);
       out.push(line);
       return;
     }
@@ -1421,7 +1466,7 @@ function generateCommand(
       return;
     case "input":
       out.push(
-        `${pad}input ${quoteForText(cmd.prompt as string)} store=${quoteForText(cmd.store as string)}`,
+        `${pad}input ${quoteForText(cmd.prompt as string)} store=${quoteForText(cmd.store as string)}${instanceZText(cmd)}`,
       );
       return;
     case "array":
@@ -1523,7 +1568,9 @@ function generateCommand(
       }
       return;
     case "menu":
-      out.push(`${pad}menu ${quoteForText(cmd.prompt as string)}`);
+      out.push(
+        `${pad}menu ${quoteForText(cmd.prompt as string)}${instanceZText(cmd)}`,
+      );
       for (const o of cmd.options as Array<{ text: string; target: string }>) {
         out.push(`${pad}  ${quoteForText(o.text)} -> ${o.target}`);
       }
@@ -1623,6 +1670,12 @@ function generateBody(
 }
 
 function generateDictLiteral(value: Record<string, unknown>): string {
+  // 同 quoteForText：字典字段缺失 = 不可投影（降级为 issue，不让半个命令带崩整棵树）
+  if (value === null || typeof value !== "object") {
+    throw new TextFormatError([
+      `文本投影缺少字典字段（收到 ${value === undefined ? "缺失" : typeof value}）`,
+    ]);
+  }
   const fields = Object.entries(value).map(
     ([k, v]) => `${quoteForText(k)}: ${generateValue(v)}`,
   );
@@ -1793,29 +1846,43 @@ export function projectText(story: Story): TextProjection {
       // 08 §二.1 scene 列：元素行在前、entry 命令在后（与装载语义一致——先声明空间层再执行）
       out.push(`scene ${column.id}`);
       for (const node of column.elements ?? []) {
-        generateElement(node, "  ", out);
+        tolerant(`元素 ${String(node.type ?? "")}`, issues, () =>
+          generateElement(node, "  ", out),
+        );
       }
       for (const cmd of column.entry ?? []) {
-        try {
-          generateCommand(cmd, "  ", out);
-        } catch (e) {
-          if (e instanceof TextFormatError) issues.push(...e.issues);
-          else throw e;
-        }
+        tolerant(`op "${cmd.op}"（${column.id}）`, issues, () =>
+          generateCommand(cmd, "  ", out),
+        );
       }
       continue;
     }
     out.push(`label ${column.id}:`);
     for (const cmd of column.commands ?? []) {
-      try {
-        generateCommand(cmd, "  ", out); // 列体 2 空格缩进（规范形）
-      } catch (e) {
-        if (e instanceof TextFormatError) issues.push(...e.issues);
-        else throw e;
-      }
+      tolerant(`op "${cmd.op}"（${column.id}）`, issues, () =>
+        generateCommand(cmd, "  ", out), // 列体 2 空格缩进（规范形）
+      );
     }
   }
   return { text: `${out.join("\n")}\n`, issues };
+}
+
+/**
+ * 单命令/单元素**容错投影**：一条不可投影只产一条 issue，其余照常输出。
+ * `TextFormatError` = 已知的不可投影性（原文上报）；其余异常附上 op 定位后同样降级
+ * （半成品命令不得拖垮整棵树；严格路径 `generateText` 仍以 issues 非空整次拒绝，fail-closed 不放松）。
+ */
+function tolerant(
+  label: string,
+  issues: string[],
+  run: () => void,
+): void {
+  try {
+    run();
+  } catch (error: unknown) {
+    if (error instanceof TextFormatError) issues.push(...error.issues);
+    else issues.push(`${label} 文本投影失败：${String(error)}`);
+  }
 }
 
 /** 07-T1/T3：Story → 文本（确定性输出）。不可投影部分收集为 issues 后整次拒绝（fail-closed） */
