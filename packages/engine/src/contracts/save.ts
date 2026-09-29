@@ -4,7 +4,7 @@
  */
 import type { ColumnCoordinate, StoryCommand } from "./story";
 
-/** 05 §四 存档载荷 v1（S3：块/列级作用域不进档——读档后按坐标确定性重放重建） */
+/** 存档载荷 v1（块/列级作用域不进档——读档后按坐标确定性重放重建） */
 export interface SaveDataV1 {
   formatVersion: 1;
   storyId: string;
@@ -15,12 +15,12 @@ export interface SaveDataV1 {
   state: [string, unknown][];
   rngState: number;
   functions: [string, { params: string[]; body: StoryCommand[] }][];
-  /** 03-R8：检查点序列随档，读档后可继续回溯 */
+  /** 检查点序列随档，读档后可继续回溯 */
   cursor: number;
-  /** ⑨-12 存档缩略图（data URL，槽位面板展示用；可选——旧档无此字段） */
+  /** 存档缩略图（data URL，槽位面板展示用；可选——旧档无此字段） */
   screenshot?: string;
   /**
-   * T08-08 存档扩展依赖标记：**本档实际执行过的扩展**（op 执行时登记，`exportSave` 落盘）。
+   * 存档扩展依赖标记：本档实际执行过的扩展（op 执行时登记，`exportSave` 落盘）。
    * 未用到扩展的存档**不带本字段**（缺扩展也能读——防假阳性）；读档时逐个查注册表，
    * 缺 id / 版本不可达且无 migrate → 整档拒绝（`extension-missing` / `extension-version`）。
    */
@@ -32,10 +32,10 @@ export interface SaveDataV1 {
   }>;
 }
 
-/** 05 §五 K5 存档模式：MachineBound 默认（跨机不可解）/ Portable 可选（仅存档） */
+/** 存档模式：MachineBound 默认（跨机不可解）/ Portable 可选（仅存档） */
 export type SaveMode = "machine-bound" | "portable";
 
-/** ⑨-12 存档附加项（引擎 save 的可选载荷增强；undefined 字段不进档） */
+/** 存档附加项（引擎 save 的可选载荷增强；undefined 字段不进档） */
 export interface SaveOptions {
   /** 存档标题（槽位面板展示） */
   title?: string;
@@ -51,7 +51,7 @@ export interface SlotSummary {
   mode: string;
 }
 
-/** 05 §五 存档端口：实现 = infra 适配器（Tauri Desktop/Mobile invoke / Web 演示兜底） */
+/** 存档端口：实现 = infra 适配器（Tauri Desktop/Mobile invoke / Web 演示兜底） */
 export interface SavePort {
   write(slot: string, payload: string, mode: SaveMode): Promise<void>;
   read(slot: string): Promise<string>;

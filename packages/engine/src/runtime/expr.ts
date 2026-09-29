@@ -1,5 +1,5 @@
 /**
- * 04-表达式求值（语法：01 §三 + 老 JSON故事格式_V1 §七；语义：04 §二）。
+ * 表达式求值：词法/语法/求值三段，全纯函数可测。
  * 求值时机 = 执行期；动态类型 number/boolean/string/数组/字典；
  * fail-closed：类型错误、未知变量/函数、除零 → ExpressionError（S5，不静默 NaN）。
  * 硬红线：比较运算符非链式（S4）；&&/|| 短路（S7）；转义未知保留两字符（F4）。
@@ -8,7 +8,7 @@ import type { NameResolver } from "./resolver";
 
 export type { NameResolver } from "./resolver";
 
-/** 04 §二.2 值域（吸收灵泛）：number / boolean / string / 数组 / 字典（interface 落点支持递归） */
+/** 值域：number / boolean / string / 数组 / 字典（interface 落点支持递归） */
 export interface ExprDict {
   [key: string]: ExprValue;
 }
@@ -199,7 +199,7 @@ class Parser {
     return expr;
   }
 
-  /** 优先级链（04 §二.3）：?: → || → && → ==/!= → 比较 → + - → * / % → 一元 → 成员 */
+  /** 优先级链：?: → || → && → ==/!= → 比较 → + - → * / % → 一元 → 成员 */
   private ternary(): Thunk {
     const cond = this.or();
     if (!this.matchOp("?")) return cond;
@@ -428,7 +428,7 @@ class Parser {
             this.rng,
           );
       }
-      // 成员路径 ident('.'ident)*：点路径 = 全局键路径/字典下钻（04 §二.9），查法由 resolver 决定
+      // 成员路径 ident('.'ident)*：点路径 = 全局键路径/字典下钻，查法由 resolver 决定
       let path = name;
       while (this.matchOp(".")) {
         const seg = this.peek();
@@ -476,7 +476,7 @@ export function exprEquals(a: ExprValue, b: ExprValue): boolean {
   );
 }
 
-/** 04 §二.6 内置函数全集：random（含端点）/ min / max / abs / clamp；random 经注入的 rng 取值（03-R6 确定性：rngState 进快照） */
+/** 内置函数全集：random（含端点）/ min / max / abs / clamp；random 经注入的 rng 取值（rngState 进快照保确定性） */
 function callBuiltin(
   name: string,
   args: ExprValue[],
@@ -530,7 +530,7 @@ function callBuiltin(
   }
 }
 
-/** 求值入口：解析 + 求值一步完成（求值时机 = 执行到它的时刻，04 §二.1）；rng 缺省 Math.random（引擎注入确定性 rng） */
+/** 求值入口：解析 + 求值一步完成（求值时机 = 执行到它的时刻）；rng 缺省 Math.random（引擎注入确定性 rng） */
 export function evaluateExpression(
   src: string,
   resolve: NameResolver,
@@ -542,9 +542,9 @@ export function evaluateExpression(
   return new Parser(tokens, resolve, rng).parse()();
 }
 
-// —— 文本插值（01 §三.4/§三.6、04 §二.8、S8/F7） ——
+// —— 文本插值 ——
 
-/** 行内富文本标记（老引擎 DslInlineTags 单一真相源照搬）：这些 {…} 原样透传给渲染层 */
+/** 行内富文本标记（单一真相源）：这些 {…} 原样透传给渲染层 */
 const INLINE_SHORT_TAGS = new Set([
   "b",
   "/b",

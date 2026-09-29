@@ -1,5 +1,5 @@
 /**
- * 自定义 op 扩展契约（规约 10；T08-01，锚点: op-registry-builtin-parity / custom-op-state-persist）。
+ * 自定义 op 扩展契约。
  *
  * 设计红线（三不变量）：
  * 1. **状态只进 SSOT**——扩展经 `ExtensionContext.set` 写入的状态即全局状态
@@ -37,7 +37,7 @@ export interface ExtensionContext {
 export type ExecOutcome = { readonly ok: true } | { readonly ok: false; readonly code: string; readonly message: string };
 
 /**
- * 自定义 op 文本投影（T08-03；锚点: custom-op-text-projection）：
+ * 自定义 op 文本投影：
  * 文本是 JSON 的投影——**投影不了的 op 不能假装能投影**（未注册投影器的自定义 op
  * 在文本形态整次拒绝，T2 同口径；容错路径 projectText 降级为该行 issue）。
  * 两方向都**不得抛**（同 exec 纪律——抛出由引擎兜底按失败处理）；返回 null = 失败。
@@ -49,10 +49,10 @@ export interface OpTextProjection {
   readonly fromText?: (text: string) => StoryCommand | null;
 }
 
-/** 自定义 op 文本投影表（op 名 → 投影器；T08-03 传给 parseTextStory/generateText/projectText） */
+/** 自定义 op 文本投影表（op 名 → 投影器；传给 parseTextStory/generateText/projectText） */
 export type CustomOpProjections = ReadonlyMap<string, OpTextProjection>;
 
-/** T08-04 扩展 op 的编辑器声明（**载体字段：引擎不解释**，编辑器 mergeOpSchemas/mergeOpMeta 消费） */
+/** 扩展 op 的编辑器声明（载体字段：引擎不解释，编辑器 mergeOpSchemas/mergeOpMeta 消费） */
 export interface OpEditorSchema {
   /** 展示标签（属性面板 / 时间线 / 组件面板） */
   readonly label: string;
@@ -65,7 +65,7 @@ export interface OpEditorSchema {
   readonly schema: unknown;
 }
 
-/** 单个自定义 op 的运行期定义（编辑器表单 schema 面属编辑器契约，随 T08-04 在编辑器侧扩展） */
+/** 单个自定义 op 的运行期定义（编辑器表单 schema 面属编辑器契约，在编辑器侧扩展） */
 export interface OpDefinition {
   /** op 名（作者在 dsl/json 里写的名字）；注册期查重（禁覆盖内建/已注册） */
   readonly op: string;
@@ -74,28 +74,28 @@ export interface OpDefinition {
    * 由引擎兜底转 `custom-op-threw`）；副作用只经 `ctx.set`（进 SSOT）。
    */
   readonly exec: (cmd: Readonly<Record<string, unknown>>, ctx: ExtensionContext) => ExecOutcome;
-  /** 可选：文本投影（T08-03）——缺省 = 文本形态整次拒绝（见 OpTextProjection 注） */
+  /** 可选：文本投影——缺省 = 文本形态整次拒绝（见 OpTextProjection 注） */
   readonly project?: OpTextProjection;
-  /** 可选：编辑器声明（T08-04）——缺省 = 编辑器按 unknown-op 口径报（与引擎一致，不假红） */
+  /** 可选：编辑器声明——缺省 = 编辑器按 unknown-op 口径报（与引擎一致，不假红） */
   readonly schema?: OpEditorSchema;
 }
 
 /** 扩展声明（一个扩展 = 一个 ESM 模块默认导出；宿主组合根扫描后注入引擎构造） */
 export interface OpExtension {
-  /** 稳定标识；注册期按 `EXTENSION_ID_PATTERN` 校验且 op 名不得与内建/其他扩展冲突；进存档依赖标记（T08-08） */
+  /** 稳定标识；注册期按 `EXTENSION_ID_PATTERN` 校验且 op 名不得与内建/其他扩展冲突；进存档依赖标记 */
   readonly id: string;
-  /** 状态 schema 版本（≠ 代码版本）：存档校验的是它（T08-08），代码升级不等于状态升级 */
+  /** 状态 schema 版本（≠ 代码版本）：存档校验的是它，代码升级不等于状态升级 */
   readonly stateVersion: number;
   /** 本扩展提供的自定义 op */
   readonly ops?: readonly OpDefinition[];
   /**
-   * 可选：读档成功后重建运行期句柄（等价小游戏「重新挂载」；T08-08）。
+   * 可选：读档成功后重建运行期句柄（等价小游戏「重新挂载」）。
    * **不抛**（抛出视同违约，引擎兜底按失败处理）；返回 false = 不可恢复 → 整档拒绝
    * （`extension-restore`，状态原样）。
    */
   readonly restore?: (ctx: ExtensionContext) => boolean;
   /**
-   * 可选：状态迁移（stateVersion 升级路径；T08-08）。`state` = 本扩展命名空间内的键值
+   * 可选：状态迁移（stateVersion 升级路径）。`state` = 本扩展命名空间内的键值
    * （**不含** `ext.<id>.` 前缀，与 ExtensionContext 门卫视角一致），返回同构对象（引擎负责重新落前缀）。
    * **不抛**；返回 null = 无法迁移 → 整档拒绝（`extension-version`，状态原样）。
    */

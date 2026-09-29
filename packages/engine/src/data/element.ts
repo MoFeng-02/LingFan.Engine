@@ -1,11 +1,11 @@
 /**
- * 01 §二.2 / 08 §二.1 元素解析与装载（纯函数，可测）。
+ * 元素解析与装载（纯函数，可测）。
  *
  * 职责边界：本模块只做**形状校验**与**归一化装载**，不做渲染（UI 层）、
  * 不碰平台（adapters）。scene 列的 `elements[]` 经这里校验后装载为 `ElementInstance[]`
  * 写入 `SYS.elements`（运行期，见 runtime/engine.ts）。
  *
- * 校验口径（F5 fail-closed）：未知类型、未知属性、非法结构一律**整次拒绝**
+ * 校验口径（fail-closed）：未知类型、未知属性、非法结构一律**整次拒绝**
  * （与 `format.ts` 的 StoryFormatError 同一风格：收集 issues 后一次抛出）。
  */
 
@@ -52,7 +52,7 @@ export function validateElementNode(
   }
   if (!isElementType(node.type)) {
     issues.push(
-      `${at}.type 必须是 36 种元素类型之一，收到 ${JSON.stringify(node.type)}（F5：未知类型 fail-closed）`,
+      `${at}.type 必须是 36 种元素类型之一，收到 ${JSON.stringify(node.type)}（未知类型 fail-closed）`,
     );
     return false;
   }
@@ -75,7 +75,7 @@ export function validateElementNode(
     if (ELEMENT_STRUCTURAL_FIELDS.has(key)) continue;
     if (!ELEMENT_ATTRIBUTES.has(key)) {
       issues.push(
-        `${at}.${key} 不是合法元素属性（F5：属性全集 = 通用属性 ∪ 元素特定属性，未知 fail-closed）`,
+        `${at}.${key} 不是合法元素属性（属性全集 = 通用属性 ∪ 元素特定属性，未知 fail-closed）`,
       );
     }
   }
@@ -114,8 +114,8 @@ function numericZ(value: unknown): number | null {
  *
  * - `id`：显式 id 优先；缺省派生 `${columnId}#${序号}`（序号为**同层**遍历序，
  *   仅供内部兜底，不承诺跨版本稳定）
- * - `z`：显式 `zindex` > 显式 `order` > 到达序（同层声明下标）——对齐 08 §二.1
- *   「按 zindex 属性与到达序」及老引擎 `UIElementEntity.Order`（数值越小越靠前）语义
+ * - `z`：显式 `zindex` > 显式 `order` > 到达序（同层声明下标）——
+ *   按 zindex 属性与到达序（数值越小越靠前）语义
  * - `props`：除结构字段（type/id/name/children）外的全部属性副本
  *
  * 入参应已通过 `validateElement`（`parseStory` 阶段 fail-closed）；本函数不做二次校验。
@@ -142,7 +142,7 @@ export function loadElements(
 }
 
 /**
- * 寻址（08 §二.1 目标解析）：`id` 精确匹配优先，未命中再 `name` 批量匹配。
+ * 寻址（目标解析）：`id` 精确匹配优先，未命中再 `name` 批量匹配。
  * 返回空数组 = 未找到（调用方 fail-closed + engine.error 诊断，不静默）。
  * 递归覆盖 children（容器内子元素同样可被寻址）。
  */
@@ -164,9 +164,9 @@ export function findElements(
 }
 
 /**
- * 按目标移除元素（08 §二.1 `hide`；老引擎 `ShowHideHandler` 语义照搬）：
- * 命中条件 = `id` / `name` / `props.source` 任一（老引擎为 `source` 或 `__tag` 任一命中），
- * 递归覆盖 children。**未命中不算错误**（hide 幂等——老引擎 `RemoveAll` 亦静默）。
+ * 按目标移除元素（`hide`）：
+ * 命中条件 = `id` / `name` / `props.source` 任一，
+ * 递归覆盖 children。**未命中不算错误**（hide 幂等）。
  */
 export function removeElements(
   elements: readonly ElementInstance[],

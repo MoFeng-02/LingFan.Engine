@@ -1,7 +1,7 @@
 /**
- * 07 §三 工程组装：project.json（工程清单）+ Stories/**（多列/单列文件）→ 组装 Story。
- * 纯函数：文件内容由平台适配器供给（WebView 无 Node——I/O 归 Rust/打包器，环境边界 00 §3.2-2）。
- * fail-closed：清单、文件、columnId 唯一（F1）、入口存在性（01 §一.7）任何不符 = 整次拒绝。
+ * 工程组装：project.json（工程清单）+ Stories/**（多列/单列文件）→ 组装 Story。
+ * 纯函数：文件内容由平台适配器供给（WebView 无 Node——I/O 归 Rust/打包器）。
+ * fail-closed：清单、文件、columnId 唯一、入口存在性任何不符 = 整次拒绝。
  */
 import type { Story, StoryColumn } from "../contracts";
 import { isOrientationMode } from "../contracts";
@@ -34,7 +34,7 @@ function byPath(a: string, b: string): number {
 
 /**
  * 组装工程。装载顺序：工程 defines 最先（工程默认值），文件按路径码元序，
- * 同名 define 后加载覆盖（01 §一.6 无条件 Set 语义）。
+ * 同名 define 后加载覆盖（无条件 Set 语义）。
  */
 export function assembleProject(
   manifest: unknown,
@@ -53,7 +53,7 @@ export function assembleProject(
     issues.push("project.json: id 必须为非空字符串");
   }
   if (typeof manifest.entry !== "string" || manifest.entry === "") {
-    issues.push("project.json: entry 必须为非空字符串（入口列，01 §一.7）");
+    issues.push("project.json: entry 必须为非空字符串（入口列）");
   }
   if (manifest.defines !== undefined && !isPlainObject(manifest.defines)) {
     issues.push("project.json: defines 必须为对象");
@@ -64,7 +64,7 @@ export function assembleProject(
   if (manifest.lang !== undefined && typeof manifest.lang !== "string") {
     issues.push("project.json: lang 必须为字符串");
   }
-  // T08-06 扩展声明（规约 10 §七 声明制）：须为非空字符串数组；缺席/为空 = 无扩展
+  // 扩展声明（声明制）：须为非空字符串数组；缺席/为空 = 无扩展
   if (manifest.extensions !== undefined) {
     const declared: unknown = manifest.extensions;
     if (
@@ -72,11 +72,11 @@ export function assembleProject(
       declared.some((s) => typeof s !== "string" || s === "")
     ) {
       issues.push(
-        "project.json: extensions 必须为非空字符串数组（宿主模块说明符，规约 10 §七）",
+        "project.json: extensions 必须为非空字符串数组（宿主模块说明符）",
       );
     }
   }
-  // 08 §八.2 工程级壳配置（作者声明的作品形态）：方向非法即拒绝（fail-closed，不带病起航）
+  // 工程级壳配置（作者声明的作品形态）：方向非法即拒绝（fail-closed，不带病起航）
   if (manifest.shell !== undefined) {
     if (!isPlainObject(manifest.shell)) {
       issues.push("project.json: shell 必须为对象");
@@ -102,7 +102,7 @@ export function assembleProject(
     const value = files.get(path);
     // 值的两种合法形态：解析后的文件 JSON（对象）或原始文本（JSON v1 / .story，T4 混存由
     // parseStoryFile 识别）。组装器是**唯一解析点**——调用方只供文本，避免双重解析丢失
-    // 「单列原子文件」形态而绕过文件名不变量（F1 族的按 id 定位文件）。
+    // 「单列原子文件」形态而绕过文件名不变量（按 id 定位文件）。
     let story: Story;
     let atomic: boolean;
     try {
@@ -121,7 +121,7 @@ export function assembleProject(
       throw e;
     }
     // 单列原子文件：文件名（去扩展名）必须等于列 id——AI/编辑器「按 id 定位文件」的不变量
-    // （I18N 多语言文件名 {id}_{lang} 豁免随 01 §四 落地时引入）
+    // （I18N 多语言文件名 {id}_{lang} 豁免随多语言机制落地时引入）
     const first = story.columns[0];
     if (atomic && first !== undefined && first.id !== baseName(path)) {
       issues.push(
@@ -147,7 +147,7 @@ export function assembleProject(
   const entry = manifest.entry as string;
   if (!owner.has(entry)) {
     throw new ProjectAssemblyError([
-      `project.json: 入口列 ${entry} 不存在（F1：跳转目标必须存在）`,
+      `project.json: 入口列 ${entry} 不存在（跳转目标必须存在）`,
     ]);
   }
   return {
@@ -156,7 +156,7 @@ export function assembleProject(
     entry,
     columns,
     defines,
-    // T08-06：扩展声明透传（宿主组合根经 `loadDeclaredExtensions` 装载后注入引擎/编辑器）
+    // 扩展声明透传（宿主组合根经 `loadDeclaredExtensions` 装载后注入引擎/编辑器）
     ...(manifest.extensions !== undefined
       ? { extensions: manifest.extensions as string[] }
       : {}),
@@ -165,7 +165,7 @@ export function assembleProject(
 
 // —— 09-16 反向：Story → 多文件工程（assembleProject 的逆函数） ——
 
-/** 清单文件名（07 §三：清单必须在资源根内——dev/prod 同机制） */
+/** 清单文件名（清单必须在资源根内——dev/prod 同机制） */
 export const MANIFEST_FILE = "project.json";
 /** 故事目录名（Rust `STORIES_DIR` 同名） */
 export const STORIES_DIR = "Stories";
@@ -330,7 +330,7 @@ export function serializeProject(
       issues.push(`列 id 不能作为文件名安全使用：${JSON.stringify(id)}`);
     }
     if (seen.has(id)) {
-      issues.push(`columnId 重复：${id}（F1：columnId 全局唯一）`);
+      issues.push(`columnId 重复：${id}（columnId 全局唯一）`);
     } else {
       seen.add(id);
     }
@@ -358,7 +358,7 @@ export function serializeProject(
   }
   if (typeof story.entry !== "string" || !seen.has(story.entry)) {
     issues.push(
-      `入口列 ${JSON.stringify(story.entry)} 不存在于列集（01 §一.7 + F1）`,
+      `入口列 ${JSON.stringify(story.entry)} 不存在于列集`,
     );
   }
   if (issues.length > 0) throw new ProjectSerializationError(issues);
@@ -396,14 +396,14 @@ export function diffProjectFiles(
   return { changes, deletes };
 }
 
-/** 文件指纹（FSA `File` 与 Rust `metadata` 都能给出的最小面）——T03-02 冲突检测用 */
+/** 文件指纹（FSA `File` 与 Rust `metadata` 都能给出的最小面）——写回冲突检测用 */
 export interface FileStamp {
   lastModified: number;
   size: number;
 }
 
 /**
- * 写回冲突判定（T03-02 / D-03，锚点 project-write-conflict-detection）：
+ * 写回冲突判定：
  * 打开工程的指纹快照 vs 保存时刻磁盘现状，不一致 = 外部改动会被**静默覆盖**。
  * - 基线文件**消失**（current 无此路径）→ 冲突（被外部删除）；
  * - `lastModified` / `size` 任一不同 → 冲突；
@@ -438,7 +438,7 @@ export function conflictMessage(paths: readonly string[]): string {
   );
 }
 
-// —— T03-03：写回规范化的保存前检测（D-25，锚点 save-normalization-notice）——
+// —— 写回规范化的保存前检测 ——
 
 /**
  * 保存将触发的「规范化」动作（文件级）。列序按 id 固化与 `Stories/` 空目录不清理

@@ -1,21 +1,19 @@
 /**
- * 元素系统契约（01 §二.2 元素声明 / 08 §二.1 舞台层叠）。
+ * 元素系统契约（元素声明 / 舞台层叠）。
  *
- * 权威来源（老引擎 `E:\Project\Engine`，同源于《JSON故事格式_V1.md》§四）：
- * - 36 类型全集 = `DslKeywords.UiElementTypes`（DslKeywords.cs:13-31）
- * - 属性全集 = `DslKeywords.ElementAttributes`（DslKeywords.cs:250-279）+ 元素特定属性（DslGrammar.cs:240-283）
+ * 类型与属性全集继承自既有引擎的语义资产：
+ * - 36 类型全集（文本 / 交互 / 图像 / 容器 / 滚动 / 进度 / 间隔七组）
+ * - 属性全集 = 通用属性表 ∪ 元素特定属性
  *
- * F5：未知类型 / 未知属性一律 fail-closed（锚点 element-unknown-type-rejected /
- * element-unknown-attr-rejected）——「写了也不渲染」的静默容忍是缺陷，不是特性。
+ * 未知类型 / 未知属性一律 fail-closed——「写了也不渲染」的静默容忍是缺陷，不是特性。
  *
- * 与老引擎的关键差异：老引擎以内部魔法键 `Properties["__tag"]` 承担
- * 「动画匹配与 show/hide 定位」（StateKeys.cs:548-558）；本引擎显式化为契约字段
- * **`id`（唯一，精确寻址）** 与 **`name`（可重复，批量寻址）**。
+ * 与既有引擎的关键差异：旧实现以内部魔法键承担「动画匹配与 show/hide 定位」；
+ * 本引擎显式化为契约字段 `id`（唯一，精确寻址）与 `name`（可重复，批量寻址）。
  */
 
 /**
- * 08 §二.1 舞台元素类型全集（36）。
- * 顺序与老引擎一致（文本 / 交互 / 图像 / 容器 / 滚动 / 进度 / 间隔七组）。
+ * 舞台元素类型全集（36）。
+ * 分组：文本 / 交互 / 图像 / 容器 / 滚动 / 进度 / 间隔七组。
  */
 export const ELEMENT_TYPES = [
   // 文本（4）
@@ -74,7 +72,7 @@ export const ELEMENT_STRUCTURAL_FIELDS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * F5 属性全集 = 老引擎通用属性表 ∪ 元素特定属性（并集即校验白名单）。
+ * 属性全集 = 通用属性表 ∪ 元素特定属性（并集即校验白名单）。
  * 分组注释保留来源信息（P2 编辑器表单按 `ELEMENT_SPECIFIC_ATTRS` 分类型提示）。
  */
 export const ELEMENT_ATTRIBUTES: ReadonlySet<string> = new Set([
@@ -120,7 +118,7 @@ export const ELEMENT_ATTRIBUTES: ReadonlySet<string> = new Set([
   "color",
   "fontColor",
   "textColor",
-  // 交互（F6 优先级：disabled > nav > cmd > hover_* > selected_*）
+  // 交互（优先级：disabled > nav > cmd > hover_* > selected_*）
   "disabled",
   "nav",
   "cmd",
@@ -167,8 +165,8 @@ export const ELEMENT_ATTRIBUTES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * 分类型属性（老引擎 DslGrammar.cs:240-283）：供编辑器表单按类型提示，
- * 校验仍走 `ELEMENT_ATTRIBUTES` 并集（对齐老引擎的宽松归属判定）。
+ * 分类型属性：供编辑器表单按类型提示，
+ * 校验仍走 `ELEMENT_ATTRIBUTES` 并集（宽松归属判定）。
  */
 export const ELEMENT_SPECIFIC_ATTRS: Readonly<Record<string, readonly string[]>> =
   {
@@ -203,8 +201,8 @@ export const ELEMENT_SPECIFIC_ATTRS: Readonly<Record<string, readonly string[]>>
   };
 
 /**
- * 08 §二.1 舞台元素声明节点（scene 列 `elements[]` 的元素）。
- * JSON 形态为**平铺**（对齐《JSON故事格式_V1.md》§四：
+ * 舞台元素声明节点（scene 列 `elements[]` 的元素）。
+ * JSON 形态为平铺（
  * `{ "type": "image", "source": "Images/bg.png", "x": "0" }`），属性与 type 同级。
  */
 export interface ElementNode {
@@ -215,13 +213,13 @@ export interface ElementNode {
   name?: string;
   /** 容器专有：子元素（投影为缩进子元素行） */
   children?: ElementNode[];
-  /** 其余键 = 属性全集（F5 校验） */
+  /** 其余键 = 属性全集（校验白名单） */
   [attr: string]: unknown;
 }
 
 /**
  * 运行期元素实例：装载进 `SYS.elements`，随快照 / 存档 / 回溯自动随行
- * （整体 state Map 快照，无需重放重建——与老引擎「场景元素不存档、读档重放」不同）。
+ * （整体 state Map 快照，无需重放重建）。
  */
 export interface ElementInstance {
   /** 稳定标识：显式 id > 派生 `{列id}#{序号}`（派生值仅供内部兜底，不承诺跨版本稳定） */
@@ -242,9 +240,9 @@ export function isElementType(value: unknown): value is ElementType {
 }
 
 /**
- * 08 §二.1 / §四 容器类型：支持 `children` 嵌套。
- * 老引擎自身不一致（`ControlFactory` 把 vbox/hbox 当容器，`LayoutHelper.IsContainerType`
- * 却不含它们）——本引擎统一为「容器 = 支持 children」，取两者并集。
+ * 容器类型：支持 `children` 嵌套。
+ * 既有实现曾不一致（某侧把 vbox/hbox 当容器、容器判定却不含它们）——
+ * 本引擎统一为「容器 = 支持 children」，取两者并集。
  */
 export const ELEMENT_CONTAINER_TYPES: ReadonlySet<string> = new Set([
   "panel",
@@ -268,13 +266,13 @@ export const ELEMENT_CONTAINER_TYPES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * 08 §二.2 元素动画描述（`animate` / `animate_block` 写入 `SYS.animations`）。
+ * 元素动画描述（`animate` / `animate_block` 写入 `SYS.animations`）。
  *
  * 分工：核心层只写「动画描述」（离散、进快照），**UI 每帧插值**应用到 DOM
- * （08 §三.2 帧驱动；高频帧级值不进 SSOT/事件流），播毕调 `animationFinished(seq)`
+ * （帧驱动；高频帧级值不进 SSOT/事件流），播毕调 `animationFinished(seq)`
  * 由核心把终值写回元素 `props`——保证快照/存档/回溯都是**终态**语义。
  *
- * 与老引擎 `AnimateHandler`（写 `__animation_{target}_{property}` 一整套前缀键）语义等价，
+ * 与既有实现的旧式前缀键方案语义等价，
  * 但新引擎用**队列 + 完成回调**，避免为每个动画属性铺一串状态键。
  */
 export interface AnimationSpec {
@@ -286,7 +284,7 @@ export interface AnimationSpec {
   to: number;
   /** 时长（秒） */
   duration: number;
-  /** 缓动名（老引擎默认 `EaseOutQuad`；UI 侧映射到实际缓动函数） */
+  /** 缓动名（默认 `EaseOutQuad`；UI 侧映射到实际缓动函数） */
   easing: string;
   /** 单调序号：同一目标的连续动画、重放后的同命令可分辨（参考 `__video` 的 seq 去重语义） */
   seq: number;

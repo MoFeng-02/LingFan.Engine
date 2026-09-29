@@ -1,5 +1,5 @@
 /**
- * 08 §八.2 平台壳能力契约：屏幕方向配置。
+ * 平台壳能力契约：屏幕方向配置。
  *
  * 方向不是叙事语义——引擎核心不解释、不参与回溯/存档，只提供契约类型；
  * 由组合根读工程默认与玩家偏好、装配给壳层实现（Android `Activity.requestedOrientation` /
@@ -16,7 +16,7 @@ export type OrientationMode = "auto" | "portrait" | "landscape";
 
 /**
  * 工程级壳配置（project.json `shell` 段）：作者声明的作品形态。
- * 缺省 = auto（跟随系统）；玩家偏好可覆盖（08-U10：偏好与存档分离）。
+ * 缺省 = auto（跟随系统）；玩家偏好可覆盖（偏好与存档分离）。
  */
 export interface ProjectShellConfig {
   /** 作品默认方向（缺省 = auto） */

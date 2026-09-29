@@ -1,5 +1,5 @@
 /**
- * T08-06 声明制扩展装载（规约 10 §七；锚点: op-extension-scan）。
+ * 声明制扩展装载（清单 `extensions` 声明 → 动态 import → 注册校验）。
  *
  * **声明制，非目录扫描制**：扫描器对未声明的扩展文件零感知（不扫盘、不猜测）——
  * 工程清单 `extensions: string[]` 声明宿主模块说明符，组合根按声明装载，避免任意代码执行面。
@@ -77,7 +77,7 @@ export async function loadDeclaredExtensions(
   for (const specifier of declared) {
     if (typeof specifier !== "string" || specifier === "") {
       throw new Error(
-        `扩展声明不合法：${JSON.stringify(specifier)}（须为非空模块说明符，规约 10 §七）`,
+        `扩展声明不合法：${JSON.stringify(specifier)}（须为非空模块说明符）`,
       );
     }
     let loaded: unknown;

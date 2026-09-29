@@ -1,6 +1,6 @@
 /**
  * 01-数据层：故事文件 fail-closed 解析。
- * 两种文件形态按内容识别（07 §三「单列小文件与多列文件均可」，对齐老引擎 Stories 目录语义）：
+ * 两种文件形态按内容识别（单列小文件与多列文件均可，对齐既有 Stories 目录语义）：
  * - 多列文件：{ formatVersion, columns[], defines?, entry?, id? }
  * - 单列原子文件：{ formatVersion, id, kind, commands/elements/entry…, defines? }
  * 任何结构不符 = 整次拒绝（抛 StoryFormatError，issues 带来源定位）。
@@ -50,7 +50,7 @@ export function isSingleColumnFile(json: unknown): boolean {
 }
 
 /**
- * 08 §八.3 实例级 z（T01-03）：命令上的可选 `z` = **单控件实例**的层级覆盖。
+ * 实例级 z：命令上的可选 `z` = 单控件实例的层级覆盖。
  * 只允许**非负有限数**（fail-closed：负数 / NaN / Infinity / 字符串一律拒绝）。
  * 仅「拥有独立渲染层」的命令接受该字段（say / menu / input / notify / minigame）。
  */
@@ -61,7 +61,7 @@ function validateInstanceZ(
 ): void {
   if (cmd.z === undefined) return;
   if (typeof cmd.z !== "number" || !Number.isFinite(cmd.z) || cmd.z < 0) {
-    issues.push(`${at}.z 必须为非负有限数（08 §八.3 实例级层级）`);
+    issues.push(`${at}.z 必须为非负有限数（实例级层级）`);
   }
 }
 
@@ -78,7 +78,7 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
   switch (cmd.op) {
     case "say":
       requireNonEmptyString(cmd.text, `${at}.text`, issues);
-      validateInstanceZ(cmd, at, issues); // 08 §八.3：say 的实例 z（dialogue 层）
+      validateInstanceZ(cmd, at, issues); // say 的实例 z（dialogue 层）
       break;
     case "if": {
       requireNonEmptyString(cmd.cond, `${at}.cond`, issues);
@@ -121,7 +121,7 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
           );
         }
       }
-      validateInstanceZ(cmd, at, issues); // 08 §八.3：menu 的实例 z（choices 层）
+      validateInstanceZ(cmd, at, issues); // menu 的实例 z（choices 层）
       break;
     }
     case "set":
@@ -166,7 +166,7 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
       if (cmd.duration !== undefined && typeof cmd.duration !== "number") {
         issues.push(`${at}.duration 必须为数字`);
       }
-      validateInstanceZ(cmd, at, issues); // 08 §八.3：notify 的实例 z（notifications 层）
+      validateInstanceZ(cmd, at, issues); // notify 的实例 z（notifications 层）
       break;
     case "wait":
       if (typeof cmd.seconds !== "number")
@@ -264,7 +264,7 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
       if (cmd.options !== undefined) {
         issues.push(`${at}.options 选项式输入暂未实现（fail-closed）`);
       }
-      validateInstanceZ(cmd, at, issues); // 08 §八.3：input 的实例 z（choices 层）
+      validateInstanceZ(cmd, at, issues); // input 的实例 z（choices 层）
       break;
     case "random": {
       if (typeof cmd.seed !== "number" || !Number.isInteger(cmd.seed)) {
@@ -284,7 +284,7 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
     }
     case "minigame": {
       requireNonEmptyString(cmd.game, `${at}.game`, issues);
-      validateInstanceZ(cmd, at, issues); // 08 §八.3：minigame 的实例 z（minigame 层）
+      validateInstanceZ(cmd, at, issues); // minigame 的实例 z（minigame 层）
       if (cmd.config !== undefined && !isPlainObject(cmd.config)) {
         issues.push(`${at}.config 必须为对象`);
       }
@@ -385,7 +385,7 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
   }
 }
 
-/** 块体校验：必填缺失即报（老规范 §八.4：if 无 then → 报错），成员递归校验 */
+/** 块体校验：必填缺失即报（if 无 then → 报错），成员递归校验 */
 function validateBody(
   v: unknown,
   at: string,
@@ -486,7 +486,7 @@ export function parseStory(json: unknown, sourceName = "story"): Story {
     issues.push(`${sourceName}: defines 必须为对象`);
   }
   if (json.lang !== undefined && typeof json.lang !== "string") {
-    issues.push(`${sourceName}: lang 必须为字符串（01 §四.2 信封语言声明）`);
+    issues.push(`${sourceName}: lang 必须为字符串（信封语言声明）`);
   }
 
   const hasColumns = Array.isArray(json.columns);
@@ -507,7 +507,7 @@ export function parseStory(json: unknown, sourceName = "story"): Story {
       if (column === null) continue;
       if (seen.has(column.id)) {
         issues.push(
-          `${sourceName}: columnId 重复：${column.id}（F1：columnId 全局唯一）`,
+          `${sourceName}: columnId 重复：${column.id}（columnId 全局唯一）`,
         );
       } else {
         seen.add(column.id);
@@ -524,7 +524,7 @@ export function parseStory(json: unknown, sourceName = "story"): Story {
       } else {
         entry = json.entry;
         if (!seen.has(entry))
-          issues.push(`${sourceName}: 入口列 ${entry} 不存在（F1）`);
+          issues.push(`${sourceName}: 入口列 ${entry} 不存在`);
       }
     } else {
       entry = columns[0]?.id ?? "";
@@ -544,7 +544,7 @@ export function parseStory(json: unknown, sourceName = "story"): Story {
   }
 
   if (single) {
-    // —— 单列原子文件：顶层即列对象（07 §三：单列小文件） ——
+    // —— 单列原子文件：顶层即列对象（单列小文件） ——
     const column = parseColumn(json, sourceName, issues);
     if (issues.length > 0 || column === null)
       throw new StoryFormatError(issues);

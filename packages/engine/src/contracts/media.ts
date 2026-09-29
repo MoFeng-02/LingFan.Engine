@@ -1,9 +1,9 @@
 /**
- * 08 §六 媒体契约（四音频通道）：核心只写状态，播放由适配器落地（U1/U6）。
+ * 媒体契约（四音频通道）：核心只写状态，播放由适配器落地。
  * 端口入参为**已解析 URL**——资源寻址归 ResourcePort，媒体可能是加密资源。
  */
 
-/** 08 §六.1 四通道：bgm 循环 / se 一次性 / ambient 独立循环层 / voice 互斥 */
+/** 四通道：bgm 循环 / se 一次性 / ambient 独立循环层 / voice 互斥 */
 export type AudioChannel = "bgm" | "se" | "ambient" | "voice";
 
 /**
@@ -19,7 +19,7 @@ export type AudioChannelState =
       loop: boolean;
       /** 本次变更的淡入毫秒（0 = 立即） */
       fadeMs: number;
-      /** voice 专有：推进到下一句时自动停止（08 §六.1 auto_stop） */
+      /** voice 专有：推进到下一句时自动停止（auto_stop） */
       autoStop?: boolean;
       /** 显式重播：同曲重写默认无缝续播（seek），restart=true 才回到起点 */
       restart?: boolean;
@@ -31,7 +31,7 @@ export type AudioChannelState =
     }
   | { kind: "stop"; fadeMs: number };
 
-/** 08 §六 音频播放参数（端口入参，核心不碰解码器） */
+/** 音频播放参数（端口入参，核心不碰解码器） */
 export interface AudioPlayOptions {
   volume: number;
   loop: boolean;
@@ -44,18 +44,18 @@ export interface AudioPlayOptions {
 }
 
 /**
- * 08 §六 音频端口：实现 = infra 适配器（WebView 解码，Desktop/Mobile 同契约）。
- * 入参为**已解析 URL**（资源寻址归 ResourcePort，08-U7）；同 URL 且 restart=false = 更新而非重头播。
+ * 音频端口：实现 = infra 适配器（WebView 解码，Desktop/Mobile 同契约）。
+ * 入参为已解析 URL（资源寻址归 ResourcePort）；同 URL 且 restart=false = 更新而非重头播。
  */
 export interface AudioPort {
   play(channel: AudioChannel, url: string, options: AudioPlayOptions): void;
   stop(channel: AudioChannel, fadeMs?: number): void;
-  /** 当前播放位置（秒）；未播放返回 0（帧级回写用，08 §三.2） */
+  /** 当前播放位置（秒）；未播放返回 0（帧级回写用） */
   position(channel: AudioChannel): number;
   dispose(): void;
 }
 
-// —— 08 §六.5 视频（单通道命令流）：新 video 替换当前；Desktop/Mobile 同契约 ——
+// —— 视频（单通道命令流）：新 video 替换当前；Desktop/Mobile 同契约 ——
 
 /**
  * 视频命令（SSOT 系统键值，seq 单调有序）：渲染器按 seq 执行——
@@ -82,7 +82,7 @@ export type VideoCommand =
 
 /**
  * 视频端口：实现 = infra 适配器（WebView 解码，舞台层覆盖呈现）。
- * 入参为**已解析 URL**（资源寻址归 ResourcePort，08-U7）。
+ * 入参为已解析 URL（资源寻址归 ResourcePort）。
  * `onEnded`：自然播放结束回调（cutscene 由它解除引擎等待；非阻塞 video 可忽略）。
  */
 export interface VideoPort {
@@ -97,7 +97,7 @@ export interface VideoPort {
   stop(): void;
   dispose(): void;
   /**
-   * 08 §八.3 实例级 z：**运行期**改本层 z（源 = `video`/`cutscene` 命令上的 `z`；
+   * 实例级 z：运行期改本层 z（源 = `video`/`cutscene` 命令上的 `z`；
    * 宿主在实例 z 变化时调用，值由 `resolveInstanceZ("video", 实例z, 表)` 解析）。
    * 可选能力：未实现者保持构造期 `zIndex` 行为（调用方用 `?.` 容错）。
    */

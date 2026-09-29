@@ -1,7 +1,7 @@
 /**
- * 02-执行模型：SSOT 状态容器 + 帧栈式逐命令解释执行 + advance/choose 命令面。
- * 04-作用域：块/列级 Scope 树 + 全局（SSOT Map）；块/列级不进存档（S3）。
- * 框架无关：只写状态与事件，渲染归 UI 层（08-U1）。
+ * 执行模型：SSOT 状态容器 + 帧栈式逐命令解释执行 + advance/choose 命令面。
+ * 作用域：块/列级 Scope 树 + 全局（SSOT Map）；块/列级不进存档。
+ * 框架无关：只写状态与事件，渲染归 UI 层。
  */
 import type {
   AnimationSpec,
@@ -51,7 +51,7 @@ import type { NameResolver } from "./resolver";
 import { Scope } from "./scope";
 import { findJsonValueError } from "./stateContract";
 
-/** say 的已知负载字段（01 §二.1）；未知字段 fail-closed（E3/F5） */
+/** say 的已知负载字段；未知字段 fail-closed */
 const SAY_KNOWN_FIELDS = new Set([
   "op",
   "text",
@@ -62,13 +62,13 @@ const SAY_KNOWN_FIELDS = new Set([
   "typewriter",
   "voice",
   "template",
-  "z", // 08 §八.3 实例级 z（dialogue 层）
+  "z", // 实例级 z（dialogue 层）
 ]);
 
 const WAIT_FIELDS = new Set(["op", "seconds", "skipable"]);
 const PAUSE_FIELDS = new Set(["op", "seconds"]);
 
-/** 08 §六.1 音频 op 已知负载字段（未知字段 fail-closed，E3/F5） */
+/** 音频 op 已知负载字段（未知字段 fail-closed） */
 const AUDIO_FIELDS: Record<string, ReadonlySet<string>> = {
   bgm: new Set(["op", "resource", "volume", "loop", "fade", "restart"]),
   se: new Set(["op", "resource", "volume"]),
@@ -80,8 +80,8 @@ const AUDIO_FIELDS: Record<string, ReadonlySet<string>> = {
 };
 
 /**
- * 08 §二.1 元素增删 op 已知负载字段（未知字段 fail-closed，E3/F5）。
- * `show.target` = 资源路径（对齐老引擎 `ShowHideCommand.Target` → `props.source`）。
+ * 元素增删 op 已知负载字段（未知字段 fail-closed）。
+ * `show.target` = 资源路径（落 `props.source`）。
  */
 const ELEMENT_OP_FIELDS: Record<string, ReadonlySet<string>> = {
   show: new Set(["op", "target", "x", "y", "id", "name", "background"]),
@@ -108,7 +108,7 @@ const ELEMENT_OP_FIELDS: Record<string, ReadonlySet<string>> = {
   text_typewriter: new Set(["op", "enabled", "speed"]),
 };
 
-/** `animate_block` 可承载的属性（与老引擎 `ParseAnimateBlock` 的属性集一致） */
+/** `animate_block` 可承载的属性（与既有实现的属性集一致） */
 const ANIMATE_BLOCK_PROPS: readonly string[] = [
   "x",
   "y",
@@ -117,7 +117,7 @@ const ANIMATE_BLOCK_PROPS: readonly string[] = [
   "scale",
 ];
 
-/** 背景元素固定底层序（老引擎 ShowHideHandler / BgSwitchHandler：`Order = -1000`） */
+/** 背景元素固定底层序（`Order = -1000`） */
 const BACKGROUND_Z = -1000;
 
 /** 停止类 op → 目标常驻通道系统键 */
@@ -134,7 +134,7 @@ const AUDIO_CHANNEL_KEY: Record<string, string> = {
   voice: SYS.audioVoice,
 };
 
-/** 08 §六.5 视频族已知负载字段（未知字段 fail-closed，E3/F5） */
+/** 视频族已知负载字段（未知字段 fail-closed） */
 const VIDEO_FIELDS: Record<string, ReadonlySet<string>> = {
   video: new Set(["op", "resource", "volume", "loop", "z"]),
   cutscene: new Set(["op", "resource", "volume", "skipable", "z"]),
@@ -145,7 +145,7 @@ const VIDEO_FIELDS: Record<string, ReadonlySet<string>> = {
   video_skipable: new Set(["op", "value"]),
 };
 
-/** 06 §二.1 minigame 已知负载字段（未知字段 fail-closed，E3/F5） */
+/** minigame 已知负载字段（未知字段 fail-closed） */
 const MINIGAME_FIELDS = new Set([
   "op",
   "game",
@@ -153,10 +153,10 @@ const MINIGAME_FIELDS = new Set([
   "on_success",
   "on_fail",
   "reward",
-  "z", // 08 §八.3 实例级 z（minigame 层）
+  "z", // 实例级 z（minigame 层）
 ]);
 
-/** 01 §二.3 存档类 op 已知负载字段（未知字段 fail-closed，E3/F5；权威：JSON故事格式_V1 §6） */
+/** 存档类 op 已知负载字段（未知字段 fail-closed） */
 const SAVE_FIELDS: Record<string, ReadonlySet<string>> = {
   save: new Set(["op", "slot", "title"]),
   load: new Set(["op", "slot"]),
@@ -164,14 +164,14 @@ const SAVE_FIELDS: Record<string, ReadonlySet<string>> = {
   save_delete: new Set(["op", "slot"]),
 };
 
-/** set 复合赋值前缀（老规范 §6.2：value 支持 {expr} 与 += 等复合赋值） */
+/** set 复合赋值前缀（value 支持 {expr} 与 += 等复合赋值） */
 const COMPOUND_PREFIX = /^\s*(\+=|-=|\*=|\/=|%=)\s*([\s\S]+)$/;
 
-/** 防死循环安全网：单个循环帧的迭代上限（新引擎增量，fail-closed） */
+/** 防死循环安全网：单个循环帧的迭代上限（fail-closed） */
 const LOOP_LIMIT = 10000;
 
 /**
- * 03 §一 快照：状态 + rngState + 帧栈。
+ * 快照：状态 + rngState + 帧栈。
  * 不变量：状态容器的值写时复制（array/dict 每次写入新引用），故浅拷贝 entries 即安全。
  */
 interface EngineSnapshot {
@@ -179,37 +179,37 @@ interface EngineSnapshot {
   rngState: number;
   frames: Frame[];
   coord: ColumnCoordinate;
-  /** 04 §一.7 函数注册表随快照恢复——回溯到 func 之前的检查点重放时必须可重新注册 */
+  /** 函数注册表随快照恢复——回溯到 func 之前的检查点重放时必须可重新注册 */
   functions: [string, { params: string[]; body: StoryCommand[] }][];
 }
 
-/** 03 §一 检查点 = 坐标 + 快照；重放 = 恢复快照后从该命令重新解释执行到同一等待点 */
+/** 检查点 = 坐标 + 快照；重放 = 恢复快照后从该命令重新解释执行到同一等待点 */
 interface Checkpoint {
   coord: ColumnCoordinate;
   snapshot: EngineSnapshot;
 }
 
 export interface EngineOptions {
-  /** 03 §三.3 历史容量上限（默认 200），超限淘汰最旧 */
+  /** 历史容量上限（默认 200），超限淘汰最旧 */
   historyLimit?: number;
-  /** 03-R6 确定性随机：初始 rng 种子（缺省按当前时间） */
+  /** 确定性随机：初始 rng 种子（缺省按当前时间） */
   rngSeed?: number;
-  /** 05 §五 存档编排端口（save/load/auto_save/save_delete op 与命令面 save/load 的依赖；缺省 = 存档类 op fail-closed） */
+  /** 存档编排端口（save/load/auto_save/save_delete op 与命令面 save/load 的依赖；缺省 = 存档类 op fail-closed） */
   savePort?: SavePort;
-  /** 05 §五 存档模式（缺省 machine-bound；Rust 层同缺省） */
+  /** 存档模式（缺省 machine-bound；Rust 层同缺省） */
   saveMode?: SaveMode;
-  /** 01 §四.3 I18N overlay 供给端口（setLanguage 按需加载译文；缺省 = 原文直出） */
+  /** I18N overlay 供给端口（setLanguage 按需加载译文；缺省 = 原文直出） */
   i18nPort?: I18nPort;
-  /** 规约 10 自定义 op 扩展（构造期注册校验，fail-fast；缺省 = 无扩展，unknown-op 口径不变） */
+  /** 自定义 op 扩展（构造期注册校验，fail-fast；缺省 = 无扩展，unknown-op 口径不变） */
   extensions?: readonly OpExtension[];
   /**
-   * T08-09 存档版本迁移钩子：`formatVersion` 非 1 的档先经此迁移（返回 v1 载荷 = 放行并发
+   * 存档版本迁移钩子：`formatVersion` 非 1 的档先经此迁移（返回 v1 载荷 = 放行并发
    * `load.notice`；返回 null = 无法迁移 → 可操作拒绝）。缺省 = 非 v1 档直接可操作拒绝。
    */
   migrateSave?: (data: unknown) => SaveDataV1 | null;
 }
 
-/** 05 槽位信任边界（与 Rust validate_slot 同判）：字母数字/_/-，1..64 */
+/** 槽位信任边界（与 Rust validate_slot 同判）：字母数字/_/-，1..64 */
 function validSlot(slot: string): boolean {
   return slot.length > 0 && slot.length <= 64 && /^[A-Za-z0-9_-]+$/.test(slot);
 }
@@ -246,24 +246,24 @@ function snapshotText(cp: Checkpoint, key: string): string {
 
 /**
  * 循环帧状态：while 每轮重判条件；for/foreach 物化数组逐元素推进
- * （老引擎 foreach 编译为 ForStmt 同构：len(expr) + expr[idx] 运行时求值）。
+ * （foreach 编译为等价循环结构：len(expr) + expr[idx] 运行时求值）。
  */
 interface LoopState {
   kind: "while" | "iterate";
-  /** while：条件表达式原文（每轮执行期重判，04 §二.1） */
+  /** while：条件表达式原文（每轮执行期重判） */
   cond?: unknown;
   /** iterate：循环变量名与物化元素序列 */
   varName?: string;
   items?: ExprValue[];
-  /** 循环体外层作用域：每轮重建块作用域（S1） */
+  /** 循环体外层作用域：每轮重建块级 */
   parentScope: Scope;
   iterations: number;
 }
 
 /**
  * 执行帧：列帧（columnId 非空，作用域 = 列级）与块帧（columnId 空，作用域 = 块级）。
- * 嵌套块不进坐标——坐标恒指列内顶层位置（01 §一.4），块内进度由帧栈承载，
- * 快照时帧栈随状态一并保存即可满足 03 的确定性重放。
+ * 嵌套块不进坐标——坐标恒指列内顶层位置，块内进度由帧栈承载，
+ * 快照时帧栈随状态一并保存即可满足确定性重放。
  */
 interface Frame {
   columnId: string | null;
@@ -277,8 +277,8 @@ interface Frame {
 }
 
 export class StoryEngine {
-  private story: Story; // 热重载（07 §三.2）原子替换：private 字段非公共契约
-  /** 02 §一.1 SSOT：系统键 + 全局用户键（块/列级变量在 Scope 树，不进此 Map——S3）；值写时复制 → 快照浅拷贝安全 */
+  private story: Story; // 热重载原子替换：private 字段非公共契约
+  /** SSOT：系统键 + 全局用户键（块/列级变量在 Scope 树，不进此 Map）；值写时复制 → 快照浅拷贝安全 */
   private state = new Map<string, unknown>();
   private coord: ColumnCoordinate = { columnId: "", index: 0 };
   private frames: Frame[] = [];
@@ -287,9 +287,9 @@ export class StoryEngine {
   private started = false;
   private pendingTimer: ReturnType<typeof setTimeout> | null = null;
   private waitSkipable = false;
-  /** 08-U4 角色定义注册表（character op 注册，say speaker 匹配自动套样式） */
+  /** 角色定义注册表（character op 注册，say speaker 匹配自动套样式） */
   private readonly characters = new Map<string, CharacterDef>();
-  /** 04 §一.7 函数注册表（func 执行期注册，call 按名查表；随快照恢复） */
+  /** 函数注册表（func 执行期注册，call 按名查表；随快照恢复） */
   private functions = new Map<
     string,
     { params: string[]; body: StoryCommand[] }
@@ -300,26 +300,26 @@ export class StoryEngine {
   private history: Checkpoint[] = [];
   /** 光标 = 当前时间线上最后归档的检查点（回溯后落后于 length-1；rollforward 用） */
   private cursor = -1;
-  /** 03-R5 live 消歧：当前 live 画面是否已入档（menu/wait/input 展示中=true；say 上屏=false） */
+  /** live 消歧：当前 live 画面是否已入档（menu/wait/input 展示中=true；say 上屏=false） */
   private liveCheckpointed = false;
-  /** 03-R4 重放期标记（__rollback_active 键镜像） */
+  /** 重放期标记（__rollback_active 键镜像） */
   private rollbackActive = false;
-  /** say 上屏时捕获的待提交检查点（R1：等待解除后才入档） */
+  /** say 上屏时捕获的待提交检查点（等待解除后才入档） */
   private pendingSay: Checkpoint | null = null;
-  /** 03-R6 确定性随机状态（mulberry32），进快照 */
+  /** 确定性随机状态（mulberry32），进快照 */
   private rngState: number;
-  /** 08 §六.1 se 触发序号：单调递增且不进快照——重放/读档后仍能区分「再次触发」 */
+  /** se 触发序号：单调递增且不进快照——重放/读档后仍能区分「再次触发」 */
   private mediaSeq = 0;
-  /** 08 §六.5 视频命令序号：单调递增且不进快照（渲染器按 seq 执行/去重） */
+  /** 视频命令序号：单调递增且不进快照（渲染器按 seq 执行/去重） */
   private videoSeq = 0;
-  /** 08 §二.2 元素动画序号：单调递增且不进快照（连续动画与重放后的同命令可分辨） */
+  /** 元素动画序号：单调递增且不进快照（连续动画与重放后的同命令可分辨） */
   private animationSeq = 0;
-  /** 08 §二.2 转场 / 震动启动序号：同上（UI 据此判定「新的一次」） */
+  /** 转场 / 震动启动序号：同上（UI 据此判定「新的一次」） */
   private transitionSeq = 0;
   private shakeSeq = 0;
-  /** 06 §二.1 小游戏挂载序号：单调递增且不进快照（重放重新挂载与旧挂载可分辨） */
+  /** 小游戏挂载序号：单调递增且不进快照（重放重新挂载与旧挂载可分辨） */
   private minigameSeq = 0;
-  /** 06 §二.1 挂起的小游戏等待：分流目标与已求值奖励（resolveMinigame 消费；中断即清除） */
+  /** 挂起的小游戏等待：分流目标与已求值奖励（resolveMinigame 消费；中断即清除） */
   private pendingMinigame: {
     onSuccess?: string;
     onFail?: string;
@@ -507,7 +507,7 @@ export class StoryEngine {
   /**
    * 02 §三.3 会话命令 navigate：坐标切换（columnId 校验 fail-closed）——
    * UI/元素 nav 按钮与热重载重入的接缝。纯切换不建检查点（与 op navigate 的
-   * 叙事节点检查点相区分；老引擎 UI nav 走 NavigateHandler 不建 DSL 检查点，同语义）。
+   * 叙事节点检查点相区分；壳层导航不建 DSL 检查点，同语义）。
    */
   navigate(columnId: string): void {
     if (!this.started) {
@@ -520,7 +520,7 @@ export class StoryEngine {
     this.waitSkipable = false;
     this.liveCheckpointed = false;
     this.setSystem(SYS.waiting, "none");
-    this.setSystem(SYS.currentDialogText, ""); // 清旧对话镜像（老引擎导航清屏语义）
+    this.setSystem(SYS.currentDialogText, ""); // 清旧对话镜像（导航清屏）
     this.setSystem(SYS.currentDialogSpeaker, "");
     this.setSystem(SYS.dialogComplete, false);
     if (!this.enterColumn(columnId)) return;
@@ -593,7 +593,7 @@ export class StoryEngine {
   }
 
   /**
-   * 01 §四.3 setLanguage：切换当前语言（老引擎 SwitchLanguage 同语义——
+   * 01 §四.3 setLanguage：切换当前语言（整表重建——
    * 清缓存 + 写系统键，**当前画面不重放**，下次 Translate 生效）。空串 = 默认语言/原文直出。
    * 供给失败 fail-closed：保持原语言与译文表不变，engine.error 上报。
    * 可在 start 前调用（标题画面选语言）：状态键写入与译文装配不依赖启动态。
@@ -622,7 +622,7 @@ export class StoryEngine {
       );
       return;
     }
-    this.overlay = mergeOverlayFiles(files); // 整表重建 = 老引擎「清缓存再载入」同语义
+    this.overlay = mergeOverlayFiles(files); // 整表重建 = 清缓存再载入
     this.setSystem(SYS.currentLanguage, lang);
   }
 
@@ -656,7 +656,7 @@ export class StoryEngine {
 
   /**
    * 01 §三 表达式插值公开接缝：宿主侧文本（如元素 `cmd` 的 `value`）按**点击时**求值，
-   * 取最新变量（老引擎 `InteractionBinder.ResolveValue` 同语义）。
+   * 取最新变量（点击时求值）。
    * 失败保留原文并出站 `engine.error`（S8：不静默吞错）。
    */
   interpolate(source: string): string {
@@ -742,7 +742,7 @@ export class StoryEngine {
   /**
    * 全局层写入（作者 `set`/`define` / 小游戏奖励 / 数组族 op 的唯一收口）。
    *
-   * T08-07 写入契约（fail-closed，拒绝时**状态原样**）：
+   * 写入契约（fail-closed，拒绝时**状态原样**）：
    * - **键**：保留键（`RESERVED_STATE_KEYS` = SYS 精确名全集）拒绝（`reserved-key`）——
    *   SYS 键归引擎所有，外部写入会破坏等待状态机/回溯；
    * - **值**：JSON 安全（白名单 + 对新值深走查拒循环引用，带定位）（`value-not-serializable`）。
@@ -751,7 +751,7 @@ export class StoryEngine {
     if (RESERVED_STATE_KEYS.has(key)) {
       this.fail(
         "reserved-key",
-        `保留键不可写入：${key}（SYS 全集为引擎所有；作者/扩展请改用其他键名，T08-07）`,
+        `保留键不可写入：${key}（SYS 全集为引擎所有；作者/扩展请改用其他键名）`,
       );
       return;
     }
@@ -759,7 +759,7 @@ export class StoryEngine {
     if (unsafe !== null) {
       this.fail(
         "value-not-serializable",
-        `值不可序列化，写入被拒绝：${unsafe}（状态原样；请只写 JSON 安全值并按写时复制更新，T08-07）`,
+        `值不可序列化，写入被拒绝：${unsafe}（状态原样；请只写 JSON 安全值并按写时复制更新）`,
       );
       return;
     }
@@ -776,7 +776,7 @@ export class StoryEngine {
     if (unsafe !== null) {
       this.fail(
         "value-not-serializable",
-        `系统键写入值不可序列化：${unsafe}（引擎内部契约违约，T08-07）`,
+        `系统键写入值不可序列化：${unsafe}（引擎内部契约违约）`,
       );
       return;
     }

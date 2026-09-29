@@ -1,5 +1,5 @@
 /**
- * 06 §二.1 小游戏契约：核心层管等待/奖励/分流（D5/F8），挂载与完成归 UI（任意技术）。
+ * 小游戏契约：核心层管等待/奖励/分流，挂载与完成归 UI（任意技术）。
  * MinigameFactory 的宿主元素由 UI 层提供——引擎核心只承载类型（Web 标准 DOM，零框架依赖）。
  */
 import type { MinigameMountPayload } from "./runtime";
@@ -12,7 +12,7 @@ export interface MinigameContext {
   signal: AbortSignal;
 }
 
-/** 小游戏完成结果：outcome 驱动 on_success/on_fail 分流（F8）；score 供 UI/统计，核心层不消费 */
+/** 小游戏完成结果：outcome 驱动 on_success/on_fail 分流；score 供 UI/统计，核心层不消费 */
 export interface MinigameResult {
   outcome: "success" | "fail";
   score?: number;

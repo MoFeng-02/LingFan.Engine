@@ -2,8 +2,8 @@
  * 07-文本创作模式：文本 = JSON v1 的投影（双向）。
  * - parseTextStory：文本 → Story（缩进块无 end、{…} 包表达式、// 与 # 注释、行列定位 fail-closed）
  * - generateText：Story → 文本（确定性输出：键序按字段序、缩进 2 空格、转义按老规范投影器规则）
- * - T1 往返等价 / T2 投影失败整次拒绝 / T3 JSON 树唯一真相源 / T4 与 JSON 混存（按内容识别）
- * 覆盖引擎已实现 op 全集；scene 列支持元素行（08 §二.1：`类型 "内容" key=value …`，嵌套用缩进）。
+ * - 往返等价 / 投影失败整次拒绝 / JSON 树唯一真相源 / 与 JSON 混存（按内容识别）
+ * 覆盖引擎已实现 op 全集；scene 列支持元素行（`类型 "内容" key=value …`，嵌套用缩进）。
  */
 import type {
   CharacterDef,
@@ -31,7 +31,7 @@ export class TextFormatError extends Error {
 interface SourceLine {
   indent: number;
   text: string;
-  no: number; // 1 起行号（T2 定位）
+  no: number; // 1 起行号（错误定位）
 }
 
 /** 剥离行注释（// 或 #，引号内不剥；老 StripInlineComment 语义） */
@@ -79,7 +79,7 @@ function tokenizeLines(
   return out;
 }
 
-/** 解析引号字符串字面量（F4：\n \t \r \" \\ 已知映射，未知转义保留两字符原样） */
+/** 解析引号字符串字面量（\n \t \r \" \\ 已知映射，未知转义保留两字符原样） */
 function unquote(token: string): string {
   if (token.length < 2 || !token.startsWith('"') || !token.endsWith('"'))
     return token;
@@ -160,7 +160,7 @@ function splitTokens(text: string): string[] {
   return out;
 }
 
-/** set/define 类的值：原样透传（{expr} 复合赋值等由执行器窄化，§七） */
+/** set/define 类的值：原样透传（{expr} 复合赋值等由执行器窄化） */
 function parseValueLiteral(raw: string): unknown {
   const t = raw.trim();
   if (t.startsWith('"') && t.endsWith('"') && t.length >= 2) return unquote(t);
@@ -311,12 +311,12 @@ interface ParseState {
   lines: SourceLine[];
   issues: string[];
   sourceName: string;
-  /** 规约 10 扩展投影（T08-03）：自定义 op 行的分发表（缺省 undefined = 现行为不变） */
+  /** 扩展投影：自定义 op 行的分发表（缺省 undefined = 现行为不变） */
   projections?: CustomOpProjections;
 }
 
 /**
- * 08 §八.3 实例级 z 的文本投影（T01-03）：`z=20`（写端统一用 `z=`；读端兼容别名 `z-index=`）。
+ * 实例级 z 的文本投影：`z=20`（写端统一用 `z=`；读端兼容别名 `z-index=`）。
  * 未指定 → 不输出（保持既有文本逐字节稳定）。
  */
 function instanceZText(cmd: StoryCommand): string {
@@ -358,7 +358,7 @@ function parseSay(
           cmd.voice = unquote(value);
           continue;
         case "z":
-        case "z-index": // 08 §八.3 实例级 z（别名：统一收敛为 `z`）
+        case "z-index": // 实例级 z（别名：统一收敛为 `z`）
           cmd.z = Number(value);
           continue;
         case "clickable":
@@ -382,18 +382,18 @@ function parseSay(
   return cmd;
 }
 
-// ====== 08 §二.1 元素行（scene 列内）：`类型 "内容" key=value …` ======
+// ====== 元素行（scene 列内）：`类型 "内容" key=value …` ======
 
 /**
- * 同时是「元素类型」与「语句 op」的名字——老引擎语句优先于元素兜底（规约 01 §二.2 亦记录
+ * 同时是「元素类型」与「语句 op」的名字——语句优先于元素兜底（
  * `popup` 元素行不可达）。这些名字在文本里一律按 op 解析；要写同名元素请用 JSON 形态。
  */
 const ELEMENT_OP_CONFLICTS = new Set(["video", "background", "window"]);
 
-/** 图像类元素的位置参归属 `source`，其余归 `text`（老引擎 DslParser.BuildEntity:290-294） */
+/** 图像类元素的位置参归属 `source`，其余归 `text` */
 const ELEMENT_SOURCE_TYPES = new Set(["image", "background", "portrait"]);
 
-/** 属性值：true/false → 布尔；纯数字 → 数字；其余去引号原样（老引擎 DslParser.BoolValue 同语义） */
+/** 属性值：true/false → 布尔；纯数字 → 数字；其余去引号原样（同语义） */
 function parseElementAttrValue(raw: string): unknown {
   const text = raw.startsWith('"') ? unquote(raw) : raw;
   if (text === "true") return true;
@@ -403,7 +403,7 @@ function parseElementAttrValue(raw: string): unknown {
 }
 
 /**
- * 元素行 → `ElementNode`（08 §二.1：36 类型 + 属性全集）。
+ * 元素行 → `ElementNode`（36 类型 + 属性全集）。
  * 位置参 `"内容"` 按类型归属（图像类 → `source`，其余 → `text`）；属性合法性由解析期 F5 兜底。
  */
 function parseElementLine(
@@ -482,7 +482,7 @@ function parseSimpleStatement(
       return cmd;
     }
     case "save": {
-      // `save "s" [title "t"]`（screenshot 08-U9 延后）
+      // `save "s" [title "t"]`（screenshot 延后）
       if (tokens.length < 1) return fail("save 需要 slot");
       const cmd: StoryCommand = { op: "save", slot: quoted(0) };
       if (tokens[1] === "title") {
@@ -529,7 +529,7 @@ function parseSimpleStatement(
         const value = token.slice(eq + 1);
         if (key === "type") cmd.type = unquote(value);
         else if (key === "duration") cmd.duration = Number(value);
-        else if (key === "z" || key === "z-index") cmd.z = Number(value); // 08 §八.3 实例级 z
+        else if (key === "z" || key === "z-index") cmd.z = Number(value); // 实例级 z
       }
       return cmd;
     }
@@ -556,7 +556,7 @@ function parseSimpleStatement(
         (t) => t.startsWith("z=") || t.startsWith("z-index="),
       );
       if (zEq !== undefined) {
-        cmd.z = Number(zEq.slice(zEq.indexOf("=") + 1)); // 08 §八.3 实例级 z
+        cmd.z = Number(zEq.slice(zEq.indexOf("=") + 1)); // 实例级 z
       }
       return cmd as StoryCommand;
     }
@@ -674,7 +674,7 @@ function parseSimpleStatement(
         if (m[1] === "") return fail(`minigame ${field} 需要非空目标列`);
         cmd[field] = m[1];
       }
-      const zMatch = /(?:^|\s)(?:z|z-index)=(-?[\d.]+)/.exec(remainder); // 08 §八.3 实例级 z
+      const zMatch = /(?:^|\s)(?:z|z-index)=(-?[\d.]+)/.exec(remainder); // 实例级 z
       if (zMatch !== null) cmd.z = Number(zMatch[1]);
       return cmd;
     }
@@ -697,7 +697,7 @@ function parseSimpleStatement(
       }
       return cmd;
     }
-    // 08 §六.1 音频通道：resource 位置参数 + key=value 负载（volume/loop/fade/auto_stop）
+    // 音频通道：resource 位置参数 + key=value 负载（volume/loop/fade/auto_stop）
     case "bgm":
     case "se":
     case "ambient":
@@ -748,7 +748,7 @@ function parseSimpleStatement(
       }
       return cmd;
     }
-    // 08 §六.5 视频族：resource 位置参数（video/cutscene）；seek_video 为秒数
+    // 视频族：resource 位置参数（video/cutscene）；seek_video 为秒数
     case "video":
     case "cutscene": {
       const resource = tokens.find((t) => t.startsWith('"'));
@@ -769,7 +769,7 @@ function parseSimpleStatement(
             return fail(`${op} 的 ${key} 需要 true|false`);
           cmd[key] = raw === "true";
         } else if (key === "z" || key === "z-index") {
-          // 08 §八.3 实例级 z（视频层）
+          // 实例级 z（视频层）
           cmd.z = Number(raw);
         } else {
           return fail(`${op} 未知参数：${token}`);
@@ -795,7 +795,7 @@ function parseSimpleStatement(
         return fail("video_skipable 需要 true|false");
       return { op: "video_skipable", value: raw === "true" } as StoryCommand;
     }
-    // ====== 08 §二.1 元素增删改 ======
+    // ====== 元素增删改 ======
     case "show": {
       const positional = tokens[0];
       if (positional === undefined || !positional.startsWith('"'))
@@ -869,7 +869,7 @@ function parseSimpleStatement(
       if (tokens.length > 1) return fail(`window 未知参数：${tokens[1]}`);
       return { op: "window", mode } as StoryCommand;
     }
-    // ====== 08 §二.2 帧驱动表现 ======
+    // ====== 帧驱动表现 ======
     case "animate": {
       const target = tokens[0];
       if (target === undefined || !target.startsWith('"'))
@@ -1023,8 +1023,8 @@ function collectBody(
 }
 
 /**
- * 缩进体解析。`allowElements` = 允许元素行（仅 scene 列体开启；08 §二.1 元素是**声明式空间层**，
- * 与 entry 命令分组收集：元素行归 `elements`，其余语句归 `commands`——对齐老引擎 StoryLoader
+ * 缩进体解析。`allowElements` = 允许元素行（仅 scene 列体开启；元素是声明式空间层，
+ * 与 entry 命令分组收集：元素行归 `elements`，其余语句归 `commands`——
  * 「非 define 非元素行 → EntryScript」的分组语义）。
  */
 function parseCommands(
@@ -1055,11 +1055,11 @@ function parseCommands(
       continue;
     }
 
-    // 元素行（两种写法，07 §一.2）：
+    // 元素行（两种写法）：
     //   ① 显式前缀 `element <type> …`——**与 op 同名的元素类型只能这样写**
     //      （`ELEMENT_OP_CONFLICTS`：video/background/window）；投影器对这类元素恒加前缀，
     //      故「文本 ↔ JSON」往返精确（省略前缀会让元素在回读时变成同名命令）
-    //   ② 裸 `<type> …`——**语句优先**：与 op 同名的类型按 op 解析（对齐老引擎），其余按元素
+    //   ② 裸 `<type> …`——**语句优先**：与 op 同名的类型按 op 解析，其余按元素
     if (allowElements) {
       const explicit = op === "element";
       const bare = isElementType(op) && !ELEMENT_OP_CONFLICTS.has(op);
@@ -1094,8 +1094,8 @@ function parseCommands(
       }
     }
 
-    // 规约 10 扩展投影（T08-03）：声明了 fromText 的自定义 op 行交给投影器；
-    // 失败 = 该行 issue（parseTextStory 仍整次拒绝，T2 口径不变），不再落内建「暂不支持」分支混淆定位。
+    // 扩展投影：声明了 fromText 的自定义 op 行交给投影器；
+    // 失败 = 该行 issue（parseTextStory 仍整次拒绝，口径不变），不再落内建「暂不支持」分支混淆定位。
     const fromText = state.projections?.get(op)?.fromText;
     if (fromText !== undefined) {
       const cmd = customFromText(fromText, text, at, state.issues);
@@ -1234,7 +1234,7 @@ function parseBlockStatement(
 
   if (op === "menu") {
     const options: Array<{ text: string; target: string }> = [];
-    // 08 §八.3 实例级 z：`menu "提示" z=20` —— 先从行尾摘掉，避免混进 prompt
+    // 实例级 z：`menu "提示" z=20` —— 先从行尾摘掉，避免混进 prompt
     let menuRest = rest;
     let menuZ: number | undefined;
     const menuZMatch = /(?:^|\s)(?:z|z-index)=(-?[\d.]+)\s*$/.exec(menuRest);
@@ -1627,7 +1627,7 @@ function generateCommand(
       );
       generateBody(cmd.body as StoryCommand[], pad, out, projections);
       return;
-    // ====== 08 §二.1 元素增删改 ======
+    // ====== 元素增删改 ======
     case "show": {
       let line = `${pad}show ${quoteForText(cmd.target as string)}`;
       if (cmd.x !== undefined) line += ` x=${elementValueText(cmd.x)}`;
@@ -1659,7 +1659,7 @@ function generateCommand(
     case "window":
       out.push(`${pad}window ${cmd.mode as string}`);
       return;
-    // ====== 08 §二.2 帧驱动表现 ======
+    // ====== 帧驱动表现 ======
     case "animate": {
       let line = `${pad}animate ${quoteForText(cmd.target as string)} property=${elementValueText(cmd.property)} value=${cmd.value}`;
       if (cmd.duration !== undefined) line += ` duration=${cmd.duration}`;
@@ -1701,7 +1701,7 @@ function generateCommand(
       return;
     }
     default: {
-      // 规约 10 扩展投影（T08-03）：声明了 toText 的自定义 op 交给投影器；否则 fail-closed（T2 不静默）
+      // 扩展投影：声明了 toText 的自定义 op 交给投影器；否则 fail-closed（不静默）
       const toText = projections?.get(cmd.op)?.toText;
       if (toText !== undefined) {
         const line = tryProjectToText(toText, cmd);
@@ -1713,7 +1713,7 @@ function generateCommand(
           `自定义 op「${cmd.op}」文本投影失败（toText 返回 null 或抛出）`,
         ]);
       }
-      // 未支持文本投影的 op：fail-closed（T2 不静默）
+      // 未支持文本投影的 op：fail-closed（不静默）
       throw new TextFormatError([`op "${cmd.op}" 暂无文本投影`]);
     }
   }
@@ -1757,8 +1757,8 @@ function generateDictLiteral(value: Record<string, unknown>): string {
 
 // —— 公共入口 ——
 
-/** 07-T2：文本 → Story（缩进块、注释、全 op 文法；失败整次拒绝并带行列定位）。
- * `projections`（T08-03，可选）= 扩展自定义 op 的行投影表；缺省 = 现行为逐字节不变。 */
+/** 文本 → Story（缩进块、注释、全 op 文法；失败整次拒绝并带行列定位）。
+ * `projections`（可选）= 扩展自定义 op 的行投影表；缺省 = 现行为逐字节不变。 */
 export function parseTextStory(
   source: string,
   sourceName = "story",
@@ -1797,7 +1797,7 @@ export function parseTextStory(
       i = body.end;
       continue;
     }
-    // 08 §二.1 scene 列（空间层）：`scene "列名"` + 缩进体（元素行归 elements，其余归 entry）
+    // scene 列（空间层）：`scene "列名"` + 缩进体（元素行归 elements，其余归 entry）
     const scene = /^scene\s+(.+?)\s*$/.exec(line.text);
     if (scene !== null) {
       const sceneTokens = splitTokens(line.text);
@@ -1806,7 +1806,7 @@ export function parseTextStory(
         state.issues.push(`${at}: scene 名为空或重复：${name}`);
       }
       if (sceneTokens.length > 2) {
-        // 老引擎 scene 头的 type/layout 在新列模型无对应字段 → 接受但忽略（投影不生成）
+        // 旧式 scene 头的 type/layout 在新列模型无对应字段 → 接受但忽略（投影不生成）
         state.issues.push(
           `${at}: scene 头仅支持名称，忽略额外参数：${sceneTokens.slice(2).join(" ")}`,
         );
@@ -1842,7 +1842,7 @@ export function parseTextStory(
         state.issues,
       );
       if (cmd !== null && "key" in cmd) {
-        defines[cmd.key as string] = cmd.value; // 01 §一.6/F2：顶层 = 无条件 Set
+        defines[cmd.key as string] = cmd.value; // 顶层 = 无条件 Set
       }
       i += 1;
       continue;
@@ -1876,12 +1876,12 @@ function elementValueText(value: unknown): string {
 }
 
 /**
- * `ElementNode` → 元素行（08 §二.1）：`类型 "内容" key=value …`。
+ * `ElementNode` → 元素行：`类型 "内容" key=value …`。
  * 确定性输出：位置参（`source` 优先，其次 `text`）紧接类型名，其余键按插入序；children 缩进 2 空格。
  *
  * **同名冲突类型加 `element ` 前缀**（`ELEMENT_OP_CONFLICTS`）：裸写会被「语句优先」回读成同名
- * op（见 `parseCommands`），加前缀后元素与 op 两侧都可达，往返精确（07 §一.2）。其余类型裸写，
- * 与既有文本/老引擎写法保持一致（不制造无谓改动）。
+ * op（见 `parseCommands`），加前缀后元素与 op 两侧都可达，往返精确。其余类型裸写，
+ * 与既有文本写法保持一致（不制造无谓改动）。
  */
 function generateElement(node: ElementNode, pad: string, out: string[]): void {
   const tokens: string[] = ELEMENT_OP_CONFLICTS.has(node.type)
@@ -1924,7 +1924,7 @@ export function projectText(
   }
   for (const column of story.columns) {
     if (column.kind === "scene") {
-      // 08 §二.1 scene 列：元素行在前、entry 命令在后（与装载语义一致——先声明空间层再执行）
+      // scene 列：元素行在前、entry 命令在后（与装载语义一致——先声明空间层再执行）
       out.push(`scene ${column.id}`);
       for (const node of column.elements ?? []) {
         tolerant(`元素 ${String(node.type ?? "")}`, issues, () =>
@@ -1966,8 +1966,8 @@ function tolerant(
   }
 }
 
-/** 07-T1/T3：Story → 文本（确定性输出）。不可投影部分收集为 issues 后整次拒绝（fail-closed）。
- * `projections`（T08-03，可选）= 扩展自定义 op 的行投影表；缺省 = 现行为逐字节不变。 */
+/** Story → 文本（确定性输出）。不可投影部分收集为 issues 后整次拒绝（fail-closed）。
+ * `projections`（可选）= 扩展自定义 op 的行投影表；缺省 = 现行为逐字节不变。 */
 export function generateText(
   story: Story,
   projections?: CustomOpProjections,
