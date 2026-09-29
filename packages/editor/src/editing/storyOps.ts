@@ -7,6 +7,7 @@
  */
 
 import type { Story } from "@lingfan/engine";
+import { isSafeFileNameSegment } from "@lingfan/engine";
 import {
   getAtPointer,
   insertAtPointer,
@@ -47,22 +48,46 @@ export function containerPointer(
   return `/columns/${index}/${field}`;
 }
 
-function nextColumnId(story: Story): string {
-  let n = story.columns.length + 1;
-  let id = `column-${n}`;
-  while (story.columns.some((column) => column.id === id)) {
-    n += 1;
-    id = `column-${n}`;
+/**
+ * T09-02 语义化列 id 生成（Q1 落地，锚点: semantic-column-id）：建议 → 唯一化 → 兜底。
+ * `hint` 是**建议**非命令：非法（空 / 不安全文件名字符）→ 回退 `column-N` 计数
+ * （不抛、不静默把作者输入改写成另一个语义 id）；重名 → `-2`/`-3` 递增取空位。
+ * 列 id 语义（agent.md §3.3）：文件名 = 列 id 是存储不变量，运行时永不派生；
+ * 列序 = 文件路径码元序 ⇒ 语义化 id 优于计数 id（`column-N` 重排后落字母位，仅兜底）。
+ */
+export function suggestColumnId(
+  hint: string | null | undefined,
+  existingIds: readonly string[],
+): string {
+  const taken = new Set(existingIds);
+  const cleaned = typeof hint === "string" ? hint.trim() : "";
+  if (cleaned !== "" && isSafeFileNameSegment(cleaned)) {
+    if (!taken.has(cleaned)) return cleaned;
+    let n = 2;
+    while (taken.has(`${cleaned}-${n}`)) n += 1;
+    return `${cleaned}-${n}`;
   }
-  return id;
+  let n = existingIds.length + 1;
+  while (taken.has(`column-${n}`)) n += 1;
+  return `column-${n}`;
 }
 
-/** 追加列；id 缺省自动生成并保证唯一；显式 id 撞名 = fail-closed 原样返回；scene 预置双容器 */
+/** 追加列；id 缺省时按 `hint` 生成语义化 id（无建议 → column-N 兜底）并保证唯一；显式 id 撞名 = fail-closed 原样返回；scene 预置双容器 */
 export function addColumn(
   story: Story,
-  options: { id?: string; kind?: "scene" | "flow" } = {},
+  options: {
+    id?: string;
+    kind?: "scene" | "flow";
+    /** 语义化建议（仅 id 缺省时参与；见 suggestColumnId） */
+    hint?: string | null;
+  } = {},
 ): { story: Story; id: string } {
-  const id = options.id ?? nextColumnId(story);
+  const id =
+    options.id ??
+    suggestColumnId(
+      options.hint,
+      story.columns.map((column) => column.id),
+    );
   if (
     options.id !== undefined &&
     story.columns.some((column) => column.id === id)

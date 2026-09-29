@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm dev --mode tauri",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build --mode tauri",
+    "beforeBuildCommand": "pnpm build --mode tauri && pnpm build:prepare",
     "frontendDist": "../dist"
   },
   "app": {
@@ -14,7 +14,8 @@
       {
         "title": "lingfanengine",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "visible": false
       }
     ],
     "security": {

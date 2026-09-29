@@ -2,10 +2,12 @@
 import { computed, inject, ref } from "vue";
 import type { Story } from "@lingfan/engine";
 import {
+  createElementDraft,
   describeNodeLabel,
+  ELEMENT_TYPE_GROUPS,
+  elementLabel,
   getAtPointer,
-  listOps,
-  type OpGroup,
+  listOpGroups,
 } from "@lingfan/editor";
 
 const props = defineProps<{
@@ -22,29 +24,11 @@ interface EditorApi {
 }
 const api = inject<EditorApi>("editorApi")!;
 
-const opGroups: {
-  group: OpGroup;
-  label: string;
-  ops: { op: string; label: string }[];
-}[] = [
-  { group: "narrative", label: "叙事", ops: [] },
-  { group: "presentation", label: "表现", ops: [] },
-  { group: "flow", label: "流程", ops: [] },
-  { group: "variables", label: "变量", ops: [] },
-  { group: "save", label: "存档", ops: [] },
-  { group: "audio", label: "音频", ops: [] },
-  { group: "video", label: "视频", ops: [] },
-  { group: "minigame", label: "小游戏", ops: [] },
-];
-for (const meta of listOps()) {
-  opGroups
-    .find((g) => g.group === meta.group)
-    ?.ops.push({
-      op: meta.op,
-      label: meta.label,
-    });
-}
+/** op 分组与中文标签 = `@lingfan/editor` 单一事实源（与组件面板共用，勿在此另列清单） */
+const opGroups = listOpGroups();
 const insertOp = ref("say");
+/** D-46：元素层容器的插入源 = 元素类型分组（与组件面板同源），默认取第一组首个类型 */
+const insertType = ref(ELEMENT_TYPE_GROUPS[0]?.types[0] ?? "");
 
 const column = computed(() =>
   props.story.columns.find((c) => c.id === props.columnId),
@@ -91,6 +75,12 @@ const containers = computed(() => {
 function insert(field: "commands" | "elements" | "entry"): void {
   const index = props.story.columns.findIndex((c) => c.id === props.columnId);
   if (index < 0) return;
+  // D-46：元素层只产元素草稿（createElementDraft fail-closed），绝不产 {op} 命令形态
+  if (field === "elements") {
+    const draft = createElementDraft(insertType.value, 0, 0);
+    if (draft !== null) api.insertCommand(`/columns/${index}/elements`, draft);
+    return;
+  }
   api.insertCommand(`/columns/${index}/${field}`, { op: insertOp.value });
 }
 function move(pointer: string, delta: number): void {
@@ -98,6 +88,11 @@ function move(pointer: string, delta: number): void {
 }
 function isSelected(pointer: string): boolean {
   return props.selectedPointer === pointer;
+}
+function emptyHint(field: "commands" | "elements" | "entry"): string {
+  return field === "elements"
+    ? "空容器——选择元素类型后「插入」"
+    : "空容器——选择 op 后「插入」";
 }
 function summary(cmd: Record<string, unknown>): string {
   const text = cmd.text ?? cmd.prompt ?? cmd.target ?? cmd.slot ?? cmd.key;
@@ -114,7 +109,23 @@ function summary(cmd: Record<string, unknown>): string {
     >
       <div class="container-head">
         <h2>{{ container.label }}</h2>
-        <select v-model="insertOp" class="op-picker">
+        <!-- D-46：元素层用元素类型下拉（同源组件面板），命令容器仍用 op 下拉 -->
+        <select
+          v-if="container.field === 'elements'"
+          v-model="insertType"
+          class="op-picker"
+        >
+          <optgroup
+            v-for="group in ELEMENT_TYPE_GROUPS"
+            :key="group.group"
+            :label="group.label"
+          >
+            <option v-for="type in group.types" :key="type" :value="type">
+              {{ elementLabel(type) }}（{{ type }}）
+            </option>
+          </optgroup>
+        </select>
+        <select v-else v-model="insertOp" class="op-picker">
           <optgroup
             v-for="group in opGroups"
             :key="group.group"
@@ -165,7 +176,7 @@ function summary(cmd: Record<string, unknown>): string {
           </span>
         </li>
         <li v-if="container.rows.length === 0" class="empty">
-          空容器——选择 op 后「插入」
+          {{ emptyHint(container.field) }}
         </li>
       </ol>
     </div>

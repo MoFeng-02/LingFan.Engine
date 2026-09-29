@@ -78,6 +78,10 @@ export const UNIMPLEMENTED_ELEMENT_ATTRS: ReadonlySet<string> = new Set([
   "yoffset",
   "xanchor",
   "yanchor",
+  // 第 9 个（T02-03 互锁建立时反向逮出）：`image`/`imagebutton`/`portrait` 有表单
+  // （「拉伸方式」）但 `packages/ui` 零消费——T01-01 的人工盘点按已知 8 键 grep，
+  // 没从契约全集反推差集，漏了它。互锁测试从此守着这个洞。
+  "stretch",
 ]);
 
 /** 属性 → 呈现语义（未列出者回退 `string`） */

@@ -18,9 +18,12 @@
  * `writable` 禁用保存。写回顺序固定「先写后删」，永不先删后写。
  */
 import {
+  conflictMessage,
+  detectWriteConflicts,
   diffProjectFiles,
   MANIFEST_FILE,
   STORIES_DIR,
+  type FileStamp,
   type ProjectFilesPort,
   type ProjectWriteReport,
   type ProjectWriterPort,
@@ -407,6 +410,89 @@ export function createSourceResourcePort(
   };
 }
 
+// —— 诊断供给侧（T02-01 / T02-02）：i18n overlay 键 + 资源文件集 ——
+
+/** overlay 根目录名（Rust `LANG_ROOT` 同名；07 §三 工程结构） */
+const LANG_ROOT = "Lang";
+
+/** 编辑器诊断的两份供给侧数据（= `analyzeStory` 的可选入参形态） */
+export interface DiagnosticSupply {
+  /** 资源根内实际文件的**逻辑路径**集合（相对资源根，原样） */
+  resourceFiles: ReadonlySet<string>;
+  /** overlay 译文键并集（`Lang/**` 全部语言；无 `Lang/` = 空集） */
+  overlayKeys: ReadonlySet<string>;
+}
+
+/** overlay 候选文件：`Lang/` 下、`.json` 或 `.json.enc` 结尾（点文件已由枚举口径剔除） */
+function isOverlayPath(path: string): boolean {
+  return (
+    path.startsWith(`${LANG_ROOT}/`) &&
+    (path.endsWith(".json") || path.endsWith(".json.enc"))
+  );
+}
+
+/**
+ * overlay 译文表解析（Rust `load_overlay_files` 同语义）：**坏 JSON / 含非字符串值 →
+ * 整个文件跳过**（老引擎 LoadFile 宽松口径）。返回 `undefined` = 跳过。
+ */
+function parseOverlayEntries(text: string): Record<string, string> | undefined {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  const entries: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof raw !== "string") return undefined; // 非字符串值 = 整文件无效（不部分采用）
+    entries[key] = raw;
+  }
+  return entries;
+}
+
+/**
+ * 编辑器诊断供给侧（T02-01 / T02-02）：一次枚举算出两份数据，供 `analyzeStory`
+ * 的 `resourceFiles` / `overlayKeys` 使用（编辑器**唯一**接线点 = 组合根调用本函数）。
+ *
+ * `resourceFiles` = `paths()` **原样全集**（含清单/故事/Lang 属无害冗余，只令 `has()` 为真）。
+ * **有意不做 `.enc` 后缀特判**（2026-09-27 用户裁定）：编辑器是**明文工程形态**（D-09，
+ * `.enc` 故事在打开时已 fail-closed）⇒ 能打开的工程里运行期解析 = 明文名字直查
+ * （`createStaticResourcePort.resolve`，无任何 `.enc` 探测），剥后缀反而制造
+ * 「编辑器说在、运行期说缺」的分叉；加密工程编辑器打不开，剥不剥都无意义。
+ * **有意不读文件头判加密**：LFEN/LFEN2 魔数知识归 Rust（05「安全永远 Rust」），
+ * 且运行期逻辑路径定义与内容格式无关（明文 `.enc` 文件运行期走 BadFormat/K6，不当明文用）——
+ * 读头既换不来对齐、还把格式知识引入 TS + 每文件多一次 I/O。
+ *
+ * `overlayKeys` = `Lang/**` 下全部 `.json`（目录形态 `Lang/{lang}/**` 与单文件
+ * `Lang/{lang}.json` 两种写法都命中）的键**并集**。与 Rust 供给的差异说明：Rust 按 `lang`
+ * 单语言供给，而「译文键在故事里找不到原文」与语言无关 ⇒ 编辑器取**跨语言并集**才能覆盖
+ * 所有死键（编辑器暂无语言选择器；单语言口径在只有 `en/` 而无 `zh-CN/` 的工程上会整体失效）。
+ * 加密 overlay（`.json.enc`）**走同一供给参与对账**（T05-03）：能解密的供给（如
+ * Tauri 形态的 `text` 经 Rust 返回明文）正常入集；浏览器形态无密钥，密文 JSON
+ * 解析失败 → `parseOverlayEntries` 宽容跳过——与「单文件内容坏」同语义，少报不误报。
+ *
+ * 失败语义：枚举/读取失败**原样抛出**（不静默降级空集合——半套数据会让诊断假绿）；
+ * 单文件内容坏则宽容跳过（与 Rust 一致，见 `parseOverlayEntries`）。
+ */
+export async function loadDiagnosticSupply(
+  source: ProjectFileSource,
+): Promise<DiagnosticSupply> {
+  const paths = await source.paths();
+  const resourceFiles = new Set<string>();
+  const overlayKeys = new Set<string>();
+  for (const path of paths) {
+    resourceFiles.add(path);
+    if (!isOverlayPath(path)) continue;
+    const entries = parseOverlayEntries(await source.text(path));
+    if (entries === undefined) continue;
+    for (const key of Object.keys(entries)) overlayKeys.add(key);
+  }
+  return { resourceFiles, overlayKeys };
+}
+
 // —— 写回（09-16）：FSA 目录句柄 ——
 
 /** 未获写权限时的统一可操作文案（requestPermission 被拒 / createWritable 抛 NotAllowedError 同一句） */
@@ -535,12 +621,46 @@ async function removeFileAt(
   }
 }
 
+/** 采集文件指纹（T03-02）：逻辑路径 → lastModified/size；缺失/不可读的路径**不入表**
+ *  （load 侧 undefined = 冲突判定为「被外部删除」；采集异常不吞 IO 错误以外的致命问题）。 */
+async function collectFileStamps(
+  root: FileSystemDirectoryHandle,
+  paths: readonly string[],
+): Promise<Map<string, FileStamp>> {
+  const stamps = new Map<string, FileStamp>();
+  for (const path of paths) {
+    try {
+      let dir: FileSystemDirectoryHandle = root;
+      const segments = safeSegments(path);
+      for (const segment of segments.slice(0, -1)) {
+        dir = await asWritableDir(dir).getDirectoryHandle(segment);
+      }
+      const handle = await asWritableDir(dir).getFileHandle(
+        segments[segments.length - 1] ?? "",
+      );
+      const file = await handle.getFile();
+      stamps.set(path, {
+        lastModified: file.lastModified,
+        size: file.size,
+      });
+    } catch (error: unknown) {
+      if (isMissingHandle(error)) continue; // 缺失 = 留空（比对时判冲突）
+      throw error;
+    }
+  }
+  return stamps;
+}
+
 /**
  * `ProjectWriterPort` 实现（FSA 真目录）：与**打开基线**求最小差量 → 先写后删。
  *
- * 顺序固定：申请写权限 → 建 `Stories/` → 写列文件 → 写 `project.json` → 删陈旧文件。
+ * 顺序固定：申请写权限 → **冲突检测（T03-02）** → 建 `Stories/` → 写列文件 → 写 `project.json` → 删陈旧文件。
  * 永不先删后写：任一步失败时磁盘上最坏只是「多出文件」，工程仍可加载；失败不更新基线，
  * 重试即幂等收敛。
+ *
+ * **并发检测（T03-02）**：构造时对基线文件集采集指纹（`getFile()` → lastModified/size），
+ * 每次 `apply` 在落盘前重新采集比对——外部改动/删除 → 抛可操作冲突错误（零写入）；
+ * 写回成功后快照整体换新（自己的保存永不自报）。读指纹只需 read 权限（打开时已获）。
  */
 export async function createHandleProjectWriter(
   picked: FileSystemDirectoryHandle,
@@ -548,6 +668,7 @@ export async function createHandleProjectWriter(
 ): Promise<ProjectWriterPort> {
   const { root } = await locateResourceRootHandle(picked);
   let baseline = new Map(previous);
+  let stamps = await collectFileStamps(root, [...baseline.keys()]);
   return {
     writable: true,
     async apply(files: ReadonlyMap<string, string>): Promise<ProjectWriteReport> {
@@ -556,6 +677,12 @@ export async function createHandleProjectWriter(
       const deleted: string[] = [];
       try {
         await ensureWriteAccess(root); // 手势窗口：保持为第一个 await
+        // T03-02 冲突检测：任何落盘之前重采指纹比对（读只需 read 权限，不弹权限）
+        const current = await collectFileStamps(root, [...stamps.keys()]);
+        const conflicts = detectWriteConflicts(stamps, current);
+        if (conflicts.length > 0) {
+          throw new Error(conflictMessage(conflicts));
+        }
         // `Stories/` 可能不存在（首次写回 / 用户清空）→ 建之
         await asWritableDir(root).getDirectoryHandle(STORIES_DIR, {
           create: true,
@@ -581,7 +708,128 @@ export async function createHandleProjectWriter(
         throw normalizeWriteError(error);
       }
       baseline = new Map(files); // 成功才更新基线 → 二次保存不重复写
+      stamps = await collectFileStamps(root, [...baseline.keys()]); // 快照换新：自己的保存不自报
       return { written, deleted };
+    },
+  };
+}
+
+// —— 「记住上次工程」（T03-06）——
+
+/**
+ * 读权限按需申请（「重新打开上次工程」用）：已授权直接放行；未授权在**用户手势内**
+ * 申请 `read`（重开按钮点击即手势，与保存链路 `ensureWriteAccess` 同纪律）。
+ * 老 Chromium 无 permission API：放行（由后续文件读失败归一）。
+ */
+export async function ensureReadAccess(
+  root: FileSystemDirectoryHandle,
+): Promise<boolean> {
+  const dir = root as FileSystemDirectoryHandle & {
+    queryPermission?: (options: {
+      mode: "read" | "readwrite";
+    }) => Promise<PermissionState>;
+    requestPermission?: (options: {
+      mode: "read" | "readwrite";
+    }) => Promise<PermissionState>;
+  };
+  if (dir.queryPermission !== undefined) {
+    if ((await dir.queryPermission({ mode: "read" })) === "granted") return true;
+  }
+  if (dir.requestPermission === undefined) return true;
+  return (await dir.requestPermission({ mode: "read" })) === "granted";
+}
+
+/**
+ * 上次工程句柄的持久化（IndexedDB）：句柄是可结构化克隆对象，IDB 原生支持存取；
+ * 下次启动据此提供「重新打开上次工程」一键（免开选择器）。**任何 IDB 失败
+ * （隐私模式 / 配额 / 不支持）一律静默**——功能退化为不存在，编辑器不受影响。
+ * 保存入口 = `pickProjectDirectory` / 重开成功后由组合根调用（真实手势路径上）。
+ */
+export interface LastProjectHandleStore {
+  load(): Promise<FileSystemDirectoryHandle | undefined>;
+  save(handle: FileSystemDirectoryHandle): Promise<void>;
+}
+
+const LAST_PROJECT_DB = "lingfan-editor";
+const LAST_PROJECT_STORE = "last-project";
+const LAST_PROJECT_KEY = "last";
+
+function isDirectoryHandleLike(value: unknown): value is FileSystemDirectoryHandle {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as { kind?: unknown }).kind === "directory"
+  );
+}
+
+export function createLastProjectStore(
+  idbFactory?: IDBFactory,
+): LastProjectHandleStore {
+  const factory =
+    idbFactory ?? (typeof indexedDB === "undefined" ? undefined : indexedDB);
+
+  function openDb(): Promise<IDBDatabase | undefined> {
+    if (factory === undefined) return Promise.resolve(undefined);
+    return new Promise((resolve) => {
+      try {
+        const request = factory.open(LAST_PROJECT_DB, 1);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains(LAST_PROJECT_STORE)) {
+            db.createObjectStore(LAST_PROJECT_STORE);
+          }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => resolve(undefined);
+        request.onblocked = () => resolve(undefined);
+      } catch {
+        resolve(undefined);
+      }
+    });
+  }
+
+  return {
+    async load() {
+      const db = await openDb();
+      if (db === undefined) return undefined;
+      try {
+        return await new Promise((resolve) => {
+          try {
+            const request = db
+              .transaction(LAST_PROJECT_STORE, "readonly")
+              .objectStore(LAST_PROJECT_STORE)
+              .get(LAST_PROJECT_KEY);
+            request.onsuccess = () => {
+              const value = request.result as unknown;
+              resolve(isDirectoryHandleLike(value) ? value : undefined);
+            };
+            request.onerror = () => resolve(undefined);
+          } catch {
+            resolve(undefined);
+          }
+        });
+      } finally {
+        db.close();
+      }
+    },
+    async save(handle) {
+      const db = await openDb();
+      if (db === undefined) return;
+      try {
+        await new Promise<void>((resolve) => {
+          try {
+            const tx = db.transaction(LAST_PROJECT_STORE, "readwrite");
+            tx.objectStore(LAST_PROJECT_STORE).put(handle, LAST_PROJECT_KEY);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+            tx.onabort = () => resolve();
+          } catch {
+            resolve();
+          }
+        });
+      } finally {
+        db.close();
+      }
     },
   };
 }

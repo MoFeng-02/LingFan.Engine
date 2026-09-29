@@ -291,7 +291,14 @@ describe("P2 目录取径·目录 input 文件快照", () => {
 
 // —— 09-16 写回：FSA 目录句柄（可变树替身 + 权限/失败注入） ——
 
-type MutableFileNode = { kind: "file"; name: string; text: string };
+/** 替身文件 mtime 种子：固定初值保证未动过的文件指纹稳定（不随 Date.now 漂移） */
+const SEED_MTIME = 1_700_000_000_000;
+type MutableFileNode = {
+  kind: "file";
+  name: string;
+  text: string;
+  mtime: number;
+};
 type MutableDirNode = {
   kind: "dir";
   name: string;
@@ -312,17 +319,41 @@ interface WriteHooks {
   log: string[];
   /** 权限 API 调用序（query / request）——验「申请在写之前」 */
   permissionCalls: string[];
+  /** 写/外部改动共用的 mtime 计数：每次落盘或篡改后指纹严格前进 */
+  tick?: number;
+  /** 外部程序改动（绕过 writer）：改内容 + 前进 mtime（模拟他人保存） */
+  externalEdit?: (path: string, text: string) => void;
+  /** 外部程序删除基线文件（绕过 writer） */
+  externalRemove?: (path: string) => void;
 }
 
-function mutableNodes(tree: Tree): Map<string, MutableNode> {
+function mutableNodes(
+  tree: Tree,
+  index: Map<string, MutableNode>,
+  prefix = "",
+): Map<string, MutableNode> {
   const out = new Map<string, MutableNode>();
+  const childPath = (name: string): string =>
+    prefix === "" ? name : `${prefix}/${name}`;
   for (const [name, value] of Object.entries(tree)) {
-    out.set(
-      name,
-      typeof value === "string"
-        ? { kind: "file", name, text: value }
-        : { kind: "dir", name, children: mutableNodes(value) },
-    );
+    if (typeof value === "string") {
+      const node: MutableFileNode = {
+        kind: "file",
+        name,
+        text: value,
+        mtime: SEED_MTIME,
+      };
+      index.set(childPath(name), node);
+      out.set(name, node);
+    } else {
+      const node: MutableDirNode = {
+        kind: "dir",
+        name,
+        children: mutableNodes(value, index, childPath(name)),
+      };
+      index.set(childPath(name), node);
+      out.set(name, node);
+    }
   }
   return out;
 }
@@ -336,7 +367,7 @@ function mutableFileHandle(
     kind: "file",
     name: node.name,
     async getFile(): Promise<File> {
-      return new File([node.text], node.name);
+      return new File([node.text], node.name, { lastModified: node.mtime });
     },
     async createWritable(): Promise<unknown> {
       const failure = hooks.failWrite?.get(path);
@@ -348,6 +379,8 @@ function mutableFileHandle(
         },
         async close(): Promise<void> {
           node.text = pending;
+          hooks.tick = (hooks.tick ?? 0) + 1;
+          node.mtime = SEED_MTIME + hooks.tick;
           hooks.log.push(`write:${path}`);
         },
         async abort(): Promise<void> {
@@ -386,7 +419,12 @@ function mutableDirHandle(
         if (options?.create !== true) {
           throw new DOMException("not found", "NotFoundError");
         }
-        const created: MutableFileNode = { kind: "file", name, text: "" };
+        const created: MutableFileNode = {
+          kind: "file",
+          name,
+          text: "",
+          mtime: SEED_MTIME,
+        };
         node.children.set(name, created);
         return mutableFileHandle(created, childPath(name), hooks);
       }
@@ -451,11 +489,38 @@ function writableRoot(
   tree: Tree,
   hooks: WriteHooks,
 ): FileSystemDirectoryHandle {
-  return mutableDirHandle(
-    { kind: "dir", name: "Resources", children: mutableNodes(tree) },
-    "",
-    hooks,
-  );
+  const index = new Map<string, MutableNode>();
+  const rootNode: MutableDirNode = {
+    kind: "dir",
+    name: "Resources",
+    children: mutableNodes(tree, index),
+  };
+  const bump = (): number => {
+    hooks.tick = (hooks.tick ?? 0) + 1;
+    return SEED_MTIME + hooks.tick;
+  };
+  hooks.externalEdit = (path, text) => {
+    const node = index.get(path);
+    if (node === undefined || node.kind !== "file") {
+      throw new Error(`externalEdit 未知文件：${path}`);
+    }
+    node.text = text;
+    node.mtime = bump();
+  };
+  hooks.externalRemove = (path) => {
+    const segments = path.split("/");
+    const name = segments[segments.length - 1] ?? "";
+    const parentPath = segments.slice(0, -1).join("/");
+    const parent = parentPath === "" ? rootNode : index.get(parentPath);
+    if (parent === undefined || parent.kind !== "dir") {
+      throw new Error(`externalRemove 父目录缺失：${path}`);
+    }
+    if (!parent.children.delete(name)) {
+      throw new Error(`externalRemove 未知文件：${path}`);
+    }
+    index.delete(path);
+  };
+  return mutableDirHandle(rootNode, "", hooks);
 }
 
 async function readText(
@@ -592,6 +657,80 @@ describe("09-16 写回·FSA 目录句柄", () => {
       ),
     ).rejects.toThrow("文件被占用");
     expect(await readText(root, "Stories/a.json")).toContain('"a"');
+  });
+
+  it("T03-02 外部篡改：apply 前检测 → 冲突文案、零落盘（未篡改时行为不变）", async () => {
+    const hooks = grantedHooks();
+    const root = writableRoot(
+      {
+        "project.json": WRITE_MANIFEST,
+        Stories: { "start.json": WRITE_START },
+      },
+      hooks,
+    );
+    const writer = await createHandleProjectWriter(
+      root,
+      new Map([
+        ["project.json", WRITE_MANIFEST],
+        ["Stories/start.json", WRITE_START],
+      ]),
+    );
+    // 外部程序改磁盘（内容 + mtime 前进）；wanted 为全量期望集（diff 零差量也检测）
+    hooks.externalEdit!("Stories/start.json", '{"外部改的"}');
+    const wanted = new Map<string, string>([
+      ["Stories/start.json", WRITE_START],
+      ["project.json", WRITE_MANIFEST],
+    ]);
+    await expect(writer.apply(wanted)).rejects.toThrow("磁盘已被外部修改");
+    // 零落盘：磁盘仍是外部版本（writer 未覆盖）
+    expect(await readText(root, "Stories/start.json")).toBe('{"外部改的"}');
+    // 未篡改时行为不变：重开 writer（基线 = 磁盘现状）→ 保存成功
+    const writer2 = await createHandleProjectWriter(
+      root,
+      new Map([["Stories/start.json", '{"外部改的"}']]),
+    );
+    const report = await writer2.apply(
+      new Map([["Stories/start.json", WRITE_START]]),
+    );
+    expect(report.written).toEqual(["Stories/start.json"]);
+  });
+
+  it("T03-02 外部删除基线文件 → 冲突持续 fail-closed；重开后可重建且不自报", async () => {
+    const hooks = grantedHooks();
+    const root = writableRoot(
+      {
+        "project.json": WRITE_MANIFEST,
+        Stories: { "start.json": WRITE_START },
+      },
+      hooks,
+    );
+    const writer = await createHandleProjectWriter(
+      root,
+      new Map([
+        ["project.json", WRITE_MANIFEST],
+        ["Stories/start.json", WRITE_START],
+      ]),
+    );
+    hooks.externalRemove!("Stories/start.json");
+    const wanted = new Map<string, string>([
+      ["Stories/start.json", WRITE_START],
+      ["project.json", WRITE_MANIFEST],
+    ]);
+    await expect(writer.apply(wanted)).rejects.toThrow("磁盘已被外部修改");
+    // 零落盘：磁盘保持外部删除后的状态（writer 不擅自重建）
+    expect(await readText(root, "Stories/start.json")).toBeUndefined();
+    // 磁盘状态未变 → 持续冲突（快照未换新，fail-closed 无自我恢复）
+    await expect(writer.apply(wanted)).rejects.toThrow("磁盘已被外部修改");
+    // 按文案重新打开工程（基线 = 磁盘现状，被删文件不在基线）→ 保存可重建
+    const reopened = await createHandleProjectWriter(
+      root,
+      new Map([["project.json", WRITE_MANIFEST]]),
+    );
+    const report = await reopened.apply(wanted);
+    expect(report.written).toEqual(["Stories/start.json"]);
+    // 自己的写入不自报：快照已换新 → 二次保存零差量空跑
+    const report2 = await reopened.apply(wanted);
+    expect(report2).toEqual({ written: [], deleted: [] });
   });
 
   it("权限：granted 不询问；prompt→granted 先申请后写；denied / NotAllowedError 归一且零写入", async () => {

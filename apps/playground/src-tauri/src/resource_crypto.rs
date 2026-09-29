@@ -73,7 +73,7 @@ impl std::fmt::Display for ResourceCryptoError {
             }
             ResourceCryptoError::TooLarge { size, limit } => write!(
                 f,
-                "资源过大（{size} > {limit}）：大资源走临时文件 + 自定义协议流式路径（待实施）"
+                "资源过大（{size} > {limit}）：该护栏仅覆盖文本类供给路径；媒体类大资源走自定义协议流式（lfstream Range 按需解密），请勿经文本路径读取"
             ),
         }
     }
@@ -604,7 +604,8 @@ pub fn stream_decrypt_to_cache(
     let mut buf = Vec::new();
     fin.read_to_end(&mut buf).map_err(io)?;
     // 复用通用解密器（LFEN2 版本校验/LFEN 兼容 K8/AAD 绑路径全在内部）；
-    // 内存峰值 = 密文 + 明文双倍——分块流式解密（格式 v2）待后续批次
+    // 内存峰值 = 密文 + 明文双倍——这里是「整文件落缓存」路径，按需分块流化（复用
+    // decrypt_v2_block_range 逐块写盘）属后续优化项，媒体播放已由 lfstream Range 路径覆盖
     let plain = decrypt_resource_bytes(&buf, key, path)?;
     fs::write(&cache, &plain).map_err(io)?;
     Ok(name)
@@ -675,6 +676,11 @@ pub(crate) fn mime_for(name: &str) -> &'static str {
         "otf" => "font/otf",
         "woff" => "font/woff",
         "woff2" => "font/woff2",
+        // T06-02 前端产物经 v2 路径供给：module script/样式表的 MIME 必须精确，否则 WebView 拒执行
+        "js" | "mjs" => "text/javascript",
+        "css" => "text/css",
+        "json" | "map" => "application/json",
+        "html" => "text/html",
         _ => "application/octet-stream",
     }
 }
@@ -909,6 +915,14 @@ pub fn decrypt_story(app: tauri::AppHandle, path: String) -> Result<String, Reso
     String::from_utf8(plain).map_err(|_| ResourceCryptoError::BadFormat("故事资源非 UTF-8".into()))
 }
 
+/// T06-02 splash 预热：首启触发 seed→KEK 信封化解封（K1），把解封时延盖在 splash 窗口后面，
+/// 主窗口显示后 v2 供给立即可用。明文形态（无 seed）失败无害——预热只求副作用，结果不消费。
+pub fn preheat_resource_key(app: &tauri::AppHandle) {
+    let _ = resource_root(app).and_then(|root| {
+        resource_dek(&app_data(app), &root, &*crate::resource_fs::resource_fs(app))
+    });
+}
+
 /// 打包工具：目录批量加密（灵泛 EncryptDirectoryAsync 语义照搬）——按扩展名过滤、
 /// 已加密（魔数检测）直接复制、结构保留、输出 = 原路径 + `.enc`。
 /// `exclusions` = 相对路径排除集（精确匹配 `project.json` 或目录前缀 `Saves/`——
@@ -921,6 +935,7 @@ pub fn encrypt_directory(
     exclusions: &[&str],
 ) -> Result<Vec<PathBuf>, ResourceCryptoError> {
     let mut written = Vec::new();
+    let mut scan = PackScan::default();
     encrypt_directory_inner(
         input,
         input,
@@ -928,7 +943,10 @@ pub fn encrypt_directory(
         key,
         extensions,
         exclusions,
+        "",
+        false,
         &mut written,
+        &mut scan,
     )?;
     Ok(written)
 }
@@ -947,18 +965,32 @@ fn encrypt_directory_inner(
     key: &[u8],
     extensions: &[&str],
     exclusions: &[&str],
+    prefix: &str,
+    force_v2: bool,
     written: &mut Vec<PathBuf>,
+    scan: &mut PackScan,
 ) -> Result<(), ResourceCryptoError> {
     let entries = fs::read_dir(dir).map_err(io)?;
     for entry in entries {
         let path = entry.map_err(io)?.path();
         if path.is_dir() {
-            encrypt_directory_inner(root, &path, output, key, extensions, exclusions, written)?;
+            encrypt_directory_inner(root, &path, output, key, extensions, exclusions, prefix, force_v2, written, scan)?;
             continue;
         }
         let rel = path.strip_prefix(root).unwrap_or(&path);
-        let rel_str = rel.to_string_lossy().replace('\\', "/");
-        if is_excluded(&rel_str, exclusions) || rel_str.starts_with('.') || rel_str.contains("/.") {
+        let rel_str = format!("{prefix}{}", rel.to_string_lossy().replace('\\', "/"));
+        if is_excluded(&rel_str, exclusions) {
+            scan.excluded.push(PackEntry {
+                path: rel_str,
+                reason: "排除集（运行期产物 / 密钥引导 / 清单）",
+            });
+            continue;
+        }
+        if rel_str.starts_with('.') || rel_str.contains("/.") {
+            scan.excluded.push(PackEntry {
+                path: rel_str,
+                reason: "点文件（隐藏 / 系统）",
+            });
             continue; // 排除项与点文件（隐藏/系统）不进包
         }
         let ext = path
@@ -966,14 +998,21 @@ fn encrypt_directory_inner(
             .map(|e| e.to_string_lossy().to_lowercase())
             .unwrap_or_default();
         if !extensions.iter().any(|e| *e == ext) {
+            scan.skipped.push(PackEntry {
+                path: rel_str,
+                reason: "扩展名白名单外（不静默明文；如属资源请扩充白名单）",
+            });
             continue;
         }
+        scan.encrypted.push(rel_str.clone());
         let out = output.join(format!("{rel_str}.enc"));
         if let Some(parent) = out.parent() {
             fs::create_dir_all(parent).map_err(io)?;
         }
         let data_len = path.metadata().map_err(io)?.len();
-        if data_len > V2_AUTO_THRESHOLD {
+        // force_v2（T06-02 dist 收录）：前端产物经协议 v2 路径按需供给——小文件也必须存 v2
+        // 分块形态（单块特例），否则 handler 按 v2 读头失败 404（真窗冒烟实测逮住）
+        if force_v2 || data_len > V2_AUTO_THRESHOLD {
             // ⑨-4c：大文件走 v2 分块流式加密（内存 = 单块；lfstream 按需解密不落明文缓存）
             encrypt_lfen2_v2_file(&path, &out, key, &rel_str, V2_DEFAULT_CHUNK_LOG2)?;
         } else {
@@ -999,13 +1038,54 @@ const PACK_EXTENSIONS: &[&str] = &[
     "ttf", "otf", "woff", "woff2", // 字体
 ];
 
+/// 前端构建产物（dist）收录白名单（T06-02）：js/css + 字体/图——
+/// **html 除外**（入口 html 是壳嵌入的明文例外，绝不能混进加密输入；
+/// html 出现在 dist 输入 = 上游流程错，落报告 skipped 由打包者决断）。
+const PACK_DIST_EXTENSIONS: &[&str] = &[
+    "js", "css", // 业务产物（需求 #4 明示「含编译后的 js/ts」）
+    "png", "jpg", "jpeg", "gif", "webp", "svg", // 产物内静态图
+    "woff", "woff2", "ttf", "otf", // 字体
+];
+
 /// 打包输出排除集：清单（明文转换）+ 运行时生成的存档目录 + 包内密钥种子（输出侧专属）
 const PACK_EXCLUSIONS: &[&str] = &["project.json", "Saves/", "__key__.seed"];
 
-/// 打包结果报告
+/// 报告条目：路径 + 分类原因（措辞与规约 05 §二.2 例外清单一致）
+#[derive(Debug, Serialize)]
+pub struct PackEntry {
+    pub path: String,
+    pub reason: &'static str,
+}
+
+/// 打包结果报告（T06-04：已加密 / 明文 / 排除 / 未入包 分类明细，口径 = 规约 05 §二.2）
 #[derive(Debug, Serialize)]
 pub struct PackReport {
     pub files: usize,
+    /// 加密入包的逻辑路径（原路径，包内为 `路径 + .enc`）
+    pub encrypted: Vec<String>,
+    /// 包内明文（有因）：project.json = 工程元数据（R3 (a)）、__key__.seed = 密钥引导
+    pub plaintext: Vec<PackEntry>,
+    /// 排除不入包（有因）：Saves/（玩家数据）、点文件（隐藏/系统）
+    pub excluded: Vec<PackEntry>,
+    /// 未入包（打包者须决断）：扩展名白名单外——运行期资源缺失 fail-closed 暴露，不静默明文
+    pub skipped: Vec<PackEntry>,
+}
+
+impl PackReport {
+    /// `--strict` 判定：报告含任何「未入包 / 明文例外」⇒ 有例外（非零退出）。
+    /// 明文例外 = 资源侧必须明文的文件（T06-02 后的入口 html/splash，届时在此并入判定）；
+    /// project.json（工程元数据）与 Saves/seed（运行期产物/密钥引导）是有因归类，不算例外。
+    pub fn has_exceptions(&self) -> bool {
+        !self.skipped.is_empty()
+    }
+}
+
+/// 扫描分类收集器：encrypt_directory_inner 逐文件判定时填充
+#[derive(Default)]
+struct PackScan {
+    encrypted: Vec<String>,
+    excluded: Vec<PackEntry>,
+    skipped: Vec<PackEntry>,
 }
 
 /// ⑨-4b 打包编排：明文工程根 → 加密发布根（lfenpack CLI 的可测核心）。
@@ -1013,8 +1093,19 @@ pub struct PackReport {
 /// - 清单恒明文转换：`resourceEncryption` 置 true（运行时形态判定依赖清单先可读，05 §二）
 /// - DEK 新生成 → 写输出根 `__key__.seed`（运行时首次导入即 KEK 封装，K1）
 /// - 内容文件全量 LFEN2（白名单扩展 + 排除集），`原路径 + .enc`，结构保留
+/// - `dist`（T06-02）：前端构建产物目录，以 `dist/` 逻辑路径前缀收录（html 落报告 skipped）；
+///   收录非空时输出清单补 `frontend.assets` 映射段（清单恒明文，只多一组路径）
 /// - 完整性自检：输出逐文件解密回读 == 源明文（round-trip，打包完整性 fail-closed）
 pub fn pack_project(input: &Path, output: &Path) -> Result<PackReport, ResourceCryptoError> {
+    pack_project_with_dist(input, output, None)
+}
+
+/// T06-02：`dist` 提供时以前端产物白名单收录（`dist/` 逻辑路径前缀，html 落报告 skipped）
+pub fn pack_project_with_dist(
+    input: &Path,
+    output: &Path,
+    dist: Option<&Path>,
+) -> Result<PackReport, ResourceCryptoError> {
     if output.exists() {
         let non_empty = fs::read_dir(output)
             .map(|mut it| it.next().is_some())
@@ -1046,7 +1137,36 @@ pub fn pack_project(input: &Path, output: &Path) -> Result<PackReport, ResourceC
 
     // 内容文件批量加密 + 完整性自检（v2 逐块回读 / v1 全量回读）
     use std::io::Read;
-    let written = encrypt_directory(input, output, &seed, PACK_EXTENSIONS, PACK_EXCLUSIONS)?;
+    let mut written = Vec::new();
+    let mut scan = PackScan::default();
+    encrypt_directory_inner(
+        input,
+        input,
+        output,
+        &seed,
+        PACK_EXTENSIONS,
+        PACK_EXCLUSIONS,
+        "",
+        false,
+        &mut written,
+        &mut scan,
+    )?;
+    // T06-02 前端产物收录：dist/ 逻辑路径前缀；html 落报告 skipped（见 PACK_DIST_EXTENSIONS）；
+    // 强制 v2 存储（协议 v2 路径供给的前置形态，见 encrypt_directory_inner force_v2 注记）
+    if let Some(dist_root) = dist {
+        encrypt_directory_inner(
+            dist_root,
+            dist_root,
+            output,
+            &seed,
+            PACK_DIST_EXTENSIONS,
+            &[],
+            "dist/",
+            true,
+            &mut written,
+            &mut scan,
+        )?;
+    }
     for out_path in &written {
         let rel_str = out_path
             .strip_prefix(output)
@@ -1056,7 +1176,15 @@ pub fn pack_project(input: &Path, output: &Path) -> Result<PackReport, ResourceC
         let logical = rel_str
             .strip_suffix(".enc")
             .ok_or_else(|| ResourceCryptoError::Io(format!("加密输出缺 .enc 后缀：{rel_str}")))?;
-        let src = input.join(logical);
+        // dist 收录文件的源在前端产物根，不在工程资源根
+        let src = match logical.strip_prefix("dist/") {
+            Some(rest) => dist
+                .ok_or_else(|| {
+                    ResourceCryptoError::Io(format!("包内出现 dist 文件但未提供 dist 输入：{logical}"))
+                })?
+                .join(rest),
+            None => input.join(logical),
+        };
         let mut head = [0u8; V2_HEADER_LEN];
         let n = fs::File::open(out_path)
             .map_err(io)?
@@ -1074,8 +1202,45 @@ pub fn pack_project(input: &Path, output: &Path) -> Result<PackReport, ResourceC
             }
         }
     }
+    // T06-02：dist 收录非空 → 输出清单补 frontend 映射段（清单恒明文，只多一组路径；
+    // dist 产物名与 assets 路径一一对应：`assets/x.js` ↔ `dist/assets/x.js.enc`）
+    let dist_assets: Vec<String> = scan
+        .encrypted
+        .iter()
+        .filter(|p| p.starts_with("dist/"))
+        .cloned()
+        .collect();
+    if !dist_assets.is_empty() {
+        manifest["frontend"] =
+            serde_json::json!({ "assets": dist_assets });
+        fs::write(
+            output.join("project.json"),
+            serde_json::to_string_pretty(&manifest)
+                .map_err(|e| ResourceCryptoError::Io(format!("清单序列化失败：{e}")))?,
+        )
+        .map_err(io)?;
+    }
+
     Ok(PackReport {
         files: written.len(),
+        encrypted: scan.encrypted,
+        plaintext: vec![
+            PackEntry {
+                path: "project.json".into(),
+                reason: "工程元数据（非资源，R3 (a)：运行期形态判定先决读取）",
+            },
+            PackEntry {
+                path: DEK_SEED.into(),
+                reason: "DEK 密钥引导（首启信封化输入，K1）",
+            },
+        ],
+        excluded: scan
+            .excluded
+            .into_iter()
+            // project.json 的实际处置 = 明文转换（见 plaintext），排除集条目只是防重复加密，不进报告
+            .filter(|e| e.path != "project.json")
+            .collect(),
+        skipped: scan.skipped,
     })
 }
 
@@ -1258,6 +1423,114 @@ mod tests {
         assert_eq!(
             decrypt_resource_bytes(&sealed, &seed, "Stories/a.json").unwrap(),
             b"{\"commands\":[]}".to_vec()
+        );
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn pack_report_classifies_dispositions() {
+        // T06-04：报告四分类各有代表（加密 / 明文有因 / 排除 / 未入包）+ strict 例外判定
+        let base = temp_base("lf3-pack-report");
+        let input = base.join("in");
+        let output = base.join("out");
+        fs::create_dir_all(input.join("Stories")).unwrap();
+        fs::create_dir_all(input.join("Saves")).unwrap();
+        fs::create_dir_all(input.join("docs")).unwrap();
+        fs::write(
+            input.join("project.json"),
+            r#"{"formatVersion":1,"id":"demo"}"#,
+        )
+        .unwrap();
+        fs::write(input.join("Stories/a.json"), b"{}").unwrap();
+        fs::write(input.join("Saves/slot_1.lfs3"), b"save").unwrap();
+        fs::write(input.join(".hidden"), b"h").unwrap();
+        fs::write(input.join("docs/notes.txt"), b"n").unwrap();
+
+        let report = pack_project(&input, &output).unwrap();
+        assert_eq!(report.encrypted, vec!["Stories/a.json".to_string()]);
+        assert_eq!(report.files, 1);
+        // 明文（有因）恒两条：清单（工程元数据）+ seed（密钥引导），措辞与规约 05 §二.2 一致
+        assert_eq!(report.plaintext.len(), 2);
+        assert_eq!(report.plaintext[0].path, "project.json");
+        assert_eq!(report.plaintext[1].path, DEK_SEED);
+        // 排除：Saves 子树 + 点文件（read_dir 顺序不定，按集合断言）
+        let excluded: Vec<&str> = report.excluded.iter().map(|e| e.path.as_str()).collect();
+        assert!(excluded.contains(&"Saves/slot_1.lfs3"));
+        assert!(excluded.contains(&".hidden"));
+        // 未入包：白名单外 = 打包者须决断的例外
+        assert_eq!(report.skipped.len(), 1);
+        assert_eq!(report.skipped[0].path, "docs/notes.txt");
+        assert!(report.has_exceptions());
+        // 未入包文件确实没进包（不静默明文）
+        assert!(!output.join("docs").exists());
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn pack_report_clean_project_has_no_exceptions() {
+        // 边界：纯净工程（全部白名单内）→ strict 零例外
+        let base = temp_base("lf3-pack-report-clean");
+        let input = base.join("in");
+        let output = base.join("out");
+        fs::create_dir_all(input.join("Stories")).unwrap();
+        fs::write(
+            input.join("project.json"),
+            r#"{"formatVersion":1,"id":"demo"}"#,
+        )
+        .unwrap();
+        fs::write(input.join("Stories/a.json"), b"{}").unwrap();
+        let report = pack_project(&input, &output).unwrap();
+        assert_eq!(report.files, 1);
+        assert!(report.skipped.is_empty());
+        assert!(!report.has_exceptions());
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn pack_project_with_dist_collects_frontend() {
+        // T06-02：dist 收录（dist/ 逻辑路径前缀）+ html 落报告 skipped + 清单 frontend 段
+        // + dist 逻辑路径走运行时解密面（与故事资源同管线，形态透明）
+        let base = temp_base("lf3-pack-dist");
+        let input = base.join("in");
+        let output = base.join("out");
+        let dist = base.join("distenc"); // 模拟 prepare-dist 移出位 dist-enc/
+        fs::create_dir_all(input.join("Stories")).unwrap();
+        fs::create_dir_all(dist.join("assets")).unwrap();
+        fs::write(
+            input.join("project.json"),
+            r#"{"formatVersion":1,"id":"demo","entry":"a"}"#,
+        )
+        .unwrap();
+        fs::write(input.join("Stories/a.json"), b"{}").unwrap();
+        // vite 产物名字符集（[A-Za-z0-9_.-]）：encodeURIComponent 与 Rust 编码输出一致
+        fs::write(dist.join("assets/index-Cx1Ab.js"), b"console.log(1)").unwrap();
+        fs::write(dist.join("assets/index-Cx1Ab.css"), b"body{}").unwrap();
+        // html = 明文例外（壳嵌入），不进 dist 白名单 → skipped
+        fs::write(dist.join("splashscreen.html"), b"<html></html>").unwrap();
+
+        let report = pack_project_with_dist(&input, &output, Some(&dist)).unwrap();
+        let has = |p: &str| report.encrypted.iter().any(|s| s == p);
+        assert!(has("Stories/a.json"));
+        assert!(has("dist/assets/index-Cx1Ab.js"));
+        assert!(has("dist/assets/index-Cx1Ab.css"));
+        assert_eq!(report.files, 3);
+        let skipped: Vec<&str> = report.skipped.iter().map(|e| e.path.as_str()).collect();
+        assert!(skipped.contains(&"dist/splashscreen.html"));
+        assert!(report.has_exceptions());
+        // 输出清单补 frontend 映射段（包自描述：加密前端面有哪些资产）
+        let manifest: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(output.join("project.json")).unwrap())
+                .unwrap();
+        assert_eq!(manifest["frontend"]["assets"].as_array().unwrap().len(), 2);
+
+        // dist 逻辑路径经同一解密契约可读（AAD 绑 dist/ 前缀逻辑路径）
+        let seed = fs::read(output.join("__key__.seed")).unwrap();
+        let sealed = fs::read(output.join("dist/assets/index-Cx1Ab.js.enc")).unwrap();
+        // dist 资产强制 v2 存储（协议 v2 路径供给的前置形态——小文件也是 v2 单块特例）
+        assert!(sealed.starts_with(MAGIC_LFEN2) && sealed[5] == FORMAT_VERSION_V2);
+        assert_eq!(
+            decrypt_resource_bytes(&sealed, &seed, "dist/assets/index-Cx1Ab.js").unwrap(),
+            b"console.log(1)".to_vec()
         );
         fs::remove_dir_all(&base).ok();
     }

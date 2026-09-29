@@ -274,7 +274,9 @@ async function main(): Promise<void> {
     toast.className = "toast";
     toast.textContent = text;
     notificationsEl.append(toast);
-    window.setTimeout(() => toast.remove(), 2600);
+    // 提示驻留（T11-08 提常量）：沿袭现状 2600ms，零行为变化
+    const TOAST_DURATION_MS = 2600;
+    window.setTimeout(() => toast.remove(), TOAST_DURATION_MS);
   }
 
   engine.onStateChanged(({ key, value }) => {

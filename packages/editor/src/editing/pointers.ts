@@ -189,3 +189,29 @@ export function moveAtPointer<T>(
   });
   return next === undefined ? null : (next as T);
 }
+
+function isCommandAt(root: unknown, pointer: string): boolean {
+  const node = getAtPointer(root, pointer);
+  return (
+    node !== null &&
+    typeof node === "object" &&
+    !Array.isArray(node) &&
+    typeof (node as Record<string, unknown>).op === "string"
+  );
+}
+
+/**
+ * 归一到**最近的命令祖先指针**（D-48）：诊断/引用给出的指针是字段级（D6 精确到
+ * 字段），而时间线行选中与属性面板表单都锚在命令指针上——指针不是命令时沿前缀
+ * **从长到短**上溯包含它的命令（嵌套块体逐级上溯）；本身已是命令、或无命令祖先
+ * （列指针 / 根）→ 原样返回（调用方既有语义不变）。
+ */
+export function nearestCommandPointer(story: unknown, pointer: string): string {
+  if (isCommandAt(story, pointer)) return pointer;
+  const segments = parsePointer(pointer);
+  for (let i = segments.length - 1; i >= 2; i -= 1) {
+    const prefix = buildPointer(segments.slice(0, i));
+    if (isCommandAt(story, prefix)) return prefix;
+  }
+  return pointer;
+}

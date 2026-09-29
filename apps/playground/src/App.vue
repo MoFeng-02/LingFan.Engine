@@ -109,6 +109,15 @@ const menuOptions = computed(() =>
 );
 const notifications = ref<Array<{ id: number; text: string }>>([]);
 let notifySeq = 0;
+// —— 提示驻留时长（T11-08 提常量，零行为变化；数值沿袭现状，差异有意）——
+// notify op 未自带 duration 时的驻留：通知要供阅读，最长
+const NOTIFY_DURATION_MS = 3000;
+// 操作反馈 toast（存/读按钮等）：短促即可
+const TOAST_DURATION_MS = 1500;
+// 读档完成提示：文案含「回到存档时刻」说明，比普通反馈多留一档时间
+const LOAD_TOAST_DURATION_MS = 2500;
+// 「已回溯」轻提示：与普通反馈同档
+const ROLLBACK_NOTICE_DURATION_MS = 1500;
 // —— 08-U3 打字机 / U5 NVL / §四 历史面板 / U4 角色样式 ——
 const shownText = ref(""); // 打字机可见前缀（渲染层 v-html）
 const speakerColor = ref(""); // U4：角色样式自动应用
@@ -526,7 +535,7 @@ function handleEvent({
     notifications.value.push({ id, text: payload.text });
     setTimeout(() => {
       notifications.value = notifications.value.filter((n) => n.id !== id);
-    }, payload.duration ?? 3000);
+    }, payload.duration ?? NOTIFY_DURATION_MS);
   } else if (payload.kind === "minigame.mount") {
     // 06 §二/D5：宿主经注册表解析工厂挂载；未注册 fail-closed（不伪造完成，等待保持）
     const factory = minigames.get(payload.game);
@@ -561,7 +570,7 @@ function handleEvent({
     syncFromEngine();
     audioRenderer?.sync(); // 05 §四：读档恢复媒体状态（bgm 曲目 + 播放位置）
     videoRenderer?.sync();
-    toast(`已读取 ${payload.slot}（回到存档时刻）`, 2500);
+    toast(`已读取 ${payload.slot}（回到存档时刻）`, LOAD_TOAST_DURATION_MS);
   } else if (payload.kind === "rollback.done") {
     error.value = "";
     syncFromEngine(); // 03-R4：回放完成解除输入锁并同步渲染
@@ -571,7 +580,14 @@ function handleEvent({
     notifications.value.push({ id, text: "已回溯" });
     setTimeout(() => {
       notifications.value = notifications.value.filter((n) => n.id !== id);
-    }, 1500);
+    }, ROLLBACK_NOTICE_DURATION_MS);
+  } else if (payload.kind === "load.notice") {
+    // T08-08/09 读档诊断（非致命，宿主应知情）：演示宿主以通知条展示
+    const id = ++notifySeq;
+    notifications.value.push({ id, text: payload.text });
+    setTimeout(() => {
+      notifications.value = notifications.value.filter((n) => n.id !== id);
+    }, ROLLBACK_NOTICE_DURATION_MS);
   } else {
     error.value = `${payload.code}: ${payload.message}`;
   }
@@ -708,7 +724,7 @@ function setPrefOrientation(event: Event): void {
 // —— 05 存档：编排归引擎命令面（槽位校验/写读/错误出站都在核心层）——
 // UI 只发 save/load 命令并反应完成信号（save.done / load.done）；端口经装配通道注入引擎。
 
-function toast(text: string, duration = 1500): void {
+function toast(text: string, duration = TOAST_DURATION_MS): void {
   const id = ++notifySeq;
   notifications.value.push({ id, text });
   setTimeout(() => {

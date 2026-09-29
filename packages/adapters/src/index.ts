@@ -21,18 +21,24 @@ export {
   createFileListFileSource,
   createHandleFileSource,
   createHandleProjectWriter,
+  createLastProjectStore,
   createSourceProjectFilesPort,
   createSourceResourcePort,
+  ensureReadAccess,
+  loadDiagnosticSupply,
   locateResourceRootFromPaths,
   pickProjectDirectory,
   supportsDirectoryPicker,
   type BlobUrlOptions,
+  type DiagnosticSupply,
+  type LastProjectHandleStore,
   type ProjectFileSource,
 } from "./resources";
 export {
   createFetchProjectFilesPort,
   loadProject,
   loadProjectFromFetch,
+  createTauriProjectWriter,
   type FetchProjectFilesOptions,
 } from "./resources";
 export {

@@ -55,12 +55,22 @@ export interface LoadDonePayload {
   slot: string;
 }
 
+/**
+ * T08-08/T08-09 读档诊断（非致命、宿主应知情）：扩展状态迁移成功 / 存档版本经
+ * migrateSave 钩子迁移等。宿主不消费即忽略；致命失败走 `engine.error` + 整档拒绝。
+ */
+export interface LoadNoticePayload {
+  kind: "load.notice";
+  text: string;
+}
+
 export type OutboundPayload =
   | EngineErrorPayload
   | NotifyPayload
   | RollbackDonePayload
   | SaveDonePayload
   | LoadDonePayload
+  | LoadNoticePayload
   | MinigameMountPayload;
 
 /** 02 §三.1 出站统一信封：核心层出站全部 `{v, kind:'event', payload}` */
@@ -145,6 +155,17 @@ export const SYS = {
   /** 故事级打字机设置（`text_typewriter`）：`{ enabled?, speed? }`；玩家偏好可覆盖（U10） */
   typewriter: "__typewriter",
 } as const;
+
+/**
+ * T08-07 键命名空间：**保留键 = `SYS` 全集**（2026-09-27 用户授权裁定）。
+ * 判定 = **精确键名**（非 `__` 前缀一刀切——作者自用 `__xxx` 非保留键是现状且被测试使用）；
+ * 程序化写入命中即 fail-closed（`reserved-key`）——`SYS` 键归引擎所有，外部写入会直接破坏
+ * 等待状态机 / 回溯等引擎状态。作者在故事里 `set` 自己的变量只受本条约束（可继续自用 `__xxx`）。
+ * 将来扩展（T08）程序化写入另须走 `ext.<extensionId>.<key>` 命名空间。
+ */
+export const RESERVED_STATE_KEYS: ReadonlySet<string> = new Set(
+  Object.values(SYS),
+);
 
 /** 02 §二.2 等待状态（`__waiting` 取值全集） */
 export type WaitingState =

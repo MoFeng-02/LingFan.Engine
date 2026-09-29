@@ -5,10 +5,15 @@
  */
 
 import type { z } from "zod";
-import type { FieldDescriptor, FieldKind, OpFormDescriptor } from "../contracts";
-import { FIELD_META, OP_META } from "./catalog";
+import type {
+  FieldDescriptor,
+  FieldKind,
+  OpFormDescriptor,
+  OpMeta,
+} from "../contracts";
+import { FIELD_META } from "./catalog";
 import { elementLabel } from "./elementForms";
-import { OP_SCHEMAS } from "./opSchemas";
+import { BUILTIN_OP_SURFACE, type OpSurface } from "./surface";
 
 interface Unwrapped {
   inner: z.ZodType;
@@ -109,15 +114,24 @@ function describeField(
       return { ...base, kind: meta?.kind ?? "value" };
     case "record":
       return { ...base, kind: meta?.kind ?? "object" };
+    // T08-04 扩展 op 无 FIELD_META → 从 zod 派生兜底（meta 恒优先，内建 op 行为不变）
+    case "number":
+      return { ...base, kind: meta?.kind ?? "number" };
+    case "boolean":
+      return { ...base, kind: meta?.kind ?? "boolean" };
     default:
       return base;
   }
 }
 
-/** 单 op 表单描述符；未知 op 返回 undefined（诊断层报 unknown-op） */
-export function describeForm(op: string): OpFormDescriptor | undefined {
-  const schema = OP_SCHEMAS[op];
-  const meta = OP_META.find((entry) => entry.op === op);
+/** 单 op 表单描述符；未知 op 返回 undefined（诊断层报 unknown-op）。
+ * `surface`（T08-04，可选）= op 面（缺省内建；扩展注册后由组合根传合并面）。 */
+export function describeForm(
+  op: string,
+  surface: OpSurface = BUILTIN_OP_SURFACE,
+): OpFormDescriptor | undefined {
+  const schema = surface.schemas[op];
+  const meta = surface.meta.find((entry) => entry.op === op);
   if (schema === undefined || meta === undefined) return undefined;
   const shape = (schema.def as z.core.$ZodObjectDef).shape;
   return {
@@ -130,9 +144,9 @@ export function describeForm(op: string): OpFormDescriptor | undefined {
   };
 }
 
-/** op 目录（时间线插入菜单/节点图调色板用） */
-export function listOps(): typeof OP_META {
-  return OP_META;
+/** op 目录（时间线插入菜单/节点图调色板用；`surface` = T08-04 合并面，缺省内建） */
+export function listOps(surface: OpSurface = BUILTIN_OP_SURFACE): readonly OpMeta[] {
+  return surface.meta;
 }
 
 /**
@@ -142,9 +156,10 @@ export function listOps(): typeof OP_META {
  */
 export function describeNodeLabel(
   node: Record<string, unknown> | undefined,
+  surface: OpSurface = BUILTIN_OP_SURFACE,
 ): string {
   const op = node?.op;
-  if (typeof op === "string") return describeForm(op)?.label ?? op;
+  if (typeof op === "string") return describeForm(op, surface)?.label ?? op;
   const type = node?.type;
   if (typeof type === "string") return elementLabel(type);
   return "（坏命令）";

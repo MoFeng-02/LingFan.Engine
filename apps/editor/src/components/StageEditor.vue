@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, inject, ref, type CSSProperties } from "vue";
-import type { ResourcePort, Story } from "@lingfan/engine";
+import { ELEMENT_CONTAINER_TYPES, type ResourcePort, type Story } from "@lingfan/engine";
 import {
+  createElementDraft,
   describeElement,
   draggedPosition,
   elementLabel,
   getAtPointer,
+  planElementDrop,
   type FieldDescriptor,
 } from "@lingfan/editor";
 import { elementSource } from "@lingfan/ui";
@@ -20,6 +22,10 @@ import FieldRow from "./FieldRow.vue";
  *   未打开工程 = 无资源根 → 保持占位方块。
  * - **拖拽**：拖拽中仅本地预览（transform），**松手才写回一次** `x`/`y`，避免每帧污染 undo。
  *   字符串坐标（如 `"50%"`）保持原值不动（像素位移无法与百分比相加）。
+ * - **落点创建（T04-03）**：从组件面板拖元素到画布 → 落点即 `x`/`y`，**一次拖入 = 一个 undo
+ *   单元**（提交在 `editorApi.insertElement`）；落点在某容器块内 → 进其 `children`
+ *   （坐标换算为相对容器原点，与运行期渲染一致）。类型/载荷 fail-closed：非元素类、
+ *   未知类型一律忽略（锚点: editor-drag-create-element）。
  * - **属性**：选中元素 → 契约驱动的 `describeElement` 字段表（直接复用 `FieldRow`）。
  */
 const props = defineProps<{
@@ -60,6 +66,12 @@ function elementThumb(element: Record<string, unknown>): string | undefined {
 interface EditorApi {
   update(pointer: string, value: unknown): void;
   select(pointer: string | null): void;
+  /** T04-03：组件拖入的落点创建（一次拖入 = 一个 undo 单元，提交在宿主会话中枢） */
+  insertElement(
+    columnPointer: string,
+    element: Record<string, unknown>,
+    parentPointer?: string,
+  ): void;
 }
 const api = inject<EditorApi>("editorApi")!;
 
@@ -179,6 +191,84 @@ const descriptor = computed(() =>
 const fields = computed<readonly FieldDescriptor[]>(
   () => descriptor.value?.fields ?? [],
 );
+
+/**
+ * T04-03 落点创建：DOM/事件留在组件，**判定与数值走 `@lingfan/editor` 纯函数**。
+ * 画布内容坐标 = client 坐标 − 画布原点（含边框：`clientLeft`）+ 滚动量；
+ * 容器命中 = 顶级容器块中**DOM 序最后**（默认 z 序最上）包含落点者。
+ */
+const canvasEl = ref<HTMLDivElement | null>(null);
+const dropActive = ref(false);
+const PALETTE_TYPE = "application/x-lingfan-palette";
+
+function isPaletteDrag(event: DragEvent): boolean {
+  return event.dataTransfer?.types.includes(PALETTE_TYPE) ?? false;
+}
+
+function onDragOver(event: DragEvent): void {
+  if (!isPaletteDrag(event)) return;
+  event.preventDefault(); // 允许 drop
+  if (event.dataTransfer !== null) event.dataTransfer.dropEffect = "copy";
+  dropActive.value = true;
+}
+
+function onDragLeave(): void {
+  dropActive.value = false;
+}
+
+function onDrop(event: DragEvent): void {
+  dropActive.value = false;
+  const scene = sceneColumn.value;
+  const canvas = canvasEl.value;
+  if (scene === undefined || canvas === null) return;
+  const dt = event.dataTransfer;
+  const raw = dt?.getData(PALETTE_TYPE) ?? "";
+  if (raw === "") return;
+  let payload: unknown;
+  try {
+    payload = JSON.parse(raw) as unknown;
+  } catch {
+    return; // 畸形载荷 fail-closed
+  }
+  if (payload === null || typeof payload !== "object") return;
+  const { kind, id } = payload as { kind?: unknown; id?: unknown };
+  // 只接元素；命令（kind:"op"）的落点创建不在本任务面，忽略
+  if (kind !== "element" || typeof id !== "string") return;
+
+  const canvasRect = canvas.getBoundingClientRect();
+  const localX = event.clientX - canvasRect.left + canvas.scrollLeft;
+  const localY = event.clientY - canvasRect.top + canvas.scrollTop;
+
+  const blocks = canvas.querySelectorAll<HTMLElement>(":scope > .element");
+  let hit: { index: number; originX: number; originY: number } | undefined;
+  elements.value.forEach((element, index) => {
+    if (!ELEMENT_CONTAINER_TYPES.has(String(element.type ?? ""))) return;
+    const rect = blocks[index]?.getBoundingClientRect();
+    if (rect === undefined) return;
+    if (
+      event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom
+    ) {
+      return;
+    }
+    hit = {
+      index,
+      originX: rect.left - canvasRect.left + canvas.scrollLeft,
+      originY: rect.top - canvasRect.top + canvas.scrollTop,
+    };
+  });
+
+  const plan = planElementDrop(localX, localY, hit);
+  const draft = createElementDraft(String(id), plan.x, plan.y);
+  if (draft === null) return; // 未知类型 fail-closed（不静默造坏节点）
+  api.insertElement(
+    scene.pointer,
+    draft,
+    plan.parentIndex === null ? undefined : elementPointer(plan.parentIndex),
+  );
+}
 </script>
 
 <template>
@@ -190,7 +280,14 @@ const fields = computed<readonly FieldDescriptor[]>(
     </p>
 
     <template v-else>
-      <div class="canvas">
+      <div
+        ref="canvasEl"
+        class="canvas"
+        :class="{ 'drop-active': dropActive }"
+        @dragover="onDragOver"
+        @dragleave="onDragLeave"
+        @drop.prevent="onDrop"
+      >
         <div
           v-for="(element, index) in elements"
           :key="index"
@@ -203,7 +300,7 @@ const fields = computed<readonly FieldDescriptor[]>(
           <span v-if="element.id" class="id">#{{ element.id }}</span>
         </div>
         <p v-if="elements.length === 0" class="hint">
-          该 scene 列还没有元素——可在 JSON 视图或文本视图添加。
+          该 scene 列还没有元素——从左侧「组件」面板拖入，或在 JSON / 文本视图添加。
         </p>
       </div>
 
@@ -237,6 +334,11 @@ const fields = computed<readonly FieldDescriptor[]>(
   background: #16161f;
   border: 1px solid #2a2a3a;
   border-radius: 8px;
+}
+/* T04-03：拖拽悬停时的落点提示 */
+.canvas.drop-active {
+  border-color: #7aa2f7;
+  box-shadow: 0 0 0 1px #7aa2f766;
 }
 .element {
   position: absolute;

@@ -13,6 +13,7 @@ import type {
   I18nOverlayFile,
   I18nPort,
   MinigameResult,
+  OpExtension,
   OutboundEvent,
   OutboundPayload,
   SaveDataV1,
@@ -26,7 +27,13 @@ import type {
   ValueChanged,
   VideoCommand,
 } from "../contracts";
-import { ELEMENT_ATTRIBUTES, SYS } from "../contracts";
+import { ELEMENT_ATTRIBUTES, EXT_KEY_PREFIX, RESERVED_STATE_KEYS, SYS } from "../contracts";
+import {
+  buildExtensionContext,
+  buildOpRegistry,
+  runRegisteredOp,
+  type RegisteredOp,
+} from "./opRegistry";
 import {
   findElements as findElementsIn,
   loadElements,
@@ -42,6 +49,7 @@ import {
 import { mergeOverlayFiles } from "./i18n";
 import type { NameResolver } from "./resolver";
 import { Scope } from "./scope";
+import { findJsonValueError } from "./stateContract";
 
 /** say 的已知负载字段（01 §二.1）；未知字段 fail-closed（E3/F5） */
 const SAY_KNOWN_FIELDS = new Set([
@@ -192,6 +200,13 @@ export interface EngineOptions {
   saveMode?: SaveMode;
   /** 01 §四.3 I18N overlay 供给端口（setLanguage 按需加载译文；缺省 = 原文直出） */
   i18nPort?: I18nPort;
+  /** 规约 10 自定义 op 扩展（构造期注册校验，fail-fast；缺省 = 无扩展，unknown-op 口径不变） */
+  extensions?: readonly OpExtension[];
+  /**
+   * T08-09 存档版本迁移钩子：`formatVersion` 非 1 的档先经此迁移（返回 v1 载荷 = 放行并发
+   * `load.notice`；返回 null = 无法迁移 → 可操作拒绝）。缺省 = 非 v1 档直接可操作拒绝。
+   */
+  migrateSave?: (data: unknown) => SaveDataV1 | null;
 }
 
 /** 05 槽位信任边界（与 Rust validate_slot 同判）：字母数字/_/-，1..64 */
@@ -321,6 +336,14 @@ export class StoryEngine {
   /** 01 §四.3 I18N 端口与当前语言译文表（null = 原文直出；切换 = 整表重建，老引擎「清缓存」同语义） */
   private i18nPort: I18nPort | undefined;
   private overlay: Map<string, string> | null = null;
+  /** 规约 10 扩展 op 注册表（构造期校验装配；查找序 = 内建 → 扩展 → unknown-op） */
+  private readonly extensionOps: Map<string, RegisteredOp>;
+  /** T08-08 扩展声明索引（id → 声明：存档依赖校验 / migrate / restore 用） */
+  private readonly extensionById: ReadonlyMap<string, OpExtension>;
+  /** T08-08 本档实际执行过的扩展（op 执行时登记；exportSave 落盘依赖标记；读档继承档内标记） */
+  private readonly usedExtensions = new Set<string>();
+  /** T08-09 存档版本迁移钩子（宿主注入；缺省 = 非 v1 档可操作拒绝） */
+  private readonly migrateSaveHook?: (data: unknown) => SaveDataV1 | null;
 
   constructor(story: Story, options?: EngineOptions) {
     this.story = story;
@@ -329,6 +352,10 @@ export class StoryEngine {
     this.savePort = options?.savePort;
     this.saveMode = options?.saveMode ?? "machine-bound";
     this.i18nPort = options?.i18nPort;
+    const extensions = options?.extensions ?? [];
+    this.extensionOps = buildOpRegistry(extensions);
+    this.extensionById = new Map(extensions.map((e) => [e.id, e]));
+    this.migrateSaveHook = options?.migrateSave;
   }
 
   // —— 观察接缝 ——
@@ -712,14 +739,49 @@ export class StoryEngine {
     this.pendingMinigame = null;
   }
 
-  private setSystem(key: string, value: unknown): void {
-    this.state.set(key, value);
-    this.emit(key, value, "system");
-  }
-
+  /**
+   * 全局层写入（作者 `set`/`define` / 小游戏奖励 / 数组族 op 的唯一收口）。
+   *
+   * T08-07 写入契约（fail-closed，拒绝时**状态原样**）：
+   * - **键**：保留键（`RESERVED_STATE_KEYS` = SYS 精确名全集）拒绝（`reserved-key`）——
+   *   SYS 键归引擎所有，外部写入会破坏等待状态机/回溯；
+   * - **值**：JSON 安全（白名单 + 对新值深走查拒循环引用，带定位）（`value-not-serializable`）。
+   */
   private setGlobal(key: string, value: unknown): void {
+    if (RESERVED_STATE_KEYS.has(key)) {
+      this.fail(
+        "reserved-key",
+        `保留键不可写入：${key}（SYS 全集为引擎所有；作者/扩展请改用其他键名，T08-07）`,
+      );
+      return;
+    }
+    const unsafe = findJsonValueError(value, key);
+    if (unsafe !== null) {
+      this.fail(
+        "value-not-serializable",
+        `值不可序列化，写入被拒绝：${unsafe}（状态原样；请只写 JSON 安全值并按写时复制更新，T08-07）`,
+      );
+      return;
+    }
     this.state.set(key, value);
     this.emit(key, value, "global");
+  }
+
+  /**
+   * 系统层写入（引擎内部专用，`SYS` 键的所有者）。
+   * T08-07 值契约同样适用（引擎内部违约 = 引擎 bug，同样 fail-closed 暴露）；
+   * 键不受保留键约束——`setSystem` 本来就是写 SYS 键的通道。
+   */
+  private setSystem(key: string, value: unknown): void {    const unsafe = findJsonValueError(value, key);
+    if (unsafe !== null) {
+      this.fail(
+        "value-not-serializable",
+        `系统键写入值不可序列化：${unsafe}（引擎内部契约违约，T08-07）`,
+      );
+      return;
+    }
+    this.state.set(key, value);
+    this.emit(key, value, "system");
   }
 
   /**
@@ -779,6 +841,22 @@ export class StoryEngine {
   }
 
   /**
+   * 规约 10：扩展 op 执行（fail-closed）。成功 = 推进（分发表前置分支负责步进）；
+   * 失败（exec 返回非 ok 或抛出被 runRegisteredOp 兜底）= engine.error + 停在当前命令。
+   * 副作用只经 ExtensionContext（物理强制 `ext.<id>.` 前缀）→ 状态进 SSOT。
+   */
+  private execExtensionOp(entry: RegisteredOp, cmd: StoryCommand): boolean {
+    this.usedExtensions.add(entry.extensionId); // T08-08：实际执行过 → 存档依赖标记
+    const outcome = runRegisteredOp(entry, cmd, this.story, {
+      get: (key) => this.get(key),
+      setGlobal: (key, value) => this.setGlobal(key, value),
+    });
+    if (outcome.ok) return true;
+    this.fail(outcome.code, outcome.message);
+    return false;
+  }
+
+  /**
    * 01 §四.3 Translate（老引擎 I18nService 同语义）：命中即用译文（含空串译文），未命中/
    * 无 overlay 回退原文；空原文直返。调用点必须**先于插值**——overlay 键可含 {var} 占位符
    * （插值在译文上进行，老引擎 hook 点同序）。
@@ -787,6 +865,29 @@ export class StoryEngine {
     if (original === "" || this.overlay === null) return original;
     const hit = this.overlay.get(original);
     return hit === undefined ? original : hit;
+  }
+
+  /**
+   * 2026-09-27 翻译面扩展（用户裁定「所有展示文字纳入翻译」）：元素展示文字（`text` 属性）
+   * 在**装载时**翻译——进 SSOT 的即译文（随快照/存档/回溯随行）；切换语言后当前画面不重翻
+   * （与 menu 挂接同语义：下次 Translate 生效），再次进列重新装载时生效。递归 children。
+   * 无 `text` 的元素原样返回（引用不变，不触发无谓的 ValueChanged 噪声之外的对象复制）。
+   */
+  private translateElements(
+    instances: readonly ElementInstance[],
+  ): ElementInstance[] {
+    return instances.map((instance) => {
+      const raw = instance.props.text;
+      const props =
+        typeof raw === "string"
+          ? { ...instance.props, text: this.translate(raw) }
+          : instance.props;
+      return {
+        ...instance,
+        props,
+        children: this.translateElements(instance.children ?? []),
+      };
+    });
   }
 
   private columnById(id: string): StoryColumn | undefined {
@@ -810,7 +911,7 @@ export class StoryEngine {
     this.setSystem(
       SYS.elements,
       column.kind === "scene"
-        ? loadElements(column.elements ?? [], columnId)
+        ? this.translateElements(loadElements(column.elements ?? [], columnId))
         : [],
     );
     this.frames = [
@@ -856,6 +957,14 @@ export class StoryEngine {
         continue;
       }
       const cmd = frame.commands[frame.index]!;
+      // 规约 10 扩展查找前置（T08-02）：内建 switch 一行不动 ⇒ 内建行为逐字节等价；
+      // 扩展 op 的推进语义 = 执行成功即步进（v1 无等待态）
+      const extensionOp = this.extensionOps.get(cmd.op);
+      if (extensionOp !== undefined) {
+        if (!this.execExtensionOp(extensionOp, cmd)) return;
+        frame.index += 1;
+        continue;
+      }
       switch (cmd.op) {
         case "say":
           this.execSay(frame, cmd);
@@ -1082,7 +1191,8 @@ export class StoryEngine {
     // 01 §四.3 先 Translate 后插值（overlay 键可含 {var} 占位符）+ {var:00} 格式化（F7：仅文本命令）；
     // 行内标记 {b}{p} 原样透传；失败保留原文 + error（S8）
     // speaker 与 text 同语义插值——动态说话人（如 func 实参）经此获得真实名字；
-    // speaker 不走 Translate（老引擎 hook 点不含说话人——角色名归 character 注册表/NameResolver）
+    // 说话人**显示名**同样走 Translate（2026-09-27 用户裁定「所有展示文字纳入翻译」，
+    // 原「speaker 不走 Translate」裁定作废）；角色模板查表仍用插值后的原值。
     const { text, errors } = interpolateText(
       this.translate(cmd.text),
       this.resolveName,
@@ -1099,7 +1209,7 @@ export class StoryEngine {
 
     // 02 §二.3 竞态防护：进入等待前清上一句残留的完成标记（防双击/快速点击跳句）
     this.setSystem(SYS.dialogComplete, false);
-    this.setSystem(SYS.currentDialogSpeaker, speakerText);
+    this.setSystem(SYS.currentDialogSpeaker, this.translate(speakerText));
     // 08 §四.5 模板三级优先级（老引擎 Phase 65 同语义）：
     // say template > character screen（按插值后说话人查表，与 UI 侧 U4 样式查表一致）> null(全局默认)
     const characterScreen = this.characters.get(speakerText)?.screen;
@@ -2760,6 +2870,19 @@ export class StoryEngine {
       this.fail("save-invalid", "当前不在等待点，无法存档");
       return null;
     }
+    // T08-07 序列化边界深校验（R8 组合式的「存档时」半边）：写入时契约 + 写时复制
+    // 挡不住「拿到引用后原地改值」（作者行为）——在真正序列化前拦下，杜绝"写档才抛/静默变形"。
+    // 快照里的 state 与活状态共享同一批值引用（写时复制），校验活状态即覆盖历史副本。
+    for (const [key, value] of this.state) {
+      const unsafe = findJsonValueError(value, key);
+      if (unsafe !== null) {
+        this.fail(
+          "value-not-serializable",
+          `状态含不可序列化值，存档被拒绝：${unsafe}（请检查是否有原地修改已写入的值；应整值替换，T08-07）`,
+        );
+        return null;
+      }
+    }
     return {
       formatVersion: 1,
       storyId: this.story.id,
@@ -2776,6 +2899,15 @@ export class StoryEngine {
         state: cp.snapshot.state,
         rngState: cp.snapshot.rngState,
       })),
+      // T08-08：本档实际执行过的扩展（未用到 = 字段缺席，缺扩展也能读——防假阳性）
+      ...(this.usedExtensions.size > 0
+        ? {
+            extensions: [...this.usedExtensions].flatMap((id) => {
+              const ext = this.extensionById.get(id);
+              return ext ? [{ id, stateVersion: ext.stateVersion }] : [];
+            }),
+          }
+        : {}),
     };
   }
 
@@ -2786,8 +2918,9 @@ export class StoryEngine {
    */
   importSave(data: SaveDataV1): boolean {
     if (data?.formatVersion !== 1) {
-      this.fail("save-format", "存档格式版本不支持");
-      return false;
+      const migrated = this.tryMigrateSave(data); // T08-09：版本迁移优先于拒绝（政策见规约 05 §四）
+      if (migrated === null) return false;
+      data = migrated;
     }
     // §四.6 fail-closed：结构不完整或坐标失效（列定义已变更）= 存档与当前故事版本不匹配。
     // 全量预校验（含历史检查点坐标），任何不符都不得进入恢复流程（防 TypeError 式崩溃）。
@@ -2796,8 +2929,8 @@ export class StoryEngine {
       !Array.isArray(data.functions) ||
       !Array.isArray(data.history) ||
       typeof data.coord?.columnId !== "string" ||
-      typeof data.coord.index !== "number" ||
-      typeof data.rngState !== "number"
+      !Number.isFinite(data.coord.index) || // T08-09：NaN/Infinity 不得深入恢复流程（D-44）
+      !Number.isFinite(data.rngState)
     ) {
       this.fail("save-format", "存档结构不完整");
       return false;
@@ -2823,9 +2956,40 @@ export class StoryEngine {
       this.fail("save-story-mismatch", "该存档与当前故事不匹配");
       return false;
     }
+    // T08-09 深层校验补齐（D-44）：历史检查点 state/rngState 逐项校验——缺失/畸形此前
+    // 会静默产出 NaN 或恢复期 TypeError；cursor 缺失回默认值、类型错 fail-closed（见下）。
+    for (const h of data.history) {
+      if (!h || !Array.isArray(h.state) || !Number.isFinite(h.rngState)) {
+        this.fail(
+          "save-format",
+          "存档历史检查点不完整（state/rngState 缺失或类型错误）",
+        );
+        return false;
+      }
+    }
+    if (data.cursor !== undefined && !Number.isFinite(data.cursor)) {
+      this.fail("save-format", "存档 cursor 类型错误（须为有限数字；缺失可回默认值）");
+      return false;
+    }
+    // T08-08 扩展依赖校验（fail-closed 整档预校验；migrate 在进入恢复流程前完成）
+    const stagedState = this.resolveSaveExtensions(data);
+    if (stagedState === null) return false; // 已发 engine.error（整档拒绝）
     this.clearTimer();
     this.abortMinigame(); // 读档打断小游戏：abort 挂载信号（重放重新挂载）
-    this.state = new Map(data.state);
+    // T08-08：引用备份（restore 失败 = 整档拒绝 → 原样回退；以下字段在读档路径只做整体换引用）
+    const backup = {
+      state: this.state,
+      rngState: this.rngState,
+      functions: this.functions,
+      history: this.history,
+      cursor: this.cursor,
+      frames: this.frames,
+      coord: this.coord,
+      started: this.started,
+      pendingSay: this.pendingSay,
+      liveCheckpointed: this.liveCheckpointed,
+    };
+    this.state = new Map(stagedState);
     this.rngState = data.rngState;
     this.functions = new Map(data.functions);
     this.history = data.history.map((h) => ({
@@ -2838,14 +3002,163 @@ export class StoryEngine {
         functions: data.functions,
       },
     }));
-    this.cursor = Math.min(Math.max(data.cursor, 0), this.history.length - 1);
+    // T08-09：cursor 缺失回默认 = 最近检查点（空历史落 -1，与「无检查点」初始语义一致）
+    this.cursor =
+      data.cursor === undefined
+        ? this.history.length - 1
+        : Math.min(Math.max(data.cursor, 0), this.history.length - 1);
     this.started = true;
     this.pendingSay = null;
     this.frames = [this.columnFrameAt(data.coord)];
     this.coord = { ...data.coord };
     this.liveCheckpointed = true;
+    if (!this.restoreSaveExtensions(data.extensions)) {
+      Object.assign(this, backup); // 原样回退（备份点之后零事件出站，观察面无脏镜像）
+      return false; // T08-08：restore 失败 = 整档拒绝
+    }
+    // T08-08：依赖标记随档继承（读档后再存档不丢依赖；restore 成功后才落账）
+    this.usedExtensions.clear();
+    for (const mark of data.extensions ?? []) this.usedExtensions.add(mark.id);
     this.setSystem(SYS.waiting, "none");
     this.run(); // 确定性重放：从存档命令重建等待画面（同坐标提交由 commitCheckpoint 原位替换）
+    return true;
+  }
+
+  /**
+   * T08-09：`formatVersion` 非 1 的档——优先经宿主 migrateSave 钩子迁移（成功发 `load.notice`）；
+   * 不可迁移才拒绝，且文案必须可操作（说明档/引擎版本与可选路径，不得只说「不支持」）。
+   */
+  private tryMigrateSave(data: SaveDataV1): SaveDataV1 | null {
+    const fromVersion = (
+      data as { formatVersion?: unknown } | null | undefined
+    )?.formatVersion;
+    const hook = this.migrateSaveHook;
+    if (hook) {
+      try {
+        const migrated = hook(data);
+        if (migrated?.formatVersion === 1) {
+          this.emitEvent({
+            kind: "load.notice",
+            text: `存档已从 v${String(fromVersion)} 迁移到 v1（migrateSave）`,
+          });
+          return migrated;
+        }
+      } catch {
+        // 宿主钩子违约（抛出）= 视同无法迁移，走可操作拒绝（不炸穿读档链）
+      }
+    }
+    this.fail(
+      "save-format",
+      `存档格式版本不支持：档为 v${String(fromVersion)}，引擎为 v1。请用创建该存档的引擎版本打开，或在构造引擎时提供 migrateSave 钩子完成版本迁移`,
+    );
+    return null;
+  }
+
+  /**
+   * T08-08：读档扩展依赖校验 + 状态迁移（fail-closed 整档预校验——任何不符在进入恢复流程前拒绝）。
+   * 返回迁移后的状态条目（无迁移 = 原引用原样返回）；null = 已发 engine.error（整档拒绝，状态原样）。
+   */
+  private resolveSaveExtensions(data: SaveDataV1): [string, unknown][] | null {
+    const marks = data.extensions;
+    if (marks === undefined) return data.state; // 未用到扩展的存档不带标记（防假阳性：缺扩展也能读）
+    if (!Array.isArray(marks)) {
+      this.fail("save-format", "存档扩展依赖标记不合法（须为数组）");
+      return null;
+    }
+    let entries = data.state;
+    for (const mark of marks) {
+      if (
+        mark === null ||
+        typeof mark !== "object" ||
+        typeof mark.id !== "string" ||
+        !Number.isInteger(mark.stateVersion) ||
+        mark.stateVersion < 1
+      ) {
+        this.fail(
+          "save-format",
+          "存档扩展依赖标记不合法（条目须为 { id, stateVersion }）",
+        );
+        return null;
+      }
+      const ext = this.extensionById.get(mark.id);
+      if (ext === undefined) {
+        this.fail(
+          "extension-missing",
+          `存档依赖的扩展未注册：「${mark.id}」。请安装并启用该扩展后再读档`,
+        );
+        return null;
+      }
+      if (ext.stateVersion === mark.stateVersion) continue;
+      // 版本不一致：仅支持「档旧 → 扩展新」迁移；档新于扩展（引擎过旧）或无 migrate → 拒绝
+      if (mark.stateVersion < ext.stateVersion && ext.migrate) {
+        const prefix = `${EXT_KEY_PREFIX}${mark.id}.`;
+        const subset: Record<string, unknown> = {};
+        for (const [key, value] of entries) {
+          if (key.startsWith(prefix)) subset[key.slice(prefix.length)] = value;
+        }
+        let migrated: Record<string, unknown> | null;
+        try {
+          migrated = ext.migrate(mark.stateVersion, subset);
+        } catch {
+          migrated = null; // 扩展违约（不抛纪律）→ 视同无法迁移
+        }
+        if (migrated === null) {
+          this.fail(
+            "extension-version",
+            `扩展「${mark.id}」无法从状态版本 v${mark.stateVersion} 迁移到 v${ext.stateVersion}，存档被拒绝`,
+          );
+          return null;
+        }
+        entries = [
+          ...entries.filter(([key]) => !key.startsWith(prefix)),
+          ...Object.entries(migrated).map(
+            ([key, value]) => [`${prefix}${key}`, value] as [string, unknown],
+          ),
+        ];
+        this.emitEvent({
+          kind: "load.notice",
+          text: `扩展「${mark.id}」状态已从 v${mark.stateVersion} 迁移到 v${ext.stateVersion}`,
+        });
+        continue;
+      }
+      this.fail(
+        "extension-version",
+        `存档依赖扩展「${mark.id}」的状态版本 v${mark.stateVersion}，当前注册版本为 v${ext.stateVersion}（存档过新或缺少迁移路径），存档被拒绝`,
+      );
+      return null;
+    }
+    return entries;
+  }
+
+  /**
+   * T08-08：读档恢复钩子——对档内标记的扩展逐个调 restore（重建运行期句柄，等价小游戏重新挂载）。
+   * 返回 false（或抛出）= 不可恢复 → 调用方整档拒绝（此时仅字段引用交换、零事件出站，
+   * 引擎状态即原样）；engine.error 由本方法发出。
+   */
+  private restoreSaveExtensions(marks: SaveDataV1["extensions"]): boolean {
+    for (const mark of marks ?? []) {
+      const ext = this.extensionById.get(mark.id);
+      if (ext?.restore === undefined) continue;
+      let ok: boolean;
+      try {
+        ok = ext.restore(
+          buildExtensionContext(mark.id, {
+            get: (key) => this.get(key),
+            setGlobal: (key, value) => this.setGlobal(key, value),
+            story: this.story,
+          }),
+        );
+      } catch {
+        ok = false; // 扩展违约（不抛纪律）→ 不可恢复
+      }
+      if (!ok) {
+        this.fail(
+          "extension-restore",
+          `扩展「${mark.id}」读档恢复失败（restore 返回 false），存档被拒绝`,
+        );
+        return false;
+      }
+    }
     return true;
   }
 

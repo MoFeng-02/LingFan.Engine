@@ -8,18 +8,31 @@ import {
   ref,
 } from "vue";
 import type { Story } from "@lingfan/engine";
-import { indexStory } from "@lingfan/editor";
+import {
+  branchPointerToCommand,
+  indexStory,
+  isBranchTarget,
+  planBranchInsertion,
+} from "@lingfan/editor";
 
 /**
  * 06 §一.1 节点图：列 = 节点，jump/menu/navigate 的列目标 = 边。
  * 视图操作：节点拖拽（位置按故事记忆入 localStorage）+ 背景拖拽平移 +
  * Ctrl+滚轮/按钮缩放（视口中心稳定）；缩放不入故事 JSON——D1 编辑器只读写故事树。
+ * **连线建分支（T04-04）**：从 flow 节点右缘连接点拉线到另一 flow 节点 → 落库为
+ * `jump`（源列无 menu）或 menu 选项（源列最后一个 menu，文本 prompt 可改）；
+ * 一次拉线 = 一个 undo 单元（提交在 `editorApi.connectBranch`）；scene 列 / 自连
+ * fail-closed 提示（锚点: editor-graph-connect-branch）。点击边 = 选中对应命令
+ * （改在属性面板，删走时间线既有入口）。
  * 舞台编辑随元素系统另立增量。
  */
 const props = defineProps<{ story: Story; selectedId: string }>();
 
 interface EditorApi {
+  select(pointer: string | null): void;
   selectColumn(id: string): void;
+  /** T04-04：拉线建分支（见上）；非法组合返回 false */
+  connectBranch(fromColumnId: string, toColumnId: string, optionText?: string): boolean;
 }
 const api = inject<EditorApi>("editorApi")!;
 
@@ -37,6 +50,7 @@ interface GraphNode {
   x: number;
   y: number;
   isEntry: boolean;
+  kind: "flow" | "scene";
 }
 interface GraphEdge {
   from: string;
@@ -162,6 +176,10 @@ const graph = computed(() => {
         x: dragged?.x ?? layer * (NODE_W + GAP_X) + 24,
         y: dragged?.y ?? i * (NODE_H + GAP_Y) + 24,
         isEntry: id === props.story.entry,
+        kind:
+          props.story.columns.find((c) => c.id === id)?.kind === "flow"
+            ? "flow"
+            : "scene",
       });
     });
   }
@@ -324,6 +342,90 @@ function zoomReset(): void {
 function selectNode(id: string): void {
   api.selectColumn(id);
 }
+
+/* —— T04-04 连线建分支：flow 节点右缘连接点拉线到目标节点 —— */
+
+const connecting = ref<{
+  fromId: string;
+  /** 临时线终点（画布逻辑坐标） */
+  x: number;
+  y: number;
+} | null>(null);
+
+/** 落点命中：逻辑坐标落在哪个节点矩形内（不含源节点） */
+function hitNode(x: number, y: number, excludeId: string): GraphNode | undefined {
+  return graph.value.nodes.find(
+    (node) =>
+      node.id !== excludeId &&
+      x >= node.x &&
+      x <= node.x + NODE_W &&
+      y >= node.y &&
+      y <= node.y + NODE_H,
+  );
+}
+
+function startConnect(node: GraphNode, event: PointerEvent): void {
+  const cursor = toLogical(event.clientX, event.clientY);
+  connecting.value = { fromId: node.id, x: cursor.x, y: cursor.y };
+  window.addEventListener("pointermove", onConnectMove);
+  window.addEventListener("pointerup", endConnect, { once: true });
+}
+
+function onConnectMove(event: PointerEvent): void {
+  const current = connecting.value;
+  if (current === null) return;
+  const cursor = toLogical(event.clientX, event.clientY);
+  connecting.value = { ...current, x: cursor.x, y: cursor.y };
+}
+
+function endConnect(event: PointerEvent): void {
+  const current = connecting.value;
+  connecting.value = null;
+  window.removeEventListener("pointermove", onConnectMove);
+  if (current === null) return;
+  const cursor = toLogical(event.clientX, event.clientY);
+  const target = hitNode(cursor.x, cursor.y, current.fromId);
+  if (target === undefined) return; // 松手在空白处 = 放弃拉线
+  const source = props.story.columns.find((c) => c.id === current.fromId);
+  const targetColumn = props.story.columns.find((c) => c.id === target.id);
+  // fail-closed：非 flow 源/目标、自连一律拒绝并给可操作提示（不静默落库）
+  if (!isBranchTarget(source) || !isBranchTarget(targetColumn)) {
+    alert(
+      `无法连分支：源列与目标列都必须是「流程列」（scene 列是空间层，${
+        source?.kind === "flow" ? `「${target.id}」是场景列` : `「${current.fromId}」是场景列`
+      }）。`,
+    );
+    return;
+  }
+  if (source?.id === target.id) return;
+  const plan = planBranchInsertion(source, target.id);
+  if (plan === null) return;
+  const optionText =
+    plan.kind === "menu-option"
+      ? (window.prompt(`「${current.fromId}」已有菜单——新选项文本`, "新选项") ??
+        undefined)
+      : undefined;
+  if (plan.kind === "menu-option" && optionText === undefined) return; // 取消输入 = 放弃
+  const applied = api.connectBranch(current.fromId, target.id, optionText);
+  if (!applied) alert(`无法连分支：${current.fromId} → ${target.id}（非法组合）`);
+}
+
+/** 临时拉线终点跟随指针（连接点 → 指针，样式 = 虚线） */
+function connectPath(): string {
+  const current = connecting.value;
+  if (current === null) return "";
+  const from = nodeById.value.get(current.fromId);
+  if (from === undefined) return "";
+  const x1 = from.x + NODE_W;
+  const y1 = from.y + NODE_H / 2;
+  const bend = Math.max(40, Math.abs(current.x - x1) / 2);
+  return `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${current.x - bend} ${current.y}, ${current.x} ${current.y}`;
+}
+
+/** 点击边 = 选中对应命令（jump 命令 / menu 命令；改在属性面板，删走时间线） */
+function selectEdge(edge: GraphEdge): void {
+  api.select(branchPointerToCommand(edge.key));
+}
 </script>
 
 <script lang="ts">
@@ -334,7 +436,7 @@ export default { name: "StoryNodeGraph" };
   <div class="node-graph">
     <p class="graph-hint">
       拖节点排列 · 拖背景平移 · Ctrl+滚轮缩放；边：蓝=跳转 · 黄=选项 · 绿=导航 ·
-      点击节点选列
+      点击节点选列 · <b>从流程节点右缘圆点拉线到另一节点 = 建分支</b>（点边选中命令）
     </p>
     <div
       ref="scrollEl"
@@ -354,9 +456,16 @@ export default { name: "StoryNodeGraph" };
             <path
               v-for="edge in graph.edges"
               :key="edge.key"
-              class="edge"
+              class="edge clickable"
               :class="edgeClass(edge.kind)"
               :d="edgePath(edge)"
+              :title="`选中 ${edge.kind === 'menu' ? '菜单命令' : edge.kind === 'jump' ? '跳转命令' : '导航命令'}`"
+              @click.stop="selectEdge(edge)"
+            />
+            <path
+              v-if="connecting !== null"
+              class="edge connect-line"
+              :d="connectPath()"
             />
           </svg>
           <div
@@ -379,10 +488,16 @@ export default { name: "StoryNodeGraph" };
             <span v-if="node.isEntry" class="entry-dot" title="入口列"></span>
             <span class="node-id">{{ node.id }}</span>
             <span class="node-kind">{{
-              story.columns.find((c) => c.id === node.id)?.kind === "flow"
-                ? "流"
-                : "景"
+              node.kind === "flow" ? "流" : "景"
             }}</span>
+            <span
+              v-if="node.kind === 'flow'"
+              class="connect-dot"
+              role="button"
+              :aria-label="`从 ${node.id} 拉出分支`"
+              :title="`拖到另一节点 = 建分支（jump / 菜单选项）`"
+              @pointerdown.stop.prevent="startConnect(node, $event)"
+            ></span>
           </div>
         </div>
       </div>
@@ -445,6 +560,35 @@ svg {
 .edge-navigate {
   stroke: #9ece6a;
   stroke-dasharray: 5 4;
+}
+/* T04-04：边可点击选中对应命令；拉线中的临时线 */
+svg .edge.clickable {
+  pointer-events: stroke;
+  cursor: pointer;
+  stroke-width: 2.4;
+}
+svg .edge.clickable:hover {
+  opacity: 1;
+  stroke-width: 3.2;
+}
+.edge.connect-line {
+  stroke: #bb9af7;
+  stroke-dasharray: 6 4;
+}
+.connect-dot {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  transform: translateY(-50%);
+  background: #7aa2f7;
+  border: 2px solid #16161f;
+  border-radius: 50%;
+  cursor: crosshair;
+}
+.connect-dot:hover {
+  transform: translateY(-50%) scale(1.35);
 }
 .node {
   position: absolute;

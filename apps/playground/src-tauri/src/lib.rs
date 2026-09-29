@@ -3,6 +3,7 @@ pub mod diagnostics;
 pub mod host;
 pub mod preferences;
 pub mod project_files;
+pub mod project_writer;
 pub mod resource_crypto;
 pub mod resource_fs;
 pub mod save;
@@ -30,6 +31,8 @@ pub fn run() {
             project_files::watch_project_files,
             project_files::load_i18n_overlay,
             project_files::list_i18n_languages,
+            project_writer::apply_project_files,
+            project_writer::stamp_project_files,
             preferences::preferences_read,
             preferences::preferences_write,
             resource_crypto::decrypt_resource,
@@ -63,8 +66,43 @@ pub fn run() {
             }
             // 诊断探针（仅当 LFEN_IOS_DIAG=1；默认零行为）——CI 冒烟排「跑得起来但画面空白」用
             diagnostics::arm(app.handle());
+            splash_then_show(app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// T06-02 双窗启动画面（桌面）：splash 先行显示，盖住资源根定位 / DEK 首启信封化解封（K1）
+/// 的时延；预热完成后显示主窗口并关闭 splash。移动端无第二窗口——直接显示主窗口
+/// （防御 conf `visible: false` 在移动端生效导致的白屏）。
+/// splash 创建失败不阻塞启动（fail 尽力）；主窗口显示失败打印可见错误（fail-closed 不静默）。
+fn splash_then_show(app: &tauri::AppHandle) {
+    #[cfg(desktop)]
+    let splash = tauri::WebviewWindowBuilder::new(
+        app,
+        "splashscreen",
+        tauri::WebviewUrl::App("splashscreen.html".into()),
+    )
+    .title("lingfanengine")
+    .inner_size(420.0, 240.0)
+    .center()
+    .resizable(false)
+    .decorations(false)
+    .build()
+    .map_err(|e| eprintln!("[lfen] splash 窗口创建失败（继续启动）：{e}"))
+    .ok();
+
+    // 首启 seed→KEK 信封化解封在此完成（明文形态失败无害）——show 之后 v2 供给立即可用
+    resource_crypto::preheat_resource_key(app);
+
+    if let Some(main) = app.get_webview_window("main") {
+        if let Err(e) = main.show() {
+            eprintln!("[lfen] 主窗口显示失败：{e}");
+        }
+    }
+    #[cfg(desktop)]
+    if let Some(splash) = splash {
+        let _ = splash.close();
+    }
 }

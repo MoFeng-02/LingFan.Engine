@@ -1,6 +1,7 @@
 /**
  * @lingfan/editor 公共出口（06 编辑器核心）：op schema 单一事实源 + 编辑期诊断 +
- * 故事树纯映射器。D1：只读写故事 JSON，不碰运行时与 Rust。
+ * 故事树纯映射器。D1：只读写故事 JSON，不碰运行时与 Rust；
+ * 作者视图偏好（列分组 / 折叠）走**注入式存储**、不入故事树（锚点: editor-column-grouping）。
  */
 
 export type {
@@ -34,17 +35,53 @@ export {
   UNIMPLEMENTED_ELEMENT_ATTRS,
   type ElementFormDescriptor,
 } from "./schema/elementForms";
+export {
+  ELEMENT_TYPE_GROUPS,
+  listOpGroups,
+  OP_GROUP_LABELS,
+  OP_GROUP_ORDER,
+  type ElementTypeGroup,
+  type OpGroupEntries,
+} from "./schema/elementPalette";
 export { draggedPosition, parseNumericPosition } from "./element/drag";
+export {
+  createElementDraft,
+  planElementDrop,
+  type DropContainerHit,
+  type ElementDropPlan,
+} from "./element/dragCreate";
 export { OP_SCHEMAS, validateCommand } from "./schema/opSchemas";
+export {
+  BUILTIN_OP_SURFACE,
+  mergeOpMeta,
+  mergeOpSchemas,
+  mergeOpSurface,
+  type OpSurface,
+} from "./schema/surface";
 export { validateStory } from "./schema/validation";
 export { walkStoryCommands, walkStoryElements } from "./schema/walk";
 
 export { analyzeStory, extractExpressionRefs, indexStory } from "./diagnostics";
 
 export {
+  extractStoryKeys,
+  formatTranslationReport,
+  planOverlaySkeleton,
+  reconcileTranslations,
+  TRANSLATE_SURFACES,
+  valuesAtPath,
+  type OverlaySkeletonFile,
+  type SkeletonLayout,
+  type SkeletonOptions,
+  type SkeletonPlaceholder,
+  type TranslationReconcileReport,
+} from "./i18n";
+
+export {
   getAtPointer,
   insertAtPointer,
   moveAtPointer,
+  nearestCommandPointer,
   removeAtPointer,
   setAtPointer,
 } from "./editing/pointers";
@@ -57,6 +94,41 @@ export {
   removeColumn,
   removeCommand,
   renameColumn,
+  suggestColumnId,
   updateCommandField,
 } from "./editing/storyOps";
 export { EditorSession } from "./editing/session";
+export {
+  branchPointerToCommand,
+  isBranchTarget,
+  planBranchInsertion,
+  type BranchColumnLike,
+  type BranchPlan,
+} from "./editing/graphConnect";
+export {
+  addGroup,
+  assignColumn,
+  COLUMN_GROUPING_KEY_PREFIX,
+  createColumnGroupingStore,
+  emptyGroupingView,
+  layoutColumns,
+  parseGroupingView,
+  pruneGroupingView,
+  removeGroup,
+  renameColumnMember,
+  renameGroup,
+  serializeGroupingView,
+  toggleCollapsed,
+} from "./editing/columnGrouping";
+export type {
+  ColumnGroup,
+  ColumnGroupingView,
+  GroupedLayout,
+  KeyValueStorage,
+} from "./editing/columnGrouping";
+export {
+  describeNormalization,
+  NORMALIZATION_NOTICE_PREF_KEY,
+  readSkipNormalizationNotice,
+  writeSkipNormalizationNotice,
+} from "./editing/saveNormalization";

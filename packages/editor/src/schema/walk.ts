@@ -7,6 +7,7 @@
 import type { FieldDescriptor } from "../contracts";
 import { escapePointerToken } from "../contracts";
 import { describeForm } from "./forms";
+import { BUILTIN_OP_SURFACE, type OpSurface } from "./surface";
 
 export type CommandVisitor = (
   cmd: Record<string, unknown>,
@@ -23,9 +24,10 @@ function walkDescriptor(
   value: unknown,
   pointer: string,
   visit: CommandVisitor,
+  surface: OpSurface,
 ): void {
   if (desc.kind === "body") {
-    if (Array.isArray(value)) walkCommands(value, pointer, visit);
+    if (Array.isArray(value)) walkCommands(value, pointer, visit, surface);
     return;
   }
   if (desc.properties !== undefined && isPlainObject(value)) {
@@ -35,13 +37,14 @@ function walkDescriptor(
         value[child.key],
         `${pointer}/${escapePointerToken(child.key)}`,
         visit,
+        surface,
       );
     }
     return;
   }
   if (desc.item !== undefined && Array.isArray(value)) {
     value.forEach((element, index) => {
-      walkDescriptor(desc.item!, element, `${pointer}/${index}`, visit);
+      walkDescriptor(desc.item!, element, `${pointer}/${index}`, visit, surface);
     });
   }
 }
@@ -50,6 +53,7 @@ function walkCommands(
   commands: unknown[],
   pointer: string,
   visit: CommandVisitor,
+  surface: OpSurface,
 ): void {
   commands.forEach((cmd, index) => {
     const commandPointer = `${pointer}/${index}`;
@@ -57,7 +61,7 @@ function walkCommands(
       visit(cmd as Record<string, unknown>, commandPointer, undefined);
       return;
     }
-    const fields = describeForm(cmd.op as string)?.fields;
+    const fields = describeForm(cmd.op as string, surface)?.fields;
     visit(cmd, commandPointer, fields);
     if (fields === undefined) return;
     for (const field of fields) {
@@ -66,6 +70,7 @@ function walkCommands(
         cmd[field.key],
         `${commandPointer}/${escapePointerToken(field.key)}`,
         visit,
+        surface,
       );
     }
   });
@@ -73,12 +78,17 @@ function walkCommands(
 
 /**
  * 遍历整棵故事树的全部**命令**（含嵌套块体）；visit 按命令指针回调。
+ * `surface`（T08-04，可选）= op 合并面（缺省内建；扩展注册后由组合根传入）。
  *
  * 注意：scene 列的 `elements` **不在**命令遍历内——元素是声明式空间层（08 §二.1），
  * 其形状/属性校验走 `walkStoryElements` + `validateElement`（F5）。
  * 混进命令遍历会被误报 `unknown-op`（元素只有 `type`，没有 `op`）。
  */
-export function walkStoryCommands(story: unknown, visit: CommandVisitor): void {
+export function walkStoryCommands(
+  story: unknown,
+  visit: CommandVisitor,
+  surface: OpSurface = BUILTIN_OP_SURFACE,
+): void {
   if (!isPlainObject(story) || !Array.isArray(story.columns)) return;
   story.columns.forEach((column, columnIndex) => {
     if (!isPlainObject(column)) return;
@@ -87,7 +97,7 @@ export function walkStoryCommands(story: unknown, visit: CommandVisitor): void {
     for (const field of fields) {
       const list = column[field];
       if (Array.isArray(list)) {
-        walkCommands(list, `${columnPointer}/${field}`, visit);
+        walkCommands(list, `${columnPointer}/${field}`, visit, surface);
       }
     }
   });

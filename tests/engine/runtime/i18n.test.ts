@@ -3,7 +3,8 @@
  * 锚点：
  * - translate-before-interpolate（先 Translate 后插值：overlay 键含 {var} 占位符）
  * - missing-translation-falls-back（缺译文回退原文；空串译文 = 命中——老引擎 TryGetValue 同语义）
- * - hook-points（say 文本/menu prompt+选项/input prompt/notify 文本；speaker 与 menu 目标不翻译）
+ * - hook-points（say 文本+speaker / menu prompt+选项 / input prompt / notify 文本 /
+ *   元素 text——2026-09-27 翻译面扩展「所有展示文字纳入翻译」；menu 目标仍不翻译）
  * - set-language-semantics（老引擎 SwitchLanguage：清缓存 + 写状态键，当前画面不重放）
  * - lazy-load（按需加载：不 setLanguage 则端口零调用——启动零成本）
  * - overlay-fail-closed（供给失败保持原语言与译文表，engine.error 上报）
@@ -221,7 +222,7 @@ describe("01 §四.3 挂接点（对齐老引擎 hook：say/menu/input/notify）
     h.dispose();
   });
 
-  it("speaker 不走 Translate（角色名归 character 注册表，老引擎 hook 点不含说话人）", async () => {
+  it("speaker 也走 Translate（2026-09-27 翻译面扩展：所有展示文字纳入；原「speaker 不走 Translate」作废）", async () => {
     const port = new MemoryI18nPort().table("en", { 少女: "Girl" });
     const h = makeHarness(
       [column("a", [{ op: "say", text: "x", speaker: "少女" }])],
@@ -229,8 +230,44 @@ describe("01 §四.3 挂接点（对齐老引擎 hook：say/menu/input/notify）
     );
     await h.engine.setLanguage("en");
     h.engine.start();
-    expect(h.engine.get(SYS.currentDialogSpeaker)).toBe("少女");
+    expect(h.engine.get(SYS.currentDialogSpeaker)).toBe("Girl");
     h.dispose();
+  });
+
+  it("元素文本也是翻译面（2026-09-27 扩展）：装载时翻译，进 SSOT 的即译文", async () => {
+    const port = new MemoryI18nPort().table("en", { 标题: "Title" });
+    const engine = new StoryEngine(
+      parseStory({
+        formatVersion: 1,
+        id: "t",
+        entry: "a",
+        columns: [
+          {
+            id: "a",
+            kind: "scene",
+            elements: [
+              { type: "text", id: "t1", text: "标题" },
+              {
+                type: "vbox",
+                id: "box",
+                children: [{ type: "text", id: "t2", text: "标题" }],
+              },
+            ],
+            entry: [],
+          },
+        ],
+      }),
+      { i18nPort: port },
+    );
+    await engine.setLanguage("en");
+    engine.start();
+    const elements = engine.get(SYS.elements) as {
+      props: { text: unknown };
+      children: { props: { text: unknown } }[];
+    }[];
+    expect(elements[0]?.props.text).toBe("Title"); // 顶层元素
+    expect(elements[1]?.children[0]?.props.text).toBe("Title"); // 嵌套 children 递归
+    engine.dispose();
   });
 });
 

@@ -7,6 +7,7 @@
  */
 import type {
   CharacterDef,
+  CustomOpProjections,
   ElementNode,
   Story,
   StoryColumn,
@@ -310,6 +311,8 @@ interface ParseState {
   lines: SourceLine[];
   issues: string[];
   sourceName: string;
+  /** 规约 10 扩展投影（T08-03）：自定义 op 行的分发表（缺省 undefined = 现行为不变） */
+  projections?: CustomOpProjections;
 }
 
 /**
@@ -1091,6 +1094,16 @@ function parseCommands(
       }
     }
 
+    // 规约 10 扩展投影（T08-03）：声明了 fromText 的自定义 op 行交给投影器；
+    // 失败 = 该行 issue（parseTextStory 仍整次拒绝，T2 口径不变），不再落内建「暂不支持」分支混淆定位。
+    const fromText = state.projections?.get(op)?.fromText;
+    if (fromText !== undefined) {
+      const cmd = customFromText(fromText, text, at, state.issues);
+      if (cmd !== null) commands.push(cmd);
+      i += 1;
+      continue;
+    }
+
     const cmd = parseSimpleStatement(
       op,
       rest,
@@ -1102,6 +1115,35 @@ function parseCommands(
     i += 1;
   }
   return { commands, elements, end: i };
+}
+
+/**
+ * 自定义 op 行投影兜底（不抛纪律的引擎半边）：投影器抛出/返回畸形 = 该行 issue
+ * （带 `sourceName:行号` 定位）；返回的命令须为含字符串 op 的对象（引擎只做形状守卫）。
+ */
+function customFromText(
+  fromText: (text: string) => StoryCommand | null,
+  text: string,
+  at: string,
+  issues: string[],
+): StoryCommand | null {
+  try {
+    const raw = fromText(text);
+    if (
+      raw !== null &&
+      typeof raw === "object" &&
+      typeof raw.op === "string"
+    ) {
+      return raw;
+    }
+  } catch (error: unknown) {
+    issues.push(
+      `${at}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return null;
+  }
+  issues.push(`${at}: 自定义 op 行解析失败：${text}`);
+  return null;
 }
 
 /** 块体语句：if/elif/else、while、for、foreach、switch、menu、func */
@@ -1306,10 +1348,10 @@ function generateValue(value: unknown): string {
 
 function generateCommand(
   cmd: StoryCommand,
-  indent: string,
+  pad: string,
   out: string[],
+  projections?: CustomOpProjections,
 ): void {
-  const pad = indent;
   switch (cmd.op) {
     case "say": {
       let line = `${pad}say ${quoteForText(cmd.text as string)}`;
@@ -1526,33 +1568,33 @@ function generateCommand(
     }
     case "if": {
       out.push(`${pad}if ${cmd.cond}`);
-      generateBody(cmd.then as StoryCommand[], indent, out);
+      generateBody(cmd.then as StoryCommand[], pad, out, projections);
       for (const elif of (cmd.elif ?? []) as Array<{
         cond: string;
         then: StoryCommand[];
       }>) {
         out.push(`${pad}else if ${elif.cond}`);
-        generateBody(elif.then, indent, out);
+        generateBody(elif.then, pad, out, projections);
       }
       if (cmd.else !== undefined && (cmd.else as StoryCommand[]).length > 0) {
         out.push(`${pad}else`);
-        generateBody(cmd.else as StoryCommand[], indent, out);
+        generateBody(cmd.else as StoryCommand[], pad, out, projections);
       }
       return;
     }
     case "while":
       out.push(`${pad}while ${cmd.cond}`);
-      generateBody(cmd.body as StoryCommand[], indent, out);
+      generateBody(cmd.body as StoryCommand[], pad, out, projections);
       return;
     case "for":
       out.push(`${pad}for ${quoteForText(cmd.var as string)} in ${cmd.in}`);
-      generateBody(cmd.body as StoryCommand[], indent, out);
+      generateBody(cmd.body as StoryCommand[], pad, out, projections);
       return;
     case "foreach":
       out.push(
         `${pad}foreach ${quoteForText(cmd.var as string)} in ${quoteForText(cmd.key as string)}`,
       );
-      generateBody(cmd.body as StoryCommand[], indent, out);
+      generateBody(cmd.body as StoryCommand[], pad, out, projections);
       return;
     case "switch":
       out.push(`${pad}switch ${cmd.on}`);
@@ -1561,14 +1603,14 @@ function generateCommand(
         body: StoryCommand[];
       }>) {
         out.push(`${pad}  case ${generateValue(c.value)}`);
-        generateBody(c.body, `${indent}  `, out);
+        generateBody(c.body, `${pad}  `, out, projections);
       }
       if (
         cmd.default !== undefined &&
         (cmd.default as StoryCommand[]).length > 0
       ) {
         out.push(`${pad}  default`);
-        generateBody(cmd.default as StoryCommand[], `${indent}  `, out);
+        generateBody(cmd.default as StoryCommand[], `${pad}  `, out, projections);
       }
       return;
     case "menu":
@@ -1583,7 +1625,7 @@ function generateCommand(
       out.push(
         `${pad}func ${cmd.name}(${(cmd.params as string[]).join(", ")})`,
       );
-      generateBody(cmd.body as StoryCommand[], indent, out);
+      generateBody(cmd.body as StoryCommand[], pad, out, projections);
       return;
     // ====== 08 §二.1 元素增删改 ======
     case "show": {
@@ -1658,9 +1700,35 @@ function generateCommand(
       out.push(line);
       return;
     }
-    default:
+    default: {
+      // 规约 10 扩展投影（T08-03）：声明了 toText 的自定义 op 交给投影器；否则 fail-closed（T2 不静默）
+      const toText = projections?.get(cmd.op)?.toText;
+      if (toText !== undefined) {
+        const line = tryProjectToText(toText, cmd);
+        if (line !== null) {
+          out.push(`${pad}${line}`);
+          return;
+        }
+        throw new TextFormatError([
+          `自定义 op「${cmd.op}」文本投影失败（toText 返回 null 或抛出）`,
+        ]);
+      }
       // 未支持文本投影的 op：fail-closed（T2 不静默）
       throw new TextFormatError([`op "${cmd.op}" 暂无文本投影`]);
+    }
+  }
+}
+
+/** 自定义 op 行投影兜底（不抛纪律的引擎半边）：抛出/空行 = null → 上层整次拒绝 */
+function tryProjectToText(
+  toText: (cmd: Readonly<StoryCommand>) => string | null,
+  cmd: StoryCommand,
+): string | null {
+  try {
+    const line = toText(cmd);
+    return typeof line === "string" && line.trim() !== "" ? line : null;
+  } catch {
+    return null;
   }
 }
 
@@ -1668,9 +1736,10 @@ function generateBody(
   commands: StoryCommand[],
   indent: string,
   out: string[],
+  projections?: CustomOpProjections,
 ): void {
   const inner = `${indent}  `;
-  for (const cmd of commands) generateCommand(cmd, inner, out);
+  for (const cmd of commands) generateCommand(cmd, inner, out, projections);
 }
 
 function generateDictLiteral(value: Record<string, unknown>): string {
@@ -1688,9 +1757,14 @@ function generateDictLiteral(value: Record<string, unknown>): string {
 
 // —— 公共入口 ——
 
-/** 07-T2：文本 → Story（缩进块、注释、全 op 文法；失败整次拒绝并带行列定位） */
-export function parseTextStory(source: string, sourceName = "story"): Story {
-  const state: ParseState = { lines: [], issues: [], sourceName };
+/** 07-T2：文本 → Story（缩进块、注释、全 op 文法；失败整次拒绝并带行列定位）。
+ * `projections`（T08-03，可选）= 扩展自定义 op 的行投影表；缺省 = 现行为逐字节不变。 */
+export function parseTextStory(
+  source: string,
+  sourceName = "story",
+  projections?: CustomOpProjections,
+): Story {
+  const state: ParseState = { lines: [], issues: [], sourceName, projections };
   state.lines = tokenizeLines(source, sourceName, state.issues);
   const columns: StoryColumn[] = [];
   const defines: Record<string, unknown> = {};
@@ -1839,7 +1913,10 @@ export interface TextProjection {
   issues: string[];
 }
 
-export function projectText(story: Story): TextProjection {
+export function projectText(
+  story: Story,
+  projections?: CustomOpProjections,
+): TextProjection {
   const issues: string[] = [];
   const out: string[] = [];
   for (const [key, value] of Object.entries(story.defines ?? {})) {
@@ -1856,7 +1933,7 @@ export function projectText(story: Story): TextProjection {
       }
       for (const cmd of column.entry ?? []) {
         tolerant(`op "${cmd.op}"（${column.id}）`, issues, () =>
-          generateCommand(cmd, "  ", out),
+          generateCommand(cmd, "  ", out, projections),
         );
       }
       continue;
@@ -1864,7 +1941,7 @@ export function projectText(story: Story): TextProjection {
     out.push(`label ${column.id}:`);
     for (const cmd of column.commands ?? []) {
       tolerant(`op "${cmd.op}"（${column.id}）`, issues, () =>
-        generateCommand(cmd, "  ", out), // 列体 2 空格缩进（规范形）
+        generateCommand(cmd, "  ", out, projections), // 列体 2 空格缩进（规范形）
       );
     }
   }
@@ -1889,9 +1966,13 @@ function tolerant(
   }
 }
 
-/** 07-T1/T3：Story → 文本（确定性输出）。不可投影部分收集为 issues 后整次拒绝（fail-closed） */
-export function generateText(story: Story): string {
-  const { text, issues } = projectText(story);
+/** 07-T1/T3：Story → 文本（确定性输出）。不可投影部分收集为 issues 后整次拒绝（fail-closed）。
+ * `projections`（T08-03，可选）= 扩展自定义 op 的行投影表；缺省 = 现行为逐字节不变。 */
+export function generateText(
+  story: Story,
+  projections?: CustomOpProjections,
+): string {
+  const { text, issues } = projectText(story, projections);
   if (issues.length > 0) throw new TextFormatError(issues);
   return text;
 }

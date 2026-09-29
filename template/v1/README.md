@@ -25,6 +25,9 @@
 | 屏幕方向锁定（`shell.orientation`） | ⛔ N/A | **纯 Web 形态没有方向 API**；该配置只在 Tauri 壳（playground）生效 |
 | 资源加密 / 热重载 / 宿主信息 | ⛔ N/A | 都是 Tauri 壳能力，见 playground 的组合根 |
 
+> ⛔ 行均指**模板宿主未接**，不代表引擎没有该能力——引擎能力面以规约与 `apps/playground` 为准
+> （逐行核对于 2026-09-27：历史面板 / 玩家偏好 / I18N / 对话框模板在引擎侧均已具备，仅模板未接线）。
+
 > 想升级为全功能实现，看引擎仓库的 `apps/playground`（它同时是模板的第一个实例）：
 > 把 `src/main.ts` 换成 Vue/React/原生任意一种都行——**引擎与适配器零改动**。
 
@@ -41,7 +44,7 @@
 它们以 **TS 源码出口**（`exports: "./src/index.ts"`）发布——消费方由 Vite/TS 直接编译，**无中间构建步骤**。
 
 - 已发布到 registry：`pnpm install` 直接可用
-- 尚未发布（当前状态）：用本地链接指向引擎仓库的包目录
+- 尚未发布（**现状，截至模板 1.1.x；是否发布 registry 待定**）：用本地链接指向引擎仓库的包目录
 
   ```
   pnpm add @lingfan/engine@link:<引擎仓库>/packages/engine \

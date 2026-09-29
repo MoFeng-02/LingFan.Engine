@@ -16,6 +16,7 @@ import type {
   SymbolIndex,
 } from "../contracts";
 import { escapePointerToken, joinPointer } from "../contracts";
+import { TRANSLATE_SURFACES, valuesAtPath } from "../i18n/surfaces";
 import { UNIMPLEMENTED_ELEMENT_ATTRS } from "../schema/elementForms";
 import { walkStoryCommands, walkStoryElements } from "../schema/walk";
 import { validateStory } from "../schema/validation";
@@ -156,44 +157,8 @@ const TARGET_FIELDS: Readonly<
   menu: [["options[].target", "column"]],
 };
 
-/** 可翻译原文面（运行时四处 Translate 挂接：say 文本/menu prompt+选项/input prompt/notify 文本） */
-const TRANSLATE_SURFACES: Readonly<Record<string, readonly string[]>> = {
-  say: ["text"],
-  menu: ["prompt", "options[].text"],
-  input: ["prompt"],
-  notify: ["text"],
-};
-
-/** 字段路径取值（`a[].b` = 逐项迭代；返回值与其相对指针） */
-function valuesAtPath(
-  cmd: Record<string, unknown>,
-  path: string,
-): { value: unknown; pointer: string }[] {
-  let current: { value: unknown; pointer: string }[] = [
-    { value: cmd, pointer: "" },
-  ];
-  for (const segment of path.split(".")) {
-    const iterate = segment.endsWith("[]");
-    const key = iterate ? segment.slice(0, -2) : segment;
-    const next: { value: unknown; pointer: string }[] = [];
-    for (const entry of current) {
-      if (entry.value === null || typeof entry.value !== "object") continue;
-      const child = (entry.value as Record<string, unknown>)[key];
-      const childPointer = `${entry.pointer}/${key}`;
-      if (iterate) {
-        if (Array.isArray(child)) {
-          child.forEach((item, index) => {
-            next.push({ value: item, pointer: `${childPointer}/${index}` });
-          });
-        }
-      } else {
-        next.push({ value: child, pointer: childPointer });
-      }
-    }
-    current = next;
-  }
-  return current;
-}
+// 可翻译原文面与路径取值 = i18n 工具链模块的单一事实源（T05-01 上移）：
+// 诊断的 originals 收集与 extractStoryKeys 消费同一张表（互锁: i18n-key-extract-parity）
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -279,6 +244,12 @@ export function indexStory(story: Story): SymbolIndex {
       }
     }
     scanFields(cmd, pointer, fields ?? [], index);
+  });
+  // 2026-09-27 翻译面扩展：元素展示文字（`text`，运行期装载时 Translate）也计入原文集合
+  walkStoryElements(story, (node) => {
+    if (!isPlainObject(node)) return;
+    const text = node.text;
+    if (typeof text === "string" && text !== "") index.originals.add(text);
   });
   return index;
 }
@@ -419,7 +390,10 @@ export function analyzeStory(
     out.push({
       code: "undefined-variable",
       severity: ref.kind === "expression" ? "error" : "warning",
-      message: `未定义变量：${ref.name}${ref.kind === "expression" ? "（S5：表达式失败即停机）" : "（S8：插值失败保留原文）"}`,
+      message:
+        ref.kind === "expression"
+          ? `未定义变量：${ref.name}（表达式里使用，求值会失败并**停机**——请先用 set/define 定义它）`
+          : `未定义变量：${ref.name}（插值失败将按原文保留——若它应是变量请先定义，若只是普通文字请去掉花括号）`,
       pointer: ref.pointer,
     });
   }
@@ -428,7 +402,9 @@ export function analyzeStory(
       if (!options.resourceFiles.has(resource.path)) {
         out.push({
           code: "missing-resource",
-          severity: "error",
+          // 提醒级（用户裁定 2026-09-27）：素材"先写引用后补"是正常工作流，
+          // error 会拦保存门禁；运行期缺资源由运行时自己 fail-closed 兜底。
+          severity: "warning",
           message: `资源路径不存在：${resource.path}`,
           pointer: resource.pointer,
         });
@@ -441,9 +417,25 @@ export function analyzeStory(
         out.push({
           code: "unused-translation",
           severity: "warning",
-          message: `未使用的译文键：${key}`,
+          message: `未使用的译文键：${key}（say / menu / input / notify 四个翻译面均未命中原文——该键运行期不会生效；若这段文字只用于元素文本或宿主界面，本条可忽略）`,
           pointer: "",
         });
+      }
+    }
+    // T05-03 缺译（正向，与 unused-translation 反向对称）：原文在**全部语言**的 overlay
+    // 里都没有 = 玩家必然看到原文（提醒级，不拦保存）。仅在「工程确实启用了 i18n」
+    // （overlay 非空）时提醒——不启用 i18n 的工程原文直出是常态（01 §四"不需要多语言
+    // 就不需要 i18n"），不制造全量噪声。
+    if (options.overlayKeys.size > 0) {
+      for (const original of index.originals) {
+        if (!options.overlayKeys.has(original)) {
+          out.push({
+            code: "missing-translation",
+            severity: "warning",
+            message: `原文未有任何译文：${original}（所有语言的 overlay 均未命中——运行期回退原文；专有名词等有意保留原文的可忽略）`,
+            pointer: "",
+          });
+        }
       }
     }
   }

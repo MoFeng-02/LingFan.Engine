@@ -44,6 +44,7 @@ export default defineConfigWithVueTs(
     name: "lingfan/files-to-ignore",
     ignores: [
       "**/dist/**",
+      "**/dist-enc/**",
       "**/coverage/**",
       "**/src-tauri/**",
       "**/node_modules/**",

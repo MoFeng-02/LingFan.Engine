@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>灵泛引擎</title>
+    <style>
+      /* T06-02 双窗启动画面：纯静态加载骨架，无业务逻辑（明文例外 · 规约 05 §二.2） */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        display: grid;
+        place-items: center;
+        background: #101418;
+        color: #8aa0b4;
+        font: 14px/1.6 system-ui, sans-serif;
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #4c8dff;
+        animation: pulse 1s ease-in-out infinite;
+        margin: 0 auto 12px;
+      }
+      @keyframes pulse {
+        50% {
+          opacity: 0.25;
+          transform: scale(0.7);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <div class="dot"></div>
+      <div>正在准备引擎资源…</div>
+    </div>
+  </body>
+</html>

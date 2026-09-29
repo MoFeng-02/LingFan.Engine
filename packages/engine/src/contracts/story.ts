@@ -35,6 +35,11 @@ export interface Story {
   defines?: Record<string, unknown>;
   /** 01 §四.2 信封语言声明（多版本列文件 `{id}_{lang}` 的文件内声明；缺省 = 默认语言） */
   lang?: string;
+  /**
+   * T08-06 扩展声明透传（来自工程清单 `extensions`；组装器校验后原样携带）——
+   * 宿主组合根据此装载扩展（`loadDeclaredExtensions`）并注入引擎构造与编辑器合并面。
+   */
+  extensions?: string[];
 }
 
 /** 07 §三 工程清单（project.json）：结构化/原子化多文件工程的组装契约 */
@@ -57,6 +62,12 @@ export interface ProjectManifest {
    * 方向不进存档/快照（壳配置非叙事语义）。
    */
   shell?: ProjectShellConfig;
+  /**
+   * T08-06 扩展声明（规约 10 §七，**声明制**）：宿主模块说明符列表（如 `"ext/demo.ts"`）。
+   * 组合根按声明装载（`loadDeclaredExtensions`）——扫描器对未声明的扩展文件零感知
+   * （不扫盘、不猜测，避免任意代码执行面）；缺席/为空 = 无扩展（unknown-op 口径不变）。
+   */
+  extensions?: string[];
   /** 工程级 defines：无条件 Set，先于故事文件应用（后加载覆盖） */
   defines?: Record<string, unknown>;
 }

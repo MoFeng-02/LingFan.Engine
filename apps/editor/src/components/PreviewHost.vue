@@ -251,9 +251,12 @@ const offEvent = engine.onEvent((event) => {
     const id = ++notifySeq;
     toasts.value.push({ id, text: payload.text });
     window.clearTimeout(toastTimer);
+    // 提示驻留（T11-08 提常量）：沿袭现状 2600ms，零行为变化；与 playground 的 3000
+    // 不同源属历史偶得，是否统一另行裁定
+    const NOTIFY_TOAST_DURATION_MS = 2600;
     toastTimer = window.setTimeout(() => {
       toasts.value = toasts.value.filter((t) => t.id !== id);
-    }, 2600);
+    }, NOTIFY_TOAST_DURATION_MS);
   } else if (payload.kind === "engine.error") {
     errorText.value = `[${payload.code}] ${payload.message}`;
   } else if (payload.kind === "minigame.mount") {

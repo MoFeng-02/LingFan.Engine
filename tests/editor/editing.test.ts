@@ -14,6 +14,7 @@ import {
   insertAtPointer,
   moveAtPointer,
   moveCommand,
+  nearestCommandPointer,
   removeAtPointer,
   removeColumn,
   renameColumn,
@@ -43,6 +44,21 @@ const sample: Story = {
 };
 
 describe("指针原语（不可变 + fail-closed）", () => {
+  it("nearestCommandPointer（D-48）：字段指针归一到最近命令祖先，命令/列指针原样", () => {
+    // 字段级（顶层命令的字段）→ 包含它的命令
+    expect(nearestCommandPointer(sample, "/columns/0/commands/0/text")).toBe(
+      "/columns/0/commands/0",
+    );
+    expect(nearestCommandPointer(sample, "/columns/1/commands/0")).toBe(
+      "/columns/1/commands/0",
+    ); // 已是命令 → 原样
+    // 无命令祖先（列指针 / 根）→ 原样（selectColumn 的列指针语义不受影响）
+    expect(nearestCommandPointer(sample, "/columns/0")).toBe("/columns/0");
+    expect(nearestCommandPointer(sample, "/columns/99/x")).toBe(
+      "/columns/99/x",
+    );
+  });
+
   it("setAtPointer 沿路径克隆，原树零改动、未命中路径返回 null", () => {
     const before = snapshot(sample);
     const next = setAtPointer(sample, "/columns/0/commands/0/text", "改了");

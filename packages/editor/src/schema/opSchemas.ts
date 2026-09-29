@@ -386,9 +386,14 @@ function issueToDiagnostic(
 /**
  * 06-D3 编辑期单命令 fail-closed 校验（结构层）：未知 op / 未知字段 / 缺必填 / 类型错。
  * pointer = 命令对象自身在 Story 树上的 JSON Pointer。
+ * `schemas`（T08-04，可选）= op 负载 schema 面（缺省内建 OP_SCHEMAS；扩展注册后传合并集）。
  * 锚点: edit-time-validation
  */
-export function validateCommand(cmd: unknown, pointer = ""): Diagnostic[] {
+export function validateCommand(
+  cmd: unknown,
+  pointer = "",
+  schemas: Readonly<Record<string, z.ZodType>> = OP_SCHEMAS,
+): Diagnostic[] {
   if (typeof cmd !== "object" || cmd === null || Array.isArray(cmd)) {
     return [
       {
@@ -410,7 +415,7 @@ export function validateCommand(cmd: unknown, pointer = ""): Diagnostic[] {
       },
     ];
   }
-  const schema = OP_SCHEMAS[op];
+  const schema = schemas[op];
   if (schema === undefined) {
     return [
       {

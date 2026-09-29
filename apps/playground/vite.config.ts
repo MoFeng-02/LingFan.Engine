@@ -31,12 +31,17 @@ export default defineConfig(() => ({
         }
       : undefined,
     watch: {
-      // ③ 平台区分的宿主取数走 Rust 命令（host_platform）——TAURI_ENV_* 未注入 beforeBuildCommand，编译期路线不可靠
-  // 移动端兼容：构建语法目标按 Tauri 官方建议 = safari13（老 WebView 可解析）；
-  // esbuild 只转语法不补内建方法（如 Array.prototype.at）——那是 lint 守卫的事
-  build: { target: "safari13" },
-  // 3. tell Vite to ignore watching `src-tauri`
+      // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+  },
+  // 移动端兼容：构建语法目标按 Tauri 官方建议 = safari13（老 WebView 可解析）；
+  // esbuild 只转语法不补内建方法（如 Array.prototype.at）——那是 lint 守卫的事。
+  // （此前此块误嵌于 server.watch 内从未生效，随 T06-02 调整 build 配置一并归位）
+  build: {
+    target: "safari13",
+    // T06-02：单包产物——动态 import（@tauri-apps 等）内联进入口，html 只引用一个产物文件；
+    // 懒加载 chunk 的相对引用无法经构建期改写到解密协议，单包是改写面最小的形态
+    rollupOptions: { output: { inlineDynamicImports: true } },
   },
 }));

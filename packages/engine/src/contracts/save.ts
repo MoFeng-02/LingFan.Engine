@@ -19,6 +19,12 @@ export interface SaveDataV1 {
   cursor: number;
   /** ⑨-12 存档缩略图（data URL，槽位面板展示用；可选——旧档无此字段） */
   screenshot?: string;
+  /**
+   * T08-08 存档扩展依赖标记：**本档实际执行过的扩展**（op 执行时登记，`exportSave` 落盘）。
+   * 未用到扩展的存档**不带本字段**（缺扩展也能读——防假阳性）；读档时逐个查注册表，
+   * 缺 id / 版本不可达且无 migrate → 整档拒绝（`extension-missing` / `extension-version`）。
+   */
+  extensions?: { id: string; stateVersion: number }[];
   history: Array<{
     coord: ColumnCoordinate;
     state: [string, unknown][];

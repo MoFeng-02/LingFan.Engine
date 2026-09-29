@@ -9,3 +9,4 @@ export * from "./preferences";
 export * from "./minigame";
 export * from "./shell";
 export * from "./element";
+export * from "./extension";

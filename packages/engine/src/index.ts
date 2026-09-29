@@ -15,16 +15,23 @@ export { assembleProject, ProjectAssemblyError } from "./data";
 /**
  * 09-16 工程写回（`assembleProject` 的逆函数）：Story + 原始清单 → 期望文件全集，
  * 以及与打开基线的最小差量。编辑器保存经此（格式知识单点，禁在适配器复制）。
+ * T03-02 并发修改检测：文件指纹比对（冲突以错误出站，锚点 project-write-conflict-detection）。
+ * T03-03 规范化检测：保存前列出「打开形态 → 标准布局」的动作（锚点 save-normalization-notice）。
  */
 export {
+  conflictMessage,
+  detectWriteConflicts,
+  detectWriteNormalization,
   diffProjectFiles,
   isSafeFileNameSegment,
   MANIFEST_FILE,
   ProjectSerializationError,
   serializeProject,
   STORIES_DIR,
+  type FileStamp,
   type ProjectFileDiff,
   type SerializedProject,
+  type WriteNormalizationFinding,
 } from "./data";
 export {
   generateText,
@@ -60,3 +67,26 @@ export {
 } from "./runtime/shell";
 /** 08 §二.1 元素形状校验（F5）：编辑器编辑期与运行期**同口径**的单一事实源 */
 export { validateElement, validateElementNode } from "./data";
+/**
+ * T08-07 写入契约守卫（值侧）：宿主/扩展（T08）与测试模板可用同一函数做**写入前断言**
+ * （"断言工具"是 R8 对「原地改可变值」兜底手段之一）。
+ */
+export {
+  findJsonValueError,
+  jsonUnsafeReason,
+} from "./runtime/stateContract";
+export {
+  BUILTIN_OP_NAMES,
+  buildOpRegistry,
+  collectTextProjections,
+  isExtensionStateKey,
+  type RegisteredOp,
+} from "./runtime/opRegistry";
+/**
+ * T08-06 声明制扩展装载（规约 10 §七）：扫描器对未声明的扩展文件零感知；
+ * 模块解析归宿主（注入式 import 回调），本模块只做形状校验（fail-closed）。
+ */
+export {
+  loadDeclaredExtensions,
+  type ExtensionModuleLoader,
+} from "./runtime/extensionLoader";
