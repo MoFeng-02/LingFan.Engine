@@ -48,6 +48,12 @@ import {
 } from "@lingfan/engine";
 import App from "./App.vue";
 
+// T10-01 渲染诊断探针：`VITE_LFEN_DIAG=1` 构建时启用（iOS CI 白屏取证）；默认构建
+// 动态 import 被 tree-shake，产物零增重。独立于 boot——白屏时 boot 可能挂，探针必须无条件跑。
+if (import.meta.env.VITE_LFEN_DIAG === "1") {
+  void import("./diag").then((module) => module.startDiag());
+}
+
 const MANIFEST = "project.json";
 /**
  * 浏览器形态的故事清单（Tauri 形态由 Rust `project_files` 枚举目录，不用此表）。

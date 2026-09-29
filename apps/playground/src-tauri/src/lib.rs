@@ -64,8 +64,7 @@ pub fn run() {
             if let Ok(data) = app.path().app_data_dir() {
                 resource_crypto::cleanup_tmp_stream(&data);
             }
-            // 诊断探针（仅当 LFEN_IOS_DIAG=1；默认零行为）——CI 冒烟排「跑得起来但画面空白」用
-            diagnostics::arm(app.handle());
+            // 诊断探针已改前端 build-flag（VITE_LFEN_DIAG=1，src/diag.ts）；lfen_diag 命令保留为回传通道
             splash_then_show(app.handle());
             Ok(())
         })
