@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:prepare": "node scripts/prepare-dist.mjs",
+    "stories:build": "tsx scripts/stories-build.ts",
     "preview": "vite preview",
     "tauri": "tauri"
   },
@@ -21,6 +22,7 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2",
     "@vitejs/plugin-vue": "^6.0.7",
+    "tsx": "^4.23.15",
     "vite": "^8.0.16"
   }
 }

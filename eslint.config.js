@@ -130,4 +130,16 @@ export default defineConfigWithVueTs(
       ],
     },
   },
+  {
+    name: "lingfan/node-side-tooling",
+    // T09-01 S2：TS 故事源管线是 Node 侧创作期工具（tsx 运行）——其脚本与测试需要
+    // node:fs 等（不在 WebView 运行，不受「WebView 无 Node」守卫；编辑器/引擎/Rust 零感知）
+    files: [
+      "apps/playground/scripts/**/*.{ts,mjs}",
+      "tests/playground/stories-build.test.ts",
+    ],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
 );
