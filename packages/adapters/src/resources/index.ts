@@ -7,12 +7,17 @@ export {
   createFileListFileSource,
   createHandleFileSource,
   createHandleProjectWriter,
+  createLastProjectStore,
   createSourceProjectFilesPort,
   createSourceResourcePort,
+  ensureReadAccess,
+  loadDiagnosticSupply,
   locateResourceRootFromPaths,
   pickProjectDirectory,
   supportsDirectoryPicker,
   type BlobUrlOptions,
+  type DiagnosticSupply,
+  type LastProjectHandleStore,
   type ProjectFileSource,
 } from "./directorySource";
 export {
@@ -21,6 +26,10 @@ export {
   loadProjectFromFetch,
   type FetchProjectFilesOptions,
 } from "./projectLoader";
+export {
+  createTauriProjectWriter,
+  type TauriProjectWriterOptions,
+} from "./projectWriterTauri";
 export {
   createTauriProjectFilesPort,
   watchTauriProjectFiles,

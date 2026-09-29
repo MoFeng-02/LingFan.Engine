@@ -13,8 +13,7 @@ const api = inject<EditorApi>("editorApi")!;
 function locate(diagnostic: Diagnostic): void {
   if (diagnostic.pointer !== "") api.select(diagnostic.pointer);
 }
-const keyOf = (d: Diagnostic): string => `${d.code}@${d.pointer}:${d.message}`;
-</script>
+const keyOf = (d: Diagnostic): string => `${d.code}@${d.pointer}:${d.message}`;</script>
 
 <template>
   <div class="diag-panel">
@@ -25,7 +24,12 @@ const keyOf = (d: Diagnostic): string => `${d.code}@${d.pointer}:${d.message}`;
       <li
         v-for="diagnostic in diagnostics"
         :key="keyOf(diagnostic)"
-        :class="diagnostic.severity"
+        :class="[diagnostic.severity, { global: diagnostic.pointer === '' }]"
+        :title="
+          diagnostic.pointer === ''
+            ? '全局诊断：不指向具体命令，点击不可定位'
+            : undefined
+        "
         @click="locate(diagnostic)"
       >
         <span class="dot"></span>
@@ -66,6 +70,13 @@ const keyOf = (d: Diagnostic): string => `${d.code}@${d.pointer}:${d.message}`;
 }
 .diag-list li:hover {
   background: #1a1b26;
+}
+/* 全局诊断（pointer 为空）：不可定位 → 不做可点击暗示 */
+.diag-list li.global {
+  cursor: default;
+}
+.diag-list li.global:hover {
+  background: transparent;
 }
 .dot {
   width: 8px;

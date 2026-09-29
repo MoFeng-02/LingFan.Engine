@@ -6,7 +6,7 @@
 export type DiagnosticSeverity = "error" | "warning";
 
 export interface Diagnostic {
-  /** 诊断码：unknown-op / unknown-field / missing-required / invalid-value / duplicate-column / missing-target / unknown-function / undefined-variable / missing-resource / missing-entry / invalid-structure / unused-translation / invalid-element / unimplemented-element-attr */
+  /** 诊断码：unknown-op / unknown-field / missing-required / invalid-value / duplicate-column / missing-target / unknown-function / undefined-variable / missing-resource / missing-entry / invalid-structure / unused-translation / missing-translation / invalid-element / unimplemented-element-attr */
   code: string;
   severity: DiagnosticSeverity;
   message: string;
@@ -51,7 +51,7 @@ export interface SymbolIndex {
     name: string;
     kind: "expression" | "interpolation";
   }[];
-  /** 可翻译原文集合（say.text / menu.prompt / menu.options[].text / input.prompt / notify.text——运行时四处 Translate 挂接） */
+  /** 可翻译原文集合（say.text/speaker、menu.prompt、menu.options[].text、input.prompt、notify.text、character.screen、元素 text——2026-09-27 翻译面扩展后全部走运行期 Translate） */
   originals: Set<string>;
 }
 

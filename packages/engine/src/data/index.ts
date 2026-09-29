@@ -8,6 +8,9 @@ export {
 } from "./format";
 export {
   assembleProject,
+  conflictMessage,
+  detectWriteConflicts,
+  detectWriteNormalization,
   ProjectAssemblyError,
   diffProjectFiles,
   isSafeFileNameSegment,
@@ -15,8 +18,10 @@ export {
   ProjectSerializationError,
   serializeProject,
   STORIES_DIR,
+  type FileStamp,
   type ProjectFileDiff,
   type SerializedProject,
+  type WriteNormalizationFinding,
 } from "./project";
 export {
   findElements,
