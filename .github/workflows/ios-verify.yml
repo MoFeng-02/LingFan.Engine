@@ -65,11 +65,11 @@ jobs:
       # （/opt/homebrew）而失败。这里先用 `arch -arm64` 装好，让自检直接通过、不再触发它自己装。
       # 必须先构建前端：Tauri 在编译期把 `frontendDist` 嵌进 Rust 静态库；若先跑 cargo check
       # （本步之后）再构建前端，产物里嵌的是空/旧资源 → 应用启动后白屏（无任何 JS 可执行）
-      - name: 预构建前端（供 Rust 编译期嵌入）
+      - name: 预构建前端（供 Rust 编译期嵌入；VITE_LFEN_DIAG=1 开启渲染诊断探针）
         working-directory: apps/playground
         run: |
           set -euo pipefail
-          pnpm build --mode tauri
+          VITE_LFEN_DIAG=1 pnpm build --mode tauri
           test -f dist/index.html || { echo "::error::dist/index.html 缺失"; exit 1; }
           ls -la dist | head -10
 
@@ -201,8 +201,8 @@ jobs:
 
           xcrun simctl install "$udid" "$app" || { echo "::error::安装失败"; exit 1; }
           # 启动并抓取进程控制台（--console-pty 收 stdout/stderr，含 Rust panic）
-          # SIMCTL_CHILD_ 前缀把环境变量注入被测 App → 打开 DOM/媒体诊断探针（Rust 侧 eval，默认零行为）
-          SIMCTL_CHILD_LFEN_IOS_DIAG=1 xcrun simctl launch --console-pty "$udid" com.langfeng.lingfanengine > /tmp/ios-launch.log 2>&1 &
+          # 渲染诊断探针已在构建期内嵌（VITE_LFEN_DIAG=1）→ [lfen-diag] 行进 launch 日志
+          xcrun simctl launch --console-pty "$udid" com.langfeng.lingfanengine > /tmp/ios-launch.log 2>&1 &
           sleep 30
 
           # 存活检查带重试（simctl launch 与进程注册偶有竞态；实测同代码有 1 次误判）
