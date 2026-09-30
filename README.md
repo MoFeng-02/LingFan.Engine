@@ -18,7 +18,7 @@
 ```
 packages/
 ├── engine/       @lingfan/engine     框架无关核心（零资源、零依赖）
-│   └── src/{contracts, data, runtime}   契约 / 01 数据层 / 02-04 执行（禁平铺，按功能域归类）
+│   └── src/{contracts, data, runtime}   契约 / 数据层 / 执行层（禁平铺，按功能域归类）
 ├── adapters/     @lingfan/adapters   预设适配器：save / resources / media 三域
 └── ui/           @lingfan/ui         参考展示层：dialogue / audio / video 三域（可测纯逻辑）
 apps/
@@ -36,12 +36,12 @@ tests/                                集中测试目录：按「包 → 功能�
 
 新工程由 `template/v1` 生成；工程结构 = `project.json` + `Resources/` 单根
 （`Resources/{Stories,Audio,Images,Video,Media,Live2D,Lang/{lang},Saves}`）。
-故事里的资源路径**相对 `Resources/`**：`bgm "Audio/main.mp3"`、`video "Video/op.mp4"`（08-U7，不依赖进程工作目录）。
+故事里的资源路径**相对 `Resources/`**：`bgm "Audio/main.mp3"`、`video "Video/op.mp4"`（不依赖进程工作目录）。
 
-## 文档与规约
+## 文档
 
-- 语义规约（做什么）：`项目记录` 00–08（本机文档，不入 git）
-- 通用分层纪律（怎么写）：内部规则 / 内部规则
+- 语义与架构说明：见仓库内源码注释与各包 README
+- 通用工程规则：内部规则 / 内部规则
 - 项目独有规则与现状：内部规约
 
 ## 命令（在仓库根执行）

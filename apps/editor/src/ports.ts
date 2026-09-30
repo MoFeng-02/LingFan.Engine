@@ -1,7 +1,7 @@
 /**
  * 编辑器宿主注入契约（组合根 → 视图族）。
  *
- * 纪律（06-D1 / 分层纪律 对应章节 调用链）：**平台取径归组合根**——目录选择、文件读取、资源供数
+ * 纪律（调用链分层）：**平台取径归组合根**——目录选择、文件读取、资源供数
  * 都在 `main.ts` 装配，组件只吃这里声明的契约类型（组件零 adapters import，
  * 与 playground 同构）。
  */
@@ -23,24 +23,24 @@ export interface OpenedProject {
   story: Story;
   resourcePort: ResourcePort;
   /**
-   * 早期阶段/08 对应章节.3 层级表：内建默认 × 工程覆盖（`project.json shell.layers`）。
+   * 层级表：内建默认 × 工程覆盖（`project.json shell.layers`）。
    * 预览需要它才能把「实例级 z」与「层默认」解析成真实 z（否则只能按 DOM 顺序叠）。
    */
   layerZ: LayerZTable;
   /**
-   * 任务 / 任务 诊断供给侧：资源根实际文件集合（逻辑路径）+ overlay 译文键并集。
+   * 诊断供给侧：资源根实际文件集合（逻辑路径）+ overlay 译文键并集。
    * 类型即 `analyzeStory` 的第二参数（**同一类型** ⇒ 杜绝两处声明漂移）；未打开工程时
    * 宿主不传该参数，两个检查器族整体跳过（不误报）。
    */
   diagnosticSupply: Required<AnalyzeOptions>;
   /**
-   * 保存回磁盘（09-16）：组合根绑定的闭包——已含**原始清单**（保真回写 `project.json`）、
+   * 保存回磁盘：组合根绑定的闭包——已含**原始清单**（保真回写 `project.json`）、
    * 打开基线（算最小差量）与 writer。组件不持有这些平台侧事实。
    * 缺省 = 只读取径（目录 input 快照）→ 宿主必须禁用保存。
    */
   save?: (story: Story) => Promise<ProjectWriteReport>;
   /**
-   * 任务 保存前规范化检测（锚点 save-normalization-notice）：对比**当前磁盘形态**
+   * 保存前规范化检测：对比**当前磁盘形态**
    * 与当前故事的标准布局，返回保存将触发的规范化动作；无发现返回 `undefined`。
    * 会话内**首次成功保存**后恒返回 `undefined`（打开时的非规范文件已被处理）。
    * 缺省 = 只读取径（无保存能力，检测无从谈起）。
@@ -51,7 +51,7 @@ export interface OpenedProject {
 }
 
 /**
- * 「记住上次工程」（任务）：组合根从 IndexedDB 句柄装配的一键重开入口。
+ * 「记住上次工程」：组合根从 IndexedDB 句柄装配的一键重开入口。
  * 有上次工程才出现（缺省 = 按钮不渲染，语义与「未打开工程」一致）。
  */
 export interface LastProjectEntry {
@@ -72,7 +72,7 @@ export interface ProjectOpener {
   pick(): Promise<OpenedProject | undefined>;
   /** 目录 input 兜底取径（`<input webkitdirectory>` 的文件快照，只读） */
   fromFiles(files: readonly File[]): Promise<OpenedProject>;
-  /** 「记住上次工程」（任务）：有持久化句柄才出现 */
+  /** 「记住上次工程」：有持久化句柄才出现 */
   lastProject?: LastProjectEntry;
 }
 

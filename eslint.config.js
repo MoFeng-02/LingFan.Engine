@@ -12,7 +12,7 @@ import pluginVue from "eslint-plugin-vue";
  */
 const NODE_GROUP = {
   group: ["node:*", "fs", "path", "os", "child_process"],
-  message: "WebView 里没有 Node（规约 00 §3.2）：文件/进程必经 Rust 命令",
+  message: "WebView 里没有 Node：文件/进程必经 Rust 命令",
 };
 const ASSET_GROUP = {
   group: [
@@ -32,7 +32,7 @@ const ASSET_GROUP = {
     "*.webm",
   ],
   message:
-    "资源禁止构建期 import（08-U7）：经 ResourcePort 逻辑寻址，由平台适配器供数（可能是加密资源）",
+    "资源禁止构建期 import：经 ResourcePort 逻辑寻址，由平台适配器供数（可能是加密资源）",
 };
 
 export default defineConfigWithVueTs(
@@ -62,9 +62,9 @@ export default defineConfigWithVueTs(
   },
   {
     name: "lingfan/core-boundaries",
-    // 规约 00 §3.2-1：核心层框架无关——可用 Web 标准 API，禁止 UI 框架 / Tauri API / Node
-    // packages/editor（06 编辑器核心，纯映射器 D1）与 tests/engine|editor/**（集中测试目录）
-    // 同样受核心层边界约束（agent.md §3 测试集中化）
+    // 核心层框架无关——可用 Web 标准 API，禁止 UI 框架 / Tauri API / Node
+    // packages/editor（编辑器核心，纯映射器）与 tests/engine|editor/**（集中测试目录）
+    // 测试同样受核心层边界约束（测试集中化）
     files: [
       "packages/engine/**/*.{ts,vue}",
       "packages/editor/**/*.ts",
@@ -79,7 +79,7 @@ export default defineConfigWithVueTs(
             {
               group: ["vue", "vue-*", "pinia", "@vue/*", "@tauri-apps/*"],
               message:
-                "核心层框架无关（规约 00 §3.2）：禁止 import UI 框架与 Tauri API",
+                "核心层框架无关：禁止 import UI 框架与 Tauri API",
             },
             NODE_GROUP,
             ASSET_GROUP,
@@ -90,7 +90,7 @@ export default defineConfigWithVueTs(
   },
   {
     name: "lingfan/runtime-import-boundaries",
-    // 规约 00 §3.2-2：WebView 没有 Node；08-U7：资源禁止构建期 import——
+    // WebView 没有 Node；资源禁止构建期 import——
     // 资源由平台适配器供数（静态根是未加密的开发形态；加密后由 Rust 解密返回 Blob URL），
     // 构建期 import / 静态直引在加密形态下无文件可指。适配器实现文件（@tauri-apps 等）集中在本域。
     files: [
@@ -132,7 +132,7 @@ export default defineConfigWithVueTs(
   },
   {
     name: "lingfan/node-side-tooling",
-    // T09-01 S2：TS 故事源管线是 Node 侧创作期工具（tsx 运行）——其脚本与测试需要
+    // TS 故事源管线是 Node 侧创作期工具（tsx 运行）——其脚本与测试需要
     // node:fs 等（不在 WebView 运行，不受「WebView 无 Node」守卫；编辑器/引擎/Rust 零感知）
     files: [
       "apps/playground/scripts/**/*.{ts,mjs}",

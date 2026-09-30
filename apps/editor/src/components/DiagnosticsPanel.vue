@@ -9,7 +9,7 @@ interface EditorApi {
 }
 const api = inject<EditorApi>("editorApi")!;
 
-/** D6：诊断带 JSON Pointer——点击定位到命令（空指针 = 全局诊断，不可定位） */
+/** 诊断带 JSON Pointer——点击定位到命令（空指针 = 全局诊断，不可定位） */
 function locate(diagnostic: Diagnostic): void {
   if (diagnostic.pointer !== "") api.select(diagnostic.pointer);
 }

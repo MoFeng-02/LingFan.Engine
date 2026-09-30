@@ -18,7 +18,7 @@ export interface ResourcePort {
 
 /**
  * 工程文件供给端口：适配器只负责「取」，解析与组装归引擎——
- * **组装器是唯一解析点**（T4 混存识别与单列文件名不变量在 assembleProject 统一生效）。
+ * **组装器是唯一解析点**（混存识别与单列文件名不变量在 assembleProject 统一生效）。
  * 实现：浏览器/WebView = adapters 的 fetch 加载器；Tauri Desktop/Mobile = 资源协议或 Rust 命令（只换适配器）。
  */
 export interface ProjectFilesPort {

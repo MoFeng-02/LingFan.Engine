@@ -386,7 +386,7 @@ function issueToDiagnostic(
  * 编辑期单命令 fail-closed 校验（结构层）：未知 op / 未知字段 / 缺必填 / 类型错。
  * pointer = 命令对象自身在 Story 树上的 JSON Pointer。
  * `schemas`（可选）= op 负载 schema 面（缺省内建 OP_SCHEMAS；扩展注册后传合并集）。
- * 编辑期 fail-closed 校验的测试锚点见 validation.test。
+ * 编辑期 fail-closed 校验的测试见 validation.test。
  */
 export function validateCommand(
   cmd: unknown,

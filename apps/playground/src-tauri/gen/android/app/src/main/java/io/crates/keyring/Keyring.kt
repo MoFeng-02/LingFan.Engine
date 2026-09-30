@@ -3,7 +3,7 @@ package io.crates.keyring
 import android.content.Context
 
 /**
- * android-native-keyring-store 的 ndk-context 初始化入口（K1 的 KEK 凭据落地依赖它）。
+ * android-native-keyring-store 的 ndk-context 初始化入口（KEK 凭据落地依赖它）。
  *
  * 该 crate 用 SharedPreferences + Android Keystore 存凭据，内部经 `ndk_context::android_context()`
  * 取 Android 上下文；**未初始化会 panic**（实测：点「存」→ SIGABRT，崩溃线程 JavaBridge，

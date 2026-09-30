@@ -6,7 +6,7 @@
 //! 2. 注册清单每个命令必须真有 `pub fn` 定义（防注册面漂移）
 //! 3. 有参命令：TS invoke args 键（camelCase）必须覆盖 Rust 签名参数（snake_case；
 //!    Tauri 2 自动转换，参数名含下划线时两侧书写即分叉——互锁点）
-//! 4. 负载形状：Rust serde 输出键必须与 TS 期待接口键一致（SlotSummary 锚点——
+//! 4. 负载形状：Rust serde 输出键必须与 TS 期待接口键一致（SlotSummary 契约——
 //!    save_count/slot/timestamp/mode 曾是无测试的隐性契约）
 //! 5. Kotlin 自注册插件字符串契约（gen/android 平台适配层）：插件标识（= Kotlin 包名）/
 //!    命令名（= @Command 方法名）/参数与响应键/方向模式字面量——Rust ↔ Kotlin 之间同样是

@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn writes_columns_then_manifest_and_deletes_stale() {
-        // 锚点 project-writer-parity：先写后删、manifest 是提交点
+        // 写回不变量：先写后删、manifest 是提交点
         let root = test_root("happy");
         write(&root, "Stories/old.json", "{旧列}");
         let report = apply_project_files(

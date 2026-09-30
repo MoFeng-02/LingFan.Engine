@@ -1,14 +1,13 @@
 /**
- * F6 点击动作解析测试。
- * 锚点: interaction-priority
+ * 点击动作解析测试。
  *
- * 优先级对照老引擎 `InteractionBinder.ApplyInteraction`（`Views/InteractionBinder.cs:28-205`）：
+ * 优先级对照旧版引擎 InteractionBinder.ApplyInteraction 的行为：
  * `disabled` > `nav` > `cmd` > `hover_*` > `selected_*`（后两级为与点击正交的视觉态）。
  */
 import { describe, expect, it } from "vitest";
 import { hasElementInteraction, resolveElementAction } from "@lingfan/ui";
 
-describe("resolveElementAction（F6 点击优先级）", () => {
+describe("resolveElementAction（点击优先级）", () => {
   it("disabled 短路：不产生任何动作（最高优先级）", () => {
     expect(resolveElementAction({ disabled: true, nav: "a", cmd: "b" })).toEqual({
       kind: "none",

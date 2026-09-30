@@ -15,7 +15,7 @@ tests/playground/.tmp-build
 *.local
 target
 
-# 运行期产物：存档由 Rust 安全层落盘（规约 05），不进版本库
+# 运行期产物：存档由 Rust 安全层落盘，不进版本库
 **/Resources/Saves/
 
 # 超大测试素材（>100MB）：本地提供，不进版本库（lfenpack 打包测试用）
@@ -40,7 +40,7 @@ apps/playground/Resources/Video/m2.mp4
 # Tauri Android 构建期资源拷贝（gen 内 ~513MB，构建时自动生成；脚手架本体正常入库）
 apps/playground/src-tauri/gen/android/app/src/main/assets/Resources/
 
-# 工作区记忆（与 agent.md / 私有文档 同规：本机保留，不入版本库）
+# 工作区记忆：本机保留，不入版本库
 /.workbuddy/
 
 # iOS 插件 Swift 包的 tauri-api 拷贝（build.rs 生成，与 gen/ 同类产物）
