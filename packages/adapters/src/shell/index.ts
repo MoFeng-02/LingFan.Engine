@@ -3,3 +3,8 @@ export {
   createNoopOrientationPort,
   createTauriOrientationPort,
 } from "./orientation";
+export {
+  createBrowserFullscreenApplier,
+  createTauriFullscreenApplier,
+} from "./fullscreen";
+export type { FullscreenApplier, FullscreenWindowLike } from "./fullscreen";

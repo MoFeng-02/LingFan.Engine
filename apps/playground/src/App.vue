@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, watch, type Ref } from "vue";
 import {
+  DEFAULT_KEYMAP,
   INSTANCE_Z_KEYS,
   SYS,
   StoryEngine,
@@ -12,6 +13,7 @@ import {
   type ElementInstance,
   type HostInfo,
   type I18nPort,
+  type KeymapAction,
   type LayerZTable,
   type OrientationMode,
   type PlayerPreferences,
@@ -665,17 +667,6 @@ watch(props.story, (fresh) => engine.reloadStory(fresh));
 // —— rAF 帧循环驱动打字机 ——
 rafId = requestAnimationFrame(tickLoop);
 
-// —— 键位映射：Space/Enter=推进（语义归核心层），H=历史面板 ——
-function onKeydown(e: KeyboardEvent): void {
-  if (e.key === " " || e.key === "Enter") {
-    e.preventDefault();
-    onStageClick();
-  } else if (e.key === "h" || e.key === "H") {
-    toggleHistory();
-  }
-}
-window.addEventListener("keydown", onKeydown);
-
 // —— 玩家偏好：状态归核心层（PlayerPreferences），面板只是 UI 皮 ——
 const showPrefs = ref(false);
 const prefsView = ref(props.preferences.snapshot()); // 响应式镜像（onChange 同步）
@@ -719,6 +710,60 @@ function setPrefOrientation(event: Event): void {
     return;
   }
   props.preferences.setOrientation(value as OrientationMode);
+}
+
+function setPrefFullscreen(event: Event): void {
+  props.preferences.setFullscreen((event.target as HTMLInputElement).checked);
+}
+
+// —— 键位映射：偏好覆盖（prefs-keymap）× 内建默认（DEFAULT_KEYMAP）——
+// 大小写不敏感匹配；捕获模式经 capture 阶段监听器优先于普通键位处理。
+function keyMatches(
+  action: KeymapAction,
+  fallback: readonly string[],
+  e: KeyboardEvent,
+): boolean {
+  const override = prefsView.value.keymap?.[action];
+  const pressed = e.key.toLowerCase();
+  return (override ?? fallback).some((k) => k.toLowerCase() === pressed);
+}
+
+function onKeydown(e: KeyboardEvent): void {
+  if (captureAction.value !== null) return; // 捕获中：capture 阶段监听器已处理
+  if (keyMatches("advance", DEFAULT_KEYMAP.advance, e)) {
+    e.preventDefault();
+    onStageClick();
+  } else if (keyMatches("history", DEFAULT_KEYMAP.history, e)) {
+    toggleHistory();
+  }
+}
+window.addEventListener("keydown", onKeydown);
+
+const captureAction = ref<KeymapAction | null>(null);
+
+function startCapture(action: KeymapAction): void {
+  captureAction.value = action;
+}
+
+function resetKeybinding(action: KeymapAction): void {
+  props.preferences.clearKeybinding(action);
+}
+
+function onCaptureKeydown(e: KeyboardEvent): void {
+  const action = captureAction.value;
+  if (action === null) return;
+  e.preventDefault();
+  e.stopPropagation();
+  captureAction.value = null;
+  if (e.key === "Escape") return; // Esc = 取消捕获（不改键位）
+  props.preferences.setKeybinding(action, [e.key]);
+}
+window.addEventListener("keydown", onCaptureKeydown, true);
+
+function displayKeys(keys: readonly string[]): string {
+  return keys
+    .map((k) => (k === " " ? "空格" : k.length === 1 ? k.toUpperCase() : k))
+    .join(" / ");
 }
 
 // —— 05 存档：编排归引擎命令面（槽位校验/写读/错误出站都在核心层）——
@@ -874,6 +919,7 @@ onUnmounted(() => {
   engine.dispose(); // 清挂起的 wait 定时器
   cancelAnimationFrame(rafId); // 停 rAF 帧循环
   window.removeEventListener("keydown", onKeydown);
+  window.removeEventListener("keydown", onCaptureKeydown, true);
 });
 </script>
 
@@ -1119,6 +1165,58 @@ onUnmounted(() => {
           <option value="portrait">竖屏</option>
           <option value="landscape">横屏</option>
         </select>
+      </label>
+      <div class="prefs-row">
+        <span class="prefs-label">推进键</span>
+        <button
+          type="button"
+          class="prefs-key"
+          :class="{ capturing: captureAction === 'advance' }"
+          @click.stop="startCapture('advance')"
+        >
+          {{
+            captureAction === "advance"
+              ? "按任意键（Esc 取消）"
+              : displayKeys(prefsView.keymap?.advance ?? DEFAULT_KEYMAP.advance)
+          }}
+        </button>
+        <button
+          type="button"
+          class="prefs-key-reset"
+          @click.stop="resetKeybinding('advance')"
+        >
+          默认
+        </button>
+      </div>
+      <div class="prefs-row">
+        <span class="prefs-label">历史键</span>
+        <button
+          type="button"
+          class="prefs-key"
+          :class="{ capturing: captureAction === 'history' }"
+          @click.stop="startCapture('history')"
+        >
+          {{
+            captureAction === "history"
+              ? "按任意键（Esc 取消）"
+              : displayKeys(prefsView.keymap?.history ?? DEFAULT_KEYMAP.history)
+          }}
+        </button>
+        <button
+          type="button"
+          class="prefs-key-reset"
+          @click.stop="resetKeybinding('history')"
+        >
+          默认
+        </button>
+      </div>
+      <label class="prefs-row">
+        <span class="prefs-label">全屏</span>
+        <input
+          type="checkbox"
+          :checked="prefsView.fullscreen ?? false"
+          @change="setPrefFullscreen"
+        />
       </label>
       <label class="prefs-row">
         <span class="prefs-label">宿主</span>
@@ -1490,8 +1588,8 @@ body,
   }
 }
 
-/* 偏好面板：行式布局（label + 滑块 + 数值） */
-.prefs-panel label.prefs-row {
+/* 偏好面板：行式布局（label/div + 滑块/按钮 + 数值） */
+.prefs-panel .prefs-row {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1515,6 +1613,33 @@ body,
   flex: none;
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.prefs-row .prefs-key {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 4px 8px;
+  border: 1px solid #343a52;
+  border-radius: 4px;
+  background: #1a2030;
+  color: #a9b1d6;
+  cursor: pointer;
+}
+
+.prefs-row .prefs-key.capturing {
+  border-color: #7aa2f7;
+  color: #7aa2f7;
+}
+
+.prefs-row .prefs-key-reset {
+  flex: none;
+  padding: 4px 8px;
+  border: 1px solid #343a52;
+  border-radius: 4px;
+  background: transparent;
+  color: #565f89;
+  cursor: pointer;
 }
 
 /* 模板皮肤（演示自定义模板 center：居中独白形态——骨架固定，皮肤类 + 挂点内容可换） */

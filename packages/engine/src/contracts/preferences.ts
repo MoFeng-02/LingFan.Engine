@@ -7,10 +7,19 @@ import type { AudioChannel } from "./media";
 import type { OrientationMode } from "./shell";
 
 /**
- * 玩家偏好载荷（四通道音量 + 全局静音 + 文字速度 + 屏幕方向；键位配置随编辑器阶段增补）。
+ * 玩家偏好载荷（四通道音量 + 全局静音 + 文字速度 + 屏幕方向 + 键位覆盖 + 全屏；契约只增，可选字段向后兼容）。
  * `orientation` **可选**：缺省 = 未设置（跟随工程默认），显式写入即覆盖工程默认
  * （含显式选 auto——玩家要求跟随系统优先于作者默认）。
+ * `keymap` **可选**：键位覆盖（缺省动作 = 内建默认键位 DEFAULT_KEYMAP）。
+ * `fullscreen` **可选**：全屏偏好（缺省 = 窗口化）；应用归宿主（尽力而为，缺手势静默失败）。
  */
+export interface PlayerKeymap {
+  /** 推进键覆盖（KeyboardEvent.key 字面量；比较大小写不敏感） */
+  advance?: string[];
+  /** 历史面板键覆盖 */
+  history?: string[];
+}
+
 export interface PlayerPrefsData {
   v: 1;
   /** 四通道音量 0..1（键 = AudioChannel；有效音量 = op 音量 × 通道偏好，静音再归零） */
@@ -21,7 +30,21 @@ export interface PlayerPrefsData {
   textSpeed: number;
   /** 屏幕方向偏好（缺省 = 未设置，跟随工程默认；与存档分离） */
   orientation?: OrientationMode;
+  /** 键位覆盖（缺省动作 = 内建默认键位） */
+  keymap?: PlayerKeymap;
+  /** 全屏偏好（缺省 = 未设置 = 窗口化；宿主尽力而为应用） */
+  fullscreen?: boolean;
 }
+
+/** 内建默认键位（键位覆盖缺席时生效；与既有宿主行为一致：Space/Enter=推进、H=历史） */
+export const DEFAULT_KEYMAP: Required<PlayerKeymap> = {
+  advance: [" ", "Enter"],
+  history: ["h"],
+};
+
+/** 键位动作全集（键位覆盖的合法键） */
+export const KEYMAP_ACTIONS = ["advance", "history"] as const;
+export type KeymapAction = (typeof KEYMAP_ACTIONS)[number];
 
 /** 偏好持久化端口（组合根注入；Tauri = app_data JSON 文件，浏览器 = localStorage 兜底） */
 export interface PreferencesPort {
