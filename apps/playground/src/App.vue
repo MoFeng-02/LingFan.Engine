@@ -45,7 +45,7 @@ import {
   type AudioRenderer,
   type VideoRenderer,
 } from "@lingfan/ui";
-import { captureSaveThumbnail, stripHtml } from "./shell/thumbnail";
+import { captureSaveThumbnail, captureStageComposite, collectStageMedia, stripHtml } from "./shell/thumbnail";
 
 // —— 核心层只写状态，UI 只经 ValueChanged 订阅渲染 ——
 // 工程与平台端口都由组合根（main.ts）装配注入：本组件只消费契约，不知道任何具体实现
@@ -829,7 +829,7 @@ async function chooseSlot(view: SlotView): Promise<void> {
   const mode = slotPanel.value;
   slotPanel.value = null;
   if (mode === "save") {
-    const shot = captureSaveThumbnail({
+    const base = {
       width: props.saves.thumbnail.width,
       height: props.saves.thumbnail.height,
       quality: props.saves.thumbnail.quality,
@@ -839,7 +839,21 @@ async function chooseSlot(view: SlotView): Promise<void> {
         : undefined,
       text: stripHtml(dialogView.value.bodyHtml),
       timestamp: Date.now(),
-    });
+    };
+    // 真像素分层合成优先（元素图/视频帧）；污染/失败降级合成卡（尽力而为）
+    let shot: string;
+    try {
+      shot = captureStageComposite({
+        ...base,
+        stage: {
+          width: stageEl.value?.clientWidth ?? 0,
+          height: stageEl.value?.clientHeight ?? 0,
+        },
+        media: collectStageMedia(stageEl.value),
+      });
+    } catch {
+      shot = captureSaveThumbnail(base);
+    }
     engine.save(view.id, { screenshot: shot }); // 标题沿用 save op 参数（如有）
   } else if (mode === "load") {
     engine.load(view.id);
