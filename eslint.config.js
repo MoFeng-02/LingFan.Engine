@@ -114,9 +114,10 @@ export default defineConfigWithVueTs(
   },
   {
     name: "lingfan/legacy-webview-compat",
-    // ③ 移动端兼容：目标 WebView 含 Chrome 91（Android 9 镜像，雷电实测）/ Safari 13-15——
-    // Array/String.prototype.at 是 ES2022（Chrome 92+/Safari 15.4+），老 WebView 直接
-    // TypeError → 模块执行中断 → #app 空 → 白屏。用 arr[arr.length - 1] 替代；
+    // 老 WebView 内建方法守卫：基线 = Safari 13.1+ / Chrome 85+（Android 9 镜像 Chrome 91 实测）——
+    // replaceAll（Chrome 85/Safari 13.1 起支持）在基线内合法，不在守卫之列；
+    // 只拦基线之后的内建方法/全局（Chrome 92+ 一族 + Safari 15 才有的 Promise.any），
+    // 命中即老 WebView TypeError → 模块执行中断 → #app 空 → 白屏。
     // 语法层兼容由 vite build.target=safari13 负责（esbuild 不补内建方法，守卫在这里）。
     files: ["packages/**/*.ts", "apps/*/src/**/*.{ts,vue}"],
     rules: {
@@ -126,6 +127,94 @@ export default defineConfigWithVueTs(
           selector: "MemberExpression[property.name='at']",
           message:
             "Array/String.prototype.at 是 ES2022（Chrome 92+/Safari 15.4+），目标 WebView 含 Chrome 91——用 arr[arr.length - 1] 替代",
+        },
+        {
+          selector: "MemberExpression[property.name='findLast']",
+          message:
+            "Array.prototype.findLast 是 ES2023（Chrome 97+/Safari 15.4+），基线 Safari 13.1+/Chrome 85+ 不含——用手写倒序循环替代",
+        },
+        {
+          selector: "MemberExpression[property.name='findLastIndex']",
+          message:
+            "Array.prototype.findLastIndex 是 ES2023（Chrome 97+/Safari 15.4+），基线 Safari 13.1+/Chrome 85+ 不含——用手写倒序循环替代",
+        },
+        {
+          selector: "MemberExpression[property.name='toSorted']",
+          message:
+            "Array.prototype.toSorted 是 ES2023 change-array-by-copy（Chrome 110+/Safari 16.4+），基线不含——用 slice().sort() 替代",
+        },
+        {
+          selector: "MemberExpression[property.name='toReversed']",
+          message:
+            "Array.prototype.toReversed 是 ES2023 change-array-by-copy（Chrome 110+/Safari 16.4+），基线不含——用 slice().reverse() 替代",
+        },
+        {
+          selector: "MemberExpression[property.name='toSpliced']",
+          message:
+            "Array.prototype.toSpliced 是 ES2023 change-array-by-copy（Chrome 110+/Safari 16.4+），基线不含——用 slice() 后 splice 替代",
+        },
+        {
+          selector: "MemberExpression[property.name='with']",
+          message:
+            "Array.prototype.with 是 ES2023 change-array-by-copy（Chrome 110+/Safari 16.4+），基线不含——用 slice() 后赋值替代",
+        },
+        {
+          selector: "MemberExpression[property.name='isWellFormed']",
+          message:
+            "String.prototype.isWellFormed 是 ES2024（Chrome 111+/Safari 16.4+），基线不含——用显式孤立代理项检查替代",
+        },
+        {
+          selector: "MemberExpression[property.name='toWellFormed']",
+          message:
+            "String.prototype.toWellFormed 是 ES2024（Chrome 111+/Safari 16.4+），基线不含——用显式孤立代理项替换替代",
+        },
+        {
+          selector: "MemberExpression[object.name='Object'][property.name='hasOwn']",
+          message:
+            "Object.hasOwn 是 ES2022（Chrome 93+/Safari 15.4+），基线不含——用 Object.prototype.hasOwnProperty.call 替代",
+        },
+        {
+          selector: "MemberExpression[object.name='Promise'][property.name='any']",
+          message:
+            "Promise.any 是 ES2021（Chrome 85+ 但 Safari 15+），目标 WebView 含 Safari 13-15——用 Promise 链或手写聚合替代",
+        },
+        {
+          selector: "MemberExpression[object.name='Array'][property.name='fromAsync']",
+          message:
+            "Array.fromAsync 是 ES2024（Chrome 121+/Safari 16.4+），基线不含——用 for 循环 push 替代",
+        },
+        {
+          selector: "MemberExpression[object.name='Object'][property.name='groupBy']",
+          message:
+            "Object.groupBy 是 ES2024（Chrome 117+/Safari 17.4+），基线不含——用 reduce 替代",
+        },
+        {
+          selector: "MemberExpression[object.name='Map'][property.name='groupBy']",
+          message:
+            "Map.groupBy 是 ES2024（Chrome 117+/Safari 17.4+），基线不含——用 reduce + Map 替代",
+        },
+        {
+          selector: "MemberExpression[object.name='AbortSignal'][property.name='timeout']",
+          message:
+            "AbortSignal.timeout 需 Chrome 103+/Safari 16+，基线不含——用 AbortController + setTimeout 替代",
+        },
+        {
+          selector: "MemberExpression[object.name='crypto'][property.name='randomUUID']",
+          message:
+            "crypto.randomUUID 需 Chrome 92+/Safari 15.4+，基线不含——用 crypto.getRandomValues 手写 UUID 替代",
+        },
+      ],
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "structuredClone",
+          message:
+            "structuredClone 需 Chrome 98+/Safari 15.4+，基线 Safari 13.1+/Chrome 85+ 不含——用 JSON 往返或手写深拷贝替代",
+        },
+        {
+          name: "BigInt",
+          message:
+            "BigInt 全局需 Safari 14+，基线 Safari 13.1 不含（esbuild 同样拒绝 bigint 字面量）——避免 BigInt 值",
         },
       ],
     },
