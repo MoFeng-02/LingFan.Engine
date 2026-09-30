@@ -1,10 +1,10 @@
 /**
- * T10-01 渲染诊断探针（build-flag 开关：`VITE_LFEN_DIAG=1` 构建时进产物并自启；
+ * 渲染诊断探针（build-flag 开关：`VITE_LFEN_DIAG=1` 构建时进产物并自启；
  * 默认构建 tree-shake 零字节）。替代原 Rust `eval` 注入（diagnostics.rs arm 已删）：
  * 探针由前端自身在页面生命周期内定时采样，不依赖注入时机；回传仍走 `lfen_diag`
  * 命令 → stderr（iOS CI 经 --console-pty 收进 launch 日志，Android 进 logcat）。
  *
- * 用途：定位「应用跑得起来但画面空白」类问题（iOS 白屏 T10-01）——采集渲染层栈
+ * 用途：定位「应用跑得起来但画面空白」类问题（白屏取证）——采集渲染层栈
  * （z-index/矩形/可见性）、#app 规模与背景、媒体元素状态（readyState/error/矩形）。
  * 浏览器形态（无 Tauri IPC）静默跳过上报，采样逻辑照常执行。
  */

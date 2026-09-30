@@ -1,6 +1,5 @@
 /**
- * 06-D6 诊断契约：编辑期诊断统一形态，pointer = RFC 6901 JSON Pointer（指向 Story 树）。
- * 锚点: diagnostics-with-pointer
+ * 诊断契约：编辑期诊断统一形态，pointer = RFC 6901 JSON Pointer（指向 Story 树）。
  */
 
 export type DiagnosticSeverity = "error" | "warning";
@@ -27,7 +26,7 @@ export function joinPointer(...segments: (string | number)[]): string {
   return "/" + segments.map(escapePointerToken).join("/");
 }
 
-/** 06 §一.2 符号索引（灵泛 ProjectIndex 思路）：columnId / defines 键 / 变量 / 函数 / 跳转目标 / 资源引用 / 可翻译原文 */
+/** 符号索引：columnId / defines 键 / 变量 / 函数 / 跳转目标 / 资源引用 / 可翻译原文 */
 export interface SymbolIndex {
   /** columnId → 首个同名列的指针（重复列另见 duplicateColumns） */
   columnPointers: Map<string, string>;
@@ -51,7 +50,7 @@ export interface SymbolIndex {
     name: string;
     kind: "expression" | "interpolation";
   }[];
-  /** 可翻译原文集合（say.text/speaker、menu.prompt、menu.options[].text、input.prompt、notify.text、character.screen、元素 text——2026-09-27 翻译面扩展后全部走运行期 Translate） */
+  /** 可翻译原文集合（say.text/speaker、menu.prompt、menu.options[].text、input.prompt、notify.text、character.screen、元素 text——全部走运行期 Translate） */
   originals: Set<string>;
 }
 
@@ -59,6 +58,6 @@ export interface SymbolIndex {
 export interface AnalyzeOptions {
   /** 资源根内实际文件集合（相对 Resources/ 的逻辑路径）→ 资源路径缺失诊断 */
   resourceFiles?: ReadonlySet<string>;
-  /** overlay 译文键集合（Lang/{lang} 合并后）→ 未使用翻译键诊断（06 §一.2 翻译缺口检查器） */
+  /** overlay 译文键集合（Lang/{lang} 合并后）→ 未使用翻译键诊断（翻译缺口检查器） */
   overlayKeys?: ReadonlySet<string>;
 }

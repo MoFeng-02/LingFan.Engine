@@ -1,4 +1,4 @@
-//! T03-01 Tauri 桌面写回端口（Rust 侧）：`apply_project_files` 命令实现浏览器
+//! Tauri 桌面写回端口（Rust 侧）：`apply_project_files` 命令实现浏览器
 //! `createHandleProjectWriter`（directorySource.ts）**完全同序**的写回——
 //! 「校验 → 建 `Stories/` → 写列文件 → 写 `project.json`（提交点）→ 删陈旧」，
 //! 永不先删后写：失败时磁盘最坏只是「多出文件」，工程仍可加载。
@@ -9,8 +9,7 @@
 //! 拒绝 `..` / 反斜杠 / 空段，不信任前端。任一路径非法 → **整批拒绝、零写入**。
 //! 差量计算归 TS（`diffProjectFiles`，格式知识单点）；本命令只按差量落盘。
 //!
-//! 锚点: project-writer-parity
-
+//!
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -32,7 +31,7 @@ pub struct ProjectWriteReport {
     pub deleted: Vec<String>,
 }
 
-/// 单个文件的并发检测指纹（T03-02）：`last_modified` 为 **Unix 毫秒**（对齐 JS
+/// 单个文件的并发检测指纹：`last_modified` 为 **Unix 毫秒**（对齐 JS
 /// `File.lastModified`）；serde camelCase → TS 直接以 `{path, lastModified, size}` 消费。
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -164,7 +163,7 @@ pub fn apply_project_files(
     Ok(ProjectWriteReport { written, deleted })
 }
 
-/// T03-02 并发修改检测的**只读命令**：对基线路径批量取指纹（存在性 + mtime 毫秒 + size）。
+/// 并发修改检测的**只读命令**：对基线路径批量取指纹（存在性 + mtime 毫秒 + size）。
 /// 缺失路径不返回（TS 比对时 = 冲突「被外部删除」）。路径白名单与写回同面（基线只来自
 /// `serializeProject` 的文件集）；mtime 转换失败的文件按 0 处理（仍参与 size 比对）。
 #[tauri::command]
@@ -333,7 +332,7 @@ mod tests {
 
     #[test]
     fn stamps_report_mtime_and_size_and_skip_missing() {
-        // T03-02：指纹 = mtime 毫秒 + size；缺失路径不出现在结果里（调用方判冲突）
+        // 指纹 = mtime 毫秒 + size；缺失路径不出现在结果里（调用方判冲突）
         let root = test_root("stamp");
         write(&root, "Stories/a.json", "{列a}");
         write(&root, "project.json", "{清单}");

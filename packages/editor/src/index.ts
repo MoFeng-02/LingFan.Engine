@@ -1,7 +1,7 @@
 /**
- * @lingfan/editor 公共出口（06 编辑器核心）：op schema 单一事实源 + 编辑期诊断 +
- * 故事树纯映射器。D1：只读写故事 JSON，不碰运行时与 Rust；
- * 作者视图偏好（列分组 / 折叠）走**注入式存储**、不入故事树（锚点: editor-column-grouping）。
+ * @lingfan/editor 公共出口：op schema 单一事实源 + 编辑期诊断 +
+ * 故事树纯映射器：只读写故事 JSON，不碰运行时与 Rust；
+ * 作者视图偏好（列分组 / 折叠）走**注入式存储**、不入故事树。
  */
 
 export type {

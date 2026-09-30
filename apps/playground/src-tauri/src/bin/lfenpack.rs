@@ -1,4 +1,4 @@
-//! ⑨-4b 加密打包 CLI（06 §一.5「一键打包」的构建期核心；创作者工具，不随玩家包分发）：
+//! 加密打包 CLI（「一键打包」的构建期核心；创作者工具，不随玩家包分发）：
 //! 明文工程根 → 加密发布根。用法：
 //! `lfenpack <工程根> <输出根> [--force] [--strict] [--dist <前端产物目录>]`
 //!
@@ -6,10 +6,10 @@
 //! 清单明文转换（resourceEncryption=true）+ 内容文件全量 LFEN2（原路径+.enc）+
 //! 排除 Saves/ 与点文件 + 新随机 DEK 写 `__key__.seed`（运行时首次导入即封装）+
 //! 输出逐文件解密回读自检。`--force` = 输出目录已存在且非空时先清空（显式覆盖确认）。
-//! `--dist`（T06-02）= 收录前端构建产物（`dist/` 逻辑路径前缀，html 除外 → 报告 skipped），
+//! `--dist` = 收录前端构建产物（`dist/` 逻辑路径前缀，html 除外 → 报告 skipped），
 //! 收录非空时输出清单补 `frontend.assets` 映射段。
 //! `--strict` = 打包照常完成，但报告含任何「未入包 / 明文例外」时以非零码退出
-//! （审计模式：加密包例外面必须显式知情，口径 = 规约 05 §二.2 例外清单）。
+//! （严格模式：加密包例外面必须显式知情）。
 
 use lingfanengine_lib::resource_crypto::{pack_project_with_dist, PackEntry};
 use std::path::PathBuf;

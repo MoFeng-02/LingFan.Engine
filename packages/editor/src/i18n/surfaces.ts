@@ -1,5 +1,5 @@
 /**
- * 05 i18n 工具链 · 翻译面单一事实源（T05-01，锚点: i18n-key-extract-parity）。
+ * i18n 工具链 · 翻译面单一事实源。
  *
  * `TRANSLATE_SURFACES` 声明「命令流上哪些 op 的哪些字段会被运行期 Translate」——
  * 诊断的原文收集（`indexStory.originals`）与键抽取器（`extractStoryKeys`）**共同消费本表**，
@@ -15,7 +15,7 @@ export const TRANSLATE_SURFACES: Readonly<Record<string, readonly string[]>> = {
   menu: ["prompt", "options[].text"],
   input: ["prompt"],
   notify: ["text"],
-  // 2026-09-27 翻译面扩展（用户裁定「所有展示文字纳入翻译」）：角色注册的显示名 screen
+  // 翻译面：角色注册的显示名 screen
   // （说话人显示名解析产物走 say 的 Translate 挂接，查表见 runtime/engine.ts execSay）。
   character: ["screen"],
 };

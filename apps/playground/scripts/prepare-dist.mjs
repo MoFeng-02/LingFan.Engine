@@ -1,9 +1,9 @@
-// T06-02 构建后处理：加密发布形态的 dist 准备（`vite build` 之后、Tauri 嵌入之前）。
+// 构建后处理：加密发布形态的 dist 准备（`vite build` 之后、Tauri 嵌入之前）。
 // - 直通模式（默认，LFEN_ENCRYPTED_BUILD≠1）：仅同步 splashscreen.html 进 dist
 //   （splash 窗口由 Rust 桌面侧恒创建，明文/加密两形态都需要）。
 // - 加密模式（LFEN_ENCRYPTED_BUILD=1）：改写 index.html 的产物引用为 LFStream 协议 URL
 //   + 把 dist/assets 移出至 dist-enc/（lfenpack --dist 的输入）——frontendDist 内
-//   绝不留明文 js/css（fail-closed 校验），入口 html 是唯一明文面（规约 05 §二.2）。
+//   绝不留明文 js/css（fail-closed 校验），入口 html 是唯一明文面。
 //
 // 纯函数（resolveProtocolBase / rewriteHtml）被 tests/playground/prepare-dist.test.ts 直接测试；
 // 本文件主流程只做文件编排。
@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 /**
  * 平台 → lfstream 协议基座（与 Rust `protocol_base` 同口径：wry 行为，
  * Windows/Android 映射 http 虚拟 host，macOS/iOS/Linux 原生 scheme）。
- * TAURI_ENV_* 未注入 beforeBuildCommand（⑨-10 实测）：Android 构建下 undefined
+ * TAURI_ENV_* 未注入 beforeBuildCommand（实测）：Android 构建下 undefined
  * → 默认 http 形态恰好正确；iOS 构建需显式传 LFEN_PROTOCOL_BASE（已知缺口，iOS 未通）。
  */
 export function resolveProtocolBase(platform, env) {
@@ -28,7 +28,7 @@ export function resolveProtocolBase(platform, env) {
  * 提取 html 里的本地产物引用（`/assets/...` 或 `./assets/...`）并改写为
  * `{base}/v2/dist%2F…`（encodeURIComponent 与 Rust 侧 utf8_percent_encode
  * 在 vite 产物名字符集 [A-Za-z0-9_.-] 上输出一致）。只改写构建产物内的
- * 相对引用（设计稿 §2.2 纪律），动态拼接 URL 一概不碰。
+ * 相对引用（改写纪律：只碰构建产物内相对引用），动态拼接 URL 一概不碰。
  */
 export function rewriteHtml(html, base) {
   const assets = [];
@@ -96,7 +96,7 @@ function main() {
 
   // publicDir 拷贝清除（真窗冒烟实测逮住）：vite `publicDir: "Resources"` 会把明文资源
   // 整体镜像进 dist——加密形态下运行时资源走 lfenpack 产物，该镜像嵌入 exe = 泄密面。
-  // dist 最终只允许剩入口 html + splash（明文例外全集，规约 05 §二.2）。
+  // dist 最终只允许剩入口 html + splash（明文例外全集）。
   for (const name of readdirSync(dist)) {
     if (name === "index.html" || name === "splashscreen.html") continue;
     rmSync(join(dist, name), { recursive: true, force: true });

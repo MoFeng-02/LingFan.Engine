@@ -1,9 +1,9 @@
 /**
- * 宿主命名命令注册表 —— 老引擎 `ICommandService` 的替代物（⑨-2 遗留的
+ * 宿主命名命令注册表 —— 旧版引擎命令服务的替代物（遗留的
  * 「通用命令扩展处理器注册制」在本批随元素系统落地）。
  *
  * 用途：元素的 `cmd` 属性是**宿主业务命令**（打开设置面板、回标题、外部跳转…），
- * 引擎核心不感知这些命令（08 §七：输入语义归核心层——`nav` 走核心 `navigate`，
+ * 引擎核心不感知这些命令（输入语义归核心层——`nav` 走核心 `navigate`，
  * `cmd` 走宿主注册表；未注册即 fail-closed，不静默吞掉作者意图）。
  *
  * 与 minigame / 元素渲染器注册表同一纪律：**无默认回退**。
@@ -13,7 +13,7 @@ import type { ElementInstance } from "@lingfan/engine";
 /**
  * 命令处理器。
  * `value` 为**点击时**已求值的参数（宿主先用 `engine.interpolate` 插值，
- * 老引擎 `InteractionBinder.ResolveValue` 同语义——取点击那一刻的变量值）。
+ * 旧版引擎取值语义——取点击那一刻的变量值）。
  */
 export type NamedCommandHandler = (
   value: string | undefined,

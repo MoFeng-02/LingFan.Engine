@@ -1,5 +1,5 @@
 /**
- * 05-存档编排契约（TS 侧）：安全（加密/AAD/高水位）在 Rust 层（K7）。
+ * 存档编排契约（TS 侧）：安全（加密/AAD/高水位）在 Rust 层。
  * TS 只编排载荷与槽位；跨端（Desktop/Mobile）实现同一 SavePort。
  */
 import type { ColumnCoordinate, StoryCommand } from "./story";
@@ -55,7 +55,7 @@ export interface SlotSummary {
 export interface SavePort {
   write(slot: string, payload: string, mode: SaveMode): Promise<void>;
   read(slot: string): Promise<string>;
-  /** 删除槽位（05 K4：删档不动高水位——防回档基准不随删档回退） */
+  /** 删除槽位（删档不动高水位——防回档基准不随删档回退） */
   remove(slot: string): Promise<void>;
   list(): Promise<SlotSummary[]>;
 }

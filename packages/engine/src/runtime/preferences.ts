@@ -1,8 +1,8 @@
 /**
- * 08 §八.2 / U10 玩家偏好（核心层纯 TS 状态，可测）：与存档分离——不进引擎
+ * 玩家偏好（核心层纯 TS 状态，可测）：与存档分离——不进引擎
  * SSOT/快照/存档（回溯与读档不得改变玩家设置），经 PreferencesPort 独立持久化。
  * 音量合成末端 = effectiveVolume（静音归零；op 音量 × 通道偏好在渲染层进行——
- * 老引擎 GetEffectiveVolume 同语义）。持久化防抖（trailing）合并滑块连写，
+ * 合成末端语义）。持久化防抖（trailing）合并滑块连写，
  * dispose 补尾防丢末次修改（热重载防抖同教训）。
  */
 import type {
@@ -98,7 +98,7 @@ export class PlayerPreferences {
     return this.data.volumes[channel];
   }
 
-  /** 08 §八.2 有效音量（合成末端）：静音归零，否则通道偏好 0..1 */
+  /** 有效音量（合成末端）：静音归零，否则通道偏好 0..1 */
   effectiveVolume(channel: AudioChannel): number {
     if (this.data.muted) return 0;
     return this.data.volumes[channel];

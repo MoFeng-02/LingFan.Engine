@@ -1,7 +1,7 @@
 /**
- * 08 §六 音频端口适配器：WebView 解码（HTMLAudioElement）。
- * 入参为已解析 URL（资源寻址归 ResourcePort，08-U7）。
- * 同 URL 且 restart=false = 无缝续播/更新（只改音量/循环/位置，不重头播——03-R7 回滚 seek 语义）；
+ * 音频端口适配器：WebView 解码（HTMLAudioElement）。
+ * 入参为已解析 URL（资源寻址归 ResourcePort）。
+ * 同 URL 且 restart=false = 无缝续播/更新（只改音量/循环/位置，不重头播——回滚 seek 语义）；
  * restart=true = 回到起点重播（同源不重设 src，避免重复解码）。
  * 淡入淡出用音量斜坡（单条 rAF，斜坡清空即停）。
  * 浏览器自动播放策略拒绝时登记该通道，首次用户交互后重试（否则首曲静默丢失）。
@@ -28,7 +28,7 @@ function clamp(value: number): number {
 }
 
 export interface WebAudioPortOptions {
-  /** 播放失败诊断（缺失/损坏资源不静默：08-U7 报错诊断） */
+  /** 播放失败诊断（缺失/损坏资源不静默：报错诊断） */
   onError?: (message: string) => void;
 }
 

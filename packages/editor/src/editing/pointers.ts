@@ -1,7 +1,6 @@
 /**
  * JSON Pointer（RFC 6901）读取与不可变树编辑：沿路径克隆（结构共享），
- * 未命中路径 fail-closed 返回 null——编辑器映射器只做纯函数（D1）。
- * 锚点: editor-is-pure-mapper
+ * 未命中路径 fail-closed 返回 null——编辑器映射器只做纯函数。
  */
 
 type PathSegment = string | number;
@@ -201,7 +200,7 @@ function isCommandAt(root: unknown, pointer: string): boolean {
 }
 
 /**
- * 归一到**最近的命令祖先指针**（D-48）：诊断/引用给出的指针是字段级（D6 精确到
+ * 归一到**最近的命令祖先指针**：诊断/引用给出的指针是字段级（精确到
  * 字段），而时间线行选中与属性面板表单都锚在命令指针上——指针不是命令时沿前缀
  * **从长到短**上溯包含它的命令（嵌套块体逐级上溯）；本身已是命令、或无命令祖先
  * （列指针 / 根）→ 原样返回（调用方既有语义不变）。

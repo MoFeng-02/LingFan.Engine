@@ -1,4 +1,4 @@
-//! ⑦ invoke↔Rust 跨边界互锁测试（仅测试编译）：Tauri 的命令名/参数键/负载键都是
+//! invoke↔Rust 跨边界互锁测试（仅测试编译）：Tauri 的命令名/参数键/负载键都是
 //! 运行时字符串——编译期失配不可见，此前「TS 契约替身各测一半 + Rust 纯函数各测一半」
 //! 缺整链。本模块读 TS 适配器源（`packages/adapters/src/**`）与本 crate 注册面
 //! （lib.rs / 命令签名 / serde 负载），把两半缝成整链：
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn ts_invoke_commands_are_registered() {
-        // 锚点: bridge-ts-invoke-registered——TS 调了未注册命令 = 运行时才炸的真缺陷
+        // TS 调了未注册命令 = 运行时才炸的真缺陷
         let registered = registered_commands(&lib_rs_text());
         let mut used = BTreeSet::new();
         for (_, text) in adapters_ts_sources() {
@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn ts_invoke_args_match_rust_params() {
-        // 锚点: bridge-args-interlock——有参命令的 TS args 键覆盖 Rust 签名参数（camel↔snake）
+        // 有参命令的 TS args 键覆盖 Rust 签名参数（camel↔snake）
         let sources = rust_sources_text();
         let mut checked = 0usize;
         for (path, text) in adapters_ts_sources() {
@@ -231,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn rust_payload_keys_match_ts_expectations() {        // 锚点: bridge-payload-keys——serde 输出键必须与 TS 期待接口键一致
+    fn rust_payload_keys_match_ts_expectations() {        // serde 输出键必须与 TS 期待接口键一致
         // （SlotSummary：Rust save_count ↔ TS 显式映射 saveCount 的隐性契约，本轮起锁定）
         use crate::save::SlotSummary;
         let value = serde_json::to_value(SlotSummary {
@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn kotlin_plugin_string_contracts_match_rust() {
-        // 锚点: bridge-kotlin-plugin-interlock——自注册 Kotlin 插件与 Rust 之间同样是纯字符串
+        // 自注册 Kotlin 插件与 Rust 之间同样是纯字符串
         // 契约（插件标识 = Kotlin 包名 / 命令名 = @Command 方法名 / 参数与响应键 / 模式字面量），
         // 编译期不可见：此前无任何互锁，失配只在真机运行时炸。
         let shell_kt = kotlin_plugin_source("shell", "ShellPlugin.kt");
@@ -359,7 +359,7 @@ mod tests {
 
     #[test]
     fn swift_plugin_string_contracts_match_rust() {
-        // 锚点: bridge-swift-plugin-interlock——iOS 侧与 Rust 同样是纯字符串契约
+        // iOS 侧与 Rust 同样是纯字符串契约
         // （C 入口符号 = ios_plugin_binding! 的 ident / 命令名 = @objc 方法名 / 参数键 / 模式字面量）。
         // Swift 无法在本机（Windows）编译，本测试是当前唯一可自动化的防线：符号与字面量漂移即刻暴露。
         // 源落点：src-tauri/ios/（Swift 包：build.rs 经 link_apple_library 于 cargo 构建期编译链接；

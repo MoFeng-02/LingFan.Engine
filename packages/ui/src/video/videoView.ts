@@ -1,7 +1,7 @@
 /**
- * 08 §六.5 视频渲染：引擎的 `__video` 命令流 → VideoPort 执行（可测纯编排）。
+ * 视频渲染：引擎的 `__video` 命令流 → VideoPort 执行（可测纯编排）。
  * - seq 去重：同一命令只执行一次（重放/读档恢复后的同 seq 不重放）
- * - 资源经 ResourcePort 解析（08-U7）+ 代际取消（迟到的旧解析不误播）
+ * - 资源经 ResourcePort 解析 + 代际取消（迟到的旧解析不误播）
  * - cutscene 自然播放结束 → onVideoFinished（引擎解除 video 等待）
  * 性能：sync 仅由 `__video` 事件与显式调用触发（回溯/读档后对齐），非逐帧。
  */
@@ -14,7 +14,7 @@ import type {
 import { SYS } from "@lingfan/engine";
 
 export interface VideoRendererOptions {
-  /** 资源解析失败诊断（08-U7 报错诊断：不静默吞错） */
+  /** 资源解析失败诊断（报错诊断：不静默吞错） */
   onError?: (message: string) => void;
   /** cutscene 自然播放结束（引擎据此解除 video 等待） */
   onVideoFinished?: () => void;

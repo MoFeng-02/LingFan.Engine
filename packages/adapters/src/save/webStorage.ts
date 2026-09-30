@@ -1,5 +1,5 @@
 /**
- * 05 §五 SavePort 纯 Web 实现：localStorage 演示兜底（明文——不作为安全边界），
+ * SavePort 纯 Web 实现：localStorage 演示兜底（明文——不作为安全边界），
  * 语义对齐原生（高水位/计数由 Web 侧自管）。由组合根按平台装配。
  */
 import type { SavePort, SlotSummary } from "@lingfan/engine";
@@ -32,7 +32,7 @@ export function createWebStorageSavePort(): SavePort {
       return record.payload;
     },
     async remove(slot): Promise<void> {
-      localStorage.removeItem(slotKey(slot)); // K4：删档不动高水位（演示同语义）
+      localStorage.removeItem(slotKey(slot)); // 删档不动高水位（演示同语义）
     },
     async list(): Promise<SlotSummary[]> {
       const out: SlotSummary[] = [];

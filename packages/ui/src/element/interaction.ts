@@ -1,12 +1,10 @@
 /**
- * F6 点击动作解析（08 §七：输入语义归核心层，UI 只做翻译）。
- *
- * 优先级严格照抄老引擎 `InteractionBinder.ApplyInteraction`（`Views/InteractionBinder.cs:28-205`）：
+ * 点击动作解析（输入语义归核心层，UI 只做翻译）。
+ * 优先级：disabled > nav > cmd（对齐旧版引擎交互绑定语义）：
  * **`disabled` > `nav` > `cmd` > `hover_*` > `selected_*`** —— 前三级决定**点击行为**
  * （`disabled` 短路、`nav` 优先于 `cmd`），后两级是与点击正交的**视觉态**（由渲染器绑定）。
  *
  * 纯函数：宿主据此选路（`nav` → 核心 `navigate`；`cmd` → 宿主命名命令注册表）。
- * 锚点: interaction-priority
  */
 import type { ElementInstance } from "@lingfan/engine";
 
@@ -19,7 +17,7 @@ export type ElementAction =
 export function resolveElementAction(
   props: Record<string, unknown>,
 ): ElementAction {
-  // F6 最高优先级：禁用（enabled=false 同义）→ 不产生任何动作
+  // 最高优先级：禁用（enabled=false 同义）→ 不产生任何动作
   if (props.disabled === true || props.enabled === false) return { kind: "none" };
 
   const nav = props.nav;

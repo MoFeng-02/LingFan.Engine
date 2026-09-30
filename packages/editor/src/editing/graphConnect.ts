@@ -1,15 +1,14 @@
 /**
- * 06 §一.1 节点图连线建分支（T04-04）：**拉线语义的纯判定**——
+ * 节点图连线建分支：**拉线语义的纯判定**——
  * DOM/事件留在组件（命中检测、临时线），落库语义只在这里（可测、fail-closed）。
  *
- * 语义（对齐 01 §一.2：列名即标签，jump/menu 的目标都是列）：
+ * 语义（列名即标签，jump/menu 的目标都是列）：
  * - 源列必须是 **flow**（scene 列的 entry 命令流是展示/交互层，流程分支在 flow 列表达）；
  * - 目标列必须是 **flow** 且 ≠ 源（自连无意义；非法 → `null`，调用方给 fail-closed 提示）；
  * - 源列**最后一个 `menu`** → 在其 `options` 末尾追加选项（`text` 缺省「新选项」）；
  * - 否则 → `commands` 末尾追加 `{op:"jump", target}`。
  * 一次拉线 = 一次 `session.apply` = 一个 undo 单元（提交在宿主 api）。
  *
- * 锚点: editor-graph-connect-branch
  */
 
 /** 追加计划：`containerPointer` 相对列指针（如 `commands` / `commands/3/options`） */

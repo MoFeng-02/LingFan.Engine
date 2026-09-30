@@ -1,6 +1,6 @@
 /**
- * 04 §一 结构化作用域：块/列级变量层（父链查找，替代灵泛字符串键拼接 hack）。
- * 全局层 = 执行器 SSOT Map 本体（04-S3：块/列级不进存档，故不落 SSOT）。
+ * 结构化作用域：块/列级变量层（父链查找，替代字符串键拼接 hack）。
+ * 全局层 = 执行器 SSOT Map 本体（块/列级不进存档，故不落 SSOT）。
  * 出域销毁 = 丢弃子 Scope 对象；undef = 沿父链删除声明槽。
  */
 export class Scope {
@@ -24,7 +24,7 @@ export class Scope {
     return this.parent?.lookup(name) ?? { found: false };
   }
 
-  /** 写入「声明时所在层」（04 §一.4 block-scoped 语义）；未声明过 → false（由调用方决定报错或落全局） */
+  /** 写入「声明时所在层」（block-scoped 语义）；未声明过 → false（由调用方决定报错或落全局） */
   assignExisting(name: string, value: unknown): boolean {
     if (this.vars.has(name)) {
       this.vars.set(name, value);
@@ -38,7 +38,7 @@ export class Scope {
     this.vars.set(name, value);
   }
 
-  /** undef：沿父链删除声明槽（04 §一.5，等价灵泛清同名 _local_ 键）；找到并删除 → true */
+  /** undef：沿父链删除声明槽（等价旧版清同名 _local_ 键）；找到并删除 → true */
   undef(name: string): boolean {
     if (this.vars.has(name)) {
       this.vars.delete(name);

@@ -1,13 +1,12 @@
 /**
- * 06 §一.1 舞台编辑：元素属性表单描述符（**契约驱动**）。
+ * 舞台编辑：元素属性表单描述符（**契约驱动**）。
  *
  * 元素不是 op（无 op schema），字段面直接取自引擎元素契约（单一事实源）：
  * - `ELEMENT_TYPES`（36 类型）
- * - `ELEMENT_ATTRIBUTES`（F5 通用属性全集）
+ * - `ELEMENT_ATTRIBUTES`（通用属性全集）
  * - `ELEMENT_SPECIFIC_ATTRS`（分类型属性，供高亮）
  *
  * 产出的 `FieldDescriptor` 与 op 表单同构 → 舞台编辑可直接复用 `FieldRow`。
- * 锚点: schema-driven-forms
  */
 import type { FieldDescriptor, FieldKind } from "../contracts";
 import {
@@ -57,7 +56,7 @@ const ELEMENT_LABELS: Readonly<Record<string, string>> = {
 };
 
 /**
- * 已声明但**当前无渲染语义**的属性（T01-01 止血清单；R1 裁定 = 先止血、补实现按需）。
+ * 已声明但**当前无渲染语义**的属性（止血清单：先保留解析、补实现按需）。
  *
  * 判定依据（代码事实）：这些键只在 `contracts/element.ts` 的 `ELEMENT_ATTRIBUTES` 里声明，
  * `packages/ui` **零消费**（`elementStyle` / `renderers` 都不读）——写进故事**不生效也不报错**。
@@ -66,8 +65,8 @@ const ELEMENT_LABELS: Readonly<Record<string, string>> = {
  * ② **表单不下发**（`describeElement` 过滤掉，不再给作者"看起来能用"的控件）；
  * ③ **编辑期 warning**（诊断码 `unimplemented-element-attr`）。
  *
- * 与 T02-03「三面对齐互锁」的关系：该测试独立推导"契约 − 消费者"的差集，本清单是它的**显式白名单**，
- * 两边不一致即测试变红（这正是 D-01 长期潜伏的原因——此前没有任何测试同时看这三面）。
+ * 与「三面对齐互锁」测试的关系：该测试独立推导"契约 − 消费者"的差集，本清单是它的**显式白名单**，
+ * 两边不一致即测试变红（此前长期潜伏正因没有任何测试同时看这三面）。
  */
 export const UNIMPLEMENTED_ELEMENT_ATTRS: ReadonlySet<string> = new Set([
   "valign",
@@ -78,8 +77,8 @@ export const UNIMPLEMENTED_ELEMENT_ATTRS: ReadonlySet<string> = new Set([
   "yoffset",
   "xanchor",
   "yanchor",
-  // 第 9 个（T02-03 互锁建立时反向逮出）：`image`/`imagebutton`/`portrait` 有表单
-  // （「拉伸方式」）但 `packages/ui` 零消费——T01-01 的人工盘点按已知 8 键 grep，
+  // 第 9 个（互锁建立时反向逮出）：`image`/`imagebutton`/`portrait` 有表单
+  // （「拉伸方式」）但 `packages/ui` 零消费——人工盘点时按已知 8 键 grep，
   // 没从契约全集反推差集，漏了它。互锁测试从此守着这个洞。
   "stretch",
 ]);
@@ -253,7 +252,7 @@ export function describeElement(
   type: string,
 ): ElementFormDescriptor | undefined {
   if (!(ELEMENT_TYPES as readonly string[]).includes(type)) return undefined;
-  // T01-01：不下发「已声明但无渲染语义」的属性（作者填了不生效 → 表单一律不给）
+  // 不下发「已声明但无渲染语义」的属性（作者填了不生效 → 表单一律不给）
   const allowed = new Set<string>(
     [...ELEMENT_ATTRIBUTES, "id", "name"].filter(
       (key) => !UNIMPLEMENTED_ELEMENT_ATTRS.has(key),

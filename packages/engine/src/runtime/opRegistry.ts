@@ -1,5 +1,5 @@
 /**
- * 自定义 op 注册表（规约 10；T08-02）：扩展声明 → 注册期校验 → 运行期查找。
+ * 自定义 op 注册表：扩展声明 → 注册期校验 → 运行期查找。
  *
  * 注册期校验（组合根 fail-fast：任一非法 = 构造抛错带定位）：
  * - `extensionId` 形态（`EXTENSION_ID_PATTERN`）
@@ -9,8 +9,6 @@
  * 状态命名空间：`ExtensionContext` 物理强制 `ext.<extensionId>.` 前缀（门卫）——
  * 扩展代码写不出前缀外的键；`ext.*` 不命中保留键集合（`RESERVED_STATE_KEYS` = SYS 精确名），
  * 值守卫复用引擎写入契约（`jsonUnsafeReason`/深走查）。
- *
- * 锚点: op-registry-builtin-parity、custom-op-state-persist
  */
 
 import {
@@ -25,7 +23,7 @@ import {
   type Story,
 } from "../contracts";
 
-/** 单个已注册 op：扩展身份（存档依赖标记用，T08-08）+ 运行期定义 */
+/** 单个已注册 op：扩展身份（存档依赖标记用）+ 运行期定义 */
 export interface RegisteredOp {
   readonly extensionId: string;
   readonly stateVersion: number;
@@ -212,13 +210,13 @@ export function runRegisteredOp(
   }
 }
 
-/** 扩展命名空间状态键前缀判定（T08-08 存档依赖标记/卸载清理用） */
+/** 扩展命名空间状态键前缀判定（存档依赖标记/卸载清理用） */
 export function isExtensionStateKey(key: string): boolean {
   return key.startsWith(EXT_KEY_PREFIX);
 }
 
 /**
- * 聚合扩展文本投影（T08-03，组合根用）：只收声明了 `project` 的 op。
+ * 聚合扩展文本投影（组合根用）：只收声明了 `project` 的 op。
  * op 名冲突不可能（注册期 `buildOpRegistry` 查重先抛）；缺省（无扩展/无投影）= 现行为不变。
  */
 export function collectTextProjections(

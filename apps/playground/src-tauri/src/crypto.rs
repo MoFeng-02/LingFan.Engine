@@ -1,6 +1,6 @@
-//! 05 §三 共享加密原语（KEK + AES-256-GCM 信封）：存档（save.rs）与资源（resource_crypto.rs）共用。
+//! 共享加密原语（KEK + AES-256-GCM 信封）：存档（save.rs）与资源（resource_crypto.rs）共用。
 //! 密钥分层三级：DEK（每文件/每档随机）→ KEK（每机器随机，桌面 DPAPI/Keychain/libsecret、
-//! 移动端 Keychain / Android Keystore）→ OS 凭据；零明文密钥落盘（K1）。
+//! 移动端 Keychain / Android Keystore）→ OS 凭据；零明文密钥落盘。
 //! GCM 信封 = nonce(12) + ciphertext + tag(16)。
 //!
 //! **凭据访问统一走 `keyring_core`**：keyring 4.x 的 v1 facade（`keyring::Entry`）在**编译期**就把
@@ -15,7 +15,7 @@ use base64::Engine as _;
 pub(crate) const KEK_SERVICE: &str = "lingfanengine";
 pub(crate) const KEK_USER: &str = "kek";
 
-/// K1 备注：高水位文件本身也被 KEK 加密（AAD 域分离），防篡改；删除重置为已知边界（攻击者持文件系统写权限时无法防，灵泛同界）。
+/// 备注：高水位文件本身也被 KEK 加密（AAD 域分离），防篡改；删除重置为已知边界（攻击者持文件系统写权限时无法防，与旧版同界）。
 static KEK_CACHE: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
 static KEK_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
@@ -63,7 +63,7 @@ fn credential_entry(service: &str, user: &str) -> Result<keyring_core::Entry, St
     keyring_core::Entry::new(service, user).map_err(|e| e.to_string())
 }
 
-/// K1：KEK 首次生成后写入 OS 凭据，零明文密钥落盘。
+/// KEK 首次生成后写入 OS 凭据，零明文密钥落盘。
 /// 进程内互斥 + 缓存：消除首次运行多线程并发创建 KEK 的覆盖竞争（实测暴露过）。
 pub(crate) fn kek_from_keyring(service: &str, user: &str) -> Result<Vec<u8>, String> {
     if let Some(cached) = KEK_CACHE.get() {

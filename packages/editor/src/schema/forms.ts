@@ -1,7 +1,6 @@
 /**
- * 06-D2 表单描述符派生：字段类型/必填/可选值/默认值取自 Zod schema（唯一事实源），
+ * 表单描述符派生：字段类型/必填/可选值/默认值取自 Zod schema（唯一事实源），
  * 标签/呈现语义取自 catalog；两者经互锁测试锁定字段名集合一致。
- * 锚点: schema-driven-forms
  */
 
 import type { z } from "zod";
@@ -114,7 +113,7 @@ function describeField(
       return { ...base, kind: meta?.kind ?? "value" };
     case "record":
       return { ...base, kind: meta?.kind ?? "object" };
-    // T08-04 扩展 op 无 FIELD_META → 从 zod 派生兜底（meta 恒优先，内建 op 行为不变）
+    // 扩展 op 无 FIELD_META → 从 zod 派生兜底（meta 恒优先，内建 op 行为不变）
     case "number":
       return { ...base, kind: meta?.kind ?? "number" };
     case "boolean":
@@ -125,7 +124,7 @@ function describeField(
 }
 
 /** 单 op 表单描述符；未知 op 返回 undefined（诊断层报 unknown-op）。
- * `surface`（T08-04，可选）= op 面（缺省内建；扩展注册后由组合根传合并面）。 */
+ * `surface`（可选）= op 面（缺省内建；扩展注册后由组合根传合并面）。 */
 export function describeForm(
   op: string,
   surface: OpSurface = BUILTIN_OP_SURFACE,
@@ -144,7 +143,7 @@ export function describeForm(
   };
 }
 
-/** op 目录（时间线插入菜单/节点图调色板用；`surface` = T08-04 合并面，缺省内建） */
+/** op 目录（时间线插入菜单/节点图调色板用；`surface` = 扩展合并面，缺省内建） */
 export function listOps(surface: OpSurface = BUILTIN_OP_SURFACE): readonly OpMeta[] {
   return surface.meta;
 }
@@ -166,7 +165,7 @@ export function describeNodeLabel(
 }
 
 /**
- * 表单控件的原始文本 → 落树值（06-D2 的 kind 语义，与 `describeField` 同域故放此处）。
+ * 表单控件的原始文本 → 落树值（kind 语义，与 `describeField` 同域故放此处）。
  *
  * - `number`/`integer`：`Number`（NaN 由诊断层兜）
  * - `boolean`：字面 `"true"`

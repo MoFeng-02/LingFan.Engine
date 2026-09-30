@@ -1,22 +1,22 @@
 /**
- * 08 §二.2 帧驱动表现的纯逻辑（可测）：缓动映射、动画插值、震动偏移。
+ * 帧驱动表现的纯逻辑（可测）：缓动映射、动画插值、震动偏移。
  *
  * 分工：核心层写「描述」，本模块提供**每帧计算**，宿主（App.vue / 其他）把结果写到 DOM。
- * 不碰引擎、不碰 DOM —— 便于单测覆盖（08 §三.2 帧驱动）。
+ * 不碰引擎、不碰 DOM —— 便于单测覆盖（帧驱动）。
  */
 import type { AnimationSpec } from "@lingfan/engine";
 
 /**
  * 缓动名 → 归一化函数（`t ∈ [0,1] → [0,1]`）。
- * 命名对齐老引擎（默认 `EaseOutQuad`）；未知名字**回退 EaseOutQuad**（不静默变成线性）。
+ * 命名对齐旧版引擎（默认 `EaseOutQuad`）；未知名字**回退 EaseOutQuad**（不静默变成线性）。
  *
- * T01-04：已补齐老引擎 `EasingType` **全集 16 个**（Linear + Quad×3 + Cubic×3 + Back×3 +
+ * 已补齐旧版引擎缓动全集 **16 个**（Linear + Quad×3 + Cubic×3 + Back×3 +
  * Elastic×3 + Bounce×3）——此前只有 7 个，作者写 `EaseOutBounce` 会被静默回退成默认缓动。
- * **回退语义沿用老引擎**（`Enum.TryParse` 失败 → `EaseOutQuad`），故不改为抛错（避免对既有故事
- * 制造新错误）；「未知缓动名」的编辑期提示列为可选后续（见 tasks 01 模块 T01-04 备注）。
+ * **回退语义沿用旧版引擎**（解析失败 → `EaseOutQuad`），故不改为抛错（避免对既有故事
+ * 制造新错误）；「未知缓动名」的编辑期提示列为可选后续。
  */
 const EASINGS: Record<string, (t: number) => number> = {
-  // 命名照老引擎 `EasingType`（**首字母大写**：`Linear`），因此这里大小写不敏感查找
+  // 命名照旧版引擎（**首字母大写**：`Linear`），因此这里大小写不敏感查找
   Linear: (t) => t,
   EaseInQuad: (t) => t * t,
   EaseOutQuad: (t) => t * (2 - t),
@@ -25,9 +25,8 @@ const EASINGS: Record<string, (t: number) => number> = {
   EaseOutCubic: (t) => 1 - (1 - t) ** 3,
   EaseInOutCubic: (t) =>
     t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2,
-  // —— T01-04：补齐老引擎 `EasingType` 全集（Back / Elastic / Bounce，逐条移植公式）——
-  // 命名与公式来源：老引擎 `EngineCore/LingFanEngine.Abstractions/.../EasingType.cs`
-  //                + `Services/Core/AnimationService.cs` 的 `ApplyEasing`
+  // —— 补齐旧版引擎缓动全集（Back / Elastic / Bounce，逐条移植公式）——
+  // 命名与公式来源：旧版引擎缓动实现（Linear + Quad×3 + Cubic×3 + Back×3 + Elastic×3 + Bounce×3）
   EaseInBack: (t) => t * t * (2.70158 * t - 1.70158),
   EaseOutBack: (t) => (t - 1) * (t - 1) * (2.70158 * (t - 1) + 1.70158) + 1,
   EaseInOutBack: (t) =>
@@ -60,7 +59,7 @@ const EASINGS: Record<string, (t: number) => number> = {
       : (1 + easeOutBounce(2 * t - 1)) / 2,
 };
 
-/** Bounce 基函数（老引擎 `AnimationService.EaseOutBounce` 同款分段） */
+/** Bounce 基函数（旧版引擎同款分段） */
 function easeOutBounce(t: number): number {
   const n1 = 7.5625;
   const d1 = 2.75;
@@ -80,7 +79,7 @@ function easeOutBounce(t: number): number {
 const DEFAULT_EASING = "EaseOutQuad";
 
 /**
- * 大小写不敏感查找表：老引擎 `EasingType` 用 `Linear`（首字母大写），
+ * 大小写不敏感查找表：旧版引擎用 `Linear`（首字母大写），
  * 而新引擎既有语料/测试写 `linear` —— 两者都解析到同一函数（**更宽松 = 不破坏既有故事**）。
  */
 const EASING_LOOKUP: ReadonlyMap<string, (t: number) => number> = new Map(
@@ -94,7 +93,7 @@ export function easingFn(name: string): (t: number) => number {
   );
 }
 
-/** 已知缓动名（编辑器表单/诊断可枚举；不含回退项）——恒为老引擎 `EasingType` 全集 16 个 */
+/** 已知缓动名（编辑器表单/诊断可枚举；不含回退项）——恒为旧版引擎全集 16 个 */
 export function easingNames(): string[] {
   return Object.keys(EASINGS);
 }
@@ -114,7 +113,7 @@ export function interpolateAnimation(
 }
 
 /**
- * 屏幕震动偏移（老引擎每帧由 GameLoop 算 offset）。
+ * 屏幕震动偏移（宿主每帧计算并应用）。
  * 用**衰减正弦**近似：幅度随进度线性衰减到 0，x/y 取不同相位避免直线往复。
  * `phase` 为宿主传入的帧时间（秒）或随机源，保证同一输入可复现（测试友好）。
  */

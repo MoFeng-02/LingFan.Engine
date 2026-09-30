@@ -1,5 +1,5 @@
 /**
- * 编辑器会话（06 §一.1 视图族共享中枢）：所有视图经同一 session 提交编辑——
+ * 编辑器会话（视图族共享中枢）：所有视图经同一 session 提交编辑——
  * 一处改动全视图同步（订阅通知）+ 统一 undo 栈（一次提交 = 一个 undo 单元，
  * 深度可配置）。故事树不可变：提交即整体换引用，视图零 diff 成本。
  * 锚点: unified-undo-across-views
@@ -65,7 +65,7 @@ export class EditorSession {
 
   /**
    * 提交一次编辑（一个 undo 单元）：同引用提交为 no-op（无变更不产生历史噪声）。
-   * 提交后清空 redo 尾（新分支时间线，与 03-R2 菜单重选开新时间线同思想）。
+   * 提交后清空 redo 尾（新分支时间线，与菜单重选开新时间线同思想）。
    */
   commit(label: string, next: Story): void {
     if (next === this.current) return;

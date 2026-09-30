@@ -1,8 +1,8 @@
 /**
- * 08-U3 打字机二段式（可测纯逻辑，UI 层 rAF 驱动 tick）。
+ * 打字机二段式（可测纯逻辑，UI 层 rAF 驱动 tick）。
  * - 打字流 = 原文剥离 {p}/{w}/{fast}；**样式标记零宽**：不消耗打字时长、不计入可见字符，
  *   且可见前缀**永不以半截标记结尾**——否则渲染层会把 `{color=#` 之类的残缺标记原样上屏
- *   （用户实测回归，2026-09）
+ *   （实测回归保护：打字中裸标记不得上屏）
  * - tick(dt) 按 cps 推进已显示的可见字符数；遇停顿点停下等点击
  * - click()：停在 {p}/{w} → 越过停顿继续打字（passed-pause）；未完成 → 瞬间完成（completed）；
  *   已完成 → no-op（UI 转 advance）
@@ -69,7 +69,7 @@ export class Typewriter {
     this.visibleTotal = tokenized.visibleTotal;
   }
 
-  /** 08 §四.1 SetTextSpeed：玩家偏好即时调整当前句打字速度（非法值忽略，下限 1） */
+  /** SetTextSpeed：玩家偏好即时调整当前句打字速度（非法值忽略，下限 1） */
   setSpeed(cps: number): void {
     if (typeof cps === "number" && Number.isFinite(cps)) {
       this.cps = Math.max(1, cps);
@@ -92,7 +92,7 @@ export class Typewriter {
     this.shown = Math.min(this.shown + budget, limit);
   }
 
-  /** 点击（08-U3 二段式）：停在 {p}/{w} → 越过停顿继续打字；未完成 → 瞬间完成；已完成 → no-op（UI 转 advance） */
+  /** 点击（二段式）：停在 {p}/{w} → 越过停顿继续打字；未完成 → 瞬间完成；已完成 → no-op（UI 转 advance） */
   click(): "passed-pause" | "completed" | "no-op" {
     if (this.done) return "no-op";
     if (this.pausedAtMark) {

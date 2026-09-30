@@ -1,4 +1,4 @@
-/** 08 §二.1 元素渲染域出口（UI 侧单一入口，宪法 §3）。 */
+/** 元素渲染域出口（UI 侧单一入口）。 */
 export {
   createElementRegistry,
   type ElementRegistry,

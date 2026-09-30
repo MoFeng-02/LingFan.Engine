@@ -1,15 +1,15 @@
 /**
- * 05 i18n 工具链 · overlay 骨架生成（T05-02，锚点: i18n-skeleton-roundtrip）。
+ * i18n 工具链 · overlay 骨架生成。
  *
  * 给定语言与分组策略，产出**文件内容**（原文 → 既有译文或占位）；落盘归调用方
  * （编辑器保存 / CLI），本模块保持纯函数（不碰平台 API）。合并语义与运行期
  * `mergeOverlayFiles` 对齐（main.json 兜底 + 其余按供给序覆盖）⇒ 骨架喂回合并后
  * 键集合与 `extractStoryKeys` 输出**双向一致**（互锁测试锁定）。
  *
- * 布局覆盖 07 §三 overlay 形态：「平铺」= 条目即键值平面（三形态共用）；
+ * 布局覆盖 overlay 形态：「平铺」= 条目即键值平面（三形态共用）；
  * 单大文件 `Lang/{lang}.json`、目录 `Lang/{lang}/main.json`、按故事分类
  * `Lang/{lang}/{章节子目录}/{故事}.json`——**per-story 镜像 `Stories/` 的递归目录**
- * （用户裁定 2026-09-28，对齐老引擎：章节子目录更好区分归类；`.json` / `.json.enc`
+ * （对齐旧版引擎：章节子目录更好区分归类；`.json` / `.json.enc`
  * 双识别归运行期供给，骨架产明文）。**增量模式**：命中的既有译文原样保留（含空串
  * 译文——运行期「命中即用」语义），绝不覆盖。
  */
@@ -77,7 +77,7 @@ export function planOverlaySkeleton(
       layout === "single" ? `Lang/${lang}.json` : `Lang/${lang}/main.json`;
     return [build(path, [...union])];
   }
-  // per-story：镜像 `Stories/` 的递归目录（用户裁定 2026-09-28，对齐老引擎）——
+  // per-story：镜像 `Stories/` 的递归目录——
   // 键 = 故事相对 `Stories/` 的路径（不含扩展名）；**段级**安全校验防路径越界。
   const files: OverlaySkeletonFile[] = [];
   for (const [storyPath, keys] of storyKeys) {

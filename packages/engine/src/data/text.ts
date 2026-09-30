@@ -1,7 +1,7 @@
 /**
- * 07-文本创作模式：文本 = JSON v1 的投影（双向）。
+ * 文本创作模式：文本 = JSON v1 的投影（双向）。
  * - parseTextStory：文本 → Story（缩进块无 end、{…} 包表达式、// 与 # 注释、行列定位 fail-closed）
- * - generateText：Story → 文本（确定性输出：键序按字段序、缩进 2 空格、转义按老规范投影器规则）
+ * - generateText：Story → 文本（确定性输出：键序按字段序、缩进 2 空格、转义按投影器规则）
  * - 往返等价 / 投影失败整次拒绝 / JSON 树唯一真相源 / 与 JSON 混存（按内容识别）
  * 覆盖引擎已实现 op 全集；scene 列支持元素行（`类型 "内容" key=value …`，嵌套用缩进）。
  */
@@ -99,13 +99,13 @@ function unquote(token: string): string {
       '"': '"',
       "\\": "\\",
     };
-    out += map[next] ?? `\\${next}`; // F4：未知转义保留两字符
+    out += map[next] ?? `\\${next}`; // 未知转义保留两字符
     i += 1;
   }
   return out;
 }
 
-/** 生成端转义（老规范投影器规则："→\" \→\\ 换行→\n Tab→\t，其余原样） */
+/** 生成端转义（"→\" \→\\ 换行→\n Tab→\t，其余原样） */
 function escapeForText(s: string): string {
   return s
     .replaceAll("\\", "\\\\")
@@ -404,7 +404,7 @@ function parseElementAttrValue(raw: string): unknown {
 
 /**
  * 元素行 → `ElementNode`（36 类型 + 属性全集）。
- * 位置参 `"内容"` 按类型归属（图像类 → `source`，其余 → `text`）；属性合法性由解析期 F5 兜底。
+ * 位置参 `"内容"` 按类型归属（图像类 → `source`，其余 → `text`）；属性合法性由解析期兜底。
  */
 function parseElementLine(
   tokens: string[],

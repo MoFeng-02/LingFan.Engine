@@ -1,7 +1,7 @@
 /**
- * 08 §六 音频渲染：核心只写状态（U1），此处把状态差量翻译成端口动作（可测纯逻辑），
- * 由适配器（infra/audioPort）落地播放；资源寻址经 ResourcePort（08-U7），
- * 播放位置回写走帧级键（08 §三.2 / U2）。
+ * 音频渲染：核心只写状态，此处把状态差量翻译成端口动作（可测纯逻辑），
+ * 由适配器（infra/audioPort）落地播放；资源寻址经 ResourcePort，
+ * 播放位置回写走帧级键。
  */
 import type {
   AudioChannel,
@@ -42,7 +42,7 @@ type PlayAction = Extract<AudioAction, { type: "play" }>;
 /** 常驻通道（se 为一次性触发，单独按 seq 判定） */
 const CHANNELS = ["bgm", "ambient", "voice"] as const;
 
-/** 位置差异阈值（秒）：小于此视为播放器噪声，不打断播放（03-R7 seek 抖动防护） */
+/** 位置差异阈值（秒）：小于此视为播放器噪声，不打断播放（seek 抖动防护） */
 const SEEK_THRESHOLD = 0.5;
 
 /** 空视图：渲染器初始差量基准（组合根创建顺序无关，引擎已推进也能补播） */
@@ -111,7 +111,7 @@ function withPrefs(
   return { ...state, volume: Math.min(1, Math.max(0, state.volume * pref)) };
 }
 
-/** 08 §八.2：prefs 存在时各通道合成玩家有效音量（偏好在视图层落地，planAudioActions 差量自动感知） */
+/** prefs 存在时各通道合成玩家有效音量（偏好在视图层落地，planAudioActions 差量自动感知） */
 export function readAudioView(
   engine: StoryEngine,
   prefs?: PlayerPreferences,
@@ -139,11 +139,11 @@ export function readAudioView(
 }
 
 /**
- * 状态差量 → 端口动作（锚点: four-audio-channels）：
+ * 状态差量 → 端口动作：
  * - 通道由 play 变 stop/null → stop（带淡出参数）
  * - 换资源 → play（bgm 从目标位置起播）
  * - 同资源 + 显式 restart（seq 变化）→ play 回到起点重播
- * - 同资源仅音量/循环变化 → play 更新（适配器不重头播）；bgm 位置差超阈值 → 定位（03-R7）
+ * - 同资源仅音量/循环变化 → play 更新（适配器不重头播）；bgm 位置差超阈值 → 定位
  * - se 按单调 seq 判定：每次执行都触发一次（同一资源连续触发亦然）
  */
 export function planAudioActions(
@@ -252,15 +252,15 @@ export function planAudioActions(
 export interface AudioRenderer {
   /** 与引擎状态对齐（订阅外的显式同步，如读档/回溯完成） */
   sync(): void;
-  /** 帧循环回写播放位置（08 §三.2）：帧级键静默写，不进事件流（U2） */
+  /** 帧循环回写播放位置：帧级键静默写，不进事件流 */
   pollPosition(): void;
   dispose(): void;
 }
 
 export interface AudioRendererOptions {
-  /** 资源解析失败诊断（08-U7 报错诊断：不静默吞错） */
+  /** 资源解析失败诊断（报错诊断：不静默吞错） */
   onError?: (message: string) => void;
-  /** 08 §八.2 玩家偏好（可选）：合成通道有效音量；偏好变化即时重规划（滑块/静音即时生效） */
+  /** 玩家偏好（可选）：合成通道有效音量；偏好变化即时重规划（滑块/静音即时生效） */
   preferences?: PlayerPreferences;
 }
 
@@ -339,7 +339,7 @@ export function createAudioRenderer(
   const offState = engine.onStateChanged((change) => {
     if (audioKeys.has(change.key)) sync();
   });
-  // 08 §八.2：偏好变化（滑块/静音）→ 合成音量差量 → play 更新动作（同资源不重播）
+  // 偏好变化（滑块/静音）→ 合成音量差量 → play 更新动作（同资源不重播）
   const offPrefs = options.preferences?.onChange(() => sync()) ?? null;
   sync();
 

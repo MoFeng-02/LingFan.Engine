@@ -1,9 +1,8 @@
 /**
- * 06-D2 op 目录：op 标签/分组 + 字段呈现语义（label/kind）。
+ * op 目录：op 标签/分组 + 字段呈现语义（label/kind）。
  * 字段的类型/必填/可选值/默认值以 opSchemas（Zod）为唯一事实源——本文件只承载
  * 呈现与诊断语义元数据，字段名集合与 schema 由互锁测试锁定（schema.test.ts）。
  * 字段语义以执行器为权威（packages/engine/src/runtime/engine.ts）。
- * 锚点: schema-driven-forms
  */
 
 import type { FieldKind, OpMeta } from "../contracts";
@@ -59,7 +58,7 @@ export const OP_META: readonly OpMeta[] = [
   { op: "stop_video", label: "停止视频", group: "video" },
   { op: "video_skipable", label: "视频可跳开关", group: "video" },
   { op: "minigame", label: "小游戏", group: "minigame" },
-  // 08 §二.1 / §二.2 元素系统
+  // 元素系统
   { op: "show", label: "显示元素", group: "presentation" },
   { op: "hide", label: "隐藏元素", group: "presentation" },
   { op: "background", label: "设置背景", group: "presentation" },
@@ -210,7 +209,7 @@ export const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   "minigame.reward[].key": { label: "奖励变量", kind: "identifier" },
   "minigame.reward[].value": { label: "奖励值", kind: "value" },
   "minigame.z": { label: "层级（实例）", kind: "number" },
-  // —— 08 §二.1 元素增删改 ——
+  // —— 元素增删改 ——
   "show.target": { label: "资源路径", kind: "resource" },
   "show.x": { label: "X（数字或 CSS 长度）", kind: "string" },
   "show.y": { label: "Y（数字或 CSS 长度）", kind: "string" },
@@ -225,7 +224,7 @@ export const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   "style.target": { label: "目标元素", kind: "identifier" },
   "style.props": { label: "样式属性", kind: "object" },
   "window.mode": { label: "模式", kind: "enum" },
-  // —— 08 §二.2 帧驱动表现 ——
+  // —— 帧驱动表现 ——
   "animate.target": { label: "目标元素", kind: "identifier" },
   "animate.property": { label: "属性名", kind: "string" },
   "animate.value": { label: "目标值", kind: "number" },

@@ -19,7 +19,7 @@ export interface PlayerPrefsData {
   muted: boolean;
   /** 打字机速度（字符/秒，≥1；SetTextSpeed 玩家偏好可覆盖） */
   textSpeed: number;
-  /** 屏幕方向偏好（缺省 = 未设置，跟随工程默认；U10 与存档分离） */
+  /** 屏幕方向偏好（缺省 = 未设置，跟随工程默认；与存档分离） */
   orientation?: OrientationMode;
 }
 

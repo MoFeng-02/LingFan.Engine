@@ -1,5 +1,5 @@
 /**
- * ⑨-12 存档缩略图合成（宿主侧，canvas 2D）：
+ * 存档缩略图合成（宿主侧，canvas 2D）：
  * 合成「存档卡」而非像素级截屏——WebView 无跨端截图 API（wry 未暴露
  * WebView2 CapturePreview / WKWebView takeSnapshot），且合成卡确定性可配：
  * 背景（可换工程图）+ 说话人/正文片段 + 时间戳。尺寸/质量/是否带文本由

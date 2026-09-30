@@ -1,10 +1,9 @@
 /**
- * 06-D2/D3 op 全集 schema（Zod 单一事实源）：一份定义同时驱动属性面板表单派生与
+ * op 全集 schema（Zod 单一事实源）：一份定义同时驱动属性面板表单派生与
  * 编辑期 fail-closed 校验。字段面以执行器为权威（packages/engine/src/runtime/engine.ts）：
- * 未知 op / 未知负载字段 / 缺失必填 / 类型错误在编辑期标红，错误不过夜（06 §一.1.3）。
+ * 未知 op / 未知负载字段 / 缺失必填 / 类型错误在编辑期标红，错误不过夜。
  * 块体字段（then/body/…）按 z.unknown() 数组承载——嵌套命令的校验与指针定位由
  * validateStory 沿表单描述符递归（嵌套命令才拿得到逐条 unknown-op 诊断）。
- * 锚点: schema-driven-forms / edit-time-validation
  */
 
 import { z } from "zod";
@@ -19,7 +18,7 @@ const Value = z.union([z.string(), z.number(), z.boolean()]);
 const Body = z.array(z.unknown());
 const Finite = z.number().finite();
 const Fade = z.number().finite().min(0);
-/** 08 §八.3 实例级 z（T01-03）：非负有限数；仅拥有独立渲染层的命令接受 */
+/** 实例级 z：非负有限数；仅拥有独立渲染层的命令接受 */
 const InstanceZ = z.number().finite().min(0).optional();
 
 const saySchema = z.strictObject({
@@ -99,7 +98,7 @@ const callSchema = z.strictObject({
 const returnSchema = z.strictObject({
   value: Value.optional(),
 });
-/** 函数定义（04 §一.7）：name/params/body 三者引擎均必填（format.ts `case "func"`） */
+/** 函数定义：name/params/body 三者引擎均必填（format.ts `case "func"`） */
 const funcSchema = z.strictObject({
   name: NonEmpty,
   params: z.array(NonEmpty),
@@ -210,7 +209,7 @@ const seekVideoSchema = z.strictObject({
 });
 const videoSkipableSchema = z.strictObject({ value: z.boolean() });
 
-/** 06 §二.1 minigame：config 原样透传 UI（任意 JSON）；reward 键值数组（value 执行期求值 → 标量/{expr}） */
+/** minigame：config 原样透传 UI（任意 JSON）；reward 键值数组（value 执行期求值 → 标量/{expr}） */
 const minigameSchema = z.strictObject({
   game: NonEmpty,
   config: z.record(z.string(), z.unknown()).optional(),
@@ -220,7 +219,7 @@ const minigameSchema = z.strictObject({
   z: InstanceZ, // minigame 层实例 z
 });
 
-// ====== 08 §二.1 / §二.2 元素系统（元素增删改 + 表现类）======
+// ====== 元素系统（元素增删改 + 表现类）======
 // 字段面以执行器为权威（engine.ts 的 ELEMENT_OP_FIELDS）；x/y 允许数字或 CSS 长度串。
 
 /** 元素增删改（`show` / `hide` / `background` / `bg_switch` / `zindex` / `style` / `window`） */
@@ -273,7 +272,7 @@ const textTypewriterSchema = z.strictObject({
   speed: z.number().finite().positive().optional(),
 });
 
-/** op → 负载 schema（不含 op 键本身）；新增 op = 加条目 = 表单与校验自动出现（D2） */
+/** op → 负载 schema（不含 op 键本身）；新增 op = 加条目 = 表单与校验自动出现 */
 export const OP_SCHEMAS: Readonly<Record<string, z.ZodType>> = {
   say: saySchema,
   menu: menuSchema,
@@ -325,7 +324,7 @@ export const OP_SCHEMAS: Readonly<Record<string, z.ZodType>> = {
   stop_video: emptySchema,
   video_skipable: videoSkipableSchema,
   minigame: minigameSchema,
-  // 08 §二.1 / §二.2 元素系统
+  // 元素系统
   show: showSchema,
   hide: hideSchema,
   background: backgroundSchema,
@@ -356,7 +355,7 @@ function issueToDiagnostic(
     return {
       code: "unknown-field",
       severity: "error",
-      message: `${op} 未知负载字段：${keys}（E3/F5：编辑期 fail-closed）`,
+      message: `${op} 未知负载字段：${keys}（编辑期 fail-closed）`,
       pointer,
       op,
     };
@@ -384,10 +383,10 @@ function issueToDiagnostic(
 }
 
 /**
- * 06-D3 编辑期单命令 fail-closed 校验（结构层）：未知 op / 未知字段 / 缺必填 / 类型错。
+ * 编辑期单命令 fail-closed 校验（结构层）：未知 op / 未知字段 / 缺必填 / 类型错。
  * pointer = 命令对象自身在 Story 树上的 JSON Pointer。
- * `schemas`（T08-04，可选）= op 负载 schema 面（缺省内建 OP_SCHEMAS；扩展注册后传合并集）。
- * 锚点: edit-time-validation
+ * `schemas`（可选）= op 负载 schema 面（缺省内建 OP_SCHEMAS；扩展注册后传合并集）。
+ * 编辑期 fail-closed 校验的测试锚点见 validation.test。
  */
 export function validateCommand(
   cmd: unknown,
@@ -421,7 +420,7 @@ export function validateCommand(
       {
         code: "unknown-op",
         severity: "error",
-        message: `未知或未实现的命令：${op}（E3）`,
+        message: `未知或未实现的命令：${op}`,
         pointer,
         op,
       },

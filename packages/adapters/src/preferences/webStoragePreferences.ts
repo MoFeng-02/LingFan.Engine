@@ -1,5 +1,5 @@
 /**
- * 08 §八.2 玩家偏好持久化（浏览器/WebView 演示兜底）：localStorage 明文 JSON。
+ * 玩家偏好持久化（浏览器/WebView 演示兜底）：localStorage 明文 JSON。
  * 缺失/解析失败 → null（默认值起航）；数据信任边界在 PlayerPreferences.hydrate。
  */
 import type { PlayerPrefsData, PreferencesPort } from "@lingfan/engine";

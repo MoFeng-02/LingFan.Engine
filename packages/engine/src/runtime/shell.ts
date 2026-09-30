@@ -3,8 +3,8 @@
  *
  * 与 `runtime/host.ts` 同域同纪律：**契约在 engine，解析也在 engine**——
  * 宿主（playground / 模板脚手架 / 未来宿主）一律 import 此处，
- * **禁止各自复制一份**（⑨-11/⑨-12 初期把它们放在 apps/playground/src/shell/，
- * 模板脚手架要接同一批能力时必然复制出第二真源——2026-09-26 收进引擎）。
+ * **禁止各自复制一份**（初期版本把它们放在 apps/playground/src/shell/，
+ * 模板脚手架要接同一批能力时必然复制出第二真源——已收进引擎）。
  *
  * 统一纪律：清单入参一律 `unknown`（供给端口只保证「取到」，本地文件可被篡改/异版本），
  * 逐键合并工程覆盖 `project.json shell.*`，非法键/值一律忽略回默认（不猜、不抛）。
@@ -12,9 +12,9 @@
 
 import { isOrientationMode, SYS, type OrientationMode } from "../contracts";
 
-/* ============================ ⑨-11 层级（z 序）============================ */
+/* ============================ 层级（z 序）============================ */
 
-/** 舞台渲染层 id（与 08 §一 RenderTargets 及舞台 DOM 一一对应） */
+/** 舞台渲染层 id（与 RenderTargets 及舞台 DOM 一一对应） */
 export type LayerId =
   | "stage"
   | "video"
@@ -43,7 +43,7 @@ export const LAYER_IDS: readonly LayerId[] = [
 
 /**
  * 内建默认 z（语义化基线，间隔 100 便于工程插入自定义层）：
- * - `stage`(0)：舞台容器（背景 + 元素）——位于 video(100) 之下，元素间叠放在舞台内独立比较（§3.1 两级叠放）
+ * - `stage`(0)：舞台容器（背景 + 元素）——位于 video(100) 之下，元素间叠放在舞台内独立比较（两级叠放）
  * - `video`(100)：过场视频——盖舞台，**不盖 say**（对话层在 video 等待期让位）
  * - `dialogue`(999)：say/对话层——内容层中最高
  * - `choices`(1100)：menu/input——对话层之上（等待期对话层已让位）
@@ -102,7 +102,7 @@ export function resolveInstanceZ(
 }
 
 /**
- * 实例级 z 的 **SSOT 键 ↔ 渲染层** 映射（08 §八.3 的接线点，T01-03）。
+ * 实例级 z 的 **SSOT 键 ↔ 渲染层** 映射（实例级 z 的接线点）。
  *
  * 仅「**拥有独立渲染层**」的命令参与：`say`→dialogue、`menu`/`input`→choices、
  * `notify`→notifications、`minigame`→minigame。
@@ -130,7 +130,7 @@ export function instanceZLayer(key: string): LayerId | undefined {
   return undefined;
 }
 
-/* ============================ ⑨-12 存档壳配置 ============================ */
+/* ============================ 存档壳配置 ============================ */
 
 export interface SavesThumbnailConfig {
   /** 缩略图宽（px） */
@@ -204,7 +204,7 @@ export function resolveSavesConfig(manifest: unknown): SavesConfig {
   return resolved;
 }
 
-/* ============================ ⑨-6 屏幕方向默认 ============================ */
+/* ============================ 屏幕方向默认 ============================ */
 
 /** 读工程默认方向（清单非法/缺声明 = undefined） */
 export function manifestOrientation(

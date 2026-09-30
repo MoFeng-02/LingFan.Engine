@@ -325,24 +325,24 @@ export class StoryEngine {
     onFail?: string;
     reward: { key: string; value: unknown }[];
   } | null = null;
-  /** 06 §二.1 当前挂载的中断信号源：回溯/读档/导航/销毁时 abort（UI 据此卸载，D5） */
+  /** 当前挂载的中断信号源：回溯/读档/导航/销毁时 abort（UI 据此卸载） */
   private minigameController: AbortController | null = null;
 
-  /** 05 §五 存档编排端口与模式（组合根注入；缺省 = 存档类 op/命令面 fail-closed） */
+  /** 存档编排端口与模式（组合根注入；缺省 = 存档类 op/命令面 fail-closed） */
   private savePort: SavePort | undefined;
   private saveMode: SaveMode;
-  /** 01 §二.3 save op 的一次性存档声明：载荷在下一玩家所见等待画面落档（05 §四 coord=等待点） */
+  /** save op 的一次性存档声明：载荷在下一玩家所见等待画面落档（coord = 等待点） */
   private pendingSave: { slot: string; title?: string } | null = null;
-  /** 01 §四.3 I18N 端口与当前语言译文表（null = 原文直出；切换 = 整表重建，老引擎「清缓存」同语义） */
+  /** I18N 端口与当前语言译文表（null = 原文直出；切换 = 整表重建并清缓存） */
   private i18nPort: I18nPort | undefined;
   private overlay: Map<string, string> | null = null;
-  /** 规约 10 扩展 op 注册表（构造期校验装配；查找序 = 内建 → 扩展 → unknown-op） */
+  /** 扩展 op 注册表（构造期校验装配；查找序 = 内建 → 扩展 → unknown-op） */
   private readonly extensionOps: Map<string, RegisteredOp>;
-  /** T08-08 扩展声明索引（id → 声明：存档依赖校验 / migrate / restore 用） */
+  /** 扩展声明索引（id → 声明：存档依赖校验 / migrate / restore 用） */
   private readonly extensionById: ReadonlyMap<string, OpExtension>;
-  /** T08-08 本档实际执行过的扩展（op 执行时登记；exportSave 落盘依赖标记；读档继承档内标记） */
+  /** 本档实际执行过的扩展（op 执行时登记；exportSave 落盘依赖标记；读档继承档内标记） */
   private readonly usedExtensions = new Set<string>();
-  /** T08-09 存档版本迁移钩子（宿主注入；缺省 = 非 v1 档可操作拒绝） */
+  /** 存档版本迁移钩子（宿主注入；缺省 = 非 v1 档可操作拒绝） */
   private readonly migrateSaveHook?: (data: unknown) => SaveDataV1 | null;
 
   constructor(story: Story, options?: EngineOptions) {
@@ -360,7 +360,7 @@ export class StoryEngine {
 
   // —— 观察接缝 ——
 
-  /** 02-E1：ValueChanged 是唯一观察接缝；所有状态写入都经 set 系方法镜像到这里 */
+  /** ValueChanged 是唯一观察接缝；所有状态写入都经 set 系方法镜像到这里 */
   onStateChanged(listener: StateListener): () => void {
     this.stateListeners.add(listener);
     return () => {
@@ -368,7 +368,7 @@ export class StoryEngine {
     };
   }
 
-  /** 02 §三.1 出站事件信封：engine.error / notify 等 */
+  /** 出站事件信封：engine.error / notify 等 */
   onEvent(listener: EventListener): () => void {
     this.eventListeners.add(listener);
     return () => {
@@ -376,25 +376,25 @@ export class StoryEngine {
     };
   }
 
-  /** 帧循环直读（02 §六.2：帧级键由 UI 每帧直读，不进事件流） */
+  /** 帧循环直读：帧级键由 UI 每帧直读，不进事件流 */
   get(key: string): unknown {
     return this.state.get(key);
   }
 
-  // —— 会话命令面（02 §三.2 最小子集：start / advance / choose） ——
+  // —— 会话命令面（最小子集：start / advance / choose） ——
 
-  /** story.start：导航至入口列（01 §一.7，project.json entry） */
+  /** story.start：导航至入口列（entry 取自 project.json） */
   start(): void {
     if (this.started) {
       this.fail("already-started", "故事已启动，重复 start 无效");
       return;
     }
     this.started = true;
-    // 08-U5：NVL 模式从 start 起恒有定义（静默初始化——事件流只承载离散变化，§六.2）
+    // NVL 模式从 start 起恒有定义（静默初始化——事件流只承载离散变化）
     this.state.set(SYS.nvlMode, "none");
-    // 01 §四.3：当前语言从 start 起恒有定义（空串 = 默认语言/原文直出）
+    // 当前语言从 start 起恒有定义（空串 = 默认语言/原文直出）
     this.state.set(SYS.currentLanguage, "");
-    // 01 §一.6：顶层 defines 无条件 Set（全局层 = SSOT Map）
+    // 顶层 defines 无条件 Set（全局层 = SSOT Map）
     for (const [key, value] of Object.entries(this.story.defines ?? {})) {
       this.setGlobal(key, value);
     }
@@ -403,8 +403,8 @@ export class StoryEngine {
   }
 
   /**
-   * 02 §三.3：advance = `__dialog_complete = true`——对话推进唯一入口（E5）。
-   * wait 等待的「用户点击解除」（02 §二.2：skipable 时）复用本命令，命令面保持最小。
+   * advance = `__dialog_complete = true`——对话推进唯一入口。
+   * wait 等待的「用户点击解除」（skipable 时）复用本命令，命令面保持最小。
    */
   advance(): void {
     if (!this.started) {
@@ -414,17 +414,17 @@ export class StoryEngine {
     const waiting = this.get(SYS.waiting);
     if (waiting === "dialog") {
       this.setSystem(SYS.dialogComplete, true);
-      // 02 §二.3：离开等待后清 clickable/noskip，防状态泄漏到后续非 say 命令
+      // 离开等待后清 clickable/noskip，防状态泄漏到后续非 say 命令
       this.setSystem(SYS.dialogClickable, false);
       this.setSystem(SYS.dialogNoskip, false);
       this.setSystem(SYS.waiting, "none");
-      // 03-R1：say 的检查点在等待解除后提交（快照已在上屏时捕获 = 玩家所见画面）
+      // say 的检查点在等待解除后提交（快照已在上屏时捕获 = 玩家所见画面）
       if (this.pendingSay !== null && !this.rollbackActive) {
         this.commitCheckpoint(this.pendingSay);
       }
       this.pendingSay = null;
       this.liveCheckpointed = false; // live 已越过检查点（后续等待点在 run 中自行改写）
-      // 08 §六.1 voice auto_stop：玩家推进过该句 → 该句语音自动停止（互斥单槽）
+      // voice auto_stop：玩家推进过该句 → 该句语音自动停止（互斥单槽）
       const voice = this.get(SYS.audioVoice) as
         AudioChannelState | null | undefined;
       if (voice?.kind === "play" && voice.autoStop === true) {
@@ -437,7 +437,7 @@ export class StoryEngine {
       if (!this.waitSkipable) {
         this.fail(
           "advance-invalid",
-          "当前 wait 不可跳过（02 §二.2：仅 skipable 的 wait 可点击解除）",
+          "当前 wait 不可跳过（仅 skipable 的 wait 可点击解除）",
         );
         return;
       }
@@ -449,7 +449,7 @@ export class StoryEngine {
       return;
     }
     if (waiting === "video") {
-      // 08 §六.5：cutscene 可跳过（skipable）→ 停视频并解除等待；不可跳 fail-closed
+      // cutscene 可跳过（skipable）→ 停视频并解除等待；不可跳 fail-closed
       const video = this.get(SYS.video) as VideoCommand | null | undefined;
       if (!(video?.kind === "play" && video.skipable)) {
         this.fail(
@@ -474,7 +474,7 @@ export class StoryEngine {
     );
   }
 
-  /** 02 §三.3：choose = 解析 menu_targets 得序号 → `__menu_selected = idx`（E6 fail-closed） */
+  /** choose = 解析 menu_targets 得序号 → `__menu_selected = idx`（fail-closed） */
   choose(optionId: string): void {
     if (!this.started || this.get(SYS.waiting) !== "menu") {
       this.fail(
@@ -492,20 +492,20 @@ export class StoryEngine {
     if (idx < 0) {
       this.fail(
         "choice-unknown-target",
-        `未知选项目标：${optionId}（E6 fail-closed）`,
+        `未知选项目标：${optionId}（fail-closed）`,
       );
       return;
     }
     this.setSystem(SYS.menuSelected, idx);
     this.setSystem(SYS.waiting, "none");
-    this.liveCheckpointed = false; // 选择改变画面：live 未入档（03-R5，回退将落回菜单重选）
-    // 01 §一.2：menu 选项目标 = columnId——选择即跳转（columnId 换、index 归零）
+    this.liveCheckpointed = false; // 选择改变画面：live 未入档（回退将落回菜单重选）
+    // menu 选项目标 = columnId——选择即跳转（columnId 换、index 归零）
     if (!this.enterColumn(targets[idx] as string)) return;
     this.run();
   }
 
   /**
-   * 02 §三.3 会话命令 navigate：坐标切换（columnId 校验 fail-closed）——
+   * 会话命令 navigate：坐标切换（columnId 校验 fail-closed）——
    * UI/元素 nav 按钮与热重载重入的接缝。纯切换不建检查点（与 op navigate 的
    * 叙事节点检查点相区分；壳层导航不建 DSL 检查点，同语义）。
    */
@@ -514,9 +514,9 @@ export class StoryEngine {
       this.fail("navigate-invalid", "故事尚未启动");
       return;
     }
-    this.flushPendingCheckpoint(); // 离开当前画面：已上屏未入档的 say 即所见（03-R1/R5）
+    this.flushPendingCheckpoint(); // 离开当前画面：已上屏未入档的 say 即所见
     this.clearTimer(); // 打断任意等待（wait 定时器废弃，等待画面由新列重建）
-    this.abortMinigame(); // 导航打断小游戏：abort 挂载信号（D5 等待期可回溯同语义）
+    this.abortMinigame(); // 导航打断小游戏：abort 挂载信号（等待期可回溯同语义）
     this.waitSkipable = false;
     this.liveCheckpointed = false;
     this.setSystem(SYS.waiting, "none");
@@ -528,7 +528,7 @@ export class StoryEngine {
   }
 
   /**
-   * 02 §三.2 会话命令 save：编排写档（05 §五——载荷编排在 TS，安全在 Rust，K7）。
+   * 会话命令 save：编排写档（载荷编排在 TS，加密与安全校验在 Rust）。
    * 非等待语义：kick 异步写档后立即返回；写档失败经 engine.error 可观测（不吞）。
    */
   save(slot: string, options?: SaveOptions): boolean {
@@ -563,7 +563,7 @@ export class StoryEngine {
   }
 
   /**
-   * 02 §三.2 会话命令 load：读档 → importSave（成功即传送到档内等待点；
+   * 会话命令 load：读档 → importSave（成功即传送到档内等待点；
    * 异步完成，失败 fail-closed 状态原样）。
    */
   load(slot: string): boolean {
@@ -593,7 +593,7 @@ export class StoryEngine {
   }
 
   /**
-   * 01 §四.3 setLanguage：切换当前语言（整表重建——
+   * setLanguage：切换当前语言（整表重建——
    * 清缓存 + 写系统键，**当前画面不重放**，下次 Translate 生效）。空串 = 默认语言/原文直出。
    * 供给失败 fail-closed：保持原语言与译文表不变，engine.error 上报。
    * 可在 start 前调用（标题画面选语言）：状态键写入与译文装配不依赖启动态。
@@ -607,7 +607,7 @@ export class StoryEngine {
       return;
     }
     if (lang === "" || this.i18nPort === undefined) {
-      // 默认语言或未装配端口：无译文表 = 原文直出（01 §四.3 缺省；语言状态照记供 UI 观察）
+      // 默认语言或未装配端口：无译文表 = 原文直出（缺省；语言状态照记供 UI 观察）
       this.overlay = null;
       this.setSystem(SYS.currentLanguage, lang);
       return;
@@ -634,11 +634,11 @@ export class StoryEngine {
   }
 
   /**
-   * 06 §二.1 会话命令 resolveMinigame：UI 小游戏完成后回填结果（02 §三.2 命令面）。
+   * 会话命令 resolveMinigame：UI 小游戏完成后回填结果（命令面）。
    * success → 奖励写状态（走 ValueChanged 事件流，历史可溯）→ on_success 分流；
-   * fail → on_fail 分流；目标缺省 = 原列继续。非等待期/畸形结果 fail-closed（D5）。
+   * fail → on_fail 分流；目标缺省 = 原列继续。非等待期/畸形结果 fail-closed。
    */
-  // —— 08 §二.1 元素系统公共接缝（UI 侧交互与宿主扩展经此接入） ——
+  // —— 元素系统公共接缝（UI 侧交互与宿主扩展经此接入） ——
 
   /** 当前舞台元素（只读；核心层所有元素写入都经 `SYS.elements`，随快照/存档/回溯） */
   elements(): ElementInstance[] {
@@ -647,7 +647,7 @@ export class StoryEngine {
   }
 
   /**
-   * 元素寻址（08 §二.1）：`id` 精确匹配优先，未命中再 `name` 批量匹配（递归含 children）。
+   * 元素寻址：`id` 精确匹配优先，未命中再 `name` 批量匹配（递归含 children）。
    * 未命中返回空数组 —— 调用方 fail-closed（不静默、不伪造目标）。
    */
   findElements(target: string): ElementInstance[] {
@@ -655,9 +655,9 @@ export class StoryEngine {
   }
 
   /**
-   * 01 §三 表达式插值公开接缝：宿主侧文本（如元素 `cmd` 的 `value`）按**点击时**求值，
+   * 表达式插值公开接缝：宿主侧文本（如元素 `cmd` 的 `value`）按**点击时**求值，
    * 取最新变量（点击时求值）。
-   * 失败保留原文并出站 `engine.error`（S8：不静默吞错）。
+   * 失败保留原文并出站 `engine.error`（不静默吞错）。
    */
   interpolate(source: string): string {
     if (typeof source !== "string" || source === "") return "";
@@ -711,7 +711,7 @@ export class StoryEngine {
     this.liveCheckpointed = false; // live 已越过该检查点（对齐 wait 完成语义）
     if (result.outcome === "success") {
       for (const entry of pending.reward) {
-        this.setGlobal(entry.key, entry.value); // 奖励即状态变更（06 §二.2.4：历史可溯）
+        this.setGlobal(entry.key, entry.value); // 奖励即状态变更（历史可溯）
       }
     }
     const target =
@@ -730,7 +730,7 @@ export class StoryEngine {
     }
   }
 
-  /** 06 §二.2.3 回溯联动：中断小游戏等待 = abort 挂载信号（UI 卸载），重放到该坐标重新挂载 */
+  /** 回溯联动：中断小游戏等待 = abort 挂载信号（UI 卸载），重放到该坐标重新挂载 */
   private abortMinigame(): void {
     if (this.minigameController !== null) {
       this.minigameController.abort();
@@ -769,7 +769,7 @@ export class StoryEngine {
 
   /**
    * 系统层写入（引擎内部专用，`SYS` 键的所有者）。
-   * T08-07 值契约同样适用（引擎内部违约 = 引擎 bug，同样 fail-closed 暴露）；
+   * 值契约同样适用（引擎内部违约 = 引擎 bug，同样 fail-closed 暴露）；
    * 键不受保留键约束——`setSystem` 本来就是写 SYS 键的通道。
    */
   private setSystem(key: string, value: unknown): void {    const unsafe = findJsonValueError(value, key);
@@ -785,7 +785,7 @@ export class StoryEngine {
   }
 
   /**
-   * 08 §八.3 实例级 z 的**执行期防御**（解析期 `format.ts` 已拒；这里是纵深防御）：
+   * 实例级 z 的**执行期防御**（解析期 `format.ts` 已拒；这里是纵深防御）：
    * 非法（负数 / NaN / Infinity / 非数字）→ `engine.error` 且**不动任何状态**，调用方立即 return。
    * 返回 `true` = 已拒绝（调用方必须 `return`）。
    */
@@ -796,13 +796,13 @@ export class StoryEngine {
     }
     this.fail(
       "instance-z-invalid",
-      `实例级 z 必须为非负有限数，收到 ${String(cmd.z)}（08 §八.3）`,
+      `实例级 z 必须为非负有限数，收到 ${String(cmd.z)}`,
     );
     return true;
   }
 
   /**
-   * 08 §八.3 实例级 z（T01-03）：把命令上的 `z` 写进 SSOT（键 ↔ 层见 `INSTANCE_Z_KEYS`）。
+   * 实例级 z：把命令上的 `z` 写进 SSOT（键 ↔ 层见 `INSTANCE_Z_KEYS`）。
    *
    * - **有值**（非负有限数）→ `setSystem`（进事件流，宿主据此改该层 z）；
    * - **缺省/非法** → **删除键**（回层默认）并广播 `undefined` —— 保证「不带 z 的下一条命令」
@@ -824,13 +824,13 @@ export class StoryEngine {
     for (const listener of this.stateListeners) listener(change);
   }
 
-  /** 02 §三.1 出站事件统一发射：信封 `{v,kind:'event',payload}` + 广播全体监听者 */
+  /** 出站事件统一发射：信封 `{v,kind:'event',payload}` + 广播全体监听者 */
   private emitEvent(payload: OutboundPayload): void {
     const event: OutboundEvent = { v: 1, kind: "event", payload };
     for (const listener of this.eventListeners) listener(event);
   }
 
-  /** E3：engine.error 事件出站，绝不静默 */
+  /** engine.error 事件出站，绝不静默 */
   private fail(code: string, message: string): void {
     this.emitEvent({
       kind: "engine.error",
@@ -841,12 +841,12 @@ export class StoryEngine {
   }
 
   /**
-   * 规约 10：扩展 op 执行（fail-closed）。成功 = 推进（分发表前置分支负责步进）；
+   * 扩展 op 执行（fail-closed）。成功 = 推进（分发表前置分支负责步进）；
    * 失败（exec 返回非 ok 或抛出被 runRegisteredOp 兜底）= engine.error + 停在当前命令。
    * 副作用只经 ExtensionContext（物理强制 `ext.<id>.` 前缀）→ 状态进 SSOT。
    */
   private execExtensionOp(entry: RegisteredOp, cmd: StoryCommand): boolean {
-    this.usedExtensions.add(entry.extensionId); // T08-08：实际执行过 → 存档依赖标记
+    this.usedExtensions.add(entry.extensionId); // 实际执行过 → 存档依赖标记
     const outcome = runRegisteredOp(entry, cmd, this.story, {
       get: (key) => this.get(key),
       setGlobal: (key, value) => this.setGlobal(key, value),
@@ -857,9 +857,9 @@ export class StoryEngine {
   }
 
   /**
-   * 01 §四.3 Translate（老引擎 I18nService 同语义）：命中即用译文（含空串译文），未命中/
+   * Translate：命中即用译文（含空串译文），未命中/
    * 无 overlay 回退原文；空原文直返。调用点必须**先于插值**——overlay 键可含 {var} 占位符
-   * （插值在译文上进行，老引擎 hook 点同序）。
+   * （插值在译文上进行）。
    */
   private translate(original: string): string {
     if (original === "" || this.overlay === null) return original;
@@ -868,7 +868,7 @@ export class StoryEngine {
   }
 
   /**
-   * 2026-09-27 翻译面扩展（用户裁定「所有展示文字纳入翻译」）：元素展示文字（`text` 属性）
+   * 翻译面覆盖所有展示文字：元素展示文字（`text` 属性）
    * 在**装载时**翻译——进 SSOT 的即译文（随快照/存档/回溯随行）；切换语言后当前画面不重翻
    * （与 menu 挂接同语义：下次 Translate 生效），再次进列重新装载时生效。递归 children。
    * 无 `text` 的元素原样返回（引用不变，不触发无谓的 ValueChanged 噪声之外的对象复制）。
@@ -894,19 +894,19 @@ export class StoryEngine {
     return this.story.columns.find((c) => c.id === id);
   }
 
-  /** 进入列：替换整个帧栈（出块/出列销毁作用域，S1），建列级作用域，坐标归零（01 §一.4） */
+  /** 进入列：替换整个帧栈（出块/出列销毁作用域），建列级作用域，坐标归零 */
   private enterColumn(columnId: string): boolean {
     const column = this.columnById(columnId);
     if (column === undefined) {
       this.fail(
         "unknown-column",
-        `目标列不存在：${columnId}（F1：跳转目标必须存在）`,
+        `目标列不存在：${columnId}`,
       );
       return false;
     }
     this.coord = { columnId, index: 0 };
     this.setSystem(SYS.currentSceneColumn, columnId);
-    // 08 §二.1 空间层：scene 列的元素是**声明式装载**（不进命令流），entry 才是进入后
+    // 空间层：scene 列的元素是**声明式装载**（不进命令流），entry 才是进入后
     // 按序执行的命令流；列切换整体替换 __elements（空间层属于列），回溯由快照还原。
     this.setSystem(
       SYS.elements,
@@ -926,7 +926,7 @@ export class StoryEngine {
     return true;
   }
 
-  /** 02 §二.1 逐命令解释执行：取命令 → 执行 → 前进；遇等待点即停（调用方保证 __waiting=none） */
+  /** 逐命令解释执行：取命令 → 执行 → 前进；遇等待点即停（调用方保证 __waiting=none） */
   private run(): void {
     for (;;) {
       const frame = this.frames[this.frames.length - 1];
@@ -953,11 +953,11 @@ export class StoryEngine {
           if (!this.beginLoopIteration(frame, loop)) return;
           continue;
         }
-        this.frames.pop(); // 出块/出列：块级作用域随之不可达（S1）
+        this.frames.pop(); // 出块/出列：块级作用域随之不可达
         continue;
       }
       const cmd = frame.commands[frame.index]!;
-      // 规约 10 扩展查找前置（T08-02）：内建 switch 一行不动 ⇒ 内建行为逐字节等价；
+      // 扩展查找前置：内建 switch 一行不动 ⇒ 内建行为逐字节等价；
       // 扩展 op 的推进语义 = 执行成功即步进（v1 无等待态）
       const extensionOp = this.extensionOps.get(cmd.op);
       if (extensionOp !== undefined) {
@@ -1127,43 +1127,43 @@ export class StoryEngine {
         case "bg_switch":
         case "zindex":
         case "style":
-          // 08 §二.1 元素增删改：非阻塞（写 SYS.elements，随快照/回溯），故事继续
+          // 元素增删改：非阻塞（写 SYS.elements，随快照/回溯），故事继续
           if (!this.execElementVisual(cmd)) return;
           frame.index += 1;
           continue;
         case "window":
-          // 08 §二.6 对话框显隐三态（写 SYS.dialogVisible，UI 据此控层）
+          // 对话框显隐三态（写 SYS.dialogVisible，UI 据此控层）
           if (!this.execWindow(cmd)) return;
           frame.index += 1;
           continue;
         case "animate":
         case "animate_block":
-          // 08 §二.2 元素动画：核心只写动画描述（UI 每帧插值，播毕回调写回终值）
+          // 元素动画：核心只写动画描述（UI 每帧插值，播毕回调写回终值）
           if (!this.execAnimate(cmd)) return;
           frame.index += 1;
           continue;
         case "transition":
         case "shake":
-          // 08 §二.2 屏幕级效果：写启动键（UI 帧驱动，播毕回调清除）
+          // 屏幕级效果：写启动键（UI 帧驱动，播毕回调清除）
           if (!this.execScreenEffect(cmd)) return;
           frame.index += 1;
           continue;
         case "text_typewriter":
-          // 08 §四.1 故事级打字机设置（玩家偏好可覆盖，U10）
+          // 故事级打字机设置（玩家偏好可覆盖）
           if (!this.execTextTypewriter(cmd)) return;
           frame.index += 1;
           continue;
         default:
-          // E3 fail-closed：未知/未实现 op 不静默跳过
+          // fail-closed：未知/未实现 op 不静默跳过
           this.fail("unknown-op", `未知或未实现的命令：${cmd.op}`);
           return;
       }
     }
   }
 
-  /** say：写对话系统键 → 进入 dialog 等待（02 §二.2/3；插值见 01 §三.4/S8/F7） */
+  /** say：写对话系统键 → 进入 dialog 等待（文本先翻译后插值） */
   private execSay(frame: Frame, cmd: StoryCommand): void {
-    if (this.rejectBadInstanceZ(cmd)) return; // 08 §八.3：先拒非法 z（不动状态）
+    if (this.rejectBadInstanceZ(cmd)) return; // 先拒非法 z（不动状态）
     if (typeof cmd.text !== "string" || cmd.text === "") {
       this.fail("say-invalid", "say 负载必须有非空 text 字符串");
       return;
@@ -1188,10 +1188,10 @@ export class StoryEngine {
       );
       return;
     }
-    // 01 §四.3 先 Translate 后插值（overlay 键可含 {var} 占位符）+ {var:00} 格式化（F7：仅文本命令）；
-    // 行内标记 {b}{p} 原样透传；失败保留原文 + error（S8）
+    // 先 Translate 后插值（overlay 键可含 {var} 占位符）+ {var:00} 格式化（仅文本命令）；
+    // 行内标记 {b}{p} 原样透传；失败保留原文 + error
     // speaker 与 text 同语义插值——动态说话人（如 func 实参）经此获得真实名字；
-    // 说话人**显示名**同样走 Translate（2026-09-27 用户裁定「所有展示文字纳入翻译」，
+    // 说话人**显示名**同样走 Translate（所有展示文字均纳入翻译，
     // 原「speaker 不走 Translate」裁定作废）；角色模板查表仍用插值后的原值。
     const { text, errors } = interpolateText(
       this.translate(cmd.text),
@@ -1207,11 +1207,11 @@ export class StoryEngine {
     for (const e of [...errors, ...speakerErrors])
       this.fail(e.code, `插值失败（保留原文）：${e.message}`);
 
-    // 02 §二.3 竞态防护：进入等待前清上一句残留的完成标记（防双击/快速点击跳句）
+    // 竞态防护：进入等待前清上一句残留的完成标记（防双击/快速点击跳句）
     this.setSystem(SYS.dialogComplete, false);
     this.setSystem(SYS.currentDialogSpeaker, this.translate(speakerText));
-    // 08 §四.5 模板三级优先级（老引擎 Phase 65 同语义）：
-    // say template > character screen（按插值后说话人查表，与 UI 侧 U4 样式查表一致）> null(全局默认)
+    // 模板三级优先级：
+    // say template > character screen（按插值后说话人查表，与 UI 侧角色样式查表一致）> null(全局默认)
     const characterScreen = this.characters.get(speakerText)?.screen;
     this.setSystem(
       SYS.dialogTemplate,
@@ -1222,8 +1222,8 @@ export class StoryEngine {
     this.setSystem(SYS.currentDialogText, text);
     this.setSystem(SYS.dialogClickable, cmd.clickable === true);
     this.setSystem(SYS.dialogNoskip, cmd.noskip === true);
-    this.setInstanceZ(SYS.dialogueZ, cmd.z); // 08 §八.3：本句的实例 z（仅影响这一句）
-    // 08-U5：NVL 激活时当前句追加进累积缓冲（新引用，观察者可感知；随状态快照走）
+    this.setInstanceZ(SYS.dialogueZ, cmd.z); // 本句的实例 z（仅影响这一句）
+    // NVL 激活时当前句追加进累积缓冲（新引用，观察者可感知；随状态快照走）
     // 重放期不追加——buffer 已由快照恢复，重放只重建当前对话键
     if (this.get(SYS.nvlMode) === "active" && !this.rollbackActive) {
       const buffer = this.get(SYS.nvlBuffer);
@@ -1233,7 +1233,7 @@ export class StoryEngine {
       ]);
     }
     this.setSystem(SYS.waiting, "dialog");
-    // 08 §六.1：say 的 voice 参数绑定本句语音进 voice 通道（auto_stop 默认 true → 推进过该句即停）
+    // say 的 voice 参数绑定本句语音进 voice 通道（auto_stop 默认 true → 推进过该句即停）
     if (typeof cmd.voice === "string" && cmd.voice !== "") {
       this.setSystem(SYS.audioVoice, {
         kind: "play",
@@ -1246,16 +1246,16 @@ export class StoryEngine {
     }
     // 重放落点（rollbackActive）即检查点 k 本体：live 视为已入档——back() 才能继续向前回退
     this.liveCheckpointed = this.rollbackActive;
-    // 03-R1：快照在上屏时刻捕获（= 玩家所见画面，帧栈定位在本等待命令上），等待解除后才提交入档。
+    // 快照在上屏时刻捕获（= 玩家所见画面，帧栈定位在本等待命令上），等待解除后才提交入档。
     // 重放期同样捕获：同坐标提交由 commitCheckpoint 原位替换（幂等），历史在回溯/读档路径上自愈完整
     this.pendingSay = this.takeSnapshot(this.checkpointCoord(frame));
-    this.autoSaveAtCheckpoint(); // 05 §四：say 等待画面建立 = 玩家所见稳定点，auto_save 开关消费
-    // 坐标推进：say 进入等待即前移，坐标恒指「下一待执行命令」——与 03-R1「检查点在用户所见之后」对齐
+    this.autoSaveAtCheckpoint(); // say 等待画面建立 = 玩家所见稳定点，auto_save 开关消费
+    // 坐标推进：say 进入等待即前移，坐标恒指「下一待执行命令」——检查点在玩家所见之后
     frame.index += 1;
   }
 
   /**
-   * 03 §一/01 §一.4：检查点/存档坐标恒指「能重放重建本等待点」的列内顶层位置。
+   * 检查点/存档坐标恒指「能重放重建本等待点」的列内顶层位置。
    * - 列帧等待点：index 尚未前移 → 即等待命令本身（读档/重放重新执行它）
    * - 块帧（if/while/func 体）等待点：所在列帧 index 已指向块进入命令的下一命令 → 回退一格 = 重入命令
    */
@@ -1273,12 +1273,12 @@ export class StoryEngine {
   }
 
   /**
-   * 01 §二.1 navigate op：跨列导航。目标列 = scene ?? path（老引擎 NavigateHandler
-   * 优先级语义），二者都是 columnId（01 §一.2：列名即标签，「文件」在组装模型中坍缩为列）。
-   * 与 jump 的语义差异 = 清旧列对话镜像（导航 = 画面边界，老引擎导航清屏语义）+
-   * path/scene 词汇（灵泛 JSON v1 契约照搬）。**不建检查点**（裁定）：老引擎 navigate
-   * 建检查点的语义在新引擎检查点模型下产生回溯陷阱——导航站重放必重建下一站的等待画面，
-   * flush 提交命中前向同坐标站使 cursor 前移，back 原地循环；03-R1「检查点=玩家所见」
+   * navigate op：跨列导航。目标列 = scene ?? path（scene 优先），
+   * 二者都是 columnId（列名即标签，「文件」在组装模型中坍缩为列）。
+   * 与 jump 的语义差异 = 清旧列对话镜像（导航 = 画面边界）+
+   * path/scene 词汇（JSON v1 契约）。**不建检查点**：navigate
+   * 建检查点的语义在检查点模型下产生回溯陷阱——导航站重放必重建下一站的等待画面，
+   * flush 提交命中前向同坐标站使 cursor 前移，back 原地循环；检查点 = 玩家所见，
    * 下导航边界由前后所见站界定。
    */
   private execNavigate(cmd: StoryCommand): boolean {
@@ -1292,15 +1292,15 @@ export class StoryEngine {
       );
       return false;
     }
-    this.setSystem(SYS.currentDialogText, ""); // 清旧列对话镜像（老引擎导航清屏语义）
+    this.setSystem(SYS.currentDialogText, ""); // 清旧列对话镜像（导航 = 画面边界）
     this.setSystem(SYS.currentDialogSpeaker, "");
     this.setSystem(SYS.dialogComplete, false);
     return this.enterColumn(target);
   }
 
   /**
-   * 01 §二.3 save op：声明存档点——载荷落到**下一玩家所见等待画面**（05 §四：存档坐标
-   * 必须是可重放重建的等待点；灵泛「命令位置快照」与此不同构，重放侧效即由此规避）。
+   * save op：声明存档点——载荷落到**下一玩家所见等待画面**（存档坐标
+   * 必须是可重放重建的等待点；「命令位置快照」与此不同构，重放侧效即由此规避）。
    * 槽位/端口校验立即 fail-closed；声明本身非等待命令，故事立即继续。
    */
   private execSaveOp(frame: Frame, cmd: StoryCommand): boolean {
@@ -1340,7 +1340,7 @@ export class StoryEngine {
     return true;
   }
 
-  /** 01 §二.3 load op：读档传送（复用会话命令 load；异步 importSave 后即传送） */
+  /** load op：读档传送（复用会话命令 load；异步 importSave 后即传送） */
   private execLoadOp(frame: Frame, cmd: StoryCommand): boolean {
     const unknownFields = Object.keys(cmd).filter(
       (k) => !SAVE_FIELDS.load.has(k),
@@ -1362,7 +1362,7 @@ export class StoryEngine {
   }
 
   /**
-   * 01 §二.3 auto_save op：开关系统键 `__auto_save`（灵泛编译为 SetVariableCommand 同语义）。
+   * auto_save op：开关系统键 `__auto_save`（编译期与 set 同语义）。
    * 消费点 = 等待画面建立时（autoSaveAtCheckpoint）；开关是系统键 → 不进用户存档、读档后复位。
    */
   private execAutoSaveOp(frame: Frame, cmd: StoryCommand): boolean {
@@ -1388,7 +1388,7 @@ export class StoryEngine {
     return true;
   }
 
-  /** 01 §二.3 save_delete op：删除槽位（异步 kick；05 K4：删档不动高水位——防回档基准不随删档回退） */
+  /** save_delete op：删除槽位（异步 kick；删档不动高水位——防回档基准不随删档回退） */
   private execSaveDeleteOp(frame: Frame, cmd: StoryCommand): boolean {
     const unknownFields = Object.keys(cmd).filter(
       (k) => !SAVE_FIELDS.save_delete.has(k),
@@ -1419,13 +1419,13 @@ export class StoryEngine {
     return true;
   }
 
-  /** menu：写菜单系统键 → 进入 menu 等待（02 §二.2；清对话残留 08 §二.6） */
+  /** menu：写菜单系统键 → 进入 menu 等待（清对话残留） */
   private execMenu(frame: Frame, cmd: StoryCommand): void {
-    if (this.rejectBadInstanceZ(cmd)) return; // 08 §八.3：先拒非法 z（不动状态）
+    if (this.rejectBadInstanceZ(cmd)) return; // 先拒非法 z（不动状态）
     const options = cmd.options as Array<{ text: string; target: string }>; // 解析器已验证结构
     this.setSystem(SYS.currentDialogText, "");
     this.setSystem(SYS.currentDialogSpeaker, "");
-    // 01 §四.3：prompt/选项文案先 Translate（目标列名不翻译——menuTargets 原样）
+    // prompt/选项文案先 Translate（目标列名不翻译——menuTargets 原样）
     this.setSystem(
       SYS.menuPrompt,
       typeof cmd.prompt === "string" ? this.translate(cmd.prompt) : "",
@@ -1439,16 +1439,16 @@ export class StoryEngine {
       options.map((o) => o.target),
     );
     this.setSystem(SYS.menuSelected, -1);
-    this.setInstanceZ(SYS.choicesZ, cmd.z); // 08 §八.3：本次菜单的实例 z（choices 层）
+    this.setInstanceZ(SYS.choicesZ, cmd.z); // 本次菜单的实例 z（choices 层）
     this.setSystem(SYS.waiting, "menu");
-    // 03 §三：菜单展示时建检查点（展示中 live == 检查点，回退落回菜单重选）；重放期同坐标原位替换
+    // 菜单展示时建检查点（展示中 live == 检查点，回退落回菜单重选）；重放期同坐标原位替换
     this.commitCheckpoint(this.takeSnapshot(this.checkpointCoord(frame)));
     this.liveCheckpointed = true;
-    this.autoSaveAtCheckpoint(); // 05 §四：菜单等待画面建立 = auto_save 消费点
+    this.autoSaveAtCheckpoint(); // 菜单等待画面建立 = auto_save 消费点
     frame.index += 1;
   }
 
-  /** wait/pause（01 §二.1：wait 可 skipable、pause=hard；老规范 §6.4 seconds 必填） */
+  /** wait/pause（wait 可 skipable、pause=hard；seconds 必填） */
   private execWait(frame: Frame, cmd: StoryCommand, hard = false): void {
     const fields = hard ? PAUSE_FIELDS : WAIT_FIELDS;
     const unknownFields = Object.keys(cmd).filter((k) => !fields.has(k));
@@ -1461,10 +1461,10 @@ export class StoryEngine {
     }
     this.waitSkipable = !hard && cmd.skipable === true;
     this.setSystem(SYS.waiting, "wait");
-    // 03 §三：wait 检查点在等待建立时；重放期同坐标原位替换
+    // wait 检查点在等待建立时；重放期同坐标原位替换
     this.commitCheckpoint(this.takeSnapshot(this.checkpointCoord(frame)));
     this.liveCheckpointed = true;
-    this.autoSaveAtCheckpoint(); // 05 §四：wait 等待画面建立 = auto_save 消费点
+    this.autoSaveAtCheckpoint(); // wait 等待画面建立 = auto_save 消费点
     frame.index += 1;
     this.pendingTimer = setTimeout(
       () => {
@@ -1479,7 +1479,7 @@ export class StoryEngine {
     );
   }
 
-  /** if/elif/else：条件执行期求值（04 §二.1）；分支体 = 块帧 + 块级作用域（04 §一.1） */
+  /** if/elif/else：条件执行期求值；分支体 = 块帧 + 块级作用域 */
   private execIf(frame: Frame, cmd: StoryCommand): boolean {
     const cond = this.evalCond(cmd.cond);
     if (cond === null) return false;
@@ -1507,12 +1507,12 @@ export class StoryEngine {
       columnId: null,
       commands: branch,
       index: 0,
-      scope: frame.scope.enterChild(), // 块级作用域：出块销毁（S1）
+      scope: frame.scope.enterChild(), // 块级作用域：出块销毁
     });
     return true;
   }
 
-  /** while：条件执行期求值；body = 循环帧（每轮重判条件，04 §二.1） */
+  /** while：条件执行期求值；body = 循环帧（每轮重判条件） */
   private execWhile(frame: Frame, cmd: StoryCommand): boolean {
     const cond = this.evalCond(cmd.cond);
     if (cond === null) return false;
@@ -1534,7 +1534,7 @@ export class StoryEngine {
     return this.beginLoopIteration(this.frames[this.frames.length - 1]!, loop);
   }
 
-  /** for（老规范 §6.1）：`in` 表达式执行期求值 → 必须为数组，逐元素迭代 */
+  /** for：`in` 表达式执行期求值 → 必须为数组，逐元素迭代 */
   private execFor(frame: Frame, cmd: StoryCommand): boolean {
     try {
       const src = typeof cmd.in === "string" ? cmd.in.trim() : "";
@@ -1557,7 +1557,7 @@ export class StoryEngine {
     }
   }
 
-  /** foreach（老规范 §6.1）：key 为集合变量名（foreach "v" in "k"，编译为 for 同构） */
+  /** foreach：key 为集合变量名（foreach "v" in "k"，编译为 for 同构） */
   private execForeach(frame: Frame, cmd: StoryCommand): boolean {
     try {
       const key = cmd.key as string;
@@ -1576,7 +1576,7 @@ export class StoryEngine {
     }
   }
 
-  /** for/foreach 同构：物化数组 → 循环帧逐元素推进；循环变量 = 块级局部（S1） */
+  /** for/foreach 同构：物化数组 → 循环帧逐元素推进；循环变量 = 块级局部 */
   private pushIterateLoop(
     frame: Frame,
     cmd: StoryCommand,
@@ -1601,7 +1601,7 @@ export class StoryEngine {
     return this.beginLoopIteration(this.frames[this.frames.length - 1]!, loop);
   }
 
-  /** 开始一轮迭代：每轮新块作用域（S1），声明循环变量，游标归零；超上限 fail-closed */
+  /** 开始一轮迭代：每轮新块作用域，声明循环变量，游标归零；超上限 fail-closed */
   private beginLoopIteration(frame: Frame, loop: LoopState): boolean {
     if (loop.iterations >= LOOP_LIMIT) {
       this.fail(
@@ -1626,7 +1626,7 @@ export class StoryEngine {
     return -1;
   }
 
-  /** switch（老规范 §6.1：编译为 if/else 链——case 字面量相等比较，命中即走、不穿透） */
+  /** switch：编译为 if/else 链——case 字面量相等比较，命中即走、不穿透 */
   private execSwitch(frame: Frame, cmd: StoryCommand): boolean {
     try {
       const src = typeof cmd.on === "string" ? cmd.on.trim() : "";
@@ -1666,7 +1666,7 @@ export class StoryEngine {
     }
   }
 
-  /** 条件求值：{...} 包裹按约定剥离；结果必须 boolean；任何失败 → engine.error + 停机（S5） */
+  /** 条件求值：{...} 包裹按约定剥离；结果必须 boolean；任何失败 → engine.error + 停机 */
   private evalCond(src: unknown): boolean | null {
     if (typeof src !== "string") {
       this.fail("eval-type-error", "条件必须为字符串表达式");
@@ -1691,9 +1691,9 @@ export class StoryEngine {
   }
 
   /**
-   * set/let/local（老规范 §6.2）：
-   * - set：写入声明时所在层（04 §一.4），未声明 → 全局（SSOT Map）；支持 += 等复合赋值
-   * - let/local：块级可变，声明进当前最内层作用域（04 §一.5）
+   * set/let/local：
+   * - set：写入声明时所在层，未声明 → 全局（SSOT Map）；支持 += 等复合赋值
+   * - let/local：块级可变，声明进当前最内层作用域
    */
   private execAssign(frame: Frame, cmd: StoryCommand, op: string): boolean {
     const key = cmd.key as string;
@@ -1749,16 +1749,16 @@ export class StoryEngine {
         return current * rhs;
       case "/=":
         if (rhs === 0)
-          throw new ExpressionError("division-by-zero", "'/=' 除数为 0（S5）");
+          throw new ExpressionError("division-by-zero", "'/=' 除数为 0");
         return current / rhs;
       default:
         if (rhs === 0)
-          throw new ExpressionError("division-by-zero", "'%=' 除数为 0（S5）");
+          throw new ExpressionError("division-by-zero", "'%=' 除数为 0");
         return current % rhs;
     }
   }
 
-  /** define：全局 + once——不存在才设（04 §一.5 / F2 两语义之一） */
+  /** define：全局 + once——不存在才设 */
   private execDefine(cmd: StoryCommand): boolean {
     const key = cmd.key as string;
     try {
@@ -1774,7 +1774,7 @@ export class StoryEngine {
     }
   }
 
-  /** undef：销毁声明槽（04 §一.5）；沿块/列作用域链与全局层查找 */
+  /** undef：销毁声明槽；沿块/列作用域链与全局层查找 */
   private execUndef(frame: Frame, cmd: StoryCommand): boolean {
     const key = cmd.key as string;
     const inScope = frame.scope.undef(key);
@@ -1787,7 +1787,7 @@ export class StoryEngine {
     return true;
   }
 
-  /** array（老规范 §6.2）：key + items[]（项可为 {expr}）；once → 已存在跳过 */
+  /** array：key + items[]（项可为 {expr}）；once → 已存在跳过 */
   private execArray(cmd: StoryCommand): boolean {
     const key = cmd.key as string;
     try {
@@ -1837,7 +1837,7 @@ export class StoryEngine {
     return true;
   }
 
-  /** dict（老规范 §6.2）：value 为 JSON 对象字面量（字段值可为 {expr}）；once 同 array */
+  /** dict：value 为 JSON 对象字面量（字段值可为 {expr}）；once 同 array */
   private execDict(cmd: StoryCommand): boolean {
     const key = cmd.key as string;
     try {
@@ -1882,7 +1882,7 @@ export class StoryEngine {
     }
   }
 
-  /** 08-U5 NVL：进入/清屏/退出累积层（01 §二.2 → 08 §五）；累积文本进核心状态（回溯/存档自动一致） */
+  /** NVL：进入/清屏/退出累积层；累积文本进核心状态（回溯/存档自动一致） */
   private execNvl(cmd: StoryCommand): void {
     const mode = typeof cmd.mode === "string" ? cmd.mode : "enter";
     switch (mode) {
@@ -1901,7 +1901,7 @@ export class StoryEngine {
     }
   }
 
-  /** 08-U4 character：注册/更新角色定义（灵泛 DefineCharacter 语义：可覆盖更新） */
+  /** character：注册/更新角色定义（可覆盖更新） */
   private execCharacter(cmd: StoryCommand): void {
     const key = cmd.key as string;
     const def: CharacterDef = { key };
@@ -1914,7 +1914,7 @@ export class StoryEngine {
     this.characters.set(key, def);
   }
 
-  /** 08-U4 查询角色定义（UI 渲染 say speaker 时套用） */
+  /** 查询角色定义（UI 渲染 say speaker 时套用） */
   getCharacter(key: string): CharacterDef | undefined {
     return this.characters.get(key);
   }
@@ -1924,10 +1924,10 @@ export class StoryEngine {
   }
 
   /**
-   * 08 §六.1 四音频通道：核心只写状态（U1），播放由 UI 适配器落地。
+   * 四音频通道：核心只写状态，播放由 UI 适配器落地。
    * - bgm/ambient/voice 为常驻通道（写状态对象，随快照/存档随行）；se 为一次性触发（单调 seq）
-   * - 同资源重写保留播放位置：重放不打断当前曲目（03-R7「回滚 seek」/ 05 §四「读档续播」）
-   * - stop_* 写 stop 形态（带淡出参数）；未知字段/非法负载 fail-closed（E3/F5）
+   * - 同资源重写保留播放位置：重放不打断当前曲目（回滚 seek / 读档续播）
+   * - stop_* 写 stop 形态（带淡出参数）；未知字段/非法负载 fail-closed
    */
   private execAudio(cmd: StoryCommand): boolean {
     const unknown = Object.keys(cmd).filter(
@@ -1953,7 +1953,7 @@ export class StoryEngine {
         kind: "stop",
         fadeMs: fade,
       } satisfies AudioChannelState);
-      // 停止背景乐：播放位置归零（帧级键静默写，08 §三.3）
+      // 停止背景乐：播放位置归零（帧级键静默写）
       if (cmd.op === "stop_bgm") this.state.set(SYS.bgmPosition, 0);
       return true;
     }
@@ -1983,8 +1983,8 @@ export class StoryEngine {
       AudioChannelState | null | undefined;
     const restart = cmd.restart === true;
     if (cmd.op === "bgm") {
-      // 首播/换曲/显式重播归零；同曲静默续播（03-R7 回滚 seek / 05 §四 读档续播）。
-      // 帧级键静默写（08 §三.3 高频键不进事件流），UI 经通道事件重读位置。
+      // 首播/换曲/显式重播归零；同曲静默续播（回滚 seek / 读档续播）。
+      // 帧级键静默写（高频键不进事件流），UI 经通道事件重读位置。
       const sameTrack =
         previous?.kind === "play" && previous.resource === cmd.resource;
       if (!sameTrack || restart) this.state.set(SYS.bgmPosition, 0);
@@ -2031,7 +2031,7 @@ export class StoryEngine {
   }
 
   /**
-   * 08 §六.5 视频族：核心只写命令流（`__video`，seq 单调），渲染器按序执行。
+   * 视频族：核心只写命令流（`__video`，seq 单调），渲染器按序执行。
    * - `video` = 非阻塞播放（故事继续）；`cutscene` = 阻塞过场（等待建立时提交检查点，
    *   同 menu/wait/input；ended/跳过解除）。
    * - `seek_video`/`pause_video`/`resume_video`/`stop_video` 为离散命令；
@@ -2054,7 +2054,7 @@ export class StoryEngine {
     this.videoSeq += 1;
     const seq = this.videoSeq;
     if (cmd.op === "video" || cmd.op === "cutscene") {
-      if (this.rejectBadInstanceZ(cmd)) return false; // 08 §八.3：先拒非法 z（不动状态）
+      if (this.rejectBadInstanceZ(cmd)) return false; // 先拒非法 z（不动状态）
       this.setInstanceZ(SYS.videoZ, cmd.z); // 视频层实例 z（宿主解析后交 VideoPort.setZIndex）
       if (typeof cmd.resource !== "string" || cmd.resource === "") {
         this.fail(
@@ -2080,11 +2080,11 @@ export class StoryEngine {
         seq,
       } satisfies VideoCommand);
       if (cutscene) {
-        // 03 §三：过场等待建立时提交检查点（同 menu/wait/input）；重放期同坐标原位替换
+        // 过场等待建立时提交检查点（同 menu/wait/input）；重放期同坐标原位替换
         this.setSystem(SYS.waiting, "video");
         this.commitCheckpoint(this.takeSnapshot(this.checkpointCoord(frame)));
         this.liveCheckpointed = true;
-        this.autoSaveAtCheckpoint(); // 05 §四：cutscene 等待画面建立 = auto_save 消费点
+        this.autoSaveAtCheckpoint(); // cutscene 等待画面建立 = auto_save 消费点
         frame.index += 1;
       }
       return true;
@@ -2127,14 +2127,11 @@ export class StoryEngine {
   }
 
   /**
-  /**
-   * 08 §二.1 元素增删（`show` / `hide` / `background` / `bg_switch`）：老引擎
-   * `ShowHideHandler` / `BgSwitchHandler` 语义照搬，但统一进**同一元素表** `SYS.elements`
-   * （老引擎分 `Scene.Elements` 与 `RuntimeElements` 两处并在读档时重放重建；新引擎合并为
-   * 纯数据，随快照/存档/回溯自动随行）。
+   * 元素增删（`show` / `hide` / `background` / `bg_switch`）：统一进**同一元素表**
+   * `SYS.elements`（纯数据，随快照/存档/回溯自动随行）。
    *
    * - `show`：追加元素；`background=true` 先清旧背景并固定底层序（`BACKGROUND_Z`）
-   * - `hide`：按 `id`/`name`/`source` 移除，递归含 children；未命中**幂等不报错**（老引擎同语义）
+   * - `hide`：按 `id`/`name`/`source` 移除，递归含 children；未命中**幂等不报错**
    * - `background` / `bg_switch`：换背景（先清旧背景 → 追加，固定底层序）
    */
   private execElementVisual(cmd: StoryCommand): boolean {
@@ -2227,14 +2224,14 @@ export class StoryEngine {
         return false;
       }
       const styleProps = raw as Record<string, unknown>;
-      // F5 同口径：样式键必须在元素属性全集内（未知属性 fail-closed）
+      // 样式键必须在元素属性全集内（未知属性 fail-closed）
       const unknown = Object.keys(styleProps).filter(
         (k) => !ELEMENT_ATTRIBUTES.has(k),
       );
       if (unknown.length > 0) {
         this.fail(
           "style-unknown-attr",
-          `style 未知元素属性：${unknown.join(", ")}（F5）`,
+          `style 未知元素属性：${unknown.join(", ")}`,
         );
         return false;
       }
@@ -2280,15 +2277,15 @@ export class StoryEngine {
   }
 
   /**
-   * 08 §二.6 对话框显隐三态：`auto`（跟随对话态，默认）| `show`（强制显示）| `hide`（强制隐藏）。
-   * 只写状态；DOM 可见性归 UI 层（U1：核心只写状态）。
+   * 对话框显隐三态：`auto`（跟随对话态，默认）| `show`（强制显示）| `hide`（强制隐藏）。
+   * 只写状态；DOM 可见性归 UI 层（核心只写状态）。
    */
   private execWindow(cmd: StoryCommand): boolean {
     const mode = cmd.mode;
     if (mode !== "auto" && mode !== "show" && mode !== "hide") {
       this.fail(
         "window-invalid",
-        'window.mode 必须为 "auto" | "show" | "hide"（08 §二.6）',
+        'window.mode 必须为 "auto" | "show" | "hide"',
       );
       return false;
     }
@@ -2297,12 +2294,12 @@ export class StoryEngine {
   }
 
   /**
-   * 08 §二.2 元素动画（`animate` / `animate_block`）：核心只写**动画描述**进 `SYS.animations`，
-   * UI 每帧插值（08 §三.2），播毕调 `animationFinished(seq)` 写回终值。
+   * 元素动画（`animate` / `animate_block`）：核心只写**动画描述**进 `SYS.animations`，
+   * UI 每帧插值，播毕调 `animationFinished(seq)` 写回终值。
    *
-   * - `from` 取目标元素当前属性值；非有限数字或未设 = `0`（对齐老引擎 `Get<double>` 语义）
+   * - `from` 取目标元素当前属性值；非有限数字或未设 = `0`
    * - `animate_block` 的多个属性**并行**（同 duration）：JSON 键序对作者不可控，序列语义请用多条
-   *   `animate` 表达——此为与老引擎「按解析序序列执行」的**有意差异**
+   *   `animate` 表达（有意差异：不做序列执行）
    */
   private execAnimate(cmd: StoryCommand): boolean {
     const target = typeof cmd.target === "string" ? cmd.target : "";
@@ -2398,14 +2395,14 @@ export class StoryEngine {
 
   /** —— 帧驱动消费侧接缝（UI 每帧读取 / 播毕回调）—— */
 
-  /** 08 §二.2 动画队列（UI 每帧按 elapsed 插值应用到 DOM，不逐帧写 SSOT） */
+  /** 动画队列（UI 每帧按 elapsed 插值应用到 DOM，不逐帧写 SSOT） */
   animations(): AnimationSpec[] {
     const value = this.state.get(SYS.animations);
     return Array.isArray(value) ? (value as AnimationSpec[]) : [];
   }
 
   /**
-   * 08 §二.2 动画播毕（UI 回调）：终值写回元素 `props` 并移除条目 ——
+   * 动画播毕（UI 回调）：终值写回元素 `props` 并移除条目 ——
    * 使快照 / 存档 / 回溯看到的是**终态**而非中间值。
    */
   animationFinished(seq: number): void {
@@ -2429,7 +2426,7 @@ export class StoryEngine {
   }
 
   /**
-   * 08 §二.2 屏幕级效果启动：
+   * 屏幕级效果启动：
    * - `transition { type, duration }` → `SYS.transition`（UI 全屏遮罩动画）
    * - `shake { intensity, duration }` → `SYS.shake`（UI 抖动偏移）
    */
@@ -2445,7 +2442,7 @@ export class StoryEngine {
       if (type === "") {
         this.fail(
           "transition-invalid",
-          "transition.type 必须为非空效果名（别名表见 01 §二.2）",
+          "transition.type 必须为非空效果名",
         );
         return false;
       }
@@ -2470,20 +2467,19 @@ export class StoryEngine {
     return true;
   }
 
-  /** 08 §二.2 转场播毕（UI 回调）：清除启动键 */
+  /** 转场播毕（UI 回调）：清除启动键 */
   transitionFinished(): void {
     this.setSystem(SYS.transition, null);
   }
 
-  /** 08 §二.2 震动播毕（UI 回调）：清除启动键 */
+  /** 震动播毕（UI 回调）：清除启动键 */
   shakeFinished(): void {
     this.setSystem(SYS.shake, null);
   }
 
   /**
-   * 08 §四.1 故事级打字机设置（`text_typewriter`）：`enabled`（开关）与/或
-   * `speed`（字符/秒）。与玩家偏好（U10，独立存储）分离——偏好优先级更高，由 UI 合成
-   * （老引擎 `SetTextSpeed` 语义）。
+   * 故事级打字机设置（`text_typewriter`）：`enabled`（开关）与/或
+   * `speed`（字符/秒）。与玩家偏好（独立存储）分离——偏好优先级更高，由 UI 合成。
    */
   private execTextTypewriter(cmd: StoryCommand): boolean {
     const enabled = cmd.enabled;
@@ -2558,7 +2554,7 @@ export class StoryEngine {
   }
 
   /**
-   * 08 §六.5 过场完成（UI 播放结束回调）：解除 video 等待，故事继续。
+   * 过场完成（UI 播放结束回调）：解除 video 等待，故事继续。
    * 检查点已在过场建立时提交（重放不再重看）。
    */
   videoFinished(): void {
@@ -2572,17 +2568,17 @@ export class StoryEngine {
   }
 
   /**
-   * 08 §三.2 媒体位置帧级回写（UI 每帧轮询播放器）。
-   * 帧级键静默写：不进事件流（U2，防事件风暴）；随快照/存档持久化（03-R7 / 05 §四）。
+   * 媒体位置帧级回写（UI 每帧轮询播放器）。
+   * 帧级键静默写：不进事件流（防事件风暴）；随快照/存档持久化（读档续播）。
    */
   reportMediaPosition(seconds: number): void {
     if (!Number.isFinite(seconds) || seconds < 0) return; // 播放器噪声值忽略
     this.state.set(SYS.bgmPosition, seconds);
   }
 
-  /** notify：出站 toast 事件（01 §二.1 → 08 §二.4 覆盖层）；文本插值与 say 同语义 */
+  /** notify：出站 toast 事件（覆盖层）；文本插值与 say 同语义 */
   private execNotify(cmd: StoryCommand): void {
-    if (this.rejectBadInstanceZ(cmd)) return; // 08 §八.3：先拒非法 z（不动状态）
+    if (this.rejectBadInstanceZ(cmd)) return; // 先拒非法 z（不动状态）
     const { text, errors } = interpolateText(
       this.translate(cmd.text as string),
       this.resolveName,
@@ -2590,7 +2586,7 @@ export class StoryEngine {
     );
     for (const e of errors)
       this.fail(e.code, `插值失败（保留原文）：${e.message}`);
-    this.setInstanceZ(SYS.notificationsZ, cmd.z); // 08 §八.3：本条通知的实例 z（notifications 层）
+    this.setInstanceZ(SYS.notificationsZ, cmd.z); // 本条通知的实例 z（notifications 层）
     const payload: OutboundPayload = {
       kind: "notify",
       text,
@@ -2602,12 +2598,12 @@ export class StoryEngine {
   }
 
   /**
-   * 06 §二.1 minigame op：建立小游戏等待（同 menu/wait/input 建立检查点），
-   * 发布挂载事件（signal 供回溯/中断卸载，D5）。语义裁定：reward.value 执行期求值
+   * minigame op：建立小游戏等待（同 menu/wait/input 建立检查点），
+   * 发布挂载事件（signal 供回溯/中断卸载）。语义裁定：reward.value 执行期求值
    * （支持 {expr}，重放经 rngState 恢复保持确定性）；on_success/on_fail 缺省 = 原列继续。
    */
   private execMinigame(frame: Frame, cmd: StoryCommand): void {
-    if (this.rejectBadInstanceZ(cmd)) return; // 08 §八.3：先拒非法 z（不动状态）
+    if (this.rejectBadInstanceZ(cmd)) return; // 先拒非法 z（不动状态）
     const unknownFields = Object.keys(cmd).filter(
       (k) => !MINIGAME_FIELDS.has(k),
     );
@@ -2691,17 +2687,17 @@ export class StoryEngine {
       onFail: typeof cmd.on_fail === "string" ? cmd.on_fail : undefined,
       reward,
     };
-    this.setInstanceZ(SYS.minigameZ, cmd.z); // 08 §八.3：本次挂载的实例 z（minigame 层）
+    this.setInstanceZ(SYS.minigameZ, cmd.z); // 本次挂载的实例 z（minigame 层）
     this.setSystem(SYS.minigame, {
       game: cmd.game,
       config: (cmd.config ?? {}) as Record<string, unknown>,
       seq,
     });
     this.setSystem(SYS.waiting, "minigame");
-    // 03 §三：等待建立时提交检查点；重放期同坐标原位替换（重放重新挂载 = 新 seq 新 signal）
+    // 等待建立时提交检查点；重放期同坐标原位替换（重放重新挂载 = 新 seq 新 signal）
     this.commitCheckpoint(this.takeSnapshot(this.checkpointCoord(frame)));
     this.liveCheckpointed = true;
-    this.autoSaveAtCheckpoint(); // 05 §四：小游戏等待画面建立 = auto_save 消费点
+    this.autoSaveAtCheckpoint(); // 小游戏等待画面建立 = auto_save 消费点
     frame.index += 1;
     const payload: OutboundPayload = {
       kind: "minigame.mount",
@@ -2714,7 +2710,7 @@ export class StoryEngine {
     for (const listener of this.eventListeners) listener(event);
   }
 
-  /** func（04 §一.7 / 老规范 §6.2）：执行期注册进函数表；重复注册 fail-closed（确定性重放重入同函数 = 幂等放行） */
+  /** func：执行期注册进函数表；重复注册 fail-closed（确定性重放重入同函数 = 幂等放行） */
   private execFunc(cmd: StoryCommand): boolean {
     const name = cmd.name as string;
     const registered = this.functions.get(name);
@@ -2738,7 +2734,7 @@ export class StoryEngine {
   }
 
   /**
-   * call（04 §一.7）：按名查表 → 实参求值按位绑定 → 函数帧（体 = 独立块作用域）。
+   * call：按名查表 → 实参求值按位绑定 → 函数帧（体 = 独立块作用域）。
    * 未注册/参数个数不符 fail-closed。
    */
   private execCall(frame: Frame, cmd: StoryCommand): boolean {
@@ -2779,7 +2775,7 @@ export class StoryEngine {
     }
   }
 
-  /** return（04 §一.7）：弹出函数帧及其内部块帧，回到调用方；函数外 return fail-closed */
+  /** return：弹出函数帧及其内部块帧，回到调用方；函数外 return fail-closed */
   private execReturn(): boolean {
     for (let i = this.frames.length - 1; i >= 0; i -= 1) {
       if (this.frames[i]!.func === true) {
@@ -2791,10 +2787,10 @@ export class StoryEngine {
     return false;
   }
 
-  /** input（老规范 §6.1：prompt + store）→ 进入 input 等待；options 选项式输入延后（解析层拒绝） */
+  /** input（prompt + store）→ 进入 input 等待；options 选项式输入延后（解析层拒绝） */
   private execInput(frame: Frame, cmd: StoryCommand): void {
-    if (this.rejectBadInstanceZ(cmd)) return; // 08 §八.3：先拒非法 z（不动状态）
-    // 输入态清对话残留（与 menu 同语义，08 §二.6）
+    if (this.rejectBadInstanceZ(cmd)) return; // 先拒非法 z（不动状态）
+    // 输入态清对话残留（与 menu 同语义）
     this.setSystem(SYS.currentDialogText, "");
     this.setSystem(SYS.currentDialogSpeaker, "");
     this.setSystem(
@@ -2802,16 +2798,16 @@ export class StoryEngine {
       typeof cmd.prompt === "string" ? this.translate(cmd.prompt) : "",
     );
     this.inputStore = cmd.store as string;
-    this.setInstanceZ(SYS.choicesZ, cmd.z); // 08 §八.3：输入形态的实例 z（choices 层）
+    this.setInstanceZ(SYS.choicesZ, cmd.z); // 输入形态的实例 z（choices 层）
     this.setSystem(SYS.waiting, "input");
-    // 03 §三：input 检查点在等待建立时；重放期同坐标原位替换
+    // input 检查点在等待建立时；重放期同坐标原位替换
     this.commitCheckpoint(this.takeSnapshot(this.checkpointCoord(frame)));
     this.liveCheckpointed = true;
-    this.autoSaveAtCheckpoint(); // 05 §四：input 等待画面建立 = auto_save 消费点
+    this.autoSaveAtCheckpoint(); // input 等待画面建立 = auto_save 消费点
     frame.index += 1;
   }
 
-  /** 02 §三.2 命令面 input(text)：输入等待的唯一解除入口；store 未定义 fail-closed */
+  /** 命令面 input(text)：输入等待的唯一解除入口；store 未定义 fail-closed */
   input(value: string): void {
     if (!this.started || this.get(SYS.waiting) !== "input") {
       this.fail(
@@ -2828,11 +2824,11 @@ export class StoryEngine {
     this.inputStore = null;
     this.setGlobal(store, value);
     this.setSystem(SYS.waiting, "none");
-    this.liveCheckpointed = false; // 提交改变画面：live 未入档（03-R5）
+    this.liveCheckpointed = false; // 提交改变画面：live 未入档
     this.run();
   }
 
-  // —— 05 存档编排（TS 侧；加密/AAD/高水位安全在 Rust 层，K7） ——
+  // —— 存档编排（TS 侧；加密/AAD/高水位安全在 Rust 层） ——
 
   /** 当前 live 位置所在的列帧（块帧之下） */
   private columnFrame(): Frame | undefined {
@@ -2842,7 +2838,7 @@ export class StoryEngine {
     return undefined;
   }
 
-  /** 按坐标重建列帧（存档不进帧栈——S3：块/列级作用域不进档，读档后确定性重放重建） */
+  /** 按坐标重建列帧（存档不进帧栈——块/列级作用域不进档，读档后确定性重放重建） */
   private columnFrameAt(coord: ColumnCoordinate): Frame {
     const column = this.columnById(coord.columnId)!;
     return {
@@ -2850,13 +2846,13 @@ export class StoryEngine {
       commands:
         column.kind === "flow" ? column.commands! : (column.entry ?? []),
       index: coord.index,
-      scope: Scope.root(), // S3
+      scope: Scope.root(),
     };
   }
 
   /**
-   * 05 §四：导出存档载荷。必须在等待点调用（列尾/未启动 fail-closed 拒绝）。
-   * 载荷 = 等待点坐标 + 全局状态 + rngState + 函数表 + 历史（R8）；不含块/列级作用域与帧栈（S3）。
+   * 导出存档载荷。必须在等待点调用（列尾/未启动 fail-closed 拒绝）。
+   * 载荷 = 等待点坐标 + 全局状态 + rngState + 函数表 + 历史；不含块/列级作用域与帧栈。
    */
   exportSave(): SaveDataV1 | null {
     const waiting = this.get(SYS.waiting);
@@ -2870,7 +2866,7 @@ export class StoryEngine {
       this.fail("save-invalid", "当前不在等待点，无法存档");
       return null;
     }
-    // T08-07 序列化边界深校验（R8 组合式的「存档时」半边）：写入时契约 + 写时复制
+    // 序列化边界深校验（「存档时」半边）：写入时契约 + 写时复制
     // 挡不住「拿到引用后原地改值」（作者行为）——在真正序列化前拦下，杜绝"写档才抛/静默变形"。
     // 快照里的 state 与活状态共享同一批值引用（写时复制），校验活状态即覆盖历史副本。
     for (const [key, value] of this.state) {
@@ -2878,7 +2874,7 @@ export class StoryEngine {
       if (unsafe !== null) {
         this.fail(
           "value-not-serializable",
-          `状态含不可序列化值，存档被拒绝：${unsafe}（请检查是否有原地修改已写入的值；应整值替换，T08-07）`,
+          `状态含不可序列化值，存档被拒绝：${unsafe}（请检查是否有原地修改已写入的值；应整值替换）`,
         );
         return null;
       }
@@ -2899,7 +2895,7 @@ export class StoryEngine {
         state: cp.snapshot.state,
         rngState: cp.snapshot.rngState,
       })),
-      // T08-08：本档实际执行过的扩展（未用到 = 字段缺席，缺扩展也能读——防假阳性）
+      // 本档实际执行过的扩展（未用到 = 字段缺席，缺扩展也能读——防假阳性）
       ...(this.usedExtensions.size > 0
         ? {
             extensions: [...this.usedExtensions].flatMap((id) => {
@@ -2912,24 +2908,24 @@ export class StoryEngine {
   }
 
   /**
-   * 05 §四/03-R8：读档——恢复全局态与历史，从存档坐标重放重建等待点。
-   * 帧栈按坐标重建列帧（S3）；故事版本不匹配 fail-closed（§四.6）。
+   * 读档——恢复全局态与历史，从存档坐标重放重建等待点。
+   * 帧栈按坐标重建列帧；故事版本不匹配 fail-closed。
    * 返回 false = 已拒绝（engine.error 事件已出站），调用方不得当作成功处理。
    */
   importSave(data: SaveDataV1): boolean {
     if (data?.formatVersion !== 1) {
-      const migrated = this.tryMigrateSave(data); // T08-09：版本迁移优先于拒绝（政策见规约 05 §四）
+      const migrated = this.tryMigrateSave(data); // 版本迁移优先于拒绝
       if (migrated === null) return false;
       data = migrated;
     }
-    // §四.6 fail-closed：结构不完整或坐标失效（列定义已变更）= 存档与当前故事版本不匹配。
+    // fail-closed：结构不完整或坐标失效（列定义已变更）= 存档与当前故事版本不匹配。
     // 全量预校验（含历史检查点坐标），任何不符都不得进入恢复流程（防 TypeError 式崩溃）。
     if (
       !Array.isArray(data.state) ||
       !Array.isArray(data.functions) ||
       !Array.isArray(data.history) ||
       typeof data.coord?.columnId !== "string" ||
-      !Number.isFinite(data.coord.index) || // T08-09：NaN/Infinity 不得深入恢复流程（D-44）
+      !Number.isFinite(data.coord.index) || // NaN/Infinity 不得深入恢复流程
       !Number.isFinite(data.rngState)
     ) {
       this.fail("save-format", "存档结构不完整");
@@ -2956,7 +2952,7 @@ export class StoryEngine {
       this.fail("save-story-mismatch", "该存档与当前故事不匹配");
       return false;
     }
-    // T08-09 深层校验补齐（D-44）：历史检查点 state/rngState 逐项校验——缺失/畸形此前
+    // 深层校验：历史检查点 state/rngState 逐项校验——缺失/畸形此前
     // 会静默产出 NaN 或恢复期 TypeError；cursor 缺失回默认值、类型错 fail-closed（见下）。
     for (const h of data.history) {
       if (!h || !Array.isArray(h.state) || !Number.isFinite(h.rngState)) {
@@ -2971,12 +2967,12 @@ export class StoryEngine {
       this.fail("save-format", "存档 cursor 类型错误（须为有限数字；缺失可回默认值）");
       return false;
     }
-    // T08-08 扩展依赖校验（fail-closed 整档预校验；migrate 在进入恢复流程前完成）
+    // 扩展依赖校验（fail-closed 整档预校验；migrate 在进入恢复流程前完成）
     const stagedState = this.resolveSaveExtensions(data);
     if (stagedState === null) return false; // 已发 engine.error（整档拒绝）
     this.clearTimer();
     this.abortMinigame(); // 读档打断小游戏：abort 挂载信号（重放重新挂载）
-    // T08-08：引用备份（restore 失败 = 整档拒绝 → 原样回退；以下字段在读档路径只做整体换引用）
+    // 引用备份（restore 失败 = 整档拒绝 → 原样回退；以下字段在读档路径只做整体换引用）
     const backup = {
       state: this.state,
       rngState: this.rngState,
@@ -3002,7 +2998,7 @@ export class StoryEngine {
         functions: data.functions,
       },
     }));
-    // T08-09：cursor 缺失回默认 = 最近检查点（空历史落 -1，与「无检查点」初始语义一致）
+    // cursor 缺失回默认 = 最近检查点（空历史落 -1，与「无检查点」初始语义一致）
     this.cursor =
       data.cursor === undefined
         ? this.history.length - 1
@@ -3014,9 +3010,9 @@ export class StoryEngine {
     this.liveCheckpointed = true;
     if (!this.restoreSaveExtensions(data.extensions)) {
       Object.assign(this, backup); // 原样回退（备份点之后零事件出站，观察面无脏镜像）
-      return false; // T08-08：restore 失败 = 整档拒绝
+      return false; // restore 失败 = 整档拒绝
     }
-    // T08-08：依赖标记随档继承（读档后再存档不丢依赖；restore 成功后才落账）
+    // 依赖标记随档继承（读档后再存档不丢依赖；restore 成功后才落账）
     this.usedExtensions.clear();
     for (const mark of data.extensions ?? []) this.usedExtensions.add(mark.id);
     this.setSystem(SYS.waiting, "none");
@@ -3025,7 +3021,7 @@ export class StoryEngine {
   }
 
   /**
-   * T08-09：`formatVersion` 非 1 的档——优先经宿主 migrateSave 钩子迁移（成功发 `load.notice`）；
+   * `formatVersion` 非 1 的档——优先经宿主 migrateSave 钩子迁移（成功发 `load.notice`）；
    * 不可迁移才拒绝，且文案必须可操作（说明档/引擎版本与可选路径，不得只说「不支持」）。
    */
   private tryMigrateSave(data: SaveDataV1): SaveDataV1 | null {
@@ -3055,7 +3051,7 @@ export class StoryEngine {
   }
 
   /**
-   * T08-08：读档扩展依赖校验 + 状态迁移（fail-closed 整档预校验——任何不符在进入恢复流程前拒绝）。
+   * 读档扩展依赖校验 + 状态迁移（fail-closed 整档预校验——任何不符在进入恢复流程前拒绝）。
    * 返回迁移后的状态条目（无迁移 = 原引用原样返回）；null = 已发 engine.error（整档拒绝，状态原样）。
    */
   private resolveSaveExtensions(data: SaveDataV1): [string, unknown][] | null {
@@ -3131,7 +3127,7 @@ export class StoryEngine {
   }
 
   /**
-   * T08-08：读档恢复钩子——对档内标记的扩展逐个调 restore（重建运行期句柄，等价小游戏重新挂载）。
+   * 读档恢复钩子——对档内标记的扩展逐个调 restore（重建运行期句柄，等价小游戏重新挂载）。
    * 返回 false（或抛出）= 不可恢复 → 调用方整档拒绝（此时仅字段引用交换、零事件出站，
    * 引擎状态即原样）；engine.error 由本方法发出。
    */
@@ -3188,18 +3184,18 @@ export class StoryEngine {
     this.pendingSay = null;
     // 回溯清挂起的 wait 定时器：重放若落在另一 wait 上，旧定时器不得提前双触发
     this.clearTimer();
-    this.abortMinigame(); // 回溯打断小游戏：abort 挂载信号，重放重新挂载（06 §二.2.3）
+    this.abortMinigame(); // 回溯打断小游戏：abort 挂载信号，重放重新挂载
     this.waitSkipable = false;
     this.liveCheckpointed = true; // 检查点 k 即当前 live 位置（重放中的等待点会自行改写）
     this.setSystem(SYS.waiting, "none");
   }
 
   /**
-   * 提交检查点（03-R2 分岔裁定 + §三.3 容量淘汰）：
+   * 提交检查点（分岔 + 容量淘汰）：
    * - 重取同坐标（回溯后重放推进）→ 原位替换，不动时间线
    * - 与前向时间线同坐标 → cursor 前移（rollforward 保留）
-   * - 同列内介于 cursor 与下一检查点之间 → 新发现的中间站：插入（残缺历史自愈，用户实测回归）
-   * - 其余坐标不同 → 截断旧前向（R2：重选 ≠ 旧选择 = 新时间线）
+   * - 同列内介于 cursor 与下一检查点之间 → 新发现的中间站：插入（残缺历史自愈）
+   * - 其余坐标不同 → 截断旧前向（重选 ≠ 旧选择 = 新时间线）
    */
   private commitCheckpoint(cp: Checkpoint): void {
     const current = this.history[this.cursor];
@@ -3228,20 +3224,20 @@ export class StoryEngine {
         this.cursor += 1;
         return;
       }
-      this.history.length = this.cursor + 1; // R2：开辟新时间线，旧前向作废
+      this.history.length = this.cursor + 1; // 开辟新时间线，旧前向作废
     }
     if (
       this.history.length >= this.historyLimit &&
       this.cursor === this.history.length - 1
     ) {
-      this.history.shift(); // §三.3 容量淘汰最旧（未回溯状态下安全）
+      this.history.shift(); // 容量淘汰最旧（未回溯状态下安全）
     }
     this.history.push(cp);
     this.cursor = this.history.length - 1;
   }
 
   /**
-   * 05 §四 存档点消费：等待画面建立（say 上屏 / menu / wait / input）= 玩家所见稳定点。
+   * 存档点消费：等待画面建立（say 上屏 / menu / wait / input）= 玩家所见稳定点。
    * ①save op 的一次性声明（pendingSave）优先落档（一画面一写）；②auto_save 开关持续写专用
    * `auto` 槽。解除时提交（waiting=none）与重放期（rollbackActive）不触发；
    * 异步失败经 engine.error 可观测（不吞）。
@@ -3279,7 +3275,7 @@ export class StoryEngine {
   }
 
   /**
-   * 03-R1/R5 补交规则：离开当前画面（回退/跳转）前，把已上屏未入档的 say 检查点补交入档。
+   * 补交规则：离开当前画面（回退/跳转）前，把已上屏未入档的 say 检查点补交入档。
    * 玩家所见画面即有效历史——入档后 forward 才能回到「离开时的位置」（否则回退后前进无路）。
    */
   private flushPendingCheckpoint(): void {
@@ -3291,7 +3287,7 @@ export class StoryEngine {
   }
 
   /**
-   * 03 §一 回溯三步：找目标检查点 → 恢复快照 → 重放到该等待点。
+   * 回溯三步：找目标检查点 → 恢复快照 → 重放到该等待点。
    * target = 检查点下标或坐标（取坐标之前最近的检查点）。
    */
   rollbackTo(target: number | ColumnCoordinate): void {
@@ -3334,18 +3330,18 @@ export class StoryEngine {
     }
     this.restore(this.history[index]!);
     this.cursor = index;
-    // 03-R4：重放期输入锁 + 完成后解除并广播
+    // 重放期输入锁 + 完成后解除并广播
     this.rollbackActive = true;
     this.setSystem(SYS.rollbackActive, true);
-    this.run(); // 同步重放至等待点（R3：menu 真实等待）
+    this.run(); // 同步重放至等待点（menu 真实等待）
     this.rollbackActive = false;
     this.setSystem(SYS.rollbackActive, false);
-    // 03-R5：重放落点即检查点 k 的等待点——live 视为已入档，back() 才能继续向前回退
+    // 重放落点即检查点 k 的等待点——live 视为已入档，back() 才能继续向前回退
     this.liveCheckpointed = true;
     this.emitEvent({ kind: "rollback.done", coordinate: { ...this.coord } });
   }
 
-  /** 03 §四.4 滚轮上：回退一步。live 已入档 → 退到前一个；未入档（如菜单选择后）→ 落回当前检查点（重选菜单，R5） */
+  /** 滚轮上：回退一步。live 已入档 → 退到前一个；未入档（如菜单选择后）→ 落回当前检查点（重选菜单） */
   back(): void {
     if (!this.started || this.rollbackActive) {
       this.fail("rollback-invalid", "当前不可回退");
@@ -3360,7 +3356,7 @@ export class StoryEngine {
     this.rollbackTo(target);
   }
 
-  /** 03 §四.4 滚轮下：沿未截断时间线 rollforward（R2 分岔后旧前向已截断） */
+  /** 滚轮下：沿未截断时间线 rollforward（分岔后旧前向已截断） */
   forward(): void {
     if (!this.started || this.rollbackActive) {
       this.fail("rollback-invalid", "当前不可前进");
@@ -3374,7 +3370,7 @@ export class StoryEngine {
   }
 
   /**
-   * 07 §三.2 热重载（灵泛 StoryHotReload 语义）：原子替换故事树，运行态保留
+   * 热重载（原子替换故事树，运行态保留）
    * （变量/函数/历史检查点不动——回溯按新列内容重放，文案即改即所见），
    * 当前列重入（等待打断，画面由重放重建）；当前列在新树中不存在 → engine.error 后回入口列。
    */
@@ -3407,7 +3403,7 @@ export class StoryEngine {
   }
 
   /**
-   * 03 §四 历史面板数据（前端职责的可视化皮）：对话类检查点带说话者与文本；
+   * 历史面板数据（前端职责的可视化皮）：对话类检查点带说话者与文本；
    * NVL 检查点额外带 `nvl` 标记与**累积行快照**（nvlLines = 该时刻玩家已见的整块文本）——
    * 宿主按「段聚合」呈现（历史不灌水），回溯粒度不变（逐检查点仍全在 history 里）。
    */
@@ -3436,7 +3432,7 @@ export class StoryEngine {
     });
   }
 
-  /** 03-R6 mulberry32 确定性随机 [0,1)：rngState 进快照，回溯重放序列必然一致 */
+  /** mulberry32 确定性随机 [0,1)：rngState 进快照，回溯重放序列必然一致 */
   private draw(): number {
     this.rngState = (this.rngState + 0x6d2b79f5) | 0;
     let t = this.rngState;
@@ -3449,7 +3445,7 @@ export class StoryEngine {
     return min + Math.floor(this.draw() * (max - min + 1)); // 含端点
   }
 
-  /** 01 §二.6 random op（03-R6 显式种子）：重置 rngState 为种子 → 抽值 → 写入 var */
+  /** random op（显式种子）：重置 rngState 为种子 → 抽值 → 写入 var */
   private execRandom(cmd: StoryCommand): boolean {
     const seed = cmd.seed;
     const range = cmd.range;
@@ -3483,7 +3479,7 @@ export class StoryEngine {
   }
 
   /**
-   * set/define 负载值（老规范 §七：表达式一律 {} 包裹，字符串原样即字面量）：
+   * set/define 负载值（表达式一律 {} 包裹，字符串原样即字面量）：
    * - "{expr}" → 表达式求值；number/boolean（JSON 原生）→ 字面量；其余字符串 → 字符串字面量
    */
   private evalValue(raw: unknown): ExprValue {
@@ -3508,7 +3504,7 @@ export class StoryEngine {
   }
 
   /**
-   * 名称解析（04 §二.9，老 ResolveValue 语义照搬）：
+   * 名称解析（作用域链查找语义照搬旧版实现）：
    * 块/列作用域链 → 全局扁平键；点路径再走「扁平优先 → 字典逐层下钻」。
    */
   private resolveName = ((

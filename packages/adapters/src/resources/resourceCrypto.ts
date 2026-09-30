@@ -1,12 +1,12 @@
 /**
- * 05 §二 资源加密 ResourcePort 原生实现（⑨-4c 流式形态）：逻辑路径 → Rust
+ * 资源加密 ResourcePort 原生实现（流式形态）：逻辑路径 → Rust
  * `decrypt_resource`（解密到 app data 临时流缓存，同资源幂等复用）→ 返回
  * `{"file":"<hex64.ext>"}` → `convertFileSrc(file, "lfstream")` 构造自定义协议 URL。
  * lfstream 协议（Rust 注册）带 Range/206——video/audio seek 流式，大资源（4K 500MB 级）
  * 不再受 IPC 32MB 护栏限制；Content-Type 由协议响应携带。
  *
  * 旧「IPC 全量字节 + Blob revoke」形态废弃：短生命周期语义改为「缓存随应用启动清理，
- * 进程内同资源幂等复用」（解密结果的明文只存在于受管临时目录，§一威胁模型不降级）。
+ * 进程内同资源幂等复用」（解密结果的明文只存在于受管临时目录，威胁模型不降级）。
  * 契约不变（resolve/release）；invoke 与 URL 构造均可注入（契约替身测试不依赖 Tauri 运行时）。
  */
 import type { ResourcePort } from "@lingfan/engine";

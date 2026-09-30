@@ -1,15 +1,13 @@
 /**
- * 06 §一.1 舞台编辑（T04-03）：组件面板 → 舞台**落点创建**元素的纯逻辑。
+ * 舞台编辑：组件面板 → 舞台**落点创建**元素的纯逻辑。
  *
  * 与 `drag.ts`（移动已有元素）同域：DOM/事件留在组件，**判定与数值只在这里**——
  * - `createElementDraft`：新元素的**最小草稿**（`{type,x,y}`）——只含契约内、有渲染语义的
- *   属性，绝不含 `UNIMPLEMENTED_ELEMENT_ATTRS`（T01-01 止血清单：写了也不生效的属性不给默认值）；
+ *   属性，绝不含 `UNIMPLEMENTED_ELEMENT_ATTRS`（止血清单：写了也不生效的属性不给默认值）；
  *   未知类型 / 非有限坐标 fail-closed 返回 `null`（调用方忽略，不静默造坏节点）。
  * - `planElementDrop`：落点规划——命中容器（组件侧已按 DOM rect 判定）→ **进 `children`**
  *   且坐标换算为**相对容器原点**（与运行期渲染一致：子元素绝对定位于父容器内）；
  *   未命中 → 追加为顶级元素，落点即 `x`/`y`。
- *
- * 锚点: editor-drag-create-element
  */
 
 import { ELEMENT_TYPES } from "@lingfan/engine";

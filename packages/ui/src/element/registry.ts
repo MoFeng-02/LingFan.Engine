@@ -1,11 +1,11 @@
 /**
- * 08 §二.1 元素渲染器注册表（UI 层职责）：核心层只声明元素 `type` 与属性，
+ * 元素渲染器注册表（UI 层职责）：核心层只声明元素 `type` 与属性，
  * 宿主经注册表解析渲染器后挂载到舞台。
  *
  * 与 minigame 注册表同一纪律：**未知类型无默认回退** = fail-closed
  * ——静默占位会掩盖内容错误（渲染"看得见"，但语义是错的）。
  *
- * 框架无关：本模块只碰 DOM 与回调，不依赖任何 UI 框架（08-U1：核心只写状态，
+ * 框架无关：本模块只碰 DOM 与回调，不依赖任何 UI 框架（核心只写状态，
  * UI 只渲染；渲染器是宿主可替换的产物）。
  */
 import type { ElementInstance } from "@lingfan/engine";
@@ -16,7 +16,7 @@ export interface ElementRenderContext {
   element: ElementInstance;
   /** 递归渲染子元素（容器渲染器把 children 渲染进给定容器） */
   renderChildren: (container: HTMLElement, children: readonly ElementInstance[]) => void;
-  /** 交互激活（F6 判定通过后由渲染器调用；具体 nav/cmd 语义归宿主） */
+  /** 交互激活（判定通过后由渲染器调用；具体 nav/cmd 语义归宿主） */
   activate?: (element: ElementInstance) => void;
   /** 资源解析（source/src/path → 可加载 URL）；缺省或失败返回 undefined（不静默伪造） */
   resolveResource?: (path: string) => string | undefined;

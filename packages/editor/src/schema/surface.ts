@@ -1,5 +1,5 @@
 /**
- * T08-04 扩展 op 面合并（锚点: editor-dynamic-op-schema）：**纯函数**产出扩展集，
+ * 扩展 op 面合并：**纯函数**产出扩展集，
  * 不修改 `OP_SCHEMAS`/`OP_META` 常量本体——消费方（表单/校验/组件面板/遍历器）改读合并面。
  * 扩展声明形状 = 引擎契约 `OpEditorSchema`（载体：label/group + zod 负载 schema）；
  * op 名冲突不可能（引擎注册期查重先抛），此处只做聚合。

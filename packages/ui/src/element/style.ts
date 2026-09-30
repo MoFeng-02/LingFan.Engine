@@ -1,16 +1,15 @@
 /**
- * 08 §二.1 元素属性 → CSS 映射（纯函数，可测）。
- *
- * 只做「属性名/值 → 样式声明」的机械映射：属性合法性在解析期已 fail-closed（F5），
+ * 元素属性 → CSS 映射（纯函数，可测）。
+ * 只做「属性名/值 → 样式声明」的机械映射：属性合法性在解析期已 fail-closed，
  * 此处不重复校验；**未覆盖的属性一律不出现在结果中**。
  *
- * ⚠️ 「未覆盖」有两类，别混为一谈：
+ * 「未覆盖」有两类，别混为一谈：
  * ① **由渲染器消费**而非 CSS 的属性（`text` / `source` / `orientation` / `checked` / `nav` / `cmd` / Grid 轨道…）——正常分工；
  * ② **已声明但当前无语义的属性**（`valign` / `xalign` / `yalign` / `order` / `xoffset` / `yoffset` / `xanchor` / `yanchor`）——
  *    写了不生效；清单单一事实源 = `@lingfan/editor` 的 `UNIMPLEMENTED_ELEMENT_ATTRS`
- *    （T01-01 起编辑器不再下发这些控件，并对已存在的写出 warning；T02-03 会用三面对齐互锁守住差集）。
+ *    （编辑器不再下发这些控件，并对已存在的写出 warning；三面对齐互锁测试守住差集）。
  *
- * 定位语义对齐老引擎 `LayoutHelper`：`x`/`y` 支持百分比（老引擎换算为像素 Margin，
+ * 定位语义对齐旧版引擎布局：`x`/`y` 支持百分比（旧版换算为像素 Margin，
  * DOM 侧直接交给 CSS，`left: 50%` 天然按父容器尺寸解析）。
  */
 
@@ -33,7 +32,7 @@ function bool(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
 }
 
-/** 首个子属性值（老引擎多键别名：source/src/path、color/fontColor/textColor） */
+/** 首个子属性值（多键别名：source/src/path、color/fontColor/textColor） */
 function pick(
   props: Record<string, unknown>,
   ...keys: string[]
@@ -57,7 +56,7 @@ export function elementStyle(
     if (value !== undefined) out[key] = value;
   };
 
-  // —— 定位（x/y/right/bottom 任一存在即绝对定位；对齐老引擎百分比定位语义）——
+  // —— 定位（x/y/right/bottom 任一存在即绝对定位；对齐旧版百分比定位语义）——
   const x = len(props.x);
   const y = len(props.y);
   const right = len(props.right);
@@ -69,7 +68,7 @@ export function elementStyle(
     if (right !== undefined) set("right", right);
     if (bottom !== undefined) set("bottom", bottom);
   }
-  // 老引擎 align 是 halign 的安全网（DslParser.cs:306-308）：显式 textAlign/halign 优先
+  // align 是 halign 的安全网：显式 textAlign/halign 优先
   set("textAlign", len(props.textAlign) ?? len(props.halign) ?? len(props.align));
 
   // —— 尺寸 ——
@@ -116,7 +115,7 @@ export function elementStyle(
   }
 
   // —— 文本 ——
-  // size = 文本类 fontSize 别名（DslParser.cs:310-317）
+  // size = 文本类 fontSize 别名
   set("fontSize", len(props.fontSize) ?? len(props.size));
   set("fontFamily", len(props.font));
   const color = pick(props, "color", "fontColor", "textColor");
@@ -127,7 +126,7 @@ export function elementStyle(
 
 /** 内容/样式类属性（不进 CSS，由渲染器消费） */
 export function elementClassName(props: Record<string, unknown>): string {
-  // 老引擎 `style` 是 `class` 的别名（DslParser.cs:300-303）
+  // `style` 是 `class` 的别名
   const raw = pick(props, "class", "style");
   return typeof raw === "string" ? raw : "";
 }

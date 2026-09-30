@@ -1,5 +1,5 @@
 /**
- * 05 i18n 工具链 · 原文键抽取器（T05-01，锚点: i18n-key-extract-parity）。
+ * i18n 工具链 · 原文键抽取器。
  *
  * 「原文即 key」的正向半边：遍历故事，产出**会被运行期 Translate 的全部原文**
  * （去重、稳定排序）。口径 = `TRANSLATE_SURFACES`（命令流，含嵌套块体）+ 元素 `text`
@@ -17,8 +17,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 /**
  * 从故事抽取可翻译原文键集合（= 运行期会查 overlay 表的全部字符串，插值前原文）。
- * 畸形输入 fail-closed 返回空数组；输出**稳定排序**——骨架生成（T05-02）、
- * 对账报告（T05-03）与快照对比的确定性都依赖它。
+ * 畸形输入 fail-closed 返回空数组；输出**稳定排序**——骨架生成、
+ * 对账报告与快照对比的确定性都依赖它。
  */
 export function extractStoryKeys(story: Story): string[] {
   if (story === null || typeof story !== "object") return [];

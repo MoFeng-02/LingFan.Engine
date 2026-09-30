@@ -1,4 +1,4 @@
-//! 08 §八.2 平台壳能力命令面：屏幕方向配置（壳配置，非叙事语义——引擎核心不解释）。
+//! 平台壳能力命令面：屏幕方向配置（壳配置，非叙事语义——引擎核心不解释）。
 //!
 //! 移动端经原生插件落地方向（Android = `Activity.requestedOrientation`；iOS 待接：
 //! 需 `UIWindowScene.requestGeometryUpdate` + Info.plist 声明集合）；桌面与浏览器宿主

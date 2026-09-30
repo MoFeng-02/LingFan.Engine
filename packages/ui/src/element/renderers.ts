@@ -1,7 +1,6 @@
 /**
- * 08 §二.1 内建元素渲染器 —— **36 类型全覆盖**。
- *
- * 分组与老引擎 `ControlFactory.cs:61-454` 的渲染分支一一对应，落到 DOM/CSS：
+ * 内建元素渲染器 —— **36 类型全覆盖**。
+ * 分组按元素渲染语义落到 DOM/CSS：
  * 文本族 4 / 交互族 3 / 图像族 4 / 容器族 15 / 滚动族 3 / 进度族 5 / 间隔族 2。
  *
  * 职责边界：只产出 DOM 与样式；不读引擎状态、不发命令（交互经 `ctx.activate` 交回宿主）。
@@ -21,7 +20,7 @@ import type {
 
 const BASE_CLASS = "lf-el";
 
-/** 以 flex 排布的容器类型（老引擎同一渲染分支：panel 组 + stack 组） */
+/** 以 flex 排布的容器类型（panel 组 + stack 组同一渲染分支） */
 const FLEX_CONTAINERS: ReadonlySet<string> = new Set([
   "panel",
   "frame",
@@ -37,7 +36,7 @@ const FLEX_CONTAINERS: ReadonlySet<string> = new Set([
   "stackpanel",
 ]);
 
-/** 元素根节点：基类 + 类型类 + 作者 class（老引擎 style 别名）+ 属性 → CSS */
+/** 元素根节点：基类 + 类型类 + 作者 class（style 别名）+ 属性 → CSS */
 function createRoot(tag: string, ctx: ElementRenderContext): HTMLElement {
   const el = document.createElement(tag);
   const authorClass = elementClassName(ctx.element.props);
@@ -48,14 +47,14 @@ function createRoot(tag: string, ctx: ElementRenderContext): HTMLElement {
   return el;
 }
 
-/** 元素是否被禁用（F6 最高优先级 `disabled`；`enabled=false` 同义） */
+/** 元素是否被禁用（最高优先级 `disabled`；`enabled=false` 同义） */
 function isDisabled(ctx: ElementRenderContext): boolean {
   const props = ctx.element.props;
   return props.disabled === true || props.enabled === false;
 }
 
 /**
- * `hover_*` 视觉（老引擎 `InteractionBinder.cs:53-117`）：`hover_color` 改前景色、
+ * `hover_*` 视觉：`hover_color` 改前景色、
  * `hover_opacity` 改透明度、`hover_source` 换图（仅 img）。与点击正交。
  */
 function bindHover(el: HTMLElement, ctx: ElementRenderContext): void {
@@ -95,7 +94,7 @@ function bindHover(el: HTMLElement, ctx: ElementRenderContext): void {
 }
 
 /**
- * `selected_*` 视觉（老引擎 `InteractionBinder.cs:71-78/119-129`）：点击切换选中态
+ * `selected_*` 视觉：点击切换选中态
  * （`selected_color` 改前景色、`selected_source` 换图）。
  */
 function bindSelected(el: HTMLElement, ctx: ElementRenderContext): void {
@@ -125,24 +124,23 @@ function bindSelected(el: HTMLElement, ctx: ElementRenderContext): void {
 }
 
 /**
- * F6 交互绑定，完整优先级：`disabled` > `nav` > `cmd` > `hover_*` > `selected_*`。
+ * 交互绑定，完整优先级：`disabled` > `nav` > `cmd` > `hover_*` > `selected_*`。
  * - 点击：`disabled` 短路（不挂任何交互）→ `nav`（核心 `navigate`）→ `cmd`（宿主命名命令）；
  *   两者的分支判定在宿主（`activate` 回调内按该优先级选路），本层只负责挂载与短路。
  * - 视觉：`hover_*` / `selected_*` 与点击正交，独立绑定。
- * 锚点: interaction-priority
  */
 function bindInteraction(el: HTMLElement, ctx: ElementRenderContext): void {
-  if (isDisabled(ctx)) return; // F6 最高优先级：禁用即不挂任何交互
+  if (isDisabled(ctx)) return; // 最高优先级：禁用即不挂任何交互
   bindHover(el, ctx);
   bindSelected(el, ctx);
 
-  // 点击类交互判定走 F6 纯函数（与宿主分支同源，避免两处判定漂移）
+  // 点击类交互判定走纯函数（与宿主分支同源，避免两处判定漂移）
   if (!hasElementInteraction(ctx.element.props)) return;
   el.style.cursor = "pointer";
   // 元素层容器 pointer-events:none（不阻塞舞台推进）——可交互元素自行恢复
   el.style.pointerEvents = "auto";
   el.addEventListener("click", (event) => {
-    event.stopPropagation(); // 元素点击不应同时触发舞台推进（08 §七）
+    event.stopPropagation(); // 元素点击不应同时触发舞台推进
     ctx.activate?.(ctx.element);
   });
 }
@@ -259,7 +257,7 @@ function renderContainer(ctx: ElementRenderContext): HTMLElement {
 
 /**
  * grid：`columns`/`rows` 支持数字（等分）或 CSS 轨道串；
- * 子元素附着 `col`/`row`/`colspan`/`rowspan` 按老引擎 Avalonia Grid 语义（**0 基**）
+ * 子元素附着 `col`/`row`/`colspan`/`rowspan` 按 Grid 语义（**0 基**）
  * 映射到 CSS Grid（1 基）。
  */
 function renderGrid(ctx: ElementRenderContext): HTMLElement {
@@ -316,7 +314,7 @@ function renderBorder(ctx: ElementRenderContext): HTMLElement {
 
 /**
  * 滚动容器：`scroll_h`/`scroll_v` 为 false 时关闭对应轴滚动；
- * `viewport` 语义 = 裁剪视口（不外溢，老引擎 ControlFactory 特化分支）。
+ * `viewport` 语义 = 裁剪视口（不外溢，特化渲染分支）。
  */
 function renderScroll(ctx: ElementRenderContext): HTMLElement {
   const el = createRoot("div", ctx);

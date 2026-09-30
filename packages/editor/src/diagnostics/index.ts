@@ -1,11 +1,10 @@
 /**
- * 06 §一.2 诊断（编辑期）：符号索引 + 诊断集，全部带 JSON Pointer（D6）。
+ * 诊断（编辑期）：符号索引 + 诊断集，全部带 JSON Pointer。
  * - 未定义变量：定义集 = defines + set/define/let/local/array/dict 键 + random.var +
  *   循环变量 + input.store（并集保守策略：let/local 块级精度为已知限界，不误报优先）；
- *   `_` 前缀豁免（D4）；行内标记白名单镜像执行器语义（已定义变量 > 行内标记）。
- * - 跳转目标不存在（F1）、未知函数、重复 columnId、入口列缺失、资源路径缺失、
- *   未使用翻译键（overlay 键 − 可翻译原文）、已声明但无渲染语义的元素属性（T01-01）。
- * 锚点: diagnostics-with-pointer / undefined-var-underscore-exempt
+ *   `_` 前缀豁免；行内标记白名单镜像执行器语义（已定义变量 > 行内标记）。
+ * - 跳转目标不存在、未知函数、重复 columnId、入口列缺失、资源路径缺失、
+ *   未使用翻译键（overlay 键 − 可翻译原文）、已声明但无渲染语义的元素属性。
  */
 
 import type { Story } from "@lingfan/engine";
@@ -50,7 +49,7 @@ function isInlineTag(content: string): boolean {
   return INLINE_PREFIXED_TAGS.some((prefix) => content.startsWith(prefix));
 }
 
-/** 表达式内置名（01 §三.3）与字面量 */
+/** 表达式内置名与字面量 */
 const EXPR_BUILTINS = new Set([
   "random",
   "min",
@@ -63,7 +62,7 @@ const EXPR_BUILTINS = new Set([
 const IDENT_PATH_RE =
   /[A-Za-z_\u4e00-\u9fa5][A-Za-z0-9_\u4e00-\u9fa5]*(?:\.[A-Za-z_][A-Za-z0-9_\u4e00-\u9fa5]*)*/g;
 
-/** 表达式中的变量键引用（点路径整键 = 全局键路径/字典下钻，04 §二.9；跳过字符串字面量/数字尾巴/内置名） */
+/** 表达式中的变量键引用（点路径整键 = 全局键路径/字典下钻；跳过字符串字面量/数字尾巴/内置名） */
 export function extractExpressionRefs(expr: string): string[] {
   let stripped = "";
   for (let i = 0; i < expr.length; i += 1) {
@@ -157,14 +156,14 @@ const TARGET_FIELDS: Readonly<
   menu: [["options[].target", "column"]],
 };
 
-// 可翻译原文面与路径取值 = i18n 工具链模块的单一事实源（T05-01 上移）：
+// 可翻译原文面与路径取值 = i18n 工具链模块的单一事实源：
 // 诊断的 originals 收集与 extractStoryKeys 消费同一张表（互锁: i18n-key-extract-parity）
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** 06 §一.2 符号索引：一次遍历收集全部符号与引用（畸形输入 fail-closed 返回空索引） */
+/** 符号索引：一次遍历收集全部符号与引用（畸形输入 fail-closed 返回空索引） */
 export function indexStory(story: Story): SymbolIndex {
   const index: SymbolIndex = {
     columnPointers: new Map(),
@@ -245,7 +244,7 @@ export function indexStory(story: Story): SymbolIndex {
     }
     scanFields(cmd, pointer, fields ?? [], index);
   });
-  // 2026-09-27 翻译面扩展：元素展示文字（`text`，运行期装载时 Translate）也计入原文集合
+  // 翻译面：元素展示文字（`text`，运行期装载时 Translate）也计入原文集合
   walkStoryElements(story, (node) => {
     if (!isPlainObject(node)) return;
     const text = node.text;
@@ -339,7 +338,7 @@ function scanFields(
 }
 
 /**
- * 06 §一.2 编辑期诊断集（结构校验 + 语义诊断，一律带 JSON Pointer）。
+ * 编辑期诊断集（结构校验 + 语义诊断，一律带 JSON Pointer）。
  * resourceFiles / overlayKeys 缺省时对应诊断族跳过（供给侧数据未接入不误报）。
  */
 export function analyzeStory(
@@ -353,7 +352,7 @@ export function analyzeStory(
     out.push({
       code: "duplicate-column",
       severity: "error",
-      message: `columnId 重复：${duplicate.id}（F1：columnId 全局唯一）`,
+      message: `columnId 重复：${duplicate.id}（columnId 全局唯一）`,
       pointer: duplicate.pointer,
     });
   }
@@ -365,7 +364,7 @@ export function analyzeStory(
     out.push({
       code: "missing-entry",
       severity: "error",
-      message: `入口列 ${index.entry} 不存在（F1）`,
+      message: `入口列 ${index.entry} 不存在`,
       pointer: "/entry",
     });
   }
@@ -378,7 +377,7 @@ export function analyzeStory(
         severity: "error",
         message:
           target.kind === "column"
-            ? `跳转目标列不存在：${target.target}（F1）`
+            ? `跳转目标列不存在：${target.target}`
             : `调用未注册的函数：${target.target}`,
         pointer: target.pointer,
       });
@@ -402,7 +401,7 @@ export function analyzeStory(
       if (!options.resourceFiles.has(resource.path)) {
         out.push({
           code: "missing-resource",
-          // 提醒级（用户裁定 2026-09-27）：素材"先写引用后补"是正常工作流，
+          // 提醒级：素材"先写引用后补"是正常工作流，
           // error 会拦保存门禁；运行期缺资源由运行时自己 fail-closed 兜底。
           severity: "warning",
           message: `资源路径不存在：${resource.path}`,
@@ -422,9 +421,9 @@ export function analyzeStory(
         });
       }
     }
-    // T05-03 缺译（正向，与 unused-translation 反向对称）：原文在**全部语言**的 overlay
+    // 缺译（正向，与 unused-translation 反向对称）：原文在**全部语言**的 overlay
     // 里都没有 = 玩家必然看到原文（提醒级，不拦保存）。仅在「工程确实启用了 i18n」
-    // （overlay 非空）时提醒——不启用 i18n 的工程原文直出是常态（01 §四"不需要多语言
+    // （overlay 非空）时提醒——不启用 i18n 的工程原文直出是常态（"不需要多语言
     // 就不需要 i18n"），不制造全量噪声。
     if (options.overlayKeys.size > 0) {
       for (const original of index.originals) {
@@ -439,7 +438,7 @@ export function analyzeStory(
       }
     }
   }
-  // T01-01 止血：已声明但**当前无渲染语义**的元素属性（写了不生效，且此前完全静默）→ warning。
+  // 止血清单：已声明但**当前无渲染语义**的元素属性（写了不生效，且此前完全静默）→ warning。
   // 指针精确到该属性；清单与表单下架同源（`UNIMPLEMENTED_ELEMENT_ATTRS`），避免两份事实。
   walkStoryElements(story, (node, pointer) => {
     if (!isPlainObject(node)) return; // 非对象由 invalid-element 负责

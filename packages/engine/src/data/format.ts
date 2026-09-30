@@ -65,7 +65,7 @@ function validateInstanceZ(
   }
 }
 
-/** 命令负载结构校验（已知 op；未实现 op 交执行器 fail-closed，E3） */
+/** 命令负载结构校验（已知 op；未实现 op 交执行器 fail-closed） */
 function validateCommand(cmd: unknown, at: string, issues: string[]): void {
   if (!isPlainObject(cmd)) {
     issues.push(`${at} 必须为对象`);
@@ -381,7 +381,7 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
       }
       break;
     default:
-      break; // 未实现 op：结构从简，执行器 fail-closed（E3）
+      break; // 未实现 op：结构从简，执行器 fail-closed
   }
 }
 

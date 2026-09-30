@@ -1,16 +1,16 @@
 /**
- * 08 §六.5 视频端口适配器：WebView 解码（HTMLVideoElement），舞台层覆盖呈现。
+ * 视频端口适配器：WebView 解码（HTMLVideoElement），舞台层覆盖呈现。
  * - 覆盖层 `pointer-events: none`：点击穿透到舞台（cutscene 跳过走引擎 advance 命令面）
- * - 入参为已解析 URL（资源寻址归 ResourcePort，08-U7）
+ * - 入参为已解析 URL（资源寻址归 ResourcePort）
  * - 自然播放结束经 onEnded 上报（cutscene 由它解除引擎等待）
  * - 浏览器自动播放策略拒绝时登记，首次用户交互后重试
  */
 import type { VideoPort } from "@lingfan/engine";
 
 export interface WebVideoPortOptions {
-  /** 播放失败诊断（缺失/损坏资源不静默：08-U7 报错诊断） */
+  /** 播放失败诊断（缺失/损坏资源不静默：报错诊断） */
   onError?: (message: string) => void;
-  /** 层 z 序（⑨-11 层级契约）：组合根传入解析后的层表值；缺省 5 = 旧行为 */
+  /** 层 z 序（层级契约）：组合根传入解析后的层表值；缺省 5 = 旧行为 */
   zIndex?: number;
 }
 
@@ -19,7 +19,7 @@ export function createWebVideoPort(
 ): VideoPort {
   let element: HTMLVideoElement | null = null;
   let endedHandler: (() => void) | null = null;
-  // 08 §八.3：运行期可改（实例级 z）；缺省 5 = 旧行为
+  // 实例级 z：运行期可改；缺省 5 = 旧行为
   let zIndex = portOptions.zIndex ?? 5;
 
   function ensure(): HTMLVideoElement {
@@ -38,7 +38,7 @@ export function createWebVideoPort(
   }
 
   return {
-    // 08 §八.3 实例级 z：运行期改本层 z（元素未创建则只记值，ensure 时生效）
+    // 实例级 z：运行期改本层 z（元素未创建则只记值，ensure 时生效）
     setZIndex(next: number): void {
       zIndex = next;
       if (element !== null) element.style.zIndex = String(next);

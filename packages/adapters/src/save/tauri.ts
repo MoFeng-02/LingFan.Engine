@@ -1,6 +1,6 @@
 /**
- * 05 §五 SavePort 原生实现（Tauri Desktop/Mobile 同一 invoke API）：
- * 安全校验全在 Rust 层（K7——加密/AAD/高水位），本侧只做命令编组。
+ * SavePort 原生实现（Tauri Desktop/Mobile 同一 invoke API）：
+ * 安全校验全在 Rust 层（加密/AAD/高水位），本侧只做命令编组。
  * 由组合根按平台装配；本文件是全仓唯一允许 import `@tauri-apps` 的位置。
  */
 import type { SavePort, SlotSummary } from "@lingfan/engine";
@@ -24,7 +24,7 @@ export function createTauriSavePort(): SavePort {
     },
     async remove(slot): Promise<void> {
       const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("save_delete", { slot }); // K4：删档不动高水位
+      await invoke("save_delete", { slot }); // 删档不动高水位
     },
     async list(): Promise<SlotSummary[]> {
       const { invoke } = await import("@tauri-apps/api/core");

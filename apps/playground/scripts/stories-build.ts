@@ -1,11 +1,11 @@
 /**
- * T09-01 S2 · TS 故事源编译 CLI（`pnpm stories:build`，tsx 运行；创作期工具，Node 侧）：
+ * TS 故事源编译 CLI（`pnpm stories:build`，tsx 运行；创作期工具，Node 侧）：
  * `Stories.src/<name>.ts`（恰好一个；default 导出多列 Story，`satisfies Story` 提供编译期
  * 类型检查）→ 既有校验链 `parseStory`（带源名定位）→ `serializeProject`（单列拆分 +
  * 清单保真——与编辑器写回同一条布局规则）→ `assembleProject` 往返自检 → 差量写盘
  * `Resources/Stories/**` + `project.json`（陈旧列文件清理）。
  *
- * 零第二套规则：TS 源合法 ⇔ 其编译产物作为 JSON 合法（规约 07「TS 故事源」节）。
+ * 零第二套规则：TS 源合法 ⇔ 其编译产物作为 JSON 合法（与 JSON 同一 parseStory）。
  * 工程清单（entry/defines/shell）不归 TS 源管——必须先有 `Resources/project.json`，
  * 编译只更新其托管键（serializeProject 既有语义）。`Stories/**` 列集由源全量管理：
  * 启用 TS 源的工程，手写列文件会被当作陈旧产物清理（报告逐条列出）。
@@ -63,12 +63,12 @@ export async function buildStories(root: string): Promise<BuildReport> {
     : [];
   if (sources.length === 0) {
     throw new StoryBuildError(
-      "Stories.src/ 下没有 .ts 源——TS 源工程需要一个 default 导出多列 Story 的源文件（参考规约 07「TS 故事源」）",
+      "Stories.src/ 下没有 .ts 源——TS 源工程需要一个 default 导出多列 Story 的源文件",
     );
   }
   if (sources.length > 1) {
     throw new StoryBuildError(
-      `Stories.src/ 下发现 ${sources.length} 个 .ts 源（${sources.join("、")}）——一个工程 = 一个 Story = 一个源文件；多故事形态未定义，如需支持请先裁定`,
+      `Stories.src/ 下发现 ${sources.length} 个 .ts 源（${sources.join("、")}）——一个工程 = 一个 Story = 一个源文件；多故事形态未定义，如需支持请先确认`,
     );
   }
   const source = sources[0]!;

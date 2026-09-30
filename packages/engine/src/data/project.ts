@@ -133,7 +133,7 @@ export function assembleProject(
       const prev = owner.get(column.id);
       if (prev !== undefined) {
         issues.push(
-          `${path}: columnId 重复：${column.id}（与 ${prev} 冲突，F1）`,
+          `${path}: columnId 重复：${column.id}（与 ${prev} 冲突）`,
         );
         continue;
       }

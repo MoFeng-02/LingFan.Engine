@@ -78,10 +78,9 @@ function walkCommands(
 
 /**
  * 遍历整棵故事树的全部**命令**（含嵌套块体）；visit 按命令指针回调。
- * `surface`（T08-04，可选）= op 合并面（缺省内建；扩展注册后由组合根传入）。
- *
- * 注意：scene 列的 `elements` **不在**命令遍历内——元素是声明式空间层（08 §二.1），
- * 其形状/属性校验走 `walkStoryElements` + `validateElement`（F5）。
+ * `surface`（可选）= op 合并面（缺省内建；扩展注册后由组合根传入）。
+ * 注意：scene 列的 `elements` **不在**命令遍历内——元素是声明式空间层，
+ * 其形状/属性校验走 `walkStoryElements` + `validateElement`。
  * 混进命令遍历会被误报 `unknown-op`（元素只有 `type`，没有 `op`）。
  */
 export function walkStoryCommands(
