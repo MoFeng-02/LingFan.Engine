@@ -19,6 +19,8 @@ pub enum OrientationMode {
 
 impl OrientationMode {
     /// 原生侧载荷字符串（Kotlin `ShellPlugin.setOrientation` 的判据）
+    // 仅移动端 apply_orientation 消费（cfg 门控）——桌面检查构建下呈死代码，非真死代码
+    #[allow(dead_code)]
     fn as_str(self) -> &'static str {
         match self {
             OrientationMode::Auto => "auto",

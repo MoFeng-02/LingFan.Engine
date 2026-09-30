@@ -17,9 +17,10 @@ use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use percent_encoding::percent_decode_str;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use tauri::Manager;
 
 /// 新格式魔数（5 字节，与旧版引擎 4 字节 LFEN 无前缀歧义）
@@ -244,10 +245,11 @@ pub fn encrypt_lfen2_v2_file(
         let plain_len = (total - index * chunk).min(chunk) as usize; // B5v2：尾块可短
         fin.read_exact(&mut buf[..plain_len]).map_err(io)?;
         let nonce_arr = v2_nonce(&base, index as u32);
-        let nonce = Nonce::from_slice(&nonce_arr);
+        // v2_nonce 恒返 12B（GCM nonce 定长）——TryFrom 失败为不变量破坏，才可 expect
+        let nonce = Nonce::try_from(&nonce_arr[..]).expect("nonce 长度恒 12");
         let sealed = cipher
             .encrypt(
-                nonce,
+                &nonce,
                 Payload {
                     msg: &buf[..plain_len],
                     aad: v2_aad(logical, index as u32).as_bytes(),
@@ -301,8 +303,131 @@ fn decrypt_v2_all(file: &[u8], key: &[u8], path: &str) -> Result<Vec<u8>, Resour
     Ok(out)
 }
 
+/// v2 块明文有界 LRU 缓存：吸收相邻 Range 的重复解密——同块二次请求零解密直取。
+/// 键 = （密文路径, 逻辑路径, 块号, DEK 指纹）四元组：路径参与键防跨资源串味
+/// （Windows 大小写不敏感文件系统下同名异径的 AAD 不同，绝不命中他者缓存块）；
+/// DEK 指纹（FNV-1a）参与键，seed 换新后旧块自然失配。内存上限 = 环境变量
+/// `LFEN_V2_CACHE_BYTES`（字节，缺省 64 MiB；0 = 禁用）；进程内生命周期，
+/// 随启动自然清空、零落盘。明文存在形态注记：Range 响应片段 + 有界内存块（≤ 上限）。
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct V2CacheKey {
+    enc: PathBuf,
+    logical: String,
+    index: u64,
+    key_fp: u64,
+}
+
+struct V2BlockCache {
+    cap_bytes: u64,
+    bytes: u64,
+    entries: HashMap<V2CacheKey, Vec<u8>>,
+    recency: VecDeque<V2CacheKey>,
+    hits: u64,
+    misses: u64,
+}
+
+impl V2BlockCache {
+    fn new(cap_bytes: u64) -> Self {
+        Self {
+            cap_bytes,
+            bytes: 0,
+            entries: HashMap::new(),
+            recency: VecDeque::new(),
+            hits: 0,
+            misses: 0,
+        }
+    }
+
+    fn get(&mut self, key: &V2CacheKey) -> Option<Vec<u8>> {
+        if !self.entries.contains_key(key) {
+            self.misses += 1;
+            return None;
+        }
+        self.hits += 1;
+        self.touch(key);
+        self.entries.get(key).cloned()
+    }
+
+    fn put(&mut self, key: V2CacheKey, plain: Vec<u8>) {
+        // 禁用（cap=0）或单块超上限：不缓存，解密路径照常（仅失去加速）
+        if self.cap_bytes == 0 || plain.len() as u64 > self.cap_bytes {
+            return;
+        }
+        if !self.entries.contains_key(&key) {
+            self.recency.push_front(key.clone());
+            self.bytes += plain.len() as u64;
+        }
+        self.entries.insert(key, plain);
+        while self.bytes > self.cap_bytes {
+            let Some(victim) = self.recency.pop_back() else {
+                break;
+            };
+            if let Some(v) = self.entries.remove(&victim) {
+                self.bytes -= v.len() as u64;
+            }
+        }
+    }
+
+    fn touch(&mut self, key: &V2CacheKey) {
+        if let Some(pos) = self.recency.iter().position(|k| k == key) {
+            self.recency.remove(pos);
+        }
+        self.recency.push_front(key.clone());
+    }
+}
+
+static V2_BLOCK_CACHE: OnceLock<Mutex<V2BlockCache>> = OnceLock::new();
+
+fn v2_cache_cap_bytes() -> u64 {
+    std::env::var("LFEN_V2_CACHE_BYTES")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(64 * 1024 * 1024)
+}
+
+fn v2_block_cache() -> std::sync::MutexGuard<'static, V2BlockCache> {
+    V2_BLOCK_CACHE
+        .get_or_init(|| Mutex::new(V2BlockCache::new(v2_cache_cap_bytes())))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// DEK 指纹（FNV-1a 64）：只作缓存键消歧，不承担安全职责
+fn v2_key_fp(key: &[u8]) -> u64 {
+    let mut fp: u64 = 0xcbf2_9ce4_8422_2325;
+    for &b in key {
+        fp ^= b as u64;
+        fp = fp.wrapping_mul(0x100_0000_01b3);
+    }
+    fp
+}
+
+fn v2_cache_key(enc: &Path, logical: &str, index: u64, key: &[u8]) -> V2CacheKey {
+    V2CacheKey {
+        enc: enc.to_path_buf(),
+        logical: logical.to_string(),
+        index,
+        key_fp: v2_key_fp(key),
+    }
+}
+
+fn v2_cache_get(enc: &Path, logical: &str, index: u64, key: &[u8]) -> Option<Vec<u8>> {
+    v2_block_cache().get(&v2_cache_key(enc, logical, index, key))
+}
+
+fn v2_cache_put(enc: &Path, logical: &str, index: u64, key: &[u8], plain: &[u8]) {
+    v2_block_cache().put(v2_cache_key(enc, logical, index, key), plain.to_vec());
+}
+
+#[cfg(test)]
+fn v2_block_cache_stats() -> (u64, u64) {
+    let c = v2_block_cache();
+    (c.hits, c.misses)
+}
+
 /// v2 按需块级解密（lfstream 协议 Range 路径）：只解 [start, end_incl] 覆盖的块，
-/// 明文永不全量落盘/进内存——内存 = 覆盖块之和（≤ 2 块典型场景）。
+/// 命中走有界 LRU 块缓存（见 V2BlockCache），未命中逐块解密并回填——
+/// 明文永不全量落盘；内存 = 覆盖块之和（≤ 2 块典型场景）+ 缓存上限内历史块。
 /// 密文文件经资源文件系统抽象打开（Android = asset 内可 seek fd）。
 pub fn decrypt_v2_block_range(
     resfs: &dyn ResourceFs,
@@ -332,20 +457,28 @@ pub fn decrypt_v2_block_range(
     let last_block = end_incl / chunk;
     let mut out = Vec::with_capacity((end_incl - start + 1) as usize);
     for index in first_block..=last_block {
-        let plain_len = (total - index * chunk).min(chunk) as usize;
-        let off = (V2_HEADER_LEN as u64 + index * (chunk + 16)) as usize;
-        fin.seek(SeekFrom::Start(off as u64)).map_err(io)?;
-        let mut sealed = vec![0u8; plain_len + 16];
-        fin.read_exact(&mut sealed).map_err(io)?;
-        let mut with_nonce = Vec::with_capacity(12 + sealed.len());
-        with_nonce.extend_from_slice(&v2_nonce(&base, index as u32));
-        with_nonce.extend_from_slice(&sealed);
-        let plain = gcm_open(key, &with_nonce, v2_aad(logical, index as u32).as_bytes())
-            .map_err(ResourceCryptoError::Crypto)?;
+        let plain = match v2_cache_get(enc_file, logical, index, key) {
+            Some(cached) => cached,
+            None => {
+                let plain_len = (total - index * chunk).min(chunk) as usize;
+                let off = (V2_HEADER_LEN as u64 + index * (chunk + 16)) as usize;
+                fin.seek(SeekFrom::Start(off as u64)).map_err(io)?;
+                let mut sealed = vec![0u8; plain_len + 16];
+                fin.read_exact(&mut sealed).map_err(io)?;
+                let mut with_nonce = Vec::with_capacity(12 + sealed.len());
+                with_nonce.extend_from_slice(&v2_nonce(&base, index as u32));
+                with_nonce.extend_from_slice(&sealed);
+                let plain =
+                    gcm_open(key, &with_nonce, v2_aad(logical, index as u32).as_bytes())
+                        .map_err(ResourceCryptoError::Crypto)?;
+                v2_cache_put(enc_file, logical, index, key, &plain);
+                plain
+            }
+        };
         // 段内截取（to 钳到块尾——跨块 Range 每块只取自身覆盖段）
         let block_start = index * chunk;
         let from = (start.saturating_sub(block_start)) as usize;
-        let to = ((end_incl - block_start) as usize).min(plain_len - 1);
+        let to = ((end_incl - block_start) as usize).min(plain.len() - 1);
         out.extend_from_slice(&plain[from..=to]);
     }
     Ok(out)
@@ -509,7 +642,7 @@ pub fn decrypt_resource(
         let url = format!(
             "{}/v2/{}",
             protocol_base(),
-            utf8_percent_encode(&path).to_string()
+            utf8_percent_encode(&path)
         );
         return Ok(serde_json::json!({ "v2": path, "url": url }).to_string());
     }
@@ -755,8 +888,9 @@ pub fn stream_range_response(file: &Path, range: Option<&str>) -> tauri::http::R
 
 /// lfstream 协议入口（LFEN2 v2 按需解密 + v1 token 缓存双路径）：
 /// - `v2/{encodeURIComponent(逻辑路径)}`：Range → `decrypt_v2_block_range` 按需解密
-///   （明文永不全量落盘/进内存；密钥经 AppHandle 现取——KEK 进程内缓存，成本可忽略）
+///   （明文零落盘；内存 = Range 片段 + 有界 LRU 块缓存；密钥经 AppHandle 现取——KEK 进程内缓存，成本可忽略）
 /// - `{hex64}.{ext}`：v1 临时流缓存 token（URL 由本命令返回的 file 名构造）
+///
 /// 统一加 CORS 头：页面源（localhost:1420）与协议源（lfstream.localhost）跨源，
 /// webview fetch/媒体元素拉流需要显式放行（Tauri asset 协议同做法）。
 pub fn lfstream_protocol_handler(
@@ -982,6 +1116,8 @@ fn is_excluded(rel_str: &str, exclusions: &[&str]) -> bool {
         .any(|x| rel_str == *x || (x.ends_with('/') && rel_str.starts_with(*x)))
 }
 
+// 目录递归遍历的装配参数面（定位/输出/密钥/过滤/前缀/收集器）——收进结构体只挪参数不降复杂度
+#[allow(clippy::too_many_arguments)]
 fn encrypt_directory_inner(
     root: &Path,
     dir: &Path,
@@ -1737,7 +1873,7 @@ mod tests {
         let out = base.join("m.mp4.enc");
         let mut plain = Vec::new();
         for i in 0..(3 * 1024 + 777u32) {
-            plain.extend_from_slice(&(i as u32).to_le_bytes());
+            plain.extend_from_slice(&i.to_le_bytes());
         } // 12244 + 777*4 = 非对齐尾块
         fs::write(&src, &plain).unwrap();
         encrypt_lfen2_v2_file(&src, &out, KEY, "Video/m.mp4", 10).unwrap(); // 1KiB 块
@@ -1771,7 +1907,8 @@ mod tests {
     fn lfen2_v2_guards() {
         // B1v2：chunk_log2 超限 / 块数超 u32::MAX（nonce 空间）拒绝——纯算术不占内存
         assert!(v2_validate(100, 27).is_err());
-        assert!(v2_validate((u32::MAX as u64 + 1) * (1u64 << 0), 0).is_err());
+        // chunk_log2 = 0 → 块长 1B：total = 2^32 字节 = 2^32 块，超 nonce 空间必拒
+        assert!(v2_validate(u64::from(u32::MAX) + 1, 0).is_err());
         assert!(v2_validate(100, 22).is_ok());
     }
 
@@ -1877,6 +2014,74 @@ mod tests {
         let full = handle_v2_range_with(&StdFs, req_for(None), "Video%2Fm2.mp4", &root, KEY);
         assert_eq!(full.status(), tauri::http::StatusCode::OK);
         assert_eq!(full.body().as_slice(), plain.as_slice());
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn v2_block_lru_cache_bounds_and_isolation() {
+        // 锚点 v2-block-lru-cache：有界 LRU（容量/淘汰序/刷新保真）+ 路径参与键不串味 + 计数
+        let mut cache = V2BlockCache::new(2_400); // 恰容 2 块（1000B 块）
+        let fp = v2_key_fp(KEY);
+        let k = |name: &str, index: u64| V2CacheKey {
+            enc: PathBuf::from(format!("/{name}.enc")),
+            logical: name.to_string(),
+            index,
+            key_fp: fp,
+        };
+        cache.put(k("a", 0), vec![7u8; 1000]);
+        cache.put(k("a", 1), vec![8u8; 1000]);
+        assert!(cache.get(&k("a", 0)).is_some()); // 刷新 a0 → a1 变最旧
+        cache.put(k("a", 2), vec![9u8; 1000]); // 超容 → 淘汰 a1
+        assert!(cache.get(&k("a", 1)).is_none()); // 被淘 = miss
+        assert_eq!(cache.get(&k("a", 2)).unwrap(), vec![9u8; 1000]); // 新入未被误淘
+        assert_eq!(cache.get(&k("a", 0)).unwrap(), vec![7u8; 1000]); // LRU 刷新保真
+        cache.put(k("b", 0), vec![1u8; 1000]); // 淘汰 a2（此时最旧）
+        assert_eq!(cache.get(&k("a", 0)).unwrap()[0], 7); // 同块号不同路径不串味
+        assert_eq!(cache.get(&k("b", 0)).unwrap()[0], 1);
+        assert_eq!((cache.hits, cache.misses), (5, 1));
+        assert_eq!(cache.bytes, 2000);
+        assert_eq!(cache.entries.len(), 2);
+        cache.put(k("c", 0), vec![0u8; 5_000]); // 单块超上限 → 跳过缓存
+        assert!(cache.get(&k("c", 0)).is_none());
+        let mut disabled = V2BlockCache::new(0); // cap=0 = 禁用
+        disabled.put(k("d", 0), vec![1u8; 10]);
+        assert!(disabled.get(&k("d", 0)).is_none());
+    }
+
+    #[test]
+    fn v2_block_lru_cache_wired_through_block_range() {
+        // 全局缓存经 decrypt_v2_block_range 生效：同块二次 Range 命中（计数上升）且逐字节一致；
+        // 同块号不同资源（路径参与键）互不串味
+        let base = temp_base("lf3-v2-lru");
+        fs::create_dir_all(&base).unwrap();
+        let mk = |name: &str, fill: u8| -> (PathBuf, Vec<u8>) {
+            let src = base.join(format!("{name}.bin"));
+            let plain = vec![fill; 3 * 1024]; // 3 块（1KiB 块）
+            fs::write(&src, &plain).unwrap();
+            let out = base.join(format!("{name}.mp4.enc"));
+            encrypt_lfen2_v2_file(&src, &out, KEY, &format!("Video/{name}.mp4"), 10).unwrap();
+            (out, plain)
+        };
+        let (enc_a, plain_a) = mk("lru-a", 0xAA);
+        let (enc_b, plain_b) = mk("lru-b", 0xBB);
+        let (h0, _) = v2_block_cache_stats();
+        let r1 = decrypt_v2_block_range(&StdFs, &enc_a, KEY, "Video/lru-a.mp4", 0, 1023).unwrap();
+        let r2 = decrypt_v2_block_range(&StdFs, &enc_a, KEY, "Video/lru-a.mp4", 0, 1023).unwrap();
+        assert_eq!(r1, r2);
+        assert_eq!(r1, &plain_a[..1024]);
+        let (h1, _) = v2_block_cache_stats();
+        assert!(h1 > h0, "缓存命中计数应上升：{h0} → {h1}");
+        let rb = decrypt_v2_block_range(&StdFs, &enc_b, KEY, "Video/lru-b.mp4", 0, 1023).unwrap();
+        assert_eq!(rb, &plain_b[..1024]);
+        assert_ne!(rb, r1);
+        // 跨块 Range（块 1 miss 后回填）→ 复取命中
+        let s1 = decrypt_v2_block_range(&StdFs, &enc_a, KEY, "Video/lru-a.mp4", 1024, 2047).unwrap();
+        let s2 = decrypt_v2_block_range(&StdFs, &enc_a, KEY, "Video/lru-a.mp4", 1024, 2047).unwrap();
+        assert_eq!(s1, s2);
+        assert_eq!(s1, &plain_a[1024..2048]);
+        let (h2, m2) = v2_block_cache_stats();
+        assert!(h2 > h1);
+        assert!(m2 > 0);
         fs::remove_dir_all(&base).ok();
     }
 
