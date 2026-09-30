@@ -307,3 +307,149 @@ describe("屏幕方向偏好", () => {
     expect(payload).not.toContain("portrait");
   });
 });
+
+describe("键位覆盖（prefs-keymap）", () => {
+  it("无覆盖 = undefined（动作走内建默认键位 DEFAULT_KEYMAP）", () => {
+    const prefs = new PlayerPreferences();
+    expect(prefs.keymap).toBeUndefined();
+    expect(prefs.keybinding("advance")).toBeUndefined();
+    expect(prefs.keybinding("history")).toBeUndefined();
+  });
+
+  it("设置单动作覆盖 + 快照新数组引用（UI 改写不穿透偏好状态）", () => {
+    const prefs = new PlayerPreferences();
+    prefs.setKeybinding("advance", ["f", "Space"]);
+    expect(prefs.keybinding("advance")).toEqual(["f", "Space"]);
+    expect(prefs.keybinding("history")).toBeUndefined(); // 另一动作不受影响
+    const snap = prefs.snapshot();
+    expect(snap.keymap?.advance).toEqual(["f", "Space"]);
+    snap.keymap?.advance?.push("X"); // 试图穿透
+    expect(prefs.keybinding("advance")).toEqual(["f", "Space"]);
+  });
+
+  it("信任边界：非字符串/空白/超长丢弃、大小写去重、条数封顶 8", () => {
+    const prefs = new PlayerPreferences();
+    prefs.setKeybinding("advance", [
+      "f",
+      " f ",
+      "F",
+      "",
+      "   ",
+      42,
+      null,
+      "x".repeat(33),
+      "Enter",
+    ]);
+    expect(prefs.keybinding("advance")).toEqual(["f", "Enter"]);
+    const long = Array.from({ length: 12 }, (_, i) => `k${i}`);
+    prefs.setKeybinding("history", long);
+    expect(prefs.keybinding("history")).toEqual(long.slice(0, 8));
+  });
+
+  it("清除：校验后为空 = 回内建默认；全动作清除后 keymap 键消失（幂等）", () => {
+    const prefs = new PlayerPreferences();
+    prefs.setKeybinding("advance", ["f"]);
+    prefs.setKeybinding("advance", ["   "]);
+    expect(prefs.keybinding("advance")).toBeUndefined();
+    prefs.setKeybinding("history", ["j"]);
+    expect(prefs.keymap).toEqual({ history: ["j"] });
+    prefs.clearKeybinding("history");
+    expect(prefs.keymap).toBeUndefined();
+    prefs.clearKeybinding("history"); // 幂等
+    expect(prefs.keymap).toBeUndefined();
+  });
+
+  it("持久化：键位随 hydrate 恢复、畸形载荷逐项降级", async () => {
+    const good = new MemoryPrefsPort({
+      v: 1,
+      volumes: { ...DEFAULT_PLAYER_PREFS.volumes },
+      muted: false,
+      textSpeed: 30,
+      keymap: { advance: ["f", 7, ""], history: "h" as never },
+    } as PlayerPrefsData);
+    const prefs = new PlayerPreferences(good);
+    await prefs.hydrate();
+    expect(prefs.keybinding("advance")).toEqual(["f"]); // 非法条目丢弃
+    expect(prefs.keybinding("history")).toBeUndefined(); // 非数组 = 无覆盖
+
+    const bad = new MemoryPrefsPort({
+      v: 1,
+      volumes: { ...DEFAULT_PLAYER_PREFS.volumes },
+      muted: false,
+      textSpeed: 30,
+      keymap: "rogue" as never,
+    } as PlayerPrefsData);
+    const prefs2 = new PlayerPreferences(bad);
+    await prefs2.hydrate();
+    expect(prefs2.keymap).toBeUndefined();
+  });
+
+  it("持久化防抖：两次键位修改合并一次落盘且载荷含覆盖", async () => {
+    vi.useFakeTimers();
+    const port = new MemoryPrefsPort(null);
+    const prefs = new PlayerPreferences(port);
+    prefs.setKeybinding("advance", ["f"]);
+    prefs.setKeybinding("history", ["j"]);
+    await vi.advanceTimersByTimeAsync(300);
+    expect(port.saves).toHaveLength(1);
+    expect(port.saves[0].keymap).toEqual({ advance: ["f"], history: ["j"] });
+  });
+});
+
+describe("全屏偏好（prefs-fullscreen）", () => {
+  it("缺省未设置 = 窗口化默认；布尔采纳、非布尔忽略", () => {
+    const prefs = new PlayerPreferences();
+    expect(prefs.fullscreen).toBeUndefined();
+    prefs.setFullscreen(true);
+    expect(prefs.fullscreen).toBe(true);
+    expect(prefs.snapshot().fullscreen).toBe(true);
+    prefs.setFullscreen(false);
+    expect(prefs.fullscreen).toBe(false);
+    prefs.setFullscreen("yes" as never);
+    expect(prefs.fullscreen).toBe(false); // 非布尔忽略
+  });
+
+  it("持久化：全屏随 hydrate 恢复、非布尔降级未设置", async () => {
+    const good = new MemoryPrefsPort({
+      v: 1,
+      volumes: { ...DEFAULT_PLAYER_PREFS.volumes },
+      muted: false,
+      textSpeed: 30,
+      fullscreen: true,
+    });
+    const prefs = new PlayerPreferences(good);
+    await prefs.hydrate();
+    expect(prefs.fullscreen).toBe(true);
+
+    const bad = new MemoryPrefsPort({
+      v: 1,
+      volumes: { ...DEFAULT_PLAYER_PREFS.volumes },
+      muted: false,
+      textSpeed: 30,
+      fullscreen: "on" as never,
+    } as PlayerPrefsData);
+    const prefs2 = new PlayerPreferences(bad);
+    await prefs2.hydrate();
+    expect(prefs2.fullscreen).toBeUndefined();
+  });
+
+  it("键位与全屏偏好不进存档（与存档分离）", () => {
+    const prefs = new PlayerPreferences();
+    prefs.setKeybinding("advance", ["f"]);
+    prefs.setFullscreen(true);
+    const engine = new StoryEngine(
+      parseStory({
+        formatVersion: 1,
+        id: "t",
+        entry: "a",
+        columns: [
+          { id: "a", kind: "flow", commands: [{ op: "say", text: "x" }] },
+        ],
+      }),
+    );
+    engine.start();
+    const payload = JSON.stringify(engine.exportSave());
+    expect(payload).not.toContain("keymap");
+    expect(payload).not.toContain("fullscreen");
+  });
+});

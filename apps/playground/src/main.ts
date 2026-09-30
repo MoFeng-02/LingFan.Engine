@@ -7,12 +7,15 @@
  * 浏览器 = fetch 静态根），组装是引擎纯函数；资源加密管线同理只换 ResourcePort。
  */
 import { createApp, ref } from "vue";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
+  createBrowserFullscreenApplier,
   createFetchProjectFilesPort,
   createHostPort,
   createNoopOrientationPort,
   createStaticResourcePort,
   createTauriEncryptedResourcePort,
+  createTauriFullscreenApplier,
   createTauriI18nPort,
   readTauriPlatform,
   createTauriPreferencesPort,
@@ -141,6 +144,23 @@ async function boot(): Promise<void> {
   };
   applyOrientation();
   preferences.onChange(applyOrientation);
+
+  // 全屏偏好装配（与方向同模式：组合根落平台，偏好变化去重应用）。
+  // 尽力而为契约：浏览器形态缺用户手势的启动期恢复会被 Fullscreen API 拒绝 =
+  // 静默（偏好已持久化，下次有手势的切换生效）；Tauri 窗口命令无需手势。
+  const fullscreenApplier =
+    import.meta.env.MODE === "tauri"
+      ? createTauriFullscreenApplier(getCurrentWindow())
+      : createBrowserFullscreenApplier();
+  let appliedFullscreen = preferences.fullscreen ?? false;
+  const applyFullscreen = (): void => {
+    const on = preferences.fullscreen ?? false;
+    if (on === appliedFullscreen) return; // 其他偏好变化（音量/速度/键位）不重复落窗
+    appliedFullscreen = on;
+    void fullscreenApplier.apply(on);
+  };
+  void fullscreenApplier.apply(appliedFullscreen); // 启动即恢复上次状态
+  preferences.onChange(applyFullscreen);
 
   // ③ 平台区分（宿主信息）：取数来源 = Tauri CLI 注入的编译期平台（浏览器形态 undefined →
   // unknown·desktop，显式未知不猜）。宿主事实不可变，适配器内缓存；UI 只展示，按端分支后续按需加。

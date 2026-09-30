@@ -57,6 +57,10 @@ export {
 export {
   createNoopOrientationPort,
   createTauriOrientationPort,
+  createBrowserFullscreenApplier,
+  createTauriFullscreenApplier,
+  type FullscreenApplier,
+  type FullscreenWindowLike,
 } from "./shell";
 export {
   createHostPort,

@@ -7,11 +7,17 @@
  */
 import type {
   AudioChannel,
+  KeymapAction,
   OrientationMode,
+  PlayerKeymap,
   PlayerPrefsData,
   PreferencesPort,
 } from "../contracts";
-import { DEFAULT_PLAYER_PREFS, isOrientationMode } from "../contracts";
+import {
+  DEFAULT_PLAYER_PREFS,
+  KEYMAP_ACTIONS,
+  isOrientationMode,
+} from "../contracts";
 
 type PrefsListener = (data: PlayerPrefsData) => void;
 
@@ -20,8 +26,41 @@ const CHANNELS: readonly AudioChannel[] = ["bgm", "se", "ambient", "voice"];
 /** 持久化防抖静默窗：滑块拖动连发 set 合并为一次落盘 */
 const PERSIST_DEBOUNCE_MS = 300;
 
+/** 单键名上限（KeyboardEvent.key 字面量，含命名键如 Enter/ArrowLeft） */
+const KEY_NAME_MAX = 32;
+/** 单动作键位条数上限（防畸形载荷撑爆列表） */
+const KEYMAP_ENTRIES_MAX = 8;
+
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
+}
+
+/**
+ * 键位覆盖逐项校验（信任边界）：非字符串/空白/超长条目丢弃，大小写不敏感去重，
+ * 条数封顶；单动作清空 = 该动作回落内建默认（不进载荷）。
+ */
+function sanitizeKeymap(raw: unknown): PlayerKeymap | undefined {
+  if (raw === null || typeof raw !== "object") return undefined;
+  const source = raw as Record<string, unknown>;
+  const out: PlayerKeymap = {};
+  for (const action of KEYMAP_ACTIONS) {
+    const entries = source[action];
+    if (!Array.isArray(entries)) continue;
+    const seen = new Set<string>();
+    const keys: string[] = [];
+    for (const entry of entries) {
+      if (typeof entry !== "string") continue;
+      const key = entry.trim();
+      if (key.length === 0 || key.length > KEY_NAME_MAX) continue;
+      const dedupeId = key.toLowerCase();
+      if (seen.has(dedupeId)) continue;
+      seen.add(dedupeId);
+      keys.push(key);
+      if (keys.length >= KEYMAP_ENTRIES_MAX) break;
+    }
+    if (keys.length > 0) out[action] = keys;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /**
@@ -55,6 +94,11 @@ function sanitize(raw: unknown): PlayerPrefsData {
   }
   // 方向偏好：合法三态才采纳；非法值 = 未设置（跟随工程默认，绝不翻译成非法方向）
   if (isOrientationMode(source.orientation)) data.orientation = source.orientation;
+  // 键位覆盖：逐项降级；全部无效 = 无覆盖（动作走内建默认键位）
+  const keymap = sanitizeKeymap(source.keymap);
+  if (keymap !== undefined) data.keymap = keymap;
+  // 全屏偏好：仅布尔采纳；非布尔 = 未设置（窗口化默认）
+  if (typeof source.fullscreen === "boolean") data.fullscreen = source.fullscreen;
   return data;
 }
 
@@ -67,7 +111,7 @@ export class PlayerPreferences {
     this.data = sanitize(undefined);
   }
 
-  /** 只读快照（新引用——UI 可安全持有做响应式镜像）；orientation 缺省 = 键不存在 */
+  /** 只读快照（新引用——UI 可安全持有做响应式镜像）；可选字段缺省 = 键不存在 */
   snapshot(): PlayerPrefsData {
     const snap: PlayerPrefsData = {
       v: 1,
@@ -77,6 +121,20 @@ export class PlayerPreferences {
     };
     if (this.data.orientation !== undefined) {
       snap.orientation = this.data.orientation;
+    }
+    if (this.data.keymap !== undefined) {
+      // 新数组引用（嵌套隔离——UI 改写不得穿透偏好状态）
+      const keymap: PlayerKeymap = {};
+      if (this.data.keymap.advance !== undefined) {
+        keymap.advance = [...this.data.keymap.advance];
+      }
+      if (this.data.keymap.history !== undefined) {
+        keymap.history = [...this.data.keymap.history];
+      }
+      snap.keymap = keymap;
+    }
+    if (this.data.fullscreen !== undefined) {
+      snap.fullscreen = this.data.fullscreen;
     }
     return snap;
   }
@@ -135,6 +193,54 @@ export class PlayerPreferences {
     const next: PlayerPrefsData = { ...this.data };
     delete next.orientation;
     this.update(next);
+  }
+
+  /** 键位覆盖视图（undefined = 该域无覆盖，动作走内建默认键位） */
+  get keymap(): PlayerKeymap | undefined {
+    return this.data.keymap;
+  }
+
+  /** 单动作键位覆盖（undefined = 内建默认；宿主匹配时大小写不敏感） */
+  keybinding(action: KeymapAction): string[] | undefined {
+    return this.data.keymap?.[action];
+  }
+
+  /**
+   * 设置单动作键位覆盖（信任边界：逐项校验同 sanitizeKeymap；
+   * 校验后为空 = 清除该动作覆盖即回内建默认）。
+   */
+  setKeybinding(action: KeymapAction, keys: readonly unknown[]): void {
+    const sanitized = sanitizeKeymap({ [action]: keys })?.[action];
+    if (sanitized === undefined) {
+      this.clearKeybinding(action);
+      return;
+    }
+    const base: PlayerKeymap =
+      this.data.keymap !== undefined
+        ? { advance: this.data.keymap.advance, history: this.data.keymap.history }
+        : {};
+    const next: PlayerKeymap = { ...base, [action]: sanitized };
+    this.update({ ...this.data, keymap: next });
+  }
+
+  /** 清除单动作键位覆盖 = 该动作回内建默认；无任何覆盖后整个 keymap 键移除 */
+  clearKeybinding(action: KeymapAction): void {
+    if (this.data.keymap?.[action] === undefined) return;
+    const next: PlayerKeymap = { ...this.data.keymap };
+    delete next[action];
+    const data: PlayerPrefsData = { ...this.data, keymap: next };
+    if (Object.keys(next).length === 0) delete data.keymap;
+    this.update(data);
+  }
+
+  /** 全屏偏好（undefined = 未设置 = 窗口化默认；宿主应用尽力而为） */
+  get fullscreen(): boolean | undefined {
+    return this.data.fullscreen;
+  }
+
+  setFullscreen(on: boolean): void {
+    if (typeof on !== "boolean") return;
+    this.update({ ...this.data, fullscreen: on });
   }
 
   /** 订阅偏好变化（UI 响应式镜像/渲染层重规划）；返回退订函数 */
