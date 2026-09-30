@@ -16,13 +16,13 @@ import {
 } from "@lingfan/editor";
 
 /**
- * 06 §一.1 节点图：列 = 节点，jump/menu/navigate 的列目标 = 边。
+ * 节点图：列 = 节点，jump/menu/navigate 的列目标 = 边。
  * 视图操作：节点拖拽（位置按故事记忆入 localStorage）+ 背景拖拽平移 +
- * Ctrl+滚轮/按钮缩放（视口中心稳定）；缩放不入故事 JSON——D1 编辑器只读写故事树。
- * **连线建分支（T04-04）**：从 flow 节点右缘连接点拉线到另一 flow 节点 → 落库为
+ * Ctrl+滚轮/按钮缩放（视口中心稳定）；缩放不入故事 JSON——编辑器只读写故事树。
+ * **连线建分支**：从 flow 节点右缘连接点拉线到另一 flow 节点 → 落库为
  * `jump`（源列无 menu）或 menu 选项（源列最后一个 menu，文本 prompt 可改）；
  * 一次拉线 = 一个 undo 单元（提交在 `editorApi.connectBranch`）；scene 列 / 自连
- * fail-closed 提示（锚点: editor-graph-connect-branch）。点击边 = 选中对应命令
+ * fail-closed 提示。点击边 = 选中对应命令
  * （改在属性面板，删走时间线既有入口）。
  * 舞台编辑随元素系统另立增量。
  */
@@ -31,7 +31,7 @@ const props = defineProps<{ story: Story; selectedId: string }>();
 interface EditorApi {
   select(pointer: string | null): void;
   selectColumn(id: string): void;
-  /** T04-04：拉线建分支（见上）；非法组合返回 false */
+  /** 拉线建分支（见上）；非法组合返回 false */
   connectBranch(fromColumnId: string, toColumnId: string, optionText?: string): boolean;
 }
 const api = inject<EditorApi>("editorApi")!;
@@ -343,7 +343,7 @@ function selectNode(id: string): void {
   api.selectColumn(id);
 }
 
-/* —— T04-04 连线建分支：flow 节点右缘连接点拉线到目标节点 —— */
+/* —— 连线建分支：flow 节点右缘连接点拉线到目标节点 —— */
 
 const connecting = ref<{
   fromId: string;
@@ -561,7 +561,7 @@ svg {
   stroke: #9ece6a;
   stroke-dasharray: 5 4;
 }
-/* T04-04：边可点击选中对应命令；拉线中的临时线 */
+/* 边可点击选中对应命令；拉线中的临时线 */
 svg .edge.clickable {
   pointer-events: stroke;
   cursor: pointer;

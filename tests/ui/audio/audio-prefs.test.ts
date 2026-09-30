@@ -1,6 +1,6 @@
 /**
- * 08 §八.2 音频 × 玩家偏好：readAudioView 有效音量合成 + 渲染器偏好变化即时重规划。
- * 老引擎 GetEffectiveVolume 语义：合成末端 = op 音量 × 通道偏好，静音归零（不 stop）。
+ * 音频 × 玩家偏好：readAudioView 有效音量合成 + 渲染器偏好变化即时重规划。
+ * 有效音量语义：合成末端 = op 音量 × 通道偏好，静音归零（不 stop）。
  * 偏好走渲染视图（而非改引擎状态）——差量规划器自动感知偏好变化，通道不重播。
  */
 import { describe, expect, it } from "vitest";
@@ -68,7 +68,7 @@ function bgmVolume(view: ReturnType<typeof readAudioView>): number | undefined {
   return state?.kind === "play" ? state.volume : undefined;
 }
 
-describe("readAudioView 合成（锚点: effective-volume-synthesis）", () => {
+describe("readAudioView 合成", () => {
   it("有效音量 = op 音量 × 通道偏好（bgm 默认偏好 0.8）", () => {
     const engine = engineWithBgm(0.8);
     const prefs = new PlayerPreferences();
@@ -85,7 +85,7 @@ describe("readAudioView 合成（锚点: effective-volume-synthesis）", () => {
     expect(bgmVolume(readAudioView(engine, prefs))).toBeCloseTo(0.4);
   });
 
-  it("静音归零（老引擎 MasterMuted 语义），取消即时恢复", () => {
+  it("静音归零，取消即时恢复", () => {
     const engine = engineWithBgm(0.8);
     const prefs = new PlayerPreferences();
     prefs.setMuted(true);
@@ -96,7 +96,7 @@ describe("readAudioView 合成（锚点: effective-volume-synthesis）", () => {
   });
 });
 
-describe("渲染器偏好重规划（08 §八.2：偏好变化即时生效）", () => {
+describe("渲染器偏好重规划（偏好变化即时生效）", () => {
   it("偏好变化 → 合成音量差量 → play 更新（同资源不重播）", async () => {
     const engine = engineWithBgm(0.8);
     const prefs = new PlayerPreferences();

@@ -1,5 +1,5 @@
 /**
- * 08 §八.2 玩家偏好持久化（localStorage 演示兜底）测试：内存 Storage 契约替身。
+ * 玩家偏好持久化（localStorage 演示兜底）测试：内存 Storage 契约替身。
  * 缺失/损坏 → null（默认值起航）；数据信任边界在 PlayerPreferences.hydrate。
  */
 import { describe, expect, it } from "vitest";
@@ -17,7 +17,7 @@ class MemoryStorage {
   }
 }
 
-describe("08 §八.2 createWebStoragePreferencesPort（localStorage 兜底）", () => {
+describe("createWebStoragePreferencesPort（localStorage 兜底）", () => {
   it("round trip：save 后 load 同值", async () => {
     const storage = new MemoryStorage();
     const port = createWebStoragePreferencesPort(storage);

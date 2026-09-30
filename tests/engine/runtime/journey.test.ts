@@ -52,7 +52,7 @@ function expectInvariants(engine: StoryEngine): void {
     expect(typeof entry.coord.columnId).toBe("string");
     expect(typeof entry.coord.index).toBe("number");
   }
-  // 08-U6：媒体状态恒为合法形态（play/stop 二态，音量在物理范围内）
+  // 媒体状态恒为合法形态（play/stop 二态，音量在物理范围内）
   for (const key of [
     SYS.audioBgm,
     SYS.audioAmbient,
@@ -101,7 +101,7 @@ class MemorySavePort {
   }
 
   async remove(slot: string): Promise<void> {
-    this.slots.delete(slot); // K4：删档不动高水位
+    this.slots.delete(slot); // 删档不动高水位
   }
 
   async list(): Promise<SlotSummary[]> {
@@ -680,7 +680,7 @@ describe("音频旅程（模拟用户：背景乐 → 语音 → 音效 → 回�
     expect(engine.get(SYS.audioAmbient)).toEqual({ kind: "stop", fadeMs: 800 });
     expect(engine.get(SYS.currentDialogText)).toBe("雨停了");
 
-    // 回溯到开场：曲目/环境层/语音/位置全部回到那一刻（03-R7）
+    // 回溯到开场：曲目/环境层/语音/位置全部回到那一刻
     engine.rollbackTo(0);
     expect(engine.get(SYS.currentDialogText)).toBe("雨夜开场");
     expect(engine.get(SYS.audioBgm)).toMatchObject({ resource: "main.mp3" });

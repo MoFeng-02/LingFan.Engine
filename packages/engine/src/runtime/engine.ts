@@ -1191,8 +1191,8 @@ export class StoryEngine {
     // 先 Translate 后插值（overlay 键可含 {var} 占位符）+ {var:00} 格式化（仅文本命令）；
     // 行内标记 {b}{p} 原样透传；失败保留原文 + error
     // speaker 与 text 同语义插值——动态说话人（如 func 实参）经此获得真实名字；
-    // 说话人**显示名**同样走 Translate（所有展示文字均纳入翻译，
-    // 原「speaker 不走 Translate」裁定作废）；角色模板查表仍用插值后的原值。
+    // 说话人**显示名**同样走 Translate（翻译面覆盖所有展示文字）；
+    // 角色模板查表仍用插值后的原值。
     const { text, errors } = interpolateText(
       this.translate(cmd.text),
       this.resolveName,
@@ -2599,7 +2599,7 @@ export class StoryEngine {
 
   /**
    * minigame op：建立小游戏等待（同 menu/wait/input 建立检查点），
-   * 发布挂载事件（signal 供回溯/中断卸载）。语义裁定：reward.value 执行期求值
+   * 发布挂载事件（signal 供回溯/中断卸载）。语义：reward.value 执行期求值
    * （支持 {expr}，重放经 rngState 恢复保持确定性）；on_success/on_fail 缺省 = 原列继续。
    */
   private execMinigame(frame: Frame, cmd: StoryCommand): void {

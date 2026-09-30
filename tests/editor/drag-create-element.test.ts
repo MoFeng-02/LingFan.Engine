@@ -1,6 +1,5 @@
 /**
- * T04-03 控件从面板拖入画布生成元素测试。
- * 锚点: editor-drag-create-element
+ * 控件从面板拖入画布生成元素测试。
  *
  * 测试纪律：
  * - 纯逻辑边界：草稿最小面（无失真属性）/ 未知类型与坏坐标 fail-closed / 命中容器的相对坐标
@@ -72,7 +71,7 @@ describe("createElementDraft：最小草稿面", () => {
     expect(createElementDraft("panel", 0, Number.POSITIVE_INFINITY)).toBeNull();
   });
 
-  it("草稿绝不含失真属性（T01-01 止血清单）：键面 ⊆ {type,x,y}", () => {
+  it("草稿绝不含失真属性（止血清单）：键面 ⊆ {type,x,y}", () => {
     for (const type of ["text", "panel", "image", "button", "bar"]) {
       const draft = createElementDraft(type, 10, 20);
       expect(draft).not.toBeNull();
@@ -180,7 +179,7 @@ describe("源码互锁：fail-closed 分支与单提交真实在位", () => {
     // 不绕过会话（提交在 App.vue 的 session）
     expect(stageEditorSource).not.toMatch(/\bsession\b/);
     expect(stageEditorSource).not.toContain("insertAtPointer");
-    // 画布空态提示引导作者用面板拖入（验收路径）
+    // 画布空态提示引导作者用面板拖入
     expect(stageEditorSource).toContain("从左侧「组件」面板拖入");
   });
 

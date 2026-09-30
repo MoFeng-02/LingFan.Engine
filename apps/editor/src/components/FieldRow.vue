@@ -8,7 +8,7 @@ import {
 } from "@lingfan/editor";
 
 /**
- * 06-D2 属性面板字段行：由表单描述符驱动渲染（kind → 控件），
+ * 属性面板字段行：由表单描述符驱动渲染（kind → 控件），
  * 嵌套（数组项对象/命令体）递归自身；全部写入经 editorApi → EditorSession。
  */
 const props = defineProps<{
@@ -62,7 +62,7 @@ const scalarText = computed(() => {
 function onTextChange(event: Event): void {
   const raw = (event.target as HTMLInputElement).value;
   if (raw === "") {
-    api.removeField(props.pointer); // 置空 = 删除字段（必填缺失 → 诊断标红，D3）
+    api.removeField(props.pointer); // 置空 = 删除字段（必填缺失 → 诊断标红）
     return;
   }
   api.update(props.pointer, coerce(raw));

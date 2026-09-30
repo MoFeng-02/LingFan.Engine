@@ -1,6 +1,6 @@
 /**
- * 08-U3 打字机二段式测试：tick 推进、{p}/{w} 段内停顿、点击三态、
- * **样式标记零宽 + 前缀永不半截**（用户实测回归：打字中裸 `{color=#` 上屏）。
+ * 打字机二段式测试：tick 推进、{p}/{w} 段内停顿、点击三态、
+ * **样式标记零宽 + 前缀永不半截**（回归：打字中不得裸露 `{color=#`）。
  * 渲染协同：任意前缀经 renderInlineMarkup 不得残留裸 `{`。
  */
 import { describe, expect, it } from "vitest";
@@ -82,7 +82,7 @@ describe("Typewriter 二段式点击", () => {
   });
 });
 
-describe("样式标记零宽（用户实测回归：打字中裸 `{color=#` 上屏）", () => {
+describe("样式标记零宽（回归：打字中不得裸露 `{color=#`）", () => {
   const line =
     "富文本：{b}加粗{/b}、{i}斜体{/i}、{u}下划线{/u}、{color=#FFD700}金色{/color}、{color=#9ece6a}{size=22}大字{/size}{/color}。";
 
@@ -133,7 +133,7 @@ describe("样式标记零宽（用户实测回归：打字中裸 `{color=#` 上�
   });
 });
 
-describe("setSpeed（08 §四.1 SetTextSpeed：玩家偏好即时调整当前句）", () => {
+describe("setSpeed（SetTextSpeed：玩家偏好即时调整当前句）", () => {
   it("setSpeed 即时改变推进速度", () => {
     const tw = new Typewriter("ABCDEFGHIJ", 10); // 10 字/秒
     tw.tick(0.5); // 5 字

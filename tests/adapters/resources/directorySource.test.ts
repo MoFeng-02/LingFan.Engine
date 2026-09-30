@@ -659,7 +659,7 @@ describe("09-16 写回·FSA 目录句柄", () => {
     expect(await readText(root, "Stories/a.json")).toContain('"a"');
   });
 
-  it("T03-02 外部篡改：apply 前检测 → 冲突文案、零落盘（未篡改时行为不变）", async () => {
+  it("外部篡改：apply 前检测 → 冲突文案、零落盘（未篡改时行为不变）", async () => {
     const hooks = grantedHooks();
     const root = writableRoot(
       {
@@ -695,7 +695,7 @@ describe("09-16 写回·FSA 目录句柄", () => {
     expect(report.written).toEqual(["Stories/start.json"]);
   });
 
-  it("T03-02 外部删除基线文件 → 冲突持续 fail-closed；重开后可重建且不自报", async () => {
+  it("外部删除基线文件 → 冲突持续 fail-closed；重开后可重建且不自报", async () => {
     const hooks = grantedHooks();
     const root = writableRoot(
       {

@@ -1,6 +1,6 @@
 /**
- * 07 §三 工程加载器测试（浏览器/WebView 平台适配器）：
- * 混存识别（T4）/ 逻辑路径拼接 / fail-closed（HTTP 失败与非法清单必须抛错，不静默降级）。
+ * 工程加载器测试（浏览器/WebView 平台适配器）：
+ * 混存识别 / 逻辑路径拼接 / fail-closed（HTTP 失败与非法清单必须抛错，不静默降级）。
  * fetch 为平台 API：按契约以内存映射替换（不 Mock 引擎实现）。
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -31,8 +31,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("07 §三 工程加载器（loadProjectFromFetch）", () => {
-  it("混存识别（T4）：JSON 投影与文本 .story 同载并组装", async () => {
+describe("工程加载器（loadProjectFromFetch）", () => {
+  it("混存识别：JSON 投影与文本 .story 同载并组装", async () => {
     serve({
       "project.json": MANIFEST,
       "Stories/start.json": JSON.stringify({
@@ -52,7 +52,7 @@ describe("07 §三 工程加载器（loadProjectFromFetch）", () => {
     expect(story.columns.map((c) => c.id)).toEqual(["next", "start"]);
   });
 
-  it("逻辑路径按资源根前缀请求（08-U7：与部署位置解耦）", async () => {
+  it("逻辑路径按资源根前缀请求（与部署位置解耦）", async () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const path = String(input).replace(/^\/sub\//, "");
       const body =
@@ -104,7 +104,7 @@ describe("07 §三 工程加载器（loadProjectFromFetch）", () => {
     ).rejects.toThrow("工程组装失败");
   });
 
-  it("单列文件名 ≠ 列 id → 组装器拒绝（F1 不变量经加载路径仍然生效）", async () => {
+  it("单列文件名 ≠ 列 id → 组装器拒绝（不变量经加载路径仍然生效）", async () => {
     serve({
       "project.json": MANIFEST,
       "Stories/wrong.json": JSON.stringify({

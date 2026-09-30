@@ -1,4 +1,4 @@
-/** 07 §三 工程组装测试：混合形态、确定性、F1 跨文件唯一、入口校验、defines 覆盖序 */
+/** 工程组装测试：混合形态、确定性、跨文件唯一、入口校验、defines 覆盖序 */
 import { describe, expect, it } from "vitest";
 import type { Story, StoryColumn, StoryCommand } from "@lingfan/engine";
 import {
@@ -69,7 +69,7 @@ describe("assembleProject", () => {
     ]);
   });
 
-  it("F1：跨文件 columnId 重复拒绝，错误带两个文件定位", () => {
+  it("跨文件 columnId 重复拒绝，错误带两个文件定位", () => {
     const files = new Map<string, unknown>([
       ["Stories/start.json", singleColumn("start")],
       [
@@ -94,7 +94,7 @@ describe("assembleProject", () => {
     expect(issues.join("\n")).toContain("单列文件名");
   });
 
-  it("defines 合并：工程默认最先，文件按序覆盖（后加载覆盖，01 §一.6）", () => {
+  it("defines 合并：工程默认最先，文件按序覆盖（后加载覆盖）", () => {
     const files = new Map<string, unknown>([
       [
         "Stories/a.json",
@@ -122,7 +122,7 @@ describe("assembleProject", () => {
     });
   });
 
-  it("入口列不存在拒绝（01 §一.7 + F1）", () => {
+  it("入口列不存在拒绝", () => {
     const files = new Map<string, unknown>([
       ["Stories/start.json", singleColumn("start")],
     ]);
@@ -145,9 +145,9 @@ describe("assembleProject", () => {
     ).toContain("defines");
   });
 
-  it("08 §八.2 清单 shell 段：合法方向接受，非法形状/非法方向整次拒绝（fail-closed）", () => {
+  it("清单 shell 段：合法方向接受，非法形状/非法方向整次拒绝（fail-closed）", () => {
     const files = new Map([["Stories/start.json", singleColumn("start")]]);
-    // 锚点: orientation-config-resolution——作者声明的作品形态随组装通过
+    // 作者声明的作品形态随组装通过
     for (const orientation of ["auto", "portrait", "landscape"]) {
       const story = assembleProject(
         { ...manifest, shell: { orientation } },

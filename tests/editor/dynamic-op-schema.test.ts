@@ -1,6 +1,5 @@
 /**
- * 规约 10 编辑器 schema 动态注册测试（T08-04）。
- * 锚点: editor-dynamic-op-schema
+ * 编辑器 schema 动态注册测试。
  *
  * 测试纪律：
  * - **纯函数合并不改本体**：mergeOpSchemas/mergeOpMeta 产出扩展集，OP_SCHEMAS/OP_META 常量
@@ -46,7 +45,7 @@ const diceExtension: OpExtension = {
 
 const merged = mergeOpSurface([diceExtension]);
 
-describe("T08-04 编辑器 schema 动态注册（锚点: editor-dynamic-op-schema）", () => {
+describe("编辑器 schema 动态注册", () => {
   it("纯函数合并：产出扩展集，OP_SCHEMAS/OP_META 常量本体零修改", () => {
     const before = Object.keys(OP_SCHEMAS);
     const schemas = mergeOpSchemas(OP_SCHEMAS, [diceExtension]);

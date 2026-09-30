@@ -1,5 +1,5 @@
 /**
- * 07 §三 TauriProjectFilesPort 适配器测试：invoke 契约替身（不依赖 Tauri 运行时）。
+ * TauriProjectFilesPort 适配器测试：invoke 契约替身（不依赖 Tauri 运行时）。
  * 契约接缝 = TauriInvoke/TauriListen 签名；Rust 侧行为在 cargo 侧测（project_files.rs），两侧各测一半。
  */
 import { describe, expect, it } from "vitest";
@@ -18,7 +18,7 @@ function fakeInvoke(payload: TauriProjectFiles, calls: string[]): TauriInvoke {
   };
 }
 
-describe("createTauriProjectFilesPort（07 §三 Tauri 原生工程供给）", () => {
+describe("createTauriProjectFilesPort（Tauri 原生工程供给）", () => {
   it("供给清单与故事：Record → Map，负载原样透传", async () => {
     const calls: string[] = [];
     const port = createTauriProjectFilesPort(
@@ -71,8 +71,8 @@ describe("createTauriProjectFilesPort（07 §三 Tauri 原生工程供给）", (
   });
 });
 
-describe("watchTauriProjectFiles（07 §三.2 热重载订阅）", () => {
-  it("事件触发 onChange、stop 退订、invoke 启动 Rust 监视命令（锚点: hot-reload-subscribe）", async () => {
+describe("watchTauriProjectFiles（热重载订阅）", () => {
+  it("事件触发 onChange、stop 退订、invoke 启动 Rust 监视命令", async () => {
     const commands: string[] = [];
     let handler: (() => void) | null = null;
     let unlistened = 0;

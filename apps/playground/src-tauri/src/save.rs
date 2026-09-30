@@ -1,9 +1,9 @@
 //! 05-存档与安全（Rust 层）：LFS3 信封 + 每档随机 DEK + KEK 走 OS 凭据 + AAD 绑槽位 + 高水位防回档。
-//! K7：全部安全校验在本层完成（TS 只管存档编排）；K6：解密失败 fail-closed，绝不降级。
+//! 全部安全校验在本层完成（TS 只管存档编排）；解密失败 fail-closed，绝不降级。
 //!
 //! 文件布局（LFS3 v1，二进制）：
 //! `MAGIC(4) | version u16 | mode u8 | save_count u64 | timestamp u64 | dek_len u32 | dek_part | ciphertext`
-//! ciphertext = AES-256-GCM(payload, key=DEK, AAD="LFS3:payload:{slot}")——K3 写档即绑槽。
+//! ciphertext = AES-256-GCM(payload, key=DEK, AAD="LFS3:payload:{slot}")——写档即绑槽。
 
 use crate::crypto::{gcm_open, gcm_seal, kek_from_keyring, random_bytes, KEK_SERVICE, KEK_USER};
 use serde::Serialize;
@@ -17,7 +17,7 @@ const AAD_PAYLOAD_PREFIX: &str = "LFS3:payload:";
 const AAD_DEK_MACHINE_BOUND: &[u8] = b"LFS3:dek:machine-bound";
 const AAD_HIGH_WATER: &[u8] = b"LFS3:highwater";
 const HIGH_WATER_FILE: &str = "__highwater__.lfs3";
-/// K1 备注：高水位文件本身也被 KEK 加密（AAD 域分离），防篡改；删除重置为已知边界（攻击者持文件系统写权限时无法防，灵泛同界）。
+/// 安全备注：高水位文件本身也被 KEK 加密（AAD 域分离），防篡改；删除重置为已知边界（攻击者持文件系统写权限时无法防，与旧版引擎同界）。
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(tag = "code", content = "detail")]
@@ -177,7 +177,7 @@ fn parse_envelope(file: &[u8]) -> Result<EnvelopeParts, SaveError> {
     Ok((mode, save_count, timestamp, dek_part, ciphertext))
 }
 
-/// K2/K5/K3/K4：写档 = 随机 DEK → payload 加密（AAD 绑槽）→ DEK 封装（KEK 或明文）→ 认领新高水位
+/// 写档 = 随机 DEK → payload 加密（AAD 绑槽）→ DEK 封装（KEK 或明文）→ 认领新高水位
 pub fn write_save(
     base: &Path,
     slot: &str,
@@ -189,12 +189,12 @@ pub fn write_save(
     let high_water = read_high_water(base, &kek)?;
     let save_count = high_water + 1;
 
-    let dek = random_bytes(32).map_err(SaveError::Crypto)?; // K2：每档独立随机 DEK
+    let dek = random_bytes(32).map_err(SaveError::Crypto)?; // 每档独立随机 DEK
     let aad = format!("{AAD_PAYLOAD_PREFIX}{slot}");
     let ciphertext =
         gcm_seal(&dek, payload.as_bytes(), aad.as_bytes()).map_err(SaveError::Crypto)?;
     let dek_part = match mode {
-        // K5：MachineBound = KEK 封装（跨机不可解）；Portable = DEK 明文进档（仅存档可分享）
+        // MachineBound = KEK 封装（跨机不可解）；Portable = DEK 明文进档（仅存档可分享）
         CryptoMode::MachineBound => {
             gcm_seal(&kek, &dek, AAD_DEK_MACHINE_BOUND).map_err(SaveError::Crypto)?
         }
@@ -217,7 +217,7 @@ pub fn write_save(
 
     fs::create_dir_all(saves_dir(base)).map_err(|e| SaveError::Io(e.to_string()))?;
     fs::write(save_path(base, slot), &file).map_err(|e| SaveError::Io(e.to_string()))?;
-    write_high_water(base, &kek, save_count)?; // K4：写档即认领新高水位
+    write_high_water(base, &kek, save_count)?; // 写档即认领新高水位
     Ok(SlotSummary {
         slot: slot.to_string(),
         save_count,
@@ -226,7 +226,7 @@ pub fn write_save(
     })
 }
 
-/// K3/K4/K6：读档 = 解封 DEK → GCM 认证（AAD 绑槽，跨槽必拒）→ 高水位防回档 → 认领
+/// 读档 = 解封 DEK → GCM 认证（AAD 绑槽，跨槽必拒）→ 高水位防回档 → 认领
 pub fn read_save(base: &Path, slot: &str) -> Result<String, SaveError> {
     validate_slot(slot)?;
     let path = save_path(base, slot);
@@ -252,12 +252,12 @@ pub fn read_save(base: &Path, slot: &str) -> Result<String, SaveError> {
         });
     }
     if save_count > high_water {
-        write_high_water(base, &kek, save_count)?; // K4：读档成功后认领新高水位
+        write_high_water(base, &kek, save_count)?; // 读档成功后认领新高水位
     }
     String::from_utf8(plaintext).map_err(|_| SaveError::BadFormat("payload 非 UTF-8".into()))
 }
 
-/// K4：删档——槽位文件删除，高水位不动（防回档基准不随删档回退）
+/// 删档——槽位文件删除，高水位不动（防回档基准不随删档回退）
 pub fn delete_save(base: &Path, slot: &str) -> Result<(), SaveError> {
     validate_slot(slot)?;
     let path = save_path(base, slot);
@@ -267,7 +267,7 @@ pub fn delete_save(base: &Path, slot: &str) -> Result<(), SaveError> {
     fs::remove_file(&path).map_err(|e| SaveError::Io(e.to_string()))
 }
 
-/// §五 save_list：仅解析头部（不解密），供槽位列表展示
+/// save_list：仅解析头部（不解密），供槽位列表展示
 pub fn list_saves(base: &Path) -> Result<Vec<SlotSummary>, SaveError> {
     let dir = saves_dir(base);
     if !dir.exists() {
@@ -358,7 +358,7 @@ mod tests {
 
     #[test]
     fn kek_persists_in_os_credential_store() {
-        // K1 锚点 kek-os-protected：两次获取同一 KEK（来自 OS 凭据，非随机重生）
+        // 两次获取同一 KEK（来自 OS 凭据，非随机重生）
         let a = kek_from_keyring(KEK_SERVICE, KEK_USER).unwrap();
         let b = kek_from_keyring(KEK_SERVICE, KEK_USER).unwrap();
         assert_eq!(a, b);
@@ -375,7 +375,7 @@ mod tests {
 
     #[test]
     fn per_save_dek_ciphertext_differs() {
-        // K2 锚点 per-file-dek：同 payload 两次写档，密文不同（随机 DEK + 随机 nonce）
+        // 同 payload 两次写档，密文不同（随机 DEK + 随机 nonce）
         let base = test_base("dek");
         write_save(&base, "slot_1", "same", CryptoMode::MachineBound).unwrap();
         let first = fs::read(save_path(&base, "slot_1")).unwrap();
@@ -386,7 +386,7 @@ mod tests {
 
     #[test]
     fn aad_binding_rejects_slot_move() {
-        // K3 锚点 aad-slot-binding-rejects-move：把 slot_1 的档搬到 slot_2 必拒
+        // AAD 绑槽：把 slot_1 的档搬到 slot_2 必拒
         let base = test_base("aad");
         write_save(&base, "slot_1", "data", CryptoMode::MachineBound).unwrap();
         fs::copy(save_path(&base, "slot_1"), save_path(&base, "slot_2")).unwrap();
@@ -398,7 +398,7 @@ mod tests {
 
     #[test]
     fn high_water_rejects_rollback() {
-        // K4 锚点 save-count-high-watermark-rejects-rollback：旧档回放被高水位拒绝
+        // 旧档回放被高水位拒绝
         let base = test_base("hw");
         write_save(&base, "slot_1", "newer", CryptoMode::MachineBound).unwrap();
         let older = fs::read(save_path(&base, "slot_1")).unwrap();
@@ -422,7 +422,7 @@ mod tests {
 
     #[test]
     fn decrypt_fail_closed_no_plaintext_fallback() {
-        // K6 锚点 decrypt-fail-closed：篡改密文 → 认证失败，绝不降级明文
+        // 篡改密文 → 认证失败，绝不降级明文
         let base = test_base("ff");
         write_save(&base, "slot_1", "secret", CryptoMode::MachineBound).unwrap();
         let mut file = fs::read(save_path(&base, "slot_1")).unwrap();
@@ -450,7 +450,7 @@ mod tests {
 
     #[test]
     fn portable_mode_round_trip() {
-        // K5 锚点 portable-save-mode：Portable 档独立于 KEK，同 payload 可跨 base 读取
+        // Portable 档独立于 KEK，同 payload 可跨 base 读取
         let base_a = test_base("pt-a");
         let base_b = test_base("pt-b");
         write_save(&base_a, "slot_1", "share-me", CryptoMode::Portable).unwrap();
@@ -470,7 +470,7 @@ mod tests {
 
     #[test]
     fn delete_slot_keeps_high_water() {
-        // K4 锚点 delete-keeps-high-watermark：删档后高水位不回退——新档计数继续、旧档重放仍被拒
+        // 删档后高水位不回退——新档计数继续、旧档重放仍被拒
         let base = test_base("del");
         write_save(&base, "slot_1", "old", CryptoMode::MachineBound).unwrap();
         let before = fs::read(save_path(&base, "slot_1")).unwrap();

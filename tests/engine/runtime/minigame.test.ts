@@ -1,7 +1,7 @@
 /**
- * 06 §二/D5/F8 小游戏运行时测试：
- * - minigame-fail-closed-and-abortable（等待期可回溯：abort 信号 + 重放重新挂载）
- * - minigame-branching（on_success/on_fail 分流 + reward 走 ValueChanged 历史可溯）
+ * 小游戏运行时测试：
+ * - 等待期可回溯（abort 信号 + 重放重新挂载）
+ * - on_success/on_fail 分流 + reward 走 ValueChanged 历史可溯
  * - 故意错误：非等待期 resolve/畸形结果/坏负载全部 fail-closed 且状态原样
  * - 边界：reward {expr} 求值 + 重放确定性（rngState 随快照）、无分支原列继续、dispose abort
  */
@@ -61,8 +61,8 @@ function lastErrorCode(h: Harness): string | undefined {
     : undefined;
 }
 
-describe("minigame 生命周期（06 §二.1：执行 → 等待 → resolve → 分流）", () => {
-  it("success：奖励写状态（state.updated 事件）+ on_success 分流（F8）", () => {
+describe("minigame 生命周期（执行 → 等待 → resolve → 分流）", () => {
+  it("success：奖励写状态（state.updated 事件）+ on_success 分流", () => {
     const h = makeEngine([
       column("a", [
         {
@@ -294,7 +294,7 @@ describe("边界条件", () => {
     h.dispose();
   });
 
-  it("reward 引用既有变量：回溯重放取恢复的状态值（确定性来自 R6 显式种子的 random op，而非未种子化 random）", () => {
+  it("reward 引用既有变量：回溯重放取恢复的状态值（确定性来自显式种子的 random op，而非未种子化 random）", () => {
     const build = () =>
       makeEngine([
         column("a", [

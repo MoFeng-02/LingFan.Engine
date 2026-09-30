@@ -34,13 +34,13 @@ import {
 } from "@lingfan/ui";
 
 /**
- * 06 §一.1 预览视图：当前故事快照跑真引擎。预览为打开时刻的快照运行，编辑不实时渗入。
- * 打字机（08-U3）：单句对话层 Typewriter + rAF 帧驱动；NVL 累积层即时显示
+ * 预览视图：当前故事快照跑真引擎。预览为打开时刻的快照运行，编辑不实时渗入。
+ * 打字机：单句对话层 Typewriter + rAF 帧驱动；NVL 累积层即时显示
  * （增量渲染优化随 playground 级打磨，预览规模不需要）。
- * 元素层（08 §二.1）：按 `__elements` 经注册表渲染。
+ * 元素层：按 `__elements` 经注册表渲染。
  *
  * **资源供给（P2 编辑器工程模型）**：打开工程后 `resourcePort` 由组合根注入 →
- * 音频/视频渲染器与元素资源一并接上（08 §六/U6/U7）；未打开工程（示例故事）时
+ * 音频/视频渲染器与元素资源一并接上；未打开工程（示例故事）时
  * 保持原语义——媒体静音、图像类元素显示替代文本（不伪造 URL）。
  * 帧驱动表现（animate/transition/shake）仍只在 playground 落地。
  */
@@ -48,7 +48,7 @@ const props = defineProps<{
   story: Story;
   /** 已打开工程的资源供给端口（缺省 = 未打开工程：不接媒体与元素资源） */
   resourcePort?: ResourcePort;
-  /** 08 §八.3 层级表（未打开工程 = 内建默认）——预览据此解析实例级 z */
+  /** 层级表（未打开工程 = 内建默认）——预览据此解析实例级 z */
   layerZ?: LayerZTable;
   createAudioPort: (onError: (message: string) => void) => AudioPort;
   createVideoPort: (onError: (message: string) => void) => VideoPort;
@@ -56,7 +56,7 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [] }>();
 
 /**
- * 08 §八.3 实例级 z（T01-03）：命令参数 `z` 进 SSOT → 该层实例覆盖；
+ * 实例级 z：命令参数 `z` 进 SSOT → 该层实例覆盖；
  * `undefined` = 未指定 = 回层默认（`resolveInstanceZ` 三级链）。
  */
 const zOverride = ref<Partial<Record<string, number>>>({});
@@ -65,7 +65,7 @@ function zOf(layer: keyof LayerZTable): number {
   return resolveInstanceZ(layer, zOverride.value[layer], props.layerZ);
 }
 
-// 预览不接小游戏注册表：挂载事件按 D5 fail-closed 显示横幅（不伪造完成）
+// 预览不接小游戏注册表：挂载事件按 fail-closed 显示横幅（不伪造完成）
 const engine = new StoryEngine(props.story);
 const column = ref("");
 const dialogText = ref("");
@@ -95,7 +95,7 @@ function reportMediaError(message: string): void {
   errorText.value = message;
 }
 
-// —— 08 §六 音频/视频：仅在打开工程（有资源供给）时接上 ——
+// —— 音频/视频：仅在打开工程（有资源供给）时接上 ——
 // 端口实例归本视图创建（卸载即 dispose），实现在组合根注入的工厂里
 const resourcePort = props.resourcePort;
 const audioPort: AudioPort | null =
@@ -116,7 +116,7 @@ const videoRenderer: VideoRenderer | null =
         onVideoFinished: () => engine.videoFinished(), // 播放结束 → 引擎解除 video 等待
       });
 
-// —— 08 §二.1 元素层：核心只写 `__elements`，此处经注册表渲染（未注册类型 fail-closed 上报） ——
+// —— 元素层：核心只写 `__elements`，此处经注册表渲染（未注册类型 fail-closed 上报） ——
 const elements = ref<ElementInstance[]>([]);
 const elementLayerEl = ref<HTMLElement | null>(null);
 const elementRegistry = createElementRegistry();
@@ -145,7 +145,7 @@ function renderElements(): void {
   });
 }
 
-/** F6 意图 → 命令：`nav` → 核心 navigate；`cmd` → 预览无命令注册表 → fail-closed 上报 */
+/** 意图 → 命令：`nav` → 核心 navigate；`cmd` → 预览无命令注册表 → fail-closed 上报 */
 function activateElement(element: ElementInstance): void {
   const action = resolveElementAction(element.props);
   if (action.kind === "nav") {
@@ -178,7 +178,7 @@ const nvlHtmlLines = computed(() =>
   nvlBuffer.value.map((line) => renderDialogueLine({ text: line }).html),
 );
 
-// —— 08-U3 打字机：单句对话层（rAF 帧驱动；NVL 即时显示） ——
+// —— 打字机：单句对话层（rAF 帧驱动；NVL 即时显示） ——
 const shownText = ref("");
 let typewriter: Typewriter | null = null;
 let rafId = 0;
@@ -193,7 +193,7 @@ function frame(ts: number): void {
   } else {
     lastTs = 0;
   }
-  audioRenderer?.pollPosition(); // 08 §三.2：媒体位置帧级回写（BGM seek/循环差量归渲染器）
+  audioRenderer?.pollPosition(); // 媒体位置帧级回写（BGM seek/循环差量归渲染器）
   rafId = window.requestAnimationFrame(frame);
 }
 rafId = window.requestAnimationFrame(frame);
@@ -213,14 +213,14 @@ function syncMenu(): void {
 }
 
 const offState = engine.onStateChanged((c: ValueChanged) => {
-  // 08 §八.3 实例级 z（T01-03）：命令参数进 SSOT → 预览该层跟随（缺省 = 回层默认）
+  // 实例级 z：命令参数进 SSOT → 预览该层跟随（缺省 = 回层默认）
   const zLayer = instanceZLayer(c.key);
   if (zLayer !== undefined) {
     zOverride.value = {
       ...zOverride.value,
       [zLayer]: typeof c.value === "number" ? c.value : undefined,
     };
-    // video 层的 z 在端口内部（08 §八.3）：解析后交 VideoPort
+    // video 层的 z 在端口内部：解析后交 VideoPort
     if (zLayer === "video") videoPort?.setZIndex?.(zOf("video"));
     return;
   }
@@ -251,8 +251,8 @@ const offEvent = engine.onEvent((event) => {
     const id = ++notifySeq;
     toasts.value.push({ id, text: payload.text });
     window.clearTimeout(toastTimer);
-    // 提示驻留（T11-08 提常量）：沿袭现状 2600ms，零行为变化；与 playground 的 3000
-    // 不同源属历史偶得，是否统一另行裁定
+    // 提示驻留（提常量）：沿袭现状 2600ms，零行为变化；与 playground 的 3000
+    // 是否统一另议
     const NOTIFY_TOAST_DURATION_MS = 2600;
     toastTimer = window.setTimeout(() => {
       toasts.value = toasts.value.filter((t) => t.id !== id);
@@ -260,7 +260,7 @@ const offEvent = engine.onEvent((event) => {
   } else if (payload.kind === "engine.error") {
     errorText.value = `[${payload.code}] ${payload.message}`;
   } else if (payload.kind === "minigame.mount") {
-    minigameBanner.value = `小游戏未注册：${payload.game}（编辑器预览不带注册表——D5 fail-closed，不伪造完成）`;
+    minigameBanner.value = `小游戏未注册：${payload.game}（编辑器预览不带注册表——fail-closed，不伪造完成）`;
   }
 });
 
@@ -269,7 +269,7 @@ engine.start();
 function onStageClick(): void {
   if (errorText.value !== "") return;
   if (waiting.value === "dialog") {
-    // 08-U3 二段式点击：停在 {p}/{w} → 越过；打字未完 → 瞬间完成；已完 → advance
+    // 二段式点击：停在 {p}/{w} → 越过；打字未完 → 瞬间完成；已完 → advance
     if (typewriter !== null && !typewriter.done) {
       typewriter.click();
       shownText.value = typewriter.visible;
@@ -278,7 +278,7 @@ function onStageClick(): void {
     engine.advance();
     return;
   }
-  // ⑨-14 纪律「每个等待态都必须有出口」：wait 跳过 / cutscene 跳过（可跳过性由引擎裁定）
+  // 纪律「每个等待态都必须有出口」：wait 跳过 / cutscene 跳过（可跳过性由引擎决定）
   if (waiting.value === "wait" || waiting.value === "video") engine.advance();
 }
 
@@ -323,7 +323,7 @@ onBeforeUnmount(() => {
     </header>
 
     <div class="preview-stage" @click="onStageClick">
-      <!-- 08 §二.1 舞台元素层（容器 pointer-events:none，可交互元素自身恢复） -->
+      <!-- 舞台元素层（容器 pointer-events:none，可交互元素自身恢复） -->
       <div ref="elementLayerEl" class="element-layer"></div>
 
       <p v-if="errorText !== ''" class="preview-error">{{ errorText }}</p>
@@ -334,7 +334,7 @@ onBeforeUnmount(() => {
         {{ elementBanner }}
       </p>
 
-      <!-- NVL 累积层（08 §一：video 等待期内容层让位——video 不盖 say 靠让位而非压层） -->
+      <!-- NVL 累积层（video 等待期内容层让位——video 不盖 say 靠让位而非压层） -->
       <div
         v-if="nvlMode !== 'none' && nvlBuffer.length > 0 && waiting !== 'video'"
         class="nvl-layer"
@@ -460,7 +460,7 @@ onBeforeUnmount(() => {
   padding: 8px 12px;
   margin: 0 0 12px;
 }
-/* 08 §二.1 元素层：不阻塞舞台推进（可交互元素自身恢复 pointer-events） */
+/* 元素层：不阻塞舞台推进（可交互元素自身恢复 pointer-events） */
 .element-layer {
   position: absolute;
   inset: 0;

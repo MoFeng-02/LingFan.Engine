@@ -1,9 +1,8 @@
 /**
- * 08 §四.5 模板注册表测试（UI 层纯逻辑）。
- * 锚点：
- * - template-registry-resolve（按名解析/未知名与 null 回退默认/无默认 = null）
- * - template-registry-default（makeDefault 切换；同名覆盖不抢默认；空名哨兵不可占用）
- * - builtin-bubble（speaker 行/正文直通/推进指示器；speaker 经统一接缝转义——XSS 防线）
+ * 模板注册表测试（UI 层纯逻辑）。
+ * - 按名解析/未知名与 null 回退默认/无默认 = null
+ * - makeDefault 切换；同名覆盖不抢默认；空名哨兵不可占用
+ * - builtin bubble：speaker 行/正文直通/推进指示器；speaker 经统一接缝转义——XSS 防线
  * 故意错误：恶意 speaker HTML 注入、未知模板名解析。
  */
 import { describe, expect, it } from "vitest";
@@ -30,7 +29,7 @@ function const_view(root: string): DialogueTemplateFn {
   });
 }
 
-describe("注册表解析（锚点: template-registry-resolve）", () => {
+describe("注册表解析", () => {
   it("按名解析注册模板", () => {
     const registry = createDialogueTemplateRegistry();
     const fn = const_view("x");
@@ -45,7 +44,7 @@ describe("注册表解析（锚点: template-registry-resolve）", () => {
     expect(registry.resolve(null)).toBeNull();
     const def = const_view("def");
     registry.register("def", def, { makeDefault: true });
-    expect(registry.resolve("ghost")).toBe(def); // 老引擎 Resolve ?? GetDefault
+    expect(registry.resolve("ghost")).toBe(def); // 旧版引擎 Resolve ?? GetDefault
     expect(registry.resolve(null)).toBe(def);
     expect(registry.resolve("")).toBe(def); // 空串 = 「无模板」哨兵 → 默认
   });
@@ -71,7 +70,7 @@ describe("注册表解析（锚点: template-registry-resolve）", () => {
   });
 });
 
-describe("内置 bubble 模板（锚点: builtin-bubble）", () => {
+describe("内置 bubble 模板", () => {
   it("speaker 行 + 正文直通 + 推进指示器", () => {
     const view = builtinBubbleTemplate(baseInput);
     expect(view.rootClass).toBe("tpl-bubble");

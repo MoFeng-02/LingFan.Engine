@@ -1,14 +1,14 @@
-//! 05 §二 资源加密：LFEN2 格式 + 灵泛 LFEN 兼容读（K8）+ 资源 DEK 的 KEK 信封（§三）。
+//! 资源加密：LFEN2 格式 + 旧版引擎 LFEN 兼容读 + 资源 DEK 的 KEK 信封。
 //!
-//! 格式（自描述，K6 解密失败 fail-closed 不降级明文）：
+//! 格式（自描述，解密失败 fail-closed 不降级明文）：
 //! - LFEN2 v1：`"LFEN2"(5B) | version u8 | nonce(12) | tag(16) | ciphertext`
-//!   AAD = `LFEN2:resource:{逻辑路径}`——K3 精神：资源与路径绑定，跨路径搬移必拒。
-//! - 灵泛 LFEN v1（兼容读）：`"LFEN"(4B) | version u8 | nonce(12) | tag(16) | ciphertext`（无 AAD）。
+//!   AAD = `LFEN2:resource:{逻辑路径}`——资源与路径绑定，跨路径搬移必拒。
+//! - 旧版引擎 LFEN v1（兼容读）：`"LFEN"(4B) | version u8 | nonce(12) | tag(16) | ciphertext`（无 AAD）。
 //!
-//! 密钥（§三：迁移文档编译期密钥是降级，此处修正）：
+//! 密钥（编译期密钥是降级，此处修正）：
 //! 资源 DEK 构建时随机生成；运行时以 KEK 信封存放在 app data（`resources.dek.lfk2`），
-//! 首次运行从包内 `__key__.seed`（32B 原始 DEK，构建产物）导入并立即封装——运行态零明文密钥落盘（K1）。
-//! 加密包内文件名 = 原逻辑路径 + `.enc`（灵泛 ResourceEncryptor 语义照搬）。
+//! 首次运行从包内 `__key__.seed`（32B 原始 DEK，构建产物）导入并立即封装——运行态零明文密钥落盘。
+//! 加密包内文件名 = 原逻辑路径 + `.enc`（旧版引擎 ResourceEncryptor 语义照搬）。
 
 use crate::crypto::{gcm_open, gcm_seal, kek_from_keyring, random_bytes, KEK_SERVICE, KEK_USER};
 use crate::resource_fs::{seek_len, ResourceFs};
@@ -22,22 +22,22 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tauri::Manager;
 
-/// 新格式魔数（5 字节，与灵泛 4 字节 LFEN 无前缀歧义）
+/// 新格式魔数（5 字节，与旧版引擎 4 字节 LFEN 无前缀歧义）
 const MAGIC_LFEN2: &[u8; 5] = b"LFEN2";
-/// 灵泛 v1 魔数（兼容读，K8）
+/// 旧版引擎 v1 魔数（兼容读）
 const MAGIC_LFEN: &[u8; 4] = b"LFEN";
 const FORMAT_VERSION: u8 = 1;
 const DEK_LEN: usize = 32;
 /// 资源密钥信封文件（app data 内，KEK 封装）
 const DEK_ENVELOPE: &str = "resources.dek.lfk2";
-/// 构建产物：包内原始 DEK（首次运行导入后转信封；只读资源根不删——分发窗口边界见 agent.md 设计注记）
+/// 构建产物：包内原始 DEK（首次运行导入后转信封；只读资源根不删——分发窗口边界已知）
 const DEK_SEED: &str = "__key__.seed";
 const AAD_RESOURCE_PREFIX: &str = "LFEN2:resource:";
 const AAD_RESOURCE_DEK: &[u8] = b"LFK2:resource-dek";
 /// IPC 单次回传上限：仅限**文本供给路径**（故事/overlay——故事文件受组装器约束天然小于此）。
-/// 媒体资源不走 IPC（⑨-4c：decrypt_resource 统一流式到临时缓存，此护栏对其不再适用）。
+/// 媒体资源不走 IPC（流式解密统一到临时缓存，此护栏对其不再适用）。
 const IPC_SIZE_LIMIT: u64 = 32 * 1024 * 1024;
-/// ⑨-4c 临时流缓存目录（app data 内）：进程生命周期 = 缓存生命周期，启动清理
+/// 临时流缓存目录（app data 内）：进程生命周期 = 缓存生命周期，启动清理
 pub(crate) const TMP_STREAM_DIR: &str = "tmp-stream";
 /// 临时流缓存单文件护栏（异常保护，非功能限制——PC 本地盘；4K 素材 500MB 级在内）
 pub const STREAM_SIZE_LIMIT: u64 = 4 * 1024 * 1024 * 1024;
@@ -104,7 +104,7 @@ fn io(e: std::io::Error) -> ResourceCryptoError {
     ResourceCryptoError::Io(e.to_string())
 }
 
-/// 是否为加密资源（魔数检测，灵泛 IsEncrypted 语义）
+/// 是否为加密资源（魔数检测，旧版引擎 IsEncrypted 语义）
 pub fn is_encrypted(data: &[u8]) -> bool {
     data.starts_with(MAGIC_LFEN2) || data.starts_with(MAGIC_LFEN)
 }
@@ -123,7 +123,7 @@ pub fn encrypt_lfen2(
     Ok(out)
 }
 
-/// 解密：魔数分流 LFEN2（ver=1 整文件 / ver=2 分块全量拼接，校验版本 + AAD）/ 灵泛 LFEN（无 AAD，K8）；其他 = BadFormat（K6）
+/// 解密：魔数分流 LFEN2（ver=1 整文件 / ver=2 分块全量拼接，校验版本 + AAD）/ 旧版引擎 LFEN（无 AAD 兼容读）；其他 = BadFormat（不降级明文）
 pub fn decrypt_resource_bytes(
     file: &[u8],
     key: &[u8],
@@ -159,15 +159,15 @@ pub fn decrypt_resource_bytes(
             )));
         }
         let sealed = &file[MAGIC_LFEN.len() + 1..];
-        // 灵泛 LFEN 无 AAD（存量资源不浪费，K8）
+        // 旧版引擎 LFEN 无 AAD（存量资源不浪费）
         return gcm_open(key, sealed, &[]).map_err(ResourceCryptoError::Crypto);
     }
     Err(ResourceCryptoError::BadFormat(
-        "魔数不符（非 LFEN2/LFEN，K6 不降级明文）".into(),
+        "魔数不符（非 LFEN2/LFEN，不降级明文）".into(),
     ))
 }
 
-// —— ⑨-4c LFEN2 v2 分块流式（05 §二.1 设计稿；B1v2–B5v2 锚点）——
+// —— LFEN2 v2 分块流式 ——
 
 pub const FORMAT_VERSION_V2: u8 = 2;
 /// v2 头部：LFEN2(5)|ver(1)|base_nonce(8)|chunk_log2 u32 LE(4)|total_len u64 LE(8)
@@ -396,10 +396,10 @@ pub fn generate_resource_seed() -> Result<Vec<u8>, ResourceCryptoError> {
     random_bytes(DEK_LEN).map_err(ResourceCryptoError::Crypto)
 }
 
-/// 运行时资源 DEK（⑨-4c 修正：**seed 优先**——包根 seed 为权威 DEK 源）：
+/// 运行时资源 DEK（**seed 优先**——包根 seed 为权威 DEK 源）：
 /// 每次启动若包内有 seed，幂等重导入（重加密写信封）——**包更新 = 新 seed 自动跟随**
 /// （否则旧信封 DEK 永远解不开新包，升级即坏，实测踩坑）；无 seed（运行时产出形态）
-/// 回退信封；两者皆无 = MissingKey。运行态信封 KEK 封装，零明文密钥落盘（K1）。
+/// 回退信封；两者皆无 = MissingKey。运行态信封 KEK 封装，零明文密钥落盘。
 /// seed 读取经资源文件系统抽象（Android = asset 内）；信封在 app_data 真实路径走 std::fs。
 pub fn resource_dek(
     app_data: &Path,
@@ -440,7 +440,7 @@ pub fn resource_dek(
     Err(ResourceCryptoError::MissingKey)
 }
 
-/// 读取并解密单个加密资源（`逻辑路径` → `逻辑路径.enc`；明文文件不落回——K6 fail-closed）
+/// 读取并解密单个加密资源（`逻辑路径` → `逻辑路径.enc`；明文文件不落回——fail-closed）
 fn read_encrypted(
     resfs: &dyn ResourceFs,
     resource_root: &Path,
@@ -468,10 +468,10 @@ fn read_encrypted(
     decrypt_resource_bytes(&data, key, path)
 }
 
-/// 05 §二.2 `decrypt_resource(path)`（⑨-4c 流式 + LFEN2 v2 分形态负载）：
+/// `decrypt_resource(path)`（流式 + LFEN2 v2 分形态负载）：
 /// - v1 整文件：解密到临时流缓存（同资源幂等复用）→ `{"file":"<缓存名>"}` →
 ///   TS `convertFileSrc(file, "lfstream")`（token 缓存路径）
-/// - v2 分块（05 §二.1）：**不落明文缓存**——`{"v2":"<逻辑路径>"}` →
+/// - v2 分块：**不落明文缓存**——`{"v2":"<逻辑路径>"}` →
 ///   TS `convertFileSrc("v2/"+encodeURIComponent(逻辑路径), "lfstream")`，
 ///   协议 handler 按 Range 按需解密覆盖块（明文永不全量落盘/进内存）
 #[tauri::command]
@@ -603,7 +603,7 @@ pub fn stream_decrypt_to_cache(
     use std::io::Read;
     let mut buf = Vec::new();
     fin.read_to_end(&mut buf).map_err(io)?;
-    // 复用通用解密器（LFEN2 版本校验/LFEN 兼容 K8/AAD 绑路径全在内部）；
+    // 复用通用解密器（LFEN2 版本校验/LFEN 兼容/AAD 绑路径全在内部）；
     // 内存峰值 = 密文 + 明文双倍——这里是「整文件落缓存」路径，按需分块流化（复用
     // decrypt_v2_block_range 逐块写盘）属后续优化项，媒体播放已由 lfstream Range 路径覆盖
     let plain = decrypt_resource_bytes(&buf, key, path)?;
@@ -676,7 +676,7 @@ pub(crate) fn mime_for(name: &str) -> &'static str {
         "otf" => "font/otf",
         "woff" => "font/woff",
         "woff2" => "font/woff2",
-        // T06-02 前端产物经 v2 路径供给：module script/样式表的 MIME 必须精确，否则 WebView 拒执行
+        // 前端产物经 v2 路径供给：module script/样式表的 MIME 必须精确，否则 WebView 拒执行
         "js" | "mjs" => "text/javascript",
         "css" => "text/css",
         "json" | "map" => "application/json",
@@ -904,7 +904,7 @@ fn decrypt_v2_total_len(resfs: &dyn ResourceFs, enc_file: &Path) -> Option<u64> 
     v2_parse_header(&head).map(|(_, _, total)| total)
 }
 
-/// 05 §五 `decrypt_story(path) -> String`：加密故事文本解密（UTF-8 校验 fail-closed）
+/// `decrypt_story(path) -> String`：加密故事文本解密（UTF-8 校验 fail-closed）
 #[tauri::command]
 pub fn decrypt_story(app: tauri::AppHandle, path: String) -> Result<String, ResourceCryptoError> {
     let root = resource_root(&app)?;
@@ -915,7 +915,7 @@ pub fn decrypt_story(app: tauri::AppHandle, path: String) -> Result<String, Reso
     String::from_utf8(plain).map_err(|_| ResourceCryptoError::BadFormat("故事资源非 UTF-8".into()))
 }
 
-/// T06-02 splash 预热：首启触发 seed→KEK 信封化解封（K1），把解封时延盖在 splash 窗口后面，
+/// splash 预热：首启触发 seed→KEK 信封化解封，把解封时延盖在 splash 窗口后面，
 /// 主窗口显示后 v2 供给立即可用。明文形态（无 seed）失败无害——预热只求副作用，结果不消费。
 pub fn preheat_resource_key(app: &tauri::AppHandle) {
     let _ = resource_root(app).and_then(|root| {
@@ -923,7 +923,7 @@ pub fn preheat_resource_key(app: &tauri::AppHandle) {
     });
 }
 
-/// 打包工具：目录批量加密（灵泛 EncryptDirectoryAsync 语义照搬）——按扩展名过滤、
+/// 打包工具：目录批量加密（旧版引擎 EncryptDirectoryAsync 语义照搬）——按扩展名过滤、
 /// 已加密（魔数检测）直接复制、结构保留、输出 = 原路径 + `.enc`。
 /// `exclusions` = 相对路径排除集（精确匹配 `project.json` 或目录前缀 `Saves/`——
 /// 运行时生成的目录与明文清单不进加密流）。
@@ -1010,10 +1010,10 @@ fn encrypt_directory_inner(
             fs::create_dir_all(parent).map_err(io)?;
         }
         let data_len = path.metadata().map_err(io)?.len();
-        // force_v2（T06-02 dist 收录）：前端产物经协议 v2 路径按需供给——小文件也必须存 v2
+        // force_v2（dist 收录）：前端产物经协议 v2 路径按需供给——小文件也必须存 v2
         // 分块形态（单块特例），否则 handler 按 v2 读头失败 404（真窗冒烟实测逮住）
         if force_v2 || data_len > V2_AUTO_THRESHOLD {
-            // ⑨-4c：大文件走 v2 分块流式加密（内存 = 单块；lfstream 按需解密不落明文缓存）
+            // 大文件走 v2 分块流式加密（内存 = 单块；lfstream 按需解密不落明文缓存）
             encrypt_lfen2_v2_file(&path, &out, key, &rel_str, V2_DEFAULT_CHUNK_LOG2)?;
         } else {
             let data = fs::read(&path).map_err(io)?;
@@ -1038,7 +1038,7 @@ const PACK_EXTENSIONS: &[&str] = &[
     "ttf", "otf", "woff", "woff2", // 字体
 ];
 
-/// 前端构建产物（dist）收录白名单（T06-02）：js/css + 字体/图——
+/// 前端构建产物（dist）收录白名单：js/css + 字体/图——
 /// **html 除外**（入口 html 是壳嵌入的明文例外，绝不能混进加密输入；
 /// html 出现在 dist 输入 = 上游流程错，落报告 skipped 由打包者决断）。
 const PACK_DIST_EXTENSIONS: &[&str] = &[
@@ -1050,20 +1050,20 @@ const PACK_DIST_EXTENSIONS: &[&str] = &[
 /// 打包输出排除集：清单（明文转换）+ 运行时生成的存档目录 + 包内密钥种子（输出侧专属）
 const PACK_EXCLUSIONS: &[&str] = &["project.json", "Saves/", "__key__.seed"];
 
-/// 报告条目：路径 + 分类原因（措辞与规约 05 §二.2 例外清单一致）
+/// 报告条目：路径 + 分类原因（措辞与加密要求例外清单一致）
 #[derive(Debug, Serialize)]
 pub struct PackEntry {
     pub path: String,
     pub reason: &'static str,
 }
 
-/// 打包结果报告（T06-04：已加密 / 明文 / 排除 / 未入包 分类明细，口径 = 规约 05 §二.2）
+/// 打包结果报告（已加密 / 明文 / 排除 / 未入包 分类明细，口径与加密要求一致）
 #[derive(Debug, Serialize)]
 pub struct PackReport {
     pub files: usize,
     /// 加密入包的逻辑路径（原路径，包内为 `路径 + .enc`）
     pub encrypted: Vec<String>,
-    /// 包内明文（有因）：project.json = 工程元数据（R3 (a)）、__key__.seed = 密钥引导
+    /// 包内明文（有因）：project.json = 工程元数据（运行期形态判定先决读取）、__key__.seed = 密钥引导
     pub plaintext: Vec<PackEntry>,
     /// 排除不入包（有因）：Saves/（玩家数据）、点文件（隐藏/系统）
     pub excluded: Vec<PackEntry>,
@@ -1073,7 +1073,7 @@ pub struct PackReport {
 
 impl PackReport {
     /// `--strict` 判定：报告含任何「未入包 / 明文例外」⇒ 有例外（非零退出）。
-    /// 明文例外 = 资源侧必须明文的文件（T06-02 后的入口 html/splash，届时在此并入判定）；
+    /// 明文例外 = 资源侧必须明文的文件（入口 html/splash，届时在此并入判定）；
     /// project.json（工程元数据）与 Saves/seed（运行期产物/密钥引导）是有因归类，不算例外。
     pub fn has_exceptions(&self) -> bool {
         !self.skipped.is_empty()
@@ -1088,19 +1088,19 @@ struct PackScan {
     skipped: Vec<PackEntry>,
 }
 
-/// ⑨-4b 打包编排：明文工程根 → 加密发布根（lfenpack CLI 的可测核心）。
+/// 打包编排：明文工程根 → 加密发布根（lfenpack CLI 的可测核心）。
 /// - 输出根 fail-closed：已存在且非空 = 拒绝（不覆盖创作者成果；`--force` 由 CLI 显式清空后重入）
-/// - 清单恒明文转换：`resourceEncryption` 置 true（运行时形态判定依赖清单先可读，05 §二）
-/// - DEK 新生成 → 写输出根 `__key__.seed`（运行时首次导入即 KEK 封装，K1）
+/// - 清单恒明文转换：`resourceEncryption` 置 true（运行时形态判定依赖清单先可读）
+/// - DEK 新生成 → 写输出根 `__key__.seed`（运行时首次导入即 KEK 封装）
 /// - 内容文件全量 LFEN2（白名单扩展 + 排除集），`原路径 + .enc`，结构保留
-/// - `dist`（T06-02）：前端构建产物目录，以 `dist/` 逻辑路径前缀收录（html 落报告 skipped）；
+/// - `dist`：前端构建产物目录，以 `dist/` 逻辑路径前缀收录（html 落报告 skipped）；
 ///   收录非空时输出清单补 `frontend.assets` 映射段（清单恒明文，只多一组路径）
 /// - 完整性自检：输出逐文件解密回读 == 源明文（round-trip，打包完整性 fail-closed）
 pub fn pack_project(input: &Path, output: &Path) -> Result<PackReport, ResourceCryptoError> {
     pack_project_with_dist(input, output, None)
 }
 
-/// T06-02：`dist` 提供时以前端产物白名单收录（`dist/` 逻辑路径前缀，html 落报告 skipped）
+/// `dist` 提供时以前端产物白名单收录（`dist/` 逻辑路径前缀，html 落报告 skipped）
 pub fn pack_project_with_dist(
     input: &Path,
     output: &Path,
@@ -1151,8 +1151,8 @@ pub fn pack_project_with_dist(
         &mut written,
         &mut scan,
     )?;
-    // T06-02 前端产物收录：dist/ 逻辑路径前缀；html 落报告 skipped（见 PACK_DIST_EXTENSIONS）；
-    // 强制 v2 存储（协议 v2 路径供给的前置形态，见 encrypt_directory_inner force_v2 注记）
+    // 前端产物收录：dist/ 逻辑路径前缀；html 落报告 skipped（见 PACK_DIST_EXTENSIONS）；
+    // 强制 v2 存储（协议 v2 路径供给的前置形态，见 encrypt_directory_inner 的 force_v2 注释）
     if let Some(dist_root) = dist {
         encrypt_directory_inner(
             dist_root,
@@ -1202,7 +1202,7 @@ pub fn pack_project_with_dist(
             }
         }
     }
-    // T06-02：dist 收录非空 → 输出清单补 frontend 映射段（清单恒明文，只多一组路径；
+    // dist 收录非空 → 输出清单补 frontend 映射段（清单恒明文，只多一组路径；
     // dist 产物名与 assets 路径一一对应：`assets/x.js` ↔ `dist/assets/x.js.enc`）
     let dist_assets: Vec<String> = scan
         .encrypted
@@ -1227,11 +1227,11 @@ pub fn pack_project_with_dist(
         plaintext: vec![
             PackEntry {
                 path: "project.json".into(),
-                reason: "工程元数据（非资源，R3 (a)：运行期形态判定先决读取）",
+                reason: "工程元数据（非资源，运行期形态判定先决读取）",
             },
             PackEntry {
                 path: DEK_SEED.into(),
-                reason: "DEK 密钥引导（首启信封化输入，K1）",
+                reason: "DEK 密钥引导（首启信封化输入）",
             },
         ],
         excluded: scan
@@ -1263,7 +1263,7 @@ mod tests {
 
     #[test]
     fn lfen2_round_trip() {
-        // 锚点 resource-encryption-roundtrip
+        // 加密往返：解密回读 == 源明文
         let plain = b"audio-bytes".to_vec();
         let sealed = encrypt_lfen2(&plain, KEY, "Audio/x.mp3").unwrap();
         assert!(sealed.starts_with(MAGIC_LFEN2));
@@ -1275,7 +1275,7 @@ mod tests {
 
     #[test]
     fn lfen_legacy_read() {
-        // K8 锚点 lfen-legacy-read：灵泛 LFEN（magic4|version1|nonce12|tag16|ct，无 AAD）兼容解密
+        // 旧版引擎 LFEN（magic4|version1|nonce12|tag16|ct，无 AAD）兼容解密
         let legacy = [
             b"LFEN".as_slice(),
             &[1u8],
@@ -1284,7 +1284,7 @@ mod tests {
             &[0u8; 16], // tag 占位（实际由 gcm 生成，这里构造非法 tag 走失败路径；成功路径见下）
         ]
         .concat();
-        // 真实灵泛样本：用 gcm_seal（无 AAD）手工构造
+        // 真实旧版样本：用 gcm_seal（无 AAD）手工构造
         let sealed = crate::crypto::gcm_seal(KEY, b"legacy-plain", &[]).unwrap();
         let real = [b"LFEN".as_slice(), &[1u8], sealed.as_slice()].concat();
         assert_eq!(
@@ -1300,7 +1300,7 @@ mod tests {
 
     #[test]
     fn aad_binds_resource_path() {
-        // K3 精神锚点 resource-aad-path-binding：加密时路径 A，按路径 B 解密必拒
+        // AAD 绑路径：加密时路径 A，按路径 B 解密必拒
         let sealed = encrypt_lfen2(b"data", KEY, "Audio/a.mp3").unwrap();
         assert!(matches!(
             decrypt_resource_bytes(&sealed, KEY, "Audio/b.mp3"),
@@ -1310,7 +1310,7 @@ mod tests {
 
     #[test]
     fn tamper_and_bad_magic_fail_closed() {
-        // K6 锚点 decrypt-fail-closed：篡改必拒、非密文不降级明文
+        // 篡改必拒、非密文不降级明文
         let mut sealed = encrypt_lfen2(b"secret", KEY, "Video/v.mp4").unwrap();
         let last = sealed.len() - 1;
         sealed[last] ^= 0xFF;
@@ -1326,7 +1326,7 @@ mod tests {
 
     #[test]
     fn path_traversal_rejected() {
-        // 锚点 resource-path-traversal：`..`/空段/绝对路径拒绝
+        // `..`/空段/绝对路径拒绝
         for bad in ["../x", "a//b", "/abs", "a/./b", "a\\b", ""] {
             assert!(matches!(
                 validate_resource_path(bad),
@@ -1337,7 +1337,7 @@ mod tests {
 
     #[test]
     fn encrypt_directory_filters_and_preserves_structure() {
-        // 灵泛语义锚点 pack-tool-encrypt-directory：扩展名过滤 + 结构保留 + .enc 命名 + 已加密幂等复制
+        // 加密目录：扩展名过滤 + 结构保留 + .enc 命名 + 已加密幂等复制
         let base = std::env::temp_dir().join(format!(
             "lf3-res-{}",
             std::time::SystemTime::now()
@@ -1373,7 +1373,7 @@ mod tests {
 
     #[test]
     fn pack_project_round_trip_and_layout() {
-        // ⑨-4b：拟态打包——清单明文转换 + 内容全加密 + 排除集 + seed + round-trip 自检
+        // 拟态打包——清单明文转换 + 内容全加密 + 排除集 + seed + round-trip 自检
         let base = temp_base("lf3-pack");
         let input = base.join("in");
         let output = base.join("out");
@@ -1429,7 +1429,7 @@ mod tests {
 
     #[test]
     fn pack_report_classifies_dispositions() {
-        // T06-04：报告四分类各有代表（加密 / 明文有因 / 排除 / 未入包）+ strict 例外判定
+        // 报告四分类各有代表（加密 / 明文有因 / 排除 / 未入包）+ strict 例外判定
         let base = temp_base("lf3-pack-report");
         let input = base.join("in");
         let output = base.join("out");
@@ -1449,7 +1449,7 @@ mod tests {
         let report = pack_project(&input, &output).unwrap();
         assert_eq!(report.encrypted, vec!["Stories/a.json".to_string()]);
         assert_eq!(report.files, 1);
-        // 明文（有因）恒两条：清单（工程元数据）+ seed（密钥引导），措辞与规约 05 §二.2 一致
+        // 明文（有因）恒两条：清单（工程元数据）+ seed（密钥引导），措辞与加密要求一致
         assert_eq!(report.plaintext.len(), 2);
         assert_eq!(report.plaintext[0].path, "project.json");
         assert_eq!(report.plaintext[1].path, DEK_SEED);
@@ -1488,7 +1488,7 @@ mod tests {
 
     #[test]
     fn pack_project_with_dist_collects_frontend() {
-        // T06-02：dist 收录（dist/ 逻辑路径前缀）+ html 落报告 skipped + 清单 frontend 段
+        // dist 收录（dist/ 逻辑路径前缀）+ html 落报告 skipped + 清单 frontend 段
         // + dist 逻辑路径走运行时解密面（与故事资源同管线，形态透明）
         let base = temp_base("lf3-pack-dist");
         let input = base.join("in");
@@ -1854,7 +1854,7 @@ mod tests {
 
     #[test]
     fn seed_import_writes_envelope() {
-        // 锚点 resource-dek-import：seed 存在 → 导入并写 KEK 信封；信封优先
+        // seed 存在 → 导入并写 KEK 信封；信封优先
         let base = std::env::temp_dir().join(format!(
             "lf3-dek-{}",
             std::time::SystemTime::now()
@@ -1876,7 +1876,7 @@ mod tests {
         fs::remove_file(resource_root.join(DEK_SEED)).unwrap();
         let dek2 = resource_dek(&base, &resource_root, &StdFs).unwrap();
         assert_eq!(dek2, seed);
-        // ⑨-4c 包更新语义：seed 换新 → DEK 跟随新 seed（信封幂等重导入，覆盖旧 DEK）
+        // 包更新语义：seed 换新 → DEK 跟随新 seed（信封幂等重导入，覆盖旧 DEK）
         fs::remove_file(base.join(DEK_ENVELOPE)).unwrap();
         let new_seed = generate_resource_seed().unwrap();
         fs::write(resource_root.join(DEK_SEED), &new_seed).unwrap();

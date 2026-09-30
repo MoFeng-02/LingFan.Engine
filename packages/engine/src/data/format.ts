@@ -563,7 +563,7 @@ export function parseStory(json: unknown, sourceName = "story"): Story {
   ]);
 }
 
-/** 07-T4 混存识别：内容以 { 开头 = JSON 投影，否则 = 文本投影（老 StoryLoader 内容识别语义） */
+/** 混存识别：内容以 { 开头 = JSON 投影，否则 = 文本投影（旧版引擎内容识别语义） */
 export function parseStoryFile(source: string, sourceName: string): Story {
   if (source.trimStart().startsWith("{")) {
     try {

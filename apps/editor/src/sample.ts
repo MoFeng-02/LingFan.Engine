@@ -50,7 +50,7 @@ export function sampleStory(): Story {
         ],
       },
       {
-        // 08 §二.1 scene 列（声明式空间层）：切「舞台」视图可拖拽元素定位
+        // scene 列（声明式空间层）：切「舞台」视图可拖拽元素定位
         id: "stage",
         kind: "scene",
         elements: [

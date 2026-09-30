@@ -1,16 +1,16 @@
 /**
- * T02-01 / T02-02 编辑器诊断接线：**供给侧 → `analyzeStory`** 全链拟态旅程。
+ * 编辑器诊断接线：**供给侧 → `analyzeStory`** 全链拟态旅程。
  *
  * 被验证的链路（与 `apps/editor/src/main.ts` 组合根逐字同构）：
  * 目录 input 文件表 → `createFileListFileSource` → `createSourceProjectFilesPort`
  * → `loadProject`（引擎组装） → `loadDiagnosticSupply`（供给：资源文件集 + overlay 键并集）
  * → `analyzeStory(story, supply)`。
  *
- * 覆盖（agent.md §6 五类）：拟态用户旅程（打开工程前/后）、故意错误注入（坏 JSON、
+ * 覆盖五类：拟态用户旅程（打开工程前/后）、故意错误注入（坏 JSON、
  * 缺资源）、边界（无 `Lang/`、加密 `.enc`、加密 overlay）、混沌游走（种子化随机往返）、
  * 回归锚定（未接供给 = 两族诊断恒为 0，防止"接线回到未接状态"）。
  *
- * 锚点：`editor-overlay-diagnostics-wired`、`editor-resource-diagnostics-wired`
+ * 锚定：编辑器诊断接线与资源检查
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -93,7 +93,7 @@ function messagesOf(
     .sort();
 }
 
-describe("T02-01/02 编辑器诊断接线", () => {
+describe("编辑器诊断接线", () => {
   const journeyTree = (): Tree =>
     projectTree({
       commands: [
@@ -119,13 +119,13 @@ describe("T02-01/02 编辑器诊断接线", () => {
     const { story, supply } = await openProject(journeyTree());
     const diagnostics = analyzeStory(story, supply);
 
-    // 资源缺失：只有 Audio/missing.mp3（pointer 指向该 voice 字段；提醒级，见裁定）
+    // 资源缺失：只有 Audio/missing.mp3（pointer 指向该 voice 字段；提醒级）
     const missing = diagnostics.filter((d) => d.code === "missing-resource");
     expect(missing.map((d) => d.message)).toEqual([
       "资源路径不存在：Audio/missing.mp3",
     ]);
     expect(missing[0]?.pointer).toBe("/columns/0/commands/2/voice");
-    expect(missing[0]?.severity).toBe("warning"); // 用户裁定：默认提醒即可，不拦保存
+    expect(missing[0]?.severity).toBe("warning"); // 默认提醒即可，不拦保存
 
     // 未使用译文键：跨语言并集 - 故事原文（两族都命中：目录形态 + 单文件形态）
     const unused = diagnostics.filter((d) => d.code === "unused-translation");
@@ -135,13 +135,13 @@ describe("T02-01/02 编辑器诊断接线", () => {
     expect(
       unused.map((d) => d.message).filter((m) => m.includes("孤儿键")),
     ).toHaveLength(1);
-    // 消息自带「四个翻译面」口径说明（否则读者摸不着头脑——真机反馈 2026-09-27）
+    // 消息自带「四个翻译面」口径说明（否则读者摸不着头脑——真机反馈）
     expect(
       unused.every((d) => d.message.includes("say / menu / input / notify")),
     ).toBe(true);
     expect(unused.every((d) => d.severity === "warning")).toBe(true);
 
-    // T05-03 缺译（正向）：原文 − overlay 并集 → 「缺语音」无任何译文
+    // 缺译（正向）：原文 − overlay 并集 → 「缺语音」无任何译文
     const missingT = diagnostics.filter((d) => d.code === "missing-translation");
     expect(missingT).toHaveLength(1);
     expect(missingT[0]?.severity).toBe("warning");
@@ -188,7 +188,7 @@ describe("T02-01/02 编辑器诊断接线", () => {
     expect(messagesOf(story, "missing-resource", supply)).toEqual([
       "Audio/none.mp3",
     ]);
-    // T05-03：overlay 空 = 未启用 i18n → 缺译族整体跳过（原文直出是常态，不噪声）
+    // overlay 空 = 未启用 i18n → 缺译族整体跳过（原文直出是常态，不噪声）
     expect(messagesOf(story, "missing-translation", supply)).toEqual([]);
   });
 
@@ -209,7 +209,7 @@ describe("T02-01/02 编辑器诊断接线", () => {
     expect(messagesOf(story, "unused-translation", supply)).toEqual([]);
   });
 
-  it("`.enc` 不做后缀特判（用户裁定 2026-09-27）：原样集合，明文名字直查口径", async () => {
+  it("`.enc` 不做后缀特判：原样集合，明文名字直查口径", async () => {
     const { story, supply } = await openProject(
       projectTree({
         commands: [
@@ -243,7 +243,7 @@ describe("T02-01/02 编辑器诊断接线", () => {
     expect(analyzeStory(story, supply)).toEqual([]);
   });
 
-  it("加密 overlay（.json.enc）走同一供给：能解密的供给（Tauri 形态）正常参与对账（T05-03）", async () => {
+  it("加密 overlay（.json.enc）走同一供给：能解密的供给（Tauri 形态）正常参与对账", async () => {
     // 供给能力决定参与度：`text()` 返回明文（Rust 解密后的形态）→ 键正常入集；
     // 参与门槛只此一道——与明文 overlay 完全同口径，无任何 `.enc` 特判逻辑。
     const tree = projectTree({
@@ -333,7 +333,7 @@ describe("T02-01/02 编辑器诊断接线", () => {
         `round=${round}`,
       ).toEqual(overlay.filter((key) => !storyOriginals.has(key)).sort());
 
-      // 不变量 4（T05-03）：缺译 = 故事原文 - overlay 键（仅 overlay 非空 = 启用 i18n 时提醒）
+      // 不变量：缺译 = 故事原文 - overlay 键（仅 overlay 非空 = 启用 i18n 时提醒）
       const expectedMissingT =
         overlay.length === 0
           ? []
@@ -343,7 +343,7 @@ describe("T02-01/02 编辑器诊断接线", () => {
         `round=${round}`,
       ).toEqual(expectedMissingT);
 
-      // 不变量 3：除三族外零诊断（结构合法）+ 指针可解析（D6）
+      // 不变量：除三族外零诊断（结构合法）+ 指针可解析
       const others = diagnostics.filter(
         (d) =>
           d.code !== "missing-resource" &&

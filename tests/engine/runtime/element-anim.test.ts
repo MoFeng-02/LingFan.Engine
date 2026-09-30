@@ -1,6 +1,5 @@
 /**
- * 08 §二.2 帧驱动表现类 op 测试（animate / animate_block / transition / shake / text_typewriter）。
- * 锚点: element-animate-queue / element-screen-effect / text-typewriter-config
+ * 帧驱动表现类 op 测试（animate / animate_block / transition / shake / text_typewriter）。
  *
  * 分工断言：**核心只写「描述/启动键」**（离散、进快照），逐帧插值与 DOM 归 UI；
  * 动画播毕由 UI 回调 `animationFinished(seq)` 触发终值写回。
@@ -38,7 +37,7 @@ function errorCodes(errors: OutboundEvent[]): string[] {
     .map((e) => (e.payload.kind === "engine.error" ? e.payload.code : ""));
 }
 
-describe("animate（锚点: element-animate-queue）", () => {
+describe("animate", () => {
   it("入队动画描述：from 取元素当前值（缺省 0），easing 缺省 EaseOutQuad", () => {
     const { engine, errors } = makeEngine([
       { op: "style", target: "title", props: { opacity: 0.2 } },
@@ -122,7 +121,7 @@ describe("animate_block", () => {
   });
 });
 
-describe("transition / shake（锚点: element-screen-effect）", () => {
+describe("transition / shake", () => {
   it("写启动键（含单调 seq），播毕清空", () => {
     const { engine, errors } = makeEngine([
       { op: "transition", type: "fade", duration: 0.6 },
@@ -159,7 +158,7 @@ describe("transition / shake（锚点: element-screen-effect）", () => {
   });
 });
 
-describe("text_typewriter（锚点: text-typewriter-config）", () => {
+describe("text_typewriter", () => {
   it("写故事级设置（enabled / speed 可单给）", () => {
     const { engine, errors } = makeEngine([
       { op: "text_typewriter", speed: 40 },

@@ -1,7 +1,7 @@
 /**
- * 05 §二 + ⑨-4c 加密 ResourcePort 适配器测试（流式形态）：invoke 契约替身
+ * 加密 ResourcePort 适配器测试（流式形态）：invoke 契约替身
  * （不依赖 Tauri 运行时）。覆盖：JSON 负载解析（Rust 构造的 url 直通，平台编码归 Rust）、
- * 命令名与路径透传、坏负载 fail-closed、K6 解密失败抛错。
+ * 命令名与路径透传、坏负载 fail-closed、解密失败抛错。
  * Rust 侧行为在 cargo 侧测（resource_crypto.rs），两侧各测一半。
  */
 import { describe, expect, it } from "vitest";
@@ -19,7 +19,7 @@ function makeInvoke(payload: string, calls: string[]): TauriInvoke {
   };
 }
 
-describe("createTauriEncryptedResourcePort（⑨-4c 流式供给）", () => {
+describe("createTauriEncryptedResourcePort（流式供给）", () => {
   it("resolve：Rust 构造的 url 直通（v2/v1 形态均由负载携带），命令名与路径透传", async () => {
     const calls: string[] = [];
     let lastArgs: Record<string, unknown> | undefined;
@@ -55,7 +55,7 @@ describe("createTauriEncryptedResourcePort（⑨-4c 流式供给）", () => {
     await expect(emptyUrl.resolve("Video/v.mp4")).rejects.toThrow("缺 url");
   });
 
-  it("resolve 失败 fail-closed：抛错不静默（K6），release 不抛", async () => {
+  it("resolve 失败 fail-closed：抛错不静默，release 不抛", async () => {
     const boom: TauriInvoke = async (): Promise<never> => {
       throw new Error("解密失败：GCM 认证失败");
     };

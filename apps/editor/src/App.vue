@@ -62,7 +62,7 @@ import type {
  * 组合根注入（本组件不碰任何平台 API / 适配器）：
  * - `initialStory` = 未打开工程时的示例故事；
  * - `opener` = 「打开工程」取径（目录选择与文件读取都在 main.ts）；
- * - `lastProject` = 「记住上次工程」（T03-06）：句柄就绪后由组合根填充（ref）；
+ * - `lastProject` = 「记住上次工程」：句柄就绪后由组合根填充（ref）；
  * - 媒体端口工厂 = 视频层 z 等实现细节留在组合根。
  */
 const props = defineProps<{
@@ -75,13 +75,13 @@ const props = defineProps<{
   createVideoPort: (onError: (message: string) => void) => VideoPort;
 }>();
 
-/** 06 §一.1：EditorSession = 视图族共享中枢（一处改动全视图同步 + 统一 undo） */
+/** EditorSession = 视图族共享中枢（一处改动全视图同步 + 统一 undo） */
 let session = new EditorSession(props.initialStory);
 /**
- * **shallowRef（D-47 修复）**：会话树靠「commit 恒换引用」运作，从不原地深改——
+ * **shallowRef**：会话树靠「commit 恒换引用」运作，从不原地深改——
  * 深代理（`ref`）会让 `story.value` 变成 proxy ≠ `session.current` 原始引用，
  * `markSaved(story.value)` 后 `dirty = current !== saved` **恒真**（保存后「● 未保存」
- * 永不消失，真机 T03-03 旅程实测）。浅引用直存直取，与乐观并发语义精确对齐。
+ * 永不消失，真机旅程实测）。浅引用直存直取，与乐观并发语义精确对齐。
  */
 const story = shallowRef<Story>(session.story);
 const undoDepth = ref(0);
@@ -90,26 +90,26 @@ const selectedColumnId = ref<string>(session.story.entry);
 const selectedPointer = ref<string | null>(null);
 const rightTab = ref<"diagnostics" | "json" | "text">("diagnostics");
 const centerView = ref<"timeline" | "stage" | "graph">("timeline");
-/** T04-02 组件面板：左栏 tab（「列」/「组件」）——200px 宽放不下两个长列表，切 tab 比堆叠可用 */
+/** 组件面板：左栏 tab（「列」/「组件」）——200px 宽放不下两个长列表，切 tab 比堆叠可用 */
 const leftTab = ref<"columns" | "palette">("columns");
 const previewing = ref(false);
 /** 已打开工程：资源供给端口（未打开 = undefined → 预览不解析资源，维持示例语义） */
 const resourcePort = ref<ResourcePort | undefined>(undefined);
 /** 已打开工程的资源根名（界面显示；空 = 示例故事） */
 const projectRoot = ref("");
-/** 08 §八.3 层级表：打开工程 = 清单 `shell.layers` 覆盖；未打开 = 内建默认（预览解析实例级 z 用） */
+/** 层级表：打开工程 = 清单 `shell.layers` 覆盖；未打开 = 内建默认（预览解析实例级 z 用） */
 const layerZ = ref<LayerZTable>(DEFAULT_LAYER_Z);
 /**
- * T02-01 / T02-02 诊断供给侧：打开工程才注入（`resourceFiles` / `overlayKeys`）。
+ * 诊断供给侧：打开工程才注入（`resourceFiles` / `overlayKeys`）。
  * 未打开 = `undefined` ⇒ `analyzeStory` 收到空 options，两个检查器族整体跳过（不误报）。
  */
 const diagnosticSupply = ref<Required<AnalyzeOptions> | undefined>(undefined);
 const openError = ref("");
-/** 保存回磁盘（09-16）：`undefined` = 未打开工程或只读取径 → 保存禁用 */
+/** 保存回磁盘：`undefined` = 未打开工程或只读取径 → 保存禁用 */
 const saveFn = ref<((s: Story) => Promise<ProjectWriteReport>) | undefined>(
   undefined,
 );
-/** T03-03 保存前规范化检测（与 save 同源装配；缺省 = 只读取径或无检测） */
+/** 保存前规范化检测（与 save 同源装配；缺省 = 只读取径或无检测） */
 const inspectSaveFn = ref<
   ((s: Story) => WriteNormalizationFinding | undefined) | undefined
 >(undefined);
@@ -122,8 +122,8 @@ const saveNotice = ref("");
 const fallbackInput = useTemplateRef<HTMLInputElement>("fallbackInput");
 
 /**
- * T03-03 保存前规范化确认：检测有发现时暂存保存动作（确认后执行），界面展示
- * 「将被转换/移除的文件」清单。「不再提示」为本机视图偏好（D1：不入故事 JSON，
+ * 保存前规范化确认：检测有发现时暂存保存动作（确认后执行），界面展示
+ * 「将被转换/移除的文件」清单。「不再提示」为本机视图偏好（不入故事 JSON，
  * 存储失败静默降级 = 仅本次会话有效）。
  */
 const normalizationNotice = ref<string[]>([]);
@@ -144,8 +144,8 @@ function readLocalStorage(): KeyValueStorage | undefined {
 }
 
 /**
- * T04-01 列分组归类（裁定 R2 (a)）：**UI 侧元数据**——按 `story.id` 存本机、不入故事 JSON。
- * 列序 = 文件路径码元序属**叙事语义**，用存储层目录分组会隐式改写它；归类只是作者视图偏好（D1）。
+ * 列分组归类：**UI 侧元数据**——按 `story.id` 存本机、不入故事 JSON。
+ * 列序 = 文件路径码元序属**叙事语义**，用存储层目录分组会隐式改写它；归类只是作者视图偏好。
  * 降级与节点图布局同款：读失败 → 平铺；写失败 → 仅本次会话有效。
  */
 const groupingStore = createColumnGroupingStore(readLocalStorage());
@@ -214,7 +214,7 @@ async function openProject(): Promise<void> {
   }
 }
 
-/** 「记住上次工程」（T03-06）：一键重开（点击即手势，读权限按需申请） */
+/** 「记住上次工程」：一键重开（点击即手势，读权限按需申请） */
 async function reopenLastProject(): Promise<void> {
   const entry = props.lastProject?.value;
   if (entry === undefined) return;
@@ -245,8 +245,8 @@ function applyOpened(opened: OpenedProject | undefined): void {
   selectedPointer.value = null;
   selectedColumnId.value = opened.story.entry;
   resourcePort.value = opened.resourcePort;
-  layerZ.value = opened.layerZ; // 08 §八.3：预览用工程层级表解析实例级 z
-  diagnosticSupply.value = opened.diagnosticSupply; // T02-01/02：资源/译文检查器生效
+  layerZ.value = opened.layerZ; // 预览用工程层级表解析实例级 z
+  diagnosticSupply.value = opened.diagnosticSupply; // 资源/译文检查器生效
   projectRoot.value = opened.root;
   saveFn.value = opened.save;
   inspectSaveFn.value = opened.inspectSave;
@@ -257,7 +257,7 @@ function applyOpened(opened: OpenedProject | undefined): void {
 }
 
 /**
- * 解绑磁盘工程（09-16 裁定）：「新建 / 导入」是内存态故事，若保持绑定，
+ * 解绑磁盘工程：「新建 / 导入」是内存态故事，若保持绑定，
  * 一次误点保存会把示例/导入内容覆盖真实工程——故一律解绑。
  * 提示用**状态口径**（「未绑定」而非「你刚点了新建」）：绑定状态不随 undo 回滚，
  * 若文案携带历史，撤销「新建」后就会留下过期说明。
@@ -281,8 +281,8 @@ function onNew(): void {
 }
 
 /**
- * 06 §一.2 诊断集：打开工程后注入供给侧数据（资源缺失 / 未使用译文键两个检查器才生效，
- * T02-01/02）；未打开工程 = 空 options（跳过相关诊断族，不误报）。
+ * 诊断集：打开工程后注入供给侧数据（资源缺失 / 未使用译文键两个检查器才生效，
+ * 见诊断供给侧）；未打开工程 = 空 options（跳过相关诊断族，不误报）。
  */
 const diagnostics = computed(() => {
   const supply = diagnosticSupply.value;
@@ -364,7 +364,7 @@ const api = {
     });
   },
   select(pointer: string | null): void {
-    // D-48：诊断/引用的指针是字段级——归一到最近的命令祖先，行高亮与属性面板才有锚点
+    // 诊断/引用的指针是字段级——归一到最近的命令祖先，行高亮与属性面板才有锚点
     selectedPointer.value =
       pointer === null ? null : nearestCommandPointer(story.value, pointer);
     const columnPointer = pointer?.match(/^\/columns\/(\d+)/);
@@ -373,7 +373,7 @@ const api = {
         { id?: string } | undefined;
       if (typeof column?.id === "string") selectedColumnId.value = column.id;
     }
-    // D6 定位体验：点了诊断必须「看得见」——切回时间线视图并把目标行滚到视口中央
+    // 定位体验：点了诊断必须「看得见」——切回时间线视图并把目标行滚到视口中央
     //（此前只改选中态：长列表/其他视图下目标行在视口外 = 用户感知"点了没反应"）
     centerView.value = "timeline";
     void nextTick(() => {
@@ -395,7 +395,7 @@ const api = {
     const changed = session.apply(`重命名 ${from} → ${to}`, (s) =>
       renameColumn(s, from, to),
     );
-    // T04-01：分组是视图元数据，成员 id 随列改名同步（失败不影响故事编辑本身）
+    // 分组是视图元数据，成员 id 随列改名同步（失败不影响故事编辑本身）
     if (changed) commitGrouping(renameColumnMember(grouping.value, from, to));
   },
   addColumn(kind: "flow" | "scene", hint?: string): void {
@@ -406,13 +406,13 @@ const api = {
     });
   },
   removeColumn(id: string): void {
-    // T04-01：列没了，分组里的悬空成员一并裁掉（否则会留下指向不存在列的归属）
+    // 列没了，分组里的悬空成员一并裁掉（否则会留下指向不存在列的归属）
     if (session.apply(`删除列 ${id}`, (s) => removeColumn(s, id))) {
       syncGroupingColumns();
     }
   },
   /**
-   * T04-03 组件拖入：元素**落点创建**（`parentPointer` = 容器元素指针 → 进 `children`，
+   * 组件拖入：元素**落点创建**（`parentPointer` = 容器元素指针 → 进 `children`，
    * 缺数组就在同一次提交里补齐）。**一次拖入 = 一个 undo 单元**；顶级创建后选中新元素
    * （属性面板立即可改），嵌套创建不改变选中（舞台视图不渲染 children）。
    */
@@ -442,7 +442,7 @@ const api = {
     if (typeof column?.id === "string") selectedColumnId.value = column.id;
   },
   /**
-   * T04-04 节点图连线：从 `fromColumnId` 拉线到 `toColumnId` 建分支——
+   * 节点图连线：从 `fromColumnId` 拉线到 `toColumnId` 建分支——
    * 源列最后一个 `menu` → 追加选项；否则 → 末尾追加 `jump`。
    * 语义判定在纯函数 `planBranchInsertion`（非法组合返回 false，调用方 fail-closed 提示）；
    * **一次拉线 = 一个 undo 单元**。落库后新 jump/选项由既有诊断面校验（missing-target 等）。
@@ -483,8 +483,8 @@ provide("editorApi", api);
 provide("selectedPointer", selectedPointer);
 
 /**
- * T04-01 列分组 API（与 `editorApi` 分离）：**不经 session 提交**——视图偏好不产生 undo
- * 单元、不置 dirty、不进故事 JSON（R2 (a)：列序属叙事语义，分组只是作者视图偏好）。
+ * 列分组 API（与 `editorApi` 分离）：**不经 session 提交**——视图偏好不产生 undo
+ * 单元、不置 dirty、不进故事 JSON（列序属叙事语义，分组只是作者视图偏好）。
  */
 provide("columnGroupingApi", {
   view: grouping,
@@ -524,9 +524,9 @@ function onImportFile(event: Event): void {
 }
 
 /**
- * 保存回磁盘（09-16）：捕获**实际写出的那个引用**（乐观并发——await 期间用户又改，
+ * 保存回磁盘：捕获**实际写出的那个引用**（乐观并发——await 期间用户又改，
  * 基线钉在 target 上仍 dirty，不误清）；成功后 `markSaved(target)`。
- * T03-03：保存前先做规范化检测（用户已「不再提示」则跳过检测）——有发现时**不执行**
+ * 保存前先做规范化检测（用户已「不再提示」则跳过检测）——有发现时**不执行**
  * 保存，展示清单等确认（跳过提示 ≠ 丢弃保存：确认/取消后状态干净）。
  */
 async function onSave(): Promise<void> {
@@ -712,7 +712,7 @@ function onExport(): void {
       <button @click="saveNotice = ''">关闭</button>
     </p>
 
-    <!-- T03-03 保存前规范化确认：清单 = describeNormalization（与真实写回行为一一对应） -->
+    <!-- 保存前规范化确认：清单 = describeNormalization（与真实写回行为一一对应） -->
     <div v-if="normalizationNotice.length > 0" class="save-normalization">
       <strong>首次保存将把工程文件规范化为标准布局：</strong>
       <ul>
@@ -774,7 +774,7 @@ function onExport(): void {
           :pointer="selectedPointer"
           :resource-port="resourcePort"
         />
-        <!-- D-45：key = story.id ⇒ 换工程/新建/导入必重挂载，布局缓存从新工程的存储键重读 -->
+        <!-- key = story.id ⇒ 换工程/新建/导入必重挂载，布局缓存从新工程的存储键重读 -->
         <NodeGraph
           v-else
           :key="story.id"
@@ -1011,7 +1011,7 @@ textarea {
   border-color: #7aa2f7;
   color: #7aa2f7;
 }
-/* T04-02 左栏 tab（列 / 组件）：紧凑一行，下方内容各自滚动 */
+/* 左栏 tab（列 / 组件）：紧凑一行，下方内容各自滚动 */
 .left-tabs {
   margin-bottom: 8px;
 }

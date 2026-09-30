@@ -1,9 +1,9 @@
 /**
- * T03-03 编辑器视图侧：提示文案组装 + 「不再提示」偏好持久化（锚点 save-normalization-notice）。
+ * 编辑器视图侧：提示文案组装 + 「不再提示」偏好持久化。
  *
  * 检测归引擎（tests/engine/data/normalization.test.ts）；本文件锁两件事：
- * 1. `describeNormalization` 每行与真实写回行为一一对应（文案一致性是验收条款）；
- * 2. 偏好 = 本机视图偏好（D1）：round trip / 缺失坏值归 false / 存储失败全静默。
+ * 1. `describeNormalization` 每行与真实写回行为一一对应（文案与行为必须一致）；
+ * 2. 偏好 = 本机视图偏好：round trip / 缺失坏值归 false / 存储失败全静默。
  */
 import { describe, expect, it } from "vitest";
 import { detectWriteNormalization } from "@lingfan/engine";

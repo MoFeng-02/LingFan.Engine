@@ -811,7 +811,7 @@ function onStageClick(): void {
     }
     engine.advance();
   } else if (inWait.value || inVideo.value) {
-    engine.advance(); // wait 跳过 / cutscene 跳过（skipable 由引擎裁定）
+    engine.advance(); // wait 跳过 / cutscene 跳过（skipable 由引擎决定）
   }
 }
 

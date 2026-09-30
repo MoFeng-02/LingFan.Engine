@@ -1,7 +1,7 @@
 /**
- * T02-03 三面对齐互锁：**契约声明面 ↔ 编辑器表单面 ↔ 运行期消费面**。
+ * 元素属性三面对齐互锁：**契约声明面 ↔ 编辑器表单面 ↔ 运行期消费面**。
  *
- * D-01（8+1 个元素属性写了不生效且不报错）之所以能长期潜伏，是因为没有任何测试同时看
+ * （8+1 个元素属性写了不生效且不报错）之所以能长期潜伏，是因为没有任何测试同时看
  * 这三面：`lf-engine-add-op` 的 5 处同步与 `bridge_check.rs` 的跨语言互锁都只覆盖
  * 「声明 ↔ schema」，不覆盖「**是否有消费者**」。本测试从 `packages/ui/src/element/*.ts`
  * **源码**提取真实读取的属性名（`props.x` / `pick(props, "a", "b")` / 解构），与
@@ -9,15 +9,15 @@
  *
  * ① 消费面 ⊆ 声明面（渲染器读了契约外的键 = 契约漂移，红）；
  * ② 「声明 − 消费 − 白名单」必须与 `UNIMPLEMENTED_ELEMENT_ATTRS` **精确相等**——
- *    未实现清单就是差集的唯一合法去处，多一个少一个都红（T01-01 止血清单不许漂移）；
- * ③ 机制自证：往声明面里塞一个假属性，同一个差集函数必须把它标出来（验收项
+ *    未实现清单就是差集的唯一合法去处，多一个少一个都红（止血清单不许漂移）；
+ * ③ 机制自证：往声明面里塞一个假属性，同一个差集函数必须把它标出来（
  *    「故意加假属性 → 测试必须红」的等价形态——真改契约会被 ①/② 抓住）。
  *
- * T02-03 建立时反向逮出**第 9 个**失真属性 `stretch`（`image`/`imagebutton`/`portrait`
- * 有表单但零消费）：T01-01 的人工盘点按已知 8 键 grep、没从契约全集反推差集——
+ * 互锁建立时反向逮出**第 9 个**失真属性 `stretch`（`image`/`imagebutton`/`portrait`
+ * 有表单但零消费）：人工盘点按已知 8 键 grep、没从契约全集反推差集——
  * 这正是本互锁存在的意义。
  *
- * 锚点：`element-attr-three-face-alignment`
+ * 锚定三面对齐：声明面（契约）、消费面（渲染）、表单面（编辑器）。
  */
 import { describe, expect, it } from "vitest";
 import { ELEMENT_ATTRIBUTES } from "@lingfan/engine";
@@ -61,7 +61,7 @@ function consumedAttributes(sources: readonly string[]): Set<string> {
     for (const m of source.matchAll(/props\.([A-Za-z_$][\w$]*)/g)) {
       consumed.add(m[1] ?? "");
     }
-    // ② `pick(props, "a", "b", …)`（老引擎多键别名）
+    // ② `pick(props, "a", "b", …)`（多键别名）
     for (const m of source.matchAll(
       /pick\s*\(\s*[\w.$]*props\s*,\s*("[^"]+"(?:\s*,\s*"[^"]+")*)\s*\)/g,
     )) {
@@ -92,7 +92,7 @@ function unimplementedCandidates(declared: ReadonlySet<string>): Set<string> {
   return rest;
 }
 
-describe("T02-03 元素属性三面对齐互锁", () => {
+describe("元素属性三面对齐互锁", () => {
   it("消费面 ⊆ 契约声明面（渲染器不读契约外的键）", () => {
     const consumed = consumedAttributes(SOURCES);
     const outside = [...consumed].filter((a) => !ELEMENT_ATTRIBUTES.has(a));

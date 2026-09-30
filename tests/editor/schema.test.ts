@@ -1,12 +1,11 @@
 /**
- * 06-D2/D3 op schema 单一事实源测试：
+ * op schema 单一事实源测试：
  * - 引擎 op 面 ⊆ 编辑器 schema（读 format.ts 源提取，防「引擎有、编辑器漏」）
  * - 全 op canonical 样本「引擎 parseStory 与编辑器 schema 双接受」跨包互锁
  * - 必填字段删除「两侧同拒」（format.ts 深校验子集）
- * - 未知字段 / 未知 op / 类型错 fail-closed（E3/F5 编辑期）
- * - 表单描述符派生 + 目录×schema 字段名集合互锁（D2）
+ * - 未知字段 / 未知 op / 类型错 fail-closed（编辑期）
+ * - 表单描述符派生 + 目录×schema 字段名集合互锁
  * - 行内标记白名单与执行器 interpolateText 行为互锁
- * 锚点: schema-driven-forms / edit-time-validation
  */
 
 import { describe, expect, it } from "vitest";
@@ -65,7 +64,7 @@ const DEEP_FORMAT_OPS = new Set([
   "input",
   "random",
   "minigame",
-  // 08 §二.1 / §二.2 元素系统（format.ts 均已加深校验分支）
+  // 元素系统（format.ts 均已加深校验分支）
   "show",
   "hide",
   "background",
@@ -225,7 +224,7 @@ const CANONICAL: Record<string, Record<string, unknown>> = {
       { key: "badge", value: "智者" },
     ],
   },
-  // —— 08 §二.1 元素增删改 ——
+  // —— 元素增删改 ——
   show: {
     op: "show",
     target: "Images/hero.png",
@@ -245,7 +244,7 @@ const CANONICAL: Record<string, Record<string, unknown>> = {
     props: { opacity: 0.5, color: "#ffffff" },
   },
   window: { op: "window", mode: "auto" },
-  // —— 08 §二.2 帧驱动表现 ——
+  // —— 帧驱动表现 ——
   animate: {
     op: "animate",
     target: "hero",
@@ -369,7 +368,7 @@ describe("必填字段删除：两侧同拒（format.ts 深校验子集互锁）
   }
 });
 
-describe("编辑期 fail-closed（D3）", () => {
+describe("编辑期 fail-closed", () => {
   it("未知负载字段 → unknown-field（全 op 扫描）", () => {
     for (const [op, cmd] of Object.entries(CANONICAL)) {
       const broken = { ...structuredClone(cmd), __bogus: true };
@@ -449,7 +448,7 @@ describe("编辑期 fail-closed（D3）", () => {
     ).toBe("unknown-field");
   });
 
-  it("嵌套块体内的坏命令拿到精确 JSON Pointer（D6）", () => {
+  it("嵌套块体内的坏命令拿到精确 JSON Pointer", () => {
     const story: Story = {
       formatVersion: 1,
       id: "s",
@@ -476,7 +475,7 @@ describe("编辑期 fail-closed（D3）", () => {
   });
 });
 
-describe("表单描述符派生（D2：schema 驱动表单）", () => {
+describe("表单描述符派生（schema 驱动表单）", () => {
   it("目录×schema 字段名集合双向互锁（49 op 全量）", () => {
     for (const meta of listOps()) {
       const shape = (OP_SCHEMAS[meta.op].def as z.core.$ZodObjectDef).shape;
@@ -572,7 +571,7 @@ describe("行内标记白名单与执行器 interpolateText 行为互锁", () =>
     "{gold:000}补零",
   ];
 
-  it("引擎无错误 ⟺ 编辑器不报未定义变量（含已定义变量 > 行内标记冲突裁定）", () => {
+  it("引擎无错误 ⟺ 编辑器不报未定义变量（含已定义变量 > 行内标记冲突消解）", () => {
     const defined = new Set(["gold"]);
     for (const text of PROBES) {
       const engineResult = interpolateText(text, resolver(defined));

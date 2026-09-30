@@ -1,7 +1,7 @@
 /**
- * 08-U6 四音频通道核心语义测试（规约↔测试互锁锚点）：
- * four-audio-channels（四通道独立音量）/ media-state-in-snapshot（03-R7）/
- * 05 §四 媒体进档（读档续播）/ E3 fail-closed（非法负载拒绝后状态不变）。
+ * 四音频通道核心语义测试：
+ * 四通道独立音量 / 媒体位置随快照 /
+ * 媒体进档（读档续播）/ fail-closed（非法负载拒绝后状态不变）。
  * 测试纪律五类：拟态用户旅程、故意错误、不变量、边界、回归锚定（见 journey.test.ts 音频旅程）。
  */
 import { describe, expect, it } from "vitest";
@@ -70,7 +70,7 @@ function audioKeys(engine: StoryEngine): unknown[] {
   ];
 }
 
-describe("08-U6 四音频通道（锚点: four-audio-channels）", () => {
+describe("四音频通道", () => {
   it("四通道各自独立音量：改一路不扰其余", () => {
     const { engine } = makeEngine([
       { op: "bgm", resource: "bgm.mp3", volume: 0.3 },
@@ -170,7 +170,7 @@ describe("08-U6 四音频通道（锚点: four-audio-channels）", () => {
   });
 });
 
-describe("03-R7 媒体位置随快照（锚点: media-state-in-snapshot）", () => {
+describe("媒体位置随快照", () => {
   it("同曲续播、换曲归零：bgm 重写同资源不打断播放位置", () => {
     const { engine } = makeEngine([
       { op: "bgm", resource: "a.mp3" },
@@ -218,7 +218,7 @@ describe("03-R7 媒体位置随快照（锚点: media-state-in-snapshot）", () 
     });
   });
 
-  it("reportMediaPosition 静默回写：帧级键不进事件流（U2）", () => {
+  it("reportMediaPosition 静默回写：帧级键不进事件流", () => {
     const { engine, changes } = makeEngine([{ op: "say", text: "一" }]);
     engine.start();
     changes.length = 0;
@@ -246,7 +246,7 @@ describe("03-R7 媒体位置随快照（锚点: media-state-in-snapshot）", () 
     });
   });
 
-  it('stop_bgm 停背景乐并把播放位置归零（老引擎 `bgm ""` 语义的显式化）', () => {
+  it('stop_bgm 停背景乐并把播放位置归零（旧版引擎 `bgm ""` 语义的显式化）', () => {
     const { engine } = makeEngine([
       { op: "bgm", resource: "main.mp3" },
       { op: "say", text: "一" },
@@ -265,7 +265,7 @@ describe("03-R7 媒体位置随快照（锚点: media-state-in-snapshot）", () 
   });
 });
 
-describe("05 §四 媒体进档（读档续播）", () => {
+describe("媒体进档（读档续播）", () => {
   it("exportSave 携带媒体状态；importSave 恢复曲目与位置", () => {
     const { engine } = makeEngine([
       { op: "bgm", resource: "a.mp3", volume: 0.4 },
@@ -297,7 +297,7 @@ describe("05 §四 媒体进档（读档续播）", () => {
   });
 });
 
-describe("voice auto_stop（08 §六.1）", () => {
+describe("voice auto_stop", () => {
   it("say 的 voice 参数绑定本句语音；推进过该句自动停止", () => {
     const { engine } = makeEngine([
       { op: "say", text: "一", voice: "line1.mp3" },
@@ -330,7 +330,7 @@ describe("voice auto_stop（08 §六.1）", () => {
   });
 });
 
-describe("显式重播 restart（08 §六.1；同曲默认无缝续播）", () => {
+describe("显式重播 restart（同曲默认无缝续播）", () => {
   it("同曲 restart 归零位置并标记重播；非 restart 保持位置", () => {
     const { engine } = makeEngine([
       { op: "bgm", resource: "a.mp3" },

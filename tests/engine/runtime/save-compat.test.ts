@@ -1,6 +1,5 @@
 /**
- * T08-08 存档扩展依赖标记 + T08-09 存档向后兼容测试。
- * 锚点: save-extension-dependency、save-backward-compat
+ * 存档扩展依赖标记 + 存档向后兼容测试。
  *
  * 测试纪律：
  * - **标记粒度 = 本档实际执行过的扩展**（op 执行时登记）——未用到 = 字段缺席，
@@ -53,7 +52,7 @@ const JOURNEY = [
   },
 ];
 
-/** 无扩展 op 的普通旅程（T08-09 用）：advance 一次后 gold = 10、历史 1 个检查点、停在「二」 */
+/** 无扩展 op 的普通旅程：advance 一次后 gold = 10、历史 1 个检查点、停在「二」 */
 const PLAIN_JOURNEY = [
   {
     id: "a",
@@ -102,7 +101,7 @@ function makeMarkedSave(stateVersion = 1): {
   return { data: data as SaveDataV1, raw: structuredClone(data) as unknown as Record<string, unknown> };
 }
 
-/** 普通旅程存档（无扩展依赖标记）：gold = 10、历史 1 项、停在「二」（T08-09 用） */
+/** 普通旅程存档（无扩展依赖标记）：gold = 10、历史 1 项、停在「二」 */
 function makePlainSave(): { data: SaveDataV1; raw: Record<string, unknown> } {
   const { engine, off } = makeEngine([], {}, PLAIN_JOURNEY);
   engine.start();
@@ -114,7 +113,7 @@ function makePlainSave(): { data: SaveDataV1; raw: Record<string, unknown> } {
   return { data: data as SaveDataV1, raw: structuredClone(data) as unknown as Record<string, unknown> };
 }
 
-describe("T08-08 存档扩展依赖标记（锚点: save-extension-dependency）", () => {
+describe("存档扩展依赖标记", () => {
   it("执行过扩展的存档带依赖标记；同扩展引擎读档成功", () => {
     const { data } = makeMarkedSave();
     expect(data.extensions).toEqual([{ id: "demo", stateVersion: 1 }]);
@@ -281,7 +280,7 @@ describe("T08-08 存档扩展依赖标记（锚点: save-extension-dependency）
   });
 });
 
-describe("T08-09 存档向后兼容（锚点: save-backward-compat）", () => {
+describe("存档向后兼容", () => {
   it("a) 缺 cursor 的旧档 → 回默认最近检查点且回溯可用，不得 NaN；空历史落 -1（无检查点语义）", () => {
     const { data } = makePlainSave(); // history 1 项、cursor 0
     const noCursor = JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
@@ -339,7 +338,7 @@ describe("T08-09 存档向后兼容（锚点: save-backward-compat）", () => {
     revived2.engine.dispose();
   });
 
-  it("b') rngState / coord.index 为 NaN → fail-closed（D-44：NaN 不深入恢复流程）", () => {
+  it("b') rngState / coord.index 为 NaN → fail-closed（NaN 不深入恢复流程）", () => {
     const { raw } = makePlainSave();
     const nanRng = { ...structuredClone(raw), rngState: Number.NaN };
     const revived = makeEngine([], {}, PLAIN_JOURNEY);

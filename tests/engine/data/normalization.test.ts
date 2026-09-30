@@ -1,5 +1,5 @@
 /**
- * T03-03 写回规范化检测（锚点 save-normalization-notice）：
+ * 写回规范化检测：
  * 「打开形态 → 标准布局」的文件级动作判定——保存前提示的事实依据。
  *
  * 判定只看路径形态（与 `serializeProject` 同一布局规则：每列一个 `Stories/<id>.json`）。

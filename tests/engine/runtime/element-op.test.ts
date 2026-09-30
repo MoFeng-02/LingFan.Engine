@@ -1,9 +1,8 @@
 /**
- * 08 §二.1 元素增删 op 测试（show / hide / background / bg_switch）。
- * 锚点: element-show-append / element-hide-removes / element-background-single / element-op-unknown-field
+ * 元素增删 op 测试（show / hide / background / bg_switch）。
  *
- * 语义对照老引擎 `ShowHideHandler` / `BgSwitchHandler`（`Services/Core/Handlers/VisualHandlers.cs`、
- * `Dsl2Handlers.cs:177`）；差异：老引擎分场景元素与运行时元素两处，新引擎合并进 `SYS.elements`。
+ * 语义对照旧版引擎 ShowHideHandler / BgSwitchHandler：
+ * 差异：旧版引擎分场景元素与运行时元素两处，新引擎合并进 `SYS.elements`。
  */
 import { describe, expect, it } from "vitest";
 import type { ElementInstance, OutboundEvent } from "@lingfan/engine";
@@ -41,7 +40,7 @@ function ids(engine: StoryEngine): string[] {
   return elements(engine).map((e) => e.id);
 }
 
-describe("show（锚点: element-show-append）", () => {
+describe("show", () => {
   it("追加 image 元素：source/x/y 入 props，z 取追加序", () => {
     const { engine, errors } = makeEngine([
       { op: "show", target: "Images/hero.png", x: 100, y: 200, id: "hero" },
@@ -71,7 +70,7 @@ describe("show（锚点: element-show-append）", () => {
     engine.start();
     const list = elements(engine);
     const backgrounds = list.filter((e) => e.type === "background");
-    expect(backgrounds).toHaveLength(1); // 不堆积（老引擎 RemoveAll 语义）
+    expect(backgrounds).toHaveLength(1); // 不堆积（旧版引擎 RemoveAll 语义）
     expect(backgrounds[0]?.props.source).toBe("Images/second.png");
     expect(backgrounds[0]?.z).toBe(-1000); // 渲染底层由 z 决定（数组序 ≠ 渲染序）
     engine.dispose();
@@ -101,7 +100,7 @@ describe("show（锚点: element-show-append）", () => {
   });
 });
 
-describe("hide（锚点: element-hide-removes）", () => {
+describe("hide", () => {
   it("按 id 移除；按 source 亦可命中；未命中幂等不报错", () => {
     const { engine, errors } = makeEngine([
       { op: "show", target: "Images/a.png", id: "a" },
@@ -110,7 +109,7 @@ describe("hide（锚点: element-hide-removes）", () => {
     ]);
     engine.start();
     expect(ids(engine)).toEqual(["title"]);
-    expect(errors).toHaveLength(0); // 未命中不算错误（老引擎 RemoveAll 静默）
+    expect(errors).toHaveLength(0); // 未命中不算错误（旧版引擎 RemoveAll 静默）
     engine.dispose();
   });
 
@@ -126,7 +125,7 @@ describe("hide（锚点: element-hide-removes）", () => {
   });
 });
 
-describe("background / bg_switch（锚点: element-background-single）", () => {
+describe("background / bg_switch", () => {
   it("两者都替换背景且恒只有一个 background", () => {
     const { engine } = makeEngine([
       { op: "background", resource: "Images/one.png" },
@@ -140,7 +139,7 @@ describe("background / bg_switch（锚点: element-background-single）", () => 
   });
 });
 
-describe("回溯与元素表（锚点: element-snapshot-roundtrip）", () => {
+describe("回溯与元素表", () => {
   it("show 后回溯 → 元素表随快照还原（增删都是状态）", () => {
     const { engine } = makeEngine([
       { op: "say", text: "一句" },
@@ -157,7 +156,7 @@ describe("回溯与元素表（锚点: element-snapshot-roundtrip）", () => {
 });
 
 describe("zindex / style / window（元素改造与对话框显隐）", () => {
-  it("zindex：改目标层级；未命中 fail-closed（锚点: element-zindex-target）", () => {
+  it("zindex：改目标层级；未命中 fail-closed", () => {
     const { engine, errors } = makeEngine([
       { op: "show", target: "Images/a.png", id: "a" },
       { op: "zindex", target: "a", value: 42 },
@@ -179,7 +178,7 @@ describe("zindex / style / window（元素改造与对话框显隐）", () => {
     miss.engine.dispose();
   });
 
-  it("style：属性合并而不是替换；未知属性 fail-closed（F5 同口径）", () => {
+  it("style：属性合并而不是替换；未知属性 fail-closed", () => {
     const { engine, errors } = makeEngine([
       { op: "show", target: "Images/a.png", id: "a" },
       { op: "style", target: "a", props: { opacity: 0.5, color: "#f00" } },

@@ -1,12 +1,11 @@
 /**
- * 01 §二.3 存档类 op 测试（save / load / auto_save / save_delete）+ 02 §三.2 命令面 save/load。
- * 锚点：
- * - save-op-orchestrates-port（op → SavePort 编排；非等待命令立即继续）
- * - auto-save-on-waiting-display（等待画面建立触发；解除/重放不触发；开关系统键读档复位）
- * - load-op-teleports（op load 异步传送回档内等待点）
- * - save-delete-keeps-high-water（K4：删档不动防回档基准——Rust 侧 delete_save 同锚点）
- * - save-ops-fail-closed（无 SavePort / 槽名非法 / enabled 非布尔 → engine.error，状态原样）
- * - save-load-command-completion（命令面 save/load 完成信号 save.done/load.done：成功才发、
+ * 存档类 op 测试（save / load / auto_save / save_delete）+ 命令面 save/load。
+ * - op → SavePort 编排；非等待命令立即继续
+ * - 自动存档：等待画面建立触发；解除/重放不触发；开关系统键读档复位
+ * - op load 异步传送回档内等待点
+ * - 删档不动防回档基准（Rust 侧 delete_save 同款语义）
+ * - fail-closed：无 SavePort / 槽名非法 / enabled 非布尔 → engine.error，状态原样
+ * - 命令面 save/load 完成信号 save.done/load.done：成功才发、
  *   守卫与校验失败不发；故事 save op 的等待点落档不发——信号归属命令面）
  * SavePort 为契约替身（内存实现）；Rust 侧安全校验在 cargo 侧测（save.rs），两侧各测一半。
  */
@@ -87,7 +86,7 @@ function say(text: string): object {
   return { op: "say", text };
 }
 
-describe("01 §二.3 save op（锚点: save-op-orchestrates-port）", () => {
+describe("save op", () => {
   it("等待点写档：载荷含槽位/title/等待坐标，故事立即继续（非等待命令）", async () => {
     const h = makeHarness([
       column("a", [
@@ -120,7 +119,7 @@ describe("01 §二.3 save op（锚点: save-op-orchestrates-port）", () => {
     h.dispose();
   });
 
-  it("未知负载字段与非法槽名 fail-closed（E3/F5）", () => {
+  it("未知负载字段与非法槽名 fail-closed", () => {
     const h = makeHarness([
       column("a", [say("一"), { op: "save", slot: "../evil" }]),
     ]);
@@ -138,7 +137,7 @@ describe("01 §二.3 save op（锚点: save-op-orchestrates-port）", () => {
   });
 });
 
-describe("auto_save 开关（锚点: auto-save-on-waiting-display）", () => {
+describe("auto_save 开关", () => {
   it("缺省关：不写档；开启后每等待画面写 auto 槽；关闭即停（写档同步 kick）", () => {
     const h = makeHarness([
       column("a", [
@@ -198,7 +197,7 @@ describe("auto_save 开关（锚点: auto-save-on-waiting-display）", () => {
   });
 });
 
-describe("01 §二.3 load op（锚点: load-op-teleports）", () => {
+describe("load op", () => {
   it("读档传送回档内等待点（异步 importSave）", async () => {
     const h = makeHarness([
       column("a", [
@@ -233,8 +232,8 @@ describe("01 §二.3 load op（锚点: load-op-teleports）", () => {
   });
 });
 
-describe("01 §二.3 save_delete op（锚点: save-delete-keeps-high-water）", () => {
-  it("异步删除槽位（编排侧验证调用；K4 高水位语义 Rust 侧 delete_save 测试锁定）", async () => {
+describe("save_delete op", () => {
+  it("异步删除槽位（编排侧验证调用；高水位语义 Rust 侧 delete_save 测试锁定）", async () => {
     const h = makeHarness([
       column("a", [say("一"), { op: "save_delete", slot: "old_slot" }]),
     ]);
@@ -256,7 +255,7 @@ describe("01 §二.3 save_delete op（锚点: save-delete-keeps-high-water）", 
   });
 });
 
-describe("02 §三.2 命令面 save/load 完成信号（锚点: save-load-command-completion）", () => {
+describe("命令面 save/load 完成信号", () => {
   function kindsOf(h: Harness): string[] {
     const kinds: string[] = [];
     h.engine.onEvent((e) => kinds.push(e.payload.kind));
@@ -276,7 +275,7 @@ describe("02 §三.2 命令面 save/load 完成信号（锚点: save-load-comman
     h.dispose();
   });
 
-  it("save 守卫失败不发完成信号：未启动 / 槽名非法 / 无端口（E3 fail-closed）", () => {
+  it("save 守卫失败不发完成信号：未启动 / 槽名非法 / 无端口（fail-closed）", () => {
     const h = makeHarness([column("a", [say("一")])]);
     const kinds = kindsOf(h);
     expect(h.engine.save("slot_1")).toBe(false); // 未启动
@@ -333,7 +332,7 @@ describe("02 §三.2 命令面 save/load 完成信号（锚点: save-load-comman
     h.dispose();
   });
 
-  it("完成信号只来自命令面：故事 save op（等待点落档）不发 save.done（作用域裁定）", async () => {
+  it("完成信号只来自命令面：故事 save op（等待点落档）不发 save.done（信号归属）", async () => {
     const h = makeHarness([
       column("a", [say("一"), { op: "save", slot: "slot_1" }, say("二")]),
     ]);

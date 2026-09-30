@@ -1,13 +1,12 @@
 /**
- * 规约 10 自定义 op 文本投影测试（T08-03）。
- * 锚点: custom-op-text-projection
+ * 自定义 op 文本投影测试。
  *
  * 测试纪律：
- * - **往返深等（T1 级）**：json → dsl → json 深等；嵌套块体里的自定义 op 同样走投影
+ * - **往返深等**：json → dsl → json 深等；嵌套块体里的自定义 op 同样走投影
  *   （generateCommand/generateBody 全链穿参）
  * - **缺省逐字节不变**：不传 projections = 现行为（自定义 op → TextFormatError「暂无文本投影」
  *   / 解析侧「暂不支持」）——既有 text 测试全绿即回归锚
- * - **投影缺失 = 整次拒绝（T2 同口径）**：toText/fromText 失败（null/抛出/畸形）→ 带定位拒绝
+ * - **投影缺失 = 整次拒绝**：toText/fromText 失败（null/抛出/畸形）→ 带定位拒绝
  * - **容错降级不变**：projectText 把不可投影收集为该行 issue，其余照常
  */
 import { describe, expect, it } from "vitest";
@@ -54,8 +53,8 @@ function storyWith(commands: object[]): Story {
   } as Story;
 }
 
-describe("T08-03 自定义 op 文本投影（锚点: custom-op-text-projection）", () => {
-  it("json → dsl → json 往返深等（T1 级）", () => {
+describe("自定义 op 文本投影", () => {
+  it("json → dsl → json 往返深等", () => {
     const story = storyWith([
       { op: "say", text: "开局" },
       { op: "roll_dice", sides: 6 },

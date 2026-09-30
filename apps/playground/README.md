@@ -9,7 +9,7 @@
 | 功能面   | 打字机 / NVL / 历史面板 / 存读档 / 音频四通道 / 键位 / 回溯 | 推进 + 渲染 + 音频接线       |
 | 平台壳   | Tauri 2（`src-tauri/`）                                     | 浏览器                       |
 
-## 资源根（08-U7）
+## 资源根
 
 ```
 apps/playground/
@@ -20,7 +20,7 @@ apps/playground/
     └── Lang/en/           Lang/en/title_main.json（I18N overlay 示例）
 ```
 
-故事里的写法（**照搬老引擎语义：路径相对资源根，不带 `Resources/` 前缀**）：
+故事里的写法（**路径相对资源根，不带 `Resources/` 前缀**）：
 
 ```
 bgm "Audio/crickets_night01.mp3" volume=0.5

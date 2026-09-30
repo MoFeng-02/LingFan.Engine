@@ -1,6 +1,5 @@
 /**
- * 08 §二.1 元素系统（运行期）测试：声明式空间层的装载 / 列切换 / 快照回溯。
- * 锚点: element-elements-loads-per-column / element-snapshot-roundtrip
+ * 元素系统（运行期）测试：声明式空间层的装载 / 列切换 / 快照回溯。
  *
  * 与视频族（`__video` 命令流 + seq）的关键差异：元素是**累积状态**，
  * 快照整体还原即恢复，无需重放重建。
@@ -50,7 +49,7 @@ function elements(engine: StoryEngine): ElementInstance[] {
   return Array.isArray(value) ? (value as ElementInstance[]) : [];
 }
 
-describe("进入列装载空间层（锚点: element-elements-loads-per-column）", () => {
+describe("进入列装载空间层", () => {
   it("start 后 __elements = 该列声明；entry 照常执行且无 unknown-op", () => {
     const { engine, errors } = makeEngine();
     engine.start();
@@ -71,7 +70,7 @@ describe("进入列装载空间层（锚点: element-elements-loads-per-column�
   });
 });
 
-describe("元素随快照/回溯（锚点: element-snapshot-roundtrip）", () => {
+describe("元素随快照/回溯", () => {
   it("回溯到 scene 列 → 元素随快照还原", () => {
     const { engine } = makeEngine();
     engine.start();
@@ -91,7 +90,7 @@ describe("元素随快照/回溯（锚点: element-snapshot-roundtrip）", () =>
 
   it("存档往返：元素随档还原（读档重放目标列装载 + 快照还原）", () => {
     const { engine } = makeEngine();
-    engine.start(); // 停在 scene1 的 say 等待 = 可存档坐标（05 §四）
+    engine.start(); // 停在 scene1 的 say 等待 = 可存档坐标
     const data = engine.exportSave() as SaveDataV1;
     expect(data).not.toBeNull();
 

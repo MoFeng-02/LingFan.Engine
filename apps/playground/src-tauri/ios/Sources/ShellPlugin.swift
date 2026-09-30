@@ -1,5 +1,5 @@
 //
-//  08 §八.2 屏幕方向（iOS 原生落点）：Rust `shell::set_orientation` 的实现。
+//  屏幕方向（iOS 原生落点）：Rust `shell::set_orientation` 的实现。
 //
 //  **放置**：本文件是仓库内暂存副本——首次在 macOS 上执行 `pnpm tauri ios init` 生成
 //  `src-tauri/gen/apple/` 之后，复制到 `src-tauri/gen/apple/Sources/<app.name>/` 即可
@@ -7,7 +7,7 @@
 //  **状态：未经编译验证**（需 macOS + Xcode；API 签名依据 Tauri 2.11 源码
 //  `tauri::ios_plugin_binding!` → `swift!(fn init_plugin_x() -> *const c_void)` 与官方 iOS 插件文档）。
 //
-//  平台语义（与 Android 的「持续锁定」不同，见规约 08 §八.3）：
+//  平台语义（与 Android 的「持续锁定」不同）：
 //  - `requestGeometryUpdate` 只是**一次性旋转请求**：请求后玩家物理旋转仍会改变方向；
 //    持续锁定必须让 view controller 持续报出受限的 `supportedInterfaceOrientations`；
 //  - Tauri 的 iOS 模板没有可编辑的 AppDelegate（入口 main.mm，delegate 在生成的 tauri-api 包内），

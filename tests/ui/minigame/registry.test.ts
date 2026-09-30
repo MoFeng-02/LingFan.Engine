@@ -1,7 +1,6 @@
 /**
- * 06 §二/D5 MinigameRegistry 测试：注册/覆盖更新/未知 fail-closed（无默认回退——
+ * MinigameRegistry 测试：注册/覆盖更新/未知 fail-closed（无默认回退——
  * 与对话框模板注册表「未知名回退默认」的关键差异）。
- * 锚点: minigame-fail-closed-and-abortable
  */
 import { describe, expect, it } from "vitest";
 import type { MinigameFactory } from "@lingfan/engine";

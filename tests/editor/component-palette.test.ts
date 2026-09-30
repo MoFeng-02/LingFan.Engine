@@ -1,9 +1,8 @@
 /**
- * T04-02 组件面板（元素 36 类型归类 + 命令 op 源）测试。
- * 锚点: editor-component-palette
+ * 组件面板（元素 36 类型归类 + 命令 op 源）测试。
  *
  * 测试纪律：
- * - **互锁**（本任务核心验收「面板覆盖 36 类型且与契约不越界、不缺项」）：
+ * - **互锁**（面板覆盖 36 类型且与契约不越界、不缺项）：
  *   分组表按组序拍平 **逐项等于** `ELEMENT_TYPES`（含顺序）；op 分组覆盖 `listOps()` 全集
  * - **回归锚定**：容器组 ∪ 滚动组 === `ELEMENT_CONTAINER_TYPES`（面板 badge 语义所依据的事实）
  * - **单一事实源**：op 分组标签不再散落在视图里（源码互锁）
@@ -31,7 +30,7 @@ describe("互锁：元素分组表 ↔ ELEMENT_TYPES 契约", () => {
     expect(flatElementTypes).toEqual([...ELEMENT_TYPES]);
   });
 
-  it("面板覆盖 36 类型（验收原文口径）", () => {
+  it("面板覆盖 36 类型", () => {
     expect(ELEMENT_TYPES.length).toBe(36);
     expect(flatElementTypes.length).toBe(36);
   });
@@ -107,7 +106,7 @@ describe("源码互锁：分组清单只在纯逻辑模块，视图不另立一�
     expect(componentPaletteSource).toContain("listOpGroups");
     // 不出现任何「裸类型清单」写法（类型名只应来自契约）
     expect(componentPaletteSource).not.toMatch(/"panel"\s*,\s*"frame"/);
-    expect(componentPaletteSource).not.toContain("richtext"); // 不存在的类型名（见规约 09 滞留项）
+    expect(componentPaletteSource).not.toContain("richtext"); // 不存在的类型名
   });
 
   it("时间线复用同一 op 分组源，旧的硬编码标签表已消除", () => {
@@ -138,7 +137,7 @@ describe("源码互锁：分组清单只在纯逻辑模块，视图不另立一�
   });
 });
 
-describe("回归锚定（D-46）：时间线元素容器的「插入」只产元素草稿", () => {
+describe("回归锚定：时间线元素容器的「插入」只产元素草稿", () => {
   it("元素层插入走 createElementDraft + ELEMENT_TYPE_GROUPS（与组件面板同源）", () => {
     expect(storyTimelineSource).toContain('field === "elements"');
     expect(storyTimelineSource).toContain("createElementDraft");

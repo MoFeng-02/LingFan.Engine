@@ -1,4 +1,4 @@
-/** 04-表达式求值测试（锚点：S4 非链式 / S5 类型错误 / S7 短路 / F4 转义） */
+/** 表达式求值测试（非链式 / 类型错误 / 短路 / 转义） */
 import { describe, expect, it } from "vitest";
 import {
   evaluateExpression,
@@ -38,7 +38,7 @@ const failCode = (src: string): string => {
   throw new Error(`应当抛出 ExpressionError：${src}`);
 };
 
-describe("算术与优先级（04 §二.3）", () => {
+describe("算术与优先级", () => {
   it.each([
     ["1+2*3", 7],
     ["(1+2)*3", 9],
@@ -115,14 +115,14 @@ describe("S5 fail-closed：类型错误 / 除零 / 未知名 / 内置函数守�
   });
 });
 
-describe("成员路径（04 §二.9 点路径）", () => {
+describe("成员路径（点路径）", () => {
   it("扁平键与字典下钻", () => {
     expect(evalExpr("player.hp")).toBe(30);
     expect(evalExpr("stats.mp")).toBe(5);
   });
 });
 
-describe("内置函数（04 §二.6）", () => {
+describe("内置函数", () => {
   it("min/max/abs/clamp", () => {
     expect(evalExpr("min(2,3)")).toBe(2);
     expect(evalExpr("max(2,3)")).toBe(3);
@@ -140,14 +140,14 @@ describe("内置函数（04 §二.6）", () => {
   });
 });
 
-describe("三元与字符串（F4 转义）", () => {
+describe("三元与字符串（转义）", () => {
   it("1<2 ? 10 : 20 → 10", () => {
     expect(evalExpr("1<2 ? 10 : 20")).toBe(10);
   });
   it.each([
     ['"a\\nb"', "a\nb"],
     ['"a\\\\b"', "a\\b"],
-    ['"a\\qb"', "a\\qb"], // F4：未知转义保留两字符原样
+    ['"a\\qb"', "a\\qb"], // 未知转义保留两字符原样
     ['"说\\"hi\\""', '说"hi"'],
   ])("%s → %s", (src, expected) => {
     expect(evalExpr(src)).toBe(expected);
@@ -158,7 +158,7 @@ describe("三元与字符串（F4 转义）", () => {
   });
 });
 
-describe("interpolateText（01 §三.4/§三.6，F7/S8）", () => {
+describe("interpolateText（模板插值）", () => {
   it("{expr} 求值与 {expr:format} 补零", () => {
     expect(
       interpolateText("金币 {gold:000}，翻倍 {gold * 2}", resolve).text,

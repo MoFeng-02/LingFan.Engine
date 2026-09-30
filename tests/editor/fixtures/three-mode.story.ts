@@ -1,8 +1,8 @@
 /**
- * T09-01 源约定示例 + T09-03 三形态互锁夹具。
- * 约定（设计稿 §2）：一个 .ts 文件 = 一个完整多列 Story，默认导出，
+ * 源约定示例 + 三形态互锁夹具。
+ * 约定：一个 .ts 文件 = 一个完整多列 Story，默认导出，
  * `satisfies Story` 提供编译期类型检查；运行期合法性由 parseStory（与 JSON 同口径）兜底。
- * 列 id 用语义化短 id（T09-02 口径）。
+ * 列 id 用语义化短 id。
  */
 import type { Story } from "@lingfan/engine";
 

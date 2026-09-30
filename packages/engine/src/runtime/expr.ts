@@ -620,7 +620,7 @@ export function interpolateText(
     } catch (e) {
       if (e instanceof ExpressionError) {
         if (isInlineTag(content)) {
-          // 冲突裁定：已定义变量 > 行内标记（{i} 在 i 未定义时是斜体标记，已定义时是变量）
+          // 冲突消解：已定义变量 > 行内标记（{i} 在 i 未定义时是斜体标记，已定义时是变量）
           out += text.slice(i, end + 1);
         } else {
           errors.push(e);

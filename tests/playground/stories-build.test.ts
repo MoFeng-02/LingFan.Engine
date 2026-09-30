@@ -46,7 +46,7 @@ afterEach(() => {
   rmSync(BASE, { recursive: true, force: true });
 });
 
-describe("stories:build · TS 故事源编译（T09-01 S2）", () => {
+describe("stories:build · TS 故事源编译", () => {
   it("拟态旅程：合法源 → 磁盘终态（列拆分 + 清单托管键更新 + 非托管键保真）→ 再编译零差量", async () => {
     const root = makeProject("happy", {
       "Stories.src/demo.ts": VALID_SOURCE,
@@ -137,7 +137,7 @@ describe("stories:build · TS 故事源编译（T09-01 S2）", () => {
       };`,
       "Resources/project.json": MANIFEST,
     });
-    // 底层校验错误原样透传（设计稿 §3：不翻译不改写），消息含入口定位
+    // 底层校验错误原样透传（不翻译不改写），消息含入口定位
     await expect(buildStories(root)).rejects.toThrow(/entry|入口/i);
     // fail-closed：零副作用（未写任何产物文件）
     expect(existsSync(join(root, "Resources/Stories"))).toBe(false);

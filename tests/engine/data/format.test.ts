@@ -1,4 +1,4 @@
-/** 01-数据层测试：结构校验 fail-closed、columnId 唯一（F1）、双文件形态识别、per-op 结构校验 */
+/** 数据层测试：结构校验 fail-closed、columnId 唯一、双文件形态识别、per-op 结构校验 */
 import { describe, expect, it } from "vitest";
 import {
   baseName,
@@ -40,7 +40,7 @@ describe("parseStory · 多列文件", () => {
     expect(() => parseStory(null)).toThrow(StoryFormatError);
   });
 
-  it("columnId 重复拒绝（F1）", () => {
+  it("columnId 重复拒绝", () => {
     const story = {
       ...validStory,
       columns: [
@@ -82,7 +82,7 @@ describe("parseStory · 多列文件", () => {
   });
 });
 
-describe("parseStory · 单列原子文件（07 §三）", () => {
+describe("parseStory · 单列原子文件", () => {
   const single = {
     formatVersion: 1,
     id: "start",
@@ -120,7 +120,7 @@ describe("parseStory · 单列原子文件（07 §三）", () => {
   });
 });
 
-describe("per-op 结构校验（fail-closed，老规范 §八.4）", () => {
+describe("per-op 结构校验（fail-closed）", () => {
   const withCommands = (commands: unknown[]): unknown => ({
     ...validStory,
     columns: [{ id: "start", kind: "flow", commands }],
@@ -173,7 +173,7 @@ describe("per-op 结构校验（fail-closed，老规范 §八.4）", () => {
     ).toThrow(StoryFormatError);
   });
 
-  it("未实现 op 结构放行（执行器 fail-closed，E3）", () => {
+  it("未实现 op 结构放行（执行器 fail-closed）", () => {
     expect(() =>
       parseStory(withCommands([{ op: "teleport", target: "x" }])),
     ).not.toThrow();

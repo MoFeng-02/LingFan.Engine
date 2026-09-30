@@ -1,7 +1,5 @@
 /**
- * 08 §二.1 元素系统（数据层）测试。
- * 锚点: element-unknown-type-rejected / element-unknown-attr-rejected /
- *       element-children-nesting / element-z-three-levels / element-address-id-over-name
+ * 元素系统（数据层）测试。
  *
  * 白盒：`validateElement` / `loadElements` / `findElements` 为引擎内部纯函数
  * （未列入包公共出口），按测试纪律走相对深引。
@@ -20,20 +18,20 @@ function issuesOf(node: unknown): string[] {
   return issues;
 }
 
-describe("validateElement（F5 fail-closed）", () => {
+describe("validateElement（fail-closed）", () => {
   it("36 类型内且属性合法 → 通过", () => {
     expect(
       issuesOf({ type: "text", text: "甲", x: "50%", color: "#fff" }),
     ).toEqual([]);
   });
 
-  it("未知类型 → 拒绝（锚点: element-unknown-type-rejected）", () => {
+  it("未知类型 → 拒绝", () => {
     const issues = issuesOf({ type: "teleporter" });
     expect(issues).toHaveLength(1);
     expect(issues[0]).toContain("36 种元素类型");
   });
 
-  it("未知属性 → 拒绝（锚点: element-unknown-attr-rejected）", () => {
+  it("未知属性 → 拒绝", () => {
     const issues = issuesOf({ type: "image", source: "a.png", hack: 1 });
     expect(issues).toHaveLength(1);
     expect(issues[0]).toContain("hack");
@@ -51,7 +49,7 @@ describe("validateElement（F5 fail-closed）", () => {
     );
   });
 
-  it("children 仅容器可带，且递归校验（锚点: element-children-nesting）", () => {
+  it("children 仅容器可带，且递归校验", () => {
     expect(issuesOf({ type: "text", children: [] })[0]).toContain(
       "仅容器类型可带",
     );
@@ -74,7 +72,7 @@ describe("loadElements（装载与派生）", () => {
     expect(els[1]?.id).toBe("named");
   });
 
-  it("z 三级：zindex > order > 到达序（锚点: element-z-three-levels）", () => {
+  it("z 三级：zindex > order > 到达序", () => {
     const els = loadElements(
       [
         { type: "text" },
@@ -88,7 +86,7 @@ describe("loadElements（装载与派生）", () => {
     expect(els[2]?.z).toBe(42);
   });
 
-  it("props 不含结构字段；children 递归装载（锚点: element-children-nesting）", () => {
+  it("props 不含结构字段；children 递归装载", () => {
     const els = loadElements(
       [
         {
@@ -120,7 +118,7 @@ describe("findElements（寻址：id 精确 > name 批量）", () => {
     "start",
   );
 
-  it("id 精确命中优先于 name 分组（锚点: element-address-id-over-name）", () => {
+  it("id 精确命中优先于 name 分组", () => {
     const hit = findElements(tree, "start");
     expect(hit).toHaveLength(1);
     expect(hit[0]?.id).toBe("start");
@@ -152,7 +150,7 @@ describe("parseStory（元素声明接入解析链）", () => {
     expect(story.columns[0]?.elements).toHaveLength(1);
   });
 
-  it("未知元素属性 → 整次拒绝（F5）", () => {
+  it("未知元素属性 → 整次拒绝", () => {
     expect(() =>
       parseStory({
         formatVersion: 1,

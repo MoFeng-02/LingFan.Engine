@@ -1,7 +1,7 @@
 /**
  * 脚手架防腐测试：模板是交付物，必须与引擎契约保持同构——
  * 模板故事能被文本投影器解析、清单合 ProjectManifest 契约、资源根配置与宿主接线不漂移。
- * 用 `?raw` 导入（不碰 fs：前端与核心层禁 Node，规约 00 §3.2）。
+ * 用 `?raw` 导入（不碰 fs：前端与核心层禁 Node）。
  */
 import { describe, expect, it } from "vitest";
 import projectJson from "../../template/v1/__PROJECT__/Resources/project.json?raw";
@@ -53,7 +53,7 @@ describe("template/v1 脚手架防腐", () => {
     ).not.toThrow();
   });
 
-  it("资源根即静态根：publicDir 指向 Resources（08-U7 不依赖 CWD）", () => {
+  it("资源根即静态根：publicDir 指向 Resources（不依赖 CWD）", () => {
     expect(viteConfig).toContain('publicDir: "Resources"');
   });
 
@@ -120,7 +120,7 @@ describe("template/v1 脚手架防腐", () => {
     expect(mainTs).toContain("slotIds(saves.slots)");
     // window auto|show|hide 的消费点（曾是无宿主消费的死键）
     expect(mainTs).toContain("SYS.dialogVisible");
-    // 舞台元素层（08 §二.1）
+    // 舞台元素层
     expect(mainTs).toContain("renderElementTree");
     expect(mainTs).toContain("SYS.elements");
   });

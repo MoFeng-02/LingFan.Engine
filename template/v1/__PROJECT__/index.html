@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>__PROJECT__</title>
     <style>
-      /* 08 §一 RenderTargets 的落地：stage / dialogue / choices / notifications / toolbar。
+      /* RenderTargets 的落地：stage / dialogue / choices / notifications / toolbar。
          **层级（z 序）不在这里写死**——由 src/main.ts 按「内建默认 × 工程覆盖
-         （project.json shell.layers）」解析后内联写入（⑨-11）。 */
+         （project.json shell.layers）」解析后内联写入。 */
       :root {
         color-scheme: dark;
       }
@@ -23,7 +23,7 @@
         inset: 0;
         overflow: hidden;
       }
-      /* 舞台元素层：容器不阻塞点击（可交互元素自身恢复 pointer-events，08 §七） */
+      /* 舞台元素层：容器不阻塞点击（可交互元素自身恢复 pointer-events） */
       #stage {
         position: absolute;
         inset: 0;
@@ -56,7 +56,7 @@
         color: #6b7280;
         font-size: 12px;
       }
-      /* NVL 累积层（08-U5）：与对话层同域，铺成阅读区 */
+      /* NVL 累积层：与对话层同域，铺成阅读区 */
       #nvl {
         position: absolute;
         inset: 24px;

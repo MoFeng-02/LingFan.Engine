@@ -1,10 +1,9 @@
 /**
- * 08 §八.2 / U10 玩家偏好测试（核心层 PlayerPreferences）。
- * 锚点：
- * - effective-volume-synthesis（有效音量 = 通道偏好，静音归零；op 音量乘法在渲染层）
- * - sanitize-degrade（畸形载荷逐字段降级默认——信任边界，绝不翻译成运行时畸形值）
- * - persist-debounce-flush（防抖合并滑块连写 + dispose 补尾不丢末次修改）
- * - preferences-separate-from-save（U10：偏好不进引擎 SSOT/存档——exportSave 载荷无偏好键）
+ * 玩家偏好测试（核心层 PlayerPreferences）。
+ * - 有效音量合成（通道偏好，静音归零；op 音量乘法在渲染层）
+ * - 畸形载荷逐字段降级默认（信任边界，绝不翻译成运行时畸形值）
+ * - 持久化防抖合并滑块连写 + dispose 补尾不丢末次修改
+ * - 偏好不进引擎 SSOT/存档（exportSave 载荷无偏好键）
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PlayerPrefsData } from "@lingfan/engine";
@@ -43,15 +42,15 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("08 §八.2 默认值与合成末端（锚点: effective-volume-synthesis）", () => {
-  it("默认偏好 = 老引擎 EnsureDefaults 基线（bgm 0.8 / se 0.6 / 文字速度 30）", () => {
+describe("默认值与合成末端", () => {
+  it("默认偏好基线（bgm 0.8 / se 0.6 / 文字速度 30）", () => {
     const prefs = new PlayerPreferences();
     expect(prefs.snapshot()).toEqual(DEFAULT_PLAYER_PREFS);
     expect(prefs.effectiveVolume("bgm")).toBe(0.8);
     expect(prefs.effectiveVolume("voice")).toBe(1);
   });
 
-  it("静音归零而非停播语义（老引擎 MasterMuted：取消静音即时恢复）", () => {
+  it("静音归零而非停播语义（取消静音即时恢复）", () => {
     const prefs = new PlayerPreferences();
     prefs.setMuted(true);
     for (const channel of ["bgm", "se", "ambient", "voice"] as const) {
@@ -83,7 +82,7 @@ describe("08 §八.2 默认值与合成末端（锚点: effective-volume-synthes
   });
 });
 
-describe("08 §八.2 观察接缝", () => {
+describe("观察接缝", () => {
   it("onChange 触发快照（新引用），退订后不再触发", () => {
     const prefs = new PlayerPreferences();
     const seen: PlayerPrefsData[] = [];
@@ -106,7 +105,7 @@ describe("08 §八.2 观察接缝", () => {
   });
 });
 
-describe("08 §八.2 hydrate（信任边界，锚点: sanitize-degrade）", () => {
+describe("hydrate（信任边界）", () => {
   it("合法载荷逐字段应用", async () => {
     const port = new MemoryPrefsPort({
       v: 1,
@@ -155,7 +154,7 @@ describe("08 §八.2 hydrate（信任边界，锚点: sanitize-degrade）", () =
   });
 });
 
-describe("08 §八.2 持久化（锚点: persist-debounce-flush）", () => {
+describe("持久化", () => {
   it("防抖合并滑块连写为一次落盘（trailing 末值）", async () => {
     vi.useFakeTimers();
     const port = new MemoryPrefsPort();
@@ -191,7 +190,7 @@ describe("08 §八.2 持久化（锚点: persist-debounce-flush）", () => {
   });
 });
 
-describe("U10 与存档分离（锚点: preferences-separate-from-save）", () => {
+describe("与存档分离", () => {
   it("偏好永不进引擎 SSOT/存档：exportSave 载荷无偏好键", async () => {
     const prefs = new PlayerPreferences();
     await prefs.hydrate();
@@ -219,7 +218,7 @@ describe("U10 与存档分离（锚点: preferences-separate-from-save）", () =
   });
 });
 
-describe("08 §八.2 屏幕方向偏好（锚点: orientation-preference）", () => {
+describe("屏幕方向偏好", () => {
   it("缺省 = 未设置：默认偏好与快照都不含 orientation 键（可回落到工程默认）", () => {
     const prefs = new PlayerPreferences();
     expect(prefs.orientation).toBeUndefined();

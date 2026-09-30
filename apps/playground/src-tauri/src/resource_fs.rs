@@ -1,4 +1,4 @@
-//! 资源文件系统抽象（契约 + 双适配器，07 §三「适配器只负责取」的 Rust 侧对应物）：
+//! 资源文件系统抽象（契约 + 双适配器，「适配器只负责取」的 Rust 侧对应物）：
 //! - [`StdFs`]：桌面 / dev——真实文件系统（std::fs）。
 //! - [`AssetFs`]：Android——安装包 asset（tauri-plugin-fs 打开可 seek fd +
 //!   Kotlin `AssetListPlugin` 递归枚举；asset 不可写、无独立 metadata，故只读）。

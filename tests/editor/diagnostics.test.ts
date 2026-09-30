@@ -1,7 +1,6 @@
 /**
- * 06 §一.2 诊断集测试：符号索引 + 未定义变量（`_` 豁免 D4 + 行内标记不误报）+
- * 跳转目标（F1）/入口列/重复 columnId/资源/翻译缺口；全部诊断带可解析 JSON Pointer（D6）。
- * 锚点: diagnostics-with-pointer / undefined-var-underscore-exempt
+ * 诊断集测试：符号索引 + 未定义变量（`_` 豁免 + 行内标记不误报）+
+ * 跳转目标/入口列/重复 columnId/资源/翻译缺口；全部诊断带可解析 JSON Pointer。
  */
 
 import { describe, expect, it } from "vitest";
@@ -24,7 +23,7 @@ function baseStory(commands: StoryCommand[]): Story {
   };
 }
 
-/** D6：每个诊断的指针自身可解析，或其父路径可解析（missing-required 指向应存在字段） */
+/** 每个诊断的指针自身可解析，或其父路径可解析（missing-required 指向应存在字段） */
 function expectPointersResolvable(
   story: Story,
   diagnostics: ReturnType<typeof analyzeStory>,
@@ -85,7 +84,7 @@ describe("符号索引（indexStory）", () => {
     expect(index.originals.has("去哪")).toBe(true);
   });
 
-  it("重复 columnId 入 duplicateColumns（F1）", () => {
+  it("重复 columnId 入 duplicateColumns", () => {
     const story: Story = {
       formatVersion: 1,
       id: "d",
@@ -113,7 +112,7 @@ describe("诊断集（analyzeStory）", () => {
     expect(diagnostics).toEqual([]);
   });
 
-  it("跳转目标不存在（F1）/未知函数/入口列缺失/重复列", () => {
+  it("跳转目标不存在/未知函数/入口列缺失/重复列", () => {
     const story = baseStory([
       { op: "jump", target: "ghost" },
       { op: "call", target: "no_func" },
@@ -131,7 +130,7 @@ describe("诊断集（analyzeStory）", () => {
     expectPointersResolvable(story, diagnostics);
   });
 
-  it("未定义变量：表达式 = error、插值 = warning（S5/S8 语义差）", () => {
+  it("未定义变量：表达式 = error、插值 = warning（语义差）", () => {
     const story = baseStory([
       { op: "if", cond: "{ghost > 1}", then: [{ op: "say", text: "x" }] },
       { op: "say", text: "{ghostName}你好" },
@@ -149,7 +148,7 @@ describe("诊断集（analyzeStory）", () => {
     expectPointersResolvable(story, diagnostics);
   });
 
-  it("点路径整键语义（04 §二.9）：defines/player.gold 与表达式 player.gold 视为同一键", () => {
+  it("点路径整键语义：defines/player.gold 与表达式 player.gold 视为同一键", () => {
     const ok = baseStory([
       { op: "set", key: "player.gold", value: 10 },
       { op: "if", cond: "{player.gold >= 10}", then: [] },
@@ -170,7 +169,7 @@ describe("诊断集（analyzeStory）", () => {
     expectPointersResolvable(missing, analyzeStory(missing));
   });
 
-  it("D4 `_` 前缀豁免", () => {
+  it("`_` 前缀豁免", () => {
     const story = baseStory([
       { op: "if", cond: "{_internal > 0}", then: [] },
       { op: "say", text: "{_hidden}占位" },
@@ -267,7 +266,7 @@ describe("诊断集（analyzeStory）", () => {
     expect(unused.every((d) => d.severity === "warning")).toBe(true);
   });
 
-  it("结构诊断（D3）与语义诊断同批返回且指针可解析", () => {
+  it("结构诊断与语义诊断同批返回且指针可解析", () => {
     const story = baseStory([
       { op: "say" },
       { op: "jump", target: "inn" },

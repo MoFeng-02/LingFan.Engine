@@ -1,5 +1,5 @@
 /**
- * 08 §六.5 视频渲染测试：命令流 → 端口执行（seq 去重 / 代际取消 / fail-closed / ended 上报）。
+ * 视频渲染测试：命令流 → 端口执行（seq 去重 / 代际取消 / fail-closed / ended 上报）。
  * 按契约 Mock：VideoPort 与 ResourcePort 为契约的可行实现（node 环境无解码器）。
  */
 import { describe, expect, it } from "vitest";
@@ -77,7 +77,7 @@ function makeResources(): {
 const flush = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0));
 
-describe("08 §六.5 视频渲染（命令流 → 端口执行）", () => {
+describe("视频渲染（命令流 → 端口执行）", () => {
   it("video 发 play（解析 URL + 音量/循环）；stop 在其后执行", async () => {
     const engine = makeStoryEngine([
       { op: "video", resource: "Video/m1.mp4", volume: 0.6, loop: true },
@@ -149,7 +149,7 @@ describe("08 §六.5 视频渲染（命令流 → 端口执行）", () => {
     engine.dispose();
   });
 
-  it("回溯对齐：命令流回退（seq 变小）→ 重执行恢复态命令（03 §一.2：媒体回滚 seek 或重播）", async () => {
+  it("回溯对齐：命令流回退（seq 变小）→ 重执行恢复态命令（媒体回滚 seek 或重播）", async () => {
     const engine = makeStoryEngine([
       { op: "video", resource: "Video/a.mp4" },
       { op: "say", text: "一" },

@@ -1,5 +1,5 @@
 /**
- * T03-01/T03-02 Tauri 写回适配器测试（锚点: project-writer-parity / project-write-conflict-detection）。
+ * Tauri 写回适配器测试。
  *
  * 「契约层同一套测试用例在两个适配器上跑」的 TS 半边：invoke 替身按 Rust
  * `apply_project_files` / `stamp_project_files` 的**同语义**实现内存盘
@@ -181,14 +181,14 @@ describe("createTauriProjectWriter（project-writer-parity / project-write-confl
   });
 
   it("负载形状 fail-closed：stamps 坏 → 构造抛；报告坏 → apply 抛（不静默采信）", async () => {
-    // T03-02 后拦截点前移：stamps 形状非法在工厂构造期即拦（零副作用）
+    // 拦截点前移：stamps 形状非法在工厂构造期即拦（零副作用）
     const badStamps: TauriInvoke = async <T>() => ({ foo: 1 } as T);
     await expect(
       createTauriProjectWriter("E:/proj/Resources", new Map(), {
         invoke: badStamps,
       }),
     ).rejects.toThrow("指纹负载形状非法");
-    // T03-01 契约保留：stamps 合法但写回报告 written/deleted 非字符串数组 → apply 抛
+    // 契约保留：stamps 合法但写回报告 written/deleted 非字符串数组 → apply 抛
     const badReport: TauriInvoke = async <T>(command: string) =>
       command === "stamp_project_files" ? ({ stamps: [] } as T) : ({ foo: 1 } as T);
     const writer = await createTauriProjectWriter(
@@ -201,7 +201,7 @@ describe("createTauriProjectWriter（project-writer-parity / project-write-confl
     ).rejects.toThrow("写回报告形状非法");
   });
 
-  it("T03-02 外部篡改：apply 前检测 → 冲突文案、零落盘（未篡改时行为不变）", async () => {
+  it("外部篡改：apply 前检测 → 冲突文案、零落盘（未篡改时行为不变）", async () => {
     const backend = makeMemoryBackend();
     backend.put("Stories/start.json", WRITE_START);
     const writer = await makeWriter(
@@ -226,7 +226,7 @@ describe("createTauriProjectWriter（project-writer-parity / project-write-confl
     expect(report.written).toEqual(["Stories/start.json"]);
   });
 
-  it("T03-02 外部删除基线文件 → 冲突持续 fail-closed；重开后可重建且不自报", async () => {
+  it("外部删除基线文件 → 冲突持续 fail-closed；重开后可重建且不自报", async () => {
     const backend = makeMemoryBackend();
     backend.put("Stories/start.json", WRITE_START);
     const writer = await makeWriter(

@@ -1,5 +1,5 @@
 /**
- * 08-U6 音频渲染层测试：状态差量 → 端口动作（纯规划器）+ 渲染器订阅/异步资源解析/回写/退订。
+ * 音频渲染层测试：状态差量 → 端口动作（纯规划器）+ 渲染器订阅/异步资源解析/回写/退订。
  * 按契约 Mock（不 Mock 实现）：AudioPort 与 ResourcePort 均为契约的可行实现，node 环境无解码器。
  */
 import { describe, expect, it } from "vitest";
@@ -112,7 +112,7 @@ function makeResources(deferred = false): ResourceHarness {
 const flush = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0));
 
-describe("状态差量 → 端口动作（锚点: four-audio-channels）", () => {
+describe("状态差量 → 端口动作", () => {
   it("空视图起步：常驻通道与一次性触发各出一次 play（新资源 = 重播）", () => {
     const actions = planAudioActions(
       EMPTY_AUDIO_VIEW,
@@ -411,7 +411,7 @@ describe("音频渲染器（订阅 + 异步资源解析 + 帧级回写 + 退订�
       },
     ]);
 
-    engine.advance(); // 08 §六.1 auto_stop：推进过该句 → 语音停
+    engine.advance(); // auto_stop：推进过该句 → 语音停
     await flush();
     expect(calls.at(-1)).toEqual({
       kind: "stop",

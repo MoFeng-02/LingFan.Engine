@@ -1,6 +1,5 @@
 /**
- * 06 §一.1 舞台编辑测试（元素表单描述符 + 拖拽坐标）。
- * 锚点: schema-driven-forms / element-form-contract-lock / stage-drag-position
+ * 舞台编辑测试（元素表单描述符 + 拖拽坐标）。
  *
  * 测试纪律五类齐备：
  * - 互锁：表单字段面 ↔ 引擎元素契约（ELEMENT_ATTRIBUTES ∪ {id,name}）
@@ -34,7 +33,7 @@ import {
 import { sampleStory } from "../../apps/editor/src/sample";
 import fieldRowSource from "../../apps/editor/src/components/FieldRow.vue?raw";
 
-describe("元素表单描述符（锚点: schema-driven-forms）", () => {
+describe("元素表单描述符", () => {
   it("36 类型全覆盖；未知类型 fail-closed（故意错误）", () => {
     for (const type of ELEMENT_TYPES) {
       const descriptor = describeElement(type);
@@ -58,7 +57,7 @@ describe("元素表单描述符（锚点: schema-driven-forms）", () => {
     }
   });
 
-  it("通用属性全集不漏字段（含结构字段 id/name）——扣除 T01-01 的失真清单", () => {
+  it("通用属性全集不漏字段（含结构字段 id/name）——扣除失真清单", () => {
     const keys = new Set(
       (describeElement("text")?.fields ?? []).map((f) => f.key),
     );
@@ -67,7 +66,7 @@ describe("元素表单描述符（锚点: schema-driven-forms）", () => {
       if (UNIMPLEMENTED_ELEMENT_ATTRS.has(attr)) continue;
       expect(keys.has(attr), attr).toBe(true);
     }
-    // 失真清单：契约保留（可解析）但表单一律不下发（T01-01 止血）
+    // 失真清单：契约保留（可解析）但表单一律不下发
     for (const attr of UNIMPLEMENTED_ELEMENT_ATTRS) {
       expect(ELEMENT_ATTRIBUTES.has(attr), attr).toBe(true);
       expect(keys.has(attr), attr).toBe(false);
@@ -104,7 +103,7 @@ describe("元素表单描述符（锚点: schema-driven-forms）", () => {
   });
 });
 
-describe("拖拽坐标（锚点: stage-drag-position）", () => {
+describe("拖拽坐标", () => {
   it("数字坐标参与像素位移，四舍五入到整数", () => {
     expect(draggedPosition(40, 12.6)).toBe(53);
     expect(draggedPosition(40, -8.4)).toBe(32);
@@ -129,7 +128,7 @@ describe("拖拽坐标（锚点: stage-drag-position）", () => {
   });
 });
 
-describe("编辑期元素校验（锚点: edit-time-validation）", () => {
+describe("编辑期元素校验", () => {
   it("示例故事（含 scene 列）零诊断（回归锚定：打开编辑器不应一片红）", () => {
     expect(validateStory(sampleStory())).toEqual([]);
   });
@@ -182,7 +181,7 @@ describe("编辑期元素校验（锚点: edit-time-validation）", () => {
     expect(diagnostics[0]?.pointer).toBe("/columns/0/elements/0/children/0");
   });
 
-  it("已声明但无渲染语义的属性 → warning 且表单不下发（T01-01 止血，锚点: unimplemented-element-attr）", () => {
+  it("已声明但无渲染语义的属性 → warning 且表单不下发", () => {
     const story: Story = {
       formatVersion: 1,
       id: "demo",
@@ -231,7 +230,7 @@ describe("编辑期元素校验（锚点: edit-time-validation）", () => {
   });
 });
 
-describe("行标签单一事实源（锚点: row-label-single-source）", () => {
+describe("行标签单一事实源", () => {
   it("命令按 op 标签、元素按类型标签（回归锚定：元素层曾整层显示「（坏命令）」）", () => {
     expect(describeNodeLabel({ op: "say" })).toBe("对话");
     expect(describeNodeLabel({ type: "panel" })).toBe("面板");
@@ -246,7 +245,7 @@ describe("行标签单一事实源（锚点: row-label-single-source）", () => 
   });
 });
 
-describe("字段值落树（锚点: field-value-coercion）", () => {
+describe("字段值落树", () => {
   it("value kind 智能字面量：纯数字还原为数字（回归锚定：曾退化成无单位字符串）", () => {
     expect(coerceFieldValue("value", "120")).toBe(120);
     expect(coerceFieldValue("value", "-3.5")).toBe(-3.5);

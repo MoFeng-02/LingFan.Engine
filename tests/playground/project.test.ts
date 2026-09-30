@@ -1,9 +1,8 @@
 /**
  * 示例工程防腐：playground 的 `Resources/` 是可跑的工程内容——
- * 清单 + 故事必须能被组装器接受，且故事引用的媒体必须在资源根内真实存在（08-U7）。
- * 用 `?raw` 与 `import.meta.glob`（不碰 fs：前端禁 Node，规约 00 §3.2）。
+ * 清单 + 故事必须能被组装器接受，且故事引用的媒体必须在资源根内真实存在。
+ * 用 `?raw` 与 `import.meta.glob`（不碰 fs：前端禁 Node）。
  *
- * 锚点: resource-root-resolution / story-manifest-lock
  */
 import { describe, expect, it } from "vitest";
 import manifestRaw from "../../apps/playground/Resources/project.json?raw";
@@ -58,11 +57,11 @@ function collectResources(commands: StoryCommand[], into: Set<string>): void {
   }
 }
 
-describe("示例工程防腐（锚点: resource-root-resolution）", () => {
+describe("示例工程防腐", () => {
   it("清单 + 全部故事文件可组装；入口与分支列齐全", () => {
     const story = assemble();
     expect(story.entry).toBe("start");
-    // 组装通过即断言了：单列文件名 = 列 id、columnId 唯一（F1）；
+    // 组装通过即断言了：单列文件名 = 列 id、columnId 唯一；
     // 列序 = 文件路径码元序（组装器确定性排序）
     expect(story.columns.map((c) => c.id)).toEqual([
       "end",

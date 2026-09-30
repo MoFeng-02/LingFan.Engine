@@ -1,8 +1,7 @@
 /**
- * 08 §二.1 / §二.2 元素 op 的文本投影测试。
- * 锚点: text-json-roundtrip-equivalence / text-projection-rejects-on-error
+ * 元素 op 的文本投影测试。
  *
- * 测试纪律（agent.md §6）五类齐备：**往返互锁 / 拟态用户旅程 / 故意错误 / 边界 / 回归锚定**。
+ * 测试纪律五类齐备：**往返互锁 / 拟态用户旅程 / 故意错误 / 边界 / 回归锚定**。
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -63,7 +62,7 @@ const CANONICAL_OPS: Array<Record<string, unknown>> = [
   { op: "text_typewriter", enabled: true, speed: 30 },
 ];
 
-describe("T1 往返等价：元素 op 的 JSON → 文本 → JSON", () => {
+describe("往返等价：元素 op 的 JSON → 文本 → JSON", () => {
   for (const cmd of CANONICAL_OPS) {
     it(`${cmd.op} 往返保真`, () => {
       const text = generateText(flowStory(cmd));
@@ -133,7 +132,7 @@ describe("拟态用户旅程：写一段含 scene 列与元素操作的文本", 
   });
 });
 
-describe("故意错误：参数错 / 缺必填 → 整次拒绝并带行列定位（T2）", () => {
+describe("故意错误：参数错 / 缺必填 → 整次拒绝并带行列定位", () => {
   const cases: Array<[string, RegExp]> = [
     ["  shake nope=1", /shake 未知参数/],
     ["  background bg.png", /需要资源路径字符串/],
@@ -210,7 +209,7 @@ describe("边界", () => {
   });
 });
 
-describe("回归锚定：同名冲突按语句优先（与老引擎一致）", () => {
+describe("回归锚定：同名冲突按语句优先（与旧版引擎一致）", () => {
   it("background / video / window 在文本里解析为 op，而非元素行", () => {
     const back = parseTextStory(
       [
@@ -245,7 +244,7 @@ describe("回归锚定：同名冲突按语句优先（与老引擎一致）", (
   });
 });
 
-describe("同名冲突类型的显式 element 前缀（锚点: element-op-conflict-projection）", () => {
+describe("同名冲突类型的显式 element 前缀", () => {
   function sceneStory(): Story {
     return parseStory({
       formatVersion: 1,

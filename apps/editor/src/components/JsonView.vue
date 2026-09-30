@@ -3,9 +3,9 @@ import { computed, inject, ref, watch } from "vue";
 import type { Story } from "@lingfan/engine";
 
 /**
- * 06 §一.1 JSON 视图：只读镜像 → 可编辑（结构化编辑的最直接形态）。
+ * JSON 视图：只读镜像 → 可编辑（结构化编辑的最直接形态）。
  * 应用 = JSON.parse 整树替换（一个 undo 单元）；解析失败行内拒绝。
- * 树内语义问题（缺必填/未知 op…）不在此拦截——诊断面板实时标红（D3 分工）。
+ * 树内语义问题（缺必填/未知 op…）不在此拦截——诊断面板实时标红（分工）。
  */
 const props = defineProps<{ story: Story }>();
 

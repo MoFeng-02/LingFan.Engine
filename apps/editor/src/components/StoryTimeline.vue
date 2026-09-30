@@ -27,7 +27,7 @@ const api = inject<EditorApi>("editorApi")!;
 /** op 分组与中文标签 = `@lingfan/editor` 单一事实源（与组件面板共用，勿在此另列清单） */
 const opGroups = listOpGroups();
 const insertOp = ref("say");
-/** D-46：元素层容器的插入源 = 元素类型分组（与组件面板同源），默认取第一组首个类型 */
+/** 元素层容器的插入源 = 元素类型分组（与组件面板同源），默认取第一组首个类型 */
 const insertType = ref(ELEMENT_TYPE_GROUPS[0]?.types[0] ?? "");
 
 const column = computed(() =>
@@ -75,7 +75,7 @@ const containers = computed(() => {
 function insert(field: "commands" | "elements" | "entry"): void {
   const index = props.story.columns.findIndex((c) => c.id === props.columnId);
   if (index < 0) return;
-  // D-46：元素层只产元素草稿（createElementDraft fail-closed），绝不产 {op} 命令形态
+  // 元素层只产元素草稿（createElementDraft fail-closed），绝不产 {op} 命令形态
   if (field === "elements") {
     const draft = createElementDraft(insertType.value, 0, 0);
     if (draft !== null) api.insertCommand(`/columns/${index}/elements`, draft);
@@ -109,7 +109,7 @@ function summary(cmd: Record<string, unknown>): string {
     >
       <div class="container-head">
         <h2>{{ container.label }}</h2>
-        <!-- D-46：元素层用元素类型下拉（同源组件面板），命令容器仍用 op 下拉 -->
+        <!-- 元素层用元素类型下拉（同源组件面板），命令容器仍用 op 下拉 -->
         <select
           v-if="container.field === 'elements'"
           v-model="insertType"

@@ -1,9 +1,7 @@
 /**
- * 壳配置解析测试（⑨-6 方向默认 / ⑨-11 层 z 表 / ⑨-12 存档壳配置）。
- * 锚点: layer-z-contract · layer-z-defaults · layer-z-instance · save-slots-ui · orientation-config-resolution
+ * 壳配置解析测试（方向默认 / 层 z 表 / 存档壳配置）。
  *
- * 2026-09-26 由 tests/playground/{shell/*,orientation}.test.ts 迁入并合并——
- * 解析器已收进引擎 runtime（单一事实源），故测试随之落在引擎域：所有宿主共用同一实现。
+ * 解析器收进引擎 runtime（单一事实源），测试随之落在引擎域：所有宿主共用同一实现。
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -120,7 +118,7 @@ describe("slotIds（槽位 id 与既有存储命名兼容）", () => {
   });
 });
 
-describe("⑨-6 manifestOrientation（清单信任边界）", () => {
+describe("manifestOrientation（清单信任边界）", () => {
   it("合法声明原样读出；缺段/缺字段 = undefined", () => {
     expect(manifestOrientation({ shell: { orientation: "landscape" } })).toBe(
       "landscape",
@@ -147,7 +145,7 @@ describe("⑨-6 manifestOrientation（清单信任边界）", () => {
   });
 });
 
-describe("⑨-6 resolveOrientationMode（优先级链）", () => {
+describe("resolveOrientationMode（优先级链）", () => {
   it("优先级：玩家偏好 > 工程默认 > auto", () => {
     expect(resolveOrientationMode("portrait", "landscape")).toBe("portrait");
     expect(resolveOrientationMode(undefined, "landscape")).toBe("landscape");

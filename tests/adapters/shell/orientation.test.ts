@@ -1,5 +1,5 @@
 /**
- * 08 §八.2 屏幕方向端口适配器测试：invoke 契约替身注入，不依赖 Tauri 运行时
+ * 屏幕方向端口适配器测试：invoke 契约替身注入，不依赖 Tauri 运行时
  * （Rust 侧模式解析与原生落点在 cargo 测——shell.rs；Kotlin 字符串契约由 bridge_check 互锁）。
  */
 import { describe, expect, it } from "vitest";
@@ -22,7 +22,7 @@ function fakeInvoke(result: unknown | Error): {
   return { invoke, calls };
 }
 
-describe("08 §八.2 createTauriOrientationPort（invoke 契约替身）", () => {
+describe("createTauriOrientationPort（invoke 契约替身）", () => {
   it("apply 透传 set_orientation 与 mode 参数键；已应用原样返回", async () => {
     const { invoke, calls } = fakeInvoke(true);
     const port = createTauriOrientationPort(invoke);
@@ -45,7 +45,7 @@ describe("08 §八.2 createTauriOrientationPort（invoke 契约替身）", () =>
   });
 });
 
-describe("08 §八.2 createNoopOrientationPort（无壳形态）", () => {
+describe("createNoopOrientationPort（无壳形态）", () => {
   it("恒未应用且不抛错（浏览器宿主无方向概念）", async () => {
     const port = createNoopOrientationPort();
     await expect(port.apply("auto")).resolves.toBe(false);

@@ -1,5 +1,5 @@
 /**
- * 07 §三 工程供给（Tauri Desktop/Mobile 原生实现）：实现 `ProjectFilesPort` 契约——
+ * 工程供给（Tauri Desktop/Mobile 原生实现）：实现 `ProjectFilesPort` 契约——
  * 经 invoke 调 Rust `project_files` 命令（资源根 = `$RESOURCE/Resources`，dev/prod 同路径），
  * 命令一次返回清单 + 故事原始文本；本侧只做编组与 Record → Map 转换。
  *
@@ -48,7 +48,7 @@ export function createTauriProjectFilesPort(
   };
 }
 
-// —— 07 §三.2 热重载监视（dev 工具）——
+// —— 热重载监视（dev 工具）——
 
 /** 事件监听契约（Tauri 公共 API 形状；测试替身按此契约实现） */
 export type TauriListen = (
@@ -67,7 +67,7 @@ const defaultListen: TauriListen = async (event, handler) => {
 };
 
 /**
- * 订阅工程文件热重载（07 §三.2）：Rust 递归监视源资源根（防抖）→ `story-changed` 事件
+ * 订阅工程文件热重载：Rust 递归监视源资源根（防抖）→ `story-changed` 事件
  * → onChange 回调（组合根重新供给+组装 → 引擎 reloadStory）。
  * listen/invoke 可注入（契约替身，测试不依赖 Tauri 运行时）；重复调用共享同一 Rust 监视（幂等）。
  */

@@ -1,6 +1,5 @@
 /**
- * 08 §二.1 元素渲染（UI 层）测试。
- * 锚点: element-registry-fail-closed / element-props-to-css
+ * 元素渲染（UI 层）测试。
  *
  * node 环境无 document：用最小 DOM 替身（只覆盖渲染器用到的表面积），
  * 与 minigame 注册表测试「以替身充当宿主元素」同一手法。
@@ -75,7 +74,7 @@ function asHost(node: FakeNode): HTMLElement {
   return node as unknown as HTMLElement;
 }
 
-describe("ElementRegistry（fail-closed 注册制，锚点: element-registry-fail-closed）", () => {
+describe("ElementRegistry（fail-closed 注册制）", () => {
   it("未注册类型 → undefined（不伪造默认渲染）", () => {
     const registry = createElementRegistry();
     expect(registry.has("panel")).toBe(false);
@@ -101,8 +100,8 @@ describe("ElementRegistry（fail-closed 注册制，锚点: element-registry-fai
   });
 });
 
-describe("elementStyle（属性 → CSS，锚点: element-props-to-css）", () => {
-  it("x/y → absolute + left/top（百分比原样交给 CSS，对齐老引擎百分比定位语义）", () => {
+describe("elementStyle（属性 → CSS）", () => {
+  it("x/y → absolute + left/top（百分比原样交给 CSS，对齐旧版引擎百分比定位语义）", () => {
     expect(elementStyle({ x: "50%", y: 12 })).toMatchObject({
       position: "absolute",
       left: "50%",
@@ -151,7 +150,7 @@ describe("renderElementTree（未知类型不渲染）", () => {
     expect(container.children[0]?.className).toContain("lf-text");
   });
 
-  it("已注册类型：渲染并把舞台内叠放序写入 zIndex（§3.1 两级叠放）", () => {
+  it("已注册类型：渲染并把舞台内叠放序写入 zIndex（两级叠放）", () => {
     const registry = createElementRegistry();
     registerBuiltinElementRenderers(registry);
     const container = createFake("div");

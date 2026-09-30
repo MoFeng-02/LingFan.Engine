@@ -14,7 +14,7 @@ describe("prepare-dist · resolveProtocolBase（与 Rust protocol_base 同口径
   });
 });
 
-describe("prepare-dist · rewriteHtml（构建期静态改写，设计稿 §2.2）", () => {
+describe("prepare-dist · rewriteHtml（构建期静态改写）", () => {
   it("script/link 的本地产物引用改写为 {base}/v2/dist%2F…，并收集逻辑路径清单", () => {
     const source = `<!doctype html>
 <html lang="en">
@@ -30,7 +30,7 @@ describe("prepare-dist · rewriteHtml（构建期静态改写，设计稿 §2.2�
     expect(html).not.toContain('"/assets/index-Cx1Ab.js"');
     expect(assets).toEqual(["dist/assets/index-Cx1Ab.js", "dist/assets/index-Cx1Ab.css"]);
   });
-  it("外链（动态/远程 URL）一概不碰（设计稿改写纪律：只碰构建产物内相对引用）", () => {
+  it("外链（动态/远程 URL）一概不碰（改写纪律：只碰构建产物内相对引用）", () => {
     const source = `<html><head>
       <link rel="stylesheet" href="https://cdn.example.com/x.css">
       <script src="https://example.com/a.js"></script>

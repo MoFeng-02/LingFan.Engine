@@ -21,7 +21,7 @@ const defaultInvoke: TauriInvoke = async <T>(
 };
 
 interface StreamPayload {
-  /** LFEN2 v2 分块形态标记（05 §二.1）：协议按 Range 按需解密，明文不落盘 */
+  /** LFEN2 v2 分块形态标记：协议按 Range 按需解密，明文不落盘 */
   v2?: string;
   /** v1 token 缓存形态标记 */
   file?: string;
@@ -34,7 +34,7 @@ export function createTauriEncryptedResourcePort(
 ): ResourcePort {
   return {
     async resolve(id: string): Promise<string> {
-      // 解密失败必须抛错（K6 fail-closed，不静默返回坏 URL）；路径信任边界在 Rust 侧二次校验
+      // 解密失败必须抛错（fail-closed，不静默返回坏 URL）；路径信任边界在 Rust 侧二次校验
       const raw = await invoke<string>("decrypt_resource", { path: id });
       let payload: StreamPayload;
       try {

@@ -57,7 +57,7 @@ export async function buildStories(root: string): Promise<BuildReport> {
   const resourcesDir = join(root, "Resources");
   const storiesDir = join(resourcesDir, STORIES_DIR);
 
-  // —— 源：恰好一个 .ts（一个工程 = 一个 Story = 一个源；多故事工程形态未裁定）——
+  // —— 源：恰好一个 .ts（一个工程 = 一个 Story = 一个源；多故事工程形态未支持）——
   const sources = existsSync(sourcesDir)
     ? readdirSync(sourcesDir).filter((name) => name.endsWith(".ts")).sort()
     : [];

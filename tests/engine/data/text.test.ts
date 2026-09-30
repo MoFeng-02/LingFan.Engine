@@ -1,7 +1,7 @@
 /**
- * 07-文本创作模式测试：
- * T1 往返等价（text → JSON → text 字节级一致）/ T2 投影失败整次拒绝带行列定位 /
- * T3 JSON 唯一真相源（JSON → text → JSON 结构等价）/ T4 混存识别
+ * 文本创作模式测试：
+ * 往返等价（text → JSON → text 字节级一致）/ 投影失败整次拒绝带行列定位 /
+ * JSON 唯一真相源（JSON → text → JSON 结构等价）/ 混存识别
  */
 import { describe, expect, it } from "vitest";
 import type { StoryCommand } from "@lingfan/engine";
@@ -86,7 +86,7 @@ label end:
   say "终" voice="line1.mp3"
 `;
 
-describe("07-T1 往返等价（text → JSON → text 字节级一致）", () => {
+describe("往返等价（text → JSON → text 字节级一致）", () => {
   it("全 op 规范文本：parse → generate 恒等", () => {
     expect(generateText(parseTextStory(canonical, "Stories/demo.story"))).toBe(
       canonical,
@@ -99,7 +99,7 @@ describe("07-T1 往返等价（text → JSON → text 字节级一致）", () =>
     expect(generateText(parseTextStory(once, "demo.story"))).toBe(once);
   });
 
-  it("JSON → text → JSON 结构等价（T3：JSON 树唯一真相源）", () => {
+  it("JSON → text → JSON 结构等价（JSON 树唯一真相源）", () => {
     const jsonStory = parseStory(
       {
         formatVersion: 1,
@@ -147,7 +147,7 @@ describe("07-T1 往返等价（text → JSON → text 字节级一致）", () =>
   });
 });
 
-describe("07-T2 投影失败整次拒绝 + 行列定位", () => {
+describe("投影失败整次拒绝 + 行列定位", () => {
   it("未知语句 → TextFormatError 带行号", () => {
     try {
       parseTextStory("label a:\n  teleport far\n", "a.story");
@@ -197,7 +197,7 @@ describe("07-T2 投影失败整次拒绝 + 行列定位", () => {
     expect(text).toContain('  button "开始" nav=sc'); // 嵌套缩进
     expect(text).toContain('say "hi"');
 
-    // 往返：生成文本可解析回同构 scene 列（T1）
+    // 往返：生成文本可解析回同构 scene 列
     const back = parseTextStory(text, "roundtrip.story");
     expect(back.columns[0]?.kind).toBe("scene");
     expect(back.columns[0]?.elements).toHaveLength(2);
@@ -232,7 +232,7 @@ describe("07-T2 投影失败整次拒绝 + 行列定位", () => {
   });
 });
 
-describe("07-T4 混存识别（parseStoryFile）", () => {
+describe("混存识别（parseStoryFile）", () => {
   it("JSON 内容走 JSON 投影、文本内容走文本投影", () => {
     const json = parseStoryFile(
       JSON.stringify({
@@ -247,7 +247,7 @@ describe("07-T4 混存识别（parseStoryFile）", () => {
     expect(text.columns[0]).toMatchObject({ id: "start", kind: "flow" });
   });
 
-  it("坏 JSON → StoryFormatError（不降级，§一.47）", () => {
+  it("坏 JSON → StoryFormatError（不降级）", () => {
     expect(() => parseStoryFile("{ broken", "bad.story")).toThrow(
       StoryFormatError,
     );
@@ -269,7 +269,7 @@ describe("07 nvl/character 文法往返", () => {
     expect(generateText(story)).toBe(text);
   });
 
-  it("08 §四.5 say template + character screen 往返等价", () => {
+  it("say template + character screen 往返等价", () => {
     const text = `label a:
   character "少女" name="少女" screen="char-screen"
   say "你好" template="center"

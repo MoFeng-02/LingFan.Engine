@@ -100,7 +100,7 @@ export function assembleProject(
 
   for (const path of [...files.keys()].sort(byPath)) {
     const value = files.get(path);
-    // 值的两种合法形态：解析后的文件 JSON（对象）或原始文本（JSON v1 / .story，T4 混存由
+    // 值的两种合法形态：解析后的文件 JSON（对象）或原始文本（JSON v1 / .story，混存由
     // parseStoryFile 识别）。组装器是**唯一解析点**——调用方只供文本，避免双重解析丢失
     // 「单列原子文件」形态而绕过文件名不变量（按 id 定位文件）。
     let story: Story;

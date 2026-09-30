@@ -4,9 +4,9 @@ import type { Story, StoryColumn } from "@lingfan/engine";
 import { layoutColumns, type ColumnGroupingView } from "@lingfan/editor";
 
 /**
- * 06 §一.1 列侧栏 + T04-01 列分组归类（裁定 R2 (a)：UI 侧元数据）。
+ * 列侧栏 + 列分组归类（UI 侧元数据）。
  * 分组**只做分区与折叠**，展示序恒按 `story.columns`（列序 = 文件路径码元序 = 叙事语义）
- * 重排——分组永不改变列序、不进故事 JSON、不产生 undo（锚点: editor-column-grouping）。
+ * 重排——分组永不改变列序、不进故事 JSON、不产生 undo。
  */
 const props = defineProps<{ story: Story; selectedId: string }>();
 
@@ -19,7 +19,7 @@ interface EditorApi {
 }
 const api = inject<EditorApi>("editorApi")!;
 
-/** T04-01 分组视图 API（与 `editorApi` 分离：视图偏好不走会话提交） */
+/** 分组视图 API（与 `editorApi` 分离：视图偏好不走会话提交） */
 interface ColumnGroupingApi {
   view: Ref<ColumnGroupingView>;
   addGroup(name: string): void;
@@ -125,7 +125,7 @@ function promptAddGroup(): void {
   grouping.addGroup(name); // 留空 = 由纯函数回退「新分组」
 }
 
-/** T09-02：+列先要一个语义化 id 建议（留空/取消 = 自动生成 column-N 兜底；重名由 suggestColumnId 唯一化） */
+/** +列先要一个语义化 id 建议（留空/取消 = 自动生成 column-N 兜底；重名由 suggestColumnId 唯一化） */
 function promptAddColumn(kind: "flow" | "scene"): void {
   const hint = window.prompt(
     `新${kind === "flow" ? "流程" : "场景"}列 id（语义化短 id，如 tavern；留空 = 自动生成）`,

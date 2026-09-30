@@ -1,17 +1,17 @@
 /**
- * T08-07 / D-42 写入契约守卫测试（值 + 键）。锚点：`state-value-contract`、`state-key-namespace`。
+ * 写入契约守卫测试（值 + 键）。
  *
- * 契约（⚖️ R8 组合式）：
+ * 契约（组合式）：
  * - **写入时**（`setGlobal`/`setSystem`，一切程序化写入的收口）：值必须 JSON 安全——
  *   O(1) 白名单（标量/普通对象/数组；拒 undefined 值/function/symbol/bigint/Date/Map/Set/类实例/
  *   非有限数）+ 对**新写入值本身**深走查（循环引用只能在写入点廉价捕获，带键名定位）；
  *   键命中 `RESERVED_STATE_KEYS`（SYS 精确名全集）→ `reserved-key`。
  * - **序列化边界**（`exportSave`）：全量深校验兜「写后原地改」——写时复制挡不住作者拿到引用后
- *   原地改值（R8：作者行为，序列化边界兜底 + 契约条款 + 断言工具；快照期**不做**硬门禁）。
+ *   原地改值（作者行为，序列化边界兜底 + 契约条款 + 断言工具；快照期**不做**硬门禁）。
  *
  * 拒绝语义 = `engine.error` + **状态原样**（与 `instance-z-invalid` 同款 fail-closed）。
  *
- * ⚠️ 裁定锚定（防误伤回归）：**保留键 = 精确键名，不是 `__` 前缀一刀切**——作者自用
+ * 回归锚定（防误伤）：**保留键 = 精确键名，不是 `__` 前缀一刀切**——作者自用
  * `__teleport_target`（非 SYS 键）必须继续合法（`engine.test.ts:227` 既有用法）。
  */
 import { describe, expect, it } from "vitest";
@@ -195,7 +195,7 @@ describe("state-key-namespace：保留键 = SYS 精确名全集", () => {
     h.dispose();
   });
 
-  it("⚠️ 回归锚定：作者自用 __teleport_target（非 SYS 键）仍合法——精确键名，非前缀一刀切", () => {
+  it("回归锚定：作者自用 __teleport_target（非 SYS 键）仍合法——精确键名，非前缀一刀切", () => {
     const h = makeEngine(
       parseStory({
         formatVersion: 1,

@@ -1,8 +1,6 @@
 /**
- * 02-执行模型测试（规约↔测试互锁锚点）：
- * ssot-only-observation / race-stale-complete-flag / reset-clickable-after-say /
- * advance-only-in-dialog-wait / unknown-op-fail-closed / choice-unknown-fails /
- * define-once-vs-let / scope-nested-lifetime / goto-unknown-column-fails
+ * 执行模型测试：单一事实源观察、竞态清理、命令面守卫、未知 op fail-closed、
+ * 作用域生命周期、跳转目标校验
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
@@ -67,7 +65,7 @@ function hasError(errors: OutboundEvent[], code: string): boolean {
   );
 }
 
-describe("最小闭环主链路（锚点: ssot-only-observation）", () => {
+describe("最小闭环主链路", () => {
   it("start + advance×3 走完三句 say，StateChanged 键序列精确匹配", () => {
     const { engine, changes, dispose } = makeEngine([
       { op: "say", speaker: "灵泛", text: "第一句" },
@@ -81,17 +79,17 @@ describe("最小闭环主链路（锚点: ssot-only-observation）", () => {
 
     const expectedKeys = [
       SYS.currentSceneColumn,
-      // 08 §二.1 元素系统：进入 scene 列随即装载空间层（声明式，不进命令流）
+      // 元素系统：进入 scene 列随即装载空间层（声明式，不进命令流）
       SYS.elements,
-      // say 1（进入等待前清残留完成标记——锚点: race-stale-complete-flag）
+      // say 1（进入等待前清残留完成标记）
       SYS.dialogComplete,
       SYS.currentDialogSpeaker,
-      SYS.dialogTemplate, // 08 §四.5：模板三级优先级解析结果（无 template 无角色 → null）
+      SYS.dialogTemplate, // 模板三级优先级解析结果（无 template 无角色 → null）
       SYS.currentDialogText,
       SYS.dialogClickable,
       SYS.dialogNoskip,
       SYS.waiting,
-      // advance 1（离开等待后清 clickable/noskip——锚点: reset-clickable-after-say）
+      // advance 1（离开等待后清 clickable/noskip）
       SYS.dialogComplete,
       SYS.dialogClickable,
       SYS.dialogNoskip,
@@ -132,7 +130,7 @@ describe("最小闭环主链路（锚点: ssot-only-observation）", () => {
       scope: "system",
     });
     expect(changes[3]?.value).toBe("灵泛");
-    expect(changes[4]?.value).toBeNull(); // 08 §四.5：无 template 无角色 → null（全局默认）
+    expect(changes[4]?.value).toBeNull(); // 无 template 无角色 → null（全局默认）
     expect(changes[5]?.value).toBe("第一句");
     // say 2 无 speaker → 清空，不残留上一句
     expect(changes[14]?.key).toBe(SYS.currentDialogSpeaker);
@@ -147,7 +145,7 @@ describe("最小闭环主链路（锚点: ssot-only-observation）", () => {
     dispose();
   });
 
-  it("say 进入等待时把残留的 __dialog_complete 清回 false（锚点: race-stale-complete-flag）", () => {
+  it("say 进入等待时把残留的 __dialog_complete 清回 false", () => {
     const { engine, changes, dispose } = makeEngine([
       { op: "say", text: "甲" },
       { op: "say", text: "乙" },
@@ -172,7 +170,7 @@ describe("最小闭环主链路（锚点: ssot-only-observation）", () => {
     dispose();
   });
 
-  it("离开 say 等待后 clickable/noskip 复位（锚点: reset-clickable-after-say）", () => {
+  it("离开 say 等待后 clickable/noskip 复位", () => {
     const { engine, changes, dispose } = makeEngine([
       { op: "say", text: "甲", clickable: true, noskip: true },
       { op: "say", text: "乙" },
@@ -191,7 +189,7 @@ describe("最小闭环主链路（锚点: ssot-only-observation）", () => {
   });
 });
 
-describe("命令面守卫（锚点: advance-only-in-dialog-wait）", () => {
+describe("命令面守卫", () => {
   it("未启动时 advance 无效并报错", () => {
     const { engine, errors, dispose } = makeEngine([{ op: "say", text: "甲" }]);
     engine.advance();
@@ -209,7 +207,7 @@ describe("命令面守卫（锚点: advance-only-in-dialog-wait）", () => {
   });
 });
 
-describe("fail-closed（锚点: unknown-op-fail-closed）", () => {
+describe("fail-closed", () => {
   it("未知 op → engine.error，不静默执行也不崩溃", () => {
     const { engine, changes, errors, dispose } = makeEngine([
       { op: "say", text: "甲" },
@@ -239,14 +237,14 @@ describe("fail-closed（锚点: unknown-op-fail-closed）", () => {
     // 先校验后写入：除列坐标外无任何对话键写入
     expect(changes.map((c) => c.key)).toEqual([
       SYS.currentSceneColumn,
-      SYS.elements, // 08 §二.1：进入列即装载空间层（无元素声明 = 空数组）
+      SYS.elements, // 进入列即装载空间层（无元素声明 = 空数组）
     ]);
     expect(engine.get(SYS.currentDialogText)).toBeUndefined();
     dispose();
   });
 });
 
-describe("defines（01 §一.6：顶层无条件 Set）", () => {
+describe("defines（顶层无条件 Set）", () => {
   it("start 时 defines 按序写入且先于列坐标，scope=global", () => {
     const { engine, changes, dispose } = makeEngine(
       [{ op: "say", text: "甲" }],
@@ -263,7 +261,7 @@ describe("defines（01 §一.6：顶层无条件 Set）", () => {
     });
     expect(changes[1]).toEqual({ key: "npc.trust", value: 3, scope: "global" });
     expect(changes[2]?.key).toBe(SYS.currentSceneColumn);
-    expect(changes[3]?.key).toBe(SYS.elements); // 08 §二.1：列坐标之后随即装载空间层
+    expect(changes[3]?.key).toBe(SYS.elements); // 列坐标之后随即装载空间层
     dispose();
   });
 });
@@ -279,7 +277,7 @@ describe("重复 start", () => {
   });
 });
 
-describe("入口列（01 §一.7）", () => {
+describe("入口列", () => {
   it("start 从 story.entry 列开始而非首列", () => {
     const story = parseStory({
       formatVersion: 1,
@@ -298,7 +296,7 @@ describe("入口列（01 §一.7）", () => {
   });
 });
 
-describe("变量与作用域（S1/S2，老规范 §6.2）", () => {
+describe("变量与作用域", () => {
   it("set 表达式值落全局，ValueChanged scope=global", () => {
     const { engine, changes, dispose } = makeEngine([
       { op: "set", key: "player.gold", value: "{100 + 20}" },
@@ -397,7 +395,7 @@ describe("变量与作用域（S1/S2，老规范 §6.2）", () => {
   });
 });
 
-describe("分支与跳转（老规范 §6.1）", () => {
+describe("分支与跳转", () => {
   it("if/else 分支选择", () => {
     const { engine, dispose } = makeEngine([
       {
@@ -441,7 +439,7 @@ describe("分支与跳转（老规范 §6.1）", () => {
     dispose();
   });
 
-  it("F1：jump 目标不存在 → fail-closed（锚点: goto-unknown-column-fails）", () => {
+  it("jump 目标不存在 → fail-closed", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "demo",
@@ -495,7 +493,7 @@ describe("分支与跳转（老规范 §6.1）", () => {
   });
 });
 
-describe("menu/choose（02 §二.2/三.3，U8/E6；01 §一.2 选择即跳转目标列）", () => {
+describe("menu/choose（选择即跳转目标列）", () => {
   /** start: say → menu(inn/square)；两目标列各一句 say */
   function makeMenuStory(): Harness {
     const story = parseStory({
@@ -528,7 +526,7 @@ describe("menu/choose（02 §二.2/三.3，U8/E6；01 §一.2 选择即跳转目
     return instrument(new StoryEngine(story));
   }
 
-  it("进入菜单等待：写菜单键 + 清对话残留（08 §二.6）", () => {
+  it("进入菜单等待：写菜单键 + 清对话残留", () => {
     const { engine, dispose } = makeMenuStory();
     engine.start();
     engine.advance();
@@ -542,7 +540,7 @@ describe("menu/choose（02 §二.2/三.3，U8/E6；01 §一.2 选择即跳转目
     dispose();
   });
 
-  it("choose → selected 更新并跳转目标列（01 §一.2：columnId 换、index 归零）", () => {
+  it("choose → selected 更新并跳转目标列（columnId 换、index 归零）", () => {
     const { engine, dispose } = makeMenuStory();
     engine.start();
     engine.advance();
@@ -554,7 +552,7 @@ describe("menu/choose（02 §二.2/三.3，U8/E6；01 §一.2 选择即跳转目
     dispose();
   });
 
-  it("E6：未知目标 fail-closed，菜单等待保持且可重选", () => {
+  it("未知目标 fail-closed，菜单等待保持且可重选", () => {
     const { engine, errors, dispose } = makeMenuStory();
     engine.start();
     engine.advance();
@@ -567,7 +565,7 @@ describe("menu/choose（02 §二.2/三.3，U8/E6；01 §一.2 选择即跳转目
     dispose();
   });
 
-  it("U8/E5：菜单等待中 advance 无效", () => {
+  it("菜单等待中 advance 无效", () => {
     const { engine, errors, dispose } = makeMenuStory();
     engine.start();
     engine.advance();
@@ -584,7 +582,7 @@ describe("menu/choose（02 §二.2/三.3，U8/E6；01 §一.2 选择即跳转目
   });
 });
 
-describe("notify（01 §二.1 → 08 §二.4）", () => {
+describe("notify", () => {
   it("出站 notify 事件且不阻塞推进", () => {
     const { engine, errors, dispose } = makeEngine([
       { op: "notify", text: "存档成功", type: "info", duration: 2000 },
@@ -602,7 +600,7 @@ describe("notify（01 §二.1 → 08 §二.4）", () => {
   });
 });
 
-describe("say 文本插值（01 §三.4/§三.6，F7/S8）", () => {
+describe("say 文本插值", () => {
   it("{expr:format} 补零 + {expr} 求值", () => {
     const { engine, dispose } = makeEngine([
       { op: "set", key: "gold", value: 7 },
@@ -613,7 +611,7 @@ describe("say 文本插值（01 §三.4/§三.6，F7/S8）", () => {
     dispose();
   });
 
-  it("行内标记 {b}{/b}{p} 原样透传（01 §三.6）；单字母标记与变量冲突时已定义变量优先", () => {
+  it("行内标记 {b}{/b}{p} 原样透传；单字母标记与变量冲突时已定义变量优先", () => {
     const { engine, dispose } = makeEngine([
       { op: "set", key: "i", value: 3 },
       { op: "say", text: "{b}粗{/b}{p}尾 {i}" },
@@ -639,7 +637,7 @@ describe("say 文本插值（01 §三.4/§三.6，F7/S8）", () => {
     dispose();
   });
 
-  it("F7：格式占位只在文本命令生效——set 值中的 ':00' 是表达式语法错误", () => {
+  it("格式占位只在文本命令生效——set 值中的 ':00' 是表达式语法错误", () => {
     const { engine, changes, errors, dispose } = makeEngine([
       { op: "set", key: "gold", value: "{7:00}" },
       { op: "say", text: "s" },
@@ -651,7 +649,7 @@ describe("say 文本插值（01 §三.4/§三.6，F7/S8）", () => {
   });
 });
 
-describe("wait/pause（01 §二.1：wait 可 skipable、pause=hard；02 §二.2 定时解除）", () => {
+describe("wait/pause（wait 可 skipable、pause=hard；定时解除）", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
@@ -671,7 +669,7 @@ describe("wait/pause（01 §二.1：wait 可 skipable、pause=hard；02 §二.2 
     dispose();
   });
 
-  it("wait skipable=true 可点击提前解除（02 §二.2：超时或用户点击）", () => {
+  it("wait skipable=true 可点击提前解除（超时或用户点击）", () => {
     vi.useFakeTimers();
     const { engine, dispose } = makeEngine([
       { op: "wait", seconds: 60, skipable: true },
@@ -701,7 +699,7 @@ describe("wait/pause（01 §二.1：wait 可 skipable、pause=hard；02 §二.2 
     dispose();
   });
 
-  it("pause 永不可跳过（01 §二.1：pause=hard）", () => {
+  it("pause 永不可跳过（pause=hard）", () => {
     vi.useFakeTimers();
     const { engine, errors, dispose } = makeEngine([
       { op: "pause", seconds: 60 },
@@ -730,7 +728,7 @@ describe("wait/pause（01 §二.1：wait 可 skipable、pause=hard；02 §二.2 
   });
 });
 
-describe("while/break/continue（04 §二.1 执行期求值；老规范 §6.1）", () => {
+describe("while/break/continue（执行期求值）", () => {
   it("while 循环累加至条件退出", () => {
     const { engine, dispose } = makeEngine([
       { op: "set", key: "i", value: 0 },
@@ -830,7 +828,7 @@ describe("while/break/continue（04 §二.1 执行期求值；老规范 §6.1）
   });
 });
 
-describe("for/foreach（老规范 §6.1：数组迭代，foreach 编译为 for 同构）", () => {
+describe("for/foreach（数组迭代，foreach 编译为 for 同构）", () => {
   it("for 遍历表达式数组，循环变量逐元素绑定", () => {
     const { engine, changes, dispose } = makeEngine([
       { op: "array", key: "deck", items: ["甲", "乙"] },
@@ -887,7 +885,7 @@ describe("for/foreach（老规范 §6.1：数组迭代，foreach 编译为 for �
   });
 });
 
-describe("switch（老规范 §6.1：case 字面量相等比较，不穿透）", () => {
+describe("switch（case 字面量相等比较，不穿透）", () => {
   const makeSwitch = (cases: object[], extra: object[] = []): Harness =>
     makeEngine([
       {
@@ -937,7 +935,7 @@ describe("switch（老规范 §6.1：case 字面量相等比较，不穿透）",
   });
 });
 
-describe("array/dict（老规范 §6.2）", () => {
+describe("array/dict", () => {
   it("array 创建 + push + pop（写入新数组引用，观察者可感知）", () => {
     const { engine, changes, dispose } = makeEngine([
       { op: "array", key: "list", items: [1, 2] },
@@ -995,7 +993,7 @@ describe("array/dict（老规范 §6.2）", () => {
   });
 });
 
-describe("func/call/return（04 §一.7，老规范 §6.1/6.2）", () => {
+describe("func/call/return", () => {
   it("func 注册 → call 调用：参数按位绑定进函数体独立块", () => {
     const { engine, changes, dispose } = makeEngine(
       [
@@ -1123,7 +1121,7 @@ describe("func/call/return（04 §一.7，老规范 §6.1/6.2）", () => {
   });
 });
 
-describe("input（老规范 §6.1：prompt + store；02 §三.2 命令面 input(text)）", () => {
+describe("input（prompt + store；命令面 input(text)）", () => {
   it("进入输入等待：写 prompt + 清对话残留；提交写入 store 并继续", () => {
     const { engine, dispose } = makeEngine([
       { op: "input", prompt: "你的名字：", store: "player.name" },
@@ -1149,7 +1147,7 @@ describe("input（老规范 §6.1：prompt + store；02 §三.2 命令面 input(
   });
 });
 
-describe("03 回溯与历史（R1–R6 锚点）", () => {
+describe("回溯与历史", () => {
   /** 多列故事：say1 → say2 → menu(inn/square)，两目标列各一句 say */
   function makeMulti(): Harness {
     const story = parseStory({
@@ -1183,7 +1181,7 @@ describe("03 回溯与历史（R1–R6 锚点）", () => {
     return instrument(new StoryEngine(story, { rngSeed: 42 }));
   }
 
-  it("R1：say 检查点在等待解除后提交，快照捕获玩家所见（锚点: checkpoint-after-click-captures-visible-state）", () => {
+  it("say 检查点在等待解除后提交，快照捕获玩家所见", () => {
     const { engine, dispose } = makeEngine([
       { op: "say", text: "甲" },
       { op: "say", text: "乙" },
@@ -1198,7 +1196,7 @@ describe("03 回溯与历史（R1–R6 锚点）", () => {
     dispose();
   });
 
-  it("R3+R4：回溯到菜单检查点真实等待；重放期输入锁；完成发 rollback.done（锚点: replay-stops-at-menu / rollback-replay-input-lock）", () => {
+  it("回溯到菜单检查点真实等待；重放期输入锁；完成发 rollback.done", () => {
     const { engine, changes, errors, dispose } = makeMulti();
     engine.start();
     engine.advance(); // say1 解除 → 检查点 0
@@ -1215,17 +1213,17 @@ describe("03 回溯与历史（R1–R6 锚点）", () => {
     expect(
       errors.filter((e) => e.payload.kind === "rollback.done"),
     ).toHaveLength(doneCount + 1);
-    expect(engine.get(SYS.waiting)).toBe("menu"); // R3：重放停在菜单真实等待
-    expect(engine.get(SYS.rollbackActive)).toBe(false); // R4：重放完成输入锁解除
+    expect(engine.get(SYS.waiting)).toBe("menu"); // 重放停在菜单真实等待
+    expect(engine.get(SYS.rollbackActive)).toBe(false); // 重放完成输入锁解除
     expect(engine.get(SYS.currentDialogText)).toBe(""); // menu 清对话残留
     expect(changes.length).toBeGreaterThan(0);
-    // 回放后可正常交互（advance 在 menu 等待中无效属 E5 语义，用 choose 验证）
+    // 回放后可正常交互（advance 在 menu 等待中无效，用 choose 验证）
     engine.choose("square");
     expect(engine.get(SYS.waiting)).toBe("dialog");
     dispose();
   });
 
-  it("R4：回溯重放后陈旧完成标记已清（锚点: stale-complete-during-replay）", () => {
+  it("回溯重放后陈旧完成标记已清", () => {
     const { engine, dispose } = makeEngine([
       { op: "say", text: "甲" },
       { op: "say", text: "乙" },
@@ -1239,7 +1237,7 @@ describe("03 回溯与历史（R1–R6 锚点）", () => {
     dispose();
   });
 
-  it("R2：重选 ≠ 旧选择 → 截断旧前向时间线（锚点: menu-reselect-opens-new-timeline）", () => {
+  it("重选 ≠ 旧选择 → 截断旧前向时间线", () => {
     const { engine, errors, dispose } = makeMulti();
     engine.start();
     engine.advance();
@@ -1259,7 +1257,7 @@ describe("03 回溯与历史（R1–R6 锚点）", () => {
     dispose();
   });
 
-  it("R2：重选同一选项 → 时间线延续，rollforward 可用", () => {
+  it("重选同一选项 → 时间线延续，rollforward 可用", () => {
     const { engine, errors, dispose } = makeMulti();
     engine.start();
     engine.advance();
@@ -1277,7 +1275,7 @@ describe("03 回溯与历史（R1–R6 锚点）", () => {
     dispose();
   });
 
-  it("R5：live 消歧——选择后回退落回菜单重选；菜单展示中回退落到上一检查点（锚点: live-vs-checkpoint-disambiguation）", () => {
+  it("live 消歧——选择后回退落回菜单重选；菜单展示中回退落到上一检查点", () => {
     const { engine, dispose } = makeMulti();
     engine.start();
     engine.advance();
@@ -1292,7 +1290,7 @@ describe("03 回溯与历史（R1–R6 锚点）", () => {
     dispose();
   });
 
-  it("R6：显式种子 random op 确定性——同种子同结果，与初始 rngState 无关", () => {
+  it("显式种子 random op 确定性——同种子同结果，与初始 rngState 无关", () => {
     const commands = [
       { op: "random", seed: 7, range: [0, 1000], var: "roll" },
       { op: "say", text: "掷出 {roll}" },
@@ -1317,7 +1315,7 @@ describe("03 回溯与历史（R1–R6 锚点）", () => {
     );
   });
 
-  it("R6：回溯后重放随机序列一致", () => {
+  it("回溯后重放随机序列一致", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "d",
@@ -1347,7 +1345,7 @@ describe("03 回溯与历史（R1–R6 锚点）", () => {
     h.dispose();
   });
 
-  it("§三.3 容量淘汰：超限淘汰最旧（锚点: history-capacity-eviction）", () => {
+  it("容量淘汰：超限淘汰最旧", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "d",
@@ -1445,7 +1443,7 @@ describe("03 回溯与历史（R1–R6 锚点）", () => {
     dispose();
   });
 
-  it("回溯到 say 检查点后可继续逐级回退（不卡在同一点——用户实测回归）", () => {
+  it("回溯到 say 检查点后可继续逐级回退（不卡在同一点）", () => {
     const { engine, errors, dispose } = makeEngine([
       { op: "say", text: "一" },
       { op: "say", text: "二" },
@@ -1469,7 +1467,7 @@ describe("03 回溯与历史（R1–R6 锚点）", () => {
   });
 });
 
-describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", () => {
+describe("存档编排（块列不进档 / 历史随档）", () => {
   function roundTripStory(): Harness {
     const story = parseStory({
       formatVersion: 1,
@@ -1535,7 +1533,7 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     dispose();
   });
 
-  it("R8：读档后历史可继续回溯（锚点: history-survives-load）", () => {
+  it("读档后历史可继续回溯", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "d",
@@ -1560,14 +1558,14 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
 
     const e2 = new StoryEngine(story, { rngSeed: 3 });
     e2.importSave(JSON.parse(JSON.stringify(data)) as SaveDataV1);
-    expect(e2.historyView().map((h) => h.text)).toEqual(["一", "二"]); // R8：历史随档
+    expect(e2.historyView().map((h) => h.text)).toEqual(["一", "二"]); // 历史随档
     e2.rollbackTo(0); // 读档后继续回溯
     expect(e2.get(SYS.currentDialogText)).toBe("一");
     e2.forward(); // rollforward
     expect(e2.get(SYS.currentDialogText)).toBe("二");
   });
 
-  it("S3：块/列级作用域不进档——读档后列级 let 不可见（锚点: scope-excluded-from-save）", () => {
+  it("块/列级作用域不进档——读档后列级 let 不可见", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "d",
@@ -1599,7 +1597,7 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     expect(hasError(h2.errors, "unknown-variable")).toBe(true);
   });
 
-  it("版本/故事不匹配 → fail-closed（§四.6）", () => {
+  it("版本/故事不匹配 → fail-closed", () => {
     const { engine, errors, dispose } = makeEngine([{ op: "say", text: "s" }]);
     engine.start(); // say s 上屏（等待点）
     const data = engine.exportSave();
@@ -1623,7 +1621,7 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     dispose();
   });
 
-  it("读档后回退再前进：离开时的画面补交入档，forward 可回到离开位置（用户实测回归）", () => {
+  it("读档后回退再前进：离开时的画面补交入档，forward 可回到离开位置", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "d",
@@ -1664,7 +1662,7 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     dispose();
   });
 
-  it("块内等待点的检查点坐标恒指列内顶层（columnId 非 null，01 §一.4）", () => {
+  it("块内等待点的检查点坐标恒指列内顶层（columnId 非 null）", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "d",
@@ -1695,7 +1693,7 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     expect(after[1]?.coord).toEqual({ columnId: "start", index: 1 }); // 列级坐标（if 命令位），非 null
   });
 
-  it("存档于块内/函数等待点 → 读档重放 func 幂等重注册，画面重建无 func-duplicate（用户实测回归）", () => {
+  it("存档于块内/函数等待点 → 读档重放 func 幂等重注册，画面重建无 func-duplicate", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "d",
@@ -1738,13 +1736,13 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     ).toHaveLength(0);
     expect(e2.get(SYS.currentDialogText)).toBe("尾段"); // 重放重建存档时刻画面
     expect(e2.get(SYS.waiting)).toBe("dialog");
-    e2.rollbackTo(0); // R8：读档后历史可继续回溯（开场检查点）
+    e2.rollbackTo(0); // 读档后历史可继续回溯（开场检查点）
     expect(e2.get(SYS.currentDialogText)).toBe("开场");
     h1.dispose();
     h2.dispose();
   });
 
-  it("残缺历史自愈：重放重入的 input 站插入时间线而非截断（用户实测回归）", () => {
+  it("残缺历史自愈：重放重入的 input 站插入时间线而非截断", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "d",
@@ -1792,7 +1790,7 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
     h2.dispose();
   });
 
-  it("历史坐标失效 / 结构不完整 → fail-closed 而非崩溃（§四.6，用户实测回归）", () => {
+  it("历史坐标失效 / 结构不完整 → fail-closed 而非崩溃", () => {
     const { engine, errors, dispose } = makeEngine([{ op: "say", text: "s" }]);
     engine.start();
     const good = engine.exportSave();
@@ -1823,7 +1821,7 @@ describe("05 存档编排（TS 侧；S3 块列不进档 / R8 历史随档）", (
   });
 });
 
-describe("08 NVL 累积与角色样式（U5/U4）", () => {
+describe("NVL 累积与角色样式", () => {
   it("nvl 进入/清屏/退出：buffer 追加与清空序列正确", () => {
     const { engine, dispose } = makeEngine([
       { op: "nvl" },
@@ -1948,7 +1946,7 @@ describe("NVL × 历史（historyView 暴露 nvl 标记与累积行快照）", (
   });
 });
 
-describe("08 §六.5 视频族（video/cutscene/seek/pause/resume/stop/skipable）", () => {
+describe("视频族（video/cutscene/seek/pause/resume/stop/skipable）", () => {
   function videoOf(engine: StoryEngine): VideoCommand | null | undefined {
     return engine.get(SYS.video) as VideoCommand | null | undefined;
   }

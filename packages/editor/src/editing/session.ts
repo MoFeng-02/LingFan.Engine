@@ -2,7 +2,7 @@
  * 编辑器会话（视图族共享中枢）：所有视图经同一 session 提交编辑——
  * 一处改动全视图同步（订阅通知）+ 统一 undo 栈（一次提交 = 一个 undo 单元，
  * 深度可配置）。故事树不可变：提交即整体换引用，视图零 diff 成本。
- * 锚点: unified-undo-across-views
+ * 统一 undo：跨视图同步、一次提交一个单元。
  */
 
 import type { Story } from "@lingfan/engine";

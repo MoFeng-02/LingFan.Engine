@@ -1,6 +1,5 @@
 /**
- * 05 i18n 工具链测试（T05-01/02/03）。
- * 锚点: i18n-key-extract-parity / i18n-skeleton-roundtrip / i18n-coverage-report
+ * i18n 工具链测试。
  *
  * 测试纪律：
  * - **抽取 ≡ 诊断 ≡ 运行期三方互锁**：extractStoryKeys 与 indexStory.originals 同表
@@ -30,7 +29,7 @@ import {
 } from "@lingfan/editor";
 import engineSource from "../../packages/engine/src/runtime/engine.ts?raw";
 
-/* ———————————————— T05-01 原文键抽取器 ———————————————— */
+/* ———————————————— 原文键抽取器 ———————————————— */
 
 function fixtureStory(): ReturnType<typeof parseStory> {
   return parseStory({
@@ -75,7 +74,7 @@ function fixtureStory(): ReturnType<typeof parseStory> {
   });
 }
 
-describe("T05-01 抽取器：与诊断 originals 同集合（结构互锁）", () => {
+describe("抽取器：与诊断 originals 同集合（结构互锁）", () => {
   it("全表面覆盖（say×2 / menu×2 / input / notify / character.screen / 元素 text 含嵌套）", () => {
     const story = fixtureStory();
     const keys = extractStoryKeys(story);
@@ -134,7 +133,7 @@ describe("T05-01 抽取器：与诊断 originals 同集合（结构互锁）", (
   });
 });
 
-describe("T05-01 抽取器：运行期真值互锁（真引擎 + 哨兵译文表）", () => {
+describe("抽取器：运行期真值互锁（真引擎 + 哨兵译文表）", () => {
   /** I18nPort 契约替身（与 tests/engine/runtime/i18n.test.ts 同构） */
   class MemoryI18nPort {
     readonly calls: string[] = [];
@@ -243,7 +242,7 @@ describe("T05-01 抽取器：运行期真值互锁（真引擎 + 哨兵译文表
   });
 });
 
-describe("T05-01 源码绊线：engine.ts 的 translate 挂接点 ↔ 面表同口径", () => {
+describe("源码绊线：engine.ts 的 translate 挂接点 ↔ 面表同口径", () => {
   it("translate 实参形态全集合锁定（引擎新增挂接点而面表未同步 → 红）", () => {
     const args = new Set(
       [...engineSource.matchAll(/this\.translate\(([^)]*)\)/g)].map((m) =>
@@ -263,9 +262,9 @@ describe("T05-01 源码绊线：engine.ts 的 translate 挂接点 ↔ 面表同�
   });
 });
 
-/* ———————————————— T05-02 overlay 骨架生成 ———————————————— */
+/* ———————————————— overlay 骨架生成 ———————————————— */
 
-describe("T05-02 骨架生成（锚点: i18n-skeleton-roundtrip）", () => {
+describe("骨架生成", () => {
   const storyKeys = new Map([
     ["start", ["你好", "世界"]],
     ["inn", ["你好", "独有"]],
@@ -285,7 +284,7 @@ describe("T05-02 骨架生成（锚点: i18n-skeleton-roundtrip）", () => {
     ).toEqual(["Lang/en/start.json", "Lang/en/inn.json"]); // Map 插入序
   });
 
-  it("per-story 镜像 Stories/ 递归目录（章节子目录；用户裁定 2026-09-28 对齐老引擎）", () => {
+  it("per-story 镜像 Stories/ 递归目录（章节子目录，与旧版引擎对齐）", () => {
     const nested = new Map([
       ["title/title_main", ["开始"]],
       ["chapter1/tavern", ["炉火"]],
@@ -401,9 +400,9 @@ describe("T05-02 骨架生成（锚点: i18n-skeleton-roundtrip）", () => {
   });
 });
 
-/* ———————————————— T05-03 缺译 / 多译对账 ———————————————— */
+/* ———————————————— 缺译 / 多译对账 ———————————————— */
 
-describe("T05-03 对账（锚点: i18n-coverage-report）", () => {
+describe("对账", () => {
   it("三态用例：缺译 / 多译 / 齐", () => {
     const sources = ["甲", "乙", "丙"];
     const missing = reconcileTranslations(sources, { en: ["甲", "乙"] });
@@ -446,7 +445,7 @@ describe("T05-03 对账（锚点: i18n-coverage-report）", () => {
 
 /* ———————————————— 缺译诊断（编辑器面板一节） ———————————————— */
 
-describe("T05-03 缺译诊断：originals − overlay 并集（与 unused-translation 对称）", () => {
+describe("缺译诊断：originals − overlay 并集（与 unused-translation 对称）", () => {
   const mini = () =>
     parseStory({
       formatVersion: 1,

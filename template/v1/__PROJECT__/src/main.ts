@@ -6,7 +6,7 @@
  * 形态：**纯 Web**（vite 静态根 `Resources/`）——Tauri 壳的装配（invoke / 资源加密 /
  * 方向锁定 / 宿主信息 / 热重载）见引擎仓库 `apps/playground` 的组合根。
  *
- * 接线顺序（规约 00 §3.3 分工铁律 / 08-U1 只写状态 + 订阅渲染）：
+ * 接线顺序（分工铁律：核心只写状态 + 订阅渲染）：
  *   1. 装配适配器：工程文件（fetch）+ ResourcePort + AudioPort + VideoPort + SavePort
  *   2. 加载并组装工程（清单 + 故事文本 → 纯函数 `assembleProject`）
  *   3. 建引擎：new StoryEngine（注入 savePort）
@@ -14,7 +14,7 @@
  *
  * 覆盖范围（本宿主**保证不卡死**：引擎能进入的每个等待态都有 UI 可推进）：
  *   dialogue / menu / input / wait / video / minigame（可见 fail-closed 提示）+
- *   舞台元素层（08 §二.1）+ 层级表（shell.layers）+ 存档（shell.saves.slots）。
+ *   舞台元素层 + 层级表（shell.layers）+ 存档（shell.saves.slots）。
  * 有意未做（属「少功能」而非「卡死」，见 README 边界表）：历史面板与回溯 UI、
  * 玩家偏好面板、I18N 供给、对话框模板注册、存档缩略图合成。
  */
@@ -59,7 +59,7 @@ import {
 } from "@lingfan/ui";
 
 /**
- * 工程清单与故事文件：**都在应用资源根 `Resources/` 内**（08-U7）。
+ * 工程清单与故事文件：**都在应用资源根 `Resources/` 内**。
  * 宿主把 `Resources` 作为静态根，故逻辑路径就是 `project.json` / `Stories/**`。
  * 清单放在资源根内是有意为之——只有资源根内的文件才会进打包产物，dev 与 prod 同机制。
  * **新增故事文件必须同步此表**（Web 形态按显式清单取文件）。
@@ -108,9 +108,9 @@ async function main(): Promise<void> {
   const audioPort: AudioPort = createWebAudioPort({ onError: reportError });
   const savePort: SavePort = createWebStorageSavePort();
 
-  // —— ⑨-11 层级（z 序）：内建默认 × 工程覆盖（project.json shell.layers）——
+  // —— 层级（z 序）：内建默认 × 工程覆盖（project.json shell.layers）——
   const layerZ = resolveLayerZ(manifest);
-  // 08 §八.3 实例级 z（T01-03）：命令参数 `z` → 该层实例覆盖（缺省 = 回层默认）
+  // 实例级 z：命令参数 `z` → 该层实例覆盖（缺省 = 回层默认）
   const zOverride: Partial<Record<string, number>> = {};
   function applyLayerZ(): void {
     const z = (layer: LayerId): number =>
@@ -127,12 +127,12 @@ async function main(): Promise<void> {
     onError: reportError,
     zIndex: layerZ.video,
   });
-  // 08 §八.3 视频层实例 z：端口内部 z（与 DOM 层不同，需单独下发）
+  // 视频层实例 z：端口内部 z（与 DOM 层不同，需单独下发）
   const applyVideoZ = (): void => {
     videoPort.setZIndex?.(resolveInstanceZ("video", zOverride.video, layerZ));
   };
 
-  // —— ⑨-12 存档壳配置：槽位数（project.json shell.saves.slots 可覆盖）——
+  // —— 存档壳配置：槽位数（project.json shell.saves.slots 可覆盖）——
   const saves = resolveSavesConfig(manifest);
   for (const id of slotIds(saves.slots)) {
     const option = document.createElement("option");
@@ -150,7 +150,7 @@ async function main(): Promise<void> {
     onVideoFinished: () => engine.videoFinished(), // 播放结束 → 引擎解除 video 等待
   });
 
-  /* ==================== 08 §二.1 舞台元素层 ==================== */
+  /* ==================== 舞台元素层 ==================== */
   const elementRegistry = createElementRegistry();
   registerBuiltinElementRenderers(elementRegistry);
   // 元素 `cmd` 的业务命令注册表：未注册 fail-closed（不静默吞掉）
@@ -161,7 +161,7 @@ async function main(): Promise<void> {
     onResolved: renderElements,
   });
 
-  /** F6 意图 → 命令：`nav` → 核心 navigate；`cmd` → 宿主命令注册表（`value` 点击时插值） */
+  /** 意图 → 命令：`nav` → 核心 navigate；`cmd` → 宿主命令注册表（`value` 点击时插值） */
   function activateElement(element: ElementInstance): void {
     const action = resolveElementAction(element.props);
     if (action.kind === "nav") {
@@ -202,8 +202,8 @@ async function main(): Promise<void> {
   let minigameId = "";
 
   function applyDialogueVisibility(): void {
-    // 08 §二.6 window auto|show|hide：hide 即隐藏对话框（叙事语义归核心，DOM 归 UI）
-    // 08 §一：video 等待期对话层让位（视频 z=100 < 对话 999，靠让位而非压层实现「video 不盖 say」）
+    // window auto|show|hide：hide 即隐藏对话框（叙事语义归核心，DOM 归 UI）
+    // video 等待期对话层让位（视频 z=100 < 对话 999，靠让位而非压层实现「video 不盖 say」）
     const nvl = nvlMode !== "none" && nvlLines.length > 0;
     dialogueEl.style.display =
       nvl || dialogHidden || waiting === "video" ? "none" : "";
@@ -263,7 +263,7 @@ async function main(): Promise<void> {
       banner.className = "banner";
       banner.textContent =
         `故事进入了小游戏等待${minigameId === "" ? "" : `：${minigameId}`}。` +
-        "本模板不带小游戏注册表（D5 fail-closed：不伪造完成）——要在宿主里支持，" +
+        "本模板不带小游戏注册表（fail-closed：不伪造完成）——要在宿主里支持，" +
         "请用 `createMinigameRegistry` 注册，并在 mount 事件后调用 engine.resolveMinigame(result)。";
       choicesEl.append(banner);
     }
@@ -274,13 +274,13 @@ async function main(): Promise<void> {
     toast.className = "toast";
     toast.textContent = text;
     notificationsEl.append(toast);
-    // 提示驻留（T11-08 提常量）：沿袭现状 2600ms，零行为变化
+    // 提示驻留（提常量）：沿袭现状 2600ms，零行为变化
     const TOAST_DURATION_MS = 2600;
     window.setTimeout(() => toast.remove(), TOAST_DURATION_MS);
   }
 
   engine.onStateChanged(({ key, value }) => {
-    // 08 §八.3 实例级 z：命令参数进 SSOT → 重算该层（`undefined` = 回层默认）
+    // 实例级 z：命令参数进 SSOT → 重算该层（`undefined` = 回层默认）
     const zLayer = instanceZLayer(key);
     if (zLayer !== undefined) {
       if (typeof value === "number") zOverride[zLayer] = value;
@@ -338,7 +338,7 @@ async function main(): Promise<void> {
     } else if (payload.kind === "notify") {
       addToast(payload.text);
     } else if (payload.kind === "minigame.mount") {
-      // D5：宿主经注册表挂载；本模板不接注册表 → 可见 fail-closed（提示里带 game 名，便于作者定位）
+      // 宿主经注册表挂载；本模板不接注册表 → 可见 fail-closed（提示里带 game 名，便于作者定位）
       minigameId = payload.game;
       renderChoices();
     } else if (payload.kind === "save.done") {
@@ -350,7 +350,7 @@ async function main(): Promise<void> {
     }
   });
 
-  /* ==================== 08 §二.2 帧驱动表现 ==================== */
+  /* ==================== 帧驱动表现 ==================== */
   const animationElapsed = new Map<number, number>(); // seq → 已播秒数
   let transitionElapsed = 0;
   let shakeClock = 0;
@@ -429,17 +429,17 @@ async function main(): Promise<void> {
       shown = next;
       textEl.innerHTML = renderInlineMarkup(next);
     }
-    audio.pollPosition(); // 08 §三.2 媒体位置帧级回写
+    audio.pollPosition(); // 媒体位置帧级回写
     driveVisualEffects(dt);
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
 
-  /* ==================== 08 §七 输入映射 ==================== */
-  // 语义归核心层（advance 自行裁定 skipable / 非等待态 fail-closed），这里只做映射
+  /* ==================== 输入映射 ==================== */
+  // 语义归核心层（advance 自行处理 skipable / 非等待态 fail-closed），这里只做映射
   function advance(): void {
     if (typewriter !== null && !typewriter.done) {
-      typewriter.click(); // 08-U3 二段式：打字未完 → 瞬间完成/越过停顿
+      typewriter.click(); // 二段式：打字未完 → 瞬间完成/越过停顿
       return;
     }
     engine.advance();

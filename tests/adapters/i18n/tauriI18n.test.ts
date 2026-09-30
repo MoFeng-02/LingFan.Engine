@@ -1,5 +1,5 @@
 /**
- * 01 §四.3 I18N overlay 供给（Tauri adapter）测试：invoke 契约替身注入，
+ * I18N overlay 供给（Tauri adapter）测试：invoke 契约替身注入，
  * 不依赖 Tauri 运行时（两侧各测一半的边界在此——Rust 侧文件列举/解密在 cargo 测）。
  */
 import { describe, expect, it } from "vitest";
@@ -22,7 +22,7 @@ function fakeInvoke(files: TauriOverlayFile[] | Error): {
   return { invoke, calls };
 }
 
-describe("01 §四.3 createTauriI18nPort（invoke 契约替身）", () => {
+describe("createTauriI18nPort（invoke 契约替身）", () => {
   it("透传 lang 到 load_i18n_overlay 命令", async () => {
     const { invoke, calls } = fakeInvoke([]);
     const port = createTauriI18nPort(invoke);
@@ -48,7 +48,7 @@ describe("01 §四.3 createTauriI18nPort（invoke 契约替身）", () => {
     await expect(port.loadOverlayFiles("de")).rejects.toThrow("资源根不可用");
   });
 
-  it("listLanguages 透传 list_i18n_languages 命令（老引擎 GetAvailableLanguages 对应物）", async () => {
+  it("listLanguages 透传 list_i18n_languages 命令", async () => {
     const calls: Array<{ command: string; args?: Record<string, unknown> }> = [];
     const invoke: TauriInvoke = async (command) => {
       calls.push({ command });

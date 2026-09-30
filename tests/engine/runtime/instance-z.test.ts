@@ -1,10 +1,9 @@
 /**
- * 08 §八.3 实例级 z 通道测试（T01-03 · D-34）。
- * 锚点：
- * - instance-z-three-levels（实例 > 层默认 > 内建：本文件测前半段「实例进 SSOT / 缺省回默认」）
- * - instance-z-layer-mapping（say→dialogue、menu/input→choices、notify→notifications、minigame→minigame）
- * - instance-z-fail-closed（解析期 + 执行期双闸；非法值不动状态）
- * - instance-z-snapshot（随快照/回溯自动随行）
+ * 实例级 z 通道测试。
+ * - 三级优先（实例 > 层默认 > 内建）：本文件测前半段「实例进 SSOT / 缺省回默认」
+ * - 层映射（say→dialogue、menu/input→choices、notify→notifications、minigame→minigame）
+ * - fail-closed（解析期 + 执行期双闸；非法值不动状态）
+ * - 随快照/回溯自动随行
  * 契约事实：命令上的 `z` 只对**拥有独立渲染层**的 op 有效；元素实例 z 走 `ElementInstance.z`（另一条路）。
  */
 import { describe, expect, it } from "vitest";
@@ -56,7 +55,7 @@ function say(text: string, z?: number): object {
   return z === undefined ? { op: "say", text } : { op: "say", text, z };
 }
 
-describe("实例级 z：进 SSOT 与「只影响这一个」（锚点: instance-z-three-levels）", () => {
+describe("实例级 z：进 SSOT 与「只影响这一个」", () => {
   it("带 z 的 say 写入实例键；下一条不带 z 的 say 清除 → 回层默认（需求 #3 核心）", () => {
     const h = makeHarness([column("a", [say("一", 20), say("二")])]);
     h.engine.start();
@@ -87,7 +86,7 @@ describe("实例级 z：进 SSOT 与「只影响这一个」（锚点: instance-
   });
 });
 
-describe("实例级 z：层映射（锚点: instance-z-layer-mapping）", () => {
+describe("实例级 z：层映射", () => {
   it("menu / input → choices 层", () => {
     const menu = makeHarness([
       column("a", [
@@ -175,7 +174,7 @@ describe("实例级 z：层映射（锚点: instance-z-layer-mapping）", () => 
   });
 });
 
-describe("实例级 z：fail-closed（锚点: instance-z-fail-closed）", () => {
+describe("实例级 z：fail-closed", () => {
   it("解析期拒绝：负数 / 字符串 / NaN / Infinity", () => {
     for (const bad of [-1, "20", Number.NaN, Number.POSITIVE_INFINITY]) {
       expect(
@@ -207,7 +206,7 @@ describe("实例级 z：fail-closed（锚点: instance-z-fail-closed）", () => 
   });
 });
 
-describe("实例级 z：随快照 / 回溯（锚点: instance-z-snapshot）", () => {
+describe("实例级 z：随快照 / 回溯", () => {
   it("回退到带 z 的检查点 → 实例 z 随快照恢复", () => {
     const h = makeHarness([column("a", [say("一", 20), say("二")])]);
     h.engine.start();
@@ -221,7 +220,7 @@ describe("实例级 z：随快照 / 回溯（锚点: instance-z-snapshot）", ()
   });
 });
 
-describe("实例级 z：文本投影往返（锚点: instance-z-text-roundtrip）", () => {
+describe("实例级 z：文本投影往返", () => {
   const json = {
     formatVersion: 1,
     id: "t",
@@ -249,7 +248,7 @@ describe("实例级 z：文本投影往返（锚点: instance-z-text-roundtrip�
     expect(text).toContain('minigame "g" z=9');
     expect(text).toContain('video "Video/x.mp4" z=120');
     expect(text).toContain('cutscene "Video/y.mp4" skipable=true z=130');
-    // 解析回来结构等价（T1 往返：JSON 树唯一真相源）
+    // 解析回来结构等价（JSON 树唯一真相源）
     expect(parseTextStory(text, "t")).toEqual(story);
   });
 

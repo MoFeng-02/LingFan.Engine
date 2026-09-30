@@ -1,4 +1,4 @@
-/** 04 §一 作用域树测试（锚点：S1 scope-nested-lifetime / S2 声明层语义） */
+/** 作用域树测试（嵌套生命周期 / 声明层语义） */
 import { describe, expect, it } from "vitest";
 import { Scope } from "../../../packages/engine/src/runtime/scope";
 

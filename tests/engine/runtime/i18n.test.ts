@@ -1,14 +1,13 @@
 /**
- * 01 §四.3 I18N 三层测试（对齐老引擎 I18nService 思想）。
- * 锚点：
- * - translate-before-interpolate（先 Translate 后插值：overlay 键含 {var} 占位符）
- * - missing-translation-falls-back（缺译文回退原文；空串译文 = 命中——老引擎 TryGetValue 同语义）
- * - hook-points（say 文本+speaker / menu prompt+选项 / input prompt / notify 文本 /
- *   元素 text——2026-09-27 翻译面扩展「所有展示文字纳入翻译」；menu 目标仍不翻译）
- * - set-language-semantics（老引擎 SwitchLanguage：清缓存 + 写状态键，当前画面不重放）
- * - lazy-load（按需加载：不 setLanguage 则端口零调用——启动零成本）
- * - overlay-fail-closed（供给失败保持原语言与译文表，engine.error 上报）
- * - replay-translates-current（检查点重放按当前语言重新 Translate）
+ * I18N 三层测试（对齐旧版引擎 I18nService 思想）。
+ * - 先 Translate 后插值（overlay 键含 {var} 占位符）
+ * - 缺译文回退原文；空串译文 = 命中（旧版引擎 TryGetValue 同语义）
+ * - 挂接点（say 文本+speaker / menu prompt+选项 / input prompt / notify 文本 /
+ *   元素 text——翻译面覆盖「所有展示文字」；menu 目标仍不翻译）
+ * - setLanguage（旧版引擎 SwitchLanguage：清缓存 + 写状态键，当前画面不重放）
+ * - 按需加载（不 setLanguage 则端口零调用——启动零成本）
+ * - 供给失败保持原语言与译文表，engine.error 上报
+ * - 检查点重放按当前语言重新 Translate
  * I18nPort 为契约替身；Rust 侧文件列举/解密在 cargo 测（project_files.rs），两侧各测一半。
  */
 import { describe, expect, it } from "vitest";
@@ -89,7 +88,7 @@ function say(text: string): object {
   return { op: "say", text };
 }
 
-describe("01 §四.3 mergeOverlayFiles（main.json 兜底 + 按序覆盖）", () => {
+describe("mergeOverlayFiles（main.json 兜底 + 按序覆盖）", () => {
   it("main.json 最先兜底，其余文件按供给顺序覆盖（与列表位置无关）", () => {
     const merged = mergeOverlayFiles([
       { path: "ui/b.json", entries: { 攻击: "b-覆盖", 防御: "b-防御" } },
@@ -110,7 +109,7 @@ describe("01 §四.3 mergeOverlayFiles（main.json 兜底 + 按序覆盖）", ()
   });
 });
 
-describe("01 §四.3 按需加载（老引擎：启动零成本）", () => {
+describe("按需加载（启动零成本）", () => {
   it("不 setLanguage 则端口零调用，文本原文直出", () => {
     const port = new MemoryI18nPort().table("en", { 你好: "Hello" });
     const h = makeHarness([column("a", [say("你好")])], port);
@@ -128,8 +127,8 @@ describe("01 §四.3 按需加载（老引擎：启动零成本）", () => {
   });
 });
 
-describe("01 §四.3 先 Translate 后插值（锚点: translate-before-interpolate）", () => {
-  it("say：译文上的 {var} 占位符被插值（overlay 键含占位符，老引擎素材同构）", async () => {
+describe("先 Translate 后插值", () => {
+  it("say：译文上的 {var} 占位符被插值（overlay 键含占位符，旧版引擎素材同构）", async () => {
     const port = new MemoryI18nPort().table("en", {
       "你有 {gold} 金币": "You have {gold} gold",
     });
@@ -153,7 +152,7 @@ describe("01 §四.3 先 Translate 后插值（锚点: translate-before-interpol
     h.dispose();
   });
 
-  it("say：空串译文 = 命中（老引擎 TryGetValue 同语义）", async () => {
+  it("say：空串译文 = 命中（旧版引擎 TryGetValue 同语义）", async () => {
     const port = new MemoryI18nPort().table("en", { 隐藏句: "" });
     const h = makeHarness([column("a", [say("隐藏句")])], port);
     await h.engine.setLanguage("en");
@@ -163,7 +162,7 @@ describe("01 §四.3 先 Translate 后插值（锚点: translate-before-interpol
   });
 });
 
-describe("01 §四.3 挂接点（对齐老引擎 hook：say/menu/input/notify）", () => {
+describe("挂接点（say/menu/input/notify）", () => {
   it("menu：prompt 与选项翻译，目标列名不翻译", async () => {
     const port = new MemoryI18nPort().table("en", {
       选择行动: "Choose action",
@@ -222,7 +221,7 @@ describe("01 §四.3 挂接点（对齐老引擎 hook：say/menu/input/notify）
     h.dispose();
   });
 
-  it("speaker 也走 Translate（2026-09-27 翻译面扩展：所有展示文字纳入；原「speaker 不走 Translate」作废）", async () => {
+  it("speaker 也走 Translate（翻译面覆盖所有展示文字）", async () => {
     const port = new MemoryI18nPort().table("en", { 少女: "Girl" });
     const h = makeHarness(
       [column("a", [{ op: "say", text: "x", speaker: "少女" }])],
@@ -234,7 +233,7 @@ describe("01 §四.3 挂接点（对齐老引擎 hook：say/menu/input/notify）
     h.dispose();
   });
 
-  it("元素文本也是翻译面（2026-09-27 扩展）：装载时翻译，进 SSOT 的即译文", async () => {
+  it("元素文本也是翻译面：装载时翻译，进 SSOT 的即译文", async () => {
     const port = new MemoryI18nPort().table("en", { 标题: "Title" });
     const engine = new StoryEngine(
       parseStory({
@@ -271,7 +270,7 @@ describe("01 §四.3 挂接点（对齐老引擎 hook：say/menu/input/notify）
   });
 });
 
-describe("01 §四.3 setLanguage（老引擎 SwitchLanguage 语义）", () => {
+describe("setLanguage", () => {
   it("写系统键（ValueChanged scope=system 可观察）；当前画面不重放", async () => {
     const port = new MemoryI18nPort().table("en", { 你好: "Hello" });
     const h = makeHarness([column("a", [say("你好")])], port);
@@ -284,7 +283,7 @@ describe("01 §四.3 setLanguage（老引擎 SwitchLanguage 语义）", () => {
     await h.engine.setLanguage("en");
     expect(changes).toEqual(["en"]);
     expect(h.engine.get(SYS.currentLanguage)).toBe("en");
-    // 老引擎语义：切换不重放当前画面（下次 Translate 生效）
+    // 切换不重放当前画面（下次 Translate 生效）
     expect(h.engine.get(SYS.currentDialogText)).toBe("你好");
     h.engine.advance();
     off();
@@ -327,7 +326,7 @@ describe("01 §四.3 setLanguage（老引擎 SwitchLanguage 语义）", () => {
   });
 });
 
-describe("01 §四.3 供给失败 fail-closed", () => {
+describe("供给失败 fail-closed", () => {
   it("端口拒绝：保持原语言与译文表不变，engine.error 上报", async () => {
     const port = new MemoryI18nPort()
       .table("en", { 你好: "Hello" })
@@ -343,7 +342,7 @@ describe("01 §四.3 供给失败 fail-closed", () => {
   });
 });
 
-describe("01 §四.3 重放按当前语言 Translate（锚点: replay-translates-current）", () => {
+describe("重放按当前语言 Translate", () => {
   it("切换语言后回溯：重放文本为新语言，旧语言条目随整表重建消失", async () => {
     const port = new MemoryI18nPort()
       .table("en", { 你好: "Hello", 再见: "Bye" })

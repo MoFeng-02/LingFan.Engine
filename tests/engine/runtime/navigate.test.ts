@@ -1,13 +1,12 @@
 /**
- * 01 §二.1 navigate op + 02 §三.3 会话 navigate + 07 §三.2 热重载测试。
- * 锚点：
- * - navigate-no-checkpoint（导航不建站：03-R1 检查点=玩家所见，back 跨导航可达导航前画面）
- * - navigate-scene-priority（目标列 = scene ?? path，老引擎 NavigateHandler 优先级）
- * - navigate-clears-dialog（切导航清旧对话镜像）
- * - navigate-unknown-fails / navigate-missing-path-fails（F1/E3 fail-closed，拒绝后状态原样）
- * - session-navigate-interrupts-wait（坐标切换打断任意等待）
- * - reload-preserves-state-reenters-column（热重载保变量、当前列重入、历史保留）
- * - reload-missing-column-falls-back（当前列被删 → engine.error + 回入口列）
+ * navigate op + 会话 navigate + 热重载测试。
+ * - 导航不建站：检查点=玩家所见，back 跨导航可达导航前画面
+ * - 目标列 = scene ?? path（旧版引擎优先级语义）
+ * - 切导航清旧对话镜像
+ * - 未知目标 / 缺 path fail-closed，拒绝后状态原样
+ * - 坐标切换打断任意等待
+ * - 热重载保变量、当前列重入、历史保留
+ * - 当前列被删 → engine.error + 回入口列
  */
 import { describe, expect, it } from "vitest";
 import type { OutboundEvent, ValueChanged } from "@lingfan/engine";
@@ -58,7 +57,7 @@ function engineErrorCode(h: Harness): string | undefined {
     : undefined;
 }
 
-describe("01 §二.1 navigate op（跨列导航）", () => {
+describe("navigate op（跨列导航）", () => {
   it("path 导航进目标列，目标列首句上屏", () => {
     const h = makeEngine([
       column("a", [say("一"), { op: "navigate", path: "b" }]),
@@ -72,7 +71,7 @@ describe("01 §二.1 navigate op（跨列导航）", () => {
     h.dispose();
   });
 
-  it("scene 优先进 scene 列（老引擎 SceneName ?? Path 优先级语义）", () => {
+  it("scene 优先进 scene 列（旧版引擎 SceneName ?? Path 优先级语义）", () => {
     const h = makeEngine([
       column("a", [{ op: "navigate", path: "decoy", scene: "b" }]),
       column("b", [say("乙")]),
@@ -85,7 +84,7 @@ describe("01 §二.1 navigate op（跨列导航）", () => {
     h.dispose();
   });
 
-  it("导航清旧列对话镜像（老引擎导航清屏语义）", () => {
+  it("导航清旧列对话镜像（旧版引擎导航清屏语义）", () => {
     const h = makeEngine([
       column("a", [say("一"), { op: "navigate", path: "b" }]),
       column("b", []), // 空列：导航后无新 say 覆盖，镜像应为空串
@@ -98,7 +97,7 @@ describe("01 §二.1 navigate op（跨列导航）", () => {
     h.dispose();
   });
 
-  it("未知目标列 fail-closed（F1/E3），拒绝后引擎状态原样", () => {
+  it("未知目标列 fail-closed，拒绝后引擎状态原样", () => {
     const h = makeEngine([
       column("a", [say("一"), { op: "navigate", path: "ghost" }]),
     ]);
@@ -125,8 +124,8 @@ describe("01 §二.1 navigate op（跨列导航）", () => {
   });
 });
 
-describe("navigate × 回溯（锚点: navigate-no-checkpoint）", () => {
-  it("navigate 不建独立检查点：back 从目标列一步跨过导航回导航前画面（03-R1：检查点=玩家所见）", () => {
+describe("navigate × 回溯", () => {
+  it("navigate 不建独立检查点：back 从目标列一步跨过导航回导航前画面（检查点=玩家所见）", () => {
     const h = makeEngine([
       column("a", [say("一"), { op: "navigate", path: "b" }]),
       column("b", [say("乙")]),
@@ -160,7 +159,7 @@ describe("navigate × 回溯（锚点: navigate-no-checkpoint）", () => {
   });
 });
 
-describe("02 §三.3 会话命令 navigate（坐标切换）", () => {
+describe("会话命令 navigate（坐标切换）", () => {
   it("等待中导航：打断等待、清镜像、进目标列（会话命令不建检查点）", () => {
     const h = makeEngine([column("a", [say("一")]), column("b", [say("乙")])]);
     h.engine.start();
@@ -197,7 +196,7 @@ describe("02 §三.3 会话命令 navigate（坐标切换）", () => {
   });
 });
 
-describe("07 §三.2 热重载 reloadStory（锚点: reload-preserves-state-reenters-column）", () => {
+describe("热重载 reloadStory", () => {
   it("保变量、当前列重入起点、新文案即改即所见、历史保留可回溯", () => {
     const h = makeEngine([
       column("a", [
@@ -246,7 +245,7 @@ describe("07 §三.2 热重载 reloadStory（锚点: reload-preserves-state-reen
       id: "t",
       entry: "a",
       columns: [column("a", [say("一"), { op: "jump", target: "b" }])],
-    }); // b 列被删（组装器放行：b 仅是跳转目标，F1 校验在执行期 fail-closed）
+    }); // b 列被删（组装器放行：b 仅是跳转目标，校验在执行期 fail-closed）
     h.engine.reloadStory(fresh);
     expect(engineErrorCode(h)).toBe("reload-column-missing");
     expect(h.engine.get(SYS.currentSceneColumn)).toBe("a"); // 回入口列

@@ -4,13 +4,13 @@
  * （`<input webkitdirectory>`，全浏览器兜底）。两类共用同一组端口实现，
  * **`ProjectFilesPort` / `ResourcePort` 契约零改动**。
  *
- * 逻辑路径一律相对**资源根**（含 `project.json` 的那一层，07 §三）——与 fetch / Tauri 两种
+ * 逻辑路径一律相对**资源根**（含 `project.json` 的那一层）——与 fetch / Tauri 两种
  * 供给实现的键完全一致（组装器是唯一解析点，本模块只负责「取」）。
  * 枚举口径照 Rust `collect_story_files`：`Stories/**` 递归、跳过点文件名、不设扩展名白名单。
- * **唯一有意差异 = 加密形态**：`.enc` 需密钥解密（安全永远 Rust，00 §3.2）→ 浏览器形态
+ * **唯一有意差异 = 加密形态**：`.enc` 需密钥解密（安全边界在 Rust）→ 浏览器形态
  * 显式 fail-closed，不猜、不跳过。
  *
- * 资源供给 = 文件对象 → 短生命周期 Blob URL（08 §六.3「Blob URL 用后 revoke」），
+ * 资源供给 = 文件对象 → 短生命周期 Blob URL（Blob URL 用后 revoke），
  * `release` 即 revoke——与加密适配器同一契约形态（静态根与加密形态各自空实现/归 Rust）。
  *
  * **写回（09-16）**：仅 FSA 取径可写（`createHandleProjectWriter`）——打开时仍只申请 `read`，
@@ -181,7 +181,7 @@ export async function createHandleFileSource(
     listing ??= (async () => {
       const out: string[] = [];
       await walkHandle(root, "", out);
-      return out.sort(); // 路径码元序确定（照 07 §三组装器前的确定性要求）
+      return out.sort(); // 路径码元序确定（组装器前的确定性要求）
     })();
     return listing;
   };
@@ -223,7 +223,7 @@ function relativePathOf(file: File): string {
 }
 
 /**
- * 资源根定位（文件快照）：清单所在层即资源根（07 §三「清单必须在资源根内」的推论）。
+ * 资源根定位（文件快照）：清单所在层即资源根（清单必须在资源根内的推论）。
  * 同深出现多个清单 = 无法判定 → fail-closed 让用户直接选资源根，不替用户猜。
  */
 export function locateResourceRootFromPaths(paths: readonly string[]): {
@@ -351,7 +351,7 @@ async function readProject(
   for (const path of storyPaths) {
     if (path.endsWith(".enc")) {
       throw new Error(
-        `故事 ${path} 为加密形态：浏览器形态编辑器不支持加密工程（解密归 Rust，00 §3.2）`,
+        `故事 ${path} 为加密形态：浏览器形态编辑器不支持加密工程（解密归 Rust）`,
       );
     }
     stories.set(path, await source.text(path));
@@ -367,7 +367,7 @@ export interface BlobUrlOptions {
 
 /**
  * `ResourcePort` 实现：逻辑路径 → 文件对象 → Blob URL（同路径复用同一 URL，
- * `release` 才 revoke）。解析失败必须抛错——调用方 fail-closed 不播放/不显示（08-U7）。
+ * `release` 才 revoke）。解析失败必须抛错——调用方 fail-closed 不播放/不显示。
  */
 export function createSourceResourcePort(
   source: ProjectFileSource,
@@ -410,9 +410,9 @@ export function createSourceResourcePort(
   };
 }
 
-// —— 诊断供给侧（T02-01 / T02-02）：i18n overlay 键 + 资源文件集 ——
+// —— 诊断供给侧：i18n overlay 键 + 资源文件集 ——
 
-/** overlay 根目录名（Rust `LANG_ROOT` 同名；07 §三 工程结构） */
+/** overlay 根目录名（Rust `LANG_ROOT` 同名） */
 const LANG_ROOT = "Lang";
 
 /** 编辑器诊断的两份供给侧数据（= `analyzeStory` 的可选入参形态） */
@@ -433,7 +433,7 @@ function isOverlayPath(path: string): boolean {
 
 /**
  * overlay 译文表解析（Rust `load_overlay_files` 同语义）：**坏 JSON / 含非字符串值 →
- * 整个文件跳过**（老引擎 LoadFile 宽松口径）。返回 `undefined` = 跳过。
+ * 整个文件跳过**（旧版引擎 LoadFile 宽松口径）。返回 `undefined` = 跳过。
  */
 function parseOverlayEntries(text: string): Record<string, string> | undefined {
   let value: unknown;
@@ -454,23 +454,23 @@ function parseOverlayEntries(text: string): Record<string, string> | undefined {
 }
 
 /**
- * 编辑器诊断供给侧（T02-01 / T02-02）：一次枚举算出两份数据，供 `analyzeStory`
+ * 编辑器诊断供给侧：一次枚举算出两份数据，供 `analyzeStory`
  * 的 `resourceFiles` / `overlayKeys` 使用（编辑器**唯一**接线点 = 组合根调用本函数）。
  *
  * `resourceFiles` = `paths()` **原样全集**（含清单/故事/Lang 属无害冗余，只令 `has()` 为真）。
- * **有意不做 `.enc` 后缀特判**（2026-09-27 用户裁定）：编辑器是**明文工程形态**（D-09，
+ * **有意不做 `.enc` 后缀特判**：编辑器是**明文工程形态**（
  * `.enc` 故事在打开时已 fail-closed）⇒ 能打开的工程里运行期解析 = 明文名字直查
  * （`createStaticResourcePort.resolve`，无任何 `.enc` 探测），剥后缀反而制造
  * 「编辑器说在、运行期说缺」的分叉；加密工程编辑器打不开，剥不剥都无意义。
- * **有意不读文件头判加密**：LFEN/LFEN2 魔数知识归 Rust（05「安全永远 Rust」），
- * 且运行期逻辑路径定义与内容格式无关（明文 `.enc` 文件运行期走 BadFormat/K6，不当明文用）——
+ * **有意不读文件头判加密**：LFEN/LFEN2 魔数知识归 Rust（安全边界在 Rust 层），
+ * 且运行期逻辑路径定义与内容格式无关（明文 `.enc` 文件运行期走 BadFormat，不当明文用）——
  * 读头既换不来对齐、还把格式知识引入 TS + 每文件多一次 I/O。
  *
  * `overlayKeys` = `Lang/**` 下全部 `.json`（目录形态 `Lang/{lang}/**` 与单文件
  * `Lang/{lang}.json` 两种写法都命中）的键**并集**。与 Rust 供给的差异说明：Rust 按 `lang`
  * 单语言供给，而「译文键在故事里找不到原文」与语言无关 ⇒ 编辑器取**跨语言并集**才能覆盖
  * 所有死键（编辑器暂无语言选择器；单语言口径在只有 `en/` 而无 `zh-CN/` 的工程上会整体失效）。
- * 加密 overlay（`.json.enc`）**走同一供给参与对账**（T05-03）：能解密的供给（如
+ * 加密 overlay（`.json.enc`）**走同一供给参与对账**：能解密的供给（如
  * Tauri 形态的 `text` 经 Rust 返回明文）正常入集；浏览器形态无密钥，密文 JSON
  * 解析失败 → `parseOverlayEntries` 宽容跳过——与「单文件内容坏」同语义，少报不误报。
  *
@@ -621,7 +621,7 @@ async function removeFileAt(
   }
 }
 
-/** 采集文件指纹（T03-02）：逻辑路径 → lastModified/size；缺失/不可读的路径**不入表**
+/** 采集文件指纹：逻辑路径 → lastModified/size；缺失/不可读的路径**不入表**
  *  （load 侧 undefined = 冲突判定为「被外部删除」；采集异常不吞 IO 错误以外的致命问题）。 */
 async function collectFileStamps(
   root: FileSystemDirectoryHandle,
@@ -654,11 +654,11 @@ async function collectFileStamps(
 /**
  * `ProjectWriterPort` 实现（FSA 真目录）：与**打开基线**求最小差量 → 先写后删。
  *
- * 顺序固定：申请写权限 → **冲突检测（T03-02）** → 建 `Stories/` → 写列文件 → 写 `project.json` → 删陈旧文件。
+ * 顺序固定：申请写权限 → **冲突检测** → 建 `Stories/` → 写列文件 → 写 `project.json` → 删陈旧文件。
  * 永不先删后写：任一步失败时磁盘上最坏只是「多出文件」，工程仍可加载；失败不更新基线，
  * 重试即幂等收敛。
  *
- * **并发检测（T03-02）**：构造时对基线文件集采集指纹（`getFile()` → lastModified/size），
+ * **并发检测**：构造时对基线文件集采集指纹（`getFile()` → lastModified/size），
  * 每次 `apply` 在落盘前重新采集比对——外部改动/删除 → 抛可操作冲突错误（零写入）；
  * 写回成功后快照整体换新（自己的保存永不自报）。读指纹只需 read 权限（打开时已获）。
  */
@@ -677,7 +677,7 @@ export async function createHandleProjectWriter(
       const deleted: string[] = [];
       try {
         await ensureWriteAccess(root); // 手势窗口：保持为第一个 await
-        // T03-02 冲突检测：任何落盘之前重采指纹比对（读只需 read 权限，不弹权限）
+        // 冲突检测：任何落盘之前重采指纹比对（读只需 read 权限，不弹权限）
         const current = await collectFileStamps(root, [...stamps.keys()]);
         const conflicts = detectWriteConflicts(stamps, current);
         if (conflicts.length > 0) {
@@ -714,7 +714,7 @@ export async function createHandleProjectWriter(
   };
 }
 
-// —— 「记住上次工程」（T03-06）——
+// —— 「记住上次工程」——
 
 /**
  * 读权限按需申请（「重新打开上次工程」用）：已授权直接放行；未授权在**用户手势内**

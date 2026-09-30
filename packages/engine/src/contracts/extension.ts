@@ -39,7 +39,7 @@ export type ExecOutcome = { readonly ok: true } | { readonly ok: false; readonly
 /**
  * 自定义 op 文本投影：
  * 文本是 JSON 的投影——**投影不了的 op 不能假装能投影**（未注册投影器的自定义 op
- * 在文本形态整次拒绝，T2 同口径；容错路径 projectText 降级为该行 issue）。
+ * 在文本形态整次拒绝；容错路径 projectText 降级为该行 issue）。
  * 两方向都**不得抛**（同 exec 纪律——抛出由引擎兜底按失败处理）；返回 null = 失败。
  */
 export interface OpTextProjection {

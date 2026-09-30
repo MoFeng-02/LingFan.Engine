@@ -1,9 +1,8 @@
 /**
- * 08 §四.5 对话框模板测试（核心层：模板名三级优先级语义，老引擎 Phase 65 同构）。
- * 锚点：
- * - template-priority（say template > character screen > null 全局默认）
- * - template-fail-closed（非字符串/空串拒绝且状态原样）
- * - template-replay-snapshot（模板名进快照：回溯/前进后随检查点恢复）
+ * 对话框模板测试（核心层：模板名三级优先级语义，与旧版引擎同构）。
+ * - 三级优先级（say template > character screen > null 全局默认）
+ * - fail-closed（非字符串/空串拒绝且状态原样）
+ * - 模板名进快照：回溯/前进后随检查点恢复
  * 拟态用户：说话→换模板→回溯→前进→menu→choose 的完整交互序列。
  */
 import { describe, expect, it } from "vitest";
@@ -42,7 +41,7 @@ function say(text: string, extra: Record<string, unknown> = {}): object {
   return { op: "say", text, ...extra };
 }
 
-describe("08 §四.5 模板三级优先级（锚点: template-priority）", () => {
+describe("模板三级优先级", () => {
   it("say.template 最优先；无 template 回角色 screen；再回 null 全局默认", () => {
     const h = makeHarness([
       column("a", [
@@ -81,7 +80,7 @@ describe("08 §四.5 模板三级优先级（锚点: template-priority）", () =
   });
 });
 
-describe("08 §四.5 fail-closed（锚点: template-fail-closed）", () => {
+describe("fail-closed", () => {
   it("template 空串拒绝：engine.error 且状态原样（不写入、不停在半态）", () => {
     const h = makeHarness([
       column("a", [say("x", { template: "" }), say("y", { template: "ok" })]),
@@ -114,7 +113,7 @@ describe("08 §四.5 fail-closed（锚点: template-fail-closed）", () => {
   });
 });
 
-describe("08 §四.5 拟态用户旅程 + 重放（锚点: template-replay-snapshot）", () => {
+describe("拟态用户旅程 + 重放", () => {
   it("说话→换模板→回溯→前进：模板名随快照恢复", () => {
     const h = makeHarness([
       column("a", [
@@ -147,7 +146,7 @@ describe("08 §四.5 拟态用户旅程 + 重放（锚点: template-replay-snaps
     h.engine.start();
     h.engine.advance(); // menu 等待
     expect(h.engine.get(SYS.waiting)).toBe("menu");
-    expect(h.engine.get(SYS.dialogTemplate)).toBe("t1"); // menu 不清模板键（老引擎同语义）
+    expect(h.engine.get(SYS.dialogTemplate)).toBe("t1"); // menu 不清模板键（旧版引擎同语义）
     h.engine.choose("b");
     expect(h.engine.get(SYS.currentDialogText)).toBe("乙");
     expect(h.engine.get(SYS.dialogTemplate)).toBeNull(); // 新句无模板无角色 → null

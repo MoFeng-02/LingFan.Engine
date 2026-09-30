@@ -1,6 +1,5 @@
 /**
- * 规约 10 自定义 op 注册表测试（T08-01/T08-02）。
- * 锚点: op-registry-builtin-parity、custom-op-state-persist
+ * 自定义 op 注册表测试。
  *
  * 测试纪律：
  * - **注册期 fail-fast**：id/op 名形态、内建冲突、跨扩展重复 → 构造抛错带定位
@@ -49,7 +48,7 @@ function makeEngine(extensions: readonly OpExtension[], columns: object[]) {
   return { engine, errors, off };
 }
 
-describe("op 注册表：注册期 fail-fast（锚点: op-registry-builtin-parity）", () => {
+describe("op 注册表：注册期 fail-fast", () => {
   it("id 形态非法（大写 / 空 / 超长）→ 构造抛错", () => {
     for (const id of ["Demo", "", "a".repeat(33), "1abc", "a b"]) {
       expect(() => new StoryEngine({ formatVersion: 1, id: "t", entry: "a", columns: [] } as never, { extensions: [extension({ id })] }).start(), id).toThrow();
@@ -89,7 +88,7 @@ describe("op 注册表：注册期 fail-fast（锚点: op-registry-builtin-parit
   });
 });
 
-describe("扩展 op 执行：状态进 SSOT + 前缀门卫（锚点: custom-op-state-persist）", () => {
+describe("扩展 op 执行：状态进 SSOT + 前缀门卫", () => {
   it("注册的扩展 op 可执行：写入进 SSOT（ext.demo.* 命名空间）+ 随 ValueChanged/存档随行", () => {
     const { engine, errors, off } = makeEngine([extension()], [
       {
@@ -253,7 +252,7 @@ describe("互锁：BUILTIN_OP_NAMES ↔ engine.ts 分发 case 集合精确相等
   });
 });
 
-describe("T08-05 拟态旅程：扩展状态随存档与回溯（锚点: custom-op-state-persist）", () => {
+describe("拟态旅程：扩展状态随存档与回溯", () => {
   /** 三句旅程：两次 demo_counter 夹在 say 之间；检查点 0 = 首次解除（未计数）、1 = 计一次后 */
   const journey = [
     {

@@ -14,7 +14,7 @@ import { elementSource } from "@lingfan/ui";
 import FieldRow from "./FieldRow.vue";
 
 /**
- * 06 §一.1 舞台编辑（scene 列的空间布局视图）：
+ * 舞台编辑（scene 列的空间布局视图）：
  * - **画布**：把目标 scene 列的 `elements[]` 按 `x/y/width/height/zindex/opacity` 摆成可拖拽方块。
  *   编辑仍以布局为主（占位方块 + 尺寸/层级）。
  * - **资源缩略（P2 编辑器工程模型）**：打开工程后，带 `source/src/path` 的元素把已解析
@@ -22,10 +22,10 @@ import FieldRow from "./FieldRow.vue";
  *   未打开工程 = 无资源根 → 保持占位方块。
  * - **拖拽**：拖拽中仅本地预览（transform），**松手才写回一次** `x`/`y`，避免每帧污染 undo。
  *   字符串坐标（如 `"50%"`）保持原值不动（像素位移无法与百分比相加）。
- * - **落点创建（T04-03）**：从组件面板拖元素到画布 → 落点即 `x`/`y`，**一次拖入 = 一个 undo
+ * - **落点创建**：从组件面板拖元素到画布 → 落点即 `x`/`y`，**一次拖入 = 一个 undo
  *   单元**（提交在 `editorApi.insertElement`）；落点在某容器块内 → 进其 `children`
  *   （坐标换算为相对容器原点，与运行期渲染一致）。类型/载荷 fail-closed：非元素类、
- *   未知类型一律忽略（锚点: editor-drag-create-element）。
+ *   未知类型一律忽略。
  * - **属性**：选中元素 → 契约驱动的 `describeElement` 字段表（直接复用 `FieldRow`）。
  */
 const props = defineProps<{
@@ -66,7 +66,7 @@ function elementThumb(element: Record<string, unknown>): string | undefined {
 interface EditorApi {
   update(pointer: string, value: unknown): void;
   select(pointer: string | null): void;
-  /** T04-03：组件拖入的落点创建（一次拖入 = 一个 undo 单元，提交在宿主会话中枢） */
+  /** 组件拖入的落点创建（一次拖入 = 一个 undo 单元，提交在宿主会话中枢） */
   insertElement(
     columnPointer: string,
     element: Record<string, unknown>,
@@ -193,7 +193,7 @@ const fields = computed<readonly FieldDescriptor[]>(
 );
 
 /**
- * T04-03 落点创建：DOM/事件留在组件，**判定与数值走 `@lingfan/editor` 纯函数**。
+ * 落点创建：DOM/事件留在组件，**判定与数值走 `@lingfan/editor` 纯函数**。
  * 画布内容坐标 = client 坐标 − 画布原点（含边框：`clientLeft`）+ 滚动量；
  * 容器命中 = 顶级容器块中**DOM 序最后**（默认 z 序最上）包含落点者。
  */
@@ -335,7 +335,7 @@ function onDrop(event: DragEvent): void {
   border: 1px solid #2a2a3a;
   border-radius: 8px;
 }
-/* T04-03：拖拽悬停时的落点提示 */
+/* 拖拽悬停时的落点提示 */
 .canvas.drop-active {
   border-color: #7aa2f7;
   box-shadow: 0 0 0 1px #7aa2f766;

@@ -1,5 +1,5 @@
 /**
- * 08 §八.2 玩家偏好持久化（Tauri adapter）测试：invoke 契约替身注入，
+ * 玩家偏好持久化（Tauri adapter）测试：invoke 契约替身注入，
  * 不依赖 Tauri 运行时（Rust 侧文件存取在 cargo 测——preferences.rs）。
  */
 import { describe, expect, it } from "vitest";
@@ -23,7 +23,7 @@ function fakeInvoke(result: unknown | Error): {
   return { invoke, calls };
 }
 
-describe("08 §八.2 createTauriPreferencesPort（invoke 契约替身）", () => {
+describe("createTauriPreferencesPort（invoke 契约替身）", () => {
   it("load 透传 preferences_read；缺文件 null 原样保留", async () => {
     const { invoke, calls } = fakeInvoke(null);
     const port = createTauriPreferencesPort(invoke);

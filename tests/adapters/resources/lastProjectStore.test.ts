@@ -1,5 +1,5 @@
 /**
- * T03-06 「记住上次工程」测试：IndexedDB 句柄持久化（全静默降级）+ 组合根接线互锁。
+ * 「记住上次工程」测试：IndexedDB 句柄持久化（全静默降级）+ 组合根接线互锁。
  *
  * 测试纪律：
  * - 拟态旅程：save → 新 store 实例 load（= 下次启动）取回同一句柄
@@ -115,7 +115,7 @@ function makeMemoryIdbFactory(options?: {
   } as unknown as IDBFactory;
 }
 
-describe("createLastProjectStore（T03-06 句柄持久化）", () => {
+describe("createLastProjectStore（句柄持久化）", () => {
   it("拟态旅程：save 后新 store 实例 load 取回同一句柄", async () => {
     const factory = makeMemoryIdbFactory();
     const handle = fakeHandle("Resources");

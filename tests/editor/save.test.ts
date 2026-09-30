@@ -7,7 +7,7 @@
  * 2. **内存盘闭环**：写入 → 重建供给源 → 重开，与内存故事一致（FSA 句柄细节由
  *    `tests/adapters/resources/directorySource.test.ts` 覆盖，此处不重复平台双）。
  *
- * 列序语义（07 §三）：组装按**文件路径码元序**决定列序 → 写回后列序按列 id 固化，
+ * 列序语义：组装按**文件路径码元序**决定列序 → 写回后列序按列 id 固化，
  * 故比较基准是 `sortedStory(story)`（已排序的当前故事）。
  */
 import { describe, expect, it } from "vitest";
@@ -38,7 +38,7 @@ function colText(id: string, commands: unknown[] = []): string {
   return `${JSON.stringify({ formatVersion: 1, id, kind: "flow", commands }, null, 2)}\n`;
 }
 
-/** 列序 = 文件路径码元序（07 §三）：写回/重开后的比较基准 */
+/** 列序 = 文件路径码元序：写回/重开后的比较基准 */
 function sortedStory(story: Story): Story {
   return {
     ...story,

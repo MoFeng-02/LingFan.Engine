@@ -1,4 +1,4 @@
-/** 08 §四.3 内联标记渲染测试（UI 层职责：核心层透传 → UI 上屏） */
+/** 内联标记渲染测试（UI 层职责：核心层透传 → UI 上屏） */
 import { describe, expect, it } from "vitest";
 import { renderInlineMarkup } from "@lingfan/ui";
 
@@ -20,7 +20,7 @@ describe("renderInlineMarkup", () => {
     );
   });
 
-  it("裸 {color} 按闭合处理（老引擎语义）", () => {
+  it("裸 {color} 按闭合处理（旧版引擎语义）", () => {
     expect(renderInlineMarkup("{color=#fff}金{color}")).toBe(
       '<span style="color:#fff">金</span>',
     );

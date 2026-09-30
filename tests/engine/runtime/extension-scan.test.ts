@@ -1,6 +1,5 @@
 /**
- * 规约 10 声明制扩展装载测试（T08-06）。
- * 锚点: op-extension-scan
+ * 声明制扩展装载测试。
  *
  * 测试纪律：
  * - **声明制，非目录扫描制**：未声明 = 零副作用（装载器一次不触）；声明是唯一的装载依据
@@ -23,7 +22,7 @@ import {
   StoryEngine,
 } from "@lingfan/engine";
 
-/** demo 扩展（规约 10 §七 验收载体）：`say_command` 台词命令；执行计数随 SSOT（状态进存档链路） */
+/** demo 扩展：`say_command` 台词命令；执行计数随 SSOT（状态进存档链路） */
 function demoCommandModule(): unknown {
   const extension: OpExtension = {
     id: "demo_command",
@@ -72,7 +71,7 @@ function storyWith(commands: object[]): Story {
   } as Story;
 }
 
-describe("T08-06 声明制扩展装载（锚点: op-extension-scan）", () => {
+describe("声明制扩展装载", () => {
   it("未声明 = 零副作用：装载器一次不触（声明缺席与空数组同义）", async () => {
     const importModule = vi.fn(demoLoader);
     expect(await loadDeclaredExtensions(undefined, importModule)).toEqual([]);

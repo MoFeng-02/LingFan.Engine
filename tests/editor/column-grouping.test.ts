@@ -1,9 +1,8 @@
 /**
- * T04-01 列分组归类（裁定 R2 (a)：UI 侧元数据）测试。
- * 锚点: editor-column-grouping
+ * 列分组归类（UI 侧元数据）测试。
  *
  * 测试纪律五类：
- * - 拟态作者旅程：建组 → 归类 → 折叠 → **重开仍在**（验收原文「分组后重开后分组仍在」）
+ * - 拟态作者旅程：建组 → 归类 → 折叠 → **重开仍在**（「分组后重开后分组仍在」）
  * - 互锁：分组不改故事（`serializeProject` 逐字节 + `diffProjectFiles` 零 changes/deletes）；
  *   元数据不出现在故事 JSON / 写回文件里
  * - 故意错误：坏 JSON / 版本不符 / 畸形条目 / 恶性存储 → 降级空视图，零抛
@@ -100,7 +99,7 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-describe("拟态作者旅程（锚点: editor-column-grouping）", () => {
+describe("拟态作者旅程", () => {
   it("建组 → 归类 → 折叠 → 重开后分组与折叠仍在", () => {
     const storage = new MemoryStorage();
     const store = createColumnGroupingStore(storage);

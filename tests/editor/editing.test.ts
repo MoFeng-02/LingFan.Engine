@@ -1,7 +1,6 @@
 /**
- * 纯映射器测试（D1）：指针原语不可变性 + 列操作 + renameColumn 引用同步 +
+ * 纯映射器测试：指针原语不可变性 + 列操作 + renameColumn 引用同步 +
  * EditorSession 统一 undo（一次提交 = 一个单元、跨视图同步、redo 分支清尾）。
- * 锚点: editor-is-pure-mapper / unified-undo-across-views
  */
 
 import { describe, expect, it } from "vitest";
@@ -44,7 +43,7 @@ const sample: Story = {
 };
 
 describe("指针原语（不可变 + fail-closed）", () => {
-  it("nearestCommandPointer（D-48）：字段指针归一到最近命令祖先，命令/列指针原样", () => {
+  it("nearestCommandPointer：字段指针归一到最近命令祖先，命令/列指针原样", () => {
     // 字段级（顶层命令的字段）→ 包含它的命令
     expect(nearestCommandPointer(sample, "/columns/0/commands/0/text")).toBe(
       "/columns/0/commands/0",
@@ -220,7 +219,7 @@ describe("列操作", () => {
   });
 });
 
-describe("EditorSession（统一 undo 锚点）", () => {
+describe("EditorSession（统一 undo）", () => {
   it("commit → undo → redo 往返，一次提交一个单元", () => {
     const session = new EditorSession(sample);
     const first = setAtPointer(sample, "/columns/0/commands/0/text", "A")!;

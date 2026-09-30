@@ -11,7 +11,7 @@
  * 未打开工程时 = 内存示例故事（现状语义不变：预览不解析资源、音频静音）。
  * 只支持**明文**工程：加密包（lfenpack 产物）需 Rust 解密，属 Tauri 壳后续。
  *
- * **写回（09-16）**：FSA 取径把「原始清单 + 打开基线 + writer」绑成 `save` 闭包交给界面；
+ * **写回**：FSA 取径把「原始清单 + 打开基线 + writer」绑成 `save` 闭包交给界面；
  * 序列化（Story → 多文件工程）走引擎纯函数 `serializeProject`（格式知识单点）。
  */
 import { createApp, ref } from "vue";
@@ -49,7 +49,7 @@ import App from "./App.vue";
 import { sampleStory } from "./sample";
 import type { LastProjectEntry, OpenedProject, ProjectOpener } from "./ports";
 
-/** 视频层 z（⑨-11 层级契约）：打开工程后按清单 `shell.layers` 解析，未打开 = 内建默认 */
+/** 视频层 z（层级契约）：打开工程后按清单 `shell.layers` 解析，未打开 = 内建默认 */
 let layerZ: LayerZTable = DEFAULT_LAYER_Z;
 
 /** 只读取径（目录 input 快照）的保存提示——须说明怎么才能保存 */
@@ -57,7 +57,7 @@ const READONLY_SNAPSHOT_HINT =
   "当前是只读文件快照（目录 input 取径）：请用 Chrome/Edge 的「打开工程」选择目录以启用保存";
 
 /**
- * 「记住上次工程」（T03-06）：打开成功的目录句柄持久化到 IndexedDB，
+ * 「记住上次工程」：打开成功的目录句柄持久化到 IndexedDB，
  * 下次启动出现「重新打开上次工程」一键（免开选择器）。IDB 失败全静默 = 功能不存在。
  */
 const lastProjectStore = createLastProjectStore();
@@ -74,7 +74,7 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
     ...(await filesPort.stories()),
   ]);
   const writer = await createHandleProjectWriter(handle, previous);
-  // T03-03 规范化检测的输入 = **打开时**的故事文件形态（真源快照，永不漂移）。
+  // 规范化检测的输入 = **打开时**的故事文件形态（真源快照，永不漂移）。
   // 首次成功保存后磁盘即标准布局（打开时的非规范文件全部进了差量的删除集），
   // 与 writer 基线「成功才换新」同纪律：失败 / 冲突不置位，下次保存仍提示。
   const initialStoryPaths = [...previous.keys()].filter((path) =>
@@ -126,7 +126,7 @@ async function loadFromSource(
 ): Promise<{ opened: OpenedProject; manifest: unknown }> {
   const manifest = await filesPort.manifest(); // 层级表要在引擎建起来前解析
   const story = await loadProject(filesPort); // 解析/组装归引擎纯函数（唯一解析点）
-  // 诊断供给侧（T02-01/02）：一次枚举算出资源文件集 + overlay 键并集（两类取径同源）
+  // 诊断供给侧：一次枚举算出资源文件集 + overlay 键并集（两类取径同源）
   const diagnosticSupply = await loadDiagnosticSupply(source);
   layerZ = resolveLayerZ(manifest);
   return {
@@ -134,7 +134,7 @@ async function loadFromSource(
       root: source.name,
       story,
       resourcePort: createSourceResourcePort(source),
-      layerZ: resolveLayerZ(manifest), // 随工程走：预览需要它解析实例级 z（08 §八.3）
+      layerZ: resolveLayerZ(manifest), // 随工程走：预览需要它解析实例级 z
       diagnosticSupply,
     },
     manifest,

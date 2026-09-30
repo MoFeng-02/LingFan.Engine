@@ -60,7 +60,7 @@ pub fn parse_orientation(mode: &str) -> Result<OrientationMode, ShellError> {
     }
 }
 
-/// 08 §八.2 设置屏幕方向。返回是否已由当前平台应用
+/// 设置屏幕方向。返回是否已由当前平台应用
 /// （Android = true；桌面/其余 = false——UI 依此只记诊断，不视作错误）。
 #[tauri::command]
 pub fn set_orientation(app: tauri::AppHandle, mode: String) -> Result<bool, ShellError> {
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn parse_orientation_accepts_three_modes() {
-        // 锚点: orientation-mode-parse——三态契约（与 TS OrientationMode 字面量一致）
+        // 三态契约（与 TS OrientationMode 字面量一致）
         assert_eq!(parse_orientation("auto").unwrap(), OrientationMode::Auto);
         assert_eq!(
             parse_orientation("portrait").unwrap(),
