@@ -288,7 +288,7 @@ describe("屏幕方向偏好", () => {
     expect(prefs.snapshot().orientation).toBe("landscape");
   });
 
-  it("方向偏好同样不进存档（U10：与存档分离）", () => {
+  it("方向偏好同样不进存档（与存档分离）", () => {
     const prefs = new PlayerPreferences();
     prefs.setOrientation("portrait");
     const engine = new StoryEngine(
