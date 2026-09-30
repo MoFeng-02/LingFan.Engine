@@ -26,6 +26,10 @@ import {
   createWebStoragePreferencesPort,
   createWebStorageSavePort,
   createWebVideoPort,
+  connectWsBridge,
+  createWsProjectFilesPort,
+  createWsSavePort,
+  createWsHostPlatform,
   loadProject,
   watchTauriProjectFiles,
 } from "@lingfan/adapters";
@@ -72,28 +76,50 @@ const STORIES = [
 ];
 
 async function boot(): Promise<void> {
-  // —— 平台装配（构建/部署期插拔是默认能力）——
-  // mode `tauri` = Tauri 壳（Desktop 与 Mobile 同契约：invoke/资源协议跨端一致）；
-  // 其余 = 纯浏览器。原生与 Web 实现都只在此处选择，展示层与核心零感知。
-  const filesPort: ProjectFilesPort =
-    import.meta.env.MODE === "tauri"
-      ? createTauriProjectFilesPort()
-      : createFetchProjectFilesPort({ manifest: MANIFEST, stories: STORIES });
+  // —— 平台装配（构建期 + 运行期双层）——
+  // 构建层：mode `tauri` 编译 Tauri 形态产物（含 invoke 路径）；纯浏览器构建编译 Web 形态。
+  // 运行层：tauri 形态页面可能落在**外部浏览器**（tauri dev 时浏览器打开 localhost:1420）——
+  // 此时无 `__TAURI_INTERNALS__`，invoke 不可用 ⇒ 升级走 WS dev 通道（宿主运行时），
+  // 宿主未运行则回退 web 端口（尽力而为）。
+  const isTauriWindow =
+    typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+  const useNative = import.meta.env.MODE === "tauri" && isTauriWindow;
+  let filesPort: ProjectFilesPort;
+  let savePort: SavePort;
+  let wsPlatform: string | undefined;
+  if (useNative) {
+    filesPort = createTauriProjectFilesPort();
+    savePort = createTauriSavePort();
+  } else {
+    filesPort = createFetchProjectFilesPort({ manifest: MANIFEST, stories: STORIES });
+    savePort = createWebStorageSavePort();
+    if (import.meta.env.DEV) {
+      // WS dev 通道：宿主（tauri dev）运行时，外部浏览器经 WS 复用真实能力
+      // （读工程/存档/平台——Rust 侧白名单最小暴露面）；宿主未运行 = 连接超时回退
+      // 上方 web 端口（现状不变，尽力而为）。
+      try {
+        const bridge = await connectWsBridge({ timeoutMs: 1500 });
+        filesPort = createWsProjectFilesPort(bridge);
+        savePort = createWsSavePort(bridge);
+        wsPlatform = await createWsHostPlatform(bridge);
+        console.info("[lfen-ws] 浏览器已接入宿主 dev 通道（读工程/存档/平台）");
+      } catch {
+        console.info(
+          "[lfen-ws] 宿主 WS 通道不可用，维持 web 端口（静态根 + webStorage）",
+        );
+      }
+    }
+  }
   // ref 包装：热重载重新组装后注入新 Story（App watch → engine.reloadStory）
   const story = ref<Story>(await loadProject(filesPort));
-
   // 资源加密装配：清单声明 resourceEncryption（恒明文）→ Tauri 形态换加密
   // ResourcePort（Rust 解密 → Blob URL，契约不变）；否则静态根（未加密开发形态）。
   const manifest = await filesPort.manifest();
   const encrypted =
     (manifest as { resourceEncryption?: unknown } | null)
       ?.resourceEncryption === true;
-  const savePort: SavePort =
-    import.meta.env.MODE === "tauri"
-      ? createTauriSavePort()
-      : createWebStorageSavePort();
   const resourcePort: ResourcePort =
-    import.meta.env.MODE === "tauri" && encrypted
+    useNative && encrypted
       ? createTauriEncryptedResourcePort()
       : createStaticResourcePort();
   // 层级（z 序）：内建默认 × 工程覆盖（project.json shell.layers）——层级不写死。
@@ -108,10 +134,10 @@ async function boot(): Promise<void> {
   // I18N 装配：Tauri 形态走 Rust overlay 供给（按需加载）；浏览器形态暂无
   // 静态根供给（未注入 = 原文直出，引擎契约缺省语义）
   const i18nPort: I18nPort | undefined =
-    import.meta.env.MODE === "tauri" ? createTauriI18nPort() : undefined;
+    useNative ? createTauriI18nPort() : undefined;
   // 玩家偏好（与存档分离）：boot 时载入上次退出状态，滑块改动防抖落盘
   const preferencesPort: PreferencesPort =
-    import.meta.env.MODE === "tauri"
+    useNative
       ? createTauriPreferencesPort()
       : createWebStoragePreferencesPort();
   const preferences = new PlayerPreferences(preferencesPort);
@@ -122,7 +148,7 @@ async function boot(): Promise<void> {
   // 尽量规避首帧先竖后横），此后订阅偏好变化实时应用。未生效（平台忽略/无壳形态）
   // 只记诊断，不视作错误（apply 的「尽力而为」契约）。
   const orientationPort: OrientationPort =
-    import.meta.env.MODE === "tauri"
+    useNative
       ? createTauriOrientationPort()
       : createNoopOrientationPort();
   let appliedOrientation: OrientationMode | undefined;
@@ -149,7 +175,7 @@ async function boot(): Promise<void> {
   // 尽力而为契约：浏览器形态缺用户手势的启动期恢复会被 Fullscreen API 拒绝 =
   // 静默（偏好已持久化，下次有手势的切换生效）；Tauri 窗口命令无需手势。
   const fullscreenApplier =
-    import.meta.env.MODE === "tauri"
+    useNative
       ? createTauriFullscreenApplier(getCurrentWindow())
       : createBrowserFullscreenApplier();
   let appliedFullscreen = preferences.fullscreen ?? false;
@@ -165,8 +191,7 @@ async function boot(): Promise<void> {
   // ③ 平台区分（宿主信息）：取数来源 = Tauri CLI 注入的编译期平台（浏览器形态 undefined →
   // unknown·desktop，显式未知不猜）。宿主事实不可变，适配器内缓存；UI 只展示，按端分支后续按需加。
   const hostPort = createHostPort({
-    platform:
-      import.meta.env.MODE === "tauri" ? await readTauriPlatform() : undefined,
+    platform: useNative ? await readTauriPlatform() : wsPlatform,
   });
   const host: HostInfo = hostPort.get();
 
@@ -184,11 +209,11 @@ async function boot(): Promise<void> {
   });
   app.mount("#app");
 
-  // —— 热重载（dev 工具，Tauri 形态）：Rust 监视源资源根（防抖）→ story-changed ——
+  // —— 热重载（dev 工具，Tauri 窗口内）：Rust 监视源资源根（防抖）→ story-changed ——
   // → 重新供给+组装（每次新建端口绕过装载 memo）→ 新 Story 注入 props；
   // App watch → engine.reloadStory（保变量/历史，当前列重入）。浏览器形态无 fs 监视
-  // 能力，dev 依赖 Vite 全页刷新兜底。
-  if (import.meta.env.MODE === "tauri" && import.meta.env.DEV) {
+  // 能力（外部浏览器亦无 listen API），dev 依赖 Vite 全页刷新兜底。
+  if (useNative && import.meta.env.DEV) {
     void watchTauriProjectFiles(async () => {
       try {
         story.value = await loadProject(createTauriProjectFilesPort());

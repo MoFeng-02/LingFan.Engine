@@ -8,6 +8,9 @@ pub mod resource_crypto;
 pub mod resource_fs;
 pub mod save;
 pub mod shell;
+// 开发期 WS 通道：仅 debug 构建编译——release 编译期排除（无监听代码）
+#[cfg(debug_assertions)]
+pub mod ws_dev;
 
 #[cfg(test)]
 mod bridge_check;
@@ -66,6 +69,10 @@ pub fn run() {
             }
             // 诊断探针已改前端 build-flag（VITE_LFEN_DIAG=1，src/diag.ts）；lfen_diag 命令保留为回传通道
             splash_then_show(app.handle());
+            // 开发期 WS 通道：debug 构建启动 127.0.0.1 监听（浏览器页面复用宿主能力）；
+            // release 编译期排除（锚点 ws-dev-only-release-hardoff）
+            #[cfg(debug_assertions)]
+            ws_dev::setup(app.handle().clone());
             Ok(())
         })
         .run(tauri::generate_context!())

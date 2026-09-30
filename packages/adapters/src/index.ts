@@ -63,6 +63,16 @@ export {
   type FullscreenWindowLike,
 } from "./shell";
 export {
+  connectWsBridge,
+  createWsProjectFilesPort,
+  createWsSavePort,
+  createWsHostPlatform,
+  DEFAULT_WS_BRIDGE_URL,
+  type WsBridge,
+  type WsSocketLike,
+  type ConnectWsBridgeOptions,
+} from "./dev";
+export {
   createHostPort,
   readTauriPlatform,
   type HostPortOptions,
