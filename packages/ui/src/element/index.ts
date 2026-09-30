@@ -1,4 +1,4 @@
-/** 08 对应章节.1 元素渲染域出口（UI 侧单一入口，分层纪律 对应章节）。 */
+/** 元素渲染域出口（UI 侧单一入口）。 */
 export {
   createElementRegistry,
   type ElementRegistry,

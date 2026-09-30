@@ -1,5 +1,5 @@
 /**
- * ③ 宿主端口适配器：宿主事实由组合根供值（Tauri = `host_platform` Rust 命令返回的
+ * 宿主端口适配器：宿主事实由组合根供值（Tauri = `host_platform` Rust 命令返回的
  * `std::env::consts::OS`；浏览器形态 = undefined），适配器只做**解析缓存与只读收敛**——
  * 宿主事实在进程生命周期内不变。
  */

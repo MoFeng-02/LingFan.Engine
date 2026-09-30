@@ -1,8 +1,8 @@
 /**
  * 表达式求值：词法/语法/求值三段，全纯函数可测。
  * 求值时机 = 执行期；动态类型 number/boolean/string/数组/字典；
- * fail-closed：类型错误、未知变量/函数、除零 → ExpressionError（S5，不静默 NaN）。
- * 硬红线：比较运算符非链式（S4）；&&/|| 短路（S7）；转义未知保留两字符（F4）。
+ * fail-closed：类型错误、未知变量/函数、除零 → ExpressionError（不静默 NaN）。
+ * 硬红线：比较运算符非链式；&&/|| 短路；转义未知保留两字符。
  */
 import type { NameResolver } from "./resolver";
 
@@ -61,7 +61,7 @@ const ONE_CHAR_OPS = [
   ".",
 ];
 
-/** F4：已知转义映射；未知转义保留两字符原样（Windows 路径兼容） */
+/** 已知转义映射；未知转义保留两字符原样（Windows 路径兼容） */
 const ESCAPES: Record<string, string> = {
   n: "\n",
   t: "\t",
@@ -110,7 +110,7 @@ function tokenize(src: string): Token[] {
           const next = src[j + 1];
           if (next === undefined)
             throw new ExpressionError("parse-error", "字符串转义不完整");
-          out += ESCAPES[next] ?? `\\${next}`; // F4：未知转义保留两字符
+          out += ESCAPES[next] ?? `\\${next}`; // 未知转义保留两字符
           j += 2;
           continue;
         }
@@ -225,7 +225,7 @@ class Parser {
         if (typeof v !== "boolean") {
           throw new ExpressionError("type-error", "'||' 操作数必须为 boolean");
         }
-        if (v) return true; // S7：短路，右支不求值
+        if (v) return true; // 短路，右支不求值
         const r = right();
         if (typeof r !== "boolean") {
           throw new ExpressionError("type-error", "'||' 操作数必须为 boolean");
@@ -246,7 +246,7 @@ class Parser {
         if (typeof v !== "boolean") {
           throw new ExpressionError("type-error", "'&&' 操作数必须为 boolean");
         }
-        if (!v) return false; // S7：短路，右支不求值
+        if (!v) return false; // 短路，右支不求值
         const r = right();
         if (typeof r !== "boolean") {
           throw new ExpressionError("type-error", "'&&' 操作数必须为 boolean");
@@ -257,7 +257,7 @@ class Parser {
     return left;
   }
 
-  /** 相等级：至多一个 ==/!=；同级再遇 ==/!= = 非链式红线（S4） */
+  /** 相等级：至多一个 ==/!=；同级再遇 ==/!= = 非链式红线 */
   private equality(): Thunk {
     const left = this.comparison();
     let op: "==" | "!=" | null = null;
@@ -269,14 +269,14 @@ class Parser {
     if (after.kind === "op" && EQUALITY_OPS.has(after.text)) {
       throw new ExpressionError(
         "non-chained-comparison",
-        `比较运算符非链式（S4 红线）：'${op}' 后又出现 '${after.text}'`,
+        `比较运算符非链式：'${op}' 后又出现 '${after.text}'`,
       );
     }
     if (op === "==") return () => this.equals(left(), right());
     return () => !this.equals(left(), right());
   }
 
-  /** 比较级：至多一个比较符；同级再遇比较符 = 非链式红线（S4） */
+  /** 比较级：至多一个比较符；同级再遇比较符 = 非链式红线 */
   private comparison(): Thunk {
     const left = this.additive();
     let op: string | null = null;
@@ -292,7 +292,7 @@ class Parser {
     if (after.kind === "op" && COMPARISON_OPS.has(after.text)) {
       throw new ExpressionError(
         "non-chained-comparison",
-        `比较运算符非链式（S4 红线）：'${op}' 后又出现 '${after.text}'`,
+        `比较运算符非链式：'${op}' 后又出现 '${after.text}'`,
       );
     }
     return () => {
@@ -357,7 +357,7 @@ class Parser {
         if ((op === "/" || op === "%") && b === 0) {
           throw new ExpressionError(
             "division-by-zero",
-            `'${op}' 除数为 0（S5 不静默 NaN）`,
+            `'${op}' 除数为 0（不静默 NaN）`,
           );
         }
         return op === "*" ? a * b : op === "/" ? a / b : a % b;
@@ -465,7 +465,7 @@ class Parser {
   }
 }
 
-/** ==/!= 的类型规则（switch 复用）：仅同类型标量比较，否则 type-error（S5） */
+/** ==/!= 的类型规则（switch 复用）：仅同类型标量比较，否则 type-error */
 export function exprEquals(a: ExprValue, b: ExprValue): boolean {
   if (typeof a === "number" && typeof b === "number") return a === b;
   if (typeof a === "string" && typeof b === "string") return a === b;
@@ -579,8 +579,8 @@ export interface TextInterpolation {
 }
 
 /**
- * 文本插值：{expr} 求值替换、{expr:format} 格式化（F7：仅文本命令走此路径）；
- * 行内标记原样透传；插值失败保留原文片段 + 收集错误（S8）。
+ * 文本插值：{expr} 求值替换、{expr:format} 格式化（仅文本命令走此路径）；
+ * 行内标记原样透传；插值失败保留原文片段 + 收集错误。
  * 格式符语义（老 ExpressionParser.ApplyFormat 照搬）：全 0 → 按位数补零；X/x → 十六进制；其余原样。
  */
 export function interpolateText(
@@ -624,7 +624,7 @@ export function interpolateText(
           out += text.slice(i, end + 1);
         } else {
           errors.push(e);
-          out += text.slice(i, end + 1); // S8：保留原文片段
+          out += text.slice(i, end + 1); // 保留原文片段
         }
       } else {
         throw e;
