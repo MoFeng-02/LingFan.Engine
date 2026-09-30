@@ -1,5 +1,5 @@
 /**
- * P2 编辑器工程模型：**目录取径**供给测试（FSA 句柄 / 目录 input 文件快照）。
+ * 编辑器工程模型：**目录取径**供给测试（FSA 句柄 / 目录 input 文件快照）。
  *
  * 平台 API 按契约以内存替身注入（不 Mock 引擎实现）：目录句柄只实现用到的
  * `values/getFileHandle/getDirectoryHandle` 三面；文件 = Node 内置 `File`。
@@ -106,7 +106,7 @@ function blobUrls(): {
   };
 }
 
-describe("P2 目录取径·FSA 句柄", () => {
+describe("目录取径·FSA 句柄", () => {
   it("直选资源根：枚举相对逻辑路径 + 引擎组装整链（清单/故事原始文本）", async () => {
     const source = await createHandleFileSource(dirHandle("Resources", resourceRoot()));
     expect(source.name).toBe("Resources");
@@ -171,7 +171,7 @@ describe("P2 目录取径·FSA 句柄", () => {
   });
 });
 
-describe("P2 目录取径·资源端口（Blob URL）", () => {
+describe("目录取径·资源端口（Blob URL）", () => {
   it("resolve → 文件 → Blob URL；同路径复用同一 URL 且只建一次", async () => {
     const source = await createHandleFileSource(dirHandle("Resources", resourceRoot()));
     const urls = blobUrls();
@@ -243,7 +243,7 @@ describe("P2 目录取径·资源端口（Blob URL）", () => {
   });
 });
 
-describe("P2 目录取径·目录 input 文件快照", () => {
+describe("目录取径·目录 input 文件快照", () => {
   it("资源根 = 清单所在层，路径剥前缀（选工程根也能打开）", async () => {
     const files = [
       fileAt("playground/Resources/project.json", MANIFEST),
@@ -289,7 +289,7 @@ describe("P2 目录取径·目录 input 文件快照", () => {
   });
 });
 
-// —— 09-16 写回：FSA 目录句柄（可变树替身 + 权限/失败注入） ——
+// —— 写回：FSA 目录句柄（可变树替身 + 权限/失败注入） ——
 
 /** 替身文件 mtime 种子：固定初值保证未动过的文件指纹稳定（不随 Date.now 漂移） */
 const SEED_MTIME = 1_700_000_000_000;
@@ -551,7 +551,7 @@ function grantedHooks(): WriteHooks {
   return { log: [], permissionCalls: [], permission: { query: "granted" } };
 }
 
-describe("09-16 写回·FSA 目录句柄", () => {
+describe("写回·FSA 目录句柄", () => {
   it("写回顺序：先写列文件、project.json 最后、再删陈旧（永不先删后写）", async () => {
     const hooks = grantedHooks();
     const root = writableRoot(

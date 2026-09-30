@@ -163,7 +163,7 @@ export function assembleProject(
   };
 }
 
-// —— 09-16 反向：Story → 多文件工程（assembleProject 的逆函数） ——
+// —— 反向：Story → 多文件工程（assembleProject 的逆函数） ——
 
 /** 清单文件名（清单必须在资源根内——dev/prod 同机制） */
 export const MANIFEST_FILE = "project.json";

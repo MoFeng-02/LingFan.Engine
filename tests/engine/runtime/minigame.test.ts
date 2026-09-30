@@ -137,7 +137,7 @@ describe("minigame 生命周期（执行 → 等待 → resolve → 分流）", 
   });
 });
 
-describe("等待期可回溯（D5：minigame-fail-closed-and-abortable）", () => {
+describe("等待期可回溯（abort 信号 + 重放重新挂载）", () => {
   it("中断挂载 abort + 重放重新挂载（新 seq 新 signal）：back 到小游戏检查点即重放", () => {
     const h = makeEngine([
       column("a", [
@@ -241,7 +241,7 @@ describe("故意错误：fail-closed 且状态原样", () => {
       expect(lastErrorCode(h), JSON.stringify(bad)).toMatch(/^minigame/);
       h.dispose();
     }
-    // reward.value 表达式错误：沿用通用 ExpressionError 码（S5 语义，非 minigame 专属）
+    // reward.value 表达式错误：沿用通用 ExpressionError 码（通用语义，非 minigame 专属）
     const h = instrument(
       new StoryEngine({
         formatVersion: 1,

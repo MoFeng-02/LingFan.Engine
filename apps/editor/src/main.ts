@@ -2,7 +2,7 @@
  * 编辑器组合根（唯一全知位置，与 playground 同构）：装配**目录取径**的工程供给
  * → 引擎纯函数组装 → 把端口注入视图族。
  *
- * 取径（P2 编辑器工程模型）：
+ * 取径（编辑器工程模型）：
  * - 首选 = File System Access（`showDirectoryPicker`，Chromium）：真目录句柄，
  *   可枚举、可读、可写（保存时按需申请写权限）；
  * - 兜底 = 目录 input 的只读文件快照（`<input webkitdirectory>`，全浏览器）；

@@ -35,7 +35,7 @@ export interface ProjectWriteReport {
 }
 
 /**
- * 工程文件写回端口（09-16）：期望文件全集（引擎 `serializeProject` 产出）交给适配器，
+ * 工程文件写回端口：期望文件全集（引擎 `serializeProject` 产出）交给适配器，
  * 由适配器与**打开基线**求最小差量后落盘（只写变化、删陈旧）。
  * `writable = false` = 只读取径（目录 input 快照等）→ 宿主必须禁用保存。
  * 实现：浏览器 = File System Access 目录句柄；Tauri 桌面 = Rust 命令（同一契约，只换适配器）。

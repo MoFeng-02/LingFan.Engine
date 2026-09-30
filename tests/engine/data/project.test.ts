@@ -186,7 +186,7 @@ describe("assembleProject", () => {
   });
 });
 
-// —— 09-16 写回：serializeProject / diffProjectFiles ——
+// —— 写回：serializeProject / diffProjectFiles ——
 
 /** 单列 flow 文件原始文本 */
 function flowJson(id: string, commands: unknown[] = []): string {

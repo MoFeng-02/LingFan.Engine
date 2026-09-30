@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn rust_payload_keys_match_ts_expectations() {        // serde 输出键必须与 TS 期待接口键一致
-        // （SlotSummary：Rust save_count ↔ TS 显式映射 saveCount 的隐性契约，本轮起锁定）
+        // （SlotSummary：Rust save_count ↔ TS 显式映射 saveCount 的隐性契约，已锁定）
         use crate::save::SlotSummary;
         let value = serde_json::to_value(SlotSummary {
             slot: "s".into(),

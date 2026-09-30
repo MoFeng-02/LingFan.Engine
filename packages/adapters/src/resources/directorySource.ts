@@ -13,7 +13,7 @@
  * 资源供给 = 文件对象 → 短生命周期 Blob URL（Blob URL 用后 revoke），
  * `release` 即 revoke——与加密适配器同一契约形态（静态根与加密形态各自空实现/归 Rust）。
  *
- * **写回（09-16）**：仅 FSA 取径可写（`createHandleProjectWriter`）——打开时仍只申请 `read`，
+ * **写回**：仅 FSA 取径可写（`createHandleProjectWriter`）——打开时仍只申请 `read`，
  * 保存时（按钮点击 = 真实用户手势）才申请 `readwrite`；目录 input 快照无写权限，宿主据
  * `writable` 禁用保存。写回顺序固定「先写后删」，永不先删后写。
  */
@@ -493,7 +493,7 @@ export async function loadDiagnosticSupply(
   return { resourceFiles, overlayKeys };
 }
 
-// —— 写回（09-16）：FSA 目录句柄 ——
+// —— 写回：FSA 目录句柄 ——
 
 /** 未获写权限时的统一可操作文案（requestPermission 被拒 / createWritable 抛 NotAllowedError 同一句） */
 const WRITE_PERMISSION_HINT =
