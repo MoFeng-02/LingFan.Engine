@@ -171,22 +171,42 @@ mod tests {
         }
     }
 
+    /// 规则 ①检测核心：TS invoke 全集 − 注册面 = 未注册命令（提取与比对收口在此，
+    /// 红路径由合成输入测试直接验证，真实源面由 ts_invoke_commands_are_registered 常绿把守）
+    fn unregistered_ts_commands(
+        ts_texts: &[String],
+        lib_text: &str,
+    ) -> (BTreeSet<String>, Vec<String>) {
+        let registered = registered_commands(lib_text);
+        let mut used = BTreeSet::new();
+        for text in ts_texts {
+            used.extend(ts_invoke_commands(text));
+        }
+        let unregistered: Vec<_> = used.difference(&registered).cloned().collect();
+        (used, unregistered)
+    }
+
+    /// 规则 ②检测核心：注册面 −（含 `pub fn` 真身的源码）= 缺真身命令
+    fn missing_command_bodies(rust_text: &str, lib_text: &str) -> Vec<String> {
+        registered_commands(lib_text)
+            .into_iter()
+            .filter(|cmd| !rust_text.contains(&format!("pub fn {cmd}(")))
+            .collect()
+    }
+
     #[test]
     fn ts_invoke_commands_are_registered() {
         // TS 调了未注册命令 = 运行时才炸的真缺陷
-        let registered = registered_commands(&lib_rs_text());
-        let mut used = BTreeSet::new();
-        for (_, text) in adapters_ts_sources() {
-            used.extend(ts_invoke_commands(&text));
-        }
+        let ts_texts: Vec<String> = adapters_ts_sources().into_iter().map(|(_, t)| t).collect();
+        let lib_text = lib_rs_text();
+        let (used, unregistered) = unregistered_ts_commands(&ts_texts, &lib_text);
         assert!(
             used.len() >= 8,
             "invoke 提取疑似失效（唯一命令 {used:?}）——正则或适配器形态变更需同步本测试"
         );
-        let unregistered: Vec<_> = used.difference(&registered).collect();
         assert!(
             unregistered.is_empty(),
-            "TS invoke 了未注册命令：{unregistered:?}（注册面 {registered:?}）"
+            "TS invoke 了未注册命令：{unregistered:?}"
         );
     }
 
@@ -194,12 +214,8 @@ mod tests {
     fn registered_commands_exist_in_rust_sources() {
         // 注册面每项都有真身（防 generate_handler 漂移到已删/改名命令）
         let sources = rust_sources_text();
-        for cmd in registered_commands(&lib_rs_text()) {
-            assert!(
-                sources.contains(&format!("pub fn {cmd}(")),
-                "注册命令 {cmd} 缺 pub fn 定义"
-            );
-        }
+        let missing = missing_command_bodies(&sources, &lib_rs_text());
+        assert!(missing.is_empty(), "注册命令缺 pub fn 定义：{missing:?}");
     }
 
     #[test]
@@ -271,6 +287,28 @@ mod tests {
             rust_keys, ts_keys,
             "Rust serde 负载键与 TS 期待键失配（跨边界运行时才炸）"
         );
+    }
+
+    #[test]
+    fn bridge_check_catches_unregistered_and_bodyless() {
+        // 锚点 bridge-check-new-command：互锁检测逻辑自身的红路径（合成输入）——
+        // 「新增命令漏注册」「注册缺真身」必被逮住；真实源面的常绿由上方两测试把守
+        let ts = r#"const x = await invoke<string>("ghost_cmd");
+const y = await invoke("real_cmd", { foo: 1 });"#;
+        let lib = r#"
+        .invoke_handler(tauri::generate_handler![
+            real_cmd,
+            other_cmd,
+        ])
+"#;
+        // 规则 ①：TS 调用面含 ghost_cmd，注册面没有 → 未注册差集精确命中
+        let (used, unregistered) = unregistered_ts_commands(&[ts.to_string()], lib);
+        assert!(used.contains("ghost_cmd") && used.contains("real_cmd"));
+        assert_eq!(unregistered, vec!["ghost_cmd".to_string()]);
+        // 规则 ②：other_cmd 已注册但源码无 pub fn 真身 → 缺真身差集精确命中
+        let rust = "pub fn real_cmd() {}";
+        let missing = missing_command_bodies(rust, lib);
+        assert_eq!(missing, vec!["other_cmd".to_string()]);
     }
 
     /// 自注册 Kotlin 插件源（gen/android 平台适配层）

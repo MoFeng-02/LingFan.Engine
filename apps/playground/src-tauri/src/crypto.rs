@@ -7,7 +7,7 @@
 //! iOS/Android 判为不支持（`Entry::new` 只看 `SET_CREDENTIAL_STORE_RESULT` 的 LazyLock，与我们是否
 //! 自设 store 无关），所以移动端必须绕开 facade：显式装配平台 store 后直接用 keyring-core 的 Entry。
 
-use aes_gcm::aead::{Aead, Payload};
+use aes_gcm::aead::{Aead, AeadInOut, Payload};
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use base64::engine::general_purpose::STANDARD as B64;
 use base64::Engine as _;
@@ -138,4 +138,57 @@ pub(crate) fn gcm_open(key: &[u8], sealed: &[u8], aad: &[u8]) -> Result<Vec<u8>,
             },
         )
         .map_err(|_| "GCM 认证失败（密钥不匹配或数据被篡改）".to_string())
+}
+
+/// GCM 信封解封·原地版：入参 = nonce(12) + ciphertext + tag(16) 的**持有缓冲**，
+/// 解密在缓冲内进行（内存峰值 = 密文 1 倍，无第二份明文分配）；认证失败即错、
+/// 缓冲随即丢弃（fail-closed，不返回部分明文）。大负载走本版，借用小负载用 gcm_open。
+pub(crate) fn gcm_open_in_place(
+    key: &[u8],
+    mut sealed: Vec<u8>,
+    aad: &[u8],
+) -> Result<Vec<u8>, String> {
+    if sealed.len() < 12 + 16 {
+        return Err("密文过短".to_string());
+    }
+    let cipher = Aes256Gcm::new_from_slice(key).map_err(|e| format!("密钥长度错误：{e}"))?;
+    let nonce_arr: [u8; 12] = sealed[..12].try_into().expect("nonce 段恒 12B");
+    let nonce = Nonce::try_from(&nonce_arr[..]).map_err(|_| "nonce 长度错误".to_string())?;
+    sealed.drain(..12); // ct||tag 就位（memmove，无重分配）
+    let ct_len = sealed.len() - 16;
+    cipher
+        .decrypt_in_place(&nonce, aad, &mut sealed)
+        .map_err(|_| "GCM 认证失败（密钥不匹配或数据被篡改）".to_string())?;
+    if sealed.len() > ct_len {
+        // 钳定：不同 aead 版本对成功后 tag 剥离行为有差异，以明文长度为准
+        sealed.truncate(ct_len);
+    }
+    Ok(sealed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gcm_open_in_place_round_trip_exact_length() {
+        // 原地解密：内容与长度双双精确（锚定「成功后缓冲 = 明文、tag 已剥离」语义）
+        let key = [7u8; 32];
+        let plain = b"hello-in-place-1234567890".to_vec();
+        let sealed = gcm_seal(&key, &plain, b"aad").unwrap();
+        let opened = gcm_open_in_place(&key, sealed, b"aad").unwrap();
+        assert_eq!(opened, plain);
+    }
+
+    #[test]
+    fn gcm_open_in_place_tamper_fails_closed() {
+        let key = [7u8; 32];
+        let mut sealed = gcm_seal(&key, b"secret", b"aad").unwrap();
+        let last = sealed.len() - 1;
+        sealed[last] ^= 0xFF; // 篡改 tag 末字节
+        assert!(gcm_open_in_place(&key, sealed, b"aad").is_err());
+        let mut sealed2 = gcm_seal(&key, b"secret", b"aad").unwrap();
+        sealed2[20] ^= 0xFF; // 篡改密文体
+        assert!(gcm_open_in_place(&key, sealed2, b"aad").is_err());
+    }
 }

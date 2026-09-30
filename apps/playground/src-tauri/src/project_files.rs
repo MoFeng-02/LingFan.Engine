@@ -124,7 +124,7 @@ fn collect_story_files(
                     "存在加密故事 {rel}，但清单未声明 resourceEncryption（fail-closed）"
                 ))
             })?;
-            let plain = crate::resource_crypto::decrypt_resource_bytes(&bytes, k, stripped)
+            let plain = crate::resource_crypto::decrypt_resource_bytes(bytes, k, stripped)
                 .map_err(|e| ProjectFilesError::Decrypt(format!("{rel}：{e}")))?;
             (
                 stripped.to_string(),
@@ -377,7 +377,7 @@ pub fn load_overlay_files(
                     "加密译文 {root_rel} 但清单未声明 resourceEncryption（fail-closed）"
                 ))
             })?;
-            let plain = crate::resource_crypto::decrypt_resource_bytes(&bytes, k, stripped)
+            let plain = crate::resource_crypto::decrypt_resource_bytes(bytes, k, stripped)
                 .map_err(|e| ProjectFilesError::Decrypt(format!("{root_rel}：{e}")))?;
             (
                 stripped.to_string(),
