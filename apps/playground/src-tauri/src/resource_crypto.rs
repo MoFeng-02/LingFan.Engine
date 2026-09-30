@@ -10,7 +10,7 @@
 //! 首次运行从包内 `__key__.seed`（32B 原始 DEK，构建产物）导入并立即封装——运行态零明文密钥落盘。
 //! 加密包内文件名 = 原逻辑路径 + `.enc`（旧版引擎 ResourceEncryptor 语义照搬）。
 
-use crate::crypto::{gcm_open, gcm_seal, kek_from_keyring, random_bytes, KEK_SERVICE, KEK_USER};
+use crate::crypto::{gcm_open, gcm_open_in_place, gcm_seal, kek_from_keyring, random_bytes, KEK_SERVICE, KEK_USER};
 use crate::resource_fs::{seek_len, ResourceFs};
 use aes_gcm::aead::{Aead, Payload};
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
@@ -130,9 +130,11 @@ pub fn encrypt_lfen2(
     Ok(out)
 }
 
-/// 解密：魔数分流 LFEN2（ver=1 整文件 / ver=2 分块全量拼接，校验版本 + AAD）/ 旧版引擎 LFEN（无 AAD 兼容读）；其他 = BadFormat（不降级明文）
+/// 解密：魔数分流 LFEN2（ver=1 整文件 / ver=2 分块全量拼接，校验版本 + AAD）/ 旧版引擎 LFEN（无 AAD 兼容读）；其他 = BadFormat（不降级明文）。
+/// 入参为**持有缓冲**：v1 分支原地解密（内存峰值 = 密文 1 倍，无第二份明文分配）——
+/// v1 为 GCM 单 tag 全量验证形态，密码学上不可流式（流式会先释放未认证明文），峰值收敛靠原地 + 前置尺寸护栏。
 pub fn decrypt_resource_bytes(
-    file: &[u8],
+    mut file: Vec<u8>,
     key: &[u8],
     path: &str,
 ) -> Result<Vec<u8>, ResourceCryptoError> {
@@ -142,7 +144,7 @@ pub fn decrypt_resource_bytes(
         }
         let version = file[MAGIC_LFEN2.len()];
         if version == FORMAT_VERSION_V2 {
-            return decrypt_v2_all(file, key, path);
+            return decrypt_v2_all(&file, key, path);
         }
         if version != FORMAT_VERSION {
             return Err(ResourceCryptoError::BadFormat(format!(
@@ -152,8 +154,9 @@ pub fn decrypt_resource_bytes(
         if file.len() < MAGIC_LFEN2.len() + 1 + 12 + 16 {
             return Err(ResourceCryptoError::BadFormat("LFEN2 文件过短".into()));
         }
-        let sealed = &file[MAGIC_LFEN2.len() + 1..];
-        return gcm_open(key, sealed, &aad_for(path)).map_err(ResourceCryptoError::Crypto);
+        file.drain(..MAGIC_LFEN2.len() + 1); // 剥头部（memmove，无重分配）→ 原地解封
+        return gcm_open_in_place(key, file, &aad_for(path))
+            .map_err(ResourceCryptoError::Crypto);
     }
     if file.starts_with(MAGIC_LFEN) {
         if file.len() < MAGIC_LFEN.len() + 1 + 12 + 16 {
@@ -165,9 +168,9 @@ pub fn decrypt_resource_bytes(
                 "LFEN 版本不支持：{version}"
             )));
         }
-        let sealed = &file[MAGIC_LFEN.len() + 1..];
-        // 旧版引擎 LFEN 无 AAD（存量资源不浪费）
-        return gcm_open(key, sealed, &[]).map_err(ResourceCryptoError::Crypto);
+        file.drain(..MAGIC_LFEN.len() + 1);
+        // 旧版引擎 LFEN 无 AAD（存量资源不浪费）——原地解封
+        return gcm_open_in_place(key, file, &[]).map_err(ResourceCryptoError::Crypto);
     }
     Err(ResourceCryptoError::BadFormat(
         "魔数不符（非 LFEN2/LFEN，不降级明文）".into(),
@@ -604,7 +607,7 @@ fn read_encrypted(
     let mut data = Vec::new();
     use std::io::Read;
     fin.read_to_end(&mut data).map_err(io)?;
-    decrypt_resource_bytes(&data, key, path)
+    decrypt_resource_bytes(data, key, path)
 }
 
 /// `decrypt_resource(path)`（流式 + LFEN2 v2 分形态负载）：
@@ -743,9 +746,9 @@ pub fn stream_decrypt_to_cache(
     let mut buf = Vec::new();
     fin.read_to_end(&mut buf).map_err(io)?;
     // 复用通用解密器（LFEN2 版本校验/LFEN 兼容/AAD 绑路径全在内部）；
-    // 内存峰值 = 密文 + 明文双倍——这里是「整文件落缓存」路径，按需分块流化（复用
-    // decrypt_v2_block_range 逐块写盘）属后续优化项，媒体播放已由 lfstream Range 路径覆盖
-    let plain = decrypt_resource_bytes(&buf, key, path)?;
+    // 内存峰值 = 密文 1 倍（原地解密）——v1 为 GCM 单 tag 全量验证形态，密码学上不可流式
+    // （流式会先释放未认证明文）；媒体大文件由打包 v1→v2 自动分流（>8MiB）规避本路径
+    let plain = decrypt_resource_bytes(buf, key, path)?;
     fs::write(&cache, &plain).map_err(io)?;
     Ok(name)
 }
@@ -1354,7 +1357,7 @@ pub fn pack_project_with_dist(
             verify_v2_file(out_path, &seed, logical, &src)?;
         } else {
             let sealed = fs::read(out_path).map_err(io)?;
-            let plain = decrypt_resource_bytes(&sealed, &seed, logical)?;
+            let plain = decrypt_resource_bytes(sealed, &seed, logical)?;
             if fs::read(&src).map_err(io)? != plain {
                 return Err(ResourceCryptoError::Io(format!(
                     "打包自检失败（回读 ≠ 源明文）：{logical}"
@@ -1432,7 +1435,7 @@ mod tests {
         let sealed = encrypt_lfen2(&plain, KEY, "Audio/x.mp3").unwrap();
         assert!(sealed.starts_with(MAGIC_LFEN2));
         assert_eq!(
-            decrypt_resource_bytes(&sealed, KEY, "Audio/x.mp3").unwrap(),
+            decrypt_resource_bytes(sealed, KEY, "Audio/x.mp3").unwrap(),
             plain
         );
     }
@@ -1452,12 +1455,12 @@ mod tests {
         let sealed = crate::crypto::gcm_seal(KEY, b"legacy-plain", &[]).unwrap();
         let real = [b"LFEN".as_slice(), &[1u8], sealed.as_slice()].concat();
         assert_eq!(
-            decrypt_resource_bytes(&real, KEY, "whatever").unwrap(),
+            decrypt_resource_bytes(real, KEY, "whatever").unwrap(),
             b"legacy-plain".to_vec()
         );
         // 坏 tag 的样本必须 fail-closed
         assert!(matches!(
-            decrypt_resource_bytes(&legacy, KEY, "whatever"),
+            decrypt_resource_bytes(legacy, KEY, "whatever"),
             Err(ResourceCryptoError::Crypto(_))
         ));
     }
@@ -1467,7 +1470,7 @@ mod tests {
         // AAD 绑路径：加密时路径 A，按路径 B 解密必拒
         let sealed = encrypt_lfen2(b"data", KEY, "Audio/a.mp3").unwrap();
         assert!(matches!(
-            decrypt_resource_bytes(&sealed, KEY, "Audio/b.mp3"),
+            decrypt_resource_bytes(sealed, KEY, "Audio/b.mp3"),
             Err(ResourceCryptoError::Crypto(_))
         ));
     }
@@ -1479,11 +1482,11 @@ mod tests {
         let last = sealed.len() - 1;
         sealed[last] ^= 0xFF;
         assert!(matches!(
-            decrypt_resource_bytes(&sealed, KEY, "Video/v.mp4"),
+            decrypt_resource_bytes(sealed, KEY, "Video/v.mp4"),
             Err(ResourceCryptoError::Crypto(_))
         ));
         assert!(matches!(
-            decrypt_resource_bytes(b"plain-bytes", KEY, "x"),
+            decrypt_resource_bytes(b"plain-bytes".to_vec(), KEY, "x"),
             Err(ResourceCryptoError::BadFormat(_))
         ));
     }
@@ -1526,7 +1529,7 @@ mod tests {
         // 解密回读（打包路径 AAD = 相对路径）
         let sealed = fs::read(output.join("Audio/x.mp3.enc")).unwrap();
         assert_eq!(
-            decrypt_resource_bytes(&sealed, KEY, "Audio/x.mp3").unwrap(),
+            decrypt_resource_bytes(sealed, KEY, "Audio/x.mp3").unwrap(),
             b"mp3-data".to_vec()
         );
         // 幂等：已加密输入原样复制
@@ -1585,7 +1588,7 @@ mod tests {
         let seed = fs::read(output.join("__key__.seed")).unwrap();
         let sealed = fs::read(output.join("Stories/a.json.enc")).unwrap();
         assert_eq!(
-            decrypt_resource_bytes(&sealed, &seed, "Stories/a.json").unwrap(),
+            decrypt_resource_bytes(sealed, &seed, "Stories/a.json").unwrap(),
             b"{\"commands\":[]}".to_vec()
         );
         fs::remove_dir_all(&base).ok();
@@ -1693,7 +1696,7 @@ mod tests {
         // dist 资产强制 v2 存储（协议 v2 路径供给的前置形态——小文件也是 v2 单块特例）
         assert!(sealed.starts_with(MAGIC_LFEN2) && sealed[5] == FORMAT_VERSION_V2);
         assert_eq!(
-            decrypt_resource_bytes(&sealed, &seed, "dist/assets/index-Cx1Ab.js").unwrap(),
+            decrypt_resource_bytes(sealed, &seed, "dist/assets/index-Cx1Ab.js").unwrap(),
             b"console.log(1)".to_vec()
         );
         fs::remove_dir_all(&base).ok();
@@ -1882,7 +1885,7 @@ mod tests {
 
         // 全量（B4v2 姊妹：v2 走 decrypt_resource_bytes 透明分流）
         assert_eq!(
-            decrypt_resource_bytes(&sealed, KEY, "Video/m.mp4").unwrap(),
+            decrypt_resource_bytes(sealed, KEY, "Video/m.mp4").unwrap(),
             plain
         );
 
@@ -1934,7 +1937,7 @@ mod tests {
         std::mem::swap(&mut block0, &mut block1);
         sealed[a..b].copy_from_slice(&block0);
         sealed[b..b + block_len].copy_from_slice(&block1);
-        assert!(decrypt_resource_bytes(&sealed, KEY, "Video/m.mp4").is_err());
+        assert!(decrypt_resource_bytes(sealed, KEY, "Video/m.mp4").is_err());
         fs::remove_dir_all(&base).ok();
     }
 
@@ -1950,7 +1953,7 @@ mod tests {
         encrypt_lfen2_v2_file(&src, &out, KEY, "Video/m.mp4", 10).unwrap();
         let mut sealed = fs::read(&out).unwrap();
         sealed.truncate(sealed.len() - 40); // 截掉部分密文
-        assert!(decrypt_resource_bytes(&sealed, KEY, "Video/m.mp4").is_err());
+        assert!(decrypt_resource_bytes(sealed, KEY, "Video/m.mp4").is_err());
         fs::remove_dir_all(&base).ok();
     }
 
