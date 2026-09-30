@@ -319,7 +319,7 @@ describe("变量与作用域", () => {
     dispose();
   });
 
-  it("define = 全局 once：已存在不覆盖（S2 define-once-vs-let）", () => {
+  it("define = 全局 once：已存在不覆盖", () => {
     const { engine, dispose } = makeEngine(
       [
         { op: "define", key: "player.gold", value: 5 },
@@ -342,7 +342,7 @@ describe("变量与作用域", () => {
     dispose();
   });
 
-  it("let = 块级：出块销毁（S1 scope-nested-lifetime）", () => {
+  it("let = 块级：出块销毁（嵌套生命周期）", () => {
     const { engine, errors, dispose } = makeEngine([
       {
         op: "if",
@@ -356,13 +356,13 @@ describe("变量与作用域", () => {
     ]);
     engine.start();
     engine.advance();
-    // 出块后 {tmp} 未定义 → S8 保留原文 + error
+    // 出块后 {tmp} 未定义 → 保留原文 + error
     expect(engine.get(SYS.currentDialogText)).toBe("{tmp}");
     expect(hasError(errors, "unknown-variable")).toBe(true);
     dispose();
   });
 
-  it("set 写入声明时所在层：块内 set 改列级 let（S1）", () => {
+  it("set 写入声明时所在层：块内 set 改列级 let", () => {
     const { engine, dispose } = makeEngine([
       { op: "let", key: "x", value: 1 },
       { op: "if", cond: "{x > 0}", then: [{ op: "set", key: "x", value: 2 }] },
@@ -428,7 +428,7 @@ describe("分支与跳转", () => {
     dispose();
   });
 
-  it("cond 非 boolean → eval-type-error 停机（S5）", () => {
+  it("cond 非 boolean → eval-type-error 停机", () => {
     const { engine, errors, dispose } = makeEngine([
       { op: "if", cond: "{1 + 1}", then: [{ op: "say", text: "x" }] },
       { op: "say", text: "after" },
@@ -461,7 +461,7 @@ describe("分支与跳转", () => {
     h.dispose();
   });
 
-  it("jump 成功：切列 + 块级作用域销毁（S1）", () => {
+  it("jump 成功：切列 + 块级作用域销毁", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "demo",
@@ -627,7 +627,7 @@ describe("say 文本插值", () => {
     h2.dispose();
   });
 
-  it("S8：插值失败保留原文 + engine.error", () => {
+  it("插值失败保留原文 + engine.error", () => {
     const { engine, errors, dispose } = makeEngine([
       { op: "say", text: "你好 {missing}！" },
     ]);
@@ -798,7 +798,7 @@ describe("while/break/continue（执行期求值）", () => {
     dispose();
   });
 
-  it("循环体声明每轮块级：出循环不可见（S1）", () => {
+  it("循环体声明每轮块级：出循环不可见", () => {
     const { engine, errors, dispose } = makeEngine([
       {
         op: "while",
@@ -846,7 +846,7 @@ describe("for/foreach（数组迭代，foreach 编译为 for 同构）", () => {
     dispose();
   });
 
-  it("foreach 按集合变量名遍历；出循环变量不可见（S1）", () => {
+  it("foreach 按集合变量名遍历；出循环变量不可见", () => {
     const { engine, changes, errors, dispose } = makeEngine([
       { op: "array", key: "bag", items: [1, 2] },
       {
@@ -861,7 +861,7 @@ describe("for/foreach（数组迭代，foreach 编译为 for 同构）", () => {
     engine.advance(); // 1 → 2
     engine.advance(); // 2 → 出循环
     const says = changes.filter((c) => c.key === SYS.currentDialogText);
-    expect(says.map((c) => c.value)).toEqual(["1", "2", "{item}"]); // 出循环 {item} 未定义（S1+S8 保留原文）
+    expect(says.map((c) => c.value)).toEqual(["1", "2", "{item}"]); // 出循环 {item} 未定义（作用域销毁 + 保留原文）
     expect(hasError(errors, "unknown-variable")).toBe(true);
     dispose();
   });
@@ -921,7 +921,7 @@ describe("switch（case 字面量相等比较，不穿透）", () => {
     dispose();
   });
 
-  it("跨类型比较 → type-error 停机（S5）", () => {
+  it("跨类型比较 → type-error 停机", () => {
     const { engine, errors, dispose } = makeEngine([
       {
         op: "switch",
@@ -1045,7 +1045,7 @@ describe("func/call/return", () => {
     dispose();
   });
 
-  it("函数体出栈后参数不可见（独立块，S1）", () => {
+  it("函数体出栈后参数不可见（独立块）", () => {
     const { engine, errors, dispose } = makeEngine([
       {
         op: "func",
@@ -1058,7 +1058,7 @@ describe("func/call/return", () => {
     ]);
     engine.start(); // 停在函数体第一句：text = '7'
     engine.advance(); // 函数体出栈 → 回到主列
-    expect(engine.get(SYS.currentDialogText)).toBe("{pp}"); // S8 保留原文（pp 未定义且非行内标记）
+    expect(engine.get(SYS.currentDialogText)).toBe("{pp}"); // 插值保留原文（pp 未定义且非行内标记）
     expect(hasError(errors, "unknown-variable")).toBe(true);
     dispose();
   });
@@ -1592,8 +1592,8 @@ describe("存档编排（块列不进档 / 历史随档）", () => {
     const e2 = new StoryEngine(story);
     const h2 = instrument(e2);
     e2.importSave(JSON.parse(JSON.stringify(data)) as SaveDataV1);
-    e2.advance(); // end 解除 → 下一句引用 x → 列级作用域已随 S3 丢弃
-    expect(e2.get(SYS.currentDialogText)).toBe("{x}"); // S8 保留原文
+    e2.advance(); // end 解除 → 下一句引用 x → 列级作用域已随档丢弃
+    expect(e2.get(SYS.currentDialogText)).toBe("{x}"); // 插值保留原文
     expect(hasError(h2.errors, "unknown-variable")).toBe(true);
   });
 

@@ -334,7 +334,7 @@ describe("对抗性输入注入（fail-closed 全覆盖，拒绝后引擎状态�
     );
     engine.advance();
     expect(engine.get(SYS.currentDialogText)).toBe("{{}{{}}}{ orphan");
-    engine.advance(); // {gold} 未定义 → S8 保留原文 + error
+    engine.advance(); // {gold} 未定义 → 保留原文 + error
     expect(engine.get(SYS.currentDialogText)).toBe("{gold} end");
     expect(
       errors.some(
@@ -361,7 +361,7 @@ describe("对抗性输入注入（fail-closed 全覆盖，拒绝后引擎状态�
     engine.start();
     expect(engine.get(SYS.currentDialogText)).toBe("深");
     engine.advance();
-    expect(engine.get(SYS.currentDialogText)).toBe("{deep}"); // S1+S8
+    expect(engine.get(SYS.currentDialogText)).toBe("{deep}"); // 块级作用域未进档 + 插值保留原文
     expect(
       errors.some(
         (e) =>

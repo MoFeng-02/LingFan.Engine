@@ -1,5 +1,5 @@
 /**
- * 09-16 写回端到端：拟态用户旅程 + 混沌随机游走。
+ * 写回端到端：拟态用户旅程 + 混沌随机游走。
  *
  * 两层闭环：
  * 1. **纯函数闭环**（零 I/O）：`serializeProject(story, manifest)` → `assembleProject` 深等
@@ -115,7 +115,7 @@ function demoDisk(): ReturnType<typeof memoryDisk> {
   });
 }
 
-describe("09-16 写回·拟态用户旅程", () => {
+describe("写回·拟态用户旅程", () => {
   it("打开 → 改字段 / 重命名 / 新增 / 删除列 → 保存 → 重开一致", async () => {
     const disk = demoDisk();
     const { story, manifest } = await openDisk(disk);
@@ -184,7 +184,7 @@ describe("09-16 写回·拟态用户旅程", () => {
   });
 });
 
-describe("09-16 写回·混沌随机游走（种子化 300 步）", () => {
+describe("写回·混沌随机游走（种子化 300 步）", () => {
   it("每步纯函数闭环不变量；每 25 步真实写回 + 重开一致", async () => {
     const disk = demoDisk();
     const { story, manifest } = await openDisk(disk);

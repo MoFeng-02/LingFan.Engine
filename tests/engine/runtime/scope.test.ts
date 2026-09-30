@@ -19,7 +19,7 @@ describe("Scope（块 → 列 → 全局 链）", () => {
     expect(column.lookup("x")).toEqual({ found: true, value: 1 });
   });
 
-  it("assignExisting 写入声明时所在层（S1 block-scoped 语义）", () => {
+  it("assignExisting 写入声明时所在层（块级作用域语义）", () => {
     const column = Scope.root();
     column.declare("x", 1);
     const block = column.enterChild();
@@ -44,7 +44,7 @@ describe("Scope（块 → 列 → 全局 链）", () => {
     expect(block.undef("b")).toBe(true);
   });
 
-  it("出块销毁：丢弃块作用域后其声明不可达（S1 生命周期）", () => {
+  it("出块销毁：丢弃块作用域后其声明不可达（生命周期）", () => {
     const column = Scope.root();
     {
       const block = column.enterChild();

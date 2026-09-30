@@ -17,7 +17,7 @@ import FieldRow from "./FieldRow.vue";
  * 舞台编辑（scene 列的空间布局视图）：
  * - **画布**：把目标 scene 列的 `elements[]` 按 `x/y/width/height/zindex/opacity` 摆成可拖拽方块。
  *   编辑仍以布局为主（占位方块 + 尺寸/层级）。
- * - **资源缩略（P2 编辑器工程模型）**：打开工程后，带 `source/src/path` 的元素把已解析
+ * - **资源缩略（编辑器工程模型）**：打开工程后，带 `source/src/path` 的元素把已解析
  *   资源铺成方块背景（`@lingfan/ui` 的 `elementSource` 取路径，与渲染器同源判定）；
  *   未打开工程 = 无资源根 → 保持占位方块。
  * - **拖拽**：拖拽中仅本地预览（transform），**松手才写回一次** `x`/`y`，避免每帧污染 undo。

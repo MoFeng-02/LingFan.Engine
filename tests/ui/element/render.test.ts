@@ -43,7 +43,7 @@ function createFake(tag: string): FakeNode {
       node.children.push(child);
     },
     addEventListener(): void {
-      // 交互绑定不做行为断言（P1 只验证挂载不抛错）
+      // 交互绑定不做行为断言（只验证挂载不抛错）
     },
   } as unknown as FakeNode;
   Object.defineProperty(node, "innerHTML", {

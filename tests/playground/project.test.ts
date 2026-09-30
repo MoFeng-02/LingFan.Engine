@@ -85,7 +85,7 @@ describe("示例工程防腐", () => {
   });
 
   it("文本投影（projectText）对示例工程不抛错：编辑器文本模式打开真实工程不崩", () => {
-    // 实测缺陷（P2 编辑器工程模型）：编辑器「文本」视图对示例工程投影时崩在
+    // 缺陷回归（编辑器工程模型）：编辑器「文本」视图对示例工程投影时崩在
     // `escapeForText(undefined)`——projectText 的契约是**降级为 issues**，不许抛
     const projection = projectText(assemble());
     expect(projection.text.length).toBeGreaterThan(0);
@@ -125,7 +125,7 @@ describe("示例工程防腐", () => {
   });
 
   it("写回零抖动（真实语料）：无编辑保存时故事文件逐字节不变、清单语义不变", () => {
-    // 09-16 写回：以磁盘真文本为基线做差量——期望「零写零删」，
+    // 写回：以磁盘真文本为基线做差量——期望「零写零删」，
     // 否则编辑器每次保存都会无谓重写文件（playground 热重载抖动）。
     const story = assemble();
     const { files } = serializeProject(story, JSON.parse(manifestRaw));

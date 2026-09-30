@@ -467,7 +467,7 @@ function handleState({ key, value }: { key: string; value: unknown }): void {
   // 模板名（三级优先级解析结果；null = 全局默认回退）
   else if (key === SYS.dialogTemplate)
     dialogTemplateName.value = typeof value === "string" ? value : null;
-  // NVL 系统键（实测回归保护：前进播放时 NVL 累积不显示——
+  // NVL 系统键（回归保护：前进播放时 NVL 累积不显示——
   // 此前只有回溯/读档的 syncFromEngine 才同步这两个键）
   else if (key === SYS.nvlMode && typeof value === "string")
     nvlMode.value = value;

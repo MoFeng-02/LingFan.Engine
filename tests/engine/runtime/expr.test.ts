@@ -56,7 +56,7 @@ describe("算术与优先级", () => {
   });
 });
 
-describe("比较与相等（S4 非链式红线）", () => {
+describe("比较与相等（非链式红线）", () => {
   it("1<2 / 2>=2 / 3!=4 / 1==1", () => {
     expect(evalExpr("1<2")).toBe(true);
     expect(evalExpr("2>=2")).toBe(true);
@@ -67,12 +67,12 @@ describe("比较与相等（S4 非链式红线）", () => {
     expect(failCode("1 == 2 == 3")).toBe("non-chained-comparison");
     expect(failCode("1 < 2 < 3")).toBe("non-chained-comparison");
   });
-  it("跨类型 == 拒绝（S5）", () => {
+  it("跨类型 == 拒绝", () => {
     expect(failCode('"a" == 1')).toBe("type-error");
   });
 });
 
-describe("S7 短路：右支不被求值", () => {
+describe("短路：右支不被求值", () => {
   it("左支可短路时 resolver 零调用", () => {
     let calls = 0;
     const spy: NameResolver = (name) => {
@@ -93,7 +93,7 @@ describe("S7 短路：右支不被求值", () => {
   });
 });
 
-describe("S5 fail-closed：类型错误 / 除零 / 未知名 / 内置函数守卫", () => {
+describe("fail-closed：类型错误 / 除零 / 未知名 / 内置函数守卫", () => {
   it.each(['1 + "a"', '!"x"', '1 < "a"', "true + 1", '"x" ? 1 : 2'])(
     "%s → type-error",
     (src) => {
@@ -172,7 +172,7 @@ describe("interpolateText（模板插值）", () => {
       "{b}粗{/b}{p}尾",
     );
   });
-  it("S8：插值失败保留原文片段并收集错误", () => {
+  it("插值失败保留原文片段并收集错误", () => {
     const { text, errors } = interpolateText("你好 {missing}！", resolve);
     expect(text).toBe("你好 {missing}！");
     expect(errors[0]?.code).toBe("unknown-variable");

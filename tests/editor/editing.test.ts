@@ -304,7 +304,7 @@ describe("EditorSession（统一 undo）", () => {
   });
 });
 
-describe("EditorSession dirty（09-16 未保存标记）", () => {
+describe("EditorSession dirty（未保存标记）", () => {
   it("打开即干净；提交变脏；撤销回已保存引用 = 干净；重做再脏", () => {
     const session = new EditorSession(sample);
     expect(session.dirty).toBe(false);

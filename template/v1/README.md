@@ -62,7 +62,7 @@ __PROJECT__/
 ├── vite.config.ts        # publicDir: "Resources" ← 资源根即静态根
 ├── index.html            # RenderTargets 落地：stage/dialogue/choices/notifications/toolbar
 ├── src/main.ts           # 组合根：装配适配器 → 组装工程 → 建引擎 → 订阅渲染 + 帧驱动
-└── Resources/            # ★故事工程根（自包含、可整体搬运）
+└── Resources/            # 故事工程根（自包含、可整体搬运）
     ├── project.json      #   工程清单：id/name/entry/lang/formatVersion
     ├── Stories/          #   故事（JSON v1 / .story 混存合法）
     ├── Audio/  Images/  Video/

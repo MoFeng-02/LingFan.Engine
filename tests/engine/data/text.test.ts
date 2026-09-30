@@ -306,12 +306,12 @@ describe("07 nvl/character 文法往返", () => {
 });
 
 /**
- * 06 编辑器容错投影（P2 编辑器工程模型实测缺陷回归）：
+ * 编辑器容错投影（编辑器工程模型缺陷回归）：
  * 编辑器里「插入命令但必填字段还空着」是常态（插入即入树，校验是编辑期诊断）——
  * 半个命令必须降级为 issue，**不许**把整棵树带崩（原缺陷：`escapeForText(undefined)`
  * 抛 TypeError → 文本视图崩 → 整页失活）。
  */
-describe("06 半成品命令的容错投影（不允许抛非契约异常）", () => {
+describe("半成品命令的容错投影（不允许抛非契约异常）", () => {
   /** 合法故事 + 一条「刚插入还没填字段」的命令 */
   function withHalfFilled(command: Record<string, unknown>) {
     const story = parseTextStory('label start:\n  say "甲"\n', "half.story");

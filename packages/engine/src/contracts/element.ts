@@ -73,7 +73,7 @@ export const ELEMENT_STRUCTURAL_FIELDS: ReadonlySet<string> = new Set([
 
 /**
  * 属性全集 = 通用属性表 ∪ 元素特定属性（并集即校验白名单）。
- * 分组注释保留来源信息（P2 编辑器表单按 `ELEMENT_SPECIFIC_ATTRS` 分类型提示）。
+ * 分组注释保留来源信息（编辑器表单按 `ELEMENT_SPECIFIC_ATTRS` 分类型提示）。
  */
 export const ELEMENT_ATTRIBUTES: ReadonlySet<string> = new Set([
   // 内容 / 样式
