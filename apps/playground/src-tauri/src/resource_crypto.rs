@@ -57,6 +57,8 @@ pub enum ResourceCryptoError {
     InvalidPath(String),
     #[serde(rename = "missing-key")]
     MissingKey,
+    #[serde(rename = "app-data")]
+    AppData(String),
     #[serde(rename = "too-large")]
     TooLarge { size: u64, limit: u64 },
 }
@@ -71,6 +73,10 @@ impl std::fmt::Display for ResourceCryptoError {
             ResourceCryptoError::MissingKey => {
                 write!(f, "资源密钥缺失（信封与 seed 均不存在）")
             }
+            ResourceCryptoError::AppData(m) => write!(
+                f,
+                "应用数据目录不可用（存档与密钥存储位置）：{m}"
+            ),
             ResourceCryptoError::TooLarge { size, limit } => write!(
                 f,
                 "资源过大（{size} > {limit}）：该护栏仅覆盖文本类供给路径；媒体类大资源走自定义协议流式（lfstream Range 按需解密），请勿经文本路径读取"
@@ -481,7 +487,7 @@ pub fn decrypt_resource(
 ) -> Result<String, ResourceCryptoError> {
     use std::io::Read;
     let root = resource_root(&app)?;
-    let app_data = app_data(&app);
+    let app_data = app_data(&app)?;
     let resfs = crate::resource_fs::resource_fs(&app);
     let key = resource_dek(&app_data, &root, &*resfs)?;
     let sealed_path = root.join(format!("{path}.enc"));
@@ -786,7 +792,15 @@ fn handle_stream_request(
         return bad_request();
     }
     let range = request.headers().get("range").and_then(|v| v.to_str().ok());
-    stream_range_response(&tmp_stream_dir(&app_data(app)).join(raw), range)
+    let cache_dir = match app_data(app) {
+        Ok(d) => tmp_stream_dir(&d),
+        Err(e) => {
+            // 应用数据目录不可用 = v1 流缓存无从谈起：降级 404（进程存活），stderr 留诊断
+            eprintln!("[lfen] 应用数据目录不可用，v1 流缓存供给降级 404：{e}");
+            return not_found();
+        }
+    };
+    stream_range_response(&cache_dir.join(raw), range)
 }
 
 /// v2 按需解密：Range → 覆盖块解密 → 206/200；逻辑路径走 validate_resource_path 信任边界
@@ -804,7 +818,15 @@ fn handle_v2_range(
         Err(_) => return not_found(),
     };
     let resfs = crate::resource_fs::resource_fs(app);
-    let key = match resource_dek(&app_data(app), &root, &*resfs) {
+    let data_dir = match app_data(app) {
+        Ok(d) => d,
+        Err(e) => {
+            // 应用数据目录不可用 = DEK 解封不可能：降级 404（进程存活），stderr 留诊断
+            eprintln!("[lfen] 应用数据目录不可用，媒体供给降级 404：{e}");
+            return not_found();
+        }
+    };
+    let key = match resource_dek(&data_dir, &root, &*resfs) {
         Ok(k) => k,
         Err(_) => return not_found(),
     };
@@ -908,7 +930,7 @@ fn decrypt_v2_total_len(resfs: &dyn ResourceFs, enc_file: &Path) -> Option<u64> 
 #[tauri::command]
 pub fn decrypt_story(app: tauri::AppHandle, path: String) -> Result<String, ResourceCryptoError> {
     let root = resource_root(&app)?;
-    let app_data = app_data(&app);
+    let app_data = app_data(&app)?;
     let resfs = crate::resource_fs::resource_fs(&app);
     let key = resource_dek(&app_data, &root, &*resfs)?;
     let plain = read_encrypted(&*resfs, &root, &key, &path)?;
@@ -919,7 +941,9 @@ pub fn decrypt_story(app: tauri::AppHandle, path: String) -> Result<String, Reso
 /// 主窗口显示后 v2 供给立即可用。明文形态（无 seed）失败无害——预热只求副作用，结果不消费。
 pub fn preheat_resource_key(app: &tauri::AppHandle) {
     let _ = resource_root(app).and_then(|root| {
-        resource_dek(&app_data(app), &root, &*crate::resource_fs::resource_fs(app))
+        app_data(app).and_then(|data_dir| {
+            resource_dek(&data_dir, &root, &*crate::resource_fs::resource_fs(app))
+        })
     });
 }
 
@@ -1244,8 +1268,12 @@ pub fn pack_project_with_dist(
     })
 }
 
-fn app_data(app: &tauri::AppHandle) -> PathBuf {
-    app.path().app_data_dir().expect("app data 目录不可用")
+fn app_data(app: &tauri::AppHandle) -> Result<PathBuf, ResourceCryptoError> {
+    // 生产路径禁 panic：取不到应用数据目录 = 结构化错误（存档/密钥类命令回传可操作文案，
+    // 协议 handler 降级 404），进程照常存活
+    app.path()
+        .app_data_dir()
+        .map_err(|e| ResourceCryptoError::AppData(e.to_string()))
 }
 
 fn resource_root(app: &tauri::AppHandle) -> Result<PathBuf, ResourceCryptoError> {
