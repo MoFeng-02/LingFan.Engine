@@ -25,6 +25,8 @@ export function createWebVideoPort(
   function ensure(): HTMLVideoElement {
     if (element === null) {
       element = document.createElement("video");
+      // CORS 匿名加载：存档缩略图 canvas 合成需可导出（lfstream 已带 ACAO:*）——先于 src
+      element.crossOrigin = "anonymous";
       // 舞台层覆盖（RenderTargets.stage 之上的呈现层）；点击穿透：跳过走命令面
       element.style.cssText =
         "position:fixed;inset:0;width:100%;height:100%;object-fit:contain;" +

@@ -181,8 +181,15 @@ function applySource(
     if (attr === "src") (el as HTMLImageElement).alt = source;
     return;
   }
-  if (attr === "src") (el as HTMLImageElement).src = url;
-  else el.style.backgroundImage = `url("${url}")`;
+  if (attr === "src") {
+    const media = el as HTMLImageElement | HTMLVideoElement;
+    // CORS 匿名加载：存档缩略图 canvas 合成需可导出（lfstream 协议已带 ACAO:*；
+    // blob/同源不受影响）。须在 src 赋值前设置。
+    media.crossOrigin = "anonymous";
+    media.src = url;
+    return;
+  }
+  el.style.backgroundImage = `url("${url}")`;
 }
 
 // ==================== 文本族（text / dialog / narrator / speaker）====================
@@ -233,6 +240,7 @@ function renderImageButton(ctx: ElementRenderContext): HTMLElement {
   if (url !== undefined) {
     const img = document.createElement("img");
     img.className = "lf-imagebutton-img";
+    img.crossOrigin = "anonymous"; // 缩略图 canvas 合成：CORS 匿名加载（须先于 src）
     img.src = url;
     el.appendChild(img);
   } else {
