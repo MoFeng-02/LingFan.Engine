@@ -54,6 +54,7 @@ import {
   type VideoPort,
 } from "@lingfan/engine";
 import App from "./App.vue";
+import { browserBlockedMessage, browserPlayAllowed } from "./browserGuard";
 
 // 渲染诊断探针：`VITE_LFEN_DIAG=1` 构建时启用（iOS CI 白屏取证）；默认构建
 // 动态 import 被 tree-shake，产物零增重。独立于 boot——白屏时 boot 可能挂，探针必须无条件跑。
@@ -61,7 +62,16 @@ if (import.meta.env.VITE_LFEN_DIAG === "1") {
   void import("./diag").then((module) => module.startDiag());
 }
 
+/** 浏览器游戏模式未开启时的可见拒绝：写进 `#app` 的可操作说明（不白屏、不静默失败） */
+function renderBrowserBlocked(): void {
+  const root = document.querySelector("#app");
+  const message = browserBlockedMessage();
+  if (root !== null) root.textContent = message;
+  console.error(`[lfen] ${message}`);
+}
+
 const MANIFEST = "project.json";
+
 /**
  * 浏览器形态的故事清单（Tauri 形态由 Rust `project_files` 枚举目录，不用此表）。
  * **新增故事文件必须同步此处**——否则该列在浏览器形态不存在（跳转报 unknown-column）；
@@ -84,6 +94,12 @@ async function boot(): Promise<void> {
   const isTauriWindow =
     typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
   const useNative = import.meta.env.MODE === "tauri" && isTauriWindow;
+  // 浏览器游戏模式守卫：无壳 + 非开发模式 + 未显式声明浏览器游戏模式 ⇒ 拒绝（不外泄）。
+  // 交付形态只应是 Tauri 壳；Web 供给面（静态根 + 明文资源）不得随交付物一同存在。
+  if (!useNative && !browserPlayAllowed()) {
+    renderBrowserBlocked();
+    return;
+  }
   let filesPort: ProjectFilesPort;
   let savePort: SavePort;
   let wsPlatform: string | undefined;
