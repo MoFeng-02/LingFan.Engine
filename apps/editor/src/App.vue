@@ -51,6 +51,7 @@ import DiagnosticsPanel from "./components/DiagnosticsPanel.vue";
 import JsonView from "./components/JsonView.vue";
 import TextModeView from "./components/TextModeView.vue";
 import NodeGraph from "./components/NodeGraph.vue";
+import StepLayout from "./components/StepLayout.vue";
 import PreviewHost from "./components/PreviewHost.vue";
 import type {
   LastProjectEntry,
@@ -89,7 +90,7 @@ const redoDepth = ref(0);
 const selectedColumnId = ref<string>(session.story.entry);
 const selectedPointer = ref<string | null>(null);
 const rightTab = ref<"diagnostics" | "json" | "text">("diagnostics");
-const centerView = ref<"timeline" | "stage" | "graph">("timeline");
+const centerView = ref<"timeline" | "stage" | "graph" | "step">("timeline");
 /** 组件面板：左栏 tab（「列」/「组件」）——200px 宽放不下两个长列表，切 tab 比堆叠可用 */
 const leftTab = ref<"columns" | "palette">("columns");
 const previewing = ref(false);
@@ -666,6 +667,13 @@ function onExport(): void {
         >
           节点图
         </button>
+        <button
+          :class="{ active: centerView === 'step' }"
+          @click="centerView = 'step'"
+          title="以「步骤」（等待态边界）为单位查看顺序与分支"
+        >
+          步骤
+        </button>
       </span>
       <button
         class="diag-badge"
@@ -776,7 +784,14 @@ function onExport(): void {
         />
         <!-- key = story.id ⇒ 换工程/新建/导入必重挂载，布局缓存从新工程的存储键重读 -->
         <NodeGraph
-          v-else
+          v-else-if="centerView === 'graph'"
+          :key="story.id"
+          :story="story"
+          :selected-id="selectedColumnId"
+        />
+        <!-- 步骤视图：确定性排布（无布局缓存）——key 仅用于换工程时归零选中态派生 -->
+        <StepLayout
+          v-else-if="centerView === 'step'"
           :key="story.id"
           :story="story"
           :selected-id="selectedColumnId"

@@ -83,6 +83,17 @@ export {
   type RegisteredOp,
 } from "./runtime/opRegistry";
 /**
+ * 等待声明表：哪个 op 建立等待点（= 检查点边界）的单一事实源。
+ * 静态消费者（编辑器步骤视图等）一律从这里取，禁止各自复制判定
+ * （与运行时的一致性由行为互锁测试守护）。
+ */
+export {
+  waitSpecOfOp,
+  WAITING_OPS,
+  waitingStateOfOp,
+  type WaitSpec,
+} from "./runtime/waitingOps";
+/**
  * 声明制扩展装载：扫描器对未声明的扩展文件零感知；
  * 模块解析归宿主（注入式 import 回调），本模块只做形状校验（fail-closed）。
  */
