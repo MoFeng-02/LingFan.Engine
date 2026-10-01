@@ -1,3 +1,10 @@
 packages:
   - packages/*
   - apps/*
+
+# 构建脚本批准面（pnpm 12 起「未批准的构建脚本」= 硬错误 ERR_PNPM_IGNORED_BUILDS，
+# 会让 `pnpm install --frozen-lockfile` 直接失败——iOS CI 曾因此连续多次卡在「安装 JS 依赖」，
+# 其后的前端预构建 / iOS 编译 / 模拟器冒烟全被跳过，等于 iOS 侧一直没有验证数据）。
+# 只批 esbuild：它是 vite 工具链的既定安装步骤；其余包的构建脚本一律不放开（供应链面维持最小）。
+allowBuilds:
+  esbuild: true
