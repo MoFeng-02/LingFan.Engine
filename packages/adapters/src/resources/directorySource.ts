@@ -8,7 +8,8 @@
  * 供给实现的键完全一致（组装器是唯一解析点，本模块只负责「取」）。
  * 枚举口径照 Rust `collect_story_files`：`Stories/**` 递归、跳过点文件名、不设扩展名白名单。
  * **唯一有意差异 = 加密形态**：`.enc` 需密钥解密（安全边界在 Rust）→ 浏览器形态
- * 显式 fail-closed，不猜、不跳过。
+ * 显式 fail-closed，不猜、不跳过；形态判定**唯一落在 `encryptedProject` 模块**（前置、
+ * 统一文案）——将来编辑器桌面壳落地时只换判定点之后的供给，规则不重写。
  *
  * 资源供给 = 文件对象 → 短生命周期 Blob URL（Blob URL 用后 revoke），
  * `release` 即 revoke——与加密适配器同一契约形态（静态根与加密形态各自空实现/归 Rust）。
@@ -29,6 +30,10 @@ import {
   type ProjectWriterPort,
   type ResourcePort,
 } from "@lingfan/engine";
+import {
+  detectEncryptedProject,
+  encryptedProjectMessage,
+} from "./encryptedProject";
 import { normalizeResourceId } from "./resourcePort";
 
 /**
@@ -333,6 +338,12 @@ async function readProject(
   source: ProjectFileSource,
 ): Promise<{ manifest: unknown; stories: Map<string, string> }> {
   const paths = await source.paths();
+  // 加密形态**前置统一识别**（唯一判定点，见 encryptedProject）：在读取任何文件之前拒绝——
+  // 逐个路径在循环里抛会把「工程形态问题」报成「某个文件的问题」，且已白读一批文件。
+  const encrypted = detectEncryptedProject(paths);
+  if (encrypted.encrypted) {
+    throw new Error(encryptedProjectMessage(source.name, encrypted));
+  }
   if (!paths.includes(MANIFEST_FILE)) {
     throw new Error(`资源根（${source.name}）缺少 ${MANIFEST_FILE}`);
   }
@@ -349,11 +360,6 @@ async function readProject(
   }
   const stories = new Map<string, string>();
   for (const path of storyPaths) {
-    if (path.endsWith(".enc")) {
-      throw new Error(
-        `故事 ${path} 为加密形态：浏览器形态编辑器不支持加密工程（解密归 Rust）`,
-      );
-    }
     stories.set(path, await source.text(path));
   }
   return { manifest, stories };

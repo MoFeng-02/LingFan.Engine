@@ -39,3 +39,12 @@ export {
   type TauriProjectFiles,
 } from "./projectFilesTauri";
 export { createTauriEncryptedResourcePort } from "./resourceCrypto";
+/**
+ * 加密工程形态识别（唯一判定点）：浏览器形态前置拒绝 + 可操作文案；
+ * 编辑器桌面壳落地后，同一判定点改走宿主解密供给（规则不重写）。
+ */
+export {
+  detectEncryptedProject,
+  encryptedProjectMessage,
+  type EncryptedProjectFinding,
+} from "./encryptedProject";

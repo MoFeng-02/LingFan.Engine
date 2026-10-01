@@ -156,8 +156,10 @@ describe("目录取径·FSA 句柄", () => {
         Stories: { "start.json.enc": "cipher" },
       }),
     );
+    // 形态判定归 encryptedProject 唯一判定点（前置、统一可操作文案）——
+    // 这里只锁「打开必被拒 + 文案说明形态与出路」，具体措辞由该模块的测试守护。
     await expect(loadProject(createSourceProjectFilesPort(source))).rejects.toThrow(
-      "不支持加密工程",
+      /加密工程（lfenpack 产物）[\s\S]*明文工程/,
     );
   });
 

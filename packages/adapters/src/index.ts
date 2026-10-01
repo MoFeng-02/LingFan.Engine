@@ -16,6 +16,12 @@ export {
   createStaticResourcePort,
   createTauriEncryptedResourcePort,
 } from "./resources";
+// 加密工程形态识别（唯一判定点）：无壳形态剥不开 ⇒ 前置显式拒绝 + 可操作文案
+export {
+  detectEncryptedProject,
+  encryptedProjectMessage,
+  type EncryptedProjectFinding,
+} from "./resources";
 // 编辑器工程模型：目录取径（FSA 句柄 / 目录 input 快照）供给工程与资源
 export {
   createFileListFileSource,
