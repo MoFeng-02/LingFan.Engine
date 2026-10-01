@@ -13,6 +13,11 @@ export {
   type WebVideoPortOptions,
 } from "./media/videoPort";
 export {
+  createBlobSource,
+  type BlobSource,
+  type BlobSourceOptions,
+} from "./media/blobSource";
+export {
   createStaticResourcePort,
   createTauriEncryptedResourcePort,
 } from "./resources";

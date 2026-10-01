@@ -6,12 +6,22 @@
  * - 浏览器自动播放策略拒绝时登记，首次用户交互后重试
  */
 import type { VideoPort } from "@lingfan/engine";
+import { createBlobSource, type BlobSourceOptions } from "./blobSource";
 
 export interface WebVideoPortOptions {
   /** 播放失败诊断（缺失/损坏资源不静默：报错诊断） */
   onError?: (message: string) => void;
   /** 层 z 序（层级契约）：组合根传入解析后的层表值；缺省 5 = 旧行为 */
   zIndex?: number;
+  /** 媒体源物化配置（Android WebView 的 Range 拦截缺陷绕过，见 blobSource 模块）；
+   *  缺省 = 直供 URL（桌面既有行为，形态差异归组合根裁决） */
+  blobSource?: BlobSourceOptions;
+}
+
+/** 播放参数（契约 VideoPort.play 的 options） */
+interface PlayOptions {
+  volume: number;
+  loop: boolean;
 }
 
 export function createWebVideoPort(
@@ -21,6 +31,13 @@ export function createWebVideoPort(
   let endedHandler: (() => void) | null = null;
   // 实例级 z：运行期可改；缺省 5 = 旧行为
   let zIndex = portOptions.zIndex ?? 5;
+  const blobSource =
+    portOptions.blobSource === undefined
+      ? undefined
+      : createBlobSource(portOptions.blobSource);
+  /** 当前逻辑 URL（物化释放的键）；世代号作废在途物化（stop / dispose / 新 play 取代） */
+  let currentUrl: string | null = null;
+  let generation = 0;
 
   function ensure(): HTMLVideoElement {
     if (element === null) {
@@ -32,11 +49,44 @@ export function createWebVideoPort(
         "position:fixed;inset:0;width:100%;height:100%;object-fit:contain;" +
         `background:#000;z-index:${zIndex};display:none;pointer-events:none;`;
       element.addEventListener("error", () => {
+        // 只有真正的媒体错误才报（MediaError 非空）：WebView 会因内建默认封面加载失败
+        // 派发一次不带 MediaError 的 error 事件，那不是解码失败，报出来会误导用户
+        const mediaError = element?.error;
+        if (mediaError === null || mediaError === undefined) return;
         portOptions.onError?.("视频资源无法解码或缺失");
       });
       document.body.appendChild(element);
     }
     return element;
+  }
+
+  function applyPlay(
+    video: HTMLVideoElement,
+    source: string,
+    options: PlayOptions,
+  ): void {
+    video.src = source;
+    video.loop = options.loop;
+    video.volume = Math.min(1, Math.max(0, options.volume));
+    video.style.display = "block";
+    // 浏览器自动播放策略拒绝（未交互）时静默：cutscene 场景玩家即将交互
+    void video.play().catch(() => undefined);
+  }
+
+  function startPlay(
+    video: HTMLVideoElement,
+    url: string,
+    options: PlayOptions,
+  ): void {
+    if (blobSource === undefined) {
+      applyPlay(video, url, options);
+      return;
+    }
+    const mine = generation;
+    void blobSource.materialize(url).then((source) => {
+      if (mine !== generation) return; // 已被 stop / dispose / 新 play 取代
+      applyPlay(video, source, options);
+    });
   }
 
   return {
@@ -51,12 +101,9 @@ export function createWebVideoPort(
       video.onended = () => {
         if (endedHandler !== null) endedHandler();
       };
-      video.src = url;
-      video.loop = options.loop;
-      video.volume = Math.min(1, Math.max(0, options.volume));
-      video.style.display = "block";
-      // 浏览器自动播放策略拒绝（未交互）时静默：cutscene 场景玩家即将交互
-      void video.play().catch(() => undefined);
+      currentUrl = url;
+      generation += 1;
+      startPlay(video, url, options);
     },
     pause(): void {
       element?.pause();
@@ -68,13 +115,20 @@ export function createWebVideoPort(
       if (element !== null) element.currentTime = Math.max(0, seconds);
     },
     stop(): void {
-      if (element === null) return;
-      element.onended = null;
-      element.pause();
-      element.removeAttribute("src"); // 释放解码资源
-      element.style.display = "none";
+      generation += 1; // 作废在途物化
+      const url = currentUrl;
+      currentUrl = null;
+      if (element !== null) {
+        element.onended = null;
+        element.pause();
+        element.removeAttribute("src"); // 释放解码资源
+        element.style.display = "none";
+      }
+      if (url !== null) blobSource?.release(url); // 先断源再释放物化结果
     },
     dispose(): void {
+      generation += 1;
+      currentUrl = null;
       if (element !== null) {
         element.pause();
         element.onended = null;
@@ -82,6 +136,7 @@ export function createWebVideoPort(
         element.remove();
       }
       element = null;
+      blobSource?.dispose();
     },
   };
 }

@@ -2562,6 +2562,13 @@ export class StoryEngine {
       this.fail("video-finish-invalid", "当前不在视频等待中");
       return;
     }
+    // 过场结束即收起视频层（与「跳过」路径对称）：视频层实例 z 常高于对话层，
+    // 不收起会继续盖住对话与 HUD（点击因 pointer-events:none 仍可穿透，界面看似卡死）
+    this.videoSeq += 1;
+    this.setSystem(SYS.video, {
+      kind: "stop",
+      seq: this.videoSeq,
+    } satisfies VideoCommand);
     this.setSystem(SYS.waiting, "none");
     this.liveCheckpointed = false; // live 已越过该检查点
     this.run();

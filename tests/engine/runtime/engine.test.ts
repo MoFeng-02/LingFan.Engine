@@ -1983,6 +1983,7 @@ describe("视频族（video/cutscene/seek/pause/resume/stop/skipable）", () => 
     });
     expect(engine.historyView()).toHaveLength(1); // 建立时检查点已提交
     engine.videoFinished();
+    expect(videoOf(engine)).toMatchObject({ kind: "stop" }); // 播完即收起视频层（与跳过路径对称）
     expect(engine.get(SYS.waiting)).toBe("dialog"); // 继续到下一句
     expect(engine.get(SYS.currentDialogText)).toBe("过场后");
     dispose();

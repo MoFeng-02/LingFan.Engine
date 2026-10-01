@@ -85,6 +85,12 @@ const STORIES = [
   "Stories/stage_demo.json",
 ];
 
+/**
+ * 媒体源物化上限（字节）：物化后整段驻留内存，故只承载小媒体（本工程 v1 媒体 ≤ 8 MiB）；
+ * 超过即维持按需流式，不使用 Blob。
+ */
+const MEDIA_BLOB_SOURCE_MAX_BYTES = 16 * 1024 * 1024;
+
 async function boot(): Promise<void> {
   // —— 平台装配（构建期 + 运行期双层）——
   // 构建层：mode `tauri` 编译 Tauri 形态产物（含 invoke 路径）；纯浏览器构建编译 Web 形态。
@@ -143,10 +149,29 @@ async function boot(): Promise<void> {
   const layerZ: LayerZTable = resolveLayerZ(manifest);
   // 存档壳配置：槽位数与缩略图参数（project.json shell.saves 可覆盖）
   const saves: SavesConfig = resolveSavesConfig(manifest);
+  // ③ 平台区分（宿主信息）：取数来源 = Tauri CLI 注入的编译期平台（浏览器形态 undefined →
+  // unknown·desktop，显式未知不猜）。宿主事实不可变，适配器内缓存；UI 只展示，按端分支后续按需加。
+  // 置于媒体端口之前：媒体源物化的开关取决于宿主事实（见下）。
+  const hostPort = createHostPort({
+    platform: useNative ? await readTauriPlatform() : wsPlatform,
+  });
+  const host: HostInfo = hostPort.get();
+  // 媒体源物化（Android WebView 的 Range 拦截缺陷绕过）：加密形态下媒体由 lfstream 自定义协议供给，
+  // 而该 WebView 对**带 `Range` 头**的拦截响应会在网络层直接失败（非零起点区间必错）——非 faststart 的
+  // MP4 解复用必然读尾部 ⇒ 播放必坏。改经「无 `Range` 取回全量 → Blob URL」本地解码；其余平台保持
+  // 直供（Range 按需流式正常）。上限内才物化：超过即按需流式，不使用 Blob。
+  const mediaBlobSource =
+    useNative && encrypted && host.os === "android"
+      ? { maxBytes: MEDIA_BLOB_SOURCE_MAX_BYTES }
+      : undefined;
   const createAudioPort = (onError: (message: string) => void): AudioPort =>
-    createWebAudioPort({ onError });
+    createWebAudioPort({ onError, blobSource: mediaBlobSource });
   const createVideoPort = (onError: (message: string) => void): VideoPort =>
-    createWebVideoPort({ onError, zIndex: layerZ.video });
+    createWebVideoPort({
+      onError,
+      zIndex: layerZ.video,
+      blobSource: mediaBlobSource,
+    });
   // I18N 装配：Tauri 形态走 Rust overlay 供给（按需加载）；浏览器形态暂无
   // 静态根供给（未注入 = 原文直出，引擎契约缺省语义）
   const i18nPort: I18nPort | undefined =
@@ -203,13 +228,6 @@ async function boot(): Promise<void> {
   };
   void fullscreenApplier.apply(appliedFullscreen); // 启动即恢复上次状态
   preferences.onChange(applyFullscreen);
-
-  // ③ 平台区分（宿主信息）：取数来源 = Tauri CLI 注入的编译期平台（浏览器形态 undefined →
-  // unknown·desktop，显式未知不猜）。宿主事实不可变，适配器内缓存；UI 只展示，按端分支后续按需加。
-  const hostPort = createHostPort({
-    platform: useNative ? await readTauriPlatform() : wsPlatform,
-  });
-  const host: HostInfo = hostPort.get();
 
   const app = createApp(App, {
     story,

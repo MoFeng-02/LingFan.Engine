@@ -5,12 +5,15 @@
  * restart=true = 回到起点重播（同源不重设 src，避免重复解码）。
  * 淡入淡出用音量斜坡（单条 rAF，斜坡清空即停）。
  * 浏览器自动播放策略拒绝时登记该通道，首次用户交互后重试（否则首曲静默丢失）。
+ * 媒体源可经 `blobSource` 物化（Android WebView 的 Range 拦截缺陷绕过，见 blobSource 模块）：
+ * URL 判等仍按**逻辑 URL**（物化不改变「同源不重设 src」的无缝续播语义）。
  */
 import type {
   AudioChannel,
   AudioPlayOptions,
   AudioPort,
 } from "@lingfan/engine";
+import { createBlobSource, type BlobSourceOptions } from "./blobSource";
 
 /** 位置写入容差（秒）：小于此不写 currentTime，避免每帧抖动 */
 const SEEK_EPSILON = 0.25;
@@ -30,6 +33,9 @@ function clamp(value: number): number {
 export interface WebAudioPortOptions {
   /** 播放失败诊断（缺失/损坏资源不静默：报错诊断） */
   onError?: (message: string) => void;
+  /** 媒体源物化配置（Android WebView 的 Range 拦截缺陷绕过，见 blobSource 模块）；
+   *  缺省 = 直供 URL（桌面既有行为，形态差异归组合根裁决） */
+  blobSource?: BlobSourceOptions;
 }
 
 export function createWebAudioPort(
@@ -41,8 +47,33 @@ export function createWebAudioPort(
   const ramps = new Map<AudioChannel, Ramp>();
   /** 被自动播放策略拒绝的通道：首次用户交互后重试 */
   const blocked = new Set<AudioChannel>();
+  const blobSource =
+    portOptions.blobSource === undefined
+      ? undefined
+      : createBlobSource(portOptions.blobSource);
+  /** 每通道世代号：作废在途物化（stop / 新 play 取代后的迟到回填） */
+  const generations = new Map<AudioChannel, number>();
   let gestureHandler: (() => void) | null = null;
   let rafId = 0;
+
+  /** 物化为可口喂元素的 URL（未配置物化 = 原样返回） */
+  function resolveSource(url: string): Promise<string> {
+    return blobSource === undefined
+      ? Promise.resolve(url)
+      : blobSource.materialize(url);
+  }
+
+  /** 取通道世代号（不递增） */
+  function generationOf(channel: AudioChannel): number {
+    return generations.get(channel) ?? 0;
+  }
+
+  /** 递增通道世代号（作废该通道在途物化） */
+  function bumpGeneration(channel: AudioChannel): number {
+    const next = generationOf(channel) + 1;
+    generations.set(channel, next);
+    return next;
+  }
 
   function tick(now: number): void {
     rafId = 0;
@@ -146,12 +177,15 @@ export function createWebAudioPort(
   ): void {
     if (channel === "se") {
       // 一次性音效：独立元素，允许与常驻通道叠放；无淡入淡出与位置语义，也不重试
-      const shot = new Audio(url);
+      const shot = new Audio();
       shot.volume = clamp(options.volume);
       shot.addEventListener("error", () => {
         portOptions.onError?.(`音效资源无法解码或缺失：${url}`);
       });
-      void shot.play().catch(() => undefined);
+      void resolveSource(url).then((source) => {
+        shot.src = source;
+        void shot.play().catch(() => undefined);
+      });
       return;
     }
     const element = ensure(channel);
@@ -175,23 +209,28 @@ export function createWebAudioPort(
     urls.set(channel, url);
     ramps.delete(channel);
     blocked.delete(channel);
-    element.src = url;
-    element.loop = options.loop;
-    if (options.position > 0) {
-      // 新元素元数据未就绪时写 currentTime 会被忽略，等 loadedmetadata 再定位
-      element.addEventListener(
-        "loadedmetadata",
-        () => {
-          element.currentTime = options.position;
-        },
-        { once: true },
-      );
-    }
-    start(channel, element, options);
+    const mine = bumpGeneration(channel);
+    void resolveSource(url).then((source) => {
+      if (generationOf(channel) !== mine) return; // 已被 stop / 新 play 取代
+      element.src = source;
+      element.loop = options.loop;
+      if (options.position > 0) {
+        // 新元素元数据未就绪时写 currentTime 会被忽略，等 loadedmetadata 再定位
+        element.addEventListener(
+          "loadedmetadata",
+          () => {
+            element.currentTime = options.position;
+          },
+          { once: true },
+        );
+      }
+      start(channel, element, options);
+    });
   }
 
   function stop(channel: AudioChannel, fadeMs = 0): void {
     const element = elements.get(channel);
+    bumpGeneration(channel); // 作废在途物化：停止后不得再回填 src
     urls.delete(channel);
     blocked.delete(channel);
     if (element === undefined) return;
@@ -224,6 +263,8 @@ export function createWebAudioPort(
     }
     elements.clear();
     urls.clear();
+    generations.clear();
+    blobSource?.dispose(); // 元素已断源，物化结果可安全释放
   }
 
   return { play, stop, position, dispose };
