@@ -160,6 +160,8 @@ async function boot(): Promise<void> {
   // 而该 WebView 对**带 `Range` 头**的拦截响应会在网络层直接失败（非零起点区间必错）——非 faststart 的
   // MP4 解复用必然读尾部 ⇒ 播放必坏。改经「无 `Range` 取回全量 → Blob URL」本地解码；其余平台保持
   // 直供（Range 按需流式正常）。上限内才物化：超过即按需流式，不使用 Blob。
+  // 注：v2 分块形态的大媒体（音视频）已由 Rust 改走本机回环 HTTP 供给（带完整 Range 语义），
+  // 不会到这里；本例只覆盖上限内的小媒体（详见 media_http.rs 模块头）。
   const mediaBlobSource =
     useNative && encrypted && host.os === "android"
       ? { maxBytes: MEDIA_BLOB_SOURCE_MAX_BYTES }
