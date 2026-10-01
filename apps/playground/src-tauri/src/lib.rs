@@ -1,6 +1,7 @@
 pub mod crypto;
 pub mod diagnostics;
 pub mod host;
+pub mod media_http;
 pub mod preferences;
 pub mod project_files;
 pub mod project_writer;

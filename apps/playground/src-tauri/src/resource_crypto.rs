@@ -89,7 +89,7 @@ impl std::fmt::Display for ResourceCryptoError {
 impl std::error::Error for ResourceCryptoError {}
 
 /// 逻辑路径信任边界（与静态 ResourcePort 同判）：拒绝 `..`、空段与绝对路径
-fn validate_resource_path(path: &str) -> Result<(), ResourceCryptoError> {
+pub(crate) fn validate_resource_path(path: &str) -> Result<(), ResourceCryptoError> {
     if path.is_empty()
         || path.starts_with('/')
         || path.starts_with('\\')
@@ -610,12 +610,52 @@ fn read_encrypted(
     decrypt_resource_bytes(data, key, path)
 }
 
+/// 音视频扩展名判定：回环通道只服务这两类（图/字体/JS/故事不经此路径——它们的消费者
+/// 不发非零起点 `Range`，走既有 lfstream 供给即可）。
+pub(crate) fn is_media_ext(logical: &str) -> bool {
+    let ext = Path::new(logical)
+        .extension()
+        .map(|e| e.to_string_lossy().to_ascii_lowercase())
+        .unwrap_or_default();
+    matches!(
+        ext.as_str(),
+        "mp4" | "webm" | "mov" | "mkv" | "avi" | "mp3" | "ogg" | "wav" | "m4a" | "aac" | "flac"
+            | "opus"
+    )
+}
+
+/// 回环供给命中判定（Android ∧ 加密 ∧ 音视频）：纯函数，`is_android` 由调用方以 `cfg!` 传入
+/// ——使两条分支都能在桌面单测覆盖，不依赖目标平台（本仓既有教训：`cfg` 掉的分支桌面门禁验不到）。
+pub(crate) fn loopback_eligible(is_android: bool, logical: &str) -> bool {
+    is_android && is_media_ext(logical)
+}
+
+/// 大媒体回环 URL（命中判定 + 服务懒启动）：未命中或服务未起 = `None`——调用方回落 lfstream
+/// 既有 URL（fail-soft，绝不改坏非命中路径）。
+///
+/// 为什么大媒体必须离开 lfstream：Android 侧自定义协议响应体被整段拷进 JVM `byte[]`
+/// （见 `media_http` 模块头），设备 Java 堆放不下大媒体；且该拦截层对非零起点 `Range` 必失败。
+pub(crate) fn loopback_media_url(app: &tauri::AppHandle, logical: &str) -> Option<String> {
+    if !loopback_eligible(cfg!(target_os = "android"), logical) {
+        return None;
+    }
+    let server = crate::media_http::ensure_server(app)?;
+    Some(crate::media_http::loopback_url(
+        server.port,
+        &server.token,
+        logical,
+    ))
+}
+
 /// `decrypt_resource(path)`（流式 + LFEN2 v2 分形态负载）：
 /// - v1 整文件：解密到临时流缓存（同资源幂等复用）→ `{"file":"<缓存名>"}` →
 ///   TS `convertFileSrc(file, "lfstream")`（token 缓存路径）
 /// - v2 分块：**不落明文缓存**——`{"v2":"<逻辑路径>"}` →
 ///   TS `convertFileSrc("v2/"+encodeURIComponent(逻辑路径), "lfstream")`，
 ///   协议 handler 按 Range 按需解密覆盖块（明文永不全量落盘/进内存）
+/// - v2 分块 **Android 音视频**：改回本机回环 HTTP（`http://127.0.0.1:<port>/...`，
+///   见 `media_http` 模块头）——该形态下媒体元素能拿到真实 socket 的 Range 语义，
+///   大媒体亦不受 Java 堆上限约束；其余路径（含桌面同资源）行为逐字不变
 #[tauri::command]
 pub fn decrypt_resource(
     app: tauri::AppHandle,
@@ -642,6 +682,12 @@ pub fn decrypt_resource(
     if n == V2_HEADER_LEN && head.starts_with(MAGIC_LFEN2) && head[5] == FORMAT_VERSION_V2 {
         // 预检：试解首块（DEK 失配提前 fail-closed，而非等到媒体拉流）
         decrypt_v2_block_range(&*resfs, &sealed_path, &key, &path, 0, 0)?;
+        // 大媒体（Android ∧ 加密 ∧ 音视频）改走本机回环 socket：lfstream 的响应体在 Android
+        // 侧被整段拷进 JVM byte[]（堆上限放不下大媒体），且其拦截层对非零起点 Range 必失败。
+        // 未命中或服务未起 = 回落下方既有 lfstream URL（行为零变化）。
+        if let Some(url) = loopback_media_url(&app, &path) {
+            return Ok(serde_json::json!({ "v2": path, "url": url }).to_string());
+        }
         let url = format!(
             "{}/v2/{}",
             protocol_base(),
@@ -669,7 +715,7 @@ fn protocol_base() -> &'static str {
 }
 
 /// URL 段编码（逻辑路径整段编码：`/` → %2F 使其成为协议 path 的单一段）
-fn utf8_percent_encode(path: &str) -> String {
+pub(crate) fn utf8_percent_encode(path: &str) -> String {
     const SEGMENT: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC
         .remove(b'-')
         .remove(b'.')
@@ -1198,7 +1244,7 @@ fn bad_request() -> tauri::http::Response<Vec<u8>> {
 }
 
 /// 读 v2 头取明文总长（非 v2 或读失败 = None）
-fn decrypt_v2_total_len(resfs: &dyn ResourceFs, enc_file: &Path) -> Option<u64> {
+pub(crate) fn decrypt_v2_total_len(resfs: &dyn ResourceFs, enc_file: &Path) -> Option<u64> {
     use std::io::Read;
     let mut head = [0u8; V2_HEADER_LEN];
     let mut f = resfs.open(enc_file).ok()?;
@@ -1550,7 +1596,7 @@ pub fn pack_project_with_dist(
     })
 }
 
-fn app_data(app: &tauri::AppHandle) -> Result<PathBuf, ResourceCryptoError> {
+pub(crate) fn app_data(app: &tauri::AppHandle) -> Result<PathBuf, ResourceCryptoError> {
     // 生产路径禁 panic：取不到应用数据目录 = 结构化错误（存档/密钥类命令回传可操作文案，
     // 协议 handler 降级 404），进程照常存活
     app.path()
@@ -1558,7 +1604,7 @@ fn app_data(app: &tauri::AppHandle) -> Result<PathBuf, ResourceCryptoError> {
         .map_err(|e| ResourceCryptoError::AppData(e.to_string()))
 }
 
-fn resource_root(app: &tauri::AppHandle) -> Result<PathBuf, ResourceCryptoError> {
+pub(crate) fn resource_root(app: &tauri::AppHandle) -> Result<PathBuf, ResourceCryptoError> {
     // 单一定位事实源（project_files::locate_resource_root）——dev 走源根/env 覆盖，
     // 与故事供给同根；否则媒体链读 target 拷贝而故事读源根，两链分裂（实测踩坑）
     Ok(crate::project_files::locate_resource_root(app))
@@ -1974,6 +2020,35 @@ mod tests {
         assert!(validate_resource_path("Video/m2.mp4").is_ok());
         assert!(validate_resource_path("../project.json").is_err());
         assert!(validate_resource_path("").is_err());
+    }
+
+    /// 锚点 android-media-loopback-routing：命中面 = Android ∧ 音视频扩展名（大小写不敏感）；
+    /// 桌面恒不命中（同资源在桌面继续走 lfstream，行为零变化，也不起端口）
+    #[test]
+    fn media_loopback_routing_is_pure_and_narrow() {
+        for media in [
+            "Video/m2.mp4",
+            "Video/x.MP4",
+            "Audio/bgm.mp3",
+            "SFX/x.ogg",
+            "Video/a.webm",
+            "Audio/x.m4a",
+        ] {
+            assert!(is_media_ext(media), "{media} 应判为媒体");
+            assert!(loopback_eligible(true, media));
+            assert!(!loopback_eligible(false, media), "桌面不得命中（不起端口）");
+        }
+        for other in [
+            "Images/bg.png",
+            "Fonts/x.ttf",
+            "Stories/start.json",
+            "dist/assets/index-a1b2.js",
+            "Video/noext",
+            "Video/trailing.",
+        ] {
+            assert!(!is_media_ext(other), "{other} 不应判为媒体");
+            assert!(!loopback_eligible(true, other));
+        }
     }
 
     #[test]
