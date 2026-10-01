@@ -1330,6 +1330,9 @@ body,
   gap: 12px;
   padding: clamp(12px, 3vh, 28px) clamp(12px, 4vw, 40px);
   cursor: pointer;
+  /* 舞台是整屏点击目标：WebView 默认的点击高亮会随「被点元素」铺满整个视口
+     （看起来像蒙了一层），故此处关闭；交互元素的触摸反馈不受影响。 */
+  -webkit-tap-highlight-color: transparent;
   background: #12121a;
   color: #e6e6f0;
   font-size: clamp(14px, 1.4vw + 8px, 17px);

@@ -906,10 +906,11 @@ pub fn lfstream_protocol_handler(
         tauri::http::HeaderValue::from_static("*"),
     );
     // fetch 可读 Range 相关头（浏览器默认只暴露 safelist；媒体元素内部不受此限）
+    // `x-total-size` 属 URL-query 通道（绕过 Android WebView 二次偏移）的明文总量回传
     resp.headers_mut().insert(
         tauri::http::header::ACCESS_CONTROL_EXPOSE_HEADERS,
         tauri::http::HeaderValue::from_static(
-            "content-range,content-length,content-type,accept-ranges",
+            "content-range,content-length,content-type,accept-ranges,x-total-size",
         ),
     );
     resp
@@ -970,7 +971,88 @@ fn handle_v2_range(
     handle_v2_range_with(&*resfs, request, &encoded, &root, &key)
 }
 
-/// v2 range 核心（与 AppHandle 解耦，可单测）：root/.enc + DEK 由调用方解析
+/// v2 单次响应字节上限（官方 asset protocol 同款）：开放尾区间（`bytes=0-`）若不截断，
+/// v2 按需解密会退化为全文件解密——媒体引擎按 `Content-Range`（头通道）或已交付长度
+/// （query 通道）自动发后续请求，单次实际远小于此。
+const V2_RANGE_MAX_LEN: u64 = 1000 * 1024;
+
+/// URL-query 通道取值：`?range=bytes%3D0-1023` → `bytes=0-1023`（值需 percent 解码）。
+/// 仅认第一个 `range` 键；无该键 = `None`——此时行为与既有（只读 `Range` 头）逐字一致。
+///
+/// 存在的理由（Android WebView 缺陷 Chromium 40739128）：带 `Range` 头经
+/// `shouldInterceptRequest` 供给时，WebView 会对**已切片的响应体再跳过 start 字节**
+/// （偏移被重复施加），非零起点区间必错位；把区间编进 URL query 后请求**不带 `Range` 头**，
+/// WebView 不再二次偏移，响应按 200 原样交付。桌面与明文路径不受影响（那里 `Range` 头正常）。
+fn range_query_value(query: Option<&str>) -> Option<String> {
+    let query = query?;
+    for pair in query.split('&') {
+        let mut it = pair.splitn(2, '=');
+        if it.next() == Some("range") {
+            let raw = it.next().unwrap_or("");
+            return Some(percent_decode_str(raw).decode_utf8_lossy().to_string());
+        }
+    }
+    None
+}
+
+/// query 通道**严格**解析（头通道的「畸形宽容回全量」不适用）：值须形如
+/// `bytes=a-b` / `bytes=a-` / `bytes=-n`，其余一律拒绝。为何不宽容——显式通道上静默退化
+/// 等于一次全文件解密，代价反被放大；此处 fail-closed。返回明文闭区间 `[start, end]`，
+/// `None` = 拒绝（调用方回 416）。
+fn parse_range_strict(value: &str, total: u64) -> Option<(u64, u64)> {
+    if total == 0 {
+        return None;
+    }
+    let spec = value.trim().strip_prefix("bytes=")?;
+    let (a, b) = spec.split_once('-')?;
+    let (a, b) = (a.trim(), b.trim());
+    if a.is_empty() {
+        let n = b.parse::<u64>().ok()?;
+        if n == 0 {
+            return None;
+        }
+        return Some((total.saturating_sub(n), total - 1));
+    }
+    let start = a.parse::<u64>().ok()?;
+    if start >= total {
+        return None;
+    }
+    let end = if b.is_empty() {
+        total - 1
+    } else {
+        b.parse::<u64>().ok()?.min(total - 1)
+    };
+    if end < start {
+        return None;
+    }
+    Some((start, end))
+}
+
+/// Android 真机取证（仅 debug 构建，release 完全移除）：记录 range 来源与取值、响应码、
+/// 交付字节首尾——用于在真机核对「服务端交付的窗口」与他处观察到的取字节/播放是否错位。
+#[cfg(all(target_os = "android", debug_assertions))]
+fn probe_android_range(
+    path: &str,
+    source: &str,
+    req: &str,
+    resp: &tauri::http::Response<Vec<u8>>,
+    total: u64,
+) {
+    let body = resp.body();
+    let hex = |bytes: &[u8]| -> String {
+        bytes.iter().map(|b| format!("{b:02x}")).collect()
+    };
+    let head = hex(&body[..body.len().min(4)]);
+    let tail = hex(&body[body.len().saturating_sub(4)..]);
+    eprintln!(
+        "[lfen] range-probe path={path} src={source} req={req} status={} sent={} first={head} last={tail} total={total}",
+        resp.status().as_u16(),
+        body.len()
+    );
+}
+
+/// v2 range 核心（与 AppHandle 解耦，可单测）：root/.enc + DEK 由调用方解析。
+/// 区间来源二选一——URL query（绕过通道）**优先**于 `Range` 头；两者皆无 = 200 全量。
 fn handle_v2_range_with(
     resfs: &dyn ResourceFs,
     request: tauri::http::Request<Vec<u8>>,
@@ -987,22 +1069,45 @@ fn handle_v2_range_with(
         Some(t) => t,
         None => return not_found(),
     };
-    let range = request.headers().get("range").and_then(|v| v.to_str().ok());
+    let header_range = request.headers().get("range").and_then(|v| v.to_str().ok());
+    let query_range = range_query_value(request.uri().query());
+    // query 通道 = 显式意图，优先于头；无该参数时走原有头路径（行为零变化）
+    let (source, req_value, resp) = match query_range {
+        Some(value) => (
+            "query",
+            value.clone(),
+            v2_query_range_response(resfs, &enc, key, &logical, total, &value),
+        ),
+        None => (
+            "header",
+            header_range.unwrap_or("-").to_string(),
+            v2_header_range_response(resfs, &enc, key, &logical, total, header_range),
+        ),
+    };
+    #[cfg(all(target_os = "android", debug_assertions))]
+    probe_android_range(&logical, source, &req_value, &resp, total);
+    #[cfg(not(all(target_os = "android", debug_assertions)))]
+    let _ = (source, req_value); // 取证仅存在于 Android debug 构建：其余形态这两个量无消费者
+    resp
+}
+
+/// `Range` 头通道（桌面/明文既有语义，逐字保留）：206 Partial / 416 / 200 全量。
+fn v2_header_range_response(
+    resfs: &dyn ResourceFs,
+    enc: &Path,
+    key: &[u8],
+    logical: &str,
+    total: u64,
+    range: Option<&str>,
+) -> tauri::http::Response<Vec<u8>> {
     match parse_range(range, total) {
-        RangeSpec::Unsatisfiable => tauri::http::Response::builder()
-            .status(tauri::http::StatusCode::RANGE_NOT_SATISFIABLE)
-            .header(
-                tauri::http::header::CONTENT_RANGE,
-                format!("bytes */{total}"),
-            )
-            .body(Vec::new())
-            .expect("静态 416 响应构造不可失败"),
+        RangeSpec::Unsatisfiable => range_unsatisfiable(total),
         RangeSpec::Full => {
             // 全量兜底（webview 对 mp4 初始请求恒带 bytes=0-，实际不触发）——流式拼装到总量护栏内
-            match decrypt_v2_block_range(resfs, &enc, key, &logical, 0, total.saturating_sub(1)) {
+            match decrypt_v2_block_range(resfs, enc, key, logical, 0, total.saturating_sub(1)) {
                 Ok(body) => tauri::http::Response::builder()
                     .status(tauri::http::StatusCode::OK)
-                    .header(tauri::http::header::CONTENT_TYPE, mime_for(&logical))
+                    .header(tauri::http::header::CONTENT_TYPE, mime_for(logical))
                     .header(tauri::http::header::ACCEPT_RANGES, "bytes")
                     .header(tauri::http::header::CONTENT_LENGTH, body.len().to_string())
                     .body(body)
@@ -1011,17 +1116,13 @@ fn handle_v2_range_with(
             }
         }
         RangeSpec::Partial(start, end) => {
-            // MAX_LEN 分段截断（官方 asset protocol 同款）：开放尾区间（bytes=0-）
-            // 若不截断，v2 按需解密会展开为全文件解密——媒体引擎会按 Content-Range
-            // 自动发后续 Range，实际一次响应 ≤ 1MB。
-            const MAX_LEN: u64 = 1000 * 1024;
-            let end = start + (end - start).min(MAX_LEN - 1);
-            match decrypt_v2_block_range(resfs, &enc, key, &logical, start, end) {
+            let end = start + (end - start).min(V2_RANGE_MAX_LEN - 1);
+            match decrypt_v2_block_range(resfs, enc, key, logical, start, end) {
                 Ok(body) => {
                     let len = body.len();
                     tauri::http::Response::builder()
                         .status(tauri::http::StatusCode::PARTIAL_CONTENT)
-                        .header(tauri::http::header::CONTENT_TYPE, mime_for(&logical))
+                        .header(tauri::http::header::CONTENT_TYPE, mime_for(logical))
                         .header(tauri::http::header::ACCEPT_RANGES, "bytes")
                         .header(tauri::http::header::CONTENT_LENGTH, len.to_string())
                         .header(
@@ -1035,6 +1136,48 @@ fn handle_v2_range_with(
             }
         }
     }
+}
+
+/// URL-query 通道响应：**200**，且**不带** `Content-Range`/`Accept-Ranges`——请求本无
+/// `Range` 头，不得再以 range 语义回响应（否则又落进 WebView 的二次偏移）。
+/// `X-Total-Size` 供调用方推算窗口与明文总量；畸形/越界 = 416（fail-closed，不回落全量）。
+fn v2_query_range_response(
+    resfs: &dyn ResourceFs,
+    enc: &Path,
+    key: &[u8],
+    logical: &str,
+    total: u64,
+    value: &str,
+) -> tauri::http::Response<Vec<u8>> {
+    let Some((start, end)) = parse_range_strict(value, total) else {
+        return range_unsatisfiable(total);
+    };
+    let end = start + (end - start).min(V2_RANGE_MAX_LEN - 1);
+    match decrypt_v2_block_range(resfs, enc, key, logical, start, end) {
+        Ok(body) => {
+            let len = body.len();
+            tauri::http::Response::builder()
+                .status(tauri::http::StatusCode::OK)
+                .header(tauri::http::header::CONTENT_TYPE, mime_for(logical))
+                .header(tauri::http::header::CONTENT_LENGTH, len.to_string())
+                .header("x-total-size", total.to_string())
+                .header(tauri::http::header::CACHE_CONTROL, "no-store")
+                .body(body)
+                .expect("200 响应构造不可失败")
+        }
+        Err(_) => not_found(),
+    }
+}
+
+fn range_unsatisfiable(total: u64) -> tauri::http::Response<Vec<u8>> {
+    tauri::http::Response::builder()
+        .status(tauri::http::StatusCode::RANGE_NOT_SATISFIABLE)
+        .header(
+            tauri::http::header::CONTENT_RANGE,
+            format!("bytes */{total}"),
+        )
+        .body(Vec::new())
+        .expect("静态 416 响应构造不可失败")
 }
 
 /// v1 token 信任边界：只允许 `{hex64}.{alnum ext}` 形态（防穿越/防探测）
@@ -2017,6 +2160,112 @@ mod tests {
         let full = handle_v2_range_with(&StdFs, req_for(None), "Video%2Fm2.mp4", &root, KEY);
         assert_eq!(full.status(), tauri::http::StatusCode::OK);
         assert_eq!(full.body().as_slice(), plain.as_slice());
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn range_query_channel_parsing() {
+        // URL-query 通道取值：percent 解码 + 只认第一个 range 键 + 其余键忽略
+        assert_eq!(range_query_value(None), None);
+        assert_eq!(range_query_value(Some("")), None);
+        assert_eq!(
+            range_query_value(Some("range=bytes%3D0-1023")),
+            Some("bytes=0-1023".to_string())
+        );
+        assert_eq!(
+            range_query_value(Some("a=1&range=bytes%3D10-19&b=2")),
+            Some("bytes=10-19".to_string())
+        );
+        assert_eq!(range_query_value(Some("start=0&end=9")), None);
+
+        // 严格解析：三形态成立（显式/开放尾/后缀），畸形与越界一律 None（fail-closed）
+        assert_eq!(parse_range_strict("bytes=10-19", 100), Some((10, 19)));
+        assert_eq!(parse_range_strict("bytes=90-999", 100), Some((90, 99))); // end 超界钳尾
+        assert_eq!(parse_range_strict("bytes=90-", 100), Some((90, 99)));
+        assert_eq!(parse_range_strict("bytes=-10", 100), Some((90, 99)));
+        assert_eq!(parse_range_strict("bytes=100-", 100), None); // start 越界
+        assert_eq!(parse_range_strict("bytes=50-10", 100), None); // 区间倒置
+        assert_eq!(parse_range_strict("garbage", 100), None);
+        assert_eq!(parse_range_strict("bytes=xx-yy", 100), None);
+        assert_eq!(parse_range_strict("bytes=-0", 100), None);
+        assert_eq!(parse_range_strict("bytes=0-", 0), None); // 空文件无区间可取
+    }
+
+    #[test]
+    fn android_range_query_channel_serves_exact_200() {
+        // 锚点 android-range-workaround：URL-query 通道（请求不带 `Range` 头）→
+        // 200 精确切片 + `X-Total-Size`，且**不带** `Content-Range`/`Accept-Ranges`
+        // （请求本无 Range 头，若仍以 range 语义回响应会再次落进 WebView 的二次偏移）。
+        let base = temp_base("lf3-range-query");
+        let root = base.join("res");
+        fs::create_dir_all(&root).unwrap();
+        let mut plain = (0u32..1024)
+            .flat_map(|i| i.to_le_bytes())
+            .collect::<Vec<u8>>();
+        plain.extend_from_slice(b"4K-TAIL"); // total = 4103，chunk = 1KiB
+        let src = root.join("src.bin");
+        fs::write(&src, &plain).unwrap();
+        encrypt_lfen2_v2_file(&src, &root.join("Video/m2.mp4.enc"), KEY, "Video/m2.mp4", 10)
+            .unwrap();
+
+        let call = |uri: &str, range: Option<&str>| {
+            let mut b = tauri::http::Request::builder().uri(uri);
+            if let Some(r) = range {
+                b = b.header("range", r);
+            }
+            let req = b.body(Vec::new()).unwrap();
+            handle_v2_range_with(&StdFs, req, "Video%2Fm2.mp4", &root, KEY)
+        };
+
+        // 200 + 字节精确 + 头集合收敛（无 Content-Range/Accept-Ranges）
+        let resp = call(
+            "http://lfstream.localhost/v2/Video%2Fm2.mp4?range=bytes%3D100-2059",
+            None,
+        );
+        assert_eq!(resp.status(), tauri::http::StatusCode::OK);
+        assert_eq!(resp.body().as_slice(), &plain[100..=2059]);
+        assert_eq!(resp.headers()["x-total-size"], "4103".as_bytes() as &[u8]);
+        assert_eq!(resp.headers()["content-type"], "video/mp4");
+        assert!(resp.headers().get("content-range").is_none());
+        assert!(resp.headers().get("accept-ranges").is_none());
+
+        // query 优先于头：并存的冲突 `Range` 头不参与（仍是 query 的窗口）
+        let resp = call(
+            "http://lfstream.localhost/v2/Video%2Fm2.mp4?range=bytes%3D100-2059",
+            Some("bytes=0-9"),
+        );
+        assert_eq!(resp.body().as_slice(), &plain[100..=2059]);
+
+        // 后缀形态同源复用
+        let resp = call(
+            "http://lfstream.localhost/v2/Video%2Fm2.mp4?range=bytes%3D-8",
+            None,
+        );
+        assert_eq!(resp.status(), tauri::http::StatusCode::OK);
+        assert_eq!(resp.body().as_slice(), &plain[4095..4103]);
+
+        // 畸形/越界 = 416（fail-closed：显式通道静默退化会放大成一次全文件解密）
+        for bad in ["bytes%3Dxx-yy", "bytes%3D999999-", "garbage", "bytes%3D50-10"] {
+            let resp = call(
+                &format!("http://lfstream.localhost/v2/Video%2Fm2.mp4?range={bad}"),
+                None,
+            );
+            assert_eq!(
+                resp.status(),
+                tauri::http::StatusCode::RANGE_NOT_SATISFIABLE,
+                "query 值 {bad} 应 fail-closed"
+            );
+            assert!(resp.body().is_empty());
+        }
+
+        // 头通道语义未受影响（同一资源、同一函数）：206 + Content-Range 字节精确
+        let resp = call("http://lfstream.localhost/v2/Video%2Fm2.mp4", Some("bytes=100-2059"));
+        assert_eq!(resp.status(), tauri::http::StatusCode::PARTIAL_CONTENT);
+        assert_eq!(resp.body().as_slice(), &plain[100..=2059]);
+        assert_eq!(
+            resp.headers()["content-range"],
+            "bytes 100-2059/4103".as_bytes() as &[u8]
+        );
         fs::remove_dir_all(&base).ok();
     }
 
