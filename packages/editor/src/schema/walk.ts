@@ -63,17 +63,46 @@ function walkCommands(
     }
     const fields = describeForm(cmd.op as string, surface)?.fields;
     visit(cmd, commandPointer, fields);
-    if (fields === undefined) return;
-    for (const field of fields) {
-      walkDescriptor(
-        field,
-        cmd[field.key],
-        `${commandPointer}/${escapePointerToken(field.key)}`,
-        visit,
-        surface,
-      );
+    if (fields !== undefined) {
+      walkBodyFields(fields, cmd, commandPointer, visit, surface);
     }
   });
+}
+
+/** 块体递归本体（`fields` 已解析——`walkCommandBodies` 与 `walkCommands` 共用，避免重复解析） */
+function walkBodyFields(
+  fields: readonly FieldDescriptor[],
+  cmd: Record<string, unknown>,
+  commandPointer: string,
+  visit: CommandVisitor,
+  surface: OpSurface,
+): void {
+  for (const field of fields) {
+    walkDescriptor(
+      field,
+      cmd[field.key],
+      `${commandPointer}/${escapePointerToken(field.key)}`,
+      visit,
+      surface,
+    );
+  }
+}
+
+/**
+ * 沿**单条命令**的表单描述符递归其全部块体（if.then/elif[].then/else、while/for/foreach.body、
+ * switch.cases[].body/default、func.body），按有序体深度优先回调受控命令。
+ * 与 `walkStoryCommands` 共用同一份「块体字段」知识（表单描述符的单点），
+ * 故「某命令的体里有什么」在本包内不存在第二套判定。
+ */
+export function walkCommandBodies(
+  cmd: Record<string, unknown>,
+  commandPointer: string,
+  visit: CommandVisitor,
+  surface: OpSurface = BUILTIN_OP_SURFACE,
+): void {
+  const fields = describeForm(cmd.op as string, surface)?.fields;
+  if (fields === undefined) return;
+  walkBodyFields(fields, cmd, commandPointer, visit, surface);
 }
 
 /**

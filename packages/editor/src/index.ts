@@ -59,7 +59,7 @@ export {
   type OpSurface,
 } from "./schema/surface";
 export { validateStory } from "./schema/validation";
-export { walkStoryCommands, walkStoryElements } from "./schema/walk";
+export { walkCommandBodies, walkStoryCommands, walkStoryElements } from "./schema/walk";
 
 export { analyzeStory, extractExpressionRefs, indexStory } from "./diagnostics";
 
@@ -132,3 +132,17 @@ export {
   readSkipNormalizationNotice,
   writeSkipNormalizationNotice,
 } from "./editing/saveNormalization";
+/**
+ * 步骤布局：列内切分为「步骤」（等待态边界）+ 列间分支边。
+ * 边界判据取自引擎的等待声明表（`@lingfan/engine` 的 `waitingStateOfOp`），本模块不做逐 op 判定。
+ */
+export {
+  columnSteps,
+  storySteps,
+  type StepEdge,
+  type StepFork,
+  type StepLane,
+  type StepLayout,
+  type StepOptions,
+  type StoryStep,
+} from "./layout/steps";
