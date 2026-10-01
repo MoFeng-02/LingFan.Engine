@@ -127,6 +127,8 @@ describe("视频渲染（命令流 → 端口执行）", () => {
     calls[0]?.onEnded?.();
     expect(finished).toBe(1);
     expect(engine.get(SYS.waiting)).toBe("dialog"); // 引擎已解除等待
+    // 播完即收起视频层：引擎发 stop → 渲染器落到端口（否则视频层会盖住对话与 HUD）
+    expect(calls[calls.length - 1]).toMatchObject({ kind: "stop" });
     renderer.dispose();
     engine.dispose();
   });
