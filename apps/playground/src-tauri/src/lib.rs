@@ -64,12 +64,17 @@ pub fn run() {
 
     builder
         .setup(|app| {
+            // 启动路径面包屑：实测应用在页面起来约 1 秒后整体卡住（心跳 #7 起消失、WebKit 合成
+            // 停摆、录屏 16 帧全白）。以下每条都在卡点之前/之后留痕，用于把卡点夹到具体一步。
+            eprintln!("[lfen] setup: 进入");
             // 临时流缓存随启动清理（同 DEK 同路径 → 内容确定性可重建）
             if let Ok(data) = app.path().app_data_dir() {
                 resource_crypto::cleanup_tmp_stream(&data);
             }
+            eprintln!("[lfen] setup: tmp 清理完成");
             // 诊断探针已改前端 build-flag（VITE_LFEN_DIAG=1，src/diag.ts）；lfen_diag 命令保留为回传通道
             splash_then_show(app.handle());
+            eprintln!("[lfen] setup: 窗口显示流程返回");
             // 启动期窗口状态取证：前端探针会随页面节流一起冻结（iOS 实测日志只到启动后 ~0.8 秒），
             // 只有 Rust 侧心跳能区分「页面被节流」与「整个进程被挂起」——白屏归因的分水岭
             #[cfg(debug_assertions)]
@@ -98,6 +103,11 @@ fn spawn_boot_probe(app: &tauri::AppHandle) {
     std::thread::spawn(move || {
         for i in 1..=20 {
             std::thread::sleep(std::time::Duration::from_secs(2));
+            // **必须先打这一条**：下面的窗口读数要走 Tauri、最终落到主线程；若主线程被卡，
+            // 那次调用会把这个线程一起挂住。先打印就能区分两种成因——
+            //   只出现「心跳 #n」而无窗口读数 ⇒ 主线程卡住（Tauri 调用阻塞在此）
+            //   连「心跳 #n」都没有        ⇒ 整个进程被挂起/线程调度停止
+            eprintln!("[lfen] 心跳 #{i}");
             let state = match handle.get_webview_window("main") {
                 Some(window) => format!(
                     "可见={:?} 聚焦={:?} 最小化={:?}",
@@ -133,12 +143,16 @@ fn splash_then_show(app: &tauri::AppHandle) {
     .ok();
 
     // 首启 seed→KEK 信封化解封在此完成（明文形态失败无害）——show 之后 v2 供给立即可用
+    eprintln!("[lfen] 预热资源密钥：开始");
     resource_crypto::preheat_resource_key(app);
+    eprintln!("[lfen] 预热资源密钥：完成");
 
     if let Some(main) = app.get_webview_window("main") {
+        eprintln!("[lfen] 主窗口 show：调用");
         if let Err(e) = main.show() {
             eprintln!("[lfen] 主窗口显示失败：{e}");
         }
+        eprintln!("[lfen] 主窗口 show：返回");
     }
     #[cfg(desktop)]
     if let Some(splash) = splash {
