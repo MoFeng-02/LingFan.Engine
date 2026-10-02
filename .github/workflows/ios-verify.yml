@@ -160,7 +160,9 @@ jobs:
           # 本轮换 release 的目的：判定 iOS 白屏是否也属这一类——debug-only 的 ws_dev 开发通道
           # （#[cfg(debug_assertions)]，监听 127.0.0.1:1421）在 release 里整段不存在。
           # 前端探针不受影响（它由 VITE_LFEN_DIAG 控制，作业级环境变量已带上）。
-          cargo tauri ios build --release --target aarch64-sim x86_64 > /tmp/ios-build.log 2>&1
+          # ⚠️ 该子命令**没有** `--release` 参数——release 即默认，`--debug` 才是 opt-in
+          # （加 `--release` 会直接 `unexpected argument` 退出，实测踩过）。
+          cargo tauri ios build --target aarch64-sim x86_64 > /tmp/ios-build.log 2>&1
           status=$?
           # 去 ANSI + 只留诊断行（<200 字符）：命令回显里含 -Werror 会污染 "error" 过滤
           sed -e 's/\x1b\[[0-9;]*m//g' /tmp/ios-build.log | tail -60
@@ -184,6 +186,8 @@ jobs:
             ls -1 "$app" 2>/dev/null | head -30
             echo "--- index.html / js / assets（证明前端是否打进去）---"
             find "$app" -maxdepth 4 \( -name "index.html" -o -name "*.js" -o -name "assets" -o -name "dist" \) 2>/dev/null | sed "s|$app|<app>|" | head -20
+            echo "--- 主二进制大小（release 与 debug 差一个量级，用来确认档位真的换了）---"
+            ls -la "$app/lingfanengine" 2>/dev/null
             echo "--- 资源目录 ---"
             find "$app" -maxdepth 3 -type d \( -name "Resources" -o -name "_up_" \) 2>/dev/null | sed "s|$app|<app>|" | head -10
           } > /tmp/ios-app-structure.txt 2>&1
