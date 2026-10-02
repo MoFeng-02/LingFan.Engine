@@ -237,6 +237,25 @@ jobs:
             > /tmp/ios-oslog.txt 2>&1 || true
 
           # **先取证再断言**：无论存活与否都把诊断回传（否则崩溃日志会随失败一起丢掉）
+          # 画面是否「什么都没画」：逐像素算近白占比（实测两轮白屏 = 98.60% / 98.59%，
+          # 主屏 = 509KB 量级，差距显著）。**只报警不失败**——「有内容」的基线还没拿到
+          # （iOS 白屏尚未修好），此时设硬门会制造假红；基线到手后再升级为断言。
+          sips -s format bmp /tmp/ios-smoke.png --out /tmp/ios-smoke.bmp >/dev/null 2>&1 || true
+          python3 - <<'PY' > /tmp/ios-white.txt 2>&1 || echo "near_white_ratio=unknown" > /tmp/ios-white.txt
+          import struct
+          d = open('/tmp/ios-smoke.bmp', 'rb').read()
+          off = struct.unpack('<I', d[10:14])[0]
+          w, h = struct.unpack('<ii', d[18:26])
+          px = d[off:]
+          n = len(px) // 3
+          white = sum(1 for i in range(0, n * 3, 3) if px[i] > 245 and px[i+1] > 245 and px[i+2] > 245)
+          print(f"near_white_ratio={white/n:.4f} ({white}/{n}) size={w}x{h}")
+          PY
+          cat /tmp/ios-white.txt
+          if grep -qE "near_white_ratio=0\.9[5-9]|near_white_ratio=1\.0000" /tmp/ios-white.txt; then
+            echo "::warning title=iOS 疑似白屏::$(cat /tmp/ios-white.txt)——近白占比过高，画面可能什么都没画（判据：白屏实测 98.6%）"
+          fi
+
           {
             echo "alive=$alive shot=$(ls -la /tmp/ios-smoke.png 2>/dev/null | awk '{print $5}')"
             echo "--- launch 输出（pid 或 launch 失败原因）---"
