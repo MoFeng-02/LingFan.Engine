@@ -212,6 +212,17 @@ jobs:
           xcrun simctl bootstatus "$udid" -b
 
           xcrun simctl install "$udid" "$app" || { echo "::error::安装失败"; exit 1; }
+
+          # **先让显示器持续刷新**：CI 模拟器是 headless 的（不开 Simulator.app），页面可能拿不到
+          # 动画帧。实测：rAF 只跑 3 帧、>0 的 setTimeout 25 秒一次不响、引擎的 BGM 淡入停在
+          # 0.146（淡入由 rAF 驱动）、m2+ 再无 DOM 变动，而 WebContent CPU 仅 0.3%（空闲、非卡死）
+          # ——即「页面活着但没有任何帧与定时器节拍」，引擎的 rAF 渲染循环因此停摆。
+          # 录屏会强制显示管线持续工作：**若 UI 因此出现，白屏即归因于「无帧环境」而非产品缺陷**；
+          # 顺带把整段过程录下来（比单张截图证据强得多）。
+          xcrun simctl io "$udid" recordVideo --codec=h264 --force /tmp/ios-smoke.mp4 \
+            > /tmp/ios-rec.log 2>&1 &
+          rec_pid=$!
+          echo "rec_pid=$rec_pid"
           # 启动：**不用 `--console-pty`** —— 它的 pty 输出落到重定向文件是块缓冲的，实测连续两轮
           # 30 秒内一字不落（0 字节），等于把 launch 变成黑盒（拿不到 pid、也拿不到 launch 失败原因）。
           # 改回普通 launch：成功即刻打印 pid、失败打印错误文本。app 的 stderr 证据改由下面
@@ -235,6 +246,11 @@ jobs:
           xcrun simctl spawn "$udid" log show --last 2m --style compact --info --debug \
             --predicate 'process == "lingfanengine" OR eventMessage CONTAINS "lingfanengine"' \
             > /tmp/ios-oslog.txt 2>&1 || true
+
+          # 停止录屏（文件本身是证据；录屏若因 headless 失败，原因在此日志里）
+          kill -INT "$rec_pid" 2>/dev/null || true
+          wait "$rec_pid" 2>/dev/null || true
+          ls -la /tmp/ios-smoke.mp4 2>/dev/null || true
 
           # **先取证再断言**：无论存活与否都把诊断回传（否则崩溃日志会随失败一起丢掉）
           # 画面是否「什么都没画」：逐像素算近白占比（实测两轮白屏 = 98.60% / 98.59%，
@@ -274,6 +290,9 @@ jobs:
               | grep -avaiE "installcoordinationd|installd\[|MIInstaller|TransactionLog|IXS|RBSAssertion|runningboardd|lsd\[|app not found" | tail -20
             echo "--- 崩溃报告（宿主 DiagnosticReports，末 6 条）---"
             ls -lt ~/Library/Logs/DiagnosticReports 2>/dev/null | head -6
+            echo "--- 录屏（强制显示器持续刷新；若 UI 因此出现，即证明白屏是「无帧环境」所致）---"
+            ls -la /tmp/ios-smoke.mp4 2>/dev/null || echo "无录屏文件"
+            tail -5 /tmp/ios-rec.log 2>/dev/null
           } > /tmp/ios-smoke-diag.txt
           cat /tmp/ios-smoke-diag.txt
           echo "::notice title=iOS 冒烟诊断::$(awk '{printf "%s%%0A", $0}' /tmp/ios-smoke-diag.txt | cut -c1-6000)"
@@ -297,3 +316,5 @@ jobs:
             /tmp/ios-smoke-diag.txt
             /tmp/ios-app-structure.txt
             /tmp/ios-build.log
+            /tmp/ios-smoke.mp4
+            /tmp/ios-rec.log

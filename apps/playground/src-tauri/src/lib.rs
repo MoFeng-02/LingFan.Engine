@@ -84,16 +84,19 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-/// 启动期窗口状态取证（仅 debug）：每 2 秒一条心跳，共 6 条（覆盖 iOS CI 的 25s 冒烟窗口）。
+/// 启动期窗口状态取证（仅 debug）：每 2 秒一条心跳，共 20 条（40s）。
 ///
 /// 为什么必须由 Rust 打：前端探针一旦页面被节流或进程被挂起就一起冻结。Rust 线程的心跳
 /// **若继续往下打**，说明进程活着、被冻的是页面/WebView 一侧；**若同时停在同一点**，
 /// 则是整个进程被挂起（例如应用始终没拿到前台）。窗口的可见/聚焦读数同批给出。
+///
+/// 20 条（而非 6 条）：实测 iOS 冷启动下前端 JS 比 Rust 侧晚约 7 秒才起来——心跳条数太少
+/// 会整段落在「页面还没起来」的时段里，覆盖不到冻结点（踩过）。
 #[cfg(debug_assertions)]
 fn spawn_boot_probe(app: &tauri::AppHandle) {
     let handle = app.clone();
     std::thread::spawn(move || {
-        for i in 1..=6 {
+        for i in 1..=20 {
             std::thread::sleep(std::time::Duration::from_secs(2));
             let state = match handle.get_webview_window("main") {
                 Some(window) => format!(
