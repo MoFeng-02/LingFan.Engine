@@ -162,7 +162,16 @@ jobs:
           # 前端探针不受影响（它由 VITE_LFEN_DIAG 控制，作业级环境变量已带上）。
           # ⚠️ 该子命令**没有** `--release` 参数——release 即默认，`--debug` 才是 opt-in
           # （加 `--release` 会直接 `unexpected argument` 退出，实测踩过）。
-          cargo tauri ios build --target aarch64-sim x86_64 > /tmp/ios-build.log 2>&1
+          #
+          # **本轮实验**：用 --config 把主窗口覆写为 `visible: true`（仅 CI 注入，不进仓库）。
+          # 依据是源码级线索 + 一条已知缺陷：
+          #   wry wkwebview/mod.rs:533 `if !attributes.visible { webview.setHidden(true) }`
+          #                        :1052 `set_visible()` 才 `setHidden(!visible)`
+          # ——若窗口以 visible=false 创建、而启动流程没能 Unhide 到 webview 这一层，
+          # WKWebView 就会永远处于 hidden：**页面 JS/DOM 全正常、却一个像素都不画**，
+          # 与 Apple 论坛 741088 记录的现象逐条一致（DOM 完好、inspector 能看到元素轮廓、
+          # 设备上内容不渲染）。
+          cargo tauri ios build --target aarch64-sim x86_64 --config '{"app":{"windows":[{"label":"main","visible":true}]}}' > /tmp/ios-build.log 2>&1
           status=$?
           # 去 ANSI + 只留诊断行（<200 字符）：命令回显里含 -Werror 会污染 "error" 过滤
           sed -e 's/\x1b\[[0-9;]*m//g' /tmp/ios-build.log | tail -60
