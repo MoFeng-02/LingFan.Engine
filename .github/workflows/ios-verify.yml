@@ -246,6 +246,7 @@ jobs:
           d = open('/tmp/ios-smoke.bmp', 'rb').read()
           off = struct.unpack('<I', d[10:14])[0]
           w, h = struct.unpack('<ii', d[18:26])
+          h = abs(h)  # BMP 存的是负高度（自顶向下）
           px = d[off:]
           n = len(px) // 3
           white = sum(1 for i in range(0, n * 3, 3) if px[i] > 245 and px[i+1] > 245 and px[i+2] > 245)
