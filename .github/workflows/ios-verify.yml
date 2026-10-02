@@ -205,9 +205,12 @@ jobs:
           xcrun simctl bootstatus "$udid" -b
 
           xcrun simctl install "$udid" "$app" || { echo "::error::安装失败"; exit 1; }
-          # 启动并抓取进程控制台（--console-pty 收 stdout/stderr，含 Rust panic）
-          # 渲染诊断探针已在构建期内嵌（VITE_LFEN_DIAG=1）→ [lfen-diag] 行进 launch 日志
-          xcrun simctl launch --console-pty "$udid" com.langfeng.lingfanengine > /tmp/ios-launch.log 2>&1 &
+          # 启动：**不用 `--console-pty`** —— 它的 pty 输出落到重定向文件是块缓冲的，实测连续两轮
+          # 30 秒内一字不落（0 字节），等于把 launch 变成黑盒（拿不到 pid、也拿不到 launch 失败原因）。
+          # 改回普通 launch：成功即刻打印 pid、失败打印错误文本。app 的 stderr 证据改由下面
+          # 的 oslog（--info --debug）+ 崩溃报告承担。
+          xcrun simctl launch "$udid" com.langfeng.lingfanengine > /tmp/ios-launch.log 2>&1
+          echo "launch_exit=$?" >> /tmp/ios-launch.log
           sleep 30
 
           # 存活检查带重试（simctl launch 与进程注册偶有竞态；实测同代码有 1 次误判）
@@ -216,21 +219,34 @@ jobs:
             xcrun simctl spawn "$udid" launchctl list 2>/dev/null | grep -qi "com.langfeng.lingfanengine" && { alive=yes; break; }
             sleep 5
           done
+          # 存活检查的原始命中行（判「alive=no 是真死还是竞态误判」的唯一依据）
+          xcrun simctl spawn "$udid" launchctl list 2>/dev/null | grep -i "langfeng" | tail -5 > /tmp/ios-alive-raw.txt
+
           xcrun simctl io "$udid" screenshot /tmp/ios-smoke.png 2>/dev/null || true
-          # 启动期系统日志（WebKit 资源加载错误 / 崩溃 / Rust stderr 都在这里）
-          xcrun simctl spawn "$udid" log show --last 2m --style compact \
+          # 启动期系统日志（WebKit 资源加载错误 / 崩溃都在这里）
+          # `--info --debug` 不能省：WebKit 的资源加载失败多数落在 info/debug 级，默认级别收不到
+          xcrun simctl spawn "$udid" log show --last 2m --style compact --info --debug \
             --predicate 'process == "lingfanengine" OR eventMessage CONTAINS "lingfanengine"' \
             > /tmp/ios-oslog.txt 2>&1 || true
 
           # **先取证再断言**：无论存活与否都把诊断回传（否则崩溃日志会随失败一起丢掉）
           {
             echo "alive=$alive shot=$(ls -la /tmp/ios-smoke.png 2>/dev/null | awk '{print $5}')"
-            echo "--- launch 控制台（末尾 40 行）---"
-            tail -40 /tmp/ios-launch.log 2>/dev/null
+            echo "--- launch 输出（pid 或 launch 失败原因）---"
+            tail -10 /tmp/ios-launch.log 2>/dev/null
+            echo "--- 存活检查命中行 ---"
+            cat /tmp/ios-alive-raw.txt 2>/dev/null
             echo "--- lfen 标记（Rust 命令 / Swift 插件视图树）---"
             grep -a "lfen" /tmp/ios-oslog.txt 2>/dev/null | tail -15
-            echo "--- os_log 过滤（崩溃/断言/WebKit/error；末 20 行）---"
-            grep -aiE "fatal|crash|uncaught|assert|exception|panic|failed to load|WebKit|error" /tmp/ios-oslog.txt 2>/dev/null | tail -20
+            echo "--- app 进程自身日志（末 15 行）---"
+            grep -a "lingfanengine" /tmp/ios-oslog.txt 2>/dev/null \
+              | grep -avE "installcoordinationd|installd\[|MIInstaller|TransactionLog|runningboardd|lsd\[" | tail -15
+            echo "--- os_log 过滤（崩溃/断言/WebKit/加载失败；末 20 行）---"
+            # 必须剔除安装期噪声：不剔除时 `error` 会命中 `with error (null)` 等安装日志，把末 20 行占满
+            grep -aiE "fatal|crash|uncaught|assert|exception|panic|failed to load|WebKit|error" /tmp/ios-oslog.txt 2>/dev/null \
+              | grep -avaiE "installcoordinationd|installd\[|MIInstaller|TransactionLog|IXS|RBSAssertion|runningboardd|lsd\[|app not found" | tail -20
+            echo "--- 崩溃报告（宿主 DiagnosticReports，末 6 条）---"
+            ls -lt ~/Library/Logs/DiagnosticReports 2>/dev/null | head -6
           } > /tmp/ios-smoke-diag.txt
           cat /tmp/ios-smoke-diag.txt
           echo "::notice title=iOS 冒烟诊断::$(awk '{printf "%s%%0A", $0}' /tmp/ios-smoke-diag.txt | cut -c1-6000)"
