@@ -21,8 +21,22 @@ interface DiagWindow {
 }
 
 function report(payload: unknown): void {
-  const tauri = (window as unknown as DiagWindow).__TAURI_INTERNALS__;
-  tauri?.invoke("lfen_diag", { payload: JSON.stringify(payload) }).catch(() => {});
+  // 诊断通道自身**绝不允许上抛**：`invoke` 除了返回 rejected promise，也可能**同步抛**
+  // （回调/序列化阶段），一旦同步抛就会直接抛出 `setTimeout` 回调、把后面所有采样静默吃掉。
+  // 实测（iOS run #41）：只有 `probe-start` 落地，三处采样一字不见，连 catch 里的
+  // `probe-error` 也没有——而 WebKit 日志里 +2s/+10s/+20s 各有一次布局催起的资源加载，
+  // 证明采样确实跑到了读取几何那一步。故同步与异步两条路都要兜住。
+  try {
+    const tauri = (window as unknown as DiagWindow).__TAURI_INTERNALS__;
+    if (tauri === undefined) return;
+    const text = JSON.stringify(payload);
+    const result: unknown = tauri.invoke("lfen_diag", { payload: text });
+    if (typeof result === "object" && result !== null && "catch" in result) {
+      void (result as Promise<unknown>).catch(() => undefined);
+    }
+  } catch {
+    /* 诊断层失败不得影响页面，也不得吞掉后续采样 */
+  }
 }
 
 // —— 白屏归因：三类判据 ——
@@ -125,6 +139,7 @@ function collectStyleSheets(): {
 }
 
 function snapshot(phase: string): void {
+  report(`${phase}:enter`); // 面包屑：定时器确实进来了
   try {
     const media = [...document.querySelectorAll("video,audio")].map((node) => {
       const el = node as HTMLVideoElement;
@@ -182,33 +197,43 @@ function snapshot(phase: string): void {
       styleSheetsLoaded: sheets.loaded,
       visibilityState: document.visibilityState,
     });
+    report(`${phase}:collected`); // 面包屑：采集走完，没被几何/样式表读取抛断
+    // **先发小载荷**（结论 + 判据输入），再发大载荷（层栈 + 媒体 + 样式表明细）：
+    // 大载荷若在通道上出问题，至少结论不会一起丢（这也是对「载荷过大」假设的直接检验）。
     report({
       phase,
       verdict,
       win,
       visual,
-      dpr: window.devicePixelRatio,
-      visibility: document.visibilityState,
-      readyState: document.readyState,
-      htmlLen: document.body.innerHTML.length,
-      text: (document.body.innerText || "").replace(/\s+/g, " ").slice(0, 120),
-      appChildren: app ? app.childElementCount : -1,
-      bodyBg: getComputedStyle(document.body).backgroundColor,
-      appBg: app ? getComputedStyle(app).backgroundColor : null,
       appRect,
+      htmlLen: document.body.innerHTML.length,
+      appChildren: app ? app.childElementCount : -1,
       styleSheets: sheets.count,
       styleSheetsLoaded: sheets.loaded,
+      visibility: document.visibilityState,
+      bodyBg: getComputedStyle(document.body).backgroundColor,
+      appBg: app ? getComputedStyle(app).backgroundColor : null,
+    });
+    report({
+      phase,
+      full: 1,
+      dpr: window.devicePixelRatio,
+      readyState: document.readyState,
+      text: (document.body.innerText || "").replace(/\s+/g, " ").slice(0, 120),
       styleSheetLinks: sheets.links,
       layered,
       media,
     });
   } catch (error) {
-    report(`probe-error: ${String(error)}`);
+    report(`${phase}:error ${String(error)}`);
   }
 }
 
-/** 启动探针：按给定延时序列采样（默认 2s/10s/20s，覆盖 iOS CI 的 25s 存活窗口） */
-export function startDiag(delays: readonly number[] = [2000, 10000, 20000]): void {
+/** 启动探针：按给定延时序列采样（含 **0 = 立刻采一次**，白屏取证不能依赖后续定时器是否还活着；
+ *  其余覆盖 iOS CI 的 25s 存活窗口）。 */
+export function startDiag(
+  delays: readonly number[] = [0, 2000, 10000, 20000],
+): void {
   report({ phase: "probe-start", ua: navigator.userAgent.slice(0, 80) });
   for (const delay of delays) {
     window.setTimeout(() => snapshot(`t${Math.round(delay / 1000)}`), delay);
