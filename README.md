@@ -55,4 +55,4 @@ pnpm test:unit  # Vitest（跨包一次跑完）
 pnpm typecheck  # vue-tsc（整个 workspace 一次检查）
 ```
 
-`pnpm build` / `tauri build` 为打包用途，按项目工具链纪律不由 AI 主动执行。
+`pnpm build` / `tauri build` 为打包用途。
