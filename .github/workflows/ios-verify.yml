@@ -38,6 +38,13 @@ jobs:
     env:
       CI: "true"
       CARGO_TERM_COLOR: always
+      # 必须设在 **job 级**，不能只加在「预构建前端」那一步：`cargo tauri ios build` 会先执行
+      # beforeBuildCommand（`pnpm build --mode tauri && pnpm build:prepare`），**再跑一次前端构建
+      # 并覆盖上一步的 dist**，而嵌进二进制（Rust 编译期 `frontendDist`）的正是这一次的产物。
+      # 只在预构建步加 flag 会被这一轮洗掉 ⇒ 探针（`src/diag.ts`，`VITE_LFEN_DIAG === "1"` 门控）
+      # 被 tree-shake，`[lfen-diag]` 一行都不会出现——实测 run #40 正是如此（build log 里
+      # `dist/assets` 只有一个 index chunk，没有 diag chunk）。
+      VITE_LFEN_DIAG: "1"
     steps:
       - uses: actions/checkout@v4
 
