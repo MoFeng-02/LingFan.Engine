@@ -202,6 +202,8 @@ function snapshot(phase: string): void {
     // 大载荷若在通道上出问题，至少结论不会一起丢（这也是对「载荷过大」假设的直接检验）。
     report({
       phase,
+      // 初帧（Vue 挂载前）拍到的 `#app` 必然为空，该 verdict 不代表稳态、不参与归因
+      initial: phase === "t0" ? 1 : 0,
       verdict,
       win,
       visual,
@@ -237,5 +239,30 @@ export function startDiag(
   report({ phase: "probe-start", ua: navigator.userAgent.slice(0, 80) });
   for (const delay of delays) {
     window.setTimeout(() => snapshot(`t${Math.round(delay / 1000)}`), delay);
+  }
+  // 实测（iOS run #42）：**只有 0 延时的定时器真的触发**，2s/10s/20s 三处一个都没跑——页面明明
+  // 活着（JS 能跑、invoke 能回、CSS 已加载），却拿不到任何延迟采样。定时器被压住这件事本身
+  // 就是判据（WebKit 对未参与合成的页面会节流定时器）。故补两条**不依赖延时**的通道：
+  // ① 挂载即采：MutationObserver 在 `#app` 首次变动时快照一次——观察者是微任务级投递，不受节流；
+  //    这也修掉一个假判决：「t0」在 Vue 挂载前拍，`#app` 必然为空，不能据此判 `01-dom-missing`。
+  // ② 渲染存活探针：rAF 链。**rAF 一次都不触发本身就是白屏的关键判据**（页面没参与合成 ⇒ 什么都没画）。
+  const app = document.querySelector("#app");
+  if (app !== null) {
+    const observer = new MutationObserver(() => {
+      observer.disconnect();
+      snapshot("mounted");
+    });
+    observer.observe(app, { childList: true, subtree: true });
+  }
+  const raf: typeof window.requestAnimationFrame | undefined =
+    window.requestAnimationFrame;
+  if (typeof raf === "function") {
+    let frames = 0;
+    const step = (): void => {
+      frames += 1;
+      if (frames <= 3) report(`raf:${frames}`);
+      if (frames <= 3) raf(step);
+    };
+    raf(step);
   }
 }
