@@ -141,37 +141,39 @@ function collectStyleSheets(): {
 function snapshot(phase: string): void {
   report(`${phase}:enter`); // 面包屑：定时器确实进来了
   try {
-    const media = [...document.querySelectorAll("video,audio")].map((node) => {
-      const el = node as HTMLVideoElement;
-      const cs = getComputedStyle(el);
-      const rect = el.getBoundingClientRect();
-      return {
-        tag: el.tagName.toLowerCase(),
-        src: (el.currentSrc || el.getAttribute("src") || "").slice(-70),
-        rs: el.readyState,
-        ns: el.networkState,
-        err: el.error ? el.error.code : null,
-        vw: el.videoWidth || 0,
-        vh: el.videoHeight || 0,
-        paused: el.paused,
-        t: Math.round(el.currentTime * 100) / 100,
-        rect: [Math.round(rect.x), Math.round(rect.y), Math.round(rect.width), Math.round(rect.height)],
-        disp: cs.display,
-        vis: cs.visibility,
-        op: cs.opacity,
-      };
-    });
+    // 媒体/图片：**必须带 naturalWidth/complete**——画面空白时第一要问的就是「图到底加载成功没有」
+    // （舞台层是空的还是画了透明的东西，只有图片自身状态能回答）
+    const media = [...document.querySelectorAll("video,audio,img")]
+      .slice(0, 3)
+      .map((node) => {
+        const el = node as HTMLVideoElement & HTMLImageElement;
+        const isImg = el.tagName === "IMG";
+        const rect = el.getBoundingClientRect();
+        return {
+          tag: el.tagName.toLowerCase(),
+          src: (el.currentSrc || el.getAttribute("src") || "").slice(0, 90),
+          ok: isImg
+            ? el.complete && el.naturalWidth > 0
+            : el.error === null && el.readyState >= 1,
+          w: isImg ? el.naturalWidth : el.videoWidth || 0,
+          h: isImg ? el.naturalHeight : el.videoHeight || 0,
+          err: el.error ? el.error.code : null,
+          rect: [Math.round(rect.width), Math.round(rect.height)],
+        };
+      });
     // 渲染层栈：全部显式 z-index 元素（白屏疑似层叠/裁切问题时的决定性数据）
     const layered = [...document.querySelectorAll("*")]
       .map((el) => ({ el, cs: getComputedStyle(el) }))
       .filter(({ cs }) => cs.zIndex !== "auto" && cs.display !== "none")
-      .slice(0, 12)
+      .slice(0, 4) // 载荷必须小：os_log 对长消息截断（实测 567 字符处被切）
       .map(({ el, cs }) => {
         const rect = el.getBoundingClientRect();
         return {
           key: el.id || String(el.className).slice(0, 30) || el.tagName.toLowerCase(),
           z: cs.zIndex,
           pos: cs.position,
+          // 背景色：舞台层到底「什么都没画」还是「画了透明的东西」，只能看这个
+          bg: cs.backgroundColor,
           rect: [Math.round(rect.x), Math.round(rect.y), Math.round(rect.width), Math.round(rect.height)],
           vis: cs.visibility,
           op: cs.opacity,
@@ -216,53 +218,60 @@ function snapshot(phase: string): void {
       bodyBg: getComputedStyle(document.body).backgroundColor,
       appBg: app ? getComputedStyle(app).backgroundColor : null,
     });
+    // 每一份载荷**只讲一件事**：os_log 会截断长消息（实测 567 字符处被切），
+    // 合在一起发时后面那些「最想知道」的字段会一起丢——分开就能各自完整落地。
     report({
       phase,
-      full: 1,
+      part: "dom",
       dpr: window.devicePixelRatio,
       readyState: document.readyState,
       text: (document.body.innerText || "").replace(/\s+/g, " ").slice(0, 120),
       styleSheetLinks: sheets.links,
-      layered,
-      media,
     });
+    report({ phase, part: "layered", layered });
+    report({ phase, part: "media", media });
   } catch (error) {
     report(`${phase}:error ${String(error)}`);
   }
 }
 
-/** 启动探针：按给定延时序列采样（含 **0 = 立刻采一次**，白屏取证不能依赖后续定时器是否还活着；
- *  其余覆盖 iOS CI 的 25s 存活窗口）。 */
-export function startDiag(
-  delays: readonly number[] = [0, 2000, 10000, 20000],
-): void {
+/** 启动探针：初帧采一次 + **rAF 帧计数**当钟采样（f1/f60/f300/f600）+ 挂载后前 5 次 DOM 变动采样。
+ *  **不用 `setTimeout` 计时**——iOS 上它的延迟回调会被压住（实测 2s/10s/20s 一处不响）。 */
+export function startDiag(): void {
   report({ phase: "probe-start", ua: navigator.userAgent.slice(0, 80) });
-  for (const delay of delays) {
-    window.setTimeout(() => snapshot(`t${Math.round(delay / 1000)}`), delay);
-  }
-  // 实测（iOS run #42）：**只有 0 延时的定时器真的触发**，2s/10s/20s 三处一个都没跑——页面明明
-  // 活着（JS 能跑、invoke 能回、CSS 已加载），却拿不到任何延迟采样。定时器被压住这件事本身
-  // 就是判据（WebKit 对未参与合成的页面会节流定时器）。故补两条**不依赖延时**的通道：
-  // ① 挂载即采：MutationObserver 在 `#app` 首次变动时快照一次——观察者是微任务级投递，不受节流；
-  //    这也修掉一个假判决：「t0」在 Vue 挂载前拍，`#app` 必然为空，不能据此判 `01-dom-missing`。
-  // ② 渲染存活探针：rAF 链。**rAF 一次都不触发本身就是白屏的关键判据**（页面没参与合成 ⇒ 什么都没画）。
-  const app = document.querySelector("#app");
-  if (app !== null) {
-    const observer = new MutationObserver(() => {
-      observer.disconnect();
-      snapshot("mounted");
-    });
-    observer.observe(app, { childList: true, subtree: true });
-  }
+  snapshot("t0"); // 初帧（Vue 挂载前，`#app` 必空——该 verdict 已标 initial、不参与归因）
+  // **计时器改成 rAF 帧计数**：实测 iOS 上 `setTimeout(>0)` 全被压住（2s/10s/20s 一处不响），
+  // 而 rAF 正常触发（raf:1/2/3 已实证）。用帧数当钟，既绕开节流，也顺带证明页面在合成。
+  // 帧步长按 60fps 估：60≈1s、300≈5s、600≈10s（覆盖 iOS CI 的 25s 存活窗口前段）。
+  const at = new Map<number, string>([
+    [1, "f1"],
+    [60, "f60"],
+    [300, "f300"],
+    [600, "f600"],
+  ]);
   const raf: typeof window.requestAnimationFrame | undefined =
     window.requestAnimationFrame;
   if (typeof raf === "function") {
-    let frames = 0;
+    let frame = 0;
     const step = (): void => {
-      frames += 1;
-      if (frames <= 3) report(`raf:${frames}`);
-      if (frames <= 3) raf(step);
+      frame += 1;
+      if (frame <= 3) report(`raf:${frame}`); // 渲染存活探针：一次都不触发即「未参与合成」
+      const phase = at.get(frame);
+      if (phase !== undefined) snapshot(phase);
+      if (frame <= 600) raf(step);
     };
     raf(step);
+  }
+  // 挂载即采：观察者为微任务级投递、不受定时器节流。**不 disconnect**——引擎挂载后会持续改动
+  // `#app`，第 5 次变动通常已过「故事从磁盘读进来」那一刻（只采首帧会拍到空壳，实测如此）。
+  const app = document.querySelector("#app");
+  if (app !== null) {
+    let changes = 0;
+    const observer = new MutationObserver(() => {
+      changes += 1;
+      if (changes <= 5) snapshot(`m${changes}`);
+      else observer.disconnect();
+    });
+    observer.observe(app, { childList: true, subtree: true });
   }
 }
