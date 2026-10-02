@@ -28,7 +28,13 @@ pub fn run() {
         // 大资源流式：lfstream 协议双路径——v2 分块按需解密（Range/206，明文不落盘）
         // + v1 token 缓存；缓存文件名信任边界（hex64.ext / v2/逻辑路径 validate）在 handler 内。
         .register_uri_scheme_protocol("lfstream", |ctx, request| {
-            resource_crypto::lfstream_protocol_handler(request, ctx.app_handle())
+            // 面包屑：实测主线程在启动后约 8 秒（心跳 #4 那一拍）卡住，而该时点正是前端开始拉资源。
+            // 这两条把「卡在协议处理器里」直接夹出来——**只要出现「进入」而无「返回」即为卡点**。
+            let uri = request.uri().to_string();
+            eprintln!("[lfen] lfstream 进入：{uri}");
+            let response = resource_crypto::lfstream_protocol_handler(request, ctx.app_handle());
+            eprintln!("[lfen] lfstream 返回：{uri}");
+            response
         })
         .invoke_handler(tauri::generate_handler![
             project_files::project_files,
