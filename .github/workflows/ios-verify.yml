@@ -246,3 +246,10 @@ jobs:
           path: |
             /tmp/ios-smoke.png
             /tmp/ios-launch.log
+            # 以下三份是白屏验尸的**主要证据**，此前只经 `::notice` 回传；实测 notice annotation
+            # 在该仓库未落地（run 与 job 均 completed 后 `/check-runs/<job>/annotations` 仍为空数组），
+            # 而无凭据环境下 Workflow 日志不可下载 ⇒ 必须随产物带走，否则诊断链断在这里。
+            /tmp/ios-oslog.txt
+            /tmp/ios-smoke-diag.txt
+            /tmp/ios-app-structure.txt
+            /tmp/ios-build.log
