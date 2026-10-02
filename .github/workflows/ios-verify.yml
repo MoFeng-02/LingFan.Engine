@@ -239,6 +239,10 @@ jobs:
 
       - name: 上传冒烟证据
         if: always()
+        # 白屏验尸的主要证据（oslog / 冒烟诊断 / 产物结构）此前只经 `::notice` 回传；实测
+        # notice annotation 在该仓库未落地（run 与 job 均 completed 后 annotations 仍为空数组），
+        # 而无凭据环境下 Workflow 日志不可下载 ⇒ 必须随产物带走，否则诊断链断在这里。
+        # ⚠️ 注释放这里、不放 `path: |` 块内——块标量里的 `#` 是**字面文本**，会被当成 glob 条目。
         uses: actions/upload-artifact@v4
         with:
           name: ios-smoke-evidence
@@ -246,9 +250,6 @@ jobs:
           path: |
             /tmp/ios-smoke.png
             /tmp/ios-launch.log
-            # 以下三份是白屏验尸的**主要证据**，此前只经 `::notice` 回传；实测 notice annotation
-            # 在该仓库未落地（run 与 job 均 completed 后 `/check-runs/<job>/annotations` 仍为空数组），
-            # 而无凭据环境下 Workflow 日志不可下载 ⇒ 必须随产物带走，否则诊断链断在这里。
             /tmp/ios-oslog.txt
             /tmp/ios-smoke-diag.txt
             /tmp/ios-app-structure.txt
