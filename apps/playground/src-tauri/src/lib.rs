@@ -70,6 +70,10 @@ pub fn run() {
             }
             // 诊断探针已改前端 build-flag（VITE_LFEN_DIAG=1，src/diag.ts）；lfen_diag 命令保留为回传通道
             splash_then_show(app.handle());
+            // 启动期窗口状态取证：前端探针会随页面节流一起冻结（iOS 实测日志只到启动后 ~0.8 秒），
+            // 只有 Rust 侧心跳能区分「页面被节流」与「整个进程被挂起」——白屏归因的分水岭
+            #[cfg(debug_assertions)]
+            spawn_boot_probe(app.handle());
             // 开发期 WS 通道：debug 构建启动 127.0.0.1 监听（浏览器页面复用宿主能力）；
             // release 编译期排除（锚点 ws-dev-only-release-hardoff）
             #[cfg(debug_assertions)]
@@ -78,6 +82,31 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// 启动期窗口状态取证（仅 debug）：每 2 秒一条心跳，共 6 条（覆盖 iOS CI 的 25s 冒烟窗口）。
+///
+/// 为什么必须由 Rust 打：前端探针一旦页面被节流或进程被挂起就一起冻结。Rust 线程的心跳
+/// **若继续往下打**，说明进程活着、被冻的是页面/WebView 一侧；**若同时停在同一点**，
+/// 则是整个进程被挂起（例如应用始终没拿到前台）。窗口的可见/聚焦读数同批给出。
+#[cfg(debug_assertions)]
+fn spawn_boot_probe(app: &tauri::AppHandle) {
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        for i in 1..=6 {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+            let state = match handle.get_webview_window("main") {
+                Some(window) => format!(
+                    "可见={:?} 聚焦={:?} 最小化={:?}",
+                    window.is_visible(),
+                    window.is_focused(),
+                    window.is_minimized()
+                ),
+                None => "无 main 窗口".to_string(),
+            };
+            eprintln!("[lfen] 启动心跳 #{i}：{state}");
+        }
+    });
 }
 
 /// 双窗启动画面（桌面）：splash 先行显示，盖住资源根定位 / DEK 首启信封化解封
