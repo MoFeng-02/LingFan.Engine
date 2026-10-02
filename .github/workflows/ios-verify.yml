@@ -21,6 +21,11 @@ on:
       - "apps/playground/src/**"
       - "packages/**"
       - ".github/workflows/ios-verify.yml"
+      # 依赖与工作区配置同样决定构建能否成立：漏了它们会「推上去毫无反应」
+      # （pnpm 12 的构建脚本批准就写在 pnpm-workspace.yaml，曾因此白推一次）
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "package.json"
 
 concurrency:
   group: ios-verify-${{ github.ref }}
