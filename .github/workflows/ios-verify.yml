@@ -151,11 +151,16 @@ jobs:
           body=$(sed -e 's/\x1b\[[0-9;]*m//g' /tmp/ios-diag.log | awk '{printf "%s%%0A", $0}')
           echo "::notice title=iOS 环境诊断::$body"
 
-      - name: 构建 iOS 模拟器 app（debug，免签名）
+      - name: 构建 iOS 模拟器 app（**release**，免签名）
         working-directory: apps/playground
         run: |
           set +e
-          cargo tauri ios build --debug --target aarch64-sim x86_64 > /tmp/ios-build.log 2>&1
+          # **构建 release**：debug 与 release 的运行时差异在这个项目上已经骗过我们一次
+          # （「过场前 7 秒黑屏」最终证明是 debug 构建假象，release 实测仅 1 帧）。
+          # 本轮换 release 的目的：判定 iOS 白屏是否也属这一类——debug-only 的 ws_dev 开发通道
+          # （#[cfg(debug_assertions)]，监听 127.0.0.1:1421）在 release 里整段不存在。
+          # 前端探针不受影响（它由 VITE_LFEN_DIAG 控制，作业级环境变量已带上）。
+          cargo tauri ios build --release --target aarch64-sim x86_64 > /tmp/ios-build.log 2>&1
           status=$?
           # 去 ANSI + 只留诊断行（<200 字符）：命令回显里含 -Werror 会污染 "error" 过滤
           sed -e 's/\x1b\[[0-9;]*m//g' /tmp/ios-build.log | tail -60
@@ -172,7 +177,7 @@ jobs:
         working-directory: apps/playground/src-tauri
         run: |
           set +e
-          app=$(find gen/apple/build -maxdepth 3 -name "*.app" -type d | head -1)
+          app=$(find gen/apple/build -maxdepth 5 -name "*.app" -type d | head -1)
           {
             echo "APP=$app"
             echo "--- 顶层 ---"
@@ -200,7 +205,7 @@ jobs:
         working-directory: apps/playground/src-tauri
         run: |
           set +e
-          app=$(find gen/apple/build -maxdepth 3 -name "*.app" -type d | head -1)
+          app=$(find gen/apple/build -maxdepth 5 -name "*.app" -type d | head -1)
           test -n "$app" || { echo "::error::未找到 .app"; exit 1; }
           echo "APP=$app"
 
