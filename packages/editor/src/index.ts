@@ -78,12 +78,16 @@ export {
 } from "./i18n";
 
 export {
+  describeSelection,
   getAtPointer,
   insertAtPointer,
   moveAtPointer,
   nearestCommandPointer,
   removeAtPointer,
   setAtPointer,
+  type SelectionDescription,
+  type SelectionKind,
+  type SelectionNodeKind,
 } from "./editing/pointers";
 export {
   addColumn,

@@ -46,6 +46,7 @@ import {
   type VideoRenderer,
 } from "@lingfan/ui";
 import { captureSaveThumbnail, captureStageComposite, collectStageMedia, stripHtml } from "./shell/thumbnail";
+import { isGameInputTarget } from "./gameZone";
 
 // —— 核心层只写状态，UI 只经 ValueChanged 订阅渲染 ——
 // 工程与平台端口都由组合根（main.ts）装配注入：本组件只消费契约，不知道任何具体实现
@@ -730,6 +731,7 @@ function keyMatches(
 
 function onKeydown(e: KeyboardEvent): void {
   if (captureAction.value !== null) return; // 捕获中：capture 阶段监听器已处理
+  if (!isGameInputTarget(e.target)) return; // 输入控件/面板内：不吞键、不误触发
   if (keyMatches("advance", DEFAULT_KEYMAP.advance, e)) {
     e.preventDefault();
     onStageClick();
@@ -892,8 +894,10 @@ function rollbackToEntry(index: number): void {
   syncFromEngine();
 }
 
-/** 滚轮上=回退、下=前进（历史面板是回溯的 UI 皮，核心层只暴露坐标回溯） */
+/** 滚轮上=回退、下=前进（历史面板是回溯的 UI 皮，核心层只暴露坐标回溯）；
+ *  仅在游戏域生效——面板/控件内的滚动归控件自己消费，不触发游戏回溯 */
 function onWheel(event: WheelEvent): void {
+  if (!isGameInputTarget(event.target)) return;
   if (event.deltaY < 0) engine.back();
   else if (event.deltaY > 0) engine.forward();
 }
@@ -944,7 +948,7 @@ onUnmounted(() => {
     <!-- 全屏转场遮罩（屏幕级效果，恒在最上；透明度由帧驱动写入） -->
     <div ref="transitionEl" class="transition-overlay" aria-hidden="true"></div>
     <!-- 固定工具条：单条 flex 行（布局由构造保证不重叠；safe-area 适配移动端） -->
-    <div class="toolbar" :style="{ zIndex: layerZ.toolbar }">
+    <div class="toolbar" data-ui-zone :style="{ zIndex: layerZ.toolbar }">
       <!-- fail-closed 停机恢复入口：整体重建引擎（正式形态为读档/回标题命令面） -->
       <button
         class="restart"
@@ -1096,6 +1100,7 @@ onUnmounted(() => {
     <section
       v-if="showHistory"
       class="history-panel"
+      data-ui-zone
       :style="{ zIndex: layerZ.history }"
     >
       <p class="layer-prompt">历史</p>
@@ -1127,6 +1132,7 @@ onUnmounted(() => {
     <section
       v-if="showPrefs"
       class="history-panel prefs-panel"
+      data-ui-zone
       :style="{ zIndex: layerZ.prefs }"
       @click.stop
     >
@@ -1238,7 +1244,7 @@ onUnmounted(() => {
       </label>
     </section>
     <!-- 多槽位面板（存/读共用；槽位数 = shell.saves.slots，缩略图随档存储） -->
-    <section v-if="slotPanel" class="history-panel saves-panel" @click.stop>
+    <section v-if="slotPanel" class="history-panel saves-panel" data-ui-zone @click.stop>
       <p class="layer-prompt">{{ slotPanel === "save" ? "保存到槽位" : "读取槽位" }}</p>
       <div class="slot-grid">
         <button
