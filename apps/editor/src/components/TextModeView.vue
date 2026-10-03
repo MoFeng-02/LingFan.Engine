@@ -7,6 +7,8 @@ import { parseTextStory, projectText, TextFormatError } from "@lingfan/engine";
  * 文本模式：text.ts 双向投影。容错投影（projectText）——
  * scene 列/未知 op 收集为警告清单（部分内容可见可改），不整视图崩塌。
  * 「应用到故事」= parseTextStory 整树替换，一个 undo 单元；解析失败整次拒绝。
+ * ⚠️ 该按钮**必须带 `dirty` 门**：无改动时点击会落一棵内容相同的树 ⇒ **凭空产生一个
+ * undo 单元**（撤销步数被污染），且与 JSON 视图的同名按钮行为不一致（D-61）。
  */
 const props = defineProps<{ story: Story }>();
 
@@ -76,7 +78,9 @@ const stats = computed(() => {
       <span class="stats">{{ stats }}</span>
       <span v-if="dirty" class="dirty">未应用改动</span>
       <span class="spacer"></span>
-      <button class="apply" @click="apply">✓ 应用到故事</button>
+      <button class="apply" :disabled="!dirty" @click="apply">
+        ✓ 应用到故事
+      </button>
     </div>
     <ul v-if="projection.issues.length > 0" class="text-warn">
       <li v-for="issue in projection.issues" :key="issue">{{ issue }}</li>

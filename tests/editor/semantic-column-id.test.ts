@@ -78,9 +78,22 @@ describe("addColumn 接线：hint 仅缺省 id 时参与（契约只增）", () 
 });
 
 describe("源码互锁：编辑器「+列」接语义化建议输入", () => {
-  it("+列 走 prompt（留空可过）→ api.addColumn(kind, hint ?? undefined)", () => {
+  it("+列 走 prompt（留空可过）；取消则不执行（D-58 防回流）", () => {
     expect(columnListSource).toContain("promptAddColumn");
-    expect(columnListSource).toContain("api.addColumn(kind, hint ?? undefined)");
     expect(columnListSource).toContain("window.prompt");
+    // ① 留空可过（**本条既有意图，予以保留**）：无建议也必须把调用发出去，引擎按 column-N 兜底
+    expect(columnListSource).toContain("api.addColumn(kind, intent.hint)");
+    // ② 取消（null）不得与留空（""）混为一谈 —— 意图判定必须先于提交
+    expect(columnListSource).toContain("decideAddColumn(raw)");
+    expect(columnListSource).toContain("if (!intent.run) return;");
+    const decided = columnListSource.indexOf("decideAddColumn(raw)");
+    const submitted = columnListSource.indexOf(
+      "api.addColumn(kind, intent.hint)",
+    );
+    expect(decided).toBeGreaterThan(-1);
+    expect(submitted).toBeGreaterThan(-1);
+    expect(decided).toBeLessThan(submitted); // 判定先于提交（防未来有人绕过判据直接调）
+    // ③ 防回流：prompt 返回值不得经 `?? undefined` 压平 —— 那正是 D-58 的成因
+    expect(columnListSource).not.toContain("hint ?? undefined");
   });
 });

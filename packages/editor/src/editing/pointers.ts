@@ -3,6 +3,9 @@
  * 未命中路径 fail-closed 返回 null——编辑器映射器只做纯函数。
  */
 
+import { describeForm } from "../schema/forms";
+import { BUILTIN_OP_SURFACE, type OpSurface } from "../schema/surface";
+
 type PathSegment = string | number;
 
 /** 组装 JSON Pointer（段转义 ~ 与 /） */
@@ -213,4 +216,76 @@ export function nearestCommandPointer(story: unknown, pointer: string): string {
     if (isCommandAt(story, prefix)) return prefix;
   }
   return pointer;
+}
+
+/* ------------------------------------------------------------------ *
+ * 选中态语义（D-59）
+ * ------------------------------------------------------------------ */
+
+/** 选中态分类；**除 `unknown-op` 外都不是错误**（列 / 元素 / 数组项都是正常选中） */
+export type SelectionKind = "none" | "non-command" | "unknown-op" | "command";
+
+/** 非命令选中的细分（仅供文案取用，不改变 `kind`） */
+export type SelectionNodeKind = "column" | "element" | "item" | "other";
+
+export interface SelectionDescription {
+  kind: SelectionKind;
+  /** `non-command` / `unknown-op` 时有意义 */
+  nodeKind?: SelectionNodeKind;
+  /** `command` / `unknown-op` 时有意义 */
+  opName?: string;
+}
+
+/** 按指针形状细分非命令目标：`/columns/<i>` = 列；`…/elements/<j>` = 元素；`…/commands/<j>` = 组内项 */
+function selectionNodeKind(pointer: string): SelectionNodeKind {
+  const segments = parsePointer(pointer);
+  if (segments[0] !== "columns") return "other";
+  if (segments.length === 2) return "column";
+  if (segments[2] === "elements") return "element";
+  if (segments[2] === "commands") return "item";
+  return "other";
+}
+
+/**
+ * 描述「当前选中了什么」——**四态**，而不是「是命令 / 不是命令」两态。
+ *
+ * **背景（D-59）**：属性面板曾把「选中的是一列」渲染成错误——「所选位置不是命令
+ * （op 缺失）——诊断面板有详情」，而**同一时刻**诊断面板显示「✓ 无诊断」⇒ 两处
+ * 互相打脸，且把用户的**正常操作**说成故障。真实语义有四种：
+ *
+ * | kind | 触发 | 该说什么 |
+ * |---|---|---|
+ * | `none` | `pointer === null` | 中性引导：选一条命令 |
+ * | `non-command` | 指针落在列 / 元素 / 数组项 | **中性陈述**，**不得出现「错误/缺失/诊断」** |
+ * | `unknown-op` | 落在命令上，但**无表单描述符** | **这才是真问题**（提诊断、可删除） |
+ * | `command` | 正常命令 | 现有表单 |
+ *
+ * 判定顺序：`null` → `none`；节点是对象且 `op` 为字符串 → 有描述符即 `command`，
+ * 否则 `unknown-op`（把操作数也带上，即 `opName`）；其余 → `non-command`。
+ * **指针悬空**（`getAtPointer` 未命中）同样归 `non-command` —— fail-soft：面板给
+ * 中性文案，**不谎报成错误**（悬空多由撤销后的陈旧选中造成，不属 op 缺失）。
+ *
+ * `surface` 与 `describeForm` 同口径（缺省 = 内建 op 面）——**不得**在这里换一套
+ * op 面，否则会与面板表单的判断打架。
+ */
+export function describeSelection(
+  story: unknown,
+  pointer: string | null,
+  surface: OpSurface = BUILTIN_OP_SURFACE,
+): SelectionDescription {
+  if (pointer === null) return { kind: "none" };
+  const nodeKind = selectionNodeKind(pointer);
+  const node = getAtPointer(story, pointer);
+  if (
+    node !== null &&
+    typeof node === "object" &&
+    !Array.isArray(node) &&
+    typeof (node as Record<string, unknown>).op === "string"
+  ) {
+    const opName = (node as Record<string, unknown>).op as string;
+    return describeForm(opName, surface) === undefined
+      ? { kind: "unknown-op", nodeKind, opName }
+      : { kind: "command", nodeKind, opName };
+  }
+  return { kind: "non-command", nodeKind };
 }

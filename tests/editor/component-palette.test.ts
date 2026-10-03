@@ -154,3 +154,43 @@ describe("回归锚定：时间线元素容器的「插入」只产元素草稿"
     expect(storyTimelineSource).toContain(`{ op: insertOp.value }`);
   });
 });
+
+describe("D-60 文案守卫：面板不得泄露内部计划／也不得说错可用路径", () => {
+  /** 剥离注释后再断言——守卫的对象是**用户可见文案**，不是注释 */
+  function stripComments(source: string): string {
+    return source
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+  }
+  const code = stripComments(componentPaletteSource);
+  const hint = code.slice(
+    code.indexOf('class="palette-hint"'),
+    code.indexOf("palette-search"),
+  );
+
+  it("提示区块确实取到且非空（否则下面的断言会假 PASS）", () => {
+    expect(hint.length).toBeGreaterThan(20);
+    expect(hint).toContain("palette-hint");
+  });
+
+  it("禁出现内部计划词（随后续 / 待提供 / 后续任务 / TODO / 未实现）", () => {
+    for (const word of ["随后续", "待提供", "后续任务", "TODO", "未实现"]) {
+      expect(hint).not.toContain(word);
+    }
+  });
+
+  it("改前那句泄露路线图的原文已彻底消失", () => {
+    expect(code).not.toContain("命令的落点创建随后续任务提供");
+  });
+
+  it("如实描述两条可用路径（元素拖舞台 / 命令走「插入」）", () => {
+    expect(hint).toContain("舞台画布");
+    expect(hint).toContain("插入");
+  });
+
+  it("计数仍由纯数据驱动（类型/命令数不写死）", () => {
+    expect(hint).toContain("elementCount");
+    expect(hint).toContain("opCount");
+  });
+});

@@ -2,6 +2,7 @@
 import { computed, inject, ref, type Ref } from "vue";
 import type { Story, StoryColumn } from "@lingfan/engine";
 import { layoutColumns, type ColumnGroupingView } from "@lingfan/editor";
+import { decideAddColumn } from "../addColumnIntent";
 
 /**
  * 列侧栏 + 列分组归类（UI 侧元数据）。
@@ -125,13 +126,15 @@ function promptAddGroup(): void {
   grouping.addGroup(name); // 留空 = 由纯函数回退「新分组」
 }
 
-/** +列先要一个语义化 id 建议（留空/取消 = 自动生成 column-N 兜底；重名由 suggestColumnId 唯一化） */
+/** +列先要一个语义化 id 建议（**取消 = 不执行**；留空 = 引擎兜底生成 column-N；重名由 suggestColumnId 唯一化） */
 function promptAddColumn(kind: "flow" | "scene"): void {
-  const hint = window.prompt(
+  const raw = window.prompt(
     `新${kind === "flow" ? "流程" : "场景"}列 id（语义化短 id，如 tavern；留空 = 自动生成）`,
     "",
   );
-  api.addColumn(kind, hint ?? undefined);
+  const intent = decideAddColumn(raw);
+  if (!intent.run) return; // 取消（null）＝不执行：与「留空（""）」语义不同（D-58）
+  api.addColumn(kind, intent.hint);
 }
 
 function promptRenameGroup(section: ColumnSection): void {

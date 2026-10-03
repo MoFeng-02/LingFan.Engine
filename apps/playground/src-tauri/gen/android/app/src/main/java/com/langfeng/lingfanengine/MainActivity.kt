@@ -2,15 +2,16 @@ package com.langfeng.lingfanengine
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
-import io.crates.keyring.Keyring
 
 class MainActivity : TauriActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
-    // 凭据（KEK）依赖 android-native-keyring-store 的 ndk-context：须在任何存档/加密读取之前初始化，
-    // 否则该 crate 内部 `ndk_context::android_context()` 会 panic（实测：点「存」即 SIGABRT，线程 JavaBridge）。
-    // 置于 super.onCreate 之后：此时 Tauri 已加载 liblingfanengine_lib.so，crate 的 JNI 符号在其中。
-    Keyring.initializeNdkContext(applicationContext)
+    // 本类**不得**再初始化 ndk-context：运行时（tao 的 `onCreate`，即
+    // `ANativeActivity_onCreate` 路径，含于上面的 super.onCreate 内）已调用
+    // `ndk_context::initialize_android_context`；android-native-keyring-store 的 JNI
+    // 入口会做同一件事，而 ndk-context 对它只有硬断言 `assert!(previous.is_none())`
+    // ⇒ 二次初始化 = SIGABRT（实测：应用启动即崩于 ndk-context lib.rs:87）。
+    // 该 crate 直接复用运行时设好的上下文，无需本类代劳。
   }
 }

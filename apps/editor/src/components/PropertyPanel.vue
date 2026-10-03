@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { computed, inject } from "vue";
 import type { Story } from "@lingfan/engine";
-import { describeForm, getAtPointer } from "@lingfan/editor";
+import {
+  describeForm,
+  describeSelection,
+  elementLabel,
+  getAtPointer,
+} from "@lingfan/editor";
 import FieldRow from "./FieldRow.vue";
 
 const props = defineProps<{ story: Story; pointer: string | null }>();
@@ -11,24 +16,67 @@ interface EditorApi {
 }
 const api = inject<EditorApi>("editorApi")!;
 
+/**
+ * 选中态**四态**（D-59）：`none` / `non-command` / `unknown-op` / `command`。
+ * 判定收在 `@lingfan/editor` 的纯函数里（可测），本组件只按 `kind` 选文案。
+ */
+const selection = computed(() =>
+  describeSelection(props.story, props.pointer),
+);
+
 const cmd = computed(() =>
   props.pointer === null
     ? undefined
     : (getAtPointer(props.story, props.pointer) as
-        Record<string, unknown> | undefined),
+        | Record<string, unknown>
+        | undefined),
 );
-const isCommand = computed(
+
+/** 仅 `command` / `unknown-op` 是「落在命令上」（面包屑与表单区只对这两态有意义） */
+const onCommand = computed(
   () =>
-    cmd.value !== undefined &&
-    typeof cmd.value === "object" &&
-    typeof cmd.value.op === "string",
+    selection.value.kind === "command" ||
+    selection.value.kind === "unknown-op",
 );
-const descriptor = computed(() =>
-  isCommand.value ? describeForm(opName.value) : undefined,
-);
+
 const opName = computed(() =>
-  isCommand.value ? String((cmd.value as Record<string, unknown>).op) : "",
+  onCommand.value ? String((cmd.value as Record<string, unknown>).op) : "",
 );
+
+/** 仅 `command` 有表单描述符；`unknown-op` 恒为 `undefined`（那正是它的定义） */
+const descriptor = computed(() =>
+  selection.value.kind === "command" ? describeForm(opName.value) : undefined,
+);
+
+/**
+ * `none` / `non-command` 的**中性陈述**。
+ *
+ * ⚠️ **D-59 纪律：这里不得出现「缺失 / 错误 / 诊断」字样** —— 选中列 / 元素 / 数组项
+ * 都是**正常操作**，此前那句「所选位置不是命令（op 缺失）——诊断面板有详情」把正常
+ * 操作说成故障，还指向一个**同时显示「✓ 无诊断」**的面板，两处互相打脸。
+ * 只有 `unknown-op`（落在命令上但无表单）才是真问题，文案见模板。
+ */
+const neutralText = computed(() => {
+  if (selection.value.kind === "none") {
+    return "在时间线中选择一条命令开始编辑。";
+  }
+  const node = cmd.value;
+  switch (selection.value.nodeKind) {
+    case "column": {
+      const kind = node?.kind === "scene" ? "场景列" : "流程列";
+      return `当前选中的是${kind}——列本身不是命令；点它里面的某条命令即可编辑。`;
+    }
+    case "element": {
+      const type =
+        typeof node?.type === "string" ? elementLabel(node.type) : "未知类型";
+      return `当前选中的是元素「${type}」——元素属性在「舞台」视图里编辑，本视图只编辑命令。`;
+    }
+    case "item":
+      return "当前选中的是组内的一项——请选中它所在的那条命令。";
+    default:
+      return "当前选中的位置不是命令——请在时间线上选择一条命令。";
+  }
+});
 
 /** 面包屑：指针前缀中的命令祖先（嵌套块体逐级返回） */
 const ancestors = computed(() => {
@@ -58,9 +106,11 @@ const ancestors = computed(() => {
   <div class="property-panel">
     <h2>属性面板</h2>
 
-    <p v-if="pointer === null" class="hint">在时间线中选择一条命令开始编辑。</p>
-    <p v-else-if="!isCommand" class="hint">
-      所选位置不是命令（op 缺失）——诊断面板有详情。
+    <p
+      v-if="selection.kind === 'none' || selection.kind === 'non-command'"
+      class="hint"
+    >
+      {{ neutralText }}
     </p>
 
     <template v-else>
@@ -85,25 +135,27 @@ const ancestors = computed(() => {
         </template>
       </div>
 
-      <p v-if="descriptor === undefined" class="hint">
+      <p v-if="selection.kind === 'unknown-op'" class="hint">
         未知或未实现的 op：<code>{{ opName }}</code
         >（诊断面板标红；可删除该命令）
       </p>
 
       <div v-else class="fields">
         <FieldRow
-          v-for="field in descriptor.fields"
+          v-for="field in descriptor?.fields ?? []"
           :key="field.key"
           :pointer="`${pointer}/${field.key}`"
           :field="field"
           :value="cmd![field.key]"
         />
-        <p v-if="descriptor.fields.length === 0" class="hint">
+        <p v-if="descriptor !== undefined && descriptor.fields.length === 0" class="hint">
           该命令无负载字段。
         </p>
       </div>
 
-      <p class="op-meta">{{ descriptor?.label ?? "" }} · {{ opName }}</p>
+      <p v-if="selection.kind === 'command'" class="op-meta">
+        {{ descriptor?.label ?? "" }} · {{ opName }}
+      </p>
     </template>
   </div>
 </template>
