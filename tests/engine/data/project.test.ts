@@ -6,8 +6,10 @@ import {
   diffProjectFiles,
   isSafeFileNameSegment,
   MANIFEST_FILE,
+  parseStory,
   ProjectAssemblyError,
   ProjectSerializationError,
+  serializeColumnDocument,
   serializeProject,
   StoryEngine,
 } from "@lingfan/engine";
@@ -561,5 +563,123 @@ describe("serializeProject（fail-closed 对抗输入）", () => {
         ),
       ).join("\n"),
     ).toContain("kind");
+  });
+});
+
+/**
+ * 单列文档写回（资源管理器多文档面）。
+ *
+ * 存在理由是一处**真实数据丢失**：单列文档独立解析后 `columns` 只有自己一列
+ * （且 `defines`/`entry` 残缺——`assembleProject` 把文件级 defines 上移清单级），
+ * 若走整工程 `serializeProject` + `diffProjectFiles`，未编辑的其他列文件会被判为
+ * 陈旧并**删除**。下面第一例即为该缺陷的红路径证明。
+ */
+describe("serializeColumnDocument（单列文档写回）", () => {
+  it("红路径：整工程序列化会把未编辑的列文件判为陈旧并删除（故不得用于单列文档）", () => {
+    const entry = { formatVersion: 1, id: "demo", entry: "start" };
+    // 真实形状：独立解析出的单列文档（自带残缺 entry/defines）
+    const single = parseStory(
+      { formatVersion: 1, id: "tavern", kind: "flow", commands: [] },
+      "tavern.json",
+    );
+    const baseline = new Map<string, string>([
+      [MANIFEST_FILE, JSON.stringify(entry, null, 2)],
+      ["Stories/start.json", JSON.stringify(singleColumn("start"))],
+      ["Stories/tavern.json", JSON.stringify(singleColumn("tavern"))],
+    ]);
+    const { files } = serializeProject(single, entry);
+    const diff = diffProjectFiles(files, baseline);
+    // ⚠️ 这就是缺陷本体：只编辑 tavern，start 被列入删除集
+    expect(diff.deletes).toEqual(["Stories/start.json"]);
+    // 清单托管键同样被单列文档的残缺 entry 覆写
+    expect(JSON.parse(files.get(MANIFEST_FILE) ?? "{}").entry).toBe("tavern");
+  });
+
+  it("只产目标列文件一个，不产删除、不碰清单", () => {
+    const single = parseStory(
+      { formatVersion: 1, id: "tavern", kind: "flow", commands: [{ op: "say", text: "酒馆" }] },
+      "tavern.json",
+    );
+    const { files } = serializeColumnDocument(single, "tavern");
+    expect([...files.keys()]).toEqual(["Stories/tavern.json"]);
+    // 文件内容 = 单列原子文件标准形态（与整工程路径逐字节同源）
+    const whole = serializeProject(
+      { ...single, columns: single.columns },
+      { formatVersion: 1, id: "demo", entry: "tavern" },
+    );
+    expect(files.get("Stories/tavern.json")).toBe(
+      whole.files.get("Stories/tavern.json"),
+    );
+  });
+
+  it("未编辑的列不进删除集：与打开基线做差量 = 只改目标文件", () => {
+    const entry = { formatVersion: 1, id: "demo", entry: "start" };
+    const baseline = new Map<string, string>([
+      [MANIFEST_FILE, JSON.stringify(entry, null, 2)],
+      ["Stories/start.json", JSON.stringify(singleColumn("start"), null, 2)],
+      ["Stories/tavern.json", JSON.stringify(singleColumn("tavern"), null, 2)],
+    ]);
+    const single = parseStory(
+      { formatVersion: 1, id: "tavern", kind: "flow", commands: [{ op: "say", text: "改过" }] },
+      "tavern.json",
+    );
+    // ⚠️ `diffProjectFiles` 是**整工程**差量器（不在期望集 ⇒ 陈旧），
+    // 单文档保存不能直接把单列产物喂给它——必须由调用方按「基线 + 本文档覆盖」组装期望集。
+    // 这条断言锁住该边界：喂单列产物 ⇒ start 被判陈旧。
+    const naive = diffProjectFiles(serializeColumnDocument(single, "tavern").files, baseline);
+    expect(naive.deletes).toEqual(["Stories/start.json"]);
+    // 正解：期望集 = 打开基线，只覆盖目标文档 ⇒ 差量恰一项、无删除。
+    const wanted = new Map(baseline);
+    for (const [path, text] of serializeColumnDocument(single, "tavern").files) {
+      wanted.set(path, text);
+    }
+    const diff = diffProjectFiles(wanted, baseline);
+    expect([...diff.changes.keys()]).toEqual(["Stories/tavern.json"]);
+    expect(diff.deletes).toEqual([]);
+  });
+
+  it("往返互锁：写出的列文件能重新解析回等价的单列文档", () => {
+    const single = parseStory(
+      { formatVersion: 1, id: "tavern", kind: "flow", commands: [{ op: "say", text: "酒馆" }] },
+      "tavern.json",
+    );
+    const { files } = serializeColumnDocument(single, "tavern");
+    const back = parseStory(JSON.parse(files.get("Stories/tavern.json") ?? "{}"), "tavern.json");
+    expect(back.columns).toEqual(single.columns);
+  });
+
+  it("fail-closed：列数不为一 / 目标列不匹配 / 列结构非法 三类整次拒绝", () => {
+    const issues = (fn: () => unknown): string[] => {
+      try {
+        fn();
+      } catch (e) {
+        if (e instanceof ProjectSerializationError) return e.issues;
+        throw e;
+      }
+      throw new Error("应当抛出 ProjectSerializationError");
+    };
+    const single = parseStory(
+      { formatVersion: 1, id: "tavern", kind: "flow", commands: [] },
+      "tavern.json",
+    );
+    // 多列文档
+    expect(
+      issues(() =>
+        serializeColumnDocument(storyOf([column("a"), column("b")], "a"), "a"),
+      ).join("\n"),
+    ).toContain("恰载一列");
+    // 目标列与文档所载不符
+    expect(issues(() => serializeColumnDocument(single, "other")).join("\n")).toContain(
+      "目标不匹配",
+    );
+    // 列结构非法（flow 缺 commands）
+    expect(
+      issues(() =>
+        serializeColumnDocument(
+          storyOf([{ id: "x", kind: "flow", commands: undefined as unknown as StoryCommand[] }], "x"),
+          "x",
+        ),
+      ).join("\n"),
+    ).toContain("commands");
   });
 });

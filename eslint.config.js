@@ -48,6 +48,12 @@ export default defineConfigWithVueTs(
       "**/coverage/**",
       "**/src-tauri/**",
       "**/node_modules/**",
+      // 测试夹具的临时工作区：测试跑完即删，但**测试与 lint 并发时**可能正在被删
+      // ⇒ eslint 扫到半途消失的文件会报 ENOENT 直接崩（非代码问题）。
+      "**/.tmp-build/**",
+      // 私有文档（设计稿/验收脚本/临时探针）：已入 .gitignore 不随仓库分发，
+      // 其中 .cjs 探针按 CommonJS 写(require)，与本仓 TS 源的模块规范不同
+      "**/私有文档/**",
     ],
   },
   pluginVue.configs["flat/essential"],
@@ -226,6 +232,13 @@ export default defineConfigWithVueTs(
     files: [
       "apps/playground/scripts/**/*.{ts,mjs}",
       "tests/playground/stories-build.test.ts",
+      // 编辑器的**本地服务宿主**（B4：仅回环 HTTP + 外部打开）——
+      // Node 侧运行，浏览器端代码零感知（前端只做能力探测，不假设它在）
+      "apps/editor/server/**/*.ts",
+      "tests/editor/server-*.test.ts",
+      // token 守卫（B5）需要**读编辑器源码**做机械核对（扫裸色值/裸字号）
+      // —— 属测试期工具，不进浏览器产物
+      "tests/editor/token-guard.test.ts",
     ],
     rules: {
       "no-restricted-imports": "off",

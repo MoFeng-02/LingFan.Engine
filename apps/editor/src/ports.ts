@@ -23,6 +23,24 @@ export interface OpenedProject {
   story: Story;
   resourcePort: ResourcePort;
   /**
+   * **按逻辑路径读资源原始文本**（资源管理器的通用读取能力）。
+   *
+   * 为何必需：`ResourcePort` 只给 Blob URL（媒体播放用），读不了 JSON 文本；
+   * 而资源管理器的非故事视图（译文表 / 工程清单 / 生成型产物）都要看内容。
+   * 底层复用 `ProjectFileSource.text`（既有能力，任意资源根内路径皆可），
+   * 组合根绑定闭包注入 ⇒ 组件零 adapters import（纪律同 `save`）。
+   *
+   * 失败（不存在 / 不可读）**必须抛错** —— 调用方 fail-closed，不静默降级为空。
+   */
+  readText: (path: string) => Promise<string>;
+  /**
+   * 保存**单个文本资源**（译文表 / 清单）：只落该文件，**不产删除、不改其他文件**。
+   *
+   * 与 `save`（整工程）并列而非替代：资源管理器按文件操作，整工程写回是
+   * 「打开工程」这条路。二者作用域不同，混用会误伤未编辑的文件。
+   */
+  saveText?: (path: string, text: string) => Promise<ProjectWriteReport>;
+  /**
    * 层级表：内建默认 × 工程覆盖（`project.json shell.layers`）。
    * 预览需要它才能把「实例级 z」与「层默认」解析成真实 z（否则只能按 DOM 顺序叠）。
    */
@@ -39,6 +57,13 @@ export interface OpenedProject {
    * 缺省 = 只读取径（目录 input 快照）→ 宿主必须禁用保存。
    */
   save?: (story: Story) => Promise<ProjectWriteReport>;
+  /**
+   * 保存**单个资源文档**（多文档面）：只落该列文件，**不产删除、不改清单**。
+   *
+   * 为何不能走 `save`：那是整工程序列化器，喂单列树会把其余列文件判为陈旧并删除
+   * （`serializeColumnDocument` 的回归测试锁住了该边界）。缺省 = 无写权限。
+   */
+  saveColumn?: (columnId: string, columnStory: Story) => Promise<ProjectWriteReport>;
   /**
    * 保存前规范化检测：对比**当前磁盘形态**
    * 与当前故事的标准布局，返回保存将触发的规范化动作；无发现返回 `undefined`。

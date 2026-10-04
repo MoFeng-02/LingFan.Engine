@@ -83,35 +83,35 @@ const lineCount = computed(() => draft.value.split("\n").length);
   gap: 8px;
 }
 .stats {
-  color: #565f89;
-  font-size: 11px;
+  color: var(--lf-text-hint);
+  font-size: var(--lf-font-sm);
 }
 .dirty {
-  color: #e0af68;
-  font-size: 11px;
+  color: var(--lf-warning);
+  font-size: var(--lf-font-sm);
 }
 .spacer {
   flex: 1;
 }
 button.apply {
-  border-color: #9ece6a88;
-  color: #9ece6a;
+  border-color: color-mix(in srgb, var(--lf-success) 53%, transparent);
+  color: var(--lf-success);
 }
 .json-error {
   margin: 0;
   padding: 6px 10px;
-  background: #2a1518;
-  border: 1px solid #f7768e66;
+  background: var(--lf-danger-surface);
+  border: 1px solid color-mix(in srgb, var(--lf-danger) 40%, transparent);
   border-radius: 6px;
-  color: #f7768e;
-  font-size: 11px;
+  color: var(--lf-danger);
+  font-size: var(--lf-font-sm);
 }
 .json-text {
   flex: 1;
   font-family: Consolas, monospace;
-  font-size: 11px;
+  font-size: var(--lf-font-sm);
   line-height: 1.5;
   resize: none;
-  color: #9aa5ce;
+  color: var(--lf-text-secondary);
 }
 </style>

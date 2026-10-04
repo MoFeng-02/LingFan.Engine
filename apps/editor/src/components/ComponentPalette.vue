@@ -171,20 +171,20 @@ function onDragStart(
 }
 .palette-hint {
   margin: 0;
-  font-size: 10px;
+  font-size: var(--lf-font-xs);
   line-height: 1.4;
-  color: #565f89;
+  color: var(--lf-text-hint);
 }
 .palette-search {
   width: 100%;
   box-sizing: border-box;
-  font-size: 11px;
+  font-size: var(--lf-font-sm);
   padding: 3px 6px;
 }
 .palette-section h3 {
   margin: 0 0 4px;
-  font-size: 11px;
-  color: #7aa2f7;
+  font-size: var(--lf-font-sm);
+  color: var(--lf-accent);
   font-weight: 600;
 }
 .group {
@@ -196,25 +196,25 @@ function onDragStart(
   gap: 4px;
   width: 100%;
   padding: 2px 4px;
-  font-size: 11px;
+  font-size: var(--lf-font-sm);
   background: none;
   border: none;
-  color: #c0caf5;
+  color: var(--lf-text-primary);
   cursor: pointer;
   text-align: left;
 }
 .group-head:hover {
-  background: #1a1b26;
+  background: var(--lf-surface-hover);
 }
 .group-head .gname {
   flex: 1;
 }
 .group-head .gcount {
-  font-size: 10px;
-  color: #565f89;
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
 }
 .caret {
-  color: #565f89;
+  color: var(--lf-text-hint);
 }
 .items {
   list-style: none;
@@ -230,36 +230,36 @@ function onDragStart(
   gap: 5px;
   padding: 3px 6px;
   border-radius: 5px;
-  font-size: 11px;
+  font-size: var(--lf-font-sm);
   cursor: grab;
 }
 .item:hover {
-  background: #24283b;
+  background: var(--lf-border-subtle);
 }
 .item:active {
   cursor: grabbing;
 }
 .ilabel {
-  color: #c0caf5;
+  color: var(--lf-text-primary);
 }
 .itype {
   flex: 1;
-  font-size: 10px;
-  color: #565f89;
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .badge {
-  font-size: 9px;
-  color: #9ece6a;
-  border: 1px solid #9ece6a55;
+  font-size: var(--lf-font-xs);
+  color: var(--lf-success);
+  border: 1px solid color-mix(in srgb, var(--lf-success) 33%, transparent);
   border-radius: 3px;
   padding: 0 3px;
 }
 .empty {
   margin: 0;
-  font-size: 11px;
-  color: #565f89;
+  font-size: var(--lf-font-sm);
+  color: var(--lf-text-hint);
 }
 </style>

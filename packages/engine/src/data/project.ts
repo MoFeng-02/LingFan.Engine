@@ -372,6 +372,53 @@ export function serializeProject(
 }
 
 /**
+ * **单列文档专用写回**（资源管理器的多文档编辑面）：只产出一个列文件，**不产删除、不改清单**。
+ *
+ * 为何不能走 `serializeProject`：那份是**整工程**序列化器——它按「`story.columns` 即工程全列」
+ * 计算期望文件集，未出现在 `columns` 里的列文件会被 `diffProjectFiles` 判为陈旧并**删除**。
+ * 而单列文档由 `parseStory` 独立解析而来（资源管理器按文件懒加载），其 `columns` 只有自己一列
+ * 且 `defines` / `entry` 残缺（`assembleProject` 把文件级 defines 上移清单级——见 `manifestText`
+ * 注记）⇒ 走整工程路径会**删掉未编辑的其他列**。本函数是那面场景的正解：作用域 = 一个列文件。
+ *
+ * 清单托管键（`entry` / `defines` / `id`）由整工程保存统一负责，此处**一个字节都不碰**。
+ *
+ * @param story 单列文档（`parseStory` 产物；`columns` 恰一列）
+ * @param columnId 目标列 id（必须是该文档所载列；不匹配 fail-closed）
+ * @returns 逻辑路径 → 完整文本（恰一项）
+ */
+export function serializeColumnDocument(
+  story: Story,
+  columnId: string,
+): SerializedProject {
+  const columns = Array.isArray(story.columns) ? story.columns : [];
+  if (columns.length !== 1) {
+    throw new ProjectSerializationError([
+      `单列文档写回要求文档恰载一列，收到 ${columns.length} 列`,
+    ]);
+  }
+  const column = columns[0];
+  if (column.id !== columnId) {
+    throw new ProjectSerializationError([
+      `单列文档写回目标不匹配：请求 ${JSON.stringify(columnId)}，文档载 ${JSON.stringify(column.id)}`,
+    ]);
+  }
+  // 列级校验与整工程序列化同口径（kind 合法、flow 有 commands、scene 有 elements）
+  const issues: string[] = [];
+  if (column.kind !== "scene" && column.kind !== "flow") {
+    issues.push(
+      `列 ${column.id} 的 kind 必须为 "scene" 或 "flow"，收到 ${JSON.stringify(column.kind)}`,
+    );
+  } else if (column.kind === "flow" && !Array.isArray(column.commands)) {
+    issues.push(`列 ${column.id}（flow）必须有 commands 数组`);
+  } else if (column.kind === "scene" && !Array.isArray(column.elements)) {
+    issues.push(`列 ${column.id}（scene）必须有 elements 数组`);
+  }
+  if (issues.length > 0) throw new ProjectSerializationError(issues);
+
+  return { files: new Map([[`${STORIES_DIR}/${column.id}.json`, columnFileText(column)]]) };
+}
+
+/**
  * 期望文件集与打开基线的最小差量：**JSON 语义比较**（解析后深等即跳过，排版差异不算改动），
  * 非 JSON（`.story` 文本形态）退化为逐字节比较；陈旧故事文件（`Stories/**` 内不在期望集）→ 删除。
  *
