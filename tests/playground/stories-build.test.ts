@@ -82,21 +82,40 @@ describe("stories:build · TS 故事源编译", () => {
     expect(again.removed).toEqual([]);
   });
 
-  it("故意错误：无源 / 多源 / 缺 default / formatVersion 缺（issues 带源名）/ 列 id 重复 / 无清单 / 坏清单", async () => {
+  /**
+   * ⚠️ 以下 7 条**各自独立成 `it`**（2026-10-04 拆）。
+   *
+   * 拆的原因（实测数据）：原先合成一个用例，串行跑 **7 次 `buildStories`**，
+   * 而每次都要 `await import()` 一个**新路径的 `.ts` 源** ⇒ vitest 的 tsx 转译
+   * **无法缓存**（路径不同）⇒ 单用例 **13.2s**，直接撞穿 vitest 的 `hookTimeout` 10s
+   * ⇒ 表现为「`afterEach` 超时」这种**指向错误位置**的报错。
+   *
+   * 拆开后每个用例只编译一次（≈2s），且顺带满足 `agent.md` §6「严格多方位」——
+   * 每条失败路径**独立可定位**，失败时直接告诉你是哪一条。
+   */
+  it("故意错误：Stories.src/ 下没有 .ts 源", async () => {
     await expect(buildStories(join(BASE, "empty"))).rejects.toThrow(/Stories\.src\/ 下没有 \.ts 源/);
+  });
 
+  it("故意错误：多个 .ts 源（一个工程 = 一个源）", async () => {
     const multi = makeProject("multi", {
       "Stories.src/a.ts": VALID_SOURCE,
       "Stories.src/b.ts": VALID_SOURCE,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(multi)).rejects.toThrow(/2 个 \.ts 源.*a\.ts.*b\.ts/s);
+  });
+
+  it("故意错误：源缺 default 导出", async () => {
 
     const noDefault = makeProject("no-default", {
       "Stories.src/demo.ts": `export const story = { formatVersion: 1 };`,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(noDefault)).rejects.toThrow(/缺 default 导出/);
+  });
+
+  it("故意错误：formatVersion 缺失（issues 带源名定位）", async () => {
 
     const badVersion = makeProject("bad-version", {
       "Stories.src/demo.ts": `export default { id: "x", entry: "x", columns: [{ id: "x", kind: "flow", commands: [] }] };`,
@@ -104,6 +123,9 @@ describe("stories:build · TS 故事源编译", () => {
     });
     // parseStory issues 带源名定位（Stories.src/ 前缀）——零第二套规则，报错透传
     await expect(buildStories(badVersion)).rejects.toThrow(/Stories\.src\/demo\.ts.*formatVersion/s);
+  });
+
+  it("故意错误：列 id 重复", async () => {
 
     const dupColumn = makeProject("dup-column", {
       "Stories.src/demo.ts": `export default {
@@ -116,11 +138,17 @@ describe("stories:build · TS 故事源编译", () => {
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(dupColumn)).rejects.toThrow(/columnId 重复/);
+  });
+
+  it("故意错误：缺工程清单", async () => {
 
     const noManifest = makeProject("no-manifest", {
       "Stories.src/demo.ts": VALID_SOURCE,
     });
     await expect(buildStories(noManifest)).rejects.toThrow(/工程清单（entry\/defines\/shell）不归 TS 源管/);
+  });
+
+  it("故意错误：工程清单不是合法 JSON", async () => {
 
     const badManifest = makeProject("bad-manifest", {
       "Stories.src/demo.ts": VALID_SOURCE,
