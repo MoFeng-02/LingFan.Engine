@@ -322,7 +322,7 @@ function onDrop(event: DragEvent, sectionKey: string): void {
 }
 .column-section.group {
   border: 1px solid var(--lf-border-quiet);
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   padding: 4px 4px 6px;
 }
 .column-section.group.ungrouped {
@@ -370,7 +370,7 @@ button.caret {
   align-items: center;
   gap: 6px;
   padding: 5px 8px;
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   cursor: pointer;
 }
 .column-list li:hover {
@@ -382,7 +382,7 @@ button.caret {
 .kind {
   font-size: var(--lf-font-xs);
   padding: 1px 4px;
-  border-radius: 4px;
+  border-radius: var(--lf-radius-sm);
   color: var(--lf-surface-base);
 }
 .kind.flow {
@@ -401,7 +401,7 @@ button.caret {
   font-size: var(--lf-font-xs);
   color: var(--lf-warning);
   border: 1px solid color-mix(in srgb, var(--lf-warning) 40%, transparent);
-  border-radius: 4px;
+  border-radius: var(--lf-radius-sm);
   padding: 0 4px;
 }
 .ops {

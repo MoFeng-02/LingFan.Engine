@@ -2,6 +2,8 @@
 import {
   computed,
   nextTick,
+  onBeforeUnmount,
+  onMounted,
   provide,
   reactive,
   ref,
@@ -46,7 +48,6 @@ import {
   setAtPointer,
   toggleCollapsed,
   writeSkipNormalizationNotice,
-  type AnalyzeOptions,
   type ColumnGroupingView,
   type KeyValueStorage,
 } from "@lingfan/editor";
@@ -62,8 +63,9 @@ import TextModeView from "./components/TextModeView.vue";
 import NodeGraph from "./components/NodeGraph.vue";
 import StepLayout from "./components/StepLayout.vue";
 import PreviewHost from "./components/PreviewHost.vue";
-import ActivityBar from "./components/ActivityBar.vue";
 import DialogHost from "./components/DialogHost.vue";
+import LangWorkbench, { type LangSummary } from "./components/LangWorkbench.vue";
+import PackPanel, { type PackRequest, type PackResult } from "./components/PackPanel.vue";
 import EmptyState from "./components/EmptyState.vue";
 import LangView from "./components/LangView.vue";
 import JsonResourceView from "./components/JsonResourceView.vue";
@@ -75,7 +77,9 @@ import StatusBar from "./components/StatusBar.vue";
 import { viewOfKind } from "./dispatch";
 import { createDialogPort, DialogHostState } from "./dialog";
 import { DIALOG_PORT_KEY } from "./dialogInjection";
-import { detectLocalHost, type LocalHostEndpoint } from "./localHost";
+import { decideAddColumn } from "./addColumnIntent";
+import { detectLocalHost, pollWatch, type LocalHostEndpoint } from "./localHost";
+import { extractStoryKeys, groupKeysByStory, planOverlaySkeleton, type SkeletonLayoutChoice } from "@lingfan/editor";
 import { searchResources, type SearchCorpus } from "./search";
 import type { EmptyAction } from "./viewState";
 
@@ -86,11 +90,9 @@ import {
   MIN_RIGHT_WIDTH,
   MIN_SIDEBAR_WIDTH,
   type LayoutState,
-  type SidebarMode,
 } from "./layout";
 import {
   buildResourceTree,
-  flattenResources,
   kindOfPath,
   type ResourceKind,
   type ResourceNode,
@@ -173,7 +175,7 @@ const undoDepth = ref(0);
 const redoDepth = ref(0);
 const selectedColumnId = ref<string>(session.story.entry);
 const selectedPointer = ref<string | null>(null);
-const rightTab = ref<"diagnostics" | "json" | "text">("diagnostics");
+const rightTab = ref<"diagnostics" | "json" | "text" | "i18n" | "pack">("diagnostics");
 const centerView = ref<"timeline" | "stage" | "graph" | "step">("timeline");
 /** 侧栏内页（活动栏的三个投影 + 故事编辑器专属的两个内页，同一面板内切） */
 type LeftTab = "resources" | "search" | "recent" | "columns" | "palette";
@@ -200,21 +202,11 @@ function setRightWidth(width: number): void {
   layout.rightWidth = width;
   persistLayout();
 }
-function setSidebarMode(mode: SidebarMode): void {
-  layout.sidebar = mode;
-  persistLayout();
-  // 活动栏切模式 ⇒ 侧栏内页同步（同一份工程树的三个投影，不是三套数据）
-  if (mode === "search" || mode === "recent" || mode === "resources") {
-    leftTab.value = mode;
-    layout.leftCollapsed = false;
-  }
-}
-
 /**
  * 诊断供给侧：打开工程才注入（`resourceFiles` / `overlayKeys`）。
  * 未打开 = `undefined` ⇒ `analyzeStory` 收到空 options，两个检查器族整体跳过（不误报）。
  */
-const diagnosticSupply = ref<Required<AnalyzeOptions> | undefined>(undefined);
+const diagnosticSupply = ref<OpenedProject["diagnosticSupply"] | undefined>(undefined);
 
 /* ——— 资源树（工程维度，资源管理器的主体面） ——— */
 /** 工程资源集（逻辑路径）——由诊断供给侧顺带供给，零新增 IO */
@@ -224,6 +216,27 @@ const resourcePaths = computed<readonly string[]>(() =>
 const resourceNodes = computed<readonly ResourceNode[]>(() =>
   buildResourceTree(resourcePaths.value),
 );
+/* ——— 本地化工作台（聚合面；数据全部来自既有诊断供给，**零新增 IO**） ——— */
+/**
+ * 原文键全集（`extractStoryKeys` 消费整工程树 ⇒ 与诊断原文同口径）。
+ * 未打开工程 = 空数组 ⇒ 工作台显示「无可译内容」而不是报错。
+ */
+const i18nSources = computed<readonly string[]>(() =>
+  extractStoryKeys(projectTree.value ?? story.value),
+);
+/** 各语言键集合（由供给侧的分语言视图投影；`Lang/` 不存在 = 空） */
+const i18nLangs = computed<readonly LangSummary[]>(() => {
+  const byLang = diagnosticSupply.value?.overlayKeysByLang;
+  if (byLang === undefined) return [];
+  return [...byLang.entries()]
+    .map(([lang, keys]) => ({
+      lang,
+      // 单文件形态用语言码本身作路径键（`Lang/{lang}.json`）；目录形态用 `main.json`
+      files: new Map<string, readonly string[]>([[`Lang/${lang}/main.json`, [...keys].sort()]]),
+    }))
+    .sort((a, b) => (a.lang < b.lang ? -1 : 1));
+});
+
 const searchKeyword = ref("");
 /** 内容搜索语料（逻辑路径 → 原始文本）：**按需加载并缓存**，不预读全部资源 */
 const searchCorpus = ref<SearchCorpus>(new Map());
@@ -288,20 +301,119 @@ const searchFilter = (node: ResourceNode): boolean => {
 /** 最近打开：只出**已打开过的文档**（= 当前标签集合；本批标签即已打开资源） */
 const recentFilter = (node: ResourceNode): boolean =>
   workspace.get(node.path) !== undefined;
-const sidebarCounts = computed(() => ({
-  resources: resourcePaths.value.length,
-  search: searchKeyword.value.trim() === "" ? 0 : flattenResources(resourceNodes.value).filter(searchFilter).length,
-  recent: workspace.documents.length,
-}));
+/** 「宿主未启动」提示：非阻塞横幅（可关闭），**不用模态**——见探测处注 */
+const hostHint = ref(false);
+
+/* ——— 顶栏（步1 瘦身）—— */
+/** 「⋯」溢出菜单开合（点击外部/Esc 关闭由 `closeToolMenuOnOutside` 兜） */
+const toolMenuOpen = ref(false);
+/** 工程名（chip 主文本）：优先取资源根目录名，其次 story.id */
+const projectName = computed(() => {
+  const root = projectRoot.value;
+  if (root === "") return story.value.id;
+  const parts = root.replace(/[\\/]+$/, "").split(/[\\/]/);
+  return parts[parts.length - 1] || root;
+});
+/** 导入按钮的取径：走隐藏 input（自动化可触发） */
+function pickImport(): void {
+  importInput.value?.click();
+}
+
+/**
+ * 「⋯」菜单的关闭时机（**可访问性底线**：键盘用户必须能退出）。
+ * - `Esc` 关闭；
+ * - 点击菜单**外部**关闭；
+ * - ⚠️ 少了这两条，菜单就只能靠再点同一个按钮收起 ⇒ 键盘用户被卡住。
+ */
+function onToolMenuKeydown(event: KeyboardEvent): void {
+  if (event.key === "Escape") {
+    toolMenuOpen.value = false;
+    event.stopPropagation();
+  }
+}
+function onDocumentPointerDown(event: PointerEvent): void {
+  if (!toolMenuOpen.value) return;
+  const target = event.target as Node | null;
+  if (target !== null && toolMenuAnchor.value?.contains(target)) return;
+  toolMenuOpen.value = false;
+}
+
+
+/**
+ * 热重载开关（作者可关）。默认**开**——它是「代码归外部编辑器」这个定位能成立的
+ * **前提能力**：外部改完看不到，定位就只是半截。
+ */
+const hotReloadEnabled = ref(true);
+/** 热重载是否真的在跑（宿主监视失败 ⇒ false，状态栏如实显示「不可用」） */
+const hotReloadActive = ref(false);
+/** 停轮询（页面卸载 / 开关关闭时用） */
+let stopHotReload: (() => void) | undefined;
 
 /** 宿主能力探测：本地服务在不在（决定「外部编辑器打开」等动作是否可做） */
 const localHost = ref<LocalHostEndpoint | undefined>(undefined);
 const localHostAvailable = computed(() => localHost.value !== undefined);
-void (async () => {
-  // 能力探测：命中 ⇒ 完整体验（外部打开 / 原生枚举）；未命中 ⇒ 浏览器形态（**正常**路径）
-  const baseUrl = await detectLocalHost();
-  localHost.value = baseUrl === undefined ? undefined : { baseUrl };
-})();
+/**
+ * 能力探测：命中 ⇒ 完整体验；未命中 ⇒ 浏览器形态（**正常**路径，但**要说清怎么变完整**）。
+ *
+ * ⚠️ **为什么放在 `onMounted` 而不是 setup 顶层的裸 IIFE**（CDP 实测踩出来的）：
+ *   裸 IIFE 在 setup 里**一次都没执行**（`Network` 域抓到启动期零请求，
+ *   而同一份代码手动调用完全正常 ⇒ 模块求值时机不可靠）。
+ *   `onMounted` 是"组件已挂载、DOM 与子组件就绪"的**契约时刻**，探测放这里既可靠又不浪费。
+ */
+onMounted(() => {
+  void (async () => {
+    const host = await detectLocalHost();
+    localHost.value = host;
+    // ⚠️ 提示**绝不模态**（我先犯过一次：用 `dialog.notify` ⇒ `DialogHost` 遮罩是
+    //   `inset:0` 全屏 ⇒ 不关掉就**挡住全部点击**，表现为"点故事没反应"）。
+    //   降级是"可用但能力受限"，用 `pointer-events:none` 的横幅说清，不拦操作。
+    if (host === undefined) hostHint.value = true;
+    else if (hotReloadEnabled.value) startHotReload(host);
+  })();
+});
+
+/* ——— 热重载（规划稿 04 册 §5「本地形态收益」之一） ——— */
+
+/**
+ * 起热重载轮询。
+ *
+ * ⚠️ **脏文档保护**：有未保存改动时**不自动重载**，只提示 ——
+ * 静默重载会丢掉作者的改动（与 `Workspace.replaceClean` 拒绝脏文档同款纪律）。
+ */
+function startHotReload(host: LocalHostEndpoint): void {
+  stopHotReload?.();
+  hotReloadActive.value = true;
+  stopHotReload = pollWatch(host, () => {
+    if (workspace.dirtyCount > 0) {
+      void dialog.notify({
+        title: "检测到磁盘变更，但当前有未保存改动",
+        message: "为避免丢失你的改动，未自动重载。请先保存，或撤销改动后等待自动重载。",
+        tone: "warning",
+      });
+      return;
+    }
+    void reloadFromDisk();
+  });
+}
+
+/** 从磁盘重新供给（重开工程通道 —— 唯一已验证的重新枚举路径） */
+async function reloadFromDisk(): Promise<void> {
+  const entry = props.lastProject?.value;
+  if (entry === undefined) return;
+  openError.value = "";
+  try {
+    await applyOpened(await entry.reopen());
+  } catch (error: unknown) {
+    openError.value = `热重载失败：${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
+onBeforeUnmount(() => {
+  stopHotReload?.();
+  stopHotReload = undefined;
+});
+onMounted(() => document.addEventListener("pointerdown", onDocumentPointerDown));
+onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPointerDown));
 
 /**
  * 空态主动作（E5：空态必须给出可点的下一步）。
@@ -318,6 +430,32 @@ function onEmptyAction(action: EmptyAction): void {
     message: "需要本地应用宿主（pnpm --filter @lingfan/editor-app host）。请先用「打开工程」。",
     tone: "info",
   });
+}
+
+/**
+ * 打包请求转发（快速出餐）：**前端不 spawn 进程**，只发请求给本地宿主。
+ *
+ * ⚠️ token 从哪来：宿主把 `capabilities` 打进 `/__editor_host__/ping` 的响应里
+ * 才是正解，但当前 ping 只回 `{ok:true}`（不泄露任何路径/token）。
+ * ⇒ 这里改为**从探测时的基址直接请求 `/{token}/pack`** 需要 token ⇒
+ *   走既有 `localHost` 端点对象里的 token（探测时由宿主一并给出）。
+ */
+async function sendPackRequest(request: PackRequest): Promise<PackResult> {
+  const host = localHost.value;
+  if (host === undefined || host.token === "") {
+    return { ok: false, reason: "本地宿主未就绪（缺少访问令牌）" };
+  }
+  try {
+    const res = await fetch(`${host.baseUrl}/__editor_host__/${host.token}/pack`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(request),
+    });
+    if (!res.ok) return { ok: false, reason: `宿主返回 ${String(res.status)}` };
+    return (await res.json()) as PackResult;
+  } catch (error: unknown) {
+    return { ok: false, reason: `无法联系本地宿主：${error instanceof Error ? error.message : String(error)}` };
+  }
 }
 
 /** 打开资源：按分派表路由到对应视图（未命中 ⇒ 只读，不报错） */
@@ -410,6 +548,82 @@ async function saveTextResource(path: string, text: string): Promise<void> {
     saving.value = false;
   }
 }
+/**
+ * 骨架生成（本地化工作台「新建语言」）：委托纯函数产出文件内容，落盘走**既有**写回端口。
+ *
+ * ⚠️ 增量语义：已存在的语言传 `existing` ⇒ `planOverlaySkeleton` 保留既有译文
+ * （只补新键），不会把译者的工作抹掉。
+ */
+async function generateLangSkeleton(request: {
+  lang: string;
+  layout: SkeletonLayoutChoice;
+}): Promise<void> {
+  const run = saveTextFn.value;
+  if (run === undefined) {
+    await dialog.notify({
+      title: "未绑定磁盘工程",
+      message: "生成骨架需要写回能力。请先「打开工程」并授予编辑权限。",
+      tone: "warning",
+    });
+    return;
+  }
+  // 每个故事 → 该故事的原文键（键 = 故事文件相对 Stories/ 的路径，不含扩展名）
+  const tree = projectTree.value ?? story.value;
+  const storyKeys = groupKeysByStory(
+    new Map(tree.columns.map((c) => [c.id, extractStoryKeys({ ...tree, entry: c.id, columns: [c] })])),
+  );
+  // 增量：该语言已存在的译文（键 = 逻辑路径）
+  const read = readTextFn.value;
+  const existing = new Map<string, Record<string, string>>();
+  for (const summary of i18nLangs.value) {
+    if (summary.lang !== request.lang) continue;
+    for (const path of summary.files.keys()) {
+      if (read === undefined) break;
+      const text = await read(path).catch(() => undefined);
+      if (text === undefined) continue;
+      try {
+        const parsed: unknown = JSON.parse(text);
+        if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+          existing.set(path, parsed as Record<string, string>);
+        }
+      } catch {
+        // 坏 JSON 不当既有译文（骨架会重生成该文件；原坏文件由 diff 覆盖）
+      }
+    }
+  }
+  let files: ReturnType<typeof planOverlaySkeleton>;
+  try {
+    files = planOverlaySkeleton({
+      lang: request.lang,
+      layout: request.layout,
+      storyKeys,
+      existing,
+    });
+  } catch (error: unknown) {
+    // 非法语言码等 ⇒ fail-closed，如实报错（不静默生成一半）
+    await dialog.notify({
+      title: "无法生成骨架",
+      message: error instanceof Error ? error.message : String(error),
+      tone: "error",
+    });
+    return;
+  }
+  saving.value = true;
+  try {
+    for (const file of files) await run(file.path, file.content);
+    saveNotice.value = `已生成 ${request.lang} 骨架：${files.length} 个文件`;
+    // 骨架已落盘 ⇒ 重新枚举资源与译文键（`Lang/**` 结构变了，诊断与工作台都要跟上）。
+    // ⚠️ 走既有「重开上次工程」通道（`entry.reopen()`）—— 它是**唯一**已验证的重新供给路径
+    //   （重新枚举 + 重建 supply + 重投影），不另造第二条。
+    const entry = props.lastProject?.value;
+    if (entry !== undefined) applyOpened(await entry.reopen());
+  } catch (error: unknown) {
+    saveError.value = `生成失败：${error instanceof Error ? error.message : String(error)}`;
+  } finally {
+    saving.value = false;
+  }
+}
+
 const previewing = ref(false);
 /** 已打开工程：资源供给端口（未打开 = undefined → 预览不解析资源，维持示例语义） */
 const resourcePort = ref<ResourcePort | undefined>(undefined);
@@ -443,6 +657,8 @@ const dirty = ref(false);
 const saveError = ref("");
 const saveNotice = ref("");
 const fallbackInput = useTemplateRef<HTMLInputElement>("fallbackInput");
+const importInput = useTemplateRef<HTMLInputElement>("importInput");
+const toolMenuAnchor = useTemplateRef<HTMLElement>("toolMenuAnchor");
 
 /**
  * 保存前规范化确认：检测有发现时暂存保存动作（确认后执行），界面展示
@@ -697,6 +913,25 @@ function unbindProject(): void {
   cancelNormalization(); // 解绑 = 保存能力消失，暂存的确认一并作废
 }
 
+/**
+ * 文档标签区的「+」：**新增一个流程（flow）列** = 新增一个文档。
+ *
+ * ⚠️ 与 `onNew` 的区别（别混）：`onNew` 是「**新建整个工程**」（重置为示例故事），
+ *   那是工程级动作，放在「⋯」菜单里；这里是**文档级**动作，与 tab 同级。
+ */
+async function addFlowColumn(): Promise<void> {
+  const result = await dialog.askText({
+    title: "新增流程列",
+    message: "列 id 建议用语义化短标识（如 tavern / morning）；留空则自动生成 column-N。",
+    initial: "",
+    allowEmpty: true,
+  });
+  if (result === null) return; // 取消 = 不新建（D-58 语义：取消 ≠ 留空）
+  const intent = decideAddColumn(result);
+  if (!intent.run) return;
+  api.addColumn("flow", intent.hint);
+}
+
 function onNew(): void {
   api.replaceAll(sampleStory(), "新建");
   unbindProject();
@@ -718,6 +953,8 @@ const diagnostics = computed(() => {
   return supply === undefined
     ? analyzeStory(tree)
     : analyzeStory(tree, {
+        // ⚠️ 只喂 `analyzeStory` 契约认的字段 —— 供给侧还有 `overlayKeysByLang`
+        //   （本地化工作台用），**不是判据输入**，多传会被类型门拦下。
         resourceFiles: supply.resourceFiles,
         overlayKeys: supply.overlayKeys,
       });
@@ -1129,91 +1366,107 @@ function onExport(): void {
 
 <template>
   <div class="editor-root">
+    <!--
+      顶栏（2026-10-04 UI 改造 步1「瘦身」）：
+      原则 = **顶栏不放编辑动作**（同 VS Code）——它只回答两件事：
+      「我在哪个工程」与「我在看哪个视图」。编辑/文件动作走右侧「⋯」菜单（保留快捷键），
+      状态量（未保存 / 可回溯步数 / 诊断数）走底部状态栏 —— 那是**状态**不是**动作**。
+      改造前：15 个子元素、仅 1 个 spacer（≈110px/个，视觉噪声高）。
+    -->
     <header class="toolbar">
-      <strong class="brand">灵泛编辑器</strong>
-      <span class="story-id">{{ story.id }}</span>
-      <button class="open-button" title="打开真实工程目录" @click="openProject">
-        打开工程
-      </button>
-      <button
-        v-if="props.lastProject?.value !== undefined"
-        :title="`一键重开上次工程「${props.lastProject.value.name}」（读权限按需申请）`"
-        @click="reopenLastProject"
-      >
-        重新打开上次工程：{{ props.lastProject.value.name }}
-      </button>
-      <span v-if="projectRoot !== ''" class="project-root" title="已打开工程的资源根">
-        {{ projectRoot }}
-      </span>
-      <button
-        class="save-button"
-        :disabled="!canSave"
-        :title="saveTooltip"
-        @click="onSave"
-      >
-        {{ saving ? "保存中…" : "保存" }}
-      </button>
-      <span v-if="dirty" class="dirty-dot" title="有未保存的更改">
-        ● 未保存
-      </span>
-      <button
-        :disabled="undoDepth === 0"
-        title="撤销（Ctrl+Z）"
-        @click="session.undo()"
-      >
-        撤销
-      </button>
-      <button :disabled="redoDepth === 0" title="重做" @click="session.redo()">
-        重做
-      </button>
-      <span class="undo-hint">{{ undoDepth }} 步可回溯</span>
-      <span class="spacer"></span>
-      <span class="view-switch">
+      <!-- 左：工程标识（品牌弱化 + 工程名/路径合并为一个 chip） -->
+      <div class="tb-group tb-left">
+        <strong class="brand" title="灵泛编辑器">灵泛</strong>
         <button
+          class="project-chip btn-tonal"
+          :title="projectRoot !== '' ? `工程资源根：${projectRoot}` : '尚未打开工程'"
+          @click="openProject"
+        >
+          <span class="project-chip-name">{{ projectRoot !== '' ? projectName : story.id }}</span>
+          <span v-if="projectRoot !== ''" class="project-chip-path">{{ projectRoot }}</span>
+        </button>
+        <button
+          v-if="props.lastProject?.value !== undefined"
+          class="icon-button"
+          :title="`一键重开上次工程「${props.lastProject.value.name}」`"
+          @click="reopenLastProject"
+        >
+          ↺
+        </button>
+      </div>
+
+      <!-- 中：视图切换（居中，唯一常驻的"模式"切换） -->
+      <div class="view-switch" role="tablist" aria-label="中心视图">
+        <button
+          role="tab"
+          :aria-selected="centerView === 'timeline'"
           :class="{ active: centerView === 'timeline' }"
           @click="centerView = 'timeline'"
         >
           时间线
         </button>
         <button
+          role="tab"
+          :aria-selected="centerView === 'stage'"
           :class="{ active: centerView === 'stage' }"
           @click="centerView = 'stage'"
         >
           舞台
         </button>
         <button
+          role="tab"
+          :aria-selected="centerView === 'graph'"
           :class="{ active: centerView === 'graph' }"
           @click="centerView = 'graph'"
         >
           节点图
         </button>
         <button
+          role="tab"
+          :aria-selected="centerView === 'step'"
           :class="{ active: centerView === 'step' }"
-          @click="centerView = 'step'"
           title="以「步骤」（等待态边界）为单位查看顺序与分支"
+          @click="centerView = 'step'"
         >
           步骤
         </button>
-      </span>
-      <button
-        class="diag-badge"
-        :class="{ 'has-error': errorCount > 0 }"
-        title="诊断（编辑期 fail-closed）"
-        @click="rightTab = 'diagnostics'"
-      >
-        诊断 {{ errorCount }}/{{ warningCount }}
-      </button>
-      <button class="preview-button" @click="previewing = true">▶ 预览</button>
-      <button @click="onNew">新建</button>
-      <label class="file-button">
-        导入
-        <input
-          type="file"
-          accept=".json,application/json"
-          @change="onImportFile"
-        />
-      </label>
-      <button @click="onExport">导出</button>
+      </div>
+
+      <!-- 右：预览 + 动作溢出菜单 -->
+      <div class="tb-group tb-right" @keydown="onToolMenuKeydown">
+        <button class="preview-button btn-filled" @click="previewing = true">▶ 预览</button>
+        <div ref="toolMenuAnchor" class="menu-anchor">
+          <button
+            class="icon-button"
+            title="更多操作（保存 / 撤销 / 文件 / 工程）"
+            :aria-expanded="toolMenuOpen"
+            @click="toolMenuOpen = !toolMenuOpen"
+          >
+            ⋯
+          </button>
+          <div v-if="toolMenuOpen" class="menu" role="menu">
+            <p class="menu-title">编辑</p>
+            <button class="menu-item" role="menuitem" :disabled="!canSave" :title="saveTooltip" @click="onSave(); toolMenuOpen = false">
+              {{ saving ? "保存中…" : "保存" }}<kbd>Ctrl+S</kbd>
+            </button>
+            <button class="menu-item" role="menuitem" :disabled="undoDepth === 0" @click="session.undo(); toolMenuOpen = false">
+              撤销<span class="menu-hint">{{ undoDepth }} 步可回溯</span>
+            </button>
+            <button class="menu-item" role="menuitem" :disabled="redoDepth === 0" @click="session.redo(); toolMenuOpen = false">
+              重做<span class="menu-hint">{{ redoDepth }} 步</span>
+            </button>
+            <p class="menu-sep" role="separator"></p>
+            <p class="menu-title">工程与文件</p>
+            <button class="menu-item" role="menuitem" @click="pickImport(); toolMenuOpen = false">导入 JSON…</button>
+            <button class="menu-item" role="menuitem" @click="onExport(); toolMenuOpen = false">导出工程</button>
+            <button class="menu-item" role="menuitem" @click="openProject(); toolMenuOpen = false">打开工程…</button>
+            <p class="menu-sep" role="separator"></p>
+            <p class="menu-title">危险操作</p>
+            <button class="menu-item btn-danger" role="menuitem" @click="onNew(); toolMenuOpen = false">新建工程（覆盖当前）</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 目录 input 兜底取径（无 FSA 的浏览器 / 自动化测试）：恒在 DOM，触发点由脚本决定 -->
       <input
         ref="fallbackInput"
@@ -1222,6 +1475,13 @@ function onExport(): void {
         webkitdirectory
         multiple
         @change="onFallbackFiles"
+      />
+      <input
+        ref="importInput"
+        class="fallback-input"
+        type="file"
+        accept=".json,application/json"
+        @change="onImportFile"
       />
     </header>
 
@@ -1284,17 +1544,29 @@ function onExport(): void {
             aria-label="有未保存的更改"
           ></span>
         </button>
+        <!-- 步3「文档标签补全」：新建入口。
+             ⚠️ 绑的是 **新增流程列**（文档级，与 tab 同级），
+                **不是** `onNew`（那是「新建整个工程」，会把工程重置为示例）——
+                我先绑错、真机点下去没反应才查出来。 -->
+        <button
+          class="doc-tab-add"
+          title="新增流程列"
+          aria-label="新增流程列"
+          @click="addFlowColumn"
+        >
+          +
+        </button>
       </div>
 
       <div class="workspace-body">
-        <!-- 活动栏：切侧栏模式（资源 / 搜索 / 最近） -->
-        <ActivityBar
-          :mode="layout.sidebar"
-          :counts="sidebarCounts"
-          @update:mode="setSidebarMode"
-        />
+        <!--
+          侧栏（2026-10-04 UI 改造 步2「收纳去重」）：
+          **原活动栏已删** —— 它的三项（资源 / 搜索 / 最近）与左栏 tab **完全重复**
+          （实测同一功能两个入口）。功能全部保留在左栏 tab（5 项：资源/搜索/最近/列/组件）。
+          窄条 27px 挤着「资 源」竖排文字的观感问题随之消失。
+        -->
 
-        <!-- 侧栏：可拖宽 / 可折叠。「列 · 组件」作为内页保留（故事编辑器专属工具） -->
+        <!-- 侧栏：可拖宽 / 可折叠 -->
         <aside
           v-show="!layout.leftCollapsed"
           class="pane columns-pane"
@@ -1472,6 +1744,22 @@ function onExport(): void {
           >
             文本
           </button>
+          <!-- 本地化工作台（聚合面：多语言覆盖率 / 缺译清单 / 骨架生成） -->
+          <button
+            :class="{ active: rightTab === 'i18n' }"
+            title="本地化：多语言覆盖率与译文表骨架"
+            @click="rightTab = 'i18n'"
+          >
+            本地化
+          </button>
+          <!-- 快速出餐：一键触发 lfenpack 产出加密包 -->
+          <button
+            :class="{ active: rightTab === 'pack' }"
+            title="快速出餐：打包产出加密发布包"
+            @click="rightTab = 'pack'"
+          >
+            出餐
+          </button>
         </div>
         <DiagnosticsPanel
           v-show="rightTab === 'diagnostics'"
@@ -1479,6 +1767,20 @@ function onExport(): void {
         />
         <JsonView v-show="rightTab === 'json'" :story="story" />
         <TextModeView v-show="rightTab === 'text'" :story="story" />
+        <!-- 本地化工作台：数据全部来自既有诊断供给（**零新增 IO**） -->
+        <LangWorkbench
+          v-show="rightTab === 'i18n'"
+          :sources="i18nSources"
+          :langs="i18nLangs"
+          @open="openResource"
+          @generate="generateLangSkeleton"
+        />
+        <!-- 快速出餐：**前端不 spawn 进程**，只转发给本地宿主 -->
+        <PackPanel
+          v-show="rightTab === 'pack'"
+          :can-pack="localHostAvailable"
+          :send="sendPackRequest"
+        />
       </aside>
       <PaneSplitter
         v-if="!layout.rightCollapsed"
@@ -1501,6 +1803,15 @@ function onExport(): void {
       :error-count="errorCount"
       :warning-count="warningCount"
     />
+
+    <!-- 「宿主未启动」非阻塞横幅：`pointer-events:none` ⇒ 绝不拦点击（模态遮罩的老坑） -->
+    <div v-if="hostHint" class="host-hint" role="status">
+      <span class="host-hint-text">
+        未检测到本地宿主 —— 绝对路径 / 外部打开 / 一键打包 / 热重载**不可用**（其余功能正常）。
+        启用：<code>pnpm editor:dev</code>
+      </span>
+      <button class="host-hint-x" title="知道了" @click="hostHint = false">✕</button>
+    </div>
 
     <!-- 对话框宿主：渲染 `dialogRequest`（栈顶），并在回答后回抛 -->
     <DialogHost
@@ -1536,7 +1847,7 @@ button {
   background: var(--lf-border-subtle);
   color: var(--lf-text-primary);
   border: 1px solid var(--lf-border-strong);
-  border-radius: 5px;
+  border-radius: var(--lf-radius-md);
   padding: 4px 10px;
   cursor: pointer;
   font-size: var(--lf-font-md);
@@ -1579,7 +1890,7 @@ textarea {
   background: var(--lf-surface-overlay);
   color: var(--lf-text-primary);
   border: 1px solid var(--lf-border-strong);
-  border-radius: 4px;
+  border-radius: var(--lf-radius-sm);
   padding: 3px 6px;
   font-size: var(--lf-font-md);
   transition: border-color var(--lf-transition-fast);
@@ -1595,18 +1906,204 @@ textarea:hover:not(:disabled) {
   height: 100vh;
 }
 .toolbar {
+  display: grid;
+  /* 三段式：工程标识 | 视图切换（真居中）| 动作 —— 步1 瘦身后的骨架。
+     ⚠️ 用 grid 而非 flex+spacer：flex 的"居中"其实是"两侧等宽"的假居中，
+     左侧内容变多时视图切换就会偏 —— grid 三段才能真居中。 */
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  min-height: 40px;
+  background: var(--lf-surface-overlay);
+  border-bottom: 1px solid var(--lf-border-subtle);
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.tb-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.tb-right {
+  justify-content: flex-end;
+}
+.brand {
+  font-size: var(--lf-font-md);
+  font-weight: 500;
+  color: var(--lf-accent);
+  letter-spacing: 0.04em;
+}
+/* 工程标识 chip：名称 + 路径两行，主次分明（替代原来并排的 story-id / project-root） */
+.project-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  min-width: 0;
+  max-width: 30ch;
+  padding: 2px 8px;
+  line-height: 1.25;
+  background: transparent;
+  border-color: transparent;
+}
+.project-chip:hover:not(:disabled) {
+  background: var(--lf-surface-hover-strong);
+  border-color: var(--lf-border-subtle);
+}
+.project-chip-name {
+  font-size: var(--lf-font-md);
+  color: var(--lf-text-primary);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-chip-path {
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl; /* 路径尾部更有信息量 ⇒ 从左截断 */
+  text-align: left;
+}
+.icon-button {
+  padding: 2px 8px;
+  font-size: var(--lf-font-lg);
+  line-height: 1.2;
+  color: var(--lf-text-secondary);
+  background: transparent;
+  border-color: transparent;
+}
+.icon-button:hover:not(:disabled) {
+  color: var(--lf-text-primary);
+  background: var(--lf-surface-hover-strong);
+  border-color: var(--lf-border-subtle);
+}
+
+/* 视图切换：Material 风格 —— 活动项用**填充 chip**（非描边），组内聚拢 */
+.view-switch {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--lf-surface-sunken);
+  border: 1px solid var(--lf-border-subtle);
+  border-radius: var(--lf-radius-lg);
+}
+.view-switch button {
+  padding: 3px 12px;
+  font-size: var(--lf-font-md);
+  color: var(--lf-text-secondary);
+  background: transparent;
+  border-color: transparent;
+  border-radius: var(--lf-radius-md);
+}
+.view-switch button:hover:not(.active) {
+  color: var(--lf-text-primary);
+  background: var(--lf-surface-hover);
+}
+.view-switch button.active {
+  color: var(--lf-text-primary);
+  background: var(--lf-surface-selected);
+  border-color: var(--lf-border-focus);
+}
+
+/* 动作溢出菜单 */
+.menu-anchor {
+  position: relative;
+}
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 4px;
+  background: var(--lf-surface-overlay);
+  border: 1px solid var(--lf-border-focus);
+  border-radius: var(--lf-radius-lg);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+}
+.menu-title {
+  margin: 4px 8px 2px;
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
+}
+.menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--lf-border-subtle);
+}
+.menu-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  background: var(--lf-surface-overlay);
-  border-bottom: 1px solid var(--lf-border-subtle);
-  /* 窄窗不横向溢出：整体可换行（D-62④）。
-     ⚠️ 修法不是"关掉溢出"——那会把右侧按钮截掉（用户看不见 = 不可用）；
-     而是「允许换行 + 换行后仍各自完整」。配合 button 的 `white-space: nowrap`，
-     按钮**整体**换行，不会被拆成两半。 */
-  flex-wrap: wrap;
-  row-gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  font-size: var(--lf-font-md);
+  text-align: left;
+  color: var(--lf-text-primary);
+  background: transparent;
+  border-color: transparent;
+  border-radius: var(--lf-radius-sm);
+}
+.menu-item:hover:not(:disabled) {
+  background: var(--lf-surface-hover-strong);
+  border-color: transparent;
+}
+.menu-item kbd {
+  margin-left: auto;
+  padding: 0 4px;
+  font-family: var(--lf-font-mono);
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
+  background: var(--lf-surface-sunken);
+  border-radius: var(--lf-radius-sm);
+}
+.menu-hint {
+  margin-left: auto;
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
+}
+/* 按钮三档语义（Material：filled 主 / tonal 次 / danger 危险）
+   —— 关键：**主按钮在同屏内应当唯一**，否则视觉焦点散掉。 */
+.btn-filled {
+  color: var(--lf-text-inverse);
+  background: var(--lf-accent);
+  border-color: var(--lf-accent);
+}
+.btn-filled:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--lf-accent) 86%, white);
+  border-color: color-mix(in srgb, var(--lf-accent) 86%, white);
+}
+.btn-tonal {
+  color: var(--lf-text-secondary);
+  background: var(--lf-surface-hover);
+  border-color: transparent;
+}
+.btn-tonal:hover:not(:disabled) {
+  color: var(--lf-text-primary);
+  background: var(--lf-surface-hover-strong);
+}
+.btn-danger {
+  color: var(--lf-danger);
+  background: transparent;
+  border-color: color-mix(in srgb, var(--lf-danger) 40%, transparent);
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--lf-danger-surface);
+}
+/* 「预览」= 同屏主动作 ⇒ filled（底色由 `.btn-filled` 给）。
+   ⚠️ 此处**不再设 background** —— 同特异性的 `.preview-button` 若也设背景会
+   覆盖 `.btn-filled`（靠后者胜出），主按钮就没有实底色了（实测 transparent）。 */
+.preview-button {
+  color: var(--lf-text-inverse);
+  border-color: var(--lf-accent);
 }
 .brand {
   color: var(--lf-accent);
@@ -1704,7 +2201,7 @@ textarea:hover:not(:disabled) {
 .file-button {
   background: var(--lf-border-subtle);
   border: 1px solid var(--lf-border-strong);
-  border-radius: 5px;
+  border-radius: var(--lf-radius-md);
   padding: 4px 10px;
   cursor: pointer;
   font-size: var(--lf-font-md);
@@ -1753,30 +2250,58 @@ textarea:hover:not(:disabled) {
   min-height: 30px;
 }
 .doc-tab {
+  /* 步3：标签改 **无框 + 下划线**（Material/浏览器式）——
+     原先每个标签都是「描边 + 底色」的卡片，5 个并排时视觉噪声高。 */
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 5px 10px;
   white-space: nowrap;
-  border: 1px solid var(--lf-border-strong);
-  border-bottom: none;
-  border-radius: 5px 5px 0 0;
-  background: var(--lf-surface-raised);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   color: var(--lf-text-secondary);
 }
-.doc-tab.active {
-  background: var(--lf-surface-active);
+.doc-tab:hover:not(.active) {
+  background: var(--lf-surface-hover);
   color: var(--lf-text-primary);
-  border-color: var(--lf-text-hint);
+  border-bottom-color: var(--lf-border-subtle);
+}
+.doc-tab.active {
+  background: transparent;
+  color: var(--lf-text-primary);
+  /* 活动态 = **下划线**（而非整块底色）：弱化标签框、强化"当前在哪" */
+  border-bottom-color: var(--lf-accent);
+}
+/* 新建入口：与标签同高但弱化（它是"动作"不是"内容"） */
+.doc-tab-add {
+  flex: none;
+  padding: 5px 10px;
+  font-size: var(--lf-font-lg);
+  line-height: 1;
+  color: var(--lf-text-hint);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+}
+.doc-tab-add:hover {
+  color: var(--lf-text-primary);
+  background: var(--lf-surface-hover);
+  border-bottom-color: var(--lf-border-subtle);
 }
 .doc-tab-name {
   font-family: Consolas, "Cascadia Mono", monospace;
   font-size: var(--lf-font-md);
 }
 .pane {
+  /* 步5「描边弱化」：Material 靠**填充差**表达层级，不是每块都描边。
+     描边保留但取最弱档（--lf-border-subtle），让相邻面板靠底色差区分。 */
   background: var(--lf-surface-raised);
   border: 1px solid var(--lf-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--lf-radius-md);
   padding: 10px;
   overflow: auto;
   min-height: 0;
@@ -1876,6 +2401,40 @@ textarea:hover:not(:disabled) {
 .hits-more {
   color: var(--lf-warning);
 }
+/* 「宿主未启动」横幅：绝对不能挡交互（`pointer-events:none`），只挡自身那一条 */
+.host-hint {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(680px, calc(100% - 24px));
+  padding: 4px 8px 4px 10px;
+  font-size: var(--lf-font-sm);
+  color: var(--lf-text-secondary);
+  background: var(--lf-surface-overlay);
+  border: 1px solid var(--lf-border-strong);
+  border-radius: var(--lf-radius-md);
+  pointer-events: none; /* 关键：横幅本身不吃点击 */
+}
+.host-hint-text {
+  overflow-wrap: anywhere;
+}
+.host-hint code {
+  padding: 0 4px;
+  font-family: var(--lf-font-mono);
+  color: var(--lf-accent);
+}
+.host-hint-x {
+  flex: none;
+  padding: 0 4px;
+  line-height: 1.2;
+  pointer-events: auto; /* 只让关闭按钮可点 */
+}
+
 .center-error {
   padding: 16px;
   font-size: var(--lf-font-md);

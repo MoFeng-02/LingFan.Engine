@@ -22,6 +22,8 @@ import {
 } from "@lingfan/editor";
 import appSource from "../../apps/editor/src/App.vue?raw";
 import stageEditorSource from "../../apps/editor/src/components/StageEditor.vue?raw";
+// 空态口径表**源码**（B5-UI 审阅后，提示文案从组件搬进了这里）
+import viewStateSource from "../../apps/editor/src/viewState.ts?raw";
 
 function sceneColumn(id: string, elements: unknown[]): StoryColumn {
   return { id, kind: "scene", elements } as StoryColumn;
@@ -180,7 +182,10 @@ describe("源码互锁：fail-closed 分支与单提交真实在位", () => {
     expect(stageEditorSource).not.toMatch(/\bsession\b/);
     expect(stageEditorSource).not.toContain("insertAtPointer");
     // 画布空态提示引导作者用面板拖入
-    expect(stageEditorSource).toContain("从左侧「组件」面板拖入");
+    // ⚠️ B5-UI 审阅后空态改走 `EmptyState` ⇒ **文案搬到了口径表**（`viewState.ts`），
+    //    组件只写 `reason="no-elements"`。本断言守的是**这条引导意图**，故指向口径表。
+    expect(stageEditorSource).toContain('reason="no-elements"');
+    expect(viewStateSource).toContain("从左侧「组件」面板拖入");
   });
 
   it("宿主 insertElement 走 session.apply（一次拖入 = 一个 undo 单元），标签带元素类型", () => {

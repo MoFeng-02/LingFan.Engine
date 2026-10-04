@@ -43,7 +43,7 @@ export function viewStateOf(input: ViewStateInput): ViewState {
 
 /** 空态的**主动作**（规划稿 E5：空态必须给可点击的下一步，不是一行灰字） */
 export interface EmptyAction {
-  readonly id: "open-project" | "new-project" | "open-external" | "none";
+  readonly id: "open-project" | "new-project" | "open-external" | "goto-scene-column" | "none";
   readonly label: string;
   /** 是否为主动作（视觉权重） */
   readonly primary?: boolean;
@@ -78,6 +78,21 @@ export function emptyStateOf(reason: string): EmptyAction {
         label: "用外部编辑器打开",
         title: "该资源为空文件",
         hint: "内容为空——可用外部编辑器补充后再回来。",
+      };
+    case "no-scene-column":
+      return {
+        id: "goto-scene-column",
+        label: "去选一个场景列",
+        primary: true,
+        title: "当前列没有空间层",
+        hint: "舞台只编辑场景（scene）列的元素位置；流程（flow）列按时间推进，没有可摆放的空间。",
+      };
+    case "no-elements":
+      return {
+        id: "none",
+        label: "",
+        title: "该场景列还没有元素",
+        hint: "从左侧「组件」面板拖入元素，或在 JSON / 文本视图里添加。",
       };
     case "read-only":
       return {

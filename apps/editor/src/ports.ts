@@ -14,7 +14,7 @@ import type {
   VideoPort,
   WriteNormalizationFinding,
 } from "@lingfan/engine";
-import type { AnalyzeOptions } from "@lingfan/editor";
+import type { DiagnosticSupply } from "@lingfan/adapters";
 
 /** 「打开工程」的结果：已组装的故事 + 该工程的资源供给端口（+ 资源根名，供界面显示） */
 export interface OpenedProject {
@@ -46,11 +46,15 @@ export interface OpenedProject {
    */
   layerZ: LayerZTable;
   /**
-   * 诊断供给侧：资源根实际文件集合（逻辑路径）+ overlay 译文键并集。
-   * 类型即 `analyzeStory` 的第二参数（**同一类型** ⇒ 杜绝两处声明漂移）；未打开工程时
-   * 宿主不传该参数，两个检查器族整体跳过（不误报）。
+   * 诊断供给侧：资源根实际文件集合（逻辑路径）+ overlay 译文键（并集 + 分语言）。
+   *
+   * ⚠️ 类型**直接引用供给侧**（`@lingfan/adapters` 的 `DiagnosticSupply`）——
+   * 此前声明成 `Required<AnalyzeOptions>` 并自称「同一类型」，但供给侧加字段后
+   * 它**并没有跟着变** ⇒ 注释在骗人、两处声明漂移（本地化工作台接 `overlayKeysByLang`
+   * 时才暴露）。**判据只增的字段**（`AnalyzeOptions` 只喂 `analyzeStory`）不该
+   * 决定供给侧的形状 ⇒ 两者是**不同的类型**，各自诚实声明。
    */
-  diagnosticSupply: Required<AnalyzeOptions>;
+  diagnosticSupply: DiagnosticSupply;
   /**
    * 保存回磁盘：组合根绑定的闭包——已含**原始清单**（保真回写 `project.json`）、
    * 打开基线（算最小差量）与 writer。组件不持有这些平台侧事实。

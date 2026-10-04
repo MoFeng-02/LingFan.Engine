@@ -72,7 +72,7 @@ const keyOf = (d: Diagnostic): string => `${d.code}@${d.pointer}:${d.message}`;<
   align-items: baseline;
   gap: 6px;
   padding: 5px 8px;
-  border-radius: 5px;
+  border-radius: var(--lf-radius-md);
   cursor: pointer;
 }
 .diag-list li:hover {
@@ -117,7 +117,12 @@ li.warning .dot {
 .pointer {
   flex-shrink: 0;
   max-width: 100%;
+  /* ⚠️ 缺 `min-width: 0` 时，长诊断码（如 `undefined-variable`）作为
+     `flex-shrink:0` 项**不可压缩** ⇒ 撑爆 320px 窄栏，右侧诊断被挤成竖条。
+     `overflow-wrap: anywhere` 单独不够：还得允许它自身收缩到容器宽。 */
+  min-width: 0;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 /* 指针独占一行（li 可换行后它自然落到第二行）；正文行至少占满整行宽度 */
 .pointer {

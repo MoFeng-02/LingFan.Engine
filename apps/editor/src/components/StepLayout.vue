@@ -307,7 +307,7 @@ export default { name: "StoryStepLayout" };
   position: relative;
   background: radial-gradient(circle, color-mix(in srgb, var(--lf-border-subtle) 13%, transparent) 1px, transparent 1px) 0 0 / 22px
     22px;
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
 }
 .step-canvas {
   position: relative;
@@ -337,7 +337,7 @@ svg {
   position: absolute;
   background: color-mix(in srgb, var(--lf-surface-hover) 13%, transparent);
   border: 1px dashed var(--lf-border-dashed);
-  border-radius: 8px;
+  border-radius: var(--lf-radius-md);
   pointer-events: none;
 }
 .lane.selected {
@@ -352,7 +352,7 @@ svg {
   padding: 0 10px;
   background: var(--lf-surface-hover);
   border: 1px solid var(--lf-border-strong);
-  border-radius: 8px;
+  border-radius: var(--lf-radius-md);
   color: var(--lf-text-primary);
   font-size: var(--lf-font-md);
   text-align: left;
@@ -379,7 +379,7 @@ svg {
   background: var(--lf-surface-hover);
   border: 1px solid var(--lf-border-strong);
   border-left: 3px solid var(--lf-accent);
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   color: var(--lf-text-primary);
   font-size: var(--lf-font-md);
   text-align: left;
@@ -422,7 +422,7 @@ svg {
   top: -8px;
   padding: 0 5px;
   background: var(--lf-accent-strong);
-  border-radius: 8px;
+  border-radius: var(--lf-radius-md);
   color: var(--lf-info-surface);
   font-size: var(--lf-font-xs);
   line-height: 15px;

@@ -229,7 +229,7 @@ function onDragStart(
   align-items: center;
   gap: 5px;
   padding: 3px 6px;
-  border-radius: 5px;
+  border-radius: var(--lf-radius-md);
   font-size: var(--lf-font-sm);
   cursor: grab;
 }
@@ -254,7 +254,7 @@ function onDragStart(
   font-size: var(--lf-font-xs);
   color: var(--lf-success);
   border: 1px solid color-mix(in srgb, var(--lf-success) 33%, transparent);
-  border-radius: 3px;
+  border-radius: var(--lf-radius-sm);
   padding: 0 3px;
 }
 .empty {

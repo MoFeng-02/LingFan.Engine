@@ -9,6 +9,7 @@ import {
   type DialogRequest,
 } from "../../apps/editor/src/dialog";
 import { emptyStateOf, viewStateOf } from "../../apps/editor/src/viewState";
+import stageSource from "../../apps/editor/src/components/StageEditor.vue?raw";
 
 describe("五态判定", () => {
   it("正常可读", () => {
@@ -186,5 +187,41 @@ describe("对话框 · Promise 端口结算", () => {
     off();
     s.ask({ kind: "notice", title: "b", message: "m" });
     expect(fired).toBe(2); // 开框 + 回答各一次；退订后不再触发
+  });
+});
+
+/**
+ * 回归 · 空态**必须有可点的下一步**（B3 立的纪律）。
+ *
+ * CDP UI 审阅实测抓到：舞台在「选中 flow 列」时的空态占 **1029×785**（80 万像素），
+ * 却只有一行说明、**`可点动作数 = 0`** ⇒ 大片空白 + 无出路，用户只能猜下一步。
+ * 这条纪律当时是我自己写的，**自己没做到**。
+ */
+describe("空态纪律 · 必须给可点动作", () => {
+  it("舞台两类空态走 `EmptyState`（而非只有说明文字）", () => {
+    expect(stageSource).toContain('reason="no-scene-column"');
+    expect(stageSource).toContain('reason="no-elements"');
+    // 旧的「只有说明」写法不得残留
+    expect(stageSource).not.toContain("选中一个 <code>scene</code> 列后");
+  });
+
+  it("口径表有这两类空态，且**都给了动作或明确去处**", () => {
+    const noScene = emptyStateOf("no-scene-column");
+    expect(noScene.id).toBe("goto-scene-column");
+    expect(noScene.primary).toBe(true);
+    expect(noScene.label).toBe("去选一个场景列");
+    const noEle = emptyStateOf("no-elements");
+    expect(noEle.title).toBe("该场景列还没有元素");
+    expect(noEle.hint).toContain("组件");
+  });
+
+  it("动作语义专用（**不复用** `open-project`——那是「打开工程」）", () => {
+    expect(stageSource).toContain('action.id !== "goto-scene-column"');
+    // 跳转到列本身（`/columns/<i>`），与时间线选列同一条路
+    expect(stageSource).toContain("api.select(`/columns/${index}`)");
+  });
+
+  it("一个 scene 列都没有时**不给假出路**（按钮点了没反应比不给更糟）", () => {
+    expect(stageSource).toContain("if (index < 0) return;");
   });
 });

@@ -124,3 +124,127 @@ export function tokenHex(bytes: Uint8Array): string {
   for (const b of bytes) hex += b.toString(16).padStart(2, "0");
   return hex;
 }
+
+/* ——— 打包（快速出餐）判据 ——— */
+
+/** 打包请求的校验结果 */
+export type PackVerdict =
+  | { readonly ok: true; readonly input: string; readonly output: string; readonly force: boolean; readonly strict: boolean; readonly dist: string | undefined }
+  | { readonly ok: false; readonly reason: string };
+
+/**
+ * 打包参数校验（**纯函数**）。
+ *
+ * ⚠️ 这是**本机最危险的一个动作**：它会**写加密包到磁盘**且**可能清空输出目录**
+ *   （`--force`）。前端校验只图界面友好，**宿主侧必须再校验一次**（本函数）——
+ *   前端与宿主是**两个信任级别**（浏览器里的任何脚本都能打到回环端口）。
+ *
+ * 判据：
+ * - 输入/输出必须是**绝对路径**（相对路径的基准不确定 ⇒ 拒绝，不猜）；
+ * - 输入 ≠ 输出（否则 `--force` 会把源工程清空）；
+ * - 输出**不得是输入的祖先**（`--force` 清空输出时会连带删掉输入）；
+ * - 路径不得含 `..` 段。
+ */
+export function packRequestOf(raw: unknown): PackVerdict {
+  if (typeof raw !== "object" || raw === null) return { ok: false, reason: "请求体必须是对象" };
+  const o = raw as { input?: unknown; output?: unknown; force?: unknown; strict?: unknown; dist?: unknown };
+  if (typeof o.input !== "string" || typeof o.output !== "string") {
+    return { ok: false, reason: "缺少 input / output（两者都是绝对路径）" };
+  }
+  for (const [label, value] of [["input", o.input], ["output", o.output]] as const) {
+    if (value === "") return { ok: false, reason: `${label} 不能为空` };
+    if (!/^[a-zA-Z]:[\\/]/.test(value) && !value.startsWith("/")) {
+      return { ok: false, reason: `${label} 必须是绝对路径（当前是相对路径）` };
+    }
+    const segments = value.replace(/\\/g, "/").split("/");
+    if (segments.includes("..")) return { ok: false, reason: `${label} 不得含 .. 段` };
+  }
+  const input = o.input;
+  const output = o.output;
+  if (input === output) return { ok: false, reason: "输出目录不能与工程根相同（--force 会清空它）" };
+  const inNorm = input.replace(/\\/g, "/").replace(/\/+$/, "");
+  const outNorm = output.replace(/\\/g, "/").replace(/\/+$/, "");
+  if (outNorm === inNorm || outNorm.startsWith(`${inNorm}/`)) {
+    return { ok: false, reason: "输出目录不能位于工程根之内" };
+  }
+  if (inNorm.startsWith(`${outNorm}/`)) {
+    return { ok: false, reason: "工程根不能位于输出目录之内（--force 清空输出时会连带删除工程）" };
+  }
+  let dist: string | undefined;
+  if (o.dist !== undefined && o.dist !== null && o.dist !== "") {
+    if (typeof o.dist !== "string") return { ok: false, reason: "dist 必须是字符串路径" };
+    if (!/^[a-zA-Z]:[\\/]/.test(o.dist) && !o.dist.startsWith("/")) {
+      return { ok: false, reason: "dist 必须是绝对路径" };
+    }
+    if (o.dist.replace(/\\/g, "/").split("/").includes("..")) {
+      return { ok: false, reason: "dist 不得含 .. 段" };
+    }
+    dist = o.dist;
+  }
+  return {
+    ok: true,
+    input,
+    output,
+    force: o.force === true,
+    strict: o.strict === true,
+    dist,
+  };
+}
+
+/* ——— 热重载（文件监视）判据 ——— */
+
+/** 是否应因该次文件变更**重载**（纯函数，可测） */
+export type WatchVerdict =
+  | { readonly reload: true; readonly reason: string }
+  | { readonly reload: false; readonly reason: string };
+
+/** 监视忽略的目标（`fs.watch` 的 `filter` 回调用；**命中即不重载**） */
+export const WATCH_IGNORED_DIRS: ReadonlySet<string> = new Set([
+  "node_modules",
+  "target",
+  "dist",
+  ".git",
+]);
+
+/**
+ * 变更是否该触发重载（**语义与 Rust `watch_project_files` 对齐**：递归监视 + 防抖后重载）。
+ *
+ * 忽略四类噪音（否则每次 `pnpm build` / `git` 操作都会把编辑器重载一遍）：
+ * - **临时文件**：编辑器写盘时先删后建（`~`/`tmp`/`swp`/`.#`）⇒ 中间态不是真内容；
+ * - **`node_modules` / `target` / `dist` / `.git`**：构建产物与版本库，与内容无关；
+ * - **点文件**：本仓枚举口径本就剔除。
+ *
+ * ⚠️ **不忽略** `Saves/`：它是作者数据（存档）—— 与 Rust 侧一致（Rust 监视整个源根）。
+ */
+export function shouldReloadOn(path: string, kind: "change" | "rename"): WatchVerdict {
+  if (path === "") return { reload: false, reason: "空路径" };
+  const unified = path.replace(/\\/g, "/");
+  const segments = unified.split("/").filter((s) => s !== "" && s !== ".");
+  if (segments.length === 0) return { reload: false, reason: "无有效路径段" };
+  const file = segments[segments.length - 1] ?? "";
+  if (file.startsWith(".") && file.length > 1) return { reload: false, reason: "点文件" };
+  // 临时/备份文件：先删后建过程中的中间态
+  if (
+    file.endsWith("~") ||
+    file.endsWith(".tmp") ||
+    file.endsWith(".swp") ||
+    file.endsWith(".swo") ||
+    file.startsWith("~$") ||
+    file.startsWith(".#")
+  ) {
+    return { reload: false, reason: "临时/备份文件" };
+  }
+  for (const dir of segments.slice(0, -1)) {
+    if (WATCH_IGNORED_DIRS.has(dir)) {
+      return { reload: false, reason: `构建产物/版本库目录（${dir}/）` };
+    }
+  }
+  // 删目录时 `path` 就是目录本身，末段也要查一次
+  if (WATCH_IGNORED_DIRS.has(file)) {
+    return { reload: false, reason: `构建产物/版本库目录（${file}/）` };
+  }
+  return {
+    reload: true,
+    reason: kind === "rename" ? "文件增删" : "内容变更",
+  };
+}

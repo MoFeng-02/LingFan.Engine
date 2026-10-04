@@ -427,6 +427,25 @@ export interface DiagnosticSupply {
   resourceFiles: ReadonlySet<string>;
   /** overlay 译文键并集（`Lang/**` 全部语言；无 `Lang/` = 空集） */
   overlayKeys: ReadonlySet<string>;
+  /**
+   * **按语言分组**的 overlay 键（本地化工作台用；契约**只增**）。
+   *
+   * 为何与 `overlayKeys` 并存而不替换：诊断的「多余译文」判据要的是**并集**口径
+   * （任一语言多译即报），而工作台要的是**逐语言**口径（每个语言各自缺哪些）
+   * ⇒ 两种口径都是对的，合成一个会毁掉其中一个。
+   *
+   * 键 = 语言码（目录形态 `Lang/{lang}/**` 取 `{lang}`；单文件 `Lang/{lang}.json` 取文件名）。
+   */
+  overlayKeysByLang: ReadonlyMap<string, ReadonlySet<string>>;
+}
+
+/** 从 overlay 逻辑路径取语言码（`Lang/en/main.json` → `en`；`Lang/en.json` → `en`） */
+export function langOfOverlayPath(path: string): string | undefined {
+  if (!isOverlayPath(path)) return undefined;
+  const rest = path.slice(`${LANG_ROOT}/`.length).replace(/\.json(\.enc)?$/, "");
+  // 目录形态取首段、单文件形态整段就是语言码（`rest` 内不含 `/` 时即单文件）
+  const head = rest.split("/")[0] ?? "";
+  return head === "" ? undefined : head;
 }
 
 /** overlay 候选文件：`Lang/` 下、`.json` 或 `.json.enc` 结尾（点文件已由枚举口径剔除） */
@@ -489,14 +508,24 @@ export async function loadDiagnosticSupply(
   const paths = await source.paths();
   const resourceFiles = new Set<string>();
   const overlayKeys = new Set<string>();
+  const overlayKeysByLang = new Map<string, Set<string>>();
   for (const path of paths) {
     resourceFiles.add(path);
     if (!isOverlayPath(path)) continue;
     const entries = parseOverlayEntries(await source.text(path));
     if (entries === undefined) continue;
-    for (const key of Object.keys(entries)) overlayKeys.add(key);
+    const lang = langOfOverlayPath(path);
+    for (const key of Object.keys(entries)) {
+      overlayKeys.add(key);
+      // 语言码取不出（理论上不该发生：isOverlayPath 已限定形态）⇒ 键进并集但不进分组，
+      // 宁可工作台少显示一个语言，也不把键算到错误语言名下。
+      if (lang === undefined) continue;
+      const bucket = overlayKeysByLang.get(lang) ?? new Set<string>();
+      bucket.add(key);
+      overlayKeysByLang.set(lang, bucket);
+    }
   }
-  return { resourceFiles, overlayKeys };
+  return { resourceFiles, overlayKeys, overlayKeysByLang };
 }
 
 // —— 写回：FSA 目录句柄 ——

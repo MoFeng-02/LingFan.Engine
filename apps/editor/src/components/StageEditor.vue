@@ -11,7 +11,10 @@ import {
   type FieldDescriptor,
 } from "@lingfan/editor";
 import { elementSource } from "@lingfan/ui";
+import EmptyState from "./EmptyState.vue";
+import type { EmptyAction } from "../viewState";
 import { interactionIntent, shouldSuppressClick } from "../pointerIntent";
+import { snapGuides, type SnapCandidate, type SnapResult } from "../snapGuides";
 import FieldRow from "./FieldRow.vue";
 
 /**
@@ -149,6 +152,69 @@ function previewStyle(index: number): Record<string, string> {
   return { transform: `translate(${current.dx}px, ${current.dy}px)` };
 }
 
+/**
+ * 拖拽中的对齐参考线（步4）。
+ *
+ * ⚠️ **只提示、不吸附**：`snapGuides` 只返回"该画哪条线"，**不改**最终坐标 ——
+ * 静默把元素挪到吸附位会让"我拖到这儿"与"它落到那儿"不一致（改写作者意图）。
+ * 判据与边界见 `apps/editor/src/snapGuides.ts`。
+ */
+const guides = ref<SnapResult>({ vx: null, hy: null });
+
+/** 其它元素的候选线（左/中/右 · 上/中/下），画布坐标 */
+function snapCandidatesOf(index: number): SnapCandidate {
+  const canvas = canvasEl.value;
+  const origin = canvas?.getBoundingClientRect();
+  const v: number[] = [];
+  const h: number[] = [];
+  if (origin === undefined) return { v, h };
+  const canvasBox = canvas?.getBoundingClientRect();
+  elements.value.forEach((_el, i) => {
+    if (i === index) return; // 不与自己比
+    const node = canvas?.querySelector<HTMLElement>(`[data-idx="${i}"]`);
+    if (node === null || node === undefined || canvasBox === undefined) return;
+    const r = node.getBoundingClientRect();
+    // 跳过**真正的全屏背景**（**两个方向都**接近满幅）—— 它的左/中/右覆盖整块画布，
+    // 参考线永远命中且无参考价值（用户只看到一条贴边的线）。
+    // ⚠️ 阈值必须**两个方向同时**判：先前写成 `||`（单方向 90% 即跳）⇒
+    //   把「宽 945 / 画布 1050」的正常元素也误杀了 ⇒ 参考线永不出现。
+    if (r.width >= canvasBox.width * 0.92 && r.height >= canvasBox.height * 0.92) return;
+    v.push(r.left - origin.left, r.left - origin.left + r.width / 2, r.left - origin.left + r.width);
+    h.push(r.top - origin.top, r.top - origin.top + r.height / 2, r.top - origin.top + r.height);
+  });
+  return { v, h };
+}
+
+/**
+ * 依**当前实际位置**算参考线（画布坐标）。
+ *
+ * ⚠️ **不接收位移参数**：`getBoundingClientRect()` 已含 transform 位移，
+ *   再补偿一次会让位移算两遍 ⇒ 参考线永不命中（我先犯过一次，故签名里就没有它）。
+ */
+function updateGuides(index: number): void {
+  const canvas = canvasEl.value;
+  const node = canvas?.querySelector<HTMLElement>(`[data-idx="${index}"]`);
+  if (canvas === null || canvas === undefined || node === null || node === undefined) {
+    guides.value = { vx: null, hy: null };
+    return;
+  }
+  const origin = canvas.getBoundingClientRect();
+  const r = node.getBoundingClientRect();
+  // ⚠️ `r` 是 `getBoundingClientRect()` —— **已含当前 transform 位移**（`previewStyle` 生效中）。
+  //   候选线也是同样口径（各元素的实时矩形）⇒ 直接用 `r` 即可。
+  //   ⚠️ 我先前在此**又加了一次 dx**（"补回位移"）⇒ 位移算两遍 ⇒ **永远对不齐、参考线永不出现**。
+  //   判据只吃"当前实际位置"，不重复补偿。
+  guides.value = snapGuides(
+    {
+      x: r.left - origin.left,
+      y: r.top - origin.top,
+      width: r.width,
+      height: r.height,
+    },
+    snapCandidatesOf(index),
+  );
+}
+
 function onPointerDown(index: number, event: PointerEvent): void {
   const element = elements.value[index];
   if (element === undefined) return;
@@ -170,11 +236,10 @@ function onPointerDown(index: number, event: PointerEvent): void {
     // ⚠️ D-63 修法 (b)：**阈值内不显示位移**——否则「想点一下」也会看到元素
     // 跟着手抖一下，像被误认成拖拽。
     if (!shouldSuppressClick(probe)) return;
-    drag.value = {
-      index,
-      dx: moveEvent.clientX - startX,
-      dy: moveEvent.clientY - startY,
-    };
+    const dx = moveEvent.clientX - startX;
+    const dy = moveEvent.clientY - startY;
+    drag.value = { index, dx, dy };
+    updateGuides(index);
   };
   const onUp = (upEvent: PointerEvent): void => {
     window.removeEventListener("pointermove", onMove);
@@ -188,6 +253,7 @@ function onPointerDown(index: number, event: PointerEvent): void {
     const dx = upEvent.clientX - startX;
     const dy = upEvent.clientY - startY;
     drag.value = null;
+    guides.value = { vx: null, hy: null }; // 参考线只活在拖拽期间
     // 阈值内 = 单击 = **仅选中**（已在 pointerdown 做过），不提交位移
     if (interactionIntent(probe) === "click") return;
     const nextX = draggedPosition(element.x, dx);
@@ -197,6 +263,20 @@ function onPointerDown(index: number, event: PointerEvent): void {
   };
   window.addEventListener("pointermove", onMove);
   window.addEventListener("pointerup", onUp);
+}
+
+/**
+ * 空态主动作：**切到「列」内页并选中第一个场景（scene）列**。
+ *
+ * ⚠️ 不用 `open-project`（那是「打开工程」，语义不同）；这里要解决的是
+ * 「你正看着一个没有空间层的列」⇒ 直接把他送到有空间层的列。
+ */
+function onEmptyAction(action: EmptyAction): void {
+  if (action.id !== "goto-scene-column") return;
+  const index = props.story.columns.findIndex((c) => c.kind === "scene");
+  if (index < 0) return; // 一个 scene 列都没有 ⇒ 不给假出路
+  // `select` 指向列本身（`/columns/<i>`）⇒ 宿主据此同步列选中态（与时间线选列同一条路）
+  api.select(`/columns/${index}`);
 }
 
 const selectedElement = computed(() =>
@@ -294,9 +374,14 @@ function onDrop(event: DragEvent): void {
   <div class="stage-editor">
     <h2>舞台编辑</h2>
 
-    <p v-if="sceneColumn === undefined" class="hint">
-      选中一个 <code>scene</code> 列后，可在此拖动它的元素定位（flow 列没有空间层）。
-    </p>
+    <!-- 空态**必须有可点的下一步**（B3 立的规矩；CDP 审阅实测：原实现占 1029×785
+         而 `可点动作数 = 0` ⇒ 大片空白 + 无出路，用户只能猜） -->
+    <EmptyState
+      v-if="sceneColumn === undefined"
+      class="stage-empty"
+      reason="no-scene-column"
+      @action="onEmptyAction"
+    />
 
     <template v-else>
       <div
@@ -310,6 +395,7 @@ function onDrop(event: DragEvent): void {
         <div
           v-for="(element, index) in elements"
           :key="index"
+          :data-idx="index"
           class="element"
           :class="{ selected: index === selectedIndex }"
           :style="blockStyle(element, index)"
@@ -318,9 +404,14 @@ function onDrop(event: DragEvent): void {
           <span class="tag">{{ elementLabel(String(element.type ?? "")) }}</span>
           <span v-if="element.id" class="id">#{{ element.id }}</span>
         </div>
-        <p v-if="elements.length === 0" class="hint">
-          该 scene 列还没有元素——从左侧「组件」面板拖入，或在 JSON / 文本视图添加。
-        </p>
+        <!-- 对齐参考线（步4）：拖拽中显示，pointer-events:none 不吃点击 -->
+        <div v-if="guides.vx !== null" class="guide guide-v" :style="{ left: `${guides.vx}px` }"></div>
+        <div v-if="guides.hy !== null" class="guide guide-h" :style="{ top: `${guides.hy}px` }"></div>
+        <EmptyState
+          v-if="elements.length === 0"
+          class="stage-empty"
+          reason="no-elements"
+        />
       </div>
 
       <div v-if="descriptor !== undefined" class="props">
@@ -350,9 +441,35 @@ function onDrop(event: DragEvent): void {
   flex: 1;
   min-height: 200px;
   overflow: auto;
-  background: var(--lf-info-surface);
   border: 1px solid var(--lf-border-default);
-  border-radius: 8px;
+  border-radius: var(--lf-radius-md);
+  /* 步4：点阵网格 —— 给"空间"一个参照，否则元素定位纯靠手拖、没有尺度感。
+     用 radial-gradient 画点（不引依赖）；透明度压到 0.07 以免抢元素注意力。 */
+  background-color: var(--lf-info-surface);
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    color-mix(in srgb, var(--lf-text-hint) 22%, transparent) 1px,
+    transparent 0
+  );
+  background-size: 16px 16px;
+}
+/* 拖拽时的对齐参考线（吸附辅助） */
+.guide {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  background: var(--lf-accent);
+  opacity: 0.75;
+}
+.guide-v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.guide-h {
+  left: 0;
+  right: 0;
+  height: 1px;
 }
 /* 拖拽悬停时的落点提示 */
 .canvas.drop-active {
@@ -373,7 +490,7 @@ function onDrop(event: DragEvent): void {
   user-select: none;
   background: var(--lf-border-subtle);
   border: 1px solid var(--lf-border-strong);
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
 }
 .element.selected {
   border-color: var(--lf-accent);
@@ -383,7 +500,7 @@ function onDrop(event: DragEvent): void {
 .element .tag,
 .element .id {
   background: color-mix(in srgb, var(--lf-surface-overlay) 85%, transparent);
-  border-radius: 4px;
+  border-radius: var(--lf-radius-sm);
   padding: 1px 4px;
 }
 .element .tag {
