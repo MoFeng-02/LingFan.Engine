@@ -333,7 +333,7 @@ export default { name: "FieldRow" };
   flex-direction: column;
   align-items: stretch;
   border: 1px dashed var(--lf-border-strong);
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   padding: 6px 8px;
   margin: 4px 0;
 }
@@ -379,7 +379,7 @@ textarea.control {
 }
 .item-card {
   border: 1px solid var(--lf-border-strong);
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   padding: 6px 8px;
 }
 .item-head {
@@ -418,7 +418,7 @@ textarea.json {
   align-items: center;
   gap: 8px;
   padding: 4px 6px;
-  border-radius: 5px;
+  border-radius: var(--lf-radius-md);
   cursor: pointer;
   background: var(--lf-surface-overlay);
   border: 1px solid transparent;

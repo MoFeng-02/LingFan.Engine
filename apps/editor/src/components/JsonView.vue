@@ -102,7 +102,7 @@ button.apply {
   padding: 6px 10px;
   background: var(--lf-danger-surface);
   border: 1px solid color-mix(in srgb, var(--lf-danger) 40%, transparent);
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   color: var(--lf-danger);
   font-size: var(--lf-font-sm);
 }

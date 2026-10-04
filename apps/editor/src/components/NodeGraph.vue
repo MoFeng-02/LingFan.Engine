@@ -546,7 +546,7 @@ export default { name: "StoryNodeGraph" };
   position: relative;
   background: radial-gradient(circle, color-mix(in srgb, var(--lf-border-subtle) 13%, transparent) 1px, transparent 1px) 0 0 / 22px
     22px;
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   cursor: grab;
 }
 .graph-scroll.panning {
@@ -614,7 +614,7 @@ svg .edge.clickable:hover {
   padding: 0 10px;
   background: var(--lf-surface-hover);
   border: 1px solid var(--lf-border-strong);
-  border-radius: 8px;
+  border-radius: var(--lf-radius-md);
   cursor: grab;
   user-select: none;
 }
@@ -658,7 +658,7 @@ svg .edge.clickable:hover {
   gap: 6px;
   background: color-mix(in srgb, var(--lf-surface-overlay) 93%, transparent);
   border: 1px solid var(--lf-border-strong);
-  border-radius: 8px;
+  border-radius: var(--lf-radius-md);
   padding: 4px 8px;
 }
 .zoom-value {

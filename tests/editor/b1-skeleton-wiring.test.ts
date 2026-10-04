@@ -10,7 +10,6 @@ import appSource from "../../apps/editor/src/App.vue?raw";
 import treeSource from "../../apps/editor/src/resourceTree.ts?raw";
 import layoutSource from "../../apps/editor/src/layout.ts?raw";
 import splitterSource from "../../apps/editor/src/components/PaneSplitter.vue?raw";
-import activitySource from "../../apps/editor/src/components/ActivityBar.vue?raw";
 import treeViewSource from "../../apps/editor/src/components/ResourceTreeView.vue?raw";
 import statusSource from "../../apps/editor/src/components/StatusBar.vue?raw";
 import columnListSource from "../../apps/editor/src/components/ColumnList.vue?raw";
@@ -48,12 +47,14 @@ describe("B1 四区骨架 · 接线互锁", () => {
     expect(code(appSource)).not.toMatch(/\.columns-pane\s*\{[^}]*width:\s*\d+px/);
   });
 
-  it("活动栏驱动侧栏模式（三个切面共享同一份树，不各持数据源）", () => {
-    expect(code(appSource)).toContain("@update:mode=\"setSidebarMode\"");
-    expect(code(appSource)).toContain("setSidebarMode(mode: SidebarMode)");
-    // 三个内页都喂**同一个** resourceNodes
+  it("三个侧栏切面**共享同一份树**（不各持数据源）", () => {
+    // ⚠️ 2026-10-04 UI 改造步2：活动栏已删（与左栏 tab 重复）⇒ 「活动栏驱动侧栏模式」这半边
+    //    不再存在；但**它守的不变量仍在** —— 资源/搜索/最近三个内页必须喂**同一个** resourceNodes，
+    //    否则会逼出三份数据源（本仓明令禁止的第二真源）。这半边**保留**。
     const feeds = code(appSource).match(/:nodes="resourceNodes"/g) ?? [];
     expect(feeds.length).toBe(3);
+    // 且不再有第二个驱动侧栏模式的入口
+    expect(code(appSource)).not.toContain("setSidebarMode");
   });
 
   it("状态栏接宿主能力与脏计数（工程级事实，不复制别处已有信息）", () => {
@@ -77,9 +78,17 @@ describe("B1 四区骨架 · 接线互锁", () => {
     expect(code(splitterSource)).toContain('role="separator"');
   });
 
-  it("活动栏有 tablist 语义与选中态（a11y）", () => {
-    expect(code(activitySource)).toContain('role="tablist"');
-    expect(code(activitySource)).toContain("aria-selected");
+  it("内页切换器有 tablist 语义与选中态（a11y）", () => {
+    // ⚠️ 2026-10-04 UI 改造步2「收纳去重」：**活动栏已删**（其三项与左栏 tab 重复），
+    //   同一职责现由**左栏 tab** 承担 ⇒ 本断言改为在 App.vue 的左栏 tab 条上验。
+    const src = code(appSource);
+    const leftTabs = src.slice(src.indexOf('class="tab-strip left-tabs"'));
+    expect(leftTabs.slice(0, 400)).toContain('class="tab-strip left-tabs"');
+    // 顶栏的视图切换（步1）补齐了 tab 语义
+    expect(src).toContain('role="tablist"');
+    expect(src).toContain('aria-selected');
+    // 活动栏组件已随之删除
+    expect(src).not.toContain("ActivityBar");
   });
 
   it("资源树对 Saves 只读且明示（不隐藏、不假装能编辑）", () => {
@@ -252,5 +261,115 @@ describe("B0 回归 · 切标签同步选中列", () => {
     const body = src.slice(start, src.indexOf("\n}", start));
     // 判据必须走 `columnIdOfDocument`（非故事路径返回 undefined ⇒ 整段跳过）
     expect(body).toContain("if (columnId !== undefined)");
+  });
+});
+
+/**
+ * 热重载接线守卫（**本项目第三次 TDZ**，且是同一批：声明顺序）。
+ * 机制固化在前两轮教训里：任何在 setup 体内被**提前执行**的代码，
+ * 都不能引用声明在它之后的东西。
+ */
+describe("热重载 · 接线与顺序", () => {
+  it("热重载三条声明在探测 IIFE **之前**（否则 TDZ 白屏）", () => {
+    const src = appSource;
+    // ⚠️ 必须按**声明语句**定位，不能 `indexOf(名字)`：注释里也出现这个名字，
+    //    首次命中会是注释 ⇒ 守卫变绿、实际有 TDZ（**假守卫**，我先犯过一次）。
+    const probe = src.indexOf("const host = await detectLocalHost()");
+    expect(probe, "探测 IIFE 位置变了").toBeGreaterThan(-1);
+    for (const [name, decl] of [
+      ["hotReloadEnabled", "const hotReloadEnabled = ref(true);"],
+      ["hotReloadActive", "const hotReloadActive = ref(false);"],
+      ["stopHotReload", "let stopHotReload: (() => void) | undefined;"],
+    ] as const) {
+      const at = src.indexOf(decl);
+      expect(at, `${name} 的声明语句未找到（改名了？）`).toBeGreaterThan(-1);
+      expect(at, `${name} 声明在探测 IIFE 之后 ⇒ TDZ 白屏`).toBeLessThan(probe);
+    }
+  });
+
+  it("探测命中且开关开着 ⇒ 起轮询", () => {
+    expect(appSource).toContain("pollWatch(host");
+    // 结构改成 if/else-if（探测失败走横幅，不再是 else 兜底）
+    expect(appSource).toContain("if (host === undefined) hostHint.value = true;");
+    expect(appSource).toContain("else if (hotReloadEnabled.value) startHotReload(host);");
+  });
+
+  it("**脏文档时不自动重载**（静默重载会丢作者改动）", () => {
+    expect(appSource).toContain("workspace.dirtyCount > 0");
+    expect(appSource).toContain("未自动重载");
+    // 重载走既有「重开工程」通道，不另造第二条
+    expect(appSource).toContain("entry.reopen()");
+  });
+
+  it("页面卸载停轮询（定时器不泄漏）", () => {
+    expect(appSource).toContain("onBeforeUnmount");
+    expect(appSource).toMatch(/onBeforeUnmount\(\(\) => \{[\s\S]*?stopHotReload\?\.\(\)/);
+  });
+});
+
+/**
+ * 回归 · 「宿主未启动」提示**不得模态**。
+ *
+ * ⚠️ 我先犯过一次：用 `dialog.notify` 提示"宿主没起" ⇒ `DialogHost` 的遮罩是
+ * `position:absolute; inset:0` 的**全屏**层 ⇒ 不关掉就**挡住全部点击**，
+ * 用户看到的现象是「**点故事没反应**」（而真因与故事毫无关系）。
+ * 降级是"可用但能力受限"，**不该拦住操作** ⇒ 必须是 `pointer-events:none` 的横幅。
+ */
+describe("宿主未启动提示 · 非阻塞", () => {
+  it("用**横幅**（`hostHint` 状态）而非 `dialog.notify`", () => {
+    expect(appSource).toContain("if (host === undefined) hostHint.value = true;");
+    // ⚠️ 窗口只取**探测 IIFE 内部**（前面几百字符里有骨架生成等无关的 dialog.notify）
+    const fnAt = appSource.indexOf("const host = await detectLocalHost();");
+    expect(fnAt).toBeGreaterThan(-1);
+    // ⚠️ 窗口到**本 IIFE 结束**为止：用 `slice` + `indexOf` 会取到**全文件后面**
+    //   （`indexOf` 找的是首次出现，可能在很后面）⇒ 混进别的 `dialog.notify`。
+    //   改用「到 `void (async` 下一个 IIFE 或空行为止」——这里直接按行数截 20 行，够短且明确。
+    const body = appSource.slice(fnAt, fnAt + 700);
+    expect(body).toContain("hostHint.value = true");
+    expect(body).toContain("hostHint.value = true");
+    // ⚠️ 必须**去注释**再判：我在那段注释里写了「我先犯过一次：用 `dialog.notify`」，
+    //    那是说明文字，不是代码（第二次踩同一个坑：拿源码断言当代码断言）。
+    const bodyCode = body.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    expect(bodyCode).not.toContain("dialog.notify");
+  });
+
+  it("横幅 `pointer-events: none`，**只有关闭按钮**可点", () => {
+    const rule = appSource.match(/\.host-hint\s*\{[^}]*\}/)?.[0] ?? "";
+    expect(rule).toContain("pointer-events: none");
+    const btn = appSource.match(/\.host-hint-x\s*\{[^}]*\}/)?.[0] ?? "";
+    expect(btn).toContain("pointer-events: auto");
+  });
+
+  it("横幅可关闭（`@click` 把 `hostHint` 置回 false）", () => {
+    expect(appSource).toContain('class="host-hint-x"');
+    expect(appSource).toContain("@click=\"hostHint = false\"");
+  });
+
+  it("横幅文案给出**可执行**的启用命令（不是空话）", () => {
+    // 编排脚本是"两个进程绑在一起"的保证；文案必须指向它
+    expect(appSource).toContain("pnpm editor:dev");
+    // 说清**哪些能力不可用**（降级不等于全废）
+    expect(appSource).toContain("不可用");
+  });
+});
+
+/**
+ * 回归 · 能力探测必须在 `onMounted` 里（**CDP 实测踩出来的真因**）。
+ *
+ * 现象：探测写成 setup 顶层的裸 `void (async () => …)()` 时，
+ * **一次都没执行** —— CDP `Network` 域抓到启动期零请求，而同一份代码
+ * 手动调用完全正常（返回 token）⇒ 模块求值时机不可靠。
+ * `onMounted` 是"组件已挂载"的契约时刻，探测放这里可靠。
+ */
+describe("能力探测 · 触发时机", () => {
+  it("探测在 `onMounted` 内（不是 setup 顶层的裸 IIFE）", () => {
+    expect(appSource).toMatch(/onMounted\(\(\) => \{\s*void \(async \(\) => \{[\s\S]*?detectLocalHost\(\)/);
+    // 顶层裸 IIFE 的形态（`void (async` 紧跟在 computed 之后、无 onMounted 包裹）不再允许
+    expect(appSource).not.toMatch(/\nvoid \(async \(\) => \{\n\s*\/\/ 能力探测/);
+  });
+
+  it("探测命中 ⇒ 起热重载；未命中 ⇒ 显示**非阻塞横幅**", () => {
+    expect(appSource).toContain("if (host === undefined) hostHint.value = true;");
+    expect(appSource).toContain("else if (hotReloadEnabled.value) startHotReload(host);");
   });
 });

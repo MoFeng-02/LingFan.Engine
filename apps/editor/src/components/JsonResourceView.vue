@@ -137,7 +137,7 @@ const typeOf = (value: unknown): string =>
   font-size: var(--lf-font-xs);
   color: var(--lf-text-hint);
   border: 1px solid var(--lf-border-subtle);
-  border-radius: 3px;
+  border-radius: var(--lf-radius-sm);
   padding: 0 4px;
 }
 .value {

@@ -134,7 +134,7 @@ button.apply {
   padding: 6px 10px;
   background: var(--lf-warning-tint);
   border: 1px solid color-mix(in srgb, var(--lf-warning) 40%, transparent);
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   color: var(--lf-warning);
   font-size: var(--lf-font-sm);
   max-height: 90px;
@@ -145,7 +145,7 @@ button.apply {
   padding: 6px 10px;
   background: var(--lf-danger-surface);
   border: 1px solid color-mix(in srgb, var(--lf-danger) 40%, transparent);
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   color: var(--lf-danger);
   font-size: var(--lf-font-sm);
   max-height: 120px;

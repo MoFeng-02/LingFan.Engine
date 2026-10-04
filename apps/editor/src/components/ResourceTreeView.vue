@@ -156,7 +156,7 @@ const emptyText = computed(() => {
   width: 10px;
   height: 10px;
   border: 1.5px solid currentColor;
-  border-radius: 2px;
+  border-radius: var(--lf-radius-sm);
 }
 .tree-kind[data-kind="story"] {
   background: var(--lf-accent);
@@ -178,7 +178,7 @@ const emptyText = computed(() => {
   border-color: var(--lf-accent-strong);
 }
 .tree-kind[data-kind="manifest"] {
-  border-radius: 1px;
+  border-radius: var(--lf-radius-sm);
   border-width: 2px;
 }
 .tree-kind[data-kind="saves"] {
@@ -197,7 +197,7 @@ const emptyText = computed(() => {
   flex: 0 0 auto;
   font-size: var(--lf-font-xs);
   padding: 0 4px;
-  border-radius: 3px;
+  border-radius: var(--lf-radius-sm);
   background: var(--lf-border-subtle);
   color: var(--lf-text-hint);
 }

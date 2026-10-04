@@ -216,7 +216,7 @@ function summary(cmd: Record<string, unknown>): string {
   align-items: center;
   gap: 8px;
   padding: 5px 8px;
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   cursor: pointer;
   border: 1px solid transparent;
 }

@@ -456,7 +456,7 @@ onBeforeUnmount(() => {
 .preview-error {
   color: var(--lf-danger);
   border: 1px solid color-mix(in srgb, var(--lf-danger) 53%, transparent);
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   padding: 8px 12px;
   margin: 0 0 12px;
 }
@@ -469,14 +469,14 @@ onBeforeUnmount(() => {
 .preview-banner {
   color: var(--lf-warning);
   border: 1px solid color-mix(in srgb, var(--lf-warning) 53%, transparent);
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   padding: 8px 12px;
   margin: 0 0 12px;
 }
 .nvl-layer {
   background: color-mix(in srgb, var(--lf-surface-base) 85%, transparent);
   border: 1px solid var(--lf-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--lf-radius-md);
   padding: 14px 18px;
   margin-bottom: 12px;
   max-height: 50%;
@@ -489,7 +489,7 @@ onBeforeUnmount(() => {
 .dialogue {
   background: color-mix(in srgb, var(--lf-surface-overlay) 80%, transparent);
   border: 1px solid var(--lf-border-strong);
-  border-radius: 10px;
+  border-radius: var(--lf-radius-lg);
   padding: 12px 18px;
   min-height: 96px;
 }
@@ -544,7 +544,7 @@ onBeforeUnmount(() => {
 .toast {
   background: color-mix(in srgb, var(--lf-border-subtle) 93%, transparent);
   border: 1px solid color-mix(in srgb, var(--lf-accent) 33%, transparent);
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   padding: 6px 12px;
   margin: 0;
   color: var(--lf-text-primary);

@@ -12,7 +12,10 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test:unit": "vitest run",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "editor": "pnpm --filter @lingfan/editor-app dev",
+    "editor:host": "pnpm --filter @lingfan/editor-app host",
+    "editor:dev": "node scripts/editor-dev.mjs"
   },
   "devDependencies": {
     "@lingfan/adapters": "workspace:*",

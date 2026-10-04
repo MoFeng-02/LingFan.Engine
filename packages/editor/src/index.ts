@@ -64,17 +64,27 @@ export { walkCommandBodies, walkStoryCommands, walkStoryElements } from "./schem
 export { analyzeStory, extractExpressionRefs, indexStory } from "./diagnostics";
 
 export {
+  coverageLabelOf,
+  coveragePercentOf,
+  coverageStateOf,
   extractStoryKeys,
   formatTranslationReport,
+  groupKeysByStory,
+  langCoverage,
   planOverlaySkeleton,
   reconcileTranslations,
   TRANSLATE_SURFACES,
   valuesAtPath,
+  workbenchOverview,
+  type CoverageState,
+  type LangCoverage,
   type OverlaySkeletonFile,
   type SkeletonLayout,
+  type SkeletonLayoutChoice,
   type SkeletonOptions,
   type SkeletonPlaceholder,
   type TranslationReconcileReport,
+  type WorkbenchOverview,
 } from "./i18n";
 
 export {

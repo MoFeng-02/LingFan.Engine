@@ -150,7 +150,7 @@ function submit(): void {
   padding: 14px 16px;
   background: var(--lf-surface-overlay);
   border: 1px solid var(--lf-border-strong);
-  border-radius: 10px;
+  border-radius: var(--lf-radius-lg);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
 }
 .dialog-title {

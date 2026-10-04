@@ -12,7 +12,7 @@ import { startHost } from "./host";
 /** 工程根 = 命令行参数（缺省当前工作目录） */
 const root = resolve(process.argv[2] ?? process.cwd());
 
-const { server, capabilities } = await startHost(root);
+const { server, capabilities, closeWatcher } = await startHost(root);
 
 // 让调用方（测试 / 脚本）能读到这个地址：写进环境变量供子进程消费
 process.stdout.write(
@@ -25,6 +25,7 @@ if (process.env.LFEN_EDITOR_HOST_INFO !== undefined) {
 }
 
 const shutdown = (): void => {
+  closeWatcher(); // 释放监视句柄（persistent:false 时不调也能退，但显式更清楚）
   server.close(() => process.exit(0));
 };
 process.on("SIGINT", shutdown);

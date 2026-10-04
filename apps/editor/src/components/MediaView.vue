@@ -95,7 +95,7 @@ onBeforeUnmount(() => {
 .badge {
   font-size: var(--lf-font-xs);
   padding: 0 5px;
-  border-radius: 3px;
+  border-radius: var(--lf-radius-sm);
   background: var(--lf-border-subtle);
   color: var(--lf-text-hint);
 }
@@ -107,7 +107,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   background: var(--lf-surface-sunken);
   border: 1px solid var(--lf-border-subtle);
-  border-radius: 6px;
+  border-radius: var(--lf-radius-md);
   padding: 12px;
   overflow: auto;
 }

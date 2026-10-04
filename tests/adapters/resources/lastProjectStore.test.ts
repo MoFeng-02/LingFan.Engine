@@ -160,7 +160,10 @@ describe("源码互锁：组合根装配与宿主按钮在位", () => {
   });
 
   it("App.vue：一键重开按钮（有句柄才渲染）与失败文案归一", () => {
-    expect(appSource).toContain("重新打开上次工程");
+    // ⚠️ 2026-10-04 UI 改造步1：按钮**文案**从「重新打开上次工程」改为 `↺` 图标
+    //   （顶栏瘦身；完整说明移到 `title`，这是 tooltip 的正确用法）。
+    //   本断言守的是「一键重开入口存在 + 有句柄才渲染」，**不是**那句长文案。
+    expect(appSource).toContain("一键重开上次工程");
     expect(appSource).toContain("reopenLastProject");
     expect(appSource).toContain('v-if="props.lastProject?.value !== undefined"');
     expect(appSource).toContain("重新打开失败：");
