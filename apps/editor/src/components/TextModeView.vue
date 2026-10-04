@@ -115,53 +115,53 @@ const stats = computed(() => {
   gap: 8px;
 }
 .stats {
-  color: #565f89;
-  font-size: 11px;
+  color: var(--lf-text-hint);
+  font-size: var(--lf-font-sm);
 }
 .dirty {
-  color: #e0af68;
-  font-size: 11px;
+  color: var(--lf-warning);
+  font-size: var(--lf-font-sm);
 }
 .spacer {
   flex: 1;
 }
 button.apply {
-  border-color: #9ece6a88;
-  color: #9ece6a;
+  border-color: color-mix(in srgb, var(--lf-success) 53%, transparent);
+  color: var(--lf-success);
 }
 .text-warn {
   margin: 0;
   padding: 6px 10px;
-  background: #2a2415;
-  border: 1px solid #e0af6866;
+  background: var(--lf-warning-tint);
+  border: 1px solid color-mix(in srgb, var(--lf-warning) 40%, transparent);
   border-radius: 6px;
-  color: #e0af68;
-  font-size: 11px;
+  color: var(--lf-warning);
+  font-size: var(--lf-font-sm);
   max-height: 90px;
   overflow: auto;
 }
 .text-errors {
   margin: 0;
   padding: 6px 10px;
-  background: #2a1518;
-  border: 1px solid #f7768e66;
+  background: var(--lf-danger-surface);
+  border: 1px solid color-mix(in srgb, var(--lf-danger) 40%, transparent);
   border-radius: 6px;
-  color: #f7768e;
-  font-size: 11px;
+  color: var(--lf-danger);
+  font-size: var(--lf-font-sm);
   max-height: 120px;
   overflow: auto;
 }
 textarea.dsl {
   flex: 1;
   font-family: Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--lf-font-md);
   line-height: 1.5;
   resize: none;
   min-height: 200px;
 }
 .text-note {
-  color: #565f89;
-  font-size: 11px;
+  color: var(--lf-text-hint);
+  font-size: var(--lf-font-sm);
   margin: 0;
 }
 </style>

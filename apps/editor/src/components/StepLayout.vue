@@ -15,6 +15,8 @@ const props = defineProps<{ story: Story; selectedId: string }>();
 
 interface EditorApi {
   select(pointer: string | null): void;
+  /** 定位揭示：选中 + 切回时间线 + 滚动到目标行（D-63 拆职责后新增） */
+  reveal(pointer: string): void;
   selectColumn(id: string): void;
 }
 const api = inject<EditorApi>("editorApi")!;
@@ -168,7 +170,9 @@ function opSummary(step: StoryStep): string {
 }
 
 function onStepClick(step: StoryStep): void {
-  api.select(step.endPointer); // 现有 select 会切回时间线并滚到该行（零新增管道）
+  // 用 `reveal`（选中 + 切回时间线 + 滚动到该行）——从步骤图点回时间线是**定位**语义。
+  // D-63 拆职责前靠 `select` 的切视图副作用顺带实现，现已显式化。
+  api.reveal(step.endPointer);
 }
 </script>
 
@@ -294,14 +298,14 @@ export default { name: "StoryStepLayout" };
 }
 .step-hint {
   margin: 0;
-  color: #565f89;
-  font-size: 11px;
+  color: var(--lf-text-hint);
+  font-size: var(--lf-font-sm);
 }
 .step-scroll {
   flex: 1;
   overflow: auto;
   position: relative;
-  background: radial-gradient(circle, #24283b22 1px, transparent 1px) 0 0 / 22px
+  background: radial-gradient(circle, color-mix(in srgb, var(--lf-border-subtle) 13%, transparent) 1px, transparent 1px) 0 0 / 22px
     22px;
   border-radius: 6px;
 }
@@ -319,25 +323,25 @@ svg {
   opacity: 0.8;
 }
 .edge-jump {
-  stroke: #7aa2f7;
+  stroke: var(--lf-accent);
 }
 .edge-menu {
-  stroke: #e0af68;
+  stroke: var(--lf-warning);
 }
 .edge-navigate {
-  stroke: #9ece6a;
+  stroke: var(--lf-success);
   stroke-dasharray: 5 4;
 }
 /* 泳道背景与头（列容器，非步骤） */
 .lane {
   position: absolute;
-  background: #1a1b2622;
-  border: 1px dashed #2b3050;
+  background: color-mix(in srgb, var(--lf-surface-hover) 13%, transparent);
+  border: 1px dashed var(--lf-border-dashed);
   border-radius: 8px;
   pointer-events: none;
 }
 .lane.selected {
-  border-color: #3d59a1;
+  border-color: var(--lf-border-accent);
 }
 .lane-head {
   position: absolute;
@@ -346,21 +350,21 @@ svg {
   gap: 6px;
   height: 26px;
   padding: 0 10px;
-  background: #1a1b26;
-  border: 1px solid #3b4261;
+  background: var(--lf-surface-hover);
+  border: 1px solid var(--lf-border-strong);
   border-radius: 8px;
-  color: #c0caf5;
-  font-size: 12px;
+  color: var(--lf-text-primary);
+  font-size: var(--lf-font-md);
   text-align: left;
   cursor: pointer;
 }
 .lane-head.selected {
-  border-color: #7aa2f7;
+  border-color: var(--lf-accent);
 }
 .lane-kind,
 .lane-count {
-  color: #565f89;
-  font-size: 11px;
+  color: var(--lf-text-hint);
+  font-size: var(--lf-font-sm);
 }
 .lane-count {
   margin-left: auto;
@@ -372,23 +376,23 @@ svg {
   align-items: center;
   gap: 8px;
   padding: 0 10px;
-  background: #1a1b26;
-  border: 1px solid #3b4261;
-  border-left: 3px solid #7aa2f7;
+  background: var(--lf-surface-hover);
+  border: 1px solid var(--lf-border-strong);
+  border-left: 3px solid var(--lf-accent);
   border-radius: 6px;
-  color: #c0caf5;
-  font-size: 12px;
+  color: var(--lf-text-primary);
+  font-size: var(--lf-font-md);
   text-align: left;
   overflow: hidden;
   cursor: pointer;
 }
 .step-box:hover {
-  border-color: #7aa2f7;
-  background: #1f2335;
+  border-color: var(--lf-accent);
+  background: var(--lf-accent-tint);
 }
 .step-box.exit {
-  border-left-color: #565f89;
-  color: #9aa0c0;
+  border-left-color: var(--lf-text-hint);
+  color: var(--lf-text-on-tint);
 }
 .step-box.hard {
   border-left-style: double;
@@ -396,8 +400,8 @@ svg {
 .step-no {
   flex: none;
   width: 16px;
-  color: #565f89;
-  font-size: 11px;
+  color: var(--lf-text-hint);
+  font-size: var(--lf-font-sm);
 }
 .step-ops {
   flex: 1;
@@ -405,28 +409,28 @@ svg {
   white-space: nowrap;
   text-overflow: ellipsis;
   font-family: ui-monospace, monospace;
-  font-size: 11px;
+  font-size: var(--lf-font-sm);
 }
 .step-wait {
   flex: none;
-  color: #7dcfff;
-  font-size: 11px;
+  color: var(--lf-info-soft);
+  font-size: var(--lf-font-sm);
 }
 .merge-badge {
   position: absolute;
   right: -6px;
   top: -8px;
   padding: 0 5px;
-  background: #bb9af7;
+  background: var(--lf-accent-strong);
   border-radius: 8px;
-  color: #16161f;
-  font-size: 10px;
+  color: var(--lf-info-surface);
+  font-size: var(--lf-font-xs);
   line-height: 15px;
 }
 .lane-empty {
   position: absolute;
   margin: 0;
-  color: #565f89;
-  font-size: 11px;
+  color: var(--lf-text-hint);
+  font-size: var(--lf-font-sm);
 }
 </style>

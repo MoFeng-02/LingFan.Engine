@@ -26,6 +26,7 @@ export {
   isSafeFileNameSegment,
   MANIFEST_FILE,
   ProjectSerializationError,
+  serializeColumnDocument,
   serializeProject,
   STORIES_DIR,
   type FileStamp,

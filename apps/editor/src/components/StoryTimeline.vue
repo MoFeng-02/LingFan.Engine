@@ -197,8 +197,8 @@ function summary(cmd: Record<string, unknown>): string {
 }
 .container-head h2 {
   margin: 0 8px 0 0;
-  font-size: 12px;
-  color: #565f89;
+  font-size: var(--lf-font-md);
+  color: var(--lf-text-hint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   flex: 1;
@@ -221,47 +221,51 @@ function summary(cmd: Record<string, unknown>): string {
   border: 1px solid transparent;
 }
 .rows li:hover {
-  background: #1a1b26;
+  background: var(--lf-surface-hover);
 }
 .rows li.selected {
-  background: #24283b;
-  border-color: #7aa2f766;
+  background: var(--lf-border-subtle);
+  border-color: color-mix(in srgb, var(--lf-accent) 40%, transparent);
 }
 .index {
-  color: #565f89;
+  color: var(--lf-text-hint);
   font-variant-numeric: tabular-nums;
   min-width: 18px;
   text-align: right;
 }
 .op-label {
-  color: #7aa2f7;
+  color: var(--lf-accent);
   min-width: 76px;
 }
 .summary {
   flex: 1;
-  color: #9aa5ce;
+  color: var(--lf-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .row-ops {
-  display: none;
+  /* 常显低强调（E2 建议值）：hover-only 的行内操作在触屏与新用户面前等于不存在
+     （D-62②）。改常显但压低视觉权重，hover 时才提升 —— 可见性不靠鼠标。 */
+  display: inline-flex;
   gap: 2px;
+  opacity: 0.45;
+  transition: opacity 120ms ease;
 }
 .rows li:hover .row-ops {
-  display: inline-flex;
+  opacity: 1;
 }
 button.mini {
   padding: 0 5px;
-  font-size: 11px;
+  font-size: var(--lf-font-sm);
   line-height: 18px;
 }
 button.danger:hover {
-  color: #f7768e;
-  border-color: #f7768e88;
+  color: var(--lf-danger);
+  border-color: color-mix(in srgb, var(--lf-danger) 53%, transparent);
 }
 .empty {
-  color: #565f89;
+  color: var(--lf-text-hint);
   padding: 6px 8px;
   font-style: italic;
 }

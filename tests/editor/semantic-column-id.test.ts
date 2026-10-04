@@ -5,7 +5,7 @@
  * - 纯函数语义：建议 → 唯一化（`-2`/`-3` 递增取空位）→ 兜底（`column-N` 跳已占号）
  * - hint 是建议非命令：不安全输入（路径分隔 / 点段 / 空）回退兜底，不抛、不改写
  * - addColumn 契约只增：显式 id 语义不变（撞名 fail-closed），hint 仅缺省 id 时参与
- * - 源码互锁：编辑器「+列」走 prompt（留空可过）→ api.addColumn(kind, hint)
+ * - 源码互锁：编辑器「+列」走**应用内对话框**（留空可过）→ api.addColumn(kind, hint)
  */
 import { describe, expect, it } from "vitest";
 import { parseStory } from "@lingfan/engine";
@@ -78,14 +78,19 @@ describe("addColumn 接线：hint 仅缺省 id 时参与（契约只增）", () 
 });
 
 describe("源码互锁：编辑器「+列」接语义化建议输入", () => {
-  it("+列 走 prompt（留空可过）；取消则不执行（D-58 防回流）", () => {
+  it("+列 走应用内对话框（留空可过）；取消则不执行（D-58 防回流）", () => {
     expect(columnListSource).toContain("promptAddColumn");
-    expect(columnListSource).toContain("window.prompt");
+    // B3 起走**应用内对话框**（D-62①：原生 prompt 在深色主题下弹系统灰白框且不可样式化）
+    expect(columnListSource).toContain("dialog.askText");
+    expect(columnListSource).not.toContain("window.prompt");
     // ① 留空可过（**本条既有意图，予以保留**）：无建议也必须把调用发出去，引擎按 column-N 兜底
     expect(columnListSource).toContain("api.addColumn(kind, intent.hint)");
     // ② 取消（null）不得与留空（""）混为一谈 —— 意图判定必须先于提交
     expect(columnListSource).toContain("decideAddColumn(raw)");
     expect(columnListSource).toContain("if (!intent.run) return;");
+    // ③ 留空必须被显式允许（allowEmpty）—— 否则应用内对话框把留空当取消，
+    //    「留空 = 引擎兜底生成 column-N」这条**既有语义**就被静默改了
+    expect(columnListSource).toMatch(/allowEmpty:\s*true/);
     const decided = columnListSource.indexOf("decideAddColumn(raw)");
     const submitted = columnListSource.indexOf(
       "api.addColumn(kind, intent.hint)",

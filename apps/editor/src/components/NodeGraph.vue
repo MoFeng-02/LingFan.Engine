@@ -8,6 +8,7 @@ import {
   ref,
 } from "vue";
 import type { Story } from "@lingfan/engine";
+import { useDialog } from "../dialogInjection";
 import {
   branchPointerToCommand,
   indexStory,
@@ -35,6 +36,8 @@ interface EditorApi {
   connectBranch(fromColumnId: string, toColumnId: string, optionText?: string): boolean;
 }
 const api = inject<EditorApi>("editorApi")!;
+/** 应用内对话框（替代原生 alert/prompt —— D-62①） */
+const dialog = useDialog();
 
 const NODE_W = 156;
 const NODE_H = 46;
@@ -378,7 +381,7 @@ function onConnectMove(event: PointerEvent): void {
   connecting.value = { ...current, x: cursor.x, y: cursor.y };
 }
 
-function endConnect(event: PointerEvent): void {
+async function endConnect(event: PointerEvent): Promise<void> {
   const current = connecting.value;
   connecting.value = null;
   window.removeEventListener("pointermove", onConnectMove);
@@ -390,24 +393,37 @@ function endConnect(event: PointerEvent): void {
   const targetColumn = props.story.columns.find((c) => c.id === target.id);
   // fail-closed：非 flow 源/目标、自连一律拒绝并给可操作提示（不静默落库）
   if (!isBranchTarget(source) || !isBranchTarget(targetColumn)) {
-    alert(
-      `无法连分支：源列与目标列都必须是「流程列」（scene 列是空间层，${
+    await dialog.notify({
+      title: "无法连分支",
+      message: `源列与目标列都必须是「流程列」（scene 列是空间层，${
         source?.kind === "flow" ? `「${target.id}」是场景列` : `「${current.fromId}」是场景列`
       }）。`,
-    );
+      tone: "error",
+    });
     return;
   }
   if (source?.id === target.id) return;
   const plan = planBranchInsertion(source, target.id);
   if (plan === null) return;
+  // 取消输入 = 放弃（`null` 语义；留空会被引擎当作空文本选项，故此处不允许留空）
   const optionText =
     plan.kind === "menu-option"
-      ? (window.prompt(`「${current.fromId}」已有菜单——新选项文本`, "新选项") ??
-        undefined)
+      ? await dialog.askText({
+          title: `「${current.fromId}」已有菜单`,
+          message: "输入新选项的文本。",
+          initial: "新选项",
+          allowEmpty: false,
+        })
       : undefined;
-  if (plan.kind === "menu-option" && optionText === undefined) return; // 取消输入 = 放弃
-  const applied = api.connectBranch(current.fromId, target.id, optionText);
-  if (!applied) alert(`无法连分支：${current.fromId} → ${target.id}（非法组合）`);
+  if (plan.kind === "menu-option" && optionText === null) return;
+  const applied = api.connectBranch(current.fromId, target.id, optionText ?? undefined);
+  if (!applied) {
+    await dialog.notify({
+      title: "无法连分支",
+      message: `${current.fromId} → ${target.id}（非法组合）`,
+      tone: "error",
+    });
+  }
 }
 
 /** 临时拉线终点跟随指针（连接点 → 指针，样式 = 虚线） */
@@ -521,14 +537,14 @@ export default { name: "StoryNodeGraph" };
 }
 .graph-hint {
   margin: 0;
-  color: #565f89;
-  font-size: 11px;
+  color: var(--lf-text-hint);
+  font-size: var(--lf-font-sm);
 }
 .graph-scroll {
   flex: 1;
   overflow: auto;
   position: relative;
-  background: radial-gradient(circle, #24283b22 1px, transparent 1px) 0 0 / 22px
+  background: radial-gradient(circle, color-mix(in srgb, var(--lf-border-subtle) 13%, transparent) 1px, transparent 1px) 0 0 / 22px
     22px;
   border-radius: 6px;
   cursor: grab;
@@ -552,13 +568,13 @@ svg {
   opacity: 0.75;
 }
 .edge-jump {
-  stroke: #7aa2f7;
+  stroke: var(--lf-accent);
 }
 .edge-menu {
-  stroke: #e0af68;
+  stroke: var(--lf-warning);
 }
 .edge-navigate {
-  stroke: #9ece6a;
+  stroke: var(--lf-success);
   stroke-dasharray: 5 4;
 }
 /* 边可点击选中对应命令；拉线中的临时线 */
@@ -572,7 +588,7 @@ svg .edge.clickable:hover {
   stroke-width: 3.2;
 }
 .edge.connect-line {
-  stroke: #bb9af7;
+  stroke: var(--lf-accent-strong);
   stroke-dasharray: 6 4;
 }
 .connect-dot {
@@ -582,8 +598,8 @@ svg .edge.clickable:hover {
   width: 11px;
   height: 11px;
   transform: translateY(-50%);
-  background: #7aa2f7;
-  border: 2px solid #16161f;
+  background: var(--lf-accent);
+  border: 2px solid var(--lf-info-surface);
   border-radius: 50%;
   cursor: crosshair;
 }
@@ -596,8 +612,8 @@ svg .edge.clickable:hover {
   align-items: center;
   gap: 6px;
   padding: 0 10px;
-  background: #1a1b26;
-  border: 1px solid #3b4261;
+  background: var(--lf-surface-hover);
+  border: 1px solid var(--lf-border-strong);
   border-radius: 8px;
   cursor: grab;
   user-select: none;
@@ -606,20 +622,20 @@ svg .edge.clickable:hover {
   cursor: grabbing;
 }
 .node:hover {
-  border-color: #7aa2f7aa;
+  border-color: color-mix(in srgb, var(--lf-accent) 67%, transparent);
 }
 .node.selected {
-  border-color: #7aa2f7;
-  background: #24283b;
+  border-color: var(--lf-accent);
+  background: var(--lf-border-subtle);
 }
 .node.entry {
-  border-color: #e0af68aa;
+  border-color: color-mix(in srgb, var(--lf-warning) 67%, transparent);
 }
 .entry-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #e0af68;
+  background: var(--lf-warning);
   flex-shrink: 0;
 }
 .node-id {
@@ -627,11 +643,11 @@ svg .edge.clickable:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #c0caf5;
+  color: var(--lf-text-primary);
 }
 .node-kind {
-  font-size: 10px;
-  color: #565f89;
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
 }
 .zoom-controls {
   position: absolute;
@@ -640,21 +656,21 @@ svg .edge.clickable:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #16161eee;
-  border: 1px solid #3b4261;
+  background: color-mix(in srgb, var(--lf-surface-overlay) 93%, transparent);
+  border: 1px solid var(--lf-border-strong);
   border-radius: 8px;
   padding: 4px 8px;
 }
 .zoom-value {
-  color: #9aa5ce;
-  font-size: 11px;
+  color: var(--lf-text-secondary);
+  font-size: var(--lf-font-sm);
   min-width: 38px;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
 button.mini {
   padding: 0 6px;
-  font-size: 12px;
+  font-size: var(--lf-font-md);
   line-height: 18px;
 }
 </style>

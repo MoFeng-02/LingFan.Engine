@@ -162,7 +162,7 @@ const ancestors = computed(() => {
 
 <style scoped>
 .property-panel {
-  border-top: 1px solid #24283b;
+  border-top: 1px solid var(--lf-border-subtle);
   padding-top: 8px;
 }
 .crumbs {
@@ -174,33 +174,33 @@ const ancestors = computed(() => {
 }
 button.crumb {
   background: transparent;
-  border-color: #3b4261;
+  border-color: var(--lf-border-strong);
 }
 button.crumb.current {
-  color: #7aa2f7;
-  border-color: #7aa2f766;
+  color: var(--lf-accent);
+  border-color: color-mix(in srgb, var(--lf-accent) 40%, transparent);
   cursor: default;
 }
 .sep {
-  color: #565f89;
+  color: var(--lf-text-hint);
 }
 .fields {
   display: flex;
   flex-direction: column;
 }
 .hint {
-  color: #565f89;
+  color: var(--lf-text-hint);
   font-style: italic;
 }
 .op-meta {
-  color: #565f89;
-  font-size: 11px;
+  color: var(--lf-text-hint);
+  font-size: var(--lf-font-sm);
   margin: 8px 0 0;
   text-align: right;
 }
 button.mini {
   padding: 0 6px;
-  font-size: 11px;
+  font-size: var(--lf-font-sm);
   line-height: 18px;
 }
 </style>

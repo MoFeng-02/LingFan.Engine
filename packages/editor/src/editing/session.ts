@@ -47,6 +47,24 @@ export class EditorSession {
     this.notify();
   }
 
+  /**
+   * **换基线**（结构刷新，不产生历史）：把当前树与已保存基线**同时**换掉。
+   *
+   * 为何不用 `commit`：那是**用户编辑**的语义（压一个 undo 单元）。工程结构变化
+   * （如新增一列 ⇒ 既有列的切分投影跟着变）需要的是「这些文档本来就干净，
+   * 让它们继续干净」，而不是给每个文档记一条假历史（撤销键会堆满噪声）。
+   *
+   * ⚠️ **有未保存改动时拒绝**（返回 false）：那属于编辑，必须走 `commit`
+   * 才能撤销 —— 静默丢弃作者的改动不可接受。
+   */
+  replaceClean(next: Story): boolean {
+    if (this.dirty) return false;
+    this.current = next;
+    this.saved = next;
+    this.notify();
+    return true;
+  }
+
   get canUndo(): boolean {
     return this.undoStack.length > 0;
   }

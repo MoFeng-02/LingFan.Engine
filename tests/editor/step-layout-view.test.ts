@@ -41,9 +41,14 @@ describe("视图接线：centerView 四态 + 步骤分支", () => {
 });
 
 describe("点击步骤 → 定位时间线（验收③，零新增管道）", () => {
-  it("StepLayout 注入既有 editorApi 并调用 api.select(step.endPointer)", () => {
+  it("StepLayout 注入既有 editorApi 并调用 `api.reveal`（D-63 后定位职责已显式化）", () => {
     expect(stepLayoutSource).toContain('inject<EditorApi>("editorApi")');
-    expect(stepLayoutSource).toContain("api.select(step.endPointer)");
+    // ⚠️ D-63 拆职责前靠 `select()` 的切视图副作用顺带实现定位；
+    //    现已显式化为 `reveal()` = 选中 + 切时间线 + 滚动到行。
+    //    本断言守的是「点步骤能定位到时间线」这个**意图**，不是"必须调 select"这个字面。
+    expect(stepLayoutSource).toContain("api.reveal(step.endPointer)");
+    // 契约面必须声明 reveal
+    expect(stepLayoutSource).toMatch(/interface EditorApi\s*\{[^}]*reveal\(/);
   });
 
   it("泳道头走既有 selectColumn（与节点图同语义）", () => {

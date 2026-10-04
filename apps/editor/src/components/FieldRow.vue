@@ -332,23 +332,28 @@ export default { name: "FieldRow" };
 .field-row.body {
   flex-direction: column;
   align-items: stretch;
-  border: 1px dashed #3b4261;
+  border: 1px dashed var(--lf-border-strong);
   border-radius: 6px;
   padding: 6px 8px;
   margin: 4px 0;
 }
 .field-label {
   min-width: 92px;
-  color: #9aa5ce;
-  font-size: 12px;
+  color: var(--lf-text-secondary);
+  font-size: var(--lf-font-md);
   padding-top: 4px;
   flex-shrink: 0;
 }
 .req {
-  color: #f7768e;
+  color: var(--lf-danger);
 }
 .control {
-  max-width: 260px;
+  /* 右缘统一（D-62⑧）：此前 `.control` 有 `max-width:260px` 而 `.control.grow`
+     写 `max-width:none` ⇒ 同一面板内出现**三种右缘**（实测 1336/507/573），
+     控件参差成锯齿。改为**一律撑满**（标签列固定宽，控件列吃满剩余空间）。 */
+  flex: 1;
+  min-width: 0;
+  max-width: none;
 }
 .control.grow {
   flex: 1;
@@ -364,7 +369,7 @@ textarea.control {
   gap: 4px;
 }
 .tuple-sep {
-  color: #565f89;
+  color: var(--lf-text-hint);
 }
 .item-list {
   flex: 1;
@@ -373,7 +378,7 @@ textarea.control {
   gap: 6px;
 }
 .item-card {
-  border: 1px solid #3b4261;
+  border: 1px solid var(--lf-border-strong);
   border-radius: 6px;
   padding: 6px 8px;
 }
@@ -381,8 +386,8 @@ textarea.control {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #565f89;
-  font-size: 11px;
+  color: var(--lf-text-hint);
+  font-size: var(--lf-font-sm);
   margin-bottom: 2px;
 }
 button.add-item {
@@ -396,12 +401,12 @@ button.add-item {
 }
 textarea.json {
   font-family: Consolas, monospace;
-  font-size: 11px;
+  font-size: var(--lf-font-sm);
   max-width: none;
 }
 .json-error {
-  color: #f7768e;
-  font-size: 11px;
+  color: var(--lf-danger);
+  font-size: var(--lf-font-sm);
 }
 .body-list {
   display: flex;
@@ -415,34 +420,38 @@ textarea.json {
   padding: 4px 6px;
   border-radius: 5px;
   cursor: pointer;
-  background: #16161e;
+  background: var(--lf-surface-overlay);
   border: 1px solid transparent;
 }
 .body-row:hover {
-  border-color: #7aa2f755;
+  border-color: color-mix(in srgb, var(--lf-accent) 33%, transparent);
 }
 .index {
-  color: #565f89;
+  color: var(--lf-text-hint);
   min-width: 16px;
   text-align: right;
 }
 .op-label {
-  color: #7aa2f7;
+  color: var(--lf-accent);
   min-width: 64px;
 }
 .summary {
   flex: 1;
-  color: #9aa5ce;
+  color: var(--lf-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .row-ops {
-  display: none;
+  /* 常显低强调（E2 建议值）：hover-only 的行内操作在触屏与新用户面前等于不存在
+     （D-62②）。改常显但压低视觉权重，hover 时才提升 —— 可见性不靠鼠标。 */
+  display: inline-flex;
   gap: 2px;
+  opacity: 0.45;
+  transition: opacity 120ms ease;
 }
 .body-row:hover .row-ops {
-  display: inline-flex;
+  opacity: 1;
 }
 .body-insert {
   display: flex;
@@ -451,11 +460,11 @@ textarea.json {
 }
 button.mini {
   padding: 0 5px;
-  font-size: 11px;
+  font-size: var(--lf-font-sm);
   line-height: 18px;
 }
 button.danger:hover {
-  color: #f7768e;
-  border-color: #f7768e88;
+  color: var(--lf-danger);
+  border-color: color-mix(in srgb, var(--lf-danger) 53%, transparent);
 }
 </style>

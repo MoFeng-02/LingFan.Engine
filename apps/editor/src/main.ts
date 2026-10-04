@@ -38,6 +38,7 @@ import {
   MANIFEST_FILE,
   detectWriteNormalization,
   resolveLayerZ,
+  serializeColumnDocument,
   serializeProject,
   STORIES_DIR,
   type AudioPort,
@@ -47,7 +48,10 @@ import {
   type Story,
   type VideoPort,
 } from "@lingfan/engine";
+// 设计 token 唯一源：先于所有组件样式加载（组件里只准引用 var(--lf-*)）
+import "./styles/tokens.css";
 import App from "./App.vue";
+import { assembleColumnWrite } from "./columnWrite";
 import { sampleStory } from "./sample";
 import type { LastProjectEntry, OpenedProject, ProjectOpener } from "./ports";
 
@@ -85,11 +89,32 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
   let normalizedOnce = false;
   return {
     ...opened,
+    /**
+     * 保存：**整工程口径**（`save(projectTree)`）。
+     *
+     * ⚠️ 多文档面（`workspace.ts`）下**不得**直接把某个标签的单列树喂进来：
+     * 单列树的 `columns` 只有一列，`serializeProject` 会把其余列文件判为陈旧并
+     * **删除**（实测 `DELETES=["Stories/start.json"]`）。因此本函数只接受
+     * **由当前全部文档重组出的工程树**——`save` 的契约不变，组装责任在调用方。
+     */
     save: async (next: Story): Promise<ProjectWriteReport> => {
       const report = await writer.apply(serializeProject(next, manifest).files);
       normalizedOnce = true;
       return report;
     },
+    /** 单文档写回：只落该列文件，不产删除、不改清单（多标签并存时的正确路径） */
+    saveColumn: async (columnId: string, columnStory: Story): Promise<ProjectWriteReport> => {
+      const product = serializeColumnDocument(columnStory, columnId);
+      const report = await writer.apply(assembleColumnWrite(previous, product));
+      normalizedOnce = true;
+      return report;
+    },
+    /**
+     * 单文本资源写回（译文表 / 清单）：只落该文件。
+     * 期望集 = 打开基线 + 本次覆盖 ⇒ 其余文件逐字节不动（与 `saveColumn` 同纪律）。
+     */
+    saveText: async (path: string, text: string): Promise<ProjectWriteReport> =>
+      writer.apply(assembleColumnWrite(previous, { files: new Map([[path, text]]) })),
     inspectSave: (next: Story) =>
       normalizedOnce
         ? undefined
@@ -136,6 +161,8 @@ async function loadFromSource(
       root: source.name,
       story,
       resourcePort: createSourceResourcePort(source),
+      // 通用读取：译文表 / 清单 / 生成型产物视图都要看文本（ResourcePort 只给 Blob URL）
+      readText: (path: string) => source.text(path),
       layerZ: resolveLayerZ(manifest), // 随工程走：预览需要它解析实例级 z
       diagnosticSupply,
     },

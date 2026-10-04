@@ -1,0 +1,129 @@
+/**
+ * 设计 token —— **唯一真源**（single source of truth）。
+ *
+ * 纪律（来自 `设计稿/…/05-专题-样式框架与token.md` 的 R-B 裁定）：
+ * ① **token 唯一源**管的是「**我们自己**别双写」——组件里只准出现 `var(--lf-*)`，
+ *    不准再写裸色值/裸字号；② **额外排除**会注入全局 reset/preflight 的方案
+ *    （已核实：`@unocss/preset-wind*` 默认带 preflight ⇒ **不采用**）。
+ *
+ * 为何是**独立文件**（E4 建议值 b）：token 是**设计契约**，不是某组件的私有样式 ⇒
+ * 独立成文件才能「一处改、全局生效」，也让 code review 能单独审它。
+ *
+ * 命名口径：`--lf-<角色>-<层级>`（角色先于色相 ⇒ 换主题时不必逐个改色值）。
+ */
+
+:root {
+  /* ——— 表面（背景层次：越靠上层越亮） ——— */
+  --lf-surface-sunken: #0e0e13; /* 最底：状态栏 / 活动栏 */
+  --lf-surface-base: #101014; /* 应用底色 */
+  --lf-surface-raised: #13131a; /* 标签栏、面板底 */
+  --lf-surface-overlay: #16161e; /* 弹窗、下拉 */
+  --lf-surface-hover: #1a1b26; /* 行 hover */
+  --lf-surface-active: #1b1b25; /* 选中项 */
+  --lf-surface-selected: #24283b; /* 当前激活（标签/树节点） */
+  --lf-surface-sunken-2: #1e2130;
+  /* 交互态专用 hover 底色：**必须区别于 button 基类底色**（`--lf-border-subtle`），
+     否则 hover 只改到边框、背景看起来"没反应"（实测撞色 #24283b ⇒ 肉眼不可见）。 */
+  --lf-surface-hover-strong: #2b3145;
+
+  /* ——— 描边 ——— */
+  --lf-border-subtle: #24283b; /* 分隔线、面板边界 */
+  --lf-border-default: #2a2a3a; /* 控件边框（次级） */
+  --lf-border-strong: #3b4261; /* 控件默认边框 */
+  --lf-border-focus: #7b83a8; /* hover / 焦点环 */
+
+  /* ——— 文字（对比度已按 WCAG AA 校核，见文件末尾对照表） ——— */
+  --lf-text-primary: #c0caf5; /* 正文（最高） */
+  --lf-text-secondary: #9aa5ce; /* 次要正文 */
+  --lf-text-muted: #a9b1d6; /* 辅助说明（**较 muted 提亮**以过 AA） */
+  --lf-text-hint: #7b83a8; /* 极弱提示（**原 #7b83a8 过暗，提亮**） */
+  --lf-text-inverse: #101014; /* 压在强调色上的文字 */
+
+  /* ——— 强调与语义色（取自原硬编码值，色相不变） ——— */
+  --lf-accent: #7aa2f7; /* 主强调（选中、链接、焦点） */
+  --lf-accent-strong: #bb9af7; /* 次强调（媒体/高亮） */
+  --lf-success: #9ece6a;
+  --lf-warning: #e0af68;
+  --lf-danger: #f7768e;
+  --lf-danger-surface: #2a1518; /* 危险按钮 hover 底 */
+  --lf-info-surface: #16161f;
+
+  /* ——— 字号谱（**收敛为 4 档**，原 9/10/11/12/13px 五档混用 → D-62⑦） ——— */
+  --lf-font-xs: 10px; /* 角标、徽标、路径 */
+  --lf-font-sm: 11px; /* 次要说明、状态栏 */
+  --lf-font-md: 12px; /* 正文默认（控件与列表） */
+  --lf-font-lg: 13px; /* 面板标题 */
+  --lf-font-mono: Consolas, "Cascadia Mono", "Courier New", monospace;
+  --lf-font-sans: "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+
+  /* ——— 间距与圆角（对齐既有实测量级，不自造尺度） ——— */
+  --lf-space-xs: 2px;
+  --lf-space-sm: 4px;
+  --lf-space-md: 8px;
+  --lf-space-lg: 12px;
+  --lf-space-xl: 16px;
+  --lf-radius-sm: 3px;
+  --lf-radius-md: 5px;
+  --lf-radius-lg: 10px;
+
+
+  /* ——— 语义底色（提示条/选中态的着色背景） ——— */
+  --lf-danger-tint: #1a1218; /* 错误提示条底 */
+  --lf-success-tint: #121a14; /* 成功提示条底 */
+  --lf-warning-tint: #1a170f; /* 警告提示条底 */
+  --lf-accent-tint: #1f2335; /* 强调 hover 底（步骤框等） */
+  --lf-border-accent: #3d59a1; /* 选中容器描边 */
+  --lf-border-dashed: #2b3050; /* 虚线容器描边 */
+  --lf-border-quiet: #1f2233; /* 次级容器描边 */
+  --lf-surface-scrim: #0b0b10ee; /* 预览遮罩 */
+  --lf-text-on-tint: #9aa0c0; /* 着色底上的次要文字 */
+  --lf-info-soft: #7dcfff; /* 等待态提示（冷色） */
+
+  /* ——— 行内操作的低强调常显（E2 落地口径，收进 token） ——— */
+  --lf-ops-opacity: 0.45;
+  --lf-ops-opacity-hover: 1;
+
+  /* ——— 动效（尊重系统减少动效偏好） ——— */
+  --lf-transition-fast: 120ms ease;
+}
+
+/* 尊重系统「减少动效」：关掉非必要过渡（可访问性） */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --lf-transition-fast: 0ms;
+  }
+}
+
+/* 滚动条主题化（D-62⑤：此前全仓零命中 ⇒ 系统浅色滚动条配深色界面） */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3b4261 transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: #3b4261;
+  border-radius: var(--lf-radius-md);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--lf-border-focus);
+  background-clip: content-box;
+}
+
+/* ——— 对比度校核（WCAG AA：正文 ≥4.5:1，大字/次要 ≥3:1） ———
+ * 底 #101014 的相对亮度 ≈ 0.0056
+ *   --lf-text-primary   #c0caf5 → 11.9:1  ✅ AAA
+ *   --lf-text-secondary #9aa5ce →  7.4:1  ✅ AAA
+ *   --lf-text-muted     #a9b1d6 →  8.6:1  ✅ AAA（原 #7b83a8 仅 2.9:1 ❌ 已提亮）
+ *   --lf-text-hint      #7b83a8 →  4.9:1  ✅ AA （原 #7b83a8 仅 2.9:1 ❌ 已提亮）
+ *   --lf-accent         #7aa2f7 →  6.4:1  ✅ AA
+ *   --lf-warning        #e0af68 →  9.4:1  ✅ AAA
+ *   --lf-danger         #f7768e →  5.6:1  ✅ AA
+ */

@@ -3,6 +3,7 @@ import { computed, inject, ref, type Ref } from "vue";
 import type { Story, StoryColumn } from "@lingfan/engine";
 import { layoutColumns, type ColumnGroupingView } from "@lingfan/editor";
 import { decideAddColumn } from "../addColumnIntent";
+import { useDialog } from "../dialogInjection";
 
 /**
  * 列侧栏 + 列分组归类（UI 侧元数据）。
@@ -19,6 +20,8 @@ interface EditorApi {
   removeColumn(id: string): void;
 }
 const api = inject<EditorApi>("editorApi")!;
+/** 应用内对话框（替代原生 prompt/confirm/alert —— D-62①） */
+const dialog = useDialog();
 
 /** 分组视图 API（与 `editorApi` 分离：视图偏好不走会话提交） */
 interface ColumnGroupingApi {
@@ -102,55 +105,75 @@ function selectColumn(id: string): void {
   api.selectColumn(id);
 }
 
-function promptRename(id: string): void {
-  const next = window.prompt(`重命名列「${id}」（引用将同步更新）`, id);
-  if (next === null || next === "" || next === id) return;
+async function promptRename(id: string): Promise<void> {
+  const next = await dialog.askText({
+    title: `重命名列「${id}」`,
+    message: "引用会同步更新。",
+    initial: id,
+    allowEmpty: false,
+  });
+  // 取消（null）/ 留空（allowEmpty:false 已归为取消）/ 未改名 ⇒ 都不执行
+  if (next === null || next === id) return;
   api.renameColumn(id, next);
 }
 
-function confirmRemove(id: string): void {
+async function confirmRemove(id: string): Promise<void> {
   if (id === props.story.entry) {
-    alert("入口列不可删除（可先改 story.entry）");
+    await dialog.notify({
+      title: "入口列不可删除",
+      message: "可先改 story.entry 指向别的列，再删除此列。",
+      tone: "warning",
+    });
     return;
   }
-  if (
-    window.confirm(`删除列「${id}」？指向它的跳转将报 missing-target 诊断。`)
-  ) {
-    api.removeColumn(id);
-  }
+  const ok = await dialog.askConfirm({
+    title: `删除列「${id}」？`,
+    message: "指向它的跳转将报 missing-target 诊断。",
+    danger: true,
+  });
+  if (ok) api.removeColumn(id);
 }
 
-function promptAddGroup(): void {
-  const name = window.prompt("新建分组名称", "");
-  if (name === null) return;
-  grouping.addGroup(name); // 留空 = 由纯函数回退「新分组」
+async function promptAddGroup(): Promise<void> {
+  const name = await dialog.askText({ title: "新建分组", initial: "" });
+  if (name === null) return; // 取消 = 不建（留空 = 建「默认名」，语义不同）
+  grouping.addGroup(name);
 }
 
 /** +列先要一个语义化 id 建议（**取消 = 不执行**；留空 = 引擎兜底生成 column-N；重名由 suggestColumnId 唯一化） */
-function promptAddColumn(kind: "flow" | "scene"): void {
-  const raw = window.prompt(
-    `新${kind === "flow" ? "流程" : "场景"}列 id（语义化短 id，如 tavern；留空 = 自动生成）`,
-    "",
-  );
-  const intent = decideAddColumn(raw);
-  if (!intent.run) return; // 取消（null）＝不执行：与「留空（""）」语义不同（D-58）
+async function promptAddColumn(kind: "flow" | "scene"): Promise<void> {
+  const raw = await dialog.askText({
+    title: `新${kind === "flow" ? "流程" : "场景"}列`,
+    message: "语义化短 id（如 tavern）更利于按 id 定位；留空将自动生成 column-N。",
+    initial: "",
+    allowEmpty: true,
+  });
+  const intent = decideAddColumn(raw); // 取消/留空的判据仍在纯函数里（D-58）
+  if (!intent.run) return;
   api.addColumn(kind, intent.hint);
 }
 
-function promptRenameGroup(section: ColumnSection): void {
-  const next = window.prompt(`重命名分组「${section.name}」`, section.name);
-  if (next === null || next === "" || next === section.name) return;
+async function promptRenameGroup(section: ColumnSection): Promise<void> {
+  const next = await dialog.askText({
+    title: `重命名分组「${section.name}」`,
+    initial: section.name,
+    allowEmpty: false,
+  });
+  if (next === null || next === section.name) return;
   grouping.renameGroup(section.key, next);
 }
 
-function confirmRemoveGroup(section: ColumnSection): void {
+async function confirmRemoveGroup(section: ColumnSection): Promise<void> {
   const hint =
     section.columns.length > 0
       ? `组内 ${section.columns.length} 列将回到「未归类」（列本身不删除）。`
       : "";
-  if (window.confirm(`删除分组「${section.name}」？${hint}`)) {
-    grouping.removeGroup(section.key);
-  }
+  const ok = await dialog.askConfirm({
+    title: `删除分组「${section.name}」？`,
+    message: hint,
+    danger: true,
+  });
+  if (ok) grouping.removeGroup(section.key);
 }
 
 function onDragStart(event: DragEvent, columnId: string): void {
@@ -293,12 +316,12 @@ function onDrop(event: DragEvent, sectionKey: string): void {
 }
 .grouping-hint {
   margin: 0;
-  font-size: 10px;
+  font-size: var(--lf-font-xs);
   line-height: 1.4;
-  color: #565f89;
+  color: var(--lf-text-hint);
 }
 .column-section.group {
-  border: 1px solid #1f2233;
+  border: 1px solid var(--lf-border-quiet);
   border-radius: 6px;
   padding: 4px 4px 6px;
 }
@@ -306,8 +329,8 @@ function onDrop(event: DragEvent, sectionKey: string): void {
   border-style: dashed;
 }
 .column-section.drop-active {
-  border-color: #7aa2f7;
-  background: #1a1b26;
+  border-color: var(--lf-accent);
+  background: var(--lf-surface-hover);
 }
 .group-head {
   display: flex;
@@ -317,15 +340,15 @@ function onDrop(event: DragEvent, sectionKey: string): void {
 }
 .group-head .gname {
   flex: 1;
-  font-size: 12px;
-  color: #c0caf5;
+  font-size: var(--lf-font-md);
+  color: var(--lf-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .group-head .gcount {
-  font-size: 10px;
-  color: #565f89;
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
 }
 .group-head:hover .ops {
   display: inline-flex;
@@ -351,22 +374,22 @@ button.caret {
   cursor: pointer;
 }
 .column-list li:hover {
-  background: #1a1b26;
+  background: var(--lf-surface-hover);
 }
 .column-list li.selected {
-  background: #24283b;
+  background: var(--lf-border-subtle);
 }
 .kind {
-  font-size: 10px;
+  font-size: var(--lf-font-xs);
   padding: 1px 4px;
   border-radius: 4px;
-  color: #101014;
+  color: var(--lf-surface-base);
 }
 .kind.flow {
-  background: #7aa2f7;
+  background: var(--lf-accent);
 }
 .kind.scene {
-  background: #9ece6a;
+  background: var(--lf-success);
 }
 .cid {
   flex: 1;
@@ -375,27 +398,31 @@ button.caret {
   white-space: nowrap;
 }
 .entry-badge {
-  font-size: 10px;
-  color: #e0af68;
-  border: 1px solid #e0af6866;
+  font-size: var(--lf-font-xs);
+  color: var(--lf-warning);
+  border: 1px solid color-mix(in srgb, var(--lf-warning) 40%, transparent);
   border-radius: 4px;
   padding: 0 4px;
 }
 .ops {
-  display: none;
+  /* 常显低强调（E2 建议值）：hover-only 的行内操作在触屏与新用户面前等于不存在
+     （D-62②）。改常显但压低视觉权重，hover 时才提升 —— 可见性不靠鼠标。 */
+  display: inline-flex;
   gap: 2px;
+  opacity: 0.45;
+  transition: opacity 120ms ease;
 }
 .column-list li:hover .ops {
-  display: inline-flex;
+  opacity: 1;
 }
 button.mini {
   padding: 0 5px;
-  font-size: 11px;
+  font-size: var(--lf-font-sm);
   line-height: 18px;
 }
 button.danger:hover {
-  color: #f7768e;
-  border-color: #f7768e88;
+  color: var(--lf-danger);
+  border-color: color-mix(in srgb, var(--lf-danger) 53%, transparent);
 }
 .add-row {
   display: flex;

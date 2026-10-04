@@ -11,6 +11,7 @@ import {
   type FieldDescriptor,
 } from "@lingfan/editor";
 import { elementSource } from "@lingfan/ui";
+import { interactionIntent, shouldSuppressClick } from "../pointerIntent";
 import FieldRow from "./FieldRow.vue";
 
 /**
@@ -152,12 +153,23 @@ function onPointerDown(index: number, event: PointerEvent): void {
   const element = elements.value[index];
   if (element === undefined) return;
   const target = elementPointer(index);
+  // ⚠️ D-63 修法 (a)：用**就地选中**（`select`），不再用带切视图副作用的那个 ⇒
+  //   舞台不会因 `v-else-if` 在按下瞬间被卸载，拖拽的 move/up 监听不会落空。
   api.select(target);
   const startX = event.clientX;
   const startY = event.clientY;
+  const probe = { startX, startY, clientX: startX, clientY: startY };
   drag.value = { index, dx: 0, dy: 0 };
+  // 指针捕获：拖出元素范围也继续跟手（不 capture 时指针移出会丢事件）
+  const handle = event.currentTarget as HTMLElement | null;
+  handle?.setPointerCapture?.(event.pointerId);
 
   const onMove = (moveEvent: PointerEvent): void => {
+    probe.clientX = moveEvent.clientX;
+    probe.clientY = moveEvent.clientY;
+    // ⚠️ D-63 修法 (b)：**阈值内不显示位移**——否则「想点一下」也会看到元素
+    // 跟着手抖一下，像被误认成拖拽。
+    if (!shouldSuppressClick(probe)) return;
     drag.value = {
       index,
       dx: moveEvent.clientX - startX,
@@ -167,10 +179,17 @@ function onPointerDown(index: number, event: PointerEvent): void {
   const onUp = (upEvent: PointerEvent): void => {
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
+    probe.clientX = upEvent.clientX;
+    probe.clientY = upEvent.clientY;
+    // ⚠️ 释放前查引用：拖拽中组件可能已被卸载（切工程/换标签）⇒ 空引用会抛。
+    if (handle !== null && handle.isConnected && handle.hasPointerCapture?.(upEvent.pointerId)) {
+      handle.releasePointerCapture(upEvent.pointerId);
+    }
     const dx = upEvent.clientX - startX;
     const dy = upEvent.clientY - startY;
     drag.value = null;
-    if (dx === 0 && dy === 0) return; // 单击 = 仅选中
+    // 阈值内 = 单击 = **仅选中**（已在 pointerdown 做过），不提交位移
+    if (interactionIntent(probe) === "click") return;
     const nextX = draggedPosition(element.x, dx);
     const nextY = draggedPosition(element.y, dy);
     if (nextX !== null) api.update(`${target}/x`, nextX);
@@ -331,14 +350,14 @@ function onDrop(event: DragEvent): void {
   flex: 1;
   min-height: 200px;
   overflow: auto;
-  background: #16161f;
-  border: 1px solid #2a2a3a;
+  background: var(--lf-info-surface);
+  border: 1px solid var(--lf-border-default);
   border-radius: 8px;
 }
 /* 拖拽悬停时的落点提示 */
 .canvas.drop-active {
-  border-color: #7aa2f7;
-  box-shadow: 0 0 0 1px #7aa2f766;
+  border-color: var(--lf-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--lf-accent) 40%, transparent);
 }
 .element {
   position: absolute;
@@ -348,40 +367,40 @@ function onDrop(event: DragEvent): void {
   box-sizing: border-box;
   padding: 4px 8px;
   overflow: hidden;
-  font-size: 11px;
-  color: #a9b1d6;
+  font-size: var(--lf-font-sm);
+  color: var(--lf-text-muted);
   cursor: grab;
   user-select: none;
-  background: #24283b;
-  border: 1px solid #3b4261;
+  background: var(--lf-border-subtle);
+  border: 1px solid var(--lf-border-strong);
   border-radius: 6px;
 }
 .element.selected {
-  border-color: #7aa2f7;
-  box-shadow: 0 0 0 1px #7aa2f7;
+  border-color: var(--lf-accent);
+  box-shadow: 0 0 0 1px var(--lf-accent);
 }
 /* 资源缩略作背景时的可读性底衬（无缩略时观感不变） */
 .element .tag,
 .element .id {
-  background: #16161ed9;
+  background: color-mix(in srgb, var(--lf-surface-overlay) 85%, transparent);
   border-radius: 4px;
   padding: 1px 4px;
 }
 .element .tag {
-  color: #e6e6f0;
+  color: var(--lf-text-primary);
 }
 .element .id {
-  color: #565f89;
+  color: var(--lf-text-hint);
 }
 .props {
   max-height: 42%;
   padding-top: 6px;
   overflow: auto;
-  border-top: 1px solid #2a2a3a;
+  border-top: 1px solid var(--lf-border-default);
 }
 .hint {
   padding: 8px;
-  font-size: 12px;
-  color: #565f89;
+  font-size: var(--lf-font-md);
+  color: var(--lf-text-hint);
 }
 </style>
