@@ -306,12 +306,11 @@ pub fn asset_list_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     use tauri::Manager;
     tauri::plugin::Builder::<tauri::Wry>::new("lfen-assets")
         .setup(|app, api| {
-            let handle = std::sync::Arc::new(
-                api.register_android_plugin(
+            let handle =
+                std::sync::Arc::new(api.register_android_plugin(
                     "com.langfeng.lingfanengine.assets",
                     "AssetListPlugin",
-                )?,
-            );
+                )?);
             let open_handle = handle.clone();
             let asset_fs = asset::AssetFs::new(
                 Box::new(move |path| asset::open_via_plugin(&open_handle, path)),
@@ -351,13 +350,21 @@ mod tests {
         let mut f = RangedFile::new(backing(), 16, 16).unwrap();
         let mut out = Vec::new();
         f.read_to_end(&mut out).unwrap();
-        assert_eq!(out, (10u8..26).collect::<Vec<u8>>(), "必须只读到区间内，不得越界");
+        assert_eq!(
+            out,
+            (10u8..26).collect::<Vec<u8>>(),
+            "必须只读到区间内，不得越界"
+        );
     }
 
     #[test]
     fn ranged_file_len_is_window_len() {
         let mut f = RangedFile::new(backing(), 16, 16).unwrap();
-        assert_eq!(seek_len(&mut f).unwrap(), 16, "长度 = 区间长，而非底层文件长");
+        assert_eq!(
+            seek_len(&mut f).unwrap(),
+            16,
+            "长度 = 区间长，而非底层文件长"
+        );
         assert_eq!(f.stream_position().unwrap(), 0, "seek_len 必须还原位置");
     }
 
@@ -372,7 +379,11 @@ mod tests {
         f.read_exact(&mut b[..1]).unwrap();
         assert_eq!(b[0], 25);
         assert_eq!(f.stream_position().unwrap(), 16);
-        assert_eq!(f.seek(SeekFrom::Current(-1)).unwrap(), 15, "Current 相对区间原点");
+        assert_eq!(
+            f.seek(SeekFrom::Current(-1)).unwrap(),
+            15,
+            "Current 相对区间原点"
+        );
         f.read_exact(&mut b[..1]).unwrap();
         assert_eq!(b[0], 25);
         assert_eq!(f.read(&mut b).unwrap(), 0, "区间末尾即 EOF");
@@ -398,7 +409,10 @@ mod tests {
             env!("CARGO_MANIFEST_DIR"),
             "/gen/android/app/src/main/java/com/langfeng/lingfanengine/assets/AssetListPlugin.kt"
         ));
-        assert!(kt.contains("afd.startOffset"), "Kotlin 必须回传 AssetFileDescriptor.startOffset");
+        assert!(
+            kt.contains("afd.startOffset"),
+            "Kotlin 必须回传 AssetFileDescriptor.startOffset"
+        );
         assert!(kt.contains("res.put(\"start\""), "Kotlin 必须回传区间起点");
         assert!(kt.contains("res.put(\"length\""), "Kotlin 必须回传区间长度");
         let rs = include_str!("resource_fs.rs");

@@ -10,7 +10,9 @@
 //! 首次运行从包内 `__key__.seed`（32B 原始 DEK，构建产物）导入并立即封装——运行态零明文密钥落盘。
 //! 加密包内文件名 = 原逻辑路径 + `.enc`（旧版引擎 ResourceEncryptor 语义照搬）。
 
-use crate::crypto::{gcm_open, gcm_open_in_place, gcm_seal, kek_from_keyring, random_bytes, KEK_SERVICE, KEK_USER};
+use crate::crypto::{
+    gcm_open, gcm_open_in_place, gcm_seal, kek_from_keyring, random_bytes, KEK_SERVICE, KEK_USER,
+};
 use crate::resource_fs::{seek_len, ResourceFs};
 use aes_gcm::aead::{Aead, Payload};
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
@@ -155,8 +157,7 @@ pub fn decrypt_resource_bytes(
             return Err(ResourceCryptoError::BadFormat("LFEN2 文件过短".into()));
         }
         file.drain(..MAGIC_LFEN2.len() + 1); // 剥头部（memmove，无重分配）→ 原地解封
-        return gcm_open_in_place(key, file, &aad_for(path))
-            .map_err(ResourceCryptoError::Crypto);
+        return gcm_open_in_place(key, file, &aad_for(path)).map_err(ResourceCryptoError::Crypto);
     }
     if file.starts_with(MAGIC_LFEN) {
         if file.len() < MAGIC_LFEN.len() + 1 + 12 + 16 {
@@ -471,9 +472,8 @@ pub fn decrypt_v2_block_range(
                 let mut with_nonce = Vec::with_capacity(12 + sealed.len());
                 with_nonce.extend_from_slice(&v2_nonce(&base, index as u32));
                 with_nonce.extend_from_slice(&sealed);
-                let plain =
-                    gcm_open(key, &with_nonce, v2_aad(logical, index as u32).as_bytes())
-                        .map_err(ResourceCryptoError::Crypto)?;
+                let plain = gcm_open(key, &with_nonce, v2_aad(logical, index as u32).as_bytes())
+                    .map_err(ResourceCryptoError::Crypto)?;
                 v2_cache_put(enc_file, logical, index, key, &plain);
                 plain
             }
@@ -619,7 +619,17 @@ pub(crate) fn is_media_ext(logical: &str) -> bool {
         .unwrap_or_default();
     matches!(
         ext.as_str(),
-        "mp4" | "webm" | "mov" | "mkv" | "avi" | "mp3" | "ogg" | "wav" | "m4a" | "aac" | "flac"
+        "mp4"
+            | "webm"
+            | "mov"
+            | "mkv"
+            | "avi"
+            | "mp3"
+            | "ogg"
+            | "wav"
+            | "m4a"
+            | "aac"
+            | "flac"
             | "opus"
     )
 }
@@ -688,11 +698,7 @@ pub fn decrypt_resource(
         if let Some(url) = loopback_media_url(&app, &path) {
             return Ok(serde_json::json!({ "v2": path, "url": url }).to_string());
         }
-        let url = format!(
-            "{}/v2/{}",
-            protocol_base(),
-            utf8_percent_encode(&path)
-        );
+        let url = format!("{}/v2/{}", protocol_base(), utf8_percent_encode(&path));
         return Ok(serde_json::json!({ "v2": path, "url": url }).to_string());
     }
     let _guard = STREAM_DECRYPT_LOCK
@@ -1085,9 +1091,7 @@ fn probe_android_range(
     total: u64,
 ) {
     let body = resp.body();
-    let hex = |bytes: &[u8]| -> String {
-        bytes.iter().map(|b| format!("{b:02x}")).collect()
-    };
+    let hex = |bytes: &[u8]| -> String { bytes.iter().map(|b| format!("{b:02x}")).collect() };
     let head = hex(&body[..body.len().min(4)]);
     let tail = hex(&body[body.len().saturating_sub(4)..]);
     eprintln!(
@@ -1284,6 +1288,8 @@ pub fn encrypt_directory(
     extensions: &[&str],
     exclusions: &[&str],
 ) -> Result<Vec<PathBuf>, ResourceCryptoError> {
+    // 同路径防护：output = input 会把 .enc 写回源目录旁（明文/密文同目录共存形态）
+    ensure_pack_paths_distinct(input, output)?;
     let mut written = Vec::new();
     let mut scan = PackScan::default();
     encrypt_directory_inner(
@@ -1326,7 +1332,9 @@ fn encrypt_directory_inner(
     for entry in entries {
         let path = entry.map_err(io)?.path();
         if path.is_dir() {
-            encrypt_directory_inner(root, &path, output, key, extensions, exclusions, prefix, force_v2, written, scan)?;
+            encrypt_directory_inner(
+                root, &path, output, key, extensions, exclusions, prefix, force_v2, written, scan,
+            )?;
             continue;
         }
         let rel = path.strip_prefix(root).unwrap_or(&path);
@@ -1440,6 +1448,53 @@ struct PackScan {
     skipped: Vec<PackEntry>,
 }
 
+/// 打包路径关系防护（**数据安全红线**）：输出根与工程根**相同或存在嵌套关系**一律拒绝。
+/// - output == input：`lfenpack --force` 清空输出 = 删光源工程（自毁）；
+/// - output 在 input 内：打包产物嵌进源工程（源污染 + 二次打包吸收风险）；
+/// - input 在 output 内：清空 output 会连带毁掉源工程。
+///
+/// canonicalize 统一真实大小写与 verbatim 前缀后再做组件级前缀比较；
+/// output 不存在时向上归一其最近存在祖先再拼回剩余段。
+pub fn ensure_pack_paths_distinct(input: &Path, output: &Path) -> Result<(), ResourceCryptoError> {
+    let normalize = |path: &Path| -> Result<PathBuf, ResourceCryptoError> {
+        let mut tail: Vec<std::ffi::OsString> = Vec::new();
+        let mut cur = path.to_path_buf();
+        loop {
+            match fs::canonicalize(&cur) {
+                Ok(real) => {
+                    let mut out = real;
+                    for seg in tail.iter().rev() {
+                        out.push(seg);
+                    }
+                    return Ok(out);
+                }
+                Err(_) => match (cur.file_name(), cur.parent()) {
+                    (Some(name), Some(parent)) => {
+                        tail.push(name.to_os_string());
+                        cur = parent.to_path_buf();
+                    }
+                    _ => {
+                        return Err(ResourceCryptoError::Io(format!(
+                            "路径无法归一：{}",
+                            path.display()
+                        )))
+                    }
+                },
+            }
+        }
+    };
+    let input_n = normalize(input)?;
+    let output_n = normalize(output)?;
+    if input_n == output_n || output_n.starts_with(&input_n) || input_n.starts_with(&output_n) {
+        return Err(ResourceCryptoError::Io(format!(
+            "输出根与工程根相同或存在嵌套关系（工程根 {}，输出根 {}）——拒绝打包：防自毁与源工程污染，请把输出根放到工程根之外",
+            input.display(),
+            output.display()
+        )));
+    }
+    Ok(())
+}
+
 /// 打包编排：明文工程根 → 加密发布根（lfenpack CLI 的可测核心）。
 /// - 输出根 fail-closed：已存在且非空 = 拒绝（不覆盖创作者成果；`--force` 由 CLI 显式清空后重入）
 /// - 清单恒明文转换：`resourceEncryption` 置 true（运行时形态判定依赖清单先可读）
@@ -1458,6 +1513,8 @@ pub fn pack_project_with_dist(
     output: &Path,
     dist: Option<&Path>,
 ) -> Result<PackReport, ResourceCryptoError> {
+    // 路径关系防护最前置（先于非空检查——语义优先级：自毁/污染红线 > 覆盖确认）
+    ensure_pack_paths_distinct(input, output)?;
     if output.exists() {
         let non_empty = fs::read_dir(output)
             .map(|mut it| it.next().is_some())
@@ -1532,7 +1589,9 @@ pub fn pack_project_with_dist(
         let src = match logical.strip_prefix("dist/") {
             Some(rest) => dist
                 .ok_or_else(|| {
-                    ResourceCryptoError::Io(format!("包内出现 dist 文件但未提供 dist 输入：{logical}"))
+                    ResourceCryptoError::Io(format!(
+                        "包内出现 dist 文件但未提供 dist 输入：{logical}"
+                    ))
                 })?
                 .join(rest),
             None => input.join(logical),
@@ -1563,8 +1622,7 @@ pub fn pack_project_with_dist(
         .cloned()
         .collect();
     if !dist_assets.is_empty() {
-        manifest["frontend"] =
-            serde_json::json!({ "assets": dist_assets });
+        manifest["frontend"] = serde_json::json!({ "assets": dist_assets });
         fs::write(
             output.join("project.json"),
             serde_json::to_string_pretty(&manifest)
@@ -1926,6 +1984,52 @@ mod tests {
         fs::remove_dir_all(&base).ok();
     }
 
+    #[test]
+    fn pack_rejects_output_equal_or_nested_to_input() {
+        // 🔴 路径关系防护（数据安全红线）：同路径 / 子目录 / 父目录全拒——
+        // lfenpack --force 曾无防护，output == input 时 remove_dir_all 会删光源工程
+        let base = temp_base("lfen-guard");
+        let input = base.join("Res");
+        fs::create_dir_all(input.join("Stories")).unwrap();
+        fs::write(
+            input.join("project.json"),
+            r#"{"formatVersion":1,"id":"g","entry":"start"}"#,
+        )
+        .unwrap();
+        fs::write(
+            input.join("Stories/a.json"),
+            r#"{"formatVersion":1,"id":"a","kind":"flow","commands":[]}"#,
+        )
+        .unwrap();
+
+        // 相同路径
+        assert!(ensure_pack_paths_distinct(&input, &input).is_err());
+        assert!(pack_project(&input, &input).is_err());
+        // output 不存在但位于 input 内（子目录打包 = 源污染）
+        assert!(ensure_pack_paths_distinct(&input, &input.join("packed")).is_err());
+        assert!(pack_project(&input, &input.join("packed")).is_err());
+        // input 位于 output 内（父目录清空 = 连带毁源）
+        assert!(ensure_pack_paths_distinct(&input, &base).is_err());
+        // 兄弟目录（不存在）⇒ 通过；打包正例不回归
+        assert!(ensure_pack_paths_distinct(&input, &base.join("out")).is_ok());
+        let report = pack_project(&input, &base.join("out")).unwrap();
+        assert_eq!(report.files, 1);
+        assert!(base.join("out").join("Stories/a.json.enc").is_file());
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn encrypt_directory_rejects_same_path() {
+        // in-place 加密（output = input）= 明文/密文同目录共存的根源形态，防护拒绝
+        let base = temp_base("lfen-guard-enc");
+        let input = base.join("Res");
+        fs::create_dir_all(&input).unwrap();
+        fs::write(input.join("a.mp3"), b"audio").unwrap();
+        assert!(encrypt_directory(&input, &input, KEY, &["mp3"], &[]).is_err());
+        assert!(!input.join("a.mp3.enc").exists()); // 零副作用
+        fs::remove_dir_all(&base).ok();
+    }
+
     fn temp_base(tag: &str) -> PathBuf {
         std::env::temp_dir().join(format!(
             "{tag}-{}",
@@ -2280,8 +2384,14 @@ mod tests {
         plain.extend_from_slice(b"4K-TAIL"); // total = 4103，chunk = 1KiB
         let src = root.join("src.bin");
         fs::write(&src, &plain).unwrap();
-        encrypt_lfen2_v2_file(&src, &root.join("Video/m2.mp4.enc"), KEY, "Video/m2.mp4", 10)
-            .unwrap();
+        encrypt_lfen2_v2_file(
+            &src,
+            &root.join("Video/m2.mp4.enc"),
+            KEY,
+            "Video/m2.mp4",
+            10,
+        )
+        .unwrap();
 
         let call = |uri: &str, range: Option<&str>| {
             let mut b = tauri::http::Request::builder().uri(uri);
@@ -2320,7 +2430,12 @@ mod tests {
         assert_eq!(resp.body().as_slice(), &plain[4095..4103]);
 
         // 畸形/越界 = 416（fail-closed：显式通道静默退化会放大成一次全文件解密）
-        for bad in ["bytes%3Dxx-yy", "bytes%3D999999-", "garbage", "bytes%3D50-10"] {
+        for bad in [
+            "bytes%3Dxx-yy",
+            "bytes%3D999999-",
+            "garbage",
+            "bytes%3D50-10",
+        ] {
             let resp = call(
                 &format!("http://lfstream.localhost/v2/Video%2Fm2.mp4?range={bad}"),
                 None,
@@ -2334,7 +2449,10 @@ mod tests {
         }
 
         // 头通道语义未受影响（同一资源、同一函数）：206 + Content-Range 字节精确
-        let resp = call("http://lfstream.localhost/v2/Video%2Fm2.mp4", Some("bytes=100-2059"));
+        let resp = call(
+            "http://lfstream.localhost/v2/Video%2Fm2.mp4",
+            Some("bytes=100-2059"),
+        );
         assert_eq!(resp.status(), tauri::http::StatusCode::PARTIAL_CONTENT);
         assert_eq!(resp.body().as_slice(), &plain[100..=2059]);
         assert_eq!(
@@ -2402,8 +2520,10 @@ mod tests {
         assert_eq!(rb, &plain_b[..1024]);
         assert_ne!(rb, r1);
         // 跨块 Range（块 1 miss 后回填）→ 复取命中
-        let s1 = decrypt_v2_block_range(&StdFs, &enc_a, KEY, "Video/lru-a.mp4", 1024, 2047).unwrap();
-        let s2 = decrypt_v2_block_range(&StdFs, &enc_a, KEY, "Video/lru-a.mp4", 1024, 2047).unwrap();
+        let s1 =
+            decrypt_v2_block_range(&StdFs, &enc_a, KEY, "Video/lru-a.mp4", 1024, 2047).unwrap();
+        let s2 =
+            decrypt_v2_block_range(&StdFs, &enc_a, KEY, "Video/lru-a.mp4", 1024, 2047).unwrap();
         assert_eq!(s1, s2);
         assert_eq!(s1, &plain_a[1024..2048]);
         let (h2, m2) = v2_block_cache_stats();

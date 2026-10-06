@@ -68,7 +68,10 @@ impl std::fmt::Display for ProjectWriterError {
                 write!(f, "写入路径非法（越出资源根或非白名单）：{p}")
             }
             ProjectWriterError::BadDelete(p) => {
-                write!(f, "删除路径非法（只允许删除 {STORIES_DIR}/ 内的陈旧文件）：{p}")
+                write!(
+                    f,
+                    "删除路径非法（只允许删除 {STORIES_DIR}/ 内的陈旧文件）：{p}"
+                )
             }
             ProjectWriterError::Io(m) => write!(f, "文件写回失败：{m}"),
         }
@@ -87,7 +90,10 @@ fn validate_write_path(path: &str) -> Result<(), ProjectWriterError> {
         return Err(ProjectWriterError::BadPath(path.into()));
     }
     let segments: Vec<&str> = path.split('/').collect();
-    if segments.iter().any(|s| s.is_empty() || *s == "." || *s == "..") {
+    if segments
+        .iter()
+        .any(|s| s.is_empty() || *s == "." || *s == "..")
+    {
         return Err(ProjectWriterError::BadPath(path.into()));
     }
     if path == MANIFEST_FILE {
@@ -245,7 +251,10 @@ mod tests {
             vec!["Stories/old.json".into()],
         )
         .unwrap();
-        assert_eq!(report.written, ["Stories/a.json", "Stories/sub/b.json", "project.json"]);
+        assert_eq!(
+            report.written,
+            ["Stories/a.json", "Stories/sub/b.json", "project.json"]
+        );
         assert_eq!(report.deleted, ["Stories/old.json"]);
         assert_eq!(
             fs::read_to_string(root.join("Stories/a.json")).unwrap(),
@@ -255,7 +264,10 @@ mod tests {
             fs::read_to_string(root.join("Stories/sub/b.json")).unwrap(),
             "{列b}"
         );
-        assert_eq!(fs::read_to_string(root.join("project.json")).unwrap(), "{清单v2}");
+        assert_eq!(
+            fs::read_to_string(root.join("project.json")).unwrap(),
+            "{清单v2}"
+        );
         assert!(!root.join("Stories/old.json").exists());
     }
 
@@ -263,16 +275,27 @@ mod tests {
     fn invalid_path_rejects_whole_batch_with_zero_writes() {
         let root = test_root("escape");
         write(&root, "Stories/keep.json", "{保持}");
-        for evil in ["Stories/../evil.json", "src/main.rs", "Stories/a\\b.json", ""] {
+        for evil in [
+            "Stories/../evil.json",
+            "src/main.rs",
+            "Stories/a\\b.json",
+            "",
+        ] {
             let result = apply_project_files(
                 root.to_string_lossy().into_owned(),
                 vec![change("Stories/keep.json", "改"), change(evil, "x")],
                 vec![],
             );
-            assert!(matches!(result, Err(ProjectWriterError::BadPath(_))), "{evil}");
+            assert!(
+                matches!(result, Err(ProjectWriterError::BadPath(_))),
+                "{evil}"
+            );
         }
         // 零写入：原有文件未被改动，非法目标也不存在
-        assert_eq!(fs::read_to_string(root.join("Stories/keep.json")).unwrap(), "{保持}");
+        assert_eq!(
+            fs::read_to_string(root.join("Stories/keep.json")).unwrap(),
+            "{保持}"
+        );
         assert!(!root.join("evil.json").exists());
         assert!(!root.join("src").exists());
     }
@@ -287,7 +310,10 @@ mod tests {
             vec![MANIFEST_FILE.into()],
         );
         assert!(matches!(result, Err(ProjectWriterError::BadDelete(_))));
-        assert_eq!(fs::read_to_string(root.join("project.json")).unwrap(), "{清单}");
+        assert_eq!(
+            fs::read_to_string(root.join("project.json")).unwrap(),
+            "{清单}"
+        );
     }
 
     #[test]

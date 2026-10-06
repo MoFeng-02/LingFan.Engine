@@ -24,6 +24,8 @@ import {
   diffProjectFiles,
   MANIFEST_FILE,
   STORIES_DIR,
+  synthesizeDegradedManifest,
+  type DegradedOpen,
   type FileStamp,
   type ProjectFilesPort,
   type ProjectWriteReport,
@@ -138,7 +140,8 @@ async function tryDirectoryHandle(
 
 /**
  * 资源根定位（FSA）：所选目录含清单即资源根；否则下探一层 `Resources/`
- * （工程惯例里资源根就在该子目录）。都不含 → fail-closed 报可操作的话。
+ * （工程惯例里资源根就在该子目录）。都无清单但有 `Stories/` ⇒ **缺清单的合法资源根**
+ * （#11 降级：readProject 会合成最小清单并显式回执）。都没有 → fail-closed 报可操作的话。
  */
 async function locateResourceRootHandle(
   picked: FileSystemDirectoryHandle,
@@ -153,8 +156,18 @@ async function locateResourceRootHandle(
   ) {
     return { root: resources, name: resources.name };
   }
+  // #11 降级候选：无清单但有 Stories/（缺清单只是缺 formatVersion/id/entry，合成即可）
+  if ((await tryDirectoryHandle(picked, STORIES_DIR)) !== undefined) {
+    return { root: picked, name: picked.name };
+  }
+  if (
+    resources !== undefined &&
+    (await tryDirectoryHandle(resources, STORIES_DIR)) !== undefined
+  ) {
+    return { root: resources, name: resources.name };
+  }
   throw new Error(
-    `所选目录（${picked.name}）内未找到 ${MANIFEST_FILE}：请选择工程资源根（含 ${MANIFEST_FILE} 的 Resources/ 目录）`,
+    `所选目录（${picked.name}）内未找到 ${MANIFEST_FILE} 或 ${STORIES_DIR}/：请选择工程资源根（含 ${MANIFEST_FILE} 或 ${STORIES_DIR}/ 的目录）`,
   );
 }
 
@@ -230,36 +243,56 @@ function relativePathOf(file: File): string {
 /**
  * 资源根定位（文件快照）：清单所在层即资源根（清单必须在资源根内的推论）。
  * 同深出现多个清单 = 无法判定 → fail-closed 让用户直接选资源根，不替用户猜。
+ * #11 降级：无清单时以 `Stories/` 目录定位资源根（readProject 合成清单并显式回执）；
+ * 连 Stories/ 都没有才 fail-closed。
  */
 export function locateResourceRootFromPaths(paths: readonly string[]): {
   /** 资源根前缀（`""` 或 `Resources/`） */
   root: string;
-  /** 清单逻辑路径（资源根相对） */
+  /** 清单逻辑路径（资源根相对；**缺清单时是期望位置**，存在与否由 readProject 判定） */
   manifest: string;
 } {
   const candidates = paths.filter(
     (path) => path === MANIFEST_FILE || path.endsWith(`/${MANIFEST_FILE}`),
   );
-  if (candidates.length === 0) {
+  if (candidates.length > 0) {
+    const sorted = [...candidates].sort((a, b) => {
+      const depth = segmentDepth(a) - segmentDepth(b);
+      return depth !== 0 ? depth : a.localeCompare(b);
+    });
+    const first = sorted[0] ?? MANIFEST_FILE;
+    const ambiguous = sorted.filter(
+      (path) =>
+        segmentDepth(path) === segmentDepth(first) && dirOf(path) !== dirOf(first),
+    );
+    if (ambiguous.length > 0) {
+      throw new Error(
+        `发现多个 ${MANIFEST_FILE}（${first}、${ambiguous[0] ?? ""}）：请直接选择工程资源根目录`,
+      );
+    }
+    return { root: dirOf(first), manifest: MANIFEST_FILE };
+  }
+  // #11 降级：无清单 ⇒ 以 Stories/ 目录定位资源根（同层多个 = 无法判定，fail-closed）
+  const storyRoots = new Set<string>();
+  for (const path of paths) {
+    if (path.startsWith(`${STORIES_DIR}/`)) storyRoots.add("");
+    else {
+      const marker = `/${STORIES_DIR}/`;
+      const idx = path.indexOf(marker);
+      if (idx >= 0) storyRoots.add(path.slice(0, idx + 1));
+    }
+  }
+  if (storyRoots.size === 0) {
     throw new Error(
-      `所选目录内未找到 ${MANIFEST_FILE}：请选择工程资源根（含 ${MANIFEST_FILE} 的 Resources/ 目录）`,
+      `所选目录内未找到 ${MANIFEST_FILE} 或 ${STORIES_DIR}/：请选择工程资源根（含 ${MANIFEST_FILE} 或 ${STORIES_DIR}/ 的目录）`,
     );
   }
-  const sorted = [...candidates].sort((a, b) => {
-    const depth = segmentDepth(a) - segmentDepth(b);
-    return depth !== 0 ? depth : a.localeCompare(b);
-  });
-  const first = sorted[0] ?? MANIFEST_FILE;
-  const ambiguous = sorted.filter(
-    (path) =>
-      segmentDepth(path) === segmentDepth(first) && dirOf(path) !== dirOf(first),
-  );
-  if (ambiguous.length > 0) {
+  if (storyRoots.size > 1) {
     throw new Error(
-      `发现多个 ${MANIFEST_FILE}（${first}、${ambiguous[0] ?? ""}）：请直接选择工程资源根目录`,
+      `发现多个 ${STORIES_DIR}/ 目录（${[...storyRoots].map((r) => `${r || "根层"}${STORIES_DIR}`).join("、")}）：请直接选择工程资源根目录`,
     );
   }
-  return { root: dirOf(first), manifest: MANIFEST_FILE };
+  return { root: [...storyRoots][0] ?? "", manifest: MANIFEST_FILE };
 }
 
 /** 目录 input 取径：路径剥资源根前缀，文件按逻辑路径查表 */
@@ -315,11 +348,15 @@ export async function createFileListFileSource(
 export function createSourceProjectFilesPort(
   source: ProjectFileSource,
 ): ProjectFilesPort {
-  let loaded: Promise<{ manifest: unknown; stories: Map<string, string> }> | null =
-    null;
+  let loaded: Promise<{
+    manifest: unknown;
+    stories: Map<string, string>;
+    degraded: DegradedOpen | undefined;
+  }> | null = null;
   const load = (): Promise<{
     manifest: unknown;
     stories: Map<string, string>;
+    degraded: DegradedOpen | undefined;
   }> => {
     loaded ??= readProject(source);
     return loaded;
@@ -331,12 +368,20 @@ export function createSourceProjectFilesPort(
     async stories(): Promise<Map<string, string>> {
       return new Map((await load()).stories);
     },
+    async degraded(): Promise<DegradedOpen | undefined> {
+      // 与 manifest()/stories() 共享同一次装载 memo（幂等）；缺清单 = 合成回执，否则 undefined
+      return (await load()).degraded;
+    },
   };
 }
 
 async function readProject(
   source: ProjectFileSource,
-): Promise<{ manifest: unknown; stories: Map<string, string> }> {
+): Promise<{
+  manifest: unknown;
+  stories: Map<string, string>;
+  degraded: DegradedOpen | undefined;
+}> {
   const paths = await source.paths();
   // 加密形态**前置统一识别**（唯一判定点，见 encryptedProject）：在读取任何文件之前拒绝——
   // 逐个路径在循环里抛会把「工程形态问题」报成「某个文件的问题」，且已白读一批文件。
@@ -344,25 +389,34 @@ async function readProject(
   if (encrypted.encrypted) {
     throw new Error(encryptedProjectMessage(source.name, encrypted));
   }
-  if (!paths.includes(MANIFEST_FILE)) {
-    throw new Error(`资源根（${source.name}）缺少 ${MANIFEST_FILE}`);
+  const hasManifest = paths.includes(MANIFEST_FILE);
+  const storyPaths = paths.filter((path) => path.startsWith(`${STORIES_DIR}/`));
+  if (storyPaths.length === 0) {
+    // 🔴 只降级「缺清单」这一种：连 Stories/ 都没有 = 没有可打开的内容，照旧 fail-closed
+    throw new Error(
+      hasManifest
+        ? `资源根（${source.name}）缺少 ${STORIES_DIR}/ 目录`
+        : `资源根（${source.name}）缺少 ${MANIFEST_FILE} 且没有 ${STORIES_DIR}/ 目录：没有可打开的内容`,
+    );
+  }
+  const stories = new Map<string, string>();
+  for (const path of storyPaths) {
+    stories.set(path, await source.text(path));
+  }
+  if (!hasManifest) {
+    // #11 降级：合成最小清单（formatVersion/id/entry），降级事实显式上交（端口 `degraded()`）
+    const { manifest, degraded } = synthesizeDegradedManifest(source.name, stories);
+    return { manifest, stories, degraded };
   }
   const raw = await source.text(MANIFEST_FILE);
   let manifest: unknown;
   try {
     manifest = JSON.parse(raw);
   } catch (error: unknown) {
+    // 清单**存在但损坏** = 结构问题，照旧 fail-closed（可降级的只有「缺失」）
     throw new Error(`${MANIFEST_FILE} 不是合法 JSON：${String(error)}`);
   }
-  const storyPaths = paths.filter((path) => path.startsWith(`${STORIES_DIR}/`));
-  if (storyPaths.length === 0) {
-    throw new Error(`资源根（${source.name}）缺少 ${STORIES_DIR}/ 目录`);
-  }
-  const stories = new Map<string, string>();
-  for (const path of storyPaths) {
-    stories.set(path, await source.text(path));
-  }
-  return { manifest, stories };
+  return { manifest, stories, degraded: undefined };
 }
 
 /** Blob URL 构造/释放（缺省 `URL.createObjectURL`；测试以契约替身注入） */

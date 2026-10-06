@@ -6,7 +6,6 @@ import {
   describeElement,
   draggedPosition,
   elementLabel,
-  getAtPointer,
   planElementDrop,
   type FieldDescriptor,
 } from "@lingfan/editor";
@@ -37,6 +36,12 @@ const props = defineProps<{
   pointer: string | null;
   /** 已打开工程的资源供给端口（缺省 = 未打开工程：不解析缩略） */
   resourcePort?: ResourcePort;
+  /**
+   * 工程级**第一个场景列**的 id（App 从整工程树计算）。
+   * 空态动作「去选一个场景列」要用它导航——**切片里只有当前一列**，
+   * 在切片里 findIndex scene 列是死动作（本组件吃不到工程级树，宿主给）。
+   */
+  firstSceneColumnId?: string | null;
 }>();
 
 /**
@@ -70,6 +75,8 @@ function elementThumb(element: Record<string, unknown>): string | undefined {
 interface EditorApi {
   update(pointer: string, value: unknown): void;
   select(pointer: string | null): void;
+  /** 切换活动列文档（空态动作「去选一个场景列」用——工程级导航归宿主） */
+  selectColumn(id: string): void;
   /** 组件拖入的落点创建（一次拖入 = 一个 undo 单元，提交在宿主会话中枢） */
   insertElement(
     columnPointer: string,
@@ -79,18 +86,20 @@ interface EditorApi {
 }
 const api = inject<EditorApi>("editorApi")!;
 
-/** 指针所在的 scene 列（舞台只编辑 scene 列；flow 列无空间层） */
+/**
+ * 舞台编辑的**当前列 = 活动文档切片的列**（`props.story.columns[0]`）。
+ *
+ * 🔴 **为什么不能从选中指针推导**（2026-10-05 真机缺陷，用户实测「选中的场景不能舞台」）：
+ * 此前 `sceneColumn` 从 `props.pointer` 反解列 —— 而用户在**列侧栏选中列**时
+ * `selectColumn` 会先 `select(null)`（跨列不保留命令选中）⇒ `pointer = null`
+ * ⇒ `sceneColumn = undefined` ⇒ `elements = []` ⇒ 舞台对**场景列**误报
+ * 「当前列没有空间层」，且**画布上没有任何元素可拖**（「拖动不能改变位置」同根）。
+ * 活动文档恒单列（B0「一文档 = 一列」不变量）⇒ 切片首列就是当前列，与选中态无关。
+ */
 const sceneColumn = computed(() => {
-  const pointer = props.pointer;
-  if (pointer === null) return undefined;
-  const parts = pointer.split("/");
-  if (parts[1] !== "columns" || parts[2] === undefined) return undefined;
-  const colPointer = `/columns/${parts[2]}`;
-  const column = getAtPointer(props.story, colPointer) as
-    | { id?: string; kind?: string; elements?: unknown[] }
-    | undefined;
+  const column = props.story.columns[0];
   if (column === undefined || column.kind !== "scene") return undefined;
-  return { pointer: colPointer, column };
+  return { pointer: "/columns/0", column };
 });
 
 const elements = computed<Array<Record<string, unknown>>>(() => {
@@ -266,17 +275,17 @@ function onPointerDown(index: number, event: PointerEvent): void {
 }
 
 /**
- * 空态主动作：**切到「列」内页并选中第一个场景（scene）列**。
+ * 空态主动作：**切到工程里第一个场景（scene）列**。
  *
- * ⚠️ 不用 `open-project`（那是「打开工程」，语义不同）；这里要解决的是
- * 「你正看着一个没有空间层的列」⇒ 直接把他送到有空间层的列。
+ * ⚠️ 导航目标必须是**工程级**事实（App 从整工程树算好经 prop 传入）——
+ * 此前在切片里 `findIndex(kind === "scene")`，切片恒单列 ⇒ 当前是 flow 列时
+ * 永远找不到 ⇒ **按钮点了没反应**（真机实测）。
  */
 function onEmptyAction(action: EmptyAction): void {
   if (action.id !== "goto-scene-column") return;
-  const index = props.story.columns.findIndex((c) => c.kind === "scene");
-  if (index < 0) return; // 一个 scene 列都没有 ⇒ 不给假出路
-  // `select` 指向列本身（`/columns/<i>`）⇒ 宿主据此同步列选中态（与时间线选列同一条路）
-  api.select(`/columns/${index}`);
+  const id = props.firstSceneColumnId;
+  if (id === undefined || id === null || id === "") return; // 工程里没有 scene 列 ⇒ 不给假出路
+  api.selectColumn(id);
 }
 
 const selectedElement = computed(() =>

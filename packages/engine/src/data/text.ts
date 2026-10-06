@@ -310,6 +310,16 @@ function parseDictLiteral(raw: string): Record<string, unknown> {
 interface ParseState {
   lines: SourceLine[];
   issues: string[];
+  /**
+   * **警告级问题**（2026-10-05 治根）：「语义暂未生效」类提示，**不阻塞解析**。
+   *
+   * 🔴 为什么要分两级：此前**任何** issue 都让整文件拒绝（`issues.length > 0` 即抛），
+   * 于是「`say` 的 color 暂未生效」这种**如实告知**也会让整个工程打不开——
+   * 惩罚大于收益。分级口径：
+   * - `issues` = **结构/语法错误** ⇒ fail-closed（数据不可信，不能猜）
+   * - `warnings` = **语义未落地** ⇒ 照常解析，但要让人看见
+   */
+  warnings: string[];
   sourceName: string;
   /** 扩展投影：自定义 op 行的分发表（缺省 undefined = 现行为不变） */
   projections?: CustomOpProjections;
@@ -353,6 +363,12 @@ function parseSay(
           continue;
         case "template":
           cmd.template = unquote(value);
+          continue;
+        case "color":
+          // 说话人颜色覆盖（2026-10-05 起**真支持**：写入 `SYS.currentDialogColor`）。
+          // ⚠️ 与**行内标记** `{color=…}`（写在文本内部、标记某段文字）是两件事。
+          // 格式校验在运行期（`isValidSayColor`）与编辑器 schema（同一判据）——投影层只搬运。
+          cmd.color = unquote(value);
           continue;
         case "voice":
           cmd.voice = unquote(value);
@@ -439,6 +455,8 @@ function parseSimpleStatement(
   tokens: string[],
   at: string,
   issues: string[],
+  /** 警告级问题（不阻塞解析）；缺省 = 无处可投 */
+  warnings?: string[],
 ): StoryCommand | null {
   const fail = (message: string): null => {
     issues.push(`${at}: ${message}`);
@@ -448,6 +466,34 @@ function parseSimpleStatement(
   switch (op) {
     case "say":
       return parseSay(tokens, at, issues);
+    case "assert": {
+      // 文法：assert {expr} ["可选消息"] —— cond 取花括号跨度（与 if/while 同口径，
+      // rest 保原样所以花括号内空格安全）；消息取行尾带引号串。无 body（单点校验）。
+      const m = /^(\{.*\})\s*(?:"([^"]*)")?\s*$/.exec(rest);
+      if (m === null) return fail("assert 文法：assert {expr} [\"消息\"]");
+      const cmd: StoryCommand = { op: "assert", cond: m[1]! };
+      if (m[2] !== undefined) cmd.message = m[2]!;
+      return cmd;
+    }
+    case "guard": {
+      // 文法：guard "守卫名" {JSON 参数对象?} —— 参数是**纯 JSON 数据**（非表达式），
+      // 与 generate 端 JSON.stringify 严格互逆；解析失败 fail-closed（不静默丢参数）。
+      const m = /^"([^"]*)"\s*(\{.*\})?\s*$/.exec(rest);
+      if (m === null) return fail("guard 文法：guard \"守卫名\" {参数对象?}");
+      const cmd: StoryCommand = { op: "guard", fn: m[1]! };
+      if (m[2] !== undefined) {
+        let args: unknown;
+        try {
+          args = JSON.parse(m[2]!);
+        } catch {
+          return fail(`guard 参数不是合法 JSON：${m[2]!}`);
+        }
+        if (typeof args !== "object" || args === null || Array.isArray(args))
+          return fail("guard 参数必须为 JSON 对象字面量");
+        cmd.args = args as Record<string, unknown>;
+      }
+      return cmd;
+    }
     case "set":
     case "define":
     case "let":
@@ -536,8 +582,18 @@ function parseSimpleStatement(
     case "wait":
     case "pause": {
       const seconds = Number(tokens[0]);
-      if (tokens.length < 1 || Number.isNaN(seconds))
-        return fail(`${op} 需要数字 seconds`);
+      if (tokens.length < 1 || Number.isNaN(seconds)) {
+        // 🔴 **无参 `pause` 按 0 秒处理并警告**（2026-10-05 治根）。
+        // 老工程用无参 `pause` 表「等玩家点击」（老引擎语义），本仓只支持定时停顿。
+        // 判据：**不静默丢**（原文照进 Story，命令序列完整），
+        // **也不fail-closed**（那会让整个工程打不开——惩罚大于收益）。
+        // 时长取 0（= 立即继续），警告告诉作者「这行没有停顿效果，要等点击请用 wait」。
+        (warnings ?? issues).push(
+          `${at}: ${op} 无参数——按 0 秒处理（立即继续）；` +
+            `老引擎的「等点击」请改用 \`wait\`（可 skipable）或补秒数如 \`${op} 1.5\``,
+        );
+        return { op, seconds: 0 } as StoryCommand;
+      }
       const cmd: StoryCommand = { op, seconds };
       if (op === "wait" && tokens.includes("skipable")) cmd.skipable = true;
       return cmd as StoryCommand;
@@ -997,6 +1053,19 @@ function parseSimpleStatement(
         return fail("text_typewriter 至少需要 enabled 或 speed");
       return cmd;
     }
+    case "scene": {
+      // 🔴 **列内 `scene "目标"` = 跳转**（2026-10-05 治根）。
+      // 真实工程在**文件中间**用 `scene "title_main"` 跳回标题场景
+      // （`chapter3.story:48`、`showcase.story:96`）——此前一律落到
+      // 「暂不支持的语句」⇒ 整个工程打不开。
+      //
+      // 语义对齐：`scene "x"`（跳转）≡ `navigate "x"`（本仓的坐标切换命令）。
+      // 区别于**列声明**的 `scene "名" type=menu`（那个在顶层解析，见 `parseTextStory`）。
+      // ⚠️ `tokens[0]` 是 op 本身，目标名在 `tokens[1]`（`splitTokens` 的口径）
+      const target = quoted(0);
+      if (target === "") return fail("scene 需要目标场景名");
+      return { op: "navigate", path: target } satisfies StoryCommand;
+    }
     default:
       return fail(`文本投影暂不支持的语句：${op}`);
   }
@@ -1110,6 +1179,7 @@ function parseCommands(
       splitTokens(rest),
       at,
       state.issues,
+      state.warnings,
     );
     if (cmd !== null) commands.push(cmd);
     i += 1;
@@ -1586,6 +1656,22 @@ function generateCommand(
       out.push(`${pad}while ${cmd.cond}`);
       generateBody(cmd.body as StoryCommand[], pad, out, projections);
       return;
+    case "assert": {
+      const message = cmd.message as string | undefined;
+      out.push(
+        `${pad}assert ${cmd.cond}${message !== undefined ? ` ${quoteForText(message)}` : ""}`,
+      );
+      return;
+    }
+    case "guard": {
+      // args = 裸 JSON 字面量（`for "v" in {expr}` 同族的裸花括号口径）：
+      // quoteForText 会转义内层引号 ⇒ 解析正则吃不下。JSON.stringify 确定性（插入序）。
+      const args = cmd.args as Record<string, unknown> | undefined;
+      out.push(
+        `${pad}guard ${quoteForText(cmd.fn as string)}${args !== undefined ? ` ${JSON.stringify(args)}` : ""}`,
+      );
+      return;
+    }
     case "for":
       out.push(`${pad}for ${quoteForText(cmd.var as string)} in ${cmd.in}`);
       generateBody(cmd.body as StoryCommand[], pad, out, projections);
@@ -1764,7 +1850,7 @@ export function parseTextStory(
   sourceName = "story",
   projections?: CustomOpProjections,
 ): Story {
-  const state: ParseState = { lines: [], issues: [], sourceName, projections };
+  const state: ParseState = { lines: [], issues: [], warnings: [], sourceName, projections };
   state.lines = tokenizeLines(source, sourceName, state.issues);
   const columns: StoryColumn[] = [];
   const defines: Record<string, unknown> = {};
@@ -1805,10 +1891,26 @@ export function parseTextStory(
       if (name === "" || columns.some((c) => c.id === name)) {
         state.issues.push(`${at}: scene 名为空或重复：${name}`);
       }
-      if (sceneTokens.length > 2) {
-        // 旧式 scene 头的 type/layout 在新列模型无对应字段 → 接受但忽略（投影不生成）
+      // 🔴 `type=menu|ui|game`（2026-10-05 治根）：**映射到列的运行语义**。
+      // 此前一律「接受但忽略」⇒ 用户的 7 个 menu 场景**全被当成 game**
+      // ⇒ 保存后菜单会变成可回溯剧情（且不可逆）。
+      let sceneType: "game" | "menu" | "ui" | undefined;
+      const rest: string[] = [];
+      for (let t = 2; t < sceneTokens.length; t += 1) {
+        const token = sceneTokens[t]!;
+        const eq = token.indexOf("=");
+        const key = eq > 0 ? token.slice(0, eq) : "";
+        const value = eq > 0 ? unquote(token.slice(eq + 1)) : "";
+        if (key === "type" && (value === "game" || value === "menu" || value === "ui")) {
+          sceneType = value;
+          continue;
+        }
+        rest.push(token);
+      }
+      if (rest.length > 0) {
+        // 其余旧式头参数（layout 等）在新列模型无对应字段 → 接受但忽略（投影不生成）
         state.issues.push(
-          `${at}: scene 头仅支持名称，忽略额外参数：${sceneTokens.slice(2).join(" ")}`,
+          `${at}: scene 头忽略无法识别的参数：${rest.join(" ")}`,
         );
       }
       const bodyIndent =
@@ -1826,6 +1928,8 @@ export function parseTextStory(
       columns.push({
         id: name,
         kind: "scene",
+        // ⚠️ 仅在**非缺省**时写（`game` 是常态，写进去会让文件噪声变大）
+        ...(sceneType !== undefined && sceneType !== "game" ? { type: sceneType } : {}),
         elements: body.elements,
         entry: body.commands,
       });
@@ -1852,12 +1956,17 @@ export function parseTextStory(
     );
     i += 1;
   }
-  if (state.issues.length > 0) throw new TextFormatError(state.issues);
+  if (state.issues.length > 0) {
+    lastWarnings = state.warnings;
+    throw new TextFormatError(state.issues);
+  }
   if (columns.length === 0) {
+    lastWarnings = state.warnings;
     throw new TextFormatError([
       `${sourceName}: 文本中没有 label（至少需要一个列）`,
     ]);
   }
+  lastWarnings = state.warnings;
   return {
     formatVersion: 1,
     id: baseName(sourceName),
@@ -1865,6 +1974,22 @@ export function parseTextStory(
     columns,
     defines: Object.keys(defines).length > 0 ? defines : undefined,
   };
+}
+
+/**
+ * 最近一次 `parseTextStory` 的**警告**（「语义暂未生效」类，不阻塞解析）。
+ *
+ * 🔴 为什么用「最近一次」这种不方便的口径（2026-10-05）：警告**不是领域数据**，
+ * 不该塞进 `Story`（会让往返深等失败——与 `sourcePath` 同一个教训）。
+ * 又不能改 `parseTextStory` 的返回类型（它是纯函数，契约只增不改）。
+ * 折中：**模块级最近一次** + 调用方**立即取**（解析与取用紧邻）。
+ * 想要严格隔离 ⇒ 后续把 `parseTextStory` 换成返回 `{story, warnings}` 的新入口。
+ */
+let lastWarnings: readonly string[] = [];
+
+/** 取最近一次解析的警告（无警告 ⇒ 空数组；非文本解析会清空） */
+export function textProjectionWarnings(): readonly string[] {
+  return lastWarnings;
 }
 
 /** 元素属性值 → 文本（布尔/数字裸串；含空白的字符串加引号，保证往返等价） */

@@ -11,7 +11,9 @@
 //! `--strict` = 打包照常完成，但报告含任何「未入包 / 明文例外」时以非零码退出
 //! （严格模式：加密包例外面必须显式知情）。
 
-use lingfanengine_lib::resource_crypto::{pack_project_with_dist, PackEntry};
+use lingfanengine_lib::resource_crypto::{
+    ensure_pack_paths_distinct, pack_project_with_dist, PackEntry,
+};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -50,6 +52,11 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     }
     if force && output.exists() {
+        // 🔴 清空前路径关系防护：output == input（或嵌套）时 remove_dir_all 会删光源工程
+        if let Err(e) = ensure_pack_paths_distinct(&input, &output) {
+            eprintln!("失败：{e}");
+            return ExitCode::from(2);
+        }
         if let Err(e) = std::fs::remove_dir_all(&output) {
             eprintln!("失败：--force 清空输出目录失败：{e}");
             return ExitCode::from(1);
@@ -72,7 +79,11 @@ fn main() -> ExitCode {
                 }
             };
             if !report.encrypted.is_empty() {
-                println!("已加密（{}）：{}", report.encrypted.len(), report.encrypted.join("、"));
+                println!(
+                    "已加密（{}）：{}",
+                    report.encrypted.len(),
+                    report.encrypted.join("、")
+                );
             }
             list("明文（有因）", &report.plaintext);
             list("排除", &report.excluded);

@@ -3,6 +3,9 @@ dist
 pnpm-lock.yaml
 target
 
+# 构建生成物（stories:build 幂等产出——格式由生成器负责，人工排版会被覆盖）
+apps/playground/Stories.src/gen/
+
 # 本机私有文档与规则（不随仓库分发，格式保持人工排版）
 私有文档
 .rules.md

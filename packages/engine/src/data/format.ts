@@ -7,8 +7,10 @@
  */
 import { validateElement } from "./element";
 import { parseTextStory } from "./text";
+import { isSceneType } from "../contracts";
 import type {
   ElementNode,
+  SceneType,
   Story,
   StoryColumn,
   StoryCommand,
@@ -136,6 +138,18 @@ function validateCommand(cmd: unknown, at: string, issues: string[]): void {
       break;
     case "jump":
       requireNonEmptyString(cmd.target, `${at}.target`, issues);
+      break;
+    case "assert":
+      requireNonEmptyString(cmd.cond, `${at}.cond`, issues);
+      if (cmd.message !== undefined && typeof cmd.message !== "string") {
+        issues.push(`${at}.message 必须为字符串`);
+      }
+      break;
+    case "guard":
+      requireNonEmptyString(cmd.fn, `${at}.fn`, issues);
+      if (cmd.args !== undefined && !isPlainObject(cmd.args)) {
+        issues.push(`${at}.args 必须为对象`);
+      }
       break;
     case "navigate":
       requireNonEmptyString(cmd.path, `${at}.path`, issues);
@@ -423,6 +437,16 @@ function parseColumn(
     );
     return null;
   }
+  // ⚠️ `type`（运行语义：game/menu/ui）**缺省合法 = game**（对齐老引擎 SceneType.Game = 0），
+  // 但**给了就必须合法**——非法值 fail-closed（不静默当 game，否则作者以为设了菜单其实是剧情，
+  // 那种错要等存档/回溯出问题才发现，代价极高）。
+  if (raw.type !== undefined && !isSceneType(raw.type)) {
+    issues.push(
+      `${at}.type 必须为 "game" / "menu" / "ui"，收到 ${JSON.stringify(raw.type)}`,
+    );
+    return null;
+  }
+  const type = raw.type as SceneType | undefined;
   const kind = raw.kind;
   if (kind === "flow") {
     if (!Array.isArray(raw.commands)) {
@@ -463,6 +487,9 @@ function parseColumn(
   return {
     id: raw.id,
     kind,
+    type,
+    // ⚠️ `sourcePath` **刻意不解析**：它是编辑期记账（由组装器从实际文件路径回填），
+    // 故事文件里不该有这个键——写进去也无效（防止自指：文件描述自己的位置）。
     elements: raw.elements as ElementNode[] | undefined,
     entry: raw.entry as StoryCommand[] | undefined,
     commands: raw.commands as StoryCommand[] | undefined,

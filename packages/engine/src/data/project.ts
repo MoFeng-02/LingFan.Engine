@@ -3,10 +3,9 @@
  * 纯函数：文件内容由平台适配器供给（WebView 无 Node——I/O 归 Rust/打包器）。
  * fail-closed：清单、文件、columnId 唯一、入口存在性任何不符 = 整次拒绝。
  */
-import type { Story, StoryColumn } from "../contracts";
-import { isOrientationMode } from "../contracts";
+import type { DegradedOpen, Story, StoryColumn } from "../contracts";
+import { isOrientationMode, isSceneType } from "../contracts";
 import {
-  baseName,
   isSingleColumnFile,
   parseStory,
   parseStoryFile,
@@ -30,6 +29,45 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 /** 确定性文件顺序（路径码元序）——defines 覆盖与列序不随 Map 构造顺序漂移 */
 function byPath(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * 为**缺清单**的资源根合成最小降级清单（#11，2026-10-05）。
+ *
+ * 语义：真实工程可以没有 `project.json`（作者直接摆 Stories/）——「缺清单」
+ * 只缺三件事：formatVersion（恒 1）、id（用资源根名兜底）、entry（**确定性**
+ * 取路径码元序第一个列）。其余（defines / shell / extensions）缺省即正确语义。
+ *
+ * 🔴 **只降级「缺清单」这一种**：故事文件解析失败照常跳过（与组装器同口径，
+ * 坏文件由组装器的 issues 整次拒绝）；**一个可解析的列都没有 ⇒ fail-closed**
+ * ——没内容可打开时降级是撒谎。
+ */
+export function synthesizeDegradedManifest(
+  rootName: string,
+  storyTexts: ReadonlyMap<string, string>,
+): { manifest: Record<string, unknown>; degraded: DegradedOpen } {
+  const ids: string[] = [];
+  for (const path of [...storyTexts.keys()].filter((p) => !isDotPath(p)).sort(byPath)) {
+    try {
+      const story = parseStoryFile(storyTexts.get(path) ?? "", path);
+      for (const column of story.columns) ids.push(column.id);
+    } catch {
+      // 解析失败不在这里定性（组装器会收进 issues 整次拒绝）；只跳过，不采集
+    }
+  }
+  if (ids.length === 0) {
+    throw new ProjectAssemblyError([
+      `降级打开失败：资源根「${rootName}」缺少 ${MANIFEST_FILE}，且 Stories/ 下没有任何可解析的列 —— 没有可打开的内容`,
+    ]);
+  }
+  const entry = ids[0]!;
+  return {
+    manifest: { formatVersion: 1, id: rootName, entry },
+    degraded: {
+      reason: `未找到 ${MANIFEST_FILE}，已按列序第一个「${entry}」降级打开（保存后清单会落盘）`,
+      entry,
+    },
+  };
 }
 
 /**
@@ -99,6 +137,17 @@ export function assembleProject(
   };
 
   for (const path of [...files.keys()].sort(byPath)) {
+    // 🔴 **只处理 `Stories/` 下的文件**（2026-10-05 治根）。
+    // 此前组装器**假定**调用方只喂故事文件，于是喂了全量资源根就炸：
+    // `Lang/en-US/main.json`（译文表）等全被当故事解析
+    // ⇒ 「formatVersion 必须为 1」让**整个工程组装失败**。
+    // 判据：非 `Stories/` 一律跳过（它们由各自的视图/工具消费，不进故事列集）。
+    if (!path.startsWith(`${STORIES_DIR}/`)) continue;
+    // 🔴 **占位文件不是故事**（2026-10-05 治根）：`.gitkeep` 类空文件是版本控制的占位
+    // （真实工程 `Live2D/.gitkeep`、`Media/BGM/.gitkeep`），
+    // 此前被当故事文件解析 ⇒ 「文本中没有 label」让整个工程组装失败。
+    // 判据：**任何一段**以 `.` 开头即是（只看整路径开头会漏掉嵌套的）。
+    if (isDotPath(path)) continue;
     const value = files.get(path);
     // 值的两种合法形态：解析后的文件 JSON（对象）或原始文本（JSON v1 / .story，混存由
     // parseStoryFile 识别）。组装器是**唯一解析点**——调用方只供文本，避免双重解析丢失
@@ -120,15 +169,19 @@ export function assembleProject(
       }
       throw e;
     }
-    // 单列原子文件：文件名（去扩展名）必须等于列 id——AI/编辑器「按 id 定位文件」的不变量
-    // （I18N 多语言文件名 {id}_{lang} 豁免随多语言机制落地时引入）
-    const first = story.columns[0];
-    if (atomic && first !== undefined && first.id !== baseName(path)) {
-      issues.push(
-        `${path}: 单列文件名（${baseName(path)}）必须等于列 id（${first.id}）`,
-      );
-      continue;
-    }
+    // 🔴 **文件名与列 id 解耦**（2026-10-05 治根，用户拍板 A）。
+    //
+    // 此前要求「单列文件名（去扩展名）必须等于列 id」，动机是**防错位**：
+    // 文件叫 A、内容是 B ⇒ AI/编辑器「按 id 定位文件」会找错。
+    // 但真实工程（`E:\langf\Downloads\Demo\Test\Resources`）用的是
+    // `Stories/chapter1/chapter1.story` 装列 `chapter1_start`
+    // —— **文件名是「章节名」，列 id 是「场景名」，本就是两回事**，
+    // 强行相等等于禁止作者用语义化文件名。
+    //
+    // 现在保留原意图、只去掉耦合：**错位仍由 `columnId 重复` 守门**
+    // （两个文件声明同一 id 照样拒），而「名字 ≠ id」不再被当成错误。
+    // 「按 id 定位」改由 `sourcePath` 承担（组装器回填、编辑器据它写回）。
+    void atomic;
     for (const column of story.columns) {
       const prev = owner.get(column.id);
       if (prev !== undefined) {
@@ -138,7 +191,15 @@ export function assembleProject(
         continue;
       }
       owner.set(column.id, path);
-      columns.push(column);
+      // 🔴 **回填来源路径**（治根·写回保真）：列从哪个文件来，就写回哪个文件。
+      //
+      // ⚠️ **只在「非默认路径」时显式写 `sourcePath`**：默认是 `Stories/<id>.json`，
+      // 由 `columnFilePath` 隐式推导即可。显式写等于把「推导结果」存进状态，
+      // 会让**新建列**（内存态无此字段）与**重开态**（有字段）不再深等 ——
+      // 而「保存后重开一致」是本仓最核心的不变量之一。
+      // 换言之：`sourcePath` 表达的是**例外**（作者把列放在别处），不是常态。
+      const defaultPath = `${STORIES_DIR}/${column.id}.json`;
+      columns.push(path === defaultPath ? column : { ...column, sourcePath: path });
     }
     Object.assign(defines, story.defines ?? {});
   }
@@ -170,6 +231,19 @@ export const MANIFEST_FILE = "project.json";
 /** 故事目录名（Rust `STORIES_DIR` 同名） */
 export const STORIES_DIR = "Stories";
 
+/**
+ * 点文件/点目录判据（`.gitkeep` / `.gitignore` …）—— **任何一段**以 `.` 开头即是。
+ *
+ * 🔴 为什么按「段」而不是整路径（2026-10-05）：真实工程有 `Live2D/.gitkeep`、
+ * `Media/BGM/.gitkeep` 之类嵌套占位文件（版本控制需要空目录），
+ * 也有 `Lang/en-US/...`（**名字含点但不是点文件**）⇒ 只看整路径开头会漏掉嵌套的。
+ */
+function isDotPath(path: string): boolean {
+  return path
+    .split("/")
+    .some((segment) => segment.startsWith(".") && segment.length > 0);
+}
+
 export class ProjectSerializationError extends Error {
   readonly issues: string[];
 
@@ -183,6 +257,17 @@ export class ProjectSerializationError extends Error {
 /** 期望文件全集（逻辑路径相对资源根 → 完整文本；键按码元序） */
 export interface SerializedProject {
   readonly files: Map<string, string>;
+  /**
+   * **列 id → 本次实际落盘路径**（写回回执，2026-10-05 治根）。
+   *
+   * 🔴 **为什么不回填进 `StoryColumn.sourcePath`**：`sourcePath` 是编辑期记账，
+   * 塞进 Story 会让「内存态」与「序列化往返结果」不再深等（每次保存都多一个字段），
+   * 且**重命名**时它会跟着变——但「这列落在哪个文件」是**写回的事实**，不是列的属性。
+   * 归入回执 ⇒ Story 保持纯语义，往返仍深等。
+   *
+   * 用途：编辑器保存后据此更新自己的记账（下次保存不必再猜）。
+   */
+  readonly written: ReadonlyMap<string, string>;
 }
 
 export interface ProjectFileDiff {
@@ -224,12 +309,18 @@ function columnFileText(column: StoryColumn): string {
     id: column.id,
     kind: column.kind,
   };
+  // 🔴 `type`（运行语义）**必须写回**：漏了会让 menu/ui 场景在下次打开时
+  // 变成 game（保存 = 悄悄改语义，且**不可逆**——作者下次打开发现菜单能回溯了）。
+  // 缺省 game 不写（保持文件干净），非缺省才写。
+  if (column.type !== undefined && column.type !== "game") ordered.type = column.type;
   if (column.kind === "flow") {
     ordered.commands = column.commands ?? [];
   } else {
     ordered.elements = column.elements ?? [];
     if (column.entry !== undefined) ordered.entry = column.entry;
   }
+  // ⚠️ `sourcePath` **刻意不写**（编辑期元数据：它描述「这个列来自哪个文件」，
+  // 写进文件内容会自指——下次打开时又变了）。
   return stableJson(ordered);
 }
 
@@ -349,6 +440,14 @@ export function serializeProject(
       );
       continue;
     }
+    // ⚠️ `type`（运行语义）非法值同样 fail-closed——**组装器是另一条入口**（多文件工程），
+    // 只在单文件解析层校验会漏掉这条路（缺省 game 合法）。
+    if (column.type !== undefined && !isSceneType(column.type)) {
+      issues.push(
+        `列 ${id} 的 type 必须为 "game" / "menu" / "ui"，收到 ${JSON.stringify(column.type)}`,
+      );
+      continue;
+    }
     if (column.kind === "flow" && !Array.isArray(column.commands)) {
       issues.push(`列 ${id}（flow）必须有 commands 数组`);
     }
@@ -364,11 +463,78 @@ export function serializeProject(
   if (issues.length > 0) throw new ProjectSerializationError(issues);
 
   const files = new Map<string, string>();
+  // 🔴 **写回原路径**（2026-10-05 治根）：此前凭 `id` 重算 `Stories/<id>.json`，
+  // 保存一次就把作者的章节目录编排 + `.story` 文本形态**抹平**，原文件还被判
+  // 「陈旧」删除（探针实测 3/3 子目录文件全被删）。自我良好工程不接受。
+  //
+  // ⚠️ **一个文件可承载多列**（真实工程形态：`chapter1.story` 有 4 列
+  // `chapter1_start` / `_explore` / `_forward` / `_end`）⇒ **按来源文件分组**写回，
+  // 不是「一列一文件」。我此前误把「共享来源文件」当冲突（探针实测 62 列里
+  // 大量同组⇒ 误报），真冲突只有「**同一路径被声明两次且列集不同时**」——
+  // 由分组天然解决（同一列只能属于一组）。
+  const byPath = new Map<string, StoryColumn[]>();
   for (const column of columns) {
-    files.set(`${STORIES_DIR}/${column.id}.json`, columnFileText(column));
+    const target = columnFilePath(column);
+    const bucket = byPath.get(target);
+    if (bucket === undefined) byPath.set(target, [column]);
+    else bucket.push(column);
   }
+  for (const [target, group] of byPath) {
+    files.set(target, columnGroupFileText(group, target));
+  }
+  if (issues.length > 0) throw new ProjectSerializationError(issues);
   files.set(MANIFEST_FILE, manifestText(story, manifest));
-  return { files: sortByCodeUnit(files) };
+  // 列 id → 落盘路径（回执；与 `columnFilePath` 同口径，不另算）
+  const written = new Map<string, string>();
+  for (const column of columns) written.set(column.id, columnFilePath(column));
+  return { files: sortByCodeUnit(files), written };
+}
+
+/**
+ * 列组（**同一来源文件里的多列**）的写回文本。
+ *
+ * 🔴 **单列 ⇒ 保持单列原子形态**（`{formatVersion,id,kind,…}`，逐字节不变）；
+ * **多列 ⇒ 写多列形态**（`{formatVersion, columns:[…]}`）——
+ * 这与 `parseStoryFile` 的识别口径一致（它按内容识别两种形态），
+ * 所以**往返可逆**（守卫`writeback-fidelity` 与真实工程守卫都验这一条）。
+ */
+function columnGroupFileText(group: readonly StoryColumn[], path: string): string {
+  if (group.length === 1) return columnFileText(group[0]!);
+  return stableJson({
+    formatVersion: 1,
+    columns: group.map((column) => {
+      const ordered: Record<string, unknown> = { id: column.id, kind: column.kind };
+      if (column.type !== undefined && column.type !== "game") {
+        ordered.type = column.type;
+      }
+      if (column.kind === "flow") ordered.commands = column.commands ?? [];
+      else {
+        ordered.elements = column.elements ?? [];
+        if (column.entry !== undefined) ordered.entry = column.entry;
+      }
+      return ordered;
+    }),
+  });
+  void path;
+}
+
+/**
+ * 列的写回路径：**有 `sourcePath` 就写回原处，否则新建列走 `Stories/<id>.json`**。
+ *
+ * 扩展名随原文件（`.story` 写回 `.story`）—— 形态也是作者的选择。
+ * ⚠️ 只认**安全相对路径**（`Stories/` 前缀 + 无 `..`）：`sourcePath` 来自
+ * 组装器回填，但仍当不可信输入校验（防目录逃逸）。
+ */
+function columnFilePath(column: StoryColumn): string {
+  const raw = column.sourcePath;
+  if (typeof raw !== "string" || raw === "") {
+    return `${STORIES_DIR}/${column.id}.json`;
+  }
+  // fail-closed：越界路径直接退回默认并由调用方校验（这里先保底不生成越界路径）
+  if (raw.startsWith("/") || raw.includes("..") || !raw.startsWith(`${STORIES_DIR}/`)) {
+    return `${STORIES_DIR}/${column.id}.json`;
+  }
+  return raw;
 }
 
 /**
@@ -415,7 +581,13 @@ export function serializeColumnDocument(
   }
   if (issues.length > 0) throw new ProjectSerializationError(issues);
 
-  return { files: new Map([[`${STORIES_DIR}/${column.id}.json`, columnFileText(column)]]) };
+  // 🔴 单列写回**同样保留原路径**（与 `serializeProject` 同纪律，2026-10-05 治根）：
+  // 此前固定 `Stories/<id>.json` ⇒ 编辑器保存一列就把它的章节目录拍平。
+  const target = columnFilePath(column);
+  return {
+    files: new Map([[target, columnFileText(column)]]),
+    written: new Map([[column.id, target]]),
+  };
 }
 
 /**

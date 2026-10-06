@@ -179,7 +179,10 @@ fn serve_conn(stream: TcpStream, token: &str, ctx: &MediaCtx) -> std::io::Result
             &mut writer,
             200,
             0,
-            &[("Content-Type", content_type), ("Accept-Ranges", "bytes".into())],
+            &[
+                ("Content-Type", content_type),
+                ("Accept-Ranges", "bytes".into()),
+            ],
         )?;
         return writer.flush();
     }
@@ -198,17 +201,11 @@ fn serve_conn(stream: TcpStream, token: &str, ctx: &MediaCtx) -> std::io::Result
     };
     // 首窗先解：DEK 失配/块损坏在**写响应头之前**暴露，仍能回 404 而非半截 200
     let first_end = (start + STREAM_WINDOW - 1).min(end);
-    let head_window = match decrypt_v2_block_range(
-        &*ctx.resfs,
-        &enc,
-        &ctx.key,
-        &logical,
-        start,
-        first_end,
-    ) {
-        Ok(window) => window,
-        Err(_) => return empty(&mut writer, 404),
-    };
+    let head_window =
+        match decrypt_v2_block_range(&*ctx.resfs, &enc, &ctx.key, &logical, start, first_end) {
+            Ok(window) => window,
+            Err(_) => return empty(&mut writer, 404),
+        };
     let mut extra = vec![
         ("Content-Type", content_type),
         ("Accept-Ranges", "bytes".into()),
@@ -226,9 +223,8 @@ fn serve_conn(stream: TcpStream, token: &str, ctx: &MediaCtx) -> std::io::Result
     let mut pos = first_end + 1;
     while pos <= end {
         let window_end = (pos + STREAM_WINDOW - 1).min(end);
-        let window =
-            decrypt_v2_block_range(&*ctx.resfs, &enc, &ctx.key, &logical, pos, window_end)
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+        let window = decrypt_v2_block_range(&*ctx.resfs, &enc, &ctx.key, &logical, pos, window_end)
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
         writer.write_all(&window)?;
         pos = window_end + 1;
     }
@@ -360,7 +356,11 @@ mod tests {
         port
     }
 
-    fn request(port: u16, target: &str, range: Option<&str>) -> (u16, Vec<(String, String)>, Vec<u8>) {
+    fn request(
+        port: u16,
+        target: &str,
+        range: Option<&str>,
+    ) -> (u16, Vec<(String, String)>, Vec<u8>) {
         let mut sock = TcpStream::connect(("127.0.0.1", port)).unwrap();
         let mut req = format!("GET {target} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n");
         if let Some(r) = range {
@@ -428,7 +428,10 @@ mod tests {
         );
         assert_eq!(status, 206);
         assert_eq!(body, plain[100..=2059]);
-        assert_eq!(header(&headers, "content-range"), Some("bytes 100-2059/4103"));
+        assert_eq!(
+            header(&headers, "content-range"),
+            Some("bytes 100-2059/4103")
+        );
         assert_eq!(header(&headers, "content-type"), Some("video/mp4"));
         assert_eq!(header(&headers, "accept-ranges"), Some("bytes"));
         assert_eq!(header(&headers, "content-length"), Some("1960"));
@@ -492,11 +495,8 @@ mod tests {
         assert_eq!(status, 400);
         // 越界 / 畸形区间
         for bad in ["bytes=999999-", "bytes=50-10"] {
-            let (status, _, body) = request(
-                port,
-                &format!("/t/{TOKEN}/v2/Video%2Fm2.mp4"),
-                Some(bad),
-            );
+            let (status, _, body) =
+                request(port, &format!("/t/{TOKEN}/v2/Video%2Fm2.mp4"), Some(bad));
             assert_eq!(status, 416, "区间 {bad} 应 416");
             assert!(body.is_empty());
         }

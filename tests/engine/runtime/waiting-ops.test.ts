@@ -130,6 +130,8 @@ describe("分类完备账：内建 op 全集必须被显式划分为等待 / 非
     "switch",
     "break",
     "continue",
+    "assert",
+    "guard",
     "set",
     "let",
     "local",

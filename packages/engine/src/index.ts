@@ -3,7 +3,13 @@
  * 内部按功能域归类：contracts（契约）/ data（数据层：解析·组装·文本投影）/ runtime（执行·回溯·作用域）。
  */
 export * from "./contracts";
-export { StoryEngine } from "./runtime/engine";
+export {
+  StoryEngine,
+  isValidSayColor,
+  type EngineOptions,
+  type GuardContext,
+  type GuardFn,
+} from "./runtime/engine";
 export {
   baseName,
   isSingleColumnFile,
@@ -11,7 +17,7 @@ export {
   parseStoryFile,
   StoryFormatError,
 } from "./data";
-export { assembleProject, ProjectAssemblyError } from "./data";
+export { assembleProject, ProjectAssemblyError, synthesizeDegradedManifest } from "./data";
 /**
  * 工程写回（`assembleProject` 的逆函数）：Story + 原始清单 → 期望文件全集，
  * 以及与打开基线的最小差量。编辑器保存经此（格式知识单点，禁在适配器复制）。

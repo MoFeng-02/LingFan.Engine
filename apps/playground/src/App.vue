@@ -15,6 +15,7 @@ import {
   type I18nPort,
   type KeymapAction,
   type LayerZTable,
+  type OpExtension,
   type OrientationMode,
   type PlayerPreferences,
   type ResourcePort,
@@ -47,6 +48,9 @@ import {
 } from "@lingfan/ui";
 import { captureSaveThumbnail, captureStageComposite, collectStageMedia, stripHtml } from "./shell/thumbnail";
 import { isGameInputTarget } from "./gameZone";
+// 守卫实现来自 stories:build 的 cell 生成物（源 = Stories.src/story.ts 的 cell 槽位）——
+// 组合根零手写注册；名字闭合由构建期闸门执法（故事引用 ⊆ 生成注册表）。
+import { guards as engineGuards } from "../Stories.src/gen/fun_register.g";
 
 // —— 核心层只写状态，UI 只经 ValueChanged 订阅渲染 ——
 // 工程与平台端口都由组合根（main.ts）装配注入：本组件只消费契约，不知道任何具体实现
@@ -63,6 +67,8 @@ const props = defineProps<{
   resourcePort: ResourcePort;
   /** I18N overlay 供给（可选：浏览器形态未装配 = 原文直出） */
   i18nPort?: I18nPort;
+  /** 声明制扩展（组合根装载后注入；清单未声明 = 空数组） */
+  extensions: OpExtension[];
   /** 玩家偏好（组合根装配：hydrate 后注入，与存档分离） */
   preferences: PlayerPreferences;
   /** 端口工厂而非实例：restart 重建音频/视频通道时保持「选择权在组合根」 */
@@ -124,6 +130,20 @@ const ROLLBACK_NOTICE_DURATION_MS = 1500;
 // —— 打字机 / NVL / 历史面板 / 角色样式 ——
 const shownText = ref(""); // 打字机可见前缀（渲染层 v-html）
 const speakerColor = ref(""); // 角色样式自动应用
+/**
+ * 重算说话人颜色 = **本句覆盖值优先，其次角色定义**（2026-10-05 治根）。
+ *
+ * 🔴 **为什么是函数而不是「在 speaker 分支里算」**：`speakerColor` 是
+ * `(speaker, currentDialogColor)` 的**派生值**——引擎按 `color → speaker` 顺序写两个键，
+ * 若只在 speaker 分支算，本句的 color 可能还没到（算成上一句的颜色，**滞后一句**）。
+ * 派生值不该依赖事件到达顺序 ⇒ 两个键变更都调它（幂等）。
+ */
+function refreshSpeakerColor(): void {
+  const def = engine.getCharacter(speaker.value);
+  const override = engine.get(SYS.currentDialogColor);
+  speakerColor.value =
+    (typeof override === "string" && override !== "" ? override : def?.color) ?? "";
+}
 const nvlMode = ref("none");
 const nvlBuffer = ref<string[]>([]);
 // —— NVL 累积层：已打完的行 memo 一次（O(新增)——历史缺陷教训：
@@ -250,6 +270,8 @@ let typewriter: Typewriter | null = null;
 let rafId = 0;
 let lastFrame = 0;
 let engine: StoryEngine;
+// 守卫实现来自 stories:build 的 cell 生成物（源 = Stories.src/story.ts 的 cell 槽位）——
+// 组合根零手写注册；名字闭合由构建期闸门执法（故事引用 ⊆ 生成注册表）。
 let offState: (() => void) | undefined;
 let offEvent: (() => void) | undefined;
 // —— 音频：端口由组合根注入（本组件只见契约）；渲染器做状态差量 ——
@@ -443,9 +465,10 @@ function handleState({ key, value }: { key: string; value: unknown }): void {
   }
   if (key === SYS.currentDialogSpeaker && typeof value === "string") {
     speaker.value = value;
-    // 角色样式自动应用——查注册表取 speaker 色
-    const def = engine.getCharacter(value);
-    speakerColor.value = def?.color ?? "";
+    refreshSpeakerColor();
+  } else if (key === SYS.currentDialogColor) {
+    // 🔴 `say color="#888"` 的覆盖值（2026-10-05 治根：命令参数覆盖整句说话人颜色）
+    refreshSpeakerColor();
   } else if (key === SYS.currentDialogText && typeof value === "string") {
     text.value = value;
     // 打字速度 = 玩家偏好（SetTextSpeed 语义；每句重建取最新值）
@@ -522,8 +545,7 @@ function syncFromEngine(): void {
   // video 层：端口内部 z 也要跟着回档
   videoPort.setZIndex?.(resolveInstanceZ("video", zNext.video, props.layerZ));
   // 说话人色随恢复同步
-  const def = engine.getCharacter(speaker.value);
-  speakerColor.value = def?.color ?? "";
+  refreshSpeakerColor();
   // 打字机随恢复文本重建（速度 = 玩家偏好）
   typewriter = new Typewriter(text.value, props.preferences.textSpeed);
 }
@@ -620,6 +642,8 @@ function restart(): void {
   engine = new StoryEngine(props.story.value, {
     i18nPort: props.i18nPort,
     savePort: props.savePort,
+    guards: engineGuards,
+    extensions: props.extensions,
   });
   bindEngine(engine);
   audioRenderer = createRenderer();
@@ -655,6 +679,8 @@ function restart(): void {
   engine = new StoryEngine(props.story.value, {
     i18nPort: props.i18nPort,
     savePort: props.savePort,
+    guards: engineGuards,
+    extensions: props.extensions,
   });
 bindEngine(engine);
 audioRenderer = createRenderer();

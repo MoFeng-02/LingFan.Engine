@@ -87,6 +87,17 @@ export type EventListener = (event: OutboundEvent) => void;
 export const SYS = {
   currentDialogText: "__current_dialog_text",
   currentDialogSpeaker: "__current_dialog_speaker",
+  /**
+   * **本句说话人颜色的覆盖值**（`say color="#888888"`，2026-10-05 治根）。
+   *
+   * 🔴 与「行内标记 `{color=…}`」是**两件事**（作者曾以为是一回事）：
+   * - 行内标记：写在**文本内部**，标记某一段文字的颜色（既有能力，一直生效）
+   * - 本键：写在**命令参数**上，覆盖**整句/说话人**的颜色（老引擎 `SayData.SpeakerColor`）
+   *
+   * **空串 = 无覆盖**（用 `character` 定义的颜色）⇒ 缺省即空串，既有前端逻辑不变。
+   * UI 侧读法：`当前值 || character.color`（覆盖优先）。
+   */
+  currentDialogColor: "__current_dialog_color",
   /** 对话框模板名（null = 全局默认） */
   dialogTemplate: "__dialog_template",
   currentSceneColumn: "__current_scene_column",
@@ -106,6 +117,17 @@ export const SYS = {
   nvlMode: "__nvl_mode",
   nvlBuffer: "__nvl_buffer",
   waiting: "__waiting",
+  /**
+   * 进入 menu/ui 场景前的**可回溯坐标**（`{columnId, index}`）+ 等待态。
+   *
+   * 🔴 **用途：在菜单里按存档，存的是「菜单前的游戏进度」**（老引擎 `SceneType.Menu`
+   * 语义：对标 Ren'Py 的 Esc 菜单存档）。值形如
+   * `{ coord: {columnId, index}, waiting: string }`，缺省 = 不在菜单中。
+   *
+   * ⚠️ **不进快照的可见状态**：它是**引擎内部记账**（与老引擎 `GameDslIndex` 同级），
+   * 读取档不依赖它——档里存的坐标已经是菜单前那个。
+   */
+  menuReturn: "__menu_return",
   /**
    * 实例级 z：单控件实例显式指定的层级（story 命令上的 `z`）。
    * 进 SSOT → 随快照 / 存档 / 回溯自动随行（重放到同一条命令即重新写入同一值）。

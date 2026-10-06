@@ -17,15 +17,34 @@ export interface ResourcePort {
 }
 
 /**
+ * 降级打开回执（#11，2026-10-05）：资源根**缺 `project.json`** 时按确定性规则
+ * 合成清单打开 —— 降级必须**显式告知**（状态栏/横幅），不许静默假装一切正常。
+ * 结构损坏（清单存在但坏 JSON / 字段非法 / 故事解析失败）**仍 fail-closed**，
+ * 可降级的只有「清单缺失」这一种。
+ */
+export interface DegradedOpen {
+  /** 给人看的原因与口径（含「入口=列 id」），直接可上状态栏 title */
+  readonly reason: string;
+  /** 合成清单采用的入口列 id（确定性 = 路径码元序第一个列） */
+  readonly entry: string;
+}
+
+/**
  * 工程文件供给端口：适配器只负责「取」，解析与组装归引擎——
  * **组装器是唯一解析点**（混存识别与单列文件名不变量在 assembleProject 统一生效）。
  * 实现：浏览器/WebView = adapters 的 fetch 加载器；Tauri Desktop/Mobile = 资源协议或 Rust 命令（只换适配器）。
  */
 export interface ProjectFilesPort {
-  /** 工程清单（JSON 解析后的对象；清单格式即 ProjectManifest 契约） */
+  /** 工程清单（JSON 解析后的对象；清单格式即 ProjectManifest 契约）。**缺清单 = 合成的降级清单**（见 `degraded`） */
   manifest(): Promise<unknown>;
   /** 故事文件**原始文本**（JSON v1 或 .story），键 = 逻辑路径（相对资源根） */
   stories(): Promise<Map<string, string>>;
+  /**
+   * 降级打开回执；resolve 为 `undefined` = 正常打开（清单存在）。
+   * 缺省实现（旧适配器 / Tauri / fetch）可不提供 —— 不提供即「无降级」。
+   * 与 `manifest()` 共享同一次装载（实现方 memo），故为异步。
+   */
+  degraded?(): Promise<DegradedOpen | undefined>;
 }
 
 /** 一次写回的实际结果（供界面提示；路径均为逻辑路径，码元序） */

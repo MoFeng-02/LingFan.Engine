@@ -14,6 +14,7 @@ import {
 import type { Ref } from "vue";
 import type {
   AudioPort,
+  DegradedOpen,
   LayerZTable,
   ProjectWriteReport,
   ResourcePort,
@@ -32,6 +33,7 @@ import {
   describeNormalization,
   elementLabel,
   emptyGroupingView,
+  firstColumnIdOfSourcePath,
   getAtPointer,
   insertAtPointer,
   moveAtPointer,
@@ -53,6 +55,8 @@ import {
 } from "@lingfan/editor";
 import { sampleStory } from "./sample";
 import ColumnList from "./components/ColumnList.vue";
+// 章节树 = 列列表的**升级**：把列按作者的目录编排分组（`Stories/chapter1/…` ⇒ 章节）
+import ChapterTree from "./components/ChapterTree.vue";
 import ComponentPalette from "./components/ComponentPalette.vue";
 import StoryTimeline from "./components/StoryTimeline.vue";
 import StageEditor from "./components/StageEditor.vue";
@@ -78,7 +82,7 @@ import { viewOfKind } from "./dispatch";
 import { createDialogPort, DialogHostState } from "./dialog";
 import { DIALOG_PORT_KEY } from "./dialogInjection";
 import { decideAddColumn } from "./addColumnIntent";
-import { detectLocalHost, pollWatch, type LocalHostEndpoint } from "./localHost";
+import { detectLocalHost, fetchWatchStatus, pollWatch, type LocalHostEndpoint } from "./localHost";
 import { extractStoryKeys, groupKeysByStory, planOverlaySkeleton, type SkeletonLayoutChoice } from "@lingfan/editor";
 import { searchResources, type SearchCorpus } from "./search";
 import type { EmptyAction } from "./viewState";
@@ -175,16 +179,41 @@ const undoDepth = ref(0);
 const redoDepth = ref(0);
 const selectedColumnId = ref<string>(session.story.entry);
 const selectedPointer = ref<string | null>(null);
-const rightTab = ref<"diagnostics" | "json" | "text" | "i18n" | "pack">("diagnostics");
+/** 右栏 tab（#8：属性面板从中央移入右栏作首 tab —— 跟随选中项的主编辑面；
+ *  出餐页无 tab 位，由状态栏「出餐」按钮 toggle，见 #10） */
+const rightTab = ref<"property" | "diagnostics" | "json" | "text" | "i18n" | "pack">("property");
 const centerView = ref<"timeline" | "stage" | "graph" | "step">("timeline");
-/** 侧栏内页（活动栏的三个投影 + 故事编辑器专属的两个内页，同一面板内切） */
-type LeftTab = "resources" | "search" | "recent" | "columns" | "palette";
-const LEFT_TABS: readonly { id: LeftTab; label: string }[] = [
-  { id: "resources", label: "资源" },
-  { id: "search", label: "搜索" },
-  { id: "recent", label: "最近" },
-  { id: "columns", label: "列" },
-  { id: "palette", label: "组件" },
+/**
+ * 侧栏内页（活动栏的三个投影 + 故事编辑器专属的内页，同一面板内切）。
+ *
+ * 🔴 **`chapters` 与 `columns` 并存**（2026-10-05 接线，**不互相取代**）：
+ * - `chapters` 章节树 = **路径推导的客观结构**（`Stories/chapter1/…` ⇒ 章节）
+ * - `columns` 列列表 = **作者显式的手动分组**（编排视图）
+ * 两者语义不同（见 `ChapterTree.vue` 头部说明），故为两个内页。
+ */
+type LeftTab = "resources" | "search" | "recent" | "chapters" | "columns" | "palette";
+/**
+ * 侧栏内页。
+ *
+ * 🔴 `chapters` 与 `columns` **必须带 `hint`**（2026-10-05）：两者都是"工程里的列"，
+ * 光看名字分不出区别（真机实测用户会问"这两个 tab 有什么不同"）。
+ * `hint` 作为 tab 的 `title` 悬停可读，**一句话说清口径差异**。
+ */
+const LEFT_TABS: readonly { id: LeftTab; label: string; hint?: string }[] = [
+  { id: "resources", label: "资源", hint: "按文件种类浏览资源根（Resources/）" },
+  { id: "search", label: "搜索", hint: "按**内容**搜索全部资源（先于名称匹配，它更精确）" },
+  { id: "recent", label: "最近", hint: "最近改动过的资源" },
+  {
+    id: "chapters",
+    label: "章节",
+    hint: "章节树：按文件路径分章（Stories/chapter1/… ⇒ 章节 chapter1），结构由工程编排决定",
+  },
+  {
+    id: "columns",
+    label: "列",
+    hint: "列列表：按作者手动分组排列（可自定义分组名与成员），与目录结构无关",
+  },
+  { id: "palette", label: "组件", hint: "插入元素：按类型挑模板（落到当前选中命令）" },
 ];
 const leftTab = ref<LeftTab>("resources");
 
@@ -314,6 +343,17 @@ const projectName = computed(() => {
   const parts = root.replace(/[\\/]+$/, "").split(/[\\/]/);
   return parts[parts.length - 1] || root;
 });
+/**
+ * chip tooltip（**两行各标身份，不混同**）：
+ * ① 工程资源根 = FSA 打开的目录名（浏览器拿不到绝对路径——这是平台事实，不编造）；
+ * ② 宿主工作区根 = watch 端点回传的完整磁盘路径（**宿主监视根**，可能与所开工程不同）。
+ */
+const projectChipTitle = computed(() => {
+  if (projectRoot.value === "") return "尚未打开工程";
+  const lines = [`工程资源根：${projectRoot.value}`];
+  if (hostRoot.value !== "") lines.push(`宿主工作区根：${hostRoot.value}`);
+  return lines.join("\n");
+});
 /** 导入按钮的取径：走隐藏 input（自动化可触发） */
 function pickImport(): void {
   importInput.value?.click();
@@ -368,7 +408,14 @@ onMounted(() => {
     //   `inset:0` 全屏 ⇒ 不关掉就**挡住全部点击**，表现为"点故事没反应"）。
     //   降级是"可用但能力受限"，用 `pointer-events:none` 的横幅说清，不拦操作。
     if (host === undefined) hostHint.value = true;
-    else if (hotReloadEnabled.value) startHotReload(host);
+    else {
+      // 宿主工作区根（完整磁盘路径，watch 端点回传）——chip tooltip 的「全路径」来源。
+      // ⚠️ 它是**宿主监视根**，不必然等于用户 FSA 打开的工程目录（两者各自陈述，不混同）。
+      void fetchWatchStatus(host).then((status) => {
+        if (status?.root !== undefined) hostRoot.value = status.root;
+      });
+      if (hotReloadEnabled.value) startHotReload(host);
+    }
   })();
 });
 
@@ -439,12 +486,17 @@ function onEmptyAction(action: EmptyAction): void {
  * 才是正解，但当前 ping 只回 `{ok:true}`（不泄露任何路径/token）。
  * ⇒ 这里改为**从探测时的基址直接请求 `/{token}/pack`** 需要 token ⇒
  *   走既有 `localHost` 端点对象里的 token（探测时由宿主一并给出）。
+ *
+ * `packing` 记账（#10）：打包以分钟计，面板切走后**状态栏仍显示「打包中…」**
+ * ——长任务的存在感不随面板显隐丢失。
  */
+const packing = ref(false);
 async function sendPackRequest(request: PackRequest): Promise<PackResult> {
   const host = localHost.value;
   if (host === undefined || host.token === "") {
     return { ok: false, reason: "本地宿主未就绪（缺少访问令牌）" };
   }
+  packing.value = true;
   try {
     const res = await fetch(`${host.baseUrl}/__editor_host__/${host.token}/pack`, {
       method: "POST",
@@ -455,7 +507,14 @@ async function sendPackRequest(request: PackRequest): Promise<PackResult> {
     return (await res.json()) as PackResult;
   } catch (error: unknown) {
     return { ok: false, reason: `无法联系本地宿主：${error instanceof Error ? error.message : String(error)}` };
+  } finally {
+    packing.value = false;
   }
+}
+
+/** 状态栏「出餐」入口（#10 下沉）：toggle 右栏出餐页——已在 ⇒ 回诊断 */
+function togglePackPane(): void {
+  rightTab.value = rightTab.value === "pack" ? "diagnostics" : "pack";
 }
 
 /** 打开资源：按分派表路由到对应视图（未命中 ⇒ 只读，不报错） */
@@ -463,20 +522,37 @@ function openResource(path: string): void {
   const kind = kindOfPath(path);
   const spec = viewOfKind(kind);
   if (spec.view === "story") {
-    const columnId = columnIdOfDocument(path);
-    if (columnId === undefined) return;
-    if (workspace.get(path) !== undefined) {
-      selectDocument(path);
+    // 故事文档身份 = 合成路径 `Stories/<列id>.json`；但磁盘上的故事文件可能是
+    // **多列 `.story`**（真实工程形态，路径与列 id 天然不同族）——
+    // 反查口径：**sourcePath === 该文件的第一个列**（列序，工程级事实）。
+    const columnId =
+      columnIdOfDocument(path) ??
+      firstColumnIdOfSourcePath(projectTree.value ?? story.value, path);
+    if (columnId === undefined) {
+      // .story 文件里没有任何可解析列（坏档 / 全是注释）——如实告知，不静默无反应
+      void dialog.notify({
+        title: "该故事文件没有可打开的场景",
+        message: `「${path}」里没有解析出任何列（可能是空文件或结构损坏）。`,
+        tone: "warning",
+      });
+      return;
+    }
+    // 🔴 文档身份恒 = `storyDocumentPath(columnId)`（**不是**磁盘文件路径——
+    //   .story 文件路径只是反查键；用它开档会破坏「一文档 = 一列」的身份不变量，
+    //   redistribute / selectedColumnId 同步全部失配）。默认路径工程两者同形，行为不变。
+    const docPath = storyDocumentPath(columnId);
+    if (workspace.get(docPath) !== undefined) {
+      selectDocument(docPath);
     } else {
       // 工程里已存在的列但未打开 ⇒ 打开它（真实单列文档，从整工程树切出）
       const column = (projectTree.value ?? story.value).columns.find((c) => c.id === columnId);
       if (column === undefined) return;
-      workspace.open(path, "story", {
+      workspace.open(docPath, "story", {
         ...(projectTree.value ?? story.value),
         entry: columnId,
         columns: [column],
       });
-      selectDocument(path);
+      selectDocument(docPath);
     }
     selectedColumnId.value = columnId;
     return;
@@ -629,6 +705,12 @@ const previewing = ref(false);
 const resourcePort = ref<ResourcePort | undefined>(undefined);
 /** 已打开工程的资源根名（界面显示；空 = 示例故事） */
 const projectRoot = ref("");
+/** 宿主工作区根的完整磁盘路径（watch 端点回传；空 = 浏览器形态或宿主未回传）。
+ *  ⚠️ 与 `projectRoot` 是**两个事实**：前者是宿主监视根，后者是 FSA 打开的目录名
+ *  （浏览器拿不到绝对路径）——tooltip 各自标注身份，不猜两者同一。 */
+const hostRoot = ref("");
+/** #11 降级打开回执（缺 project.json ⇒ 合成清单打开）；undefined = 正常打开 */
+const degradedOpen = ref<DegradedOpen | undefined>(undefined);
 /** 层级表：打开工程 = 清单 `shell.layers` 覆盖；未打开 = 内建默认（预览解析实例级 z 用） */
 const layerZ = ref<LayerZTable>(DEFAULT_LAYER_Z);
 const openError = ref("");
@@ -737,8 +819,19 @@ function attachSession(next: EditorSession): void {
 }
 attachSession(session);
 
+/**
+ * 活动文档路径的**响应式投影**。
+ *
+ * 🔴 `workspace` 是普通类实例（非 reactive）——模板里读 `workspace.activePath`
+ * 靠「其他 ref 变更带动重渲染」碰巧刷新，而 **computed 读它则永不重算**
+ * （真机实测：资源树高亮卡在挂载初值，切列不跟）。订阅回调里显式投影成 ref，
+ * 一切「随活动文档走」的派生（resourceFocusPath 等）只吃这个 ref。
+ */
+const activeDocumentPath = ref<string | undefined>(workspace.activePath);
+
 /** 标签页（文档集合）变更 → 活动文档可能已变 ⇒ 重绑 + 刷新文档态派生 */
 workspace.subscribe(() => {
+  activeDocumentPath.value = workspace.activePath;
   bindActive(workspace.activeDocument);
   documentPaths.value = workspace.documents.map((d) => d.path);
   documentKinds.value = new Map(workspace.documents.map((d) => [d.path, d.kind]));
@@ -767,6 +860,50 @@ function selectDocument(path: string): void {
 }
 
 /**
+ * 关闭文档标签（✕ / 中键，2026-10-05 真机缺口：此前标签**没有任何关闭途径**）。
+ *
+ * 脏文档**先确认**（`workspace` 不猜用户意图——canClose 是既有判据）；
+ * 关闭后的重绑 / 文档派生刷新由 `workspace.subscribe` 统一处理；
+ * 关活动标签 ⇒ 顺延位成为新活动 ⇒ `selectDocument` 同口径同步 `selectedColumnId`
+ * （否则它停在**被关列**上，时间线在新活动文档里找不到列 ⇒ 空白——
+ * 与 `selectDocument` 注释里记录的是同一类缺陷，别再犯）。
+ */
+async function closeDocument(path: string): Promise<void> {
+  if (!workspace.canClose(path)) {
+    const ok = await dialog.askConfirm({
+      title: `关闭「${columnIdOfDocument(path) ?? path}」？`,
+      message: "该标签有未保存的改动，关闭将丢弃（磁盘仍是上次保存的内容）。",
+      danger: true,
+    });
+    if (!ok) return;
+  }
+  workspace.close(path);
+  if (workspace.activePath !== undefined && workspace.activePath !== path) {
+    selectDocument(workspace.activePath);
+  }
+}
+
+/**
+ * **按需打开某列的文档**（**单列切片**）。
+ *
+ * 🔴 为什么按需（2026-10-05）：打开工程时**预开所有列**会让 62 列的工程在顶部铺
+ * 50 个标签（`Workspace` 容量 50 还会静默截断 12 列 —— 见 `columnPaths` 的注释）。
+ * 而「列 = 文档」的语义（每个标签持**独立单列会话**，防跨标签覆盖 = B0 的数据丢失防线）
+ * **不需要预开**：用户点到哪一列，就为哪一列建会话。
+ *
+ * ⚠️ 切片必须与 `applyOpened` 原口径完全一致（`{...tree, entry: id, columns: [列]}`）：
+ * 整棵树塞进每个标签会让两标签各持**旧副本**，后保存的覆盖先保存的。
+ */
+function openColumnDocument(id: string): void {
+  const path = storyDocumentPath(id);
+  if (workspace.get(path) !== undefined) return; // 已开：复用（不丢未保存改动）
+  const tree = projectTree.value ?? story.value;
+  const column = tree.columns.find((c) => c.id === id);
+  if (column === undefined) return; // fail-closed：列不存在，不造半个文档
+  workspace.open(path, "story", { ...tree, entry: id, columns: [column] });
+}
+
+/**
  * 工程级操作（新增/删除列）改的是**文件集** ⇒ 各单列文档必须按新树重新切分。
  *
  * ⚠️ 纪律：**只重切受影响的文档**，未编辑过的文档保留原会话引用
@@ -788,14 +925,10 @@ function redistributeDocuments(tree: Story): void {
   for (const column of tree.columns) {
     const path = storyDocumentPath(column.id);
     const doc = workspace.get(path);
-    if (doc === undefined) {
-      workspace.open(path, "story", {
-        ...tree,
-        entry: column.id,
-        columns: [column],
-      });
-      continue;
-    }
+    // 🔴 **未打开的列不主动开**（2026-10-05 按需打开）：工程级操作（增删列）只负责让
+    // **已打开**的文档反映新树。用户从章节树点到新列时 `selectColumn` 会为它建会话。
+    // 否则一次「新增一列」会把**所有没开过的列**铺成标签（真机 62 列 ⇒ 50 个标签）。
+    if (doc === undefined) continue;
     if (doc.session.dirty) continue; // 保住未保存改动与历史
     workspace.replaceClean(path, {
       ...tree,
@@ -854,15 +987,16 @@ function applyOpened(opened: OpenedProject | undefined): void {
   // 后保存的覆盖先保存的（这正是 B0 要防的数据丢失）。
   const tree = opened.story;
   projectTree.value = tree; // 诊断基准 = 整工程树（跨列引用需全局视角）
-  for (const column of tree.columns) {
-    workspace.open(storyDocumentPath(column.id), "story", {
-      ...tree,
-      entry: column.id,
-      columns: [column],
-    });
-  }
-  // 标签顺序 = 列序（= 文件路径码元序，叙事语义）⇒ 重排即改语义，故显式按列序复位
-  const ordered = tree.columns.map((column) => storyDocumentPath(column.id));
+  // 🔴 **只开入口列**（2026-10-05）：预开所有列会让 62 列的工程铺 50 个标签
+  //    （`Workspace` 容量 50 还会静默截断 12 列），而「列 = 文档」的语义**不需要预开**——
+  //    用户点到哪一列，`selectColumn` 就为哪一列建会话（见 `openColumnDocument`）。
+  openColumnDocument(tree.entry);
+  // 标签顺序 = 列序（= 文件路径码元序，叙事语义）。
+  // ⚠️ 只对**已打开的**文档排序：未开的列没有文档，硬塞进 `documentPaths` 会铺出
+  //    点不开的假标签（切换时 `activate` 找不到文档）。
+  const ordered = tree.columns
+    .map((column) => storyDocumentPath(column.id))
+    .filter((path) => workspace.get(path) !== undefined);
   for (const path of [...documentPaths.value]) {
     if (!ordered.includes(path)) workspace.close(path);
   }
@@ -875,6 +1009,7 @@ function applyOpened(opened: OpenedProject | undefined): void {
   layerZ.value = opened.layerZ; // 预览用工程层级表解析实例级 z
   diagnosticSupply.value = opened.diagnosticSupply; // 资源/译文检查器生效
   projectRoot.value = opened.root;
+  degradedOpen.value = opened.degraded; // #11：缺清单降级的事实显式上状态栏
   saveFn.value = opened.save;
   saveColumnFn.value = opened.saveColumn;
   readTextFn.value = opened.readText;
@@ -904,6 +1039,7 @@ function unbindProject(): void {
   inspectSaveFn.value = undefined;
   saveHint.value = UNBOUND_HINT;
   projectRoot.value = "";
+  degradedOpen.value = undefined; // 解绑 = 降级态一并作废（绑定状态不随 undo 回滚）
   resourcePort.value = undefined;
   layerZ.value = DEFAULT_LAYER_Z; // 解绑后回内建层级表
   diagnosticSupply.value = undefined; // 解绑后回「无供给侧」= 检查器族跳过
@@ -947,6 +1083,53 @@ function onNew(): void {
  * 诊断是**工程级**关注点，不随标签切片。
  */
 const projectTree = ref<Story | undefined>(undefined);
+/**
+ * **列 id → 来源文件路径**（章节树的路径面；2026-10-05 接线）。
+ *
+ * 🔴 **为什么不能拿「已打开的文档」推导**（我第一版就是这么写的，真机实测翻车）：
+ * `Workspace` 有**容量上限 `capacity = 50`**，打开 62 列的工程会挤掉 12 列；
+ * 而 `workspace.documents` 只含**还开着的 50 个** ⇒ 被挤掉的列**在章节树里没有路径**
+ * ⇒ label 为空（实测 `chapter1_start` —— 它是 entry 列，最早打开最先被挤掉）。
+ *
+ * **权威来源 = 组装器回填的 `sourcePath`**：`assembleProject` 解析每个文件时就知道
+ * 每列来自哪个文件（一个文件可承载**多列** ⇒ 多对一），这是**工程级事实**，
+ * 与「哪些文档还开着」无关。单文件工程无 `sourcePath` ⇒ 退化为平铺（不报错）。
+ */
+const columnPaths = computed(() => {
+  const tree = projectTree.value ?? story.value;
+  const map = new Map<string, string>();
+  for (const column of tree.columns) {
+    if (typeof column.sourcePath === "string" && column.sourcePath !== "") {
+      map.set(column.id, column.sourcePath);
+    }
+  }
+  return map;
+});
+/**
+ * 工程级**第一个场景列**的 id（舞台空态动作的导航目标）。
+ * 舞台组件吃的是单列切片（切片里找不到别的列）⇒ 工程级导航必须由宿主给。
+ */
+const firstSceneColumnId = computed<string | null>(() => {
+  const tree = projectTree.value ?? story.value;
+  return tree.columns.find((c) => c.kind === "scene")?.id ?? null;
+});
+/**
+ * 资源树的**定位路径**（磁盘事实）：活动文档路径是合成的 `Stories/<列id>.json`，
+ * 而树节点是**磁盘路径**（`.story` 多列文件）——两者不同族，直接拿 activePath
+ * 高亮对 `.story` 工程**永不命中**（真机实测「不能定位当前打开的」第二根因）。
+ * 映射：列的 `sourcePath`（组装器回填的工程级事实）优先；无 `sourcePath`
+ * （单列 .json 默认路径）⇒ 合成路径与磁盘路径同形，原样用。
+ */
+const resourceFocusPath = computed<string | undefined>(() => {
+  const active = activeDocumentPath.value;
+  if (active === undefined) return undefined;
+  const columnId = columnIdOfDocument(active);
+  if (columnId === undefined) return active;
+  const tree = projectTree.value ?? story.value;
+  const column = tree.columns.find((c) => c.id === columnId);
+  const source = column?.sourcePath;
+  return typeof source === "string" && source !== "" ? source : active;
+});
 const diagnostics = computed(() => {
   const tree = projectTree.value ?? story.value;
   const supply = diagnosticSupply.value;
@@ -1073,6 +1256,10 @@ const api = {
     // 标签页与列树是同一份工程结构的两个面（一个按打开序、一个按列序），
     // 两者若不联动就会出现「选了一列但标签没切」的分裂。
     const path = storyDocumentPath(id);
+    // 🔴 **按需打开**（2026-10-05）：工程打开时不再预开所有列（否则 62 列铺 50 个标签）。
+    // 点到未开的列 ⇒ 先为它建会话，再切过去；否则 `selectedColumnId` 会指向一个
+    // 没有文档的列，时间线 / 属性面板都拿不到内容。
+    openColumnDocument(id);
     if (workspace.get(path) !== undefined) {
       selectDocument(path);
     }
@@ -1087,7 +1274,12 @@ const api = {
     // 分组是视图元数据，成员 id 随列改名同步（失败不影响故事编辑本身）
     if (changed) commitGrouping(renameColumnMember(grouping.value, from, to));
   },
-  addColumn(kind: "flow" | "scene", hint?: string): void {
+  addColumn(
+    kind: "flow" | "scene",
+    hint?: string,
+    /** 运行语义轴（正交）；缺省/game 不写字段 —— 判据在 `@lingfan/editor` 的 addColumn */
+    type?: "game" | "menu" | "ui",
+  ): void {
     // ⚠️ 新增列是**工程级**操作（改的是文件集，不是某个文件的内容）。
     // 单列文档上直接跑 `addColumn` 会产出「一个文档两列」——违反「一文档 = 一列」不变量，
     // 且保存时 `serializeColumnDocument` 会 fail-closed（恰是它兜住了，但用户会看到莫名错误）。
@@ -1095,16 +1287,19 @@ const api = {
     const tree = projectTree.value;
     if (tree === undefined) {
       session.apply(`新增${kind === "flow" ? "流程" : "场景"}列`, (s) => {
-        const result = addColumn(s, { kind, hint });
+        const result = addColumn(s, { kind, hint, type });
         selectedColumnId.value = result.id;
         return result.story;
       });
       return;
     }
-    const result = addColumn(tree, { kind, hint });
+    const result = addColumn(tree, { kind, hint, type });
     projectTree.value = result.story;
     redistributeDocuments(result.story);
-    selectedColumnId.value = result.id;
+    // 🔴 新列的文档**还没被打开过**（按需打开）⇒ 必须先建会话再切。
+    //    不用 `this.selectColumn`：本对象的方法会被解构调用（`api.selectColumn`），
+    //    `this` 不可靠；两行内联反而没有隐式依赖。
+    openColumnDocument(result.id);
     selectDocument(storyDocumentPath(result.id));
   },
   removeColumn(id: string): void {
@@ -1201,6 +1396,14 @@ dialogState.subscribe(() => {
 provide(DIALOG_PORT_KEY, dialog);
 
 provide("editorApi", api);
+/**
+ * 章节树的**路径面**（列 id → 来源文件路径）。
+ *
+ * 章节树据此把「列」按**作者的目录编排**分组（`Stories/chapter1/chapter1.story`
+ * ⇒ 章节 `chapter1`）。生产者是文档集合（`workspace`），与标签栏**同源**
+ * ⇒ 不额外维护第二份路径真相。
+ */
+provide("columnPaths", columnPaths);
 provide("selectedPointer", selectedPointer);
 
 /**
@@ -1379,7 +1582,7 @@ function onExport(): void {
         <strong class="brand" title="灵泛编辑器">灵泛</strong>
         <button
           class="project-chip btn-tonal"
-          :title="projectRoot !== '' ? `工程资源根：${projectRoot}` : '尚未打开工程'"
+          :title="projectChipTitle"
           @click="openProject"
         >
           <span class="project-chip-name">{{ projectRoot !== '' ? projectName : story.id }}</span>
@@ -1389,6 +1592,7 @@ function onExport(): void {
           v-if="props.lastProject?.value !== undefined"
           class="icon-button"
           :title="`一键重开上次工程「${props.lastProject.value.name}」`"
+          :aria-label="`一键重开上次工程「${props.lastProject.value.name}」`"
           @click="reopenLastProject"
         >
           ↺
@@ -1439,6 +1643,7 @@ function onExport(): void {
           <button
             class="icon-button"
             title="更多操作（保存 / 撤销 / 文件 / 工程）"
+            aria-label="更多操作"
             :aria-expanded="toolMenuOpen"
             @click="toolMenuOpen = !toolMenuOpen"
           >
@@ -1524,15 +1729,20 @@ function onExport(): void {
     <main class="workspace">
       <!-- 标签页（多文档）：一个资源 = 一个标签 = 一个独立会话（脏标记各自独立） -->
       <div class="tab-strip doc-tabs" role="tablist" aria-label="已打开的资源">
-        <button
+        <!-- ⚠️ 外层是 div[role=tab] 而非 button：内含关闭按钮（button 嵌 button 无效 HTML）；
+             键盘通路 = tabindex + Enter（role=tab 的最小可用形态）。 -->
+        <div
           v-for="path in documentPaths"
           :key="path"
           role="tab"
           class="doc-tab"
-          :class="{ active: path === workspace.activePath }"
-          :aria-selected="path === workspace.activePath"
+          :class="{ active: path === activeDocumentPath }"
+          :aria-selected="path === activeDocumentPath"
           :title="path"
+          :tabindex="path === activeDocumentPath ? 0 : -1"
           @click="selectDocument(path)"
+          @keydown.enter.prevent="selectDocument(path)"
+          @auxclick.middle.prevent="closeDocument(path)"
         >
           <span class="doc-tab-name">{{
             columnIdOfDocument(path) ?? path.split("/").pop() ?? path
@@ -1543,7 +1753,15 @@ function onExport(): void {
             title="有未保存的更改"
             aria-label="有未保存的更改"
           ></span>
-        </button>
+          <button
+            class="doc-tab-close"
+            title="关闭标签（中键同）"
+            :aria-label="`关闭 ${columnIdOfDocument(path) ?? path}`"
+            @click.stop="closeDocument(path)"
+          >
+            ✕
+          </button>
+        </div>
         <!-- 步3「文档标签补全」：新建入口。
              ⚠️ 绑的是 **新增流程列**（文档级，与 tab 同级），
                 **不是** `onNew`（那是「新建整个工程」，会把工程重置为示例）——
@@ -1572,11 +1790,14 @@ function onExport(): void {
           class="pane columns-pane"
           :style="{ width: `${layout.leftWidth}px` }"
         >
-          <div class="tab-strip left-tabs">
+          <div class="tab-strip left-tabs" role="tablist" aria-label="侧栏视图">
             <button
               v-for="tab in LEFT_TABS"
               :key="tab.id"
+              role="tab"
+              :aria-selected="leftTab === tab.id"
               :class="{ active: leftTab === tab.id }"
+              :title="tab.hint"
               @click="leftTab = tab.id"
             >
               {{ tab.label }}
@@ -1591,9 +1812,11 @@ function onExport(): void {
             aria-label="搜索资源"
           />
           <div v-show="leftTab === 'resources'" class="left-pane-body">
+            <!-- 收展持久化只接资源模式实例：搜索/最近是扁平列表，无折叠面 -->
             <ResourceTreeView
               :nodes="resourceNodes"
-              :active-path="workspace.activePath"
+              :active-path="resourceFocusPath"
+              :project-id="story.id"
               @open="openResource"
             />
           </div>
@@ -1628,7 +1851,23 @@ function onExport(): void {
           </div>
           <!-- v-show 必须落在**单根元素**上：ColumnList 是多根模板，直接给它 v-show 会让指令失效
                （Vue: "Runtime directive used on component with non-element root node"）⇒ 命令面板不会隐藏 -->
+          <!-- **章节树**（2026-10-05 接线）：内容骨架是「章节」而不是文件——
+               真实工程 `Stories/chapter1/chapter1.story`、`Stories/system/about.story`
+               都是作者的编排，平铺 50 个文档会让人失去结构感。
+               ① 取**整工程树**（喂单列切片则只剩一列，用户失去「工程里有哪些列」的视野）
+               ② 路径面经 `columnPaths` 注入（章节 = 路径目录）
+               ③ 选列 = 切标签（`api.selectColumn` 内部完成，同一动作不重复实现） -->
+          <div v-show="leftTab === 'chapters'" class="left-pane-body">
+            <!-- 常驻说明（2026-10-05）：「章节」与「列」都是"工程里的列"，光看名字分不出区别。
+                 tab 的 `title` 只在悬停时可见 ⇒ 面板顶部给一行**常驻**口径说明。 -->
+            <p class="left-pane-note">按文件路径分章（目录即章节）</p>
+            <ChapterTree :story="projectTree ?? story" :selected-id="selectedColumnId" />
+          </div>
+          <!-- v-show 必须落在**单根元素**上：ColumnList 是多根模板，直接给它 v-show 会让指令失效
+               （Vue: "Runtime directive used on component with non-element root node"）⇒ 命令面板不会隐藏 -->
           <div v-show="leftTab === 'columns'" class="left-pane-body">
+            <!-- 常驻说明（与「章节」对称）：说清这一页是**作者手动分组**，与目录结构无关 -->
+            <p class="left-pane-note">按手动分组排列（与目录无关）</p>
             <!-- 列树取**整工程树**（工程级视图）：活动文档是单列切片，
                  若喂切片则列树只剩一列，用户失去「工程里有哪些列」的视野。
                  选列 = 切标签（`api.selectColumn` 内部完成，两者同一动作不重复实现）。 -->
@@ -1696,13 +1935,13 @@ function onExport(): void {
             :column-id="selectedColumnId"
             :selected-pointer="selectedPointer"
           />
-          <PropertyPanel :story="story" :pointer="selectedPointer" />
         </template>
         <StageEditor
           v-else-if="centerView === 'stage'"
           :story="story"
           :pointer="selectedPointer"
           :resource-port="resourcePort"
+          :first-scene-column-id="firstSceneColumnId"
         />
         <!-- key = story.id ⇒ 换工程/新建/导入必重挂载，布局缓存从新工程的存储键重读 -->
         <NodeGraph
@@ -1725,20 +1964,36 @@ function onExport(): void {
         class="pane right-pane"
         :style="{ width: `${layout.rightWidth}px` }"
       >
-        <div class="tab-strip">
+        <!-- a11y（#8）：tablist 语义 —— 此前右栏与左栏的 tab 都是裸 button
+             （读屏只知道「6 个按钮」，不知道它们是互斥视图切换）。 -->
+        <div class="tab-strip" role="tablist" aria-label="右栏面板">
           <button
+            role="tab"
+            :aria-selected="rightTab === 'property'"
+            :class="{ active: rightTab === 'property' }"
+            @click="rightTab = 'property'"
+          >
+            属性
+          </button>
+          <button
+            role="tab"
+            :aria-selected="rightTab === 'diagnostics'"
             :class="{ active: rightTab === 'diagnostics' }"
             @click="rightTab = 'diagnostics'"
           >
             诊断
           </button>
           <button
+            role="tab"
+            :aria-selected="rightTab === 'json'"
             :class="{ active: rightTab === 'json' }"
             @click="rightTab = 'json'"
           >
             JSON
           </button>
           <button
+            role="tab"
+            :aria-selected="rightTab === 'text'"
             :class="{ active: rightTab === 'text' }"
             @click="rightTab = 'text'"
           >
@@ -1746,21 +2001,24 @@ function onExport(): void {
           </button>
           <!-- 本地化工作台（聚合面：多语言覆盖率 / 缺译清单 / 骨架生成） -->
           <button
+            role="tab"
+            :aria-selected="rightTab === 'i18n'"
             :class="{ active: rightTab === 'i18n' }"
             title="本地化：多语言覆盖率与译文表骨架"
             @click="rightTab = 'i18n'"
           >
             本地化
           </button>
-          <!-- 快速出餐：一键触发 lfenpack 产出加密包 -->
-          <button
-            :class="{ active: rightTab === 'pack' }"
-            title="快速出餐：打包产出加密发布包"
-            @click="rightTab = 'pack'"
-          >
-            出餐
-          </button>
+          <!-- 🔴 出餐**不再是右栏 tab**（#10 下沉，2026-10-05）：打包是低频动作（以分钟计），
+               不占一级 tab；入口移到**状态栏**（带文字标签按钮，toggle 出餐页）。 -->
         </div>
+        <!-- 🔴 属性面板**已移入右栏**（#8）：中央时间线拿回全部高度
+             （实测旧布局中央属性面板 188px 高、下方 483px 空）。 -->
+        <PropertyPanel
+          v-show="rightTab === 'property'"
+          :story="story"
+          :pointer="selectedPointer"
+        />
         <DiagnosticsPanel
           v-show="rightTab === 'diagnostics'"
           :diagnostics="diagnostics"
@@ -1802,6 +2060,10 @@ function onExport(): void {
       :dirty-count="workspace.dirtyCount"
       :error-count="errorCount"
       :warning-count="warningCount"
+      :packing="packing"
+      :pack-active="rightTab === 'pack'"
+      :degraded="degradedOpen"
+      @toggle-pack="togglePackPane"
     />
 
     <!-- 「宿主未启动」非阻塞横幅：`pointer-events:none` ⇒ 绝不拦点击（模态遮罩的老坑） -->
@@ -1810,7 +2072,14 @@ function onExport(): void {
         未检测到本地宿主 —— 绝对路径 / 外部打开 / 一键打包 / 热重载**不可用**（其余功能正常）。
         启用：<code>pnpm editor:dev</code>
       </span>
-      <button class="host-hint-x" title="知道了" @click="hostHint = false">✕</button>
+      <button
+        class="host-hint-x"
+        title="知道了"
+        aria-label="关闭提示"
+        @click="hostHint = false"
+      >
+        ✕
+      </button>
     </div>
 
     <!-- 对话框宿主：渲染 `dialogRequest`（栈顶），并在回答后回抛 -->
@@ -2263,6 +2532,8 @@ textarea:hover:not(:disabled) {
   border-bottom: 2px solid transparent;
   border-radius: 0;
   color: var(--lf-text-secondary);
+  cursor: pointer; /* div[role=tab] 不带 button 的默认手型，显式给 */
+  user-select: none;
 }
 .doc-tab:hover:not(.active) {
   background: var(--lf-surface-hover);
@@ -2296,6 +2567,20 @@ textarea:hover:not(:disabled) {
   font-family: Consolas, "Cascadia Mono", monospace;
   font-size: var(--lf-font-md);
 }
+/* 关闭按钮：常显低强调（E2 纪律——hover-only 对触屏等于不存在），hover 才转 danger */
+.doc-tab-close {
+  padding: 0 3px;
+  font-size: var(--lf-font-sm);
+  line-height: 16px;
+  color: var(--lf-text-hint);
+  background: transparent;
+  border: none;
+  border-radius: var(--lf-radius-sm);
+}
+.doc-tab-close:hover {
+  color: var(--lf-danger);
+  background: var(--lf-danger-surface, var(--lf-surface-hover));
+}
 .pane {
   /* 步5「描边弱化」：Material 靠**填充差**表达层级，不是每块都描边。
      描边保留但取最弱档（--lf-border-subtle），让相邻面板靠底色差区分。 */
@@ -2328,6 +2613,13 @@ textarea:hover:not(:disabled) {
   overflow-wrap: anywhere;
   min-width: 0;
 }
+/* #8 属性面板入右栏的**功能前提**（非重设计）：面板原在中央随内容自然流，
+   右栏 `overflow:hidden` 会把长表单（say 全字段）裁掉 ⇒ 接管剩余高度并自滚。 */
+.right-pane :deep(.property-panel) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
 .tab-strip {
   display: flex;
   gap: 4px;
@@ -2342,6 +2634,14 @@ textarea:hover:not(:disabled) {
 }
 .left-tabs button {
   flex: 1;
+}
+/* 面板顶部**常驻**口径说明（与 tab 的 `title` 互补：那个要悬停才见）
+   ⚠️ 不给背景色/边框：它只是**一行小字**，不该抢内容的视觉焦点 */
+.left-pane-note {
+  margin: 0 0 6px;
+  padding: 0 10px;
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
 }
 </style>
 <style>

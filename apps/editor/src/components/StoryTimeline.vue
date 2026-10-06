@@ -153,6 +153,7 @@ function summary(cmd: Record<string, unknown>): string {
             <button
               class="mini"
               title="上移"
+              aria-label="上移该命令"
               :disabled="i === 0"
               @click="move(row.pointer, -1)"
             >
@@ -161,6 +162,7 @@ function summary(cmd: Record<string, unknown>): string {
             <button
               class="mini"
               title="下移"
+              aria-label="下移该命令"
               :disabled="i === container.rows.length - 1"
               @click="move(row.pointer, 1)"
             >
@@ -169,6 +171,7 @@ function summary(cmd: Record<string, unknown>): string {
             <button
               class="mini danger"
               title="删除命令"
+              aria-label="删除该命令"
               @click="api.removeCommand(row.pointer)"
             >
               ✕

@@ -84,8 +84,8 @@ mod android {
     pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
         tauri::plugin::Builder::<tauri::Wry>::new("lfen-shell")
             .setup(|app, api| {
-                let handle = api
-                    .register_android_plugin("com.langfeng.lingfanengine.shell", "ShellPlugin")?;
+                let handle =
+                    api.register_android_plugin("com.langfeng.lingfanengine.shell", "ShellPlugin")?;
                 app.manage(std::sync::Arc::new(ShellBridge(handle)));
                 Ok(())
             })
@@ -133,10 +133,7 @@ mod ios {
             .build()
     }
 
-    pub fn apply(
-        app: &tauri::AppHandle,
-        mode: OrientationMode,
-    ) -> Result<bool, super::ShellError> {
+    pub fn apply(app: &tauri::AppHandle, mode: OrientationMode) -> Result<bool, super::ShellError> {
         use super::ShellError;
         let bridge = app.state::<std::sync::Arc<ShellBridge>>();
         bridge
@@ -193,7 +190,14 @@ mod tests {
     #[test]
     fn parse_orientation_rejects_unknown_and_case_variants() {
         // fail-closed：未知值/大小写变体/空白一律拒绝（不猜测用户意图，不带病落壳）
-        for bad in ["", "Auto", "LANDSCAPE", "landscape ", "sensor", " unspecified"] {
+        for bad in [
+            "",
+            "Auto",
+            "LANDSCAPE",
+            "landscape ",
+            "sensor",
+            " unspecified",
+        ] {
             assert!(
                 matches!(parse_orientation(bad), Err(ShellError::BadMode(_))),
                 "{bad:?} 应被拒绝"

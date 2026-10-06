@@ -29,6 +29,8 @@ export const OP_META: readonly OpMeta[] = [
   { op: "switch", label: "多路分支", group: "flow" },
   { op: "break", label: "跳出循环", group: "flow" },
   { op: "continue", label: "下一轮循环", group: "flow" },
+  { op: "assert", label: "断言校验", group: "flow" },
+  { op: "guard", label: "守卫校验", group: "flow" },
   { op: "set", label: "赋值", group: "variables" },
   { op: "define", label: "全局定义", group: "variables" },
   { op: "let", label: "块级变量", group: "variables" },
@@ -85,6 +87,8 @@ interface FieldMeta {
 export const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   "say.text": { label: "文本", kind: "text" },
   "say.speaker": { label: "说话人", kind: "text" },
+  // 说话人颜色**覆盖**（本句有效，优先于 character 定义的颜色）；十六进制
+  "say.color": { label: "说话人颜色（本句）", kind: "text" },
   "say.clickable": { label: "点击后继续", kind: "boolean" },
   "say.noskip": { label: "禁止跳过", kind: "boolean" },
   "say.instant": { label: "瞬间显示", kind: "boolean" },
@@ -135,6 +139,10 @@ export const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   "if.else": { label: "否则", kind: "body" },
   "while.cond": { label: "条件", kind: "expression" },
   "while.body": { label: "循环体", kind: "body" },
+  "assert.cond": { label: "断言条件", kind: "expression" },
+  "assert.message": { label: "失败提示", kind: "text" },
+  "guard.fn": { label: "守卫名", kind: "identifier" },
+  "guard.args": { label: "参数", kind: "object" },
   "for.var": { label: "循环变量", kind: "identifier" },
   "for.in": { label: "序列表达式", kind: "expression" },
   "for.body": { label: "循环体", kind: "body" },

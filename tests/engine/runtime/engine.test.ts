@@ -84,6 +84,8 @@ describe("最小闭环主链路", () => {
       // say 1（进入等待前清残留完成标记）
       SYS.dialogComplete,
       SYS.currentDialogSpeaker,
+      // 说话人颜色覆盖（每句必写：缺省空串 ⇒ 上一句的覆盖不残留）
+      SYS.currentDialogColor,
       SYS.dialogTemplate, // 模板三级优先级解析结果（无 template 无角色 → null）
       SYS.currentDialogText,
       SYS.dialogClickable,
@@ -97,6 +99,8 @@ describe("最小闭环主链路", () => {
       // say 2
       SYS.dialogComplete,
       SYS.currentDialogSpeaker,
+      // 说话人颜色覆盖（每句必写：缺省空串 ⇒ 上一句的覆盖不残留）
+      SYS.currentDialogColor,
       SYS.dialogTemplate,
       SYS.currentDialogText,
       SYS.dialogClickable,
@@ -110,6 +114,8 @@ describe("最小闭环主链路", () => {
       // say 3
       SYS.dialogComplete,
       SYS.currentDialogSpeaker,
+      // 说话人颜色覆盖（每句必写：缺省空串 ⇒ 上一句的覆盖不残留）
+      SYS.currentDialogColor,
       SYS.dialogTemplate,
       SYS.currentDialogText,
       SYS.dialogClickable,
@@ -130,12 +136,15 @@ describe("最小闭环主链路", () => {
       scope: "system",
     });
     expect(changes[3]?.value).toBe("灵泛");
-    expect(changes[4]?.value).toBeNull(); // 无 template 无角色 → null（全局默认）
-    expect(changes[5]?.value).toBe("第一句");
+    // say 1 无 color ⇒ 空串（无覆盖，用 character 定义的颜色）
+    expect(changes[4]?.key).toBe(SYS.currentDialogColor);
+    expect(changes[4]?.value).toBe("");
+    expect(changes[5]?.value).toBeNull(); // 无 template 无角色 → null（全局默认）
+    expect(changes[6]?.value).toBe("第一句");
     // say 2 无 speaker → 清空，不残留上一句
-    expect(changes[14]?.key).toBe(SYS.currentDialogSpeaker);
-    expect(changes[14]?.value).toBe("");
-    expect(changes[16]?.value).toBe("第二句");
+    expect(changes[15]?.key).toBe(SYS.currentDialogSpeaker);
+    expect(changes[15]?.value).toBe("");
+    expect(changes[18]?.value).toBe("第二句");
     // 末次 advance 后回到 none
     expect(changes[changes.length - 1]).toEqual({
       key: SYS.waiting,
@@ -1069,7 +1078,10 @@ describe("func/call/return", () => {
       { op: "say", text: "s" },
     ]);
     engine.start();
-    expect(errorPayload(errors[0]).code).toBe("call-unknown-function");
+    // ⚠️ 码由 `call-unknown-function` 改为 `call-unknown-target`：`call` 的目标
+    // 现在**既可以是 func 也可以是列**（老引擎「func 或 label」，2026-10-05 治根）
+    // ⇒ 「目标不存在」比「函数未注册」准确。
+    expect(errorPayload(errors[0]).code).toBe("call-unknown-target");
     dispose();
 
     const h2 = makeEngine([

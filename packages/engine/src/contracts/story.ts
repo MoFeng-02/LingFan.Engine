@@ -11,10 +11,52 @@ export interface StoryCommand {
   [field: string]: unknown;
 }
 
+/**
+ * 列的**运行语义类型**—— 决定存档 / 回溯 / 自动推进行为。
+ *
+ * ⚠️ **与 `kind` 正交，两根轴各管一件事**（老引擎 `SceneType` 的语义，本仓此前缺）：
+ * - `kind`（scene/flow）= **内容形态**：有没有 `elements[]` / `commands[]`
+ * - `type`（game/menu/ui）= **运行语义**：进不进历史与存档、菜单是否自动推进
+ *
+ * 权威语义对齐老引擎 `LingFanEngine.Abstractions/Entities/Enums/SceneType.cs`：
+ * - `game`：实际游戏场景 —— **存档、进历史、建立检查点**
+ * - `menu`：菜单 / 标题 / 设置 —— 不存档、不进历史、不建检查点（**可覆盖**）
+ * - `ui`：覆盖层 / 弹窗 —— 同上，且**不改变历史游标**
+ *
+ * **缺省 = `game`**（对齐老引擎 `SceneType.Game = 0` 的默认）⇒ 既有工程零改动。
+ */
+export type SceneType = "game" | "menu" | "ui";
+
+/** 场景类型判据（非法值由解析层 fail-closed，此处只做窄化） */
+export function isSceneType(value: unknown): value is SceneType {
+  return value === "game" || value === "menu" || value === "ui";
+}
+
 /** 两类列：scene（空间层）与 flow（纯流程） */
 export interface StoryColumn {
   id: string;
   kind: "scene" | "flow";
+  /**
+   * 运行语义类型（**缺省 `game`**，对齐老引擎 `SceneType.Game`）。
+   * 决定该列是否进历史/存档/检查点，以及菜单态能否自动推进。
+   * ⚠️ **与 `kind` 正交**：`kind: "flow" + type: "menu"`（纯流程的菜单）是合法组合。
+   */
+  type?: SceneType;
+  /**
+   * **来源文件路径**（逻辑路径，相对资源根，如 `Stories/chapter1/chapter1.story`）。
+   *
+   * 🔴 **治根字段（2026-10-05）**：写回必须**写回同一个文件**。
+   * 此前写回凭 `id` 重算路径（`Stories/<id>.json`）⇒ 保存一次就把作者的
+   * **章节目录编排**与 **`.story` 文本形态**抹平，且原文件被判「陈旧」删除
+   * （探针实测：3/3 子目录文件全被删）。自我良好工程不接受这种行为。
+   *
+   * 语义纪律：
+   * - **只记来源，不参与语义**：`kind` / `type` / 命令面都不读它（换路径不改行为）。
+   * - **由组装器回填**（`assembleProject` 从实际文件路径回填，不猜）。
+   * - **缺省 = 新建列**，走 `Stories/<id>.json`（编辑器新建的列没有来源文件）。
+   * - **不序列化进故事文件本身**（它是编辑期元数据，见 `columnFileText` 的剥离）。
+   */
+  sourcePath?: string;
   /** scene 专有：舞台元素声明（类型与属性全集 fail-closed）。
    *  进入列时由引擎装载为 `SYS.elements`（声明式空间层，不走命令流） */
   elements?: ElementNode[];
@@ -22,6 +64,11 @@ export interface StoryColumn {
   entry?: StoryCommand[];
   /** flow 专有：纯流程命令 */
   commands?: StoryCommand[];
+}
+
+/** 该列是否参与历史/存档（`type` 缺省 = game ⇒ 参与）。**单一判定点**——引擎守卫与编辑器分组共用。 */
+export function isReplayableColumn(column: Pick<StoryColumn, "type">): boolean {
+  return (column.type ?? "game") === "game";
 }
 
 /** 故事 = 列的集合（多文件组装后的运行时形态）；formatVersion 自 v1 起版本化 */

@@ -3,11 +3,15 @@
  * 拟态旅程形态：喂真实工程的资源集，断言树的形状与排除纪律。
  */
 import { describe, expect, it } from "vitest";
+import type { KeyValueStorage } from "@lingfan/editor";
 import {
   buildResourceTree,
+  COLLAPSED_DIRS_LIMIT,
+  createCollapsedDirsStore,
   flattenResources,
   isReadOnlyPath,
   kindOfPath,
+  RESOURCE_TREE_COLLAPSED_KEY_PREFIX,
   type ResourceNode,
 } from "../../apps/editor/src/resourceTree";
 
@@ -139,5 +143,71 @@ describe("flattenResources · 遍历", () => {
     // 目录不出现在扁平结果里
     expect(paths).not.toContain("Stories");
     expect(paths).not.toContain("Lang");
+  });
+});
+
+/**
+ * 目录收展持久化（T7）：折叠集按工程存本机。
+ * 按契约 Mock（内存 KeyValueStorage 替身），覆盖拟态往返 / 故意错误 / 边界三面。
+ */
+describe("createCollapsedDirsStore · 收展持久化", () => {
+  /** 内存存储替身（形状 = `KeyValueStorage` 两方法契约；可注入读取/写入失败） */
+  function memoryStorage(
+    initial: Record<string, string> = {},
+    opts: { failRead?: boolean; failWrite?: boolean } = {},
+  ): KeyValueStorage {
+    const data = new Map(Object.entries(initial));
+    return {
+      getItem: (key) => {
+        if (opts.failRead) throw new Error("storage broken");
+        return data.get(key) ?? null;
+      },
+      setItem: (key, value) => {
+        if (opts.failWrite) throw new Error("storage broken");
+        data.set(key, value);
+      },
+    };
+  }
+
+  it("拟态旅程：收起两个目录 → 落盘 → 换 store（模拟重开）读回同集；跨工程互不串", () => {
+    const storage = memoryStorage();
+    const store = createCollapsedDirsStore(storage);
+    store.save("demo", new Set(["Stories/", "Audio/"]));
+    // 模拟会话重启：新 store 实例、同一存储
+    const reopened = createCollapsedDirsStore(memoryStorage({
+      [`${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`]: JSON.stringify(["Stories/", "Audio/"]),
+    }));
+    expect(reopened.load("demo")).toEqual(new Set(["Stories/", "Audio/"]));
+    // 工程隔离：另一工程读不到这份折叠集
+    expect(reopened.load("other")).toEqual(new Set());
+  });
+
+  it("故意错误：坏 JSON / 非数组 / 含非字符串条目 ⇒ 降级空集或剔除（不抛）", () => {
+    const key = `${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`;
+    expect(createCollapsedDirsStore(memoryStorage({ [key]: "{not-json" })).load("demo")).toEqual(new Set());
+    expect(createCollapsedDirsStore(memoryStorage({ [key]: JSON.stringify("Stories/") })).load("demo")).toEqual(new Set());
+    expect(createCollapsedDirsStore(memoryStorage({ [key]: JSON.stringify({ a: 1 }) })).load("demo")).toEqual(new Set());
+    expect(
+      createCollapsedDirsStore(memoryStorage({ [key]: JSON.stringify(["Stories/", "", 42, null]) })).load("demo"),
+    ).toEqual(new Set(["Stories/"]));
+  });
+
+  it("边界：无存储 / 读失败 / 写失败 / 空工程 id / 超限截断", () => {
+    // undefined 存储 = 无持久化（读写皆空操作）
+    expect(createCollapsedDirsStore(undefined).load("demo")).toEqual(new Set());
+    expect(() => createCollapsedDirsStore(undefined).save("demo", new Set(["A/"]))).not.toThrow();
+    // 读失败 = 空集；写失败 = 静默（仅本次会话有效）
+    expect(createCollapsedDirsStore(memoryStorage({}, { failRead: true })).load("demo")).toEqual(new Set());
+    expect(() => createCollapsedDirsStore(memoryStorage({}, { failWrite: true })).save("demo", new Set(["A/"]))).not.toThrow();
+    // 空工程 id = 不读写（存储原值不动）
+    const storage = memoryStorage({ [`${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`]: `["Stories/"]` });
+    createCollapsedDirsStore(storage).save("", new Set(["X/"]));
+    expect(storage.getItem(`${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`)).toBe(`["Stories/"]`);
+    // 超限截断（目录数远小于上限；截断而非报错——视图偏好不值得拦人）
+    const bloated = Array.from({ length: COLLAPSED_DIRS_LIMIT + 50 }, (_, i) => `Dir${i}/`);
+    const loaded = createCollapsedDirsStore(
+      memoryStorage({ [`${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`]: JSON.stringify(bloated) }),
+    ).load("demo");
+    expect(loaded.size).toBe(COLLAPSED_DIRS_LIMIT);
   });
 });

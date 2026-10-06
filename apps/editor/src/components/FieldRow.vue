@@ -247,7 +247,7 @@ function moveBody(pointer: string, delta: number): void {
       <div v-for="(_, i) in items" :key="i" class="item-card">
         <div class="item-head">
           <span>项 {{ i }}</span>
-          <button class="mini danger" @click="removeItem(i)">✕</button>
+          <button class="mini danger" aria-label="删除该项" @click="removeItem(i)">✕</button>
         </div>
         <FieldRow
           v-for="sub in itemProperties"
@@ -289,6 +289,7 @@ function moveBody(pointer: string, delta: number): void {
         <span class="row-ops" @click.stop>
           <button
             class="mini"
+            aria-label="上移该命令"
             :disabled="i === 0"
             @click="moveBody(row.pointer, -1)"
           >
@@ -296,12 +297,17 @@ function moveBody(pointer: string, delta: number): void {
           </button>
           <button
             class="mini"
+            aria-label="下移该命令"
             :disabled="i === bodyRows.length - 1"
             @click="moveBody(row.pointer, 1)"
           >
             ↓
           </button>
-          <button class="mini danger" @click="api.removeCommand(row.pointer)">
+          <button
+            class="mini danger"
+            aria-label="删除该命令"
+            @click="api.removeCommand(row.pointer)"
+          >
             ✕
           </button>
         </span>

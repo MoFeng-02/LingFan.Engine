@@ -22,6 +22,7 @@ export {
 export {
   coverageLabelOf,
   coveragePercentOf,
+  coverageWeightedPercentOf,
   coverageStateOf,
   groupKeysByStory,
   langCoverage,
@@ -31,3 +32,15 @@ export {
   type SkeletonLayoutChoice,
   type WorkbenchOverview,
 } from "./coverage";
+export {
+  addTranslationRow,
+  isTableDirty,
+  parseTranslationTable,
+  removeTranslationRow,
+  renameTranslationRow,
+  serializeTranslationTable,
+  setTranslationValue,
+  type TableEdit,
+  type TableParse,
+  type TranslationRow,
+} from "./table";

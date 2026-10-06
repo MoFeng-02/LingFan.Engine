@@ -35,6 +35,7 @@ import {
 } from "@lingfan/adapters";
 import {
   PlayerPreferences,
+  loadDeclaredExtensions,
   manifestOrientation,
   resolveLayerZ,
   resolveOrientationMode,
@@ -43,6 +44,7 @@ import {
   type HostInfo,
   type I18nPort,
   type LayerZTable,
+  type OpExtension,
   type OrientationMode,
   type OrientationPort,
   type PreferencesPort,
@@ -53,6 +55,7 @@ import {
   type Story,
   type VideoPort,
 } from "@lingfan/engine";
+import demoQuestExtension from "../extensions/demo-quest";
 import App from "./App.vue";
 import { browserBlockedMessage, browserPlayAllowed } from "./browserGuard";
 
@@ -78,11 +81,10 @@ const MANIFEST = "project.json";
  * 防漂移由 `tests/playground/project.test.ts` 的「本表 ↔ 磁盘文件」互锁测试守护。
  */
 const STORIES = [
-  "Stories/start.json",
-  "Stories/inn.json",
-  "Stories/square.json",
-  "Stories/end.json",
-  "Stories/stage_demo.json",
+  "Stories/chapter1/chapter1.story",
+  "Stories/chapter2/chapter2.story",
+  "Stories/chapter3/chapter3.story",
+  "Stories/chapter4/vocab_tour.story",
 ];
 
 /**
@@ -140,6 +142,23 @@ async function boot(): Promise<void> {
   const encrypted =
     (manifest as { resourceEncryption?: unknown } | null)
       ?.resourceEncryption === true;
+  // 扩展装载（声明制）：清单 `extensions` 声明模块说明符；宿主以**静态打包表**解析
+  // （vite 模块图编译期确定——说明符字符串是「声明 ↔ 宿主」的对齐点；构建期同一说明符
+  // 已由 stories:build 做过放行校验）。声明缺席/为空 = 空数组且装载器零触发。
+  const extensionModules: Record<string, { default: unknown }> = {
+    "./extensions/demo-quest.ts": { default: demoQuestExtension },
+  };
+  const declaredExtensions = (manifest as { extensions?: unknown }).extensions;
+  const extensions: OpExtension[] = await loadDeclaredExtensions(
+    Array.isArray(declaredExtensions) ? (declaredExtensions as string[]) : [],
+    async (specifier) => {
+      const mod = extensionModules[specifier];
+      if (mod === undefined) {
+        throw new Error(`宿主未打包清单声明的扩展模块：${specifier}`);
+      }
+      return mod;
+    },
+  );
   const resourcePort: ResourcePort =
     useNative && encrypted
       ? createTauriEncryptedResourcePort()
@@ -240,6 +259,7 @@ async function boot(): Promise<void> {
     resourcePort,
     i18nPort,
     preferences,
+    extensions,
     createAudioPort,
     createVideoPort,
   });

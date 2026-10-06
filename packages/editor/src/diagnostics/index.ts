@@ -149,10 +149,12 @@ const VAR_DEF_FIELDS: Readonly<Record<string, readonly string[]>> = {
 
 /** 跳转目标字段（op → [字段路径, 目标种类]） */
 const TARGET_FIELDS: Readonly<
-  Record<string, readonly (readonly [string, "column" | "function"])[]>
+  Record<string, readonly (readonly [string, "column" | "function" | "callable"])[]>
 > = {
   jump: [["target", "column"]],
-  call: [["target", "function"]],
+  // 🔴 `call` 的目标**可以是列（label）或 func**（老引擎：「调用子过程（func 或 label）」，
+  // 2026-10-05 治根）⇒ `callable` = 任一存在即可。
+  call: [["target", "callable"]],
   menu: [["options[].target", "column"]],
 };
 
@@ -369,16 +371,26 @@ export function analyzeStory(
     });
   }
   for (const target of index.targets) {
-    const registry =
-      target.kind === "column" ? index.columnPointers : index.functions;
-    if (!registry.has(target.target)) {
+    const found =
+      target.kind === "column"
+        ? index.columnPointers.has(target.target)
+        : target.kind === "function"
+          ? index.functions.has(target.target)
+          : // callable：列或 func **任一存在**即通过
+            index.columnPointers.has(target.target) || index.functions.has(target.target);
+    if (!found) {
       out.push({
-        code: target.kind === "column" ? "missing-target" : "unknown-function",
+        // ⚠️ `"function"` 分支当前**无字段产出**（`call` 已改为 `callable`）——
+        // 保留它是**契约完备性**（`TargetKind` 有三种，判定要覆盖三种），
+        // 将来若出现「只允许 func」的新字段即可直接复用。**别当死码删掉**。
+        code: target.kind === "function" ? "unknown-function" : "missing-target",
         severity: "error",
         message:
           target.kind === "column"
             ? `跳转目标列不存在：${target.target}`
-            : `调用未注册的函数：${target.target}`,
+            : target.kind === "function"
+              ? `调用未注册的函数：${target.target}`
+              : `调用目标不存在：${target.target}（既不是 func 也不是列）`,
         pointer: target.pointer,
       });
     }

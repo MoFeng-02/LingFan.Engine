@@ -84,7 +84,8 @@ describe("源码互锁：编辑器「+列」接语义化建议输入", () => {
     expect(columnListSource).toContain("dialog.askText");
     expect(columnListSource).not.toContain("window.prompt");
     // ① 留空可过（**本条既有意图，予以保留**）：无建议也必须把调用发出去，引擎按 column-N 兜底
-    expect(columnListSource).toContain("api.addColumn(kind, intent.hint)");
+    //    （2026-10-05 扩展：调用追加第三参 type —— 用**无右括号前缀**匹配，意图不变且对加参稳健）
+    expect(columnListSource).toContain("api.addColumn(kind, intent.hint");
     // ② 取消（null）不得与留空（""）混为一谈 —— 意图判定必须先于提交
     expect(columnListSource).toContain("decideAddColumn(raw)");
     expect(columnListSource).toContain("if (!intent.run) return;");
@@ -93,7 +94,7 @@ describe("源码互锁：编辑器「+列」接语义化建议输入", () => {
     expect(columnListSource).toMatch(/allowEmpty:\s*true/);
     const decided = columnListSource.indexOf("decideAddColumn(raw)");
     const submitted = columnListSource.indexOf(
-      "api.addColumn(kind, intent.hint)",
+      "api.addColumn(kind, intent.hint",
     );
     expect(decided).toBeGreaterThan(-1);
     expect(submitted).toBeGreaterThan(-1);

@@ -118,6 +118,69 @@ describe("对话框栈 · 后进先出 + 嵌套", () => {
   });
 });
 
+/**
+ * **回归锚定（真机探针逮到的真缺陷）**：`ask` 的结算器曾只有一个槽位。
+ *
+ * 症状：挂起框未关时再开一个框 ⇒ ① 前一个 Promise **永久挂起**（调用方 `await`
+ * 永不返回）② `answer()` 只弹一帧 ⇒ **框留在栈顶、全屏遮罩永久挡住所有点击**
+ * （用户现象是「点什么都没反应」，与提示内容毫无关系 —— 与「给降级提示别用模态
+ * 对话框」是同型坑的两种成因）。
+ */
+describe("对话框栈 · **并发 ask 不丢不吊**（用户实测回归）", () => {
+  const req = (title: string): DialogRequest => ({ kind: "notice", title, message: "x" });
+
+  it("两次 ask 都挂起 ⇒ 回答两次后**两个 Promise 都结算**、栈归零", async () => {
+    const s = new DialogHostState();
+    const first = s.ask(req("第一"));
+    const second = s.ask(req("第二"));
+    expect(s.depth).toBe(2);
+    expect(s.current).toMatchObject({ title: "第二" });
+
+    s.answer(undefined);
+    expect(await second).toBeUndefined();
+    expect(s.depth).toBe(1);
+
+    s.answer(undefined);
+    expect(await first).toBeUndefined();
+    // 🔴 核心判据：栈必须归零（否则遮罩永久残留）
+    expect(s.depth).toBe(0);
+    expect(s.current).toBeUndefined();
+  });
+
+  it("**框关掉后不再挡点击**（depth 归零 ⇔ 遮罩消失）", () => {
+    const s = new DialogHostState();
+    void s.ask(req("a"));
+    void s.ask(req("b"));
+    s.answer(undefined);
+    s.answer(undefined);
+    // 组件是 `v-if="request"` ⇒ depth 0 即遮罩不在 DOM
+    expect(s.current).toBeUndefined();
+  });
+
+  it("**closeAll 结算所有挂起者**（不留悬挂 Promise）", async () => {
+    const s = new DialogHostState();
+    const a = s.ask(req("a"));
+    const b = s.ask(req("b"));
+    s.closeAll();
+    expect(await a).toBeNull();
+    expect(await b).toBeNull();
+    expect(s.depth).toBe(0);
+  });
+
+  it("**closeAll 后新开的框能正常关**（结算回调续行不再残留遮罩）", async () => {
+    const s = new DialogHostState();
+    const a = s.ask(req("a"));
+    s.closeAll();
+    await a;
+    // 续行里再开一框（真实场景：await 之后弹错误提示）
+    const b = s.ask(req("b"));
+    expect(s.depth).toBe(1);
+    s.answer(undefined);
+    expect(await b).toBeUndefined();
+    expect(s.depth).toBe(0);
+  });
+});
+
 describe("对话框 · Promise 端口结算", () => {
   it("askText 取消 ⇒ 解析为 `null`（与「留空」严格区分）", async () => {
     const s = new DialogHostState();
@@ -217,11 +280,12 @@ describe("空态纪律 · 必须给可点动作", () => {
 
   it("动作语义专用（**不复用** `open-project`——那是「打开工程」）", () => {
     expect(stageSource).toContain('action.id !== "goto-scene-column"');
-    // 跳转到列本身（`/columns/<i>`），与时间线选列同一条路
-    expect(stageSource).toContain("api.select(`/columns/${index}`)");
+    // 2026-10-05 治根：导航走**工程级首场景列**（App 经 prop 传入；切片里 findIndex 是死动作）
+    expect(stageSource).toContain("api.selectColumn(id)");
   });
 
   it("一个 scene 列都没有时**不给假出路**（按钮点了没反应比不给更糟）", () => {
-    expect(stageSource).toContain("if (index < 0) return;");
+    // 工程级事实由宿主传入；宿主给不出（工程无 scene 列）⇒ 原地不动，不造半个导航
+    expect(stageSource).toContain('if (id === undefined || id === null || id === "") return;');
   });
 });
