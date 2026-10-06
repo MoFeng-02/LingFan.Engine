@@ -17,11 +17,21 @@ import {
   serializeProject,
 } from "@lingfan/engine";
 
-/** 磁盘真实存在的故事文件（glob 键即文件清单）→ `Stories/<file>` 逻辑路径 */
-const STORY_MODULES = import.meta.glob(
-  "../../apps/playground/Resources/Stories/*.json",
-  { eager: true, query: "?raw", import: "default" },
-) as Record<string, string>;
+/** 磁盘真实存在的故事文件（glob 键即文件清单）→ `Stories/<file>` 逻辑路径
+ *  ⚠️ 2026-10-06 起 playground 启用 **TS 源工程**（`Stories.src/` → `stories:build`）：
+ *  产物 = **章节目录 + 多列 `.story`**（平铺形态已否决）⇒ glob 必须递归且含 .story */
+const STORY_MODULES = {
+  ...(import.meta.glob("../../apps/playground/Resources/Stories/**/*.story", {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  }) as Record<string, string>),
+  ...(import.meta.glob("../../apps/playground/Resources/Stories/**/*.json", {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  }) as Record<string, string>),
+};
 
 function logicalPath(globKey: string): string {
   return globKey.replace(
@@ -61,14 +71,23 @@ describe("示例工程防腐", () => {
   it("清单 + 全部故事文件可组装；入口与分支列齐全", () => {
     const story = assemble();
     expect(story.entry).toBe("start");
-    // 组装通过即断言了：单列文件名 = 列 id、columnId 唯一；
-    // 列序 = 文件路径码元序（组装器确定性排序）
+    // 组装通过即断言了：columnId 唯一 + 文件名=章节名与列 id 解耦（真实工程形态）；
+    // 列序 = 文件路径码元序（组装器确定性排序；同文件多列保持文件内顺序）
     expect(story.columns.map((c) => c.id)).toEqual([
-      "end",
+      "start",
       "inn",
       "square",
       "stage_demo",
-      "start",
+      "ts_power",
+      "end",
+      "tour",
+      "tour_vars",
+      "tour_flow",
+      "tour_save",
+      "tour_av",
+      "tour_stage",
+      "tour_ext",
+      "tour_guard",
     ]);
   });
 
@@ -113,10 +132,13 @@ describe("示例工程防腐", () => {
     );
     const referenced = new Set<string>();
     for (const text of Object.values(FILES)) {
-      collectResources(
-        parseStoryFile(text, "story").columns[0]?.commands ?? [],
-        referenced,
-      );
+      // 🔴 章节形态 = **一文件多列** ⇒ 必须扫全部列（含 scene 列的 entry），
+      //    旧「columns[0]」口径在多列文件下漏采
+      const parsed = parseStoryFile(text, "story");
+      for (const column of parsed.columns) {
+        collectResources(column.commands ?? [], referenced);
+        collectResources(column.entry ?? [], referenced);
+      }
     }
     expect(referenced.size).toBeGreaterThan(0); // 防止断言空转
     for (const resource of referenced) {

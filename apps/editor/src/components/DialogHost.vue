@@ -112,6 +112,19 @@ function submit(): void {
         @keydown.enter.prevent="submit"
       />
 
+      <!-- 选项选择：点选项即提交（无确定按钮）；Esc / 遮罩 / 取消按钮 = 取消。
+           用按钮组（role=group）而非 listbox —— 「点选即提交」没有持久选中态，
+           给每个 option 标 aria-selected=true 反而是错的。 -->
+      <div v-if="request.kind === 'choice'" class="dialog-choices" role="group" aria-label="选项">
+        <button
+          v-for="option in request.options"
+          :key="option.value"
+          @click="((emit('answer', option.value), emit('dismiss')))"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+
       <div class="dialog-actions">
         <button
           v-if="request.kind !== 'notice'"
@@ -174,6 +187,16 @@ function submit(): void {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+.dialog-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dialog-choices button {
+  justify-content: flex-start;
+  text-align: left;
+  width: 100%;
 }
 button.danger {
   border-color: var(--lf-danger);

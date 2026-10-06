@@ -74,9 +74,14 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
   const source = await createHandleFileSource(handle);
   const filesPort = createSourceProjectFilesPort(source);
   const { opened, manifest } = await loadFromSource(source, filesPort);
-  // 写回基线 = 打开时读到的原文（复用同一次装载的 memo，不额外枚举）
+  // 写回基线 = 打开时读到的原文（复用同一次装载的 memo，不额外枚举）。
+  // ⚠️ #11 降级工程没有清单可读 ⇒ 基线不含 MANIFEST_FILE；
+  //    首次保存时 serializeProject 会带上合成清单 ⇒ 落盘 = 显式「收编」为标准工程。
+  const degraded = opened.degraded;
   const previous = new Map<string, string>([
-    [MANIFEST_FILE, await source.text(MANIFEST_FILE)],
+    ...(degraded === undefined
+      ? [[MANIFEST_FILE, await source.text(MANIFEST_FILE)] as const]
+      : []),
     ...(await filesPort.stories()),
   ]);
   const writer = await createHandleProjectWriter(handle, previous);
@@ -87,6 +92,8 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
     path.startsWith(`${STORIES_DIR}/`),
   );
   let normalizedOnce = false;
+  /** 最近一次写回的**落盘回执**（列 id → 路径）；未保存过 = null */
+  let lastWritten: ReadonlyMap<string, string> | null = null;
   return {
     ...opened,
     /**
@@ -98,8 +105,13 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
      * **由当前全部文档重组出的工程树**——`save` 的契约不变，组装责任在调用方。
      */
     save: async (next: Story): Promise<ProjectWriteReport> => {
-      const report = await writer.apply(serializeProject(next, manifest).files);
+      const product = serializeProject(next, manifest);
+      const report = await writer.apply(product.files);
       normalizedOnce = true;
+      // 🔴 **记住本次落盘路径**（2026-10-05 治根）：新建列写回后才知道落在哪个文件。
+      // ⚠️ **不写回 `next` 的列**（`sourcePath` 会污染 Story ⇒ 往返深等失败）：
+      // 落盘事实归入**回执**（`SerializedProject.written`），需要时由调用方取。
+      lastWritten = product.written;
       return report;
     },
     /** 单文档写回：只落该列文件，不产删除、不改清单（多标签并存时的正确路径） */
@@ -122,6 +134,14 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
             initialStoryPaths,
             next.columns.map((column) => column.id),
           ),
+    /**
+     * 取「最近一次写回的落盘回执」（列 id → 实际路径；未保存过 ⇒ `null`）。
+     *
+     * 🔴 用途：新建列在写回后才知道落在哪个文件（`Stories/<id>.json`），
+     * 下次保存不必再猜。⚠️ **不污染 `Story`**——落盘事实是回执，不是列的属性
+     * （塞进 Story 会让「保存后内存态」与「重开态」不再深等）。
+     */
+    writtenPaths: () => lastWritten,
   };
 }
 
@@ -156,6 +176,8 @@ async function loadFromSource(
   // 诊断供给侧：一次枚举算出资源文件集 + overlay 键并集（两类取径同源）
   const diagnosticSupply = await loadDiagnosticSupply(source);
   layerZ = resolveLayerZ(manifest);
+  // #11 降级回执：缺清单 = 合成清单已参与组装，事实显式上交界面（状态栏告知）
+  const degraded = (await filesPort.degraded?.()) ?? undefined;
   return {
     opened: {
       root: source.name,
@@ -165,6 +187,7 @@ async function loadFromSource(
       readText: (path: string) => source.text(path),
       layerZ: resolveLayerZ(manifest), // 随工程走：预览需要它解析实例级 z
       diagnosticSupply,
+      degraded,
     },
     manifest,
   };

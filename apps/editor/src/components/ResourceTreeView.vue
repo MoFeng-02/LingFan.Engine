@@ -8,9 +8,13 @@
  * 状态完备（规划稿 §2.2③）：空（未打开工程）/ 无匹配（搜索）/ 加载中 各有明确文案，
  * **不用空白或 spinner 代替解释**。
  */
-import { computed } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
+import type { KeyValueStorage } from "@lingfan/editor";
 import type { ResourceNode } from "../resourceTree";
-import { flattenResources } from "../resourceTree";
+import {
+  createCollapsedDirsStore,
+  flattenResources,
+} from "../resourceTree";
 
 const props = defineProps<{
   /** 树节点（已分组排序）；空数组 = 未打开工程 */
@@ -19,25 +23,88 @@ const props = defineProps<{
   activePath: string | undefined;
   /** 搜索/最近模式下要过滤的节点（资源模式下为全部） */
   filter?: (node: ResourceNode) => boolean;
+  /** 工程身份（收展持久化的隔离轴，T7）；缺省/空 = 仅会话内折叠态 */
+  projectId?: string;
 }>();
 
 const emit = defineEmits<{
   (e: "open", path: string): void;
 }>();
 
-/** 折叠的目录路径集合（本组件本控，不入持久化——属瞬时视图态） */
-const collapsed = new Set<string>();
+/**
+ * 折叠的目录路径集合（本组件本控；按工程持久化——`projectId` 给了才落本机）。
+ *
+ * 🔴 **必须是 `ref`**（2026-10-05 真机缺陷「不能收展」）：此前是裸 `Set`——
+ * `toggle` 改了集合但 Vue **不追踪非响应式状态** ⇒ 永不重渲染，点了没反应。
+ */
+const collapsed = ref<ReadonlySet<string>>(new Set());
+
+/** 浏览器可能禁站点数据（取 `localStorage` 本身即抛）——失败即无持久化，不影响可用性 */
+function safeLocalStorage(): KeyValueStorage | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+const collapsedStore = createCollapsedDirsStore(safeLocalStorage());
+
+/** 换工程随身份归位（组件视图态跨数据实例残留防在根上——D-45 同族） */
+watch(
+  () => props.projectId,
+  (id) => {
+    collapsed.value = collapsedStore.load(id ?? "");
+  },
+  { immediate: true },
+);
 
 function toggle(node: ResourceNode): void {
   if (!node.collapsible) return;
-  if (collapsed.has(node.path)) collapsed.delete(node.path);
-  else collapsed.add(node.path);
+  const next = new Set(collapsed.value);
+  if (next.has(node.path)) next.delete(node.path);
+  else next.add(node.path);
+  collapsed.value = next;
+  collapsedStore.save(props.projectId ?? "", next);
 }
 
 /** 关键词（由父组件经 v-model 传入，避免本组件自持搜索状态） */
 const keyword = defineModel<string>("keyword", { default: "" });
 
-const isCollapsed = (node: ResourceNode): boolean => collapsed.has(node.path);
+const isCollapsed = (node: ResourceNode): boolean => collapsed.value.has(node.path);
+
+/** 容器（定位当前打开时滚动用） */
+const container = ref<HTMLElement | null>(null);
+
+/**
+ * **定位当前打开**（2026-10-05）：活动路径变化 ⇒ 展开祖先链 + 滚动到可视区。
+ * 此前只有 `active` 高亮类——节点被折叠藏起时高亮等于不存在（用户实测）。
+ * 高亮键 = `activePath`（App 已换算成**磁盘路径**——合成文档路径对 `.story`
+ * 工程永不命中，见 App 的 `resourceFocusPath`）。
+ */
+watch(
+  () => props.activePath,
+  async (active) => {
+    if (active === undefined || active === "") return;
+    // 展开全部祖先目录（`Stories/chapter1/x.story` ⇒ `Stories/`、`Stories/chapter1/`）
+    const ancestors = new Set(collapsed.value);
+    let dir = active.includes("/") ? active.slice(0, active.lastIndexOf("/") + 1) : "";
+    while (dir !== "") {
+      ancestors.delete(dir);
+      dir = dir.includes("/") && dir.lastIndexOf("/") > 0
+        ? dir.slice(0, dir.lastIndexOf("/", dir.length - 2) + 1)
+        : "";
+    }
+    if (ancestors.size !== collapsed.value.size) {
+      collapsed.value = ancestors;
+      collapsedStore.save(props.projectId ?? "", ancestors);
+    }
+    await nextTick();
+    container.value
+      ?.querySelector<HTMLElement>(`[data-path="${CSS.escape(active)}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  },
+  { immediate: true },
+);
 
 /** 树形渲染（保留目录层级 + 折叠态）：搜索/最近模式用扁平列表，资源模式用层级 */
 function visibleTree(
@@ -72,7 +139,7 @@ const emptyText = computed(() => {
 </script>
 
 <template>
-  <div class="resource-tree">
+  <div ref="container" class="resource-tree">
     <p v-if="nodes.length === 0" class="tree-empty">未打开工程</p>
     <template v-else>
       <p v-if="rows.length === 0" class="tree-empty">{{ emptyText }}</p>
@@ -85,6 +152,7 @@ const emptyText = computed(() => {
               readonly: row.node.readOnly,
               dir: row.node.collapsible,
             }"
+            :data-path="row.node.path"
             :style="{ paddingLeft: `${8 + row.depth * 12}px` }"
             :title="
               row.node.readOnly

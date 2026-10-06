@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, ref, type Ref } from "vue";
 import type { Story, StoryColumn } from "@lingfan/engine";
-import { layoutColumns, type ColumnGroupingView } from "@lingfan/editor";
+import { layoutColumns, sceneTypeBadgeOf, type ColumnGroupingView } from "@lingfan/editor";
 import { decideAddColumn } from "../addColumnIntent";
 import { useDialog } from "../dialogInjection";
 
@@ -9,13 +9,14 @@ import { useDialog } from "../dialogInjection";
  * 列侧栏 + 列分组归类（UI 侧元数据）。
  * 分组**只做分区与折叠**，展示序恒按 `story.columns`（列序 = 文件路径码元序 = 叙事语义）
  * 重排——分组永不改变列序、不进故事 JSON、不产生 undo。
+ * 类型徽标文案走 `sceneTypeBadgeOf`（单一事实源；组件不自写 菜单/界面 映射）。
  */
 const props = defineProps<{ story: Story; selectedId: string }>();
 
 interface EditorApi {
   select(pointer: string | null): void;
   selectColumn(id: string): void;
-  addColumn(kind: "flow" | "scene", hint?: string): void;
+  addColumn(kind: "flow" | "scene", hint?: string, type?: "game" | "menu" | "ui"): void;
   renameColumn(from: string, to: string): void;
   removeColumn(id: string): void;
 }
@@ -140,7 +141,8 @@ async function promptAddGroup(): Promise<void> {
   grouping.addGroup(name);
 }
 
-/** +列先要一个语义化 id 建议（**取消 = 不执行**；留空 = 引擎兜底生成 column-N；重名由 suggestColumnId 唯一化） */
+/** +列先要一个语义化 id 建议（**取消 = 不执行**；留空 = 引擎兜底生成 column-N；重名由 suggestColumnId 唯一化），
+ *  再选**运行语义**（剧情=game 缺省 / 菜单 / 界面 —— 不参与存档与回溯，判据归引擎 isReplayableColumn） */
 async function promptAddColumn(kind: "flow" | "scene"): Promise<void> {
   const raw = await dialog.askText({
     title: `新${kind === "flow" ? "流程" : "场景"}列`,
@@ -150,7 +152,17 @@ async function promptAddColumn(kind: "flow" | "scene"): Promise<void> {
   });
   const intent = decideAddColumn(raw); // 取消/留空的判据仍在纯函数里（D-58）
   if (!intent.run) return;
-  api.addColumn(kind, intent.hint);
+  const type = await dialog.askChoice({
+    title: "场景类型（运行语义）",
+    message: "剧情可回溯、可存档；菜单（标题/设置）与界面（覆盖层）不进历史、不进存档。",
+    options: [
+      { value: "game", label: "剧情（缺省：可回溯、可存档）" },
+      { value: "menu", label: "菜单：标题 / 设置页" },
+      { value: "ui", label: "界面：覆盖层 / 弹窗" },
+    ],
+  });
+  if (type === null) return; // 取消 = 不建列（取消 ≠ 缺省，D-58 同款纪律）
+  api.addColumn(kind, intent.hint, type === "game" ? undefined : type);
 }
 
 async function promptRenameGroup(section: ColumnSection): Promise<void> {
@@ -251,6 +263,7 @@ function onDrop(event: DragEvent, sectionKey: string): void {
           <button
             class="mini"
             title="重命名分组"
+            aria-label="重命名分组"
             @click.stop="promptRenameGroup(section)"
           >
             ✎
@@ -258,6 +271,7 @@ function onDrop(event: DragEvent, sectionKey: string): void {
           <button
             class="mini danger"
             title="删除分组（列回到未归类）"
+            aria-label="删除分组"
             @click.stop="confirmRemoveGroup(section)"
           >
             ✕
@@ -278,6 +292,12 @@ function onDrop(event: DragEvent, sectionKey: string): void {
             column.kind === "flow" ? "流" : "景"
           }}</span>
           <span class="cid">{{ column.id }}</span>
+          <span
+            v-if="sceneTypeBadgeOf(column.type)"
+            class="type-badge"
+            :title="column.type === 'menu' ? '菜单场景：不参与存档与回溯' : '界面场景：不参与存档与回溯'"
+            >{{ sceneTypeBadgeOf(column.type) }}</span
+          >
           <span v-if="column.id === story.entry" class="entry-badge" title="入口列"
             >入口</span
           >
@@ -285,6 +305,7 @@ function onDrop(event: DragEvent, sectionKey: string): void {
             <button
               class="mini"
               title="重命名（引用同步）"
+              aria-label="重命名列"
               @click.stop="promptRename(column.id)"
             >
               ✎
@@ -292,6 +313,7 @@ function onDrop(event: DragEvent, sectionKey: string): void {
             <button
               class="mini danger"
               title="删除列"
+              aria-label="删除该列"
               @click.stop="confirmRemove(column.id)"
             >
               ✕
@@ -403,6 +425,15 @@ button.caret {
   border: 1px solid color-mix(in srgb, var(--lf-warning) 40%, transparent);
   border-radius: var(--lf-radius-sm);
   padding: 0 4px;
+}
+/* 场景类型徽标（菜单/界面）：与章节树 .ch-badge 同视觉语义（非 game 才出现） */
+.type-badge {
+  flex-shrink: 0;
+  font-size: var(--lf-font-xs);
+  color: var(--lf-warning);
+  border: 1px solid var(--lf-border-subtle);
+  border-radius: 7px;
+  padding: 0 5px;
 }
 .ops {
   /* 常显低强调（E2 建议值）：hover-only 的行内操作在触屏与新用户面前等于不存在

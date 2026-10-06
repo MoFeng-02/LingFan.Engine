@@ -28,6 +28,7 @@ import type {
   VideoCommand,
 } from "../contracts";
 import { ELEMENT_ATTRIBUTES, EXT_KEY_PREFIX, RESERVED_STATE_KEYS, SYS } from "../contracts";
+import { isReplayableColumn } from "../contracts";
 import {
   buildExtensionContext,
   buildOpRegistry,
@@ -56,6 +57,8 @@ const SAY_KNOWN_FIELDS = new Set([
   "op",
   "text",
   "speaker",
+  // 说话人颜色覆盖（老引擎 `SayData.SpeakerColor`；与行内标记 `{color=…}` 是两件事）
+  "color",
   "clickable",
   "noskip",
   "instant",
@@ -64,6 +67,14 @@ const SAY_KNOWN_FIELDS = new Set([
   "template",
   "z", // 实例级 z（dialogue 层）
 ]);
+
+/** 十六进制颜色（`#RGB` / `#RRGGBB` / `#RRGGBBAA`）——`say color` 的**统一校验口径** */
+const HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+
+/** `say color` 的校验（编辑器 schema 与本处**同一口径**；导出供编辑器复用，杜绝两处漂移） */
+export function isValidSayColor(value: unknown): value is string {
+  return typeof value === "string" && HEX_COLOR_RE.test(value);
+}
 
 const WAIT_FIELDS = new Set(["op", "seconds", "skipable"]);
 const PAUSE_FIELDS = new Set(["op", "seconds"]);
@@ -207,7 +218,29 @@ export interface EngineOptions {
    * `load.notice`；返回 null = 无法迁移 → 可操作拒绝）。缺省 = 非 v1 档直接可操作拒绝。
    */
   migrateSave?: (data: unknown) => SaveDataV1 | null;
+  /**
+   * 运行期守卫注册表（组合根注入，信任域 = 组合根；缺省 = guard op 一律 guard-unknown）。
+   * 签名 `(ctx, args)`：ctx = 引擎沙箱上下文（get/fail，**契约只增**——后续能力长在 ctx 上）；
+   * args = 故事数据提供的纯数据参数（与 call 的 args 同族）。失败（ctx.fail 或抛出）⇒
+   * engine.error + 状态原样 + 停在当前命令（fail-closed 拦截）。守卫**不改状态**（ctx 无 set——
+   * 校验/拦截归守卫，改状态归 set/自定义 op）。语义契约：设计稿 2026-10-06 §8.2。
+   */
+  guards?: Readonly<Record<string, GuardFn>>;
 }
+
+/** 守卫的引擎沙箱上下文（首版 = get/fail；**契约只增**：新能力以可选方法扩展） */
+export interface GuardContext {
+  /** 读 SSOT 状态（含 `__` 系统键；与引擎 get 同口径） */
+  get(key: string): unknown;
+  /** 拦截：立即中止守卫并以该消息 fail-closed（状态原样 + 停在当前命令） */
+  fail(message: string): never;
+}
+
+/** 运行期守卫函数：纯逻辑（同状态同 args 同结果 ⇒ 重放同位同判）；不改状态 */
+export type GuardFn = (ctx: GuardContext, args: Record<string, unknown>) => void;
+
+/** 守卫拦截的内部标记（ctx.fail 抛出 ⇒ execGuard 捕获转 engine.error） */
+class GuardFailure extends Error {}
 
 /** 槽位信任边界（与 Rust validate_slot 同判）：字母数字/_/-，1..64 */
 function validSlot(slot: string): boolean {
@@ -236,6 +269,26 @@ function cloneFrame(f: Frame): Frame {
 
 function sameCoord(a: ColumnCoordinate, b: ColumnCoordinate): boolean {
   return a.columnId === b.columnId && a.index === b.index;
+}
+
+/**
+ * 解析 `__menu_return` 记账（进入 menu/ui 前记下的游戏点）。
+ *
+ * ⚠️ **fail-closed**：形状不符 ⇒ 返回 `null`（= 没有可返回的游戏进度 ⇒ 拒绝存档）。
+ * 宁可拒绝也不能存出一个指向非法坐标的档（读档会炸在重放里）。
+ */
+function parseMenuReturn(raw: unknown): { coord: ColumnCoordinate; waiting: string } | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const rec = raw as { coord?: unknown; waiting?: unknown };
+  const coord = rec.coord;
+  if (typeof coord !== "object" || coord === null) return null;
+  const c = coord as { columnId?: unknown; index?: unknown };
+  if (typeof c.columnId !== "string" || c.columnId === "") return null;
+  if (typeof c.index !== "number" || !Number.isFinite(c.index)) return null;
+  return {
+    coord: { columnId: c.columnId, index: Math.max(0, Math.trunc(c.index)) },
+    waiting: typeof rec.waiting === "string" ? rec.waiting : "none",
+  };
 }
 
 /** 快照状态中的字符串键值（缺省/非字符串 = 空串） */
@@ -344,6 +397,8 @@ export class StoryEngine {
   private readonly usedExtensions = new Set<string>();
   /** 存档版本迁移钩子（宿主注入；缺省 = 非 v1 档可操作拒绝） */
   private readonly migrateSaveHook?: (data: unknown) => SaveDataV1 | null;
+  /** 运行期守卫注册表（组合根注入；缺省 = guard op 一律 guard-unknown fail-closed） */
+  private readonly guards: Readonly<Record<string, GuardFn>>;
 
   constructor(story: Story, options?: EngineOptions) {
     this.story = story;
@@ -356,6 +411,7 @@ export class StoryEngine {
     this.extensionOps = buildOpRegistry(extensions);
     this.extensionById = new Map(extensions.map((e) => [e.id, e]));
     this.migrateSaveHook = options?.migrateSave;
+    this.guards = options?.guards ?? {};
   }
 
   // —— 观察接缝 ——
@@ -522,6 +578,7 @@ export class StoryEngine {
     this.setSystem(SYS.waiting, "none");
     this.setSystem(SYS.currentDialogText, ""); // 清旧对话镜像（导航清屏）
     this.setSystem(SYS.currentDialogSpeaker, "");
+    this.setSystem(SYS.currentDialogColor, ""); // 同清：避免上一句的颜色覆盖残留
     this.setSystem(SYS.dialogComplete, false);
     if (!this.enterColumn(columnId)) return;
     this.run();
@@ -894,6 +951,42 @@ export class StoryEngine {
     return this.story.columns.find((c) => c.id === id);
   }
 
+  /**
+   * 找到「最后一个可回溯坐标」的历史游标（菜单态存档时用）。
+   *
+   * 🔴 为什么需要：菜单期间**不建检查点**（见 `commitCheckpoint` 守卫），
+   * 但 `cursor` 仍可能停在菜单之前那个坐标上——直接用它会把菜单产生的
+   * **前向时间线截断**语义带进档里。取「最后一个坐标属可回溯列」的检查点，
+   * 保证档里的历史**只含玩家真正走过的游戏步骤**。
+   *
+   * 找不到（历史为空/全在菜单列）⇒ 返回 `null`（调用方按「无历史」处理）。
+   */
+  private lastReplayableCursor(): number | null {
+    for (let i = Math.min(this.cursor, this.history.length - 1); i >= 0; i -= 1) {
+      const cp = this.history[i];
+      if (cp === undefined) continue;
+      const column = this.columnById(cp.coord.columnId);
+      if (column !== undefined && isReplayableColumn(column)) return i;
+    }
+    return null;
+  }
+
+  /**
+   * 当前列是否参与历史/存档（`type` 缺省 = game ⇒ 参与）。
+   *
+   * 🔴 **单一判定点**（治根）：`isReplayableColumn` 来自契约，引擎守卫与编辑器分组
+   * 共用它——**不各写一份**（两份判据必然漂移；本仓已吃过同类亏：诊断分组的
+   * 「error 组不折叠」若在 UI 与测试各写一份就会假绿）。
+   */
+  private isCurrentColumnReplayable(): boolean {
+    const columnId = this.coord.columnId;
+    if (columnId === "") return true; // 尚未进入任何列（启动期）⇒ 视为可回溯
+    const column = this.columnById(columnId);
+    // ⚠️ 列不存在（热重载后坐标失效等）⇒ **不拦**（保持既有行为：让流程自己 fail-closed 报错）
+    if (column === undefined) return true;
+    return isReplayableColumn(column);
+  }
+
   /** 进入列：替换整个帧栈（出块/出列销毁作用域），建列级作用域，坐标归零 */
   private enterColumn(columnId: string): boolean {
     const column = this.columnById(columnId);
@@ -904,8 +997,30 @@ export class StoryEngine {
       );
       return false;
     }
+    // 🔴 场景类型分流（治根，对齐老引擎 NavigateHandler）：
+    // 进入 menu/ui 列 ⇒ 记下**进入前**的可回溯坐标与等待态（`__menu_return`），
+    // 供「在菜单里存档」时还原成菜单前的游戏进度（Ren'Py Esc 菜单存档语义）。
+    // ⚠️ 必须在改 `this.coord` **之前**取旧值。
+    if (!isReplayableColumn(column)) {
+      const prevColumnId = this.coord.columnId;
+      const prevColumn = this.columnById(prevColumnId);
+      // 只有「从可回溯列进入菜单」才记（菜单→菜单导航不覆盖上一个游戏点，
+      // 否则连开两个菜单会把游戏点写坏）
+      if (prevColumn !== undefined && isReplayableColumn(prevColumn)) {
+        this.setSystem(SYS.menuReturn, {
+          coord: { columnId: prevColumnId, index: this.coord.index },
+          waiting: this.get(SYS.waiting) ?? "none",
+        });
+      }
+    }
     this.coord = { columnId, index: 0 };
     this.setSystem(SYS.currentSceneColumn, columnId);
+    // 返回 game 列 ⇒ **清掉**菜单记账（已经回到游戏里）。
+    // ⚠️ **只在真的有记账时才写**：空串是缺省值，无条件写会给每次进列都多一次
+    // `ValueChanged`（实测撞红既有「键序列精确匹配」测试——那是**正确的**守门）。
+    if (isReplayableColumn(column) && parseMenuReturn(this.get(SYS.menuReturn)) !== null) {
+      this.setSystem(SYS.menuReturn, "");
+    }
     // 空间层：scene 列的元素是**声明式装载**（不进命令流），entry 才是进入后
     // 按序执行的命令流；列切换整体替换 __elements（空间层属于列），回溯由快照还原。
     this.setSystem(
@@ -978,6 +1093,14 @@ export class StoryEngine {
         case "pause":
           this.execWait(frame, cmd, true);
           return; // 进入硬等待
+        case "assert":
+          if (!this.execAssert(cmd)) return; // 拦截 = 停在当前命令（状态原样 + 不推进）
+          frame.index += 1;
+          continue;
+        case "guard":
+          if (!this.execGuard(cmd)) return; // 拦截 = 停在当前命令（状态原样 + 不推进）
+          frame.index += 1;
+          continue;
         case "jump":
           if (
             !this.enterColumn(typeof cmd.target === "string" ? cmd.target : "")
@@ -1188,6 +1311,16 @@ export class StoryEngine {
       );
       return;
     }
+    // 🔴 `say color` 校验（2026-10-05 治根）：**hex 格式，fail-closed**。
+    // 与编辑器 schema 同一判据（`isValidSayColor`）⇒ 杜绝「投影层放宽、校验层拒绝」
+    // 这类两处漂移（本仓最忌：同一功能两个口径）。
+    if (cmd.color !== undefined && !isValidSayColor(cmd.color)) {
+      this.fail(
+        "say-invalid-color",
+        `say.color 必须为十六进制颜色（如 "#FFD700" / "#888" / "#FFD700CC"），收到 ${JSON.stringify(cmd.color)}`,
+      );
+      return;
+    }
     // 先 Translate 后插值（overlay 键可含 {var} 占位符）+ {var:00} 格式化（仅文本命令）；
     // 行内标记 {b}{p} 原样透传；失败保留原文 + error
     // speaker 与 text 同语义插值——动态说话人（如 func 实参）经此获得真实名字；
@@ -1210,6 +1343,13 @@ export class StoryEngine {
     // 竞态防护：进入等待前清上一句残留的完成标记（防双击/快速点击跳句）
     this.setSystem(SYS.dialogComplete, false);
     this.setSystem(SYS.currentDialogSpeaker, this.translate(speakerText));
+    // 🔴 说话人颜色覆盖（`say color="#888"`）：**每句都写**——
+    // 缺省写空串 ⇒ 上一句的覆盖不会残留（与 `currentDialogSpeaker` 同纪律）。
+    // UI 读法：`覆盖值 || character.color`（覆盖优先于角色定义）。
+    this.setSystem(
+      SYS.currentDialogColor,
+      typeof cmd.color === "string" ? cmd.color : "",
+    );
     // 模板三级优先级：
     // say template > character screen（按插值后说话人查表，与 UI 侧角色样式查表一致）> null(全局默认)
     const characterScreen = this.characters.get(speakerText)?.screen;
@@ -1294,6 +1434,7 @@ export class StoryEngine {
     }
     this.setSystem(SYS.currentDialogText, ""); // 清旧列对话镜像（导航 = 画面边界）
     this.setSystem(SYS.currentDialogSpeaker, "");
+    this.setSystem(SYS.currentDialogColor, ""); // 同清：避免上一句的颜色覆盖残留
     this.setSystem(SYS.dialogComplete, false);
     return this.enterColumn(target);
   }
@@ -1425,6 +1566,7 @@ export class StoryEngine {
     const options = cmd.options as Array<{ text: string; target: string }>; // 解析器已验证结构
     this.setSystem(SYS.currentDialogText, "");
     this.setSystem(SYS.currentDialogSpeaker, "");
+    this.setSystem(SYS.currentDialogColor, ""); // 同清：避免上一句的颜色覆盖残留
     // prompt/选项文案先 Translate（目标列名不翻译——menuTargets 原样）
     this.setSystem(
       SYS.menuPrompt,
@@ -1510,6 +1652,64 @@ export class StoryEngine {
       scope: frame.scope.enterChild(), // 块级作用域：出块销毁
     });
     return true;
+  }
+
+  /**
+   * assert：断言校验（fail-closed 拦截语义，2026-10-06）。
+   * cond 求值为假 ⇒ `engine.error`（code = assert-failed）+ **停在当前命令**
+   * （状态原样、不推进——作者可用重写源/数据修正后重放；重放同位同判 = 回溯安全）。
+   * 为真 = 纯推进（无副作用、不产系统键 ⇒ 键序列与既有测试零冲突）。
+   */
+  private execAssert(cmd: StoryCommand): boolean {
+    const cond = this.evalCond(cmd.cond);
+    if (cond === null) return false; // 表达式求值错误（fail 已在 evalCond 内出站）
+    if (cond) return true;
+    const message =
+      typeof cmd.message === "string" && cmd.message !== ""
+        ? cmd.message
+        : String(cmd.cond ?? "");
+    this.fail("assert-failed", `断言失败：${message}`);
+    return false;
+  }
+
+  /**
+   * guard：运行期守卫（组合根注册制，语义契约 = 设计稿 2026-10-06 §8.2）。
+   * 未注册名 / args 非 JSON 安全 / ctx.fail / 抛出 ⇒ engine.error + **停在当前命令**
+   * （状态原样 + 阻止推进）。通过 = 纯推进。守卫不改状态（ctx 无 set——职责分离）。
+   */
+  private execGuard(cmd: StoryCommand): boolean {
+    const name = typeof cmd.fn === "string" ? cmd.fn : "";
+    const guard = this.guards[name];
+    if (guard === undefined) {
+      this.fail("guard-unknown", `未注册的守卫：${name === "" ? "(空)" : name}`);
+      return false;
+    }
+    const args = (cmd.args ?? {}) as Record<string, unknown>;
+    const unsafe = findJsonValueError(args, "args"); // 故事数据来的参数必须 JSON 安全
+    if (unsafe !== null) {
+      this.fail("guard-args-unsafe", `守卫 ${name} 参数非 JSON 安全：${unsafe}`);
+      return false;
+    }
+    const ctx: GuardContext = {
+      get: (key) => this.get(key),
+      fail: (message) => {
+        throw new GuardFailure(message);
+      },
+    };
+    try {
+      guard(ctx, args);
+      return true;
+    } catch (error) {
+      if (error instanceof GuardFailure) {
+        this.fail("guard-failed", error.message);
+      } else {
+        this.fail(
+          "guard-threw",
+          `守卫 ${name} 抛出：${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+      return false;
+    }
   }
 
   /** while：条件执行期求值；body = 循环帧（每轮重判条件） */
@@ -2748,8 +2948,41 @@ export class StoryEngine {
     const name = cmd.target as string;
     const fn = this.functions.get(name);
     if (fn === undefined) {
-      this.fail("call-unknown-function", `调用未注册的函数：${name}`);
-      return false;
+      // 🔴 **列（label）目标**（2026-10-05 治根）：老引擎 `call` 文档原文
+      // 「调用子过程（**func 或 label**），用 return 返回」——本仓此前只认 func
+      // ⇒ 真实工程 `call sb_subroutine`（`label sb_subroutine:` 定义）报「未注册的函数」。
+      //
+      // **实现要点**：直接**压入该列命令的帧**（不切 `coord`、不装元素）——
+      // 因为「子过程」是**被调用的代码块**，不是「进入一个新场景」：
+      // ① 作用域沿用 func 的块级语义（`enterChild`，不污染列级作用域）
+      // ② `func: true` 标记复用 ⇒ `return` 与「列尾出帧」两条路径都能正确回到调用点
+      // ③ 调用者位置先 `index += 1` ⇒ 返回点 = 下一条
+      const column = this.columnById(name);
+      if (column === undefined) {
+        this.fail(
+          "call-unknown-target",
+          `调用目标不存在：${name}（既不是 func 也不是列）`,
+        );
+        return false;
+      }
+      if (column.kind !== "flow") {
+        this.fail(
+          "call-invalid-target",
+          `call 只能调用流程列（flow）；${name} 是场景列（scene）——` +
+            `空间层切换请用 navigate/jump`,
+        );
+        return false;
+      }
+      frame.index += 1;
+      const scope = frame.scope.enterChild();
+      this.frames.push({
+        columnId: null,
+        commands: column.commands ?? [],
+        index: 0,
+        scope,
+        func: true,
+      });
+      return true;
     }
     try {
       const args = ((cmd.args as unknown[] | undefined) ?? []).map((a) =>
@@ -2800,6 +3033,7 @@ export class StoryEngine {
     // 输入态清对话残留（与 menu 同语义）
     this.setSystem(SYS.currentDialogText, "");
     this.setSystem(SYS.currentDialogSpeaker, "");
+    this.setSystem(SYS.currentDialogColor, ""); // 同清：避免上一句的颜色覆盖残留
     this.setSystem(
       SYS.inputPrompt,
       typeof cmd.prompt === "string" ? this.translate(cmd.prompt) : "",
@@ -2860,6 +3094,13 @@ export class StoryEngine {
   /**
    * 导出存档载荷。必须在等待点调用（列尾/未启动 fail-closed 拒绝）。
    * 载荷 = 等待点坐标 + 全局状态 + rngState + 函数表 + 历史；不含块/列级作用域与帧栈。
+   *
+   * 🔴 **场景类型守卫（治根，对齐老引擎 `SaveDataService.BuildSaveData`）**：
+   * 在 `menu`/`ui` 场景按存档，**存的是「菜单前的游戏进度」而不是菜单状态**
+   * （老引擎注释原文：「Menu/UI 场景：存档当前游戏状态（对标 Ren'Py Esc 菜单存档）」）。
+   * 手法：维护 `__menuReturn`（进入菜单前的**可回溯坐标** + 等待态），
+   * 导出时用它替换当前坐标；**没有 `__menuReturn` ⇒ 拒绝存档**
+   * （对齐老引擎「没有正在进行的游戏 ⇒ return null」）。
    */
   exportSave(): SaveDataV1 | null {
     const waiting = this.get(SYS.waiting);
@@ -2886,18 +3127,42 @@ export class StoryEngine {
         return null;
       }
     }
+    // 🔴 场景类型守卫（治根）：非 game 场景导出 ⇒ 存「菜单前的游戏进度」。
+    // 手法与老引擎 `SaveDataService.BuildSaveData` 同构：把当前坐标/等待态换成
+    // `__menu_return` 里记的游戏点；**无该记账 ⇒ 拒绝存档**（没有正在进行的游戏）。
+    const rawReturn = this.get(SYS.menuReturn);
+    const menuReturn = parseMenuReturn(rawReturn);
+    let coord: ColumnCoordinate;
+    let historyCursor = this.cursor;
+    let historyList = this.history;
+    if (!this.isCurrentColumnReplayable()) {
+      if (menuReturn === null) {
+        this.fail(
+          "save-invalid",
+          "当前在菜单/界面中，且没有可返回的游戏进度——无法存档（请先回到游戏场景）",
+        );
+        return null;
+      }
+      coord = menuReturn.coord;
+      // 历史游标一并回退：菜单期间的历史是「覆盖」产生的，不该算进玩家进度
+      const back = this.lastReplayableCursor();
+      if (back !== null) historyCursor = back;
+      historyList = this.history.slice(0, historyCursor + 1);
+    } else {
+      coord = {
+        columnId: columnFrame.columnId,
+        index: Math.max(0, columnFrame.index - 1),
+      };
+    }
     return {
       formatVersion: 1,
       storyId: this.story.id,
-      coord: {
-        columnId: columnFrame.columnId,
-        index: Math.max(0, columnFrame.index - 1),
-      },
+      coord,
       state: [...this.state.entries()],
       rngState: this.rngState,
       functions: [...this.functions.entries()],
-      cursor: this.cursor,
-      history: this.history.map((cp) => ({
+      cursor: historyCursor,
+      history: historyList.map((cp) => ({
         coord: { ...cp.coord },
         state: cp.snapshot.state,
         rngState: cp.snapshot.rngState,
@@ -3202,9 +3467,16 @@ export class StoryEngine {
    * - 重取同坐标（回溯后重放推进）→ 原位替换，不动时间线
    * - 与前向时间线同坐标 → cursor 前移（rollforward 保留）
    * - 同列内介于 cursor 与下一检查点之间 → 新发现的中间站：插入（残缺历史自愈）
-   * - 其余坐标不同 → 截断旧前向（重选 ≠ 旧选择 = 新时间线）
+   * - 其余坐标不同 → 截断旧前向（重选≠ 旧选择 = 新时间线）
+   *
+   * 🔴 **场景类型守卫（治根，对齐老引擎 `NavigateHandler`）**：`type !== "game"`
+   * 的列（menu/ui）**不建检查点**——菜单/弹窗是「覆盖」，不是玩家经历的一步。
+   * 老引擎同款守卫在 `PlaybackService.Process`（菜单不自动推进）与
+   * `SaveDataService.BuildSaveData`（菜单态存档存的是菜单前的游戏进度）。
    */
   private commitCheckpoint(cp: Checkpoint): void {
+    // 🔴 非 game 场景不进历史（menu/ui 是覆盖层，不构成可回溯的一步）
+    if (!this.isCurrentColumnReplayable()) return;
     const current = this.history[this.cursor];
     if (current !== undefined && sameCoord(current.coord, cp.coord)) {
       this.history[this.cursor] = cp;
@@ -3349,6 +3621,22 @@ export class StoryEngine {
   }
 
   /** 滚轮上：回退一步。live 已入档 → 退到前一个；未入档（如菜单选择后）→ 落回当前检查点（重选菜单） */
+  /**
+   * 历史长度（**只读出口**，供 UI 判据与测试共用）。
+   *
+   * 为什么需要出口：`back()` 会先`flushPendingCheckpoint`（离开当前画面即所见入档），
+   * 所以「有没有在菜单里建点」**不能靠 back() 的落点反推**——那测的是 flush 语义，
+   * 不是守卫。要精确断言「菜单期间历史没变」必须直接读长度。
+   */
+  historyLength(): number {
+    return this.history.length;
+  }
+
+  /** 历史游标（只读出口；配`historyLength` 判定「回退了几步」） */
+  historyCursor(): number {
+    return this.cursor;
+  }
+
   back(): void {
     if (!this.started || this.rollbackActive) {
       this.fail("rollback-invalid", "当前不可回退");

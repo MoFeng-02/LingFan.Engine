@@ -54,6 +54,9 @@ export default defineConfigWithVueTs(
       // 私有文档（设计稿/验收脚本/临时探针）：已入 .gitignore 不随仓库分发，
       // 其中 .cjs 探针按 CommonJS 写(require)，与本仓 TS 源的模块规范不同
       "**/私有文档/**",
+      // stories:build 的 cell 生成物（fun_register.g.ts）：实现文本从源原样搬运，
+      // 缩进/风格由生成器负责——入库但免检（.prettierignore 已同步）
+      "**/Stories.src/gen/**",
     ],
   },
   pluginVue.configs["flat/essential"],
@@ -239,6 +242,20 @@ export default defineConfigWithVueTs(
       // token 守卫（B5）需要**读编辑器源码**做机械核对（扫裸色值/裸字号）
       // —— 属测试期工具，不进浏览器产物
       "tests/editor/token-guard.test.ts",
+      // 诊断面板类名隔离守卫：同理**读全部组件模板**做跨组件撞名核对
+      // （实测撞名会让选择器/探针指向别的面板，症状是「功能坏了」的误判）
+      "tests/editor/diagnostics-css-isolation.test.ts",
+      // 纯图标按钮 a11y 守卫：同理**读全部组件模板**做 aria-label 核对
+      // （title 不进无障碍树 ⇒ 纯图标按钮无aria-label = 对读屏用户不存在）
+      "tests/editor/aria-label-guard.test.ts",
+      // 真实工程形态验证（用户实测工程 E:\langf\Downloads\Demo\Test\Resources）：
+      // 需**读仓外真实工程**核对三Lang 布局与场景类型分布 —— 属测试期工具
+      "tests/engine/data/real-project-scene-type.test.ts",
+      // 真实工程**端到端打开**守卫：同理读仓外真实工程（用户实测工程），
+      // 验「四个阻塞全解除」——组装成功 / 类型识别 / 编排保住 / 无拍平产物
+      "tests/engine/data/real-project-open.test.ts",
+      // Script 词汇层互锁守卫：读词汇层源文件做「登记 ↔ 导出」一致性核对（测试期工具）
+      "tests/editor/script-vocabulary.test.ts",
     ],
     rules: {
       "no-restricted-imports": "off",

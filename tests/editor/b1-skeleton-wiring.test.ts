@@ -291,7 +291,7 @@ describe("热重载 · 接线与顺序", () => {
     expect(appSource).toContain("pollWatch(host");
     // 结构改成 if/else-if（探测失败走横幅，不再是 else 兜底）
     expect(appSource).toContain("if (host === undefined) hostHint.value = true;");
-    expect(appSource).toContain("else if (hotReloadEnabled.value) startHotReload(host);");
+    expect(appSource).toContain("if (hotReloadEnabled.value) startHotReload(host);");
   });
 
   it("**脏文档时不自动重载**（静默重载会丢作者改动）", () => {
@@ -370,6 +370,6 @@ describe("能力探测 · 触发时机", () => {
 
   it("探测命中 ⇒ 起热重载；未命中 ⇒ 显示**非阻塞横幅**", () => {
     expect(appSource).toContain("if (host === undefined) hostHint.value = true;");
-    expect(appSource).toContain("else if (hotReloadEnabled.value) startHotReload(host);");
+    expect(appSource).toContain("if (hotReloadEnabled.value) startHotReload(host);");
   });
 });

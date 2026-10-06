@@ -18,16 +18,10 @@ const STORIES_DIR: &str = "Stories";
 /// 热重载事件名：工程文件变更（防抖后）→ 前端重新供给+组装并 reloadStory
 pub const STORY_CHANGED_EVENT: &str = "story-changed";
 /// 防抖静默窗：编辑器保存常产生截断+写入/替换等多事件，静默窗内合并为一次通知
-#[cfg(all(
-    debug_assertions,
-    not(any(target_os = "android", target_os = "ios"))
-))]
+#[cfg(all(debug_assertions, not(any(target_os = "android", target_os = "ios"))))]
 const WATCH_QUIET: std::time::Duration = std::time::Duration::from_millis(250);
 /// 监视启动幂等标记（spawn 成功才置位；失败保持未置位，重试可再建）
-#[cfg(all(
-    debug_assertions,
-    not(any(target_os = "android", target_os = "ios"))
-))]
+#[cfg(all(debug_assertions, not(any(target_os = "android", target_os = "ios"))))]
 static WATCH_STARTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 #[derive(Debug, Serialize, Clone)]
@@ -202,10 +196,7 @@ fn read_utf8(resfs: &dyn ResourceFs, path: &Path) -> Result<String, ProjectFiles
 /// fs 插件读取）；iOS = app bundle 内真实路径（std::fs 直读，无需插件）。
 /// **两条移动端都不得命中宿主 `CARGO_MANIFEST_DIR` 分支**（那是构建机路径，设备上不存在）。
 pub(crate) fn locate_resource_root(app: &tauri::AppHandle) -> PathBuf {
-    #[cfg(all(
-        debug_assertions,
-        not(any(target_os = "android", target_os = "ios"))
-    ))]
+    #[cfg(all(debug_assertions, not(any(target_os = "android", target_os = "ios"))))]
     {
         let _ = app;
         if let Ok(env_root) = std::env::var("LFEN_DEV_RESOURCE_ROOT") {
@@ -213,11 +204,7 @@ pub(crate) fn locate_resource_root(app: &tauri::AppHandle) -> PathBuf {
         }
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../Resources")
     }
-    #[cfg(any(
-        not(debug_assertions),
-        target_os = "android",
-        target_os = "ios"
-    ))]
+    #[cfg(any(not(debug_assertions), target_os = "android", target_os = "ios"))]
     {
         app.path()
             .resource_dir()
@@ -513,19 +500,12 @@ pub fn run_event_debouncer<F: Fn() + Send + 'static>(
 /// 重复调用幂等（成功置位标记保证线程与 watcher 只建一次）。
 #[tauri::command]
 pub fn watch_project_files(app: tauri::AppHandle) -> Result<(), ProjectFilesError> {
-    #[cfg(any(
-        not(debug_assertions),
-        target_os = "android",
-        target_os = "ios"
-    ))]
+    #[cfg(any(not(debug_assertions), target_os = "android", target_os = "ios"))]
     {
         let _ = &app;
         return Err(ProjectFilesError::WatchDevOnly);
     }
-    #[cfg(all(
-        debug_assertions,
-        not(any(target_os = "android", target_os = "ios"))
-    ))]
+    #[cfg(all(debug_assertions, not(any(target_os = "android", target_os = "ios"))))]
     {
         use notify::Watcher;
         use std::sync::mpsc;

@@ -70,6 +70,23 @@ const engine = new StoryEngine(props.story);
 const column = ref("");
 const dialogText = ref("");
 const speaker = ref("");
+/**
+ * 本句说话人颜色的**覆盖值**（`say color="#888"`，2026-10-05 治根）。
+ *
+ * ⚠️ 与**行内标记** `{color=…}`（文本内部，由 `renderDialogueLine` 渲染）是两件事。
+ * 空串 = 无覆盖（用角色定义的颜色）。
+ */
+const dialogColorOverride = ref("");
+/**
+ * 说话人颜色 = **本句覆盖优先，其次角色定义**。
+ *
+ * 🔴 此前这里是硬编码 `""` ⇒ 预览**从不显示说话人颜色**（连 `character` 定义的都没有）。
+ * 改为派生值：两个来源任一变化都重算（不依赖事件到达顺序）。
+ */
+const speakerColor = computed(() => {
+  if (dialogColorOverride.value !== "") return dialogColorOverride.value;
+  return engine.getCharacter(speaker.value)?.color ?? "";
+});
 const templateName = ref<string | null>("");
 const menuPrompt = ref("");
 const menuChoices = ref<Array<{ text: string; target: string }>>([]);
@@ -168,7 +185,7 @@ const dialogView = computed<DialogueTemplateView>(() => {
     dialogueTemplates.resolve(templateName.value) ?? builtinBubbleTemplate;
   return template({
     speaker: speaker.value,
-    speakerColor: "",
+    speakerColor: speakerColor.value,
     lineHtml: renderDialogueLine({ text: shownText.value }).html,
     canAdvance: canAdvance.value,
   });
@@ -229,6 +246,8 @@ const offState = engine.onStateChanged((c: ValueChanged) => {
     retype(dialogText.value);
   } else if (c.key === SYS.currentDialogSpeaker)
     speaker.value = String(c.value ?? "");
+  else if (c.key === SYS.currentDialogColor)
+    dialogColorOverride.value = String(c.value ?? "");
   else if (c.key === SYS.dialogTemplate)
     templateName.value = c.value as string | null;
   else if (c.key === SYS.menuPrompt) menuPrompt.value = String(c.value ?? "");

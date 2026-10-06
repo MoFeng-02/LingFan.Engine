@@ -9,11 +9,13 @@
     "build": "vite build",
     "build:prepare": "node scripts/prepare-dist.mjs",
     "stories:build": "tsx scripts/stories-build.ts",
+    "stories:watch": "tsx watch scripts/stories-build.ts",
     "preview": "vite preview",
     "tauri": "tauri"
   },
   "dependencies": {
     "@lingfan/adapters": "workspace:*",
+    "@lingfan/editor": "workspace:*",
     "@lingfan/engine": "workspace:*",
     "@lingfan/ui": "workspace:*",
     "@tauri-apps/api": "^2.12.1",
@@ -23,6 +25,7 @@
     "@tauri-apps/cli": "^2.12.1",
     "@vitejs/plugin-vue": "^6.0.7",
     "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
     "vite": "^8.0.16"
   }
 }

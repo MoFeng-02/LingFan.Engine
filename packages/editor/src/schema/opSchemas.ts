@@ -7,6 +7,7 @@
  */
 
 import { z } from "zod";
+import { isValidSayColor } from "@lingfan/engine";
 import type { Diagnostic } from "../contracts";
 import { escapePointerToken } from "../contracts";
 
@@ -24,6 +25,20 @@ const InstanceZ = z.number().finite().min(0).optional();
 const saySchema = z.strictObject({
   text: NonEmpty,
   speaker: z.string().optional(),
+  /**
+   * 说话人颜色覆盖（老引擎 `SayData.SpeakerColor`）。
+   *
+   * 🔴 **判据直接复用引擎的 `isValidSayColor`**（不在此重写正则）——
+   * 本项目吃过「两处各写一份判据 ⇒ 必然漂移」的亏（`say color` 此前
+   * 投影层放宽、校验层拒绝，正是两处不一致）。
+   * ⚠️ 与**行内标记** `{color=…}`（写在文本内部）是两件事。
+   */
+  color: z
+    .string()
+    .refine(isValidSayColor, {
+      message: "必须为十六进制颜色（如 #FFD700 / #888 / #FFD700CC）",
+    })
+    .optional(),
   clickable: z.boolean().optional(),
   noskip: z.boolean().optional(),
   instant: z.boolean().optional(),
@@ -115,6 +130,21 @@ const ifSchema = z.strictObject({
 const whileSchema = z.strictObject({
   cond: NonEmpty,
   body: Body,
+});
+
+const assertSchema = z.strictObject({
+  cond: NonEmpty,
+  message: z.string().optional(),
+});
+
+const guardSchema = z.strictObject({
+  fn: NonEmpty,
+  /**
+   * 原样**运输**的宿主参数：嵌套 JSON 合法（同 `minigame.config` 口径；运行期
+   * `findJsonValueError` 兜底 JSON 安全）。值口径原则：**被求值的走 `Value`
+   * （call args / reward / set），被运输的走 JSON**（guard args / minigame config）。
+   */
+  args: z.record(z.string(), z.unknown()).optional(),
 });
 
 const forSchema = z.strictObject({
@@ -272,8 +302,9 @@ const textTypewriterSchema = z.strictObject({
   speed: z.number().finite().positive().optional(),
 });
 
-/** op → 负载 schema（不含 op 键本身）；新增 op = 加条目 = 表单与校验自动出现 */
-export const OP_SCHEMAS: Readonly<Record<string, z.ZodType>> = {
+/** op → 负载 schema（不含 op 键本身）；字面量键形态 = `ScriptCommand` 判别联合的派生源。
+ * 新增 op = 加条目 = 表单 / 校验 / 类型三面自动出现（单一事实源，零第二真源） */
+const OP_SCHEMA_MAP = {
   say: saySchema,
   menu: menuSchema,
   input: inputSchema,
@@ -295,6 +326,8 @@ export const OP_SCHEMAS: Readonly<Record<string, z.ZodType>> = {
   switch: switchSchema,
   break: emptySchema,
   continue: emptySchema,
+  assert: assertSchema,
+  guard: guardSchema,
   set: assignSchema,
   define: assignSchema,
   let: assignSchema,
@@ -339,6 +372,104 @@ export const OP_SCHEMAS: Readonly<Record<string, z.ZodType>> = {
   text_typewriter: textTypewriterSchema,
 };
 
+/** 运行期查找面（与 `OP_SCHEMA_MAP` 同一对象，键集恒等）；新增 op 自动可用 */
+export const OP_SCHEMAS: Readonly<Record<string, z.ZodType>> = OP_SCHEMA_MAP;
+
+// ====== 类型派生（与 schema 同源 ⇒ 字段面零漂移）======
+
+/** 内建 op 名字面量全集 */
+export type ScriptOpName = keyof typeof OP_SCHEMA_MAP & string;
+
+/**
+ * 单 op 命令类型：`CommandOf<"bgm">` = `{ op: "bgm" } & 负载形状`。
+ * 派生自 `OP_SCHEMA_MAP` ⇒ schema 增删字段时类型自动跟随。
+ *
+ * 🔴 **条件类型必须保持可分发**（naked `K extends`）：不加分发时
+ * `CommandOf<ScriptOpName>` 会折叠成 `{ op: 全体字面量 } & (全体 infer 联合)`——
+ * 全可选负载（如 nvl）成为逃生舱，缺必填不再报红。
+ * 空 schema（strictObject({}) 的 infer = `Record<string, never>`，会与 op 键冲突）
+ * 特判为纯 `{ op: K }`。
+ */
+export type CommandOf<K extends ScriptOpName> = K extends ScriptOpName
+  ? z.infer<(typeof OP_SCHEMA_MAP)[K]> extends Record<string, never>
+    ? { op: K }
+    : { op: K } & z.infer<(typeof OP_SCHEMA_MAP)[K]>
+  : never;
+
+/**
+ * **内建 op 判别联合**（裸写命令的强类型形态）：`op` 决定可用字段——
+ * `op: "say"` ⇒ text/speaker/z… 编译期可查；未知 op / 未知字段 / 类型错编译期报红
+ * （与编辑期 `validateCommand` 的 unknown-op / unknown-field 同口径，提前到构建期）。
+ *
+ * 🔴 **对内建 op 闭合，不带索引签名逃生舱**：联合里任何 `{[k: string]: unknown}`
+ * 成员都会让所有字面量可指派到它，废掉整个联合的多余属性检查。
+ * 扩展 op 走 `extOp()`（产物 = StoryCommand envelope）或显式 `: StoryCommand`
+ * 注解——显式逃生 > 隐式漏洞。
+ */
+export type ScriptCommand = CommandOf<ScriptOpName>;
+
+/** op 负载标量值（字面量 / `{expr}` 表达式串 / `+=` 复合赋值串——与 zod `Value` 同源） */
+export type ScriptValue = z.infer<typeof Value>;
+
+/**
+ * **「resource 为空」时该用哪个停止命令**（2026-10-05 治根）。
+ *
+ * 🔴 为什么需要：真实工程沿用了老引擎的 `bgm ""` 写法表「停止 BGM」，
+ * 而老引擎 `PlayBgm` 对空路径**无特判**（直接 `LoadAndPlayBgmAsync(player, "", …)`
+ * ⇒ **静默失败**）——作者以为停了，其实没有。本仓显式报错**比老引擎更正确**，
+ * 但原来的消息是 zod 英文原话（`Too small: expected string to have >=1 characters`），
+ * 作者既看不懂、也不知道该改什么。
+ *
+ * 治根 = **保持严格校验**（不引入「空路径=停止」这种隐式约定，下一个人看不出来）
+ * + **把正确写法直接告诉作者**（语义明确）。
+ */
+const STOP_OP_BY_RESOURCE_OWNER: Readonly<Record<string, string>> = {
+  bgm: "stop_bgm",
+  ambient: "stop_ambient",
+  voice: "stop_voice",
+  video: "stop_video",
+  cutscene: "stop_video",
+};
+
+/**
+ * zod 错误 → **中文人话**（编辑期诊断给作者看，不该直接透传英文）。
+ *
+ * ⚠️ **兜底保留原文**：没覆盖的 code 返回 `issue.message`——
+ * 宁可英文也不静默丢信息（本仓纪律：不吞）。
+ */
+function localizeZodIssue(op: string, issue: z.core.$ZodIssue): string {
+  const field = issue.path.map(String).join(".");
+  const at = field === "" ? "" : `${field} `;
+  switch (issue.code) {
+    case "too_small": {
+      const min = (issue as { minimum?: number }).minimum;
+      if (field === "resource" || field.endsWith(".resource")) {
+        const stopOp = STOP_OP_BY_RESOURCE_OWNER[op];
+        return stopOp === undefined
+          ? "资源路径不能为空"
+          : `资源路径不能为空（要**停止**该通道请用 \`${stopOp}\`）`;
+      }
+      return typeof min === "number" && min > 0
+        ? `${at}不能小于 ${min}`
+        : `${at}值太小`;
+    }
+    case "too_big": {
+      const max = (issue as { maximum?: number }).maximum;
+      return typeof max === "number" ? `${at}不能大于 ${max}` : `${at}值太大`;
+    }
+    case "invalid_type": {
+      const expected = (issue as { expected?: unknown }).expected;
+      return `${at}类型不对${typeof expected === "string" ? `（需要 ${expected}）` : ""}`;
+    }
+    case "invalid_format": {
+      const format = (issue as { format?: unknown }).format;
+      return `${at}格式不对${typeof format === "string" ? `（要求 ${format}）` : ""}`;
+    }
+    default:
+      return issue.message;
+  }
+}
+
 function issueToDiagnostic(
   issue: z.core.$ZodIssue,
   basePointer: string,
@@ -376,7 +507,7 @@ function issueToDiagnostic(
   return {
     code: "invalid-value",
     severity: "error",
-    message: `${op}${issue.path.length > 0 ? `.${issue.path.join(".")}` : ""}：${issue.message}`,
+    message: `${op}${issue.path.length > 0 ? `.${issue.path.join(".")}` : ""}：${localizeZodIssue(op, issue)}`,
     pointer,
     op,
   };

@@ -518,10 +518,10 @@ export default { name: "StoryNodeGraph" };
         </div>
       </div>
       <div class="zoom-controls" @pointerdown.stop>
-        <button class="mini" title="缩小" @click="zoomOut">−</button>
+        <button class="mini" title="缩小" aria-label="缩小视图" @click="zoomOut">−</button>
         <span class="zoom-value">{{ Math.round(zoom * 100) }}%</span>
-        <button class="mini" title="放大" @click="zoomIn">＋</button>
-        <button class="mini" title="重置缩放" @click="zoomReset">⟲</button>
+        <button class="mini" title="放大" aria-label="放大视图" @click="zoomIn">＋</button>
+        <button class="mini" title="重置缩放" aria-label="重置缩放" @click="zoomReset">⟲</button>
       </div>
     </div>
   </div>

@@ -9,6 +9,8 @@
  * - `src/*.ts` 等代码在**资源根之外** ⇒ 本函数压根收不到（枚举只覆盖资源根内）。
  */
 
+import type { KeyValueStorage } from "@lingfan/editor";
+
 /** 资源种类（决定图标与默认动作；**不是**视图分派的唯一依据） */
 export type ResourceKind =
   | "story"
@@ -201,4 +203,59 @@ function isDotPath(path: string): boolean {
   return path
     .split("/")
     .some((segment) => segment.startsWith(".") && segment !== "");
+}
+
+// —— 目录收展持久化（T7：会话内 ref → 本机视图偏好）——
+
+/**
+ * 目录收展持久化：**折叠集**按工程存本机（默认全展开，记住作者收起过哪些目录）。
+ * 键按工程隔离——组件视图态跨工程残留防在根上（D-45 同族，对齐列分组 `colgroups:` /
+ * 节点图 `nodepos:` 先例）。任何存储失败都不抛：读失败/形状不对 = 空集（默认全展开），
+ * 写失败 = 仅本次会话有效。编辑器永不因视图偏好而不可用。
+ */
+export const RESOURCE_TREE_COLLAPSED_KEY_PREFIX = "lingfan-editor-restree:";
+
+/** 单工程折叠集条目上限（真实目录数远小于此；超限截断而非报错——视图偏好不值得拦人） */
+export const COLLAPSED_DIRS_LIMIT = 512;
+
+/** 折叠集读写（注入式存储；`undefined`/空工程 id = 无持久化，读写皆空操作） */
+export function createCollapsedDirsStore(storage: KeyValueStorage | undefined): {
+  load(projectId: string): ReadonlySet<string>;
+  save(projectId: string, dirs: ReadonlySet<string>): void;
+} {
+  return {
+    load(projectId: string): ReadonlySet<string> {
+      if (projectId === "") return new Set();
+      let raw: string | null;
+      try {
+        raw = storage?.getItem(RESOURCE_TREE_COLLAPSED_KEY_PREFIX + projectId) ?? null;
+      } catch {
+        return new Set();
+      }
+      if (raw === null) return new Set();
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        return new Set();
+      }
+      // 信任边界：localStorage 可被篡改——非字符串/空串条目剔除（逐条降级，与偏好层同精神）
+      if (!Array.isArray(parsed)) return new Set();
+      const dirs = parsed.filter(
+        (entry): entry is string => typeof entry === "string" && entry !== "",
+      );
+      return new Set(dirs.slice(0, COLLAPSED_DIRS_LIMIT));
+    },
+    save(projectId: string, dirs: ReadonlySet<string>): void {
+      if (projectId === "") return;
+      try {
+        storage?.setItem(
+          RESOURCE_TREE_COLLAPSED_KEY_PREFIX + projectId,
+          JSON.stringify([...dirs].slice(0, COLLAPSED_DIRS_LIMIT)),
+        );
+      } catch {
+        /* 存储不可用（配额 / 隐私模式）= 收展态仅本次会话有效 */
+      }
+    },
+  };
 }

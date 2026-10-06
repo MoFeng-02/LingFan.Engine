@@ -17,6 +17,7 @@ import { computed, ref } from "vue";
 import {
   coverageLabelOf,
   coveragePercentOf,
+  coverageWeightedPercentOf,
   coverageStateOf,
   workbenchOverview,
   type SkeletonLayoutChoice,
@@ -119,8 +120,12 @@ function open(lang: string): void {
           <button class="wb-lang-name" :title="`打开 ${c.lang} 的译文表`" @click="open(c.lang)">
             {{ c.lang }}
           </button>
-          <span class="wb-ratio" :data-state="coverageStateOf(c)">
-            {{ coveragePercentOf(c) }}
+          <span
+            class="wb-ratio"
+            :data-state="coverageStateOf(c)"
+            :title="`按**字数**加权 ${coverageWeightedPercentOf(c)}（长句权重更大）· 按条数 ${coveragePercentOf(c)} · 原文 ${c.totalChars} 字`"
+          >
+            {{ coverageWeightedPercentOf(c) }}
           </span>
           <span class="wb-state">{{ coverageLabelOf(coverageStateOf(c)) }}</span>
           <span class="wb-count">{{ c.translated }}/{{ c.total }}</span>

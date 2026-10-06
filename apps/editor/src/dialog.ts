@@ -40,6 +40,13 @@ export type DialogRequest =
       readonly danger?: boolean;
     }
   | {
+      /** 选项选择：点选项即提交（无「确定」按钮；Esc/遮罩 = 取消） */
+      readonly kind: "choice";
+      readonly title: string;
+      readonly message?: string;
+      readonly options: readonly { readonly value: string; readonly label: string }[];
+    }
+  | {
       readonly kind: "notice";
       readonly title: string;
       readonly message: string;
@@ -66,11 +73,35 @@ export function parseTextAnswer(
   return { run: true, value: answer };
 }
 
+/**
+ * `askChoice` 的答案判据（与 `parseTextAnswer` 同构：取消语义集中一处）。
+ * 只有**命中选项集**的字符串才执行；取消（Esc=false / 遮罩）与越界值一律**不执行**
+ * ——越界值 fail-closed（渲染层 bug 不该变成「静默选了第一项」）。
+ */
+export function parseChoiceAnswer(
+  answer: DialogAnswer,
+  values: readonly string[],
+): { run: false } | { run: true; value: string } {
+  if (typeof answer !== "string") return { run: false }; // 取消/异常形态 ⇒ 不执行
+  if (!values.includes(answer)) return { run: false }; // 越界 = 不执行，不兜底
+  return { run: true, value: answer };
+}
+
 /** 对话框栈（支持嵌套：后进先出） */
 export class DialogHostState {
   private readonly stack: DialogRequest[] = [];
-  /** 等待回答的结算器（**每次开框覆盖**，与「同时只挂一个调用者」同语义） */
-  private settle: ((raw: DialogAnswer) => void) | undefined;
+  /**
+   * 等待回答的结算器**与框一一对应**（`stack[i]` ↔ `settlers[i]`）。
+   *
+   * ⚠️ **为什么不能是单个槽位**（真缺陷，已被真机探针逮到）：`ask()` 若在已有
+   * 挂起框时再被调用，单槽位会被**覆盖** ⇒ 前一个 Promise **永久挂起**（调用方的
+   * `await` 永不返回），而 `answer()` 的 `stack.pop()` 只弹一帧 ⇒ **框留在栈顶、
+   * 全屏遮罩永久挡住所有点击**（用户现象是「点什么都没反应」，与提示内容毫无关系）。
+   *
+   * 正确语义：**后进先出**——回答的永远是栈顶那个框，结算器随框同进同出。
+   * 非栈顶的挂起者仍按「后进先出」依次被结算，不丢不吊死。
+   */
+  private readonly setters: ((raw: DialogAnswer) => void)[] = [];
   private readonly listeners = new Set<() => void>();
 
   get current(): DialogRequest | undefined {
@@ -100,17 +131,19 @@ export class DialogHostState {
    * 回答经 `answer` 注入 ⇒ 判据仍在 `parseTextAnswer`（纯函数、可测）。
    */
   ask(request: DialogRequest): Promise<DialogAnswer> {
-    this.stack.push(request);
-    this.emit();
     return new Promise((resolve) => {
-      this.settle = resolve;
+      // ⚠️ 结算器**先入栈再 emit**：`emit` 同步跑监听器（宿主把 `current` 写进 ref
+      // 触发 Vue 重渲染）。若顺序反过来，栈与结算器会有一瞬不一致——重渲染却读不到
+      // 对应结算器，「框出现但点不掉」就不可能被排查出来。
+      this.setters.push(resolve);
+      this.stack.push(request);
+      this.emit();
     });
   }
 
-  /** 注入回答（组件调）⇒ 弹出当前框并结算等待者 */
+  /** 注入回答（组件调）⇒ 弹出**栈顶**框并结算它（后进先出） */
   answer(raw: DialogAnswer): void {
-    const settle = this.settle;
-    this.settle = undefined;
+    const settle = this.setters.pop();
     this.stack.pop();
     this.emit();
     settle?.(raw);
@@ -127,17 +160,19 @@ export class DialogHostState {
   }
 
   close(): void {
+    this.setters.pop();
     this.stack.pop();
     this.emit();
   }
 
   closeAll(): void {
+    // ⚠️ 顺序：先摘栈再结算——结算回调（`await` 之后的续行）可能同步再开框，
+    // 那时 `stack` 必须是干净的空栈，否则会残留一层永远关不掉的遮罩。
+    const settlers = this.setters.splice(0, this.setters.length);
     this.stack.length = 0;
-    const settle = this.settle;
-    this.settle = undefined;
     this.emit();
     // 换工程/新建时清栈：挂起者以「取消」结算（不留悬挂的 Promise）
-    settle?.(null);
+    for (const settle of settlers) settle(null);
   }
 
   private emit(): void {
@@ -155,6 +190,17 @@ export interface DialogPort {
   askText(request: Omit<Extract<DialogRequest, { kind: "text" }>, "kind">): Promise<string | null>;
   /** `false` = 取消 */
   askConfirm(request: Omit<Extract<DialogRequest, { kind: "confirm" }>, "kind">): Promise<boolean>;
+  /**
+   * 选项选择：返回所选 `value`；`null` = 取消（含越界值 fail-closed）。
+   * 泛型直通：调用方给出的 `options[].value` 字面量类型（如 `"game"|"menu"|"ui"`）
+   * 原样出现在返回类型 —— 判据（parseChoiceAnswer）保证返回值 ∈ 选项集，
+   * 调用方无需再断言。
+   */
+  askChoice<T extends string>(request: {
+    readonly title: string;
+    readonly message?: string;
+    readonly options: readonly { readonly value: T; readonly label: string }[];
+  }): Promise<T | null>;
   /** 通知（无取消） */
   notify(request: Omit<Extract<DialogRequest, { kind: "notice" }>, "kind">): Promise<void>;
 }
@@ -169,6 +215,19 @@ export function createDialogPort(state: DialogHostState): DialogPort {
     async askConfirm(request): Promise<boolean> {
       const raw = await state.ask({ kind: "confirm", ...request });
       return raw === true;
+    },
+    async askChoice<T extends string>(request: {
+      readonly title: string;
+      readonly message?: string;
+      readonly options: readonly { readonly value: T; readonly label: string }[];
+    }): Promise<T | null> {
+      const raw = await state.ask({ kind: "choice", ...request });
+      const parsed = parseChoiceAnswer(
+        raw,
+        request.options.map((option) => option.value),
+      );
+      // 判据保证 parsed.value ∈ 选项集（即 T）⇒ 断言安全；越界已被 fail-closed 拦下
+      return parsed.run ? (parsed.value as T) : null;
     },
     async notify(request): Promise<void> {
       await state.ask({ kind: "notice", ...request });

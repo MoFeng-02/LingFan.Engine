@@ -69,7 +69,10 @@ use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::tungstenite;
 
 /// 单连接服务循环：文本帧 → 分发 → 回帧；Close/断开退出
-async fn serve_with(app: tauri::AppHandle, ws: tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>) {
+async fn serve_with(
+    app: tauri::AppHandle,
+    ws: tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>,
+) {
     serve_handler(ws, |text| handle_text(&app, text)).await;
 }
 
@@ -158,14 +161,20 @@ fn dispatch(app: &tauri::AppHandle, cmd: &str, args: &Value) -> Result<Value, St
     match cmd {
         "project_files" => seal(crate::project_files::project_files(app.clone())),
         "save_list" => seal(crate::save::save_list(app.clone())),
-        "save_read" => seal(crate::save::save_read(app.clone(), arg_str(args, "slot")?.to_string())),
+        "save_read" => seal(crate::save::save_read(
+            app.clone(),
+            arg_str(args, "slot")?.to_string(),
+        )),
         "save_write" => seal(crate::save::save_write(
             app.clone(),
             arg_str(args, "slot")?.to_string(),
             arg_str(args, "payload")?.to_string(),
             arg_opt_str(args, "mode"),
         )),
-        "save_delete" => seal(crate::save::save_delete(app.clone(), arg_str(args, "slot")?.to_string())),
+        "save_delete" => seal(crate::save::save_delete(
+            app.clone(),
+            arg_str(args, "slot")?.to_string(),
+        )),
         "host_platform" => seal(Ok::<&'static str, String>(crate::host::host_platform())),
         _ => Err(format!("命令不在 WS 白名单：{cmd}")),
     }
@@ -184,7 +193,8 @@ mod tests {
         assert_eq!(cmd, "project_files");
         assert_eq!(args, serde_json::json!({})); // args 缺省空对象
 
-        let (id, cmd, args) = parse_request(r#"{"id":"abc","cmd":"save_read","args":{"slot":"slot_1"}}"#).unwrap();
+        let (id, cmd, args) =
+            parse_request(r#"{"id":"abc","cmd":"save_read","args":{"slot":"slot_1"}}"#).unwrap();
         assert_eq!(id, serde_json::json!("abc")); // id 任意 JSON 值透传
         assert_eq!(cmd, "save_read");
         assert_eq!(args, serde_json::json!({ "slot": "slot_1" }));
@@ -232,7 +242,9 @@ mod tests {
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/lib.rs"),
         )
         .unwrap();
-        let start = lib.find("generate_handler!").expect("lib.rs 缺 generate_handler");
+        let start = lib
+            .find("generate_handler!")
+            .expect("lib.rs 缺 generate_handler");
         let body = &lib[start..];
         let end = body.find(']').expect("generate_handler 列表未闭合");
         let mut registered = std::collections::BTreeSet::new();
@@ -276,7 +288,10 @@ mod tests {
             .collect::<Vec<&str>>()
             .windows(2)
             .any(|w| w[1].contains("ws_dev::setup") && w[0].contains("cfg(debug_assertions)"));
-        assert!(gated_setup, "ws_dev::setup 调用必须 cfg(debug_assertions) 门控");
+        assert!(
+            gated_setup,
+            "ws_dev::setup 调用必须 cfg(debug_assertions) 门控"
+        );
     }
 
     #[test]
@@ -326,7 +341,10 @@ mod tests {
             )
             .await
             .unwrap();
-            let reply = futures_util::StreamExt::next(&mut source).await.unwrap().unwrap();
+            let reply = futures_util::StreamExt::next(&mut source)
+                .await
+                .unwrap()
+                .unwrap();
             // 语义断言（serde_json Value 比较忽略键序——Map 为 BTreeMap 恒序但不必依赖）
             assert_eq!(
                 serde_json::from_str::<Value>(reply.to_text().unwrap()).unwrap(),

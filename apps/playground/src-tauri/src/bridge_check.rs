@@ -248,7 +248,8 @@ mod tests {
     }
 
     #[test]
-    fn rust_payload_keys_match_ts_expectations() {        // serde 输出键必须与 TS 期待接口键一致
+    fn rust_payload_keys_match_ts_expectations() {
+        // serde 输出键必须与 TS 期待接口键一致
         // （SlotSummary：Rust save_count ↔ TS 显式映射 saveCount 的隐性契约，已锁定）
         use crate::save::SlotSummary;
         let value = serde_json::to_value(SlotSummary {
@@ -354,7 +355,10 @@ const y = await invoke("real_cmd", { foo: 1 });"#;
         );
 
         // 命令名 == Kotlin @Command 方法名；参数键 == @InvokeArg 字段名
-        assert!(shell_kt.contains("fun setOrientation("), "Kotlin 缺 setOrientation 命令");
+        assert!(
+            shell_kt.contains("fun setOrientation("),
+            "Kotlin 缺 setOrientation 命令"
+        );
         assert!(
             shell_rs.contains("\"setOrientation\""),
             "Rust 调用的命令名与 Kotlin 失配"
@@ -390,10 +394,7 @@ const y = await invoke("real_cmd", { foo: 1 });"#;
             "Rust 响应结构缺 entries"
         );
         assert!(fs_rs.contains("pub dir: bool"), "Rust 响应结构缺 dir");
-        assert!(
-            fs_rs.contains("pub path: String"),
-            "Rust 响应结构缺 path"
-        );
+        assert!(fs_rs.contains("pub path: String"), "Rust 响应结构缺 path");
     }
 
     #[test]

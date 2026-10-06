@@ -24,6 +24,27 @@ export interface LangCoverage {
   readonly unused: readonly string[];
   /** 覆盖率 0~1（**分母为 0 时取 0**，绝不给 NaN） */
   readonly ratio: number;
+  /** 原文**字符总数**（码点计：中文 1/字，emoji 不因代理对算 2） */
+  readonly totalChars: number;
+  /** 已译原文的**字符总数** */
+  readonly translatedChars: number;
+  /**
+   * **字数加权覆盖率** 0~1（分母为 0 时取 0）。
+   *
+   * 🔴 为什么要加权（2026-10-05）：条数比把「一句长台词」与「一个两字词」同等看待，
+   * 而译者体感是**长句没翻更显眼**。真实工程里 86 条未用键里大量是短词
+   * ⇒ 条数比会**低估**译者的实际工作量。
+   *
+   * ⚠️ 权重取**原文长度**（不取译文长度）：i18n 体系里**键 = 原文**，
+   * 所以无需值即可算；且「这句原话有多重要」只与原话长短有关，与译本无关。
+   * 用译文长度会**奖励「译得长」**（同一句翻成啰嗦的版本反而提升覆盖率）——语义错。
+   */
+  readonly weightedRatio: number;
+}
+
+/** 键的权重 = **码点长度**（`[...s].length`：中文每字算 1；`s.length` 会把 emoji 算 2） */
+function weightOf(key: string): number {
+  return [...key].length;
 }
 
 /**
@@ -41,9 +62,15 @@ export function langCoverage(
   const overlaySet = new Set(overlayKeys);
   const missing: string[] = [];
   let translated = 0;
+  let totalChars = 0;
+  let translatedChars = 0;
   for (const source of sources) {
-    if (overlaySet.has(source)) translated += 1;
-    else missing.push(source);
+    const w = weightOf(source);
+    totalChars += w;
+    if (overlaySet.has(source)) {
+      translated += 1;
+      translatedChars += w;
+    } else missing.push(source);
   }
   missing.sort();
   const unused = [...overlaySet].filter((k) => !sourceSet.has(k)).sort();
@@ -54,6 +81,9 @@ export function langCoverage(
     missing,
     unused,
     ratio: sources.length === 0 ? 0 : translated / sources.length,
+    totalChars,
+    translatedChars,
+    weightedRatio: totalChars === 0 ? 0 : translatedChars / totalChars,
   };
 }
 
@@ -64,6 +94,8 @@ export interface WorkbenchOverview {
   readonly unusedAll: readonly string[];
   /** 原文键总数（各语言共用同一分母） */
   readonly totalSources: number;
+  /** 原文**字符总数**（= 字数加权覆盖率的分母；各语言共用） */
+  readonly totalSourceChars: number;
 }
 
 /** 汇总多语言覆盖率（`overlayKeysByLang` 的键 = 语言码） */
@@ -74,7 +106,13 @@ export function workbenchOverview(
   const langs = Object.keys(overlayKeysByLang).sort();
   const coverages = langs.map((lang) => langCoverage(sources, lang, overlayKeysByLang[lang] ?? []));
   const unusedAll = [...new Set(coverages.flatMap((c) => c.unused))].sort();
-  return { coverages, unusedAll, totalSources: sources.length };
+  return {
+    coverages,
+    unusedAll,
+    totalSources: sources.length,
+    // 各语言共用同一分母（原文长度与译本无关）⇒ 不取 coverages 的平均，避免与「同一分母」矛盾
+    totalSourceChars: sources.reduce((sum, s) => sum + weightOf(s), 0),
+  };
 }
 
 /** 覆盖率的**三态**（UI 据此选文案与配色，绝不裸显示 `NaN%`） */
@@ -109,10 +147,26 @@ export function coverageLabelOf(state: CoverageState): string {
   }
 }
 
-/** 百分比文本（**永不出现 NaN/Infinity**；空态给「—」而不是 0%） */
+/** 百分比文本（**永不出现 NaN/Infinity**；空态给「—」而不是 0%）——**按条数** */
 export function coveragePercentOf(c: LangCoverage): string {
   if (c.total === 0) return "—";
   return `${Math.round(c.ratio * 100)}%`;
+}
+
+/**
+ * **字数加权**百分比文本（主显示口径，2026-10-05）。
+ *
+ * 🔴 为何它是主显示：条数比把「一句长台词」与「一个两字词」同等看待，
+ * 而译者体感是**长句没翻更显眼**。真实工程 146 条诊断里 86 条是「未使用的译文键」（多为短词）
+ * ⇒ 条数比会**高估**完成度（短词翻完就跳一大截）。
+ *
+ * 空态判据与按条数版**一致**（`total === 0` ⇒ 「—」）：两者都是「无可译内容」的同一态，
+ * 不该一个「—」一个「0%」。而 `totalChars === 0` 只可能发生在所有键都是空串
+ * （已被上游 fail-closed 拦掉），但此处仍兜底。
+ */
+export function coverageWeightedPercentOf(c: LangCoverage): string {
+  if (c.total === 0 || c.totalChars === 0) return "—";
+  return `${Math.round(c.weightedRatio * 100)}%`;
 }
 
 /** 骨架生成的分组依据（骨架布局决定 `Lang/{lang}/**` 怎么切） */

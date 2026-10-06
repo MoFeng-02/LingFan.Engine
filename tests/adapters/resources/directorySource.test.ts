@@ -130,10 +130,20 @@ describe("目录取径·FSA 句柄", () => {
     expect(await source.paths()).not.toContain("README.md");
   });
 
-  it("没有清单 → fail-closed 且说清怎么修（不猜、不静默空工程）", async () => {
+  it("🔴 没有清单且 Stories/ 全是坏档 → 仍 fail-closed（#11：没内容可打开时降级是撒谎；原「缺清单即拒」已被取代）", async () => {
+    // ⚠️ createHandleFileSource 只做资源根定位（惰性装载）——读取失败发生在 loadProject
+    const source = await createHandleFileSource(
+      dirHandle("Desktop", { Stories: { "a.json": "{}" } }),
+    );
+    await expect(loadProject(createSourceProjectFilesPort(source))).rejects.toThrow(
+      "没有可打开的内容",
+    );
+  });
+
+  it("🔴 既无清单也无 Stories/ → 定位即拒（连降级候选都不是）", async () => {
     await expect(
-      createHandleFileSource(dirHandle("Desktop", { Stories: { "a.json": "{}" } })),
-    ).rejects.toThrow("未找到 project.json");
+      createHandleFileSource(dirHandle("Desktop", { "README.md": "x" })),
+    ).rejects.toThrow("未找到 project.json 或 Stories/");
   });
 
   it("点文件 / 点目录不进供给（资源根里的 `.*` 不是工程内容）", async () => {
@@ -274,10 +284,36 @@ describe("目录取径·目录 input 文件快照", () => {
     ).rejects.toThrow("发现多个 project.json");
   });
 
-  it("无清单 → fail-closed", async () => {
+  it("🔴 无清单但有 Stories/ ⇒ **降级打开**（#11）：合成清单 + 显式回执（原 fail-closed 行为已被 #11 取代）", async () => {
+    const source = await createFileListFileSource([
+      fileAt("x/Stories/alpha.json", START),
+    ]);
+    expect(source.name).toBe("x");
+    const port = createSourceProjectFilesPort(source);
+    const story = await loadProject(port);
+    expect(story.entry).toBe("start"); // 合成清单的入口 = 确定性首列
+    // 显式回执：降级是事实，不是静默
+    const degraded = await port.degraded?.();
+    expect(degraded?.entry).toBe("start");
+    expect(degraded?.reason).toContain("未找到 project.json");
+    expect(degraded?.reason).toContain("start");
+  });
+
+  it("🔴 无清单且无 Stories/ ⇒ 定位即拒（连降级候选都不是；fail-closed 不变）", async () => {
     await expect(
-      createFileListFileSource([fileAt("x/Stories/a.json", START)]),
-    ).rejects.toThrow("未找到 project.json");
+      createFileListFileSource([fileAt("x/README.md", "hi")]),
+    ).rejects.toThrow("未找到 project.json 或 Stories/");
+  });
+
+  it("🔴 清单**存在但坏 JSON** ⇒ 照旧 fail-closed（可降级的只有「缺失」这一种）", async () => {
+    // ⚠️ 定位（createFileListFileSource）不读清单；读失败发生在装载（loadProject）时
+    const source = await createFileListFileSource([
+      fileAt("x/project.json", "{ not-json"),
+      fileAt("x/Stories/a.json", START),
+    ]);
+    await expect(loadProject(createSourceProjectFilesPort(source))).rejects.toThrow(
+      "不是合法 JSON",
+    );
   });
 
   it("locateResourceRootFromPaths：取最浅清单，前缀含目录分隔符", () => {
@@ -288,6 +324,27 @@ describe("目录取径·目录 input 文件快照", () => {
       root: "Resources/",
       manifest: "project.json",
     });
+  });
+
+  it("🔴 locateResourceRootFromPaths：无清单时以 Stories/ 定位（#11），多个 Stories/ = fail-closed", () => {
+    // 根层 Stories ⇒ root = ""
+    expect(locateResourceRootFromPaths(["Stories/a.json", "Audio/b.mp3"])).toEqual({
+      root: "",
+      manifest: "project.json",
+    });
+    // 子目录 Stories ⇒ root = "x/"（期望清单位置仍回 project.json，缺失由 readProject 降级）
+    expect(locateResourceRootFromPaths(["x/Stories/a.json"])).toEqual({
+      root: "x/",
+      manifest: "project.json",
+    });
+    // 同深两个 Stories/ ⇒ 不替用户猜
+    expect(() =>
+      locateResourceRootFromPaths(["a/Stories/x.json", "b/Stories/y.json"]),
+    ).toThrow("多个 Stories/");
+    // 既无清单也无 Stories ⇒ 定位即拒（ fail-closed 文案归定位器）
+    expect(() => locateResourceRootFromPaths(["README.md"])).toThrow(
+      "未找到 project.json",
+    );
   });
 });
 

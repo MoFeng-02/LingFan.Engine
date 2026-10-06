@@ -7,6 +7,7 @@
  */
 import type {
   AudioPort,
+  DegradedOpen,
   LayerZTable,
   ProjectWriteReport,
   ResourcePort,
@@ -75,8 +76,22 @@ export interface OpenedProject {
    * 缺省 = 只读取径（无保存能力，检测无从谈起）。
    */
   inspectSave?: (story: Story) => WriteNormalizationFinding | undefined;
+  /**
+   * 取「最近一次写回的落盘回执」（列 id → 实际路径；未保存过 ⇒ `null`）。
+   *
+   * 🔴 用途：新建列在写回后才知道落在哪个文件（`Stories/<id>.json`），
+   * 下次保存不必再猜。⚠️ **不污染 `Story`**——落盘事实是回执，不是列的属性
+   * （塞进 Story 会让「保存后内存态」与「重开态」不再深等）。缺省 = 宿主不提供。
+   */
+  writtenPaths?: () => ReadonlyMap<string, string> | null;
   /** 不可保存时的可操作提示（按钮 title / 提示条） */
   saveHint?: string;
+  /**
+   * #11 降级打开回执：资源根缺 `project.json` ⇒ 引擎合成最小清单打开。
+   * `undefined` = 正常打开。**降级必须显式告知**（状态栏「降级打开」+ title 详情），
+   * 不许静默假装一切正常；结构损坏不在此列（那些根本打不开）。
+   */
+  degraded?: DegradedOpen;
 }
 
 /**

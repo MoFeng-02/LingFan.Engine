@@ -17,6 +17,7 @@ export function useDialog(): DialogPort {
       // 未装配（单测/独立组件复用）：一律「取消」⇒ 调用方的 `if (!ok) return` 兜住
       askText: async () => null,
       askConfirm: async () => false,
+      askChoice: async () => null,
       notify: async () => undefined,
     }
   );

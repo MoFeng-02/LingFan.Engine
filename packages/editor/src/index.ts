@@ -51,6 +51,18 @@ export {
   type ElementDropPlan,
 } from "./element/dragCreate";
 export { OP_SCHEMAS, validateCommand } from "./schema/opSchemas";
+/**
+ * 内建 op 判别联合（op 决定字段）+ 单 op 命令类型 + 标量值口径——
+ * 全部派生自 op schema 单一事实源；词汇层 builder 返回与裸写命令注解共用。
+ */
+export type {
+  CommandOf,
+  ScriptCommand,
+  ScriptOpName,
+  ScriptValue,
+} from "./schema/opSchemas";
+/** 词汇层构建期轻类型校验警告（expr/cond 组装时按引擎类型规则产出；drain 取走） */
+export type { ExpressionWarning } from "./script/expr";
 export {
   BUILTIN_OP_SURFACE,
   mergeOpMeta,
@@ -59,20 +71,60 @@ export {
   type OpSurface,
 } from "./schema/surface";
 export { validateStory } from "./schema/validation";
-export { walkCommandBodies, walkStoryCommands, walkStoryElements } from "./schema/walk";
+export {
+  walkCommandBodies,
+  walkStoryCommands,
+  walkStoryElements,
+} from "./schema/walk";
 
 export { analyzeStory, extractExpressionRefs, indexStory } from "./diagnostics";
+export {
+  diagnosticCodeLabel,
+  diagnosticSummaryText,
+  filterDiagnosticsBySeverity,
+  groupDiagnostics,
+  summarizeDiagnostics,
+  type DiagnosticGroup,
+  type DiagnosticSummary,
+  type SeverityFilter,
+} from "./diagnostics/grouping";
+export {
+  diagnosticBrief,
+  splitDiagnosticMessage,
+  type DiagnosticMessageParts,
+} from "./diagnostics/message";
+export {
+  buildChapterIndex,
+  chapterDirOf,
+  chapterGroupOf,
+  chapterLabelOf,
+  chapterSummaryText,
+  sceneTypeBadgeOf,
+  type ChapterDir,
+  type ChapterGroup,
+  type ChapterIndex,
+  type ChapterInput,
+  type ChapterNode,
+} from "./chapters";
 
 export {
+  addTranslationRow,
   coverageLabelOf,
   coveragePercentOf,
+  coverageWeightedPercentOf,
   coverageStateOf,
   extractStoryKeys,
   formatTranslationReport,
   groupKeysByStory,
+  isTableDirty,
   langCoverage,
+  parseTranslationTable,
   planOverlaySkeleton,
   reconcileTranslations,
+  removeTranslationRow,
+  renameTranslationRow,
+  serializeTranslationTable,
+  setTranslationValue,
   TRANSLATE_SURFACES,
   valuesAtPath,
   workbenchOverview,
@@ -83,7 +135,10 @@ export {
   type SkeletonLayoutChoice,
   type SkeletonOptions,
   type SkeletonPlaceholder,
+  type TableEdit,
+  type TableParse,
   type TranslationReconcileReport,
+  type TranslationRow,
   type WorkbenchOverview,
 } from "./i18n";
 
@@ -103,6 +158,7 @@ export {
   addColumn,
   columnContainers,
   containerPointer,
+  firstColumnIdOfSourcePath,
   insertCommand,
   moveCommand,
   removeColumn,
@@ -160,3 +216,10 @@ export {
   type StepOptions,
   type StoryStep,
 } from "./layout/steps";
+
+/**
+ * Script 词汇层（设计稿 2026-10-06）：构建期作者词汇——builder 全部产出 StoryCommand
+ * 数据（与 JSON 同族）。**命名空间导出**：词汇是子语言，`script` 隔离避免常用词
+ * （set/define/say）与既有出口冲突；作者 `const { say, menu, when } = script` 解构即用。
+ */
+export * as script from "./script";

@@ -1,19 +1,27 @@
 <script setup lang="ts">
 /**
- * 译文表视图（`Lang/**`）：键 → 译文 的**可编辑表格**。
+ * 译文表视图（`Lang/**`）：键 → 译文的**可编辑表格**（**支持增删改行**）。
  *
  * 数据来自宿主注入的读取能力（组合根绑 `ProjectFileSource.text`）——本组件
- * 不碰 IO（纪律同其它编辑器视图）。
+ * 不碰 IO（纪律同其它编辑器视图）。**增删改的判据全在 `packages/editor` 的
+ * `i18n/table.ts`**（纯函数），本组件只渲染与收集意图。
  *
  * 编辑纪律：输入即暂存，**保存按钮显式**（不静默写盘）；空译文用占位提示
- * 「未翻译」而非空白（空白分不清"没译"和"故意留空"）。
+ * 「未翻译」而非空白（空白分不清"没译"和"故意留空"）。行集是**单一状态源**
+ * （`rows`），不另设「原值 + 覆盖层」双份——双份会让增删行判脏判不出来。
  */
 import { computed, ref, watch } from "vue";
-
-export interface TranslationEntry {
-  readonly key: string;
-  readonly value: string;
-}
+import {
+  addTranslationRow,
+  isTableDirty,
+  parseTranslationTable,
+  removeTranslationRow,
+  renameTranslationRow,
+  serializeTranslationTable,
+  setTranslationValue,
+  type TranslationRow,
+} from "@lingfan/editor";
+import { useDialog } from "../dialogInjection";
 
 const props = defineProps<{
   /** 逻辑路径（标题与保存用） */
@@ -26,53 +34,104 @@ const emit = defineEmits<{
   (e: "save", path: string, text: string): void;
 }>();
 
-/** 坏 JSON ⇒ 如实报错（fail-closed，不静默当空表） */
-const parsed = computed<{ entries: TranslationEntry[] } | { error: string }>(() => {
-  try {
-    const value: unknown = JSON.parse(props.source);
-    if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      return { error: "译文表根节点必须是对象（键 → 译文）" };
-    }
-    return {
-      entries: Object.entries(value as Record<string, unknown>)
-        .map(([key, v]) => ({ key, value: typeof v === "string" ? v : "" }))
-        .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)),
-    };
-  } catch (e) {
-    return { error: `不是合法 JSON：${String(e)}` };
-  }
-});
+const dialog = useDialog();
 
-/** 本地草稿（编辑中；保存才交给宿主） */
-const draft = ref<Record<string, string>>({});
-const loadedPath = ref<string | undefined>(undefined);
+/** 坏 JSON ⇒ 如实报错（fail-closed，不静默当空表） */
+const parsed = computed(() => parseTranslationTable(props.source));
+
+/** 基线行集（读盘时的形态；`isTableDirty` 的另一侧） */
+const baseRows = computed<readonly TranslationRow[]>(() =>
+  parsed.value.ok ? parsed.value.rows : [],
+);
+
+/** 草稿行集（编辑中；**唯一状态源**） */
+const rows = ref<readonly TranslationRow[]>([]);
+/** 正在改键的行（改键须先提交/取消，不能边打字边改行身份） */
+const renamingKey = ref<string | null>(null);
 
 // 换文件 ⇒ 重置草稿（不把上一文件的改动带过来）
 watch(
   () => props.path,
   () => {
-    draft.value = {};
-    loadedPath.value = props.path;
+    rows.value = baseRows.value;
+    renamingKey.value = null;
   },
   { immediate: true },
 );
 
-const rows = computed<readonly TranslationEntry[]>(() =>
-  "error" in parsed.value ? [] : parsed.value.entries,
-);
-const valueOf = (key: string): string =>
-  draft.value[key] ?? (rows.value.find((r) => r.key === key)?.value ?? "");
-const dirty = computed(() =>
-  Object.entries(draft.value).some(
-    ([k, v]) => rows.value.find((r) => r.key === k)?.value !== v,
-  ),
-);
-const missingCount = computed(() => rows.value.filter((r) => valueOf(r.key) === "").length);
+const dirty = computed(() => isTableDirty(rows.value, baseRows.value));
+const missingCount = computed(() => rows.value.filter((r) => r.text === "").length);
 
 function emitText(): string {
-  const out: Record<string, string> = {};
-  for (const row of rows.value) out[row.key] = valueOf(row.key);
-  return `${JSON.stringify(out, null, 2)}\n`;
+  return serializeTranslationTable(rows.value);
+}
+
+/** 把一次失败的编辑（重复键 / 空键…）如实说给用户——不静默忽略 */
+async function reportFailure(reason: string): Promise<void> {
+  await dialog.notify({ title: "无法应用该操作", message: reason, tone: "warning" });
+}
+
+/** 增行：**先问键名，判据通过才插行**。
+ *
+ * ⚠️ 不要「先插占位行再改名」——改名被拒（重复键/非法键）时**占位行会残留**，
+ * 留下一个用户没要求过的空行，还得手动删（探针实测：重复键被拒后表里多出
+ * `new.key.4`）。改成「先取值 → 判据 → 一次插入」则失败零副作用。
+ */
+async function onAdd(): Promise<void> {
+  const answer = await dialog.askText({
+    title: "新增译文行",
+    message: "请输入原文键（须与原文一致；运行期按此键查译文）。",
+    placeholder: "如 ui.hello",
+  });
+  if (answer === null) return; // 取消 = 不执行（D-58 判据：`parseTextAnswer` 出处）
+  const key = answer.trim();
+  const edit = addTranslationRow(rows.value, key);
+  if (!edit.ok) {
+    await reportFailure(edit.error);
+    return;
+  }
+  rows.value = edit.rows;
+}
+
+function onRemove(row: TranslationRow): void {
+  //删行是破坏性的（译文会真的丢）⇒ 二次确认，且说清后果
+  void (async () => {
+    const ok = await dialog.askConfirm({
+      title: "删除该译文行",
+      message: `键「${row.key}」将从译文表中删除。保存后即写入磁盘，原译文不会留在任何备份里。`,
+      danger: true,
+    });
+    if (!ok) return;
+    const edit = removeTranslationRow(rows.value, row.key);
+    if (!edit.ok) {
+      await reportFailure(edit.error);
+      return;
+    }
+    rows.value = edit.rows;
+    if (renamingKey.value === row.key) renamingKey.value = null;
+  })();
+}
+
+function onRenameCommit(from: string, to: string): void {
+  const target = to.trim();
+  renamingKey.value = null;
+  if (target === from) return;
+  const edit = renameTranslationRow(rows.value, from, target);
+  if (!edit.ok) {
+    void reportFailure(edit.error);
+    return;
+  }
+  rows.value = edit.rows;
+}
+
+function onRenameCancel(): void {
+  renamingKey.value = null;
+}
+
+function onValueInput(key: string, text: string): void {
+  const edit = setTranslationValue(rows.value, key, text);
+  // 键必然存在（行集是唯一状态源）⇒ 失败只可能是防御性分支
+  if (edit.ok) rows.value = edit.rows;
 }
 </script>
 
@@ -84,25 +143,53 @@ function emitText(): string {
       <span class="spacer"></span>
       <span v-if="missingCount > 0" class="warn">{{ missingCount }} 条未译</span>
       <span class="count">{{ rows.length }} 条</span>
-      <button :disabled="!dirty" @click="emit('save', path, emitText())">保存</button>
+      <button class="mini" title="新增一个译文行" @click="onAdd">+行</button>      <button :disabled="!dirty" @click="emit('save', path, emitText())">保存</button>
     </header>
 
-    <p v-if="'error' in parsed" class="error">{{ parsed.error }}</p>
-    <p v-else-if="rows.length === 0" class="empty">该译文表为空文件</p>
+    <p v-if="!parsed.ok" class="error">{{ parsed.error }}</p>
+    <p v-else-if="rows.length === 0" class="empty">
+      该译文表为空文件——点「+行」添加第一个键。
+    </p>
 
     <table v-else class="entries">
       <thead>
-        <tr><th>原文键</th><th>译文</th></tr>
+        <tr><th>原文键</th><th>译文</th><th class="ops-col"></th></tr>
       </thead>
       <tbody>
         <tr v-for="row in rows" :key="row.key">
-          <td class="key" :title="row.key">{{ row.key }}</td>
+          <td class="key">
+            <!-- 改键态：显式两态（提交/取消），不搞「边打字边换行身份」 -->
+            <template v-if="renamingKey === row.key">
+              <input
+                class="rename-input"
+                :value="row.key"
+                autofocus
+                @keydown.enter.prevent="onRenameCommit(row.key, ($event.target as HTMLInputElement).value)"
+                @keydown.esc.prevent="onRenameCancel"
+                @blur="onRenameCommit(row.key, ($event.target as HTMLInputElement).value)"
+              />
+            </template>
+            <template v-else>
+              <span :title="row.key">{{ row.key }}</span>
+            </template>
+          </td>
           <td>
             <input
-              :value="valueOf(row.key)"
-              :placeholder="row.value === '' ? '未翻译' : ''"
-              @input="draft[row.key] = ($event.target as HTMLInputElement).value"
+              :value="row.text"
+              :placeholder="row.text === '' ? '未翻译' : ''"
+              @input="onValueInput(row.key, ($event.target as HTMLInputElement).value)"
             />
+          </td>
+          <td class="ops">
+            <button
+              v-if="renamingKey !== row.key"
+              class="mini"
+              title="修改该行的键"
+              @click="renamingKey = row.key"
+            >
+              改键
+            </button>
+            <button class="mini danger" title="删除该行" @click="onRemove(row)">删</button>
           </td>
         </tr>
       </tbody>
@@ -150,13 +237,13 @@ function emitText(): string {
   font-size: var(--lf-font-sm);
   color: var(--lf-warning);
 }
-.error,
-.empty {
+.error {
   color: var(--lf-danger);
   font-size: var(--lf-font-md);
 }
 .empty {
   color: var(--lf-text-hint);
+  font-size: var(--lf-font-md);
   font-style: italic;
 }
 .entries {
@@ -176,19 +263,37 @@ function emitText(): string {
   font-weight: 400;
   border-bottom: 1px solid var(--lf-border-subtle);
 }
+.entries th.ops-col {
+  width: 1%;
+}
 .entries td {
   padding: 2px 8px;
   border-bottom: 1px solid var(--lf-surface-hover);
   vertical-align: top;
 }
 .entries td.key {
-  width: 40%;
+  width: 34%;
   color: var(--lf-text-secondary);
   font-family: Consolas, monospace;
   overflow-wrap: anywhere;
 }
+.entries td.ops {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+.entries td.ops .mini {
+  margin-left: 4px;
+}
+.entries .mini.danger:hover {
+  color: var(--lf-danger);
+  border-color: var(--lf-danger);
+}
 .entries input {
   width: 100%;
   font-size: var(--lf-font-md);
+}
+.entries .rename-input {
+  font-family: Consolas, monospace;
 }
 </style>

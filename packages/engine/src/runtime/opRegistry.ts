@@ -49,6 +49,8 @@ export const BUILTIN_OP_NAMES: ReadonlySet<string> = new Set([
   "switch",
   "break",
   "continue",
+  "assert",
+  "guard",
   "set",
   "let",
   "local",

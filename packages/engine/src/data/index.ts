@@ -19,6 +19,7 @@ export {
   serializeColumnDocument,
   serializeProject,
   STORIES_DIR,
+  synthesizeDegradedManifest,
   type FileStamp,
   type ProjectFileDiff,
   type SerializedProject,

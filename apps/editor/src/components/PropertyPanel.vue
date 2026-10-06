@@ -64,7 +64,15 @@ const neutralText = computed(() => {
   switch (selection.value.nodeKind) {
     case "column": {
       const kind = node?.kind === "scene" ? "场景列" : "流程列";
-      return `当前选中的是${kind}——列本身不是命令；点它里面的某条命令即可编辑。`;
+      // 🔴 2026-10-05：原文案「点它里面的某条命令即可编辑」**没说"里面"在哪** ——
+      //    真机上中央区是一片空白（列不是命令，属性面板自然没内容），作者不知道该去哪。
+      //    补上**去处**。
+      // ⚠️ 只说去处，**不提**「诊断」等字样：`selection-description.test.ts` 有一条
+      //    防回流守卫 —— 正常态文案（`none`/`non-command`）禁用「缺失 / 错误 / 诊断」，
+      //    因为旧文案曾把**正常操作**说成故障、还指向一个同时显示「✓ 无诊断」的面板。
+      //    那条守卫的边界是**有意设计**，不该为一句引导放宽。
+      const where = node?.kind === "scene" ? "「舞台」" : "「时间线」";
+      return `当前选中的是${kind}——列本身不是命令。到${where}里点一条命令即可编辑。`;
     }
     case "element": {
       const type =
