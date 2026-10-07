@@ -65,7 +65,7 @@ describe("舞台拖拽回归 · 依赖切视图副作用的两处已显式化", 
     expect(stepLayoutSource).toMatch(/interface EditorApi\s*\{[^}]*reveal\(/);
   });
 
-  it("舞台走**就地选中**（这才是修法的关键：不再被卸载）", () => {
+  it("舞台走**就地选中**（组件不再被卸载）", () => {
     expect(code(stageEditorSource)).toContain("api.select(target)");
     expect(code(stageEditorSource)).not.toContain("api.reveal(");
   });

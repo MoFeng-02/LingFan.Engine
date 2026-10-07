@@ -232,7 +232,7 @@ describe("热重载 reloadStory", () => {
     h.dispose();
   });
 
-  it("当前列被删：engine.error 显式信号 + 回入口列（fail-closed 不假装成功）", () => {
+  it("当前列被删：engine.error 显式信号 + 回入口列（fail-closed）", () => {
     const h = makeEngine([
       column("a", [say("一"), { op: "jump", target: "b" }]),
       column("b", [say("旧乙")]),

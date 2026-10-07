@@ -43,7 +43,7 @@ function displayTextOf(value: unknown): string {
   try {
     return JSON.stringify(value) ?? "";
   } catch {
-    // 循环引用等不可序列化形态：如实显示占位，不假装能编辑
+    // 循环引用等不可序列化形态：如实显示占位，不提供编辑
     return "";
   }
 }

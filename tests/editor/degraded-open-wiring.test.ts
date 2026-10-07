@@ -13,7 +13,7 @@ const code = (source: string): string =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
 describe("降级打开 · 接线互锁", () => {
-  it("组合根把降级回执**透传进 OpenedProject**（断在半路 = 界面永远不知道）", () => {
+  it("组合根把降级回执**透传进 OpenedProject**（断在半路 = 界面无从展示）", () => {
     const src = code(mainSource);
     expect(src).toContain("filesPort.degraded?.()");
     expect(src).toContain("degraded,");

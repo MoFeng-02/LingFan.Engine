@@ -35,7 +35,7 @@ describe("createWebStoragePreferencesPort（localStorage 兜底）", () => {
     await expect(port.load()).resolves.toBeNull();
   });
 
-  it("损坏 JSON → null（不炸启动）", async () => {
+  it("损坏 JSON → null（不影响启动）", async () => {
     const storage = new MemoryStorage();
     storage.setItem("lingfan.prefs.v1", "{ not json");
     const port = createWebStoragePreferencesPort(storage);

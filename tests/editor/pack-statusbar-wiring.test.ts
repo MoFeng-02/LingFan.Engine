@@ -1,8 +1,8 @@
 /**
- * 出餐入口置于状态栏**接线互锁**。
+ * 打包入口置于状态栏**接线互锁**。
  *
  * 设计意图：打包是低频动作（分钟计），不占右栏一级 tab；入口放到状态栏
- * （**带文字标签**——纯图标按钮无 aria-label 对读屏不存在的老坑），
+ * （**带文字标签**——纯图标按钮对读屏等于不存在），
  * 长任务的「打包中…」状态常驻状态栏（面板切走也不丢进度感知）。
  *
  * 锁四条线：tab 已移除 · 状态栏按钮带语义 · App 双向接线 · 面板本体保留。
@@ -16,8 +16,8 @@ import packPanelSource from "../../apps/editor/src/components/PackPanel.vue?raw"
 const code = (source: string): string =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
-describe("出餐置于状态栏 · 接线互锁", () => {
-  it("右栏 tab strip **不再有**「出餐」按钮（避免双入口并存）", () => {
+describe("打包入口置于状态栏 · 接线互锁", () => {
+  it("右栏 tab strip **不再有**「打包」按钮（避免双入口并存）", () => {
     const src = code(appSource);
     // 反面：tab 点击式入口必须消失（否则「同一功能两个入口」）
     expect(src).not.toContain('@click="rightTab = \'pack\'"');
@@ -29,7 +29,7 @@ describe("出餐置于状态栏 · 接线互锁", () => {
     expect(src).toContain(':aria-pressed="packActive"');
     expect(src).toContain("(e: \"toggle-pack\")");
     // 长任务存在感：打包中标签随 packing 变化
-    expect(src).toContain('packing ? "打包中…" : "出餐"');
+    expect(src).toContain('packing ? "打包中…" : "打包"');
   });
 
   it("App 与状态栏**双向接线**（按钮点了必须有人接）", () => {
@@ -37,7 +37,7 @@ describe("出餐置于状态栏 · 接线互锁", () => {
     expect(src).toContain(':packing="packing"');
     expect(src).toContain(':pack-active="rightTab === \'pack\'"');
     expect(src).toContain('@toggle-pack="togglePackPane"');
-    // toggle 语义：已在出餐页 ⇒ 回诊断（不是单向开关）
+    // toggle 语义：已在打包页 ⇒ 回诊断（不是单向开关）
     expect(src).toContain('rightTab.value === "pack" ? "diagnostics" : "pack"');
   });
 
@@ -47,7 +47,7 @@ describe("出餐置于状态栏 · 接线互锁", () => {
     expect(src).toMatch(/finally\s*{\s*packing\.value = false/);
   });
 
-  it("PackPanel **本体保留**（出餐页内容不因入口迁移而丢失）", () => {
+  it("PackPanel **本体保留**（打包页内容不因入口迁移而丢失）", () => {
     const src = code(appSource);
     expect(src).toMatch(/v-show="rightTab === 'pack'"/);
     expect(code(packPanelSource)).toContain("开始打包");

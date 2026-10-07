@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 快速出餐 · 打包面板（**参数表单 + 结果如实呈现**）。
+ * 快速打包面板（**参数表单 + 结果如实呈现**）。
  *
  * 定位：把「终端跑 `lfenpack`」变成编辑器内一键触发。
  *
@@ -33,7 +33,7 @@ export interface PackResult {
 }
 
 const props = defineProps<{
-  /** 是否有本地宿主（无 = 不可打包，如实告知而非假装） */
+  /** 是否有本地宿主（无 = 不可打包，如实告知） */
   readonly canPack: boolean;
   /** 发请求给宿主（由 App 注入，含 token 与错误兜底） */
   readonly send: (request: PackRequest) => Promise<PackResult>;

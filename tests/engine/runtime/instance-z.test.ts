@@ -191,7 +191,7 @@ describe("实例级 z：fail-closed", () => {
     expect(h.errors).toContain("instance-z-invalid");
     expect(h.engine.get(SYS.dialogueZ)).toBeUndefined(); // 未写实例键
     expect(h.engine.get(SYS.currentDialogText)).toBeUndefined(); // 状态原样（未上屏）
-    // fail-closed = 停在该命令（不静默跳过、也不带病前进）；与 say-invalid 同语义
+    // fail-closed = 停在该命令（不静默跳过）；与 say-invalid 同语义
     expect(h.engine.get(SYS.waiting)).not.toBe("dialog"); // 未建立对话等待
     h.dispose();
   });

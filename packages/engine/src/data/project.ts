@@ -114,7 +114,7 @@ export function assembleProject(
       );
     }
   }
-  // 工程级壳配置（作者声明的作品形态）：方向非法即拒绝（fail-closed，不带病起航）
+  // 工程级壳配置（作者声明的作品形态）：方向非法即拒绝（fail-closed）
   if (manifest.shell !== undefined) {
     if (!isPlainObject(manifest.shell)) {
       issues.push("project.json: shell 必须为对象");

@@ -86,7 +86,7 @@ describe("真值表：四态互斥且各有其触发条件", () => {
     });
   });
 
-  it("unknown-op —— 落在命令上但无表单描述符（**这才是真问题**）", () => {
+  it("unknown-op —— 落在命令上但无表单描述符（**真问题**）", () => {
     // 未知 op 过不了 parseStory 校验 ⇒ 直接用最小合法形状的字面量（本函数只做指针读取）
     const withUnknown = {
       formatVersion: 1,

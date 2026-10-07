@@ -91,7 +91,7 @@ describe("四区骨架 · 接线互锁", () => {
     expect(src).not.toContain("ActivityBar");
   });
 
-  it("资源树对 Saves 只读且明示（不隐藏、不假装能编辑）", () => {
+  it("资源树对 Saves 只读且明示（不隐藏、明示只读）", () => {
     // 模型层只负责判定「只读」；「只读」徽标是**渲染**关注点，在组件里
     expect(code(treeSource)).toContain('kind === "saves"');
     expect(code(treeViewSource)).toContain("只读");
@@ -203,7 +203,7 @@ describe("回归 · 原生对话框清零 + 五态接线", () => {
     expect(timeline).toMatch(/:hover \.row-ops\s*\{[^}]*opacity:\s*1/);
   });
 
-  it("首屏空态：未打开工程时不假装有工程", () => {
+  it("首屏空态：未打开工程时显示空态", () => {
     const src = code(appSource);
     expect(src).toContain('reason="no-project"');
     expect(src).toContain("onEmptyAction");

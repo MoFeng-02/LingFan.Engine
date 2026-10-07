@@ -1397,7 +1397,7 @@ describe("回溯与历史", () => {
     dispose();
   });
 
-  it("函数注册表随快照恢复：回溯到 func 之前重放可重新注册（不炸 func-duplicate）", () => {
+  it("函数注册表随快照恢复：回溯到 func 之前重放可重新注册（不触发 func-duplicate）", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "d",

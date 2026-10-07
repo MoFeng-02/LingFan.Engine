@@ -10,7 +10,7 @@
  * 与前端的关系：**前端探测不到它 ⇒ 自动降级为浏览器形态**（能力探测式降级）。
  * 前端**从不假设它在**。
  *
- * 与 `media_http.rs` 同款信任边界：仅 `127.0.0.1` / 内核分配端口 / 随机 token /
+ * 与 `media_http.rs` 同一信任边界：仅 `127.0.0.1` / 内核分配端口 / 随机 token /
  * 白名单扩展名 / 路径必须在白名单目录内。
  */
 import { spawn } from "node:child_process";
@@ -34,7 +34,7 @@ export interface HostCapabilities {
   readonly local: true;
   /** 能否外部打开（当前实现恒 true —— 有宿主才能走到这里） */
   readonly openExternal: true;
-  /** 能否一键打包（快速出餐）—— 依赖 `lfenpack` CLI 在 PATH 上 */
+  /** 能否一键打包 —— 依赖 `lfenpack` CLI 在 PATH 上 */
   readonly pack: boolean;
   /** 是否支持原生文件监视 */
   readonly watch: boolean;
@@ -92,7 +92,7 @@ export async function startHost(root: string): Promise<{ server: Server; capabil
   const watcher = startWatcher(root);
   const server = createServer((req, res) => {
     // 顶层兜底：请求处理器里**任何**未捕获异常都不得杀死宿主
-    //   （端点里一个 `ReferenceError` 就足以把整个服务带走 ⇒ 所有能力同时失效）。
+    //   （端点里一个 `ReferenceError` 会让所有能力同时失效）。
     //   这里转成 500 + 如实原因，单个坏请求只影响它自己。
     void handle(req, res, { token, root, watcher }).catch((error: unknown) => {
       try {
@@ -156,7 +156,7 @@ async function handle(
   // 形态：/__editor_host__/{token}/{action}
   // **动作段必须挂在 `__editor_host__` 前缀之下**（不是裸 `/{token}/…`）：
   //   开发期前端走 Vite 同源代理，而代理只配了 `/__editor_host__` 这一个前缀 ⇒
-  //   裸路径会被 Vite 自己吃掉（502/404，打不到宿主）——ping 通但 pack 404 就是这个。
+  //   裸路径会被 Vite 自己吃掉（502/404，打不到宿主）。
   const prefix = segments[0];
   if (prefix !== "__editor_host__" || segments.length < 3) {
     json(res, 404, { error: "not found" });
@@ -200,7 +200,7 @@ async function handle(
  *   （内容搜索），加一个更轻的轮询端点比引入 SSE 简单得多，且**不持有长连接**
  *   （回环服务被探测/扫描时不会留下悬挂连接）；
  * - **失败降级**：`fs.watch` 不支持递归（某些平台）时**只监视根目录**并如实标记
- *   `watching:false`，前端据此显示「热重载不可用」——**不假装能用**。
+ *   `watching:false`，前端据此显示「热重载不可用」。
  */
 interface Watcher {
   readonly revision: number;
@@ -216,7 +216,7 @@ function startWatcher(root: string): Watcher {
   /**
    * 已登记监视的**目录**相对路径集合。
    *
-   * 为什么需要它（Windows 上的实际行为，**不看文档猜不到**）：
+   * 为什么需要它（Windows 平台的实际行为）：
    *   Windows 的**非递归** `fs.watch(Resources)` 在 `Stories/inn.json~` 变化时
    *   报的是 `filename = "Stories"`（**子目录名，不带内部路径**）——
    *   即「父监视器」会把「子目录内的任何变化」折叠成子目录名。
@@ -233,7 +233,7 @@ function startWatcher(root: string): Watcher {
     }, quietMs);
   };
   const register = (dir: string): void => {
-    if (watchers.length >= 512) return; // 上限：巨型目录树不炸内存
+    if (watchers.length >= 512) return; // 上限：避免巨型目录树占用过多内存
     watchedDirs.add(relativePathOf(root, dir));
     try {
       const w = watch(dir, { persistent: false }, (event, filename) => {
@@ -301,7 +301,7 @@ function startWatcher(root: string): Watcher {
  * ② 仓库内 `target/{debug,release}/lfenpack[.exe]` 与 `CARGO_TARGET_DIR` 指向的共享目录
  * ③ PATH 上的 `lfenpack`
  *
- * **只 spawn 已知程序名**（候选是**我们自己拼出的路径**，不是用户输入），
+ * **只 spawn 已知程序名**（候选路径由本模块拼出，不是用户输入），
  * 且一律 `shell: false`。
  */
 function packBinCandidates(): string[] {
@@ -326,12 +326,12 @@ function packBinCandidates(): string[] {
 }
 
 /**
- * 快速出餐：调 `lfenpack` 产出加密包。
+ * 快速打包：调 `lfenpack` 产出加密包。
  *
- * 安全姿态（与 `openExternal` 同款，且更严）：
+ * 安全姿态（与 `openExternal` 同一基准，且更严）：
  * ① 参数经 `packRequestOf` 校验（绝对路径 / 不同目录 / 不嵌套 / 无 `..`）；
  * ② `shell: false` + **参数数组**（用户可写路径绝不交给 shell 解析）；
- * ③ 采集 stdout/stderr 如实回传（不静默失败，也不假装成功）；
+ * ③ 采集 stdout/stderr 如实回传；
  * ④ 非零退出码 = 失败（`--strict` 的"报告有告警"也是非零 ⇒ 区分开告知）。
  */
 async function packProject(body: string): Promise<PackResult> {

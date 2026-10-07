@@ -23,7 +23,7 @@ describe("分派表 · 路由", () => {
     expect(isEditableKind("manifest")).toBe(true);
   });
 
-  it("媒体 → 预览视图但**不可改**（不假装能编辑二进制）", () => {
+  it("媒体 → 预览视图但**不可改**（不提供二进制编辑）", () => {
     for (const kind of ["image", "audio", "video"]) {
       expect(viewOfKind(kind).view).toBe("media");
       expect(isEditableKind(kind)).toBe(false);

@@ -253,7 +253,7 @@ export class PlayerPreferences {
 
   /**
    * 载入持久化偏好（组合根 boot 时调用一次）：合法字段应用、非法字段降级默认；
-   * 端口缺失或载入失败 = 使用默认值起航（不炸启动，诊断归端口实现/组合根）。
+   * 端口缺失或载入失败 = 使用默认值起航（不影响启动，诊断归端口实现/组合根）。
    */
   async hydrate(): Promise<void> {
     if (this.port === undefined) return;
@@ -272,7 +272,7 @@ export class PlayerPreferences {
     if (this.pendingSave === null || this.port === undefined) return;
     clearTimeout(this.pendingSave);
     this.pendingSave = null;
-    void this.port.save(this.snapshot()).catch(() => {}); // 持久化失败不炸运行时
+    void this.port.save(this.snapshot()).catch(() => {}); // 持久化失败不影响运行时
   }
 
   private update(next: PlayerPrefsData): void {

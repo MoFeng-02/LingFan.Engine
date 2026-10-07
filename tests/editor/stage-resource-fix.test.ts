@@ -95,7 +95,7 @@ describe("文档标签关闭 · 接线互锁", () => {
     expect(src).toContain("askConfirm");
   });
 
-  it("关闭后同步选中列（停在**被关列** ⇒ 时间线空白的同类问题，别再犯）", () => {
+  it("关闭后同步选中列（停在**被关列** ⇒ 时间线空白的同类问题）", () => {
     const src = code(appSource);
     const block = src.slice(src.indexOf("async function closeDocument"));
     expect(block.slice(0, 900)).toContain("selectDocument(workspace.activePath)");
