@@ -986,19 +986,20 @@ function applyOpened(opened: OpenedProject | undefined): void {
   // 后保存的覆盖先保存的（这正是标签独立会话要防的数据丢失）。
   const tree = opened.story;
   projectTree.value = tree; // 诊断基准 = 整工程树（跨列引用需全局视角）
+  // 旧会话文档一律不带入（打开工程 = 新基线会话）：路径同名 ≠ 内容同源——
+  // demo 会话占用的 `Stories/start.json` 在真实工程入口列同名时会被
+  // 「已开：复用」判据接管，demo 内容会在保存时写坏真实工程。
+  for (const doc of [...workspace.documents]) {
+    workspace.close(doc.path);
+  }
   // **只开入口列**：预开所有列会让大工程铺满标签
   //    （`Workspace` 容量 50 还会静默截断其余列），而「列 = 文档」的语义**不需要预开**——
   //    用户点到哪一列，`selectColumn` 就为哪一列建会话（见 `openColumnDocument`）。
   openColumnDocument(tree.entry);
-  // 标签顺序 = 列序（= 文件路径码元序，叙事语义）。
-  // 只对**已打开的**文档排序：未开的列没有文档，硬塞进 `documentPaths` 会铺出
-  //    点不开的假标签（切换时 `activate` 找不到文档）。
+  // 标签顺序 = 列序（= 文件路径码元序，叙事语义）；未开的列没有文档，不进标签。
   const ordered = tree.columns
     .map((column) => storyDocumentPath(column.id))
     .filter((path) => workspace.get(path) !== undefined);
-  for (const path of [...documentPaths.value]) {
-    if (!ordered.includes(path)) workspace.close(path);
-  }
   documentPaths.value = ordered;
   workspace.activate(storyDocumentPath(tree.entry));
   bindActive(workspace.activeDocument);
