@@ -1,7 +1,7 @@
 /**
- * 词汇层构建期轻类型校验守卫（expr/cond 组装审计）。
+ * 词汇层构建期轻类型校验守卫（expr/cond 组装校验）。
  *
- * 🔴 **规则表 ⇄ 引擎求值器逐条互锁**：每条误用样例同时断言①词汇层出警告、
+ * **规则表 ⇄ 引擎求值器逐条互锁**：每条误用样例同时断言①词汇层出警告、
  * ②引擎 `evaluateExpression` 对同一表达式文本真抛 `type-error`——警告的每一条
  * 都有引擎事实背书，规则表与引擎漂移即红。
  * 未知结构（函数调用/括号组/裸变量名）按 unknown 跳过——**零误报是本守卫的生命线**。
@@ -91,7 +91,7 @@ describe("词汇层轻类型校验 · 故意错误（每条规则 ↔ 引擎 typ
     expect(hits, `${built} 应恰好一条警告`).toHaveLength(1);
     expect(hits[0]!.rule).toBe(rule);
     expect(hits[0]!.expression).toBe(built);
-    // 🔴 互锁：警告背后必须有引擎事实——同文本真求值必须抛错
+    // 互锁：警告背后必须有引擎事实——同文本真求值必须抛错
     expect(engineThrowsType(built), `引擎应拒绝：${built}`).toBe(true);
   }
 
@@ -122,7 +122,7 @@ describe("词汇层轻类型校验 · 故意错误（每条规则 ↔ 引擎 typ
 });
 
 describe("词汇层轻类型校验 · 边界条件", () => {
-  it("🔴 插值落进未闭合字面量 ⇒ interpolation-inside-string（吞并 footgun；产物保真零侵入）", () => {
+  it("插值落进未闭合字面量 ⇒ interpolation-inside-string（吞并 footgun；产物保真零侵入）", () => {
     const built = expr`"pre${vars.name}post"`;
     expect(built).toBe('{"prenamepost"}'); // 键被并进字面量——产物与既有行为一致
     const hits = warnings();
@@ -130,7 +130,7 @@ describe("词汇层轻类型校验 · 边界条件", () => {
     expect(hits[0]!.rule).toBe("interpolation-inside-string");
   });
 
-  it("🔴 字面量至表达式末尾未闭合 ⇒ unclosed-string-literal 且不做类型核查", () => {
+  it("字面量至表达式末尾未闭合 ⇒ unclosed-string-literal 且不做类型核查", () => {
     const built = expr`${vars.gold} + "尾巴`;
     const hits = warnings();
     expect(hits).toHaveLength(1);
@@ -150,21 +150,21 @@ describe("词汇层轻类型校验 · 边界条件", () => {
   });
 });
 
-describe("词汇层轻类型校验 · 回归锚定", () => {
-  it("🔴 drain 即清零：连续两次调用第二次必空", () => {
+describe("词汇层轻类型校验 · 回归", () => {
+  it("drain 即清零：连续两次调用第二次必空", () => {
     const built = expr`${vars.name} + 1`;
     expect(built).toBe("{name + 1}");
     expect(drainExpressionWarnings()).toHaveLength(1);
     expect(drainExpressionWarnings()).toEqual([]);
   });
 
-  it("🔴 审计零侵入：产物文本与既有行为逐字节一致", () => {
+  it("校验零侵入：产物文本与既有行为逐字节一致", () => {
     expect(expr`${vars.gold} + ${1}`.slice(1, -1)).toBe("gold + 1");
     expect(expr`${vars.isVIP}`).toBe("{isVIP}");
     expect(cond`${vars.gold} >= 25`).toBe("{gold >= 25}"); // cond = 同一实现
   });
 
-  it("🔴 fail-closed 不放松：未注册句柄照旧抛错", () => {
+  it("fail-closed 不放松：未注册句柄照旧抛错", () => {
     // 未注册子树（Proxy）判不出句柄 ⇒ 走「不支持的插值类型」人话报错，指回 defineVars
     expect(() => expr`${(vars as { nope: unknown }).nope} + 1`).toThrow(
       /defineVars/,

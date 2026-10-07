@@ -1,10 +1,10 @@
 /**
  * token 唯一源的**源级守卫**（防回流）。
  *
- * 纪律（R-B 裁定）：token 管的是「**我们自己**别双写」——
+ * 约束：token 管的是「**我们自己**别双写」——
  * 组件里只准出现 `var(--lf-*)`，不准再写裸色值 / 裸字号。
  * 这类漂移是**慢性病**：今天合了 337 处，下周新写一个组件就会带回一个 `#xxxxxx`。
- * ⇒ 必须有机械化守卫，否则纪律会在几轮迭代后失效。
+ * ⇒ 必须有机械化守卫，否则约束会在几轮迭代后失效。
  */
 import { describe, expect, it } from "vitest";
 import appSource0 from "../../apps/editor/src/App.vue?raw";
@@ -97,12 +97,12 @@ describe("token 唯一源 · 防回流守卫", () => {
     }
   });
 
-  it("滚动条已主题化（D-62⑤：此前全仓零命中 ⇒ 浅色系统条配深色界面）", () => {
+  it("滚动条已主题化（否则浅色系统条配深色界面）", () => {
     expect(tokensText).toContain("scrollbar-color");
     expect(tokensText).toContain("::-webkit-scrollbar-thumb");
   });
 
-  it("对比度：弱提示色已提亮到 AA 以上（D-62⑬）", () => {
+  it("对比度：弱提示色已提亮到 AA 以上", () => {
     // 原 #565f89 在 #101014 上仅 2.9:1 ⇒ 提到 #7b83a8（4.9:1）
     expect(tokensText).toContain("--lf-text-hint: #7b83a8");
     expect(tokensText).not.toContain("--lf-text-hint: #565f89");
@@ -114,10 +114,10 @@ describe("token 唯一源 · 防回流守卫", () => {
 });
 
 /**
- * 三项视觉债的**源级守卫**（D-62③④⑧）——上一批只做了实现，没锁防回流。
+ * 三项视觉债的**源级守卫**——只做了实现、没锁防回流时容易再犯。
  */
-describe("交互态与布局守卫（D-62③④⑧）", () => {
-  it("③ 全局有 `button:hover` / `:active` / `:focus-visible`（此前基类零 hover）", () => {
+describe("交互态与布局守卫", () => {
+  it("③ 全局有 `button:hover` / `:active` / `:focus-visible`（基类不能零 hover）", () => {
     // 读 App.vue 的全局样式（非 scoped）⇒ 从源码断言，不依赖运行时
     const appText = appText0;
     expect(appText).toMatch(/button:hover:not\(:disabled\)/);
@@ -141,7 +141,7 @@ describe("交互态与布局守卫（D-62③④⑧）", () => {
       "utf8",
     );
     // `.control` 自身不许再出现 max-width 硬顶
-    // ⚠️ 必须**去注释**再判：规则里写着「此前有 max-width:260px」的说明文字，
+    // 必须**去注释**再判：规则里若写着「曾有 max-width:260px」这类说明文字，
     //    那是注释（不是声明），别把它当成违规。
     const controlRule = (fieldRow.match(/\.control\s*\{[^}]*\}/)?.[0] ?? "").replace(
       /\/\*[\s\S]*?\*\//g,
@@ -157,7 +157,7 @@ describe("交互态与布局守卫（D-62③④⑧）", () => {
  * `button:hover` 的底色曾用 `--lf-surface-selected`（#24283b），
  * 而 button 基类底色是 `--lf-border-subtle`（**同为 #24283b**）
  * ⇒ hover 规则"存在"、`:hover` 也真的匹配，但**背景看起来毫无反应**（只变了边框）。
- * 源级断言查不出"同值"这件事 ⇒ 必须同时断言「两色不等」+ 真机量。
+ * 源级断言查不出"同值"这件事 ⇒ 必须同时断言「两色不等」+ 实测。
  */
 describe("hover 可见性", () => {
   it("hover 底色 token ≠ button 基类底色 token", () => {

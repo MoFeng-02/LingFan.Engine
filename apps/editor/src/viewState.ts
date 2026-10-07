@@ -29,7 +29,7 @@ export interface ViewStateInput {
 /**
  * 五态判定。**错误最优先**——失败时如实报失败，不被"加载中/空"掩盖。
  *
- * ⚠️ `dirty` 不覆盖 `ready`：`ready + dirty` ⇒ 仍是 `ready`（可读且有改动），
+ * `dirty` 不覆盖 `ready`：`ready + dirty` ⇒ 仍是 `ready`（可读且有改动），
  * 脏是**附加徽标**不是**内容状态**；只有「只读 + 脏」不可能 ⇒ 不会出现。
  */
 export function viewStateOf(input: ViewStateInput): ViewState {
@@ -41,7 +41,7 @@ export function viewStateOf(input: ViewStateInput): ViewState {
   return "ready";
 }
 
-/** 空态的**主动作**（规划稿 E5：空态必须给可点击的下一步，不是一行灰字） */
+/** 空态的**主动作**（空态必须给可点击的下一步，不是一行灰字） */
 export interface EmptyAction {
   readonly id: "open-project" | "new-project" | "open-external" | "goto-scene-column" | "none";
   readonly label: string;
@@ -53,7 +53,7 @@ export interface EmptyAction {
 
 /**
  * 空态口径表（按「为什么空」分类 —— **一个空字面意思有多种**，混成一句
- * "暂无内容"就是 D-62⑫ 说的「空态薄弱」）。
+ * "暂无内容"就是典型的「空态薄弱」）。
  */
 export function emptyStateOf(reason: string): EmptyAction {
   switch (reason) {

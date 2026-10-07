@@ -57,7 +57,7 @@ const SAY_KNOWN_FIELDS = new Set([
   "op",
   "text",
   "speaker",
-  // 说话人颜色覆盖（老引擎 `SayData.SpeakerColor`；与行内标记 `{color=…}` 是两件事）
+  // 说话人颜色覆盖（覆盖整句/说话人；与行内标记 `{color=…}` 是两件事）
   "color",
   "clickable",
   "noskip",
@@ -223,7 +223,7 @@ export interface EngineOptions {
    * 签名 `(ctx, args)`：ctx = 引擎沙箱上下文（get/fail，**契约只增**——后续能力长在 ctx 上）；
    * args = 故事数据提供的纯数据参数（与 call 的 args 同族）。失败（ctx.fail 或抛出）⇒
    * engine.error + 状态原样 + 停在当前命令（fail-closed 拦截）。守卫**不改状态**（ctx 无 set——
-   * 校验/拦截归守卫，改状态归 set/自定义 op）。语义契约：设计稿 2026-10-06 §8.2。
+   * 校验/拦截归守卫，改状态归 set/自定义 op）。
    */
   guards?: Readonly<Record<string, GuardFn>>;
 }
@@ -274,7 +274,7 @@ function sameCoord(a: ColumnCoordinate, b: ColumnCoordinate): boolean {
 /**
  * 解析 `__menu_return` 记账（进入 menu/ui 前记下的游戏点）。
  *
- * ⚠️ **fail-closed**：形状不符 ⇒ 返回 `null`（= 没有可返回的游戏进度 ⇒ 拒绝存档）。
+ * **fail-closed**：形状不符 ⇒ 返回 `null`（= 没有可返回的游戏进度 ⇒ 拒绝存档）。
  * 宁可拒绝也不能存出一个指向非法坐标的档（读档会炸在重放里）。
  */
 function parseMenuReturn(raw: unknown): { coord: ColumnCoordinate; waiting: string } | null {
@@ -797,7 +797,7 @@ export class StoryEngine {
   }
 
   /**
-   * 全局层写入（作者 `set`/`define` / 小游戏奖励 / 数组族 op 的唯一收口）。
+   * 全局层写入（作者 `set`/`define` / 小游戏奖励 / 数组族 op 的唯一汇聚点）。
    *
    * 写入契约（fail-closed，拒绝时**状态原样**）：
    * - **键**：保留键（`RESERVED_STATE_KEYS` = SYS 精确名全集）拒绝（`reserved-key`）——
@@ -863,7 +863,7 @@ export class StoryEngine {
    *
    * - **有值**（非负有限数）→ `setSystem`（进事件流，宿主据此改该层 z）；
    * - **缺省/非法** → **删除键**（回层默认）并广播 `undefined` —— 保证「不带 z 的下一条命令」
-   *   不会沿用上一条的覆盖（这正是需求 #3 的「只影响这一个，不影响其他 say」）。
+   *   不会沿用上一条的覆盖（这正是「只影响这一个，不影响其他 say」的要求）。
    *
    * 进 SSOT 的收益：随快照 / 存档 / 回溯自动随行（重放到同一条命令重新写入同一值）。
    * 前置：调用方已用 `rejectBadInstanceZ` 拒掉非法值。
@@ -954,7 +954,7 @@ export class StoryEngine {
   /**
    * 找到「最后一个可回溯坐标」的历史游标（菜单态存档时用）。
    *
-   * 🔴 为什么需要：菜单期间**不建检查点**（见 `commitCheckpoint` 守卫），
+   * 为什么需要：菜单期间**不建检查点**（见 `commitCheckpoint` 守卫），
    * 但 `cursor` 仍可能停在菜单之前那个坐标上——直接用它会把菜单产生的
    * **前向时间线截断**语义带进档里。取「最后一个坐标属可回溯列」的检查点，
    * 保证档里的历史**只含玩家真正走过的游戏步骤**。
@@ -974,15 +974,14 @@ export class StoryEngine {
   /**
    * 当前列是否参与历史/存档（`type` 缺省 = game ⇒ 参与）。
    *
-   * 🔴 **单一判定点**（治根）：`isReplayableColumn` 来自契约，引擎守卫与编辑器分组
-   * 共用它——**不各写一份**（两份判据必然漂移；本仓已吃过同类亏：诊断分组的
-   * 「error 组不折叠」若在 UI 与测试各写一份就会假绿）。
+   * **单一判定点**：`isReplayableColumn` 来自契约，引擎守卫与编辑器分组
+   * 共用它——**不各写一份**（两份判据必然漂移）。
    */
   private isCurrentColumnReplayable(): boolean {
     const columnId = this.coord.columnId;
     if (columnId === "") return true; // 尚未进入任何列（启动期）⇒ 视为可回溯
     const column = this.columnById(columnId);
-    // ⚠️ 列不存在（热重载后坐标失效等）⇒ **不拦**（保持既有行为：让流程自己 fail-closed 报错）
+    // 列不存在（热重载后坐标失效等）⇒ **不拦**（保持既有行为：让流程自己 fail-closed 报错）
     if (column === undefined) return true;
     return isReplayableColumn(column);
   }
@@ -997,10 +996,10 @@ export class StoryEngine {
       );
       return false;
     }
-    // 🔴 场景类型分流（治根，对齐老引擎 NavigateHandler）：
+    // 场景类型分流：
     // 进入 menu/ui 列 ⇒ 记下**进入前**的可回溯坐标与等待态（`__menu_return`），
     // 供「在菜单里存档」时还原成菜单前的游戏进度（Ren'Py Esc 菜单存档语义）。
-    // ⚠️ 必须在改 `this.coord` **之前**取旧值。
+    // 必须在改 `this.coord` **之前**取旧值。
     if (!isReplayableColumn(column)) {
       const prevColumnId = this.coord.columnId;
       const prevColumn = this.columnById(prevColumnId);
@@ -1016,8 +1015,8 @@ export class StoryEngine {
     this.coord = { columnId, index: 0 };
     this.setSystem(SYS.currentSceneColumn, columnId);
     // 返回 game 列 ⇒ **清掉**菜单记账（已经回到游戏里）。
-    // ⚠️ **只在真的有记账时才写**：空串是缺省值，无条件写会给每次进列都多一次
-    // `ValueChanged`（实测撞红既有「键序列精确匹配」测试——那是**正确的**守门）。
+    // **只在真的有记账时才写**：空串是缺省值，无条件写会给每次进列都多一次
+    // `ValueChanged`（「键序列精确匹配」测试会正确地撞红）。
     if (isReplayableColumn(column) && parseMenuReturn(this.get(SYS.menuReturn)) !== null) {
       this.setSystem(SYS.menuReturn, "");
     }
@@ -1311,9 +1310,9 @@ export class StoryEngine {
       );
       return;
     }
-    // 🔴 `say color` 校验（2026-10-05 治根）：**hex 格式，fail-closed**。
+    // `say color` 校验：**hex 格式，fail-closed**。
     // 与编辑器 schema 同一判据（`isValidSayColor`）⇒ 杜绝「投影层放宽、校验层拒绝」
-    // 这类两处漂移（本仓最忌：同一功能两个口径）。
+    // 这类两处漂移（同一功能两个口径是最忌的）。
     if (cmd.color !== undefined && !isValidSayColor(cmd.color)) {
       this.fail(
         "say-invalid-color",
@@ -1343,8 +1342,8 @@ export class StoryEngine {
     // 竞态防护：进入等待前清上一句残留的完成标记（防双击/快速点击跳句）
     this.setSystem(SYS.dialogComplete, false);
     this.setSystem(SYS.currentDialogSpeaker, this.translate(speakerText));
-    // 🔴 说话人颜色覆盖（`say color="#888"`）：**每句都写**——
-    // 缺省写空串 ⇒ 上一句的覆盖不会残留（与 `currentDialogSpeaker` 同纪律）。
+    // 说话人颜色覆盖（`say color="#888"`）：**每句都写**——
+    // 缺省写空串 ⇒ 上一句的覆盖不会残留（与 `currentDialogSpeaker` 同一口径）。
     // UI 读法：`覆盖值 || character.color`（覆盖优先于角色定义）。
     this.setSystem(
       SYS.currentDialogColor,
@@ -1655,7 +1654,7 @@ export class StoryEngine {
   }
 
   /**
-   * assert：断言校验（fail-closed 拦截语义，2026-10-06）。
+   * assert：断言校验（fail-closed 拦截语义）。
    * cond 求值为假 ⇒ `engine.error`（code = assert-failed）+ **停在当前命令**
    * （状态原样、不推进——作者可用重写源/数据修正后重放；重放同位同判 = 回溯安全）。
    * 为真 = 纯推进（无副作用、不产系统键 ⇒ 键序列与既有测试零冲突）。
@@ -1673,7 +1672,7 @@ export class StoryEngine {
   }
 
   /**
-   * guard：运行期守卫（组合根注册制，语义契约 = 设计稿 2026-10-06 §8.2）。
+   * guard：运行期守卫（组合根注册制）。
    * 未注册名 / args 非 JSON 安全 / ctx.fail / 抛出 ⇒ engine.error + **停在当前命令**
    * （状态原样 + 阻止推进）。通过 = 纯推进。守卫不改状态（ctx 无 set——职责分离）。
    */
@@ -2948,9 +2947,9 @@ export class StoryEngine {
     const name = cmd.target as string;
     const fn = this.functions.get(name);
     if (fn === undefined) {
-      // 🔴 **列（label）目标**（2026-10-05 治根）：老引擎 `call` 文档原文
-      // 「调用子过程（**func 或 label**），用 return 返回」——本仓此前只认 func
-      // ⇒ 真实工程 `call sb_subroutine`（`label sb_subroutine:` 定义）报「未注册的函数」。
+      // **列（label）目标**：`call` 的文档语义是「调用子过程（**func 或 label**），
+      // 用 return 返回」——只认 func 会让 `call sb_subroutine`
+      // （`label sb_subroutine:` 定义）报「未注册的函数」。
       //
       // **实现要点**：直接**压入该列命令的帧**（不切 `coord`、不装元素）——
       // 因为「子过程」是**被调用的代码块**，不是「进入一个新场景」：
@@ -3095,12 +3094,11 @@ export class StoryEngine {
    * 导出存档载荷。必须在等待点调用（列尾/未启动 fail-closed 拒绝）。
    * 载荷 = 等待点坐标 + 全局状态 + rngState + 函数表 + 历史；不含块/列级作用域与帧栈。
    *
-   * 🔴 **场景类型守卫（治根，对齐老引擎 `SaveDataService.BuildSaveData`）**：
-   * 在 `menu`/`ui` 场景按存档，**存的是「菜单前的游戏进度」而不是菜单状态**
-   * （老引擎注释原文：「Menu/UI 场景：存档当前游戏状态（对标 Ren'Py Esc 菜单存档）」）。
+   * **场景类型守卫**：在 `menu`/`ui` 场景按存档，**存的是「菜单前的游戏进度」
+   * 而不是菜单状态**（对标 Ren'Py Esc 菜单存档）。
    * 手法：维护 `__menuReturn`（进入菜单前的**可回溯坐标** + 等待态），
    * 导出时用它替换当前坐标；**没有 `__menuReturn` ⇒ 拒绝存档**
-   * （对齐老引擎「没有正在进行的游戏 ⇒ return null」）。
+   * （没有正在进行的游戏）。
    */
   exportSave(): SaveDataV1 | null {
     const waiting = this.get(SYS.waiting);
@@ -3127,9 +3125,9 @@ export class StoryEngine {
         return null;
       }
     }
-    // 🔴 场景类型守卫（治根）：非 game 场景导出 ⇒ 存「菜单前的游戏进度」。
-    // 手法与老引擎 `SaveDataService.BuildSaveData` 同构：把当前坐标/等待态换成
-    // `__menu_return` 里记的游戏点；**无该记账 ⇒ 拒绝存档**（没有正在进行的游戏）。
+    // 场景类型守卫：非 game 场景导出 ⇒ 存「菜单前的游戏进度」。
+    // 手法：把当前坐标/等待态换成`__menu_return` 里记的游戏点；
+    // **无该记账 ⇒ 拒绝存档**（没有正在进行的游戏）。
     const rawReturn = this.get(SYS.menuReturn);
     const menuReturn = parseMenuReturn(rawReturn);
     let coord: ColumnCoordinate;
@@ -3224,7 +3222,7 @@ export class StoryEngine {
       this.fail("save-story-mismatch", "该存档与当前故事不匹配");
       return false;
     }
-    // 深层校验：历史检查点 state/rngState 逐项校验——缺失/畸形此前
+    // 深层校验：历史检查点 state/rngState 逐项校验——缺失/畸形时
     // 会静默产出 NaN 或恢复期 TypeError；cursor 缺失回默认值、类型错 fail-closed（见下）。
     for (const h of data.history) {
       if (!h || !Array.isArray(h.state) || !Number.isFinite(h.rngState)) {
@@ -3368,7 +3366,7 @@ export class StoryEngine {
         try {
           migrated = ext.migrate(mark.stateVersion, subset);
         } catch {
-          migrated = null; // 扩展违约（不抛纪律）→ 视同无法迁移
+          migrated = null; // 扩展违约（不抛约束）→ 视同无法迁移
         }
         if (migrated === null) {
           this.fail(
@@ -3417,7 +3415,7 @@ export class StoryEngine {
           }),
         );
       } catch {
-        ok = false; // 扩展违约（不抛纪律）→ 不可恢复
+        ok = false; // 扩展违约（不抛约束）→ 不可恢复
       }
       if (!ok) {
         this.fail(
@@ -3469,13 +3467,11 @@ export class StoryEngine {
    * - 同列内介于 cursor 与下一检查点之间 → 新发现的中间站：插入（残缺历史自愈）
    * - 其余坐标不同 → 截断旧前向（重选≠ 旧选择 = 新时间线）
    *
-   * 🔴 **场景类型守卫（治根，对齐老引擎 `NavigateHandler`）**：`type !== "game"`
+   * **场景类型守卫**：`type !== "game"`
    * 的列（menu/ui）**不建检查点**——菜单/弹窗是「覆盖」，不是玩家经历的一步。
-   * 老引擎同款守卫在 `PlaybackService.Process`（菜单不自动推进）与
-   * `SaveDataService.BuildSaveData`（菜单态存档存的是菜单前的游戏进度）。
    */
   private commitCheckpoint(cp: Checkpoint): void {
-    // 🔴 非 game 场景不进历史（menu/ui 是覆盖层，不构成可回溯的一步）
+    // 非 game 场景不进历史（menu/ui 是覆盖层，不构成可回溯的一步）
     if (!this.isCurrentColumnReplayable()) return;
     const current = this.history[this.cursor];
     if (current !== undefined && sameCoord(current.coord, cp.coord)) {
@@ -3799,7 +3795,7 @@ export class StoryEngine {
   }
 
   /**
-   * 名称解析（作用域链查找语义照搬旧版实现）：
+   * 名称解析（作用域链查找语义）：
    * 块/列作用域链 → 全局扁平键；点路径再走「扁平优先 → 字典逐层下钻」。
    */
   private resolveName = ((

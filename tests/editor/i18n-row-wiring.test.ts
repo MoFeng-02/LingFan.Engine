@@ -1,12 +1,12 @@
 /**
- * 译文表**行编辑的接线互锁**（2026-10-05）。
+ * 译文表**行编辑的接线互锁**。
  *
- * 🔴 为何要补：判据 `addTranslationRow` / `removeTranslationRow` / `renameTranslationRow`
+ * 为何要补：判据 `addTranslationRow` / `removeTranslationRow` / `renameTranslationRow`
  * 早已实现且有 5 组边界测试（`i18n-table-rows.test.ts`），但**「UI 是否接了」没有守卫**。
- * 本仓刚在章节树上栽过同一个坑 —— 判据全绿、组件写好了，**却没接进界面**：
+ * 判据全绿、组件写好了，**却没接进界面**是常见漏法 ——
  * 判据测试绿 ≠ 能力可用。
  *
- * 交接文档 §2.3 #17「工作台不能增删单行」这条**判断已过时**：
+ * 两个组件职责不重叠：
  * - `LangWorkbench`（右栏「本地化」tab）定位是**发现**（覆盖率 / 缺译清单），
  *   点缺译 → 跳进译文表逐条改 —— 它本就不负责编辑；
  * - 编辑在 `LangView`（中央视图打开 `.json` 时），**增删改都接了**。
@@ -20,20 +20,20 @@ const code = (source: string): string =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
 describe("译文表行编辑 · 接线互锁（判据已测，锁住 UI 那一半）", () => {
-  it("🔴 **三个判据都被 import**（不是自己在组件里重写一套）", () => {
+  it("**三个判据都被 import**（不是自己在组件里重写一套）", () => {
     const src = code(langViewSource);
     expect(src).toContain("addTranslationRow");
     expect(src).toContain("removeTranslationRow");
     expect(src).toContain("renameTranslationRow");
   });
 
-  it("🔴 **增行 / 删行都有可点按钮**（能力真的暴露给译者）", () => {
+  it("**增行 / 删行都有可点按钮**（能力真的暴露给译者）", () => {
     const src = code(langViewSource);
     expect(src).toMatch(/title="新增一个译文行"[^>]*@click/);
     expect(src).toMatch(/title="删除该行"[^>]*@click/);
   });
 
-  it("🔴 **改键在原地**（点键进入重命名，不另开对话框）", () => {
+  it("**改键在原地**（点键进入重命名，不另开对话框）", () => {
     expect(code(langViewSource)).toMatch(/@click="renamingKey = row\.key"/);
   });
 

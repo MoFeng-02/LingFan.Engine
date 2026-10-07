@@ -1,6 +1,6 @@
 //! invoke↔Rust 跨边界互锁测试（仅测试编译）：Tauri 的命令名/参数键/负载键都是
-//! 运行时字符串——编译期失配不可见，此前「TS 契约替身各测一半 + Rust 纯函数各测一半」
-//! 缺整链。本模块读 TS 适配器源（`packages/adapters/src/**`）与本 crate 注册面
+//! 运行时字符串——编译期失配不可见，TS 契约替身与 Rust 纯函数各测一半时会缺整条链。
+//! 本模块读 TS 适配器源（`packages/adapters/src/**`）与本 crate 注册面
 //! （lib.rs / 命令签名 / serde 负载），把两半缝成整链：
 //! 1. TS invoke 的每个命令必须已注册（防调了未注册命令——运行时才炸的真缺陷）
 //! 2. 注册清单每个命令必须真有 `pub fn` 定义（防注册面漂移）
@@ -10,7 +10,7 @@
 //!    save_count/slot/timestamp/mode 曾是无测试的隐性契约）
 //! 5. Kotlin 自注册插件字符串契约（gen/android 平台适配层）：插件标识（= Kotlin 包名）/
 //!    命令名（= @Command 方法名）/参数与响应键/方向模式字面量——Rust ↔ Kotlin 之间同样是
-//!    编译期不可见的字符串契约，失配只在真机运行时炸
+//!    编译期不可见的字符串契约，失配只在真机运行时才炸
 //!
 //! TS 侧编组行为已由契约替身测试覆盖（tests/adapters/**），本模块只补跨边界字符串契约；
 //! 局限注明：invoke 泛型提取不支持嵌套尖括号（当前代码库无此形态）。
@@ -171,7 +171,7 @@ mod tests {
         }
     }
 
-    /// 规则 ①检测核心：TS invoke 全集 − 注册面 = 未注册命令（提取与比对收口在此，
+    /// 规则 ①检测核心：TS invoke 全集 − 注册面 = 未注册命令（提取与比对汇聚在此，
     /// 红路径由合成输入测试直接验证，真实源面由 ts_invoke_commands_are_registered 常绿把守）
     fn unregistered_ts_commands(
         ts_texts: &[String],
@@ -330,7 +330,7 @@ const y = await invoke("real_cmd", { foo: 1 });"#;
     fn kotlin_plugin_string_contracts_match_rust() {
         // 自注册 Kotlin 插件与 Rust 之间同样是纯字符串
         // 契约（插件标识 = Kotlin 包名 / 命令名 = @Command 方法名 / 参数与响应键 / 模式字面量），
-        // 编译期不可见：此前无任何互锁，失配只在真机运行时炸。
+        // 编译期不可见：缺了互锁，失配只在真机运行时才炸。
         let shell_kt = kotlin_plugin_source("shell", "ShellPlugin.kt");
         let shell_rs = rust_source("shell.rs");
         let assets_kt = kotlin_plugin_source("assets", "AssetListPlugin.kt");

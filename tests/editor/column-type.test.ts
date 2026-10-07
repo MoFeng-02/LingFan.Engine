@@ -1,12 +1,12 @@
 /**
- * 列**场景类型（SceneType）**判据：addColumn 透传 · 徽标文案 · choice 判据（#7，2026-10-05）。
+ * 列**场景类型（SceneType）**判据：addColumn 透传 · 徽标文案 · choice 判据。
  *
- * 引擎侧 `StoryColumn.type`（game/menu/ui）与 `isReplayableColumn` 已治根（tests/engine/runtime/scene-type.test.ts）；
+ * 引擎侧 `StoryColumn.type`（game/menu/ui）与 `isReplayableColumn` 已有守卫；
  * 本文件锁**编辑器侧**三件事：
  * 1. `addColumn` 契约只增的 `type` 选项 —— **缺省与 game 都不落字段**（默认值不显式存储，
  *    新建列内存形态 ≡ 重开解析形态，这是「往返深等」最强不变量的新建侧）
  * 2. `sceneTypeBadgeOf` 徽标文案真值表（列侧栏 / 章节树的单一事实源）
- * 3. `parseChoiceAnswer` 判据（取消/越界一律不执行 —— D-58 同款「取消≠缺省」纪律）
+ * 3. `parseChoiceAnswer` 判据（取消/越界一律不执行 —— 「取消 ≠ 缺省」）
  */
 import { describe, expect, it } from "vitest";
 import { addColumn, chapterGroupOf, buildChapterIndex, sceneTypeBadgeOf } from "@lingfan/editor";
@@ -25,7 +25,7 @@ describe("addColumn · type 透传（契约只增）", () => {
     expect(ui.story.columns.at(-1)).toMatchObject({ id: "toast", type: "ui" });
   });
 
-  it("🔴 type=game 与缺省都**不落字段**（默认值不显式存储 ⇒ 往返深等成立）", () => {
+  it("type=game 与缺省都**不落字段**（默认值不显式存储 ⇒ 往返深等成立）", () => {
     const game = addColumn(sampleStory(), { id: "a", type: "game" });
     expect("type" in jsonOf(game.story).columns.at(-1)!).toBe(false);
     const plain = addColumn(sampleStory(), { id: "b" });
@@ -80,13 +80,13 @@ describe("parseChoiceAnswer · 取消与越界一律不执行", () => {
     expect(parseChoiceAnswer("menu", values)).toEqual({ run: true, value: "menu" });
   });
 
-  it("🔴 取消形态（undefined/false/null）⇒ 不执行（取消 ≠ 缺省，D-58 纪律）", () => {
+  it("取消形态（undefined/false/null）⇒ 不执行（取消 ≠ 缺省）", () => {
     expect(parseChoiceAnswer(undefined, values).run).toBe(false);
     expect(parseChoiceAnswer(false, values).run).toBe(false);
     expect(parseChoiceAnswer(null, values).run).toBe(false);
   });
 
-  it("🔴 越界值 ⇒ 不执行（渲染层 bug 不得静默变成「选了第一项」）", () => {
+  it("越界值 ⇒ 不执行（渲染层 bug 不得静默变成「选了第一项」）", () => {
     expect(parseChoiceAnswer("story", values).run).toBe(false);
     expect(parseChoiceAnswer("MENU", values).run).toBe(false); // 大小写敏感：值域即契约
     expect(parseChoiceAnswer("", values).run).toBe(false);

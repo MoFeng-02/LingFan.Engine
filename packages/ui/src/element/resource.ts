@@ -7,7 +7,7 @@
  * 失败保持替代文本（不伪造 URL，诊断归端口/宿主）。
  *
  * 三处宿主（playground / 模板 / 编辑器预览）共用同一份实现——宿主只提供端口与重渲染回调，
- * 不再各写一遍（教训：**能共用的纯逻辑一律归库**，避免第二真源）。
+ * 不各自重写（能共用的纯逻辑一律归库，避免重复实现）。
  */
 export interface ElementResourceResolverOptions {
   /** 资源解析（通常即 `resourcePort.resolve`） */

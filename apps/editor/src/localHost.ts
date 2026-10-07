@@ -1,11 +1,11 @@
 /**
  * 本地宿主能力探测（**浏览器侧**，零 Node 依赖）。
  *
- * 纪律：探测**只影响「有哪些动作可做」，不改布局、不分叉组件**——
+ * 约束：探测**只影响「有哪些动作可做」，不改布局、不分叉组件**——
  * 有宿主 ⇒ 完整体验（外部打开 / 原生枚举）；无 ⇒ 降级为浏览器形态（这是**正常**路径）。
  *
  * 端点形状与 `server/host.ts` 对齐：`GET /__editor_host__/ping`。
- * ⚠️ 前端**不假设**宿主在：探测失败一律当「无宿主」，不抛错、不重试刷屏。
+ * 前端**不假设**宿主在：探测失败一律当「无宿主」，不抛错、不重试刷屏。
  */
 
 /** 宿主端点（探测结果）；`baseUrl` 为 `undefined` 表示无宿主 */
@@ -38,7 +38,7 @@ export async function detectLocalHost(
     try {
       const res = await fetchImpl(candidate, { signal: controller.signal });
       if (res.ok) {
-        // 令牌缺失 ⇒ 不是本仓宿主（别的服务恰好 200）⇒ 当未命中，继续试下一个
+        // 令牌缺失 ⇒ 不是本编辑器宿主（别的服务恰好 200）⇒ 当未命中，继续试下一个
         const token = await readTokenOf(res);
         if (token === undefined || token === "") continue;
         // 候选是绝对地址 ⇒ 取其 origin（去掉 `/__editor_host__/ping`）；相对地址 ⇒ 同源代理
@@ -146,8 +146,8 @@ export async function fetchWatchStatus(
 /**
  * 轮询监视状态并在**计数变化**时回调（热重载的心跳）。
  *
- * ⚠️ 返回停止函数；**页面卸载时必须调**（否则定时器泄漏）。
- * ⚠️ `revision` 用**首次读到的值**作基线 —— 不拿它当"是否变过"，
+ * 返回停止函数；**页面卸载时必须调**（否则定时器泄漏）。
+ * `revision` 用**首次读到的值**作基线 —— 不拿它当"是否变过"，
  * 否则刚打开编辑器就会因基线为 0 而误判成"有变更"。
  */
 export function pollWatch(

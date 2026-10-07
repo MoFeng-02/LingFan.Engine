@@ -74,8 +74,8 @@ describe("符号索引（indexStory）", () => {
     expect(index.definedKeys.has("player.name")).toBe(true);
     expect(index.functions.get("greet")?.params).toEqual(["who"]);
     expect(index.targets.filter((t) => t.kind === "column")).toHaveLength(3);
-    // ⚠️ `call` 的目标是 **callable**（列或 func 皆可，2026-10-05 治根）——
-    // 不再是 `function`（那只允许 func，与老引擎「func 或 label」不符）。
+    // `call` 的目标是 **callable**（列或 func 皆可）——
+    // 不再是 `function`（那只允许 func，与「func 或 label」不符）。
     expect(index.targets.filter((t) => t.kind === "callable")).toHaveLength(1);
     expect(index.resources).toEqual([
       { pointer: "/columns/0/commands/10/resource", path: "Audio/bgm.mp3" },
@@ -125,7 +125,7 @@ describe("诊断集（analyzeStory）", () => {
     story.columns.push(flowColumn("start", []));
     const diagnostics = analyzeStory(story);
     const byCode = (code: string) => diagnostics.filter((d) => d.code === code);
-    // ⚠️ `call` 的目标现在是 **callable**（列或 func）⇒ 找不到时归 `missing-target`
+    // `call` 的目标现在是 **callable**（列或 func）⇒ 找不到时归 `missing-target`
     // （通用「目标不存在」），不再是 `unknown-function`（那只在「只允许 func」时成立）。
     // 原 3 个 = jump / menu / navigate；第 4 个 = call。
     expect(byCode("missing-target")).toHaveLength(4);

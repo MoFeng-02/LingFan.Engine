@@ -52,7 +52,7 @@ describe("布局 · 持久化往返", () => {
     expect(parseLayout(serializeLayout(state))).toEqual(state);
   });
 
-  it("读回即夹取（防止旧版本存了越界值把布局撑坏）", () => {
+  it("读回即夹取（防止存了越界值把布局撑坏）", () => {
     const raw = JSON.stringify({ version: 1, leftWidth: 5000 });
     expect(parseLayout(raw).leftWidth).toBe(MAX_SIDEBAR_WIDTH);
   });

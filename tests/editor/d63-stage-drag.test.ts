@@ -1,13 +1,13 @@
 /**
- * D-63 回归测试（**用户实测回归**）—— 舞台元素「一碰即跳回时间线、拖拽完全不可用」。
+ * 舞台拖拽回归测试 —— 「一碰即跳回时间线、拖拽完全不可用」。
  *
- * 用户原话（2026-10-02 实测反馈）：
+ * 现象：
  * 「在舞台视图点或拖任一元素，pointerdown 瞬间就被当成点击，视图立刻切回时间线，
- *   元素再也拖不动——我刚碰上去它就相当于被点击了，完全不区分你是不是拖拽」
+ *   元素再也拖不动——完全不区分你是不是拖拽」
  *
- * 按 `agent.md` §6 测试纪律覆盖八类：
+ * 覆盖要点：
  * - 严格多方位 / 边界条件 ⇒ `pointerIntent.test.ts`
- * - 回归锚定（用户实测）/ 源级互锁 ⇒ 本文件
+ * - 回归 / 源级互锁 ⇒ 本文件
  * - 跨边界互锁 ⇒ `editorApi` 契约面（`select` 不得再切视图；`reveal` 必须在两处需求点）
  */
 import { describe, expect, it } from "vitest";
@@ -20,7 +20,7 @@ import timelineSource from "../../apps/editor/src/components/StoryTimeline.vue?r
 /** 去注释（守卫对象是代码，注释里提到旧行为是正常的） */
 const code = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
-describe("D-63 用户实测回归 · select 不得再切视图", () => {
+describe("舞台拖拽回归 · select 不得再切视图", () => {
   it("`select()` 只做选中，**不含** `centerView` 赋值（修法 a）", () => {
     const src = code(appSource);
     // 取 select 的函数体（到下一个同缩进方法为止）
@@ -51,7 +51,7 @@ describe("D-63 用户实测回归 · select 不得再切视图", () => {
   });
 });
 
-describe("D-63 用户实测回归 · 依赖切视图副作用的两处已显式化", () => {
+describe("舞台拖拽回归 · 依赖切视图副作用的两处已显式化", () => {
   it("诊断面板走 `reveal`（点诊断必须看得见）", () => {
     expect(code(diagnosticsSource)).toContain("api.reveal(diagnostic.pointer)");
     expect(code(diagnosticsSource)).not.toMatch(/api\.select\(diagnostic\.pointer\)/);
@@ -71,7 +71,7 @@ describe("D-63 用户实测回归 · 依赖切视图副作用的两处已显式�
   });
 });
 
-describe("D-63 用户实测回归 · 拖拽阈值接线", () => {
+describe("舞台拖拽回归 · 拖拽阈值接线", () => {
   it("舞台接了指针捕获（拖出元素范围仍跟手）", () => {
     expect(code(stageEditorSource)).toContain("setPointerCapture");
     expect(code(stageEditorSource)).toContain("hasPointerCapture");

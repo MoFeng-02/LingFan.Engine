@@ -1078,8 +1078,8 @@ describe("func/call/return", () => {
       { op: "say", text: "s" },
     ]);
     engine.start();
-    // ⚠️ 码由 `call-unknown-function` 改为 `call-unknown-target`：`call` 的目标
-    // 现在**既可以是 func 也可以是列**（老引擎「func 或 label」，2026-10-05 治根）
+    // 码由 `call-unknown-function` 改为 `call-unknown-target`：`call` 的目标
+    // 现在**既可以是 func 也可以是列**（「func 或 label」）
     // ⇒ 「目标不存在」比「函数未注册」准确。
     expect(errorPayload(errors[0]).code).toBe("call-unknown-target");
     dispose();
@@ -1467,7 +1467,7 @@ describe("回溯与历史", () => {
     engine.advance(); // 三句全部解除 → 检查点 0/1/2，live 停在列尾
     engine.rollbackTo(2); // 回到第三句
     expect(engine.get(SYS.currentDialogText)).toBe("三");
-    engine.back(); // 必须落到第二句（旧实现卡在第三句）
+    engine.back(); // 必须落到第二句
     expect(engine.get(SYS.currentDialogText)).toBe("二");
     engine.back();
     expect(engine.get(SYS.currentDialogText)).toBe("一");

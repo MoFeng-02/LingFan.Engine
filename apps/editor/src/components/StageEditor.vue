@@ -89,12 +89,11 @@ const api = inject<EditorApi>("editorApi")!;
 /**
  * 舞台编辑的**当前列 = 活动文档切片的列**（`props.story.columns[0]`）。
  *
- * 🔴 **为什么不能从选中指针推导**（2026-10-05 真机缺陷，用户实测「选中的场景不能舞台」）：
- * 此前 `sceneColumn` 从 `props.pointer` 反解列 —— 而用户在**列侧栏选中列**时
+ * **为什么不能从选中指针推导**：用户若从**列侧栏选中列**，
  * `selectColumn` 会先 `select(null)`（跨列不保留命令选中）⇒ `pointer = null`
  * ⇒ `sceneColumn = undefined` ⇒ `elements = []` ⇒ 舞台对**场景列**误报
  * 「当前列没有空间层」，且**画布上没有任何元素可拖**（「拖动不能改变位置」同根）。
- * 活动文档恒单列（B0「一文档 = 一列」不变量）⇒ 切片首列就是当前列，与选中态无关。
+ * 活动文档恒单列（「一文档 = 一列」不变量）⇒ 切片首列就是当前列，与选中态无关。
  */
 const sceneColumn = computed(() => {
   const column = props.story.columns[0];
@@ -162,9 +161,9 @@ function previewStyle(index: number): Record<string, string> {
 }
 
 /**
- * 拖拽中的对齐参考线（步4）。
+ * 拖拽中的对齐参考线。
  *
- * ⚠️ **只提示、不吸附**：`snapGuides` 只返回"该画哪条线"，**不改**最终坐标 ——
+ * **只提示、不吸附**：`snapGuides` 只返回"该画哪条线"，**不改**最终坐标 ——
  * 静默把元素挪到吸附位会让"我拖到这儿"与"它落到那儿"不一致（改写作者意图）。
  * 判据与边界见 `apps/editor/src/snapGuides.ts`。
  */
@@ -185,8 +184,8 @@ function snapCandidatesOf(index: number): SnapCandidate {
     const r = node.getBoundingClientRect();
     // 跳过**真正的全屏背景**（**两个方向都**接近满幅）—— 它的左/中/右覆盖整块画布，
     // 参考线永远命中且无参考价值（用户只看到一条贴边的线）。
-    // ⚠️ 阈值必须**两个方向同时**判：先前写成 `||`（单方向 90% 即跳）⇒
-    //   把「宽 945 / 画布 1050」的正常元素也误杀了 ⇒ 参考线永不出现。
+    // 阈值必须**两个方向同时**判：若写成 `||`（单方向 90% 即跳），
+    //   会把「宽 945 / 画布 1050」这类正常元素也误杀 ⇒ 参考线永不出现。
     if (r.width >= canvasBox.width * 0.92 && r.height >= canvasBox.height * 0.92) return;
     v.push(r.left - origin.left, r.left - origin.left + r.width / 2, r.left - origin.left + r.width);
     h.push(r.top - origin.top, r.top - origin.top + r.height / 2, r.top - origin.top + r.height);
@@ -197,8 +196,8 @@ function snapCandidatesOf(index: number): SnapCandidate {
 /**
  * 依**当前实际位置**算参考线（画布坐标）。
  *
- * ⚠️ **不接收位移参数**：`getBoundingClientRect()` 已含 transform 位移，
- *   再补偿一次会让位移算两遍 ⇒ 参考线永不命中（我先犯过一次，故签名里就没有它）。
+ * **不接收位移参数**：`getBoundingClientRect()` 已含 transform 位移，
+ *   再补偿一次会让位移算两遍 ⇒ 参考线永不命中（故签名里就没有它）。
  */
 function updateGuides(index: number): void {
   const canvas = canvasEl.value;
@@ -209,9 +208,9 @@ function updateGuides(index: number): void {
   }
   const origin = canvas.getBoundingClientRect();
   const r = node.getBoundingClientRect();
-  // ⚠️ `r` 是 `getBoundingClientRect()` —— **已含当前 transform 位移**（`previewStyle` 生效中）。
+  // `r` 是 `getBoundingClientRect()` —— **已含当前 transform 位移**（`previewStyle` 生效中）。
   //   候选线也是同样口径（各元素的实时矩形）⇒ 直接用 `r` 即可。
-  //   ⚠️ 我先前在此**又加了一次 dx**（"补回位移"）⇒ 位移算两遍 ⇒ **永远对不齐、参考线永不出现**。
+  //   若在此**又加一次 dx**（"补回位移"）⇒ 位移算两遍 ⇒ **永远对不齐、参考线永不出现**。
   //   判据只吃"当前实际位置"，不重复补偿。
   guides.value = snapGuides(
     {
@@ -228,7 +227,7 @@ function onPointerDown(index: number, event: PointerEvent): void {
   const element = elements.value[index];
   if (element === undefined) return;
   const target = elementPointer(index);
-  // ⚠️ D-63 修法 (a)：用**就地选中**（`select`），不再用带切视图副作用的那个 ⇒
+  // 用**就地选中**（`select`），不用带切视图副作用的那个 ⇒
   //   舞台不会因 `v-else-if` 在按下瞬间被卸载，拖拽的 move/up 监听不会落空。
   api.select(target);
   const startX = event.clientX;
@@ -242,7 +241,7 @@ function onPointerDown(index: number, event: PointerEvent): void {
   const onMove = (moveEvent: PointerEvent): void => {
     probe.clientX = moveEvent.clientX;
     probe.clientY = moveEvent.clientY;
-    // ⚠️ D-63 修法 (b)：**阈值内不显示位移**——否则「想点一下」也会看到元素
+    // **阈值内不显示位移**——否则「想点一下」也会看到元素
     // 跟着手抖一下，像被误认成拖拽。
     if (!shouldSuppressClick(probe)) return;
     const dx = moveEvent.clientX - startX;
@@ -255,7 +254,7 @@ function onPointerDown(index: number, event: PointerEvent): void {
     window.removeEventListener("pointerup", onUp);
     probe.clientX = upEvent.clientX;
     probe.clientY = upEvent.clientY;
-    // ⚠️ 释放前查引用：拖拽中组件可能已被卸载（切工程/换标签）⇒ 空引用会抛。
+    // 释放前查引用：拖拽中组件可能已被卸载（切工程/换标签）⇒ 空引用会抛。
     if (handle !== null && handle.isConnected && handle.hasPointerCapture?.(upEvent.pointerId)) {
       handle.releasePointerCapture(upEvent.pointerId);
     }
@@ -277,9 +276,9 @@ function onPointerDown(index: number, event: PointerEvent): void {
 /**
  * 空态主动作：**切到工程里第一个场景（scene）列**。
  *
- * ⚠️ 导航目标必须是**工程级**事实（App 从整工程树算好经 prop 传入）——
- * 此前在切片里 `findIndex(kind === "scene")`，切片恒单列 ⇒ 当前是 flow 列时
- * 永远找不到 ⇒ **按钮点了没反应**（真机实测）。
+ * 导航目标必须是**工程级**事实（App 从整工程树算好经 prop 传入）——
+ * 若在切片里 `findIndex(kind === "scene")`，切片恒单列 ⇒ 当前是 flow 列时
+ * 永远找不到 ⇒ **按钮点了没反应**。
  */
 function onEmptyAction(action: EmptyAction): void {
   if (action.id !== "goto-scene-column") return;
@@ -383,8 +382,8 @@ function onDrop(event: DragEvent): void {
   <div class="stage-editor">
     <h2>舞台编辑</h2>
 
-    <!-- 空态**必须有可点的下一步**（B3 立的规矩；CDP 审阅实测：原实现占 1029×785
-         而 `可点动作数 = 0` ⇒ 大片空白 + 无出路，用户只能猜） -->
+    <!-- 空态**必须有可点的下一步**（空实现占满画布而可点动作数为 0
+         ⇒ 大片空白 + 无出路，用户只能猜） -->
     <EmptyState
       v-if="sceneColumn === undefined"
       class="stage-empty"

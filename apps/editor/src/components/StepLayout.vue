@@ -9,13 +9,13 @@ import { storySteps, type StepEdge, type StoryStep } from "@lingfan/editor";
  *
  * 步骤与出边的判定**全在 `@lingfan/editor` 的 `storySteps`**（其边界判据取自引擎的等待声明表）；
  * 本组件只做坐标换算与呈现，不含任何叙事语义。
- * 视图确定性排布（分层定 x、步序定 y），**不记忆布局**——步骤视图是派生视图，记忆即第二真源。
+ * 视图确定性排布（分层定 x、步序定 y），**不记忆布局**——步骤视图是派生视图，记忆会引入重复状态。
  */
 const props = defineProps<{ story: Story; selectedId: string }>();
 
 interface EditorApi {
   select(pointer: string | null): void;
-  /** 定位揭示：选中 + 切回时间线 + 滚动到目标行（D-63 拆职责后新增） */
+  /** 定位揭示：选中 + 切回时间线 + 滚动到目标行 */
   reveal(pointer: string): void;
   selectColumn(id: string): void;
 }
@@ -171,7 +171,7 @@ function opSummary(step: StoryStep): string {
 
 function onStepClick(step: StoryStep): void {
   // 用 `reveal`（选中 + 切回时间线 + 滚动到该行）——从步骤图点回时间线是**定位**语义。
-  // D-63 拆职责前靠 `select` 的切视图副作用顺带实现，现已显式化。
+  // 靠 `select` 的切视图副作用顺带实现会让职责混淆，这里显式表达意图。
   api.reveal(step.endPointer);
 }
 </script>

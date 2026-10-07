@@ -1,9 +1,9 @@
 /**
  * 舞台编辑测试（元素表单描述符 + 拖拽坐标）。
  *
- * 测试纪律五类齐备：
+ * 测试要点五类齐备：
  * - 互锁：表单字段面 ↔ 引擎元素契约（ELEMENT_ATTRIBUTES ∪ {id,name}）
- * - 回归锚定：36 类型全覆盖、字段顺序确定性
+ * - 回归：36 类型全覆盖、字段顺序确定性
  * - 故意错误：未知类型 fail-closed
  * - 边界：字符串坐标（百分比）不参与像素拖拽
  * - 拟态旅程：作者先命名（id/name 在字段表最前）再摆位
@@ -87,7 +87,7 @@ describe("元素表单描述符", () => {
     expect(byKey.get("disabled")?.kind).toBe("boolean");
   });
 
-  it("分类型属性与中文标签可用（回归锚定）", () => {
+  it("分类型属性与中文标签可用（回归）", () => {
     expect(specificAttrsOf("slider")).toEqual(["min", "max", "orientation"]);
     expect(specificAttrsOf("checkbox")).toEqual(["checked"]);
     expect(specificAttrsOf("vbox")).toEqual(["direction", "spacing"]);
@@ -129,11 +129,11 @@ describe("拖拽坐标", () => {
 });
 
 describe("编辑期元素校验", () => {
-  it("示例故事（含 scene 列）零诊断（回归锚定：打开编辑器不应一片红）", () => {
+  it("示例故事（含 scene 列）零诊断（回归：打开编辑器不应一片红）", () => {
     expect(validateStory(sampleStory())).toEqual([]);
   });
 
-  it("元素不再被误当命令（回归锚定：旧遍历会报 unknown-op）", () => {
+  it("元素不再被误当命令（回归：旧遍历会报 unknown-op）", () => {
     const diagnostics = validateStory(sampleStory());
     expect(diagnostics.some((d) => d.code === "unknown-op")).toBe(false);
   });
@@ -231,7 +231,7 @@ describe("编辑期元素校验", () => {
 });
 
 describe("行标签单一事实源", () => {
-  it("命令按 op 标签、元素按类型标签（回归锚定：元素层曾整层显示「（坏命令）」）", () => {
+  it("命令按 op 标签、元素按类型标签（回归：元素层曾整层显示「（坏命令）」）", () => {
     expect(describeNodeLabel({ op: "say" })).toBe("对话");
     expect(describeNodeLabel({ type: "panel" })).toBe("面板");
     expect(describeNodeLabel({ type: "vbar" })).toBe("纵向进度条");
@@ -246,7 +246,7 @@ describe("行标签单一事实源", () => {
 });
 
 describe("字段值落树", () => {
-  it("value kind 智能字面量：纯数字还原为数字（回归锚定：曾退化成无单位字符串）", () => {
+  it("value kind 智能字面量：纯数字还原为数字（回归：曾退化成无单位字符串）", () => {
     expect(coerceFieldValue("value", "120")).toBe(120);
     expect(coerceFieldValue("value", "-3.5")).toBe(-3.5);
     expect(coerceFieldValue("value", "true")).toBe(true);
@@ -268,7 +268,7 @@ describe("字段值落树", () => {
     expect(coerceFieldValue("identifier", "inn")).toBe("inn");
   });
 
-  it("长度类字段一律 kind:value（回归锚定：数字 → px 由运行时 len() 补）", () => {
+  it("长度类字段一律 kind:value（回归：数字 → px 由运行时 len() 补）", () => {
     for (const type of ["background", "text", "panel", "image"] as const) {
       const byKey = new Map(
         (describeElement(type)?.fields ?? []).map((f) => [f.key, f]),
@@ -290,7 +290,7 @@ describe("字段值落树", () => {
     expect(grid.get("rows")?.kind).toBe("value");
   });
 
-  it("FieldRow 渲染面覆盖全部 FieldKind（回归锚定：value 曾无控件，整行不可编辑）", () => {
+  it("FieldRow 渲染面覆盖全部 FieldKind（回归：value 曾无控件，整行不可编辑）", () => {
     const kinds = new Set<string>();
     const collect = (fields: readonly FieldDescriptor[]): void => {
       for (const field of fields) {

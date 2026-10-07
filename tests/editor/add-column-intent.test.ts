@@ -1,18 +1,18 @@
 /**
- * 「+ 列」对话框意图判定（`decideAddColumn`）测试 —— **D-58 回归锚点**。
+ * 「+ 列」对话框意图判定（`decideAddColumn`）测试 —— 回归守卫。
  *
- * 用户实测回归：`promptAddColumn` 把 `window.prompt` 的 `null`（取消）经 `hint ?? undefined`
+ * 回归：`promptAddColumn` 把对话框的 `null`（取消）经 `hint ?? undefined`
  * 传成 `undefined` ⇒ **按 Esc 却凭空多出一列**（而同文件的 `promptRename` / `promptAddGroup`
  * 都写了 `=== null` 守卫，唯此处漏了）。
  *
- * 测试纪律五类：
+ * 测试要点五类：
  * - 纯函数真值表：`null`（取消）→ 不执行；`""`（留空）→ 执行且无建议；非空 → 执行且带建议
  * - 拟态作者旅程：把判定与引擎的 `addColumn` **串起来**跑三条路径，断言列数 / id 的实际结果
  *   （只测真值表不足以证明"按 Esc 不会多一列"——那要靠组合行为）
  * - 故意错误：对抗性输入（空白串 / 路径分隔 / 点段 / 超长）**不由本层拒绝**，而是原样交给
  *   引擎 `suggestColumnId` 去 trim / 兜底 —— 本层只判"是否执行"，职责单一（越权拒绝会
- *   造出第二处 id 规则 = 第二真源）
- * - 边界：`null` 与 `""` 必须**可区分**（这正是 D-58 的根因）
+ *   造出第二处 id 规则 = 第二份定义）
+ * - 边界：`null` 与 `""` 必须**可区分**（这正是「取消被当成留空」的根因）
  * - 源级互锁：见 `semantic-column-id.test.ts`（`decideAddColumn` 调用必须先于 `api.addColumn`）
  */
 import { describe, expect, it } from "vitest";
@@ -36,7 +36,7 @@ describe("真值表：取消 / 留空 / 有值 三态互不相同", () => {
     });
   });
 
-  it("取消与留空必须是两个不同的判定结果（D-58 的根因就是二者被压平）", () => {
+  it("取消与留空必须是两个不同的判定结果（二者的根因就是被压平）", () => {
     expect(decideAddColumn(null)).not.toEqual(decideAddColumn(""));
   });
 });
@@ -77,7 +77,7 @@ describe("拟态作者旅程：判定 + 引擎提交串起来跑三条路径", (
     return { count: result.story.columns.length, id: result.id };
   }
 
-  it("① 按 Esc（取消）→ 列数不变（**用户实测回归**：改前会多出一列）", () => {
+  it("① 按 Esc（取消）→ 列数不变（回归：改前会多出一列）", () => {
     expect(applyPrompt(null)).toEqual({ count: 1 });
   });
 

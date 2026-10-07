@@ -30,7 +30,7 @@ describe("prepare-dist · rewriteHtml（构建期静态改写）", () => {
     expect(html).not.toContain('"/assets/index-Cx1Ab.js"');
     expect(assets).toEqual(["dist/assets/index-Cx1Ab.js", "dist/assets/index-Cx1Ab.css"]);
   });
-  it("外链（动态/远程 URL）一概不碰（改写纪律：只碰构建产物内相对引用）", () => {
+  it("外链（动态/远程 URL）一概不碰（只碰构建产物内相对引用）", () => {
     const source = `<html><head>
       <link rel="stylesheet" href="https://cdn.example.com/x.css">
       <script src="https://example.com/a.js"></script>

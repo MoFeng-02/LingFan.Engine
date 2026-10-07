@@ -113,7 +113,7 @@ function numericZ(value: unknown): number | null {
  * 装载：`ElementNode[]` → `ElementInstance[]`（深度优先，保留声明序）。
  *
  * - `id`：显式 id 优先；缺省派生 `${columnId}#${序号}`（序号为**同层**遍历序，
- *   仅供内部兜底，不承诺跨版本稳定）
+ *   仅供内部兜底，不作为稳定契约）
  * - `z`：显式 `zindex` > 显式 `order` > 到达序（同层声明下标）——
  *   按 zindex 属性与到达序（数值越小越靠前）语义
  * - `props`：除结构字段（type/id/name/children）外的全部属性副本

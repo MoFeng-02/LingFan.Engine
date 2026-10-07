@@ -92,7 +92,7 @@ function walkBodyFields(
  * 沿**单条命令**的表单描述符递归其全部块体（if.then/elif[].then/else、while/for/foreach.body、
  * switch.cases[].body/default、func.body），按有序体深度优先回调受控命令。
  * 与 `walkStoryCommands` 共用同一份「块体字段」知识（表单描述符的单点），
- * 故「某命令的体里有什么」在本包内不存在第二套判定。
+ * 故「某命令的体里有什么」在本模块内不存在第二套判定。
  */
 export function walkCommandBodies(
   cmd: Record<string, unknown>,

@@ -141,7 +141,7 @@ async function tryDirectoryHandle(
 /**
  * 资源根定位（FSA）：所选目录含清单即资源根；否则下探一层 `Resources/`
  * （工程惯例里资源根就在该子目录）。都无清单但有 `Stories/` ⇒ **缺清单的合法资源根**
- * （#11 降级：readProject 会合成最小清单并显式回执）。都没有 → fail-closed 报可操作的话。
+ * （`readProject` 会合成最小清单并显式回执）。都没有 → fail-closed 报可操作的话。
  */
 async function locateResourceRootHandle(
   picked: FileSystemDirectoryHandle,
@@ -156,7 +156,7 @@ async function locateResourceRootHandle(
   ) {
     return { root: resources, name: resources.name };
   }
-  // #11 降级候选：无清单但有 Stories/（缺清单只是缺 formatVersion/id/entry，合成即可）
+  // 降级候选：无清单但有 Stories/（缺清单只是缺 formatVersion/id/entry，合成即可）
   if ((await tryDirectoryHandle(picked, STORIES_DIR)) !== undefined) {
     return { root: picked, name: picked.name };
   }
@@ -243,7 +243,7 @@ function relativePathOf(file: File): string {
 /**
  * 资源根定位（文件快照）：清单所在层即资源根（清单必须在资源根内的推论）。
  * 同深出现多个清单 = 无法判定 → fail-closed 让用户直接选资源根，不替用户猜。
- * #11 降级：无清单时以 `Stories/` 目录定位资源根（readProject 合成清单并显式回执）；
+ * 降级：无清单时以 `Stories/` 目录定位资源根（`readProject` 合成清单并显式回执）；
  * 连 Stories/ 都没有才 fail-closed。
  */
 export function locateResourceRootFromPaths(paths: readonly string[]): {
@@ -272,7 +272,7 @@ export function locateResourceRootFromPaths(paths: readonly string[]): {
     }
     return { root: dirOf(first), manifest: MANIFEST_FILE };
   }
-  // #11 降级：无清单 ⇒ 以 Stories/ 目录定位资源根（同层多个 = 无法判定，fail-closed）
+  // 降级：无清单 ⇒ 以 Stories/ 目录定位资源根（同层多个 = 无法判定，fail-closed）
   const storyRoots = new Set<string>();
   for (const path of paths) {
     if (path.startsWith(`${STORIES_DIR}/`)) storyRoots.add("");
@@ -392,7 +392,7 @@ async function readProject(
   const hasManifest = paths.includes(MANIFEST_FILE);
   const storyPaths = paths.filter((path) => path.startsWith(`${STORIES_DIR}/`));
   if (storyPaths.length === 0) {
-    // 🔴 只降级「缺清单」这一种：连 Stories/ 都没有 = 没有可打开的内容，照旧 fail-closed
+    // 只降级「缺清单」这一种：连 Stories/ 都没有 = 没有可打开的内容，照旧 fail-closed
     throw new Error(
       hasManifest
         ? `资源根（${source.name}）缺少 ${STORIES_DIR}/ 目录`
@@ -404,7 +404,7 @@ async function readProject(
     stories.set(path, await source.text(path));
   }
   if (!hasManifest) {
-    // #11 降级：合成最小清单（formatVersion/id/entry），降级事实显式上交（端口 `degraded()`）
+    // 降级：合成最小清单（formatVersion/id/entry），降级事实显式上交（端口 `degraded()`）
     const { manifest, degraded } = synthesizeDegradedManifest(source.name, stories);
     return { manifest, stories, degraded };
   }
@@ -512,7 +512,7 @@ function isOverlayPath(path: string): boolean {
 
 /**
  * overlay 译文表解析（Rust `load_overlay_files` 同语义）：**坏 JSON / 含非字符串值 →
- * 整个文件跳过**（旧版引擎 LoadFile 宽松口径）。返回 `undefined` = 跳过。
+ * 整个文件跳过**（宽松口径：少报不误报）。返回 `undefined` = 跳过。
  */
 function parseOverlayEntries(text: string): Record<string, string> | undefined {
   let value: unknown;
@@ -807,8 +807,8 @@ export async function createHandleProjectWriter(
 
 /**
  * 读权限按需申请（「重新打开上次工程」用）：已授权直接放行；未授权在**用户手势内**
- * 申请 `read`（重开按钮点击即手势，与保存链路 `ensureWriteAccess` 同纪律）。
- * 老 Chromium 无 permission API：放行（由后续文件读失败归一）。
+ * 申请 `read`（重开按钮点击即手势，与保存链路 `ensureWriteAccess` 同一约束）。
+ * 部分 Chromium 无 permission API：放行（由后续文件读失败归一）。
  */
 export async function ensureReadAccess(
   root: FileSystemDirectoryHandle,

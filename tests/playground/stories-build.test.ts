@@ -84,15 +84,14 @@ describe("stories:build · TS 故事源编译", () => {
   });
 
   /**
-   * ⚠️ 以下 7 条**各自独立成 `it`**（2026-10-04 拆）。
+   * 以下 7 条**各自独立成 `it`**。
    *
-   * 拆的原因（实测数据）：原先合成一个用例，串行跑 **7 次 `buildStories`**，
+   * 拆的原因：原先合成一个用例，串行跑 **7 次 `buildStories`**，
    * 而每次都要 `await import()` 一个**新路径的 `.ts` 源** ⇒ vitest 的 tsx 转译
-   * **无法缓存**（路径不同）⇒ 单用例 **13.2s**，直接撞穿 vitest 的 `hookTimeout` 10s
+   * **无法缓存**（路径不同）⇒ 单用例耗时过长，直接撞穿 vitest 的 `hookTimeout`
    * ⇒ 表现为「`afterEach` 超时」这种**指向错误位置**的报错。
    *
-   * 拆开后每个用例只编译一次（≈2s），且顺带满足 `agent.md` §6「严格多方位」——
-   * 每条失败路径**独立可定位**，失败时直接告诉你是哪一条。
+   * 拆开后每个用例只编译一次，且每条失败路径**独立可定位**，失败时直接告诉你是哪一条。
    */
   it("故意错误：Stories.src/ 下没有 .ts 源", async () => {
     await expect(buildStories(join(BASE, "empty"))).rejects.toThrow(/Stories\.src\/ 下没有 \.ts 源/);
@@ -173,7 +172,7 @@ describe("stories:build · TS 故事源编译", () => {
   });
 });
 
-describe("stories:build · 布局声明（2026-10-06：平铺形态已否决，章节目录 + 多列成组）", () => {
+describe("stories:build · 布局声明（平铺形态已否决，章节目录 + 多列成组）", () => {
   /** 带布局声明的源：三列分住两章（.story 扩展名 + 多列成组 + 跨文件跳转） */
   const LAYOUT_SOURCE = `export default {
     formatVersion: 1, id: "layout-demo", entry: "a",
@@ -187,7 +186,7 @@ describe("stories:build · 布局声明（2026-10-06：平铺形态已否决，�
     ],
   };`;
 
-  it("🔴 sourcePath 声明 ⇒ 章节目录 + **同文件多列成组** + 扩展名随声明", async () => {
+  it("sourcePath 声明 ⇒ 章节目录 + **同文件多列成组** + 扩展名随声明", async () => {
     const root = makeProject("layout", {
       "Stories.src/demo.ts": LAYOUT_SOURCE,
       "Resources/project.json": MANIFEST,
@@ -205,7 +204,7 @@ describe("stories:build · 布局声明（2026-10-06：平铺形态已否决，�
     expect(chapter1.columns.map((c) => c.id)).toEqual(["a", "a2"]); // 多列成组
   });
 
-  it("🔴 重复编译零差量（章节形态往返幂等）", async () => {
+  it("重复编译零差量（章节形态往返幂等）", async () => {
     const root = makeProject("layout-idempotent", {
       "Stories.src/demo.ts": LAYOUT_SOURCE,
       "Resources/project.json": MANIFEST,
@@ -364,7 +363,7 @@ describe("stories:build · 扩展声明通道（T5：对齐运行期声明制，
   });
 });
 
-describe("stories:build · cell 函数注册构建期提取（设计稿 2026-10-06）", () => {
+describe("stories:build · cell 函数注册构建期提取", () => {
   /** 内联 + 导入引用混合的源；lib 文件提供被引用的实现（相对说明符重写断言用） */
   const CELL_SOURCE = `import { script } from "@lingfan/editor";
 import { helperGuard } from "./lib/tools";
@@ -508,7 +507,7 @@ export default { formatVersion: 1, id: "x", entry: "s",
     expect(genOf.bind(null, root)).toThrow();
   });
 
-  it("🔴 回归锚定：playground 真源 gen 生成物 ⇄ 重提取逐字节一致（防手改漂移）", () => {
+  it("回归：playground 真源 gen 生成物 ⇄ 重提取逐字节一致（防手改漂移）", () => {
     // 真实工程 = Stories.src/story.ts 的 cell 槽位是守卫实现的唯一住所——
     // 改了 cell 不跑 stories:build（或手改生成物）⇒ 本测试红，漂移在 CI 拦下
     const realRoot = fileURLToPath(new URL("../../apps/playground", import.meta.url));
@@ -536,7 +535,7 @@ export default { formatVersion: 1, id: "x", entry: "s",
 });
 
 describe("Stories.src/story.ts · 真实演示源完整性（端到端健康检查）", () => {
-  it("🔴 十四列 / 入口 start / 全部跳转目标存在 / defines 保真 / 章节布局声明", async () => {
+  it("十四列 / 入口 start / 全部跳转目标存在 / defines 保真 / 章节布局声明", async () => {
     const mod = (await import("../../apps/playground/Stories.src/story")) as {
       default: import("@lingfan/engine").Story;
     };
@@ -546,7 +545,7 @@ describe("Stories.src/story.ts · 真实演示源完整性（端到端健康检�
     expect(story.defines).toMatchObject({ "player.gold": 7 });
 
     // 跳转图闭合：所有 jump/menu/navigate 目标都在列集里（missing-target 零容）
-    // ⚠️ navigate 的载荷字段 = path（+可选 scene，目标 = scene ?? path）——不是 target
+    // navigate 的载荷字段 = path（+可选 scene，目标 = scene ?? path）——不是 target
     const ids = new Set(story.columns.map((c) => c.id));
     const targets: string[] = [];
     for (const column of story.columns) {
@@ -579,7 +578,7 @@ describe("Stories.src/story.ts · 真实演示源完整性（端到端健康检�
     );
   });
 
-  it("🔴 特性覆盖守卫（用户明令：把 TS 能力用上——防退化成 JSON-ish 普通文件）", async () => {
+  it("特性覆盖守卫（把 TS 能力用上——防退化成 JSON-ish 普通文件）", async () => {
     const story = readFileSync(
       new URL("../../apps/playground/Stories.src/story.ts", import.meta.url),
       "utf8",

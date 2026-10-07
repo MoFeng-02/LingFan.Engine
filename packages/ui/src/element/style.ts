@@ -9,7 +9,7 @@
  *    写了不生效；清单单一事实源 = `@lingfan/editor` 的 `UNIMPLEMENTED_ELEMENT_ATTRS`
  *    （编辑器不再下发这些控件，并对已存在的写出 warning；三面对齐互锁测试守住差集）。
  *
- * 定位语义对齐旧版引擎布局：`x`/`y` 支持百分比（旧版换算为像素 Margin，
+ * 定位语义：`x`/`y` 支持百分比（若换算为像素 Margin 就锁死了尺寸，
  * DOM 侧直接交给 CSS，`left: 50%` 天然按父容器尺寸解析）。
  */
 
@@ -56,7 +56,7 @@ export function elementStyle(
     if (value !== undefined) out[key] = value;
   };
 
-  // —— 定位（x/y/right/bottom 任一存在即绝对定位；对齐旧版百分比定位语义）——
+  // —— 定位（x/y/right/bottom 任一存在即绝对定位；百分比值原样交给 CSS）——
   const x = len(props.x);
   const y = len(props.y);
   const right = len(props.right);

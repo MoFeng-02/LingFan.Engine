@@ -32,7 +32,7 @@ describe("ScriptCommand · 编译期断言（vue-tsc 把关）", () => {
     expect(envelope.op).toBe("say");
   });
 
-  it("🔴 未知 op / 未知字段 / 缺必填（@ts-expect-error 锚定——停止报红即失效）", () => {
+  it("未知 op / 未知字段 / 缺必填（@ts-expect-error 锚定——停止报红即失效）", () => {
     // @ts-expect-error op 拼写错 ⇒ 联合无此成员
     const badOp: ScriptCommand = { op: "sayy", text: "x" };
     // @ts-expect-error say 未知负载字段（编辑期 unknown-field 同口径提前到编译期）
@@ -44,7 +44,7 @@ describe("ScriptCommand · 编译期断言（vue-tsc 把关）", () => {
     void missing;
   });
 
-  it("🔴 联合闭合：扩展 op 混入被编译期拒绝（逃生舱 = extOp / 显式 envelope 注解）", () => {
+  it("联合闭合：扩展 op 混入被编译期拒绝（逃生舱 = extOp / 显式 envelope 注解）", () => {
     // @ts-expect-error 扩展 op 不在内建联合内
     const ext: ScriptCommand = { op: "demoquest.step", step: 1 };
     void ext;
@@ -85,7 +85,7 @@ describe("ScriptCommand · 编译期断言（vue-tsc 把关）", () => {
 });
 
 describe("ScriptCommand · 运行期互锁", () => {
-  it("🔴 判别联合的派生源 = 词汇层双射面（OP_SCHEMA_MAP 键集 ↔ SCRIPT_COVERAGE op 集）", () => {
+  it("判别联合的派生源 = 词汇层双射面（OP_SCHEMA_MAP 键集 ↔ SCRIPT_COVERAGE op 集）", () => {
     // 联合成员由 OP_SCHEMA_MAP 派生（构造即保证）；此处锁「派生源本身」仍是词汇层全集
     const directOps = new Set(
       Object.values(SCRIPT_COVERAGE).filter((op) => !op.startsWith("$")),
@@ -109,7 +109,7 @@ describe("ScriptCommand · 运行期互锁", () => {
     }
   });
 
-  it("🔴 收窄不放松：错形状产物仍被编辑期校验拒绝（分层各司其职）", () => {
+  it("收窄不放松：错形状产物仍被编辑期校验拒绝（分层各司其职）", () => {
     // 裸对象绕过类型面（envelope 注解）⇒ 编辑期兜底仍在
     const sloppy: StoryCommand = { op: "pause", skipable: true };
     const diagnostics = validateCommand(sloppy);
@@ -117,7 +117,7 @@ describe("ScriptCommand · 运行期互锁", () => {
     expect(diagnostics[0]!.code).toBe("missing-required");
   });
 
-  it("🔴 值口径二分：guard args 被运输走 JSON（嵌套合法，同 minigame.config 口径）", () => {
+  it("值口径二分：guard args 被运输走 JSON（嵌套合法，同 minigame.config 口径）", () => {
     // 被求值的走 Value（call args / reward / set）；被运输的走 JSON（guard args）——
     // 编辑期 schema 必须与运行期 findJsonValueError（JSON 语义）同口径，不得更严
     const cmd = script.guard("quest-state", {

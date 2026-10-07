@@ -114,7 +114,7 @@ describe("行为反例：不建立等待的 op 跑完必须不出等待态", () 
 });
 
 describe("分类完备账：内建 op 全集必须被显式划分为等待 / 非等待（新增 op 未归类即红）", () => {
-  /** 非等待 op 台账：显式列出，作为「新增 op 必须归类」的护栏（不是运行时的第二真源——
+  /** 非等待 op 清单：显式列出，作为「新增 op 必须归类」的护栏（不是运行时的第二份定义——
    *  运行时的真相由上面两组行为用例与分发 switch 持有；这里只是**分类账**，防止新 op 漏归类） */
   const NON_WAITING_OPS: readonly string[] = [
     "jump",
@@ -176,7 +176,7 @@ describe("分类完备账：内建 op 全集必须被显式划分为等待 / 非
     "text_typewriter",
   ];
 
-  it("等待表 + 非等待台账 = 内建 op 全集（无重、无漏、无越界）", () => {
+  it("等待表 + 非等待清单 = 内建 op 全集（无重、无漏、无越界）", () => {
     const classified = [...WAITING_OPS.keys(), ...NON_WAITING_OPS];
     expect(new Set(classified).size).toBe(classified.length); // 无重复归类
     expect([...classified].sort()).toEqual([...BUILTIN_OP_NAMES].sort());

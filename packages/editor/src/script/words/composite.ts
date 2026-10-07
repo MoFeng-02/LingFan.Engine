@@ -1,6 +1,5 @@
 /**
- * Script 词汇层 · **复合词**（多 op/元素的高频组合，纯展开——对标老引擎
- * `StoryScript.SetScene / AddButton / AddText / AddImage`）。
+ * Script 词汇层 · **复合词**（多 op/元素的高频组合，纯展开）。
  * 复合词不产出新语义：每个函数 = 既有元素的语法糖。
  */
 import type { ElementNode } from "@lingfan/engine";
@@ -38,7 +37,7 @@ export function buttonElement(
 }
 
 /**
- * 场景设置（对标老引擎 `SetScene(path, title)`）：背景 + 可选标题两个元素。
+ * 场景设置：背景 + 可选标题两个元素。
  * 产物 = 元素**数组**（作者展开进 scene 列的 elements）。
  */
 export function sceneSetup(

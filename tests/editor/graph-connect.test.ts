@@ -1,7 +1,7 @@
 /**
  * 节点图连线建分支测试。
  *
- * 测试纪律：
+ * 测试要点：
  * - 纯语义边界：无 menu → jump / 有 menu → 最后一个 menu 追加 / scene 列与自连 fail-closed
  * - 拟态作者旅程：拉线 → 一个 undo 单元 → 一步回滚；**文本投影往返等价**
  * - fail-closed 可见：删列后拉出的分支报 missing-target（引用同步复用既有诊断面）
@@ -226,7 +226,7 @@ describe("源码互锁", () => {
   });
 });
 
-describe("回归锚定：节点图布局缓存随工程切换归位", () => {
+describe("回归：节点图布局缓存随工程切换归位", () => {
   it("NodeGraph 以 story.id 为挂载 key（换工程必重挂载，位置缓存从新存储键重读）", () => {
     // 病灶：storageKey 是 computed 却只在 onMounted 读一次，停在节点图切工程时
     // 旧 positions 留在内存，松手即写进新 story.id 的键（列 id 重名则串位）。

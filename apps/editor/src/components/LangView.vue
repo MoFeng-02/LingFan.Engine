@@ -3,10 +3,10 @@
  * 译文表视图（`Lang/**`）：键 → 译文的**可编辑表格**（**支持增删改行**）。
  *
  * 数据来自宿主注入的读取能力（组合根绑 `ProjectFileSource.text`）——本组件
- * 不碰 IO（纪律同其它编辑器视图）。**增删改的判据全在 `packages/editor` 的
+ * 不碰 IO（与其它编辑器视图同一约束）。**增删改的判据全在 `packages/editor` 的
  * `i18n/table.ts`**（纯函数），本组件只渲染与收集意图。
  *
- * 编辑纪律：输入即暂存，**保存按钮显式**（不静默写盘）；空译文用占位提示
+ * 编辑约定：输入即暂存，**保存按钮显式**（不静默写盘）；空译文用占位提示
  * 「未翻译」而非空白（空白分不清"没译"和"故意留空"）。行集是**单一状态源**
  * （`rows`），不另设「原值 + 覆盖层」双份——双份会让增删行判脏判不出来。
  */
@@ -73,9 +73,9 @@ async function reportFailure(reason: string): Promise<void> {
 
 /** 增行：**先问键名，判据通过才插行**。
  *
- * ⚠️ 不要「先插占位行再改名」——改名被拒（重复键/非法键）时**占位行会残留**，
- * 留下一个用户没要求过的空行，还得手动删（探针实测：重复键被拒后表里多出
- * `new.key.4`）。改成「先取值 → 判据 → 一次插入」则失败零副作用。
+ * 不要「先插占位行再改名」——改名被拒（重复键/非法键）时**占位行会残留**，
+ * 留下一个用户没要求过的空行，还得手动删。改成「先取值 → 判据 → 一次插入」
+ * 则失败零副作用。
  */
 async function onAdd(): Promise<void> {
   const answer = await dialog.askText({
@@ -83,7 +83,7 @@ async function onAdd(): Promise<void> {
     message: "请输入原文键（须与原文一致；运行期按此键查译文）。",
     placeholder: "如 ui.hello",
   });
-  if (answer === null) return; // 取消 = 不执行（D-58 判据：`parseTextAnswer` 出处）
+  if (answer === null) return; // 取消 = 不执行（判据见 `parseTextAnswer`）
   const key = answer.trim();
   const edit = addTranslationRow(rows.value, key);
   if (!edit.ok) {

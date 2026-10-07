@@ -71,17 +71,17 @@ const column = ref("");
 const dialogText = ref("");
 const speaker = ref("");
 /**
- * 本句说话人颜色的**覆盖值**（`say color="#888"`，2026-10-05 治根）。
+ * 本句说话人颜色的**覆盖值**（`say color="#888"`）。
  *
- * ⚠️ 与**行内标记** `{color=…}`（文本内部，由 `renderDialogueLine` 渲染）是两件事。
+ * 与**行内标记** `{color=…}`（文本内部，由 `renderDialogueLine` 渲染）是两件事。
  * 空串 = 无覆盖（用角色定义的颜色）。
  */
 const dialogColorOverride = ref("");
 /**
  * 说话人颜色 = **本句覆盖优先，其次角色定义**。
  *
- * 🔴 此前这里是硬编码 `""` ⇒ 预览**从不显示说话人颜色**（连 `character` 定义的都没有）。
- * 改为派生值：两个来源任一变化都重算（不依赖事件到达顺序）。
+ * 若这里硬编码 `""`，预览将**从不显示说话人颜色**（连 `character` 定义的都没有）。
+ * 用派生值：两个来源任一变化都重算（不依赖事件到达顺序）。
  */
 const speakerColor = computed(() => {
   if (dialogColorOverride.value !== "") return dialogColorOverride.value;
@@ -297,7 +297,7 @@ function onStageClick(): void {
     engine.advance();
     return;
   }
-  // 纪律「每个等待态都必须有出口」：wait 跳过 / cutscene 跳过（可跳过性由引擎决定）
+  // 每个等待态都必须有出口：wait 跳过 / cutscene 跳过（可跳过性由引擎决定）
   if (waiting.value === "wait" || waiting.value === "video") engine.advance();
 }
 

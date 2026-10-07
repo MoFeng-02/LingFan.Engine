@@ -1,7 +1,7 @@
 /**
  * Script 词汇层 · 出口（全量 64 op 覆盖 + 复合词 + 表达式句柄）。
  *
- * 🔴 **SCRIPT_COVERAGE = builder ↔ op 双射的机器可读面**（互锁守卫 §3.1 的数据源）：
+ * **SCRIPT_COVERAGE = builder ↔ op 双射的机器可读面**（互锁守卫的数据源）：
  * 新增 builder 必须登记（遗漏 = 全集互锁测试红）；builder 产出未知 op 名 = 同红。
  * `$` 前缀 = 辅助词（不直接产出独立 op）——互锁比较时跳过。
  */

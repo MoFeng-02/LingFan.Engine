@@ -15,7 +15,7 @@ use base64::Engine as _;
 pub(crate) const KEK_SERVICE: &str = "lingfanengine";
 pub(crate) const KEK_USER: &str = "kek";
 
-/// 备注：高水位文件本身也被 KEK 加密（AAD 域分离），防篡改；删除重置为已知边界（攻击者持文件系统写权限时无法防，与旧版同界）。
+/// 备注：高水位文件本身也被 KEK 加密（AAD 域分离），防篡改；删除重置为已知边界（攻击者持文件系统写权限时无法防，属已知边界）。
 static KEK_CACHE: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
 static KEK_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
@@ -64,7 +64,7 @@ fn credential_entry(service: &str, user: &str) -> Result<keyring_core::Entry, St
 }
 
 /// KEK 首次生成后写入 OS 凭据，零明文密钥落盘。
-/// 进程内互斥 + 缓存：消除首次运行多线程并发创建 KEK 的覆盖竞争（实测暴露过）。
+/// 进程内互斥 + 缓存：消除首次运行多线程并发创建 KEK 的覆盖竞争。
 pub(crate) fn kek_from_keyring(service: &str, user: &str) -> Result<Vec<u8>, String> {
     if let Some(cached) = KEK_CACHE.get() {
         return Ok(cached.clone());

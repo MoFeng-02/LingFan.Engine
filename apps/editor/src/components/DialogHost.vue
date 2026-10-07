@@ -6,7 +6,7 @@
  * `aria-labelledby` + **焦点陷阱**（Tab 在弹窗内循环）+ **Esc 关闭** + **打开时记住并恢复焦点**。
  *
  * 提交语义**统一走 `parseTextAnswer`**（`askText` 的取消/留空判据在纯函数里，
- * 组件与调用方都不自己判 `=== null`）—— 这是 D-58 的根治点。
+ * 组件与调用方都不自己判 `=== null`）——「取消被当成留空」那类数据丢失的根治点。
  */
 import { nextTick, ref, useTemplateRef, watch } from "vue";
 import { parseTextAnswer, type DialogAnswer, type DialogRequest } from "../dialog";

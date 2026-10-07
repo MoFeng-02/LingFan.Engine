@@ -78,7 +78,7 @@ export function addColumn(
     kind?: "scene" | "flow";
     /**
      * 运行语义轴（与 `kind` 正交）：game 缺省 / menu 菜单 / ui 覆盖层。
-     * **缺省与 game 都不写字段**——默认值不显式存储（与写回保真同纪律：
+     * **缺省与 game 都不写字段**——默认值不显式存储（与写回保真同一口径：
      * 新建列的内存形态必须与重开后的解析形态深等）。
      */
     type?: "game" | "menu" | "ui";
@@ -121,9 +121,9 @@ export function removeColumn(story: Story, columnId: string): Story | null {
 }
 
 /**
- * 反查：**哪个文件承载的第一个列**（列序，2026-10-05 资源树打开用）。
+ * 反查：**哪个文件承载的第一个列**（列序；资源树点击故事文件时用）。
  *
- * 语义：一个 `.story` 文件可承载**多个列**（真实工程 `chapter1.story` = 4 列），
+ * 语义：一个 `.story` 文件可承载**多个列**（如 `chapter1.story` = 4 列），
  * 「点击资源树里的故事文件」⇒ 打开该文件**列序第一**的列（确定性，不猜作者意图）。
  * 匹配键 = 组装器回填的 `sourcePath`（工程级事实；默认路径 `Stories/<id>.json`
  * 不显式存 `sourcePath`——那种文件由 `columnIdOfDocument` 先行命中，不走这里）。
@@ -201,7 +201,7 @@ export function renameColumn(
     };
     if (renamed) {
       next.id = to;
-      // 🔴 **重命名 ⇒ 来源文件同步改名**（2026-10-05 治根）。
+      // **重命名 ⇒ 来源文件同步改名**。
       // `sourcePath` 是「这个列来自哪个文件」；列 id 变了而文件名不变，
       // 会写回旧文件名（`Stories/inn.json` 里躺着 id=tavern 的列）——
       // 那是**分裂**：文件名与内容 id 不一致，下次打开会被组装器拒绝

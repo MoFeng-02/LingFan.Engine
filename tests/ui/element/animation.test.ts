@@ -32,7 +32,7 @@ describe("easingFn", () => {
   });
 
   it("全集 = 16 个缓动（补齐 Back/Elastic/Bounce 共 9 个）", () => {
-    // 来源：旧版引擎 EasingType（Linear + Quad×3 + Cubic×3 + Back×3 + Elastic×3 + Bounce×3）
+    // 来源：既有实现 EasingType（Linear + Quad×3 + Cubic×3 + Back×3 + Elastic×3 + Bounce×3）
     expect([...easingNames()].sort()).toEqual(
       [
         "Linear",
@@ -55,7 +55,7 @@ describe("easingFn", () => {
     );
   });
 
-  it("大小写不敏感：Linear 与既有语料 linear 等价（回归锚定）", () => {
+  it("大小写不敏感：Linear 与既有语料 linear 等价（回归）", () => {
     expect(easingFn("Linear")(0.3)).toBeCloseTo(easingFn("linear")(0.3));
     expect(easingFn("easeoutquad")(0.4)).toBeCloseTo(easingFn("EaseOutQuad")(0.4));
   });
@@ -67,13 +67,13 @@ describe("easingFn", () => {
     }
   });
 
-  it("补齐族取值照旧版引擎公式（关键点核对，不是等价改写）", () => {
+  it("补齐族取值照既有实现公式（关键点核对，不是等价改写）", () => {
     // Back：超调族（Out 在收尾段冲过 1）
     expect(easingFn("EaseInBack")(0.5)).toBeCloseTo(
       0.5 * 0.5 * (2.70158 * 0.5 - 1.70158),
     );
     expect(easingFn("EaseOutBack")(0.75)).toBeGreaterThan(1);
-    // Elastic：旧版引擎 t==0 / t==1 特判走原值（不是 0/1 之外的抖动）
+    // Elastic：既有实现 t==0 / t==1 特判走原值（不是 0/1 之外的抖动）
     expect(easingFn("EaseInElastic")(0)).toBe(0);
     expect(easingFn("EaseInElastic")(1)).toBe(1);
     expect(easingFn("EaseOutElastic")(0)).toBe(0);

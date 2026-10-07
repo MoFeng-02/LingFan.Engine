@@ -17,7 +17,7 @@ interface EditorApi {
 const api = inject<EditorApi>("editorApi")!;
 
 /**
- * 选中态**四态**（D-59）：`none` / `non-command` / `unknown-op` / `command`。
+ * 选中态**四态**：`none` / `non-command` / `unknown-op` / `command`。
  * 判定收在 `@lingfan/editor` 的纯函数里（可测），本组件只按 `kind` 选文案。
  */
 const selection = computed(() =>
@@ -51,9 +51,9 @@ const descriptor = computed(() =>
 /**
  * `none` / `non-command` 的**中性陈述**。
  *
- * ⚠️ **D-59 纪律：这里不得出现「缺失 / 错误 / 诊断」字样** —— 选中列 / 元素 / 数组项
- * 都是**正常操作**，此前那句「所选位置不是命令（op 缺失）——诊断面板有详情」把正常
- * 操作说成故障，还指向一个**同时显示「✓ 无诊断」**的面板，两处互相打脸。
+ * **约束：这里不得出现「缺失 / 错误 / 诊断」字样** —— 选中列 / 元素 / 数组项
+ * 都是**正常操作**，若把正常操作说成故障、还指向一个**同时显示「✓ 无诊断」**的面板，
+ * 两处会互相打脸。
  * 只有 `unknown-op`（落在命令上但无表单）才是真问题，文案见模板。
  */
 const neutralText = computed(() => {
@@ -64,10 +64,10 @@ const neutralText = computed(() => {
   switch (selection.value.nodeKind) {
     case "column": {
       const kind = node?.kind === "scene" ? "场景列" : "流程列";
-      // 🔴 2026-10-05：原文案「点它里面的某条命令即可编辑」**没说"里面"在哪** ——
-      //    真机上中央区是一片空白（列不是命令，属性面板自然没内容），作者不知道该去哪。
+      // 原文案「点它里面的某条命令即可编辑」**没说"里面"在哪** ——
+      //    中央区可能是一片空白（列不是命令，属性面板自然没内容），作者不知道该去哪。
       //    补上**去处**。
-      // ⚠️ 只说去处，**不提**「诊断」等字样：`selection-description.test.ts` 有一条
+      // 只说去处，**不提**「诊断」等字样：`selection-description.test.ts` 有一条
       //    防回流守卫 —— 正常态文案（`none`/`non-command`）禁用「缺失 / 错误 / 诊断」，
       //    因为旧文案曾把**正常操作**说成故障、还指向一个同时显示「✓ 无诊断」的面板。
       //    那条守卫的边界是**有意设计**，不该为一句引导放宽。

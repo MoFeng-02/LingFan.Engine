@@ -1,7 +1,7 @@
 /**
  * 编辑器宿主注入契约（组合根 → 视图族）。
  *
- * 纪律（调用链分层）：**平台取径归组合根**——目录选择、文件读取、资源供数
+ * 约束（调用链分层）：**平台取径归组合根**——目录选择、文件读取、资源供数
  * 都在 `main.ts` 装配，组件只吃这里声明的契约类型（组件零 adapters import，
  * 与 playground 同构）。
  */
@@ -29,7 +29,7 @@ export interface OpenedProject {
    * 为何必需：`ResourcePort` 只给 Blob URL（媒体播放用），读不了 JSON 文本；
    * 而资源管理器的非故事视图（译文表 / 工程清单 / 生成型产物）都要看内容。
    * 底层复用 `ProjectFileSource.text`（既有能力，任意资源根内路径皆可），
-   * 组合根绑定闭包注入 ⇒ 组件零 adapters import（纪律同 `save`）。
+   * 组合根绑定闭包注入 ⇒ 组件零 adapters import（与 `save` 同一约束）。
    *
    * 失败（不存在 / 不可读）**必须抛错** —— 调用方 fail-closed，不静默降级为空。
    */
@@ -49,9 +49,9 @@ export interface OpenedProject {
   /**
    * 诊断供给侧：资源根实际文件集合（逻辑路径）+ overlay 译文键（并集 + 分语言）。
    *
-   * ⚠️ 类型**直接引用供给侧**（`@lingfan/adapters` 的 `DiagnosticSupply`）——
-   * 此前声明成 `Required<AnalyzeOptions>` 并自称「同一类型」，但供给侧加字段后
-   * 它**并没有跟着变** ⇒ 注释在骗人、两处声明漂移（本地化工作台接 `overlayKeysByLang`
+   * 类型**直接引用供给侧**（`@lingfan/adapters` 的 `DiagnosticSupply`）——
+   * 若声明成 `Required<AnalyzeOptions>` 并自称「同一类型」，供给侧加字段后
+   * 它**并不会跟着变** ⇒ 注释在骗人、两处声明漂移（本地化工作台接 `overlayKeysByLang`
    * 时才暴露）。**判据只增的字段**（`AnalyzeOptions` 只喂 `analyzeStory`）不该
    * 决定供给侧的形状 ⇒ 两者是**不同的类型**，各自诚实声明。
    */
@@ -79,15 +79,15 @@ export interface OpenedProject {
   /**
    * 取「最近一次写回的落盘回执」（列 id → 实际路径；未保存过 ⇒ `null`）。
    *
-   * 🔴 用途：新建列在写回后才知道落在哪个文件（`Stories/<id>.json`），
-   * 下次保存不必再猜。⚠️ **不污染 `Story`**——落盘事实是回执，不是列的属性
+   * 用途：新建列在写回后才知道落在哪个文件（`Stories/<id>.json`），
+   * 下次保存不必再猜。**不污染 `Story`**——落盘事实是回执，不是列的属性
    * （塞进 Story 会让「保存后内存态」与「重开态」不再深等）。缺省 = 宿主不提供。
    */
   writtenPaths?: () => ReadonlyMap<string, string> | null;
   /** 不可保存时的可操作提示（按钮 title / 提示条） */
   saveHint?: string;
   /**
-   * #11 降级打开回执：资源根缺 `project.json` ⇒ 引擎合成最小清单打开。
+   * 降级打开回执：资源根缺 `project.json` ⇒ 引擎合成最小清单打开。
    * `undefined` = 正常打开。**降级必须显式告知**（状态栏「降级打开」+ title 详情），
    * 不许静默假装一切正常；结构损坏不在此列（那些根本打不开）。
    */

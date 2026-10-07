@@ -28,7 +28,7 @@ describe("视图接线：centerView 四态 + 步骤分支", () => {
     expect(appSource).toContain("<StepLayout");
   });
 
-  it("⚠️ 防回退：NodeGraph 分支必须是 v-else-if（裸 v-else 会把步骤视图吃掉）", () => {
+  it("防回退：NodeGraph 分支必须是 v-else-if（裸 v-else 会把步骤视图吃掉）", () => {
     expect(appSource).toContain('v-else-if="centerView === \'graph\'"');
     expect(appSource).not.toMatch(/<NodeGraph\s+v-else[\s>]/);
   });
@@ -41,9 +41,9 @@ describe("视图接线：centerView 四态 + 步骤分支", () => {
 });
 
 describe("点击步骤 → 定位时间线（验收③，零新增管道）", () => {
-  it("StepLayout 注入既有 editorApi 并调用 `api.reveal`（D-63 后定位职责已显式化）", () => {
+  it("StepLayout 注入既有 editorApi 并调用 `api.reveal`（定位职责已显式化）", () => {
     expect(stepLayoutSource).toContain('inject<EditorApi>("editorApi")');
-    // ⚠️ D-63 拆职责前靠 `select()` 的切视图副作用顺带实现定位；
+    // 拆职责前靠 `select()` 的切视图副作用顺带实现定位；
     //    现已显式化为 `reveal()` = 选中 + 切时间线 + 滚动到行。
     //    本断言守的是「点步骤能定位到时间线」这个**意图**，不是"必须调 select"这个字面。
     expect(stepLayoutSource).toContain("api.reveal(step.endPointer)");
@@ -67,7 +67,7 @@ describe("单一事实源：边界判定只来自引擎的等待声明表（不�
     expect(stepsSource).toContain('from "@lingfan/engine"');
     expect(stepsSource).toContain("waitingStateOfOp");
     expect(stepsSource).toContain("waitSpecOfOp");
-    // 不得在本模块私自声明等待 op 表（那会成为第二真源）
+    // 不得在本模块私自声明等待 op 表（那会成为第二份定义）
     expect(stepsSource).not.toMatch(/const\s+\w*WAITING_OPS/);
   });
 
@@ -83,8 +83,8 @@ describe("单一事实源：边界判定只来自引擎的等待声明表（不�
   });
 });
 
-describe("派生视图纪律：步骤视图不记忆布局（无 localStorage）", () => {
-  it("StepLayout 不引 localStorage（记忆布局即第二真源）", () => {
+describe("派生视图约定：步骤视图不记忆布局（无 localStorage）", () => {
+  it("StepLayout 不引 localStorage（记忆布局即第二份状态）", () => {
     expect(stepLayoutSource).not.toContain("localStorage");
   });
 
@@ -93,9 +93,9 @@ describe("派生视图纪律：步骤视图不记忆布局（无 localStorage）
   });
 });
 
-describe("泳道几何：同层泳道必须纵向依次排开（真机逮到过重叠）", () => {
+describe("泳道几何：同层泳道必须纵向依次排开（曾出现过重叠）", () => {
   it("按层分组 + 累加 y（不是所有泳道共用同一个 y）", () => {
-    // 回归锚：初版把同层多条泳道都画在同一个 y 上（层内重叠、相互盖住）。
+    // 回归：初版把同层多条泳道都画在同一个 y 上（层内重叠、相互盖住）。
     // 断言「按 layer 分桶」与「y 累加」两个动作都在实现里。
     expect(stepLayoutSource).toContain("byLayer");
     expect(stepLayoutSource).toMatch(/y \+= height \+ GAP_Y/);

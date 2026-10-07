@@ -56,7 +56,7 @@ function say(text: string, z?: number): object {
 }
 
 describe("实例级 z：进 SSOT 与「只影响这一个」", () => {
-  it("带 z 的 say 写入实例键；下一条不带 z 的 say 清除 → 回层默认（需求 #3 核心）", () => {
+  it("带 z 的 say 写入实例键；下一条不带 z 的 say 清除 → 回层默认（核心语义）", () => {
     const h = makeHarness([column("a", [say("一", 20), say("二")])]);
     h.engine.start();
     expect(h.engine.get(SYS.dialogueZ)).toBe(20); // 本句实例 z

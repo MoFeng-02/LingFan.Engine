@@ -152,8 +152,8 @@ const TARGET_FIELDS: Readonly<
   Record<string, readonly (readonly [string, "column" | "function" | "callable"])[]>
 > = {
   jump: [["target", "column"]],
-  // 🔴 `call` 的目标**可以是列（label）或 func**（老引擎：「调用子过程（func 或 label）」，
-  // 2026-10-05 治根）⇒ `callable` = 任一存在即可。
+  // `call` 的目标**可以是列（label）或 func**（「调用子过程（func 或 label）」）
+  // ⇒ `callable` = 任一存在即可。
   call: [["target", "callable"]],
   menu: [["options[].target", "column"]],
 };
@@ -380,7 +380,7 @@ export function analyzeStory(
             index.columnPointers.has(target.target) || index.functions.has(target.target);
     if (!found) {
       out.push({
-        // ⚠️ `"function"` 分支当前**无字段产出**（`call` 已改为 `callable`）——
+        // `"function"` 分支当前**无字段产出**（`call` 用的是 `callable`）——
         // 保留它是**契约完备性**（`TargetKind` 有三种，判定要覆盖三种），
         // 将来若出现「只允许 func」的新字段即可直接复用。**别当死码删掉**。
         code: target.kind === "function" ? "unknown-function" : "missing-target",
@@ -450,7 +450,7 @@ export function analyzeStory(
       }
     }
   }
-  // 止血清单：已声明但**当前无渲染语义**的元素属性（写了不生效，且此前完全静默）→ warning。
+  // 未实现属性清单：已声明但**当前无渲染语义**的元素属性（写了不生效且静默）→ warning。
   // 指针精确到该属性；清单与表单下架同源（`UNIMPLEMENTED_ELEMENT_ATTRS`），避免两份事实。
   walkStoryElements(story, (node, pointer) => {
     if (!isPlainObject(node)) return; // 非对象由 invalid-element 负责

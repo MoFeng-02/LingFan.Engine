@@ -20,7 +20,7 @@ describe("renderInlineMarkup", () => {
     );
   });
 
-  it("裸 {color} 按闭合处理（旧版引擎语义）", () => {
+  it("裸 {color} 按闭合处理（既有实现语义）", () => {
     expect(renderInlineMarkup("{color=#fff}金{color}")).toBe(
       '<span style="color:#fff">金</span>',
     );

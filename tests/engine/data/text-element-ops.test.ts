@@ -1,7 +1,7 @@
 /**
  * 元素 op 的文本投影测试。
  *
- * 测试纪律五类齐备：**往返互锁 / 拟态用户旅程 / 故意错误 / 边界 / 回归锚定**。
+ * 测试要点五类齐备：**往返互锁 / 拟态用户旅程 / 故意错误 / 边界 / 回归**。
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -209,7 +209,7 @@ describe("边界", () => {
   });
 });
 
-describe("回归锚定：同名冲突按语句优先（与旧版引擎一致）", () => {
+describe("回归：同名冲突按语句优先（与既有实现一致）", () => {
   it("background / video / window 在文本里解析为 op，而非元素行", () => {
     const back = parseTextStory(
       [

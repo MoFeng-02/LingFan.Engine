@@ -1,10 +1,9 @@
 /**
- * 真机缺陷批次（2026-10-05 用户实测五连）判据测试：
  * 「点击资源树里的 `.story` 文件」⇒ 打开该文件**列序第一**的列。
  *
- * 真实工程形态：一个 `.story` 承载多列（`chapter1.story` = 4 列），
+ * 真实工程形态：一个 `.story` 承载多列（如 `chapter1.story` = 4 列），
  * 文件路径与列 id 天然不同族 ⇒ 文档身份合成路径（`Stories/<id>.json`）
- * 对 `.story` 工程**永不命中**（旧 `columnIdOfDocument` 后缀门）。
+ * 对 `.story` 工程**永不命中**（旧的 `columnIdOfDocument` 后缀门）。
  */
 import { describe, expect, it } from "vitest";
 import { firstColumnIdOfSourcePath } from "@lingfan/editor";

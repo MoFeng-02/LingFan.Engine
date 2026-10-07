@@ -2,7 +2,7 @@
  * 写入契约守卫测试（值 + 键）。
  *
  * 契约（组合式）：
- * - **写入时**（`setGlobal`/`setSystem`，一切程序化写入的收口）：值必须 JSON 安全——
+ * - **写入时**（`setGlobal`/`setSystem`，一切程序化写入的汇聚点）：值必须 JSON 安全——
  *   O(1) 白名单（标量/普通对象/数组；拒 undefined 值/function/symbol/bigint/Date/Map/Set/类实例/
  *   非有限数）+ 对**新写入值本身**深走查（循环引用只能在写入点廉价捕获，带键名定位）；
  *   键命中 `RESERVED_STATE_KEYS`（SYS 精确名全集）→ `reserved-key`。
@@ -11,7 +11,7 @@
  *
  * 拒绝语义 = `engine.error` + **状态原样**（与 `instance-z-invalid` 同款 fail-closed）。
  *
- * 回归锚定（防误伤）：**保留键 = 精确键名，不是 `__` 前缀一刀切**——作者自用
+ * 回归（防误伤）：**保留键 = 精确键名，不是 `__` 前缀一刀切**——作者自用
  * `__teleport_target`（非 SYS 键）必须继续合法（`engine.test.ts:227` 既有用法）。
  */
 import { describe, expect, it } from "vitest";
@@ -183,7 +183,7 @@ describe("state-key-namespace：保留键 = SYS 精确名全集", () => {
     h.dispose();
   });
 
-  it("define 保留键同样拒绝（同一收口）；引擎初始化的 SYS.elements 不受影响", () => {
+  it("define 保留键同样拒绝（同一汇聚点）；引擎初始化的 SYS.elements 不受影响", () => {
     const h = makeEngine(
       rawStory([column("a", [{ op: "notify", text: "x" }])], {
         __elements: "fake",
@@ -195,7 +195,7 @@ describe("state-key-namespace：保留键 = SYS 精确名全集", () => {
     h.dispose();
   });
 
-  it("回归锚定：作者自用 __teleport_target（非 SYS 键）仍合法——精确键名，非前缀一刀切", () => {
+  it("回归：作者自用 __teleport_target（非 SYS 键）仍合法——精确键名，非前缀一刀切", () => {
     const h = makeEngine(
       parseStory({
         formatVersion: 1,

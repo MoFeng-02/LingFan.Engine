@@ -3,10 +3,10 @@
  *
  * 为什么不在故事里：**列序 = 文件路径码元序**是叙事语义，用存储层目录分组会隐式改写它
  * （组内顺序、跨组顺序全变）；归类是**作者视图偏好**，不是故事语义（编辑器只读写故事树）。
- * 因此本模块三条纪律：
+ * 因此本模块三条约束：
  * 1. **永不接受 `Story`**——只收 `readonly string[] columnIds`，结构上不可能改故事树；
  * 2. 不产生 undo 单元、不影响 `dirty`、不出现在故事 JSON / 文本投影 / 写回文件集里；
- * 3. 平台 API（localStorage）由宿主注入（`createColumnGroupingStore`），**本包零 I/O**。
+ * 3. 平台 API（localStorage）由宿主注入（`createColumnGroupingStore`），**本模块零 I/O**。
  *
  */
 
@@ -287,7 +287,7 @@ export function toggleCollapsed(
 
 /**
  * 存储端口（与 `createWebStoragePreferencesPort` 同款「注入式替身」形态）：
- * `localStorage` 由宿主取一次传入，本包不碰平台 API，测试传内存替身即可。
+ * `localStorage` 由宿主取一次传入，本模块不碰平台 API，测试传内存替身即可。
  */
 export interface KeyValueStorage {
   getItem(key: string): string | null;

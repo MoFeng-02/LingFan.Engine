@@ -1,7 +1,7 @@
 /**
  * 点击动作解析测试。
  *
- * 优先级对照旧版引擎 InteractionBinder.ApplyInteraction 的行为：
+ * 优先级对照既有实现 InteractionBinder.ApplyInteraction 的行为：
  * `disabled` > `nav` > `cmd` > `hover_*` > `selected_*`（后两级为与点击正交的视觉态）。
  */
 import { describe, expect, it } from "vitest";

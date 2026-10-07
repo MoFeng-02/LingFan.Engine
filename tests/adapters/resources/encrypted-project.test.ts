@@ -225,14 +225,14 @@ describe("前置拒绝：读任何文件之前就抛（不白读一批、不报�
     const port = createSourceProjectFilesPort(source);
     await expect(port.manifest()).resolves.toMatchObject({ id: "demo" });
     await expect(port.stories()).resolves.toBeInstanceOf(Map);
-    // #11（2026-10-05）：装载顺序 = **先 Stories 后清单**（缺清单时要先读到故事才能合成清单）
+    // 装载顺序 = **先 Stories 后清单**（缺清单时要先读到故事才能合成清单）
     expect(source.reads).toEqual(["Stories/start.json", "project.json"]);
   });
 
   it("清单缺失的报错仍在加密判定之后（明文根 + 无清单 + 无可解析列 → 降级失败报错，不是加密报错）", async () => {
     const source = fakeSource("Resources", { "Stories/a.json": "{}" });
     const port = createSourceProjectFilesPort(source);
-    // #11：缺清单 ⇒ 尝试合成；零可解析列 ⇒ fail-closed（报错仍**不是**加密报错 —— 本测意图不变）
+    // 缺清单 ⇒ 尝试合成；零可解析列 ⇒ fail-closed（报错仍**不是**加密报错 —— 本测意图不变）
     await expect(port.manifest()).rejects.toThrow(/没有可打开的内容/);
   });
 });
@@ -241,7 +241,7 @@ describe("唯一判定点：不得出现第二份「.enc 形态」判定", () =>
   it("供给层的加密判定只调用 encryptedProject 的判定函数", () => {
     expect(directorySourceSource).toContain("detectEncryptedProject(");
     expect(directorySourceSource).toContain("encryptedProjectMessage(");
-    // 旧实现是在故事循环里逐路径 endsWith(".enc") 抛错 —— 必须已移除
+    // 不得在故事循环里逐路径 endsWith(".enc") 抛错 —— 必须已移除
     expect(directorySourceSource).not.toContain('path.endsWith(".enc")');
   });
 
@@ -256,7 +256,7 @@ describe("唯一判定点：不得出现第二份「.enc 形态」判定", () =>
   });
 
   it("资源侧仍**不做** .enc 后缀特判（不制造「编辑器说在、运行期说缺」分叉）", () => {
-    // 既有纪律：能打开的工程必然是明文（加密根已前置拒绝）⇒ 运行期逻辑路径直查。
+    // 能打开的工程必然是明文（加密根已前置拒绝）⇒ 运行期逻辑路径直查。
     // 若有人给资源侧加剥后缀/读头，这里会红——那正是要拦住的漂移。
     expect(directorySourceSource).not.toContain("stripEncSuffix");
     expect(directorySourceSource).not.toContain("readMagic");

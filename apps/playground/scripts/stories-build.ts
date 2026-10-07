@@ -130,7 +130,7 @@ export async function buildStories(root: string): Promise<BuildReport> {
   }
   const source = sources[0]!;
 
-  // —— cell 声明扫描（函数注册构建期提取，设计稿 §3）：Stories.src 树（排除 gen/，仅 .ts）——
+  // —— cell 声明扫描（构建期AST 扫描）：Stories.src 树（排除 gen/，仅 .ts）——
   // 「名字在数据、实现在代码、build 做名字闭合」：实现住生成模块，故事 JSON 只留名字。
   const cellSourceTree = new Map<string, string>();
   for (const [rel, text] of walkFiles(sourcesDir)) {
@@ -147,8 +147,8 @@ export async function buildStories(root: string): Promise<BuildReport> {
   }
   const cellScan = cellScanResult.scan;
 
-  // —— 布局声明（构建期配置，2026-10-06 补全）：列上的 `sourcePath` = 「这列住在哪个
-  //    故事文件」（章节目录 / 多列成组 / `.story` 扩展名随声明）。⚠️ parseStory **刻意
+  // —— 布局声明（构建期配置）：列上的 `sourcePath` = 「这列住在哪个
+  //    故事文件」（章节目录 / 多列成组 / `.story` 扩展名随声明）。parseStory **刻意
   //    丢弃 sourcePath**（防自指：故事文件不描述自己的位置）⇒ 在 parse **之前**提取为
   //    构建配置、parse **之后**按 id 回填（与组装器从磁盘回填同一语义）——引擎契约零改动。
   const mod = (await import(pathToFileURL(join(sourcesDir, source)).href)) as {
@@ -330,7 +330,7 @@ export async function buildStories(root: string): Promise<BuildReport> {
   }
 
   // —— 生成物：Stories.src/gen/fun_register.g.ts（幂等 + 陈旧清理；根相对路径进报告）——
-  // ⚠️ 与 Stories/** 的「逻辑路径」不同命名空间：removed 里出现 Stories.src/... 即生成物。
+  // 与 Stories/** 的「逻辑路径」不同命名空间：removed 里出现 Stories.src/... 即生成物。
   const genRel = "Stories.src/gen/fun_register.g.ts";
   const genTarget = join(root, genRel);
   if (cellScan.guards.length === 0) {
@@ -364,7 +364,7 @@ export async function buildStories(root: string): Promise<BuildReport> {
 }
 
 // —— 主模块守卫：仅直接执行时跑真实工程（tests 直测 buildStories 纯编排）——
-// 可选位置参数 = 工程根（默认 = 本包根）；用法：`pnpm stories:build [工程根]`
+// 可选位置参数 = 工程根（默认 = 脚本所在包根）；用法：`pnpm stories:build [工程根]`
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const root =
     process.argv[2] !== undefined
@@ -390,7 +390,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     }
     if (report.warnings.length > 0) {
       console.warn(
-        `⚠ 词汇层类型提示（${report.warnings.length} 条，不拦构建——引擎求值时将 type-error）：\n${report.warnings
+        `词汇层类型提示（${report.warnings.length} 条，不拦构建——引擎求值时将 type-error）：\n${report.warnings
           .map((w) => `  - ${w.expression}：${w.message}`)
           .join("\n")}`,
       );

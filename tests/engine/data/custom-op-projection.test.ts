@@ -1,11 +1,11 @@
 /**
  * 自定义 op 文本投影测试。
  *
- * 测试纪律：
+ * 测试要点：
  * - **往返深等**：json → dsl → json 深等；嵌套块体里的自定义 op 同样走投影
  *   （generateCommand/generateBody 全链穿参）
  * - **缺省逐字节不变**：不传 projections = 现行为（自定义 op → TextFormatError「暂无文本投影」
- *   / 解析侧「暂不支持」）——既有 text 测试全绿即回归锚
+ *   / 解析侧「暂不支持」）——既有 text 测试全绿即回归
  * - **投影缺失 = 整次拒绝**：toText/fromText 失败（null/抛出/畸形）→ 带定位拒绝
  * - **容错降级不变**：projectText 把不可投影收集为该行 issue，其余照常
  */

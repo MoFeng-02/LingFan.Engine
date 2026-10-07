@@ -1,7 +1,7 @@
 /**
  * 控件从面板拖入画布生成元素测试。
  *
- * 测试纪律：
+ * 测试要点：
  * - 纯逻辑边界：草稿最小面（无失真属性）/ 未知类型与坏坐标 fail-closed / 命中容器的相对坐标
  * - 拟态作者旅程：拖入 → 一个 undo 单元 → 一步回到原状；嵌套容器 → 进 children（相对坐标）
  * - 互锁：诊断零新增（拖入不制造 invalid-element / unimplemented-element-attr）
@@ -22,7 +22,7 @@ import {
 } from "@lingfan/editor";
 import appSource from "../../apps/editor/src/App.vue?raw";
 import stageEditorSource from "../../apps/editor/src/components/StageEditor.vue?raw";
-// 空态口径表**源码**（B5-UI 审阅后，提示文案从组件搬进了这里）
+// 空态口径表**源码**（提示文案集中于此，组件不各写一份）
 import viewStateSource from "../../apps/editor/src/viewState.ts?raw";
 
 function sceneColumn(id: string, elements: unknown[]): StoryColumn {
@@ -182,7 +182,7 @@ describe("源码互锁：fail-closed 分支与单提交真实在位", () => {
     expect(stageEditorSource).not.toMatch(/\bsession\b/);
     expect(stageEditorSource).not.toContain("insertAtPointer");
     // 画布空态提示引导作者用面板拖入
-    // ⚠️ B5-UI 审阅后空态改走 `EmptyState` ⇒ **文案搬到了口径表**（`viewState.ts`），
+    // UI 审阅后空态改走 `EmptyState` ⇒ **文案搬到了口径表**（`viewState.ts`），
     //    组件只写 `reason="no-elements"`。本断言守的是**这条引导意图**，故指向口径表。
     expect(stageEditorSource).toContain('reason="no-elements"');
     expect(viewStateSource).toContain("从左侧「组件」面板拖入");

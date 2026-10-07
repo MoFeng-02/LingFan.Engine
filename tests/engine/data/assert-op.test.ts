@@ -1,5 +1,5 @@
 /**
- * assert op 五类测试（2026-10-06）：fail-closed 拦截语义。
+ * assert op 五类测试：fail-closed 拦截语义。
  *
  * 语义：cond 执行期求值——真 = 纯推进；假 = `engine.error`（assert-failed）+
  * **停在当前命令**（状态原样 + 阻止推进）。无系统键副作用（键序列零冲突）。
@@ -89,7 +89,7 @@ describe("assert · 运行期拦截语义", () => {
     h.dispose();
   });
 
-  it("🔴 失败 ⇒ engine.error(assert-failed) + 自定义 message + **停在当前命令**（状态原样 + 阻止推进）", () => {
+  it("失败 ⇒ engine.error(assert-failed) + 自定义 message + **停在当前命令**（状态原样 + 阻止推进）", () => {
     const h = makeEngine([column("a", [{ op: "assert", cond: "{1 > 2}", message: "数学崩坏了" }, say("不应到达")])]);
     h.engine.start();
     expect(lastError(h)).toMatchObject({ code: "assert-failed" });
@@ -105,8 +105,8 @@ describe("assert · 运行期拦截语义", () => {
     h.dispose();
   });
 
-  it("🔴 失败且无 message ⇒ 兜底文案携带 cond 原文（不吞信息）", () => {
-    // ⚠️ cond 必须是**可求值**的假条件——未定义变量会先走表达式错误（unknown-variable），
+  it("失败且无 message ⇒ 兜底文案携带 cond 原文（不吞信息）", () => {
+    // cond 必须是**可求值**的假条件——未定义变量会先走表达式错误（unknown-variable），
     //    轮不到断言判定（错误优先级：表达式错误 > 断言失败）
     const h = makeEngine([column("a", [{ op: "assert", cond: "{2 > 3}" }])]);
     h.engine.start();
@@ -135,7 +135,7 @@ describe("assert · 运行期拦截语义", () => {
     block.dispose();
   });
 
-  it("🔴 回溯安全：回退到 assert 前再前进 ⇒ **同位同判**（再次拦截）", () => {
+  it("回溯安全：回退到 assert 前再前进 ⇒ **同位同判**（再次拦截）", () => {
     const h = makeEngine([
       column("a", [
         say("检查点句"),

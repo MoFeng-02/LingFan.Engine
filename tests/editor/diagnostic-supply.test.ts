@@ -8,7 +8,7 @@
  *
  * 覆盖五类：拟态用户旅程（打开工程前/后）、故意错误注入（坏 JSON、
  * 缺资源）、边界（无 `Lang/`、加密 `.enc`、加密 overlay）、混沌游走（种子化随机往返）、
- * 回归锚定（未接供给 = 两族诊断恒为 0，防止"接线回到未接状态"）。
+ * 回归（未接供给 = 两族诊断恒为 0，防止"接线回到未接状态"）。
  *
  * 锚定：编辑器诊断接线与资源检查
  */
@@ -112,7 +112,7 @@ describe("编辑器诊断接线", () => {
 
   it("未接供给（未打开工程）：资源缺失 / 未使用译文两族诊断恒为 0", async () => {
     const { story } = await openProject(journeyTree());
-    expect(analyzeStory(story)).toEqual([]); // 供给未接入时**不误报**（回归锚定）
+    expect(analyzeStory(story)).toEqual([]); // 供给未接入时**不误报**（回归）
   });
 
   it("拟态旅程：打开工程后两个检查器同时生效，且报文/定位精确", async () => {
@@ -135,7 +135,7 @@ describe("编辑器诊断接线", () => {
     expect(
       unused.map((d) => d.message).filter((m) => m.includes("孤儿键")),
     ).toHaveLength(1);
-    // 消息自带「四个翻译面」口径说明（否则读者摸不着头脑——真机反馈）
+    // 消息自带「四个翻译面」口径说明（否则读者摸不着头脑）
     expect(
       unused.every((d) => d.message.includes("say / menu / input / notify")),
     ).toBe(true);

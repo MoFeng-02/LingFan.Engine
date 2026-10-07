@@ -311,7 +311,7 @@ describe("边界条件", () => {
     first.engine.start();
     first.engine.resolveMinigame({ outcome: "success" });
     const rolled = first.engine.get("roll");
-    expect(rolled).toBe(601); // seed 42 → 首抽确定（mulberry32，回归锚定）
+    expect(rolled).toBe(601); // seed 42 → 首抽确定（mulberry32，回归）
     first.dispose();
     // back 回到小游戏检查点 → 重放重新执行 minigame（random op 不重执行）：
     // reward {r} 读恢复的状态值 → 同值；重新挂载后 resolve 再次写同值

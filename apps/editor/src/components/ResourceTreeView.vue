@@ -5,7 +5,7 @@
  * 纯渲染 + 折叠态本控——**数据与分组规则全在 `resourceTree.ts` 纯函数里**（可测），
  * 本组件只负责「把节点画出来 + 折叠/选中回抛」。
  *
- * 状态完备（规划稿 §2.2③）：空（未打开工程）/ 无匹配（搜索）/ 加载中 各有明确文案，
+ * 状态完备：空（未打开工程）/ 无匹配（搜索）/ 加载中 各有明确文案，
  * **不用空白或 spinner 代替解释**。
  */
 import { computed, nextTick, ref, watch } from "vue";
@@ -34,8 +34,8 @@ const emit = defineEmits<{
 /**
  * 折叠的目录路径集合（本组件本控；按工程持久化——`projectId` 给了才落本机）。
  *
- * 🔴 **必须是 `ref`**（2026-10-05 真机缺陷「不能收展」）：此前是裸 `Set`——
- * `toggle` 改了集合但 Vue **不追踪非响应式状态** ⇒ 永不重渲染，点了没反应。
+ * **必须是 `ref`**：若是裸 `Set`，`toggle` 改了集合但 Vue **不追踪非响应式状态**
+ * ⇒ 永不重渲染，点了没反应。
  */
 const collapsed = ref<ReadonlySet<string>>(new Set());
 
@@ -49,7 +49,7 @@ function safeLocalStorage(): KeyValueStorage | undefined {
 }
 const collapsedStore = createCollapsedDirsStore(safeLocalStorage());
 
-/** 换工程随身份归位（组件视图态跨数据实例残留防在根上——D-45 同族） */
+/** 换工程随身份归位（阻止组件视图态跨工程残留） */
 watch(
   () => props.projectId,
   (id) => {
@@ -76,8 +76,8 @@ const isCollapsed = (node: ResourceNode): boolean => collapsed.value.has(node.pa
 const container = ref<HTMLElement | null>(null);
 
 /**
- * **定位当前打开**（2026-10-05）：活动路径变化 ⇒ 展开祖先链 + 滚动到可视区。
- * 此前只有 `active` 高亮类——节点被折叠藏起时高亮等于不存在（用户实测）。
+ * **定位当前打开**：活动路径变化 ⇒ 展开祖先链 + 滚动到可视区。
+ * 只做 `active` 高亮是不够的——节点被折叠藏起时高亮等于不存在。
  * 高亮键 = `activePath`（App 已换算成**磁盘路径**——合成文档路径对 `.story`
  * 工程永不命中，见 App 的 `resourceFocusPath`）。
  */

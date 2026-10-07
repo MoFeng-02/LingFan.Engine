@@ -2,7 +2,7 @@
  * Script 词汇层 · **流程域**（wait / pause / random / 跳转导航 / func·call / 控制流 /
  * assert / guard）。
  *
- * 🔴 **控制流是结构化构造，不是 TS 原生语句**：`when(...).then([...])` 产出 if-op
+ * **控制流是结构化构造，不是 TS 原生语句**：`when(...).then([...])` 产出 if-op
  * **节点**（数据）；TS 原生 `if` 在构建期求值（分支展开成静态数据）——两者语义不同，
  * 按「这一分支是运行期还是构建期」选择。运行期分支的运行期循环同理（whileDo/forIn）。
  *
@@ -70,13 +70,13 @@ export function call(
   };
 }
 
-/** ⚠️ `return` 为 JS 保留字 ⇒ 别名 `ret`（产物 = return op） */
+/** `return` 为 JS 保留字 ⇒ 别名 `ret`（产物 = return op） */
 export function ret(): CommandOf<"return"> {
   return { op: "return" };
 }
 
 // —— 条件分支（双入口）——
-// 🔴 为什么不做一个可链式的 when：链式方法名（elif/else）与 if-op 的**数据字段同名**
+// 为什么不做一个可链式的 when：链式方法名（elif/else）与 if-op 的**数据字段同名**
 //    ——方法挂上命令对象后，读字段读到的是方法（elifs.push is not a function），
 //    未收尾的链放进命令数组还会把函数属性带进 Story ⇒ build 期响亮报错。
 //    拆两个入口：`when` 覆盖最常用（then-only，干净数据直出）；`whenChain` 才有链式。
@@ -139,7 +139,7 @@ export function forIn(
 
 /**
  * foreach：`collection` = 集合**变量名**（运行期按名 resolve，须为数组）。
- * 🔴 形状 = 规范四事实（format.ts 校验 / foreachSchema / parseTextStory 产物 /
+ * 形状 = 规范四事实（format.ts 校验 / foreachSchema / parseTextStory 产物 /
  * generateText 投影）：`{var, key, body}`——`in` 是 DSL 行文法（`foreach "v" in "k"`）
  * 的分隔符，**不属于 op 数据**（`in` 字段属于 `for` op）；多产 `in` 会被编辑器
  * 判 unknown-field。漏 `key` parseStory 即拒（执行层以 key resolve，互锁测试锚定）。
@@ -172,17 +172,17 @@ export function switchOn(
   };
 }
 
-/** ⚠️ `break` 为 JS 语句关键字 ⇒ 别名 `breakLoop` */
+/** `break` 为 JS 语句关键字 ⇒ 别名 `breakLoop` */
 export function breakLoop(): CommandOf<"break"> {
   return { op: "break" };
 }
 
-/** ⚠️ `continue` 为 JS 语句关键字 ⇒ 别名 `continueLoop` */
+/** `continue` 为 JS 语句关键字 ⇒ 别名 `continueLoop` */
 export function continueLoop(): CommandOf<"continue"> {
   return { op: "continue" };
 }
 
-// —— 运行期守卫与断言（2026-10-06 §8） ——
+// —— 运行期守卫与断言 ——
 
 /** 断言：cond 为假 ⇒ engine.error + 状态原样 + 停在当前命令（fail-closed 拦截） */
 export function assert(cond: string, message?: string): CommandOf<"assert"> {
@@ -199,7 +199,7 @@ export interface GuardOptions {
  * 名字参数接受**字面量**（注册表有声明 ⇒ 字面量联合，补全 + 写错即红；空表 = 普通
  * string）或 **cell 句柄**（名字只写一次——声明点即引用点）。
  *
- * 值口径原则（2026-10-06 深夜②裁定）：**被求值的走 `Value`**（call args / reward /
+ * 值口径原则：**被求值的走 `Value`**（call args / reward /
  * set——运行期表达式求值，标量语义）；**被运输的走 JSON**（guard args /
  * minigame config——原样透传宿主，JSON 安全校验兜底）。guardSchema.args 已对齐。
  */

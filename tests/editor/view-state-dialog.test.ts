@@ -41,7 +41,7 @@ describe("五态判定", () => {
 });
 
 describe("空态口径表", () => {
-  it("未打开工程 ⇒ 主动作是「打开工程」（E5 重定：不是一行灰字）", () => {
+  it("未打开工程 ⇒ 主动作是「打开工程」（不是一行灰字）", () => {
     const s = emptyStateOf("no-project");
     expect(s.id).toBe("open-project");
     expect(s.primary).toBe(true);
@@ -61,8 +61,8 @@ describe("空态口径表", () => {
   });
 });
 
-describe("对话框 · askText 答案判据（D-58 正解）", () => {
-  it("取消 = null ⇒ 不执行（这是 D-58 病根）", () => {
+describe("对话框 · askText 答案判据", () => {
+  it("取消 = null ⇒ 不执行（这正是「取消被当成留空」的病根）", () => {
     expect(parseTextAnswer(null, true)).toEqual({ run: false });
     expect(parseTextAnswer(null, false)).toEqual({ run: false });
   });
@@ -119,14 +119,14 @@ describe("对话框栈 · 后进先出 + 嵌套", () => {
 });
 
 /**
- * **回归锚定（真机探针逮到的真缺陷）**：`ask` 的结算器曾只有一个槽位。
+ * **回归**：`ask` 的结算器曾只有一个槽位。
  *
  * 症状：挂起框未关时再开一个框 ⇒ ① 前一个 Promise **永久挂起**（调用方 `await`
  * 永不返回）② `answer()` 只弹一帧 ⇒ **框留在栈顶、全屏遮罩永久挡住所有点击**
- * （用户现象是「点什么都没反应」，与提示内容毫无关系 —— 与「给降级提示别用模态
+ * （现象是「点什么都没反应」，与提示内容毫无关系 —— 与「给降级提示别用模态
  * 对话框」是同型坑的两种成因）。
  */
-describe("对话框栈 · **并发 ask 不丢不吊**（用户实测回归）", () => {
+describe("对话框栈 · **并发 ask 不丢不吊**", () => {
   const req = (title: string): DialogRequest => ({ kind: "notice", title, message: "x" });
 
   it("两次 ask 都挂起 ⇒ 回答两次后**两个 Promise 都结算**、栈归零", async () => {
@@ -142,7 +142,7 @@ describe("对话框栈 · **并发 ask 不丢不吊**（用户实测回归）", 
 
     s.answer(undefined);
     expect(await first).toBeUndefined();
-    // 🔴 核心判据：栈必须归零（否则遮罩永久残留）
+    // 核心判据：栈必须归零（否则遮罩永久残留）
     expect(s.depth).toBe(0);
     expect(s.current).toBeUndefined();
   });
@@ -254,13 +254,12 @@ describe("对话框 · Promise 端口结算", () => {
 });
 
 /**
- * 回归 · 空态**必须有可点的下一步**（B3 立的纪律）。
+ * 回归 · 空态**必须有可点的下一步**。
  *
- * CDP UI 审阅实测抓到：舞台在「选中 flow 列」时的空态占 **1029×785**（80 万像素），
+ * 实测抓到：舞台在「选中 flow 列」时的空态占 **1029×785**（80 万像素），
  * 却只有一行说明、**`可点动作数 = 0`** ⇒ 大片空白 + 无出路，用户只能猜下一步。
- * 这条纪律当时是我自己写的，**自己没做到**。
  */
-describe("空态纪律 · 必须给可点动作", () => {
+describe("空态约束 · 必须给可点动作", () => {
   it("舞台两类空态走 `EmptyState`（而非只有说明文字）", () => {
     expect(stageSource).toContain('reason="no-scene-column"');
     expect(stageSource).toContain('reason="no-elements"');
@@ -280,7 +279,7 @@ describe("空态纪律 · 必须给可点动作", () => {
 
   it("动作语义专用（**不复用** `open-project`——那是「打开工程」）", () => {
     expect(stageSource).toContain('action.id !== "goto-scene-column"');
-    // 2026-10-05 治根：导航走**工程级首场景列**（App 经 prop 传入；切片里 findIndex 是死动作）
+    // 导航走**工程级首场景列**（App 经 prop 传入；切片里 findIndex 是死动作）
     expect(stageSource).toContain("api.selectColumn(id)");
   });
 

@@ -1,11 +1,11 @@
 /**
  * 布局偏好的**持久化**：面板宽度 / 折叠态 / 侧栏模式。
  *
- * 纪律与既有先例同源（`columnGrouping` 的「本包零 I/O，存储由宿主注入」）：
+ * 约束与既有先例同源（`columnGrouping` 的「本模块零 I/O，存储由宿主注入」）：
  * ① 本模块**零 I/O**——`KeyValueStorage` 由组合根注入（浏览器 = localStorage，
  *    未来本地应用 = 配置文件）；② 任何存储失败**静默降级**（读失败 = 默认布局，
  *    写失败 = 仅本次会话有效）⇒ 编辑器永不因视图偏好而不可用；
- * ③ 布局属**应用**而非工程 ⇒ 键**不带** `story.id`（换工程保留布局，符合规划稿 §2.2⑦）。
+ * ③ 布局属**应用**而非工程 ⇒ 键**不带** `story.id`（换工程保留布局）。
  *
  * 版本化：结构演进靠 `version` 判定，不符一律降级为默认布局（fail-soft，不抛）。
  */
@@ -32,7 +32,7 @@ export interface LayoutState {
   statusBar: boolean;
 }
 
-/** 宽度边界（与规划稿「默认窄 · 可拉宽」一致；越界即夹取，不拒绝渲染） */
+/** 宽度边界（「默认窄 · 可拉宽」；越界即夹取，不拒绝渲染） */
 export const MIN_SIDEBAR_WIDTH = 160;
 export const MAX_SIDEBAR_WIDTH = 560;
 export const MIN_RIGHT_WIDTH = 200;

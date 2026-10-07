@@ -1,5 +1,5 @@
 /**
- * 纯图标按钮**无障碍名**守卫（**回归锚定：真机实测的 a11y 缺陷**）。
+ * 纯图标按钮**无障碍名**守卫（回归）。
  *
  * 症状：顶栏「重开上次工程」`↺` 按钮**功能已实现**（IndexedDB 句柄 +
  * `reopenLastProject`），但 `aria-label=null` ⇒ 无障碍树里只有 `button "↺"`，
@@ -39,7 +39,7 @@ function isIconOnly(label: string): boolean {
   return !/[\p{L}\p{N}]/u.test(t);
 }
 
-describe("纯图标按钮 ·必须有可访问名（**用户实测回归**）", () => {
+describe("纯图标按钮 ·必须有可访问名", () => {
   const files = vueFiles(SRC);
   const violations: string[] = [];
 
@@ -68,7 +68,7 @@ describe("纯图标按钮 ·必须有可访问名（**用户实测回归**）", 
     ).toEqual([]);
   });
 
-  it("审计确实扫到了按钮（守卫本身没空转）", () => {
+  it("扫描确实命中按钮（守卫本身没空转）", () => {
     // 若 classesOf 之类失效，这里会为 0 ⇒ 守卫形同虚设
     const total = files.reduce((n, f) => {
       const t = stripComments(readFileSync(f, "utf8"));

@@ -14,16 +14,16 @@ export interface StoryCommand {
 /**
  * 列的**运行语义类型**—— 决定存档 / 回溯 / 自动推进行为。
  *
- * ⚠️ **与 `kind` 正交，两根轴各管一件事**（老引擎 `SceneType` 的语义，本仓此前缺）：
+ * **与 `kind` 正交，两根轴各管一件事**：
  * - `kind`（scene/flow）= **内容形态**：有没有 `elements[]` / `commands[]`
  * - `type`（game/menu/ui）= **运行语义**：进不进历史与存档、菜单是否自动推进
  *
- * 权威语义对齐老引擎 `LingFanEngine.Abstractions/Entities/Enums/SceneType.cs`：
+ * 三态语义：
  * - `game`：实际游戏场景 —— **存档、进历史、建立检查点**
  * - `menu`：菜单 / 标题 / 设置 —— 不存档、不进历史、不建检查点（**可覆盖**）
  * - `ui`：覆盖层 / 弹窗 —— 同上，且**不改变历史游标**
  *
- * **缺省 = `game`**（对齐老引擎 `SceneType.Game = 0` 的默认）⇒ 既有工程零改动。
+ * **缺省 = `game`** ⇒ 既有工程零改动。
  */
 export type SceneType = "game" | "menu" | "ui";
 
@@ -37,20 +37,18 @@ export interface StoryColumn {
   id: string;
   kind: "scene" | "flow";
   /**
-   * 运行语义类型（**缺省 `game`**，对齐老引擎 `SceneType.Game`）。
+   * 运行语义类型（**缺省 `game`**）。
    * 决定该列是否进历史/存档/检查点，以及菜单态能否自动推进。
-   * ⚠️ **与 `kind` 正交**：`kind: "flow" + type: "menu"`（纯流程的菜单）是合法组合。
+   * **与 `kind` 正交**：`kind: "flow" + type: "menu"`（纯流程的菜单）是合法组合。
    */
   type?: SceneType;
   /**
    * **来源文件路径**（逻辑路径，相对资源根，如 `Stories/chapter1/chapter1.story`）。
    *
-   * 🔴 **治根字段（2026-10-05）**：写回必须**写回同一个文件**。
-   * 此前写回凭 `id` 重算路径（`Stories/<id>.json`）⇒ 保存一次就把作者的
-   * **章节目录编排**与 **`.story` 文本形态**抹平，且原文件被判「陈旧」删除
-   * （探针实测：3/3 子目录文件全被删）。自我良好工程不接受这种行为。
+   * **写回必须写回同一个文件** —— 若凭 `id` 重算路径（`Stories/<id>.json`），
+   * 保存一次就会抹平作者的**章节目录编排**与 **`.story` 文本形态**，且原文件被判陈旧删除。
    *
-   * 语义纪律：
+   * 语义要点：
    * - **只记来源，不参与语义**：`kind` / `type` / 命令面都不读它（换路径不改行为）。
    * - **由组装器回填**（`assembleProject` 从实际文件路径回填，不猜）。
    * - **缺省 = 新建列**，走 `Stories/<id>.json`（编辑器新建的列没有来源文件）。

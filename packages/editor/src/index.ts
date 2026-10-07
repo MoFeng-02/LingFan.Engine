@@ -218,7 +218,7 @@ export {
 } from "./layout/steps";
 
 /**
- * Script 词汇层（设计稿 2026-10-06）：构建期作者词汇——builder 全部产出 StoryCommand
+ * Script 词汇层：构建期作者词汇——builder 全部产出 StoryCommand
  * 数据（与 JSON 同族）。**命名空间导出**：词汇是子语言，`script` 隔离避免常用词
  * （set/define/say）与既有出口冲突；作者 `const { say, menu, when } = script` 解构即用。
  */

@@ -7,8 +7,8 @@ import pluginVue from "eslint-plugin-vue";
 
 /**
  * 边界规则（no-restricted-imports）**按文件域互斥拆分**：flat config 同名规则
- * 后块覆盖前块——若文件域重叠，只有最后一个块生效（曾因此让 vue/@tauri/node
- * 三组禁令对引擎核心静默失效，探针实测逮住）。每个文件域只允许命中一个块。
+ * 后块覆盖前块——若文件域重叠，只有最后一个块生效（会让部分禁令对引擎核心静默失效）。
+ * 每个文件域只允许命中一个块。
  */
 const NODE_GROUP = {
   group: ["node:*", "fs", "path", "os", "child_process"],
@@ -51,8 +51,8 @@ export default defineConfigWithVueTs(
       // 测试夹具的临时工作区：测试跑完即删，但**测试与 lint 并发时**可能正在被删
       // ⇒ eslint 扫到半途消失的文件会报 ENOENT 直接崩（非代码问题）。
       "**/.tmp-build/**",
-      // 私有文档（设计稿/验收脚本/临时探针）：已入 .gitignore 不随仓库分发，
-      // 其中 .cjs 探针按 CommonJS 写(require)，与本仓 TS 源的模块规范不同
+      // 私有文档（验收脚本 / 临时探针）：不入版本库，其中 .cjs 探针
+      // 按 CommonJS 写(require)，与仓库 TS 源的模块规范不同
       "**/私有文档/**",
       // stories:build 的 cell 生成物（fun_register.g.ts）：实现文本从源原样搬运，
       // 缩进/风格由生成器负责——入库但免检（.prettierignore 已同步）
@@ -123,7 +123,7 @@ export default defineConfigWithVueTs(
   },
   {
     name: "lingfan/legacy-webview-compat",
-    // 老 WebView 内建方法守卫：基线 = Safari 13.1+ / Chrome 85+（Android 9 镜像 Chrome 91 实测）——
+    // 老 WebView 内建方法守卫：基线 = Safari 13.1+ / Chrome 85+——
     // replaceAll（Chrome 85/Safari 13.1 起支持）在基线内合法，不在守卫之列；
     // 只拦基线之后的内建方法/全局（Chrome 92+ 一族 + Safari 15 才有的 Promise.any），
     // 命中即老 WebView TypeError → 模块执行中断 → #app 空 → 白屏。
@@ -235,23 +235,22 @@ export default defineConfigWithVueTs(
     files: [
       "apps/playground/scripts/**/*.{ts,mjs}",
       "tests/playground/stories-build.test.ts",
-      // 编辑器的**本地服务宿主**（B4：仅回环 HTTP + 外部打开）——
+      // 编辑器的**本地服务宿主**（仅回环 HTTP + 外部打开）——
       // Node 侧运行，浏览器端代码零感知（前端只做能力探测，不假设它在）
       "apps/editor/server/**/*.ts",
       "tests/editor/server-*.test.ts",
-      // token 守卫（B5）需要**读编辑器源码**做机械核对（扫裸色值/裸字号）
+      // token 守卫需要**读编辑器源码**做机械核对（扫裸色值/裸字号）
       // —— 属测试期工具，不进浏览器产物
       "tests/editor/token-guard.test.ts",
       // 诊断面板类名隔离守卫：同理**读全部组件模板**做跨组件撞名核对
-      // （实测撞名会让选择器/探针指向别的面板，症状是「功能坏了」的误判）
+      // （撞名会让选择器/探针指向别的面板，症状是「功能坏了」的误判）
       "tests/editor/diagnostics-css-isolation.test.ts",
       // 纯图标按钮 a11y 守卫：同理**读全部组件模板**做 aria-label 核对
       // （title 不进无障碍树 ⇒ 纯图标按钮无aria-label = 对读屏用户不存在）
       "tests/editor/aria-label-guard.test.ts",
-      // 真实工程形态验证（用户实测工程 E:\langf\Downloads\Demo\Test\Resources）：
-      // 需**读仓外真实工程**核对三Lang 布局与场景类型分布 —— 属测试期工具
+      // 真实工程形态验证：需**读仓外真实工程**核对多语言布局与场景类型分布 —— 属测试期工具
       "tests/engine/data/real-project-scene-type.test.ts",
-      // 真实工程**端到端打开**守卫：同理读仓外真实工程（用户实测工程），
+      // 真实工程**端到端打开**守卫：同理读仓外真实工程，
       // 验「四个阻塞全解除」——组装成功 / 类型识别 / 编排保住 / 无拍平产物
       "tests/engine/data/real-project-open.test.ts",
       // Script 词汇层互锁守卫：读词汇层源文件做「登记 ↔ 导出」一致性核对（测试期工具）

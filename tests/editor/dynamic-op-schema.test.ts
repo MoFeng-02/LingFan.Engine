@@ -1,7 +1,7 @@
 /**
  * 编辑器 schema 动态注册测试。
  *
- * 测试纪律：
+ * 测试要点：
  * - **纯函数合并不改本体**：mergeOpSchemas/mergeOpMeta 产出扩展集，OP_SCHEMAS/OP_META 常量
  *   本体零修改（快照前后键集合相等）
  * - **注册后表单可用 + 不假红**：合并面上 describeForm 出表单、validateCommand/validateStory

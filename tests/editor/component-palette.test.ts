@@ -1,10 +1,10 @@
 /**
  * 组件面板（元素 36 类型归类 + 命令 op 源）测试。
  *
- * 测试纪律：
+ * 测试要点：
  * - **互锁**（面板覆盖 36 类型且与契约不越界、不缺项）：
  *   分组表按组序拍平 **逐项等于** `ELEMENT_TYPES`（含顺序）；op 分组覆盖 `listOps()` 全集
- * - **回归锚定**：容器组 ∪ 滚动组 === `ELEMENT_CONTAINER_TYPES`（面板 badge 语义所依据的事实）
+ * - **回归**：容器组 ∪ 滚动组 === `ELEMENT_CONTAINER_TYPES`（面板 badge 语义所依据的事实）
  * - **单一事实源**：op 分组标签不再散落在视图里（源码互锁）
  * - **边界**：中文标签覆盖全集、无重复归属、空组不存在
  */
@@ -59,7 +59,7 @@ describe("互锁：元素分组表 ↔ ELEMENT_TYPES 契约", () => {
   });
 });
 
-describe("回归锚定：容器组 ∪ 滚动组 = 支持 children 的契约集合", () => {
+describe("回归：容器组 ∪ 滚动组 = 支持 children 的契约集合", () => {
   it("分组划分与 ELEMENT_CONTAINER_TYPES 恰好人手相扣", () => {
     const layout = ELEMENT_TYPE_GROUPS.find((g) => g.group === "container");
     const scroll = ELEMENT_TYPE_GROUPS.find((g) => g.group === "scroll");
@@ -124,7 +124,7 @@ describe("源码互锁：分组清单只在纯逻辑模块，视图不另立一�
   });
 
   it("左栏 tab 用容器 div 承接 v-show（多根组件上挂运行时指令会静默失效）", () => {
-    // 回归锚定：`ColumnList` 是多根模板，直接给它 v-show → Vue 只报 console warning，
+    // 回归：`ColumnList` 是多根模板，直接给它 v-show → Vue 只报 console warning，
     // 面板实际不隐藏。CDP 首轮实测逮到（App.vue 现改为 div.left-pane-body 承接）。
     expect(appSource).toContain(
       `<div v-show="leftTab === 'columns'" class="left-pane-body">`,
@@ -137,7 +137,7 @@ describe("源码互锁：分组清单只在纯逻辑模块，视图不另立一�
   });
 });
 
-describe("回归锚定：时间线元素容器的「插入」只产元素草稿", () => {
+describe("回归：时间线元素容器的「插入」只产元素草稿", () => {
   it("元素层插入走 createElementDraft + ELEMENT_TYPE_GROUPS（与组件面板同源）", () => {
     expect(storyTimelineSource).toContain('field === "elements"');
     expect(storyTimelineSource).toContain("createElementDraft");
@@ -155,7 +155,7 @@ describe("回归锚定：时间线元素容器的「插入」只产元素草稿"
   });
 });
 
-describe("D-60 文案守卫：面板不得泄露内部计划／也不得说错可用路径", () => {
+describe("文案守卫：面板不得泄露内部计划／也不得说错可用路径", () => {
   /** 剥离注释后再断言——守卫的对象是**用户可见文案**，不是注释 */
   function stripComments(source: string): string {
     return source

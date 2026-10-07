@@ -1,9 +1,9 @@
 /**
  * 应用内对话框的**状态机**（纯逻辑，零 DOM）。
  *
- * 为何替换原生 `prompt`/`confirm`/`alert`（共 10 处）：原生在深色主题下弹**系统
- * 灰白框**、阻塞、不可样式化，且**取消语义各写各的**（D-62① 由此生出 D-58
- * 「取消＝新建」的数据丢失缺陷）。本模块把三种语义收成**一套显式判据**：
+ * 为何替换原生 `prompt`/`confirm`/`alert`：原生在深色主题下弹**系统
+ * 灰白框**、阻塞、不可样式化，且**取消语义各写各的**（由此曾生出「取消＝新建」
+ * 的数据丢失缺陷）。本模块把三种语义收成**一套显式判据**：
  *
  * | 调用 | 取消（Esc） | 留空（确定） | 有值（确定） |
  * |---|---|---|---|
@@ -11,12 +11,12 @@
  * | `askConfirm` | `false` | — | `true` |
  * | `notify` | （无取消） | — | — |
  *
- * ⚠️ `askText` 的「取消 vs 留空」是 D-58 的病根 ⇒ 判据集中在 `parseTextAnswer`，
+ * `askText` 的「取消 vs 留空」是那类数据丢失的病根 ⇒ 判据集中在 `parseTextAnswer`，
  * **组件与调用方都不再自己判 `=== null`**。
  */
 
 /**
- * 回答值：`null` = **取消**（文本框语义，必须能与「留空」区分 —— 这正是 D-58 的病根）
+ * 回答值：`null` = **取消**（文本框语义，必须能与「留空」区分 —— 这正是「取消＝新建」的病根）
  * ｜ `string` = 确定的文本 ｜ `true` = 确认 ｜ `false` = 否认
  */
 export type DialogAnswer = string | boolean | null | undefined;
@@ -61,7 +61,7 @@ export interface DialogSnapshot {
 }
 
 /**
- * `askText` 的答案判据（**D-58 的正解在此**）：
+ * `askText` 的答案判据（**正解在此**）：
  * 取消 = `null` ⇒ **不执行**；留空 = `""` ⇒ 执行但无值（`allowEmpty` 为假时视为取消）。
  */
 export function parseTextAnswer(
@@ -93,7 +93,7 @@ export class DialogHostState {
   /**
    * 等待回答的结算器**与框一一对应**（`stack[i]` ↔ `settlers[i]`）。
    *
-   * ⚠️ **为什么不能是单个槽位**（真缺陷，已被真机探针逮到）：`ask()` 若在已有
+   * **为什么不能是单个槽位**（真缺陷）：`ask()` 若在已有
    * 挂起框时再被调用，单槽位会被**覆盖** ⇒ 前一个 Promise **永久挂起**（调用方的
    * `await` 永不返回），而 `answer()` 的 `stack.pop()` 只弹一帧 ⇒ **框留在栈顶、
    * 全屏遮罩永久挡住所有点击**（用户现象是「点什么都没反应」，与提示内容毫无关系）。
@@ -127,12 +127,12 @@ export class DialogHostState {
   /**
    * 开框并挂起等待回答。
    *
-   * ⚠️ 语义：**当前框被回答或取消时结算**（`current` 回到 `undefined` 或换框）。
+   * 语义：**当前框被回答或取消时结算**（`current` 回到 `undefined` 或换框）。
    * 回答经 `answer` 注入 ⇒ 判据仍在 `parseTextAnswer`（纯函数、可测）。
    */
   ask(request: DialogRequest): Promise<DialogAnswer> {
     return new Promise((resolve) => {
-      // ⚠️ 结算器**先入栈再 emit**：`emit` 同步跑监听器（宿主把 `current` 写进 ref
+      // 结算器**先入栈再 emit**：`emit` 同步跑监听器（宿主把 `current` 写进 ref
       // 触发 Vue 重渲染）。若顺序反过来，栈与结算器会有一瞬不一致——重渲染却读不到
       // 对应结算器，「框出现但点不掉」就不可能被排查出来。
       this.setters.push(resolve);
@@ -166,7 +166,7 @@ export class DialogHostState {
   }
 
   closeAll(): void {
-    // ⚠️ 顺序：先摘栈再结算——结算回调（`await` 之后的续行）可能同步再开框，
+    // 顺序：先摘栈再结算——结算回调（`await` 之后的续行）可能同步再开框，
     // 那时 `stack` 必须是干净的空栈，否则会残留一层永远关不掉的遮罩。
     const settlers = this.setters.splice(0, this.setters.length);
     this.stack.length = 0;

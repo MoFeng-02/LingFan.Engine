@@ -1,7 +1,7 @@
 /**
- * Script 词汇层**互锁守卫**（设计稿 §3.1）。
+ * Script 词汇层**互锁守卫**。
  *
- * 🔴 双射 = builder 覆盖集 ↔ `OP_SCHEMAS` keys 完全相等：新增 op 没进 builder（红）、
+ * 双射 = builder 覆盖集 ↔ `OP_SCHEMAS` keys 完全相等：新增 op 没进 builder（红）、
  * builder 产出未知 op 名（红）——词汇层与引擎 op 面零漂移的机器保障。
  * 形状抽测 + builder 旅程锁「产物真的是合法 Story 数据」。
  */
@@ -23,12 +23,12 @@ const directOps = new Set(
 );
 
 describe("词汇层全集互锁（builder ↔ op 双射）", () => {
-  it("🔴 builder 覆盖集 = OP_SCHEMAS 全集（无遗漏、无越界）", () => {
+  it("builder 覆盖集 = OP_SCHEMAS 全集（无遗漏、无越界）", () => {
     const schemas = new Set(Object.keys(OP_SCHEMAS));
     expect(directOps).toEqual(schemas);
   });
 
-  it("🔴 每个登记项都有真实的 builder 函数（防登记与导出漂移）", () => {
+  it("每个登记项都有真实的 builder 函数（防登记与导出漂移）", () => {
     for (const [builderName, op] of Object.entries(SCRIPT_COVERAGE)) {
       if (op.startsWith("$")) continue;
       const fn = (script as unknown as Record<string, unknown>)[builderName];
@@ -36,7 +36,7 @@ describe("词汇层全集互锁（builder ↔ op 双射）", () => {
     }
   });
 
-  it("🔴 覆盖登记与源文件导出一致（SCRIPT_COVERAGE 不是孤岛清单）", () => {
+  it("覆盖登记与源文件导出一致（SCRIPT_COVERAGE 不是孤岛清单）", () => {
     const indexSource = readFileSync(
       new URL("../../packages/editor/src/script/index.ts", import.meta.url),
       "utf8",
@@ -102,7 +102,7 @@ describe("词汇层 · 形状抽测（产物 = 合法 op 数据）", () => {
     });
   });
 
-  it("复合词 ⇒ 元素数组（sceneSetup 对标老引擎 SetScene）", () => {
+  it("复合词 ⇒ 元素数组（sceneSetup 等价于「设置场景」）", () => {
     const [bg, title] = script.sceneSetup("Images/town.jpg", "小镇入口", {
       bgOpacity: 0.4,
     });
@@ -136,19 +136,19 @@ describe("词汇层 · 扩展 op（extOp）", () => {
     ],
   };
 
-  it("🔴 extOp 产物 ⇒ parseStory 接受（数据层放行：未知 op 结构从简、交执行器/构建期把守）", () => {
+  it("extOp 产物 ⇒ parseStory 接受（数据层放行：未知 op 结构从简、交执行器/构建期把守）", () => {
     const story = parseStory(extStorySource);
     expect(story.columns[0]!.commands).toContainEqual({ op: "quest", step: 1 });
   });
 
-  it("🔴 未注册投影的扩展 op ⇒ 文本投影整次拒绝（fail-closed，不假装能投影）", () => {
+  it("未注册投影的扩展 op ⇒ 文本投影整次拒绝（fail-closed，不假装能投影）", () => {
     const story = parseStory(extStorySource);
     expect(() => generateText(story)).toThrow(/quest/);
   });
 });
 
 describe("词汇层 · builder 旅程（第四形态入场）", () => {
-  it("🔴 builder 组装的故事 ⇒ parseStory 接受 + 文本投影往返 + 回读深等", () => {
+  it("builder 组装的故事 ⇒ parseStory 接受 + 文本投影往返 + 回读深等", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "builder-journey",
@@ -183,7 +183,7 @@ describe("词汇层 · builder 旅程（第四形态入场）", () => {
 });
 
 /**
- * 🔴 **全 builder ⇄ parseStory 可解析互锁**（2026-10-06 补）：双射互锁只锁「op 名」，
+ * **全 builder ⇄ parseStory 可解析互锁**：双射互锁只锁「op 名」，
  * 锁不住「产物形状」——forEach 漏 key / pause 缺 seconds / arrayPush 产 items 三连
  * 都是 op 名对、形状错 ⇒ 双射绿而 parseStory 红。本测试把**每个** direct builder 的
  * 最小合法产物喂给真 parseStory：今后任何 builder 形状漂移都在这里红，而非用户工程里。
@@ -266,11 +266,11 @@ describe("词汇层 · 全 builder 可解析守卫（形状漂移零容忍）", 
     ["textTypewriter", script.textTypewriter({ enabled: false })],
   ];
 
-  it("🔴 direct builder 数 = OP_SCHEMAS 数（采样表不漏不越）", () => {
+  it("direct builder 数 = OP_SCHEMAS 数（采样表不漏不越）", () => {
     expect(samples).toHaveLength(directOps.size);
   });
 
-  it("🔴 每个 builder 的最小产物都能被 parseStory 接受（逐列独立定位）", () => {
+  it("每个 builder 的最小产物都能被 parseStory 接受（逐列独立定位）", () => {
     const columns = samples.map(([, cmd], i) => ({
       id: `c${i}`,
       kind: "flow" as const,

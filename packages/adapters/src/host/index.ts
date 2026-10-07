@@ -22,7 +22,7 @@ export function createHostPort(options: HostPortOptions): HostPort {
   };
 }
 
-/** Tauri 形态的供数读取器：问 Rust 拿编译目标平台（不依赖编译期环境变量——实测未注入） */
+/** Tauri 形态的供数读取器：问 Rust 拿编译目标平台（不依赖编译期环境变量——它不会被注入） */
 export async function readTauriPlatform(): Promise<string | undefined> {
   try {
     return await invoke<string>("host_platform");

@@ -1,7 +1,7 @@
 /**
  * 语义化列 id 生成测试。
  *
- * 测试纪律：
+ * 测试要点：
  * - 纯函数语义：建议 → 唯一化（`-2`/`-3` 递增取空位）→ 兜底（`column-N` 跳已占号）
  * - hint 是建议非命令：不安全输入（路径分隔 / 点段 / 空）回退兜底，不抛、不改写
  * - addColumn 契约只增：显式 id 语义不变（撞名 fail-closed），hint 仅缺省 id 时参与
@@ -78,13 +78,13 @@ describe("addColumn 接线：hint 仅缺省 id 时参与（契约只增）", () 
 });
 
 describe("源码互锁：编辑器「+列」接语义化建议输入", () => {
-  it("+列 走应用内对话框（留空可过）；取消则不执行（D-58 防回流）", () => {
+  it("+列 走应用内对话框（留空可过）；取消则不执行（防回流）", () => {
     expect(columnListSource).toContain("promptAddColumn");
-    // B3 起走**应用内对话框**（D-62①：原生 prompt 在深色主题下弹系统灰白框且不可样式化）
+    // 走**应用内对话框**（原生 prompt 在深色主题下弹系统灰白框且不可样式化）
     expect(columnListSource).toContain("dialog.askText");
     expect(columnListSource).not.toContain("window.prompt");
     // ① 留空可过（**本条既有意图，予以保留**）：无建议也必须把调用发出去，引擎按 column-N 兜底
-    //    （2026-10-05 扩展：调用追加第三参 type —— 用**无右括号前缀**匹配，意图不变且对加参稳健）
+    //    （调用追加第三参 type —— 用**无右括号前缀**匹配，意图不变且对加参稳健）
     expect(columnListSource).toContain("api.addColumn(kind, intent.hint");
     // ② 取消（null）不得与留空（""）混为一谈 —— 意图判定必须先于提交
     expect(columnListSource).toContain("decideAddColumn(raw)");
@@ -99,7 +99,7 @@ describe("源码互锁：编辑器「+列」接语义化建议输入", () => {
     expect(decided).toBeGreaterThan(-1);
     expect(submitted).toBeGreaterThan(-1);
     expect(decided).toBeLessThan(submitted); // 判定先于提交（防未来有人绕过判据直接调）
-    // ③ 防回流：prompt 返回值不得经 `?? undefined` 压平 —— 那正是 D-58 的成因
+    // ③ 防回流：prompt 返回值不得经 `?? undefined` 压平 —— 那正是「取消被当成留空」的成因
     expect(columnListSource).not.toContain("hint ?? undefined");
   });
 });

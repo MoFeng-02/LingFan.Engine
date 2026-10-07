@@ -354,9 +354,9 @@ export default { name: "FieldRow" };
   color: var(--lf-danger);
 }
 .control {
-  /* 右缘统一（D-62⑧）：此前 `.control` 有 `max-width:260px` 而 `.control.grow`
-     写 `max-width:none` ⇒ 同一面板内出现**三种右缘**（实测 1336/507/573），
-     控件参差成锯齿。改为**一律撑满**（标签列固定宽，控件列吃满剩余空间）。 */
+  /* 右缘统一：若 `.control` 设 `max-width:260px` 而 `.control.grow`
+     写 `max-width:none` ⇒ 同一面板内出现**多种右缘**，控件参差成锯齿。
+     改为**一律撑满**（标签列固定宽，控件列吃满剩余空间）。 */
   flex: 1;
   min-width: 0;
   max-width: none;
@@ -449,8 +449,8 @@ textarea.json {
   white-space: nowrap;
 }
 .row-ops {
-  /* 常显低强调（E2 建议值）：hover-only 的行内操作在触屏与新用户面前等于不存在
-     （D-62②）。改常显但压低视觉权重，hover 时才提升 —— 可见性不靠鼠标。 */
+  /* 常显低强调：hover-only 的行内操作在触屏与新用户面前等于不存在。
+     改常显但压低视觉权重，hover 时才提升 —— 可见性不靠鼠标。 */
   display: inline-flex;
   gap: 2px;
   opacity: 0.45;

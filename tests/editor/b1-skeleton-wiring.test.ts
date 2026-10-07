@@ -1,9 +1,9 @@
 /**
- * B1 四区骨架的**源级接线互锁**（防回流）。
+ * 四区骨架的**源级接线互锁**（防回流）。
  *
  * 为何用读源码断言而不全靠交互：骨架的关键性质是「**某能力必须接在某处**」
  * （资源树必须吃诊断供给、状态栏必须接脏计数、活动栏必须驱动侧栏模式）。
- * 这些性质在真机上表现为「看起来对」，但一旦被拆掉，交互测试可能仍绿。
+ * 这些性质在界面上表现为「看起来对」，但一旦被拆掉，交互测试可能仍绿。
  */
 import { describe, expect, it } from "vitest";
 import appSource from "../../apps/editor/src/App.vue?raw";
@@ -21,7 +21,7 @@ import fieldRowSource from "../../apps/editor/src/components/FieldRow.vue?raw";
 const code = (source: string): string =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
-describe("B1 四区骨架 · 接线互锁", () => {
+describe("四区骨架 · 接线互锁", () => {
   it("资源树吃的是诊断供给的资源文件集（零新增 IO 复用既有供给）", () => {
     expect(code(appSource)).toContain("diagnosticSupply.value?.resourceFiles");
     expect(code(appSource)).toContain("buildResourceTree(");
@@ -48,9 +48,9 @@ describe("B1 四区骨架 · 接线互锁", () => {
   });
 
   it("三个侧栏切面**共享同一份树**（不各持数据源）", () => {
-    // ⚠️ 2026-10-04 UI 改造步2：活动栏已删（与左栏 tab 重复）⇒ 「活动栏驱动侧栏模式」这半边
-    //    不再存在；但**它守的不变量仍在** —— 资源/搜索/最近三个内页必须喂**同一个** resourceNodes，
-    //    否则会逼出三份数据源（本仓明令禁止的第二真源）。这半边**保留**。
+    // 活动栏已删（与左栏 tab 重复）⇒「活动栏驱动侧栏模式」这半边不再存在；
+    // 但**它守的不变量仍在** —— 资源/搜索/最近三个内页必须喂**同一个** resourceNodes，
+    // 否则会逼出三份数据源（第二份定义）。
     const feeds = code(appSource).match(/:nodes="resourceNodes"/g) ?? [];
     expect(feeds.length).toBe(3);
     // 且不再有第二个驱动侧栏模式的入口
@@ -79,8 +79,8 @@ describe("B1 四区骨架 · 接线互锁", () => {
   });
 
   it("内页切换器有 tablist 语义与选中态（a11y）", () => {
-    // ⚠️ 2026-10-04 UI 改造步2「收纳去重」：**活动栏已删**（其三项与左栏 tab 重复），
-    //   同一职责现由**左栏 tab** 承担 ⇒ 本断言改为在 App.vue 的左栏 tab 条上验。
+    // **活动栏已删**（其三项与左栏 tab 重复），同一职责现由**左栏 tab** 承担
+    //   ⇒ 本断言在 App.vue 的左栏 tab 条上验。
     const src = code(appSource);
     const leftTabs = src.slice(src.indexOf('class="tab-strip left-tabs"'));
     expect(leftTabs.slice(0, 400)).toContain('class="tab-strip left-tabs"');
@@ -100,13 +100,13 @@ describe("B1 四区骨架 · 接线互锁", () => {
   });
 });
 
-describe("B0 回归 · 脏标记必须同时点亮工具栏与标签栏", () => {
+describe("回归 · 脏标记必须同时点亮工具栏与标签栏", () => {
   it("会话订阅回调里同时投影 `dirty` 与 `documentDirty`", () => {
     const src = code(appSource);
     // bindActive 的订阅体 = 唯一会在「编辑动作」后触发的地方
     const sub = src.slice(src.indexOf("unsubscribeSession = doc.session.subscribe"));
     expect(sub).toContain("dirty.value = doc.session.dirty");
-    // ⚠️ 缺这一行 ⇒ 标签脏点永不亮（结构没变时结构订阅不会触发）
+    // 缺这一行 ⇒ 标签脏点永不亮（结构没变时结构订阅不会触发）
     expect(sub).toContain("documentDirty.value = new Set(workspace.dirtyPaths)");
   });
 
@@ -170,10 +170,10 @@ describe("TDZ 守卫 · 声明顺序", () => {
 });
 
 /**
- * B3 回归 · 状态完备与「不用原生对话框」。
+ * 回归 · 状态完备与「不用原生对话框」。
  */
-describe("B3 回归 · 原生对话框清零 + 五态接线", () => {
-  it("编辑器组件里零原生 prompt/confirm/alert（D-62①）", () => {
+describe("回归 · 原生对话框清零 + 五态接线", () => {
+  it("编辑器组件里零原生 prompt/confirm/alert", () => {
     for (const [name, raw] of [
       ["ColumnList", columnListSource],
       ["NodeGraph", nodeGraphSource],
@@ -185,7 +185,7 @@ describe("B3 回归 · 原生对话框清零 + 五态接线", () => {
     }
   });
 
-  it("行内操作常显低强调（E2：可见性不靠鼠标）", () => {
+  it("行内操作常显低强调（可见性不靠鼠标）", () => {
     for (const [name, raw] of [
       ["ColumnList", columnListSource],
       ["StoryTimeline", timelineSource],
@@ -203,7 +203,7 @@ describe("B3 回归 · 原生对话框清零 + 五态接线", () => {
     expect(timeline).toMatch(/:hover \.row-ops\s*\{[^}]*opacity:\s*1/);
   });
 
-  it("首屏空态：未打开工程时不假装有工程（E5 重定）", () => {
+  it("首屏空态：未打开工程时不假装有工程", () => {
     const src = code(appSource);
     expect(src).toContain('reason="no-project"');
     expect(src).toContain("onEmptyAction");
@@ -226,7 +226,7 @@ describe("B3 回归 · 原生对话框清零 + 五态接线", () => {
 });
 
 /**
- * B0 回归 · 切标签必须同步 `selectedColumnId`（真机实测缺陷）。
+ * 回归 · 切标签必须同步 `selectedColumnId`。
  *
  * 现象：首次点某个 `doc-tab` ⇒ 中心区时间线**空白**；再点一次就正常。
  * 根因：切标签只换了 `story`（单列文档），`selectedColumnId` 却停在**上一个文档的列**；
@@ -234,7 +234,7 @@ describe("B3 回归 · 原生对话框清零 + 五态接线", () => {
  * ⇒ 在新 `story` 里找不到该列 ⇒ 渲染空。
  * "再点一次就好"是因为上一次的 `selectedColumnId` 恰好已等于目标列。
  */
-describe("B0 回归 · 切标签同步选中列", () => {
+describe("回归 · 切标签同步选中列", () => {
   it("`selectDocument` 里同步 `selectedColumnId` 到该文档的列", () => {
     const src = code(appSource);
     const start = src.indexOf("function selectDocument(path: string): void {");
@@ -265,15 +265,14 @@ describe("B0 回归 · 切标签同步选中列", () => {
 });
 
 /**
- * 热重载接线守卫（**本项目第三次 TDZ**，且是同一批：声明顺序）。
- * 机制固化在前两轮教训里：任何在 setup 体内被**提前执行**的代码，
- * 都不能引用声明在它之后的东西。
+ * 热重载接线守卫（TDZ 高发点，成因是声明顺序）。
+ * 判据：任何在 setup 体内被**提前执行**的代码，都不能引用声明在它之后的东西。
  */
 describe("热重载 · 接线与顺序", () => {
   it("热重载三条声明在探测 IIFE **之前**（否则 TDZ 白屏）", () => {
     const src = appSource;
-    // ⚠️ 必须按**声明语句**定位，不能 `indexOf(名字)`：注释里也出现这个名字，
-    //    首次命中会是注释 ⇒ 守卫变绿、实际有 TDZ（**假守卫**，我先犯过一次）。
+    // 必须按**声明语句**定位，不能 `indexOf(名字)`：注释里也出现这个名字，
+    //    首次命中会是注释 ⇒ 守卫变绿、实际有 TDZ（**假守卫**）。
     const probe = src.indexOf("const host = await detectLocalHost()");
     expect(probe, "探测 IIFE 位置变了").toBeGreaterThan(-1);
     for (const [name, decl] of [
@@ -310,7 +309,7 @@ describe("热重载 · 接线与顺序", () => {
 /**
  * 回归 · 「宿主未启动」提示**不得模态**。
  *
- * ⚠️ 我先犯过一次：用 `dialog.notify` 提示"宿主没起" ⇒ `DialogHost` 的遮罩是
+ * 用 `dialog.notify` 提示"宿主没起"时：`DialogHost` 的遮罩是
  * `position:absolute; inset:0` 的**全屏**层 ⇒ 不关掉就**挡住全部点击**，
  * 用户看到的现象是「**点故事没反应**」（而真因与故事毫无关系）。
  * 降级是"可用但能力受限"，**不该拦住操作** ⇒ 必须是 `pointer-events:none` 的横幅。
@@ -318,17 +317,17 @@ describe("热重载 · 接线与顺序", () => {
 describe("宿主未启动提示 · 非阻塞", () => {
   it("用**横幅**（`hostHint` 状态）而非 `dialog.notify`", () => {
     expect(appSource).toContain("if (host === undefined) hostHint.value = true;");
-    // ⚠️ 窗口只取**探测 IIFE 内部**（前面几百字符里有骨架生成等无关的 dialog.notify）
+    // 窗口只取**探测 IIFE 内部**（前面几百字符里有骨架生成等无关的 dialog.notify）
     const fnAt = appSource.indexOf("const host = await detectLocalHost();");
     expect(fnAt).toBeGreaterThan(-1);
-    // ⚠️ 窗口到**本 IIFE 结束**为止：用 `slice` + `indexOf` 会取到**全文件后面**
+    // 窗口到**本 IIFE 结束**为止：用 `slice` + `indexOf` 会取到**全文件后面**
     //   （`indexOf` 找的是首次出现，可能在很后面）⇒ 混进别的 `dialog.notify`。
-    //   改用「到 `void (async` 下一个 IIFE 或空行为止」——这里直接按行数截 20 行，够短且明确。
+    //   这里直接按行数截 700 字符，够短且明确。
     const body = appSource.slice(fnAt, fnAt + 700);
     expect(body).toContain("hostHint.value = true");
     expect(body).toContain("hostHint.value = true");
-    // ⚠️ 必须**去注释**再判：我在那段注释里写了「我先犯过一次：用 `dialog.notify`」，
-    //    那是说明文字，不是代码（第二次踩同一个坑：拿源码断言当代码断言）。
+    // 必须**去注释**再判：说明文字里也写着「用 `dialog.notify`」，
+    //    那是说明，不是代码（否则拿源码断言当代码断言）。
     const bodyCode = body.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
     expect(bodyCode).not.toContain("dialog.notify");
   });
@@ -354,7 +353,7 @@ describe("宿主未启动提示 · 非阻塞", () => {
 });
 
 /**
- * 回归 · 能力探测必须在 `onMounted` 里（**CDP 实测踩出来的真因**）。
+ * 回归 · 能力探测必须在 `onMounted` 里。
  *
  * 现象：探测写成 setup 顶层的裸 `void (async () => …)()` 时，
  * **一次都没执行** —— CDP `Network` 域抓到启动期零请求，而同一份代码

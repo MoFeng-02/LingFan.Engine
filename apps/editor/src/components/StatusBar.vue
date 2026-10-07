@@ -7,8 +7,8 @@
  * 诊断**计数**在中栏/顶栏也有 ⇒ 这里只作「同一口径的第二处可读点」，
  * 真正的信息增量是**宿主能力**与**脏文件数**（顶栏只有「是否脏」，这里有「几个」）。
  *
- * 「出餐」入口（#10 下沉）：打包是**低频动作**（以分钟计），不该占右栏一级 tab；
- * 但下沉 ≠ 隐没 —— 状态栏常驻**带文字标签**的按钮（非 icon-only，a11y 纪律），
+ * 「出餐」入口：打包是**低频动作**（以分钟计），不该占右栏一级 tab；
+ * 状态栏常驻**带文字标签**的按钮（非 icon-only，满足 a11y），
  * 打包中状态也在这里（长任务必须有存在感，切走面板也不丢进度感知）。
  */
 import { computed } from "vue";
@@ -26,7 +26,7 @@ const props = defineProps<{
   packing: boolean;
   /** 右栏当前正显示出餐页（按钮的 aria-pressed / 激活态） */
   packActive: boolean;
-  /** #11 降级打开回执（缺 project.json）；undefined = 正常打开 */
+  /** 降级打开回执（缺 project.json）；undefined = 正常打开 */
   degraded: DegradedOpen | undefined;
 }>();
 
@@ -46,7 +46,7 @@ const packLabel = computed(() => (props.packing ? "打包中…" : "出餐"));
     <span class="status-item" :title="root || '未绑定磁盘工程'">
       {{ root || "未绑定工程" }}
     </span>
-    <!-- #11 降级打开：显式告知（状态口径 + title 详情），不许静默假装正常 -->
+    <!-- 降级打开：显式告知（状态口径 + title 详情），不许静默假装正常 -->
     <span
       v-if="degraded"
       class="status-item warn"
@@ -104,7 +104,7 @@ const packLabel = computed(() => (props.packing ? "打包中…" : "出餐"));
 .spacer {
   flex: 1 1 auto;
 }
-/* 出餐入口（#10 下沉）：状态栏里的真按钮，激活态描边、打包中提亮 */
+/* 出餐入口：状态栏里的真按钮，激活态描边、打包中提亮 */
 .pack-entry {
   flex-shrink: 0;
   padding: 1px 8px;

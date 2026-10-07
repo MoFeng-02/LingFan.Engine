@@ -7,8 +7,8 @@
  * ③ 安全判据全部委托 `./security`（纯函数，可测）——本文件只做 IO 与进程；
  * ④ **不做目录浏览服务**、不提供任意文件读。
  *
- * 与前端的关系：**前端探测不到它 ⇒ 自动降级为浏览器形态**（能力探测式降级，
- * 规划稿 §2.2④）。前端**从不假设它在**。
+ * 与前端的关系：**前端探测不到它 ⇒ 自动降级为浏览器形态**（能力探测式降级）。
+ * 前端**从不假设它在**。
  *
  * 与 `media_http.rs` 同款信任边界：仅 `127.0.0.1` / 内核分配端口 / 随机 token /
  * 白名单扩展名 / 路径必须在白名单目录内。
@@ -91,8 +91,8 @@ export async function startHost(root: string): Promise<{ server: Server; capabil
   // 监视源根（dev 工具；失败不阻断服务启动 ⇒ 降级为「无热重载」）
   const watcher = startWatcher(root);
   const server = createServer((req, res) => {
-    // ⚠️ 顶层兜底：请求处理器里**任何**未捕获异常都不得杀死宿主
-    //   （实测：端点里一个 `ReferenceError` 就把整个服务带走了 ⇒ 所有能力同时失效）。
+    // 顶层兜底：请求处理器里**任何**未捕获异常都不得杀死宿主
+    //   （端点里一个 `ReferenceError` 就足以把整个服务带走 ⇒ 所有能力同时失效）。
     //   这里转成 500 + 如实原因，单个坏请求只影响它自己。
     void handle(req, res, { token, root, watcher }).catch((error: unknown) => {
       try {
@@ -119,7 +119,7 @@ export async function startHost(root: string): Promise<{ server: Server; capabil
       local: true,
       openExternal: true,
       pack: true,
-      // ⚠️ **如实**反映监视是否真起来（此前恒 true 但未实现 = 声明与实现不一致）
+      // **如实**反映监视是否真起来（恒 true 但未实现 = 声明与实现不一致）
       watch: watcher.watching,
       token,
       port,
@@ -148,23 +148,22 @@ async function handle(
   const url = new URL(req.url ?? "/", "http://127.0.0.1");
   // 能力探测：无需 token（只回"在不在"，不泄露任何路径）
   if (url.pathname === "/__editor_host__/ping") {
-    // ⚠️ 回 token（前端后续调用要带）但**不回任何路径**（探测是未授权可达的）
+    // 回 token（前端后续调用要带）但**不回任何路径**（探测是未授权可达的）
     json(res, 200, { ok: true, token: ctx.token });
     return;
   }
   const segments = url.pathname.split("/").filter(Boolean);
   // 形态：/__editor_host__/{token}/{action}
-  // ⚠️ **动作段必须挂在 `__editor_host__` 前缀之下**（不是裸 `/{token}/…`）：
+  // **动作段必须挂在 `__editor_host__` 前缀之下**（不是裸 `/{token}/…`）：
   //   开发期前端走 Vite 同源代理，而代理只配了 `/__editor_host__` 这一个前缀 ⇒
-  //   裸路径会被 Vite 自己吃掉（实测 502/404，打不到宿主）。
-  //   （E2E 真机逮到：ping 通但 pack 404。）
+  //   裸路径会被 Vite 自己吃掉（502/404，打不到宿主）——ping 通但 pack 404 就是这个。
   const prefix = segments[0];
   if (prefix !== "__editor_host__" || segments.length < 3) {
     json(res, 404, { error: "not found" });
     return;
   }
   const [given, action] = [segments[1], segments[2]];
-  // ⚠️ token 不符 ⇒ 404（不区分"token 错"与"不存在"，避免被探测）
+  // token 不符 ⇒ 404（不区分"token 错"与"不存在"，避免被探测）
   if (!tokenMatches(ctx.token, given ?? null)) {
     json(res, 404, { error: "not found" });
     return;
@@ -194,7 +193,7 @@ async function handle(
 /**
  * 热重载监视：递归监视源根，**防抖**后累加 `revision`。
  *
- * ⚠️ 语义对齐 Rust `watch_project_files`（递归 + 防抖 250ms + 失败降级不崩）：
+ * 语义对齐 Rust `watch_project_files`（递归 + 防抖 250ms + 失败降级不崩）：
  * - **为什么必须防抖**：一次保存往往产生**多个**事件（写临时文件、rename、改内容），
  *   不防抖会让前端重载十几次；
  * - **为什么用「revision 计数」而不是推送**：前端本来就有轮询语料的机制
@@ -217,7 +216,7 @@ function startWatcher(root: string): Watcher {
   /**
    * 已登记监视的**目录**相对路径集合。
    *
-   * ⚠️ 为什么需要它（本机实测出来的行为，**不看文档猜不到**）：
+   * 为什么需要它（Windows 上的实际行为，**不看文档猜不到**）：
    *   Windows 的**非递归** `fs.watch(Resources)` 在 `Stories/inn.json~` 变化时
    *   报的是 `filename = "Stories"`（**子目录名，不带内部路径**）——
    *   即「父监视器」会把「子目录内的任何变化」折叠成子目录名。
@@ -302,7 +301,7 @@ function startWatcher(root: string): Watcher {
  * ② 仓库内 `target/{debug,release}/lfenpack[.exe]` 与 `CARGO_TARGET_DIR` 指向的共享目录
  * ③ PATH 上的 `lfenpack`
  *
- * ⚠️ 仍然**只 spawn 已知程序名**（候选是**我们自己拼出的路径**，不是用户输入），
+ * **只 spawn 已知程序名**（候选是**我们自己拼出的路径**，不是用户输入），
  * 且一律 `shell: false`。
  */
 function packBinCandidates(): string[] {
@@ -329,7 +328,7 @@ function packBinCandidates(): string[] {
 /**
  * 快速出餐：调 `lfenpack` 产出加密包。
  *
- * ⚠️ 安全姿态（与 `openExternal` 同款，且更严）：
+ * 安全姿态（与 `openExternal` 同款，且更严）：
  * ① 参数经 `packRequestOf` 校验（绝对路径 / 不同目录 / 不嵌套 / 无 `..`）；
  * ② `shell: false` + **参数数组**（用户可写路径绝不交给 shell 解析）；
  * ③ 采集 stdout/stderr 如实回传（不静默失败，也不假装成功）；
@@ -462,7 +461,7 @@ async function openExternal(body: string, root: string): Promise<{ ok: boolean; 
   const verdict = canOpenExternal(relative);
   if (!verdict.ok) return { ok: false, reason: verdict.reason };
   if (!isInsideRoot(verdict.relative)) return { ok: false, reason: "路径不在工程根内" };
-  // ⚠️ 字符串判据**不等于**防符号链接 ⇒ 解析后复核真实路径仍在根内
+  // 字符串判据**不等于**防符号链接 ⇒ 解析后复核真实路径仍在根内
   const absolute = resolve(root, verdict.relative);
   const realRoot = resolve(root);
   if (!absolute.startsWith(realRoot + sep) && absolute !== realRoot) {
@@ -471,7 +470,7 @@ async function openExternal(body: string, root: string): Promise<{ ok: boolean; 
   const editor = EDITORS[0];
   try {
     const child = spawn(editor.cmd, editor.args(absolute), {
-      // ⚠️ **不经过 shell**（用户可写路径绝不能交给 shell 解析）
+      // **不经过 shell**（用户可写路径绝不能交给 shell 解析）
       shell: false,
       detached: true,
       stdio: "ignore",

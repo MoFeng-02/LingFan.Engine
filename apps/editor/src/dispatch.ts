@@ -1,16 +1,16 @@
 /**
  * 资源 → 视图的**分派表**（资源管理器的路由表）。
  *
- * 形状刻意对齐本仓已统一的四注册表（`register(key, value)` + `has(key)`，
+ * 形状刻意对齐已统一的四注册表（`register(key, value)` + `has(key)`，
  * dialogue·element·command·minigame）⇒ **不发明新范式**，一个通用枚举面覆盖全部。
  *
- * 三条纪律：
+ * 三条约定：
  * ① **未命中 ⇒ 只读预览**，不是报错、更不是空白（新增资源类型不改布局就能接入）；
  * ② **可编辑性由分派表声明**，不由路径猜（`readOnly` 是分派结论，不是二次判定）；
  * ③ 视图 id 是**纯数据**（本模块不 import 任何组件）⇒ 可测、宿主可替换。
  */
 
-/** 视图 id（`"story"` 之外的资源视图在 B2 落地） */
+/** 视图 id（`"story"` 之外的资源视图） */
 export type ResourceViewId =
   | "story"
   | "lang"
@@ -29,8 +29,8 @@ export interface ResourceViewSpec {
 /**
  * 分派表：`kindOfPath` 的输出 → 视图。
  *
- * ⚠️ **与 `resourceTree.isReadOnlyPath` 的关系**：那是**模型层**的默认只读判据
- * （本批只有 `.story` 有编辑器）；本表是**宿主层**的最终结论。二者刻意分离——
+ * **与 `resourceTree.isReadOnlyPath` 的关系**：那是**模型层**的默认只读判据
+ * （当前只有 `.story` 有编辑器）；本表是**宿主层**的最终结论。二者刻意分离——
  * 模型层不知道「将来会不会给译文表编辑器」，宿主层才是路由的**唯一事实源**。
  */
 const DISPATCH: Readonly<Record<string, ResourceViewSpec>> = {

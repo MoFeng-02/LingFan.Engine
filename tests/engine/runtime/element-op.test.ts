@@ -1,8 +1,8 @@
 /**
  * 元素增删 op 测试（show / hide / background / bg_switch）。
  *
- * 语义对照旧版引擎 ShowHideHandler / BgSwitchHandler：
- * 差异：旧版引擎分场景元素与运行时元素两处，新引擎合并进 `SYS.elements`。
+ * 语义对照既有实现 ShowHideHandler / BgSwitchHandler：
+ * 差异：既有实现分场景元素与运行时元素两处，新引擎合并进 `SYS.elements`。
  */
 import { describe, expect, it } from "vitest";
 import type { ElementInstance, OutboundEvent } from "@lingfan/engine";
@@ -70,7 +70,7 @@ describe("show", () => {
     engine.start();
     const list = elements(engine);
     const backgrounds = list.filter((e) => e.type === "background");
-    expect(backgrounds).toHaveLength(1); // 不堆积（旧版引擎 RemoveAll 语义）
+    expect(backgrounds).toHaveLength(1); // 不堆积（既有实现 RemoveAll 语义）
     expect(backgrounds[0]?.props.source).toBe("Images/second.png");
     expect(backgrounds[0]?.z).toBe(-1000); // 渲染底层由 z 决定（数组序 ≠ 渲染序）
     engine.dispose();
@@ -109,7 +109,7 @@ describe("hide", () => {
     ]);
     engine.start();
     expect(ids(engine)).toEqual(["title"]);
-    expect(errors).toHaveLength(0); // 未命中不算错误（旧版引擎 RemoveAll 静默）
+    expect(errors).toHaveLength(0); // 未命中不算错误（既有实现 RemoveAll 静默）
     engine.dispose();
   });
 

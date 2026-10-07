@@ -81,7 +81,7 @@ pub struct ProjectFiles {
     pub stories: BTreeMap<String, String>,
 }
 
-/// 递归收集故事文件：`Stories/` 子目录 = 章节分组（旧版引擎目录语义）。
+/// 递归收集故事文件：`Stories/` 子目录 = 章节分组（目录语义）。
 /// 逻辑路径相对资源根（`root`）剥离、`/` 分隔；点开头的文件（`.DS_Store` 等系统杂项）不入工程。
 /// key 存在时（清单声明 resourceEncryption）：`.enc` 加密故事解密后以**去 .enc 的逻辑路径**供给；
 /// 无 key 时遇 `.enc` = fail-closed（不给组装器喂密文垃圾）。非 UTF-8 fail-closed。
@@ -289,8 +289,8 @@ pub fn project_files(app: tauri::AppHandle) -> Result<ProjectFiles, ProjectFiles
 const LANG_ROOT: &str = "Lang";
 
 /// 单个 overlay 译文文件：overlay 根内相对路径（`/` 分隔；`main.json` = 全局兜底）
-/// → 原文→译文映射。BTreeMap<String, String> 反序列化（旧版引擎 DictionaryStringString 同构）：
-/// 含非字符串值/坏 JSON 的文件整体无效 → 跳过（宽松，旧版引擎 LoadFile 同语义）。
+/// → 原文→译文映射。BTreeMap<String, String> 反序列化（字符串字典）：
+/// 含非字符串值/坏 JSON 的文件整体无效 → 跳过（宽松口径）。
 #[derive(Debug, Serialize, Clone)]
 pub struct OverlayFile {
     pub path: String,
@@ -306,7 +306,7 @@ fn valid_lang(lang: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
 
-/// 读取某语言 overlay 文件（旧版引擎 I18nService 加载策略）：
+/// 读取某语言 overlay 文件（按需加载策略）：
 /// 目录形式 `Lang/{lang}/` 递归收集 .json（含 `.json.enc` 加密译文），按路径排序输出确定性；
 /// 目录缺失 → 降级单文件 `Lang/{lang}.json`（以 `main.json` 供给 = 全局兜底语义）。
 /// 合并序（main.json 最先、其余按序覆盖）归引擎 TS 侧（mergeOverlayFiles——叙事语义引擎可测）；
@@ -384,7 +384,7 @@ pub fn load_overlay_files(
             .strip_prefix(&lang_prefix)
             .map_or_else(|| "main.json".to_string(), str::to_string);
         let Ok(entries) = serde_json::from_str::<BTreeMap<String, String>>(&text) else {
-            continue; // 单文件宽松：坏 JSON / 含非字符串值 → 跳过（旧版引擎 LoadFile 同语义）
+            continue; // 单文件宽松：坏 JSON / 含非字符串值 → 跳过（宽松口径）
         };
         out.push(OverlayFile {
             path: overlay_rel,
@@ -394,7 +394,7 @@ pub fn load_overlay_files(
     Ok(out)
 }
 
-/// I18N overlay 供给命令（按需：setLanguage 时调用，启动零成本——旧版引擎同思想）
+/// I18N overlay 供给命令（按需：setLanguage 时调用，启动零成本）
 #[tauri::command]
 pub fn load_i18n_overlay(
     app: tauri::AppHandle,
@@ -405,11 +405,11 @@ pub fn load_i18n_overlay(
     load_overlay_files(&*resfs, &root, &lang, key.as_deref())
 }
 
-/// 可用语言列表（旧版引擎 I18nService.GetAvailableLanguages 对应物）：
+/// 可用语言列表：
 /// 扫描资源根 `Lang/` 的子目录名与单文件名（.json 与 .json.enc 均识别——
-/// 旧版引擎通配 *.json 在加密形态会漏 .json.enc 单文件语言，此处修正）；
-/// 恒含默认语言 "zh-CN"（OrdinalIgnoreCase 去重）；其余按字典序输出确定性。
-/// `Lang/` 缺失 = 仅默认语言（旧版引擎 Directory.Exists 同语义，不报错）。
+/// 通配 *.json 在加密形态会漏 .json.enc 单文件语言，此处修正）；
+/// 恒含默认语言 "zh-CN"（大小写不敏感去重）；其余按字典序输出确定性。
+/// `Lang/` 缺失 = 仅默认语言（目录存在性同语义，不报错）。
 pub fn scan_i18n_languages(resfs: &dyn ResourceFs, root: &Path) -> Vec<String> {
     const DEFAULT_LANG: &str = "zh-CN";
     let mut langs: Vec<String> = vec![DEFAULT_LANG.to_string()];
@@ -758,7 +758,7 @@ mod tests {
 
     #[test]
     fn list_languages_without_lang_root_is_default_only() {
-        // 旧版引擎 Directory.Exists 同语义：无 Lang/ 目录 = 仅默认语言，不报错
+        // 无 Lang/ 目录 = 仅默认语言，不报错
         let root = test_root("langs-none");
         write(&root, "project.json", "{}");
         assert_eq!(
@@ -769,8 +769,8 @@ mod tests {
 
     #[test]
     fn list_languages_scans_dirs_and_files_deterministically() {
-        // 旧版引擎 GetAvailableLanguages：子目录名 + 单文件名（去扩展名）；恒含 zh-CN 居首；
-        // .json.enc 单文件也识别（对旧版引擎通配 *.json 漏加密形态的修正）；其余字典序
+        // 子目录名 + 单文件名（去扩展名）；恒含 zh-CN 居首；
+        // .json.enc 单文件也识别（通配 *.json 会漏加密形态）；其余字典序
         let root = test_root("langs-scan");
         write(&root, "project.json", "{}");
         fs::create_dir_all(root.join("Lang/en-US")).unwrap();
@@ -794,7 +794,7 @@ mod tests {
 
     #[test]
     fn list_languages_ignores_case_duplicates() {
-        // OrdinalIgnoreCase 去重（旧版引擎 HashSet(StringComparer.OrdinalIgnoreCase) 同语义）
+        // 大小写不敏感去重
         let root = test_root("langs-case");
         write(&root, "project.json", "{}");
         fs::create_dir_all(root.join("Lang/ZH-cn")).unwrap();
@@ -886,7 +886,7 @@ mod tests {
 
     #[test]
     fn overlay_bad_or_nonstring_json_skipped() {
-        // 旧版引擎 LoadFile 宽松语义：损坏 / 含非字符串值的文件跳过，其余照常供给
+        // 宽松口径：损坏 / 含非字符串值的文件跳过，其余照常供给
         let root = test_root("i18n-lenient");
         write(&root, "Lang/en/main.json", r#"{"ok":"Yes"}"#);
         write(&root, "Lang/en/broken.json", "{ not json");

@@ -21,7 +21,7 @@ interface EditorApi {
   removeColumn(id: string): void;
 }
 const api = inject<EditorApi>("editorApi")!;
-/** 应用内对话框（替代原生 prompt/confirm/alert —— D-62①） */
+/** 应用内对话框（替代原生 prompt/confirm/alert） */
 const dialog = useDialog();
 
 /** 分组视图 API（与 `editorApi` 分离：视图偏好不走会话提交） */
@@ -150,7 +150,7 @@ async function promptAddColumn(kind: "flow" | "scene"): Promise<void> {
     initial: "",
     allowEmpty: true,
   });
-  const intent = decideAddColumn(raw); // 取消/留空的判据仍在纯函数里（D-58）
+  const intent = decideAddColumn(raw); // 取消/留空的判据仍在纯函数里
   if (!intent.run) return;
   const type = await dialog.askChoice({
     title: "场景类型（运行语义）",
@@ -161,7 +161,7 @@ async function promptAddColumn(kind: "flow" | "scene"): Promise<void> {
       { value: "ui", label: "界面：覆盖层 / 弹窗" },
     ],
   });
-  if (type === null) return; // 取消 = 不建列（取消 ≠ 缺省，D-58 同款纪律）
+  if (type === null) return; // 取消 = 不建列（取消 ≠ 缺省）
   api.addColumn(kind, intent.hint, type === "game" ? undefined : type);
 }
 
@@ -436,8 +436,8 @@ button.caret {
   padding: 0 5px;
 }
 .ops {
-  /* 常显低强调（E2 建议值）：hover-only 的行内操作在触屏与新用户面前等于不存在
-     （D-62②）。改常显但压低视觉权重，hover 时才提升 —— 可见性不靠鼠标。 */
+  /* 常显低强调：hover-only 的行内操作在触屏与新用户面前等于不存在。
+     改常显但压低视觉权重，hover 时才提升 —— 可见性不靠鼠标。 */
   display: inline-flex;
   gap: 2px;
   opacity: 0.45;

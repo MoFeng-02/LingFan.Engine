@@ -1,5 +1,5 @@
 /**
- * 对话框模板测试（核心层：模板名三级优先级语义，与旧版引擎同构）。
+ * 对话框模板测试（核心层：模板名三级优先级语义，与既有实现同构）。
  * - 三级优先级（say template > character screen > null 全局默认）
  * - fail-closed（非字符串/空串拒绝且状态原样）
  * - 模板名进快照：回溯/前进后随检查点恢复
@@ -146,7 +146,7 @@ describe("拟态用户旅程 + 重放", () => {
     h.engine.start();
     h.engine.advance(); // menu 等待
     expect(h.engine.get(SYS.waiting)).toBe("menu");
-    expect(h.engine.get(SYS.dialogTemplate)).toBe("t1"); // menu 不清模板键（旧版引擎同语义）
+    expect(h.engine.get(SYS.dialogTemplate)).toBe("t1"); // menu 不清模板键（既有实现同语义）
     h.engine.choose("b");
     expect(h.engine.get(SYS.currentDialogText)).toBe("乙");
     expect(h.engine.get(SYS.dialogTemplate)).toBeNull(); // 新句无模板无角色 → null

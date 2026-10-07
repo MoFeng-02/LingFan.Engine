@@ -36,7 +36,7 @@ interface EditorApi {
   connectBranch(fromColumnId: string, toColumnId: string, optionText?: string): boolean;
 }
 const api = inject<EditorApi>("editorApi")!;
-/** 应用内对话框（替代原生 alert/prompt —— D-62①） */
+/** 应用内对话框（替代原生 alert/prompt） */
 const dialog = useDialog();
 
 const NODE_W = 156;

@@ -311,9 +311,9 @@ interface ParseState {
   lines: SourceLine[];
   issues: string[];
   /**
-   * **警告级问题**（2026-10-05 治根）：「语义暂未生效」类提示，**不阻塞解析**。
+   * **警告级问题**：「语义暂未生效」类提示，**不阻塞解析**。
    *
-   * 🔴 为什么要分两级：此前**任何** issue 都让整文件拒绝（`issues.length > 0` 即抛），
+   * 为什么要分两级：若**任何** issue 都让整文件拒绝（`issues.length > 0` 即抛），
    * 于是「`say` 的 color 暂未生效」这种**如实告知**也会让整个工程打不开——
    * 惩罚大于收益。分级口径：
    * - `issues` = **结构/语法错误** ⇒ fail-closed（数据不可信，不能猜）
@@ -365,8 +365,8 @@ function parseSay(
           cmd.template = unquote(value);
           continue;
         case "color":
-          // 说话人颜色覆盖（2026-10-05 起**真支持**：写入 `SYS.currentDialogColor`）。
-          // ⚠️ 与**行内标记** `{color=…}`（写在文本内部、标记某段文字）是两件事。
+          // 说话人颜色覆盖（写入 `SYS.currentDialogColor`）。
+          // 与**行内标记** `{color=…}`（写在文本内部、标记某段文字）是两件事。
           // 格式校验在运行期（`isValidSayColor`）与编辑器 schema（同一判据）——投影层只搬运。
           cmd.color = unquote(value);
           continue;
@@ -515,7 +515,7 @@ function parseSimpleStatement(
       if (tokens.length < 1) return fail("jump 需要 target");
       return { op: "jump", target: tokens[0]! } as StoryCommand;
     case "navigate": {
-      // 老 DSL 语法照搬：navigate "p" [scene "n"]——path 必填，scene 可选
+      // 导航语法：navigate "p" [scene "n"]——path 必填，scene 可选
       if (tokens.length < 1) return fail("navigate 需要 path");
       const path = quoted(0);
       if (path === "") return fail("navigate 需要 path");
@@ -583,14 +583,14 @@ function parseSimpleStatement(
     case "pause": {
       const seconds = Number(tokens[0]);
       if (tokens.length < 1 || Number.isNaN(seconds)) {
-        // 🔴 **无参 `pause` 按 0 秒处理并警告**（2026-10-05 治根）。
-        // 老工程用无参 `pause` 表「等玩家点击」（老引擎语义），本仓只支持定时停顿。
+        // **无参 `pause` 按 0 秒处理并警告**。
+        // 传统写法里无参 `pause` 表「等玩家点击」，本实现只支持定时停顿。
         // 判据：**不静默丢**（原文照进 Story，命令序列完整），
-        // **也不fail-closed**（那会让整个工程打不开——惩罚大于收益）。
+        // **也不 fail-closed**（那会让整个工程打不开——惩罚大于收益）。
         // 时长取 0（= 立即继续），警告告诉作者「这行没有停顿效果，要等点击请用 wait」。
         (warnings ?? issues).push(
           `${at}: ${op} 无参数——按 0 秒处理（立即继续）；` +
-            `老引擎的「等点击」请改用 \`wait\`（可 skipable）或补秒数如 \`${op} 1.5\``,
+            `如需等玩家点击请改用 \`wait\`（可 skipable）或补秒数如 \`${op} 1.5\``,
         );
         return { op, seconds: 0 } as StoryCommand;
       }
@@ -1054,14 +1054,13 @@ function parseSimpleStatement(
       return cmd;
     }
     case "scene": {
-      // 🔴 **列内 `scene "目标"` = 跳转**（2026-10-05 治根）。
-      // 真实工程在**文件中间**用 `scene "title_main"` 跳回标题场景
-      // （`chapter3.story:48`、`showcase.story:96`）——此前一律落到
-      // 「暂不支持的语句」⇒ 整个工程打不开。
+      // **列内 `scene "目标"` = 跳转**。
+      // 工程里常见在**文件中间**用 `scene "title_main"` 跳回标题场景
+      // ——若一律落到「暂不支持的语句」，整个工程就打不开。
       //
-      // 语义对齐：`scene "x"`（跳转）≡ `navigate "x"`（本仓的坐标切换命令）。
+      // 语义对齐：`scene "x"`（跳转）≡ `navigate "x"`（坐标切换命令）。
       // 区别于**列声明**的 `scene "名" type=menu`（那个在顶层解析，见 `parseTextStory`）。
-      // ⚠️ `tokens[0]` 是 op 本身，目标名在 `tokens[1]`（`splitTokens` 的口径）
+      // `tokens[0]` 是 op 本身，目标名在 `tokens[1]`（`splitTokens` 的口径）
       const target = quoted(0);
       if (target === "") return fail("scene 需要目标场景名");
       return { op: "navigate", path: target } satisfies StoryCommand;
@@ -1188,7 +1187,7 @@ function parseCommands(
 }
 
 /**
- * 自定义 op 行投影兜底（不抛纪律的引擎半边）：投影器抛出/返回畸形 = 该行 issue
+ * 自定义 op 行投影兜底（不抛约束的引擎半边）：投影器抛出/返回畸形 = 该行 issue
  * （带 `sourceName:行号` 定位）；返回的命令须为含字符串 op 的对象（引擎只做形状守卫）。
  */
 function customFromText(
@@ -1393,7 +1392,7 @@ function parseBlockStatement(
  * 字符串字段投影（**生成器唯一字符串入口**）：非字符串 = 该命令不可投影，
  * 抛 `TextFormatError` 让 `projectText` 降级为 issue——
  * 编辑器里「插入了命令但必填字段还空着」是常态，绝不能让半个命令把整棵树带崩
- * （实测缺陷：`escapeForText(undefined)` 抛 TypeError，编辑器文本视图崩、整页失活）。
+ * （`escapeForText(undefined)` 会抛 TypeError ⇒ 文本视图崩、整页失活）。
  */
 function quoteForText(value: unknown): string {
   if (typeof value !== "string") {
@@ -1805,7 +1804,7 @@ function generateCommand(
   }
 }
 
-/** 自定义 op 行投影兜底（不抛纪律的引擎半边）：抛出/空行 = null → 上层整次拒绝 */
+/** 自定义 op 行投影兜底（不抛约束的引擎半边）：抛出/空行 = null → 上层整次拒绝 */
 function tryProjectToText(
   toText: (cmd: Readonly<StoryCommand>) => string | null,
   cmd: StoryCommand,
@@ -1891,8 +1890,8 @@ export function parseTextStory(
       if (name === "" || columns.some((c) => c.id === name)) {
         state.issues.push(`${at}: scene 名为空或重复：${name}`);
       }
-      // 🔴 `type=menu|ui|game`（2026-10-05 治根）：**映射到列的运行语义**。
-      // 此前一律「接受但忽略」⇒ 用户的 7 个 menu 场景**全被当成 game**
+      // `type=menu|ui|game`：**映射到列的运行语义**。
+      // 若「接受但忽略」，作者的 menu 场景**会被当成 game**
       // ⇒ 保存后菜单会变成可回溯剧情（且不可逆）。
       let sceneType: "game" | "menu" | "ui" | undefined;
       const rest: string[] = [];
@@ -1928,7 +1927,7 @@ export function parseTextStory(
       columns.push({
         id: name,
         kind: "scene",
-        // ⚠️ 仅在**非缺省**时写（`game` 是常态，写进去会让文件噪声变大）
+        // 仅在**非缺省**时写（`game` 是常态，写进去会让文件噪声变大）
         ...(sceneType !== undefined && sceneType !== "game" ? { type: sceneType } : {}),
         elements: body.elements,
         entry: body.commands,
@@ -1979,8 +1978,8 @@ export function parseTextStory(
 /**
  * 最近一次 `parseTextStory` 的**警告**（「语义暂未生效」类，不阻塞解析）。
  *
- * 🔴 为什么用「最近一次」这种不方便的口径（2026-10-05）：警告**不是领域数据**，
- * 不该塞进 `Story`（会让往返深等失败——与 `sourcePath` 同一个教训）。
+ * 为什么用「最近一次」这种不方便的口径：警告**不是领域数据**，
+ * 不该塞进 `Story`（会让往返深等失败——与 `sourcePath` 同一个道理）。
  * 又不能改 `parseTextStory` 的返回类型（它是纯函数，契约只增不改）。
  * 折中：**模块级最近一次** + 调用方**立即取**（解析与取用紧邻）。
  * 想要严格隔离 ⇒ 后续把 `parseTextStory` 换成返回 `{story, warnings}` 的新入口。

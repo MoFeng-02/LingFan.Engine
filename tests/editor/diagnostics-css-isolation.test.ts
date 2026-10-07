@@ -1,10 +1,10 @@
 /**
- * 诊断面板**类名隔离**守卫（**回归锚定：真机踩过的坑**）。
+ * 诊断面板**类名隔离**守卫（回归）。
  *
  * 症状：新写的诊断分组用了通用类名 `.group-head`，而 `ColumnList` /
  * `ComponentPalette` / `StageEditor` **早就在用同一个类名** ⇒ 探针按类名选择器
- * 点组头时点到的是**别的面板的组头**（实测「组头数 = 18 而非 3」，点开的是
- * 舞台的「图像4」），一度被误判成「折叠功能坏了」。
+ * 点组头时点到的是**别的面板的组头**（「组头数」与预期不符，点开的是
+ * 舞台的元素），一度被误判成「折叠功能坏了」。
  *
  * 根因不是逻辑，是**CSS 类名没有组件作用域**（scoped style 只作用于本组件模板，
  * 但**类名字符串本身**在 DOM 里是全局可见的，跨组件同名字段会互相干扰）。
@@ -21,7 +21,7 @@ const COMPONENTS = "E:/Project/MyProject/LingFan/LingFan.Engine/apps/editor/src/
 /**
  * 组件模板里出现的静态 class 名。
  *
- * ⚠️ **只取纯类名 token**：`class="a"`:class="cond ? 'x' : 'y'"` 这类混写里，
+ * **只取纯类名 token**：`class="a"`:class="cond ? 'x' : 'y'"` 这类混写里，
  * 动态片段不是类名，取出来会造成**假撞名**。实测踩到的三种假阳性：
  * ① `:class="{ collapsed: cond }"` 的 `{ collapsed: … }`；② 三元表达式里的 `'y'`；
  * ③ Vue 指令属性 `v-if="a === b"` 被跨引号配对误吞（`===` 当成类名）。
@@ -44,7 +44,7 @@ function classesOf(file: string): Set<string> {
 
 const componentFiles = readdirSync(COMPONENTS).filter((f) => f.endsWith(".vue"));
 
-describe("诊断面板 · 类名隔离（**用户实测回归**）", () => {
+describe("诊断面板 · 类名隔离", () => {
   it("诊断面板的类名**全部带 `diag-` 前缀**", () => {
     const own = classesOf("DiagnosticsPanel.vue");
     expect(own.size).toBeGreaterThan(0);

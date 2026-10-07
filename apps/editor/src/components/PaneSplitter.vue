@@ -6,7 +6,7 @@
  * 且各浏览器的把手样式不一致（要跨浏览器一致就得自己画）。
  *
  * 键盘可达（a11y）：`←/→` 每次 16px，`Home/End` 到边界 —— 拖拽不是唯一入口。
- * 拖拽中用 **pointer capture**（承接批 1 D-63 的教训：别让 move/up 挂在 window 上）。
+ * 拖拽中用 **pointer capture**（不让 move/up 挂在 window 上，避免面板卸载后仍被调用）。
  */
 import { computed, ref } from "vue";
 
@@ -48,7 +48,7 @@ function onPointerDown(event: PointerEvent): void {
   };
   const onUp = (): void => {
     dragging.value = false;
-    // ⚠️ 元素可能已卸载（拖拽中面板被折叠/换工程）⇒ 释放前必须查引用，
+    // 元素可能已卸载（拖拽中面板被折叠/换工程）⇒ 释放前必须查引用，
     //    `releasePointerCapture` 拿不到会抛「Cannot read properties of null」。
     if (handle.isConnected && handle.hasPointerCapture?.(event.pointerId)) {
       handle.releasePointerCapture(event.pointerId);

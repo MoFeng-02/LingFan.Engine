@@ -88,7 +88,7 @@ describe("assembleProject", () => {
     expect(issues.join("\n")).toContain("start.json");
   });
 
-  it("🔴 文件名与列 id **解耦**（2026-10-05 治根）：语义化文件名合法", () => {
+  it("文件名与列 id **解耦**：语义化文件名合法", () => {
     // 真实工程形态：`Stories/chapter1/chapter1.story` 装列 `chapter1_start`
     // —— 文件名是「章节名」，列 id 是「场景名」，本就是两回事。
     const files = new Map<string, unknown>([
@@ -275,8 +275,8 @@ describe("serializeProject（写回往返互锁）", () => {
     expect(reAssemble(files)).toEqual(story);
   });
 
-  it("写回保留来源文件（2026-10-05 治根）：**不拍平**、不删原文件、往返深等", () => {
-    // 🔴 一个 `.story` 可承载**多列**（真实工程：`chapter1.story` 有 4 列）
+  it("写回保留来源文件：**不拍平**、不删原文件、往返深等", () => {
+    // 一个 `.story` 可承载**多列**（如 `chapter1.story` 有 4 列）
     // ⇒ 写回**按来源文件分组**，组内写成多列形态；不按 id 重算路径、不删原文件。
     const entry = { formatVersion: 1, id: "demo", entry: "a" };
     const story = load(entry, {
@@ -289,7 +289,7 @@ describe("serializeProject（写回往返互锁）", () => {
       }),
     });
     const { files } = serializeProject(story, entry);
-    // 🔴 核心判据：**一个文件、路径不变**（不是 `Stories/a.json` + `Stories/b.json`）
+    // 核心判据：**一个文件、路径不变**（不是 `Stories/a.json` + `Stories/b.json`）
     expect([...files.keys()]).toEqual(["Stories/ch1.json", MANIFEST_FILE]);
     // 零删除
     expect(
@@ -299,7 +299,7 @@ describe("serializeProject（写回往返互锁）", () => {
   });
 
   it("单列文件：写回原路径 + 原扩展名，零删除", () => {
-    // ⚠️ 文件名须等于列 id（既有不变量，`assembleProject` 守门）⇒ 夹具用 `a.json`
+    // 文件名须等于列 id（既有不变量，`assembleProject` 守门）⇒ 夹具用 `a.json`
     // 而非 `ch1.json`（那会先被组装器拒绝，测不到写回）。
     const entry = { formatVersion: 1, id: "demo", entry: "a" };
     const story = load(entry, {
@@ -309,10 +309,10 @@ describe("serializeProject（写回往返互锁）", () => {
       }),
     });
     const { files } = serializeProject(story, entry);
-    // 🔴 核心判据：路径与文件名**完全不变**（不是别的路径）
+    // 核心判据：路径与文件名**完全不变**（不是别的路径）
     expect([...files.keys()]).toEqual(["Stories/a.json", MANIFEST_FILE]);
     const baseline = new Map([["Stories/a.json", "旧内容"]]);
-    // 🔴 零删除（原文件不是「陈旧」）
+    // 零删除（原文件不是「陈旧」）
     expect(diffProjectFiles(files, baseline).deletes).toEqual([]);
     expect(reAssemble(files)).toEqual(story);
   });
@@ -326,12 +326,12 @@ describe("serializeProject（写回往返互锁）", () => {
       }),
     });
     const { files } = serializeProject(story, entry);
-    // 🔴 章节层级 + `.story` 扩展名都保住
+    // 章节层级 + `.story` 扩展名都保住
     expect([...files.keys()]).toContain("Stories/system/about.story");
     expect([...files.keys()]).not.toContain("Stories/about.json");
-    // 🔴 `type` 必须写回（否则下次打开菜单场景变成 game，且**不可逆**）
+    // `type` 必须写回（否则下次打开菜单场景变成 game，且**不可逆**）
     expect(files.get("Stories/system/about.story")).toContain("menu");
-    //⚠️ `sourcePath` 刻意**不写进文件内容**（编辑期元数据，写进去会自指）
+    // `sourcePath` 刻意**不写进文件内容**（编辑期元数据，写进去会自指）
     expect(files.get("Stories/system/about.story")).not.toContain("sourcePath");
   });
 
@@ -652,7 +652,7 @@ describe("serializeColumnDocument（单列文档写回）", () => {
     ]);
     const { files } = serializeProject(single, entry);
     const diff = diffProjectFiles(files, baseline);
-    // ⚠️ 这就是缺陷本体：只编辑 tavern，start 被列入删除集
+    // 这就是缺陷本体：只编辑 tavern，start 被列入删除集
     expect(diff.deletes).toEqual(["Stories/start.json"]);
     // 清单托管键同样被单列文档的残缺 entry 覆写
     expect(JSON.parse(files.get(MANIFEST_FILE) ?? "{}").entry).toBe("tavern");
@@ -686,7 +686,7 @@ describe("serializeColumnDocument（单列文档写回）", () => {
       { formatVersion: 1, id: "tavern", kind: "flow", commands: [{ op: "say", text: "改过" }] },
       "tavern.json",
     );
-    // ⚠️ `diffProjectFiles` 是**整工程**差量器（不在期望集 ⇒ 陈旧），
+    // `diffProjectFiles` 是**整工程**差量器（不在期望集 ⇒ 陈旧），
     // 单文档保存不能直接把单列产物喂给它——必须由调用方按「基线 + 本文档覆盖」组装期望集。
     // 这条断言锁住该边界：喂单列产物 ⇒ start 被判陈旧。
     const naive = diffProjectFiles(serializeColumnDocument(single, "tavern").files, baseline);

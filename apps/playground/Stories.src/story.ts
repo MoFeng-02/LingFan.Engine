@@ -1,11 +1,11 @@
 /**
  * TS 故事源（源约定：本目录顶层**恰好一个** .ts，default 导出多列 Story）。
  *
- * 本版 = **Script 词汇层写法对照**（与 git 历史里的对象字面量版同故事、同语义）：
+ * 本故事用 **Script 词汇层写法**（与对象字面量写法同故事、同语义）：
  * 作者词汇来自 `@lingfan/editor` 的 `script` 命名空间——say/menu/when/assert/guard
  * 一行一个，底层 StoryCommand 形状知识收敛进词汇层（编辑器包）。
  *
- * 分界纪律（设计稿 2026-10-06 §1/§7）：
+ * 分界：
  * - TS 原生 if / for / 函数 = **构建期**（分支展开成静态数据、循环展开成批量列）
  * - 运行期分支/循环/校验 = 词汇层结构化构造（whenChain / assert / guard——
  *   产物为 if-op / assert-op / guard-op 节点，回溯与存档全兼容）
@@ -83,7 +83,7 @@ const {
   reward,
 } = script;
 
-// —— 显式变量注册（用户裁定：变量句柄先登记后引用——IDE 补全 + 拼写检查） ——
+// —— 显式变量注册（变量句柄先登记后引用——IDE 补全 + 拼写检查） ——
 const vars = defineVars({
   "player.gold": "num",
   "player.name": "str",
@@ -93,7 +93,7 @@ const vars = defineVars({
 });
 
 // —— 具名实现槽位（cell）：构建期扫描进 fun_register.g.ts，故事里 guard(handle) 引用 ——
-// ⚠️ 参数类型由 cell 签名语境推断（GuardFn），无需注记；实现里只能引用导入绑定/参数/全局。
+// 参数类型由 cell 签名语境推断（GuardFn），无需注记；实现里只能引用导入绑定/参数/全局。
 const checkGold = cell("gold-non-negative", (ctx) => {
   const gold = ctx.get("player.gold");
   if (typeof gold !== "number" || gold < 0) ctx.fail(`player.gold 非法：${String(gold)}`);
@@ -124,7 +124,7 @@ const 开场列: StoryColumn = {
     bgm("Audio/crickets_night01.mp3", { volume: 0.4, fade: 1200 }),
     set("player.gold", "+= {20}"),
     character("灵泛", { name: "灵泛", color: "#7aa2f7" }),
-    // ⚠️ 迁移保真：原手写列带 z:2000（插值句在最上层）
+    // 迁移保真：原手写列带 z:2000（插值句在最上层）
     {
       op: "say",
       text: "你有 {player.gold:000} 枚金币（插值 + 补零格式化）。",
@@ -169,7 +169,7 @@ const 酒馆列: StoryColumn = {
 
 // —— 第二章：广场（do-while 热身 + minigame） ——
 const 广场命令 = [
-  // 构建期 do-while：热身三行（⚠️ 展开符不能少——否则数组嵌数组，parseStory fail-closed）
+  // 构建期 do-while：热身三行（展开符不能少——否则数组嵌数组，parseStory fail-closed）
   ...(() => {
     const lines = [];
     let 组 = 0;
@@ -513,7 +513,7 @@ export default {
   formatVersion: 1,
   id: "demo",
   entry: 入口id,
-  // ⚠️ 迁移保真：原清单 defines（player.gold 初始 7）——漏写会在 serialize 时被抹掉
+  // 迁移保真：原清单 defines（player.gold 初始 7）——漏写会在 serialize 时被抹掉
   defines: { "player.gold": 7 },
   columns: 列草稿集,
 } satisfies Story;

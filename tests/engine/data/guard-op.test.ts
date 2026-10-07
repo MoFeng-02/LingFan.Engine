@@ -1,5 +1,5 @@
 /**
- * guard op 五类测试（2026-10-06 · 设计稿 §8.2 语义契约逐条对应）：
+ * guard op 五类测试：
  * 运行期守卫（组合根注册制）——签名 `(ctx, args)`、ctx 沙箱面（get/fail，契约只增）、
  * args 纯数据、失败 = engine.error + 状态原样 + 停在当前命令、回溯重放同判。
  */
@@ -57,7 +57,7 @@ function lastError(h: Harness): { code?: string; message?: string } {
 }
 
 describe("guard · 注册与未注册（fail-closed 口径）", () => {
-  it("🔴 未注册名 ⇒ guard-unknown（停在当前命令，状态原样）", () => {
+  it("未注册名 ⇒ guard-unknown（停在当前命令，状态原样）", () => {
     const h = makeEngine([
       column("a", [{ op: "guard", fn: "不存在" }, { op: "say", text: "不可达" }]),
     ]);
@@ -67,7 +67,7 @@ describe("guard · 注册与未注册（fail-closed 口径）", () => {
     h.dispose();
   });
 
-  it("🔴 未注入 guards（缺省 {}）⇒ 同口径 guard-unknown", () => {
+  it("未注入 guards（缺省 {}）⇒ 同口径 guard-unknown", () => {
     const h = makeEngine([column("a", [{ op: "guard", fn: "any" }])]);
     h.engine.start();
     expect(lastError(h).code).toBe("guard-unknown");
@@ -76,7 +76,7 @@ describe("guard · 注册与未注册（fail-closed 口径）", () => {
 });
 
 describe("guard · ctx 沙箱面与 args（签名 (ctx, args)）", () => {
-  it("🔴 ctx.get 读 SSOT；args 纯数据透传；通过 = 纯推进", () => {
+  it("ctx.get 读 SSOT；args 纯数据透传；通过 = 纯推进", () => {
     const seen: { ctxKeys: string[]; args: unknown } = { ctxKeys: [], args: undefined };
     const h = makeEngine(
       [
@@ -107,7 +107,7 @@ describe("guard · ctx 沙箱面与 args（签名 (ctx, args)）", () => {
     h.dispose();
   });
 
-  it("🔴 ctx.fail ⇒ guard-failed + 自定义消息 + 状态原样 + 停在当前命令", () => {
+  it("ctx.fail ⇒ guard-failed + 自定义消息 + 状态原样 + 停在当前命令", () => {
     const h = makeEngine(
       [
         column("a", [
@@ -133,7 +133,7 @@ describe("guard · ctx 沙箱面与 args（签名 (ctx, args)）", () => {
     h.dispose();
   });
 
-  it("🔴 守卫抛出非 fail 异常 ⇒ guard-threw 兜底（不静默、不裸崩）", () => {
+  it("守卫抛出非 fail 异常 ⇒ guard-threw 兜底（不静默、不裸崩）", () => {
     const h = makeEngine(
       [column("a", [{ op: "guard", fn: "boom" }])],
       { guards: { boom: () => { throw new TypeError("逻辑炸了"); } } },
@@ -144,7 +144,7 @@ describe("guard · ctx 沙箱面与 args（签名 (ctx, args)）", () => {
     h.dispose();
   });
 
-  it("🔴 args 非 JSON 安全（数组内函数——stringify 语义拒收）⇒ guard-args-unsafe fail-closed", () => {
+  it("args 非 JSON 安全（数组内函数——stringify 语义拒收）⇒ guard-args-unsafe fail-closed", () => {
     const h = makeEngine(
       [column("a", [{ op: "guard", fn: "check", args: { history: [() => 1] } } as never])],
       { guards: { check: () => undefined } },
@@ -156,7 +156,7 @@ describe("guard · ctx 沙箱面与 args（签名 (ctx, args)）", () => {
 });
 
 describe("guard · 回溯重放同判（纯函数语义）", () => {
-  it("🔴 回退到 guard 前再前进 ⇒ 同位同判（再次拦截）", () => {
+  it("回退到 guard 前再前进 ⇒ 同位同判（再次拦截）", () => {
     const 偏置 = 0; // 模拟「同一守卫、状态决定结果」——重放时状态由快照恢复 ⇒ 同判（此变量即守卫的外部闭包输入，重放期不变）
     const h = makeEngine(
       [
