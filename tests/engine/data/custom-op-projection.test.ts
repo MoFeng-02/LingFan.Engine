@@ -166,7 +166,7 @@ describe("自定义 op 文本投影", () => {
     }
   });
 
-  it("toText 返回 null / 抛出 → 生成侧整次拒绝（投影不了的 op 不假装能投影）", () => {
+  it("toText 返回 null / 抛出 → 生成侧整次拒绝（投影不了的 op 不伪造投影）", () => {
     const nullToText = collectTextProjections([
       {
         id: "nx",

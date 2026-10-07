@@ -30,7 +30,7 @@ export interface ChapterNode {
   /**
    * 原始场景类型（列的 `type` 字段原样透传；`undefined` = 缺省 game）。
    * 分组判定只吃 `group`；要**精确到 菜单/界面** 的展示走 `sceneTypeBadgeOf(node.type)`
-   * ——别在组件里按 group 二次猜 type（group=ui 只说明「不可回溯」，不说明是哪一种）。
+   * （`group=ui` 只说明「不可回溯」，不说明是哪一种）。
    */
   readonly type: StoryColumn["type"];
   /** 章节在文件树中的位置（逻辑路径，用于联动资源树选中） */

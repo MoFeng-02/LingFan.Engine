@@ -52,7 +52,7 @@ export function defaultLayout(): LayoutState {
   };
 }
 
-/** 夹取到合法区间（非有限值回落默认——存储被外部改坏时不炸） */
+/** 夹取到合法区间（非有限值回落默认——存储被外部改坏时安全回落） */
 export function clampLayout(state: LayoutState): LayoutState {
   const d = defaultLayout();
   const num = (value: unknown, min: number, max: number, fallback: number): number =>

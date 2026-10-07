@@ -89,7 +89,7 @@ export interface OpenedProject {
   /**
    * 降级打开回执：资源根缺 `project.json` ⇒ 引擎合成最小清单打开。
    * `undefined` = 正常打开。**降级必须显式告知**（状态栏「降级打开」+ title 详情），
-   * 不许静默假装一切正常；结构损坏不在此列（那些根本打不开）。
+   * 不做静默处理；结构损坏不在此列（那些根本打不开）。
    */
   degraded?: DegradedOpen;
 }

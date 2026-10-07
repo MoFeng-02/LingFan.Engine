@@ -3310,7 +3310,7 @@ export class StoryEngine {
           return migrated;
         }
       } catch {
-        // 宿主钩子违约（抛出）= 视同无法迁移，走可操作拒绝（不炸穿读档链）
+        // 宿主钩子违约（抛出）= 视同无法迁移，走可操作拒绝（读档链不中断）
       }
     }
     this.fail(

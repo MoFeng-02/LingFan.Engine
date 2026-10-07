@@ -4,7 +4,7 @@
 //! GCM 信封 = nonce(12) + ciphertext + tag(16)。
 //!
 //! **凭据访问统一走 `keyring_core`**：keyring 4.x 的 v1 facade（`keyring::Entry`）在**编译期**就把
-//! iOS/Android 判为不支持（`Entry::new` 只看 `SET_CREDENTIAL_STORE_RESULT` 的 LazyLock，与我们是否
+//! iOS/Android 判为不支持（`Entry::new` 只看 `SET_CREDENTIAL_STORE_RESULT` 的 LazyLock，与是否
 //! 自设 store 无关），所以移动端必须绕开 facade：显式装配平台 store 后直接用 keyring-core 的 Entry。
 
 use aes_gcm::aead::{Aead, AeadInOut, Payload};

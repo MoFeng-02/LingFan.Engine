@@ -322,7 +322,7 @@ describe("对抗性输入注入（fail-closed 全覆盖，拒绝后引擎状态�
     });
   }
 
-  it("恶意文本注入：核心透传不炸、插值语义不变", () => {
+  it("恶意文本注入：核心透传不崩溃、插值语义不变", () => {
     const { engine, errors, dispose } = makeEngine([
       { op: "say", text: "<script>alert(1)</script>{b}粗{/b}" },
       { op: "say", text: "{{}{{}}}{ orphan" },

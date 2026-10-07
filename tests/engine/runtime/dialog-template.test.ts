@@ -100,7 +100,7 @@ describe("fail-closed", () => {
     h.dispose();
   });
 
-  it("character.screen 非字符串忽略（宽松收窄，不炸注册）", () => {
+  it("character.screen 非字符串忽略（宽松收窄，注册不受影响）", () => {
     const h = makeHarness([
       column("a", [
         { op: "character", key: "a", screen: 123 },

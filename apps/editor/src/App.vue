@@ -180,7 +180,7 @@ const redoDepth = ref(0);
 const selectedColumnId = ref<string>(session.story.entry);
 const selectedPointer = ref<string | null>(null);
 /** 右栏 tab（属性面板从中央移入右栏作首 tab —— 跟随选中项的主编辑面；
- *  出餐页无 tab 位，由状态栏「出餐」按钮 toggle） */
+ *  打包页无 tab 位，由状态栏「打包」按钮 toggle） */
 const rightTab = ref<"property" | "diagnostics" | "json" | "text" | "i18n" | "pack">("property");
 const centerView = ref<"timeline" | "stage" | "graph" | "step">("timeline");
 /**
@@ -196,7 +196,7 @@ type LeftTab = "resources" | "search" | "recent" | "chapters" | "columns" | "pal
  * 侧栏内页。
  *
  * `chapters` 与 `columns` **必须带 `hint`**：两者都是"工程里的列"，
- * 光看名字分不出区别（用户会问"这两个 tab 有什么不同"）。
+ * 名称不足以区分两者的口径差异。
  * `hint` 作为 tab 的 `title` 悬停可读，**一句话说清口径差异**。
  */
 const LEFT_TABS: readonly { id: LeftTab; label: string; hint?: string }[] = [
@@ -292,7 +292,7 @@ async function ensureCorpus(): Promise<void> {
     try {
       next[path] = await read(path);
     } catch {
-      // 读不到就跳过（不在结果里假装它没有内容）
+      // 读不到就跳过（不作为空内容条目出现）
     }
   }
   searchCorpus.value = new Map(Object.entries(next));
@@ -318,7 +318,7 @@ function invalidateCorpus(): void {
 const searchReport = computed(() =>
   searchResources(searchCorpus.value, searchKeyword.value),
 );
-/** 只读资源的如实提示（不假装能编辑；空串 = 无提示） */
+/** 只读资源的如实提示（不提供编辑；空串 = 无提示） */
 /** 搜索过滤：匹配**文件名或完整路径**（大小写不敏感）；空关键词 = 不过滤 */
 const searchFilter = (node: ResourceNode): boolean => {
   const q = searchKeyword.value.trim().toLowerCase();
@@ -464,14 +464,14 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
 
 /**
  * 空态主动作（空态必须给出可点的下一步）。
- * 「打开工程」走真实取径；「用外部编辑器打开」**如实不可用** ⇒ 不假装。
+ * 「打开工程」走真实取径；「用外部编辑器打开」**如实不可用**。
  */
 function onEmptyAction(action: EmptyAction): void {
   if (action.id === "open-project") {
     void openProject();
     return;
   }
-  // 无宿主 ⇒ 如实说"不可用"，**不假装**（浏览器形态物理上无法启动进程）
+  // 无宿主 ⇒ 如实提示"不可用"（浏览器形态物理上无法启动进程）
   void dialog.notify({
     title: "当前形态无法用外部编辑器打开",
     message: "需要本地应用宿主（pnpm --filter @lingfan/editor-app host）。请先用「打开工程」。",
@@ -480,7 +480,7 @@ function onEmptyAction(action: EmptyAction): void {
 }
 
 /**
- * 打包请求转发（快速出餐）：**前端不 spawn 进程**，只发请求给本地宿主。
+ * 打包请求转发：**前端不 spawn 进程**，只发请求给本地宿主。
  *
  * token 从哪来：宿主把 `capabilities` 打进 `/__editor_host__/ping` 的响应里
  * 才是正解，但当前 ping 只回 `{ok:true}`（不泄露任何路径/token）。
@@ -512,7 +512,7 @@ async function sendPackRequest(request: PackRequest): Promise<PackResult> {
   }
 }
 
-/** 状态栏「出餐」入口（toggle 右栏出餐页——已在 ⇒ 回诊断） */
+/** 状态栏「打包」入口（toggle 右栏打包页——已在 ⇒ 回诊断） */
 function togglePackPane(): void {
   rightTab.value = rightTab.value === "pack" ? "diagnostics" : "pack";
 }
@@ -865,8 +865,7 @@ function selectDocument(path: string): void {
  * 脏文档**先确认**（`workspace` 不猜用户意图——canClose 是既有判据）；
  * 关闭后的重绑 / 文档派生刷新由 `workspace.subscribe` 统一处理；
  * 关活动标签 ⇒ 顺延位成为新活动 ⇒ `selectDocument` 同口径同步 `selectedColumnId`
- * （否则它停在**被关列**上，时间线在新活动文档里找不到列 ⇒ 空白——
- * 与 `selectDocument` 注释里记录的是同一类缺陷，别再犯）。
+ * （否则它停在**被关列**上，时间线在新活动文档里找不到列 ⇒ 空白）。
  */
 async function closeDocument(path: string): Promise<void> {
   if (!workspace.canClose(path)) {
@@ -908,7 +907,7 @@ function openColumnDocument(id: string): void {
  *
  * 约束：**只重切受影响的文档**，未编辑过的文档保留原会话引用
  * （重建它们会连带丢掉各自的 undo 栈与脏标记 —— 会表现为「改了一列，
- * 另一列的未保存改动消失」）。判定用「脏或内容有别于新树」，不靠猜。
+ * 另一列的未保存改动消失」）。判定用「脏或内容有别于新树」。
  */
 function redistributeDocuments(tree: Story): void {
   const byId = new Map(tree.columns.map((column) => [column.id, column]));
@@ -1052,7 +1051,7 @@ function unbindProject(): void {
 /**
  * 文档标签区的「+」：**新增一个流程（flow）列** = 新增一个文档。
  *
- * 与 `onNew` 的区别（别混）：`onNew` 是「**新建整个工程**」（重置为示例故事），
+ * 与 `onNew` 的区别：`onNew` 是「**新建整个工程**」（重置为示例故事），
  *   那是工程级动作，放在「⋯」菜单里；这里是**文档级**动作，与 tab 同级。
  */
 async function addFlowColumn(): Promise<void> {
@@ -1887,7 +1886,7 @@ function onExport(): void {
         />
 
       <section class="pane center-pane">
-        <!-- 首屏空态：**未打开工程时不假装有工程** ——
+        <!-- 首屏空态：**未打开工程时显示空态** ——
              内存示例故事只是"可试玩"，不是"你的工程"。主动作是「打开工程」。 -->
         <EmptyState
           v-if="!projectRoot && activeResource === undefined && documentPaths.length <= 1 && !dirty"
@@ -2008,8 +2007,8 @@ function onExport(): void {
           >
             本地化
           </button>
-          <!-- 出餐**不作为右栏 tab**：打包是低频动作（以分钟计），
-               不占一级 tab；入口移到**状态栏**（带文字标签按钮，toggle 出餐页）。 -->
+          <!-- 打包**不作为右栏 tab**：低频动作（以分钟计），
+               不占一级 tab；入口移到**状态栏**（带文字标签按钮，toggle 打包页）。 -->
         </div>
         <!-- 属性面板**已移入右栏**：中央时间线拿回全部高度
              （旧布局中央属性面板 188px 高、下方 483px 空）。 -->
@@ -2032,7 +2031,7 @@ function onExport(): void {
           @open="openResource"
           @generate="generateLangSkeleton"
         />
-        <!-- 快速出餐：**前端不 spawn 进程**，只转发给本地宿主 -->
+        <!-- 快速打包：**前端不 spawn 进程**，只转发给本地宿主 -->
         <PackPanel
           v-show="rightTab === 'pack'"
           :can-pack="localHostAvailable"

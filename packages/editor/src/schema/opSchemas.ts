@@ -416,11 +416,11 @@ export type ScriptValue = z.infer<typeof Value>;
  *
  * 为什么需要：既有工程里有 `bgm ""` 表「停止 BGM」的写法，而播放器对空路径
  * **无特判**（直接以空串去加载）⇒ **静默失败**——作者以为停了，其实没有。
- * 显式报错比「假装能停」更正确，但直接抛 zod 英文原话
+ * 显式报错比「静默通过」更正确，但直接抛 zod 英文原话
  * （`Too small: expected string to have >=1 characters`）作者既看不懂、
  * 也不知道该改什么。
  *
- * 处置 = **保持严格校验**（不引入「空路径=停止」这种隐式约定，下一个人看不出来）
+ * 处置 = **保持严格校验**（不引入「空路径=停止」这种隐式约定）
  * + **把正确写法直接告诉作者**（语义明确）。
  */
 const STOP_OP_BY_RESOURCE_OWNER: Readonly<Record<string, string>> = {

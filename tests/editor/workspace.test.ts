@@ -185,7 +185,7 @@ describe("文档路径身份", () => {
     }
   });
 
-  it("非故事文件与非 .json 后缀一律不猜（不剥后缀硬凑）", () => {
+  it("非故事文件与非 .json 后缀一律拒绝（不做后缀猜测）", () => {
     expect(columnIdOfDocument("Stories/tavern.story")).toBeUndefined();
     expect(columnIdOfDocument("Lang/zh.json")).toBeUndefined();
     expect(columnIdOfDocument("Stories/.json")).toBeUndefined();

@@ -80,7 +80,7 @@ export function kindOfPath(path: string): ResourceKind {
 
 /**
  * 只读判据：**本批只有 `.story` 有编辑器**；`Saves/` 是运行时产物，
- * 媒体/其他一律只读（不假装能编辑）。kind 由 `kindOfPath` 推出，不重复解析路径。
+ * 媒体/其他一律只读（不提供编辑）。kind 由 `kindOfPath` 推出，不重复解析路径。
  */
 export function isReadOnlyPath(path: string): boolean {
   const kind = kindOfPath(path);

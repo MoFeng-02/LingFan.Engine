@@ -3,7 +3,7 @@
  * 只做「属性名/值 → 样式声明」的机械映射：属性合法性在解析期已 fail-closed，
  * 此处不重复校验；**未覆盖的属性一律不出现在结果中**。
  *
- * 「未覆盖」有两类，别混为一谈：
+ * 「未覆盖」分两类：
  * ① **由渲染器消费**而非 CSS 的属性（`text` / `source` / `orientation` / `checked` / `nav` / `cmd` / Grid 轨道…）——正常分工；
  * ② **已声明但当前无语义的属性**（`valign` / `xalign` / `yalign` / `order` / `xoffset` / `yoffset` / `xanchor` / `yanchor`）——
  *    写了不生效；清单单一事实源 = `@lingfan/editor` 的 `UNIMPLEMENTED_ELEMENT_ATTRS`

@@ -72,7 +72,7 @@ export class Workspace {
     return this.active;
   }
 
-  /** 活动文档；无活动文档 = `undefined`（视图面据此走空态，不许假装有工程） */
+  /** 活动文档；无活动文档 = `undefined`（视图面据此走空态） */
   get activeDocument(): EditorDocument | undefined {
     return this.active === undefined ? undefined : this.docs.get(this.active);
   }
@@ -202,7 +202,7 @@ export function storyDocumentPath(columnId: string): DocumentPath {
   return `Stories/${columnId}.json`;
 }
 
-/** 从文档路径取列 id（非故事文件返回 `undefined`——不猜、不剥后缀硬凑） */
+/** 从文档路径取列 id（非故事文件返回 `undefined`，不做后缀形态猜测） */
 export function columnIdOfDocument(path: DocumentPath): string | undefined {
   if (!path.startsWith("Stories/") || !path.endsWith(".json")) return undefined;
   const id = path.slice("Stories/".length, path.length - ".json".length);

@@ -374,7 +374,7 @@ describe("存档向后兼容", () => {
     revived2.engine.dispose();
   });
 
-  it("d) formatVersion 2：无钩子 → 可操作拒绝；有钩子 → 迁移放行 + load.notice；钩子抛出 → 不炸穿", () => {
+  it("d) formatVersion 2：无钩子 → 可操作拒绝；有钩子 → 迁移放行 + load.notice；钩子抛出 → 可操作拒绝", () => {
     const { raw } = makePlainSave();
     const v2 = { ...structuredClone(raw), formatVersion: 2 };
     const strict = makeEngine([], {}, PLAIN_JOURNEY);
@@ -411,7 +411,7 @@ describe("存档向后兼容", () => {
       PLAIN_JOURNEY,
     );
     expect(throwing.engine.importSave(structuredClone(v2) as unknown as SaveDataV1)).toBe(false);
-    expect(throwing.errors.at(-1)?.code).toBe("save-format"); // 可操作拒绝而非异常炸穿
+    expect(throwing.errors.at(-1)?.code).toBe("save-format"); // 可操作拒绝而非异常外泄
     throwing.off();
     throwing.engine.dispose();
   });

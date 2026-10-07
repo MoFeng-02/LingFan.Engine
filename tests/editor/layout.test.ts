@@ -38,7 +38,7 @@ describe("布局 · 默认与夹取", () => {
     expect(clampLayout({ ...defaultLayout(), leftWidth: 9999 }).leftWidth).toBe(MAX_SIDEBAR_WIDTH);
   });
 
-  it("非有限值 / 非法枚举回落默认（存储被外部改坏不炸）", () => {
+  it("非有限值 / 非法枚举回落默认（存储被外部改坏时安全回落）", () => {
     const bad = { ...defaultLayout(), leftWidth: Number.NaN, sidebar: "nope" as never };
     const fixed = clampLayout(bad);
     expect(fixed.leftWidth).toBe(defaultLayout().leftWidth);

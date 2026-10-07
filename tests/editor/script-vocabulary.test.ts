@@ -141,7 +141,7 @@ describe("词汇层 · 扩展 op（extOp）", () => {
     expect(story.columns[0]!.commands).toContainEqual({ op: "quest", step: 1 });
   });
 
-  it("未注册投影的扩展 op ⇒ 文本投影整次拒绝（fail-closed，不假装能投影）", () => {
+  it("未注册投影的扩展 op ⇒ 文本投影整次拒绝（fail-closed）", () => {
     const story = parseStory(extStorySource);
     expect(() => generateText(story)).toThrow(/quest/);
   });

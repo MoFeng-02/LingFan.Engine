@@ -135,7 +135,7 @@ describe("编辑器诊断接线", () => {
     expect(
       unused.map((d) => d.message).filter((m) => m.includes("孤儿键")),
     ).toHaveLength(1);
-    // 消息自带「四个翻译面」口径说明（否则读者摸不着头脑）
+    // 消息自带「四个翻译面」口径说明
     expect(
       unused.every((d) => d.message.includes("say / menu / input / notify")),
     ).toBe(true);
@@ -192,7 +192,7 @@ describe("编辑器诊断接线", () => {
     expect(messagesOf(story, "missing-translation", supply)).toEqual([]);
   });
 
-  it("坏 overlay 宽容跳过：非法 JSON / 含非字符串值 → 整文件不参与（不炸、不误报）", async () => {
+  it("坏 overlay 宽容跳过：非法 JSON / 含非字符串值 → 整文件不参与（不崩溃、不误报）", async () => {
     const { story, supply } = await openProject(
       projectTree({
         commands: [{ op: "say", text: "你好" }],

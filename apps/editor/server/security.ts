@@ -1,5 +1,5 @@
 /**
- * 本地服务的安全面判据（**纯函数，可测**）——照 `media_http.rs` 的信任边界抄：
+ * 本地服务的安全面判据（**纯函数，可测**）——与 `media_http.rs` 同一信任边界：
  * 仅绑回环 / 端口由内核分配 / 每次启动随机 token 入路径 / 只服务白名单扩展名 /
  * 路径必须落在资源根内。
  *
@@ -125,7 +125,7 @@ export function tokenHex(bytes: Uint8Array): string {
   return hex;
 }
 
-/* ——— 打包（快速出餐）判据 ——— */
+/* ——— 打包判据 ——— */
 
 /** 打包请求的校验结果 */
 export type PackVerdict =

@@ -16,7 +16,7 @@ export function createWebStoragePreferencesPort(
       try {
         return JSON.parse(raw) as PlayerPrefsData;
       } catch {
-        return null; // 损坏 = 无偏好（默认值起航，不炸启动）
+        return null; // 损坏 = 无偏好（默认值起航，不影响启动）
       }
     },
     async save(data: PlayerPrefsData): Promise<void> {

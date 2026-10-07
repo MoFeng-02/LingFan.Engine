@@ -137,7 +137,7 @@ describe("hydrate（信任边界）", () => {
     expect(prefs.textSpeed).toBe(30); // 非数值 → 默认
   });
 
-  it("端口载入失败 = 默认值起航（不炸启动）", async () => {
+  it("端口载入失败 = 默认值起航（不影响启动）", async () => {
     const port = new MemoryPrefsPort();
     port.failAll();
     const prefs = new PlayerPreferences(port);
@@ -148,7 +148,7 @@ describe("hydrate（信任边界）", () => {
   it("端口缺失：hydrate no-op，set 不触发持久化", () => {
     const prefs = new PlayerPreferences();
     return prefs.hydrate().then(() => {
-      prefs.setVolume("bgm", 0.1); // 无端口 → 无持久化路径（不炸）
+      prefs.setVolume("bgm", 0.1); // 无端口 → 无持久化路径（无异常）
       expect(prefs.volume("bgm")).toBe(0.1);
     });
   });
@@ -178,7 +178,7 @@ describe("持久化", () => {
     expect(port.saves[0]!.textSpeed).toBe(45);
   });
 
-  it("save 失败不炸运行时（诊断归端口/组合根）", async () => {
+  it("save 失败不影响运行时（诊断归端口/组合根）", async () => {
     vi.useFakeTimers();
     const port = new MemoryPrefsPort();
     port.failAll();

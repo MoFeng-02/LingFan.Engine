@@ -183,7 +183,7 @@ export function buildExtensionContext(
 
 /**
  * 执行已注册的扩展 op（fail-closed）：exec 抛出 = 扩展违约 → 兜底转
- * `custom-op-threw`（绝不炸穿解释循环）；本函数不改状态（副作用只在 exec 内经 ctx）。
+ * `custom-op-threw`（异常收敛为错误码，不中断解释循环）；本函数不改状态（副作用只在 exec 内经 ctx）。
  */
 export function runRegisteredOp(
   entry: RegisteredOp,

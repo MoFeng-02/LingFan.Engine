@@ -22,7 +22,7 @@ const COMPONENTS = "E:/Project/MyProject/LingFan/LingFan.Engine/apps/editor/src/
  * 组件模板里出现的静态 class 名。
  *
  * **只取纯类名 token**：`class="a"`:class="cond ? 'x' : 'y'"` 这类混写里，
- * 动态片段不是类名，取出来会造成**假撞名**。实测踩到的三种假阳性：
+ * 动态片段不是类名，取出来会造成**假撞名**。三类假阳性：
  * ① `:class="{ collapsed: cond }"` 的 `{ collapsed: … }`；② 三元表达式里的 `'y'`；
  * ③ Vue 指令属性 `v-if="a === b"` 被跨引号配对误吞（`===` 当成类名）。
  *

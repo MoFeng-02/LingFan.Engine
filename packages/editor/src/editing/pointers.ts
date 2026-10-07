@@ -257,7 +257,7 @@ function selectionNodeKind(pointer: string): SelectionNodeKind {
  * |---|---|---|
  * | `none` | `pointer === null` | 中性引导：选一条命令 |
  * | `non-command` | 指针落在列 / 元素 / 数组项 | **中性陈述**，**不得出现「错误/缺失/诊断」** |
- * | `unknown-op` | 落在命令上，但**无表单描述符** | **这才是真问题**（提诊断、可删除） |
+ * | `unknown-op` | 落在命令上，但**无表单描述符** | **真问题**（提诊断、可删除） |
  * | `command` | 正常命令 | 现有表单 |
  *
  * 判定顺序：`null` → `none`；节点是对象且 `op` 为字符串 → 有描述符即 `command`，

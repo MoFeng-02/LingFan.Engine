@@ -189,7 +189,7 @@ mod tests {
 
     #[test]
     fn parse_orientation_rejects_unknown_and_case_variants() {
-        // fail-closed：未知值/大小写变体/空白一律拒绝（不猜测用户意图，不带病落壳）
+        // fail-closed：未知值/大小写变体/空白一律拒绝，不应用任何方向设置
         for bad in [
             "",
             "Auto",
