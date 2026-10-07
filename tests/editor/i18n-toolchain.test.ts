@@ -1,7 +1,7 @@
 /**
  * i18n 工具链测试。
  *
- * 测试纪律：
+ * 测试要点：
  * - **抽取 ≡ 诊断 ≡ 运行期三方互锁**：extractStoryKeys 与 indexStory.originals 同表
  *   （TRANSLATE_SURFACES 单一事实源）逐集合相等；再用**真引擎旅程**（哨兵译文表）证明
  *   「引擎真查的键 = 抽取器输出」——新增挂接点没跟上抽取器 → 运行期哨兵缺失立刻红；
@@ -284,7 +284,7 @@ describe("骨架生成", () => {
     ).toEqual(["Lang/en/start.json", "Lang/en/inn.json"]); // Map 插入序
   });
 
-  it("per-story 镜像 Stories/ 递归目录（章节子目录，与旧版引擎对齐）", () => {
+  it("per-story 镜像 Stories/ 递归目录（章节子目录，与既有实现对齐）", () => {
     const nested = new Map([
       ["title/title_main", ["开始"]],
       ["chapter1/tavern", ["炉火"]],

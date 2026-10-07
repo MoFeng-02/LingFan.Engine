@@ -16,7 +16,7 @@ describe("分派表 · 路由", () => {
     expect(isEditableKind("story")).toBe(true);
   });
 
-  it("译文表 / 清单 → 各自的专用视图（B2 新增能力）", () => {
+  it("译文表 / 清单 → 各自的专用视图", () => {
     expect(viewOfKind("lang").view).toBe("lang");
     expect(viewOfKind("lang").editable).toBe(true);
     expect(viewOfKind("manifest").view).toBe("manifest");

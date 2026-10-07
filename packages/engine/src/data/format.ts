@@ -437,7 +437,7 @@ function parseColumn(
     );
     return null;
   }
-  // ⚠️ `type`（运行语义：game/menu/ui）**缺省合法 = game**（对齐老引擎 SceneType.Game = 0），
+  // `type`（运行语义：game/menu/ui）**缺省合法 = game**，
   // 但**给了就必须合法**——非法值 fail-closed（不静默当 game，否则作者以为设了菜单其实是剧情，
   // 那种错要等存档/回溯出问题才发现，代价极高）。
   if (raw.type !== undefined && !isSceneType(raw.type)) {
@@ -488,7 +488,7 @@ function parseColumn(
     id: raw.id,
     kind,
     type,
-    // ⚠️ `sourcePath` **刻意不解析**：它是编辑期记账（由组装器从实际文件路径回填），
+    // `sourcePath` **刻意不解析**：它是编辑期记账（由组装器从实际文件路径回填），
     // 故事文件里不该有这个键——写进去也无效（防止自指：文件描述自己的位置）。
     elements: raw.elements as ElementNode[] | undefined,
     entry: raw.entry as StoryCommand[] | undefined,
@@ -590,7 +590,7 @@ export function parseStory(json: unknown, sourceName = "story"): Story {
   ]);
 }
 
-/** 混存识别：内容以 { 开头 = JSON 投影，否则 = 文本投影（旧版引擎内容识别语义） */
+/** 混存识别：内容以 { 开头 = JSON 投影，否则 = 文本投影 */
 export function parseStoryFile(source: string, sourceName: string): Story {
   if (source.trimStart().startsWith("{")) {
     try {

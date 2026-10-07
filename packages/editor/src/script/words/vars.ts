@@ -12,7 +12,7 @@ export function define(key: string, value: ScriptValue): CommandOf<"define"> {
   return { op: "define", key, value };
 }
 
-/** ⚠️ `let` 为 JS 语句关键字 ⇒ 别名 `letVar` */
+/** `let` 为 JS 语句关键字 ⇒ 别名 `letVar` */
 export function letVar(key: string, value: ScriptValue): CommandOf<"let"> {
   return { op: "let", key, value };
 }

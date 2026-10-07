@@ -401,7 +401,7 @@ mod tests {
         assert_eq!(seek_len(&mut f).unwrap(), 0);
     }
 
-    /// 防回归锚点（`android-asset-range`）：Android asset 打开必须把「资产区间」一并取回，
+    /// 防回归（`android-asset-range`）：Android asset 打开必须把「资产区间」一并取回，
     /// 且不得回退到官方 fs 插件的 asset 打开——它丢弃 `startOffset`，会让读取从 APK 起点开始。
     #[test]
     fn android_asset_open_keeps_range_handoff() {

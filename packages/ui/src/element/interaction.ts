@@ -1,6 +1,6 @@
 /**
  * 点击动作解析（输入语义归核心层，UI 只做翻译）。
- * 优先级：disabled > nav > cmd（对齐旧版引擎交互绑定语义）：
+ * 优先级：disabled > nav > cmd（交互绑定语义）：
  * **`disabled` > `nav` > `cmd` > `hover_*` > `selected_*`** —— 前三级决定**点击行为**
  * （`disabled` 短路、`nav` 优先于 `cmd`），后两级是与点击正交的**视觉态**（由渲染器绑定）。
  *

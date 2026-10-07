@@ -1,5 +1,5 @@
 /**
- * 降级打开（#11）**合成清单**判据测试：纯函数多方位。
+ * 降级打开**合成清单**判据测试：纯函数多方位。
  *
  * 语义：缺 `project.json` 时合成最小清单（formatVersion=1 / id=资源根名 /
  * entry=路径码元序第一个列）。只降级「缺失」这一种；坏故事文件跳过采集
@@ -46,7 +46,7 @@ describe("synthesizeDegradedManifest · 合成判据", () => {
     expect(synthesizeDegradedManifest("D", files).degraded.entry).toBe("chapter1_start");
   });
 
-  it("🔴 坏故事文件**跳过采集**（与组装器同口径；坏了由组装器 issues 整次拒绝）", () => {
+  it("坏故事文件**跳过采集**（与组装器同口径；坏了由组装器 issues 整次拒绝）", () => {
     const files = new Map<string, string>([
       ["Stories/broken.json", "{ 纯属坏档"],
       ["Stories/good.json", ATOMIC("good", "好")],
@@ -54,7 +54,7 @@ describe("synthesizeDegradedManifest · 合成判据", () => {
     expect(synthesizeDegradedManifest("D", files).degraded.entry).toBe("good");
   });
 
-  it("🔴 零可解析列 ⇒ fail-closed（ProjectAssemblyError，不合成空壳清单）", () => {
+  it("零可解析列 ⇒ fail-closed（ProjectAssemblyError，不合成空壳清单）", () => {
     const files = new Map<string, string>([["Stories/broken.json", "{ 纯属坏档"]]);
     expect(() => synthesizeDegradedManifest("D", files)).toThrow(ProjectAssemblyError);
   });

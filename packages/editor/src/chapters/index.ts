@@ -1,16 +1,16 @@
 /**
  * 故事章节树 · **纯判据**（可测，无 IO / 无 Vue）。
  *
- * 存在理由：左栏原按「资源种类」平铺，但真实工程揭示了**另一个骨架**——
- * `E:\langf\Downloads\Demo\Test\Resources` 的 `Stories/` 与 `Lang/` 都**按章节分目录**
+ * 存在理由：左栏原按「资源种类」平铺，但工程实践揭示了**另一个骨架**——
+ * `Stories/` 与 `Lang/` 常**按章节分目录**
  * （`chapter1/chapter1.story`、`Lang/en-US/chapter1/chapter1.json`），
  * 且 `Lang/` 有**三种布局并存**（en 平铺 / en-US 子目录分类 / ja 单文件）。
  * ⇒ **内容骨架是「章节」，不是文件**；文件怎么摆是**作者的自由**。
  *
- * 🔴 **任意深度递归，不写死「一级 = 章节」**：真实工程恰好只到 1 层
- * （`Stories/chapter1/chapter1.story`），演示工程是 0 层平铺
- * （`Stories/start.json`）—— 「章节=一级子目录」这个假设**没被证伪**，
- * 但 `Lang/en-US/system/about.json` 已到 2 层 ⇒ 按层数写死会错。
+ * **任意深度递归，不写死「一级 = 章节」**：常见工程恰好只到 1 层
+ * （`Stories/chapter1/chapter1.story`），也有 0 层平铺
+ * （`Stories/start.json`）；而 `Lang/en-US/system/about.json` 已到 2 层
+ * ⇒ 按层数写死会错。
  * 0 层平铺工程退化为「无章节分组的全平铺列表」，**不报错**。
  */
 
@@ -58,7 +58,7 @@ function insideStories(path: string): string {
 
 /** 章节目录键（不依赖 `ResourceNode`，直接吃路径集——便于纯测）
  *
- * 🔴 **只取 `Stories/` 之下的目录**（`Stories/start.json` ⇒ `""` ⇒ 平铺，
+ * **只取 `Stories/` 之下的目录**（`Stories/start.json` ⇒ `""` ⇒ 平铺，
  * 因为「深一层」只是把文件分组，**不是编排章节**；只有 `Stories/a/b.story` 才是）。
  * 容器根 `Stories/` 本身**不算章节**——否则章节名全变成 "Stories"。
  */
@@ -76,7 +76,7 @@ export function chapterLabelOf(path: string): string {
   const name = dot < 0 ? file : file.slice(0, dot);
   const dir = chapterDirOf(path);
   const dirName = dir.slice(0, dir.length - 1).split("/").pop() ?? "";
-  // ⚠️ 目录名与文件名同前缀时（如 chapter1/chapter1.story）**取目录名**——
+  // 目录名与文件名同前缀时（如 chapter1/chapter1.story）**取目录名**——
   // 目录才是「章节」，文件名只是文件。
   return dirName !== "" ? dirName : name;
 }
@@ -123,10 +123,10 @@ export interface ChapterIndex {
   /**
    * **按组过滤的目录**（剧情组）。
    *
-   * 🔴 为何要拆：目录是**作者的编排**，`type` 是**运行语义**——两者**正交**，
-   * 一个目录里可能既有剧情又有界面（真实工程 `system/` = `about`(menu) + `sandbox`(game)）。
+   * 为何要拆：目录是**作者的编排**，`type` 是**运行语义**——两者**正交**，
+   * 一个目录里可能既有剧情又有界面（如 `system/` 里放 `about`(menu) + `sandbox`(game)）。
    * 而面板先按 type 分组展示（剧情 / 界面），故目录要**跟着组走**：
-   * 若直接用全局 `dirs`，界面组的目录里会混进剧情节点（真机实测）。
+   * 若直接用全局 `dirs`，界面组的目录里会混进剧情节点。
    */
   readonly storyDirs: readonly ChapterDir[];
   /** 按组过滤的目录（界面组） */
@@ -161,9 +161,9 @@ function dirsOfGroup(
 /**
  * 构建章节目录。
  *
- * ⚠️ **分组只看 `type`，绝不看目录名** —— 作者可能把剧情放进 `system/`、
- * 把菜单放进 `chapter1/`（真实工程的 `system/showcase` 就是 `type=game`）。
- * 按目录分组会把它们错分。**目录只表达「作者的编排意图」，类型才表达「运行语义」。**
+ * **分组只看 `type`，绝不看目录名** —— 作者可能把剧情放进 `system/`、
+ * 把菜单放进 `chapter1/`。按目录分组会把它们错分。
+ * **目录只表达「作者的编排意图」，类型才表达「运行语义」。**
  */
 export function buildChapterIndex(inputs: readonly ChapterInput[]): ChapterIndex {
   const nodes: ChapterNode[] = inputs.map(({ path, column }) => ({
@@ -183,7 +183,7 @@ export function buildChapterIndex(inputs: readonly ChapterInput[]): ChapterIndex
   const dirs = new Map<string, ChapterNode[]>();
   for (const node of nodes) {
     const dir = chapterDirOf(node.path);
-    // ⚠️ 0 层平铺：路径不含 `/` ⇒ dir 为空串 ⇒ **不进目录分组**（退化为平铺列表）
+    // 0 层平铺：路径不含 `/` ⇒ dir 为空串 ⇒ **不进目录分组**（退化为平铺列表）
     if (dir === "") continue;
     const bucket = dirs.get(dir);
     if (bucket === undefined) dirs.set(dir, [node]);

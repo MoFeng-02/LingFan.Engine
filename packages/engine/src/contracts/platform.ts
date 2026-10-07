@@ -17,7 +17,7 @@ export interface ResourcePort {
 }
 
 /**
- * 降级打开回执（#11，2026-10-05）：资源根**缺 `project.json`** 时按确定性规则
+ * 降级打开回执：资源根**缺 `project.json`** 时按确定性规则
  * 合成清单打开 —— 降级必须**显式告知**（状态栏/横幅），不许静默假装一切正常。
  * 结构损坏（清单存在但坏 JSON / 字段非法 / 故事解析失败）**仍 fail-closed**，
  * 可降级的只有「清单缺失」这一种。
@@ -41,7 +41,7 @@ export interface ProjectFilesPort {
   stories(): Promise<Map<string, string>>;
   /**
    * 降级打开回执；resolve 为 `undefined` = 正常打开（清单存在）。
-   * 缺省实现（旧适配器 / Tauri / fetch）可不提供 —— 不提供即「无降级」。
+   * 缺省实现（Tauri / fetch 等）可不提供 —— 不提供即「无降级」。
    * 与 `manifest()` 共享同一次装载（实现方 memo），故为异步。
    */
   degraded?(): Promise<DegradedOpen | undefined>;

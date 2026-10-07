@@ -8,15 +8,15 @@ import type { AnimationSpec } from "@lingfan/engine";
 
 /**
  * 缓动名 → 归一化函数（`t ∈ [0,1] → [0,1]`）。
- * 命名对齐旧版引擎（默认 `EaseOutQuad`）；未知名字**回退 EaseOutQuad**（不静默变成线性）。
+ * 默认 `EaseOutQuad`；未知名字**回退 EaseOutQuad**（不静默变成线性）。
  *
- * 已补齐旧版引擎缓动全集 **16 个**（Linear + Quad×3 + Cubic×3 + Back×3 +
- * Elastic×3 + Bounce×3）——此前只有 7 个，作者写 `EaseOutBounce` 会被静默回退成默认缓动。
- * **回退语义沿用旧版引擎**（解析失败 → `EaseOutQuad`），故不改为抛错（避免对既有故事
+ * 缓动全集 **16 个**（Linear + Quad×3 + Cubic×3 + Back×3 +
+ * Elastic×3 + Bounce×3）——只列一部分的话，作者写 `EaseOutBounce` 会被静默回退成默认缓动。
+ * **回退语义**（解析失败 → `EaseOutQuad`）故不改为抛错（避免对既有故事
  * 制造新错误）；「未知缓动名」的编辑期提示列为可选后续。
  */
 const EASINGS: Record<string, (t: number) => number> = {
-  // 命名照旧版引擎（**首字母大写**：`Linear`），因此这里大小写不敏感查找
+  // 命名**首字母大写**（`Linear`），因此这里大小写不敏感查找
   Linear: (t) => t,
   EaseInQuad: (t) => t * t,
   EaseOutQuad: (t) => t * (2 - t),
@@ -25,8 +25,8 @@ const EASINGS: Record<string, (t: number) => number> = {
   EaseOutCubic: (t) => 1 - (1 - t) ** 3,
   EaseInOutCubic: (t) =>
     t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2,
-  // —— 补齐旧版引擎缓动全集（Back / Elastic / Bounce，逐条移植公式）——
-  // 命名与公式来源：旧版引擎缓动实现（Linear + Quad×3 + Cubic×3 + Back×3 + Elastic×3 + Bounce×3）
+  // —— Back / Elastic / Bounce族（补齐缓动全集，逐条给定公式）——
+  // 命名与公式：Linear + Quad×3 + Cubic×3 + Back×3 + Elastic×3 + Bounce×3
   EaseInBack: (t) => t * t * (2.70158 * t - 1.70158),
   EaseOutBack: (t) => (t - 1) * (t - 1) * (2.70158 * (t - 1) + 1.70158) + 1,
   EaseInOutBack: (t) =>
@@ -59,7 +59,7 @@ const EASINGS: Record<string, (t: number) => number> = {
       : (1 + easeOutBounce(2 * t - 1)) / 2,
 };
 
-/** Bounce 基函数（旧版引擎同款分段） */
+/** Bounce 基函数（分段式） */
 function easeOutBounce(t: number): number {
   const n1 = 7.5625;
   const d1 = 2.75;
@@ -79,8 +79,8 @@ function easeOutBounce(t: number): number {
 const DEFAULT_EASING = "EaseOutQuad";
 
 /**
- * 大小写不敏感查找表：旧版引擎用 `Linear`（首字母大写），
- * 而新引擎既有语料/测试写 `linear` —— 两者都解析到同一函数（**更宽松 = 不破坏既有故事**）。
+ * 大小写不敏感查找表：登记表用 `Linear`（首字母大写），
+ * 而既有语料/测试可能写 `linear` —— 两者都解析到同一函数（**更宽松 = 不破坏既有故事**）。
  */
 const EASING_LOOKUP: ReadonlyMap<string, (t: number) => number> = new Map(
   Object.entries(EASINGS).map(([name, fn]) => [name.toLowerCase(), fn]),
@@ -93,7 +93,7 @@ export function easingFn(name: string): (t: number) => number {
   );
 }
 
-/** 已知缓动名（编辑器表单/诊断可枚举；不含回退项）——恒为旧版引擎全集 16 个 */
+/** 已知缓动名（编辑器表单/诊断可枚举；不含回退项）——恒为全集 16 个 */
 export function easingNames(): string[] {
   return Object.keys(EASINGS);
 }

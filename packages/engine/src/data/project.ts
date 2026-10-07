@@ -32,13 +32,13 @@ function byPath(a: string, b: string): number {
 }
 
 /**
- * 为**缺清单**的资源根合成最小降级清单（#11，2026-10-05）。
+ * 为**缺清单**的资源根合成最小降级清单。
  *
  * 语义：真实工程可以没有 `project.json`（作者直接摆 Stories/）——「缺清单」
  * 只缺三件事：formatVersion（恒 1）、id（用资源根名兜底）、entry（**确定性**
  * 取路径码元序第一个列）。其余（defines / shell / extensions）缺省即正确语义。
  *
- * 🔴 **只降级「缺清单」这一种**：故事文件解析失败照常跳过（与组装器同口径，
+ * **只降级「缺清单」这一种**：故事文件解析失败照常跳过（与组装器同口径，
  * 坏文件由组装器的 issues 整次拒绝）；**一个可解析的列都没有 ⇒ fail-closed**
  * ——没内容可打开时降级是撒谎。
  */
@@ -137,15 +137,15 @@ export function assembleProject(
   };
 
   for (const path of [...files.keys()].sort(byPath)) {
-    // 🔴 **只处理 `Stories/` 下的文件**（2026-10-05 治根）。
-    // 此前组装器**假定**调用方只喂故事文件，于是喂了全量资源根就炸：
+    // **只处理 `Stories/` 下的文件**。
+    //组装器**假定**调用方只喂故事文件，若喂了全量资源根就会炸：
     // `Lang/en-US/main.json`（译文表）等全被当故事解析
     // ⇒ 「formatVersion 必须为 1」让**整个工程组装失败**。
     // 判据：非 `Stories/` 一律跳过（它们由各自的视图/工具消费，不进故事列集）。
     if (!path.startsWith(`${STORIES_DIR}/`)) continue;
-    // 🔴 **占位文件不是故事**（2026-10-05 治根）：`.gitkeep` 类空文件是版本控制的占位
-    // （真实工程 `Live2D/.gitkeep`、`Media/BGM/.gitkeep`），
-    // 此前被当故事文件解析 ⇒ 「文本中没有 label」让整个工程组装失败。
+    // **占位文件不是故事**：`.gitkeep` 类空文件是版本控制的占位
+    // （工程里常见 `Live2D/.gitkeep`、`Media/BGM/.gitkeep`），
+    // 当成故事解析会因「文本中没有 label」让整个工程组装失败。
     // 判据：**任何一段**以 `.` 开头即是（只看整路径开头会漏掉嵌套的）。
     if (isDotPath(path)) continue;
     const value = files.get(path);
@@ -169,12 +169,11 @@ export function assembleProject(
       }
       throw e;
     }
-    // 🔴 **文件名与列 id 解耦**（2026-10-05 治根，用户拍板 A）。
+    // **文件名与列 id 解耦**。
     //
-    // 此前要求「单列文件名（去扩展名）必须等于列 id」，动机是**防错位**：
+    // 「单列文件名（去扩展名）必须等于列 id」这条约束，动机是**防错位**：
     // 文件叫 A、内容是 B ⇒ AI/编辑器「按 id 定位文件」会找错。
-    // 但真实工程（`E:\langf\Downloads\Demo\Test\Resources`）用的是
-    // `Stories/chapter1/chapter1.story` 装列 `chapter1_start`
+    // 但真实工程用的是 `Stories/chapter1/chapter1.story` 装列 `chapter1_start`
     // —— **文件名是「章节名」，列 id 是「场景名」，本就是两回事**，
     // 强行相等等于禁止作者用语义化文件名。
     //
@@ -191,12 +190,12 @@ export function assembleProject(
         continue;
       }
       owner.set(column.id, path);
-      // 🔴 **回填来源路径**（治根·写回保真）：列从哪个文件来，就写回哪个文件。
+      // **回填来源路径**：列从哪个文件来，就写回哪个文件。
       //
-      // ⚠️ **只在「非默认路径」时显式写 `sourcePath`**：默认是 `Stories/<id>.json`，
+      // **只在「非默认路径」时显式写 `sourcePath`**：默认是 `Stories/<id>.json`，
       // 由 `columnFilePath` 隐式推导即可。显式写等于把「推导结果」存进状态，
       // 会让**新建列**（内存态无此字段）与**重开态**（有字段）不再深等 ——
-      // 而「保存后重开一致」是本仓最核心的不变量之一。
+      // 而「保存后重开一致」是最核心的不变量之一。
       // 换言之：`sourcePath` 表达的是**例外**（作者把列放在别处），不是常态。
       const defaultPath = `${STORIES_DIR}/${column.id}.json`;
       columns.push(path === defaultPath ? column : { ...column, sourcePath: path });
@@ -234,7 +233,7 @@ export const STORIES_DIR = "Stories";
 /**
  * 点文件/点目录判据（`.gitkeep` / `.gitignore` …）—— **任何一段**以 `.` 开头即是。
  *
- * 🔴 为什么按「段」而不是整路径（2026-10-05）：真实工程有 `Live2D/.gitkeep`、
+ * 为什么按「段」而不是整路径：工程里有 `Live2D/.gitkeep`、
  * `Media/BGM/.gitkeep` 之类嵌套占位文件（版本控制需要空目录），
  * 也有 `Lang/en-US/...`（**名字含点但不是点文件**）⇒ 只看整路径开头会漏掉嵌套的。
  */
@@ -258,9 +257,9 @@ export class ProjectSerializationError extends Error {
 export interface SerializedProject {
   readonly files: Map<string, string>;
   /**
-   * **列 id → 本次实际落盘路径**（写回回执，2026-10-05 治根）。
+   * **列 id → 本次实际落盘路径**（写回回执）。
    *
-   * 🔴 **为什么不回填进 `StoryColumn.sourcePath`**：`sourcePath` 是编辑期记账，
+   * **为什么不回填进 `StoryColumn.sourcePath`**：`sourcePath` 是编辑期记账，
    * 塞进 Story 会让「内存态」与「序列化往返结果」不再深等（每次保存都多一个字段），
    * 且**重命名**时它会跟着变——但「这列落在哪个文件」是**写回的事实**，不是列的属性。
    * 归入回执 ⇒ Story 保持纯语义，往返仍深等。
@@ -309,7 +308,7 @@ function columnFileText(column: StoryColumn): string {
     id: column.id,
     kind: column.kind,
   };
-  // 🔴 `type`（运行语义）**必须写回**：漏了会让 menu/ui 场景在下次打开时
+  // `type`（运行语义）**必须写回**：漏了会让 menu/ui 场景在下次打开时
   // 变成 game（保存 = 悄悄改语义，且**不可逆**——作者下次打开发现菜单能回溯了）。
   // 缺省 game 不写（保持文件干净），非缺省才写。
   if (column.type !== undefined && column.type !== "game") ordered.type = column.type;
@@ -319,7 +318,7 @@ function columnFileText(column: StoryColumn): string {
     ordered.elements = column.elements ?? [];
     if (column.entry !== undefined) ordered.entry = column.entry;
   }
-  // ⚠️ `sourcePath` **刻意不写**（编辑期元数据：它描述「这个列来自哪个文件」，
+  // `sourcePath` **刻意不写**（编辑期元数据：它描述「这个列来自哪个文件」，
   // 写进文件内容会自指——下次打开时又变了）。
   return stableJson(ordered);
 }
@@ -440,7 +439,7 @@ export function serializeProject(
       );
       continue;
     }
-    // ⚠️ `type`（运行语义）非法值同样 fail-closed——**组装器是另一条入口**（多文件工程），
+    // `type`（运行语义）非法值同样 fail-closed——**组装器是另一条入口**（多文件工程），
     // 只在单文件解析层校验会漏掉这条路（缺省 game 合法）。
     if (column.type !== undefined && !isSceneType(column.type)) {
       issues.push(
@@ -463,14 +462,13 @@ export function serializeProject(
   if (issues.length > 0) throw new ProjectSerializationError(issues);
 
   const files = new Map<string, string>();
-  // 🔴 **写回原路径**（2026-10-05 治根）：此前凭 `id` 重算 `Stories/<id>.json`，
-  // 保存一次就把作者的章节目录编排 + `.story` 文本形态**抹平**，原文件还被判
-  // 「陈旧」删除（探针实测 3/3 子目录文件全被删）。自我良好工程不接受。
+  // **写回原路径**：凭 `id` 重算 `Stories/<id>.json` 的话，
+  // 保存一次就会把作者的章节目录编排 + `.story` 文本形态**抹平**，原文件还会被判
+  // 「陈旧」删除 —— 这会破坏作者的工程编排。
   //
-  // ⚠️ **一个文件可承载多列**（真实工程形态：`chapter1.story` 有 4 列
-  // `chapter1_start` / `_explore` / `_forward` / `_end`）⇒ **按来源文件分组**写回，
-  // 不是「一列一文件」。我此前误把「共享来源文件」当冲突（探针实测 62 列里
-  // 大量同组⇒ 误报），真冲突只有「**同一路径被声明两次且列集不同时**」——
+  // **一个文件可承载多列**（常见形态：`chapter1.story` 装 `chapter1_start` /
+  // `_explore` / `_forward` / `_end`）⇒ **按来源文件分组**写回，
+  // 不是「一列一文件」。真冲突只有「**同一路径被声明两次且列集不同时**」——
   // 由分组天然解决（同一列只能属于一组）。
   const byPath = new Map<string, StoryColumn[]>();
   for (const column of columns) {
@@ -493,7 +491,7 @@ export function serializeProject(
 /**
  * 列组（**同一来源文件里的多列**）的写回文本。
  *
- * 🔴 **单列 ⇒ 保持单列原子形态**（`{formatVersion,id,kind,…}`，逐字节不变）；
+ * **单列 ⇒ 保持单列原子形态**（`{formatVersion,id,kind,…}`，逐字节不变）；
  * **多列 ⇒ 写多列形态**（`{formatVersion, columns:[…]}`）——
  * 这与 `parseStoryFile` 的识别口径一致（它按内容识别两种形态），
  * 所以**往返可逆**（守卫`writeback-fidelity` 与真实工程守卫都验这一条）。
@@ -522,7 +520,7 @@ function columnGroupFileText(group: readonly StoryColumn[], path: string): strin
  * 列的写回路径：**有 `sourcePath` 就写回原处，否则新建列走 `Stories/<id>.json`**。
  *
  * 扩展名随原文件（`.story` 写回 `.story`）—— 形态也是作者的选择。
- * ⚠️ 只认**安全相对路径**（`Stories/` 前缀 + 无 `..`）：`sourcePath` 来自
+ * 只认**安全相对路径**（`Stories/` 前缀 + 无 `..`）：`sourcePath` 来自
  * 组装器回填，但仍当不可信输入校验（防目录逃逸）。
  */
 function columnFilePath(column: StoryColumn): string {
@@ -581,8 +579,8 @@ export function serializeColumnDocument(
   }
   if (issues.length > 0) throw new ProjectSerializationError(issues);
 
-  // 🔴 单列写回**同样保留原路径**（与 `serializeProject` 同纪律，2026-10-05 治根）：
-  // 此前固定 `Stories/<id>.json` ⇒ 编辑器保存一列就把它的章节目录拍平。
+  // 单列写回**同样保留原路径**（与 `serializeProject` 同一路径规则）：
+  // 固定 `Stories/<id>.json` ⇒ 编辑器保存一列就把它的章节目录拍平。
   const target = columnFilePath(column);
   return {
     files: new Map([[target, columnFileText(column)]]),
@@ -594,7 +592,7 @@ export function serializeColumnDocument(
  * 期望文件集与打开基线的最小差量：**JSON 语义比较**（解析后深等即跳过，排版差异不算改动），
  * 非 JSON（`.story` 文本形态）退化为逐字节比较；陈旧故事文件（`Stories/**` 内不在期望集）→ 删除。
  *
- * 为何一律语义比较：实测真实工程（playground `Resources/`）的故事文件与清单都不是
+ * 为何一律语义比较：工程里的故事文件与清单大多不是
  * `JSON.stringify(…, 2)` 的逐字节输出（作者手写排版，如单行内联对象）——逐字节比较会让
  * **每一次保存都重写全部文件**（热重载抖动 + 静默重排版）。语义相等即跳过，作者排版得以保留。
  */

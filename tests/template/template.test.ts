@@ -84,7 +84,7 @@ describe("template/v1 脚手架防腐", () => {
     expect(mainTs).not.toMatch(/from "(vue|react|@vue\/)/);
   });
 
-  it("宿主 must() 的每个 DOM id 都在 index.html 里存在（回归锚定：宿主 ↔ 骨架互锁）", () => {
+  it("宿主 must() 的每个 DOM id 都在 index.html 里存在（回归：宿主 ↔ 骨架互锁）", () => {
     const ids = mustedIds();
     expect(ids.length).toBeGreaterThan(4); // 防提取失效空跑
     const available = new Set(htmlIds());
@@ -93,7 +93,7 @@ describe("template/v1 脚手架防腐", () => {
     }
   });
 
-  it("每个等待态都有可推进出口（回归锚定：曾只有 dialogue，menu/input/video 会永久卡死）", () => {
+  it("每个等待态都有可推进出口（回归：曾只有 dialogue，menu/input/video 会永久卡死）", () => {
     // 引擎能进入的等待态全集（WaitingState）都必须被宿主识别
     for (const state of ["dialog", "menu", "input", "wait", "video", "minigame"]) {
       expect(mainTs, `宿主未处理等待态 ${state}`).toContain(`"${state}"`);
@@ -113,7 +113,7 @@ describe("template/v1 脚手架防腐", () => {
     expect(mainTs).toContain("engine.resolveMinigame");
   });
 
-  it("工程配置被宿主消费（回归锚定：shell.* 不得静默失效）", () => {
+  it("工程配置被宿主消费（回归：shell.* 不得静默失效）", () => {
     expect(mainTs).toContain("resolveLayerZ");
     expect(mainTs).toContain("layerZ.");
     expect(mainTs).toContain("resolveSavesConfig");
@@ -125,7 +125,7 @@ describe("template/v1 脚手架防腐", () => {
     expect(mainTs).toContain("SYS.elements");
   });
 
-  it("模板宿主不用 ES2022 的 Array.prototype.at（旧 WebView 兼容纪律）", () => {
+  it("模板宿主不用 ES2022 的 Array.prototype.at（旧 WebView 兼容性）", () => {
     expect(mainTs).not.toMatch(/\.at\(/);
   });
 

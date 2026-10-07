@@ -38,7 +38,7 @@ export class Scope {
     this.vars.set(name, value);
   }
 
-  /** undef：沿父链删除声明槽（等价旧版清同名 _local_ 键）；找到并删除 → true */
+  /** undef：沿父链删除声明槽；找到并删除 → true */
   undef(name: string): boolean {
     if (this.vars.has(name)) {
       this.vars.delete(name);

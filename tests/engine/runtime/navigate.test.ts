@@ -1,7 +1,7 @@
 /**
  * navigate op + 会话 navigate + 热重载测试。
  * - 导航不建站：检查点=玩家所见，back 跨导航可达导航前画面
- * - 目标列 = scene ?? path（旧版引擎优先级语义）
+ * - 目标列 = scene ?? path（既有实现优先级语义）
  * - 切导航清旧对话镜像
  * - 未知目标 / 缺 path fail-closed，拒绝后状态原样
  * - 坐标切换打断任意等待
@@ -71,7 +71,7 @@ describe("navigate op（跨列导航）", () => {
     h.dispose();
   });
 
-  it("scene 优先进 scene 列（旧版引擎 SceneName ?? Path 优先级语义）", () => {
+  it("scene 优先进 scene 列（既有实现 SceneName ?? Path 优先级语义）", () => {
     const h = makeEngine([
       column("a", [{ op: "navigate", path: "decoy", scene: "b" }]),
       column("b", [say("乙")]),
@@ -84,7 +84,7 @@ describe("navigate op（跨列导航）", () => {
     h.dispose();
   });
 
-  it("导航清旧列对话镜像（旧版引擎导航清屏语义）", () => {
+  it("导航清旧列对话镜像（既有实现导航清屏语义）", () => {
     const h = makeEngine([
       column("a", [say("一"), { op: "navigate", path: "b" }]),
       column("b", []), // 空列：导航后无新 say 覆盖，镜像应为空串

@@ -2,7 +2,7 @@
  * 元素系统（数据层）测试。
  *
  * 白盒：`validateElement` / `loadElements` / `findElements` 为引擎内部纯函数
- * （未列入包公共出口），按测试纪律走相对深引。
+ * （未列入包公共出口），按测试要点走相对深引。
  */
 import { describe, expect, it } from "vitest";
 import { StoryFormatError, parseStory } from "@lingfan/engine";

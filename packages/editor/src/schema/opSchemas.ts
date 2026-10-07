@@ -26,12 +26,12 @@ const saySchema = z.strictObject({
   text: NonEmpty,
   speaker: z.string().optional(),
   /**
-   * 说话人颜色覆盖（老引擎 `SayData.SpeakerColor`）。
+   * 说话人颜色覆盖（覆盖整句/说话人）。
    *
-   * 🔴 **判据直接复用引擎的 `isValidSayColor`**（不在此重写正则）——
-   * 本项目吃过「两处各写一份判据 ⇒ 必然漂移」的亏（`say color` 此前
+   * **判据直接复用引擎的 `isValidSayColor`**（不在此重写正则）——
+   * 「两处各写一份判据 ⇒ 必然漂移」是本项目吃过的亏（`say color` 一度
    * 投影层放宽、校验层拒绝，正是两处不一致）。
-   * ⚠️ 与**行内标记** `{color=…}`（写在文本内部）是两件事。
+   * 与**行内标记** `{color=…}`（写在文本内部）是两件事。
    */
   color: z
     .string()
@@ -303,7 +303,7 @@ const textTypewriterSchema = z.strictObject({
 });
 
 /** op → 负载 schema（不含 op 键本身）；字面量键形态 = `ScriptCommand` 判别联合的派生源。
- * 新增 op = 加条目 = 表单 / 校验 / 类型三面自动出现（单一事实源，零第二真源） */
+ * 新增 op = 加条目 = 表单 / 校验 / 类型三面自动出现（单一事实源，零重复定义） */
 const OP_SCHEMA_MAP = {
   say: saySchema,
   menu: menuSchema,
@@ -384,7 +384,7 @@ export type ScriptOpName = keyof typeof OP_SCHEMA_MAP & string;
  * 单 op 命令类型：`CommandOf<"bgm">` = `{ op: "bgm" } & 负载形状`。
  * 派生自 `OP_SCHEMA_MAP` ⇒ schema 增删字段时类型自动跟随。
  *
- * 🔴 **条件类型必须保持可分发**（naked `K extends`）：不加分发时
+ * **条件类型必须保持可分发**（naked `K extends`）：不加分发时
  * `CommandOf<ScriptOpName>` 会折叠成 `{ op: 全体字面量 } & (全体 infer 联合)`——
  * 全可选负载（如 nvl）成为逃生舱，缺必填不再报红。
  * 空 schema（strictObject({}) 的 infer = `Record<string, never>`，会与 op 键冲突）
@@ -401,7 +401,7 @@ export type CommandOf<K extends ScriptOpName> = K extends ScriptOpName
  * `op: "say"` ⇒ text/speaker/z… 编译期可查；未知 op / 未知字段 / 类型错编译期报红
  * （与编辑期 `validateCommand` 的 unknown-op / unknown-field 同口径，提前到构建期）。
  *
- * 🔴 **对内建 op 闭合，不带索引签名逃生舱**：联合里任何 `{[k: string]: unknown}`
+ * **对内建 op 闭合，不带索引签名逃生舱**：联合里任何 `{[k: string]: unknown}`
  * 成员都会让所有字面量可指派到它，废掉整个联合的多余属性检查。
  * 扩展 op 走 `extOp()`（产物 = StoryCommand envelope）或显式 `: StoryCommand`
  * 注解——显式逃生 > 隐式漏洞。
@@ -412,15 +412,15 @@ export type ScriptCommand = CommandOf<ScriptOpName>;
 export type ScriptValue = z.infer<typeof Value>;
 
 /**
- * **「resource 为空」时该用哪个停止命令**（2026-10-05 治根）。
+ * **「resource 为空」时该用哪个停止命令**。
  *
- * 🔴 为什么需要：真实工程沿用了老引擎的 `bgm ""` 写法表「停止 BGM」，
- * 而老引擎 `PlayBgm` 对空路径**无特判**（直接 `LoadAndPlayBgmAsync(player, "", …)`
- * ⇒ **静默失败**）——作者以为停了，其实没有。本仓显式报错**比老引擎更正确**，
- * 但原来的消息是 zod 英文原话（`Too small: expected string to have >=1 characters`），
- * 作者既看不懂、也不知道该改什么。
+ * 为什么需要：既有工程里有 `bgm ""` 表「停止 BGM」的写法，而播放器对空路径
+ * **无特判**（直接以空串去加载）⇒ **静默失败**——作者以为停了，其实没有。
+ * 显式报错比「假装能停」更正确，但直接抛 zod 英文原话
+ * （`Too small: expected string to have >=1 characters`）作者既看不懂、
+ * 也不知道该改什么。
  *
- * 治根 = **保持严格校验**（不引入「空路径=停止」这种隐式约定，下一个人看不出来）
+ * 处置 = **保持严格校验**（不引入「空路径=停止」这种隐式约定，下一个人看不出来）
  * + **把正确写法直接告诉作者**（语义明确）。
  */
 const STOP_OP_BY_RESOURCE_OWNER: Readonly<Record<string, string>> = {
@@ -434,8 +434,8 @@ const STOP_OP_BY_RESOURCE_OWNER: Readonly<Record<string, string>> = {
 /**
  * zod 错误 → **中文人话**（编辑期诊断给作者看，不该直接透传英文）。
  *
- * ⚠️ **兜底保留原文**：没覆盖的 code 返回 `issue.message`——
- * 宁可英文也不静默丢信息（本仓纪律：不吞）。
+ * **兜底保留原文**：没覆盖的 code 返回 `issue.message`——
+ * 宁可英文也不静默丢信息（不吞信息）。
  */
 function localizeZodIssue(op: string, issue: z.core.$ZodIssue): string {
   const field = issue.path.map(String).join(".");

@@ -1,10 +1,10 @@
 /**
- * I18N 三层测试（对齐旧版引擎 I18nService 思想）。
+ * I18N 三层测试（对齐「overlay 覆盖 + 元素文本也是翻译面」这一思路）。
  * - 先 Translate 后插值（overlay 键含 {var} 占位符）
- * - 缺译文回退原文；空串译文 = 命中（旧版引擎 TryGetValue 同语义）
+ * - 缺译文回退原文；空串译文 = 命中（既有实现 TryGetValue 同语义）
  * - 挂接点（say 文本+speaker / menu prompt+选项 / input prompt / notify 文本 /
  *   元素 text——翻译面覆盖「所有展示文字」；menu 目标仍不翻译）
- * - setLanguage（旧版引擎 SwitchLanguage：清缓存 + 写状态键，当前画面不重放）
+ * - setLanguage（既有实现 SwitchLanguage：清缓存 + 写状态键，当前画面不重放）
  * - 按需加载（不 setLanguage 则端口零调用——启动零成本）
  * - 供给失败保持原语言与译文表，engine.error 上报
  * - 检查点重放按当前语言重新 Translate
@@ -128,7 +128,7 @@ describe("按需加载（启动零成本）", () => {
 });
 
 describe("先 Translate 后插值", () => {
-  it("say：译文上的 {var} 占位符被插值（overlay 键含占位符，旧版引擎素材同构）", async () => {
+  it("say：译文上的 {var} 占位符被插值（overlay 键含占位符，既有实现素材同构）", async () => {
     const port = new MemoryI18nPort().table("en", {
       "你有 {gold} 金币": "You have {gold} gold",
     });
@@ -152,7 +152,7 @@ describe("先 Translate 后插值", () => {
     h.dispose();
   });
 
-  it("say：空串译文 = 命中（旧版引擎 TryGetValue 同语义）", async () => {
+  it("say：空串译文 = 命中（既有实现 TryGetValue 同语义）", async () => {
     const port = new MemoryI18nPort().table("en", { 隐藏句: "" });
     const h = makeHarness([column("a", [say("隐藏句")])], port);
     await h.engine.setLanguage("en");

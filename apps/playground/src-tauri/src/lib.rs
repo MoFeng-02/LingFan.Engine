@@ -28,7 +28,7 @@ pub fn run() {
         // 大资源流式：lfstream 协议双路径——v2 分块按需解密（Range/206，明文不落盘）
         // + v1 token 缓存；缓存文件名信任边界（hex64.ext / v2/逻辑路径 validate）在 handler 内。
         .register_uri_scheme_protocol("lfstream", |ctx, request| {
-            // 面包屑：实测主线程在启动后约 8 秒（心跳 #4 那一拍）卡住，而该时点正是前端开始拉资源。
+            // 面包屑：主线程可能在启动后一段时间（心跳某一拍）卡住，而该时点正是前端开始拉资源。
             // 这两条把「卡在协议处理器里」直接夹出来——**只要出现「进入」而无「返回」即为卡点**。
             let uri = request.uri().to_string();
             eprintln!("[lfen] lfstream 进入：{uri}");
@@ -70,8 +70,8 @@ pub fn run() {
 
     builder
         .setup(|app| {
-            // 启动路径面包屑：实测应用在页面起来约 1 秒后整体卡住（心跳 #7 起消失、WebKit 合成
-            // 停摆、录屏 16 帧全白）。以下每条都在卡点之前/之后留痕，用于把卡点夹到具体一步。
+            // 启动路径面包屑：应用可能在页面起来约 1 秒后整体卡住（心跳条数起消失、WebKit 合成
+            // 停摆、录屏全白）。以下每条都在卡点之前/之后留痕，用于把卡点夹到具体一步。
             eprintln!("[lfen] setup: 进入");
             // 临时流缓存随启动清理（同 DEK 同路径 → 内容确定性可重建）
             if let Ok(data) = app.path().app_data_dir() {
@@ -81,7 +81,7 @@ pub fn run() {
             // 诊断探针已改前端 build-flag（VITE_LFEN_DIAG=1，src/diag.ts）；lfen_diag 命令保留为回传通道
             splash_then_show(app.handle());
             eprintln!("[lfen] setup: 窗口显示流程返回");
-            // 启动期窗口状态取证：前端探针会随页面节流一起冻结（iOS 实测日志只到启动后 ~0.8 秒），
+            // 启动期窗口状态取证：前端探针会随页面节流一起冻结（日志往往只到启动后不到一秒），
             // 只有 Rust 侧心跳能区分「页面被节流」与「整个进程被挂起」——白屏归因的分水岭
             #[cfg(debug_assertions)]
             spawn_boot_probe(app.handle());
@@ -101,8 +101,8 @@ pub fn run() {
 /// **若继续往下打**，说明进程活着、被冻的是页面/WebView 一侧；**若同时停在同一点**，
 /// 则是整个进程被挂起（例如应用始终没拿到前台）。窗口的可见/聚焦读数同批给出。
 ///
-/// 20 条（而非 6 条）：实测 iOS 冷启动下前端 JS 比 Rust 侧晚约 7 秒才起来——心跳条数太少
-/// 会整段落在「页面还没起来」的时段里，覆盖不到冻结点（踩过）。
+/// 20 条（而非 6 条）：iOS 冷启动下前端 JS 比 Rust 侧晚数秒才起来——心跳条数太少
+/// 会整段落在「页面还没起来」的时段里，覆盖不到冻结点。
 #[cfg(debug_assertions)]
 fn spawn_boot_probe(app: &tauri::AppHandle) {
     let handle = app.clone();

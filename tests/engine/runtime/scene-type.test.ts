@@ -1,15 +1,13 @@
 /**
- * **场景类型（`type: game|menu|ui`）守卫测试**（用户实测回归锚定 · 治根）。
+ * **场景类型（`type: game|menu|ui`）守卫测试**（回归）。
  *
- * 权威语义来源：老引擎 `E:\Project\Engine\src\EngineCore\…\Entities\Enums\SceneType.cs`
- *   Game = 0（存档、入栈、建检查点）
- *   Menu = 1（菜单/标题/设置：不存档、不入栈、不建检查点）
- *   UI   = 2（覆盖层/弹窗：同上，且不改历史游标）
- * 三处守卫对照老引擎 `SaveDataService.BuildSaveData` / `PlaybackService.Process` /
- * `NavigateHandler`。
+ * 语义口径：
+ *   game（存档、进历史、建检查点）
+ *   menu（菜单/标题/设置：不存档、不进历史、不建检查点）
+ *   ui  （覆盖层/弹窗：同上，且不改历史游标）
  *
- * API 说明（对齐 tests/engine/runtime/engine.test.ts 的真实用法）：
- *   `start()` 无参启动；`advance()` 推进一个等待点；`choose("列id")` 用**目标列 id**选菜单（见 engine.ts `choose`）。
+ * API 说明：
+ *   `start()` 无参启动；`advance()` 推进一个等待点；`choose("列id")` 用**目标列 id**选菜单。
  *
  * 覆盖五组：① 契约与解析 ② 回溯守卫 ③ 存档守卫 ④ 边界 ⑤ 真实工程形态
  */
@@ -97,7 +95,7 @@ describe("场景类型 · 契约与解析（**缺省 = game**）", () => {
     expect(isSceneType(undefined)).toBe(false);
   });
 
-  it("**缺省 type ⇒ 视为 game**（对齐老引擎 `SceneType.Game = 0`）", () => {
+  it("**缺省 type ⇒ 视为 game**", () => {
     expect(isReplayableColumn({})).toBe(true);
     expect(isReplayableColumn({ type: undefined })).toBe(true);
   });
@@ -119,8 +117,8 @@ describe("场景类型 · 契约与解析（**缺省 = game**）", () => {
   });
 
   it("**多文件入口也校验**（组装器是另一条路径，漏掉就能绕过）", () => {
-    // ⚠️ 真实签名 = serializeProject(story, manifest)（见 data/project.ts:309）。
-    // ⚠️ **不能走 parseStory 造夹具**——它在构造期就拦下非法 type（那是单文件层，
+    // 真实签名 = serializeProject(story, manifest)。
+    // **不能走 parseStory 造夹具**——它在构造期就拦下非法 type（那是单文件层，
     // 本例要测的是**组装器这条独立入口**）⇒ 直接构造 Story 对象绕过它。
     const story = {
       formatVersion: 1,
@@ -158,16 +156,16 @@ describe("场景类型 · 回溯守卫（**menu/ui 不建检查点**）", () => 
 
   it("**进入 menu 列后不产生新检查点**（菜单不是玩家经历的一步）", () => {
     const h = startToMenu();
-    // ⚠️ 精确判据：**直接读历史长度**，不用 back() 落点反推
+    // 精确判据：**直接读历史长度**，不用 back() 落点反推
     // （`back()` 会先 flushPendingCheckpoint，测的是 flush 语义不是守卫）
     const before = h.engine.historyLength();
     const cursorBefore = h.engine.historyCursor();
     h.engine.choose("main_menu"); // → main_menu（落在其say 等待点）
     expect(h.engine.get(SYS.currentSceneColumn)).toBe("main_menu");
-    // ⚠️ 再 advance 一次落菜单自己的菜单等待点——**这里才是「菜单里玩家所见」的点**，
+    // 再 advance 一次落菜单自己的菜单等待点——**这里才是「菜单里玩家所见」的点**，
     // 若守卫失效就会建出检查点（对照：游戏列同样 advance 会增长）
     h.engine.advance();
-    // 🔴 核心判据：菜单期间历史**零增长**
+    // 核心判据：菜单期间历史**零增长**
     expect(h.engine.historyLength()).toBe(before);
     expect(h.engine.historyCursor()).toBe(cursorBefore);
     h.dispose();
@@ -188,7 +186,7 @@ describe("场景类型 · 回溯守卫（**menu/ui 不建检查点**）", () => 
     const before = h.engine.historyLength();
     h.engine.choose("play2"); // → play2（game 列）
     expect(h.engine.get(SYS.currentSceneColumn)).toBe("play2");
-    // ⚠️ 检查点在**落新等待点时**才建（规约 R1「检查点在用户所见后」），
+    // 检查点在**落新等待点时**才建（「检查点在用户所见后」），
     // 所以要 advance 一次才看得到增长——守卫挂在 commitCheckpoint 上，判据同理。
     h.engine.advance();
     expect(h.engine.historyLength()).toBeGreaterThan(before);
@@ -199,7 +197,7 @@ describe("场景类型 · 回溯守卫（**menu/ui 不建检查点**）", () => 
     const h = startToMenu();
     h.engine.choose("main_menu"); // → main_menu（落在其say 等待点）
     expect(h.engine.get(SYS.currentSceneColumn)).toBe("main_menu");
-    // ⚠️ 菜单列自己的 say 也要 advance 才落到它的菜单等待点
+    // 菜单列自己的 say 也要 advance 才落到它的菜单等待点
     h.engine.advance();
     h.engine.choose("play2"); // → play2（game）
     expect(h.engine.get(SYS.currentSceneColumn)).toBe("play2");
@@ -228,7 +226,7 @@ describe("场景类型 · 存档守卫（**菜单态存的是菜单前的游戏�
     h.engine.choose("main_menu"); // → main_menu
     expect(h.engine.get(SYS.currentSceneColumn)).toBe("main_menu");
     const inMenu = h.engine.exportSave();
-    // 🔴 核心判据：档里是游戏点，不是菜单
+    // 核心判据：档里是游戏点，不是菜单
     expect(inMenu?.coord.columnId).toBe("play");
     expect(inMenu?.coord.columnId).toBe(inGame?.coord.columnId);
     h.dispose();
@@ -245,7 +243,7 @@ describe("场景类型 · 存档守卫（**菜单态存的是菜单前的游戏�
     h.dispose();
   });
 
-  it("**无游戏点时菜单态存档被拒**（对齐老引擎「没有正在进行的游戏 ⇒ null」）", () => {
+  it("**无游戏点时菜单态存档被拒**（「没有正在进行的游戏 ⇒ null」）", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "menu-only",
@@ -312,7 +310,7 @@ describe("场景类型 · 边界条件", () => {
 // ---------- ⑤ 真实工程形态 + 守卫自证 ----------
 
 describe("场景类型 · 真实工程形态与自证", () => {
-  it("**纯菜单工程**：一条历史都不建（用户实测工程全是 type=menu）", () => {
+  it("**纯菜单工程**：一条历史都不建（全是 type=menu 的工程）", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "ui-only",

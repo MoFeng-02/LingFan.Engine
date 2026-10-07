@@ -164,7 +164,7 @@ describe("interpolateText（模板插值）", () => {
       interpolateText("金币 {gold:000}，翻倍 {gold * 2}", resolve).text,
     ).toBe("金币 007，翻倍 14");
   });
-  it("三元含 '?' 时冒号不拆格式（老实现规则）", () => {
+  it("三元含 '?' 时冒号不拆格式", () => {
     expect(interpolateText("{gold > 5 ? 1 : 0}", resolve).text).toBe("1");
   });
   it("行内标记 {b}{/b}{p} 原样透传", () => {

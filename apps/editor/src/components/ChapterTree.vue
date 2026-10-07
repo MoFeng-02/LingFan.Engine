@@ -2,16 +2,16 @@
 /**
  * **故事章节树**：左栏按「章节」组织场景（剧情/ 界面两组）。
  *
- * 为何不是平铺文件列表：用户真实工程
- * `E:\langf\Downloads\Demo\Test\Resources` 的 `Stories/` 与 `Lang/` 都**按章节分目录**
+ * 为何不是平铺文件列表：工程实践里
+ * `Stories/` 与 `Lang/` 常**按章节分目录**
  * （`chapter1/chapter1.story` ↔ `Lang/en-US/chapter1/chapter1.json`），
  * 三种 Lang 布局（en 平铺 / en-US 子目录 / ja 单文件）**共用同一套章节**。
  * ⇒ **内容骨架是章节，不是文件**；文件怎么摆是作者的自由。
  *
- * 🔴 **两条纪律（都写在这里，别在视图里另写）**：
- * ① **分组只看 `type`，绝不看目录名** —— 真实工程的 `system/showcase` 就在界面目录里
- *    但 `type=game`，按目录分组会把它错分。
- * ② **任意深度递归** —— 两个工程恰好只到 1 层，这个假设**没被证伪**；
+ * **两条约束（都写在这里，不在视图里另写）**：
+ * ① **分组只看 `type`，绝不看目录名** —— 目录名与运行类型正交，
+ *    同一目录下可能既有剧情又有界面，按目录分组会错分。
+ * ② **任意深度递归** —— 「一级 = 章节」这个假设不成立；
  *    `Lang/en-US/system/about.json` 已到 2 层 ⇒ 按层数写死会错。
  *    0 层平铺工程退化为「无章节分组的全列表」，**不报错**。
  *
@@ -71,10 +71,10 @@ const summary = computed(() => chapterSummaryText(index.value));
 /**
  * 两组共用的渲染数据（**目录跟着组走**）。
  *
- * 🔴 `dirs` 必须取**按组过滤**版（`storyDirs` / `uiDirs`）：目录是作者的编排、
+ * `dirs` 必须取**按组过滤**版（`storyDirs` / `uiDirs`）：目录是作者的编排、
  * `type` 是运行语义，两者**正交**（一个目录可同时含剧情与界面）。
  * 用全局 `dirs` 会把剧情节点混进界面组，而剧情组本身退化成平铺
- * （真机实测：`chapter1` 在平铺列表里重复出现 4 次）。
+ * （同一个章节名会在列表里重复出现）。
  */
 const groups = computed(() =>
   (
@@ -118,10 +118,10 @@ function badgeOf(node: ChapterNode): string | null {
       <p class="ch-summary" :title="`共 ${summary}`">{{ summary }}</p>
 
       <!-- 两组共用一份结构（数据驱动）。
-           🔴 **目录跟着组走**：目录是作者编排、`type` 是运行语义，两者正交——
-           一个目录可同时含剧情与界面（真实工程 `system/` = about(menu) + sandbox(game)）。
-           故用**按组过滤**的 `storyDirs`/`uiDirs`；用全局 `dirs` 会把剧情节点混进界面组
-           （真机实测：剧情组还退化成平铺，`chapter1` 重复出现 4 次）。 -->
+           **目录跟着组走**：目录是作者编排、`type` 是运行语义，两者正交——
+           一个目录可同时含剧情与界面。
+           故用**按组过滤**的 `storyDirs`/`uiDirs`；用全局 `dirs` 会把剧情节点混进界面组，
+           剧情组本身也会退化成平铺（章节名重复出现）。 -->
       <section v-for="grp in groups" :key="grp.key" class="ch-group">
         <h3 class="ch-group-head">
           <span class="ch-dot" :class="grp.key" aria-hidden="true"></span>
@@ -152,9 +152,8 @@ function badgeOf(node: ChapterNode): string | null {
                   :title="`${node.id} · ${node.commandCount} 条命令${grp.titleSuffix}`"
                   @click="api.selectColumn(node.id)"
                 >
-                  <!-- ⚠️ 分组视图里显示**列名**（`node.id`）而**不是** `node.label`：
-                       「章节名」已由目录标题承担（`chapterLabelOf` 优先取目录名），
-                       节点若仍用 label 会在目录下重复同一个名字（真机实测 `chapter1` 出现 4 次）。
+                  <!-- 分组视图里显示**列名**（`node.id`）而**不是** `node.label`：
+                       「章节名」已由目录标题承担，节点若仍用 label 会在目录下重复同一个名字。
                        列 id 才是能区分场景的标识（时间线/诊断也都用它）。 -->
                   <span class="ch-label">{{ node.id }}</span>
                   <span v-if="badgeOf(node)" class="ch-badge">{{ badgeOf(node) }}</span>
@@ -288,8 +287,8 @@ function badgeOf(node: ChapterNode): string | null {
   align-items: center;
   gap: 4px;
   width: 100%;
-  /* 🔴 缩进必须**小于**子节点：原名文字起点 = 14 + caret10 + gap4 = 28px，
-     而 `.ch-item` 是 22px ⇒ 目录名反而在子节点**右边**（层级感反了，真机实测）。
+  /* 缩进必须**小于**子节点：原名文字起点 = 14 + caret10 + gap4 = 28px，
+     而 `.ch-item` 是 22px ⇒ 目录名反而落在子节点**右边**（层级感反了）。
      改为 4px ⇒ 文字起点 18px，与子节点（30px）拉开 12px 的层级差。 */
   padding: 3px 10px 3px 4px;
   text-align: left;

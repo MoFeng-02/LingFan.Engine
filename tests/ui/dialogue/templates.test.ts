@@ -44,7 +44,7 @@ describe("注册表解析", () => {
     expect(registry.resolve(null)).toBeNull();
     const def = const_view("def");
     registry.register("def", def, { makeDefault: true });
-    expect(registry.resolve("ghost")).toBe(def); // 旧版引擎 Resolve ?? GetDefault
+    expect(registry.resolve("ghost")).toBe(def); // 既有实现 Resolve ?? GetDefault
     expect(registry.resolve(null)).toBe(def);
     expect(registry.resolve("")).toBe(def); // 空串 = 「无模板」哨兵 → 默认
   });

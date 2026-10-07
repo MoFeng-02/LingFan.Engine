@@ -2,7 +2,7 @@
  * 四音频通道核心语义测试：
  * 四通道独立音量 / 媒体位置随快照 /
  * 媒体进档（读档续播）/ fail-closed（非法负载拒绝后状态不变）。
- * 测试纪律五类：拟态用户旅程、故意错误、不变量、边界、回归锚定（见 journey.test.ts 音频旅程）。
+ * 测试要点五类：拟态用户旅程、故意错误、不变量、边界、回归（见 journey.test.ts 音频旅程）。
  */
 import { describe, expect, it } from "vitest";
 import type {
@@ -246,7 +246,7 @@ describe("媒体位置随快照", () => {
     });
   });
 
-  it('stop_bgm 停背景乐并把播放位置归零（旧版引擎 `bgm ""` 语义的显式化）', () => {
+  it('stop_bgm 停背景乐并把播放位置归零（既有实现 `bgm ""` 语义的显式化）', () => {
     const { engine } = makeEngine([
       { op: "bgm", resource: "main.mp3" },
       { op: "say", text: "一" },

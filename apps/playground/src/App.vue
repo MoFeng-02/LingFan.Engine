@@ -131,9 +131,9 @@ const ROLLBACK_NOTICE_DURATION_MS = 1500;
 const shownText = ref(""); // 打字机可见前缀（渲染层 v-html）
 const speakerColor = ref(""); // 角色样式自动应用
 /**
- * 重算说话人颜色 = **本句覆盖值优先，其次角色定义**（2026-10-05 治根）。
+ * 重算说话人颜色 = **本句覆盖值优先，其次角色定义**。
  *
- * 🔴 **为什么是函数而不是「在 speaker 分支里算」**：`speakerColor` 是
+ * **为什么是函数而不是「在 speaker 分支里算」**：`speakerColor` 是
  * `(speaker, currentDialogColor)` 的**派生值**——引擎按 `color → speaker` 顺序写两个键，
  * 若只在 speaker 分支算，本句的 color 可能还没到（算成上一句的颜色，**滞后一句**）。
  * 派生值不该依赖事件到达顺序 ⇒ 两个键变更都调它（幂等）。
@@ -146,8 +146,8 @@ function refreshSpeakerColor(): void {
 }
 const nvlMode = ref("none");
 const nvlBuffer = ref<string[]>([]);
-// —— NVL 累积层：已打完的行 memo 一次（O(新增)——历史缺陷教训：
-// 静态行若随打字帧全量重渲染即 O(全文) 每帧），最新一行走打字机（统一渲染接缝）——
+// —— NVL 累积层：已打完的行 memo 一次（O(新增)——静态行若随打字帧全量重渲染即 O(全文) 每帧），
+// 最新一行走打字机（统一渲染接缝）——
 const nvlPastLines = computed(() =>
   nvlBuffer.value
     .slice(0, -1)
@@ -163,7 +163,7 @@ watch(nvlBuffer, () => {
 });
 // —— 对话框模板注册制：宿主装配注册表（作者扩展入口；编辑器可视化创作
 // 未来产出同构描述装配到同一注册表）。核心层解析模板名三级优先级 → __dialog_template，
-// 此处按名解析（未知名/null 回退默认）。NVL 累积层保持固定骨架（增量渲染纪律）。
+// 此处按名解析（未知名/null 回退默认）。NVL 累积层保持固定骨架（增量渲染约定）。
 const dialogueTemplates = createDialogueTemplateRegistry();
 dialogueTemplates.register("bubble", builtinBubbleTemplate, {
   makeDefault: true,
@@ -318,7 +318,7 @@ const elementResources = createElementResourceResolver({
  * 元素意图 → 命令。点击分支走纯函数 `resolveElementAction`
  * （`disabled` > `nav` > `cmd`，与 UI 侧渲染器同源）；`nav` → 核心 `navigate`，
  * `cmd` → 宿主命令注册表，`value` 按**点击时**插值取最新变量
- * （旧版引擎取值语义）。
+ * （既有实现取值语义）。
  */
 function activateElement(element: ElementInstance): void {
   const action = resolveElementAction(element.props);
@@ -467,7 +467,7 @@ function handleState({ key, value }: { key: string; value: unknown }): void {
     speaker.value = value;
     refreshSpeakerColor();
   } else if (key === SYS.currentDialogColor) {
-    // 🔴 `say color="#888"` 的覆盖值（2026-10-05 治根：命令参数覆盖整句说话人颜色）
+    // `say color="#888"` 的覆盖值（命令参数覆盖整句说话人颜色）
     refreshSpeakerColor();
   } else if (key === SYS.currentDialogText && typeof value === "string") {
     text.value = value;
@@ -493,8 +493,8 @@ function handleState({ key, value }: { key: string; value: unknown }): void {
   // 模板名（三级优先级解析结果；null = 全局默认回退）
   else if (key === SYS.dialogTemplate)
     dialogTemplateName.value = typeof value === "string" ? value : null;
-  // NVL 系统键（回归保护：前进播放时 NVL 累积不显示——
-  // 此前只有回溯/读档的 syncFromEngine 才同步这两个键）
+  // NVL 系统键（前进播放时 NVL 累积不显示——
+  // 这两个键须在此同步，不能只靠回溯/读档的 syncFromEngine）
   else if (key === SYS.nvlMode && typeof value === "string")
     nvlMode.value = value;
   else if (key === SYS.nvlBuffer && Array.isArray(value))
@@ -1089,7 +1089,7 @@ onUnmounted(() => {
       :class="[nvlMode === 'active' ? 'nvl-mode' : dialogView.rootClass]"
       aria-live="polite"
     >
-      <!-- NVL 累积层——增量渲染纪律保持固定骨架（不走模板全量重渲） -->
+      <!-- NVL 累积层——增量渲染约定保持固定骨架（不走模板全量重渲） -->
       <div v-if="nvlMode === 'active'" ref="nvlBody" class="nvl-body">
         <p
           v-for="(html, idx) in nvlPastLines"

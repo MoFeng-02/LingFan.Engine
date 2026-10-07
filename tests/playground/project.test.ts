@@ -18,7 +18,7 @@ import {
 } from "@lingfan/engine";
 
 /** 磁盘真实存在的故事文件（glob 键即文件清单）→ `Stories/<file>` 逻辑路径
- *  ⚠️ 2026-10-06 起 playground 启用 **TS 源工程**（`Stories.src/` → `stories:build`）：
+ *  playground 启用 **TS 源工程**（`Stories.src/` → `stories:build`）：
  *  产物 = **章节目录 + 多列 `.story`**（平铺形态已否决）⇒ glob 必须递归且含 .story */
 const STORY_MODULES = {
   ...(import.meta.glob("../../apps/playground/Resources/Stories/**/*.story", {
@@ -91,7 +91,7 @@ describe("示例工程防腐", () => {
     ]);
   });
 
-  it("main.ts 的浏览器故事清单 ↔ 磁盘文件（回归锚定：新增故事文件必须同步）", () => {
+  it("main.ts 的浏览器故事清单 ↔ 磁盘文件（回归：新增故事文件必须同步）", () => {
     // 浏览器形态按显式清单取文件（Tauri 形态走 Rust 目录枚举）——
     // 漏登记会让该列在浏览器形态不存在，跳转报 unknown-column（实测缺陷）
     const block = /const STORIES = \[([^\]]*)\]/.exec(mainSource)?.[1];
@@ -132,7 +132,7 @@ describe("示例工程防腐", () => {
     );
     const referenced = new Set<string>();
     for (const text of Object.values(FILES)) {
-      // 🔴 章节形态 = **一文件多列** ⇒ 必须扫全部列（含 scene 列的 entry），
+      // 章节形态 = **一文件多列** ⇒ 必须扫全部列（含 scene 列的 entry），
       //    旧「columns[0]」口径在多列文件下漏采
       const parsed = parseStoryFile(text, "story");
       for (const column of parsed.columns) {

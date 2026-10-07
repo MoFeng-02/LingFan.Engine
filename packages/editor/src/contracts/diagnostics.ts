@@ -44,7 +44,7 @@ export interface SymbolIndex {
      * 目标种类：
      * - `column`：只能指向列（jump / menu 选项）
      * - `function`：只能指向 func（无）
-     * - `callable`：**两者皆可**（`call` —— 老引擎语义「func 或 label」，2026-10-05）
+     * - `callable`：**两者皆可**（`call` —— 语义是「func 或 label」）
      */
     kind: "column" | "function" | "callable";
   }[];

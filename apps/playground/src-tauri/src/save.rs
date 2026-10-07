@@ -17,7 +17,7 @@ const AAD_PAYLOAD_PREFIX: &str = "LFS3:payload:";
 const AAD_DEK_MACHINE_BOUND: &[u8] = b"LFS3:dek:machine-bound";
 const AAD_HIGH_WATER: &[u8] = b"LFS3:highwater";
 const HIGH_WATER_FILE: &str = "__highwater__.lfs3";
-/// 安全备注：高水位文件本身也被 KEK 加密（AAD 域分离），防篡改；删除重置为已知边界（攻击者持文件系统写权限时无法防，与旧版引擎同界）。
+/// 安全备注：高水位文件本身也被 KEK 加密（AAD 域分离），防篡改；删除重置为已知边界（攻击者持文件系统写权限时无法防，属已知边界）。
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(tag = "code", content = "detail")]

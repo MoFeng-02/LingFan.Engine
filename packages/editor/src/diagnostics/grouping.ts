@@ -1,8 +1,8 @@
 /**
  * 诊断面板 · **按类型分组与折叠判据**（纯函数，可测）。
  *
- * 存在理由：诊断面板是编辑期的「仪表盘」，而真实工程里**同质诊断会淹没异质诊断**
- * —— 实测演示工程 33 条里 31 条是 `unused-translation`，把 2 条真错误
+ * 存在理由：诊断面板是编辑期的「仪表盘」，而工程里**同质诊断会淹没异质诊断**
+ * —— 常见情形是 33 条里 31 条都是 `unused-translation`，把 2 条真错误
  * （`undefined-variable`）埋掉了。根因是**信息架构**（无分组/折叠），
  * **不是排版**：调间距/字号救不了「扫读」。
  *
@@ -12,12 +12,12 @@
  * 2. **同严重度按条数降序** ⇒ 最「成灾」的类型最显眼（1 条 warning 不该压过 8 条 warning）。
  * 3. **同条数按 code 码元序** ⇒ 组间顺序确定，不随输入顺序抖动。
  *
- * ⚠️ **组内也按 pointer 排序**（不是保留输入顺序）：实测踩到过——组顺序确定但组内
- * 随输入顺序变 ⇒ `JSON.stringify` 结果不同 ⇒ 同一份诊断两次渲染出不同 DOM，
+ * **组内也按 pointer 排序**（不是保留输入顺序）：若组顺序确定但组内
+ * 随输入顺序变，`JSON.stringify` 结果就不同 ⇒ 同一份诊断两次渲染出不同 DOM，
  * 一切「按结果判等」的守卫都会假绿。**pointer 是稳定的天然键**（无 pointer 的
- * 全局诊断排在最后、同 pointer 组内再按 code 排，仍是确定的）。
+ * 全局诊断排在最后、同pointer 组内再按 code 排，仍是确定的）。
  *
- * ⚠️ **折叠不是「一律折」**：`error` 组**永不默认折叠**（错误被藏起来 = 仪表盘失效）；
+ * **折叠不是「一律折」**：`error` 组**永不默认折叠**（错误被藏起来 = 仪表盘失效）；
  * 只有 `warning` 组在条数 > 1 时可默认折叠，且**只对每组第一条生效**（其余由用户手动控制）。
  */
 
@@ -61,7 +61,7 @@ export interface DiagnosticGroup {
   readonly label: string;
   /** 该组最严重的严重度（组内可能混档，取最高） */
   readonly severity: DiagnosticSeverity;
-  /** 组内条目（**按 pointer 稳定排序**——确定性，见文件头⚠️） */
+  /** 组内条目（**按 pointer 稳定排序**——确定性，见文件头排序规则） */
   readonly items: readonly Diagnostic[];
   /** **是否建议默认折叠**（`error` 组恒 `false`） */
   readonly collapsedByDefault: boolean;
@@ -86,10 +86,10 @@ export function groupDiagnostics(
       code,
       label: diagnosticCodeLabel(code),
       severity,
-      // ⚠️ 组内排序：pointer 非空优先（可定位的排前面），再按 pointer 码元序。
+      // 组内排序：pointer 非空优先（可定位的排前面），再按 pointer 码元序。
       // 空 pointer = 全局诊断，天然沉底。
       items: [...items].sort(compareItems),
-      // ⚠️ error 组永不默认折叠；warning 组多条时才建议折（单条折了没意义且更烦）
+      // error 组永不默认折叠；warning 组多条时才建议折（单条折了没意义且更烦）
       collapsedByDefault: severity !== "error" && items.length > 1,
     });
   }

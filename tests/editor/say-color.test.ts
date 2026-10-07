@@ -1,11 +1,11 @@
 /**
- * `say color`（说话人颜色覆盖）守卫（2026-10-05 治根 · 用户：「肯定要真支持」）。
+ * `say color`（说话人颜色覆盖）守卫。
  *
- * 🔴 **澄清概念**（作者曾以为是一回事）：
+ * **澄清概念**（容易混淆）：
  * - **行内标记** `say "...{color=#FFD700}秘密{/color}..."` —— 写在**文本内部**，
- *   标记某一段文字的颜色。**一直在生效**（你看到「变色」就是它）。
+ *   标记某一段文字的颜色。**一直在生效**（看到「变色」就是它）。
  * - **命令参数** `say "..." color="#888888"` —— 写在**命令上**，
- *   覆盖**整句/说话人**的颜色（老引擎 `SayData.SpeakerColor`）。此前本仓**不支持**。
+ *   覆盖**整句/说话人**的颜色。
  *
  * 本文件锁的是**后者**。四层都要通：
  * ① 投影（DSL 文本 → 命令）② 运行期（写 `SYS.currentDialogColor`）
@@ -106,7 +106,7 @@ describe("say color · 运行期（写入系统键）", () => {
     h.dispose();
   });
 
-  it("🔴 **每句必写 ⇒ 上一句的覆盖不残留**", () => {
+  it("**每句必写 ⇒ 上一句的覆盖不残留**", () => {
     const h = instrument(new StoryEngine(storyWithSay([
       { op: "say", text: "甲", color: "#FF0000" },
       { op: "say", text: "乙" },
@@ -124,7 +124,7 @@ describe("say color · 运行期（写入系统键）", () => {
       { op: "say", text: "甲", color: "red" },
     ])));
     h.engine.start();
-    // ⚠️ 错误事件是**嵌套**形态：`{kind:"event", payload:{kind:"engine.error", code,…}}`
+    // 错误事件是**嵌套**形态：`{kind:"event", payload:{kind:"engine.error", code,…}}`
     const err = h.errors.find(
       (e) => (e as { payload?: { code?: string } }).payload?.code === "say-invalid-color",
     );

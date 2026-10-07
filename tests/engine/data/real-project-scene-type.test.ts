@@ -1,13 +1,17 @@
 /**
- * 真实工程验证：E:\langf\Downloads\Demo\Test\Resources
- * 判据：三种 Lang 布局 + `type=menu` 场景能被本仓解析器识别。
+ * 真实工程验证：三种 Lang 布局 + `type=menu` 场景能被解析器识别。
+ *
+ * 需**仓外真实工程**才能跑：用环境变量 `LFEN_REAL_PROJECT` 指向其资源根
+ * （内含 `Stories/` 与 `Lang/`）；未设置时本套件**跳过**（不报错）。
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseStory } from "@lingfan/engine";
 
-const ROOT = "E:/langf/Downloads/Demo/Test/Resources";
+/** 真实工程资源根（由环境变量提供；缺省 = 未提供 ⇒ 跳过本套件） */
+const ROOT = process.env.LFEN_REAL_PROJECT ?? "";
+const hasRealProject = ROOT !== "" && existsSync(ROOT);
 
 function walk(dir: string, base = ""): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -17,11 +21,11 @@ function walk(dir: string, base = ""): string[] {
   });
 }
 
-const files = walk(ROOT);
+const files = hasRealProject ? walk(ROOT) : [];
 const storyFiles = files.filter((f) => f.startsWith("Stories/") && f.endsWith(".story"));
 const langFiles = files.filter((f) => f.startsWith("Lang/") && f.endsWith(".json"));
 
-describe("真实工程 · 场景类型（用户实测工程）", () => {
+describe.skipIf(!hasRealProject)("真实工程 · 场景类型", () => {
   it("工程结构：三Lang 布局并存（平铺 / 子目录分类 / 单文件）", () => {
     const layouts = {
       "Lang/en/*.json（平铺）": langFiles.filter((f) => /^Lang\/en\/[^/]+\.json$/.test(f)).length,
@@ -43,8 +47,8 @@ describe("真实工程 · 场景类型（用户实测工程）", () => {
     expect(chapters).toContain("system");
   });
 
-  it("**真实 story 里的 `type=menu` 是本仓现在支持的语义**", () => {
-    // ⚠️ 不用正则含引号（易被工具链切坏）——改成字符串判定
+  it("**真实 story 里的 `type=menu` 是当前支持的语义**", () => {
+    // 不用正则含引号（易被工具链切坏）——改成字符串判定
     const hasMenu = (text: string): boolean => {
       const line = text.split("\n").find((l) => l.trimStart().startsWith("scene "));
       return line !== undefined && line.includes("type=menu");
@@ -58,7 +62,7 @@ describe("真实工程 · 场景类型（用户实测工程）", () => {
     expect(gameCount).toBeGreaterThan(0);
   });
 
-  it("**本仓解析器接受 type=menu 且识别为不可回溯**", () => {
+  it("**解析器接受 type=menu 且识别为不可回溯**", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "real",

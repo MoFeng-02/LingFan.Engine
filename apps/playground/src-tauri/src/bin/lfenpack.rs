@@ -52,7 +52,7 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     }
     if force && output.exists() {
-        // 🔴 清空前路径关系防护：output == input（或嵌套）时 remove_dir_all 会删光源工程
+        // 清空前路径关系防护：output == input（或嵌套）时 remove_dir_all 会删光源工程
         if let Err(e) = ensure_pack_paths_distinct(&input, &output) {
             eprintln!("失败：{e}");
             return ExitCode::from(2);

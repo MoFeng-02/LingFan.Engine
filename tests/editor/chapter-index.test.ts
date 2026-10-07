@@ -1,12 +1,12 @@
 /**
- * 故事章节树判据测试（**拟态用户旅程** + **边界条件** + **回归锚定**）。
+ * 故事章节树判据测试（**拟态用户旅程** + **边界条件** + **回归**）。
  *
- * 夹具 =用户真实工程 `E:\langf\Downloads\Demo\Test\Resources` 的实测形态：
+ * 夹具取自真实工程的形态：
  * - `Stories/` 1 层分章（chapter1/chapter1.story …）＋ 一个未分章的 `showcase`
  * - 4 个 `type=game`（3 章节 + showcase）＋ 7 个 `type=menu`
- * - 演示工程则是 **0 层平铺**（`Stories/start.json`）⇒ 另一组夹具
+ * - 另有 **0 层平铺**形态（`Stories/start.json`）⇒ 另一组夹具
  *
- * 三条核心纪律（都是本轮设计决策，不是实现细节）：
+ * 三条核心约定（都是设计决策，不是实现细节）：
  * ① **分组只看 `type`，绝不看目录名**（作者可能把剧情放进 `system/`）
  * ② **任意深度递归**，不写死「一级 = 章节」
  * ③ **0 层平铺退化**为无章节分组的全列表，**不报错**
@@ -36,7 +36,7 @@ const realInputs: ChapterInput[] = [
   { path: "Stories/chapter1/chapter1.story", column: col("chapter1_start") },
   { path: "Stories/chapter2/chapter2.story", column: col("forest_entry") },
   { path: "Stories/chapter3/chapter3.story", column: col("cavern") },
-  //⚠️ 关键反例：**`showcase` 在 system/ 目录下但type=game** ⇒ 不能按目录分组
+  //关键反例：**`showcase` 在 system/ 目录下但type=game** ⇒ 不能按目录分组
   { path: "Stories/system/showcase.story", column: col("showcase") },
   { path: "Stories/system/about.story", column: col("about", "menu") },
   { path: "Stories/system/sandbox.story", column: col("sandbox", "menu") },
@@ -51,8 +51,8 @@ const flatInputs: ChapterInput[] = [
   { path: "Stories/square.json", column: col("square", "menu") },
 ];
 
-describe("章节树 · 分组**只看 type，不看目录**（核心纪律）", () => {
-  it("**回归锚定：system/showcase 在界面目录下但 type=game ⇒ 归剧情组**", () => {
+describe("章节树 · 分组**只看 type，不看目录**（核心约定）", () => {
+  it("**回归：system/showcase 在界面目录下但 type=game ⇒ 归剧情组**", () => {
     const index = buildChapterIndex(realInputs);
     const showcase = index.story.find((n) => n.id === "showcase");
     expect(showcase, "showcase 是剧情，不该因目录名 system 被归到界面组").toBeDefined();
@@ -96,7 +96,7 @@ describe("章节树 · **任意深度递归**（不写死层数）", () => {
       { path: "Stories/part1/act2/scene_b.story", column: col("b") },
     ];
     const index = buildChapterIndex(deep);
-    // ⚠️ 目录键是**剥掉 `Stories/` 前缀后**的相对链（容器根不算章节）
+    // 目录键是**剥掉 `Stories/` 前缀后**的相对链（容器根不算章节）
     expect(index.dirs.map((d) => d.path).sort()).toEqual(["part1/act1/", "part1/act2/"]);
     expect(index.dirs[0]?.children).toHaveLength(1);
   });
@@ -159,7 +159,7 @@ describe("章节树 · 章节名**取目录名**（作者的分章意图）", ()
 
   it("目录判定：**剥掉 `Stories/` 前缀**（容器根不算章节）", () => {
     expect(chapterDirOf("Stories/a/b.story")).toBe("a/");
-    //⚠️ `Stories/start.json` 是**平铺**（深一层只是分组，不是编排章节）
+    //`Stories/start.json` 是**平铺**（深一层只是分组，不是编排章节）
     expect(chapterDirOf("Stories/start.json")).toBe("");
     expect(chapterDirOf("start.json")).toBe("");
     // 3 层：完整相对链都保留（任意深度）
@@ -221,14 +221,14 @@ describe("章节树 · 边界条件", () => {
 });
 
 /**
- * **按组过滤的目录**（`storyDirs` / `uiDirs`，2026-10-05）。
+ * **按组过滤的目录**（`storyDirs` / `uiDirs`）。
  *
- * 🔴 为何要拆：面板**先按 `type` 分组**展示（剧情 / 界面），而目录是**作者的编排**
- * ——两者**正交**：一个目录可同时含剧情与界面（真实工程 `system/` = about(menu) + sandbox(game)）。
- * 用全局 `dirs` 会让界面组的目录里混进剧情节点（真机实测）。
+ * 为何要拆：面板**先按 `type` 分组**展示（剧情 / 界面），而目录是**作者的编排**
+ * ——两者**正交**：一个目录可同时含剧情与界面。
+ * 用全局 `dirs` 会让界面组的目录里混进剧情节点。
  */
 describe("章节目录 · 按组过滤（storyDirs / uiDirs）", () => {
-  it("🔴 **目录跟着 type 走**：同一目录里的剧情与界面各归其组，children 不交叉", () => {
+  it("**目录跟着 type 走**：同一目录里的剧情与界面各归其组，children 不交叉", () => {
     const index = buildChapterIndex([
       { path: "Stories/system/about.story", column: col("about", "menu") },
       { path: "Stories/system/sandbox.story", column: col("sandbox") },

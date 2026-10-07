@@ -8,7 +8,7 @@
  * 3. **扩展不触达 Rust/密钥/文件系统**——上下文只暴露窄接口（状态读写 + 只读故事树）。
  *
  * 键命名空间：扩展写入必须走 `ext.<extensionId>.<key>`；
- * `ExtensionContext.set/get` **物理强制**该前缀（门卫而非纪律——扩展代码写不出前缀外的键）。
+ * `ExtensionContext.set/get` **物理强制**该前缀（门卫式约束——扩展代码写不出前缀外的键）。
  */
 
 import type { Story, StoryCommand } from "./story";
@@ -26,7 +26,7 @@ export interface ExtensionContext {
   /**
    * 写本扩展命名空间下的状态（等价 `setGlobal("ext.<id>.<key>", value)`）：
    * 值守卫复用引擎契约（JSON 安全 + 深走查），违规 = `engine.error` + 状态原样
-   * （与内建写入同一纪律）；写入即进 SSOT（随快照/存档/回溯随行）。
+   * （与内建写入同一口径）；写入即进 SSOT（随快照/存档/回溯随行）。
    */
   set(key: string, value: unknown): void;
   /** 只读故事树（禁止修改——修改只能经故事命令与编辑器） */
@@ -40,7 +40,7 @@ export type ExecOutcome = { readonly ok: true } | { readonly ok: false; readonly
  * 自定义 op 文本投影：
  * 文本是 JSON 的投影——**投影不了的 op 不能假装能投影**（未注册投影器的自定义 op
  * 在文本形态整次拒绝；容错路径 projectText 降级为该行 issue）。
- * 两方向都**不得抛**（同 exec 纪律——抛出由引擎兜底按失败处理）；返回 null = 失败。
+ * 两方向都**不得抛**（同 exec 约束——抛出由引擎兜底按失败处理）；返回 null = 失败。
  */
 export interface OpTextProjection {
   /** JSON 命令 → DSL 行（**含 op 名**、不含行首缩进；null = 不可投影 → 文本形态整次拒绝） */
@@ -70,7 +70,7 @@ export interface OpDefinition {
   /** op 名（作者在 dsl/json 里写的名字）；注册期查重（禁覆盖内建/已注册） */
   readonly op: string;
   /**
-   * 执行体：**不得抛**（fail-closed 返回失败结果，同引擎 op 纪律——抛出视同扩展违约，
+   * 执行体：**不得抛**（fail-closed 返回失败结果，同引擎 op 约束——抛出视同扩展违约，
    * 由引擎兜底转 `custom-op-threw`）；副作用只经 `ctx.set`（进 SSOT）。
    */
   readonly exec: (cmd: Readonly<Record<string, unknown>>, ctx: ExtensionContext) => ExecOutcome;

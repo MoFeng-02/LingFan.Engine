@@ -1,5 +1,5 @@
 /**
- * 诊断面板 · 分组与折叠判据测试（**边界条件** + **不变量** + **回归锚定**）。
+ * 诊断面板 · 分组与折叠判据测试（**边界条件** + **不变量** + **回归**）。
  *
  * 重点覆盖「同质诊断淹没异质诊断」这个真问题：实测演示工程 33 条诊断里
  * 31 条是 `unused-translation`，把 2 条真错误埋掉了 —— 分组判据必须保证
@@ -25,7 +25,7 @@ function d(
 }
 
 describe("分组：严重度优先（**错误不被警告淹没**）", () => {
-  it("**回归锚定**：31 条 warning + 2 条 error ⇒ error 组排最前", () => {
+  it("**回归**：31 条 warning + 2 条 error ⇒ error 组排最前", () => {
     const list: Diagnostic[] = [
       ...Array.from({ length: 31 }, (_, i) =>
         d("unused-translation", "warning", "", `未使用 ${i}`),
@@ -35,7 +35,7 @@ describe("分组：严重度优先（**错误不被警告淹没**）", () => {
     ];
     const groups = groupDiagnostics(list);
     expect(groups).toHaveLength(2);
-    // 🔴 核心判据：真错误那组在第一位
+    // 核心判据：真错误那组在第一位
     expect(groups[0]?.severity).toBe("error");
     expect(groups[0]?.code).toBe("undefined-variable");
     // 且它含全部 2 条（error 组取组内最高严重度）
@@ -209,7 +209,7 @@ describe("严重度筛选 filterDiagnosticsBySeverity（#9 徽章判据）", () 
     expect(filterDiagnosticsBySeverity([d("a", "error", "/1")], "warning")).toEqual([]);
   });
 
-  it("🔴 筛选不改诊断对象（同一引用子集，不是深拷贝赝品）", () => {
+  it("筛选不改诊断对象（同一引用子集，不是深拷贝赝品）", () => {
     const errorItem = list[0]!;
     expect(filterDiagnosticsBySeverity(list, "error")[0]).toBe(errorItem);
   });

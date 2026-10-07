@@ -101,7 +101,7 @@ describe("ElementRegistry（fail-closed 注册制）", () => {
 });
 
 describe("elementStyle（属性 → CSS）", () => {
-  it("x/y → absolute + left/top（百分比原样交给 CSS，对齐旧版引擎百分比定位语义）", () => {
+  it("x/y → absolute + left/top（百分比原样交给 CSS，对齐既有实现百分比定位语义）", () => {
     expect(elementStyle({ x: "50%", y: 12 })).toMatchObject({
       position: "absolute",
       left: "50%",

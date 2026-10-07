@@ -66,7 +66,7 @@ const ELEMENT_LABELS: Readonly<Record<string, string>> = {
  * ③ **编辑期 warning**（诊断码 `unimplemented-element-attr`）。
  *
  * 与「三面对齐互锁」测试的关系：该测试独立推导"契约 − 消费者"的差集，本清单是它的**显式白名单**，
- * 两边不一致即测试变红（此前长期潜伏正因没有任何测试同时看这三面）。
+ * 两边不一致即测试变红（缺了「同时看这三面」的测试，这类差集就会长期潜伏）。
  */
 export const UNIMPLEMENTED_ELEMENT_ATTRS: ReadonlySet<string> = new Set([
   "valign",

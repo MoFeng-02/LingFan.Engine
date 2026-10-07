@@ -48,7 +48,7 @@ export function normalizeRelativePath(input: string): PathVerdict {
 /**
  * 路径是否落在**资源根内**（相对判据，不碰文件系统）。
  *
- * ⚠️ 注意：这是**字符串级**判定，**不等于**防住符号链接 —— 真实防护由宿主在
+ * 注意：这是**字符串级**判定，**不等于**防住符号链接 —— 真实防护由宿主在
  * 解析后复核对「realpath 仍在根内」完成（见 `server/host.ts`）。这里先挡掉明显的越界形态。
  */
 export function isInsideRoot(relative: string): boolean {
@@ -86,7 +86,7 @@ export function canOpenExternal(relative: string): PathVerdict {
 /**
  * 取「有效扩展名」（**小写**）。
  *
- * ⚠️ 点开头文件（`.env` / `.gitignore`）的扩展名**就是整个文件名**（`path.extname(".env")`
+ * 点开头文件（`.env` / `.gitignore`）的扩展名**就是整个文件名**（`path.extname(".env")`
  * 返回空串）—— 按「最后一个点之后」的朴素写法会把 `.env` 判成「无扩展名」而拒掉。
  * 正确口径：**首字符是点 ⇒ 整个文件名即扩展名**。
  */
@@ -135,7 +135,7 @@ export type PackVerdict =
 /**
  * 打包参数校验（**纯函数**）。
  *
- * ⚠️ 这是**本机最危险的一个动作**：它会**写加密包到磁盘**且**可能清空输出目录**
+ * 这是**本机最危险的一个动作**：它会**写加密包到磁盘**且**可能清空输出目录**
  *   （`--force`）。前端校验只图界面友好，**宿主侧必须再校验一次**（本函数）——
  *   前端与宿主是**两个信任级别**（浏览器里的任何脚本都能打到回环端口）。
  *
@@ -212,9 +212,9 @@ export const WATCH_IGNORED_DIRS: ReadonlySet<string> = new Set([
  * 忽略四类噪音（否则每次 `pnpm build` / `git` 操作都会把编辑器重载一遍）：
  * - **临时文件**：编辑器写盘时先删后建（`~`/`tmp`/`swp`/`.#`）⇒ 中间态不是真内容；
  * - **`node_modules` / `target` / `dist` / `.git`**：构建产物与版本库，与内容无关；
- * - **点文件**：本仓枚举口径本就剔除。
+ * - **点文件**：枚举本身已剔除。
  *
- * ⚠️ **不忽略** `Saves/`：它是作者数据（存档）—— 与 Rust 侧一致（Rust 监视整个源根）。
+ * **不忽略** `Saves/`：它是作者数据（存档）—— 与 Rust 侧一致（Rust 监视整个源根）。
  */
 export function shouldReloadOn(path: string, kind: "change" | "rename"): WatchVerdict {
   if (path === "") return { reload: false, reason: "空路径" };

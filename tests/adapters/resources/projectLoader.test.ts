@@ -104,13 +104,13 @@ describe("工程加载器（loadProjectFromFetch）", () => {
     ).rejects.toThrow("工程组装失败");
   });
 
-  it("单列文件名 ≠ 列 id → **接受**（2026-10-05 治根：文件名与 id 解耦）", async () => {
-    // 🔴 此前此测试断言「组装器拒绝」，守的是「文件名必须等于列 id」这条**字面**。
-    // 用户拍板：**文件名是章节名、列 id 是场景名，本就是两回事**（真实工程
-    // `Stories/chapter1/chapter1.story` 装列 `chapter1_start`）⇒ 耦合已解除。
+  it("单列文件名 ≠ 列 id → **接受**（文件名与 id 解耦）", async () => {
+    // 旧约束「文件名必须等于列 id」的**字面**已解除：
+    // **文件名是章节名、列 id 是场景名，本就是两回事**（如
+    // `Stories/chapter1/chapter1.story` 装列 `chapter1_start`）。
     //
-    // ⚠️ **「防错位」的意图仍被守住**，只是改由「同一 id 出现在两个文件 ⇒ 拒绝」承担
-    // （见tests/engine/data/project.test.ts 的「错位仍被守」一例）。
+    // **「防错位」的意图仍被守住**，只是改由「同一 id 出现在两个文件 ⇒ 拒绝」承担
+    //（见 tests/engine/data/project.test.ts 的「错位仍被守」一例）。
     serve({
       "project.json": MANIFEST,
       "Stories/chapter1/chapter1.story": JSON.stringify({

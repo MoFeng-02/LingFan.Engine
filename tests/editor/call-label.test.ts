@@ -1,10 +1,9 @@
 /**
- * `call <label>`（调用子过程：**列目标**）守卫（2026-10-05 治根）。
+ * `call <label>`（调用子过程：**列目标**）守卫。
  *
- * 🔴 **老引擎权威**：`DslKeywordDocs.cs` ——
- * `["call"] = new("调用子过程（**func 或 label**），用 return 返回。", "call heal")`
- * 本仓此前**只认 func** ⇒ 真实工程 `call sb_subroutine`（`label sb_subroutine:` 定义）
- * 报「调用未注册的函数」。
+ * **语义权威**：`call` 的文档语义是「调用子过程（**func 或 label**），用 return 返回」。
+ * 只认 func 时，`call sb_subroutine`（`label sb_subroutine:` 定义）
+ * 会报「调用未注册的函数」。
  *
  * **实现语义**（要点）：
  * - `call <列>` **直接压入该列命令的帧**（不切 `coord`、不装元素）——
@@ -53,7 +52,7 @@ function callStory(subCommands: object[]) {
 }
 
 describe("call <label> · 调用与返回", () => {
-  it("🔴 **`call <列>` 真能进入子过程**（此前报「未注册的函数」）", () => {
+  it("**`call <列>` 真能进入子过程**", () => {
     const h = instrument(new StoryEngine(callStory([
       { op: "say", text: "in-sub" },
       { op: "return" },
@@ -61,12 +60,12 @@ describe("call <label> · 调用与返回", () => {
     h.engine.start();
     expect(h.engine.get(SYS.currentDialogText)).toBe("before");
     h.engine.advance();
-    // 🔴 核心判据：进到子过程里了
+    // 核心判据：进到子过程里了
     expect(h.engine.get(SYS.currentDialogText)).toBe("in-sub");
     h.dispose();
   });
 
-  it("🔴 **`return` 回到调用点的下一条**", () => {
+  it("**`return` 回到调用点的下一条**", () => {
     const h = instrument(new StoryEngine(callStory([
       { op: "say", text: "in-sub" },
       { op: "return" },
@@ -78,7 +77,7 @@ describe("call <label> · 调用与返回", () => {
     h.dispose();
   });
 
-  it("🔴 **无 `return` 时列尾自动返回**（子过程可以不写 return）", () => {
+  it("**无 `return` 时列尾自动返回**（子过程可以不写 return）", () => {
     const h = instrument(new StoryEngine(callStory([
       { op: "say", text: "in-sub" },
     ])));
@@ -114,8 +113,8 @@ describe("call <label> · 调用与返回", () => {
     h.dispose();
   });
 
-  it("🔴 **嵌套 call**（子过程再调子过程）⇒ 逐层正确返回", () => {
-    // ⚠️ 不测「变量污染」：`let` 是**块级**（不进全局状态），
+  it("**嵌套 call**（子过程再调子过程）⇒ 逐层正确返回", () => {
+    // 不测「变量污染」：`let` 是**块级**（不进全局状态），
     //     用 `engine.get` 读不到它 —— 那是作用域语义（既有测试覆盖），
     //     这里测**调用栈深度**：三层嵌套的返回顺序。
     const story = parseStory({
@@ -182,7 +181,7 @@ describe("call <label> · 失败路径（语义明确）", () => {
 });
 
 describe("call <label> · 编辑器诊断（两层同口径）", () => {
-  it("🔴 **`call` 到存在的列 ⇒ 零诊断**（此前必报错误）", () => {
+  it("**`call` 到存在的列 ⇒ 零诊断**", () => {
     const diagnostics = analyzeStory(callStory([{ op: "say", text: "x" }]));
     expect(diagnostics.filter((d) => d.severity === "error")).toEqual([]);
   });

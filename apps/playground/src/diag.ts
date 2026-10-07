@@ -9,7 +9,7 @@
  * 并在每次采样时给出**白屏归因结论**（见 `classifyWhiteScreen`）。
  * 浏览器形态（无 Tauri IPC）静默跳过上报，采样逻辑照常执行。
  *
- * ⚠️ 判据的前置：媒体在播 / JS 在跑**都不能**证明画面出来了（音频不依赖可见画布，
+ * 判据的前置：媒体在播 / JS 在跑**都不能**证明画面出来了（音频不依赖可见画布，
  * 历史上据此误判过「已修复」）。所以归因只看**渲染面本身的证据**：DOM 规模、视口尺寸、
  * 样式表是否真生效、页面是否可见。
  */
@@ -23,7 +23,7 @@ interface DiagWindow {
 function report(payload: unknown): void {
   // 诊断通道自身**绝不允许上抛**：`invoke` 除了返回 rejected promise，也可能**同步抛**
   // （回调/序列化阶段），一旦同步抛就会直接抛出 `setTimeout` 回调、把后面所有采样静默吃掉。
-  // 实测（iOS run #41）：只有 `probe-start` 落地，三处采样一字不见，连 catch 里的
+  // 曾观察到只有 `probe-start` 落地、三处采样一字不见，连 catch 里的
   // `probe-error` 也没有——而 WebKit 日志里 +2s/+10s/+20s 各有一次布局催起的资源加载，
   // 证明采样确实跑到了读取几何那一步。故同步与异步两条路都要兜住。
   try {
@@ -42,7 +42,7 @@ function report(payload: unknown): void {
 // —— 白屏归因：三类判据 ——
 
 /**
- * 白屏只有三类根因（本仓已排除「资源供给失败」——那类会让 JS 都跑不起来，
+ * 白屏只有三类根因（已排除「资源供给失败」——那类会让 JS 都跑不起来，
  * 现场特征是有可见的「工程加载失败」文案/日志，而非纯白）：
  *
  * - `01-dom-missing`：DOM 根本没建起来（JS 未执行 / 框架未挂载）
@@ -81,7 +81,7 @@ export interface WhiteScreenEvidence {
 
 /**
  * 纯函数归因（可单测）：按「最省事的解释优先」排序，先命中先返回。
- * 实测口径：判 `01-page-hidden` 排在尺寸之前——隐藏页的尺寸读数会失真，先排除它才不会被带偏。
+ * 口径：判 `01-page-hidden` 排在尺寸之前——隐藏页的尺寸读数会失真，先排除它才不会被带偏。
  */
 export function classifyWhiteScreen(ev: WhiteScreenEvidence): {
   cls: WhiteScreenClass;
@@ -165,7 +165,7 @@ function snapshot(phase: string): void {
     const layered = [...document.querySelectorAll("*")]
       .map((el) => ({ el, cs: getComputedStyle(el) }))
       .filter(({ cs }) => cs.zIndex !== "auto" && cs.display !== "none")
-      .slice(0, 4) // 载荷必须小：os_log 对长消息截断（实测 567 字符处被切）
+      .slice(0, 4) // 载荷必须小：os_log 对长消息截断（567 字符处被切）
       .map(({ el, cs }) => {
         const rect = el.getBoundingClientRect();
         return {
@@ -218,7 +218,7 @@ function snapshot(phase: string): void {
       bodyBg: getComputedStyle(document.body).backgroundColor,
       appBg: app ? getComputedStyle(app).backgroundColor : null,
     });
-    // 每一份载荷**只讲一件事**：os_log 会截断长消息（实测 567 字符处被切），
+    // 每一份载荷**只讲一件事**：os_log 会截断长消息（567 字符处被切），
     // 合在一起发时后面那些「最想知道」的字段会一起丢——分开就能各自完整落地。
     report({
       phase,
@@ -236,11 +236,11 @@ function snapshot(phase: string): void {
 }
 
 /** 启动探针：初帧采一次 + **rAF 帧计数**当钟采样（f1/f60/f300/f600）+ 挂载后前 5 次 DOM 变动采样。
- *  **不用 `setTimeout` 计时**——iOS 上它的延迟回调会被压住（实测 2s/10s/20s 一处不响）。 */
+ *  **不用 `setTimeout` 计时**——iOS 上它的延迟回调会被压住（2s/10s/20s 一处不响）。 */
 export function startDiag(): void {
   report({ phase: "probe-start", ua: navigator.userAgent.slice(0, 80) });
   snapshot("t0"); // 初帧（Vue 挂载前，`#app` 必空——该 verdict 已标 initial、不参与归因）
-  // **计时器改成 rAF 帧计数**：实测 iOS 上 `setTimeout(>0)` 全被压住（2s/10s/20s 一处不响），
+  // **计时器改成 rAF 帧计数**：iOS 上 `setTimeout(>0)` 全被压住（2s/10s/20s 一处不响），
   // 而 rAF 正常触发（raf:1/2/3 已实证）。用帧数当钟，既绕开节流，也顺带证明页面在合成。
   // 帧步长按 60fps 估：60≈1s、300≈5s、600≈10s（覆盖 iOS CI 的 25s 存活窗口前段）。
   const at = new Map<number, string>([
@@ -263,7 +263,7 @@ export function startDiag(): void {
     raf(step);
   }
   // 挂载即采：观察者为微任务级投递、不受定时器节流。**不 disconnect**——引擎挂载后会持续改动
-  // `#app`，第 5 次变动通常已过「故事从磁盘读进来」那一刻（只采首帧会拍到空壳，实测如此）。
+  // `#app`，第 5 次变动通常已过「故事从磁盘读进来」那一刻（只采首帧会拍到空壳）。
   const app = document.querySelector("#app");
   if (app !== null) {
     let changes = 0;

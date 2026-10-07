@@ -1,6 +1,6 @@
 /**
  * 资源树模型：分组/排序/种类/只读判据 + 遍历。
- * 拟态旅程形态：喂真实工程的资源集，断言树的形状与排除纪律。
+ * 拟态旅程形态：喂真实工程的资源集，断言树的形状与排除口径。
  */
 import { describe, expect, it } from "vitest";
 import type { KeyValueStorage } from "@lingfan/editor";
@@ -67,7 +67,7 @@ describe("kindOfPath · 资源种类按后缀判", () => {
   });
 });
 
-describe("isReadOnlyPath · 只读纪律", () => {
+describe("isReadOnlyPath · 只读约定", () => {
   it("本批可编辑的只有 .story / manifest / lang", () => {
     expect(isReadOnlyPath("Stories/a.json")).toBe(false);
     expect(isReadOnlyPath("project.json")).toBe(false);

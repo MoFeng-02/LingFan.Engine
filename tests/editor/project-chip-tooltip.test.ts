@@ -12,7 +12,7 @@ const code = (source: string): string =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
 describe("chip 全路径 tooltip · 接线互锁", () => {
-  it("🔴 tooltip 走 computed（两行拼接在判据处，不在模板里内联）", () => {
+  it("tooltip 走 computed（两行拼接在判据处，不在模板里内联）", () => {
     const src = code(appSource);
     expect(src).toContain(':title="projectChipTitle"');
     expect(src).toMatch(/const projectChipTitle = computed/);
@@ -21,7 +21,7 @@ describe("chip 全路径 tooltip · 接线互锁", () => {
     expect(src).toContain("宿主工作区根：${hostRoot.value}");
   });
 
-  it("🔴 hostRoot 来自 **watch 端点回传**（onMounted 契约时刻探测，非编造）", () => {
+  it("hostRoot 来自 **watch 端点回传**（onMounted 契约时刻探测，非编造）", () => {
     const src = code(appSource);
     expect(src).toContain("fetchWatchStatus(host)");
     expect(src).toContain("hostRoot.value = status.root");

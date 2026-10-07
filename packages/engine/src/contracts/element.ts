@@ -1,14 +1,14 @@
 /**
  * 元素系统契约（元素声明 / 舞台层叠）。
  *
- * 类型与属性全集继承自既有引擎的语义资产：
+ * 类型与属性全集：
  * - 36 类型全集（文本 / 交互 / 图像 / 容器 / 滚动 / 进度 / 间隔七组）
  * - 属性全集 = 通用属性表 ∪ 元素特定属性
  *
  * 未知类型 / 未知属性一律 fail-closed——「写了也不渲染」的静默容忍是缺陷，不是特性。
  *
- * 与既有引擎的关键差异：旧实现以内部魔法键承担「动画匹配与 show/hide 定位」；
- * 本引擎显式化为契约字段 `id`（唯一，精确寻址）与 `name`（可重复，批量寻址）。
+ * 元素寻址显式化为契约字段：`id`（唯一，精确寻址）与 `name`（可重复，批量寻址），
+ * 不使用隐式魔法键。
  */
 
 /**
@@ -222,7 +222,7 @@ export interface ElementNode {
  * （整体 state Map 快照，无需重放重建）。
  */
 export interface ElementInstance {
-  /** 稳定标识：显式 id > 派生 `{列id}#{序号}`（派生值仅供内部兜底，不承诺跨版本稳定） */
+  /** 稳定标识：显式 id > 派生 `{列id}#{序号}`（派生值仅供内部兜底，不作为稳定契约） */
   id: string;
   type: string;
   /** 分组标识（可重复；未声明则不出现） */
@@ -241,8 +241,7 @@ export function isElementType(value: unknown): value is ElementType {
 
 /**
  * 容器类型：支持 `children` 嵌套。
- * 既有实现曾不一致（某侧把 vbox/hbox 当容器、容器判定却不含它们）——
- * 本引擎统一为「容器 = 支持 children」，取两者并集。
+ * 统一口径为「容器 = 支持 children」，取 vbox/hbox 等可嵌套类型的并集。
  */
 export const ELEMENT_CONTAINER_TYPES: ReadonlySet<string> = new Set([
   "panel",
@@ -272,8 +271,7 @@ export const ELEMENT_CONTAINER_TYPES: ReadonlySet<string> = new Set([
  * （帧驱动；高频帧级值不进 SSOT/事件流），播毕调 `animationFinished(seq)`
  * 由核心把终值写回元素 `props`——保证快照/存档/回溯都是**终态**语义。
  *
- * 与既有实现的旧式前缀键方案语义等价，
- * 但新引擎用**队列 + 完成回调**，避免为每个动画属性铺一串状态键。
+ * 用**队列 + 完成回调**表达动画，避免为每个动画属性铺一串状态键。
  */
 export interface AnimationSpec {
   /** 动画归属元素 id（写入时由 `target` 寻址解析并**固化**，避免回溯后寻址漂移） */

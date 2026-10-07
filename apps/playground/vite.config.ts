@@ -46,7 +46,6 @@ export default defineConfig(({ command }) => ({
   },
   // 移动端兼容：构建语法目标按 Tauri 官方建议 = safari13（老 WebView 可解析）；
   // esbuild 只转语法不补内建方法（如 Array.prototype.at）——那是 lint 守卫的事。
-  // （此前此块误嵌于 server.watch 内从未生效，随构建配置调整一并归位）
   build: {
     target: "safari13",
     // 单包产物——动态 import（@tauri-apps 等）内联进入口，html 只引用一个产物文件；

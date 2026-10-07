@@ -581,7 +581,7 @@ export interface TextInterpolation {
 /**
  * 文本插值：{expr} 求值替换、{expr:format} 格式化（仅文本命令走此路径）；
  * 行内标记原样透传；插值失败保留原文片段 + 收集错误。
- * 格式符语义（老 ExpressionParser.ApplyFormat 照搬）：全 0 → 按位数补零；X/x → 十六进制；其余原样。
+ * 格式符语义：全 0 → 按位数补零；X/x → 十六进制；其余原样。
  */
 export function interpolateText(
   text: string,
@@ -605,7 +605,7 @@ export function interpolateText(
       break;
     }
     const content = text.slice(i + 1, end).trim();
-    // 格式后缀拆分：{mins:00} → expr=mins, format=00；含 '?'（三元）不拆（老实现规则）
+    // 格式后缀拆分：{mins:00} → expr=mins, format=00；含 '?'（三元）不拆
     let exprSrc = content;
     let format: string | null = null;
     if (!content.includes("?")) {
@@ -646,5 +646,5 @@ function applyFormat(value: ExprValue, format: string | null): string {
   if (/^0+$/.test(format)) return s.padStart(format.length, "0");
   if (format === "X") return value < 0 ? s : value.toString(16).toUpperCase();
   if (format === "x") return value < 0 ? s : value.toString(16);
-  return s; // 未知格式符原样（老实现兜底语义）
+  return s; // 未知格式符原样返回
 }

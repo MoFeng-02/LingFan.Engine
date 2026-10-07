@@ -1,14 +1,14 @@
-//! 资源加密：LFEN2 格式 + 旧版引擎 LFEN 兼容读 + 资源 DEK 的 KEK 信封。
+//! 资源加密：LFEN2 格式 + LFEN 兼容读 + 资源 DEK 的 KEK 信封。
 //!
 //! 格式（自描述，解密失败 fail-closed 不降级明文）：
 //! - LFEN2 v1：`"LFEN2"(5B) | version u8 | nonce(12) | tag(16) | ciphertext`
 //!   AAD = `LFEN2:resource:{逻辑路径}`——资源与路径绑定，跨路径搬移必拒。
-//! - 旧版引擎 LFEN v1（兼容读）：`"LFEN"(4B) | version u8 | nonce(12) | tag(16) | ciphertext`（无 AAD）。
+//! - LFEN v1（兼容读）：`"LFEN"(4B) | version u8 | nonce(12) | tag(16) | ciphertext`（无 AAD）。
 //!
 //! 密钥（编译期密钥是降级，此处修正）：
 //! 资源 DEK 构建时随机生成；运行时以 KEK 信封存放在 app data（`resources.dek.lfk2`），
 //! 首次运行从包内 `__key__.seed`（32B 原始 DEK，构建产物）导入并立即封装——运行态零明文密钥落盘。
-//! 加密包内文件名 = 原逻辑路径 + `.enc`（旧版引擎 ResourceEncryptor 语义照搬）。
+//! 加密包内文件名 = 原逻辑路径 + `.enc`（沿用既有命名约定）。
 
 use crate::crypto::{
     gcm_open, gcm_open_in_place, gcm_seal, kek_from_keyring, random_bytes, KEK_SERVICE, KEK_USER,
@@ -25,9 +25,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use tauri::Manager;
 
-/// 新格式魔数（5 字节，与旧版引擎 4 字节 LFEN 无前缀歧义）
+/// 新格式魔数（5 字节，与 4 字节 LFEN 无前缀歧义）
 const MAGIC_LFEN2: &[u8; 5] = b"LFEN2";
-/// 旧版引擎 v1 魔数（兼容读）
+/// LFEN v1 魔数（兼容读）
 const MAGIC_LFEN: &[u8; 4] = b"LFEN";
 const FORMAT_VERSION: u8 = 1;
 const DEK_LEN: usize = 32;
@@ -113,7 +113,7 @@ fn io(e: std::io::Error) -> ResourceCryptoError {
     ResourceCryptoError::Io(e.to_string())
 }
 
-/// 是否为加密资源（魔数检测，旧版引擎 IsEncrypted 语义）
+/// 是否为加密资源（魔数检测）
 pub fn is_encrypted(data: &[u8]) -> bool {
     data.starts_with(MAGIC_LFEN2) || data.starts_with(MAGIC_LFEN)
 }
@@ -132,7 +132,7 @@ pub fn encrypt_lfen2(
     Ok(out)
 }
 
-/// 解密：魔数分流 LFEN2（ver=1 整文件 / ver=2 分块全量拼接，校验版本 + AAD）/ 旧版引擎 LFEN（无 AAD 兼容读）；其他 = BadFormat（不降级明文）。
+/// 解密：魔数分流 LFEN2（ver=1 整文件 / ver=2 分块全量拼接，校验版本 + AAD）/ LFEN（无 AAD 兼容读）；其他 = BadFormat（不降级明文）。
 /// 入参为**持有缓冲**：v1 分支原地解密（内存峰值 = 密文 1 倍，无第二份明文分配）——
 /// v1 为 GCM 单 tag 全量验证形态，密码学上不可流式（流式会先释放未认证明文），峰值收敛靠原地 + 前置尺寸护栏。
 pub fn decrypt_resource_bytes(
@@ -170,7 +170,7 @@ pub fn decrypt_resource_bytes(
             )));
         }
         file.drain(..MAGIC_LFEN.len() + 1);
-        // 旧版引擎 LFEN 无 AAD（存量资源不浪费）——原地解封
+        // LFEN 无 AAD（存量资源不浪费）——原地解封
         return gcm_open_in_place(key, file, &[]).map_err(ResourceCryptoError::Crypto);
     }
     Err(ResourceCryptoError::BadFormat(
@@ -540,7 +540,7 @@ pub fn generate_resource_seed() -> Result<Vec<u8>, ResourceCryptoError> {
 
 /// 运行时资源 DEK（**seed 优先**——包根 seed 为权威 DEK 源）：
 /// 每次启动若包内有 seed，幂等重导入（重加密写信封）——**包更新 = 新 seed 自动跟随**
-/// （否则旧信封 DEK 永远解不开新包，升级即坏，实测踩坑）；无 seed（运行时产出形态）
+/// （否则旧信封 DEK 永远解不开新包，升级即坏）；无 seed（运行时产出形态）
 /// 回退信封；两者皆无 = MissingKey。运行态信封 KEK 封装，零明文密钥落盘。
 /// seed 读取经资源文件系统抽象（Android = asset 内）；信封在 app_data 真实路径走 std::fs。
 pub fn resource_dek(
@@ -635,7 +635,7 @@ pub(crate) fn is_media_ext(logical: &str) -> bool {
 }
 
 /// 回环供给命中判定（Android ∧ 加密 ∧ 音视频）：纯函数，`is_android` 由调用方以 `cfg!` 传入
-/// ——使两条分支都能在桌面单测覆盖，不依赖目标平台（本仓既有教训：`cfg` 掉的分支桌面门禁验不到）。
+/// ——使两条分支都能在桌面单测覆盖，不依赖目标平台（`cfg` 掉的分支桌面门禁验不到）。
 pub(crate) fn loopback_eligible(is_android: bool, logical: &str) -> bool {
     is_android && is_media_ext(logical)
 }
@@ -1080,7 +1080,7 @@ fn parse_range_strict(value: &str, total: u64) -> Option<(u64, u64)> {
     Some((start, end))
 }
 
-/// Android 真机取证（仅 debug 构建，release 完全移除）：记录 range 来源与取值、响应码、
+/// Android 取证（仅 debug 构建，release 完全移除）：记录 range 来源与取值、响应码、
 /// 交付字节首尾——用于在真机核对「服务端交付的窗口」与他处观察到的取字节/播放是否错位。
 #[cfg(all(target_os = "android", debug_assertions))]
 fn probe_android_range(
@@ -1277,7 +1277,7 @@ pub fn preheat_resource_key(app: &tauri::AppHandle) {
     });
 }
 
-/// 打包工具：目录批量加密（旧版引擎 EncryptDirectoryAsync 语义照搬）——按扩展名过滤、
+/// 打包工具：目录批量加密——按扩展名过滤、
 /// 已加密（魔数检测）直接复制、结构保留、输出 = 原路径 + `.enc`。
 /// `exclusions` = 相对路径排除集（精确匹配 `project.json` 或目录前缀 `Saves/`——
 /// 运行时生成的目录与明文清单不进加密流）。
@@ -1371,7 +1371,7 @@ fn encrypt_directory_inner(
         }
         let data_len = path.metadata().map_err(io)?.len();
         // force_v2（dist 收录）：前端产物经协议 v2 路径按需供给——小文件也必须存 v2
-        // 分块形态（单块特例），否则 handler 按 v2 读头失败 404（真窗冒烟实测逮住）
+        // 分块形态（单块特例），否则 handler 按 v2 读头失败 404（真窗冒烟会逮住）
         if force_v2 || data_len > V2_AUTO_THRESHOLD {
             // 大文件走 v2 分块流式加密（内存 = 单块；lfstream 按需解密不落明文缓存）
             encrypt_lfen2_v2_file(&path, &out, key, &rel_str, V2_DEFAULT_CHUNK_LOG2)?;
@@ -1402,7 +1402,7 @@ const PACK_EXTENSIONS: &[&str] = &[
 /// **html 除外**（入口 html 是壳嵌入的明文例外，绝不能混进加密输入；
 /// html 出现在 dist 输入 = 上游流程错，落报告 skipped 由打包者决断）。
 const PACK_DIST_EXTENSIONS: &[&str] = &[
-    "js", "css", // 业务产物（需求 #4 明示「含编译后的 js/ts」）
+    "js", "css", // 业务产物（含编译后的 js/ts）
     "png", "jpg", "jpeg", "gif", "webp", "svg", // 产物内静态图
     "woff", "woff2", "ttf", "otf", // 字体
 ];
@@ -1664,7 +1664,7 @@ pub(crate) fn app_data(app: &tauri::AppHandle) -> Result<PathBuf, ResourceCrypto
 
 pub(crate) fn resource_root(app: &tauri::AppHandle) -> Result<PathBuf, ResourceCryptoError> {
     // 单一定位事实源（project_files::locate_resource_root）——dev 走源根/env 覆盖，
-    // 与故事供给同根；否则媒体链读 target 拷贝而故事读源根，两链分裂（实测踩坑）
+    // 与故事供给同根；否则媒体链读 target 拷贝而故事读源根，两链分裂
     Ok(crate::project_files::locate_resource_root(app))
 }
 
@@ -1689,7 +1689,7 @@ mod tests {
 
     #[test]
     fn lfen_legacy_read() {
-        // 旧版引擎 LFEN（magic4|version1|nonce12|tag16|ct，无 AAD）兼容解密
+        // LFEN（magic4|version1|nonce12|tag16|ct，无 AAD）兼容解密
         let legacy = [
             b"LFEN".as_slice(),
             &[1u8],
@@ -1698,7 +1698,7 @@ mod tests {
             &[0u8; 16], // tag 占位（实际由 gcm 生成，这里构造非法 tag 走失败路径；成功路径见下）
         ]
         .concat();
-        // 真实旧版样本：用 gcm_seal（无 AAD）手工构造
+        // 存量样本：用 gcm_seal（无 AAD）手工构造
         let sealed = crate::crypto::gcm_seal(KEY, b"legacy-plain", &[]).unwrap();
         let real = [b"LFEN".as_slice(), &[1u8], sealed.as_slice()].concat();
         assert_eq!(
@@ -1986,8 +1986,8 @@ mod tests {
 
     #[test]
     fn pack_rejects_output_equal_or_nested_to_input() {
-        // 🔴 路径关系防护（数据安全红线）：同路径 / 子目录 / 父目录全拒——
-        // lfenpack --force 曾无防护，output == input 时 remove_dir_all 会删光源工程
+        // 路径关系防护（同路径 / 子目录 / 父目录全拒）——
+        // 若无防护，`--force` 下output == input 时 remove_dir_all 会删光源工程
         let base = temp_base("lfen-guard");
         let input = base.join("Res");
         fs::create_dir_all(input.join("Stories")).unwrap();

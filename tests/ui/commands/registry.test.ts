@@ -1,5 +1,5 @@
 /**
- * 宿主命名命令注册表测试（fail-closed 注册制，与 minigame / 元素渲染器注册表同纪律）。
+ * 宿主命名命令注册表测试（fail-closed 注册制，与 minigame / 元素渲染器注册表同一口径）。
  */
 import { describe, expect, it } from "vitest";
 import type { ElementInstance } from "@lingfan/engine";

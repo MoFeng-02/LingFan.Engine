@@ -75,7 +75,7 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
   const filesPort = createSourceProjectFilesPort(source);
   const { opened, manifest } = await loadFromSource(source, filesPort);
   // 写回基线 = 打开时读到的原文（复用同一次装载的 memo，不额外枚举）。
-  // ⚠️ #11 降级工程没有清单可读 ⇒ 基线不含 MANIFEST_FILE；
+  // 降级工程没有清单可读 ⇒ 基线不含 MANIFEST_FILE；
   //    首次保存时 serializeProject 会带上合成清单 ⇒ 落盘 = 显式「收编」为标准工程。
   const degraded = opened.degraded;
   const previous = new Map<string, string>([
@@ -87,7 +87,7 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
   const writer = await createHandleProjectWriter(handle, previous);
   // 规范化检测的输入 = **打开时**的故事文件形态（真源快照，永不漂移）。
   // 首次成功保存后磁盘即标准布局（打开时的非规范文件全部进了差量的删除集），
-  // 与 writer 基线「成功才换新」同纪律：失败 / 冲突不置位，下次保存仍提示。
+  // 与 writer 基线「成功才换新」同一处理：失败 / 冲突不置位，下次保存仍提示。
   const initialStoryPaths = [...previous.keys()].filter((path) =>
     path.startsWith(`${STORIES_DIR}/`),
   );
@@ -99,17 +99,17 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
     /**
      * 保存：**整工程口径**（`save(projectTree)`）。
      *
-     * ⚠️ 多文档面（`workspace.ts`）下**不得**直接把某个标签的单列树喂进来：
+     * 多文档面（`workspace.ts`）下**不得**直接把某个标签的单列树喂进来：
      * 单列树的 `columns` 只有一列，`serializeProject` 会把其余列文件判为陈旧并
-     * **删除**（实测 `DELETES=["Stories/start.json"]`）。因此本函数只接受
+     * **删除**（`DELETES=["Stories/start.json"]`）。因此本函数只接受
      * **由当前全部文档重组出的工程树**——`save` 的契约不变，组装责任在调用方。
      */
     save: async (next: Story): Promise<ProjectWriteReport> => {
       const product = serializeProject(next, manifest);
       const report = await writer.apply(product.files);
       normalizedOnce = true;
-      // 🔴 **记住本次落盘路径**（2026-10-05 治根）：新建列写回后才知道落在哪个文件。
-      // ⚠️ **不写回 `next` 的列**（`sourcePath` 会污染 Story ⇒ 往返深等失败）：
+      // **记住本次落盘路径**：新建列写回后才知道落在哪个文件。
+      // **不写回 `next` 的列**（`sourcePath` 会污染 Story ⇒ 往返深等失败）：
       // 落盘事实归入**回执**（`SerializedProject.written`），需要时由调用方取。
       lastWritten = product.written;
       return report;
@@ -123,7 +123,7 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
     },
     /**
      * 单文本资源写回（译文表 / 清单）：只落该文件。
-     * 期望集 = 打开基线 + 本次覆盖 ⇒ 其余文件逐字节不动（与 `saveColumn` 同纪律）。
+     * 期望集 = 打开基线 + 本次覆盖 ⇒ 其余文件逐字节不动（与 `saveColumn` 同一约束）。
      */
     saveText: async (path: string, text: string): Promise<ProjectWriteReport> =>
       writer.apply(assembleColumnWrite(previous, { files: new Map([[path, text]]) })),
@@ -137,8 +137,8 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
     /**
      * 取「最近一次写回的落盘回执」（列 id → 实际路径；未保存过 ⇒ `null`）。
      *
-     * 🔴 用途：新建列在写回后才知道落在哪个文件（`Stories/<id>.json`），
-     * 下次保存不必再猜。⚠️ **不污染 `Story`**——落盘事实是回执，不是列的属性
+     * 用途：新建列在写回后才知道落在哪个文件（`Stories/<id>.json`），
+     * 下次保存不必再猜。**不污染 `Story`**——落盘事实是回执，不是列的属性
      * （塞进 Story 会让「保存后内存态」与「重开态」不再深等）。
      */
     writtenPaths: () => lastWritten,
@@ -176,7 +176,7 @@ async function loadFromSource(
   // 诊断供给侧：一次枚举算出资源文件集 + overlay 键并集（两类取径同源）
   const diagnosticSupply = await loadDiagnosticSupply(source);
   layerZ = resolveLayerZ(manifest);
-  // #11 降级回执：缺清单 = 合成清单已参与组装，事实显式上交界面（状态栏告知）
+  // 降级回执：缺清单 = 合成清单已参与组装，事实显式上交界面（状态栏告知）
   const degraded = (await filesPort.degraded?.()) ?? undefined;
   return {
     opened: {
