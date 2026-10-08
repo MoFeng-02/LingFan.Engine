@@ -15,9 +15,17 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const SRC = "E:/Project/MyProject/LingFan/LingFan.Engine/apps/editor/src";
+/**
+ * 扫描面 = 两个参考宿主（编辑器 + playground）。
+ * playground 与编辑器同为交付形态，同类缺陷必须同守——`v-html` 化的交互控件
+ * 尤其容易丢可访问名（内容不进无障碍名计算，须宿主显式 `aria-label`）。
+ */
+const HOSTS = [
+  { label: "editor", dir: "E:/Project/MyProject/LingFan/LingFan.Engine/apps/editor/src" },
+  { label: "playground", dir: "E:/Project/MyProject/LingFan/LingFan.Engine/apps/playground/src" },
+];
 
-/** 递归列出 .vue 文件（编辑器组件 + App.vue） */
+/** 递归列出 .vue 文件（宿主组件 + App.vue） */
 function vueFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const p = join(dir, e.name);
@@ -40,21 +48,25 @@ function isIconOnly(label: string): boolean {
 }
 
 describe("纯图标按钮 ·必须有可访问名", () => {
-  const files = vueFiles(SRC);
+  const allFiles = HOSTS.flatMap((h) =>
+    vueFiles(h.dir).map((f) => ({ file: f, host: h.label, dir: h.dir })),
+  );
   const violations: string[] = [];
 
-  for (const file of files) {
+  for (const { file, host, dir } of allFiles) {
     const text = stripComments(readFileSync(file, "utf8"));
     // 匹配 <button …>…</button> 与 <button … /> 两形态
     for (const m of text.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)) {
       const attrs = m[1];
       const inner = stripComments(m[2]).replace(/<[^>]+>/g, "").trim();
-      if (!isIconOnly(inner)) continue; // 有文字 ⇒ 不必加 aria-label
+      // `v-html` 内容不进无障碍名计算：inner 为空但绑定 v-html 时同样需要显式可访问名
+      const isVHtml = /v-html\s*=/.test(attrs);
+      if (!isIconOnly(inner) && !isVHtml) continue; // 有静态文字 ⇒ 不必加 aria-label
       const hasAria = /:?aria-label\s*=/.test(attrs);
       const isSubmit = /type\s*=\s*["']submit["']/.test(attrs);
       if (!hasAria && !isSubmit) {
         violations.push(
-          `${file.replace(SRC, "src")}: <button${attrs.slice(0, 60)}> 文本=${JSON.stringify(inner.slice(0, 20))}`,
+          `[${host}] ${file.replace(dir, "src")}: <button${attrs.slice(0, 60)}> 文本=${JSON.stringify(inner.slice(0, 20))}${isVHtml ? " (v-html)" : ""}`,
         );
       }
     }
@@ -69,11 +81,18 @@ describe("纯图标按钮 ·必须有可访问名", () => {
   });
 
   it("扫描确实命中按钮（守卫本身没空转）", () => {
-    // 若 classesOf 之类失效，这里会为 0 ⇒ 守卫形同虚设
-    const total = files.reduce((n, f) => {
-      const t = stripComments(readFileSync(f, "utf8"));
+    // 若路径或正则失效，这里会为 0 ⇒ 守卫形同虚设
+    const total = allFiles.reduce((n, { file }) => {
+      const t = stripComments(readFileSync(file, "utf8"));
       return n + [...t.matchAll(/<button\b/g)].length;
     }, 0);
-    expect(total, "全组件按钮数不应为 0（否则守卫没在扫）").toBeGreaterThan(30);
+    expect(total, "两宿主按钮数合计不应为 0（否则守卫没在扫）").toBeGreaterThan(30);
+  });
+
+  it("两个参考宿主都在扫描面内（防扫描面退化）", () => {
+    for (const host of HOSTS) {
+      const n = vueFiles(host.dir).length;
+      expect(n, `${host.label} 应有 .vue 文件`).toBeGreaterThan(0);
+    }
   });
 });

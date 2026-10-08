@@ -24,16 +24,23 @@ import {
   type SavesConfig,
   type Story,
   type VideoPort,
+  type GameStateWriter,
+  type InteractionContext,
+  type InteractionResult,
 } from "@lingfan/engine";
 import {
   Typewriter,
   builtinBubbleTemplate,
+  builtinChoiceTemplate,
+  builtinNotifyTemplate,
   createAudioRenderer,
+  createChoiceTemplateRegistry,
   createCommandRegistry,
   createDialogueTemplateRegistry,
   createElementRegistry,
   createElementResourceResolver,
   createMinigameRegistry,
+  createNotifyTemplateRegistry,
   createVideoRenderer,
   interpolateAnimation,
   registerBuiltinElementRenderers,
@@ -41,12 +48,14 @@ import {
   renderElementTree,
   resolveElementAction,
   shakeOffset,
+  toNotifyTone,
   transitionOpacity,
+  type ChoiceTemplateView,
   type DialogueTemplateView,
+  type NotifyTemplateView,
   type AudioRenderer,
   type VideoRenderer,
-} from "@lingfan/ui";
-import { captureSaveThumbnail, captureStageComposite, collectStageMedia, stripHtml } from "./shell/thumbnail";
+} from "@lingfan/ui";import { captureSaveThumbnail, captureStageComposite, collectStageMedia, stripHtml } from "./shell/thumbnail";
 import { isGameInputTarget } from "./gameZone";
 // 守卫实现来自 stories:build 的 cell 生成物（源 = Stories.src/story.ts 的 cell 槽位）——
 // 组合根零手写注册；名字闭合由构建期闸门执法（故事引用 ⊆ 生成注册表）。
@@ -116,7 +125,9 @@ const menuOptions = computed(() =>
     target: rawTargets.value[i] ?? "",
   })),
 );
-const notifications = ref<Array<{ id: number; text: string }>>([]);
+const notifications = ref<
+  Array<{ id: number; text: string; tone: "info" | "warning" | "error" }>
+>([]);
 let notifySeq = 0;
 // —— 提示驻留时长（提常量，零行为变化；数值沿袭现状，差异有意）——
 // notify op 未自带 duration 时的驻留：通知要供阅读，最长
@@ -176,6 +187,42 @@ dialogueTemplates.register("center", (input) => ({
   hintHtml: input.canAdvance ? "▼" : "",
 }));
 const dialogTemplateName = ref<string | null>("");
+// —— 选择层 / 通知层模板注册制（与对话模板同一形态：语义骨架挂点 + 根皮肤类）——
+// 骨架由宿主固定渲染（提示行 / 选项列表 / 通知正文），模板只填各挂点内容：
+// 未知模板名回退默认（展示层缺失应兜底，与元素/小游戏注册表的 fail-closed 口径不同）。
+const choiceTemplates = createChoiceTemplateRegistry();
+choiceTemplates.register("default", builtinChoiceTemplate, {
+  makeDefault: true,
+});
+// 演示自定义选择模板（作者纯 TS 创作形态）：编号列表 + 独立皮肤类
+choiceTemplates.register("numbered", (input) => ({
+  rootClass: "tpl-choice-numbered",
+  promptHtml:
+    input.prompt === ""
+      ? ""
+      : renderDialogueLine({ text: input.prompt }).html,
+  optionHtml: input.options.map(
+    (opt, i) =>
+      `<span class="choice-index">${i + 1}.</span> ${renderDialogueLine({ text: opt.text }).html}`,
+  ),
+}));
+const choiceTemplateName = ref<string | null>("");
+const notifyTemplates = createNotifyTemplateRegistry();
+notifyTemplates.register("default", builtinNotifyTemplate, {
+  makeDefault: true,
+});
+const choiceView = computed<ChoiceTemplateView>(() => {
+  const template =
+    choiceTemplates.resolve(choiceTemplateName.value) ?? builtinChoiceTemplate;
+  return template({
+    prompt: menuPrompt.value,
+    options: menuOptions.value,
+  });
+});
+const notifyViewOf = (text: string, tone: string): NotifyTemplateView => {
+  const template = notifyTemplates.resolve(null) ?? builtinNotifyTemplate;
+  return template({ text, tone: toNotifyTone(tone) });
+};
 // —— 小游戏注册表：宿主注册（任意技术实现工厂）；未注册 = fail-closed 不伪造完成 ——
 const minigames = createMinigameRegistry();
 // 演示小游戏「点够次数」：config.target 次点击后成功（signal abort = 立即收尾不回填）
@@ -210,6 +257,79 @@ minigames.register("click3", (host, ctx) => {
     host.append(label, counter, button);
   });
 });
+/**
+ * —— 外部玩法系统注册表（演示：极简 WASD 行走）——
+ *
+ * 与 minigame 注册表同口径：**未注册 = fail-closed**（不伪造完成、等待保持）。
+ * 本演示刻意保持最小：只演示「接管 → 写状态 → 回填结果」三段，
+ * 真实玩法系统（寻路、碰撞、战斗）由产品自行实现——引擎只提供接缝。
+ */
+const interactions = new Map<
+  string,
+  (
+    host: HTMLElement,
+    ctx: InteractionContext & { writer: GameStateWriter },
+  ) => Promise<InteractionResult>
+>();
+interactions.set("walk", (host, ctx) => {
+  const target = typeof ctx.config.target === "number" ? ctx.config.target : 120;
+  return new Promise((resolve) => {
+    host.innerHTML = "";
+    host.classList.add("walk-demo");
+    const avatar = document.createElement("div");
+    avatar.className = "walk-avatar";
+    const hint = document.createElement("p");
+    hint.className = "walk-hint";
+    host.append(hint, avatar);
+
+    let x = 0;
+    const speed = 40; // 像素/秒（演示用；真实系统自定）
+    let pressed: string | null = null;
+    const render = (): void => {
+      avatar.style.transform = `translateX(${x}px)`;
+      hint.textContent = `WASD/A-D 移动 → 走到 ${target}px 结束（当前 ${Math.round(x)}）`;
+      // 每帧写引擎状态（静默通道：高频，不进事件流）；作者侧可读 {game.walk.x}
+      ctx.writer.setScopedSilent("walk", "x", Math.round(x));
+    };
+    const onKey = (e: KeyboardEvent): void => {
+      const k = e.key.toLowerCase();
+      if (k === "a" || k === "arrowleft") pressed = "left";
+      else if (k === "d" || k === "arrowright") pressed = "right";
+      else return;
+      e.preventDefault(); // 玩法系统独占方向键（不触发宿主滚轮/回溯）
+    };
+    const onKeyUp = (): void => {
+      pressed = null;
+    };
+    let raf = 0;
+    let last = performance.now();
+    const tick = (now: number): void => {
+      const dt = (now - last) / 1000;
+      last = now;
+      if (pressed === "left") x = Math.max(0, x - speed * dt);
+      if (pressed === "right") x = Math.min(target, x + speed * dt);
+      render();
+      if (x >= target) {
+        ctx.writer.setScoped("walk", "x", target); // 抵达：低频变更走事件流
+        resolve({ outcome: "success", state: { arrived: true } });
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    const cleanup = (): void => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKeyUp);
+      host.innerHTML = "";
+    };
+    ctx.signal.addEventListener("abort", cleanup, { once: true });
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("keyup", onKeyUp);
+    render();
+    raf = requestAnimationFrame(tick);
+  });
+});
+const inInteraction = ref(false);
 const dialogView = computed<DialogueTemplateView>(() => {
   const template =
     dialogueTemplates.resolve(dialogTemplateName.value) ??
@@ -539,6 +659,7 @@ function syncFromEngine(): void {
   inWait.value = w === "wait";
   inInput.value = w === "input";
   inMinigame.value = w === "minigame";
+  inInteraction.value = w === "interaction"; // 外部玩法系统接管等待
   dialogHidden.value = engine.get(SYS.dialogVisible) === "hide"; // 随快照/存档回档
   const mp = engine.get(SYS.menuPrompt);
   menuPrompt.value = typeof mp === "string" ? mp : "";
@@ -580,7 +701,11 @@ function handleEvent({
 }): void {
   if (payload.kind === "notify") {
     const id = ++notifySeq;
-    notifications.value.push({ id, text: payload.text });
+    notifications.value.push({
+      id,
+      text: payload.text,
+      tone: toNotifyTone(payload.notifyType),
+    });
     setTimeout(() => {
       notifications.value = notifications.value.filter((n) => n.id !== id);
     }, payload.duration ?? NOTIFY_DURATION_MS);
@@ -609,6 +734,37 @@ function handleEvent({
         error.value = `小游戏异常：${String(e)}`;
         onAbort();
       });
+  } else if (payload.kind === "interaction.mount") {
+    // 外部玩法系统接管：宿主经注册表解析（未注册 = fail-closed，不伪造完成）
+    const factory = interactions.get(payload.system);
+    if (factory === undefined) {
+      error.value = `玩法系统未注册：${payload.system}（fail-closed，可回溯/导航离开）`;
+      return;
+    }
+    const host = minigameHostEl.value;
+    if (host === null) return;
+    inInteraction.value = true;
+    const onAbort = (): void => {
+      payload.signal.removeEventListener("abort", onAbort);
+      host.innerHTML = "";
+      inInteraction.value = false;
+    };
+    payload.signal.addEventListener("abort", onAbort, { once: true });
+    void factory(host, {
+      config: payload.config,
+      signal: payload.signal,
+      seq: payload.seq,
+      writer: engine.gameState, // 外部系统写引擎状态的唯一面（状态即接口）
+    })
+      .then((result) => {
+        if (payload.signal.aborted) return; // 中断竞态：以 abort 收尾为准
+        onAbort();
+        engine.resolveInteraction(payload.system, result);
+      })
+      .catch((e: unknown) => {
+        error.value = `玩法系统异常：${String(e)}`;
+        onAbort();
+      });
   } else if (payload.kind === "save.done") {
     // 写档成功（失败走 engine.error 分支，不提示成功）
     toast(`已保存到 ${payload.slot}`);
@@ -625,14 +781,14 @@ function handleEvent({
     audioRenderer?.sync(); // 媒体位置随快照恢复（回滚 seek）
     videoRenderer?.sync(); // 视频命令流对齐（回溯到段内 = 重播）
     const id = ++notifySeq;
-    notifications.value.push({ id, text: "已回溯" });
+    notifications.value.push({ id, text: "已回溯", tone: "info" });
     setTimeout(() => {
       notifications.value = notifications.value.filter((n) => n.id !== id);
     }, ROLLBACK_NOTICE_DURATION_MS);
   } else if (payload.kind === "load.notice") {
     // 读档诊断（非致命，宿主应知情）：演示宿主以通知条展示
     const id = ++notifySeq;
-    notifications.value.push({ id, text: payload.text });
+    notifications.value.push({ id, text: payload.text, tone: "warning" });
     setTimeout(() => {
       notifications.value = notifications.value.filter((n) => n.id !== id);
     }, ROLLBACK_NOTICE_DURATION_MS);
@@ -820,9 +976,13 @@ function displayKeys(keys: readonly string[]): string {
 // —— 05 存档：编排归引擎命令面（槽位校验/写读/错误出站都在核心层）——
 // UI 只发 save/load 命令并反应完成信号（save.done / load.done）；端口经装配通道注入引擎。
 
-function toast(text: string, duration = TOAST_DURATION_MS): void {
+function toast(
+  text: string,
+  duration = TOAST_DURATION_MS,
+  tone: "info" | "warning" | "error" = "info",
+): void {
   const id = ++notifySeq;
-  notifications.value.push({ id, text });
+  notifications.value.push({ id, text, tone });
   setTimeout(() => {
     notifications.value = notifications.value.filter((n) => n.id !== id);
   }, duration);
@@ -1052,27 +1212,34 @@ onUnmounted(() => {
         </option>
       </select>
     </div>
-    <!-- RenderTargets.overlay（notify toast） -->
+    <!-- RenderTargets.overlay（notify toast）：模板骨架 = 通知项 + 正文挂点 -->
     <ul class="notifications" :style="{ zIndex: zOf('notifications') }">
-      <li v-for="n in notifications" :key="n.id">{{ n.text }}</li>
+      <li
+        v-for="n in notifications"
+        :key="n.id"
+        :class="notifyViewOf(n.text, n.tone).rootClass"
+        v-html="notifyViewOf(n.text, n.tone).bodyHtml"
+      ></li>
     </ul>
-    <!-- RenderTargets.choices 挂载点（选择层在对话层上方） -->
+    <!-- RenderTargets.choices 挂载点（选择层在对话层上方）：模板骨架 =
+         提示行 + 选项列表；点击与目标解析归宿主（模板只填内容，不改叙事流向） -->
     <section
       v-if="inMenu"
       class="choices"
+      :class="choiceView.rootClass"
       :style="{ zIndex: zOf('choices') }"
       aria-live="polite"
     >
-      <p v-if="menuPrompt" class="layer-prompt">{{ menuPrompt }}</p>
+      <p v-if="choiceView.promptHtml" class="layer-prompt" v-html="choiceView.promptHtml"></p>
       <div class="choice-row">
         <button
-          v-for="opt in menuOptions"
+          v-for="(opt, idx) in menuOptions"
           :key="opt.target"
           type="button"
+          :aria-label="opt.text"
           @click.stop="choose(opt.target)"
-        >
-          {{ opt.text }}
-        </button>
+          v-html="choiceView.optionHtml[idx] ?? ''"
+        ></button>
       </div>
     </section>
     <!-- RenderTargets.choices：输入形态（input 等待） -->
@@ -1094,9 +1261,11 @@ onUnmounted(() => {
         <button type="submit" @click.stop>确定</button>
       </form>
     </section>
-    <!-- RenderTargets.minigame（宿主经注册表挂载；等待期可回溯 → signal abort 卸载） -->
+    <!-- RenderTargets.minigame（宿主经注册表挂载；等待期可回溯 → signal abort 卸载）。
+         外部玩法系统接管（interaction）复用同一挂载层：两者都是「外部系统整屏接管」形态，
+         分别由 inMinigame / inInteraction 控制可见，宿主容器同一处。 -->
     <section
-      v-show="inMinigame"
+      v-show="inMinigame || inInteraction"
       class="choices"
       :style="{ zIndex: zOf('minigame') }"
       aria-live="polite"
@@ -1724,6 +1893,26 @@ body,
   border-color: #7aa2f755;
 }
 
+/* 通知层模板皮肤：按 tone 换色（骨架固定，仅正文挂点与皮肤类由模板产出） */
+.notifications li.tpl-notify-warning {
+  color: #e0af68;
+}
+
+.notifications li.tpl-notify-error {
+  color: #f7768e;
+}
+
+/* 选择层模板皮肤（演示自定义模板 numbered：编号列表形态） */
+.choices.tpl-choice-numbered .choice-row button {
+  text-align: left;
+}
+
+.choices.tpl-choice-numbered .choice-index {
+  display: inline-block;
+  min-width: 1.6em;
+  color: #7aa2f7;
+}
+
 /* 小游戏挂载层：choices 层之上的宿主容器（内容归注册的工厂，骨架归宿主） */
 .minigame-host {
   display: flex;
@@ -1752,5 +1941,32 @@ body,
   background: #24283b;
   color: #c0caf5;
   cursor: pointer;
+}
+
+/* 外部玩法系统演示（WASD 行走）：内容与样式都归注册的工厂，宿主只给容器 */
+.walk-demo {
+  width: 100%;
+  align-items: flex-start;
+}
+
+.walk-demo .walk-hint {
+  margin: 0;
+  color: #a9b1d6;
+  font-size: 0.9em;
+}
+
+.walk-demo .walk-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: linear-gradient(140deg, #7aa2f7, #bb9af7);
+  box-shadow: 0 0 12px #7aa2f766;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .walk-demo .walk-avatar {
+    transition: none;
+  }
 }
 </style>

@@ -228,6 +228,14 @@ const CANONICAL: Record<string, Record<string, unknown>> = {
       { key: "badge", value: "智者" },
     ],
   },
+  interaction: {
+    op: "interaction",
+    system: "walk",
+    config: { target: 120 },
+    on_success: "arrived",
+    on_fail: "blocked",
+    z: 1200,
+  },
   // —— 元素增删改 ——
   show: {
     op: "show",

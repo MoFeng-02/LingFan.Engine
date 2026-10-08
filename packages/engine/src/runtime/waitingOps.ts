@@ -35,6 +35,7 @@ export const WAITING_OPS: ReadonlyMap<string, WaitSpec> = new Map<
   ["input", { state: "input" }],
   ["cutscene", { state: "video" }],
   ["minigame", { state: "minigame" }],
+  ["interaction", { state: "interaction" }],
 ]);
 
 /**

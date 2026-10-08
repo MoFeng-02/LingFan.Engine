@@ -68,6 +68,8 @@ export const SCRIPT_COVERAGE: Readonly<Record<string, string>> = {
   // 小游戏
   minigame: "minigame",
   reward: "$minigame.reward",
+  // 外部玩法系统接管
+  interaction: "interaction",
   // 元素
   show: "show",
   hide: "hide",
@@ -205,6 +207,8 @@ export {
 export type { VideoOptions, CutsceneOptions } from "./words/video";
 export { minigame, reward } from "./words/minigame";
 export type { MinigameOptions } from "./words/minigame";
+export { interaction } from "./words/interaction";
+export type { InteractionOptions } from "./words/interaction";
 
 // —— 扩展 ——
 export { extOp } from "./words/extension";

@@ -130,7 +130,8 @@ const ELEMENT_FIELD_META: Readonly<
   opacity: { label: "不透明度", kind: "number" },
   visible: { label: "可见", kind: "boolean" },
   enabled: { label: "启用", kind: "boolean" },
-  disabled: { label: "禁用", kind: "boolean" },
+  // 布尔或表达式（`{player.gold < 10}`，点击时刻求值）——故用 value：控件接受两种形态
+  disabled: { label: "禁用（布尔或表达式）", kind: "value" },
   clipToBounds: { label: "裁剪溢出", kind: "boolean" },
   cursor: { label: "光标", kind: "string" },
   rotation: { label: "旋转（度）", kind: "number" },
@@ -160,11 +161,17 @@ const ELEMENT_FIELD_META: Readonly<
   nav: { label: "跳转列", kind: "identifier" },
   cmd: { label: "宿主命令", kind: "identifier" },
   value: { label: "命令参数", kind: "value" },
+  // `ops` = 点击动作序列（一串 op）。用 `body` 形态：与 if.then/while.body 同一控件，
+  // 递归复用命令面板（插入/删除/上下移/逐字段编辑），零新控件。
+  ops: { label: "点击动作序列", kind: "body" },
   hover_source: { label: "悬停资源", kind: "resource" },
   hover_color: { label: "悬停颜色", kind: "string" },
   hover_opacity: { label: "悬停不透明度", kind: "number" },
   selected_source: { label: "选中资源", kind: "resource" },
   selected_color: { label: "选中颜色", kind: "string" },
+  disabled_source: { label: "禁用资源", kind: "resource" },
+  disabled_color: { label: "禁用颜色", kind: "string" },
+  disabled_opacity: { label: "禁用不透明度", kind: "number" },
 };
 
 /** 表单字段优先序（结构 → 内容 → 布局 → 外观 → 交互），未列出的属性按契约序追加 */
@@ -225,6 +232,7 @@ const FIELD_ORDER: readonly string[] = [
   "scroll_h",
   "scroll_v",
   "nav",
+  "ops",
   "cmd",
   "value",
   "hover_source",
@@ -232,6 +240,9 @@ const FIELD_ORDER: readonly string[] = [
   "hover_opacity",
   "selected_source",
   "selected_color",
+  "disabled_source",
+  "disabled_color",
+  "disabled_opacity",
   "disabled",
   "enabled",
   "clipToBounds",

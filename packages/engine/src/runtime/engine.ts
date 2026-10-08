@@ -27,7 +27,17 @@ import type {
   ValueChanged,
   VideoCommand,
 } from "../contracts";
-import { ELEMENT_ATTRIBUTES, EXT_KEY_PREFIX, RESERVED_STATE_KEYS, SYS } from "../contracts";
+import {
+  ELEMENT_ATTRIBUTES,
+  ELEMENT_OPS_BLOCKED,
+  EXT_KEY_PREFIX,
+  GAME_SYSTEM_ID_PATTERN,
+  gameScopedKey,
+  RESERVED_STATE_KEYS,
+  SYS,
+  type GameStateWriter,
+  type InteractionResult,
+} from "../contracts";
 import { isReplayableColumn } from "../contracts";
 import {
   buildExtensionContext,
@@ -165,6 +175,16 @@ const MINIGAME_FIELDS = new Set([
   "on_fail",
   "reward",
   "z", // 实例级 z（minigame 层）
+]);
+
+/** interaction 已知负载字段（未知字段 fail-closed） */
+const INTERACTION_FIELDS = new Set([
+  "op",
+  "system",
+  "config",
+  "on_success",
+  "on_fail",
+  "z", // 实例级 z（与 minigame 同层：外部系统整屏接管）
 ]);
 
 /** 存档类 op 已知负载字段（未知字段 fail-closed） */
@@ -380,6 +400,16 @@ export class StoryEngine {
   } | null = null;
   /** 当前挂载的中断信号源：回溯/读档/导航/销毁时 abort（UI 据此卸载） */
   private minigameController: AbortController | null = null;
+  /** 外部玩法系统挂载序号（与 minigameSeq 同构：单调、不进快照） */
+  private interactionSeq = 0;
+  /** 挂起的玩法系统接管：系统标识 + 分流目标（resolveInteraction 消费；中断即清除） */
+  private pendingInteraction: {
+    system: string;
+    onSuccess?: string;
+    onFail?: string;
+  } | null = null;
+  /** 当前玩法系统挂载的中断信号源（回溯/读档/导航/销毁时 abort） */
+  private interactionController: AbortController | null = null;
 
   /** 存档编排端口与模式（组合根注入；缺省 = 存档类 op/命令面 fail-closed） */
   private savePort: SavePort | undefined;
@@ -572,7 +602,7 @@ export class StoryEngine {
     }
     this.flushPendingCheckpoint(); // 离开当前画面：已上屏未入档的 say 即所见
     this.clearTimer(); // 打断任意等待（wait 定时器废弃，等待画面由新列重建）
-    this.abortMinigame(); // 导航打断小游戏：abort 挂载信号（等待期可回溯同语义）
+    this.abortExternalTakeovers(); // 导航打断外部接管（小游戏/玩法系统）：abort 挂载信号（等待期可回溯同语义）
     this.waitSkipable = false;
     this.liveCheckpointed = false;
     this.setSystem(SYS.waiting, "none");
@@ -686,7 +716,7 @@ export class StoryEngine {
   /** 释放挂起定时器（UI 卸载/测试收尾）；监听器退订走 onXxx 返回的函数 */
   dispose(): void {
     this.clearTimer();
-    this.abortMinigame(); // 挂载 signal abort → UI 卸载小游戏
+    this.abortExternalTakeovers(); // 挂载 signal abort → 宿主卸载外部接管
     this.waitSkipable = false;
   }
 
@@ -753,25 +783,9 @@ export class StoryEngine {
       this.fail("element-ops-invalid", "元素 ops 必须为非空数组");
       return false;
     }
-    // 前置形态校验：整次拒绝（不半执行）——等待/位置类 op 与畸形负载都在此拦截
-    const blocked = new Set([
-      "say",
-      "menu",
-      "input",
-      "wait",
-      "pause",
-      "nvl",
-      "cutscene",
-      "minigame",
-      "jump",
-      "navigate",
-      "call",
-      "return",
-      "load",
-      "save",
-      "auto_save",
-      "save_delete",
-    ]);
+    // 前置形态校验：整次拒绝（不半执行）——等待/位置/存档类 op 与畸形负载都在此拦截。
+    // 清单来自契约（`ELEMENT_OPS_BLOCKED`）：编辑器编辑期诊断读同一份，避免两处漂移。
+    const blocked = ELEMENT_OPS_BLOCKED;
     for (const [i, item] of ops.entries()) {
       if (typeof item !== "object" || item === null || Array.isArray(item)) {
         this.fail("element-ops-invalid", `元素 ops[${i}] 必须为对象`);
@@ -913,11 +927,176 @@ export class StoryEngine {
 
   // —— 内部实现 ——
 
-  private clearTimer(): void {
-    if (this.pendingTimer !== null) {
+  private clearTimer(): void {    if (this.pendingTimer !== null) {
       clearTimeout(this.pendingTimer);
       this.pendingTimer = null;
     }
+  }
+
+  /**
+   * 会话命令 `resolveInteraction`：宿主经注册表跑完外部玩法系统后回填结果。
+   *
+   * 与 `resolveMinigame` 同构（等待态守卫 / 结果校验 / 分流 / 继续执行），
+   * 差别：无 reward（那是小游戏专属语义），改以 `result.state` 落本系统命名空间状态。
+   */
+  resolveInteraction(system: string, result: InteractionResult): boolean {
+    if (this.get(SYS.waiting) !== "interaction") {
+      this.fail(
+        "interaction-resolve-invalid",
+        `resolveInteraction 仅在玩法系统等待中有效（当前 __waiting=${String(this.get(SYS.waiting))}）`,
+      );
+      return false;
+    }
+    const pending = this.pendingInteraction;
+    if (pending === null) {
+      this.fail("interaction-state-corrupt", "__waiting=interaction 但挂起状态缺失");
+      return false;
+    }
+    if (typeof system !== "string" || system !== pending.system) {
+      this.fail(
+        "interaction-system-mismatch",
+        `resolveInteraction 的系统标识不符：期望 ${pending.system}，收到 ${String(system)}`,
+      );
+      return false;
+    }
+    if (
+      typeof result !== "object" ||
+      result === null ||
+      (result.outcome !== "success" && result.outcome !== "fail")
+    ) {
+      this.fail(
+        "interaction-result-invalid",
+        "resolveInteraction 需要 outcome = success | fail",
+      );
+      return false;
+    }
+    if (
+      result.score !== undefined &&
+      (typeof result.score !== "number" || !Number.isFinite(result.score))
+    ) {
+      this.fail("interaction-result-invalid", "resolveInteraction.score 必须为有限数字");
+      return false;
+    }
+    // 结果附带的状态：落本系统命名空间（外部系统不必自己拼前缀，也不该裸写全局）
+    if (result.state !== undefined) {
+      if (
+        typeof result.state !== "object" ||
+        result.state === null ||
+        Array.isArray(result.state)
+      ) {
+        this.fail("interaction-result-invalid", "resolveInteraction.state 必须是对象");
+        return false;
+      }
+      for (const [key, value] of Object.entries(result.state)) {
+        if (!this.gameState.setScoped(pending.system, key, value)) return false;
+      }
+    }
+    this.pendingInteraction = null;
+    this.interactionController = null; // 正常完成：不 abort（宿主已自行收尾）
+    this.setSystem(SYS.waiting, "none");
+    this.liveCheckpointed = false; // live 已越过该检查点（对齐 wait 完成语义）
+    const target =
+      result.outcome === "success" ? pending.onSuccess : pending.onFail;
+    if (target !== undefined && !this.enterColumn(target)) return false;
+    this.run();
+    return true;
+  }
+
+  /**
+   * interaction op：把控制权交给外部玩法系统（行走 / 战斗 / QTE…），引擎等待其回填。
+   *
+   * 语义与 `execMinigame` 逐条对齐（不新造等待语义）：建立等待 → 提交检查点 →
+   * auto_save 消费点 → 出站挂载事件（携 AbortSignal）→ 外部 `resolveInteraction` 解除。
+   * 重放（回溯/读档）同坐标原位重新挂载 = 新 seq 新 signal。
+   */
+  private execInteraction(frame: Frame, cmd: StoryCommand): void {
+    if (this.rejectBadInstanceZ(cmd)) return; // 先拒非法 z（不动状态）
+    const unknownFields = Object.keys(cmd).filter(
+      (k) => !INTERACTION_FIELDS.has(k),
+    );
+    if (unknownFields.length > 0) {
+      this.fail(
+        "interaction-unknown-field",
+        `interaction 未知负载字段：${unknownFields.join(", ")}`,
+      );
+      return;
+    }
+    const system = cmd.system;
+    if (typeof system !== "string" || !GAME_SYSTEM_ID_PATTERN.test(system)) {
+      this.fail(
+        "interaction-invalid",
+        `interaction.system 必填且为合法系统标识（匹配 ${String(GAME_SYSTEM_ID_PATTERN)}）`,
+      );
+      return;
+    }
+    if (cmd.on_success !== undefined && typeof cmd.on_success !== "string") {
+      this.fail("interaction-invalid", "interaction.on_success 必须为字符串（目标列 id）");
+      return;
+    }
+    if (cmd.on_fail !== undefined && typeof cmd.on_fail !== "string") {
+      this.fail("interaction-invalid", "interaction.on_fail 必须为字符串（目标列 id）");
+      return;
+    }
+    if (
+      cmd.config !== undefined &&
+      (typeof cmd.config !== "object" ||
+        cmd.config === null ||
+        Array.isArray(cmd.config))
+    ) {
+      this.fail("interaction-invalid", "interaction.config 必须为对象（原样透传宿主）");
+      return;
+    }
+    this.interactionSeq += 1;
+    const seq = this.interactionSeq;
+    this.interactionController = new AbortController();
+    this.pendingInteraction = {
+      system,
+      onSuccess:
+        typeof cmd.on_success === "string" ? cmd.on_success : undefined,
+      onFail: typeof cmd.on_fail === "string" ? cmd.on_fail : undefined,
+    };
+    this.setInstanceZ(SYS.interactionZ, cmd.z); // 本次挂载的实例 z
+    this.setSystem(SYS.interaction, {
+      system,
+      config: (cmd.config ?? {}) as Record<string, unknown>,
+      seq,
+    });
+    this.setSystem(SYS.waiting, "interaction");
+    // 等待建立时提交检查点；重放期同坐标原位替换（重放重新挂载 = 新 seq 新 signal）
+    this.commitCheckpoint(this.takeSnapshot(this.checkpointCoord(frame)));
+    this.liveCheckpointed = true;
+    this.autoSaveAtCheckpoint(); // 玩法系统接管画面建立 = auto_save 消费点
+    frame.index += 1;
+    const payload: OutboundPayload = {
+      kind: "interaction.mount",
+      system,
+      config: (cmd.config ?? {}) as Record<string, unknown>,
+      signal: this.interactionController.signal,
+      seq,
+    };
+    const event: OutboundEvent = { v: 1, kind: "event", payload };
+    for (const listener of this.eventListeners) listener(event);
+  }
+
+  /**
+   * 中断**全部外部接管**（小游戏 + 玩法系统）：abort 挂载信号让宿主卸载，
+   * 重放到该坐标时重新挂载（新 seq 新 signal）。
+   *
+   * 合成单一入口的理由：五处中断点（导航 / 销毁 / 读档 / 回溯 / 热重载）对两类接管的
+   * 处置完全相同——分开调用迟早漏掉一边，那时表现为「回溯后旧系统还在跑」。
+   */
+  private abortExternalTakeovers(): void {
+    this.abortMinigame();
+    this.abortInteraction();
+  }
+
+  /** 回溯联动：中断玩法系统接管 = abort 挂载信号（宿主卸载），重放到该坐标重新挂载 */
+  private abortInteraction(): void {
+    if (this.interactionController !== null) {
+      this.interactionController.abort();
+      this.interactionController = null;
+    }
+    this.pendingInteraction = null;
   }
 
   /** 回溯联动：中断小游戏等待 = abort 挂载信号（UI 卸载），重放到该坐标重新挂载 */
@@ -962,7 +1141,8 @@ export class StoryEngine {
    * 值契约同样适用（引擎内部违约 = 引擎 bug，同样 fail-closed 暴露）；
    * 键不受保留键约束——`setSystem` 本来就是写 SYS 键的通道。
    */
-  private setSystem(key: string, value: unknown): void {    const unsafe = findJsonValueError(value, key);
+  private setSystem(key: string, value: unknown): void {
+    const unsafe = findJsonValueError(value, key);
     if (unsafe !== null) {
       this.fail(
         "value-not-serializable",
@@ -972,6 +1152,82 @@ export class StoryEngine {
     }
     this.state.set(key, value);
     this.emit(key, value, "system");
+  }
+
+  /**
+   * 静默写（帧级键通道）：值契约照常（违规仍拒绝 + 诊断），但**不进事件流**。
+   *
+   * 用途：高频变更（每帧媒体位置、外部玩法系统的每帧坐标）——进事件流会造成
+   * 事件风暴（每帧一次全量广播）。值仍随快照/存档持久化，回溯一致性与普通写相同。
+   */
+  private setSilentKey(key: string, value: unknown): boolean {
+    const unsafe = findJsonValueError(value, key);
+    if (unsafe !== null) {
+      this.fail(
+        "value-not-serializable",
+        `值不可序列化，写入被拒绝：${unsafe}（状态原样；请只写 JSON 安全值）`,
+      );
+      return false;
+    }
+    this.state.set(key, value);
+    return true;
+  }
+
+  /**
+   * 外部玩法系统的状态写入面（[`GameStateWriter`] 的实现）。
+   *
+   * 为什么归引擎而不是宿主：写入必须复用引擎的写入契约（保留键 + JSON 安全深走查），
+   * 外部自建写入面必然绕过守卫 —— 那时非法值会在**写档期**才炸，且回溯一致性无从保证。
+   *
+   * 状态即接口：写入进 SSOT ⇒ 自动随快照/存档/回溯随行（外部系统无需自建回滚逻辑）。
+   */
+  readonly gameState: GameStateWriter = {
+    set: (key: string, value: unknown): boolean => this.writeExternal(key, value, true),
+    setSilent: (key: string, value: unknown): boolean =>
+      this.writeExternal(key, value, false),
+    setScoped: (systemId: string, key: string, value: unknown): boolean =>
+      this.writeExternal(gameScopedKey(systemId, key), value, true, systemId),
+    setScopedSilent: (systemId: string, key: string, value: unknown): boolean =>
+      this.writeExternal(gameScopedKey(systemId, key), value, false, systemId),
+    get: (key: string): unknown => this.state.get(key),
+  };
+
+  /**
+   * 外部写入的公共实现：键校验（保留键 + 命名空间合法性）→ 值契约 → 落 SSOT。
+   * `emitChange = false` 走静默通道（帧级高频写）。
+   */
+  private writeExternal(
+    key: string,
+    value: unknown,
+    emitChange: boolean,
+    systemId?: string,
+  ): boolean {
+    if (systemId !== undefined && !GAME_SYSTEM_ID_PATTERN.test(systemId)) {
+      this.fail(
+        "game-system-invalid",
+        `玩法系统标识非法：${JSON.stringify(systemId)}（须匹配 ${String(GAME_SYSTEM_ID_PATTERN)}）`,
+      );
+      return false;
+    }
+    if (RESERVED_STATE_KEYS.has(key)) {
+      this.fail(
+        "reserved-key",
+        `保留键不可写入：${key}（SYS 全集为引擎所有；外部玩法状态请用 setScoped 走 game.<系统>.<键> 命名空间）`,
+      );
+      return false;
+    }
+    if (!emitChange) return this.setSilentKey(key, value);
+    const unsafe = findJsonValueError(value, key);
+    if (unsafe !== null) {
+      this.fail(
+        "value-not-serializable",
+        `值不可序列化，写入被拒绝：${unsafe}（状态原样；请只写 JSON 安全值并按写时复制更新）`,
+      );
+      return false;
+    }
+    this.state.set(key, value);
+    this.emit(key, value, "global");
+    return true;
   }
 
   /**
@@ -1376,6 +1632,9 @@ export class StoryEngine {
         case "minigame":
           this.execMinigame(frame, cmd);
           return; // 进入小游戏等待（resolveMinigame 解除）
+        case "interaction":
+          this.execInteraction(frame, cmd);
+          return; // 进入玩法系统接管等待（resolveInteraction 解除）
         case "show":
         case "hide":
         case "background":
@@ -3374,7 +3633,7 @@ export class StoryEngine {
     const stagedState = this.resolveSaveExtensions(data);
     if (stagedState === null) return false; // 已发 engine.error（整档拒绝）
     this.clearTimer();
-    this.abortMinigame(); // 读档打断小游戏：abort 挂载信号（重放重新挂载）
+    this.abortExternalTakeovers(); // 读档打断外部接管：abort 挂载信号（重放重新挂载）
     // 引用备份（restore 失败 = 整档拒绝 → 原样回退；以下字段在读档路径只做整体换引用）
     const backup = {
       state: this.state,
@@ -3587,7 +3846,7 @@ export class StoryEngine {
     this.pendingSay = null;
     // 回溯清挂起的 wait 定时器：重放若落在另一 wait 上，旧定时器不得提前双触发
     this.clearTimer();
-    this.abortMinigame(); // 回溯打断小游戏：abort 挂载信号，重放重新挂载
+    this.abortExternalTakeovers(); // 回溯打断外部接管：abort 挂载信号，重放重新挂载
     this.waitSkipable = false;
     this.liveCheckpointed = true; // 检查点 k 即当前 live 位置（重放中的等待点会自行改写）
     this.setSystem(SYS.waiting, "none");
@@ -3818,7 +4077,7 @@ export class StoryEngine {
     }
     this.flushPendingCheckpoint(); // 离开当前画面：所见即入档
     this.clearTimer();
-    this.abortMinigame(); // 热重载打断小游戏：abort 挂载信号
+    this.abortExternalTakeovers(); // 热重载打断外部接管：abort 挂载信号
     this.waitSkipable = false;
     this.liveCheckpointed = false;
     this.setSystem(SYS.waiting, "none");

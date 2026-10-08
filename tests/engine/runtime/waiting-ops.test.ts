@@ -52,6 +52,7 @@ const MINIMAL_PROBES: Record<string, object> = {
   input: { op: "input", prompt: "名字", store: "name" },
   cutscene: { op: "cutscene", resource: "Video/m1.mp4" },
   minigame: { op: "minigame", game: "coin" },
+  interaction: { op: "interaction", system: "walk" },
 };
 
 /** 等待 op 进入等待所需的额外列（menu 的选项目标必须在场，否则 fail-closed 报 unknown-column） */

@@ -12,11 +12,36 @@ export {
 export {
   builtinBubbleTemplate,
   createDialogueTemplateRegistry,
-  DialogueTemplateRegistry,
   type DialogueTemplateFn,
   type DialogueTemplateInput,
+  type DialogueTemplateRegistry,
   type DialogueTemplateView,
 } from "./dialogue/templates";
+export {
+  TemplateRegistry,
+  createTemplateRegistry,
+  type TemplateFn,
+  type TemplateViewBase,
+} from "./templates";
+export {
+  builtinChoiceTemplate,
+  createChoiceTemplateRegistry,
+  type ChoiceTemplateFn,
+  type ChoiceTemplateInput,
+  type ChoiceTemplateOption,
+  type ChoiceTemplateRegistry,
+  type ChoiceTemplateView,
+} from "./choices";
+export {
+  builtinNotifyTemplate,
+  createNotifyTemplateRegistry,
+  toNotifyTone,
+  type NotifyTemplateFn,
+  type NotifyTemplateInput,
+  type NotifyTemplateRegistry,
+  type NotifyTemplateView,
+  type NotifyTone,
+} from "./notify";
 export {
   EMPTY_AUDIO_VIEW,
   createAudioRenderer,

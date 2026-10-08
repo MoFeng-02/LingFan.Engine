@@ -8,6 +8,7 @@
  */
 
 import type { Story } from "@lingfan/engine";
+import { ELEMENT_OPS_BLOCKED } from "@lingfan/engine";
 import type {
   AnalyzeOptions,
   Diagnostic,
@@ -461,6 +462,22 @@ export function analyzeStory(
         severity: "warning",
         message: `元素属性 ${attr} 已声明但当前无渲染语义（写入不生效）`,
         pointer: `${pointer}/${escapePointerToken(attr)}`,
+      });
+    }
+    // 点击动作序列里的**执行期必拒** op：编辑期即报，别等运行时才发现点不动。
+    // 清单与执行期同源（引擎契约 `ELEMENT_OPS_BLOCKED`）——两处各写一份必然漂移。
+    const ops = node.ops;
+    if (Array.isArray(ops)) {
+      ops.forEach((item, i) => {
+        if (!isPlainObject(item)) return; // 形态问题由 invalid-element 负责
+        const op = item.op;
+        if (typeof op !== "string" || !ELEMENT_OPS_BLOCKED.has(op)) return;
+        out.push({
+          code: "element-ops-blocked-op",
+          severity: "error",
+          message: `元素动作序列里的 ${op} 不可用（等待/位置/存档类会打断当前叙事流）；跳列请用 nav 属性`,
+          pointer: `${pointer}/ops/${i}`,
+        });
       });
     }
   });

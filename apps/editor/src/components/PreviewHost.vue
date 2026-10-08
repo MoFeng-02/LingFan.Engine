@@ -18,15 +18,20 @@ import {
 } from "@lingfan/engine";
 import {
   builtinBubbleTemplate,
+  builtinChoiceTemplate,
+  builtinNotifyTemplate,
   createAudioRenderer,
+  createChoiceTemplateRegistry,
   createDialogueTemplateRegistry,
   createElementRegistry,
   createElementResourceResolver,
+  createNotifyTemplateRegistry,
   createVideoRenderer,
   registerBuiltinElementRenderers,
   renderDialogueLine,
   renderElementTree,
   resolveElementAction,
+  toNotifyTone,
   Typewriter,
   type AudioRenderer,
   type DialogueTemplateView,
@@ -95,7 +100,9 @@ const inputValue = ref("");
 const waiting = ref<string>("none");
 const nvlMode = ref("none");
 const nvlBuffer = ref<string[]>([]);
-const toasts = ref<Array<{ id: number; text: string }>>([]);
+const toasts = ref<
+  Array<{ id: number; text: string; tone: "info" | "warning" | "error" }>
+>([]);
 const errorText = ref("");
 const minigameBanner = ref("");
 const elementBanner = ref("");
@@ -106,6 +113,23 @@ const dialogueTemplates = createDialogueTemplateRegistry();
 dialogueTemplates.register("bubble", builtinBubbleTemplate, {
   makeDefault: true,
 });
+// 选择层 / 通知层同走挂载点模板（与对话模板同一抽象；预览即验证「换宿主不改模板」）
+const choiceTemplates = createChoiceTemplateRegistry();
+choiceTemplates.register("default", builtinChoiceTemplate, {
+  makeDefault: true,
+});
+const notifyTemplates = createNotifyTemplateRegistry();
+notifyTemplates.register("default", builtinNotifyTemplate, {
+  makeDefault: true,
+});
+const choiceView = computed(() => {
+  const template = choiceTemplates.resolve(null) ?? builtinChoiceTemplate;
+  return template({ prompt: menuPrompt.value, options: menuChoices.value });
+});
+const notifyViewOf = (text: string, tone: "info" | "warning" | "error") => {
+  const template = notifyTemplates.resolve(null) ?? builtinNotifyTemplate;
+  return template({ text, tone });
+};
 
 /** 媒体渲染错误（含元素资源解析失败以外的端口诊断）汇入停机横幅 */
 function reportMediaError(message: string): void {
@@ -268,7 +292,13 @@ const offEvent = engine.onEvent((event) => {
   const payload: OutboundPayload = event.payload;
   if (payload.kind === "notify") {
     const id = ++notifySeq;
-    toasts.value.push({ id, text: payload.text });
+    // tone 原样透传（与 playground 同口径）：预览若一律按 info 渲染，
+    // 作者看不到 warning/error 的真实皮肤，预览保真度即失真
+    toasts.value.push({
+      id,
+      text: payload.text,
+      tone: toNotifyTone(payload.notifyType),
+    });
     window.clearTimeout(toastTimer);
     // 提示驻留（提常量）：沿袭现状 2600ms，零行为变化；与 playground 的 3000
     // 是否统一另议
@@ -391,18 +421,23 @@ onBeforeUnmount(() => {
       <div
         v-if="waiting === 'menu'"
         class="choices"
+        :class="choiceView.rootClass"
         :style="{ zIndex: zOf('choices') }"
         @click.stop
       >
-        <p class="layer-prompt">{{ menuPrompt }}</p>
+        <p
+          v-if="choiceView.promptHtml"
+          class="layer-prompt"
+          v-html="choiceView.promptHtml"
+        ></p>
         <button
-          v-for="choice in menuChoices"
+          v-for="(choice, idx) in menuChoices"
           :key="choice.target"
           class="choice"
+          :aria-label="choice.text"
           @click="choose(choice.target)"
-        >
-          {{ choice.text }}
-        </button>
+          v-html="choiceView.optionHtml[idx] ?? ''"
+        ></button>
       </div>
       <div v-if="waiting === 'video'" class="choices" :style="{ zIndex: zOf('choices') }">
         <p class="layer-prompt">
@@ -423,11 +458,15 @@ onBeforeUnmount(() => {
         <button @click="emit('close')">退出预览</button>
       </div>
 
-      <!-- 通知 toast -->
+      <!-- 通知 toast：模板骨架 = 通知项 + 正文挂点 -->
       <div class="toasts" :style="{ zIndex: zOf('notifications') }">
-        <p v-for="toast in toasts" :key="toast.id" class="toast">
-          {{ toast.text }}
-        </p>
+        <p
+          v-for="toast in toasts"
+          :key="toast.id"
+          class="toast"
+          :class="notifyViewOf(toast.text, toast.tone).rootClass"
+          v-html="notifyViewOf(toast.text, toast.tone).bodyHtml"
+        ></p>
       </div>
     </div>
   </div>
