@@ -28,7 +28,7 @@ export interface ProjectFileDiff {
   readonly deletes: readonly string[];
 }
 
-/** 文件指纹（FSA `File` 与 Rust `metadata` 都能给出的最小面）——写回冲突检测用 */
+/** 文件指纹（浏览器文件对象与 Rust `metadata` 都能给出的最小面）——写回冲突检测用 */
 export interface FileStamp {
   lastModified: number;
   size: number;

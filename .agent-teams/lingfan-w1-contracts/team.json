@@ -34,7 +34,7 @@
       "model": "deepseek-v4.1-flash",
       "reasoningEffort": "max",
       "joinedAt": 1791441952923,
-      "status": "working"
+      "status": "idle"
     },
     {
       "id": "5d9a5742-f6d3-41e1-8cf7-f48a4a126dbe",
@@ -47,7 +47,7 @@
       "status": "idle"
     },
     {
-      "id": "",
+      "id": "3cac5fce-7550-4af9-8e5c-0b7ccdc1fa56",
       "name": "verifier",
       "role": "验收核验员",
       "provider": "workbuddy-global",
@@ -1428,7 +1428,7 @@
       "profileSeedId": "V01",
       "subject": "W1 全批次验收核验",
       "description": "W1 全批次验收核验（t1–t16）。t16 为 T02-02 交付后复核新增的 Tauri 桥接残余收口任务，必须一并纳入核验范围。核验口径见原描述，另须专项确认：全仓 `@tauri-apps` 只命中 `packages/adapters/src/platform/tauri-invoke.ts` 与 `packages/adapters/package.json`；`await import(\"@tauri-apps/api/core\")` 只命中 1 处。",
-      "status": "pending",
+      "status": "completed",
       "assignee": "verifier",
       "dependencies": [
         "t1",
@@ -1450,9 +1450,155 @@
         "t18",
         "t19"
       ],
-      "attempt": 0,
+      "attempt": 1,
       "createdAt": 1791441952923,
-      "updatedAt": 1791449175000
+      "updatedAt": 1791453267495,
+      "attemptId": "41f047a8-9ea9-4c76-9e9c-5c88faff19ae",
+      "reassigning": false,
+      "output": "W1 全批次验收核验（t1–t19）**通过**：两个模块的模块级验收判据逐条独立复跑全绿，未发现阻断性缺陷。\n\n## 门禁（本机实测，非采信他人回报）\n- `pnpm test:unit` exit 0：`Test Files 140 passed | 2 skipped (142)` / `Tests 1890 passed | 10 skipped (1900)` —— 与 SSOT 基线 142/1900 **逐位一致**。\n- `pnpm typecheck`（vue-tsc --noEmit）exit 0；`pnpm lint`（eslint .）exit 0。\n- `cargo test --lib`（apps/playground/src-tauri）exit 0：`123 passed; 0 failed; 0 ignored`。\n- 未跑（本批次禁止）：`pnpm build` / `pnpm tauri build`。\n\n## 专项确认（t15 描述点名两项）\n1. **`@tauri-apps` 只命中 `tauri-invoke.ts` + `packages/adapters/package.json`**：在 `packages/adapters` 内**成立**（全包仅 `package.json:17` 依赖声明 + `platform/tauri-invoke.ts:12,34,40`）。全仓另有 `apps/playground` 4 处（`package.json:21,25`、`vite.config.ts:51` 注释、`src/main.ts:10` 静态 import `@tauri-apps/api/window`），其中 `main.ts:10` 是**已登记缺陷 S-43**（`私有文档/结构缺陷清单-2026-10-08.md:255`），明确不在本批次范围。\n2. **`await import(\"@tauri-apps/api/core\")` 只命中 1 处**：**成立**，唯一命中 `packages/adapters/src/platform/tauri-invoke.ts:34`。⇒ `defaultInvoke` 实现体全仓唯一。\n\n## 模块 01（引擎契约面）判据\n1. test:unit 全绿 ✅ 2. typecheck/lint/cargo test 全绿 ✅\n3. `packages/engine/src/contracts/**`：`export function` **0 命中**；`AbortSignal|HTMLElement` **0 命中**；DOM 词面（`\\bFile\\b|\\bBlob\\b|FileSystemDirectoryHandle|\\bURL\\b`）**仅 6 处注释里的「URL」字样**（`media/entities.ts:44`、`media/ports.ts:3,10,24`、`save.ts:20,42`），无类型引用 ✅\n4. 契约层导出 **count=115 / dupes=0**（TS 编译 API 逐名枚举）：SSOT 记 114，实测 115，**只增不减且无重名成立**。包出口 `packages/engine/src/index.ts` **170 名 / 0 重名** ✅\n5. 注释口径：14 个内部代号全仓 **0 命中**；`T0[0-9]-[0-9]{2}` **0**；`B[0-9]v[0-9]` **0**；`\\b(b1|d63|d64)\\b` 仅 3 处已登记误报（`tests/engine/runtime/scope.test.ts:116,117,120` 局部变量）；`D-[0-9]+` 仅 1 处已登记误报（`apps/playground/src-tauri/src/resource_crypto.rs:2426` 的 URL 字面量 `bytes%3D-8`）；`S-[0-9]{2}` 2 处均为 `AES-256-GCM` 子串；`tests/**`「取证」**0**，保留项 5 处原样在 ✅\n6. `packages/engine/src/index.ts` 的 `from \"./data\"` 仅剩 `:110` 一处；`packages/engine/src/runtime/index.ts` 存在（50 行，具名转发 10 子模块）✅\n7. `apps/playground/Stories.src/gen/fun_register.g.ts` 存在（594 B）且被 test:unit 覆盖 ✅\n8. 契约层越层 import 仅 6 条域内跨子域 + **唯一例外** `contracts/index.ts:19 export * from \"../shared\";`（SSOT 登记）✅\n- T01-06 导出面：`RegisteredOp`/`WaitSpec`/`isExtensionStateKey` **均不在包出口**（前二者仅存于 `runtime/**` 内部类型，第三者全仓 0 命中）；新增 7 名 `interpolateText`/`evaluateExpression`/`ExpressionError`/`NameResolver`/`loadElements`/`findElements`/`removeElements` **均可达** ✅\n- T01-08 读口：`contracts/runtime/reader.ts` 76 行、`runtime/stateReader.ts` 216 行；`createStateReader` 取用点 = `audio.ts:75,229`、`overlay.ts:207`、`videoView.ts:39`；`packages/ui` 内 `engine.get(SYS.` / `engine.get(` **0 残留**；`packages/engine/src/runtime/engine.ts` **git diff 为空、mtime 仍为 2026-10-08 14:56:29** ⇒ 「get 原样保留、读口新增非替换」成立 ✅\n\n## 模块 02（适配器与编辑器契约面）判据\n1. test:unit 全绿 ✅ 2. typecheck/lint 全绿 ✅\n3. `apps/editor/src/contracts/**` 扫 `@lingfan/adapters` **0 命中** ✅\n4. `interface EditorApi` 恰 1 命中（`apps/editor/src/contracts/editor.ts:15 EditorApiPort`）；`interface PackResult` 恰 1 命中（`apps/editor/src/contracts/host.ts:38`）✅\n5. `provide(\"editorApi\"` / `inject<...>(\"editorApi\")` / 裸串 `\"editorApi\"` **全部 0 命中** ✅\n6. 包出口二级深引：四包出口 **0 命中**；**跨包** `@lingfan/<pkg>/<sub>` 全仓 **0 命中** ✅\n7. 注释口径 ✅（见模块 01 第 5 条）\n8. `packages/adapters/src` 下 **9 个域目录全有 index.ts**（dev/host/i18n/media/platform/preferences/resources/save/shell）✅\n- `apps/editor/src/**` 对 `@lingfan/adapters` 仅 `main.ts:34` 一处值导入（组合根）✅\n- `apps/editor/src/ports.ts` 实测 80 行（HEAD 127）；`packages/adapters/src/host/index.ts` 37 行、`save/tauri.ts` 40 行、`platform/tauri-invoke.ts` 42 行 —— 与各任务回报**逐位一致** ✅\n- `packages/adapters/src/index.ts:41-46` 过渡转发块在位 ✅\n- T02-03 互锁：`tests/editor/server-security.test.ts` 实测 **45 条 it/test**，新增 `describe(\"跨边界互锁…\")` 在 `:357`，三条断言 `:358/:365/:369` ✅\n- ?raw 源级断言锚点归属：`apps/editor/src/App.vue?raw` **18 处**、`apps/playground/src/App.vue?raw` **2 处**（`tests/ui/input/scope.test.ts`、`tests/ui/templates/wiring.test.ts`）—— 与 T02-03 记录**逐位一致** ✅\n\n## t19（T02-07 DOM 中立化，7 个未提交文件）逐条比对\n- diffstat 实测 **7 files changed, 51 insertions(+), 23 deletions(-)**，与回报逐位一致。\n- `ProjectFileHandle`（`contracts/platform/entities.ts:33`，`readonly size: number`）是**具名契约接口**非内联字面量 ✅\n- `ProjectFileSource.file()` 现 `packages/engine/src/contracts/platform/ports.ts:66: file(path: string): Promise<ProjectFileHandle>;`；`LastProjectHandleStore.load(): Promise<unknown>` / `save(handle: unknown)` ✅\n- **形状校验落点已实证**：`packages/adapters/src/resources/directorySource.ts:867` 的 `load()` 用 `isDirectoryHandleLike`（`:820`，判 `kind === \"directory\"`）校验，非目录形状返回 `undefined` —— 与契约注释「形状校验由实现方在存取时做掉」逐字吻合 ✅\n- 宿主侧窄化 2 处：`apps/editor/src/main.ts:220`（`handle as FileSystemDirectoryHandle`，带解释注释）、`packages/adapters/src/resources/directorySource.ts:452`（`create(file as Blob)`）；`BlobUrlOptions.createObjectURL` 改 `(file: Blob) => string`（`:426`）✅\n- **无行为变化佐证**：`BlobUrlOptions` 是包出口公共面（`packages/adapters/src/index.ts:39`），签名由 `File` 放宽到 `Blob` 属**放宽**（调用方传 `File` 仍合法）；两处 `ProjectFileSource` 实现仍写 `Promise<File>`，`File` 天然满足 `{ readonly size: number }` ⇒ 结构兼容、零强制改写 ✅\n- 测试侧改动仅 2 处、均为**替身适配**（`directorySource.test.ts:87,98,100` 的 `File`→`Blob` + `(file as File).name`；`lastProjectStore.test.ts:123-125` 加 `as FileSystemDirectoryHandle | undefined` 并附解释注释），无断言语义改动 ✅\n\n## t17/t18 改名与清理\n- 三个改名文件与 HEAD **blob hash 逐字节相同**：`skeleton-wiring.test.ts` = `c27c4f66ca42f172262ee5867b7cb3205de2da06`、`stage-drag.test.ts` = `0b4c1621d9565a643da5bccf6a0248b0391008e6`、`project-switch-baseline.test.ts` = `121da1ce0fe8643e8897665e6808ec25e56f8bb6` ✅\n- 旧文件名全仓命中**仅存在于 `.agent-teams/**` 团队状态文件**，源码侧 0 ✅\n- `packages/editor/src/index.ts` 与 HEAD 完全相同（未被并发改动），`chapterGroupOf` 仍在 `:99` ✅\n\n## 核验纪律（本批次教训，建议留档）\n1. **`git grep` 看不见未跟踪文件** —— `packages/adapters/src/platform/`、`packages/engine/src/shared/` 都是未跟踪目录，用它判「无残留」会假绿。本次全部判据改用**文件系统 grep**（排除 node_modules/dist/target/src-tauri/gen/.git）。\n2. **行数组 join 比对不可靠** —— 首轮比对改名文件得 `identical=False`（差 1 字符，实为 `git show` 行数组 join 缺尾换行）；改用 `git hash-object` 与 `git rev-parse HEAD:<path>` 才得真结论。\n3. **`git grep` 无命中时 exit 1** —— 脚本里若把非零当失败会误报。\n\n## 建议\n- t19 的 7 个文件仍是未提交改动（HEAD 停在 `651d68c`），其余 W1 交付已在该提交内。**建议队长在 W1 收口时一并提交**（本批次规则「不代提交」，故我未提交）。\n- 契约层导出实测 115 而 SSOT 记 114，建议台账把判据改为「≥114 且无重名」，避免后续按绝对数误判。\n- 无阻断性发现，无 needs_revision 项。",
+      "acceptanceResults": [
+        {
+          "criterion": "pnpm test:unit 全绿（基线 142 文件）且行为零变化",
+          "status": "passed",
+          "evidence": "exit 0：Test Files 140 passed | 2 skipped (142)；Tests 1890 passed | 10 skipped (1900) —— 与 SSOT 基线逐位一致"
+        },
+        {
+          "criterion": "pnpm typecheck / pnpm lint 全绿",
+          "status": "passed",
+          "evidence": "vue-tsc --noEmit exit 0；eslint . exit 0"
+        },
+        {
+          "criterion": "cargo test --lib 全绿（T01-07 后）",
+          "status": "passed",
+          "evidence": "apps/playground/src-tauri：test result: ok. 123 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.68s"
+        },
+        {
+          "criterion": "packages/engine/src/contracts/** 无 export function、无 AbortSignal|HTMLElement",
+          "status": "passed",
+          "evidence": "export function 0 命中；AbortSignal|HTMLElement 0 命中；DOM 词面仅 6 处注释里的 URL 字样，无类型引用"
+        },
+        {
+          "criterion": "contracts/index.ts 导出数只增不减、无重名",
+          "status": "passed",
+          "evidence": "TS 编译 API 逐名枚举：count=115, dupes=0（SSOT 记 114 ⇒ 只增不减成立）；包出口 packages/engine/src/index.ts count=170 dupes=0"
+        },
+        {
+          "criterion": "源码注释无锚点代号/批次代号/任务缺陷号",
+          "status": "passed",
+          "evidence": "14 个内部代号 0 命中；T0[0-9]-[0-9]{2} 0；B[0-9]v[0-9] 0；b1/d63/d64 仅 3 处已登记误报（scope.test.ts 局部变量）；D-[0-9]+ 仅 1 处已登记误报（resource_crypto.rs:2426 URL 字面量）；tests/** 取证 0，保留项 5 处原样在"
+        },
+        {
+          "criterion": "packages/engine/src/index.ts 无重复 from \"./data\"；runtime/index.ts 存在",
+          "status": "passed",
+          "evidence": "from \"./data\" 仅 :110 一处；runtime/index.ts 存在（50 行，具名转发 10 子模块，无 export *）"
+        },
+        {
+          "criterion": "生成物 apps/playground/Stories.src/gen/fun_register.g.ts 仍能编译",
+          "status": "passed",
+          "evidence": "文件存在（594 B）；pnpm typecheck exit 0 覆盖全仓 tsconfig 范围；test:unit 全绿"
+        },
+        {
+          "criterion": "契约层零越层 import 保持（唯一例外 contracts/index.ts 的 export * from \"../shared\"）",
+          "status": "passed",
+          "evidence": "from \"../\" 7 命中 = 6 条契约域内跨子域（runtime/events.ts:5、runtime/reader.ts:17,18,19、story/entities.ts:7,8）+ 唯一例外 contracts/index.ts:19"
+        },
+        {
+          "criterion": "apps/editor/src/contracts/** 无 @lingfan/adapters",
+          "status": "passed",
+          "evidence": "文件系统 grep 0 命中；apps/editor/src/** 仅 main.ts:34 一处值导入（组合根）"
+        },
+        {
+          "criterion": "interface EditorApi / interface PackResult 各只命中 1 处",
+          "status": "passed",
+          "evidence": "EditorApi → apps/editor/src/contracts/editor.ts:15 EditorApiPort（恰 1）；PackResult → apps/editor/src/contracts/host.ts:38（恰 1）"
+        },
+        {
+          "criterion": "provide(\"editorApi\" 与 inject<...>(\"editorApi\") 归零",
+          "status": "passed",
+          "evidence": "两种写法与裸字符串 \"editorApi\" 全部 0 命中（已改用具名 InjectionKey）"
+        },
+        {
+          "criterion": "包出口无二级深引；await import(\"@tauri-apps/api/core\") 只命中 1 处",
+          "status": "passed",
+          "evidence": "四包出口 0 命中；跨包 @lingfan/<pkg>/<sub> 全仓 0 命中；await import(\"@tauri-apps/api/core\") 唯一命中 packages/adapters/src/platform/tauri-invoke.ts:34"
+        },
+        {
+          "criterion": "packages/adapters/src 下每个域目录都有 index.ts",
+          "status": "passed",
+          "evidence": "9 个域目录全部有 index.ts：dev/host/i18n/media/platform/preferences/resources/save/shell"
+        },
+        {
+          "criterion": "专项：全仓 @tauri-apps 只命中 tauri-invoke.ts 与 packages/adapters/package.json",
+          "status": "passed",
+          "evidence": "packages/adapters 内成立（package.json:17 + platform/tauri-invoke.ts:12,34,40）；apps/playground 另有 4 处（package.json:21,25、vite.config.ts:51 注释、src/main.ts:10），其中 main.ts:10 是已登记缺陷 S-43、明确不在本批次范围"
+        },
+        {
+          "criterion": "t19 七文件交付与回报逐条一致，且行为零变化",
+          "status": "passed",
+          "evidence": "diffstat 7 files / 51 insertions / 23 deletions 逐位一致；ProjectFileHandle 具名接口在 entities.ts:33；ports.ts:66 返回 Promise<ProjectFileHandle>；load/save 用 unknown；形状校验实证在 directorySource.ts:820 isDirectoryHandleLike / :867 调用点；宿主窄化 2 处（main.ts:220、directorySource.ts:452）；File→Blob 属放宽、两处实现仍 Promise<File> 结构兼容"
+        },
+        {
+          "criterion": "t17/t18 三个改名文件与 HEAD 逐字节相同",
+          "status": "passed",
+          "evidence": "git hash-object 与 git rev-parse HEAD:<path> 一致：skeleton-wiring c27c4f66…、stage-drag 0b4c1621…、project-switch-baseline 121da1ce…"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1890 passed | 10 skipped (1900)"
+        },
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "vue-tsc --noEmit 无输出"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "eslint . 无输出"
+        },
+        {
+          "command": "cargo test --lib (apps/playground/src-tauri)",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "test result: ok. 123 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.68s"
+        },
+        {
+          "command": "文件系统 grep 全仓 @tauri-apps（排除 node_modules/dist/target/src-tauri/gen/.git）",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "8 命中，全部合规：playground package.json:21,25 / vite.config.ts:51 / src/main.ts:10(S-43 已登记) / adapters package.json:17 / tauri-invoke.ts:12,34,40"
+        },
+        {
+          "command": "文件系统 grep packages/engine/src/contracts/** 查 export function / AbortSignal|HTMLElement / DOM 词面",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "export function 0；AbortSignal|HTMLElement 0；DOM 词面仅 6 处注释里的 URL 字样"
+        },
+        {
+          "command": "node 临时脚本（TS 编译 API 逐名枚举导出面）",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "contracts/index.ts 115/0；engine/src/index.ts 170/0；adapters/src/index.ts 61/0；ui/src/index.ts 82/0；editor/src/index.ts 167/0"
+        },
+        {
+          "command": "git hash-object / git rev-parse HEAD:<path> 比对三个改名文件",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "三个文件 blob hash 与 HEAD 逐一相同（identical=True）"
+        },
+        {
+          "command": "git status --porcelain（收尾确认）",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "10 条 = 3 个 .agent-teams 状态文件 + 7 个 t19 源文件；untracked 0（临时脚本已删）"
+        }
+      ]
     },
     {
       "id": "t16",
@@ -1778,17 +1924,86 @@
       "id": "t19",
       "subject": "T02-07 · 契约层 DOM 类型中立化（平台句柄收口）",
       "description": "【背景】T02-01 把 `ProjectFileSource` / `LastProjectHandleStore` / `DiagnosticSupply` 上移到 `packages/engine/src/contracts/platform/ports.ts` 时**原样搬运**，因此把 DOM 类型带进了契约层。这与 `.rules.md:164`「契约只用语言核心类型表达，不出现平台专属类型」以及模块 01 的 T01-03（剔除 `AbortSignal` / `HTMLElement`）相冲。本条负责收口。\n\n【现状实测（2026-10-08）】\n- `packages/engine/src/contracts/platform/ports.ts:54` `export interface ProjectFileSource {`，其中 `file(path: string): Promise<File>;`\n- `packages/engine/src/contracts/platform/ports.ts:71 load(): Promise<FileSystemDirectoryHandle | undefined>;` / `:72 save(handle: FileSystemDirectoryHandle): Promise<void>;`\n- 真实消费/构造点：`packages/adapters/src/resources/directorySource.ts:420-424`（`BlobUrlOptions.createObjectURL?: (file: File) => string`）、`:434`（`const create = options.createObjectURL ?? ((file: File) => URL.createObjectURL(file));`）、`:446-447`（`source.file(path).then((file) => { const url = create(file); ... })`）；`apps/editor/src/main.ts:73,149,164`；测试侧 `tests/adapters/resources/directorySource.test.ts`、`tests/adapters/resources/lastProjectStore.test.ts:20-21,149`、`tests/editor/save.test.ts:68-82`（内存盘替身 `new File([text], ...)`）。\n\n【收口口径（与 T01-03 的 `AbortHandle` 同构，务必照此做）】\n1. **`file()` 的返回值中立化**：契约里不再出现 `File`，改为中立句柄（例如 `interface BlobHandle { readonly kind: \"blob\" }` 之类的具名契约类型 + 实际方法面，具体形状由你定，但**必须具名进 contracts**，不得 4 处内联字面量）。宿主侧（`packages/adapters/src/resources/directorySource.ts`）在 `URL.createObjectURL` 前窄化回 `Blob`；`BlobUrlOptions.createObjectURL` 的形参同步跟随。\n2. **`LastProjectHandleStore` 的两个 `FileSystemDirectoryHandle` 改 `unknown`**，宿主侧（`apps/editor/src/main.ts:73,149,164` 等）窄化回真实 DOM 类型。`packages/adapters/src/resources/directorySource.ts:815` 已有 `function isDirectoryHandleLike(value: unknown): value is FileSystemDirectoryHandle`（`:846-852` 同款）——运行时校验这一半已经在了，缺的只是类型面；请复用它而不是新写一份。\n3. **`DiagnosticSupply` 不含 DOM 类型**，不需要动。\n\n【硬约束】\n- **红线**：不得改任何断言语义、不得放宽用例、不得减用例；`test:unit` 必须仍是 **142 文件 / 1897 用例**（`140 passed | 2 skipped (142)` / `1887 passed | 10 skipped (1897)`）。\n- 契约层 `AbortSignal` / `HTMLElement` / `File` / `FileSystemDirectoryHandle` / `Blob` / `URL` 必须归零（`packages/engine/src/contracts/**` 全扫）。\n- 类型必须**具名**进 `packages/engine/src/contracts/platform/entities.ts`（或 `ports.ts`，按语义定），不得写成内联对象字面量。\n- 注释按用户 2026-10-08 明令的面向读者口径重写，**不得原样搬运**；禁止任务号 / 缺陷号 / 规约号（含 `§`）/ 锚点代号 / 批次代号 / 内部缩写代号 / 表情符号 / 审计叙事。\n- **检索纪律**：`git grep` 看不见未跟踪文件；新目录（如 `packages/engine/src/shared/`、`packages/adapters/src/platform/`、`apps/editor/src/{contracts,domain,app,ui,infra,shared}/`）必须用**文件系统 grep** 复核。\n- 不得跑 `pnpm build` / `pnpm tauri build`；不代提交。\n\n【依赖】T02-01 必须先落地（本任务基于上移后的位置施工）。\n\n【验收】\n1. `packages/engine/src/contracts/**` 下 `AbortSignal|HTMLElement|FileSystemDirectoryHandle|\\bFile\\b|Blob` 全扫 0 命中。\n2. 上移后的三个供给契约在 `packages/engine/src/contracts/**` 下各只有 1 处声明。\n3. `pnpm typecheck` exit 0；`pnpm lint` exit 0。\n4. `pnpm test:unit` = 142 文件 / 1897 用例，与基线逐位一致。\n5. 报告须含：每个类型改前/改后逐行 + 每处宿主侧窄化落点 + 契约层 DOM 类型归零取证 + 测试文件未被改动的取证（若确有必须的类型收窄，须逐处列出并说明为什么是收窄而非放宽）。",
-      "status": "in_progress",
+      "status": "completed",
       "assignee": "adapters-editor",
       "dependencies": [
         "t11"
       ],
       "attempt": 1,
       "createdAt": 1791449171259,
-      "updatedAt": 1791451034042,
+      "updatedAt": 1791452571986,
       "kind": "work",
       "attemptId": "d9dc948c-0027-49e9-b81a-91cf337e0e80",
-      "reassigning": false
+      "reassigning": false,
+      "output": "T02-07 契约层 DOM 类型中立化（平台句柄收口）完成。7 个文件改动，+51/-23 行，行为零变化。\n\n【一、每个类型改前 → 改后逐行】\n\n① `packages/engine/src/contracts/platform/entities.ts` 新增具名契约接口（+12 行，插在 `ProjectWriteReport` 之后，现 `:26-36`）：\n    `export interface ProjectFileHandle { /** 字节长度（真实文件对象天然满足） */ readonly size: number; }`\n    注释（面向读者口径）：资源文件句柄 = 按逻辑路径取到的文件内容、供宿主生成临时地址用的中立形态；契约层只用语言核心类型表达，故这里只承诺「它是一份有字节长度的文件内容」；宿主在自己运行环境里收窄回真实文件对象，收窄只发生在宿主侧。\n    **是具名契约接口，不是内联对象字面量**（与 T01-03 的 `AbortHandle` 同构；全仓 `ProjectFileHandle` 3 处：`entities.ts:33` 声明、`ports.ts:8` 导入、`ports.ts:66` 引用）。\n    `DiagnosticSupply`（`:42`）不含 DOM 类型，未动。\n\n② `packages/engine/src/contracts/platform/ports.ts`（+18/-14）：\n    - `:6-10` 导入块：`import type { DegradedOpen, ProjectWriteReport }` → 多行 `{ DegradedOpen, ProjectFileHandle, ProjectWriteReport }`。\n    - `ProjectFileSource.file()`：`file(path: string): Promise<File>;` → `file(path: string): Promise<ProjectFileHandle>;`（现 `:66`）；其上方注释「按逻辑路径取文件对象（Blob URL 供给用…）」→「按逻辑路径取文件内容（生成临时地址用；不存在必须抛错）」。\n    - `LastProjectHandleStore`：`load(): Promise<FileSystemDirectoryHandle | undefined>;` → `/** 未存过、或存的东西不是目录形状时返回 `undefined` */ load(): Promise<unknown>;`；`save(handle: FileSystemDirectoryHandle): Promise<void>;` → `save(handle: unknown): Promise<void>;`（现 `:77-81`）；头注释加一段说明「句柄在这里是不透明值（`unknown`）：形状校验由实现方在存取时做掉，取用方拿到的是**已经校验过**的句柄，收窄回自己运行环境的目录类型即可」。\n    - 注释中性化（同一口径，读者读不懂内部缩写）：`:15`「短生命周期 Blob URL」→「短生命周期临时地址」；`:19`「坏 URL」→「坏地址」；`:21`「Blob URL 用后 revoke；静态 URL」→「临时地址用后 revoke；静态地址」；`:47`「File System Access 目录句柄」→「目录选择器给出的目录句柄」；`:55`「原始文本 / 文件对象」→「原始文本 / 文件内容」、`:56`「File System Access 句柄」→「目录句柄」；`:70`「句柄是可结构化克隆对象」→「目录句柄是可结构化克隆对象」。\n\n③ `packages/engine/src/contracts/project.ts:31`（队长授权，1 行注释）：\n    `/** 文件指纹（FSA \\`File\\` 与 Rust \\`metadata\\` 都能给出的最小面）——写回冲突检测用 */` → `/** 文件指纹（浏览器文件对象与 Rust \\`metadata\\` 都能给出的最小面）——写回冲突检测用 */`。`FileStamp` 类型本身未动。\n\n【二、每处宿主侧窄化落点】\n\n① `packages/adapters/src/resources/directorySource.ts`（+9/-6）：\n    - `BlobUrlOptions.createObjectURL?: (file: File) => string` → `(file: Blob) => string`（现 `:420-428`），并补注释说明「契约层给的是中立文件句柄，真正要喂给 `URL.createObjectURL` 的是它背后的文件内容，收窄由本文件在调用点完成」。\n    - 缺省实现 `const create = options.createObjectURL ?? ((file: File) => URL.createObjectURL(file));` → `((file: Blob) => URL.createObjectURL(file));`。\n    - **唯一窄化点**：`createSourceResourcePort` 内 `const url = create(file);` → `const url = create(file as Blob);`（现 `:448-451`），前置注释「中立句柄 → 文件内容：供给方给的就是本环境的真实文件对象，这里只把类型收回来」。\n    - `:815-821 isDirectoryHandleLike(value: unknown): value is FileSystemDirectoryHandle` **原样复用未动**（仍是唯一形状校验点，`createLastProjectStore.load()` 的 `:862` 调用它）——未新写第二份校验器。\n    - 两处 `file()` 实现（`createHandleFileSource` 的 `:225-228`、`createFileListFileSource` 的 `:334-336`）仍声明 `Promise<File>`：返回真实 `File` 对 `Promise<ProjectFileHandle>` 协变可赋值，无需改动。\n\n② `apps/editor/src/main.ts:216-221`（+2/-1）：\n    `lastProject.value = lastProjectEntryFor(handle);` → `lastProjectEntryFor(handle as FileSystemDirectoryHandle);`，前置注释「形状已由 store 在读出时校验过，这里只把类型收回本环境的目录句柄」。\n    `:73`/`:149`/`:164` 三个函数签名**保持 DOM 类型不变**（其入参来自 `pickProjectDirectory()` 的 DOM 类型结果，不走 `unknown` 契约面）。\n    源码互锁字面量保留完好：`lastProjectEntryFor(handle as FileSystemDirectoryHandle)` 仍含 `lastProjectEntryFor(handle)` 子串，`lastProjectStore.load()` 未动。\n\n【三、契约层平台类型归零取证】\n\n机械 grep（模式 `AbortSignal|HTMLElement|FileSystemDirectoryHandle|\\bFile\\b|Blob`，**区分大小写**、文件系统扫描含未跟踪文件）在 `packages/engine/src/contracts/**`：**0 命中**。\n判读提醒：不区分大小写时 `platform/ports.ts:66` 会假阳性命中方法名 `file(`（`\\bFile\\b` 忽略大小写后匹配 `file`）——我已逐 alternative 验证六个名字全部 `False`，该命中纯属大小写折叠。\n**更强的独立证据**：把契约层单独编译、`lib` 只给 `[\"ES2022\"]`（**完全不给 DOM**），`npx tsc -p <临时 tsconfig> ` exit 0 —— 契约层在没有任何 DOM 类型的环境下可编译，这是「不含平台专属类型」的直接证明。\n含 `URL` 的并集模式余 10 处，全部是**端口语义说明**（`save.ts:20,42` data URL 缩略图；`media/ports.ts:3,10,24` 已解析 URL；`media/entities.ts:44` 同 URL 重播；`platform/ports.ts:22 release(url)`、`:66 file(...)` 为形参名/方法名），非平台类型引用，按队长裁定保留不动。\n\n【四、测试文件改动取证 —— 仅 2 处纯类型适配，断言文本零改动】\n\n`git diff -U0 -- tests/ | Select-String '^[-+].*expect\\('` 计数 = **0**（断言文本一行未改）。\n\n① `tests/adapters/resources/directorySource.test.ts`（+3/-3）：`blobUrls()` 形参注解 `File` → `Blob`（跟随 `BlobUrlOptions.createObjectURL` 收窄；`(file: File) => string` 在 `strictFunctionTypes` 下不再可赋值）；假 URL 工厂内 `file.name` → `(file as File).name`（`Blob` 无 `name`，纯类型收窄）。**是收窄不是放宽**：假工厂实际收到的仍是供给方给的 `File`，断言 `resolves.toContain(\"later.png\")` 依赖的文件名语义完全不变。\n② `tests/adapters/resources/lastProjectStore.test.ts`（+3/-1）：`const loaded = await ...load();` → `(await ...load()) as FileSystemDirectoryHandle | undefined;`（`load()` 现返回 `unknown`，不收窄则 `loaded?.name` 编译不过）。断言 `expect(loaded?.name).toBe(\"Resources\")` / `expect(loaded).toBe(handle)` 文本逐字未动；`:149` 既有的 `as unknown as FileSystemDirectoryHandle` 保留原样。\n③ `tests/editor/save.test.ts` **未改动**（`memoryDisk` 的 `file(): Promise<File>` 对 `Promise<ProjectFileHandle>` 协变可赋值），与队长同意一致。\n④ `tests/adapters/resources/encrypted-project.test.ts` **未改动**（同上；其 `?raw` 源级断言只查 `detectEncryptedProject(` / `encryptedProjectMessage(` / `.enc` 相关字符串，与本任务无关）。\n\n【五、声明唯一性】`interface (ProjectFileSource|LastProjectHandleStore|DiagnosticSupply|ProjectFileHandle)` 全仓（排除 node_modules）4 处，各 1 处：`entities.ts:33` ProjectFileHandle、`entities.ts:42` DiagnosticSupply、`ports.ts:58` ProjectFileSource、`ports.ts:77` LastProjectHandleStore。均经 `platform/index.ts` 的 `export *` 与 `contracts/index.ts` 对外可见。\n\n【六、门禁】`pnpm typecheck` exit 0 无输出；`pnpm lint` exit 0 无告警；`pnpm test:unit` = `Test Files 140 passed | 2 skipped (142)` / `Tests 1890 passed | 10 skipped (1900)` —— 文件数 142、用例总数 1900 与队长给的基线**逐位一致**，我未新增/删除任何用例，未改任何断言语义。\n\n【七、注释口径】改动文件扫描 `[①②③④⑤⑥⑦⑧⑨⑩§]|T0[12]-|批次|任务号|缺陷号|规约号|锚点代号|审计|取证`：`packages/engine/src/contracts/platform/**`、`packages/engine/src/contracts/project.ts`、`packages/adapters/src/resources/directorySource.ts`、`tests/adapters/resources/**` 全部 0 命中。\n\n【八、过程记录（一项自查发现，已处理）】为比对 prettier 在改动前版本的表现，我在仓库根临时建过 `.tmp-prettier-head/`（把 `git show HEAD:<path>` 的内容写成文件），该目录被 `eslint .` 扫到并报出 52 个解析错误 —— 已确认路径后删除，删除后 `pnpm lint` 恢复 exit 0。**教训：仓库根下的临时目录会被 `eslint .` 全量扫到，比较历史版本应直接放在系统临时目录（我后续改用 `$env:TEMP` 即无此问题）。**\n另：`npx prettier --check` 对改动文件报的格式告警全部在**未触碰的行**上（该仓库实际格式风格比 prettier 默认 80 列更宽，`pnpm lint` 才是门禁）；我唯一引入的那一处已按 prettier 建议折行对齐，其余保留原样以免越界改动。\n\n未跑 `pnpm build` / `pnpm tauri build`，未代提交。",
+      "changedPaths": [
+        "packages/engine/src/contracts/platform/entities.ts",
+        "packages/engine/src/contracts/platform/ports.ts",
+        "packages/engine/src/contracts/project.ts",
+        "packages/adapters/src/resources/directorySource.ts",
+        "apps/editor/src/main.ts",
+        "tests/adapters/resources/directorySource.test.ts",
+        "tests/adapters/resources/lastProjectStore.test.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "契约层 AbortSignal|HTMLElement|FileSystemDirectoryHandle|\\bFile\\b|Blob 全扫 0 命中",
+          "status": "passed",
+          "evidence": "区分大小写的文件系统扫描（含未跟踪文件）在 packages/engine/src/contracts/** 命中 0。更强证据：契约层单独编译且 lib 仅 [\"ES2022\"]（不给 DOM），npx tsc -p 临时 tsconfig exit 0。"
+        },
+        {
+          "criterion": "三个供给契约各只有 1 处声明",
+          "status": "passed",
+          "evidence": "全仓（排除 node_modules）interface (ProjectFileSource|LastProjectHandleStore|DiagnosticSupply) 各 1 处：entities.ts:42、ports.ts:58、ports.ts:77；新增 ProjectFileHandle 声明 1 处 entities.ts:33。"
+        },
+        {
+          "criterion": "pnpm typecheck / pnpm lint exit 0",
+          "status": "passed",
+          "evidence": "pnpm typecheck（vue-tsc --noEmit）exit 0 无输出；pnpm lint（eslint .）exit 0 无告警。"
+        },
+        {
+          "criterion": "pnpm test:unit 与基线逐位一致（142 文件 / 1900 用例）",
+          "status": "passed",
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1890 passed | 10 skipped (1900)。文件数与用例总数与队长给的基线逐位一致。"
+        },
+        {
+          "criterion": "报告含每个类型改前/改后逐行 + 每处宿主侧窄化落点 + 契约层 DOM 类型归零取证 + 测试文件改动取证",
+          "status": "passed",
+          "evidence": "见 output 一~四节：三个契约类型逐行改前/改后；两处宿主侧窄化落点（directorySource.ts:448 的 create(file as Blob)、main.ts:219 的 handle as FileSystemDirectoryHandle）；契约层归零双重取证；测试侧仅 2 处纯类型适配且 expect 改动计数为 0。"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ vue-tsc --noEmit — 无输出、无错误。"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ eslint . — 无告警。首轮曾因我在仓库根临时建的 .tmp-prettier-head/ 报 52 个解析错误，删除该目录后复跑 exit 0。"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1890 passed | 10 skipped (1900)；Duration 13.66s。"
+        },
+        {
+          "command": "npx tsc -p <临时 tsconfig：lib=[\"ES2022\"]，无 DOM，include=packages/engine/src/contracts/**/*.ts>",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "契约层在完全没有 DOM 类型定义的环境下编译通过 —— 直接证明契约面不含平台专属类型。"
+        },
+        {
+          "command": "git diff -U0 -- tests/ | Select-String '^[-+].*expect\\(' 计数",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "计数 = 0：本次未改动任何断言文本，测试侧只有 2 处形参类型注解与 1 处类型收窄。"
+        }
+      ]
     }
   ],
   "taskSeq": 19,

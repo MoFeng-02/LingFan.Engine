@@ -216,7 +216,8 @@ const opener: ProjectOpener = {
 void lastProjectStore.load().then((handle) => {
   if (handle !== undefined) {
     // 有持久化句柄但尚未在本会话验证过权限：reopen 内部按需申请（按钮点击 = 手势）
-    lastProject.value = lastProjectEntryFor(handle);
+    // 形状已由 store 在读出时校验过，这里只把类型收回本环境的目录句柄
+    lastProject.value = lastProjectEntryFor(handle as FileSystemDirectoryHandle);
   }
 });
 

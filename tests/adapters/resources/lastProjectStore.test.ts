@@ -120,7 +120,9 @@ describe("createLastProjectStore（句柄持久化）", () => {
     const factory = makeMemoryIdbFactory();
     const handle = fakeHandle("Resources");
     await createLastProjectStore(factory).save(handle);
-    const loaded = await createLastProjectStore(factory).load();
+    // 契约把句柄声明为不透明值：形状校验在 store 内，取用方按本环境的类型收回来
+    const loaded = (await createLastProjectStore(factory).load()) as
+      FileSystemDirectoryHandle | undefined;
     expect(loaded?.name).toBe("Resources");
     expect(loaded).toBe(handle); // IDB 结构化克隆语义下真实浏览器返回克隆；替身直传引用
   });
