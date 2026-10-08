@@ -10,27 +10,8 @@
  * ③ **`--force` 需显式勾选且二次确认**（它会**清空输出目录**）。
  */
 import { computed, ref } from "vue";
+import type { PackRequest, PackResult } from "../contracts";
 import { useDialog } from "../dialogInjection";
-
-/** 打包请求（与宿主 `packRequestOf` 的入参同名） */
-export interface PackRequest {
-  /** 工程根（明文，绝对路径） */
-  readonly input: string;
-  /** 输出根（加密包，绝对路径） */
-  readonly output: string;
-  readonly force?: boolean;
-  readonly strict?: boolean;
-  readonly dist?: string;
-}
-
-/** 打包结果（宿主回传） */
-export interface PackResult {
-  readonly ok: boolean;
-  readonly reason?: string;
-  readonly exitCode?: number;
-  readonly stdout?: string;
-  readonly stderr?: string;
-}
 
 const props = defineProps<{
   /** 是否有本地宿主（无 = 不可打包，如实告知） */

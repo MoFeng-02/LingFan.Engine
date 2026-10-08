@@ -26,7 +26,7 @@ import {
 } from "../../packages/engine/src/data/format";
 /** 引擎深校验源（只读提取 op 面；跨包字符串契约互锁，同 bridge_check.rs 手法） */
 import ENGINE_FORMAT_SOURCE from "../../packages/engine/src/data/format.ts?raw";
-import { interpolateText } from "../../packages/engine/src/runtime/expr";
+import { interpolateText } from "@lingfan/engine";
 
 /** format.ts 深校验 op 集（validateCommand switch 覆盖面）——必填删除需两侧同拒 */
 const DEEP_FORMAT_OPS = new Set([

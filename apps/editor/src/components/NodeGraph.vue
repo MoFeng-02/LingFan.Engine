@@ -8,6 +8,7 @@ import {
   ref,
 } from "vue";
 import type { Story } from "@lingfan/engine";
+import { EDITOR_API_KEY } from "../contracts";
 import { useDialog } from "../dialogInjection";
 import {
   branchPointerToCommand,
@@ -29,13 +30,7 @@ import {
  */
 const props = defineProps<{ story: Story; selectedId: string }>();
 
-interface EditorApi {
-  select(pointer: string | null): void;
-  selectColumn(id: string): void;
-  /** 拉线建分支（见上）；非法组合返回 false */
-  connectBranch(fromColumnId: string, toColumnId: string, optionText?: string): boolean;
-}
-const api = inject<EditorApi>("editorApi")!;
+const api = inject(EDITOR_API_KEY)!;
 /** 应用内对话框（替代原生 alert/prompt） */
 const dialog = useDialog();
 

@@ -25,7 +25,7 @@ import {
   type ProjectWriteReport,
   type ProjectWriterPort,
 } from "@lingfan/engine";
-import { defaultInvoke, type TauriInvoke } from "./projectFilesTauri";
+import { defaultInvoke, type TauriInvoke } from "../platform";
 
 export interface TauriProjectWriterOptions {
   /** invoke 可注入（测试替身）；缺省 = 真实 Tauri invoke（动态 import） */

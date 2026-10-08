@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, ref, watch } from "vue";
 import type { Story } from "@lingfan/engine";
+import { EDITOR_API_KEY } from "../contracts";
 
 /**
  * JSON 视图：只读镜像 → 可编辑（结构化编辑的最直接形态）。
@@ -9,10 +10,7 @@ import type { Story } from "@lingfan/engine";
  */
 const props = defineProps<{ story: Story }>();
 
-interface EditorApi {
-  replaceAll(next: Story, label: string): void;
-}
-const api = inject<EditorApi>("editorApi")!;
+const api = inject(EDITOR_API_KEY)!;
 
 const draft = ref(JSON.stringify(props.story, null, 2));
 const dirty = ref(false);

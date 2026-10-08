@@ -30,7 +30,8 @@ describe("MinigameRegistry（fail-closed 注册制）", () => {
     const registry = createMinigameRegistry();
     let mountedHost: HTMLElement | undefined;
     registry.register("counter", async (host, ctx) => {
-      mountedHost = host;
+      // 契约只承诺「有个可挂载的容器」，不承诺类型；替身宿主在这里收窄回元素
+      mountedHost = host as HTMLElement;
       expect(ctx.config).toEqual({ target: 3 });
       expect(ctx.signal.aborted).toBe(false);
       return { outcome: "success", score: ctx.config.target as number };

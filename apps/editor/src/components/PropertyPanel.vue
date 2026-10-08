@@ -7,14 +7,12 @@ import {
   elementLabel,
   getAtPointer,
 } from "@lingfan/editor";
+import { EDITOR_API_KEY } from "../contracts";
 import FieldRow from "./FieldRow.vue";
 
 const props = defineProps<{ story: Story; pointer: string | null }>();
 
-interface EditorApi {
-  select(pointer: string | null): void;
-}
-const api = inject<EditorApi>("editorApi")!;
+const api = inject(EDITOR_API_KEY)!;
 
 /**
  * 选中态**四态**：`none` / `non-command` / `unknown-op` / `command`。

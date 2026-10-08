@@ -267,7 +267,8 @@ describe("interaction · 中断与重放（回溯一致性）", () => {
     const payload = mountPayload(events);
     expect(payload, "应已挂载").toBeDefined();
     const onAbort = vi.fn();
-    payload!.signal.addEventListener("abort", onAbort);
+    // 契约只承诺 `aborted` 可轮询；订阅中止事件时收窄回本运行环境的中止类型
+    (payload!.signal as AbortSignal).addEventListener("abort", onAbort);
     engine.back();
     expect(onAbort).toHaveBeenCalled();
     expect(payload!.signal.aborted).toBe(true);

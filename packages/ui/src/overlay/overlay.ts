@@ -23,11 +23,11 @@ import type {
   StoryEngine,
 } from "@lingfan/engine";
 import {
+  createStateReader,
   DEFAULT_LAYER_Z,
-  INSTANCE_Z_KEYS,
-  SYS,
   instanceZLayer,
   resolveInstanceZ,
+  SYS,
 } from "@lingfan/engine";
 import { isGameInputTarget } from "../input/scope";
 import { Typewriter } from "../dialogue/typewriter";
@@ -204,6 +204,7 @@ export function createNarrativeOverlay(
   const { container, engine } = options;
   const report = options.onError ?? ((m: string) => console.error(m));
   const layerZ: LayerZTable = options.layerZ ?? DEFAULT_LAYER_Z;
+  const reader = createStateReader(engine);
 
   const root = el(container, "lf-overlay", 0);
   const stage = el(root, "lf-stage", resolveInstanceZ("stage", undefined, layerZ));
@@ -304,23 +305,14 @@ export function createNarrativeOverlay(
    * 两个键分属不同 SSOT 条目，任一到达都重读**成对数据**（避免只更新一半）。
    */
   function readMenuOptions(): void {
-    const texts = engine.get(SYS.menuOptions);
-    const targets = engine.get(SYS.menuTargets);
-    const textList = Array.isArray(texts) ? texts.map(String) : [];
-    const targetList = Array.isArray(targets) ? targets.map(String) : [];
-    menuOptions = textList.map((text, i) => ({
-      text,
-      target: targetList[i] ?? "",
-    }));
+    menuOptions = reader.menuChoices();
   }
 
   /** 说话人颜色派生（幂等）：命令覆盖色 > 角色定义色 > 空串 */
   function refreshSpeakerColor(): void {
-    const override = engine.get(SYS.currentDialogColor);
+    const override = reader.dialogColor();
     const def = engine.getCharacter(speaker);
-    speakerColor =
-      (typeof override === "string" && override !== "" ? override : def?.color) ??
-      "";
+    speakerColor = (override !== "" ? override : def?.color) ?? "";
   }
 
   function evalDisable(expression: string): boolean | null {
@@ -378,11 +370,8 @@ export function createNarrativeOverlay(
 
   function renderDialogue(): void {
     const template =
-      options.dialogueTemplates?.resolve(
-        typeof engine.get(SYS.dialogTemplate) === "string"
-          ? (engine.get(SYS.dialogTemplate) as string)
-          : null,
-      ) ?? builtinBubbleTemplate;
+      options.dialogueTemplates?.resolve(reader.dialogTemplate()) ??
+      builtinBubbleTemplate;
     const built = template({
       speaker,
       speakerColor,
@@ -514,7 +503,7 @@ export function createNarrativeOverlay(
       return;
     }
     if (key === SYS.currentDialogSpeaker) {
-      speaker = typeof value === "string" ? value : "";
+      speaker = reader.dialogSpeaker();
       refreshSpeakerColor();
       renderDialogue();
     } else if (key === SYS.currentDialogColor) {
@@ -522,33 +511,35 @@ export function createNarrativeOverlay(
       refreshSpeakerColor();
       renderDialogue();
     } else if (key === SYS.currentDialogText) {
-      text = typeof value === "string" ? value : "";
+      text = reader.dialogText();
       typewriter = new Typewriter(text, textSpeed);
       shownText = typewriter.visible;
       renderDialogue();
     } else if (key === SYS.waiting) {
-      waiting = typeof value === "string" ? value : "none";
+      const next = reader.waiting();
+      waiting = next === "" ? "none" : next;
       canAdvance = waiting === "dialog";
       renderDialogue();
       renderChoices();
     } else if (key === SYS.dialogVisible) {
-      dialogHidden = value === "hide";
+      dialogHidden = reader.dialogHidden();
       renderDialogue();
     } else if (key === SYS.menuPrompt) {
-      menuPrompt = typeof value === "string" ? value : "";
+      menuPrompt = reader.menuPrompt();
       renderChoices();
     } else if (key === SYS.menuOptions || key === SYS.menuTargets) {
       readMenuOptions();
       renderChoices();
     } else if (key === SYS.inputPrompt) {
-      inputPrompt = typeof value === "string" ? value : "";
+      inputPrompt = reader.inputPrompt();
       renderChoices();
     } else if (key === SYS.nvlMode) {
-      nvlMode = typeof value === "string" ? value : "none";
+      const next = reader.nvlMode();
+      nvlMode = next === "" ? "none" : next;
     } else if (key === SYS.nvlBuffer) {
-      nvlBuffer = Array.isArray(value) ? value.map(String) : [];
+      nvlBuffer = reader.nvlLines();
     } else if (key === SYS.elements) {
-      elementList = Array.isArray(value) ? (value as ElementInstance[]) : [];
+      elementList = reader.elements();
       renderElements();
     }
     options.onView?.(view());
@@ -585,33 +576,23 @@ export function createNarrativeOverlay(
   }
 
   function sync(): void {
-    const read = (key: string): unknown => engine.get(key);
-    const str = (key: string): string => {
-      const v = read(key);
-      return typeof v === "string" ? v : "";
-    };
-    speaker = str(SYS.currentDialogSpeaker);
+    speaker = reader.dialogSpeaker();
     refreshSpeakerColor();
-    text = str(SYS.currentDialogText);
-    waiting = str(SYS.waiting) === "" ? "none" : str(SYS.waiting);
+    text = reader.dialogText();
+    const waitState = reader.waiting();
+    waiting = waitState === "" ? "none" : waitState;
     canAdvance = waiting === "dialog";
-    menuPrompt = str(SYS.menuPrompt);
+    menuPrompt = reader.menuPrompt();
     readMenuOptions();
-    inputPrompt = str(SYS.inputPrompt);
-    nvlMode = str(SYS.nvlMode) === "" ? "none" : str(SYS.nvlMode);
-    const nb = read(SYS.nvlBuffer);
-    nvlBuffer = Array.isArray(nb) ? nb.map(String) : [];
-    dialogHidden = read(SYS.dialogVisible) === "hide";
-    const els = read(SYS.elements);
-    elementList = Array.isArray(els) ? (els as ElementInstance[]) : [];
+    inputPrompt = reader.inputPrompt();
+    const mode = reader.nvlMode();
+    nvlMode = mode === "" ? "none" : mode;
+    nvlBuffer = reader.nvlLines();
+    dialogHidden = reader.dialogHidden();
+    elementList = reader.elements();
     typewriter = new Typewriter(text, textSpeed);
     shownText = typewriter.visible;
-    const z: Partial<Record<LayerId, number>> = {};
-    for (const [layer, key] of Object.entries(INSTANCE_Z_KEYS)) {
-      const v = read(key as string);
-      if (typeof v === "number") z[layer as LayerId] = v;
-    }
-    zOverride = z;
+    zOverride = reader.instanceZOverrides();
     applyZ();
     renderDialogue();
     renderChoices();

@@ -10,6 +10,7 @@
  * 本组件只渲染 + 收集折叠意图（与「编辑器 = 纯映射器」一致）。
  */
 import { computed, inject, ref } from "vue";
+import { EDITOR_API_KEY } from "../contracts";
 import {
   diagnosticSummaryText,
   filterDiagnosticsBySeverity,
@@ -20,13 +21,8 @@ import {
   type SeverityFilter,
 } from "@lingfan/editor";
 
-interface EditorApi {
-  select(pointer: string | null): void;
-  /** 定位揭示：选中 + 切回时间线 + 滚动到目标行 */
-  reveal(pointer: string): void;
-}
 const props = defineProps<{ diagnostics: Diagnostic[] }>();
-const api = inject<EditorApi>("editorApi")!;
+const api = inject(EDITOR_API_KEY)!;
 
 /** 分组判据在纯函数里（错误组恒在前、error 组不折叠）。
  *  汇总（summary）吃**全量**诊断——它是「严重度普查」，筛选不得改变计数；

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, inject, ref, type Ref } from "vue";
+import { computed, inject, ref } from "vue";
 import type { Story, StoryColumn } from "@lingfan/engine";
-import { layoutColumns, sceneTypeBadgeOf, type ColumnGroupingView } from "@lingfan/editor";
+import { layoutColumns, sceneTypeBadgeOf } from "@lingfan/editor";
 import { decideAddColumn } from "../addColumnIntent";
+import { COLUMN_GROUPING_API_KEY, EDITOR_API_KEY } from "../contracts";
 import { useDialog } from "../dialogInjection";
 
 /**
@@ -13,27 +14,12 @@ import { useDialog } from "../dialogInjection";
  */
 const props = defineProps<{ story: Story; selectedId: string }>();
 
-interface EditorApi {
-  select(pointer: string | null): void;
-  selectColumn(id: string): void;
-  addColumn(kind: "flow" | "scene", hint?: string, type?: "game" | "menu" | "ui"): void;
-  renameColumn(from: string, to: string): void;
-  removeColumn(id: string): void;
-}
-const api = inject<EditorApi>("editorApi")!;
+const api = inject(EDITOR_API_KEY)!;
 /** 应用内对话框（替代原生 prompt/confirm/alert） */
 const dialog = useDialog();
 
-/** 分组视图 API（与 `editorApi` 分离：视图偏好不走会话提交） */
-interface ColumnGroupingApi {
-  view: Ref<ColumnGroupingView>;
-  addGroup(name: string): void;
-  renameGroup(groupId: string, name: string): void;
-  removeGroup(groupId: string): void;
-  assignColumn(columnId: string, groupId: string | null): void;
-  toggleCollapsed(groupId: string): void;
-}
-const grouping = inject<ColumnGroupingApi>("columnGroupingApi")!;
+/** 分组视图 API（与编辑操作面分离：视图偏好不走会话提交） */
+const grouping = inject(COLUMN_GROUPING_API_KEY)!;
 
 /** 拖拽 MIME（自定义类型 + text/plain 兜底）与「未归类」区的落点键 */
 const DRAG_TYPE = "application/x-lingfan-column";

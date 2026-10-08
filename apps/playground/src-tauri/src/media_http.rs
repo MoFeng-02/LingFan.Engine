@@ -416,7 +416,7 @@ mod tests {
             .map(|(_, v)| v.as_str())
     }
 
-    /// 锚点 android-media-loopback：显式区间 → 206 + Content-Range + 字节与明文逐字节一致
+    /// 显式区间 → 206 + Content-Range + 字节与明文逐字节一致
     #[test]
     fn loopback_serves_exact_range_bytes() {
         let (ctx, plain) = fixture("lf3-loop-range");

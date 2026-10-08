@@ -2,7 +2,7 @@
  * 元素属性三面对齐互锁：**契约声明面 ↔ 编辑器表单面 ↔ 运行期消费面**。
  *
  * （8+1 个元素属性写了不生效且不报错）之所以能长期潜伏，是因为没有任何测试同时看
- * 这三面：`lf-engine-add-op` 的 5 处同步与 `bridge_check.rs` 的跨语言互锁都只覆盖
+ * 这三面：新增 op 时要同步的 5 处声明与 `bridge_check.rs` 的跨语言互锁都只覆盖
  * 「声明 ↔ schema」，不覆盖「**是否有消费者**」。本测试从 `packages/ui/src/element/*.ts`
  * **源码**提取真实读取的属性名（`props.x` / `pick(props, "a", "b")` / 解构），与
  * `ELEMENT_ATTRIBUTES` 求差集，并断言：

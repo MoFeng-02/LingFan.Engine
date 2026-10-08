@@ -7,6 +7,7 @@
  * 端点形状与 `server/host.ts` 对齐：`GET /__editor_host__/ping`。
  * 前端**不假设**宿主在：探测失败一律当「无宿主」，不抛错、不重试刷屏。
  */
+import type { WatchStatus } from "./contracts";
 
 /** 宿主端点（探测结果）；`baseUrl` 为 `undefined` 表示无宿主 */
 export interface LocalHostEndpoint {
@@ -110,16 +111,6 @@ export async function listHostFiles(
 }
 
 /* ——— 热重载（轮询 revision；不引入 SSE，避免回环服务留长连接） ——— */
-
-/** 监视状态（宿主回传） */
-export interface WatchStatus {
-  /** 变更计数（单调递增；前端只比大小，不关心绝对值） */
-  readonly revision: number;
-  /** 监视是否真的在跑（**不为真即"热重载不可用"**，前端据此如实显示） */
-  readonly watching: boolean;
-  /** 被监视的根（仅供显示） */
-  readonly root?: string;
-}
 
 /** 读一次监视状态（失败 ⇒ `undefined`，按"无此能力"处理，不抛） */
 export async function fetchWatchStatus(

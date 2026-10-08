@@ -1,9 +1,9 @@
 /**
- * 加密工程形态识别与无壳形态拒绝（锚点 `editor-open-encrypted-project`）
+ * 加密工程形态识别与无壳形态拒绝
  *
  * 验收集点：
  * 1. **判定规则**（存在任一 `.enc` 即加密工程；故事/资源/overlay 三类都算；明文根零误判）；
- * 2. **前置拒绝**（在读取任何文件之前抛——用替身 source 的 `text()` 调用计数取证）；
+ * 2. **前置拒绝**（在读取任何文件之前抛——用替身 source 的 `text()` 调用计数验证）；
  * 3. **提示可操作**（说清是什么 / 为什么读不了 / 现在怎么办），且**不装作能读**；
  * 4. **唯一判定点**（源级断言：故事循环里不再有第二份 `.enc` 判定；资源侧仍不做后缀特判）。
  */
@@ -17,7 +17,7 @@ import {
 import directorySourceSource from "../../../packages/adapters/src/resources/directorySource.ts?raw";
 import encryptedProjectSource from "../../../packages/adapters/src/resources/encryptedProject.ts?raw";
 
-/** 替身供给：只给路径与文本，**记录 text() 调用**（供「前置拒绝」取证） */
+/** 替身供给：只给路径与文本，**记录 text() 调用**（供「前置拒绝」验证） */
 function fakeSource(
   name: string,
   files: Record<string, string>,

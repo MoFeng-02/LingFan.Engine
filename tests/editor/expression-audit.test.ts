@@ -14,7 +14,7 @@ import {
   expr,
   type ExpressionWarning,
 } from "../../packages/editor/src/script";
-import { evaluateExpression } from "../../packages/engine/src/runtime/expr";
+import { evaluateExpression } from "@lingfan/engine";
 
 /** 注册表（每用例重新绑定——defineVars 是模块态）+ 取走本用例的警告 */
 const vars = defineVars({

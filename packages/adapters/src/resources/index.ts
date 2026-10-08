@@ -34,10 +34,10 @@ export {
   createTauriProjectFilesPort,
   watchTauriProjectFiles,
   type StoryWatcher,
-  type TauriInvoke,
-  type TauriListen,
   type TauriProjectFiles,
 } from "./projectFilesTauri";
+// Tauri 桥接契约由平台域统一定义，此处转发以保持资源域出口的类型面不变
+export type { TauriInvoke, TauriListen } from "../platform";
 export { createTauriEncryptedResourcePort } from "./resourceCrypto";
 /**
  * 加密工程形态识别（唯一判定点）：浏览器形态前置拒绝 + 可操作文案；

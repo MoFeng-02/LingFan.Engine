@@ -69,7 +69,7 @@ import StepLayout from "./components/StepLayout.vue";
 import PreviewHost from "./components/PreviewHost.vue";
 import DialogHost from "./components/DialogHost.vue";
 import LangWorkbench, { type LangSummary } from "./components/LangWorkbench.vue";
-import PackPanel, { type PackRequest, type PackResult } from "./components/PackPanel.vue";
+import PackPanel from "./components/PackPanel.vue";
 import EmptyState from "./components/EmptyState.vue";
 import LangView from "./components/LangView.vue";
 import JsonResourceView from "./components/JsonResourceView.vue";
@@ -81,6 +81,15 @@ import StatusBar from "./components/StatusBar.vue";
 import { viewOfKind } from "./dispatch";
 import { createDialogPort, DialogHostState } from "./dialog";
 import { DIALOG_PORT_KEY } from "./dialogInjection";
+import {
+  COLUMN_GROUPING_API_KEY,
+  COLUMN_PATHS_KEY,
+  EDITOR_API_KEY,
+  SELECTED_POINTER_KEY,
+  type EditorApiPort,
+  type PackRequest,
+  type PackResult,
+} from "./contracts";
 import { decideAddColumn } from "./addColumnIntent";
 import { detectLocalHost, fetchWatchStatus, pollWatch, type LocalHostEndpoint } from "./localHost";
 import { extractStoryKeys, groupKeysByStory, planOverlaySkeleton, type SkeletonLayoutChoice } from "@lingfan/editor";
@@ -136,7 +145,7 @@ let session = new EditorSession(props.initialStory);
  * 多文档中枢（资源管理器）：**一个资源 = 一个文档 = 一个会话**。
  *
  * 视图族零改动的接法：`session` 永远是**活动文档**的会话（下方 `bindActive` 重绑），
- * 13 个组件经 `provide("editorApi")` 消费的那份引用因此始终指向当前标签。
+ * 十一个组件经 `EDITOR_API_KEY` 消费的那份引用因此始终指向当前标签。
  * 标签切换 = 重绑 + 重投影状态，不触碰任何组件。
  */
 const workspace = new Workspace();
@@ -1169,7 +1178,7 @@ const saveTooltip = computed(() => {
 });
 
 /** 编辑 API：provide 给全部视图（FieldRow/时间线/列侧栏共用一套会话提交） */
-const api = {
+const api: EditorApiPort = {
   /** 字段/负载写入（pointer 指向字段值） */
   update(pointer: string, value: unknown): void {
     session.apply(`改 ${pointer}`, (s) => setAtPointer(s, pointer, value));
@@ -1395,7 +1404,7 @@ dialogState.subscribe(() => {
 });
 provide(DIALOG_PORT_KEY, dialog);
 
-provide("editorApi", api);
+provide(EDITOR_API_KEY, api);
 /**
  * 章节树的**路径面**（列 id → 来源文件路径）。
  *
@@ -1403,14 +1412,14 @@ provide("editorApi", api);
  * ⇒ 章节 `chapter1`）。生产者是文档集合（`workspace`），与标签栏**同源**
  * ⇒ 不额外维护第二份路径真相。
  */
-provide("columnPaths", columnPaths);
-provide("selectedPointer", selectedPointer);
+provide(COLUMN_PATHS_KEY, columnPaths);
+provide(SELECTED_POINTER_KEY, selectedPointer);
 
 /**
  * 列分组 API（与 `editorApi` 分离）：**不经 session 提交**——视图偏好不产生 undo
  * 单元、不置 dirty、不进故事 JSON（列序属叙事语义，分组只是作者视图偏好）。
  */
-provide("columnGroupingApi", {
+provide(COLUMN_GROUPING_API_KEY, {
   view: grouping,
   addGroup(name: string): void {
     commitGrouping(addGroup(grouping.value, name));

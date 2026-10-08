@@ -2,6 +2,7 @@
 import { computed, inject, ref, watch } from "vue";
 import type { Story } from "@lingfan/engine";
 import { parseTextStory, projectText, TextFormatError } from "@lingfan/engine";
+import { EDITOR_API_KEY } from "../contracts";
 
 /**
  * 文本模式：text.ts 双向投影。容错投影（projectText）——
@@ -12,10 +13,7 @@ import { parseTextStory, projectText, TextFormatError } from "@lingfan/engine";
  */
 const props = defineProps<{ story: Story }>();
 
-interface EditorApi {
-  replaceAll(next: Story, label: string): void;
-}
-const api = inject<EditorApi>("editorApi")!;
+const api = inject(EDITOR_API_KEY)!;
 
 const projection = ref(projectText(props.story));
 const draft = ref(projection.value.text);

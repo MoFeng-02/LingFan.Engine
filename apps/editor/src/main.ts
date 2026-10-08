@@ -31,7 +31,6 @@ import {
   loadProject,
   pickProjectDirectory,
   supportsDirectoryPicker,
-  type ProjectFileSource,
 } from "@lingfan/adapters";
 import {
   DEFAULT_LAYER_Z,
@@ -43,6 +42,7 @@ import {
   STORIES_DIR,
   type AudioPort,
   type LayerZTable,
+  type ProjectFileSource,
   type ProjectFilesPort,
   type ProjectWriteReport,
   type Story,

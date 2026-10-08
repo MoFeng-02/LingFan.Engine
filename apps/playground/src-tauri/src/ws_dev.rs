@@ -3,12 +3,12 @@
 //!
 //! 目标：外部浏览器（Vite 页面）复用宿主能力——**读工程 / 存档 / 平台信息**
 //! 三类最小暴露面（白名单 = Tauri 命令面的子集，同一命令函数、同一负载形状；
-//! 锚点 `ws-dev-bridge-parity` 结构性互锁：白名单 ⊆ `generate_handler!` 注册面）。
+//! 白名单 ⊆ `generate_handler!` 注册面，这一结构关系由本模块测试断言）。
 //!
 //! 协议（JSON 文本帧）：请求 `{"id":1,"cmd":"project_files","args":{}}` →
 //! 响应 `{"id":1,"ok":true,"data":...}` / `{"id":1,"ok":false,"error":"..."}`。
 //!
-//! 安全边界（锚点 `ws-dev-only-release-hardoff`）：仅绑定 `127.0.0.1`
+//! 安全边界：仅绑定 `127.0.0.1`
 //! （不对局域网开放）；端口 = `LFEN_WS_PORT`（缺省 1421，紧邻 Vite 1420）；
 //! 白名单外命令一律拒绝（未入白名单的 Tauri 命令同样拒绝——最小暴露面）。
 
@@ -234,7 +234,7 @@ mod tests {
         }
     }
 
-    // —— 锚点 ws-dev-bridge-parity：WS 白名单 ⊆ Tauri 注册面（同一契约的结构证明）——
+    // —— WS 白名单 ⊆ Tauri 注册面（同一契约的结构证明）——
 
     #[test]
     fn ws_whitelist_subset_of_tauri_registry() {
@@ -270,7 +270,7 @@ mod tests {
         }
     }
 
-    // —— 锚点 ws-dev-only-release-hardoff：release 编译期排除的源级断言 ——
+    // —— release 编译期排除的源级断言 ——
 
     #[test]
     fn ws_module_and_setup_are_debug_gated() {

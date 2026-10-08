@@ -78,12 +78,12 @@ pub fn run() {
             // 诊断探针已改前端 build-flag（VITE_LFEN_DIAG=1，src/diag.ts）；lfen_diag 命令保留为回传通道
             splash_then_show(app.handle());
             eprintln!("[lfen] setup: 窗口显示流程返回");
-            // 启动期窗口状态取证：前端探针会随页面节流一起冻结（日志往往只到启动后不到一秒），
+            // 启动期窗口状态心跳：前端探针会随页面节流一起冻结（日志往往只到启动后不到一秒），
             // 只有 Rust 侧心跳能区分「页面被节流」与「整个进程被挂起」——白屏归因的分水岭
             #[cfg(debug_assertions)]
             spawn_boot_probe(app.handle());
             // 开发期 WS 通道：debug 构建启动 127.0.0.1 监听（浏览器页面复用宿主能力）；
-            // release 编译期排除（锚点 ws-dev-only-release-hardoff）
+            // release 构建整段不参与编译（由 ws_dev 内的源级断言守护）
             #[cfg(debug_assertions)]
             ws_dev::setup(app.handle().clone());
             Ok(())
@@ -92,7 +92,7 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-/// 启动期窗口状态取证（仅 debug）：每 2 秒一条心跳，共 20 条（40s）。
+/// 启动期窗口状态心跳（仅 debug）：每 2 秒一条心跳，共 20 条（40s）。
 ///
 /// 为什么必须由 Rust 打：前端探针一旦页面被节流或进程被挂起就一起冻结。Rust 线程的心跳
 /// **若继续往下打**，说明进程活着、被冻的是页面/WebView 一侧；**若同时停在同一点**，

@@ -1,16 +1,17 @@
 /**
  * 元素系统（数据层）测试。
  *
- * 白盒：`validateElement` / `loadElements` / `findElements` 为引擎内部纯函数
- * （未列入包公共出口），按测试要点走相对深引。
+ * `validateElement` / `loadElements` / `findElements` 是引擎对外公开的元素形状工具，
+ * 与编辑器同口径，故经包出口取用。
  */
 import { describe, expect, it } from "vitest";
-import { StoryFormatError, parseStory } from "@lingfan/engine";
 import {
   findElements,
   loadElements,
+  StoryFormatError,
+  parseStory,
   validateElement,
-} from "../../../packages/engine/src/data/element";
+} from "@lingfan/engine";
 
 function issuesOf(node: unknown): string[] {
   const issues: string[] = [];

@@ -27,22 +27,7 @@ import {
   tokenMatches,
   WATCH_IGNORED_DIRS,
 } from "./security";
-
-/** 宿主对外暴露的能力（供前端能力探测） */
-export interface HostCapabilities {
-  /** 是否有本地宿主 */
-  readonly local: true;
-  /** 能否外部打开（当前实现恒 true —— 有宿主才能走到这里） */
-  readonly openExternal: true;
-  /** 能否一键打包 —— 依赖 `lfenpack` CLI 在 PATH 上 */
-  readonly pack: boolean;
-  /** 是否支持原生文件监视 */
-  readonly watch: boolean;
-  readonly token: string;
-  readonly port: number;
-  /** 服务根（工程所在目录的绝对路径，**仅供显示**） */
-  readonly root: string;
-}
+import type { HostCapabilities, PackResult } from "../src/contracts";
 
 const TOKEN_BYTES = 16;
 /** 单次请求体上限（外部打开只发路径，不发内容 ⇒ 极小） */
@@ -348,14 +333,6 @@ async function packProject(body: string): Promise<PackResult> {
   if (verdict.strict) args.push("--strict");
   if (verdict.dist !== undefined) args.push("--dist", verdict.dist);
   return await runPack(args);
-}
-
-interface PackResult {
-  readonly ok: boolean;
-  readonly reason?: string;
-  readonly exitCode?: number;
-  readonly stdout?: string;
-  readonly stderr?: string;
 }
 
 /** 跑打包 CLI 并采集输出（**不 spawn shell**）；逐候选尝试，全失败才报"启动不了" */

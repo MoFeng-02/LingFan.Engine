@@ -16,6 +16,7 @@ import stageEditorSource from "../../apps/editor/src/components/StageEditor.vue?
 import diagnosticsSource from "../../apps/editor/src/components/DiagnosticsPanel.vue?raw";
 import stepLayoutSource from "../../apps/editor/src/components/StepLayout.vue?raw";
 import timelineSource from "../../apps/editor/src/components/StoryTimeline.vue?raw";
+import editorApiContractSource from "../../apps/editor/src/contracts/editor.ts?raw";
 
 /** 去注释（守卫对象是代码，注释里提到旧行为是正常的） */
 const code = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
@@ -55,14 +56,14 @@ describe("舞台拖拽回归 · 依赖切视图副作用的两处已显式化", 
   it("诊断面板走 `reveal`（点诊断必须看得见）", () => {
     expect(code(diagnosticsSource)).toContain("api.reveal(diagnostic.pointer)");
     expect(code(diagnosticsSource)).not.toMatch(/api\.select\(diagnostic\.pointer\)/);
-    // 契约面必须声明 reveal
-    expect(diagnosticsSource).toMatch(/interface EditorApi\s*\{[^}]*reveal\(/);
+    // 契约面必须声明 reveal（两处消费点共用同一份契约，不再各写一份 interface）
+    expect(editorApiContractSource).toMatch(/interface\s+EditorApiPort\s*\{[^}]*reveal\(/);
   });
 
   it("步骤图走 `reveal`（从步骤图定位回时间线）", () => {
     expect(code(stepLayoutSource)).toContain("api.reveal(step.endPointer)");
     expect(code(stepLayoutSource)).not.toMatch(/api\.select\(step\.endPointer\)/);
-    expect(stepLayoutSource).toMatch(/interface EditorApi\s*\{[^}]*reveal\(/);
+    expect(editorApiContractSource).toMatch(/interface\s+EditorApiPort\s*\{[^}]*reveal\(/);
   });
 
   it("舞台走**就地选中**（组件不再被卸载）", () => {

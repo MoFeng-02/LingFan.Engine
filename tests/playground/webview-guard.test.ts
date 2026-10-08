@@ -21,7 +21,7 @@ const REQUIRED_SELECTORS = [
   "MemberExpression[object.name='crypto'][property.name='randomUUID']",
 ];
 
-describe("老 WebView 内建守卫锚点（legacy-webview-builtin-guard）", () => {
+describe("老 WebView 内建守卫", () => {
   it("守卫块在位：基线（Safari 13.1+/Chrome 85+）之后的内建全拦截", () => {
     expect(eslintConfigSource).toContain("lingfan/legacy-webview-compat");
     for (const selector of REQUIRED_SELECTORS) {

@@ -18,7 +18,7 @@
  * 与 `ColumnList` 的**手动分组**并存：手动分组是作者显式的编排视图，
  * 章节树是路径推导的客观结构 —— 两者语义不同，不互相取代。
  */
-import { computed, inject, ref, type Ref } from "vue";
+import { computed, inject, ref } from "vue";
 import type { Story } from "@lingfan/engine";
 import {
   buildChapterIndex,
@@ -27,19 +27,17 @@ import {
   type ChapterInput,
   type ChapterNode,
 } from "@lingfan/editor";
+import { COLUMN_PATHS_KEY, EDITOR_API_KEY } from "../contracts";
 
 const props = defineProps<{ story: Story; selectedId: string }>();
 
-interface EditorApi {
-  selectColumn(id: string): void;
-}
-const api = inject<EditorApi>("editorApi")!;
+const api = inject(EDITOR_API_KEY)!;
 
 /**
  * 路径来源：优先用工程树（多文件工程里列与路径一一对应）；
  * 退化到单文件故事（无路径概念）⇒ `path` 为空串，章节树退化为「无分组的全列表」。
  */
-const paths = inject<Ref<Map<string, string>> | undefined>("columnPaths");
+const paths = inject(COLUMN_PATHS_KEY);
 
 /** 列 id → 逻辑路径（未登记时为空串） */
 function pathOf(columnId: string): string {

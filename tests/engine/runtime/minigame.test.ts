@@ -6,7 +6,11 @@
  * - 边界：reward {expr} 求值 + 重放确定性（rngState 随快照）、无分支原列继续、dispose abort
  */
 import { describe, expect, it } from "vitest";
-import type { OutboundEvent, ValueChanged } from "@lingfan/engine";
+import type {
+  MinigameMountPayload,
+  OutboundEvent,
+  ValueChanged,
+} from "@lingfan/engine";
 import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
 
 interface Harness {
@@ -43,12 +47,7 @@ function column(id: string, commands: object[]): object {
   return { id, kind: "flow", commands };
 }
 
-function mounts(h: Harness): Array<{
-  game: string;
-  config: Record<string, unknown>;
-  signal: AbortSignal;
-  seq: number;
-}> {
+function mounts(h: Harness): MinigameMountPayload[] {
   return h.events.flatMap((e) =>
     e.payload.kind === "minigame.mount" ? [e.payload] : [],
   );

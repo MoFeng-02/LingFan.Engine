@@ -16,7 +16,7 @@
  *   都挡不住作者在拿到引用后原地改值（这属作者行为，靠契约条款 + 断言工具 +
  *   序列化边界兜底，快照期不做硬门禁）。
  *
- * 键侧（保留键）见 `contracts/runtime.ts` 的 `RESERVED_STATE_KEYS`，守卫在 `engine.setGlobal`。
+ * 键侧（保留键）见 `contracts/runtime/state-keys.ts` 的 `RESERVED_STATE_KEYS`，守卫在 `engine.setGlobal`。
  */
 
 /**

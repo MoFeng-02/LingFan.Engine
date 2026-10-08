@@ -213,11 +213,6 @@ export function runRegisteredOp(
   }
 }
 
-/** 扩展命名空间状态键前缀判定（存档依赖标记/卸载清理用） */
-export function isExtensionStateKey(key: string): boolean {
-  return key.startsWith(EXT_KEY_PREFIX);
-}
-
 /**
  * 聚合扩展文本投影（组合根用）：只收声明了 `project` 的 op。
  * op 名冲突不可能（注册期 `buildOpRegistry` 查重先抛）；缺省（无扩展/无投影）= 现行为不变。

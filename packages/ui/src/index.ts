@@ -16,7 +16,7 @@ export {
   type DialogueTemplateInput,
   type DialogueTemplateRegistry,
   type DialogueTemplateView,
-} from "./dialogue/templates";
+} from "./dialogue";
 export {
   TemplateRegistry,
   createTemplateRegistry,

@@ -1,7 +1,9 @@
 /**
- * 资源寻址 + 工程文件供给端口：
+ * 平台供给端口：资源寻址 + 工程文件读写。
  * 平台差异被限制在「供数」这一步——Desktop 与 Mobile（Tauri iOS/Android）各自实现同契约。
+ * 数据形态见同目录 `entities.ts`。
  */
+import type { DegradedOpen, ProjectWriteReport } from "./entities";
 
 /**
  * 资源端口：逻辑路径按**应用资源根**解析（不依赖进程工作目录），
@@ -14,19 +16,6 @@ export interface ResourcePort {
   resolve(id: string): Promise<string>;
   /** 释放解析结果（Blob URL 用后 revoke；静态 URL 为空实现） */
   release(url: string): void;
-}
-
-/**
- * 降级打开回执：资源根**缺 `project.json`** 时按确定性规则
- * 合成清单打开 —— 降级必须**显式告知**（状态栏/横幅），不做静默处理。
- * 结构损坏（清单存在但坏 JSON / 字段非法 / 故事解析失败）**仍 fail-closed**，
- * 可降级的只有「清单缺失」这一种。
- */
-export interface DegradedOpen {
-  /** 给人看的原因与口径（含「入口=列 id」），直接可上状态栏 title */
-  readonly reason: string;
-  /** 合成清单采用的入口列 id（确定性 = 路径码元序第一个列） */
-  readonly entry: string;
 }
 
 /**
@@ -47,12 +36,6 @@ export interface ProjectFilesPort {
   degraded?(): Promise<DegradedOpen | undefined>;
 }
 
-/** 一次写回的实际结果（供界面提示；路径均为逻辑路径，码元序） */
-export interface ProjectWriteReport {
-  readonly written: readonly string[];
-  readonly deleted: readonly string[];
-}
-
 /**
  * 工程文件写回端口：期望文件全集（引擎 `serializeProject` 产出）交给适配器，
  * 由适配器与**打开基线**求最小差量后落盘（只写变化、删陈旧）。
@@ -62,4 +45,29 @@ export interface ProjectWriteReport {
 export interface ProjectWriterPort {
   readonly writable: boolean;
   apply(files: ReadonlyMap<string, string>): Promise<ProjectWriteReport>;
+}
+
+/**
+ * 目录取径的统一供给面：逻辑路径 → 原始文本 / 文件对象。
+ * 两类取径各一实现（File System Access 句柄 / 目录 input 的文件表），端口构造只依赖此面。
+ */
+export interface ProjectFileSource {
+  /** 资源根名（诊断与界面显示；句柄取径 = 句柄名，文件表取径 = 路径前缀末段） */
+  readonly name: string;
+  /** 资源根内全部文件逻辑路径（`/` 分隔、字典序确定、已跳点文件） */
+  paths(): Promise<readonly string[]>;
+  /** 按逻辑路径读原始文本（UTF-8；不存在/不可读必须抛错，不静默降级） */
+  text(path: string): Promise<string>;
+  /** 按逻辑路径取文件对象（Blob URL 供给用；不存在必须抛错） */
+  file(path: string): Promise<File>;
+}
+
+/**
+ * 上次工程句柄的持久化（浏览器形态：IndexedDB）。句柄是可结构化克隆对象，
+ * IDB 原生支持存取；下次启动据此提供「重新打开上次工程」一键，免开目录选择器。
+ * **任何存储失败一律静默**（隐私模式 / 配额 / 不支持）——功能退化为不存在，编辑器不受影响。
+ */
+export interface LastProjectHandleStore {
+  load(): Promise<FileSystemDirectoryHandle | undefined>;
+  save(handle: FileSystemDirectoryHandle): Promise<void>;
 }
