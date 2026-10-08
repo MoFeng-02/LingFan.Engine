@@ -84,7 +84,7 @@ function fileAt(relativePath: string, text: string): File {
 
 /** 注入 Blob URL 工厂（Node 无 `URL.createObjectURL`）：只统计调用，返回可读的假 URL */
 function blobUrls(): {
-  create: (file: File) => string;
+  create: (file: Blob) => string;
   revoke: (url: string) => void;
   created: string[];
   revoked: string[];
@@ -95,8 +95,8 @@ function blobUrls(): {
   return {
     created,
     revoked,
-    create: (file: File) => {
-      const url = `blob:${file.name}#${++seq}`;
+    create: (file: Blob) => {
+      const url = `blob:${(file as File).name}#${++seq}`;
       created.push(url);
       return url;
     },

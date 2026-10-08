@@ -417,21 +417,25 @@ async function readProject(
   return { manifest, stories, degraded: undefined };
 }
 
-/** Blob URL 构造/释放（缺省 `URL.createObjectURL`；测试以契约替身注入） */
+/**
+ * Blob URL 构造/释放（缺省 `URL.createObjectURL`；测试以契约替身注入）。
+ * 形参是 `Blob`：契约层给的是中立文件句柄，真正要喂给 `URL.createObjectURL` 的
+ * 是它背后的文件内容，收窄由本文件在调用点完成。
+ */
 export interface BlobUrlOptions {
-  createObjectURL?: (file: File) => string;
+  createObjectURL?: (file: Blob) => string;
   revokeObjectURL?: (url: string) => void;
 }
 
 /**
- * `ResourcePort` 实现：逻辑路径 → 文件对象 → Blob URL（同路径复用同一 URL，
+ * `ResourcePort` 实现：逻辑路径 → 文件内容 → Blob URL（同路径复用同一 URL，
  * `release` 才 revoke）。解析失败必须抛错——调用方 fail-closed 不播放/不显示。
  */
 export function createSourceResourcePort(
   source: ProjectFileSource,
   options: BlobUrlOptions = {},
 ): ResourcePort {
-  const create = options.createObjectURL ?? ((file: File) => URL.createObjectURL(file));
+  const create = options.createObjectURL ?? ((file: Blob) => URL.createObjectURL(file));
   const revoke = options.revokeObjectURL ?? ((url: string) => URL.revokeObjectURL(url));
   /** 逻辑路径 → 已解析 URL（release 时反查并清空） */
   const resolved = new Map<string, string>();
@@ -444,7 +448,8 @@ export function createSourceResourcePort(
       const pending = inFlight.get(path);
       if (pending !== undefined) return pending;
       const task = source.file(path).then((file) => {
-        const url = create(file);
+        // 中立句柄 → 文件内容：供给方给的就是本环境的真实文件对象，这里只把类型收回来
+        const url = create(file as Blob);
         resolved.set(path, url);
         inFlight.delete(path);
         return url;
