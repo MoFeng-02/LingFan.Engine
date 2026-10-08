@@ -58,4 +58,41 @@ export class Scope {
     for (const [k, v] of source.vars) copy.vars.set(k, v);
     return copy;
   }
+
+  /**
+   * 作用域链变量快照（自叶向根，逐层复制本层变量）；配合 [`restoreChain`] 做原子回滚。
+   * 只快照既有层对象——回滚前提是层链结构不变（调用方不得增删层）。
+   */
+  snapshotChain(): Array<Map<string, unknown>> {
+    const out: Array<Map<string, unknown>> = [new Map(this.vars)];
+    let rest = this.parent;
+    while (rest !== null) {
+      out.push(new Map(rest.vars));
+      rest = rest.parentOf();
+    }
+    return out;
+  }
+
+  /** 原子回滚：按 [`snapshotChain`] 的层序写回各层变量（层对象本身不变，故父链保持） */
+  restoreChain(snapshot: ReadonlyArray<ReadonlyMap<string, unknown>>): void {
+    const first = snapshot[0];
+    if (first !== undefined) this.replaceVars(first);
+    let rest = this.parent;
+    for (const vars of snapshot.slice(1)) {
+      if (rest === null) return;
+      rest.replaceVars(vars);
+      rest = rest.parentOf();
+    }
+  }
+
+  /** 本层变量整体替换（回滚用：层对象不变，只换内容） */
+  private replaceVars(vars: ReadonlyMap<string, unknown>): void {
+    this.vars.clear();
+    for (const [k, v] of vars) this.vars.set(k, v);
+  }
+
+  /** 父层读取（回滚遍历用） */
+  private parentOf(): Scope | null {
+    return this.parent;
+  }
 }

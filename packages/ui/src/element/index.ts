@@ -15,8 +15,10 @@ export { registerBuiltinElementRenderers } from "./renderers";
 export { renderElementTree, type ElementTreeRenderOptions } from "./render";
 export {
   hasElementInteraction,
+  isElementDisabled,
   resolveElementAction,
   type ElementAction,
+  type ElementActionOptions,
   type ElementActionSource,
 } from "./interaction";
 export {

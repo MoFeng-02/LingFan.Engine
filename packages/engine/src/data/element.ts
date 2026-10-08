@@ -79,6 +79,33 @@ export function validateElementNode(
       );
     }
   }
+  // `ops`（点击动作序列）形态校验：非空数组、每项为对象且 `op` 非空字符串。
+  // 解析期拒绝 = 编辑器/CLI 立刻可见（运行时才炸的负载不进包）；
+  // 具体 op 是否可执行归执行期（等待/位置类 op 由 runElementOps 拒绝，规则只写一处）。
+  if (node.ops !== undefined) {
+    const ops = node.ops;
+    if (!Array.isArray(ops) || ops.length === 0) {
+      issues.push(`${at}.ops 必须为非空数组（点击动作序列）`);
+    } else {
+      for (const [i, item] of ops.entries()) {
+        if (!isPlainObject(item)) {
+          issues.push(`${at}.ops[${i}] 必须为对象`);
+          continue;
+        }
+        if (typeof item.op !== "string" || item.op === "") {
+          issues.push(`${at}.ops[${i}] 缺少非空 op 字符串`);
+        }
+      }
+    }
+  }
+  // `disabled` 可写布尔或表达式字符串（其余类型 fail-closed）
+  if (
+    node.disabled !== undefined &&
+    typeof node.disabled !== "boolean" &&
+    typeof node.disabled !== "string"
+  ) {
+    issues.push(`${at}.disabled 必须为布尔或表达式字符串`);
+  }
   return true;
 }
 

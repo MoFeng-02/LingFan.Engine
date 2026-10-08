@@ -14,8 +14,10 @@ export interface ElementTreeRenderOptions {
   registry: ElementRegistry;
   container: HTMLElement;
   elements: readonly ElementInstance[];
-  /** 交互激活（宿主把元素语义翻译成引擎命令，如 nav → navigate） */
+  /** 交互激活（宿主把元素语义翻译成引擎命令，如 nav → navigate / ops → runElementOps） */
   activate?: (element: ElementInstance) => void;
+  /** `disabled` 表达式求值（返回 null = 求值失败；表达式语法归核心层） */
+  evalDisable?: (expression: string) => boolean | null;
   /** 资源解析（source/src/path → URL） */
   resolveResource?: (path: string) => string | undefined;
   /** 未注册类型上报（fail-closed；宿主负责可见诊断） */
@@ -43,6 +45,7 @@ export function renderElementTree(options: ElementTreeRenderOptions): void {
       element,
       renderChildren,
       activate: options.activate,
+      evalDisable: options.evalDisable,
       resolveResource: options.resolveResource,
     });
     // 舞台内叠放序（两级叠放：元素之间在 stage 容器内独立比较）

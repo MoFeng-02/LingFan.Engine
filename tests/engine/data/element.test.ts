@@ -166,6 +166,101 @@ describe("parseStory（元素声明接入解析链）", () => {
     ).toThrow(StoryFormatError);
   });
 
+  it("合法点击动作声明（ops / disabled 表达式 / disabled_* 视觉态）→ 解析通过", () => {
+    const story = parseStory({
+      formatVersion: 1,
+      id: "demo",
+      columns: [
+        {
+          id: "start",
+          kind: "scene",
+          elements: [
+            {
+              type: "imagebutton",
+              id: "chest",
+              source: "Images/chest.png",
+              ops: [
+                { op: "set", key: "player.gold", value: "+= {10}" },
+                { op: "se", resource: "Audio/coin.mp3" },
+              ],
+              disabled: "{player.gold < 0}",
+              disabled_source: "Images/chest_disabled.png",
+              disabled_color: "#555555",
+            },
+          ],
+        },
+      ],
+    });
+    const element = story.columns[0]?.elements?.[0];
+    expect(element?.type).toBe("imagebutton");
+  });
+
+  it("ops 畸形负载 → 解析期整次拒绝（编辑器/CLI 立刻可见）", () => {
+    const bad = [
+      [], // 空数组
+      "not-array",
+      [1], // 元素非对象
+      [{ key: "a" }], // 缺 op
+      [{ op: "" }], // 空 op
+      [{ op: 42 }], // op 非字符串
+    ];
+    for (const ops of bad) {
+      expect(
+        () =>
+          parseStory({
+            formatVersion: 1,
+            id: "demo",
+            columns: [
+              {
+                id: "start",
+                kind: "scene",
+                elements: [{ type: "button", text: "x", ops }],
+              },
+            ],
+          }),
+        `ops=${JSON.stringify(ops)} 应被拒绝`,
+      ).toThrow(StoryFormatError);
+    }
+  });
+
+  it("disabled 非法类型（数字/对象）→ 整次拒绝", () => {
+    for (const disabled of [1, {}, [], null]) {
+      expect(
+        () =>
+          parseStory({
+            formatVersion: 1,
+            id: "demo",
+            columns: [
+              {
+                id: "start",
+                kind: "scene",
+                elements: [{ type: "button", text: "x", disabled }],
+              },
+            ],
+          }),
+        `disabled=${JSON.stringify(disabled)} 应被拒绝`,
+      ).toThrow(StoryFormatError);
+    }
+  });
+
+  it("disabled 布尔与表达式字符串均合法（形态），求值归执行期", () => {
+    for (const disabled of [true, false, "{player.gold < 10}"]) {
+      expect(() =>
+        parseStory({
+          formatVersion: 1,
+          id: "demo",
+          columns: [
+            {
+              id: "start",
+              kind: "scene",
+              elements: [{ type: "button", text: "x", disabled }],
+            },
+          ],
+        }),
+      ).not.toThrow();
+    }
+  });
+
   it("同列元素 id 重复 → 整次拒绝", () => {
     expect(() =>
       parseStory({

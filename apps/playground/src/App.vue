@@ -315,15 +315,37 @@ const elementResources = createElementResourceResolver({
 });
 
 /**
+ * `disabled` 表达式求值（元素禁用态）：表达式原文经引擎插值取**当前**变量值，
+ * 结果必须是 `true`/`false`；其余（含求值失败）返回 null = 形态未定。
+ *
+ * 渲染与点击两条路共用同一求值器——两处判定必须同源，否则会出现
+ * 「看着能点却点不动」或反之的不一致。
+ */
+function evalElementDisable(expression: string): boolean | null {
+  const text = engine.interpolate(expression);
+  if (text === "true") return true;
+  if (text === "false") return false;
+  return null;
+}
+
+/**
  * 元素意图 → 命令。点击分支走纯函数 `resolveElementAction`
- * （`disabled` > `nav` > `cmd`，与 UI 侧渲染器同源）；`nav` → 核心 `navigate`，
- * `cmd` → 宿主命令注册表，`value` 按**点击时**插值取最新变量
- * （既有实现取值语义）。
+ * （`disabled` > `nav` > `ops` > `cmd`，与 UI 侧渲染器同源）；`nav` → 核心 `navigate`，
+ * `ops` → 引擎按序执行（数据侧动作，复用 op 分发表、入历史），
+ * `cmd` → 宿主命令注册表，`value` 按**点击时**插值取最新变量（既有实现取值语义）。
  */
 function activateElement(element: ElementInstance): void {
-  const action = resolveElementAction(element.props);
+  const action = resolveElementAction(element.props, {
+    evalDisable: evalElementDisable,
+  });
   if (action.kind === "nav") {
     engine.navigate(action.target);
+    return;
+  }
+  if (action.kind === "ops") {
+    if (!engine.runElementOps(action.ops)) {
+      error.value = "元素动作执行失败（详见错误横幅：等待/位置类 op 与畸形负载会被拒绝）";
+    }
     return;
   }
   if (action.kind !== "cmd") return;
@@ -346,6 +368,7 @@ function renderElements(): void {
     container: host,
     elements: elements.value,
     activate: activateElement,
+    evalDisable: evalElementDisable,
     resolveResource: elementResources.resolveForElement,
     onUnknownType: (type) => {
       error.value = `元素类型未注册：${type}（fail-closed：不伪造渲染）`;

@@ -65,3 +65,61 @@ describe("Scope（块 → 列 → 全局 链）", () => {
     expect(block2.lookup("b")).toEqual({ found: true, value: "block1" });
   });
 });
+
+describe("Scope 链快照与原子回滚（snapshotChain / restoreChain）", () => {
+  it("回滚恢复各层变量（含新增、改写、删除）", () => {
+    const column = Scope.root();
+    column.declare("keep", 1);
+    const block = column.enterChild();
+    block.declare("temp", 2);
+
+    const snapshot = block.snapshotChain();
+    // 变更：改写父层值 / 改写本层值 / 新增 / 删除
+    column.assignExisting("keep", 999);
+    block.assignExisting("temp", 888);
+    column.declare("added", "x");
+    column.undef("keep");
+
+    block.restoreChain(snapshot);
+    expect(column.lookup("keep")).toEqual({ found: true, value: 1 }); // 删除被撤销
+    expect(block.lookup("temp")).toEqual({ found: true, value: 2 }); // 改写被撤销
+    expect(column.lookup("added")).toEqual({ found: false }); // 新增被撤销
+  });
+
+  it("层对象身份与父链不变（回滚只换内容，不重建层）", () => {
+    const column = Scope.root();
+    const block = column.enterChild();
+    block.declare("x", 1);
+    const snapshot = block.snapshotChain();
+    block.declare("y", 2);
+    block.restoreChain(snapshot);
+    // 同一对象仍可继续用（父链未断）——否则调用方持有的引用会失效
+    block.declare("z", 3);
+    expect(block.lookup("z")).toEqual({ found: true, value: 3 });
+    expect(column.lookup("z")).toEqual({ found: false }); // 仍写在本层
+  });
+
+  it("快照是深拷贝：回滚后再变更不影响已取快照（可重复回滚）", () => {
+    const column = Scope.root();
+    column.declare("v", 0);
+    const snapshot = column.snapshotChain();
+    column.assignExisting("v", 1);
+    column.restoreChain(snapshot);
+    expect(column.lookup("v")).toEqual({ found: true, value: 0 });
+    column.assignExisting("v", 2);
+    column.restoreChain(snapshot); // 同一快照可再次回滚
+    expect(column.lookup("v")).toEqual({ found: true, value: 0 });
+  });
+
+  it("单层（root）与多层链都能回滚；快照层数与链深一致", () => {
+    const column = Scope.root();
+    const b1 = column.enterChild();
+    const b2 = b1.enterChild();
+    b2.declare("deep", 1);
+    const snapshot = b2.snapshotChain();
+    expect(snapshot).toHaveLength(3); // b2 → b1 → column
+    b2.assignExisting("deep", 2);
+    b2.restoreChain(snapshot);
+    expect(b2.lookup("deep")).toEqual({ found: true, value: 1 });
+  });
+});

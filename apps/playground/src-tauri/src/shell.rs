@@ -18,9 +18,22 @@ pub enum OrientationMode {
 }
 
 impl OrientationMode {
-    /// 原生侧载荷字符串（Kotlin `ShellPlugin.setOrientation` 的判据）
-    // 仅移动端 apply_orientation 消费（cfg 门控）——桌面检查构建下呈死代码，非真死代码
-    #[allow(dead_code)]
+    /// Android `ActivityInfo.SCREEN_ORIENTATION_*` 常量（JNI 直调用）：
+    /// auto = UNSPECIFIED(-1) 交给系统；portrait = 1；landscape = 0。
+    ///
+    /// 刻意不做平台 cfg 门控：映射是纯数据，桌面测试才能锚定它——该面是 JNI 直调
+    /// 唯一的字面量契约，锚点测试（`orientation-jni-constants`）即它的自动化防线。
+    #[cfg_attr(not(any(target_os = "android", test)), allow(dead_code))]
+    fn android_constant(self) -> i32 {
+        match self {
+            OrientationMode::Auto => -1,
+            OrientationMode::Portrait => 1,
+            OrientationMode::Landscape => 0,
+        }
+    }
+
+    /// 原生侧载荷字符串（iOS Swift 插件判据；Android 走 JNI 常量映射不经此）
+    #[cfg_attr(not(any(target_os = "ios", test)), allow(dead_code))]
     fn as_str(self) -> &'static str {
         match self {
             OrientationMode::Auto => "auto",
@@ -70,45 +83,53 @@ pub fn set_orientation(app: tauri::AppHandle, mode: String) -> Result<bool, Shel
     apply_orientation(&app, parsed)
 }
 
-/// Android：经自注册 Kotlin 插件写 `Activity.requestedOrientation`
-/// （命令面与 AssetListPlugin 同套路：`register_android_plugin` + `run_mobile_plugin`）。
+/// Android：JNI 直调 `Activity.setRequestedOrientation(int)`（不经自维护 Kotlin 插件）。
+///
+/// 通道 = `Webview::with_webview(|平台句柄| …)` 内的 `jni_handle().exec(...)`：`with_webview`
+/// 只按 `wry` feature 门控（默认开），闭包拿到 `PlatformWebview`，其 `exec` 直接给出
+/// JNIEnv 与当前 Activity——不必走 `Manager::get_webview`（那条要求 tauri `unstable` feature）。
+///
+/// 同步语义保留：`exec` 是派发不等待，闭包内以通道回传结果，命令侧短超时收取
+/// （Tauri 命令运行在独立线程池、不在主线程，等待不会死锁）；超时按「未生效」
+/// 返回 `false`——契约允许，并留诊断。
 #[cfg(target_os = "android")]
-mod android {
-    use super::{OrientationMode, ShellError};
+const ANDROID_APPLY_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(1000);
+
+#[cfg(target_os = "android")]
+fn apply_orientation(app: &tauri::AppHandle, mode: OrientationMode) -> Result<bool, ShellError> {
     use tauri::Manager;
 
-    /// Kotlin `ShellPlugin` 句柄（setup 期注册后入 managed state）
-    pub struct ShellBridge(pub tauri::plugin::PluginHandle<tauri::Wry>);
-
-    /// 注册 Kotlin ShellPlugin 的内联 tauri 插件（Android 专用）
-    pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
-        tauri::plugin::Builder::<tauri::Wry>::new("lfen-shell")
-            .setup(|app, api| {
-                let handle =
-                    api.register_android_plugin("com.langfeng.lingfanengine.shell", "ShellPlugin")?;
-                app.manage(std::sync::Arc::new(ShellBridge(handle)));
-                Ok(())
-            })
-            .build()
-    }
-
-    pub fn apply(app: &tauri::AppHandle, mode: OrientationMode) -> Result<bool, ShellError> {
-        // 插件命令在主线程执行（PluginManager 经主 looper 派发）——可安全触碰 Activity
-        let bridge = app.state::<std::sync::Arc<ShellBridge>>();
-        bridge
-            .0
-            .run_mobile_plugin::<serde_json::Value>(
-                "setOrientation",
-                serde_json::json!({ "mode": mode.as_str() }),
-            )
-            .map(|_| true)
-            .map_err(|e| ShellError::Native(e.to_string()))
+    let Some(window) = app.get_webview_window("main") else {
+        return Err(ShellError::Native("主窗口不存在".to_string()));
+    };
+    let (tx, rx) = std::sync::mpsc::channel::<Result<(), String>>();
+    let webview: tauri::Webview<_> = window.as_ref().clone();
+    webview
+        .with_webview(move |platform| {
+            platform.jni_handle().exec(move |env, activity, _webview| {
+                let result = env
+                    .call_method(
+                        activity,
+                        "setRequestedOrientation",
+                        "(I)V",
+                        &[jni::objects::JValue::Int(mode.android_constant())],
+                    )
+                    .map(|_| ())
+                    .map_err(|e| format!("setRequestedOrientation 调用失败：{e}"));
+                // 接收端可能已超时离开——发送失败不影响原生侧已执行的结果
+                let _ = tx.send(result);
+            });
+        })
+        .map_err(|e| ShellError::Native(format!("平台 webview 句柄获取失败：{e}")))?;
+    match rx.recv_timeout(ANDROID_APPLY_TIMEOUT) {
+        Ok(Ok(())) => Ok(true),
+        Ok(Err(message)) => Err(ShellError::Native(message)),
+        Err(_) => {
+            eprintln!("[lfen] 方向应用超时（{mode:?}）：webview 线程未在时限内回传");
+            Ok(false)
+        }
     }
 }
-
-/// Android 插件注册入口（lib.rs 装配用）
-#[cfg(target_os = "android")]
-pub use android::plugin as android_plugin;
 
 /// iOS：Swift 插件 C 入口声明（`ios/ShellPlugin.swift` 的 `@_cdecl("init_plugin_shell")`）
 /// 与自注册插件（lib.rs 装配用）。
@@ -150,12 +171,7 @@ mod ios {
 #[cfg(target_os = "ios")]
 pub use ios::plugin as ios_plugin;
 
-/// 方向应用分平台：Android 走原生插件；其余平台 no-op（未应用 = false）
-#[cfg(target_os = "android")]
-fn apply_orientation(app: &tauri::AppHandle, mode: OrientationMode) -> Result<bool, ShellError> {
-    android::apply(app, mode)
-}
-
+/// 方向应用分平台：Android 走 JNI 直调（见上）；iOS 走 Swift 插件；其余 no-op（未应用 = false）
 #[cfg(target_os = "ios")]
 fn apply_orientation(app: &tauri::AppHandle, mode: OrientationMode) -> Result<bool, ShellError> {
     ios::apply(app, mode)
@@ -185,6 +201,16 @@ mod tests {
         assert_eq!(OrientationMode::Auto.as_str(), "auto");
         assert_eq!(OrientationMode::Portrait.as_str(), "portrait");
         assert_eq!(OrientationMode::Landscape.as_str(), "landscape");
+    }
+
+    /// 锚点 `orientation-jni-constants`：三态 → Android `SCREEN_ORIENTATION_*` 常量映射。
+    /// 这是 JNI 直调唯一的字面量面（方法名 `setRequestedOrientation` 与签名 `(I)V`
+    /// 由 bridge_check 的源断言守护）。
+    #[test]
+    fn orientation_android_constants_match_platform_values() {
+        assert_eq!(OrientationMode::Auto.android_constant(), -1); // UNSPECIFIED
+        assert_eq!(OrientationMode::Portrait.android_constant(), 1); // PORTRAIT
+        assert_eq!(OrientationMode::Landscape.android_constant(), 0); // LANDSCAPE
     }
 
     #[test]

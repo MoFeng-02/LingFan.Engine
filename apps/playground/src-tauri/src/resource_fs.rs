@@ -138,159 +138,207 @@ impl ResourceFs for StdFs {
 
 // —— Android：安装包 asset ——
 
+/// asset 协议前缀（tauri-utils::platform::ANDROID_ASSET_PROTOCOL_URI_PREFIX 同值；
+/// 不直接引用该常量是因为它仅 android cfg 可见，此处同源维护）。
 #[cfg(target_os = "android")]
-mod asset {
-    use super::{RangedFile, ResourceFs, SeekRead, WalkEntry};
+const ASSET_URI_PREFIX: &str = "asset://localhost/";
+
+/// asset 路径 → 协议内相对段（`asset://localhost/Resources/x` → `Resources/x`）。
+#[cfg(target_os = "android")]
+fn asset_rel(path: &Path) -> std::io::Result<String> {
+    let s = path.to_string_lossy();
+    if let Some(rel) = s.strip_prefix(ASSET_URI_PREFIX) {
+        Ok(rel.to_string())
+    } else if s.as_ref() == ASSET_URI_PREFIX.trim_end_matches('/') {
+        Ok(String::new())
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!("非 asset 协议路径：{s}"),
+        ))
+    }
+}
+
+// —— Android：安装包 ZIP 直读（不经 AssetManager）——
+
+#[cfg(target_os = "android")]
+mod apkzip {
+    use super::{asset_rel, RangedFile, ResourceFs, SeekRead, WalkEntry, ASSET_URI_PREFIX};
+    use crate::zip_index::{ZipIndex, METHOD_DEFLATED, METHOD_STORED};
     use std::io;
     use std::path::{Path, PathBuf};
 
-    /// asset 协议前缀（tauri-utils::platform::ANDROID_ASSET_PROTOCOL_URI_PREFIX 同值；
-    /// 不直接引用该常量是因为它仅 android cfg 可见，此处同源维护）。
-    const ASSET_URI_PREFIX: &str = "asset://localhost/";
+    /// APK 内 asset 条目的公共前缀（tauri 把 `bundle.resources` 拷入打包产物的 assets/ 之下）。
+    const APK_ENTRY_PREFIX: &str = "assets/";
+    /// Deflated 条目解压进内存的长度上限：媒体经 `noCompress` 恒为未压缩条目，
+    /// Deflated 只应出现在明文小文本上；超限说明打包形态异常，拒绝读取。
+    const DEFLATED_LIMIT: u64 = 32 * 1024 * 1024;
 
-    /// Kotlin `AssetListPlugin.list` 单条目：asset 根相对路径（`/` 分隔）+ 是否目录。
-    #[derive(serde::Deserialize)]
-    pub struct AssetListEntry {
-        pub path: String,
-        #[serde(default)]
-        pub dir: bool,
+    /// 安装包（ZIP）直读的 Android 资源文件系统：
+    /// 启动期解析一次中央目录建索引，读取为「安装包内区间」（未压缩条目）或
+    /// 「解压缓存」（压缩条目，有长度上限）。条目缺失一律报错——资源随安装包不可变，
+    /// 静默降级只会把「文件缺失」放大成「内容错误」。
+    pub struct ApkZipFs {
+        apk_path: PathBuf,
+        index: ZipIndex,
     }
 
-    #[derive(serde::Deserialize)]
-    pub struct AssetListResponse {
-        pub entries: Vec<AssetListEntry>,
-    }
+    impl ApkZipFs {
+        /// 定位安装包并构建条目索引（setup 期一次性调用）。
+        pub fn create() -> Result<Self, String> {
+            let apk_path = apk_path_via_jni()?;
+            let mut file = std::fs::File::open(&apk_path)
+                .map_err(|e| format!("安装包打开失败（{}）：{e}", apk_path.display()))?;
+            let index =
+                ZipIndex::read_from(&mut file).map_err(|e| format!("安装包条目索引构建失败：{e}"))?;
+            Ok(Self { apk_path, index })
+        }
 
-    /// asset 路径 → 协议内相对段（`asset://localhost/Resources/x` → `Resources/x`）。
-    fn asset_rel(path: &Path) -> io::Result<String> {
-        let s = path.to_string_lossy();
-        if let Some(rel) = s.strip_prefix(ASSET_URI_PREFIX) {
-            Ok(rel.to_string())
-        } else if s.as_ref() == ASSET_URI_PREFIX.trim_end_matches('/') {
-            Ok(String::new())
-        } else {
-            Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!("非 asset 协议路径：{s}"),
-            ))
+        fn apk_file(&self) -> io::Result<std::fs::File> {
+            std::fs::File::open(&self.apk_path)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("安装包打开失败：{e}")))
+        }
+
+        /// 资源根内相对路径（`Resources/…`）→ ZIP 条目名（`assets/…`）。
+        fn entry_name(rel: &str) -> String {
+            format!("{APK_ENTRY_PREFIX}{rel}")
+        }
+
+        /// 条目存在性（`Some(is_dir)`）；显式目录条目与「有子条目」都判目录。
+        fn lookup(&self, rel: &str) -> Option<bool> {
+            self.index.kind_of(&Self::entry_name(rel))
+        }
+
+        /// 打开为可 seek 读取流（v2 分块按需解密依赖 seek）。
+        /// 未压缩条目 = 安装包内区间；压缩条目 = 解压入内存（超上限 fail-closed）。
+        fn open_entry(&self, rel: &str) -> io::Result<Box<dyn SeekRead>> {
+            let entry_name = Self::entry_name(rel);
+            let entry = self
+                .index
+                .get(&entry_name)
+                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, format!("资源不存在：{rel}")))?;
+            match entry.method {
+                METHOD_STORED => {
+                    let mut apk = self.apk_file()?;
+                    let offset = self
+                        .index
+                        .data_offset(&mut apk, &entry_name)
+                        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+                    Ok(Box::new(RangedFile::new(apk, offset, entry.uncompressed_size)?))
+                }
+                METHOD_DEFLATED => {
+                    if entry.uncompressed_size > DEFLATED_LIMIT {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            format!(
+                                "压缩条目超出解压上限（{rel}，{} 字节）",
+                                entry.uncompressed_size
+                            ),
+                        ));
+                    }
+                    let mut apk = self.apk_file()?;
+                    let data = self
+                        .index
+                        .read_entry(&mut apk, &entry_name)
+                        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+                    Ok(Box::new(std::io::Cursor::new(data)))
+                }
+                other => Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("条目压缩方法不支持（{rel}，method={other}）"),
+                )),
+            }
         }
     }
 
-    /// 存在性查找的共同前置：枚举父目录后按完整相对路径匹配。
-    /// （asset 无 metadata API——枚举即唯一判定来源，kotlin 侧一次递归调用代价可忽略）
-    fn parent_rel(rel: &str) -> &str {
-        match rel.rsplit_once('/') {
-            Some((parent, _)) => parent,
-            None => "",
-        }
-    }
-
-    /// Kotlin `AssetListPlugin.open` 响应：fd + 资产在 fd 中的区间。
-    /// `start`/`length` 缺省 = 长度未知（`AssetFileDescriptor.UNKNOWN_LENGTH`）。
-    #[derive(serde::Deserialize)]
-    pub struct AssetOpenResponse {
-        pub fd: i32,
-        #[serde(default)]
-        pub start: Option<u64>,
-        #[serde(default)]
-        pub length: Option<u64>,
-    }
-
-    /// 经 Kotlin 插件打开 asset，包成「区间文件」（见 [`RangedFile`]）。
-    ///
-    /// 为什么不经 tauri-plugin-fs 打开 asset：其 Android 侧 `FsPlugin.getFileDescriptor`
-    /// 只回传 `detachFd()`、丢弃 `startOffset`——未压缩 asset 的 fd 指向整个 APK，于是
-    /// 读取从 APK 起点开始（资源内容因此被误判为非法格式，并会把整个 APK 读入内存）。
-    pub(crate) fn open_via_plugin(
-        handle: &tauri::plugin::PluginHandle<tauri::Wry>,
-        path: &Path,
-    ) -> io::Result<Box<dyn SeekRead>> {
-        use std::os::fd::FromRawFd;
-        let rel = asset_rel(path)?;
-        let res = handle
-            .run_mobile_plugin::<AssetOpenResponse>("open", serde_json::json!({ "path": rel }))
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("asset open 失败：{e}")))?;
-        // SAFETY: fd 由 Kotlin 侧 `detachFd()` 显式移交所有权（该对象随即标记关闭），
-        // 此处接管为唯一持有者；区间由插件同批回传，不再依赖裸 fd 的隐式位置。
-        let file = unsafe { std::fs::File::from_raw_fd(res.fd) };
-        let base = res.start.unwrap_or(0);
-        let len = match res.length {
-            Some(len) => len,
-            // 长度未知的回退：fd 文件总长 − 起点（只可能放大到文件尾，不会越界到相邻数据）
-            None => file.metadata()?.len().saturating_sub(base),
-        };
-        Ok(Box::new(RangedFile::new(file, base, len)?))
-    }
-
-    pub struct AssetFs {
-        /// 打开 asset（自注册 Kotlin `open`：fd 与其资产区间一并回传——未压缩 asset 的 fd
-        /// 指向整个 APK，只取 fd 会在 APK 起点读起，见 [`open_via_plugin`]）
-        open_file: Box<dyn Fn(&Path) -> io::Result<Box<dyn SeekRead>> + Send + Sync>,
-        /// 递归枚举（Kotlin AssetListPlugin；入参 = asset 根相对路径）
-        list: Box<dyn Fn(&str) -> io::Result<Vec<AssetListEntry>> + Send + Sync>,
-    }
-
-    impl AssetFs {
-        pub(crate) fn new(
-            open_file: Box<dyn Fn(&Path) -> io::Result<Box<dyn SeekRead>> + Send + Sync>,
-            list: Box<dyn Fn(&str) -> io::Result<Vec<AssetListEntry>> + Send + Sync>,
-        ) -> Self {
-            Self { open_file, list }
-        }
-
-        fn lookup(&self, path: &Path) -> Option<bool> {
-            let rel = asset_rel(path).ok()?;
-            let parent = parent_rel(&rel).to_string();
-            (self.list)(&parent)
-                .ok()?
-                .into_iter()
-                .find(|e| e.path == rel)
-                .map(|e| e.dir)
-        }
-    }
-
-    impl ResourceFs for AssetFs {
+    impl ResourceFs for ApkZipFs {
         fn is_file(&self, path: &Path) -> bool {
-            self.lookup(path).is_some_and(|dir| !dir)
+            asset_rel(path).ok().is_some_and(|rel| self.lookup(&rel) == Some(false))
         }
 
         fn is_dir(&self, path: &Path) -> bool {
-            self.lookup(path).is_some_and(|dir| dir)
+            asset_rel(path).ok().is_some_and(|rel| self.lookup(&rel) == Some(true))
         }
 
         fn read(&self, path: &Path) -> io::Result<Vec<u8>> {
-            let mut f = self.open(path)?;
-            let mut buf = Vec::new();
-            f.read_to_end(&mut buf)?;
-            Ok(buf)
+            let rel = asset_rel(path)?;
+            let mut apk = self.apk_file()?;
+            self.index
+                .read_entry(&mut apk, &Self::entry_name(&rel))
+                .map_err(|e| io::Error::new(e.io_kind(), e.to_string()))
         }
 
         fn open(&self, path: &Path) -> io::Result<Box<dyn SeekRead>> {
-            (self.open_file)(path)
+            let rel = asset_rel(path)?;
+            self.open_entry(&rel)
         }
 
         fn walk(&self, dir: &Path) -> io::Result<Vec<WalkEntry>> {
             let rel = asset_rel(dir)?;
-            Ok((self.list)(&rel)?
+            let zip_prefix = Self::entry_name(&format!("{rel}/"));
+            Ok(self
+                .index
+                .walk_synthesizing_dirs(&zip_prefix)
                 .into_iter()
-                .map(|e| WalkEntry {
-                    path: PathBuf::from(format!("{ASSET_URI_PREFIX}{}", e.path)),
-                    is_dir: e.dir,
+                .map(|(name, is_dir)| {
+                    // 条目名 `assets/<P>` → 协议路径 `asset://localhost/<P>`
+                    let logical = name.strip_prefix(APK_ENTRY_PREFIX).unwrap_or(&name);
+                    WalkEntry {
+                        path: PathBuf::from(format!("{ASSET_URI_PREFIX}{logical}")),
+                        is_dir,
+                    }
                 })
                 .collect())
         }
     }
+
+    /// 从 Android 上下文读取安装包路径（`ApplicationInfo.sourceDir`，即 base.apk）。
+    /// 运行时（tao）在 activity 建立时已把「application context + JavaVM」存入
+    /// `ndk_context`，任意 Rust 线程都能附着取用——不经主线程、不依赖 WebView。
+    fn apk_path_via_jni() -> Result<PathBuf, String> {
+        // SAFETY：指针由 tauri 运行时在 activity 建立期写入（tao ndk_glue），
+        // 指向全局引用的 application context，进程存活期内有效。
+        let ctx = ndk_context::android_context();
+        let vm = unsafe { jni::JavaVM::from_raw(ctx.vm().cast()) }
+            .map_err(|e| format!("JavaVM 获取失败：{e}"))?;
+        let mut env = vm
+            .attach_current_thread()
+            .map_err(|e| format!("JNI 线程附着失败：{e}"))?;
+        // SAFETY：同上，context 为 tao 持有的全局引用。
+        let context = unsafe { jni::objects::JObject::from_raw(ctx.context().cast()) };
+        let app_info = env
+            .call_method(
+                &context,
+                "getApplicationInfo",
+                "()Landroid/content/pm/ApplicationInfo;",
+                &[],
+            )
+            .and_then(|v| v.l())
+            .map_err(|e| format!("getApplicationInfo 失败：{e}"))?;
+        let source = env
+            .get_field(&app_info, "sourceDir", "Ljava/lang/String;")
+            .and_then(|v| v.l())
+            .map_err(|e| format!("sourceDir 读取失败：{e}"))?;
+        let source_dir: String = env
+            .get_string(&source.into())
+            .map_err(|e| format!("sourceDir 转换失败：{e}"))?
+            .into();
+        Ok(PathBuf::from(source_dir))
+    }
 }
 
 #[cfg(target_os = "android")]
-pub use asset::AssetFs;
+pub use apkzip::ApkZipFs;
 
 /// 按平台取资源文件系统适配器（组合根语义：命令面只依赖契约，不关心实现）。
+/// Android = [`ApkZipFs`]（安装包 ZIP 直读，唯一通道）；其余平台 = [`StdFs`]。
 pub fn resource_fs(app: &tauri::AppHandle) -> std::sync::Arc<dyn ResourceFs> {
     #[cfg(target_os = "android")]
     {
         use tauri::Manager;
-        app.state::<std::sync::Arc<AssetFs>>().inner().clone()
+        app.state::<std::sync::Arc<apkzip::ApkZipFs>>()
+            .inner()
+            .clone()
     }
     #[cfg(not(target_os = "android"))]
     {
@@ -301,30 +349,15 @@ pub fn resource_fs(app: &tauri::AppHandle) -> std::sync::Arc<dyn ResourceFs> {
 
 /// 注册 Kotlin `AssetListPlugin` 并装配 [`AssetFs`]（Android 专用 tauri 插件）。
 /// 桌面构建无此插件——命令面经 [`resource_fs`] 拿到的是 `StdFs`，同一契约。
+/// APK-ZIP 供给适配器：setup 期定位安装包并构建条目索引（一次性），常驻管理状态。
+/// 索引构建失败 = 供给链不可用，启动即失败（错误信息可直接定位是哪一步、哪个文件）。
 #[cfg(target_os = "android")]
-pub fn asset_list_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+pub fn apk_zip_fs_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     use tauri::Manager;
-    tauri::plugin::Builder::<tauri::Wry>::new("lfen-assets")
-        .setup(|app, api| {
-            let handle =
-                std::sync::Arc::new(api.register_android_plugin(
-                    "com.langfeng.lingfanengine.assets",
-                    "AssetListPlugin",
-                )?);
-            let open_handle = handle.clone();
-            let asset_fs = asset::AssetFs::new(
-                Box::new(move |path| asset::open_via_plugin(&open_handle, path)),
-                Box::new(move |rel| {
-                    handle
-                        .run_mobile_plugin::<asset::AssetListResponse>(
-                            "list",
-                            serde_json::json!({ "path": rel }),
-                        )
-                        .map(|r| r.entries)
-                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
-                }),
-            );
-            app.manage(std::sync::Arc::new(asset_fs));
+    tauri::plugin::Builder::<tauri::Wry>::new("lfen-apkzip")
+        .setup(|app, _api| {
+            let fs = apkzip::ApkZipFs::create()?;
+            app.manage(std::sync::Arc::new(fs));
             Ok(())
         })
         .build()
@@ -401,30 +434,26 @@ mod tests {
         assert_eq!(seek_len(&mut f).unwrap(), 0);
     }
 
-    /// 防回归（`android-asset-range`）：Android asset 打开必须把「资产区间」一并取回，
-    /// 且不得回退到官方 fs 插件的 asset 打开——它丢弃 `startOffset`，会让读取从 APK 起点开始。
+    /// 防回归（`no-self-maintained-kotlin-plugin`）：`gen/android` 下不得再出现自维护 Kotlin
+    /// 插件。历史形态是「Rust 契约 + Kotlin 实现」成对演进——两侧字符串契约靠 `bridge_check`
+    /// 互锁，一旦有人只改一侧就静默失配。现供给与方向都收进 Rust（APK-ZIP 直读 + JNI 直调），
+    /// 该形态不应回流：这条守卫在有人重新引入时立刻变红。
     #[test]
-    fn android_asset_open_keeps_range_handoff() {
-        let kt = include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/gen/android/app/src/main/java/com/langfeng/lingfanengine/assets/AssetListPlugin.kt"
-        ));
-        assert!(
-            kt.contains("afd.startOffset"),
-            "Kotlin 必须回传 AssetFileDescriptor.startOffset"
-        );
-        assert!(kt.contains("res.put(\"start\""), "Kotlin 必须回传区间起点");
-        assert!(kt.contains("res.put(\"length\""), "Kotlin 必须回传区间长度");
+    fn no_self_maintained_kotlin_plugin_in_gen() {
+        let root = concat!(env!("CARGO_MANIFEST_DIR"), "/gen/android/app/src/main/java");
+        // 自维护插件的历史包路径：assets/（枚举+打开）与 shell/（方向）
+        for legacy in ["com/langfeng/lingfanengine/assets", "com/langfeng/lingfanengine/shell"] {
+            let dir = format!("{root}/{legacy}");
+            assert!(
+                !std::path::Path::new(&dir).exists(),
+                "自维护 Kotlin 插件目录不应存在：{dir}（供给与方向已收进 Rust）"
+            );
+        }
+        // Rust 侧也不得再出现「注册 Android 插件」的调用面
         let rs = include_str!("resource_fs.rs");
-        // 断言串拆开拼接：否则会匹配到本测试自身的字面量
-        assert_eq!(
-            rs.matches(concat!("from_", "raw_fd")).count(),
-            1,
-            "asset fd 接管应是唯一一处（open_via_plugin）"
-        );
         assert!(
-            !rs.contains(concat!("fs()", ".open(")),
-            "asset 打开不得回退到官方 fs 插件（其丢弃 startOffset）"
+            !rs.contains(concat!("register_", "android_plugin")),
+            "Rust 侧不应再注册自维护 Android 插件"
         );
     }
 }

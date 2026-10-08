@@ -9,6 +9,7 @@ pub mod resource_crypto;
 pub mod resource_fs;
 pub mod save;
 pub mod shell;
+pub mod zip_index;
 // 开发期 WS 通道：仅 debug 构建编译——release 编译期排除（无监听代码）
 #[cfg(debug_assertions)]
 pub mod ws_dev;
@@ -56,15 +57,11 @@ pub fn run() {
             host::host_platform
         ]);
 
-    // 移动端供给：Kotlin AssetListPlugin（asset 递归枚举）+ AssetFs 装配（Android 专用）
+    // 移动端供给：APK-ZIP 直读适配器（唯一通道，setup 期建条目索引）
     #[cfg(target_os = "android")]
-    let builder = builder.plugin(resource_fs::asset_list_plugin());
+    let builder = builder.plugin(resource_fs::apk_zip_fs_plugin());
 
-    // 屏幕方向：Kotlin ShellPlugin 注册（Android 专用；其余平台命令走 no-op）
-    #[cfg(target_os = "android")]
-    let builder = builder.plugin(shell::android_plugin());
-
-    // 屏幕方向：Swift ShellPlugin 注册（iOS 专用；源在 src-tauri/ios/，随 ios init 落位）
+    // 屏幕方向：Android 走 JNI 直调（无需插件注册）；iOS 走 Swift 插件注册
     #[cfg(target_os = "ios")]
     let builder = builder.plugin(shell::ios_plugin());
 

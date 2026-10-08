@@ -91,6 +91,43 @@
               "nav": "start"
             },
             {
+              "type": "button",
+              "text": "摸一下钱袋（+10 金币）",
+              "id": "btn_coin",
+              "ops": [
+                {
+                  "op": "set",
+                  "key": "player.gold",
+                  "value": "+= {10}"
+                },
+                {
+                  "op": "se",
+                  "resource": "Audio/chest_drawer_open.mp3",
+                  "volume": 0.6
+                },
+                {
+                  "op": "notify",
+                  "text": "钱袋沉了一点（元素 ops：变量 + 音效 + 提示）",
+                  "type": "info"
+                }
+              ]
+            },
+            {
+              "type": "button",
+              "text": "金币不足时禁用的按钮（点不动）",
+              "id": "btn_locked",
+              "disabled": "{player.gold < 100}",
+              "disabled_color": "#565f89",
+              "disabled_opacity": 0.5,
+              "ops": [
+                {
+                  "op": "notify",
+                  "text": "不该看到这句：金币 >= 100 才会启用",
+                  "type": "warning"
+                }
+              ]
+            },
+            {
               "type": "text",
               "text": "提示 1：元素也是数据——这一行由构建期 for 生成",
               "id": "hint_1",

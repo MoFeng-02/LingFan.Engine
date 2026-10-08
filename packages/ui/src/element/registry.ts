@@ -16,8 +16,13 @@ export interface ElementRenderContext {
   element: ElementInstance;
   /** 递归渲染子元素（容器渲染器把 children 渲染进给定容器） */
   renderChildren: (container: HTMLElement, children: readonly ElementInstance[]) => void;
-  /** 交互激活（判定通过后由渲染器调用；具体 nav/cmd 语义归宿主） */
+  /** 交互激活（判定通过后由渲染器调用；具体 nav/ops/cmd 语义归宿主） */
   activate?: (element: ElementInstance) => void;
+  /**
+   * `disabled` 表达式求值（返回 null = 求值失败）。
+   * 表达式语法归核心层：UI 只做形态判定，求值经此回调交给宿主/引擎。
+   */
+  evalDisable?: (expression: string) => boolean | null;
   /** 资源解析（source/src/path → 可加载 URL）；缺省或失败返回 undefined（不静默伪造） */
   resolveResource?: (path: string) => string | undefined;
 }
