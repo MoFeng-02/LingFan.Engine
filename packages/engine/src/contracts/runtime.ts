@@ -43,6 +43,24 @@ export interface MinigameMountPayload {
   seq: number;
 }
 
+/**
+ * 外部玩法系统接管事件：宿主经注册表解析系统并挂载（未注册 = fail-closed）；
+ * signal abort = 立即卸载（回溯/导航/读档/销毁）。
+ *
+ * 与 [`MinigameMountPayload`] 同构——两者都是「引擎让出控制权 → 外部系统跑 →
+ * 回传结果 → 引擎继续」的等待形态；区别只在语义专一程度
+ * （minigame = 小游戏专用；interaction = 通用玩法系统）。
+ */
+export interface InteractionMountPayload {
+  kind: "interaction.mount";
+  /** 玩法系统标识（宿主注册表键；未注册 fail-closed 不伪造完成） */
+  system: string;
+  config: Record<string, unknown>;
+  signal: AbortSignal;
+  /** 单调序号：重放重新挂载与旧挂载可分辨 */
+  seq: number;
+}
+
 /** 存档命令面完成信号：`save(slot, title)` 写档成功（UI 据此提示；写失败走 engine.error） */
 export interface SaveDonePayload {
   kind: "save.done";
@@ -71,7 +89,8 @@ export type OutboundPayload =
   | SaveDonePayload
   | LoadDonePayload
   | LoadNoticePayload
-  | MinigameMountPayload;
+  | MinigameMountPayload
+  | InteractionMountPayload;
 
 /** 出站统一信封：核心层出站全部 `{v, kind:'event', payload}` */
 export interface OutboundEvent {
@@ -137,6 +156,12 @@ export const SYS = {
   choicesZ: "__choices_z",
   notificationsZ: "__notifications_z",
   minigameZ: "__minigame_z",
+  /**
+   * 外部玩法系统接管（`interaction` op）的实例 z。
+   * 与 `minigameZ` 复用同一渲染层（两者都是「外部系统整屏接管」形态），
+   * 但独立成键——并行/嵌套接管时各自的 z 互不覆盖。
+   */
+  interactionZ: "__interaction_z",
   /** 视频层（`video`/`cutscene`）：宿主解析后交给 `VideoPort.setZIndex` */
   videoZ: "__video_z",
   // 四音频通道：状态入 SSOT → 快照/存档自动随行
@@ -152,6 +177,11 @@ export const SYS = {
   videoSkipable: "__video_skipable",
   /** 小游戏挂载信息（game/config/seq；signal 走事件不进 SSOT——运行时对象不可快照） */
   minigame: "__minigame",
+  /**
+   * 外部玩法系统接管信息（`interaction` op：system/config/seq）。
+   * 与 `minigame` 同构（signal 走事件不进 SSOT）；`systems` 为可选的多系统并行清单。
+   */
+  interaction: "__interaction",
   /**
    * 舞台元素（声明式空间层，ElementInstance[]）：进入 scene 列时整体装载，
    * 列切换清空（空间层属于列），随快照/存档/回溯自动随行（整体 state Map 快照）。
@@ -190,7 +220,14 @@ export const RESERVED_STATE_KEYS: ReadonlySet<string> = new Set(
 
 /** 等待状态（`__waiting` 取值全集） */
 export type WaitingState =
-  "none" | "dialog" | "menu" | "wait" | "minigame" | "input" | "video";
+  | "none"
+  | "dialog"
+  | "menu"
+  | "wait"
+  | "minigame"
+  | "interaction"
+  | "input"
+  | "video";
 
 /** NVL 模式（`__nvl_mode` 取值）：累积层开关与清屏动作 */
 export type NvlMode = "none" | "active" | "clear" | "exit";

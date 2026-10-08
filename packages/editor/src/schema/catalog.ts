@@ -60,6 +60,7 @@ export const OP_META: readonly OpMeta[] = [
   { op: "stop_video", label: "停止视频", group: "video" },
   { op: "video_skipable", label: "视频可跳开关", group: "video" },
   { op: "minigame", label: "小游戏", group: "minigame" },
+  { op: "interaction", label: "玩法系统接管", group: "minigame" },
   // 元素系统
   { op: "show", label: "显示元素", group: "presentation" },
   { op: "hide", label: "隐藏元素", group: "presentation" },
@@ -217,6 +218,11 @@ export const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   "minigame.reward[].key": { label: "奖励变量", kind: "identifier" },
   "minigame.reward[].value": { label: "奖励值", kind: "value" },
   "minigame.z": { label: "层级（实例）", kind: "number" },
+  "interaction.system": { label: "玩法系统标识", kind: "identifier" },
+  "interaction.config": { label: "配置", kind: "object" },
+  "interaction.on_success": { label: "成功跳转列", kind: "identifier" },
+  "interaction.on_fail": { label: "失败跳转列", kind: "identifier" },
+  "interaction.z": { label: "层级（实例）", kind: "number" },
   // —— 元素增删改 ——
   "show.target": { label: "资源路径", kind: "resource" },
   "show.x": { label: "X（数字或 CSS 长度）", kind: "string" },

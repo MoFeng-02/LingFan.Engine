@@ -84,7 +84,10 @@ describe("元素表单描述符", () => {
     expect(byKey.get("nav")?.kind).toBe("identifier");
     expect(byKey.get("source")?.kind).toBe("resource");
     expect(byKey.get("text")?.kind).toBe("text");
-    expect(byKey.get("disabled")?.kind).toBe("boolean");
+    // disabled 接受布尔或表达式（`{player.gold < 10}`，点击时刻求值）⇒ value 而非 boolean
+    expect(byKey.get("disabled")?.kind).toBe("value");
+    // ops 是命令序列 ⇒ body（复用命令体控件：插入/删除/上下移/逐字段编辑）
+    expect(byKey.get("ops")?.kind).toBe("body");
   });
 
   it("分类型属性与中文标签可用（回归）", () => {

@@ -249,6 +249,15 @@ const minigameSchema = z.strictObject({
   z: InstanceZ, // minigame 层实例 z
 });
 
+/** 外部玩法系统接管（与 minigame 同形；无 reward——那是小游戏专属语义） */
+const interactionSchema = z.strictObject({
+  system: NonEmpty,
+  config: z.record(z.string(), z.unknown()).optional(),
+  on_success: NonEmpty.optional(),
+  on_fail: NonEmpty.optional(),
+  z: InstanceZ, // 与 minigame 同层（外部系统整屏接管）
+});
+
 // ====== 元素系统（元素增删改 + 表现类）======
 // 字段面以执行器为权威（engine.ts 的 ELEMENT_OP_FIELDS）；x/y 允许数字或 CSS 长度串。
 
@@ -357,6 +366,7 @@ const OP_SCHEMA_MAP = {
   stop_video: emptySchema,
   video_skipable: videoSkipableSchema,
   minigame: minigameSchema,
+  interaction: interactionSchema,
   // 元素系统
   show: showSchema,
   hide: hideSchema,

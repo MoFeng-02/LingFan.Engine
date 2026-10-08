@@ -252,6 +252,13 @@ describe("词汇层 · 全 builder 可解析守卫（形状漂移零容忍）", 
         reward: [script.reward("player.gold", 1)],
       }),
     ],
+    [
+      "interaction",
+      script.interaction("walk", {
+        config: { target: 120 },
+        onSuccess: "arrived",
+      }),
+    ],
     ["show", script.show("Images/a.png", { x: 1, y: 2 })],
     ["hide", script.hide("hero")],
     ["background", script.background("Images/a.png")],

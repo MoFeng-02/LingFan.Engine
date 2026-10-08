@@ -84,6 +84,7 @@ export const BUILTIN_OP_NAMES: ReadonlySet<string> = new Set([
   "video_skipable",
   "cutscene",
   "minigame",
+  "interaction",
   "show",
   "hide",
   "background",
