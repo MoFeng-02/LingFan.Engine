@@ -4,8 +4,8 @@ import {
   evaluateExpression,
   ExpressionError,
   interpolateText,
-} from "../../../packages/engine/src/runtime/expr";
-import type { NameResolver } from "../../../packages/engine/src/runtime/resolver";
+  type NameResolver,
+} from "@lingfan/engine";
 
 const vars = new Map<string, unknown>([
   ["gold", 7],

@@ -41,14 +41,3 @@ export const HOST_OS_VALUES: readonly HostOs[] = [
   "unknown",
 ];
 
-export function isHostOs(value: unknown): value is HostOs {
-  return (
-    typeof value === "string" &&
-    (HOST_OS_VALUES as readonly string[]).includes(value)
-  );
-}
-
-/** 由具体 os 派生形态：ios/android = mobile；windows/macos/linux 与 unknown = desktop */
-export function hostFormOf(os: HostOs): HostForm {
-  return os === "android" || os === "ios" ? "mobile" : "desktop";
-}

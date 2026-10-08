@@ -11,13 +11,17 @@
  * `ExtensionContext.set/get` **物理强制**该前缀（门卫式约束——扩展代码写不出前缀外的键）。
  */
 
+import { SHORT_ID_PATTERN } from "./identifiers";
 import type { Story, StoryCommand } from "./story";
 
 /** 扩展写入的键命名空间前缀（`ext.<extensionId>.`） */
 export const EXT_KEY_PREFIX = "ext.";
 
-/** extensionId 形态：小写字母开头，小写字母/数字/`_`/`-`，1..32 */
-export const EXTENSION_ID_PATTERN = /^[a-z][a-z0-9_-]{0,31}$/;
+/**
+ * 扩展 id 的合法形态：小写字母开头，小写字母/数字/`_`/`-`，1..32。
+ * 具体写法与理由见 `identifiers.ts`（与玩法系统 id 共用同一套，不各写一份）。
+ */
+export const EXTENSION_ID_PATTERN = SHORT_ID_PATTERN;
 
 /** 扩展执行上下文：`set/get` 物理强制 `ext.<extensionId>.` 前缀（门卫）；story 只读 */
 export interface ExtensionContext {

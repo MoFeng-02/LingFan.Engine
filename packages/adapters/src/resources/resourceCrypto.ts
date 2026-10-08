@@ -10,15 +10,7 @@
  * 契约不变（resolve/release）；invoke 与 URL 构造均可注入（契约替身测试不依赖 Tauri 运行时）。
  */
 import type { ResourcePort } from "@lingfan/engine";
-import type { TauriInvoke } from "./projectFilesTauri";
-
-const defaultInvoke: TauriInvoke = async <T>(
-  command: string,
-  args?: Record<string, unknown>,
-): Promise<T> => {
-  const { invoke } = await import("@tauri-apps/api/core");
-  return invoke<T>(command, args);
-};
+import { defaultInvoke, type TauriInvoke } from "../platform";
 
 interface StreamPayload {
   /** LFEN2 v2 分块形态标记：协议按 Range 按需解密，明文不落盘 */

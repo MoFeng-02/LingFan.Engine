@@ -9,6 +9,7 @@ import {
   getAtPointer,
   listOpGroups,
 } from "@lingfan/editor";
+import { EDITOR_API_KEY } from "../contracts";
 
 const props = defineProps<{
   story: Story;
@@ -16,13 +17,7 @@ const props = defineProps<{
   selectedPointer: string | null;
 }>();
 
-interface EditorApi {
-  select(pointer: string | null): void;
-  insertCommand(pointer: string, command: Record<string, unknown>): void;
-  removeCommand(pointer: string): void;
-  moveCommand(pointer: string, delta: number): void;
-}
-const api = inject<EditorApi>("editorApi")!;
+const api = inject(EDITOR_API_KEY)!;
 
 /** op 分组与中文标签 = `@lingfan/editor` 单一事实源（与组件面板共用，勿在此另列清单） */
 const opGroups = listOpGroups();

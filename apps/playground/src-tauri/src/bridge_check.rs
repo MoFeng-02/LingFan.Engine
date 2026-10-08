@@ -9,10 +9,10 @@
 //! 4. 负载形状：Rust serde 输出键必须与 TS 期待接口键一致（SlotSummary 契约——
 //!    save_count/slot/timestamp/mode 曾是无测试的隐性契约）
 //! 5. Android JNI 字符串契约：方法名 / 方法签名 / `ActivityInfo` 常量 / 三态字面量——
-//!    JNI 调用编译期完全不校验，方法名拼错只在真机静默失败；本测试兼守「自维护 Kotlin
-//!    插件不得回流」（历史形态是 Rust 契约 + Kotlin 实现成对演进，两侧失配无编译期信号）
+//!    JNI 调用编译期完全不校验，方法名拼错要到运行期才暴露；本测试兼守「自维护 Kotlin
+//!    插件不得回流」（该插件已退役：原先 Rust 契约 + Kotlin 实现成对演进，两侧失配无编译期信号）
 //! 6. iOS Swift 自注册插件字符串契约（C 入口符号 / 命令名 / 参数键 / 模式字面量）——
-//!    Swift 在本机（Windows）不可编译，源断言是当前唯一可自动化的防线
+//!    Swift 在本机（Windows）不可编译，源断言是当前唯一能自动检查它的手段
 //!
 //! TS 侧编组行为已由契约替身测试覆盖（tests/adapters/**），本模块只补跨边界字符串契约；
 //! 局限注明：invoke 泛型提取不支持嵌套尖括号（当前代码库无此形态）。
@@ -174,7 +174,7 @@ mod tests {
     }
 
     /// 规则 ①检测核心：TS invoke 全集 − 注册面 = 未注册命令（提取与比对汇聚在此，
-    /// 红路径由合成输入测试直接验证，真实源面由 ts_invoke_commands_are_registered 常绿把守）
+    /// 反向用例由合成输入测试直接验证，真实源面由 ts_invoke_commands_are_registered 持续覆盖）
     fn unregistered_ts_commands(
         ts_texts: &[String],
         lib_text: &str,
@@ -294,8 +294,8 @@ mod tests {
 
     #[test]
     fn bridge_check_catches_unregistered_and_bodyless() {
-        // 锚点 bridge-check-new-command：互锁检测逻辑自身的红路径（合成输入）——
-        // 「新增命令漏注册」「注册缺真身」必被逮住；真实源面的常绿由上方两测试把守
+        // 互锁检测逻辑自身的反向用例（合成输入）——
+        // 「新增命令漏注册」「注册缺真身」必须被检出；真实源面的持续覆盖由上方两测试提供
         let ts = r#"const x = await invoke<string>("ghost_cmd");
 const y = await invoke("real_cmd", { foo: 1 });"#;
         let lib = r#"
@@ -323,7 +323,7 @@ const y = await invoke("real_cmd", { foo: 1 });"#;
     /// 本测试锁住「不再回流」并固定 JNI 字符串面。
     ///
     /// 为什么仍需测试：JNI 调用是**纯字符串契约**（类方法名 `setRequestedOrientation`、
-    /// 签名 `(I)V`、`ActivityInfo` 常量），编译期完全不校验——方法名拼错只在真机静默失败。
+    /// 签名 `(I)V`、`ActivityInfo` 常量），编译期完全不校验——方法名拼错要到运行期才暴露。
     /// 这些字面量在桌面门禁下也只能靠源断言（Android cfg 分支桌面编译不到）。
     #[test]
     fn android_jni_string_contracts_match_platform_api() {
@@ -388,7 +388,7 @@ const y = await invoke("real_cmd", { foo: 1 });"#;
     fn swift_plugin_string_contracts_match_rust() {
         // iOS 侧与 Rust 同样是纯字符串契约
         // （C 入口符号 = ios_plugin_binding! 的 ident / 命令名 = @objc 方法名 / 参数键 / 模式字面量）。
-        // Swift 无法在本机（Windows）编译，本测试是当前唯一可自动化的防线：符号与字面量漂移即刻暴露。
+        // Swift 无法在本机（Windows）编译，本测试是当前唯一能自动检查它的手段：符号与字面量漂移即刻暴露。
         // 源落点：src-tauri/ios/（Swift 包：build.rs 经 link_apple_library 于 cargo 构建期编译链接；
         // 不能放进 Xcode 工程 Sources——Rust 先于 app target 的 Swift 链接，符号会未定义）
         let swift = fs::read_to_string(crate_dir().join("ios/Sources/ShellPlugin.swift"))

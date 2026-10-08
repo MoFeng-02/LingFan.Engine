@@ -1,10 +1,10 @@
 /**
  * 屏幕方向端口适配器：应用是「尽力而为」——平台忽略（Android 16 大屏 /
  * iOS 未声明该方向 / 无壳形态）不算错误，由实现返回布尔告知是否已应用。
- * invoke 可注入（默认动态 import `@tauri-apps/api/core`）：测试以契约替身注入。
+ * invoke 可注入（缺省取 Tauri 桥接域的缺省实现）：测试以契约替身注入。
  */
 import type { OrientationMode, OrientationPort } from "@lingfan/engine";
-import { defaultInvoke, type TauriInvoke } from "../resources/projectFilesTauri";
+import { defaultInvoke, type TauriInvoke } from "../platform";
 
 /**
  * Tauri 形态（Desktop + Mobile 同一命令面）：`set_orientation` 由 Rust 侧决定实现——

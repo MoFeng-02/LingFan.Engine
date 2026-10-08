@@ -1,5 +1,5 @@
 /**
- * 白屏归因判据（锚点 `white-screen-verdict`）：`classifyWhiteScreen` 是纯函数，
+ * 白屏归因判据：`classifyWhiteScreen` 是纯函数，
  * 决定 iOS CI 回传日志里那条 `verdict` 落在哪一类——判错会把根因带偏。
  *
  * 三类（外加 not-diagnosable 的 unknown）：

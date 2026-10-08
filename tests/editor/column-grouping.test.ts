@@ -488,12 +488,12 @@ describe("源码互锁：视图偏好不得进会话 / 故事树", () => {
   it("列侧栏走纯函数布局与分组 API，且完全不引用 session", () => {
     expect(columnListSource).not.toMatch(/session/);
     expect(columnListSource).toContain("layoutColumns");
-    expect(columnListSource).toContain('inject<ColumnGroupingApi>("columnGroupingApi")');
+    expect(columnListSource).toContain("inject(COLUMN_GROUPING_API_KEY)");
   });
 
   it("宿主用注入式 store 且 provide/inject 键一致；key 前缀只在纯逻辑模块出现", () => {
     expect(appSource).toContain("createColumnGroupingStore");
-    expect(appSource).toContain('provide("columnGroupingApi"');
+    expect(appSource).toContain("provide(COLUMN_GROUPING_API_KEY");
     expect(appSource).not.toContain("lingfan-editor-colgroups");
     expect(columnListSource).not.toContain("lingfan-editor-colgroups");
     expect(COLUMN_GROUPING_KEY_PREFIX).toBe("lingfan-editor-colgroups:");

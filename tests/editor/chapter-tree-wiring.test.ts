@@ -5,7 +5,7 @@
  * `ChapterTree.vue` 组件也写好了 —— 但**没接进主界面**（左栏仍是文件树，
  * 文档 tab 平铺，用户失去结构感）。**判据绿 ≠ 能力可用**。
  *
- * 本守卫锁的是**「某能力必须接在某处」**这一类性质（与 `b1-skeleton-wiring` 同风格）：
+ * 本守卫锁的是**「某能力必须接在某处」**这一类性质（与同类源级接线守卫同风格）：
  * 这些性质在界面上表现为「看起来对」，但一旦被拆掉，判据测试**依然全绿**。
  */
 import { describe, expect, it } from "vitest";
@@ -43,7 +43,7 @@ describe("章节树 · 接线互锁（防「判据绿但没接上」）", () => 
   });
 
   it("路径面经 provide 注入（章节 = 路径目录，没有它章节树退化为平铺）", () => {
-    expect(code(appSource)).toContain('provide("columnPaths"');
+    expect(code(appSource)).toContain("provide(COLUMN_PATHS_KEY");
   });
 
   it("路径来源是**工程的列**（`sourcePath`），**不是已打开的文档**", () => {

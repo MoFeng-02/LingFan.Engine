@@ -1,5 +1,5 @@
 /**
- * 步骤视图接线锚点（`editor-step-layout`）
+ * 步骤视图接线
  *
  * 与 `tests/playground/webview-guard.test.ts` 同手法（`?raw` 源级结构断言）：
  * 本任务的价值在「接线是否真的接上」与「有没有另立一套边界判定」，
@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 import appSource from "../../apps/editor/src/App.vue?raw";
 import stepLayoutSource from "../../apps/editor/src/components/StepLayout.vue?raw";
+import editorApiContractSource from "../../apps/editor/src/contracts/editor.ts?raw";
 import stepsSource from "../../packages/editor/src/layout/steps.ts?raw";
 import editorIndexSource from "../../packages/editor/src/index.ts?raw";
 import engineIndexSource from "../../packages/engine/src/index.ts?raw";
@@ -42,13 +43,13 @@ describe("视图接线：centerView 四态 + 步骤分支", () => {
 
 describe("点击步骤 → 定位时间线（验收③，零新增管道）", () => {
   it("StepLayout 注入既有 editorApi 并调用 `api.reveal`（定位职责已显式化）", () => {
-    expect(stepLayoutSource).toContain('inject<EditorApi>("editorApi")');
+    expect(stepLayoutSource).toContain("inject(EDITOR_API_KEY)");
     // 拆职责前靠 `select()` 的切视图副作用顺带实现定位；
     //    现已显式化为 `reveal()` = 选中 + 切时间线 + 滚动到行。
     //    本断言守的是「点步骤能定位到时间线」这个**意图**，不是"必须调 select"这个字面。
     expect(stepLayoutSource).toContain("api.reveal(step.endPointer)");
-    // 契约面必须声明 reveal
-    expect(stepLayoutSource).toMatch(/interface EditorApi\s*\{[^}]*reveal\(/);
+    // 契约面必须声明 reveal（注入键的类型即取自这份契约）
+    expect(editorApiContractSource).toMatch(/interface\s+EditorApiPort\s*\{[^}]*reveal\(/);
   });
 
   it("泳道头走既有 selectColumn（与节点图同语义）", () => {

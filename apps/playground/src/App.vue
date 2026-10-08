@@ -8,6 +8,7 @@ import {
   instanceZLayer,
   resolveInstanceZ,
   slotIds,
+  type AbortHandle,
   type AudioChannel,
   type AudioPort,
   type ElementInstance,
@@ -225,10 +226,20 @@ const notifyViewOf = (text: string, tone: string): NotifyTemplateView => {
   const template = notifyTemplates.resolve(null) ?? builtinNotifyTemplate;
   return template({ text, tone: toNotifyTone(tone) });
 };
+/**
+ * 中止句柄收窄（宿主侧）：契约层只用语言核心类型，只承诺 `signal.aborted` 可轮询；
+ * 本宿主（浏览器）拿到的其实是 `AbortSignal` 实例，需要订阅中止事件时就收窄回来。
+ * 只做类型收窄，运行时对象不变——引擎给的就是宿主环境自己的中止实现。
+ */
+const abortSignalOf = (handle: AbortHandle): AbortSignal =>
+  handle as AbortSignal;
+
 // —— 小游戏注册表：宿主注册（任意技术实现工厂）；未注册 = fail-closed 不伪造完成 ——
 const minigames = createMinigameRegistry();
 // 演示小游戏「点够次数」：config.target 次点击后成功（signal abort = 立即收尾不回填）
-minigames.register("click3", (host, ctx) => {
+minigames.register("click3", (container, ctx) => {
+  // 契约层只承诺「有个可挂载的容器」，不承诺类型；本宿主用 DOM 渲染，故收窄回元素
+  const host = container as HTMLElement;
   return new Promise((resolve) => {
     const target =
       typeof ctx.config.target === "number" ? ctx.config.target : 3;
@@ -249,7 +260,7 @@ minigames.register("click3", (host, ctx) => {
       counter.textContent = `${clicks} / ${target}`;
       if (clicks >= target) resolve({ outcome: "success", score: clicks });
     });
-    ctx.signal.addEventListener(
+    abortSignalOf(ctx.signal).addEventListener(
       "abort",
       () => {
         host.innerHTML = ""; // 回溯/导航/销毁：立即收尾（不回填结果）
@@ -332,7 +343,9 @@ interactions.set("walk", (host, ctx) => {
     };
     // abort（回溯/导航/读档/销毁）走 cleanup；正常抵达与异常由宿主收口统一清理
     // （见 interaction.mount 分支的 onAbort —— 两条结束路径只写一处）。
-    ctx.signal.addEventListener("abort", cleanup, { once: true });
+    abortSignalOf(ctx.signal).addEventListener("abort", cleanup, {
+      once: true,
+    });
     window.addEventListener("keydown", onKey);
     window.addEventListener("keyup", onKeyUp);
     render();
@@ -728,15 +741,17 @@ function handleEvent({
     }
     const host = minigameHostEl.value;
     if (host === null) return;
+    // 中止事件订阅需要具体的中止类型：契约层只承诺 `aborted`，这里收窄回本宿主的实现
+    const abortSignal = abortSignalOf(payload.signal);
     const onAbort = (): void => {
-      payload.signal.removeEventListener("abort", onAbort);
+      abortSignal.removeEventListener("abort", onAbort);
       host.innerHTML = "";
       // 工厂在共享宿主上加的演示类必须随收尾移除（本处是两条结束路径的唯一收口，
       // 故只写一次；写在工厂内会漏掉「正常完成」那条路）
       host.classList.remove("minigame-demo");
       inMinigame.value = false;
     };
-    payload.signal.addEventListener("abort", onAbort, { once: true });
+    abortSignal.addEventListener("abort", onAbort, { once: true });
     void factory(host, { config: payload.config, signal: payload.signal })
       .then((result) => {
         if (payload.signal.aborted) return; // 中断竞态：以 abort 收尾为准
@@ -760,8 +775,10 @@ function handleEvent({
     // 接管期间切「玩法域」：推进/回溯键整体让位（不必逐事件 preventDefault）。
     // 域归宿主状态——输入路由是展示层职责，引擎只暴露等待态。
     inputScope.set("world");
+    // 中止事件订阅需要具体的中止类型：契约层只承诺 `aborted`，这里收窄回本宿主的实现
+    const abortSignal = abortSignalOf(payload.signal);
     const onAbort = (): void => {
-      payload.signal.removeEventListener("abort", onAbort);
+      abortSignal.removeEventListener("abort", onAbort);
       host.innerHTML = "";
       inInteraction.value = false;
       // 工厂在共享宿主上加的演示类必须随收尾移除。本处是**两条结束路径的唯一收口**
@@ -771,7 +788,7 @@ function handleEvent({
       // 外部接管结束：域交还叙事
       inputScope.set("dialogue");
     };
-    payload.signal.addEventListener("abort", onAbort, { once: true });
+    abortSignal.addEventListener("abort", onAbort, { once: true });
     void factory(host, {
       config: payload.config,
       signal: payload.signal,

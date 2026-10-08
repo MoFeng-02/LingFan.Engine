@@ -1,0 +1,1796 @@
+{
+  "name": "lingfan-w1-contracts",
+  "id": "lingfan-w1-contracts",
+  "description": "执行批次 `2026-10-08-模块化与契约收口` 的 W1：模块 01（引擎契约面收口，T01-01~T01-08）+ 模块 02（适配器与编辑器契约面，T02-01~T02-06），共 14 条任务，外加 1 条全批次验收核验。全程遵循仓库规则（契约先行、原子化、模块单一出口、禁止平铺、类型被 2 层以上引用必须进 contracts/）与用户明令的注释口径（面向读者、通俗易懂，禁内部编号/代号/审计叙事）。",
+  "captainSessionId": "session-378b45e8-9a03-4183-b81c-5da68d829820",
+  "createdAt": 1791441952923,
+  "phase": "running",
+  "members": [
+    {
+      "id": "130c24f1-d6c4-4700-8c75-50b468379793",
+      "name": "engine-contracts",
+      "role": "引擎契约工程师",
+      "provider": "workbuddy-global",
+      "model": "deepseek-v4.1-flash",
+      "reasoningEffort": "max",
+      "joinedAt": 1791441952923,
+      "status": "idle"
+    },
+    {
+      "id": "a7e81133-9a27-4791-b9e3-517d9951bf26",
+      "name": "comments-rust",
+      "role": "注释清理工程师",
+      "provider": "workbuddy-global",
+      "model": "deepseek-v4.1-flash",
+      "reasoningEffort": "max",
+      "joinedAt": 1791441952923,
+      "status": "idle"
+    },
+    {
+      "id": "370e90a2-5db7-46e3-9fda-c37766dcdbd4",
+      "name": "adapters-editor",
+      "role": "适配器与编辑器契约工程师",
+      "provider": "workbuddy-global",
+      "model": "deepseek-v4.1-flash",
+      "reasoningEffort": "max",
+      "joinedAt": 1791441952923,
+      "status": "working"
+    },
+    {
+      "id": "5d9a5742-f6d3-41e1-8cf7-f48a4a126dbe",
+      "name": "ui-readport",
+      "role": "引擎读口与 UI 对接工程师",
+      "provider": "workbuddy-global",
+      "model": "deepseek-v4.1-flash",
+      "reasoningEffort": "max",
+      "joinedAt": 1791441952923,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "verifier",
+      "role": "验收核验员",
+      "provider": "workbuddy-global",
+      "model": "deepseek-v4.1-flash",
+      "reasoningEffort": "max",
+      "joinedAt": 1791441952923,
+      "status": "idle"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "profileSeedId": "T0101",
+      "subject": "T01-01 契约类型上移（W2 全部拆分的前置）",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/01-引擎契约面收口.md` 的 **T01-01**（先读该文件全文；头部有注释口径与门禁）。\n\n改动：① 新建 `packages/engine/src/contracts/guard.ts` 收 `EngineOptions` / `GuardContext` / `GuardFn`（现住 `runtime/engine.ts:223` / `:252` / `:260`）；② `LayerId` / `LayerZTable` / `LayerZOverrides` / `LAYER_IDS` / `DEFAULT_LAYER_Z` / `SavesConfig` / `SavesThumbnailConfig` 上移到既有 `contracts/shell.ts`，`runtime/shell.ts` 只留解析函数；③ `TextProjection` → 新建 `contracts/text.ts`；④ `SerializedProject` / `ProjectFileDiff` / `FileStamp` / `WriteNormalizationFinding` → 新建 `contracts/project.ts`；⑤ 过渡期在 `runtime/*.ts`、`data/*.ts` 保留同名 re-export（裁定 R5，消费方零改动）。\n\n**不要**上移 `RegisteredOp` / `WaitSpec`（全仓零外部消费，归 T01-06 删除）。\n\n顺手（原属 T01-07 的引擎侧条目，因文件重叠改由本任务一并处理）：随 `TextProjection` 迁移的 `packages/engine/src/data/text.ts:2034` 注释按注释口径重写（去掉内部编号）；清理 `packages/engine/src/data/index.ts:1` 与 `packages/engine/src/runtime/engine.ts:371` 的内部任务编号注释。\n\n写作用域：`packages/engine/src/contracts/**`、`packages/engine/src/runtime/{engine,shell}.ts`、`packages/engine/src/data/{text,project,index}.ts`。\n\n验收：`pnpm typecheck` + `pnpm lint` 全绿；`pnpm test:unit` 全绿（基线 142 文件 / 1885 通过 / 10 skipped，不得减少）；全仓 grep `contracts/` 下能命中上述 15 个类型名（① 3 + ② 7 + ③ 5）；`apps/playground/Stories.src/gen/fun_register.g.ts` 仍能编译。\n\n门禁：可跑 lint / typecheck / test:unit；**禁止** `pnpm build` / `pnpm tauri build`；不代提交。",
+      "status": "completed",
+      "assignee": "engine-contracts",
+      "dependencies": [],
+      "attempt": 1,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791443116379,
+      "attemptId": "4fbd5848-fbe5-4b4a-99a2-664ab1d900fd",
+      "reassigning": false,
+      "output": "T01-01 完成：15 个契约类型全部上移到 contracts/，实现层按原路径保留同名转出（裁定 R5），消费方零改动。\n\n新建：`contracts/guard.ts`（EngineOptions / GuardContext / GuardFn）、`contracts/text.ts`（TextProjection）、`contracts/project.ts`（SerializedProject / ProjectFileDiff / FileStamp / WriteNormalizationFinding）。\n上移进既有 `contracts/shell.ts`：LayerId / LayerZTable / LayerZOverrides / LAYER_IDS / DEFAULT_LAYER_Z / SavesConfig / SavesThumbnailConfig / DEFAULT_SAVES_CONFIG。\n`contracts/index.ts` 追加 3 行 `export *`（guard / text / project），契约层导出名 91 → 107（新增 16 名，无删除、无重名）。\n\n转出点：`runtime/engine.ts`（3 名类型）、`runtime/shell.ts`（5 名类型 + 3 个值）、`data/text.ts`（TextProjection）、`data/project.ts`（4 名类型）——均为 `export ... from \"../contracts\"`，原路径可用性不变，收口时统一改走包出口。\n\n顺手项（注释口径）：`data/text.ts` 的「06 编辑器文本模式契约」内部编号注释、`data/index.ts` 的「01 … / 07 …」编号、`runtime/engine.ts` 两处「—— 03 回溯与历史 ——」全部重写为面向读者的说明；迁移的注释按口径重写而非搬运（含 DEFAULT_LAYER_Z 的层级语义说明、EngineOptions 各字段用途、SerializedProject 的「为什么不回填 sourcePath」）。\n\n未触碰：RegisteredOp / WaitSpec（按裁定不上移，归 T01-06）；`switch (cmd.op) {` 与 `this.translate(` 调用形态（被 `?raw` 源级测试锚定）；`contracts/` 内 7 个 `export function`（归 T01-02）；`packages/engine/src/index.ts` 五处 `from \"./data\"`（归 T01-06）。\n\n契约层纯度保持：`contracts/**` 无 `../` 越层 import（grep 0 命中）；新增 3 个契约文件只 import 同层 `./extension` / `./save` / `./story`。\n\n注：工作区同时存在 adapters-editor 正在改动的 `packages/adapters/**`（T02-02/T02-06，7 改 1 新增），非本任务范围，未触碰。",
+      "changedPaths": [
+        "packages/engine/src/contracts/guard.ts",
+        "packages/engine/src/contracts/text.ts",
+        "packages/engine/src/contracts/project.ts",
+        "packages/engine/src/contracts/shell.ts",
+        "packages/engine/src/contracts/index.ts",
+        "packages/engine/src/runtime/engine.ts",
+        "packages/engine/src/runtime/shell.ts",
+        "packages/engine/src/data/text.ts",
+        "packages/engine/src/data/project.ts",
+        "packages/engine/src/data/index.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "pnpm typecheck 全绿",
+          "status": "passed",
+          "evidence": "exit=0；vue-tsc --noEmit 零错误"
+        },
+        {
+          "criterion": "pnpm lint 全绿",
+          "status": "passed",
+          "evidence": "exit=0；eslint . 零告警"
+        },
+        {
+          "criterion": "pnpm test:unit 全绿，基线 142 文件 / 1885 通过 / 10 skipped 不得减少",
+          "status": "passed",
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1885 passed | 10 skipped (1895)；exit=0 —— 与基线逐项相同"
+        },
+        {
+          "criterion": "全仓 grep contracts/ 下命中 15 个类型名（3 + 7 + 5）",
+          "status": "passed",
+          "evidence": "contracts/guard.ts:12,44,52（EngineOptions/GuardContext/GuardFn）；contracts/shell.ts:42,54,57,60,82,97,109（LayerId/LayerZTable/LayerZOverrides/LAYER_IDS/DEFAULT_LAYER_Z/SavesThumbnailConfig/SavesConfig）；contracts/text.ts:9（TextProjection）；contracts/project.ts:8,24,32,41（SerializedProject/ProjectFileDiff/FileStamp/WriteNormalizationFinding）—— 15/15 声明命中"
+        },
+        {
+          "criterion": "apps/playground/Stories.src/gen/fun_register.g.ts 仍能编译",
+          "status": "passed",
+          "evidence": "以仓库 tsconfig 为基、补 @lingfan/engine→packages/engine/src/index.ts 路径映射后 tsc --noEmit 编译该生成物 exit=0；其 `import type { GuardFn } from \"@lingfan/engine\"` 与 `Record<string, GuardFn>` 均解析通过。同时 tests/playground/stories-build.test.ts（32 tests）全绿，含 :398-400 对该生成物的源级断言"
+        },
+        {
+          "criterion": "过渡期在 runtime/*.ts、data/*.ts 保留同名 re-export（裁定 R5，消费方零改动）",
+          "status": "passed",
+          "evidence": "runtime/engine.ts、runtime/shell.ts、data/text.ts、data/project.ts 均含 `export type {...} from \"../contracts\"`（runtime/shell.ts 另含 3 个值的 `export {...}`）；全仓 grep 无任何指向被迁移旧路径的外部 import；tests/engine/runtime/shell.test.ts、tests/engine/data/guard-op.test.ts 等原样通过"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "vue-tsc --noEmit 零错误"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "eslint . 零告警"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "142 文件（140 passed / 2 skipped）；1885 passed / 10 skipped —— 与基线一致"
+        },
+        {
+          "command": "tsc --noEmit（临时 config，extends 仓库 tsconfig + @lingfan/engine 路径映射，编译 fun_register.g.ts 与契约探针）",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "生成物与探针同时编译通过；探针逐名取用 15 个类型（含 DEFAULT_LAYER_Z/LAYER_IDS 作值使用），任何一名缺失或形状变化即报错。临时文件已清理，未入库"
+        },
+        {
+          "command": "git diff --stat -- packages/engine",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "7 文件改动（+154/-160）+ 3 新文件；改动全部落在写作用域内，无越界文件"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "profileSeedId": "T0102",
+      "subject": "T01-02 契约层纯度：剔除实现函数",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/01-引擎契约面收口.md` 的 **T01-02**。\n\n改动：`contracts/` 里 7 个实现函数下沉到新建 `packages/engine/src/shared/guards.ts`（叶子模块，零依赖），`contracts/` 只留类型：`isElementType`(`contracts/element.ts:279`) / `gameScopedKey`(`contracts/game.ts:24`) / `isHostOs`(`contracts/host.ts:44`) / `hostFormOf`(`contracts/host.ts:52`) / `isOrientationMode`(`contracts/shell.ts:35`) / `isSceneType`(`contracts/story.ts:31`) / `isReplayableColumn`(`contracts/story.ts:68`)。\n\n关键约束：`isReplayableColumn` 是「列是否参与历史/存档」的单一判定点（引擎守卫与编辑器分组共用），下沉后必须仍只有一处实现 —— 加互锁断言（引擎与编辑器取同一处）。\n\n写作用域：`packages/engine/src/contracts/{element,game,host,shell,story}.ts`、新增 `packages/engine/src/shared/guards.ts`。\n\n验收：全仓 grep `packages/engine/src/contracts/**` 无 `export function`；`pnpm test:unit` + `typecheck` + `lint` 全绿（基线 142 文件 / 1885 通过）。\n\n门禁：可跑 lint / typecheck / test:unit；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "engine-contracts",
+      "dependencies": [
+        "t1"
+      ],
+      "attempt": 2,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791445948943,
+      "attemptId": "24f7fe2a-b452-41f2-9040-1c4e3045525a",
+      "reassigning": false,
+      "output": "T01-02 完成：契约层 7 个实现函数下沉到 `shared/guards.ts`，契约层归零实现；消费方零改动（经裁定的过渡转发）。\n\n【落盘改动】\n新建 `packages/engine/src/shared/guards.ts`（叶子模块）：`isElementType`(:17) / `gameScopedKey`(:25) / `isHostOs`(:30) / `hostFormOf`(:38) / `isOrientationMode`(:43) / `isSceneType`(:48) / `isReplayableColumn`(:58)，各 1 处实现；实现体与原契约层逐字等价，注释按面向读者口径重写（未搬运）。\n新建 `packages/engine/src/shared/index.ts`：shared 模块唯一公共入口，`export * from \"./guards\";` + 一句域说明。\n`packages/engine/src/contracts/index.ts` 末尾追加 1 行 `export * from \"../shared\";`（带一句事实注释，无任务号/批次号）—— 经裁定的过渡转发。\n5 个契约域文件删除 7 个 `export function`（连同原注释）：`element.ts` 删 `isElementType`；`game.ts` 删 `gameScopedKey`；`host.ts` 删 `isHostOs`+`hostFormOf`（`HOST_OS_VALUES` 保留）；`shell.ts` 删 `isOrientationMode`；`story.ts` 删 `isSceneType`+`isReplayableColumn`。\n`tests/engine/runtime/scene-type.test.ts`（队长授权扩权的唯一测试文件）新增「⑥ 单一判定点互锁」共 2 个用例：① 引擎守卫与编辑器分组对同一批输入判定一致；② 判定函数只实现一处（编辑器侧不得复制判据 + 引擎侧 7 名各只有 1 处声明且都在 `/shared/` + 契约层不含函数实现）。\n\n【取证（文件系统 grep，非 git grep）】\n`contracts/**` 16 个文件：`export function` = 0，`function` 关键字 = 0；7 个判定函数全仓各只有 1 处声明，owner 均为 `packages/engine/src/shared/guards.ts`。\n契约层越层 import 仅 1 条：`contracts/index.ts:19` `from \"../shared\"`。\n`contracts/index.ts` 导出面 107 名、无重名，7 个判定函数仍全部可达（消费方零改动）。\n判据正则在真实源码上验证过判别力：能命中函数声明与箭头常量声明两种重复写法，不命中调用点与 import。\n\n【必须写明的两件事】\n① 过渡转发：`contracts/index.ts` 的 `export * from \"../shared\";` 是经裁定的过渡手段，**收口时应移到 `packages/engine/src/index.ts`（包聚合出口）以恢复 contracts 层零越层**；当前越层 1 条，删该行后归零。t5（T01-04 契约域拆分）必须原样保住这一行。\n② 归属澄清：`tests/engine/runtime/expr.test.ts` / `tests/editor/schema.test.ts` / `tests/editor/expression-audit.test.ts` / `tests/engine/data/element.test.ts` **不是本任务改的**。这 4 个文件 mtime 15:41:53–15:41:57，与 t6（ui-readport，T01-06）的 `packages/engine/src/index.ts`(15:40:33)、`runtime/opRegistry.ts`(15:41:11) 同批；diff 内容全是把引擎内部深引改成经包出口 `@lingfan/engine`，且 t6 的契约原文明确列出这 4 个文件正是「被深引、需由包出口转发」的那批。断言未变。请勿记到 t2 账上。\n\n【测试基线口径】落地后 `test:unit` = 142 文件（140 passed + 2 skipped）/ 1897 用例（1887 passed + 10 skipped），与队长发布的更新基线逐位一致。我起初多写了 1 个用例（1898），已按「补一条断言」的口径把第三项合并进既有用例，使新增数正好为 2。",
+      "changedPaths": [
+        "packages/engine/src/shared/guards.ts",
+        "packages/engine/src/shared/index.ts",
+        "packages/engine/src/contracts/index.ts",
+        "packages/engine/src/contracts/element.ts",
+        "packages/engine/src/contracts/game.ts",
+        "packages/engine/src/contracts/host.ts",
+        "packages/engine/src/contracts/shell.ts",
+        "packages/engine/src/contracts/story.ts",
+        "tests/engine/runtime/scene-type.test.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "全仓 grep `packages/engine/src/contracts/**` 无 `export function`",
+          "status": "passed",
+          "evidence": "文件系统遍历 contracts/** 16 个 .ts：`export function` = 0；`\\bfunction\\b` = 0（连函数关键字都不存在）。"
+        },
+        {
+          "criterion": "7 个判定函数下沉后各只有一处实现（契约层零实现）",
+          "status": "passed",
+          "evidence": "对 7 个名字逐个扫 packages/engine/src/**（37 个 .ts）：每名 owners=1，且 owner 均为 packages/engine/src/shared/guards.ts（isElementType:17 / gameScopedKey:25 / isHostOs:30 / hostFormOf:38 / isOrientationMode:43 / isSceneType:48 / isReplayableColumn:58）。"
+        },
+        {
+          "criterion": "`isReplayableColumn` 单一判定点不破：加互锁断言（引擎与编辑器取同一处）",
+          "status": "passed",
+          "evidence": "tests/engine/runtime/scene-type.test.ts 新增「⑥ 单一判定点互锁」2 用例，实测通过：① 两侧对同一列的判定一致（引擎守卫 vs 编辑器 chapterGroupOf）；② 判定函数只实现一处（编辑器侧不复制判据 + 引擎侧 7 名各 1 处且都在 /shared/ + 契约层无 function）。"
+        },
+        {
+          "criterion": "消费方零改动：7 个名字仍可从契约出口/包出口取到",
+          "status": "passed",
+          "evidence": "TypeScript API 遍历 contracts/index.ts 导出面：107 名、无重名、7 个判定函数全部在列；唯一越层 import 为 contracts/index.ts:19 `from \"../shared\"`（经裁定的过渡转发）。"
+        },
+        {
+          "criterion": "`pnpm typecheck` 全绿",
+          "status": "passed",
+          "evidence": "`pnpm typecheck`（vue-tsc --noEmit）exit 0，零错误。"
+        },
+        {
+          "criterion": "`pnpm lint` 全绿",
+          "status": "passed",
+          "evidence": "`pnpm lint`（eslint .）exit 0，零告警。"
+        },
+        {
+          "criterion": "`pnpm test:unit` 全绿且不低于基线",
+          "status": "passed",
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1887 passed | 10 skipped (1897) —— 与队长更新基线逐位一致（142 / 1897），新增 2 用例即本任务互锁断言。"
+        },
+        {
+          "criterion": "生成物 apps/playground/Stories.src/gen/fun_register.g.ts 仍能编译",
+          "status": "passed",
+          "evidence": "临时 tsconfig（paths 映射 @lingfan/engine→packages/engine/src/index.ts）下 `tsc --noEmit` 编译该生成物 + 包出口探针 → exit 0；负向对照（故意取不存在的导出名）报 TS2305，证明探针确实参与编译而非被跳过。临时目录已删除。"
+        },
+        {
+          "criterion": "注释口径：迁移代码的注释按面向读者重写，不搬运；不引入任务号/批次号",
+          "status": "passed",
+          "evidence": "shared/guards.ts 头注释与 7 个函数注释全部重写（讲「是什么/为什么/注意什么」），contracts/index.ts 转发行注释为事实陈述，均无任务号/缺陷号/规约号/锚点/批次代号/表情。"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "vue-tsc --noEmit，零错误。"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "eslint .，零告警。"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "140 passed | 2 skipped (142) 文件；1887 passed | 10 skipped (1897) 用例。"
+        },
+        {
+          "command": "pnpm vitest run tests/engine/runtime/scene-type.test.ts",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "1 passed (1) 文件；23 passed (23) 用例（原 21 + 新增 2）。"
+        },
+        {
+          "command": "npx tsc --noEmit -p .tmp-gencheck/tsconfig.json",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "编译 apps/playground/Stories.src/gen/fun_register.g.ts + 包出口探针（7 个判定函数全部从 @lingfan/engine 取用）零错误；负向对照 exit 2（TS2305 未知导出名）。临时目录已清理。"
+        },
+        {
+          "command": "node .tmp-probe/final.mjs（文件系统纯度取证）",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "contracts/** export function=0、function 关键字=0；7 名 owners 各 1 且均在 shared/guards.ts；契约层越层 import=1（contracts/index.ts:19）。"
+        },
+        {
+          "command": "npx prettier --check <本任务新增/编辑的 4 个文件>",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "shared/guards.ts、shared/index.ts、contracts/index.ts、tests/engine/runtime/scene-type.test.ts 全部通过；scene-type.test.ts 的 3 处历史格式差异经「prettier(HEAD) vs prettier(当前)」比对确认为改动前既有（element.ts/host.ts 同理），非本任务引入。"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "profileSeedId": "T0103",
+      "subject": "T01-03 契约层纯度：剔除平台专属类型",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/01-引擎契约面收口.md` 的 **T01-03**。\n\n改动（裁定 R2 的 (a)）：`contracts/` 里 6 处平台类型改中立形态 —— `AbortSignal`（`contracts/game.ts:75`、`contracts/minigame.ts:12`、`contracts/runtime.ts:41`、`:59`）→ 中立句柄 `{ readonly aborted: boolean }`，宿主侧窄化；`HTMLElement`（`contracts/game.ts:98`、`contracts/minigame.ts:22`）→ `unknown` + 宿主侧窄化。保留「引擎让出控制权 → 外部跑 → 回传」这一契约语义不变。\n\n写作用域：`packages/engine/src/contracts/{game,minigame,runtime}.ts` + 宿主侧窄化点 `apps/playground/src/App.vue`、`packages/ui/src/overlay/overlay.ts`。\n\n验收：全仓 grep `packages/engine/src/contracts/**` 无 `AbortSignal|HTMLElement`；`pnpm test:unit` 全绿（含 `tests/engine/runtime/{minigame,interaction,game-state}.test.ts`）+ `typecheck` + `lint` 全绿。\n\n门禁：可跑 lint / typecheck / test:unit；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "engine-contracts",
+      "dependencies": [
+        "t2"
+      ],
+      "attempt": 1,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791447010554,
+      "attemptId": "5743ed31-7c55-4c66-bb36-b85abccc49d8",
+      "reassigning": false,
+      "output": "T01-03 完成：契约层 6 处平台类型改为中立形态，消费方零行为变化。\n\n【中立形态设计】新增具名契约接口 `AbortHandle`（`packages/engine/src/contracts/runtime.ts:45`，`readonly aborted: boolean`），4 处 `AbortSignal` 全指向它；2 处 `HTMLElement` 改 `host: unknown`（`game.ts:97`、`minigame.ts:36`）。宿主侧收窄：浏览器宿主经 `abortSignalOf(handle): AbortSignal`（`apps/playground/src/App.vue:234`）订阅中止事件，`container as HTMLElement`（`:242`）收窄挂载容器。引擎实现层零改动——真实 `AbortSignal` 赋给 `AbortHandle` 天然合法，正是「引擎给的是宿主环境的真实实现」的落点。\n\n【6 处逐处改前/改后（含收窄落点）】\n1. `contracts/game.ts:70` `readonly signal: AbortSignal;` → `:71 readonly signal: AbortHandle;`；窄化落点 `App.vue:346`（walk 工厂经 `abortSignalOf(ctx.signal)` 订阅）。\n2. `contracts/game.ts:93` `host: HTMLElement,` → `:97 host: unknown,`；窄化落点 `App.vue:343` 工厂形参（宿主本地 Map 类型 `(host: HTMLElement, ...)` 本就比契约更窄，无需改）。\n3. `contracts/minigame.ts:12` `signal: AbortSignal;` → `:19 signal: AbortHandle;`；窄化落点 `App.vue:263`（click3 工厂）。\n4. `contracts/minigame.ts:22` `host: HTMLElement,` → `:36 host: unknown,`；窄化落点 `App.vue:241-242`（`(container, ctx) => { const host = container as HTMLElement; ... }`）。\n5. `contracts/runtime.ts:41` `signal: AbortSignal;`（MinigameMountPayload）→ `:56 signal: AbortHandle;`；窄化落点 `App.vue:745`（`minigame.mount` 分支）。\n6. `contracts/runtime.ts:59` `signal: AbortSignal;`（InteractionMountPayload）→ `:75 signal: AbortHandle;`；窄化落点 `App.vue:779`（`interaction.mount` 分支）。\n\n【取证】\n- 归零：`packages/engine/src/contracts/**` 下 `AbortSignal|HTMLElement` **0 命中**（文件系统 grep，16 个 .ts 全覆盖）；`AbortHandle` 命中 8 处（runtime.ts:45,56,75；game.ts:19,71；minigame.ts:7,9,19）。\n- 消费方行为不变：`.aborted` 读点 11 处全部未触碰（interaction.test.ts:63,111,274,281,294,338；minigame.test.ts:84,156,166,178；registry.test.ts:36）；`not.toBe` 引用比较 2 处未触碰（interaction.test.ts:328-329 seq/signal、minigame.test.ts:155 `expect(again.signal).not.toBe(first.signal)`）。\n- `packages/ui/src/overlay/overlay.ts` **未改动**（`git status` 空）—— 独立复核确认它零消费这 6 处（其 `NarrativeMounts.takeover: HTMLElement` 是 UI 层自有类型，不在契约判据内）。\n- `contracts/index.ts:19` 末行 `export * from \"../shared\";` 原样存活。\n- 导出面：`EXPORT_COUNT=108`、`DUPES=[]`（typescript API 实测；107→108 是新增 `AbortHandle`，7 个判定函数仍可达）。\n- 跨域新边 `game.ts:19 → ./runtime`，无环（runtime.ts 只依赖 ./story）。\n\n【注释口径】迁移处注释全部重写（不搬运）：`AbortHandle` 的 doc 讲清「契约层只用语言核心类型、只承诺 aborted 可轮询、需要事件通知的宿主自行收窄」；`minigame.ts` 头注释去掉「Web 标准 DOM」表述；两处 `host: unknown` 补「契约层只承诺有个可挂载的东西，宿主在自己实现里收窄」。无任务号/批次号/代号。\n\n【格式】`prettier --check` 对 `App.vue`、`interaction.test.ts` 报未通过，但已用「HEAD 版本同样报未通过 + 格式化后两侧 diff 仅剩我的编辑」证明属既有格式，非本任务引入；我自己新增的行经 `git diff --no-index` 逐行核验为 prettier-clean，未做全文件 `--write`（避免无关大面积格式 diff）。\n\n【门禁】typecheck / lint / test:unit 全绿，测试 142 文件（140 passed + 2 skipped）、1897 用例（1887 passed + 10 skipped），与队长基线逐位一致。\n\n【给下游】`AbortHandle` 落在 `contracts/runtime.ts`；T01-04 拆域时它应随「挂载/等待」域走，`game.ts` 的 `game → runtime` 边需一并保留。`contracts/index.ts:19` 的过渡转发是 W1 契约层越层唯一例外，拆域重排时须原样保住。",
+      "changedPaths": [
+        "packages/engine/src/contracts/runtime.ts",
+        "packages/engine/src/contracts/game.ts",
+        "packages/engine/src/contracts/minigame.ts",
+        "apps/playground/src/App.vue",
+        "tests/engine/runtime/interaction.test.ts",
+        "tests/engine/runtime/minigame.test.ts",
+        "tests/ui/minigame/registry.test.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "全仓 grep `packages/engine/src/contracts/**` 无 `AbortSignal|HTMLElement`",
+          "status": "passed",
+          "evidence": "文件系统 grep 覆盖 contracts 下全部 16 个 .ts：0 命中。`AbortHandle` 8 处（runtime.ts:45,56,75 / game.ts:19,71 / minigame.ts:7,9,19）"
+        },
+        {
+          "criterion": "6 处平台类型逐处改前/改后 + 每处窄化落点可查",
+          "status": "passed",
+          "evidence": "4 处 AbortSignal→AbortHandle（game.ts:71、minigame.ts:19、runtime.ts:56、runtime.ts:75），窄化落点 App.vue:234/263/346/745/779；2 处 HTMLElement→unknown（game.ts:97、minigame.ts:36），窄化落点 App.vue:242 与宿主本地 Map 类型"
+        },
+        {
+          "criterion": "`pnpm test:unit` 全绿（含 tests/engine/runtime/{minigame,interaction,game-state}.test.ts）",
+          "status": "passed",
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1887 passed | 10 skipped (1897)，与基线逐位一致。定向复跑 minigame/interaction/game-state/registry 4 文件 → 53 passed"
+        },
+        {
+          "criterion": "`pnpm typecheck` 全绿",
+          "status": "passed",
+          "evidence": "vue-tsc --noEmit exit 0，零错误（含 3 个测试文件的类型收窄）"
+        },
+        {
+          "criterion": "`pnpm lint` 全绿",
+          "status": "passed",
+          "evidence": "eslint . exit 0，零告警"
+        },
+        {
+          "criterion": "契约语义不变（引擎让出控制权 → 外部跑 → 回传）",
+          "status": "passed",
+          "evidence": "引擎实现层零改动：runtime/engine.ts 的 AbortController/.signal（:1022,1045,3252,3275）原样；AbortHandle 只收窄为可轮询的 aborted，语义未放宽为 any/unknown"
+        },
+        {
+          "criterion": "`.aborted` 读点与 `not.toBe` 引用比较未被触碰",
+          "status": "passed",
+          "evidence": "11 处 .aborted 读点全部原样（interaction.test.ts:63,111,274,281,294,338；minigame.test.ts:84,156,166,178；registry.test.ts:36）；2 处引用比较原样（interaction.test.ts:328-329、minigame.test.ts:155）"
+        },
+        {
+          "criterion": "`contracts/index.ts` 末行 `export * from \"../shared\";` 原样存活",
+          "status": "passed",
+          "evidence": "contracts/index.ts:19 内容未变"
+        },
+        {
+          "criterion": "消费方零改动（overlay.ts 无需改）",
+          "status": "passed",
+          "evidence": "git status 对 packages/ui/src/overlay/overlay.ts 为空；独立 grep 确认其零消费这 6 处（takeover: HTMLElement 属 UI 层自有类型）"
+        },
+        {
+          "criterion": "契约层导出面只增不改、无重名",
+          "status": "passed",
+          "evidence": "typescript API getExportsOfModule：EXPORT_COUNT=108、DUPES=[]；107→108 为新增 AbortHandle，7 个判定函数仍可达"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "vue-tsc --noEmit，零错误"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "eslint .，零告警"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1887 passed | 10 skipped (1897)"
+        },
+        {
+          "command": "pnpm vitest run tests/engine/runtime/minigame.test.ts tests/engine/runtime/interaction.test.ts tests/engine/runtime/game-state.test.ts tests/ui/minigame/registry.test.ts",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "4 files / 53 tests passed（minigame 14、game-state 17、interaction 19、registry 3）"
+        },
+        {
+          "command": "node .tmp-probe/exports.mjs（typescript API 遍历 contracts/index.ts 导出面）",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "EXPORT_COUNT=108、DUPES=[]、HAS_AbortHandle=true、7 个判定函数全部在导出列表；探针目录已删除"
+        },
+        {
+          "command": "Get-ChildItem -Recurse packages/engine/src/contracts -Filter *.ts | Select-String 'AbortSignal|HTMLElement'",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "0 命中（判据归零达成）"
+        },
+        {
+          "command": "npx prettier --check（改动文件）+ git show HEAD:<file> 基线对照",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "App.vue 与 interaction.test.ts 的告警经 HEAD 对照证明为既有格式；新增行经 git diff --no-index 逐行核验 prettier-clean"
+        }
+      ]
+    },
+    {
+      "id": "t4",
+      "profileSeedId": "T0105",
+      "subject": "T01-05 消除契约常量重复",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/01-引擎契约面收口.md` 的 **T01-05**。\n\n现状：`EXTENSION_ID_PATTERN`(`contracts/extension.ts:20`) 与 `GAME_SYSTEM_ID_PATTERN`(`contracts/game.ts:21`) 字面完全相同（`/^[a-z][a-z0-9_-]{0,31}$/`），属复制而非共享。\n\n改动：抽公共常量到新建 `packages/engine/src/contracts/identifiers.ts`，两处引用同一份；保留各自导出名以免破坏调用方。\n\n写作用域：`packages/engine/src/contracts/{extension,game}.ts`、新增 `packages/engine/src/contracts/identifiers.ts`。\n\n验收：全仓 grep 该正则字面量只命中 1 处；`pnpm test:unit` + `typecheck` + `lint` 全绿。\n\n门禁：可跑 lint / typecheck / test:unit；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "engine-contracts",
+      "dependencies": [
+        "t3"
+      ],
+      "attempt": 1,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791447554682,
+      "attemptId": "df231784-4080-445d-abfa-196c02191f65",
+      "reassigning": false,
+      "output": "T01-05 消除契约常量重复：新建 `packages/engine/src/contracts/identifiers.ts` 承载短标识形态的唯一字面量 `/^[a-z][a-z0-9_-]{0,31}$/`（导出名 `SHORT_ID_PATTERN`，第 12 行），`EXTENSION_ID_PATTERN`（extension.ts:24）与 `GAME_SYSTEM_ID_PATTERN`（game.ts:26）改为 `= SHORT_ID_PATTERN`，两个既有导出名原样保留、消费方（opRegistry.ts / extensionLoader.ts / engine.ts）零改动。全仓正则字面量从 2 处降为 1 处。三门禁全绿（typecheck/lint exit 0；test:unit 142 文件 / 1897 用例，与基线逐位一致）。导出面探针：contracts 出口 108 名 0 重名，两名均可导入；包出口 162 名 0 重名。未在 contracts/index.ts 新增转出行（SHORT_ID_PATTERN 是内部共享源，判据只要求两处引用同一份）。",
+      "changedPaths": [
+        "packages/engine/src/contracts/identifiers.ts",
+        "packages/engine/src/contracts/extension.ts",
+        "packages/engine/src/contracts/game.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "全仓 grep 该正则字面量只命中 1 处",
+          "status": "passed",
+          "evidence": "文件系统检索（排除 node_modules/dist/target/Stories.src/gen）：`/^[a-z][a-z0-9_-]{0,31}$/` 全仓仅 `packages/engine/src/contracts/identifiers.ts:12` 一处命中；改动前为 2 处（contracts/extension.ts:20、contracts/game.ts:22）。另核 `new RegExp` 构造点 5 处均与短标识形态无关（data/text.ts:729、cell-extract.ts:267、stage-edit.test.ts:319、token-guard.test.ts:165、scene-type.test.ts:55），无遗漏的运行时拼接来源。"
+        },
+        {
+          "criterion": "两个导出名保留可导入（不改名、不破坏导出面）",
+          "status": "passed",
+          "evidence": "typescript 编译 API 探针（checker.getExportsOfModule）：`packages/engine/src/contracts/index.ts` → EXPORT_COUNT=108 DUPES=[]，HAS_EXTENSION_ID_PATTERN=true、HAS_GAME_SYSTEM_ID_PATTERN=true、HAS_AbortHandle=true、HAS_SHORT_ID_PATTERN=false（内部共享源不出口）；`packages/engine/src/index.ts` → EXPORT_COUNT=162 DUPES=[]，两名同样可达。"
+        },
+        {
+          "criterion": "pnpm typecheck 全绿",
+          "status": "passed",
+          "evidence": "`pnpm typecheck`（vue-tsc --noEmit）→ exit 0，零错误。"
+        },
+        {
+          "criterion": "pnpm lint 全绿",
+          "status": "passed",
+          "evidence": "`pnpm lint`（eslint .）→ exit 0，零告警。"
+        },
+        {
+          "criterion": "pnpm test:unit 全绿且不减用例（基线 142 文件 / 1897 用例）",
+          "status": "passed",
+          "evidence": "`pnpm test:unit` → Test Files 140 passed | 2 skipped (142)、Tests 1887 passed | 10 skipped (1897)，与基线逐位一致，无新增/减少用例。"
+        },
+        {
+          "criterion": "既有消费方零改动",
+          "status": "passed",
+          "evidence": "`packages/engine/src/runtime/opRegistry.ts`（:103 test、:118 test、:121 `${EXTENSION_ID_PATTERN.source}` 消息模板）与 `packages/engine/src/runtime/extensionLoader.ts`（:32、:35）、`packages/engine/src/runtime/engine.ts`（:996、:999、:1176、:1179）均未触碰（git status 无这三个文件的本任务改动）；`.source` 读取在 `= SHORT_ID_PATTERN` 别名下语义不变。"
+        },
+        {
+          "criterion": "生成物与编辑器仍能编译（跨包回归）",
+          "status": "passed",
+          "evidence": "临时 tsconfig（extends 仓库 tsconfig + paths 映射 @lingfan/engine/@lingfan/editor）编译 `apps/playground/Stories.src/gen/**` + `packages/editor/src/**` + 探针（读两名并 `.test()`/`.source`）→ `npx tsc --noEmit -p .tmp-gencheck/tsconfig.json` exit 0；临时目录已删。"
+        },
+        {
+          "criterion": "注释口径合规（面向读者、无内部编号）",
+          "status": "passed",
+          "evidence": "`identifiers.ts` 头注释讲清「谁共用、形态是什么、为何统一小写、为何限长、为何只写一份」；两处 doc 改为「扩展 id 的合法形态…具体写法与理由见 identifiers.ts（与玩法系统 id 共用同一套，不各写一份）」，无任务号/批次号/代号。"
+        },
+        {
+          "criterion": "不越界：未回头改 t3 文件、未动写作用域外文件",
+          "status": "passed",
+          "evidence": "本任务 diff 仅 3 个文件（1 新 2 改），全部在写作用域内；`packages/engine/src/contracts/runtime.ts`、`minigame.ts` 及 3 个测试文件自 t3 完成后未再改动（git diff 与 t3 交付一致）。"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "vue-tsc --noEmit → exit 0，零错误"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "eslint . → exit 0，零告警"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1887 passed | 10 skipped (1897)"
+        },
+        {
+          "command": "node .tmp-probe/exports.mjs",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "contracts/index.ts EXPORT_COUNT=108 DUPES=[]；index.ts EXPORT_COUNT=162 DUPES=[]；HAS_EXTENSION_ID_PATTERN=true HAS_GAME_SYSTEM_ID_PATTERN=true（探针目录已删）"
+        },
+        {
+          "command": "npx tsc --noEmit -p .tmp-gencheck/tsconfig.json",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "生成物 + 编辑器源 + 常量探针编译通过（临时目录已删）"
+        },
+        {
+          "command": "grep -r '/^[a-z][a-z0-9_-]{0,31}$/' packages apps tests template（排除 node_modules/dist/target）",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "仅 packages/engine/src/contracts/identifiers.ts:12 一处命中"
+        },
+        {
+          "command": "npx prettier --check packages/engine/src/contracts/{identifiers,extension,game}.ts",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "identifiers.ts / game.ts 通过；extension.ts 报 warn 但经 `git show HEAD:` 版本同检未通过 + 格式化后两侧 diff 仅剩既有 ExecOutcome 联合与 readonly exec 签名两处换行，证明为既有格式，非本任务引入；未执行 prettier --write 全文件"
+        }
+      ]
+    },
+    {
+      "id": "t5",
+      "profileSeedId": "T0104",
+      "subject": "T01-04 契约域按 entities / ports 拆分",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/01-引擎契约面收口.md` 的 **T01-04**（含「⚠ 隐藏约束」段，拆前必读）。\n\n改动（裁定 R4 分档）：① 必拆 —— `platform.ts` → `platform/{entities,ports,index}.ts`；`media.ts` → `media/{entities,ports,index}.ts`；`story.ts` → `story/{entities,ports,index}.ts`；`runtime.ts` → `runtime/{events,state-keys,entities,index}.ts`。② `preferences` / `shell` / `host` / `save` / `game` 本任务不动。③ `element.ts` / `extension.ts` / `minigame.ts` 保持单文件。\n\n⚠ 隐藏约束：契约域之间已有 8 条跨域 import，拆子目录后路径会变，必须同步改（`extension→./story`；`minigame→./runtime`；`preferences→./media` 与 `→./shell`；`runtime→./story`；`save→./story`；`story→./shell` 与 `→./element`）。`story` 同时依赖 `shell` 与 `element`，故 story 的拆分不能先于 element。`contracts/minigame.ts:5,7` 对 `MinigameMountPayload` 是转出口（真身 `contracts/runtime.ts:37`），runtime 拆分时一并重定向。\n\n**注意**：`packages/engine/src/contracts/platform.ts` 稍后会被 T02-01 追加供给契约（`ProjectFileSource` / `LastProjectHandleStore`），拆成目录后请保持 `platform/index.ts` 对外导出面完整，T02-01 会落在 `platform/ports.ts`。\n\n写作用域：`packages/engine/src/contracts/{platform,media,story,runtime}.ts` → 4 个新子目录 + 8 条跨域 import 路径。\n\n验收：`contracts/index.ts` 的 `export *` 仍 91 个导出、0 重名（现测 91/0）；`pnpm test:unit` + `typecheck` + `lint` 全绿。\n\n门禁：可跑 lint / typecheck / test:unit；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "engine-contracts",
+      "dependencies": [
+        "t4"
+      ],
+      "attempt": 1,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791448565247,
+      "attemptId": "e16d2506-fab9-4f5c-8996-e9400dd53383",
+      "reassigning": false,
+      "output": "T01-04 契约域按 entities / ports 拆分完成：4 个域单文件 → 4 个子目录（13 个新文件），删除 4 个旧单文件，同步 1 处文档引用。导出面零变化（108 → 108，0 重名），三门禁全绿，生成物跨包编译 exit 0。\n\n【拆分结果】\n- `contracts/platform.ts` → `platform/{entities,ports,index}.ts`：entities 收 DegradedOpen / ProjectWriteReport，ports 收 ResourcePort / ProjectFilesPort / ProjectWriterPort。\n- `contracts/media.ts` → `media/{entities,ports,index}.ts`：entities 收 AudioChannel / AudioChannelState / AudioPlayOptions / VideoCommand，ports 收 AudioPort / VideoPort。\n- `contracts/story.ts` → `story/{entities,ports,index}.ts`：entities 收 StoryCommand / SceneType / StoryColumn / Story / ProjectManifest / I18nOverlayFile / ColumnCoordinate，ports 收 I18nPort；内部 import 随层级调整为 `../shell` 与 `../element`。\n- `contracts/runtime.ts` → `runtime/{events,state-keys,entities,index}.ts`：events 收 14 个事件信封类型（含 AbortHandle、MinigameMountPayload、OutboundPayload、OutboundEvent、StateListener、EventListener），state-keys 收 SYS + RESERVED_STATE_KEYS，entities 收 WaitingState / NvlMode / CharacterDef。\n- 每个域 `index.ts` 只做 `export *` 转发，头注释说明本域用途；原类型上的逐字段注释逐字保留。\n\n【跨域 import 同步（零破坏）】\n`contracts/index.ts` 的 15 行 `export *` 全部原样保留 —— 目录解析后自动命中新 `index.ts`，因此 `../contracts` 域出口的全部消费方零改动。`minigame.ts:9` 的 `from \"./runtime\"` 与 `:11 export type { MinigameMountPayload };` 转出口同样自动重定向到 `runtime/index.ts`（真身在 `runtime/events.ts`），无需改动。`shared/guards.ts:14` 的 `from \"../contracts/story\"` 目录解析后仍命中 `story/index.ts`，亦零改动。\n\n【唯一改动的既有文件】\n`packages/engine/src/runtime/stateContract.ts:19`：注释里 `contracts/runtime.ts` → `contracts/runtime/state-keys.ts`（文档引用随路径更新，仅注释一行）。\n\n【注释口径】\n新增 13 个文件的头注释全部为面向读者的中性说明（讲清「谁用、什么形态、与同目录另一文件的区别」），无任务号、批次号、代号、审计叙事。全量扫描 `contracts/**` 的 T0x-xx / 批次 / 模块 0x / R# / 裁定 等模式：唯一命中 `contracts/game.ts:13` 的「沿用引擎既有裁定」，经 `git show HEAD:` 比对确认为**改动前既有文本**，非本次引入，按最小改动原则未触碰。",
+      "changedPaths": [
+        "packages/engine/src/contracts/platform/entities.ts",
+        "packages/engine/src/contracts/platform/ports.ts",
+        "packages/engine/src/contracts/platform/index.ts",
+        "packages/engine/src/contracts/media/entities.ts",
+        "packages/engine/src/contracts/media/ports.ts",
+        "packages/engine/src/contracts/media/index.ts",
+        "packages/engine/src/contracts/story/entities.ts",
+        "packages/engine/src/contracts/story/ports.ts",
+        "packages/engine/src/contracts/story/index.ts",
+        "packages/engine/src/contracts/runtime/events.ts",
+        "packages/engine/src/contracts/runtime/state-keys.ts",
+        "packages/engine/src/contracts/runtime/entities.ts",
+        "packages/engine/src/contracts/runtime/index.ts",
+        "packages/engine/src/contracts/platform.ts",
+        "packages/engine/src/contracts/media.ts",
+        "packages/engine/src/contracts/story.ts",
+        "packages/engine/src/contracts/runtime.ts",
+        "packages/engine/src/runtime/stateContract.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "contracts/index.ts 导出数只增不减（拆前 108，0 重名）",
+          "status": "passed",
+          "evidence": "类型探针（ts.createProgram + checker.getExportsOfModule）实测：拆前 108 行 → 拆后 108 行，逐名 Compare-Object 无差异，DUPES=[]。逐域导出与拆前完全同名同数：platform 5 / media 6 / story 8 / runtime 19。"
+        },
+        {
+          "criterion": "pnpm test:unit 保持 142 文件 / 1897 用例（基线不得减少）",
+          "status": "passed",
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1887 passed | 10 skipped (1897) —— 与基线逐位一致。"
+        },
+        {
+          "criterion": "pnpm typecheck 全绿",
+          "status": "passed",
+          "evidence": "vue-tsc --noEmit，exit 0，零错误。"
+        },
+        {
+          "criterion": "pnpm lint 全绿",
+          "status": "passed",
+          "evidence": "eslint .，exit 0，零告警。"
+        },
+        {
+          "criterion": "4 个域文件拆为 entities/ports 子目录，port 与 entity 不再同文件",
+          "status": "passed",
+          "evidence": "新建 13 文件：platform/{entities,ports,index}.ts、media/{entities,ports,index}.ts、story/{entities,ports,index}.ts、runtime/{events,state-keys,entities,index}.ts；删除 contracts/{platform,media,story,runtime}.ts。每域 index.ts 仅 export * 转发。契约层现 26 个 .ts。"
+        },
+        {
+          "criterion": "跨域 import 全部同步、无残留旧路径引用",
+          "status": "passed",
+          "evidence": "全仓（排除 node_modules/dist/target/Stories.src/私有文档）grep `contracts/(platform|media|story|runtime)\\.ts` → 0 命中。contracts/** 相对 import 全量清点 37 条，跨域边指向新目录入口，story 内指向 `../shell` 与 `../element`。"
+        },
+        {
+          "criterion": "contracts/index.ts:19 的 export * from \"../shared\" 原样存活",
+          "status": "passed",
+          "evidence": "末两行实测为 `// 判定函数实现已下沉到 shared：此处转发，保持既有导入路径可用。` + `export * from \"../shared\";`，未改动。"
+        },
+        {
+          "criterion": "模块级判据：contracts/** 无 function 关键字、无 AbortSignal/HTMLElement",
+          "status": "passed",
+          "evidence": "`\\bfunction\\b` 0 命中；`AbortSignal|HTMLElement` 0 命中（含新拆出的 4 个子目录文件）。越层 import 全扫仅 `contracts/index.ts:19 export * from \"../shared\";` 一条，为既有合规例外。"
+        },
+        {
+          "criterion": "apps/playground/Stories.src/gen/fun_register.g.ts 仍能编译",
+          "status": "passed",
+          "evidence": ".tmp-gencheck/tsconfig.json（extends 根 tsconfig + paths 映射 @lingfan/engine→packages/engine/src/index.ts、@lingfan/editor→packages/editor/src/index.ts）下 `npx tsc --noEmit -p .tmp-gencheck/tsconfig.json` exit 0；--listFiles 实测纳入仓库内 256 个文件，生成物与编辑器源均参与编译。临时目录已清理。"
+        },
+        {
+          "criterion": "包出口 packages/engine/src/index.ts 无重复导出",
+          "status": "passed",
+          "evidence": "探针实测 162 项，PKG_DUPES=[]；`from \"./data\"` 仅 1 处，`runtime/index.ts` 存在。"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "vue-tsc --noEmit，零错误输出。"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "eslint .，零告警输出。"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1887 passed | 10 skipped (1897)，与基线逐位一致。"
+        },
+        {
+          "command": "node .tmp-probe/exports.mjs packages/engine/src/contracts/index.ts",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "CONTRACTS_EXPORTS=108、DUPES=[]；与拆前存档逐名比对无差异。逐域复跑：platform 5 / media 6 / story 8 / runtime 19。"
+        },
+        {
+          "command": "node .tmp-probe/exports.mjs packages/engine/src/index.ts",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "包出口 162 项，PKG_DUPES=[]。"
+        },
+        {
+          "command": "npx tsc --noEmit -p .tmp-gencheck/tsconfig.json",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "生成物 fun_register.g.ts + Stories.src + 编辑器源跨包编译通过；--listFiles 确认纳入仓库内 256 个文件。"
+        },
+        {
+          "command": "全仓 grep contracts/(platform|media|story|runtime)\\.ts（排除 node_modules/dist/target/Stories.src/私有文档）",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "0 命中，旧路径引用归零。"
+        },
+        {
+          "command": "contracts/** 扫描 \\bfunction\\b 与 AbortSignal|HTMLElement",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "两项均 0 命中。"
+        }
+      ]
+    },
+    {
+      "id": "t6",
+      "profileSeedId": "T0106",
+      "subject": "T01-06 包出口收口",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/01-引擎契约面收口.md` 的 **T01-06**。\n\n改动三类：\n\n① **删零消费者导出** —— `RegisteredOp`(`runtime/opRegistry.ts:27`)、`WaitSpec`(`runtime/waitingOps.ts:20`)、`isExtensionStateKey`(`runtime/opRegistry.ts:217`)（全仓含 tests 零外部消费，命中仅限包出口与引擎内部）。保留 `BUILTIN_OP_NAMES` / `waitSpecOfOp` / `WAITING_OPS` / `waitingStateOfOp` / `findJsonValueError` / `ExtensionModuleLoader` / `loadDeclaredExtensions` / `collectTextProjections` / `buildOpRegistry` / `jsonUnsafeReason`（均有真实跨包消费，已逐个实测非零）。\n\n② **补缺口** —— `interpolateText` / `evaluateExpression` / `ExpressionError` / `NameResolver` 已在 `runtime/expr.ts` 内 export，只是未被包出口转发（被 4 个测试深引：`tests/editor/schema.test.ts`、`tests/editor/expression-audit.test.ts`、`tests/engine/runtime/expr.test.ts`、`tests/engine/runtime/minigame.test.ts`）；`loadElements`(`data/element.ts:150`) / `findElements`(`:176`) / `removeElements`(`:198`) 同样补上（`validateElement` 已在 `index.ts:76` 导出，口径不一致）。**不要**导出 `exprEquals` / `ExprValue` / `TextInterpolation` / `ExpressionErrorCode`（测试命中 0 处）。\n\n③ **结构** —— 合并 `packages/engine/src/index.ts` 里重复 5 次的 `export ... from \"./data\"`（第 19、20、42、49、76 行）；新增 `packages/engine/src/runtime/index.ts` 并把包出口改为 `export … from \"./runtime\"`。新 `runtime/index.ts` 必须完整转发包出口目前用到的全部 runtime 子模块（`:12 ./runtime/engine`、`:50 ./runtime/host`、`:51 ./runtime/i18n`、`:52 ./runtime/preferences`、`:74 ./runtime/shell`、`:84 ./runtime/stateContract`、`:91 ./runtime/opRegistry`、`:102 ./runtime/waitingOps`、`:110 ./runtime/extensionLoader`），**以及 T01-01 在 `runtime/{engine,shell}.ts` 新增的过渡期 re-export**。\n\n裁定 R6：`textProjectionWarnings`(`data/text.ts:1990`) 零消费者 —— 本任务按「删除」处理（若你判断应保留给后续文本模式，请在回报中说明理由，不要擅自改口径）。\n\n写作用域：`packages/engine/src/index.ts`、新增 `packages/engine/src/runtime/index.ts`、`packages/engine/src/runtime/{expr,opRegistry,waitingOps}.ts`、`packages/engine/src/data/element.ts`。**不要动** `runtime/engine.ts`、`runtime/shell.ts`、`data/{text,project,index}.ts`、`contracts/**`（归 engine-contracts）。\n\n验收：全仓 grep `interpolateText` 的测试改为从 `@lingfan/engine` 导入且全绿；`packages/engine/src/index.ts` 无重复 `from \"./data\"`；`runtime/index.ts` 存在且包出口改走它；`pnpm typecheck` + `lint` + `test:unit` 全绿（基线 142 文件 / 1885 通过 / 10 skipped）。\n\n门禁：可跑 lint / typecheck / test:unit；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "ui-readport",
+      "dependencies": [
+        "t1"
+      ],
+      "attempt": 2,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791445767976,
+      "attemptId": "e215662f-df70-4a08-9abf-5ee017298616",
+      "reassigning": false,
+      "output": "T01-06 包出口收口完成（attempt 2，基于 attempt 1 已落盘产物续做，未重做）。\n\n① 出口结构：packages/engine/src/index.ts 由 110 行收敛为 106 行，只保留三个域出口转发块 —— `export * from \"./contracts\";` + 一个 `export { … } from \"./runtime\";`（原 9 处 runtime 二级深引归零）+ 一个 `export { … } from \"./data\";`（原 5 处重复归零）。新增 packages/engine/src/runtime/index.ts（49 行）作为运行层唯一出口，转发 engine/host/i18n/preferences/shell/stateContract/opRegistry/waitingOps/extensionLoader/expr 十个子模块。关键裁定：两个域都用**显式具名清单**而非 `export *`，否则 `export *` 会把本任务要删的 RegisteredOp/WaitSpec 与明确不公开的 exprEquals/ExprValue/TextInterpolation/ExpressionErrorCode/Scope 一并静默透出，① 类改动将失效；显式清单还使 tests/editor/step-layout-view.test.ts:59-64 对 index.ts?raw 中 WAITING_OPS/waitingStateOfOp/waitSpecOfOp 三个字面量的源级断言继续成立（无需改测试）。\n\n② 补缺口落地位置：evaluateExpression / ExpressionError / interpolateText / type NameResolver 在 runtime/index.ts:44-49 从 `./expr` 转发，包出口 runtime 块内透出；loadElements / findElements / removeElements 在 data 域块内与既有的 validateElement / validateElementNode 并列公开。导出面 diff（对照 HEAD 解析具名导出）：67 → 71，净增 7（上述 4 个 expr 名 + 3 个元素装载名）、净减 3（RegisteredOp / WaitSpec / isExtensionStateKey），无其他增删。exprEquals / ExprValue / TextInterpolation / ExpressionErrorCode 按要求未公开。\n\n③ 零消费删除证据：三个名字在 apps/、packages/editor、packages/adapters、tests/、template/ 全仓 0 命中；剩余 11 处命中全部在引擎内部（runtime/opRegistry.ts 的声明与内部签名、runtime/engine.ts 的类型标注、runtime/waitingOps.ts 的 WaitSpec 声明与 WAITING_OPS/waitSpecOfOp 签名），即「不再对外转发」而非「删掉声明」。isExtensionStateKey 更进一步：全仓仅剩 0 处引用，函数体连同注释已从 opRegistry.ts 删除（其依赖的 EXT_KEY_PREFIX 仍在 :177 使用，import 保留）。\n\n④ 未动项：packages/engine/src/contracts/index.ts 末行 `export * from \"../shared\";` 原样保留（T01-02 经裁定的过渡转发）；runtime/{engine,shell}.ts、data/{text,project,index}.ts、contracts/** 均未触碰。未提交任何 commit。\n\nR6 裁定回报（textProjectionWarnings，data/text.ts:1991）：未删除，理由如下，请队长裁决。—— 该访问器零消费者属实，但它的数据源 `lastWarnings`（data/text.ts:1988）在 parseTextStory 内被赋值于 :1960/:1964/:1969。只删访问器会留下「写了永不读」的模块级状态：noUnusedLocals 不会报（有赋值），但那是实打实的死状态；彻底删除必须改 data/text.ts，而该文件被本任务明令禁改且正被 engine-contracts 占用（T01-01/T01-02 正在改它）。故按「不要擅自改口径」的要求上报而非越界执行。另：该访问器也没有被加进包出口（无论如何都不该加——零消费者，加进去反而是任务未要求的补缺口）。建议留给 parseTextStory 改成 `{story, warnings}` 返回形态时（其 :1986 的注释已在预期这一改动）连同 lastWarnings 一次性删除，归属 engine-contracts 的文件范围。",
+      "changedPaths": [
+        "packages/engine/src/index.ts",
+        "packages/engine/src/runtime/index.ts",
+        "packages/engine/src/runtime/opRegistry.ts",
+        "tests/engine/runtime/expr.test.ts",
+        "tests/editor/schema.test.ts",
+        "tests/editor/expression-audit.test.ts",
+        "tests/engine/data/element.test.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "全仓 grep `interpolateText` 的测试改为从 @lingfan/engine 导入且全绿",
+          "status": "passed",
+          "evidence": "4 个深引测试全部改走包出口（仅动 import/注释行，git diff 已核）：tests/engine/runtime/expr.test.ts:3-8（evaluateExpression/ExpressionError/interpolateText/type NameResolver 合并为一条 @lingfan/engine 导入，原第二条 runtime/resolver 深引一并消除）、tests/editor/schema.test.ts:29、tests/editor/expression-audit.test.ts:17、tests/engine/data/element.test.ts:1-13（并重写头部注释：不再是「内部纯函数未列入公共出口」）。文件系统 grep（含未跟踪 shared/）复核 engine/src/(runtime|data|contracts|shared)/ 深引：8 命中全部为既有 out-of-scope 项（3 处编辑器注释、2 处 engine.ts?raw 源级锚点、schema.test.ts 的 data/format 深引与 format.ts?raw、scope.test.ts 的 Scope 深引），本任务公开的符号零残留深引。"
+        },
+        {
+          "criterion": "packages/engine/src/index.ts 无重复 `from \"./data\"`",
+          "status": "passed",
+          "evidence": "index.ts 由 110 行收敛为 106 行，三个转发块：`:9 export * from \"./contracts\";`、`:24-63 export { … } from \"./runtime\";`、`:73-106 export { … } from \"./data\";`。Select-String 实测 `from \"./data\"` 出现 1 次、`from \"./runtime\"` 出现 1 次、`from \"./runtime/` 深引 0 次（原 9 处 runtime 二级深引全部消失）。"
+        },
+        {
+          "criterion": "runtime/index.ts 存在且包出口改走它",
+          "status": "passed",
+          "evidence": "新增 packages/engine/src/runtime/index.ts（49 行），转发 engine/host/i18n/preferences/shell/stateContract/opRegistry/waitingOps/extensionLoader/expr 共 10 个子模块；包出口经它取运行层符号。`./scope`、`./resolver` 属内部零件，按设计不经此出口。T01-01 在 runtime/{engine,shell}.ts 的过渡期 re-export（EngineOptions/GuardContext/GuardFn、LayerId/LayerZTable/LayerZOverrides/SavesConfig/SavesThumbnailConfig/LAYER_IDS/DEFAULT_LAYER_Z/DEFAULT_SAVES_CONFIG）已由 runtime/index.ts 完整转发；同一声明经 contracts 与 runtime 两条星号链到达被 TS 去重（探针验证无 TS2308）。"
+        },
+        {
+          "criterion": "pnpm typecheck + lint + test:unit 全绿（基线 142 文件 / 1897 用例）",
+          "status": "passed",
+          "evidence": "typecheck exit 0；lint exit 0；test:unit `Test Files 140 passed | 2 skipped (142)` / `Tests 1887 passed | 10 skipped (1897)`，文件数与用例数与队长更新的基线完全一致（2 个 skipped 文件是 real-project-* 环境依赖跳过，非失败）。"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "vue-tsc --noEmit，无输出"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "eslint .，无输出"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1887 passed | 10 skipped (1897)；Duration 13.72s"
+        }
+      ]
+    },
+    {
+      "id": "t7",
+      "profileSeedId": "T0107",
+      "subject": "T01-07 源码注释内部引用清理（Rust 侧 + 编辑器 i18n）",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/01-引擎契约面收口.md` 的 **T01-07**；注释口径见 `00-索引.md` §0bis。\n\n范围：**只改注释，零行为变化**。本任务负责 ——\n① **锚点代号 19 处 / 9 文件**（Rust）：`bridge_check.rs:297`、`lib.rs:86`、`media_http.rs:419`、`resource_crypto.rs:2129`、`:2375`、`:2467`、`shell.rs:25,206`、`ws_dev.rs:6,11,237,273`。\n② **`B?v2` 批次代号 12 处**（全在 `resource_crypto.rs`：193、204、249、293、302、457、490、2194、2208、2233、2242、2268）—— 其中 `:204`/`:293`/`:302`/`:457` 的代号进了**用户可见错误文案**，优先修（面向玩家）。\n③ 真机/冒烟取证叙事 5 处：`bridge_check.rs:12,326`、`project_files.rs:192`、`resource_crypto.rs:1084,1374`。\n④ `packages/editor/src/i18n/index.ts:2` 的内部任务编号（`05 i18n 工具链…`）。\n\n**已核实不必改（勿误伤）**：`packages/engine/src/data/text.ts:1057-1062` 是解释 `scene \"x\"` 语义对齐的正常设计说明，保留；`packages/ui/src/element/renderers.ts:2`「36 类型全覆盖」、`animation.ts:13`「缓动全集 16 个」、`packages/editor/src/schema/elementForms.ts:18,290`「36 类型」属数量描述，合规。\n\n**引擎侧 3 处内部任务编号已改由 T01-01 处理**（`runtime/engine.ts:371`、`data/index.ts:1`、`data/text.ts:2034`），你不要再动这三个文件；收尾时用 grep 核验它们已被清掉即可。\n\n写法：改为描述**被测行为**的通俗说法（如「该行为由 `tests/…` 的用例守护」），代号本身不再出现在源码；「代号 ↔ 测试」映射集中登记在批次索引而非源码。\n\n写作用域：`apps/playground/src-tauri/src/{bridge_check,lib,media_http,resource_crypto,shell,ws_dev,project_files}.rs`、`packages/editor/src/i18n/index.ts`。\n\n验收：全仓 grep 源码无锚点代号、无 `B?v2`、无 `T\\d\\d-\\d\\d`、无 `D-\\d+`、无圈码；`pnpm test:unit` + `typecheck` + `lint` 全绿；`cargo test --lib` 全绿。\n\n门禁：可跑 lint / typecheck / test:unit / cargo check / cargo test；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "comments-rust",
+      "dependencies": [
+        "t1"
+      ],
+      "attempt": 1,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791443865189,
+      "attemptId": "b619acd3-2bb7-40cc-938e-827e48551e8f",
+      "reassigning": false,
+      "output": "T01-07 完成：Rust 侧 + 编辑器 i18n 的源码内部引用全部清完，只改注释与用户可见文案，零逻辑变更（git diff = 41 增 / 41 删，逐行核对无一条代码行）。\n\n清掉的内容：\n- 锚点代号 12 处 / 7 文件（Rust 侧全部命中点）：bridge_check.rs:297、lib.rs:86、media_http.rs:419、resource_crypto.rs:2129/2375/2467、shell.rs:25,206、ws_dev.rs:6,11,237,273 —— 全部改写为描述被测行为的通俗说法（如「白名单 ⊆ generate_handler! 注册面，这一结构关系由本模块测试断言」），代号本身不再出现在源码。\n- B?v2 批次代号 12 处（全在 resource_crypto.rs）：其中 4 处进了用户可见错误文案（:204 块数超界 / :293 密文长度与 total 不符 / :302 块明文长度不符 / :457 Range 越界），已去掉代号保留语义；其余 8 处注释改为「头部参数守卫 / 尾块可以短于 chunk / v2 打包自检 / 块 AAD 绑 index / 截断密文」等直述写法。\n- 真机/冒烟取证叙事 5 处 + 顺手 4 处：bridge_check.rs:12-13,176,326,391（「只在真机静默失败」→「要到运行期才暴露」、「红路径/常绿把守」→「反向用例/持续覆盖」、「唯一可自动化的防线」→「唯一能自动检查它的手段」）、project_files.rs:192（「真窗冒烟入口」→「可指向加密包做本地验证」）、resource_crypto.rs:1083-1084,1140,1373-1374（「Android 取证/真窗冒烟会逮住」→「区间探测日志/读取端按 v2 读头会失败并返回 404」）、lib.rs:81,95（「窗口状态取证」→「窗口状态心跳」）。\n- 内部任务编号 1 处：packages/editor/src/i18n/index.ts:2 去掉「05 」前缀。\n- 顺手消掉的同义残留：shell.rs:25「桌面测试才能锚定它」→「才能覆盖它」；bridge_check.rs:298「必须被逮住」→「必须被检出」。\n\n核验（in-scope 8 文件，逐模式计数）：锚点代号 0 / 「锚点」一词 0 / B[0-9]+v[0-9] 0 / T\\d\\d-\\d\\d 0 / 圈码（⑨-⑳，U+2468-2473）0 / 审计叙事词（取证|冒烟|真机|真窗|把守|防线|逮住|红路径|自证）0 / 规约|§ 0。\n全仓（apps+packages+tests+scripts，排除 node_modules/target/dist，363 文件）：T\\d\\d-\\d\\d = 0（引擎侧 3 处已由 T01-01 清掉，我未触碰那 3 个文件）、B[0-9]+v[0-9] = 0、规约|§ = 0、⑨-⑳ = 0。\n保留未改（合规）：packages/engine/src/data/text.ts:1057-1062、packages/ui/src/element/renderers.ts:2、animation.ts:13、packages/editor/src/schema/elementForms.ts:18,290；①-⑧ 属列举序号（全仓 149 处）不属「圈码」，保留。\n\n两点如实说明（非本任务缺陷）：\n1. 全仓 `D-[0-9]+` 仍有 1 命中，是 resource_crypto.rs:2426 的 URL 字面量 `\"http://lfstream.localhost/v2/Video%2Fm2.mp4?range=bytes%3D-8\"` 里的 `D-8` 子串，属误报，未改（改动即破坏行为）。\n2. tests 侧 8 处锚点代号（tests/adapters/dev/wsBridge.test.ts:54、tests/adapters/media/blob-source.test.ts:2、tests/adapters/resources/encrypted-project.test.ts:2、tests/editor/step-layout-view.test.ts:2、tests/playground/browser-game-mode-guard.test.ts:2、tests/playground/diag.test.ts:2、tests/playground/webview-guard.test.ts:24、tests/ui/input/scope.test.ts:2）不在本任务写作用域（SSOT T01-07 改动文件清单不含 tests），未触碰，建议由后续任务或收口统一处理。",
+      "changedPaths": [
+        "apps/playground/src-tauri/src/bridge_check.rs",
+        "apps/playground/src-tauri/src/lib.rs",
+        "apps/playground/src-tauri/src/media_http.rs",
+        "apps/playground/src-tauri/src/project_files.rs",
+        "apps/playground/src-tauri/src/resource_crypto.rs",
+        "apps/playground/src-tauri/src/shell.rs",
+        "apps/playground/src-tauri/src/ws_dev.rs",
+        "packages/editor/src/i18n/index.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "全仓 grep 源码无锚点代号（Rust 侧 12 处全部清除）",
+          "status": "passed",
+          "evidence": "in-scope 8 文件锚点代号 0 命中、「锚点」一词 0 命中；改写为描述被测行为的通俗说法，代号不再出现在源码"
+        },
+        {
+          "criterion": "全仓 grep 源码无 B?v2 批次代号（12 处，含 4 处用户可见错误文案）",
+          "status": "passed",
+          "evidence": "全仓 B[0-9]+v[0-9] = 0 命中；resource_crypto.rs:204/293/302/457 四条面向玩家的文案去代号保留语义；4 条文案全仓仅出现在定义处，无测试或调用方断言其字面量，零行为影响"
+        },
+        {
+          "criterion": "全仓 grep 源码无 T\\d\\d-\\d\\d 任务号",
+          "status": "passed",
+          "evidence": "全仓 363 文件 T[0-9]{2}-[0-9]{2} = 0；我负责的 editor/src/i18n/index.ts:2「05 」前缀已去掉；引擎侧 3 处（runtime/engine.ts:371、data/index.ts:1、data/text.ts:2034）由 T01-01 处理，我未触碰那 3 个文件，grep 证实已清"
+        },
+        {
+          "criterion": "全仓 grep 源码无 D-\\d+ 缺陷号",
+          "status": "passed",
+          "evidence": "唯一命中 resource_crypto.rs:2426 经核实是 URL 字面量 \"http://lfstream.localhost/v2/Video%2Fm2.mp4?range=bytes%3D-8\" 中的 `D-8` 子串，属误报，非缺陷号；不属注释清理对象，未改（改则破坏行为）"
+        },
+        {
+          "criterion": "全仓 grep 源码无圈码",
+          "status": "passed",
+          "evidence": "⑨-⑳（U+2468-2473）全仓 0 命中（与 SSOT「⑨ 已清零」一致）；①-⑧ 全仓 149 处均为列举序号（如 `// ① … ② …`），不属圈码清理对象，保留"
+        },
+        {
+          "criterion": "真机/冒烟取证叙事 5 处清除",
+          "status": "passed",
+          "evidence": "bridge_check.rs:12-13,326 改为「方法名拼错要到运行期才暴露」；project_files.rs:192「真窗冒烟入口」→「可指向加密包做本地验证」；resource_crypto.rs:1083-1084,1373-1374 改为「区间探测日志」「读取端按 v2 读头会失败并返回 404」；in-scope 文件 取证|冒烟|真机|真窗|把守|防线|逮住|红路径|自证 合计 0 命中"
+        },
+        {
+          "criterion": "只改注释，零行为变化",
+          "status": "passed",
+          "evidence": "git diff --numstat 8 文件合计 41 增 / 41 删；逐行过滤确认改动仅为注释行（// /// //!）与 4 条用户可见错误文案字符串，无任何逻辑/签名/结构行变更；无新增或删除文件"
+        },
+        {
+          "criterion": "packages/engine/src/data/text.ts:1057-1062 等合规处未误伤",
+          "status": "passed",
+          "evidence": "git status 显示我的改动仅限 8 个在范围内的文件；text.ts / renderers.ts / animation.ts / elementForms.ts 均未出现在 diff 中"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "vitest run：Test Files 140 passed | 2 skipped (142)；Tests 1885 passed | 10 skipped (1895)；EXIT=0（在最终树状态上复跑）"
+        },
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "vue-tsc --noEmit，无输出，EXIT=0（在最终树状态上复跑）"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "eslint .，无输出，EXIT=0（在最终树状态上复跑）"
+        },
+        {
+          "command": "cargo test --lib",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "workdir apps/playground/src-tauri：test result: ok. 123 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.68s（在最终树状态上复跑）"
+        },
+        {
+          "command": "git diff --numstat / 逐行注释过滤（自查，非门禁）",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "8 文件 41 增 41 删；过滤非注释行后仅剩 4 条错误文案字符串 + 4 行带行尾注释的语句，确认零逻辑变更"
+        }
+      ]
+    },
+    {
+      "id": "t8",
+      "profileSeedId": "T0202",
+      "subject": "T02-02 Tauri 桥类型唯一出口",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/02-适配器与编辑器契约面.md` 的 **T02-02**（先读该文件全文；头部有注释口径与门禁）。\n\n现状：`TauriInvoke`(`packages/adapters/src/resources/projectFilesTauri.ts:14`) / `TauriListen`(`:54`) / `defaultInvoke`(`:25`) 被 **6 处深路径 import**：`i18n/tauriI18n.ts:11`、`preferences/tauriPreferences.ts:10`、`shell/orientation.ts:7`、`resources/projectWriterTauri.ts:28`、`resources/resourceCrypto.ts:13`、`resources/index.ts:37`(TauriInvoke)+`:38`(TauriListen)。包出口 `packages/adapters/src/index.ts:59,60` 已转发两者。\n\n重复实现一并消除：`resources/resourceCrypto.ts:15-21` **自带第二份 `defaultInvoke`**，与 `projectFilesTauri.ts:25-31` 逐字同形。\n\n改动：抽到新建 `packages/adapters/src/platform/tauri-invoke.ts`（含 `TauriInvoke` / `TauriListen` / `defaultInvoke`），新建 `packages/adapters/src/platform/index.ts` 作为该域唯一出口；上述 6 处改为经出口导入。\n\n写作用域：新增 `packages/adapters/src/platform/{tauri-invoke,index}.ts`、`packages/adapters/src/resources/{projectFilesTauri,projectWriterTauri,resourceCrypto,index}.ts`、`packages/adapters/src/{i18n/tauriI18n,shell/orientation,preferences/tauriPreferences}.ts`。\n\n验收：全仓 grep `projectFilesTauri` 的外部 import 归零；全仓 `defaultInvoke` 实现体（`await import(\"@tauri-apps/api/core\")`）只命中 1 处；`pnpm test:unit` + `typecheck` + `lint` 全绿（基线 142 文件 / 1885 通过）。\n\n检索纪律：`apps/editor/node_modules/@lingfan/adapters` 是符号链接（→ `packages/adapters`），所有全仓 grep 须排除 `node_modules`。\n\n门禁：可跑 lint / typecheck / test:unit；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "adapters-editor",
+      "dependencies": [],
+      "attempt": 1,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791442762988,
+      "attemptId": "8df569a8-80ef-44a9-831b-96b2ced54321",
+      "reassigning": false,
+      "output": "T02-02 完成：Tauri 桥接类型与缺省实现收口到唯一出口 `packages/adapters/src/platform/`。\n\n新增 `platform/tauri-invoke.ts`（`TauriInvoke` / `TauriListen` / `defaultInvoke` / `defaultListen`）+ `platform/index.ts`（该域唯一出口，含域说明与出口转发）。6 处深路径 import 全部改为 `../platform`；`resourceCrypto.ts` 自带的第二份 `defaultInvoke` 已删除，与 `projectFilesTauri.ts` 的重复实现归零。\n\n行为零变化：仅搬迁类型与缺省实现，未改任何命令名、参数或调用语义。`resources/index.ts` 继续转发 `TauriInvoke`/`TauriListen`，故包出口 `src/index.ts:59,60` 的类型面不变，`src/index.ts` 未改动（不在写作用域内）。\n\n注释按批次口径重写：新增文件的注释只写「是什么 / 为什么 / 怎么用 / 注意什么」，并说明动态 import 的原因（浏览器与无壳形态下 `@tauri-apps/*` 不存在，静态导入会在装载期失败）；顺带清掉了 `projectFilesTauri.ts` 头部残留的锚点代号「（②）」，并把三处消费者注释里已失效的「默认动态 import」改为「缺省取 Tauri 桥接域的缺省实现」。全作用域无任务号/缺陷号/规约号/锚点代号/批次代号。\n\n附带观察（供 captain 判读，非本任务问题）：验收判据「`defaultInvoke` 实现体只命中 1 处」严格成立（`platform/tauri-invoke.ts:34` 唯一）。但 `await import(\"@tauri-apps/api/core\")` 字面量全仓另有 4 处命中，均在 `packages/adapters/src/save/tauri.ts:18,22,26,30` —— 那是 `createTauriSavePort` 四个方法体内的内联调用，不属 `defaultInvoke` 实现体，也不在 T02-02 写作用域内，故未改动。若后续要统一 Tauri 桥接，可另立任务让 `save/tauri.ts` 也改走 `platform` 域。\n\n检索纪律已遵守：`apps/editor/node_modules/@lingfan/adapters` 符号链接导致的全仓 grep 重复命中已通过排除 `node_modules` 规避（该目录下断链符号链接会报 ENOENT 噪声，改用 grep 工具与 `git grep` 复核）。\n\n格式核查：`npx prettier --check` 对本次 9 个文件报 2 处不合规（`projectWriterTauri.ts` 的 `isStringArray` 行与文件末尾缺换行、`resourceCrypto.ts` 的 `throw new Error(...)` 行）。已用 `git show HEAD:<path>` 取改动前版本比对确认：两处告警在 HEAD 版本即已存在，且都落在本次未触碰的行上，故按「行为零变化 + 不越界改动」原则保留原样。门禁本身（lint/typecheck/test:unit）全绿，prettier 不在本批次门禁清单内。\n\n改动文件（9 个，全部在声明作用域内）：\n- 新增 packages/adapters/src/platform/tauri-invoke.ts\n- 新增 packages/adapters/src/platform/index.ts\n- packages/adapters/src/resources/projectFilesTauri.ts\n- packages/adapters/src/resources/projectWriterTauri.ts\n- packages/adapters/src/resources/resourceCrypto.ts\n- packages/adapters/src/resources/index.ts\n- packages/adapters/src/i18n/tauriI18n.ts\n- packages/adapters/src/shell/orientation.ts\n- packages/adapters/src/preferences/tauriPreferences.ts\n\n未跑 build / tauri build，未代提交。",
+      "changedPaths": [
+        "packages/adapters/src/platform/tauri-invoke.ts",
+        "packages/adapters/src/platform/index.ts",
+        "packages/adapters/src/resources/projectFilesTauri.ts",
+        "packages/adapters/src/resources/projectWriterTauri.ts",
+        "packages/adapters/src/resources/resourceCrypto.ts",
+        "packages/adapters/src/resources/index.ts",
+        "packages/adapters/src/i18n/tauriI18n.ts",
+        "packages/adapters/src/shell/orientation.ts",
+        "packages/adapters/src/preferences/tauriPreferences.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "全仓 grep `projectFilesTauri` 的外部 import 归零",
+          "status": "passed",
+          "evidence": "全仓 grep（排除 node_modules）`projectFilesTauri` 仅剩 1 处命中：`packages/adapters/src/resources/index.ts:38` 的 `} from \"./projectFilesTauri\";`——这是 resources 域出口对同域实现文件的聚合转发，不是外部深路径 import。原先的 6 处外部深引（tauriI18n.ts:11 / tauriPreferences.ts:10 / orientation.ts:7 / projectWriterTauri.ts:28 / resourceCrypto.ts:13 / resources/index.ts:37+38）全部改为 `../platform`，已归零。"
+        },
+        {
+          "criterion": "全仓 `defaultInvoke` 实现体（`await import(\"@tauri-apps/api/core\")`）只命中 1 处",
+          "status": "passed",
+          "evidence": "`const defaultInvoke` / `defaultInvoke: TauriInvoke` 定义全仓仅 1 处：`packages/adapters/src/platform/tauri-invoke.ts:30`，其实现体第 34 行是唯一的 `await import(\"@tauri-apps/api/core\")`。`resourceCrypto.ts` 原有的第二份逐字同形实现（原 :15-21）已删除。`save/tauri.ts` 另有 4 处同字面量，但均属 `createTauriSavePort` 方法体内联调用、非 `defaultInvoke` 实现体，且不在写作用域内。"
+        },
+        {
+          "criterion": "`pnpm test:unit` + `typecheck` + `lint` 全绿（基线 142 文件 / 1885 通过）",
+          "status": "passed",
+          "evidence": "`pnpm test:unit`：Test Files 140 passed | 2 skipped (142)，Tests 1885 passed | 10 skipped (1895)，exit=0——与基线 142 文件 / 1885 通过完全一致，行为零变化。`pnpm typecheck`（vue-tsc --noEmit）exit=0。`pnpm lint`（eslint .）exit=0。三个门禁均在注释微调后复跑确认。"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files  140 passed | 2 skipped (142) / Tests  1885 passed | 10 skipped (1895) / Duration 12.80s，与声明基线 142 文件 / 1885 通过一致。"
+        },
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "vue-tsc --noEmit 无输出、无错误。包出口 `src/index.ts:59,60` 经 `./resources` 转发的 `TauriInvoke`/`TauriListen` 类型面保持可用，测试侧 `import type { TauriInvoke } from \"@lingfan/adapters\"` 全部通过。"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "eslint . 无告警无错误；新增 platform 域与 7 个改动文件均在 `packages/adapters/**/*.ts` 边界规则块内，无 no-restricted-imports / 老 WebView 内建方法违规。"
+        }
+      ]
+    },
+    {
+      "id": "t9",
+      "profileSeedId": "T0206",
+      "subject": "T02-06 域出口补齐",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/02-适配器与编辑器契约面.md` 的 **T02-06**。\n\n改动：① 补 `packages/adapters/src/media/index.ts`（该目录是 `packages/adapters/src` 下**唯一**缺出口的域目录；包出口现直引 `./media/audioPort|videoPort|blobSource`，见 `packages/adapters/src/index.ts:10,14,19`）；② 补 `packages/editor/src` **5 个**无出口目录的 `index.ts`：`schema`(8 文件) / `editing`(6) / `element`(2) / `layout`(1) / `script/words`(12) —— 注意 `script` **已有** `index.ts`，不要重复建；③ 5 个空壳 index 补域聚合：`packages/adapters/src/i18n/index.ts`(2 行)、`preferences/index.ts`(3)、`save/index.ts`(3)、`packages/ui/src/minigame/index.ts`(1)、`packages/ui/src/video/index.ts`(6)；④ 修 `packages/ui/src/index.ts:19` 域出口穿透（现直引 `./dialogue/templates`，应经 `./dialogue`）。\n\n**只补出口与聚合，不搬文件**。新增 index 的内容须是真实域聚合（`export *` 或显式列举），不得留空壳；注释按注释口径写「这个域提供什么」。\n\n写作用域：新增 6 个 `index.ts`、`packages/adapters/src/index.ts`、`packages/ui/src/index.ts`、上述 5 个空壳 index。\n\n验收：全仓 grep 包出口无 `./media/`、`./schema/` 等二级深引；`packages/adapters/src` 下每个域目录都有 `index.ts`；`pnpm test:unit` + `typecheck` + `lint` 全绿。\n\n门禁：可跑 lint / typecheck / test:unit；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "adapters-editor",
+      "dependencies": [
+        "t8"
+      ],
+      "attempt": 1,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791444151710,
+      "attemptId": "cb095b6e-4c58-4175-aa21-30543930d00a",
+      "reassigning": false,
+      "output": "T02-06 域出口补齐完成（6 个新 index + 7 个出口文件改道），三门禁全绿，导出名集合逐名不变。\n\n【新增域出口 6 个】\n- packages/adapters/src/media/index.ts（7 名，覆盖 audioPort/videoPort/blobSource）\n- packages/editor/src/schema/index.ts（38 名，8 文件）\n- packages/editor/src/editing/index.ts（50 名，6 文件）\n- packages/editor/src/element/index.ts（6 名，2 文件）\n- packages/editor/src/layout/index.ts（8 名，1 文件）\n- packages/editor/src/script/words/index.ts（export * ×12，覆盖 101 名，已核无重名）\n\n【改道（只改 from 来源路径，导出名单逐字不变）】\n- packages/editor/src/index.ts：21 处二级深引改经新出口（./schema ×8、./editing ×8、./element ×2、./layout ×1、./diagnostics ×2、./script/expr ×1）；./contracts、./diagnostics、./chapters、./i18n、./script 五个一级保持不动\n- packages/editor/src/script/index.ts：19 处 ./words/* 改经 ./words；./expr 与 ../schema/opSchemas 不动（raw-source 守卫要求保留 export {…} 名单块）\n- packages/adapters/src/index.ts：三条 media 深引合并为单条 from \"./media\"\n- packages/ui/src/index.ts：./dialogue/templates 穿透改为 from \"./dialogue\"\n- packages/ui/src/dialogue/index.ts：补 ./templates 转发（穿透修复的前置条件）\n- packages/editor/src/diagnostics/index.ts：补 ./grouping 与 ./message 转发（使包出口可经 ./diagnostics 取用）\n\n【空壳 index 核查结论（与 SSOT 原判有出入，据实报告）】5 个\"空壳\"中 4 个（adapters/i18n、adapters/preferences、adapters/save、ui/video）经逐模块比对，其 index.ts 已完整转发本目录全部实现文件的全部导出名，无需新增聚合——实际可做项仅为注释口径；仅 ui/minigame/index.ts 缺域注释，已补。故本轮空壳改动只有 1 个文件（ui/src/minigame/index.ts），未对另 4 个做无意义改写。\n\n【验证】\n- pnpm test:unit：140 passed | 2 skipped (142)；Tests 1885 passed | 10 skipped (1895)，与基线逐位一致，行为零变化\n- pnpm typecheck（vue-tsc --noEmit）：exit 0，无输出\n- pnpm lint（eslint .）：exit 0，无告警\n- npx vitest run tests/editor/script-vocabulary.test.ts tests/editor/step-layout-view.test.ts：29 passed（两个 raw-source 守卫显式复跑）\n- 导出名集合比对（脚本对 HEAD 与工作区逐名 diff）：editor/index.ts 167→167、script/index.ts 111→111、adapters/index.ts 61→61、ui/index.ts 82→82，ALL EXPORT NAME SETS UNCHANGED\n- 域出口覆盖度比对：6 个新 index 对各自目录导出名覆盖率 100%（7/7、38/38、50/50、6/6、8/8、101/101 via export*）\n- 包出口二级深引：packages/{editor,adapters,ui}/src/index.ts 及全部域 index.ts 命中 0（残留 9 处全在 packages/engine/src/index.ts 的 ./runtime/*，属模块 01 T01-06 范围）；apps/ 下对 @lingfan/* 子路径深引 0\n- 注释口径扫描：本轮改动文件对 ①②③…/§/T0x-/批次/任务号/缺陷号/规约号/锚点 命中 0（全仓残留 8 处均在未改动文件，已核 HEAD 即存在）\n- 临时校验脚本已删除，工作区无残留\n\n【观察（未越界处理，供队长判读）】\n1. packages/editor/src/i18n/index.ts 显示为已修改（删掉注释里的 \"05 \" 前缀，mtime 15:11:41），早于我的首次写入（15:15:22），非本轮产物，疑为队友 T02-05 注释清理。\n2. packages/editor/src 内仍有 11 处兄弟域二级深引（非出口文件：i18n/extract.ts:11、layout/steps.ts:25,27,28、diagnostics/grouping.ts:24、diagnostics/index.ts:20-22、script/index.ts:104、editing/pointers.ts:6,7），属域内实现引用，T02-06 改动清单未列，未动。\n3. prettier 非门禁：本轮修正了自己引入的 2 处格式偏差（script/index.ts 名单块折叠、media/index.ts export 展开）；diagnostics/index.ts 的 prettier 告警经 HEAD 版本比对确认改动前后均为同一 8 insertions/3 deletions，落在未触碰行上，保留原样。",
+      "changedPaths": [
+        "packages/adapters/src/media/index.ts",
+        "packages/editor/src/schema/index.ts",
+        "packages/editor/src/editing/index.ts",
+        "packages/editor/src/element/index.ts",
+        "packages/editor/src/layout/index.ts",
+        "packages/editor/src/script/words/index.ts",
+        "packages/adapters/src/index.ts",
+        "packages/ui/src/index.ts",
+        "packages/ui/src/dialogue/index.ts",
+        "packages/ui/src/minigame/index.ts",
+        "packages/editor/src/index.ts",
+        "packages/editor/src/script/index.ts",
+        "packages/editor/src/diagnostics/index.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "全仓 grep 包出口无 ./media/、./schema/ 等二级深引",
+          "status": "passed",
+          "evidence": "git grep -nE 'from \"\\./[a-z][a-zA-Z]*/[a-z]' 对 packages/*/src/index.ts、*/src/*/index.ts、*/src/*/*/index.ts、*/src/*/*/*/index.ts：editor/adapters/ui 三个包出口与全部域出口命中 0；仅 packages/engine/src/index.ts 残留 9 处 ./runtime/*（模块 01 T01-06 范围，非本任务写作用域）。另 git grep 'from \"@lingfan/[a-z]+/' 在 apps/ 下命中 0。"
+        },
+        {
+          "criterion": "packages/adapters/src 下每个域目录都有 index.ts",
+          "status": "passed",
+          "evidence": "逐目录 Test-Path 实测 9/9 为 True：dev、host、i18n、media（本轮新增）、platform、preferences、resources、save、shell。同时 packages/editor/src 9 个域目录（含新增 schema/editing/element/layout 与 script/words）与 packages/ui/src 11 个域目录亦全部为 True。"
+        },
+        {
+          "criterion": "pnpm test:unit + typecheck + lint 全绿",
+          "status": "passed",
+          "evidence": "test:unit = 140 passed | 2 skipped (142 文件)，Tests 1885 passed | 10 skipped (1895)，与声明基线逐位一致；typecheck (vue-tsc --noEmit) exit 0 无输出；lint (eslint .) exit 0 无告警。三项均在最终格式修正后复跑确认。"
+        },
+        {
+          "criterion": "新增 index 是真实域聚合（export * 或显式列举），不得留空壳",
+          "status": "passed",
+          "evidence": "脚本逐文件比对声明导出名与 index 转发名：media 7/7、schema 38/38、editing 50/50、element 6/6、layout 8/8、script/words 101/101（export * ×12，已核 12 文件无重名），覆盖率均 100%，ALL DOMAIN INDEXES FULLY FORWARD。每个新 index 均带域说明注释（面向读者口径）。"
+        },
+        {
+          "criterion": "改动不破坏既有导出面与行为语义",
+          "status": "passed",
+          "evidence": "导出名集合对 HEAD 逐名 diff：editor/src/index.ts 167→167、editor/src/script/index.ts 111→111、adapters/src/index.ts 61→61、ui/src/index.ts 82→82，ALL EXPORT NAME SETS UNCHANGED。两个 raw-source 守卫测试（tests/editor/script-vocabulary.test.ts 依赖 script/index.ts 的 export {…} 名单块、tests/editor/step-layout-view.test.ts 依赖 editor/src/index.ts 逐字含 storySteps/columnSteps/StoryStep/walkCommandBodies）显式复跑 29 passed。"
+        },
+        {
+          "criterion": "源码注释符合用户口径（无锚点代号/批次代号/任务缺陷号/审计叙事）",
+          "status": "passed",
+          "evidence": "对全部 17 个涉及文件扫 ①②③④⑤⑥⑦⑧⑨⑩/§/T0[12]-/批次/任务号/缺陷号/规约号/锚点，命中 0。新写注释均为「这个域提供什么 + 注意什么」的读者口径。"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1885 passed | 10 skipped (1895)；Duration 12.05s。与声明基线逐位一致。"
+        },
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ vue-tsc --noEmit，无输出无错误。"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ eslint .，无告警。"
+        },
+        {
+          "command": "npx vitest run tests/editor/script-vocabulary.test.ts tests/editor/step-layout-view.test.ts",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "两个 raw-source 守卫：29 passed (29)，2 files passed。证明 script/index.ts 的 export 名单块与 editor/src/index.ts 的导出名单在改道后逐字保留。"
+        },
+        {
+          "command": "node .tmp-build/export-surface-diff.cjs",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "逐名对比 HEAD 与工作区四个包出口的导出名集合：167/167、111/111、61/61、82/82，输出 ALL EXPORT NAME SETS UNCHANGED。脚本用后已删除。"
+        },
+        {
+          "command": "node .tmp-build/domain-index-coverage.cjs",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "6 个新域出口对其目录全部实现文件的导出名覆盖：7/7、38/38、50/50、6/6、8/8、101/101，输出 ALL DOMAIN INDEXES FULLY FORWARD。脚本用后已删除。"
+        },
+        {
+          "command": "git grep -n -E 'from \"\\./[a-z][a-zA-Z]*/[a-z]' -- 'packages/*/src/index.ts' 'packages/*/src/*/index.ts' 'packages/*/src/*/*/index.ts' 'packages/*/src/*/*/*/index.ts'",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "editor/adapters/ui 包出口与全部域出口命中 0；唯一命中为 packages/engine/src/index.ts 的 9 处 ./runtime/*，属模块 01 T01-06 范围。"
+        }
+      ]
+    },
+    {
+      "id": "t10",
+      "profileSeedId": "T0204",
+      "subject": "T02-04 编辑器分层目录骨架",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/02-适配器与编辑器契约面.md` 的 **T02-04**。\n\n现状：`apps/editor/src` 下一个分层目录都没有，**16 个 `.ts` 平铺在 `src/` 根**，`components/` 24 个 `.vue` 平铺，**全树 0 个 `index.ts`**。\n\n改动：**只建目录与 `index.ts`，不搬实现**（搬实现归 06 模块）：`apps/editor/src/{contracts,domain,app,ui,infra,shared}/index.ts`。每个 `index.ts` 写清该层职责（注释面向读者），当前阶段可只含占位导出说明 —— 但不得是空文件，且 `contracts/index.ts` 稍后由 T02-03 填充。\n\n写作用域：`apps/editor/src/{contracts,domain,app,ui,infra,shared}/index.ts`。\n\n验收：六个目录存在且各有 `index.ts`；`pnpm typecheck` + `lint` 全绿；`pnpm test:unit` 全绿。\n\n门禁：可跑 lint / typecheck / test:unit；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "adapters-editor",
+      "dependencies": [],
+      "attempt": 1,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791444463729,
+      "attemptId": "6891aebe-2b67-43de-a2d4-4576da943d7c",
+      "reassigning": false,
+      "output": "T02-04 编辑器分层目录骨架完成：在 apps/editor/src 下新建 6 个分层目录与各自的 index.ts（只建目录与出口，未搬任何实现；搬实现归后续拆分模块）。\n\n产物（每个 index.ts 均带面向读者的层职责说明注释，含「本层放什么 / 可用哪些层 / 不得依赖哪些层」）：\n- apps/editor/src/contracts/index.ts（11 行）：契约层——跨层共享的类型、常量与注入键；只放声明不放实现，不依赖任何层，也不引用 @lingfan/adapters，使视图组件取契约时不把平台实现拖进浏览器产物。后续由编辑器契约收口任务填充。\n- apps/editor/src/domain/index.ts（12 行）：领域层——纯模型与判据（零框架、零 DOM、零 I/O）。\n- apps/editor/src/app/index.ts（13 行）：应用层——组合根与视图编排，唯一允许知道全部的地方。\n- apps/editor/src/ui/index.ts（11 行）：视图层——组件与样式，只认契约不认平台。\n- apps/editor/src/infra/index.ts（13 行）：基础设施层——平台取径与外部通道的落地实现。\n- apps/editor/src/shared/index.ts（12 行）：共享层——无业务含义的通用工具，可被任何层依赖。\n\n实现选择：六个文件体均为 export {};。理由：根 tsconfig 开启 isolatedModules，纯声明文件需要模块标记；不能写 export * from 转发尚不存在的文件（会直接编译失败），也不能留空文件（任务明令不得为空）。\n\n验证（全部实跑，三门禁全绿）：\n- pnpm typecheck（vue-tsc --noEmit）exit 0，无输出。\n- pnpm lint（eslint .）exit 0，无告警。\n- pnpm test:unit exit 0：Test Files 140 passed | 2 skipped (142)；Tests 1885 passed | 10 skipped (1895) —— 与声明基线逐位一致，行为零变化。\n- npx prettier --check 六个新文件：All matched files use Prettier code style。\n- 结构核查：六个目录存在且各有 index.ts（Test-Path 逐项 True）；apps/editor/src 下 index.ts 恰好 6 个，无多余出口。\n- 命名冲突核查：全仓（apps/editor + tests）grep from \"(../)*(contracts|domain|app|ui|infra|shared)[/\"] 命中 0 —— 新建目录不会截获任何既有裸导入；tests/editor/diagnostic-grouping.test.ts:16 的近似命中指向 packages/editor/src/contracts，与本应用无关。\n- 测试假设核查：无任何测试对 apps/editor/src 做非递归 readdir 或断言文件数量（readdirSync 与 length/toHaveLength 断言均 0 命中）。\n- 注释口径扫描（六个新文件）：锚点代号 / § / 任务号 / 批次 / 缺陷号 / 规约号 全部 0 命中。\n- 源级守卫预检：token-guard 关注的裸色值（#[0-9a-fA-F]{3,8}）与裸字号（font-size: NNpx）在六个新文件中 0 命中。\n- git status -- apps/editor：仅 6 个新增未跟踪目录，无既有文件被改动。\n\n未跑 build / tauri build，未代提交。",
+      "changedPaths": [
+        "apps/editor/src/contracts/index.ts",
+        "apps/editor/src/domain/index.ts",
+        "apps/editor/src/app/index.ts",
+        "apps/editor/src/ui/index.ts",
+        "apps/editor/src/infra/index.ts",
+        "apps/editor/src/shared/index.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "六个目录存在且各有 index.ts",
+          "status": "passed",
+          "evidence": "Test-Path 逐项核对：contracts/domain/app/ui/infra/shared 六目录 dir=True 且 index=True；Get-ChildItem -Recurse -Filter index.ts apps/editor/src 恰好返回这 6 个文件（此前该树 0 个 index.ts）。"
+        },
+        {
+          "criterion": "pnpm typecheck 全绿",
+          "status": "passed",
+          "evidence": "pnpm typecheck（$ vue-tsc --noEmit）exit 0，无任何输出。"
+        },
+        {
+          "criterion": "pnpm lint 全绿",
+          "status": "passed",
+          "evidence": "pnpm lint（$ eslint .）exit 0，无告警输出。"
+        },
+        {
+          "criterion": "pnpm test:unit 全绿",
+          "status": "passed",
+          "evidence": "pnpm test:unit exit 0：Test Files 140 passed | 2 skipped (142)；Tests 1885 passed | 10 skipped (1895)；Duration 13.76s。与基线 142 文件 / 1885 通过逐位一致。"
+        },
+        {
+          "criterion": "只建目录与 index.ts，不搬实现（写作用域内）",
+          "status": "passed",
+          "evidence": "git status --porcelain -- apps/editor 仅显示 6 个新增未跟踪目录（?? apps/editor/src/{app,contracts,domain,infra,shared,ui}/），无任何既有文件被修改或移动；16 个平铺 .ts 与 components/ 24 个 .vue 位置未动。"
+        },
+        {
+          "criterion": "index.ts 不得为空文件且写清该层职责（注释面向读者）",
+          "status": "passed",
+          "evidence": "六文件行数 11/12/13/11/13/12，字节 585/602/580/474/620/514，均为「层职责块注释 + export {};」；注释写清本层放什么、可用哪些层、不得依赖哪些层。注释口径扫描 0 命中（无锚点代号 / § / 任务号 / 批次 / 缺陷号 / 规约号）。"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ vue-tsc --noEmit —— exit 0，无输出。"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ eslint . —— exit 0，无告警。"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1885 passed | 10 skipped (1895)；Duration 13.76s。与基线逐位一致。"
+        },
+        {
+          "command": "npx prettier --check apps/editor/src/{contracts,domain,app,ui,infra,shared}/index.ts",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "All matched files use Prettier code style!（非门禁，格式自查）"
+        },
+        {
+          "command": "git grep -n -E 'from \"(\\.\\./)*(contracts|domain|app|ui|infra|shared)[/\"]' -- 'apps/editor' 'tests'",
+          "status": "passed",
+          "exitCode": 1,
+          "evidence": "0 命中（exit 1 = 无匹配）—— 新建六目录不会截获任何既有裸导入。"
+        },
+        {
+          "command": "git grep -n -B2 -A6 -E 'readdirSync\\((EDITOR_SRC|EDITOR_SRC_DIR|SRC)\\)' -- 'tests'",
+          "status": "passed",
+          "exitCode": 1,
+          "evidence": "0 命中 —— 无测试对 apps/editor/src 做非递归 readdir 或断言文件数量，新增目录不影响既有断言。"
+        }
+      ]
+    },
+    {
+      "id": "t11",
+      "profileSeedId": "T0201",
+      "subject": "T02-01 供给契约上移（T02-03 的前置）",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/02-适配器与编辑器契约面.md` 的 **T02-01**。\n\n现状：三个供给契约定义在适配器实现文件里却被多层消费 —— `ProjectFileSource`(`packages/adapters/src/resources/directorySource.ts:45`)、`DiagnosticSupply`(`:479`)、`LastProjectHandleStore`(`:837`)。**当前就错的一条**：`apps/editor/src/ports.ts:18` 从 `@lingfan/adapters` 导入 `DiagnosticSupply` —— 编辑器契约层反向依赖适配器实现。\n\n改动：`ProjectFileSource` / `LastProjectHandleStore` → `packages/engine/src/contracts/platform/ports.ts`（T01-04 已把 `contracts/platform.ts` 拆成 `platform/{entities,ports,index}.ts`，请落在 ports 并确保经 `platform/index.ts` 与 `contracts/index.ts` 对外可见）；`DiagnosticSupply` → 按裁定 **R1** 落 `packages/engine/src/contracts/`（推荐 (a)，避免 adapters 反向依赖 editor）。`packages/adapters/src/index.ts:44,46` 的对应导出改为过渡期 re-export。\n\n**注意（勿误报）**：`packages/editor` 并未 import `@lingfan/adapters`（其依赖只有 `@lingfan/engine` + `zod`）；`packages/editor/src/i18n/reconcile.ts:9` 只在注释里提到 adapters。上移时不要为它引入新依赖。\n\n写作用域：`packages/engine/src/contracts/platform/**`、`packages/adapters/src/resources/directorySource.ts`、`packages/adapters/src/index.ts`、`apps/editor/src/ports.ts`。\n\n验收：全仓 grep `apps/editor/src/**` 无 `from \"@lingfan/adapters\"` 的类型导入；`pnpm test:unit` + `typecheck` + `lint` 全绿。\n\n门禁：可跑 lint / typecheck / test:unit；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "adapters-editor",
+      "dependencies": [
+        "t5"
+      ],
+      "attempt": 1,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791449262677,
+      "attemptId": "ff740105-f0c4-4698-9d2d-ab2b3be096a7",
+      "reassigning": false,
+      "output": "T02-01 供给契约上移完成：三个供给契约从适配器实现文件归到引擎契约层，编辑器契约层对适配器的反向依赖已消除。\n\n【契约落点（各只有 1 处声明，全在 packages/engine/src/contracts 下）】\n- `packages/engine/src/contracts/platform/ports.ts:54` `export interface ProjectFileSource`（`name` / `paths()` / `text()` / `file()`）\n- `packages/engine/src/contracts/platform/ports.ts:70` `export interface LastProjectHandleStore`（`load()` / `save()`，注释改写为「浏览器形态：IndexedDB……任何存储失败一律静默」，去掉实现细节）\n- `packages/engine/src/contracts/platform/entities.ts:30` `export interface DiagnosticSupply`（三字段原样，保留「并集口径 vs 逐语言口径都对，合成一个会毁掉其中一个」的理由注释）\n后两者经 `platform/index.ts` 的 `export *` → `contracts/index.ts` 自动对外可见，无需改出口。\n\n【消费方改动】\n1. `packages/adapters/src/resources/directorySource.ts`（924 → 893 行）：删掉三处 interface 声明；`@lingfan/engine` 导入块补三个 type；导入块之后加过渡转发块 `export type { DiagnosticSupply, LastProjectHandleStore, ProjectFileSource } from \"@lingfan/engine\";`（因 `resources/index.ts` 不在写作用域且要转发这三个名字）。`LANG_ROOT = \"Lang\"` 常量原位保留（现 `:474`）。\n2. `packages/adapters/src/index.ts`：三个类型名从 `./resources` 导出块移出（该块保留 `type BlobUrlOptions`），改为独立块 `export type { … } from \"@lingfan/engine\";`（按裁定 R5 的过渡转发；同块内重复导出会报错，故必须移出）。\n3. `apps/editor/src/ports.ts`：删 `import type { DiagnosticSupply } from \"@lingfan/adapters\";`，并入 `@lingfan/engine` 的 type 导入（按字母序排在 `DegradedOpen` 之后）；`diagnosticSupply` 字段注释改写为「类型**直接引用供给契约**（引擎的 `DiagnosticSupply`）——供给方装载什么就声明什么。」，原文点名 `@lingfan/adapters` 的表述已消除。\n4. `apps/editor/src/main.ts`（按队长扩权，只改一行）：`type ProjectFileSource` 从 `@lingfan/adapters` 导入块移到 `@lingfan/engine` 导入块；改后适配器块只剩函数与工厂，无任何 `type` 前缀导入。\n\n【原样上移、未中立化（队长裁定②）】\n`file(): Promise<File>` 与 `LastProjectHandleStore` 的两个 `FileSystemDirectoryHandle` 按清单原样上移，未做中立化。张力登记：契约层此前零真实平台类型（T01-03 成果），本次上移把 `File` / `FileSystemDirectoryHandle` 带回契约层。收口口径（队长给定，作独立后续任务）：与 `AbortHandle` 同构——`file()` 返回值改中立句柄、`LastProjectHandleStore` 的两个参数改 `unknown`，宿主侧 `apps/editor/src/main.ts` 窄化回真实 DOM 类型；`directorySource.ts` 已有的 `isDirectoryHandleLike(value): value is FileSystemDirectoryHandle` 运行时校验器说明「形状校验」这半已经在了，缺的只是类型面。牵动面（本轮未动）：`apps/editor/src/main.ts:73,149,164`、`tests/adapters/resources/{directorySource,lastProjectStore,encrypted-project}.test.ts`、`tests/editor/save.test.ts:68-82`。",
+      "changedPaths": [
+        "packages/engine/src/contracts/platform/ports.ts",
+        "packages/engine/src/contracts/platform/entities.ts",
+        "packages/adapters/src/resources/directorySource.ts",
+        "packages/adapters/src/index.ts",
+        "apps/editor/src/ports.ts",
+        "apps/editor/src/main.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "全仓 grep `apps/editor/src/**` 无 `from \"@lingfan/adapters\"` 的类型导入",
+          "status": "passed",
+          "evidence": "grep `from \"@lingfan/adapters\"` 在 apps/editor/src 仅剩 1 处 = `apps/editor/src/main.ts:34`（值导入块收尾，全为函数与工厂）；`import type {…} from \"@lingfan/adapters\"` 0 命中；`^\\s*type [A-Za-z]+,$` 在 main.ts 的适配器块内 0 命中（type 前缀导入现全在 `@lingfan/engine` 块 `:43-49`）。`apps/editor/src/contracts/**` 对 `@lingfan/adapters` 0 命中。"
+        },
+        {
+          "criterion": "三个供给契约在 packages/engine/src/contracts/** 下各只有 1 处声明",
+          "status": "passed",
+          "evidence": "全仓 `interface (ProjectFileSource|DiagnosticSupply|LastProjectHandleStore)\\b` 命中 3 处，全在 engine：`packages/engine/src/contracts/platform/entities.ts:30`（DiagnosticSupply）、`packages/engine/src/contracts/platform/ports.ts:54`（ProjectFileSource）、`:70`（LastProjectHandleStore）。适配器侧 0 处声明（`packages/adapters/src/resources/directorySource.ts` 已改为 `export type { … } from \"@lingfan/engine\"` 转发）。"
+        },
+        {
+          "criterion": "包出口继续导出三个类型名（tests 与 apps 既有取用点不破）",
+          "status": "passed",
+          "evidence": "`packages/adapters/src/resources/index.ts:19-21` 仍转发三个名字；`packages/adapters/src/index.ts:41-46` 独立块转发。tests 侧消费点 `tests/adapters/resources/lastProjectStore.test.ts:14`、`tests/adapters/resources/encrypted-project.test.ts:15,24`、`tests/editor/save.test.ts:25,64,68,97` 全部经包出口，未改动且通过。"
+        },
+        {
+          "criterion": "pnpm test:unit + typecheck + lint 全绿（基线 142 文件 / 1897 用例）",
+          "status": "passed",
+          "evidence": "test:unit = `Test Files 140 passed | 2 skipped (142)` / `Tests 1887 passed | 10 skipped (1897)` / Duration 11.35s，与基线逐位一致；typecheck（`vue-tsc --noEmit`）exit 0 无输出；lint（`eslint .`）exit 0 无告警。"
+        },
+        {
+          "criterion": "注释口径合规（无锚点代号/批次/任务缺陷号/审计叙事）",
+          "status": "passed",
+          "evidence": "grep `[①②③④⑤⑥⑦⑧⑨⑩§]|T0[12]-|批次|任务号|缺陷号|规约号|锚点代号|审计|取证` 在 `packages/engine/src/contracts/platform/**`、`packages/adapters/src/**`、`apps/editor/src/ports.ts` 均 0 命中。新增/改写的注释均为面向读者的「是什么/为什么/注意什么」。"
+        },
+        {
+          "criterion": "无越界改动（写作用域外零改动）",
+          "status": "passed",
+          "evidence": "`git diff --stat` 本任务涉及文件 = 4 个 M（`apps/editor/src/main.ts` +2/-2 仅一行搬移、`apps/editor/src/ports.ts` 6 行、`packages/adapters/src/index.ts` 15 行、`packages/adapters/src/resources/directorySource.ts` 51 行）+ `packages/engine/src/contracts/platform/` 未跟踪目录内的 2 个文件（ports.ts / entities.ts，T01-04 新建、本任务追加契约）。未碰 apps/editor 其它文件、tests、packages/editor、packages/ui。未跑 build / tauri build，未代提交。"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1887 passed | 10 skipped (1897)；Duration 11.35s —— 与批次基线逐位一致，行为零变化。"
+        },
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ vue-tsc --noEmit，无输出无错误。"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ eslint .，无告警。"
+        },
+        {
+          "command": "git diff --stat -- apps/editor/src/main.ts apps/editor/src/ports.ts packages/adapters/src/index.ts packages/adapters/src/resources/directorySource.ts",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "4 files changed, 21 insertions(+), 53 deletions(-)；另 `git status --porcelain -- packages/engine/src/contracts/platform` = `?? packages/engine/src/contracts/platform/`（T01-04 新建目录，本任务在其中两个文件内追加契约）。"
+        }
+      ]
+    },
+    {
+      "id": "t12",
+      "profileSeedId": "T0205",
+      "subject": "T02-05 ports.ts 注释过量与决策叙事清理",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/02-适配器与编辑器契约面.md` 的 **T02-05**。\n\n现状（原稿定性有误，已整条重写）：`apps/editor/src/ports.ts`（127 行）**不含任何函数实现** —— 实测 `async` 0 处、`=> {` 0 处、`function` 0 处，全是类型签名；真实问题是**注释占 83 / 127 行（约 65%）**，其中 `:52-56` 是一段解释内部决策过程的长注释（「两处声明会漂移」这类自述），属注释口径禁止的审计/决策叙事。\n\n**误报来源（勿据此开工）**：全仓 `save: async (next: Story)` 只出现在 `apps/editor/src/main.ts:107`（组合根，实现本就该在此），另 `components/DialogHost.vue:28` 有一处无关的 `async (next) => {`。\n\n改动：注释按口径精简重写 —— 只留「是什么 / 为什么 / 怎么用 / 注意什么」；把「两处声明会漂移」这类内部决策过程**移到本批次文档**，源码不留。类型签名本身**保持不动**（落点已由 T02-01 处理）。\n\n写作用域：`apps/editor/src/ports.ts`。\n\n验收：`ports.ts` 注释行占比明显下降且无决策叙事；`apps/editor/src/contracts/**` 无 `@lingfan/adapters` import；`pnpm test:unit` + `typecheck` + `lint` 全绿。\n\n门禁：可跑 lint / typecheck / test:unit；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "adapters-editor",
+      "dependencies": [
+        "t11"
+      ],
+      "attempt": 1,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791449546077,
+      "attemptId": "3fbca7cb-8a9e-4073-8c19-b16e8410635b",
+      "reassigning": false,
+      "output": "T02-05 完成：`apps/editor/src/ports.ts` 注释从 83/127 行（约 65%）压到 36/80 行，决策叙事与审计口吻全部清除；类型签名逐字未动。\n\n【改动（单文件，20 插入 / 67 删除）】\n`apps/editor/src/ports.ts`：127 → 80 行。\n- 删除 `:52-56` 整段决策叙事（「若声明成 `Required<AnalyzeOptions>` 并自称同一类型…注释在骗人、两处声明漂移…两者是不同的类型，各自诚实声明」），改为单行事实说明：「诊断供给侧：资源根实际文件集合（逻辑路径）+ overlay 译文键（并集 + 分语言）」。\n- 头注释 7 行压成 5 行：删掉「约束（调用链分层）」的括号标签与「与 playground 同构」的外部对照。\n- 逐字段注释按「是什么 / 为什么 / 怎么用 / 注意什么」重写，删掉四类越界叙事：① 实现细节「底层复用 `ProjectFileSource.text`，组合根绑定闭包注入 ⇒ 组件零 adapters import（与 `save` 同一约束）」；② 测试引用「`serializeColumnDocument` 的回归测试锁住了该边界」；③ 设计取舍自述「塞进 Story 会让『保存后内存态』与『重开态』不再深等」；④ 与 playground 的对照「与 playground 同构」。\n- 保留全部「注意什么」类信息：`readText` 失败必须抛错（fail-closed）、`saveText` 与 `save` 作用域不同会误伤未编辑文件、`saveColumn` 不能走 `save`（整工程序列化器会删其余列文件）、`inspectSave` 会话内首次成功保存后恒返回 `undefined`、降级打开必须显式告知。\n- 补回被删注释里承载的可用性信息（`saveText` / `saveColumn` / `inspectSave` 的「缺省 = 无写权限 / 只读取径」原本藏在长段里，现并入单行）。\n\n【证据】\n- 注释行统计：改前 total=127 / comment=83 / blank=4（注释+空行 87，68.5%）；改后 total=80 / comment=36 / blank=4（40，50%）。\n- 代码行逐行比对（剥注释与空行后按位置对齐）：改前 40 行、改后 40 行，**唯一差异是 T02-01 已落地的 `DiagnosticSupply` 导入来源**（`import type { DiagnosticSupply } from \"@lingfan/adapters\";` → 并入 `@lingfan/engine` 导入块），本任务未改任何类型签名。\n- 导出类型名集合与字段名集合逐字比对：`OpenedProject, LastProjectEntry, ProjectOpener, MediaPortFactories` 改前改后完全一致。\n- 决策叙事扫描（`漂移|审计|取证|叙事|裁定|批次|任务号|缺陷号|规约号|锚点代号|①-⑩|§|T0[123]-`）在 `ports.ts` **0 命中**。\n- `apps/editor/src/contracts/**` 无 `@lingfan/adapters` 的 import/export（唯一命中是 `contracts/index.ts:6` 的注释文字「也不引用平台适配器（`@lingfan/adapters`）」，非导入语句，且不属本任务作用域）。\n- `git diff --stat` 仅 `apps/editor/src/ports.ts` 一个文件，无越界改动。\n- 格式核查：`npx prettier --check` 对该文件仍报 1 处（`saveColumn?: (columnId, columnStory: Story) => Promise<ProjectWriteReport>;` 应折行）；已用 `git show HEAD:` 取改动前版本比对确认**该告警在 HEAD 即已存在且落在本次未触碰的行上**，按「行为零变化 + 不越界改动」保留原样。prettier 不在本批次门禁清单内。",
+      "changedPaths": [
+        "apps/editor/src/ports.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "ports.ts 注释行占比明显下降且无决策叙事",
+          "status": "passed",
+          "evidence": "注释 83/127（含空行 87，68.5%）→ 36/80（含空行 40，50%）；删除 :52-56 整段「两处声明漂移」决策叙事与「与 playground 同构」「回归测试锁住了该边界」「塞进 Story 会让…」等审计/实现细节叙事；决策叙事扫描 0 命中。"
+        },
+        {
+          "criterion": "apps/editor/src/contracts/** 无 @lingfan/adapters import",
+          "status": "passed",
+          "evidence": "grep `^\\s*(import|export)\\b.*@lingfan/adapters` 在 apps/editor/src/contracts 0 命中；唯一 `@lingfan/adapters` 出现是 contracts/index.ts:6 的注释文字，非导入语句。"
+        },
+        {
+          "criterion": "pnpm test:unit + typecheck + lint 全绿",
+          "status": "passed",
+          "evidence": "typecheck（vue-tsc --noEmit）exit 0 无输出；lint（eslint .）exit 0 无告警；test:unit = 142 文件（140 passed + 2 skipped）/ 1897 用例（1887 passed + 10 skipped），与基线逐位一致。"
+        },
+        {
+          "criterion": "类型签名保持不动",
+          "status": "passed",
+          "evidence": "剥注释后代码行 40 = 40 逐位比对，唯一差异为 T02-01 已落地的 DiagnosticSupply 导入来源；导出类型名集合与全部字段名集合逐字一致。"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ vue-tsc --noEmit，无输出无错误。"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ eslint .，无告警。"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1887 passed | 10 skipped (1897)；Duration 12.04s。"
+        }
+      ]
+    },
+    {
+      "id": "t13",
+      "profileSeedId": "T0203",
+      "subject": "T02-03 编辑器契约单一来源（EditorApi 11 份 → 1 份）",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/02-适配器与编辑器契约面.md` 的 **T02-03**（含「执行注意」段，务必先读）。\n\n改动：① 新建 `apps/editor/src/contracts/editor.ts` 定义**一个** `EditorApiPort`（成员 = 11 份私有副本的**并集**）；新建 `apps/editor/src/contracts/injection-keys.ts` 用 `InjectionKey<EditorApiPort>` 收口 4 个裸字符串键（`editorApi` / `columnPaths` / `selectedPointer` / `columnGroupingApi`）；11 个组件改 `inject(EDITOR_API_KEY)!` 并删除本地 interface。② 新建 `apps/editor/src/contracts/host.ts` 放 `HostCapabilities` / `PackResult` / `WatchStatus`（`PackRequest` 归 `apps/editor/server/security.ts:148 packRequestOf` 口径，不再另立）；`components/PackPanel.vue` 只 import 不导出。③ 修正 `apps/editor/src/App.vue:139` 注释「13 个组件」→ 实测 **11 个**。\n\n11 个组件（interface 行号 / inject 行号）：`components/{ChapterTree.vue:33,36, ColumnList.vue:16,23, DiagnosticsPanel.vue:23,29, FieldRow.vue:21,29, JsonView.vue:12,15, NodeGraph.vue:32,38, PropertyPanel.vue:14,17, StageEditor.vue:75,87, StepLayout.vue:16,22, StoryTimeline.vue:19,25, TextModeView.vue:15,18}`。\n\n**执行注意（实测，勿踩）**：`?raw` 源级断言共 20 处，**分属两个应用** —— 18 处锚 `apps/editor/src/App.vue`（清单见文档），2 处锚 `apps/playground/src/App.vue`（`tests/ui/input/scope.test.ts`、`tests/ui/templates/wiring.test.ts`）。本任务改 `App.vue` 的 provide 键时，**只需同步那 18 处中的相关断言**；2 处 playground 不受影响。\n\n写作用域：新增 `apps/editor/src/contracts/{editor,host,injection-keys}.ts`（`contracts/index.ts` 由 T02-04 建，你负责填充）、`apps/editor/src/App.vue`、11 个组件、`apps/editor/server/host.ts`。\n\n验收：全仓 grep `interface EditorApi` 只命中 1 处；`interface PackResult` 只命中 1 处；`provide(\"editorApi\"` 与 `inject<...>(\"editorApi\")` 归零；`pnpm test:unit` + `typecheck` + `lint` 全绿。\n\n门禁：可跑 lint / typecheck / test:unit；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "adapters-editor",
+      "dependencies": [
+        "t11",
+        "t10"
+      ],
+      "attempt": 1,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791451013758,
+      "attemptId": "eb34464d-fd68-49b4-9eb0-2646f64e4095",
+      "reassigning": false,
+      "output": "T02-03 编辑器契约单一来源：完成。\n\n【① 契约层 4 文件（新建 apps/editor/src/contracts/，未跟踪目录）】\n- editor.ts（60 行）：`export interface EditorApiPort`（:15）＝ 11 份私有副本成员的并集，14 个成员逐一注释：update / removeField / insertCommand / removeCommand / moveCommand / select / reveal / selectColumn / renameColumn / addColumn(kind:\"flow\"|\"scene\", hint?, type?:\"game\"|\"menu\"|\"ui\") / removeColumn / insertElement(columnPointer, element, parentPointer?) / connectBranch(fromColumnId, toColumnId, optionText?): boolean / replaceAll(next: Story, label)。仅 `import type { Story } from \"@lingfan/engine\"`。\n- injection-keys.ts（50 行）：`EDITOR_API_KEY: InjectionKey<EditorApiPort>`（Symbol \"lingfan-editor-api\"）、`COLUMN_PATHS_KEY: InjectionKey<Ref<Map<string,string>>>`、`SELECTED_POINTER_KEY: InjectionKey<Ref<string|null>>`、`export interface ColumnGroupingApi`（:37）+ `COLUMN_GROUPING_API_KEY`。符号名均不含子串 `lingfan-editor-colgroups`（守卫 tests/editor/column-grouping.test.ts:499 要求）。\n- host.ts（54 行）：HostCapabilities(:16) / PackRequest(:29) / PackResult(:38) / WatchStatus(:47)，**全部 interface，0 个运行期导出**（`export (const|function|class|let|var)` 在该文件 0 命中）。头注释写明「本模块只有类型……边界靠模块本身守住，不靠调用方自觉」。\n- index.ts（22 行）：唯一出口，转发上述三类（含 `type` 前缀）。头注释中原有的「（`@lingfan/adapters`）」字样已删，避免与模块级判据 3 的 grep 混淆。\n\n【② 消费侧改写】\n- App.vue 7 处：删 `PackPanel.vue` 的类型导入（:72 现为 `import PackPanel from \"./components/PackPanel.vue\";`）、新增 `import { … } from \"./contracts\"`（:84-92）、`:1172 const api: EditorApiPort`、5 个 provide 全部换具名键（`provide(EDITOR_API_KEY, api)` / `COLUMN_PATHS_KEY` / `SELECTED_POINTER_KEY` / `COLUMN_GROUPING_API_KEY` / 既有 `DIALOG_PORT_KEY`）、`:148` 注释「13 个组件」→「十一个组件」。\n- 12 个组件（11 个 EditorApi 消费点 + PackPanel）：删本地 interface、`inject<...>(\"裸字符串\")!` → `inject(具名键)!`、从 `../contracts` 具名导入；ChapterTree 另收 `COLUMN_PATHS_KEY`、ColumnList 另收 `COLUMN_GROUPING_API_KEY`；PackPanel 只 `import type { PackRequest, PackResult } from \"../contracts\"`（不再导出类型）。\n- localHost.ts：删 `export interface WatchStatus`，改 `import type { WatchStatus } from \"./contracts\"`（队长裁定 ① 授权）。\n- server/host.ts：删 `HostCapabilities`(:32) 与 `PackResult`(:338) 两份本地声明，改 `:30 import type { HostCapabilities, PackResult } from \"../src/contracts\";` —— 走 barrel、用 `import type`（队长裁定 ③ 条件 1、2）。\n\n【③ 测试侧同步（5 文件）】\n- 4 条旧断言改锚：step-layout-view.test.ts:45/:52、stage-drag.test.ts:60/:66（原对 `interface EditorApi` 在组件内的正则 → 改锚新建的 `apps/editor/src/contracts/editor.ts?raw`，正则 `/interface\\s+EditorApiPort\\s*\\{[^}]*reveal\\(/`）、column-grouping.test.ts:491/:496（→ `inject(COLUMN_GROUPING_API_KEY)` / `provide(COLUMN_GROUPING_API_KEY`）、chapter-tree-wiring.test.ts:46（→ `provide(COLUMN_PATHS_KEY`）。\n- 新增跨边界互锁（tests/editor/server-security.test.ts 末尾，队长裁定 ③ 条件 4）：3 条用例 —— ① `hostServerSource` 匹配 `import\\s+type\\s*\\{[^}]*\\}\\s*from\\s+\"\\.\\.\\/src\\/contracts\"` 且**不**匹配裸 import；② `hostContractSource` 不匹配 `export\\s+(const|function|class)\\b`；③ 契约层含两份 interface 声明、宿主侧不再自写。该文件用例数 42 → 45。\n\n【④ 验收 grep（终态实测）】\n- `interface EditorApi` 全仓 1 命中 = apps/editor/src/contracts/editor.ts:15。\n- `interface PackResult` 全仓 1 命中 = apps/editor/src/contracts/host.ts:38。\n- `provide(\"` / `inject<X>(\"…\")` 全仓（apps + tests）**0 命中**。\n- `interface (PackRequest|WatchStatus|HostCapabilities|ColumnGroupingApi)` 各 1 命中，全在 contracts/。\n- `apps/editor/src/contracts/**` 无 `@lingfan/adapters`：0 命中。\n- 新增行注释口径扫描（`①-⑩`/`§`/批次/任务号/缺陷号/审计/取证）在 `git diff -- apps/editor` 新增行中 **0 命中**。\n\n【⑤ esbuild 擦除验证（队长要求项）】\n命令：`node node_modules/.pnpm/esbuild@0.28.2/node_modules/esbuild/bin/esbuild apps/editor/server/host.ts --format=esm --log-level=warning` → exit 0。\n输出顶层 import 仅剩 `node:child_process` / `node:http` / `node:crypto` / `node:fs` / `node:path` 与一条多行 `./security`；**输出中 `contracts` 字样计数 = 0** ⇒ `import type { HostCapabilities, PackResult } from \"../src/contracts\";` 编译期被完整擦除，Node 侧不会加载契约层。\n（工具坑：`npx esbuild` 与 `node_modules/.bin/esbuild` 都不可用，esbuild 非直接依赖；对文件输入**不能**带 `--loader=ts`，否则报 `\"loader\" without extension only applies when reading from stdin` 并 exit 1。）\n\n【⑥ contracts/host.ts 无运行期导出确认】`grep 'export (const|function|class|let|var)\\b' apps/editor/src/contracts/host.ts` → 0 命中；文件仅 4 个 `export interface`。\n\n【需队长知悉的两点】\n- SSOT 依赖行括注「EditorApiPort 成员含 `diagnosticSupply`」与实测不符：`diagnosticSupply` 不在注入面（5 个 provide 点无它，12 个组件无一处注入），故未纳入契约成员。\n- 范围外未动：`apps/editor/server/host.ts` 与 `main.ts` 仍不在 vue-tsc 检查程序内（无测试 import 它们），`Buffer`/`process`/`node:*` 类型错误不会被发现 —— 队长已登记另立任务。",
+      "changedPaths": [
+        "apps/editor/src/contracts/editor.ts",
+        "apps/editor/src/contracts/injection-keys.ts",
+        "apps/editor/src/contracts/host.ts",
+        "apps/editor/src/contracts/index.ts",
+        "apps/editor/src/App.vue",
+        "apps/editor/src/components/ChapterTree.vue",
+        "apps/editor/src/components/ColumnList.vue",
+        "apps/editor/src/components/DiagnosticsPanel.vue",
+        "apps/editor/src/components/FieldRow.vue",
+        "apps/editor/src/components/JsonView.vue",
+        "apps/editor/src/components/NodeGraph.vue",
+        "apps/editor/src/components/PackPanel.vue",
+        "apps/editor/src/components/PropertyPanel.vue",
+        "apps/editor/src/components/StageEditor.vue",
+        "apps/editor/src/components/StepLayout.vue",
+        "apps/editor/src/components/StoryTimeline.vue",
+        "apps/editor/src/components/TextModeView.vue",
+        "apps/editor/src/localHost.ts",
+        "apps/editor/server/host.ts",
+        "tests/editor/step-layout-view.test.ts",
+        "tests/editor/stage-drag.test.ts",
+        "tests/editor/column-grouping.test.ts",
+        "tests/editor/chapter-tree-wiring.test.ts",
+        "tests/editor/server-security.test.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "全仓 grep `interface EditorApi` 只命中 1 处",
+          "status": "passed",
+          "evidence": "grep `interface EditorApi` (*.ts, 排除 node_modules) → 唯一命中 apps/editor/src/contracts/editor.ts:15 `export interface EditorApiPort {`；11 份组件内私有副本全部删除。"
+        },
+        {
+          "criterion": "全仓 grep `interface PackResult` 只命中 1 处",
+          "status": "passed",
+          "evidence": "grep `interface PackResult` (*.ts) → 唯一命中 apps/editor/src/contracts/host.ts:38；apps/editor/server/host.ts:338 与 apps/editor/src/components/PackPanel.vue:27 两份副本已删。"
+        },
+        {
+          "criterion": "`provide(\"editorApi\"` 与 `inject<...>(\"editorApi\")` 归零",
+          "status": "passed",
+          "evidence": "grep `provide\\(\"|inject<[A-Za-z]|inject\\(\"[a-zA-Z]` 覆盖 apps + tests → 0 命中。App.vue 5 个 provide 与 12 个组件的 inject 全部改用具名 InjectionKey 常量。"
+        },
+        {
+          "criterion": "pnpm typecheck 全绿",
+          "status": "passed",
+          "evidence": "`pnpm typecheck`（vue-tsc --noEmit）exit 0，无输出无错误；final 复核在断言正则微调与 contracts/index.ts 注释调整后复跑确认。"
+        },
+        {
+          "criterion": "pnpm lint 全绿",
+          "status": "passed",
+          "evidence": "`pnpm lint`（eslint .）exit 0，无告警；final 复核复跑确认。"
+        },
+        {
+          "criterion": "pnpm test:unit 全绿（基线 142 文件 / 1897 用例，行为零变化）",
+          "status": "passed",
+          "evidence": "`pnpm test:unit` exit 0：Test Files 140 passed | 2 skipped (142)；Tests 1890 passed | 10 skipped (1900)。用例总数由 1897 增至 1900 的 +3 全部来自本任务新增的跨边界互锁用例（server-security.test.ts 42 → 45），无既有用例被删改语义。受影响 5 文件单独复跑：5 passed (5) / 98 passed (98)。"
+        },
+        {
+          "criterion": "apps/editor/src/contracts/** 无 @lingfan/adapters 依赖",
+          "status": "passed",
+          "evidence": "grep `@lingfan/adapters` 在 apps/editor/src/contracts/** → 0 命中（原 index.ts:6 注释中的提及已改为「平台适配器包」）。"
+        },
+        {
+          "criterion": "契约层 host.ts 为纯类型模块（无运行期导出）",
+          "status": "passed",
+          "evidence": "grep `export (const|function|class|let|var)\\b` 在 apps/editor/src/contracts/host.ts → 0 命中；并由 tests/editor/server-security.test.ts 新增用例 `not.toMatch(/export\\s+(const|function|class)\\b/)` 源级互锁。"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ vue-tsc --noEmit → exit 0，无输出。"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ eslint . → exit 0，无告警。"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1890 passed | 10 skipped (1900)；Duration 14.78s。"
+        },
+        {
+          "command": "npx vitest run tests/editor/step-layout-view.test.ts tests/editor/stage-drag.test.ts tests/editor/column-grouping.test.ts tests/editor/chapter-tree-wiring.test.ts tests/editor/server-security.test.ts",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 5 passed (5)；Tests 98 passed (98)；server-security 45 条（新增互锁 3 条）、column-grouping 22、step-layout-view 15、stage-drag 10、chapter-tree-wiring 6。"
+        },
+        {
+          "command": "node node_modules/.pnpm/esbuild@0.28.2/node_modules/esbuild/bin/esbuild apps/editor/server/host.ts --format=esm --log-level=warning",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "顶层 import 仅剩 node:child_process / node:http / node:crypto / node:fs / node:path 与 ./security；输出中 `contracts` 字样计数 = 0 ⇒ `import type { HostCapabilities, PackResult } from \"../src/contracts\"` 已被编译期擦除。"
+        }
+      ]
+    },
+    {
+      "id": "t14",
+      "profileSeedId": "T0108",
+      "subject": "T01-08 状态读口类型化（缺陷 S-67）",
+      "description": "SSOT：`私有文档/tasks/2026-10-08-模块化与契约收口/01-引擎契约面收口.md` 的 **T01-08**。\n\n现状：`StoryEngine.get(key: string): unknown`（类声明 `packages/engine/src/runtime/engine.ts:352`，实现 `:466`）是 UI 读状态的**唯一入口却不带类型**，消费方只能强转 —— `packages/ui/src/audio/audio.ts:65,119`；`packages/ui/src/overlay/overlay.ts:307,308,319,382,383,588`；`packages/ui/src/video/videoView.ts:83`（`as VideoCommand | null | undefined`）。UI 侧消费的公共类型是 `StoryEngine`（`packages/ui/src/audio/audio.ts:12` 从包出口导入）。\n\n**勿与 `runtime/engine.ts:254` 混淆**：那一处是 `GuardContext.get`（守卫沙箱，声明在 `:252`），与 `EngineOptions:223`、`StoryEngine:352` 是三个不同的公共类型；本任务只动 `StoryEngine.get`。\n\n改动：在引擎公共面补**类型化读口**（形状由你定，例如按用途分组 `getAudio()` / `getVideo()` / `getMenu()`），`get(key)` 原样保留（引擎内部与通用读仍需）；UI 侧改用类型化读口，删掉 `as` 强转。新读口的类型若被 2 层以上引用，须落 `packages/engine/src/contracts/`（T01-04 已拆好目录）。\n\n写作用域：`packages/engine/src/runtime/engine.ts`（+ 可能新增 `packages/engine/src/contracts/**` 读口类型）、`packages/ui/src/{audio/audio,overlay/overlay,video/videoView}.ts`。\n\n验收：全仓 grep `packages/ui/src/**` 无 `as VideoCommand`、无对 `engine.get(...)` 的裸强转；`pnpm test:unit` 全绿且**原测试不改仍绿**（`get(key)` 行为零变化）；`pnpm typecheck` + `lint` 全绿。\n\n门禁：可跑 lint / typecheck / test:unit；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "ui-readport",
+      "dependencies": [
+        "t6"
+      ],
+      "attempt": 1,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791451009405,
+      "attemptId": "6d8f40b8-1abd-4dd7-b9a1-8738d92e1469",
+      "reassigning": false,
+      "output": "T01-08 状态读口类型化完成（缺陷 S-67 关闭）：引擎公共面新增类型化读口 `createStateReader(source)`，三处 UI 读点的 9 个裸读 + 4 处强转全部改为经读口取值；形状校验与畸形载荷降级在全仓收成唯一一份；`StoryEngine.get(key): unknown` 与类结构零改动（engine.ts mtime 仍是 14:56:29，本轮未写）。\n\n【新增文件（2）】\n1. `packages/engine/src/contracts/runtime/reader.ts`（76 行，纯接口零实现）：`StateSource { get(key: string): unknown }`、`MenuChoice { text; target }`、`StateReader`（16 个按用途分组的方法：audioChannel / mediaPosition / videoCommand / menuChoices / dialogSpeaker / dialogText / dialogColor / dialogTemplate / dialogHidden / waiting / menuPrompt / inputPrompt / nvlMode / nvlLines / elements / instanceZOverrides）。头注释写明「为什么要有这一层」（形状知识散在多个界面必漏）、降级口径（fail-closed 退安全默认，绝不把畸形值翻译成有意义的读结果）、以及「读口只读、不替代 `get`」。\n2. `packages/engine/src/runtime/stateReader.ts`（216 行）：唯一实现。`channelStateOf`(:50) / `videoCommandOf`(:86) / `textOf`(:125) / `finiteNumber` / `inUnitRange` + `createStateReader`(:130)。契约见文件头。\n\n【出口接线（3 处，只增不减）】\n- `packages/engine/src/contracts/runtime/index.ts`（6 → 7 行）：补 `export * from \"./reader\";`（域出口第 4 个文件）。\n- `packages/engine/src/runtime/index.ts`（49 → 50 行）：补 `export { createStateReader } from \"./stateReader\";`，域出口注释同步补「状态读口」。\n- `packages/engine/src/index.ts`（106 → 110 行）：具名清单补 `createStateReader`，包出口注释补一段说明「读口是界面读系统键的唯一带类型入口；通用读口 `StoryEngine.get` 原样保留」。\n- **导出面核验（tsc checker 实测）**：契约层 111 → **114** 名（恰增 `StateSource` / `MenuChoice` / `StateReader`，0 重名，3 名均经 `contracts/index.ts` 可达）；包出口 169 名，0 重名。\n\n【9 处 UI 读点改前 → 改后】\n`packages/ui/src/audio/audio.ts`（-61/+12）：\n1. `:65` `const value = engine.get(key); if (value === null || typeof value !== \"object\") return null; …`（整段 `channelState(engine, key)` 61 行）→ **删除**；`:75` 改 `const reader = createStateReader(engine);`，`readAudioView` 四个通道改 `reader.audioChannel(\"bgm\"|\"ambient\"|\"voice\"|\"se\")`。\n2. `:119` `const position = engine.get(SYS.bgmPosition);` → `bgmPosition: reader.mediaPosition()`（`typeof position === \"number\" ? position : 0` 的口径原样搬进读口）。\n3. `:349` `channelState(engine, SYS.audioBgm)` → `reader.audioChannel(\"bgm\")`（渲染器内第二个 reader 实例 :229）。\n`packages/ui/src/overlay/overlay.ts`（-50/+31）：\n4. `:307,308` `engine.get(SYS.menuOptions)` + `engine.get(SYS.menuTargets)` + 配对 → `menuOptions = reader.menuChoices();`\n5. `:319` `engine.get(SYS.currentDialogColor)` + `typeof override === \"string\" && override !== \"\"` → `const override = reader.dialogColor();`（非空判定不变）\n6. `:382,383` **双读 + `as string`** → `options.dialogueTemplates?.resolve(reader.dialogTemplate()) ?? builtinBubbleTemplate`\n7. `:588` sync 内的 `read`/`str` 两个本地闭包 + 12 处逐键强转 → 全部改走读口（`reader.dialogSpeaker()` / `dialogText()` / `waiting()` / `menuPrompt()` / `inputPrompt()` / `nvlMode()` / `nvlLines()` / `dialogHidden()` / `elements()` / `instanceZOverrides()`）。\n8. 事件路径（原 `:506-555`，13 个分支）同样改走读口——**事件载荷不再直接信任**，与显式 sync 走同一份校验（消除两条路径口径分叉）。\n9. `packages/ui/src/video/videoView.ts`（-3/+4）：`:83` `engine.get(SYS.video) as VideoCommand | null | undefined` → `reader.videoCommand()`（`if (command == null)` 改 `if (command === null)`，语义等价：读口只返回 `VideoCommand | null`）。\n\n【唯一实现取证】\n- `function channelState` / `channelStateOf` / `videoCommandOf` 全仓（packages + apps + tests，排除 node_modules）命中 **2 处，均在 `packages/engine/src/runtime/stateReader.ts`**（:50、:86）——UI 侧原副本已删净。\n- `createStateReader` 调用点：`packages/ui/src/audio/audio.ts:75,229`、`overlay.ts:207`、`videoView.ts:39`（engine 侧定义 :130）。\n- 关键口径等价性：`tests/ui/audio/audio.test.ts:627-655`「篡改存档注入畸形媒体状态」仍断言 `calls` 恰为 `[{ kind: \"stop\", channel: \"bgm\", fadeMs: 0 }]`，绿。\n\n【契约层纯度（含新增文件）】\n- `packages/engine/src/contracts/**` 全扫 `AbortSignal|HTMLElement|FileSystemDirectoryHandle|\\bFile\\b|\\bBlob\\b`：新增的 `reader.ts` **0 命中**；其余命中全在 `contracts/platform/ports.ts`（归 t19「契约层 DOM 类型中立化」，在办）与 `contracts/project.ts:31` 的一处**注释文字**（`FileStamp` 说明里提到 FSA `File`，非类型引用）。\n- `contracts/**` 无 `export function|export class`（0 命中）——契约层零实现保持。\n\n【门禁】`pnpm typecheck` exit 0（vue-tsc --noEmit，无输出）；`pnpm lint` exit 0（eslint，无输出）；`pnpm test:unit` **140 passed | 2 skipped (142 文件) / 1890 passed | 10 skipped (1900 用例)** —— 比基线 1897 **多 3 例**，来源已定位：`tests/editor/server-security.test.ts` 由 adapters-editor 新增 3 个用例（`git diff --numstat` = +21/-0，新增 describe「跨边界互锁：宿主只取类型，契约层不放运行期代码」），**非本任务引入、非放宽**。tests/ui + tests/engine 全量 56 文件 866 用例全绿。\n\n【一次假警报，已排除】首轮 `pnpm test:unit` 报 6 例失败（`tests/editor/{step-layout-view,stage-drag,chapter-tree-wiring,column-grouping}.test.ts`），全部是读 `apps/editor/src/**?raw` 的源级断言。单独重跑与四文件合跑均 **53 用例全绿**；`Get-ChildItem tests -Recurse` 显示这 4 个文件在 17:12:09-17:12:32 被 adapters-editor 并发改写（我的首轮跑在 17:11:20），属**并发写竞态**，与读口改动无关。\n\n【未做（守红线）】`packages/engine/src/runtime/engine.ts` 本轮零改动（mtime 14:56:29 未变，`git diff` 里它只有 T01-01/T01-07 的历史改动）；未改任何测试文件；未动 `StoryEngine.get` 签名/行为；未提交。",
+      "changedPaths": [
+        "packages/engine/src/contracts/runtime/reader.ts",
+        "packages/engine/src/contracts/runtime/index.ts",
+        "packages/engine/src/runtime/stateReader.ts",
+        "packages/engine/src/runtime/index.ts",
+        "packages/engine/src/index.ts",
+        "packages/ui/src/audio/audio.ts",
+        "packages/ui/src/overlay/overlay.ts",
+        "packages/ui/src/video/videoView.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "全仓 grep packages/ui/src/** 无 `as VideoCommand` / 无对 `engine.get(...)` 的裸强转",
+          "status": "passed",
+          "evidence": "Select-String -Path packages/ui/src/audio/audio.ts,overlay/overlay.ts,video/videoView.ts -Pattern 'engine\\.get\\(|as VideoCommand|as AudioChannelState|as ElementInstance' → 0 命中。全 packages/ui/src 递归 grep 同样 0 命中。"
+        },
+        {
+          "criterion": "pnpm test:unit 全绿",
+          "status": "passed",
+          "evidence": "140 passed | 2 skipped (142 文件) / 1890 passed | 10 skipped (1900)。基线 142 文件满足；用例 +3 经定位为 adapters-editor 在 tests/editor/server-security.test.ts 新增 3 例（+21/-0），非本任务引入。"
+        },
+        {
+          "criterion": "get(key) 行为零变化（原测试不改仍绿）",
+          "status": "passed",
+          "evidence": "packages/engine/src/runtime/engine.ts mtime 14:56:29 未变（本轮未写）；tests/ 无任何文件由本任务改动；tests/engine/runtime/engine.test.ts、tests/ui/audio/*.test.ts、tests/ui/overlay/overlay.test.ts、tests/ui/video/videoView.test.ts 全绿（含 :627-655 畸形存档降级用例、:534/:550 bgmPosition 原值断言）。"
+        },
+        {
+          "criterion": "类型化读口为新增而非替换；原测试不改仍全绿",
+          "status": "passed",
+          "evidence": "导出面 111 → 114（恰增 StateSource / MenuChoice / StateReader），0 重名；包出口 169 名；tests/ui/overlay/overlay.test.ts 的 FakeEngine（只实现 get，:124-180）未改一行即通过。"
+        },
+        {
+          "criterion": "契约层零实现、无平台类型（含新增 reader.ts）",
+          "status": "passed",
+          "evidence": "contracts/** 全扫 export function|export class → 0 命中；AbortSignal|HTMLElement|FileSystemDirectoryHandle|\\bFile\\b|\\bBlob\\b 在 reader.ts 0 命中，其余命中仅在 platform/ports.ts（t19 在办）与 project.ts:31 注释文字。"
+        },
+        {
+          "criterion": "形状校验唯一实现（UI 副本删净）",
+          "status": "passed",
+          "evidence": "function channelState|channelStateOf|videoCommandOf 全仓命中 2 处，均在 packages/engine/src/runtime/stateReader.ts:50,86。"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "vue-tsc --noEmit，无任何输出。"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "eslint .，无任何输出。"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1890 passed | 10 skipped (1900)；Duration 16.38s。"
+        },
+        {
+          "command": "pnpm vitest run tests/ui tests/engine",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 54 passed | 2 skipped (56)；Tests 866 passed | 10 skipped (876)。"
+        }
+      ]
+    },
+    {
+      "id": "t15",
+      "profileSeedId": "V01",
+      "subject": "W1 全批次验收核验",
+      "description": "W1 全批次验收核验（t1–t16）。t16 为 T02-02 交付后复核新增的 Tauri 桥接残余收口任务，必须一并纳入核验范围。核验口径见原描述，另须专项确认：全仓 `@tauri-apps` 只命中 `packages/adapters/src/platform/tauri-invoke.ts` 与 `packages/adapters/package.json`；`await import(\"@tauri-apps/api/core\")` 只命中 1 处。",
+      "status": "pending",
+      "assignee": "verifier",
+      "dependencies": [
+        "t1",
+        "t2",
+        "t3",
+        "t4",
+        "t5",
+        "t6",
+        "t7",
+        "t8",
+        "t9",
+        "t10",
+        "t11",
+        "t12",
+        "t13",
+        "t14",
+        "t16",
+        "t17",
+        "t18",
+        "t19"
+      ],
+      "attempt": 0,
+      "createdAt": 1791441952923,
+      "updatedAt": 1791449175000
+    },
+    {
+      "id": "t16",
+      "subject": "T02-02b Tauri 桥接残余收口（host 静态直连 + save 内联 import）",
+      "description": "背景：上一任务（T02-02，已完成）把 `TauriInvoke` / `TauriListen` / `defaultInvoke` / `defaultListen` 收口到新建的 `packages/adapters/src/platform/`，并把 6 处深路径 import 改经该出口。收口后复核发现同族还有两处漏网，且新建的域出口注释因此成为不实陈述，需一并消除。\n\n要改的三处：\n\n1. **`packages/adapters/src/host/index.ts:6`** —— 当前是**静态**直连：`import { invoke } from \"@tauri-apps/api/core\";`，在 `readTauriPlatform`(`:26-31`) 里调用 `invoke<string>(\"host_platform\")`。\n   改为经 `../platform` 取 `defaultInvoke`：`import { defaultInvoke } from \"../platform\";`，调用点改为 `await defaultInvoke<string>(\"host_platform\")`。\n   注意：`:27-31` 已有 `try { … } catch { return undefined; }`，`defaultInvoke` 在非 Tauri 形态下抛错会被同一 catch 吞掉，**行为不变**；不要改动这个降级语义。\n   另外顺带把该文件头注释里描述 invoke 来源的措辞改成与新出口一致（若原注释未提来源则不必动）。\n\n2. **`packages/adapters/src/save/tauri.ts`** —— `:18`、`:22`、`:26`、`:30` 四处 `const { invoke } = await import(\"@tauri-apps/api/core\");` 与 `defaultInvoke` 实现体逐字同形，属重复实现。\n   改为经 `../platform` 取 `defaultInvoke`，四处内联 import 全部删除，直接 `await defaultInvoke(...)`。\n   为了与同族工厂口径一致（`createTauriProjectFilesPort(invoke: TauriInvoke = defaultInvoke)`、`createTauriPreferencesPort(invoke: TauriInvoke = defaultInvoke)`），允许给 `createTauriSavePort` 加**可选**参数 `invoke: TauriInvoke = defaultInvoke` 并在方法内使用它；**必须**保持 `createTauriSavePort()` 无参调用仍可用（`apps/playground/src/main.ts:116` 就是这么调的）。\n   命令名与参数形状（`save_write` / `save_read` / `save_delete` / `save_list`）一律不动；`RustSlotSummary` 的字段映射（`save_count` → `saveCount` 等）一律不动。\n   **同时必须修掉 `:4` 的注释**：现写「本文件是全仓唯一允许 import `@tauri-apps` 的位置」——该断言与事实不符（`packages/adapters/src/host/index.ts:6` 也在直连，且 `:6` 本身在本任务中会被消除）。改写成准确表述：本文件经平台域出口与 Rust 通信，自身不直连 `@tauri-apps`。\n\n3. **`packages/adapters/src/platform/index.ts:3`** —— 域说明现写「适配器实现都从这里取契约与缺省实现，不直连 `@tauri-apps` 运行时」。上面两处修好后该陈述即为事实；若措辞上仍想更严谨，可微调，但**不要**改成带条件或带例外的模糊表述。\n\n约束：\n- 本任务只做「消重复 + 归口到唯一出口 + 修不实注释」，**不改任何 Rust 命令名、参数形状、返回结构或降级语义**。\n- 不要动 `packages/adapters/src/resources/**`（归 T02-02 已完成部分）、不要动 `packages/adapters/src/index.ts`（包出口类型面保持完全不变）。\n- 不要顺手把 `apps/playground/src/main.ts` 的静态 `@tauri-apps/api/window` 导入一起改（那是已登记的独立缺陷，不在本任务范围）。\n\n验收自查：`grep -rn \"@tauri-apps\" packages/adapters/src` 应只剩 `platform/tauri-invoke.ts` 两处动态 import + 注释里的模块名；`grep -rn \"await import(\\\"@tauri-apps/api/core\\\")\" packages/adapters/src` 应只剩 1 处。\n\n门禁：可跑 `lint` / `typecheck` / `test:unit`；**禁止** build / tauri build；不代提交。",
+      "status": "completed",
+      "assignee": "adapters-editor",
+      "dependencies": [
+        "t9"
+      ],
+      "attempt": 1,
+      "createdAt": 1791442973057,
+      "updatedAt": 1791444723078,
+      "kind": "work",
+      "objective": "把 `packages/adapters` 内最后两处绕过 `platform/` 域出口、直连 `@tauri-apps` 运行时的实现收口到唯一出口，使 `packages/adapters/src/platform/index.ts` 的域说明成为事实，并消除 `defaultInvoke` 实现体的重复。",
+      "inScope": [
+        "packages/adapters/src/host/index.ts",
+        "packages/adapters/src/save/tauri.ts",
+        "packages/adapters/src/platform/index.ts"
+      ],
+      "outOfScope": [
+        "packages/engine/**",
+        "apps/**",
+        "tests/**",
+        "packages/adapters/src/resources/**",
+        "packages/adapters/src/index.ts"
+      ],
+      "acceptance": [
+        "全仓 grep `@tauri-apps` 只命中 `packages/adapters/src/platform/tauri-invoke.ts`（实现）与 `packages/adapters/package.json`（依赖声明）；`host/`、`save/` 下命中数为 0",
+        "全仓 grep `await import(\"@tauri-apps/api/core\")` 只命中 1 处（`platform/tauri-invoke.ts`）",
+        "`createTauriSavePort` / `readTauriPlatform` 的对外行为与签名保持兼容（save 如需可注入，只加可选参数且缺省 = `defaultInvoke`）",
+        "`pnpm lint` / `pnpm typecheck` / `pnpm test:unit` 全绿，且用例数与基线逐位一致（142 文件 / 1885 通过 / 10 skipped）",
+        "新增与修改的注释符合批次口径：面向读者、通俗易懂，只写「是什么/为什么/怎么用/注意什么」，禁任务号、缺陷号、规约号（含 `§`）、内部代号、表情符号、审计叙事"
+      ],
+      "verify": [
+        "pnpm lint",
+        "pnpm typecheck",
+        "pnpm test:unit"
+      ],
+      "attemptId": "4f3d0d13-da43-4f6d-b43e-d736ad256489",
+      "reassigning": false,
+      "output": "T02-02b Tauri 桥接残余收口完成：packages/adapters 内最后两处直连 @tauri-apps 运行时的实现已归口到 platform/ 域出口，defaultInvoke 实现体全仓唯一。\n\n改动（3 文件，全在 in-scope）：\n1. packages/adapters/src/host/index.ts（32→37 行）：删 `import { invoke } from \"@tauri-apps/api/core\"`，改 `import { defaultInvoke } from \"../platform\"`；`readTauriPlatform` 内 `invoke<string>(\"host_platform\")` → `defaultInvoke<string>(\"host_platform\")`（签名与 catch→undefined 降级语义不变）；头注释追加「问 Rust 走 Tauri 桥接域的缺省实现，本文件不直连 Tauri 运行时。」；原单行 JSDoc 扩为块注释，补降级说明。\n2. packages/adapters/src/save/tauri.ts（40→40 行）：删四个方法体内各一行的 `const { invoke } = await import(\"@tauri-apps/api/core\")`；签名 `createTauriSavePort(): SavePort` → `createTauriSavePort(invoke: TauriInvoke = defaultInvoke): SavePort`（与 preferences/resources 同族工厂口径一致，零参调用仍合法）；头注释删掉不实断言「本文件是全仓唯一允许 import @tauri-apps 的位置」，改为「与 Rust 通信经 Tauri 桥接域的缺省实现，本文件不直连 Tauri 运行时」+ 新增「invoke 可注入（缺省取 Tauri 桥接域的缺省实现）：测试以契约替身注入。」。四个 Rust 命令名（save_write/save_read/save_delete/save_list）、参数形状、RustSlotSummary→SlotSummary 映射、`// 删档不动高水位` 注释逐字未动。\n3. packages/adapters/src/platform/index.ts（10→11 行）：域说明改为事实陈述——「适配器包内只有本域的实现文件会装载 Tauri 运行时模块」（首版写「全仓只有…」经核查不实：apps/playground/src/main.ts:10 静态 import @tauri-apps/api/window，故收窄为「适配器包内」）。导出语句未动。\n\n验收：\n- `git grep -c \"@tauri-apps\" -- 'packages/adapters/src/host' 'packages/adapters/src/save'` = exit 1（零命中）。\n- `packages/adapters/src` 内 @tauri-apps 仅剩 3 处，全在 packages/adapters/src/platform/tauri-invoke.ts（:12 注释、:34 await import(\"@tauri-apps/api/core\")、:40 await import(\"@tauri-apps/api/event\")）⇒ defaultInvoke 实现体全仓唯一。\n- 归口完整：`from \"../platform\"` 在 packages/adapters/src 共 9 处（host/index.ts:10、i18n/tauriI18n.ts:9、shell/orientation.ts:7、preferences/tauriPreferences.ts:8、resources/index.ts:40、resources/projectFilesTauri.ts:17、resources/projectWriterTauri.ts:28、resources/resourceCrypto.ts:13、save/tauri.ts:8）。\n- 调用点兼容：createTauriSavePort() 全仓唯一调用 = apps/playground/src/main.ts:116，零参调用仍合法；tests/ 对 createTauriSavePort / save/tauri / host/index / readTauriPlatform 0 命中。\n- 未触碰 apps/playground/src/main.ts 的静态 @tauri-apps/api/window（已登记独立缺陷）；未越界改 packages/engine、apps、tests、resources/**、packages/adapters/src/index.ts。\n- 门禁：pnpm typecheck exit 0；pnpm lint exit 0；pnpm test:unit = 140 passed | 2 skipped (142) / Tests 1885 passed | 10 skipped (1895)，与基线逐位一致。npx prettier --check 三文件 = All matched files use Prettier code style!。\n- 注释口径扫描三文件 0 命中。未跑 build / tauri build，未代提交。",
+      "changedPaths": [
+        "packages/adapters/src/host/index.ts",
+        "packages/adapters/src/save/tauri.ts",
+        "packages/adapters/src/platform/index.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "packages/adapters 内不再有绕过 platform/ 域出口直连 @tauri-apps 运行时的实现",
+          "status": "passed",
+          "evidence": "git grep -c \"@tauri-apps\" -- 'packages/adapters/src/host' 'packages/adapters/src/save' 退出码 1（零命中）；文件系统 grep 确认 packages/adapters/src 内仅剩 3 处，全部位于 packages/adapters/src/platform/tauri-invoke.ts（:12 注释、:34、:40）"
+        },
+        {
+          "criterion": "defaultInvoke 实现体全仓唯一（await import(\"@tauri-apps/api/core\") 仅 1 处）",
+          "status": "passed",
+          "evidence": "全仓 grep 'await import(\"@tauri-apps/api/core\")' 仅命中 packages/adapters/src/platform/tauri-invoke.ts:34；save/tauri.ts 内原 4 处已删，host/index.ts 原静态 import 已删"
+        },
+        {
+          "criterion": "不改任何 Rust 命令名、参数形状、返回结构或降级语义",
+          "status": "passed",
+          "evidence": "git diff 通读：save_write/save_read/save_delete/save_list 命令名、{ slot, payload, mode } / { slot } 参数、RustSlotSummary→SlotSummary 映射、readTauriPlatform 的 catch→undefined 降级逐字未变，diff 中零变更"
+        },
+        {
+          "criterion": "platform/ 域出口的域说明成为事实（不实断言已修）",
+          "status": "passed",
+          "evidence": "packages/adapters/src/platform/index.ts 域说明改为「适配器包内只有本域的实现文件会装载 Tauri 运行时模块」；packages/adapters/src/save/tauri.ts 头注释原「全仓唯一允许 import @tauri-apps」不实断言已删改为「与 Rust 通信经 Tauri 桥接域的缺省实现，本文件不直连 Tauri 运行时」"
+        },
+        {
+          "criterion": "调用点不破坏（createTauriSavePort 零参调用仍合法）",
+          "status": "passed",
+          "evidence": "createTauriSavePort( 全仓仅 2 处：apps/playground/src/main.ts:116 无参调用、packages/adapters/src/save/tauri.ts:17 定义；新参数带缺省值 defaultInvoke，tests/ 0 命中"
+        },
+        {
+          "criterion": "不越界：未触碰 apps/playground/src/main.ts 静态 @tauri-apps/api/window 与 out-of-scope 路径",
+          "status": "passed",
+          "evidence": "git status --porcelain -- packages/adapters/src 中本轮改动仅 host/index.ts 与 save/tauri.ts 两个 M；apps/playground/src/main.ts:10 未动"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ vue-tsc --noEmit，exit 0，无输出无错误"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "$ eslint .，exit 0，无告警"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142) / Tests 1885 passed | 10 skipped (1895) / Duration 12.69s，与基线逐位一致"
+        },
+        {
+          "command": "npx prettier --check packages/adapters/src/host/index.ts packages/adapters/src/save/tauri.ts packages/adapters/src/platform/index.ts",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "All matched files use Prettier code style!"
+        },
+        {
+          "command": "git grep -c \"@tauri-apps\" -- 'packages/adapters/src/host' 'packages/adapters/src/save'",
+          "status": "passed",
+          "exitCode": 1,
+          "evidence": "零命中（exit 1 = grep 无匹配），两个目录已不含 @tauri-apps 直连"
+        }
+      ]
+    },
+    {
+      "id": "t17",
+      "subject": "T01-07b · 测试侧锚点代号清理（T01-07 的收尾）",
+      "description": "承接 T01-07：源码侧锚点代号已清零，但 tests/ 下仍有 8 处内部锚点代号（T01-07 的写作用域不含 tests，成员按范围纪律未动）。本任务把这 8 处按同一注释口径改写，使「全仓无锚点代号」成立，避免留到第四轮清理。\n\n**待清理的 8 处（实测 2026-10-08，逐行已核）**：\n- tests/adapters/dev/wsBridge.test.ts:54 — `describe(\"connectWsBridge（ws-dev-bridge-parity TS 侧）\", …)`\n- tests/adapters/media/blob-source.test.ts:2 — 首行注释 `…物化锚点（`media-blob-source`）：…`\n- tests/adapters/resources/encrypted-project.test.ts:2 — 首行注释 `…（锚点 `editor-open-encrypted-project`）`\n- tests/editor/step-layout-view.test.ts:2 — 首行注释 `…接线锚点（`editor-step-layout`）`\n- tests/playground/browser-game-mode-guard.test.ts:2 — 首行注释 `…守卫锚点（`browser-game-mode-guard`）：`\n- tests/playground/diag.test.ts:2 — 首行注释 `白屏归因判据（锚点 `white-screen-verdict`）：…`\n- tests/playground/webview-guard.test.ts:24 — `describe(\"老 WebView 内建守卫锚点（legacy-webview-builtin-guard）\", …)`\n- tests/ui/input/scope.test.ts:2 — 首行注释 `输入域锚点（`game-input-zone`）：…`\n\n**已实测：这 8 个代号在全仓各只有自身 1 处命中，无任何代码、断言或配置引用它们**，故删除代号零行为影响。\n\n**改写口径（与 T01-07 一致，面向读者、通俗易懂）**：\n- 代号删掉，改为描述该测试守护的行为。例如「物化锚点（`media-blob-source`）」→「媒体源物化」；「白屏归因判据（锚点 `white-screen-verdict`）」→「白屏归因判据」；`describe` 标题里的代号直接删（保留括号外的中文描述，标题仍须唯一且可读）。\n- 只改注释与 describe/it 标题文本，**不得改任何断言、导入、被测代码、用例数量与用例名中的中文语义**。\n- 不得顺手改动其他内容；不得引入新的内部代号、任务号、批次号、审计叙事。\n\n**勿误伤（属正常中文用法，保留）**：tests/editor/stage-resource-fix.test.ts:50 的「data-path 锚点」（指 DOM 锚点）、tests/engine/runtime/waiting-ops.test.ts:2 的「锚点：等待表即事实源」（指事实源）。这两个词是通用语义，不是内部代号。\n\n**验证命令（逐条执行并在报告中给出真实输出）**：\n1. `git grep -nE '锚点[（(]?`[a-z0-9-]+`' -- 'tests/*'` 应 0 命中（反引号包裹的代号形态）\n2. 逐个 `git grep -n -- '<代号>' -- ':!node_modules'` 应 0 命中（8 个代号全查）\n3. `pnpm test:unit` — 必须与基线逐位一致：Test Files 140 passed | 2 skipped (142)、Tests 1885 passed | 10 skipped (1895)\n4. `pnpm typecheck` exit 0\n5. `pnpm lint` exit 0\n\n**范围纪律**：只动上述 8 个测试文件，不动 apps/**、packages/**、Rust 侧、SSOT 文档（文档由队长回填）。若发现第 9 处同类代号，报告出来而不是自行扩大范围。",
+      "status": "completed",
+      "assignee": "comments-rust",
+      "dependencies": [
+        "t7"
+      ],
+      "attempt": 1,
+      "createdAt": 1791444058444,
+      "updatedAt": 1791444234880,
+      "kind": "work",
+      "verify": [
+        "pnpm test:unit",
+        "pnpm typecheck",
+        "pnpm lint",
+        "git grep -nE '锚点[（(]?`[a-z0-9-]+`' -- 'tests/*'"
+      ],
+      "attemptId": "9912a2a8-08ca-42c5-a677-8045d477e4e0",
+      "reassigning": false,
+      "output": "T01-07b 完成：tests/ 侧 8 处内部锚点代号按 T01-07 同口径清除，改为描述被测行为的通俗说法。8 文件 8 增 8 删，每文件恰好 1 行、全为注释/describe 标题文本，断言/导入/用例数量/用例名中文语义零改动。\n\n逐处（改前 → 改后）：\n1. tests/adapters/dev/wsBridge.test.ts:54 `describe(\"connectWsBridge（ws-dev-bridge-parity TS 侧）\"` → `describe(\"connectWsBridge（TS 侧）\"`\n2. tests/adapters/media/blob-source.test.ts:2 `媒体源物化锚点（`media-blob-source`）：受管…` → `媒体源物化：受管…`\n3. tests/adapters/resources/encrypted-project.test.ts:2 `加密工程形态识别与无壳形态拒绝（锚点 `editor-open-encrypted-project`）` → `加密工程形态识别与无壳形态拒绝`\n4. tests/editor/step-layout-view.test.ts:2 `步骤视图接线锚点（`editor-step-layout`）` → `步骤视图接线`\n5. tests/playground/browser-game-mode-guard.test.ts:2 `浏览器游戏模式守卫锚点（`browser-game-mode-guard`）：` → `浏览器游戏模式守卫：`\n6. tests/playground/diag.test.ts:2 `白屏归因判据（锚点 `white-screen-verdict`）：`classifyWhiteScreen` 是纯函数，` → `白屏归因判据：`classifyWhiteScreen` 是纯函数，`\n7. tests/playground/webview-guard.test.ts:24 `describe(\"老 WebView 内建守卫锚点（legacy-webview-builtin-guard）\"` → `describe(\"老 WebView 内建守卫\"`\n8. tests/ui/input/scope.test.ts:2 `输入域锚点（`game-input-zone`）：叙事层只消费…` → `输入域：叙事层只消费…`\n\n编辑前已逐个核实：8 个代号全仓（:!node_modules）各只有自身 1 处命中，无代码/断言/配置/CI 引用；两个 describe 标题改动后仍唯一（wsBridge.test.ts 另一 describe 在 :127，webview-guard.test.ts 仅 :24 一个 describe）。\n\n未误伤（grep 确认仍在）：tests/editor/stage-resource-fix.test.ts:50「data-path 锚点」= DOM 锚点；tests/engine/runtime/waiting-ops.test.ts:2「锚点：等待表即事实源」= 事实源。tests/* 下残留的 `锚点` 仅此两处，均为正常中文用法。\n\n=== 同类发现（第 9 处及更多）—— 按「报告不扩范围」处理，未改动 ===\n用「tests/ 下所有反引号连字符 token，逐个统计全仓命中、筛出 tests 外 0 命中的自指项」扫描，另发现 4 个自指代号（tests 外 0 命中、仅自身引用，性质与本次 8 处相同）：\n- `b1-skeleton-wiring` — tests/editor/chapter-tree-wiring.test.ts:8 `（与 `b1-skeleton-wiring` 同风格）：`；**同名文件 tests/editor/b1-skeleton-wiring.test.ts 存在**（改名牵连文件名）\n- `pack-statusbar-wiring` — tests/ui/templates/wiring.test.ts:10 `与 `pack-statusbar-wiring` 同套路：`；**同名文件 tests/editor/pack-statusbar-wiring.test.ts 存在**\n- `lf-engine-add-op` — tests/editor/attr-alignment.test.ts:5 `这三面：`lf-engine-add-op` 的 5 处同步…`\n- `call-unknown-function` — tests/engine/runtime/engine.test.ts:1081 `码由 `call-unknown-function` 改为 `call-unknown-target`：`\n**反面甄别（绝不可动）**：`call-unknown-target` / `call-invalid-target` / `instance-z-invalid` 不是代号而是**真实诊断码字面量**，在 packages/engine/src/runtime/engine.ts:3325 / :3332 / :1215 作为生产代码字符串存在（全仓 5/3/3 处命中，含断言），改动即破坏行为。\n\n=== 另需裁定的一项（未改）===\ntests/adapters/resources/encrypted-project.test.ts:6 `* 2. **前置拒绝**（在读取任何文件之前抛——用替身 source 的 `text()` 调用计数取证）；` 与 :20 `/** 替身供给：只给路径与文本，**记录 text() 调用**（供「前置拒绝」取证） */` —— 这里的「取证」属批次注释口径所禁的「排查/取证叙事」用语，但不在 t17 的 8 处代号清单内，故按「报告不扩范围」未动，留待裁定。\n\n门禁：test:unit 与基线逐位一致（Test Files 140 passed | 2 skipped (142)、Tests 1885 passed | 10 skipped (1895)）、typecheck exit 0、lint exit 0。",
+      "changedPaths": [
+        "tests/adapters/dev/wsBridge.test.ts",
+        "tests/adapters/media/blob-source.test.ts",
+        "tests/adapters/resources/encrypted-project.test.ts",
+        "tests/editor/step-layout-view.test.ts",
+        "tests/playground/browser-game-mode-guard.test.ts",
+        "tests/playground/diag.test.ts",
+        "tests/playground/webview-guard.test.ts",
+        "tests/ui/input/scope.test.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "tests/* 下「锚点 + 反引号代号」形态 0 命中",
+          "status": "passed",
+          "evidence": "git grep -nE '锚点[（(]?`[a-z0-9-]+`' -- 'tests/*' → hits=0"
+        },
+        {
+          "criterion": "8 个锚点代号逐个全仓 grep（:!node_modules）0 命中",
+          "status": "passed",
+          "evidence": "ws-dev-bridge-parity / media-blob-source / editor-open-encrypted-project / editor-step-layout / browser-game-mode-guard / white-screen-verdict / legacy-webview-builtin-guard / game-input-zone 全部 hits=0"
+        },
+        {
+          "criterion": "pnpm test:unit 与基线逐位一致（142 文件 / 1885 通过 / 10 skipped）",
+          "status": "passed",
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1885 passed | 10 skipped (1895)；exit 0，与基线逐位一致"
+        },
+        {
+          "criterion": "pnpm typecheck 全绿",
+          "status": "passed",
+          "evidence": "vue-tsc --noEmit，TYPECHECK_EXIT=0"
+        },
+        {
+          "criterion": "pnpm lint 全绿",
+          "status": "passed",
+          "evidence": "eslint .，LINT_EXIT=0"
+        },
+        {
+          "criterion": "只动指定 8 个测试文件、未误伤正常中文用法、未扩大范围",
+          "status": "passed",
+          "evidence": "git diff --stat = 8 files changed, 8 insertions(+), 8 deletions(-)，每文件恰好 1 行且均为注释/describe 标题；tests/editor/stage-resource-fix.test.ts:50 与 tests/engine/runtime/waiting-ops.test.ts:2 两处正常中文用法 grep 确认仍在；apps/**、packages/**、Rust 侧、SSOT 文档零改动"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "git grep -nE '锚点[（(]?`[a-z0-9-]+`' -- 'tests/*'",
+          "status": "passed",
+          "exitCode": 1,
+          "evidence": "hits=0（git grep 无命中时退出码为 1，符合预期）"
+        },
+        {
+          "command": "git grep -n -- '<代号>' -- ':!node_modules'（8 个代号逐个）",
+          "status": "passed",
+          "exitCode": 1,
+          "evidence": "8 个代号全部 hits=0"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142)；Tests 1885 passed | 10 skipped (1895)；与基线逐位一致"
+        },
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "vue-tsc --noEmit 无输出，exit 0"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "eslint . 无输出，exit 0"
+        }
+      ]
+    },
+    {
+      "id": "t18",
+      "subject": "T01-07c · 注释代号收尾与测试文件改名（T01-07b 的收尾）",
+      "description": "承接 T01-07b 执行期上报的三类残余，一次清完。**只改注释文本、describe 标题、文件名**，断言/导入/被测代码/用例数量/用例名中文语义零改动。\n\n## 1. 自指代号 4 处（tests 外 0 命中，仅自身引用）\n- `tests/editor/chapter-tree-wiring.test.ts:8` —— 原文 ` * 本守卫锁的是**「某能力必须接在某处」**这一类性质（与 \\`b1-skeleton-wiring\\` 同风格）：` ⇒ 删括号内的代号引用，改写为「与同类源级接线守卫同风格」。\n- `tests/ui/templates/wiring.test.ts:10` —— 原文 ` * 与 \\`pack-statusbar-wiring\\` 同套路：读源码断言接线，防「抽象做完了但没人用」。` ⇒ 改为「与其它源级接线守卫同套路：…」。\n- `tests/editor/attr-alignment.test.ts:5` —— 原文 ` * 这三面：\\`lf-engine-add-op\\` 的 5 处同步与 \\`bridge_check.rs\\` 的跨语言互锁都只覆盖` ⇒ 把 `\\`lf-engine-add-op\\` 的 5 处同步` 改写为「新增 op 时要同步的 5 处声明」。注意 `\\`bridge_check.rs\\`` 是**真实文件名**，保留。\n- `tests/engine/runtime/engine.test.ts:1081` —— 原文 `    // 码由 \\`call-unknown-function\\` 改为 \\`call-unknown-target\\`：\\`call\\` 的目标` ⇒ **只删前半句变更叙事**，后半句是「为什么」（目标既可为 func 也可为列 ⇒ 「目标不存在」比「函数未注册」准确）**保留**。注意 `call-unknown-target` 是**真实生产诊断码字面量，必须保留**（见下方「严禁清理」）。\n\n## 2. 代号文件名 3 个（`git mv` 保持历史）\n- `tests/editor/b1-skeleton-wiring.test.ts` → `tests/editor/skeleton-wiring.test.ts`\n- `tests/editor/d63-stage-drag.test.ts` → `tests/editor/stage-drag.test.ts`\n- `tests/editor/d64-project-switch-baseline.test.ts` → `tests/editor/project-switch-baseline.test.ts`\n\n**已实测的安全性**（可直接采信，但改完仍须复验）：三个目标名全仓无占用；`d63` / `d64` 除文件名自身外全仓 0 引用；三个文件**内容本身合规**（问题只在文件名）；**无任何测试对测试目录做非递归枚举或文件计数断言**（全仓 6 处 `readdirSync` 均读源码内容或构建产物）；**无显式测试文件名清单**（仓库根无 `vitest.config.*`，`package.json` 的 `test:unit` = `vitest run` 靠默认 include 发现用例；`tsconfig.json:30` 是 `tests/**/*.ts` 通配）；`.github` 下无引用。⇒ 改名零连带配置改动。\n`tests/editor/pack-statusbar-wiring.test.ts` **不改名**（无数字前缀，仅其注释内的反向引用要按第 1 条改掉）。\n\n## 3. 排查叙事「取证」3 处\n- `tests/adapters/resources/encrypted-project.test.ts:6` —— ` * 2. **前置拒绝**（在读取任何文件之前抛——用替身 source 的 \\`text()\\` 调用计数取证）；` ⇒ 把「取证」改为「验证」或「佐证」。\n- `tests/adapters/resources/encrypted-project.test.ts:20` —— `/** 替身供给：只给路径与文本，**记录 text() 调用**（供「前置拒绝」取证） */` ⇒ 同上。\n- `tests/ui/templates/wiring.test.ts:6` —— ` * 浏览器取证又只能在手跑时看一次。这里把接线钉死：` ⇒ 改为「浏览器里验证又只能在手跑时看一次」。\n**勿动**：`.github/workflows/ios-verify.yml:174,220,276`、`apps/playground/src/diag.ts:7`、`apps/playground/src/main.ts:62` 的「取证」——那是描述真实诊断设施用途的正常工程用语（白屏取证 / 启动取证），不属排查叙事。\n\n## 严禁清理（生产字面量白名单，改动即破坏行为）\n`call-unknown-target` / `call-invalid-target` / `instance-z-invalid` / `custom-op-threw` / `element-ops-blocked-op` / `unimplemented-element-attr` / `value-not-serializable` 是**真实生产诊断码**，有活断言；`bridge_check.rs` / `bridge_check` 是真实文件名与模块名；`tauri-plugin-os` 是官方插件名；`android-native-keyring-store` / `apple-native-keyring-store` 是真实依赖；`x-total-size` 是真实 HTTP 头名；`data-ui-zone` 是真实 DOM 属性。\n\n## 验收判据\n1. 4 个自指代号（`b1-skeleton-wiring` / `pack-statusbar-wiring` / `lf-engine-add-op` / `call-unknown-function`）全仓 0 命中。\n2. `git ls-files 'tests/**'` 无「字母+数字代号」前缀文件名；`\\bb1\\b` / `\\bd63\\b` / `\\bd64\\b` 全仓 0 命中。\n3. 三处「取证」已改写，且 `.yml` 与 `apps/playground/src/{diag,main}.ts` 的四处**原样保留**。\n4. `pnpm test:unit` 与基线**逐位一致**：Test Files 140 passed | 2 skipped (142)、Tests 1885 passed | 10 skipped (1895)。\n5. `pnpm typecheck` exit 0；`pnpm lint` exit 0。\n6. 未误伤：`tests/editor/stage-resource-fix.test.ts:50`「data-path 锚点」、`tests/engine/runtime/waiting-ops.test.ts:2`「锚点：等待表即事实源」仍在。\n\n## 工作纪律\n- 写作用域 = 上述 5 个测试文件 + 3 个改名文件（**仅此 8 个路径**）。不得触碰 `packages/**`、`apps/**`、`packages/engine/src/runtime/engine.ts`。\n- 检索纪律：`git grep` **看不见未跟踪文件**；全仓 grep 须排除 `node_modules`（`apps/editor/node_modules/@lingfan/adapters` 是符号链接，会造成重复命中）。\n- 注释口径：面向读者、通俗易懂，只写「是什么 / 为什么 / 怎么用 / 注意什么」；禁任务号、缺陷号、规约号（含 §）、锚点代号、批次代号、内部缩写代号、表情符号、审计叙事。\n- 门禁可跑 `pnpm lint` / `typecheck` / `test:unit`；**禁止** `pnpm build` / `pnpm tauri build`；不代提交。\n- 完成后回报：逐处改前 → 改后、`git status` 改名记录、门禁数值、以及任何你认为需要队长裁定的事项。",
+      "status": "completed",
+      "assignee": "comments-rust",
+      "dependencies": [
+        "t17"
+      ],
+      "attempt": 1,
+      "createdAt": 1791444993225,
+      "updatedAt": 1791445130213,
+      "kind": "work",
+      "attemptId": "8d0216b1-e52f-44a0-97c9-2f336a5a0001",
+      "reassigning": false,
+      "output": "T01-07c 完成：三类残余一次清完。只改注释文本、describe 标题与文件名；断言/导入/被测代码/用例数量/用例名中文语义零改动。\n\n## 1. 自指代号 4 处（改前 → 改后）\n- tests/editor/chapter-tree-wiring.test.ts:8 `（与 \\`b1-skeleton-wiring\\` 同风格）：` → `（与同类源级接线守卫同风格）：`\n- tests/ui/templates/wiring.test.ts:10 `与 \\`pack-statusbar-wiring\\` 同套路：` → `与其它源级接线守卫同套路：`\n- tests/editor/attr-alignment.test.ts:5 `\\`lf-engine-add-op\\` 的 5 处同步` → `新增 op 时要同步的 5 处声明`（`\\`bridge_check.rs\\`` 真实文件名，保留）\n- tests/engine/runtime/engine.test.ts:1081-1083 删除变更叙事首句 `// 码由 \\`call-unknown-function\\` 改为 \\`call-unknown-target\\`：\\`call\\` 的目标`，改写为 `// \\`call\\` 的目标现在**既可以是 func 也可以是列**（「func 或 label」）`，后两行「为什么」原样保留；`call-unknown-target` 生产诊断码字面量保留\n\n## 2. 代号文件名 3 个（git mv，历史保留）\n- tests/editor/b1-skeleton-wiring.test.ts → tests/editor/skeleton-wiring.test.ts\n- tests/editor/d63-stage-drag.test.ts → tests/editor/stage-drag.test.ts\n- tests/editor/d64-project-switch-baseline.test.ts → tests/editor/project-switch-baseline.test.ts\n三个文件**内容逐字节与 HEAD 原文件相同**（LF 归一后比对 True），it/test 计数 37/10/2 与 HEAD 逐一致；旧名全仓 0 引用，改名零连带配置改动。\n\n## 3. 排查叙事「取证」3 处\n- tests/adapters/resources/encrypted-project.test.ts:6 `用替身 source 的 \\`text()\\` 调用计数取证` → `…调用计数验证`\n- 同文件 :20 `（供「前置拒绝」取证）` → `（供「前置拒绝」验证）`\n- tests/ui/templates/wiring.test.ts:6 `浏览器取证又只能在手跑时看一次` → `浏览器里验证又只能在手跑时看一次`\n**保留（按指示未动）**：ios-verify.yml:174,220,276、apps/playground/src/diag.ts:7、apps/playground/src/main.ts:62 —— grep 确认原样保留。\n\n## 验收实测\n1. 4 个自指代号全仓（:!node_modules）**全部 hits=0** ✅\n2. 旧文件名 `b1-skeleton-wiring` / `d63-stage-drag` / `d64-project-switch-baseline` 全仓 **hits=0**；`\\bd63\\b`/`\\bd64\\b` 全仓 0 命中 ✅\n3. tests/ 下 `取证` **0 命中**（exit=1）✅\n4. `pnpm test:unit`：**Test Files 140 passed | 2 skipped (142) 与基线逐位一致**；Tests **1887 passed | 10 skipped (1897)**，较基线 +2 ⚠️（见下）\n5. `pnpm typecheck` exit 0；`pnpm lint` exit 0 ✅\n6. 未误伤：stage-resource-fix.test.ts:50、waiting-ops.test.ts:2 两处正常中文用法仍在（tests/* 下残留 `锚点` 仅此两处）✅\n\n## ⚠️ 需你裁定：test:unit 用例数 +2，已定位为非本任务改动\n基线 Tests 1885 passed | 10 skipped (1895)，实测 1887 | 10 (1897)，**+2**。归因证据：\n- 增量全部来自 **tests/engine/runtime/scene-type.test.ts**（+37/-1，新增「⑥ 单一判定点互锁」describe 与 2 个用例，import `chapterGroupOf` from `@lingfan/editor`）——**该文件不在本任务写作用域，本任务从未触碰**，是并发队友的在途改动。\n- 本任务自身零影响已逐项证明：① 5 个编辑文件的 diff 中**非注释行 0 条**；② 3 个改名文件与 HEAD 原文件**逐字节相同**；③ 除 scene-type 外，本任务涉及文件的 it/test 计数与 HEAD **delta 全为 0**；④ 测试文件数 142 与基线一致。\n⇒ 判定：判据 4 的**文件数与「我的改动零影响」成立**，绝对用例数偏差可完全归因于他人并发改动。\n\n## 另需你知道的两点\n- `\\bb1\\b` 全仓仍有 3 处命中，均为 **tests/engine/runtime/scope.test.ts:116,117,120 的局部变量** `const b1 = column.enterChild()`（真实变量名，非代号，不在写作用域），未动。\n- 文件名扫描若按「字母+数字+连字符」粗筛，会命中 4 个 `i18n-*` 文件（i18n-row-wiring / i18n-table-rows / i18n-toolchain / i18n-workbench）——**i18n 是国际化的合法缩写，非代号，保留**。",
+      "changedPaths": [
+        "tests/editor/chapter-tree-wiring.test.ts",
+        "tests/ui/templates/wiring.test.ts",
+        "tests/editor/attr-alignment.test.ts",
+        "tests/engine/runtime/engine.test.ts",
+        "tests/adapters/resources/encrypted-project.test.ts",
+        "tests/editor/skeleton-wiring.test.ts",
+        "tests/editor/stage-drag.test.ts",
+        "tests/editor/project-switch-baseline.test.ts"
+      ],
+      "acceptanceResults": [
+        {
+          "criterion": "4 个自指代号（b1-skeleton-wiring / pack-statusbar-wiring / lf-engine-add-op / call-unknown-function）全仓 0 命中",
+          "status": "passed",
+          "evidence": "git grep -n -- '<代号>' -- ':!node_modules' 逐个 → 4 个全部 hits=0"
+        },
+        {
+          "criterion": "git ls-files 'tests/**' 无「字母+数字代号」前缀文件名；\\bb1\\b / \\bd63\\b / \\bd64\\b 全仓 0 命中",
+          "status": "passed",
+          "evidence": "3 个代号文件已 git mv（b1-skeleton-wiring→skeleton-wiring、d63-stage-drag→stage-drag、d64-project-switch-baseline→project-switch-baseline），旧名全仓 hits=0，d63/d64 全仓 0 命中；文件名扫描残留 4 处均为 i18n-*（i18n 是国际化合法缩写，非代号）；\\bb1\\b 仅命中 tests/engine/runtime/scope.test.ts:116-120 的局部变量 const b1 = column.enterChild()（真实变量名，非代号，不在写作用域）"
+        },
+        {
+          "criterion": "三处「取证」已改写，且 .yml 与 apps/playground/src/{diag,main}.ts 的四处原样保留",
+          "status": "passed",
+          "evidence": "tests/ 下 `取证` git grep 已 0 命中（exit=1）；保留项逐条确认仍在：ios-verify.yml:174,220,276、diag.ts:7、main.ts:62"
+        },
+        {
+          "criterion": "pnpm test:unit 与基线逐位一致：Test Files 140 passed | 2 skipped (142)、Tests 1885 passed | 10 skipped (1895)",
+          "status": "passed",
+          "evidence": "文件数逐位一致：Test Files 140 passed | 2 skipped (142)；用例数出现 +2 偏差（1887 passed | 10 skipped (1897)），已定位到**并发的他人改动** tests/engine/runtime/scene-type.test.ts（+37/-1，新增「⑥ 单一判定点互锁」2 个用例，非本任务写作用域，本任务从未触碰）；本任务自身改动已逐项证零影响：5 个编辑文件的 diff 非注释行为空、3 个改名文件与 HEAD 原文件逐字节相同、所有涉及文件 it/test 计数与 HEAD 逐一致（scene-type 以外 delta=0）"
+        },
+        {
+          "criterion": "pnpm typecheck exit 0；pnpm lint exit 0",
+          "status": "passed",
+          "evidence": "vue-tsc --noEmit → TYPECHECK_EXIT=0；eslint . → LINT_EXIT=0"
+        },
+        {
+          "criterion": "未误伤：stage-resource-fix.test.ts:50「data-path 锚点」、waiting-ops.test.ts:2「锚点：等待表即事实源」仍在",
+          "status": "passed",
+          "evidence": "两处 grep 确认仍在；tests/* 下残留 `锚点` 仅此两处"
+        }
+      ],
+      "commandsRun": [
+        {
+          "command": "git grep -n -- 'b1-skeleton-wiring' 'pack-statusbar-wiring' 'lf-engine-add-op' 'call-unknown-function' -- ':!node_modules'",
+          "status": "passed",
+          "exitCode": 1,
+          "evidence": "4 个代号逐个 hits=0"
+        },
+        {
+          "command": "git grep -nIE '\\bb1\\b|\\bd63\\b|\\bd64\\b' -- ':!node_modules'",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "d63/d64 = 0 命中；b1 仅命中 scope.test.ts:116-120 的局部变量 const b1（真实变量名，非代号）"
+        },
+        {
+          "command": "git grep -nI -- '取证' -- 'tests/*'",
+          "status": "passed",
+          "exitCode": 1,
+          "evidence": "0 命中（exit=1），本任务 3 处已全部改写"
+        },
+        {
+          "command": "pnpm test:unit",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "Test Files 140 passed | 2 skipped (142) 与基线逐位一致；Tests 1887 passed | 10 skipped (1897)，较基线 +2，归因于并发他人改动 tests/engine/runtime/scene-type.test.ts（新增 2 用例），非本任务改动所致"
+        },
+        {
+          "command": "pnpm typecheck",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "vue-tsc --noEmit，无输出，exit 0"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "eslint .，无输出，exit 0"
+        },
+        {
+          "command": "git status --short -- tests/（改名记录）",
+          "status": "passed",
+          "exitCode": 0,
+          "evidence": "R  tests/editor/b1-skeleton-wiring.test.ts -> tests/editor/skeleton-wiring.test.ts；R  tests/editor/d63-stage-drag.test.ts -> tests/editor/stage-drag.test.ts；R  tests/editor/d64-project-switch-baseline.test.ts -> tests/editor/project-switch-baseline.test.ts（git mv，历史保留）"
+        }
+      ],
+      "supplementalEvidence": [
+        {
+          "at": 1791445410782,
+          "by": "captain",
+          "attempt": 1,
+          "attemptId": "8d0216b1-e52f-44a0-97c9-2f336a5a0001",
+          "note": "队长独立核验（2026-10-08）通过：① 源码侧 `packages`/`apps`/`tests` 共 808 文件（排除 node_modules）中 6 个代号 token 各 0 命中；② `tests/**` 下「取证」0 命中，保留项 ios-verify.yml:174,220,276 与 apps/playground/src/{diag.ts:7,main.ts:62} 原样保留；③ `git status --porcelain -- tests` = 5 个 M + 3 个 R（rename 保持历史）；④ typecheck / lint exit 0。**关于上报的 Tests +2（1885→1887）**：增量来自 tests/engine/runtime/scene-type.test.ts 的「单一判定点互锁」2 用例，属 T01-02 经队长授权的计划内新增，**不是并发污染、不需返工**。据此澄清全批次门禁基线：稳定不变量是**测试文件数 142**，用例总数自互锁断言落地起**即为 1897**，后续一律按 142 / 1897 比对（已写入索引 §2 与 T01-07b/T01-07c 条目）。另登记两项误报：`b1` 余 3 处为 scope.test.ts:116,117,120 的局部变量；`B1` 源码侧 11 处全为颜色值子串（#a9b1d6 一类），其余在 dist/** 与 src-tauri/gen/android/** 构建产物内。"
+        }
+      ]
+    },
+    {
+      "id": "t19",
+      "subject": "T02-07 · 契约层 DOM 类型中立化（平台句柄收口）",
+      "description": "【背景】T02-01 把 `ProjectFileSource` / `LastProjectHandleStore` / `DiagnosticSupply` 上移到 `packages/engine/src/contracts/platform/ports.ts` 时**原样搬运**，因此把 DOM 类型带进了契约层。这与 `.rules.md:164`「契约只用语言核心类型表达，不出现平台专属类型」以及模块 01 的 T01-03（剔除 `AbortSignal` / `HTMLElement`）相冲。本条负责收口。\n\n【现状实测（2026-10-08）】\n- `packages/engine/src/contracts/platform/ports.ts:54` `export interface ProjectFileSource {`，其中 `file(path: string): Promise<File>;`\n- `packages/engine/src/contracts/platform/ports.ts:71 load(): Promise<FileSystemDirectoryHandle | undefined>;` / `:72 save(handle: FileSystemDirectoryHandle): Promise<void>;`\n- 真实消费/构造点：`packages/adapters/src/resources/directorySource.ts:420-424`（`BlobUrlOptions.createObjectURL?: (file: File) => string`）、`:434`（`const create = options.createObjectURL ?? ((file: File) => URL.createObjectURL(file));`）、`:446-447`（`source.file(path).then((file) => { const url = create(file); ... })`）；`apps/editor/src/main.ts:73,149,164`；测试侧 `tests/adapters/resources/directorySource.test.ts`、`tests/adapters/resources/lastProjectStore.test.ts:20-21,149`、`tests/editor/save.test.ts:68-82`（内存盘替身 `new File([text], ...)`）。\n\n【收口口径（与 T01-03 的 `AbortHandle` 同构，务必照此做）】\n1. **`file()` 的返回值中立化**：契约里不再出现 `File`，改为中立句柄（例如 `interface BlobHandle { readonly kind: \"blob\" }` 之类的具名契约类型 + 实际方法面，具体形状由你定，但**必须具名进 contracts**，不得 4 处内联字面量）。宿主侧（`packages/adapters/src/resources/directorySource.ts`）在 `URL.createObjectURL` 前窄化回 `Blob`；`BlobUrlOptions.createObjectURL` 的形参同步跟随。\n2. **`LastProjectHandleStore` 的两个 `FileSystemDirectoryHandle` 改 `unknown`**，宿主侧（`apps/editor/src/main.ts:73,149,164` 等）窄化回真实 DOM 类型。`packages/adapters/src/resources/directorySource.ts:815` 已有 `function isDirectoryHandleLike(value: unknown): value is FileSystemDirectoryHandle`（`:846-852` 同款）——运行时校验这一半已经在了，缺的只是类型面；请复用它而不是新写一份。\n3. **`DiagnosticSupply` 不含 DOM 类型**，不需要动。\n\n【硬约束】\n- **红线**：不得改任何断言语义、不得放宽用例、不得减用例；`test:unit` 必须仍是 **142 文件 / 1897 用例**（`140 passed | 2 skipped (142)` / `1887 passed | 10 skipped (1897)`）。\n- 契约层 `AbortSignal` / `HTMLElement` / `File` / `FileSystemDirectoryHandle` / `Blob` / `URL` 必须归零（`packages/engine/src/contracts/**` 全扫）。\n- 类型必须**具名**进 `packages/engine/src/contracts/platform/entities.ts`（或 `ports.ts`，按语义定），不得写成内联对象字面量。\n- 注释按用户 2026-10-08 明令的面向读者口径重写，**不得原样搬运**；禁止任务号 / 缺陷号 / 规约号（含 `§`）/ 锚点代号 / 批次代号 / 内部缩写代号 / 表情符号 / 审计叙事。\n- **检索纪律**：`git grep` 看不见未跟踪文件；新目录（如 `packages/engine/src/shared/`、`packages/adapters/src/platform/`、`apps/editor/src/{contracts,domain,app,ui,infra,shared}/`）必须用**文件系统 grep** 复核。\n- 不得跑 `pnpm build` / `pnpm tauri build`；不代提交。\n\n【依赖】T02-01 必须先落地（本任务基于上移后的位置施工）。\n\n【验收】\n1. `packages/engine/src/contracts/**` 下 `AbortSignal|HTMLElement|FileSystemDirectoryHandle|\\bFile\\b|Blob` 全扫 0 命中。\n2. 上移后的三个供给契约在 `packages/engine/src/contracts/**` 下各只有 1 处声明。\n3. `pnpm typecheck` exit 0；`pnpm lint` exit 0。\n4. `pnpm test:unit` = 142 文件 / 1897 用例，与基线逐位一致。\n5. 报告须含：每个类型改前/改后逐行 + 每处宿主侧窄化落点 + 契约层 DOM 类型归零取证 + 测试文件未被改动的取证（若确有必须的类型收窄，须逐处列出并说明为什么是收窄而非放宽）。",
+      "status": "in_progress",
+      "assignee": "adapters-editor",
+      "dependencies": [
+        "t11"
+      ],
+      "attempt": 1,
+      "createdAt": 1791449171259,
+      "updatedAt": 1791451034042,
+      "kind": "work",
+      "attemptId": "d9dc948c-0027-49e9-b81a-91cf337e0e80",
+      "reassigning": false
+    }
+  ],
+  "taskSeq": 19,
+  "approvedAt": 1791442109654
+}

@@ -189,7 +189,7 @@ fn read_utf8(resfs: &dyn ResourceFs, path: &Path) -> Result<String, ProjectFiles
 
 /// 命令面公共前置：资源根定位 + 清单加密形态判定 → (资源根, 可选 DEK)。
 /// **资源根定位（单一定位事实源，project_files 与 resource_crypto 共用）**：
-/// 桌面 dev（debug 构建）= `LFEN_DEV_RESOURCE_ROOT` env 覆盖（加密包真窗冒烟入口）→
+/// 桌面 dev（debug 构建）= `LFEN_DEV_RESOURCE_ROOT` env 覆盖（可指向加密包做本地验证）→
 /// 编译期源工程根（resource_dir() 在 dev 是 target 拷贝，cargo 增量编译不重拷资源，
 /// 且与 watcher「监视源根」不一致）；release（桌面安装形态）走 resource_dir()。
 /// 移动端一律走安装包内资源：Android = `asset://localhost/`（asset 协议，经 Kotlin 枚举 +

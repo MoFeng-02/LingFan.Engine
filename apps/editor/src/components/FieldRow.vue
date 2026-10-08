@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
+import { EDITOR_API_KEY } from "../contracts";
 import {
   coerceFieldValue,
   describeNodeLabel,
@@ -18,15 +19,7 @@ const props = defineProps<{
   value: unknown;
 }>();
 
-interface EditorApi {
-  update(pointer: string, value: unknown): void;
-  removeField(pointer: string): void;
-  select(pointer: string | null): void;
-  insertCommand(pointer: string, command: Record<string, unknown>): void;
-  removeCommand(pointer: string): void;
-  moveCommand(pointer: string, delta: number): void;
-}
-const api = inject<EditorApi>("editorApi")!;
+const api = inject(EDITOR_API_KEY)!;
 
 const jsonError = ref("");
 const bodyOp = ref("say");

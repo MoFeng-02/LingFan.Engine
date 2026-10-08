@@ -51,7 +51,7 @@ class FakeSocket implements WsSocketLike {
   }
 }
 
-describe("connectWsBridge（ws-dev-bridge-parity TS 侧）", () => {
+describe("connectWsBridge（TS 侧）", () => {
   it("连接后调用按 id 路由：data 送达、args 原样编组", async () => {
     const sockets: FakeSocket[] = [];
     const pending = connectWsBridge({

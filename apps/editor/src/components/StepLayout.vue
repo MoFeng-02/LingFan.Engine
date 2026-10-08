@@ -2,6 +2,7 @@
 import { computed, inject } from "vue";
 import type { Story } from "@lingfan/engine";
 import { storySteps, type StepEdge, type StoryStep } from "@lingfan/editor";
+import { EDITOR_API_KEY } from "../contracts";
 
 /**
  * 步骤视图：以「步骤」为单位的布局——每列一条泳道，泳道内步骤盒按序竖排，
@@ -13,13 +14,7 @@ import { storySteps, type StepEdge, type StoryStep } from "@lingfan/editor";
  */
 const props = defineProps<{ story: Story; selectedId: string }>();
 
-interface EditorApi {
-  select(pointer: string | null): void;
-  /** 定位揭示：选中 + 切回时间线 + 滚动到目标行 */
-  reveal(pointer: string): void;
-  selectColumn(id: string): void;
-}
-const api = inject<EditorApi>("editorApi")!;
+const api = inject(EDITOR_API_KEY)!;
 
 const LANE_W = 232;
 const HEADER_H = 34;

@@ -485,3 +485,23 @@ export function analyzeStory(
 }
 
 export type { AnalyzeOptions };
+
+/**
+ * 诊断集的分组与摘要（可按严重度筛选），以及消息文本的拆分与一句话简述。
+ * 两族住在同域的其他文件里，此处一并转发，让本目录只有一个取用入口。
+ */
+export {
+  diagnosticCodeLabel,
+  diagnosticSummaryText,
+  filterDiagnosticsBySeverity,
+  groupDiagnostics,
+  summarizeDiagnostics,
+  type DiagnosticGroup,
+  type DiagnosticSummary,
+  type SeverityFilter,
+} from "./grouping";
+export {
+  diagnosticBrief,
+  splitDiagnosticMessage,
+  type DiagnosticMessageParts,
+} from "./message";

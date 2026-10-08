@@ -17,6 +17,8 @@ import {
   tokenMatches,
 } from "../../apps/editor/server/security";
 import { detectLocalHost } from "../../apps/editor/src/localHost";
+import hostServerSource from "../../apps/editor/server/host.ts?raw";
+import hostContractSource from "../../apps/editor/src/contracts/host.ts?raw";
 
 describe("路径归一：越界形态一律拒绝", () => {
   it("接受正常相对路径（去空段与 .）", () => {
@@ -349,5 +351,24 @@ describe("热重载判据 · 该不该因这次变更重载", () => {
   it("删目录时 path 就是目录本身 ⇒ 末段也要查忽略表", () => {
     expect(shouldReloadOn("node_modules", "rename").reload).toBe(false);
     expect(shouldReloadOn("Stories", "rename").reload).toBe(true);
+  });
+});
+
+describe("跨边界互锁：宿主只取类型，契约层不放运行期代码", () => {
+  it("宿主侧以 `import type` 取契约（编译期擦除，不把契约层拖进 Node 进程）", () => {
+    // 裸 `import` 会让 Node 真的去加载契约层；契约层一旦掺进运行期代码，
+    //    两侧就从「共用一份类型」变成「共用同一个模块」——那是另一件事。
+    expect(hostServerSource).toMatch(/import\s+type\s*\{[^}]*\}\s*from\s+"\.\.\/src\/contracts"/);
+    expect(hostServerSource).not.toMatch(/import\s*\{[^}]*\}\s*from\s+"\.\.\/src\/contracts"/);
+  });
+
+  it("契约层只有类型（无 const / function / class，擦除后真的什么都不剩）", () => {
+    expect(hostContractSource).not.toMatch(/export\s+(const|function|class)\b/);
+  });
+
+  it("声明只有一份：宿主侧不再自写 HostCapabilities / PackResult", () => {
+    expect(hostContractSource).toMatch(/interface\s+HostCapabilities\b/);
+    expect(hostContractSource).toMatch(/interface\s+PackResult\b/);
+    expect(hostServerSource).not.toMatch(/interface\s+(HostCapabilities|PackResult)\b/);
   });
 });

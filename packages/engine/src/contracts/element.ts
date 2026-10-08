@@ -275,11 +275,6 @@ export interface ElementInstance {
   children: ElementInstance[];
 }
 
-/** 类型判定（36 全集）；`unknown` 入参便于解析侧直接消费未校验值 */
-export function isElementType(value: unknown): value is ElementType {
-  return typeof value === "string" && (ELEMENT_TYPES as readonly string[]).includes(value);
-}
-
 /**
  * 容器类型：支持 `children` 嵌套。
  * 统一口径为「容器 = 支持 children」，取 vbox/hbox 等可嵌套类型的并集。

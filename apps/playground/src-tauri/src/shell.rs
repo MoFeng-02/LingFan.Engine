@@ -21,8 +21,8 @@ impl OrientationMode {
     /// Android `ActivityInfo.SCREEN_ORIENTATION_*` 常量（JNI 直调用）：
     /// auto = UNSPECIFIED(-1) 交给系统；portrait = 1；landscape = 0。
     ///
-    /// 刻意不做平台 cfg 门控：映射是纯数据，桌面测试才能锚定它——该面是 JNI 直调
-    /// 唯一的字面量契约，锚点测试（`orientation-jni-constants`）即它的自动化防线。
+    /// 刻意不做平台 cfg 门控：映射是纯数据，桌面测试才能覆盖它——该面是 JNI 直调
+    /// 唯一的字面量契约，由下方的常量映射测试守护。
     #[cfg_attr(not(any(target_os = "android", test)), allow(dead_code))]
     fn android_constant(self) -> i32 {
         match self {
@@ -203,7 +203,7 @@ mod tests {
         assert_eq!(OrientationMode::Landscape.as_str(), "landscape");
     }
 
-    /// 锚点 `orientation-jni-constants`：三态 → Android `SCREEN_ORIENTATION_*` 常量映射。
+    /// 三态 → Android `SCREEN_ORIENTATION_*` 常量映射。
     /// 这是 JNI 直调唯一的字面量面（方法名 `setRequestedOrientation` 与签名 `(I)V`
     /// 由 bridge_check 的源断言守护）。
     #[test]

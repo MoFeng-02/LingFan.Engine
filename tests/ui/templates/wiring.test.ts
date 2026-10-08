@@ -3,11 +3,11 @@
  *
  * 为什么需要源级守卫：模板注册表是纯函数（已由 `tests/ui/templates/**` 覆盖），
  * 但「宿主有没有真的把模板产出接到 DOM 上」是**接线事实**——单测跑不到 Vue 模板，
- * 浏览器取证又只能在手跑时看一次。这里把接线钉死：
+ * 浏览器里验证又只能在手跑时看一次。这里把接线钉死：
  * 骨架挂点必须来自模板产出（而非宿主自己拼字符串）、点击必须仍走核心 `choose`、
  * 交互控件必须有可访问名（`v-html` 内容不进无障碍名计算）。
  *
- * 与 `pack-statusbar-wiring` 同套路：读源码断言接线，防「抽象做完了但没人用」。
+ * 与其它源级接线守卫同套路：读源码断言接线，防「抽象做完了但没人用」。
  */
 import { describe, expect, it } from "vitest";
 import playgroundApp from "../../../apps/playground/src/App.vue?raw";

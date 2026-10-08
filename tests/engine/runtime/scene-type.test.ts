@@ -9,9 +9,12 @@
  * API 说明：
  *   `start()` 无参启动；`advance()` 推进一个等待点；`choose("列id")` 用**目标列 id**选菜单。
  *
- * 覆盖五组：① 契约与解析 ② 回溯守卫 ③ 存档守卫 ④ 边界 ⑤ 真实工程形态
+ * 覆盖六组：① 契约与解析 ② 回溯守卫 ③ 存档守卫 ④ 边界 ⑤ 真实工程形态
+ * ⑥ 单一判定点互锁
  */
 import { describe, expect, it, vi } from "vitest";
+import { chapterGroupOf } from "@lingfan/editor";
+import editorChaptersSource from "../../../packages/editor/src/chapters/index.ts?raw";
 import {
   SYS,
   StoryEngine,
@@ -21,7 +24,38 @@ import {
   serializeProject,
   type OutboundEvent,
   type Story,
+  type StoryColumn,
 } from "@lingfan/engine";
+
+// ---------- 引擎源码（供「单一判定点」互锁断言读文本用） ----------
+
+/** 引擎全部源码，键 = 仓库相对路径（前端不碰文件系统，改用打包器读取） */
+const ENGINE_SOURCES = import.meta.glob(
+  "../../../packages/engine/src/**/*.ts",
+  {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  },
+) as Record<string, string>;
+
+/** 契约层下沉出来的 7 个判定函数 */
+const GUARD_FUNCTIONS = [
+  "isElementType",
+  "gameScopedKey",
+  "isHostOs",
+  "hostFormOf",
+  "isOrientationMode",
+  "isSceneType",
+  "isReplayableColumn",
+] as const;
+
+/** 声明（而非调用）某函数的两种写法：`function 名字(` 与 `const 名字 = ...` */
+const GUARD_DECLARATION = (name: string): RegExp =>
+  new RegExp(
+    `(?:^|\\n)\\s*(?:export\\s+)?(?:async\\s+)?function\\s+${name}\\s*\\(` +
+      `|(?:^|\\n)\\s*(?:export\\s+)?(?:const|let|var)\\s+${name}\\s*[:=]`,
+  );
 
 // ---------- 夹具 ----------
 
@@ -347,5 +381,57 @@ describe("场景类型 · 真实工程形态与自证", () => {
     h.engine.back();
     expect(h.engine.get(SYS.currentSceneColumn)).toBe("play");
     h.dispose();
+  });
+});
+
+// ---------- ⑥ 单一判定点互锁 ----------
+
+/**
+ * 「哪些列参与历史与存档」只能有一处判据。
+ *
+ * 判据一旦分叉，引擎按一套算存档、编辑器按另一套分组，作者看到的与玩家经历的就会不一致
+ * ——所以引擎守卫与编辑器分组必须调同一个函数。这一组用例钉住这件事：两边对同一批输入
+ * 必须给出**一致**的答案，且该函数的实现只存在于 `shared/guards.ts`。
+ */
+describe("场景类型 · 单一判定点互锁（引擎守卫与编辑器分组同源）", () => {
+  it("**两侧对同一列的判定一致**（编辑器分组 = 引擎可回溯）", () => {
+    const cases: (StoryColumn["type"] | undefined)[] = [
+      undefined,
+      "game",
+      "menu",
+      "ui",
+    ];
+    for (const type of cases) {
+      const column = { type };
+      expect(chapterGroupOf(column) === "story").toBe(
+        isReplayableColumn(column),
+      );
+    }
+  });
+
+  it("**判定函数只实现一处**（引擎与编辑器都不许复制判据）", () => {
+    // 编辑器章节分组只允许**调用**引擎的实现，出现判据表达式即第二份定义
+    const editorChapters = editorChaptersSource;
+    expect(editorChapters).toContain('from "@lingfan/engine"');
+    expect(editorChapters).not.toMatch(/type\s*\?\?\s*"game"/);
+    expect(editorChapters).not.toMatch(/"game"\s*\)\s*===\s*"game"/);
+
+    // 引擎侧：7 个判定函数各只有一处声明，且都落在不依赖其他层的 shared
+    for (const name of GUARD_FUNCTIONS) {
+      const owners = Object.entries(ENGINE_SOURCES)
+        .filter(([, src]) => GUARD_DECLARATION(name).test(src))
+        .map(([file]) => file);
+      expect(owners, name).toHaveLength(1);
+      expect(owners[0], name).toContain("/shared/");
+    }
+
+    // 契约层只声明类型：出现函数关键字就说明实现又混回来了
+    const contracts = Object.entries(ENGINE_SOURCES).filter(([file]) =>
+      file.includes("/contracts/"),
+    );
+    expect(contracts.length).toBeGreaterThan(0);
+    for (const [file, src] of contracts) {
+      expect(src, file).not.toMatch(/\bfunction\b/);
+    }
   });
 });

@@ -190,7 +190,7 @@ pub const V2_AUTO_THRESHOLD: u64 = 8 * 1024 * 1024;
 /// 默认块明文大小 = 4MiB
 pub const V2_DEFAULT_CHUNK_LOG2: u32 = 22;
 
-/// B1v2 守卫：块数 = ceil(total / chunk) ≤ u32::MAX（nonce 空间），chunk_log2 上限防御
+/// 头部参数守卫：chunk_log2 不得超过单块上限，块数 = ceil(total / chunk) 不得超过 u32::MAX（nonce 空间）
 fn v2_validate(total: u64, chunk_log2: u32) -> Result<(u64, u64), ResourceCryptoError> {
     if chunk_log2 > V2_MAX_CHUNK_LOG2 {
         return Err(ResourceCryptoError::BadFormat(format!(
@@ -201,7 +201,7 @@ fn v2_validate(total: u64, chunk_log2: u32) -> Result<(u64, u64), ResourceCrypto
     let blocks = total.div_ceil(chunk);
     if blocks > u32::MAX as u64 {
         return Err(ResourceCryptoError::BadFormat(format!(
-            "块数超界（B1v2 nonce 空间）：{blocks} > u32::MAX"
+            "块数超界（超出 nonce 空间）：{blocks} > u32::MAX"
         )));
     }
     Ok((chunk, blocks))
@@ -246,7 +246,7 @@ pub fn encrypt_lfen2_v2_file(
     fout.write_all(&head).map_err(io)?;
     let mut buf = vec![0u8; chunk as usize];
     for index in 0..blocks {
-        let plain_len = (total - index * chunk).min(chunk) as usize; // B5v2：尾块可短
+        let plain_len = (total - index * chunk).min(chunk) as usize; // 尾块可以短于 chunk
         fin.read_exact(&mut buf[..plain_len]).map_err(io)?;
         let nonce_arr = v2_nonce(&base, index as u32);
         // v2_nonce 恒返 12B（GCM nonce 定长）——TryFrom 失败为不变量破坏，才可 expect
@@ -290,7 +290,7 @@ fn decrypt_v2_all(file: &[u8], key: &[u8], path: &str) -> Result<Vec<u8>, Resour
         let off = (V2_HEADER_LEN as u64 + index * (chunk + 16)) as usize;
         let end = off + plain_len + 16;
         let sealed = file.get(off..end).ok_or_else(|| {
-            ResourceCryptoError::BadFormat("LFEN2 v2 密文长度与 total 不符（B3v2）".into())
+            ResourceCryptoError::BadFormat("LFEN2 v2 密文长度与 total 不符".into())
         })?;
         let mut with_nonce = Vec::with_capacity(12 + sealed.len());
         with_nonce.extend_from_slice(&v2_nonce(&base, index as u32));
@@ -299,7 +299,7 @@ fn decrypt_v2_all(file: &[u8], key: &[u8], path: &str) -> Result<Vec<u8>, Resour
             .map_err(ResourceCryptoError::Crypto)?;
         if plain.len() != plain_len {
             return Err(ResourceCryptoError::BadFormat(
-                "LFEN2 v2 块明文长度不符（B3v2）".into(),
+                "LFEN2 v2 块明文长度不符".into(),
             ));
         }
         out.extend_from_slice(&plain);
@@ -454,7 +454,7 @@ pub fn decrypt_v2_block_range(
     let (chunk, _) = v2_validate(total, chunk_log2)?;
     if total == 0 || end_incl >= total {
         return Err(ResourceCryptoError::BadFormat(
-            "Range 越界（超出明文总长，B3v2）".into(),
+            "Range 越界（超出明文总长）".into(),
         ));
     }
     let first_block = start / chunk;
@@ -487,7 +487,7 @@ pub fn decrypt_v2_block_range(
     Ok(out)
 }
 
-/// v2 打包自检（B3v2）：逐块解密回读 == 源文件对应偏移字节（内存 = 单块 × 2）
+/// v2 打包自检：逐块解密回读 == 源文件对应偏移字节（内存 = 单块 × 2）
 fn verify_v2_file(
     out_enc: &Path,
     key: &[u8],
@@ -1080,8 +1080,8 @@ fn parse_range_strict(value: &str, total: u64) -> Option<(u64, u64)> {
     Some((start, end))
 }
 
-/// Android 取证（仅 debug 构建，release 完全移除）：记录 range 来源与取值、响应码、
-/// 交付字节首尾——用于在真机核对「服务端交付的窗口」与他处观察到的取字节/播放是否错位。
+/// 区间探测日志（仅 debug 构建，release 完全移除）：记录 range 来源与取值、响应码、
+/// 交付字节首尾——出问题时据此核对「服务端交付的窗口」与实际取字节/播放是否一致。
 #[cfg(all(target_os = "android", debug_assertions))]
 fn probe_android_range(
     path: &str,
@@ -1137,7 +1137,7 @@ fn handle_v2_range_with(
     #[cfg(all(target_os = "android", debug_assertions))]
     probe_android_range(&logical, source, &req_value, &resp, total);
     #[cfg(not(all(target_os = "android", debug_assertions)))]
-    let _ = (source, req_value); // 取证仅存在于 Android debug 构建：其余形态这两个量无消费者
+    let _ = (source, req_value); // 这两个量只在 Android debug 构建下被区间探测日志消费
     resp
 }
 
@@ -1370,8 +1370,8 @@ fn encrypt_directory_inner(
             fs::create_dir_all(parent).map_err(io)?;
         }
         let data_len = path.metadata().map_err(io)?.len();
-        // force_v2（dist 收录）：前端产物经协议 v2 路径按需供给——小文件也必须存 v2
-        // 分块形态（单块特例），否则 handler 按 v2 读头失败 404（真窗冒烟会逮住）
+        // 强制 v2（前端产物 dist 收录）：这些文件按协议 v2 路径按需供给——小文件也必须存成 v2
+        // 分块形态（单块特例），否则读取端按 v2 读头会失败并返回 404
         if force_v2 || data_len > V2_AUTO_THRESHOLD {
             // 大文件走 v2 分块流式加密（内存 = 单块；lfstream 按需解密不落明文缓存）
             encrypt_lfen2_v2_file(&path, &out, key, &rel_str, V2_DEFAULT_CHUNK_LOG2)?;
@@ -2126,7 +2126,7 @@ mod tests {
         assert!(validate_resource_path("").is_err());
     }
 
-    /// 锚点 android-media-loopback-routing：命中面 = Android ∧ 音视频扩展名（大小写不敏感）；
+    /// 命中面 = Android ∧ 音视频扩展名（大小写不敏感）；
     /// 桌面恒不命中（同资源在桌面继续走 lfstream，行为零变化，也不起端口）
     #[test]
     fn media_loopback_routing_is_pure_and_narrow() {
@@ -2191,7 +2191,7 @@ mod tests {
 
     #[test]
     fn lfen2_v2_round_trip_and_tail_chunk() {
-        // B5v2：尾块短块合法；块对齐/跨块/后缀 Range 全形态回读 == 源明文；全量解密等价
+        // 尾块短块合法；块对齐/跨块/后缀 Range 全形态回读 == 源明文；全量解密等价
         let base = temp_base("lf3-v2-rt");
         fs::create_dir_all(&base).unwrap();
         let src = base.join("m.bin");
@@ -2205,7 +2205,7 @@ mod tests {
         let sealed = fs::read(&out).unwrap();
         assert!(sealed.starts_with(MAGIC_LFEN2) && sealed[5] == FORMAT_VERSION_V2);
 
-        // 全量（B4v2 姊妹：v2 走 decrypt_resource_bytes 透明分流）
+        // 全量解密（与逐块 Range 路径同一份密文：v2 走 decrypt_resource_bytes 透明分流）
         assert_eq!(
             decrypt_resource_bytes(sealed, KEY, "Video/m.mp4").unwrap(),
             plain
@@ -2230,7 +2230,7 @@ mod tests {
 
     #[test]
     fn lfen2_v2_guards() {
-        // B1v2：chunk_log2 超限 / 块数超 u32::MAX（nonce 空间）拒绝——纯算术不占内存
+        // chunk_log2 超限 / 块数超 u32::MAX（nonce 空间）拒绝——纯算术不占内存
         assert!(v2_validate(100, 27).is_err());
         // chunk_log2 = 0 → 块长 1B：total = 2^32 字节 = 2^32 块，超 nonce 空间必拒
         assert!(v2_validate(u64::from(u32::MAX) + 1, 0).is_err());
@@ -2239,7 +2239,7 @@ mod tests {
 
     #[test]
     fn lfen2_v2_block_swap_rejected() {
-        // B2v2：块 AAD 绑 index——交换块 0/块 1 密文段后解密必拒（防跨块重排）
+        // 块 AAD 绑 index——交换块 0/块 1 密文段后解密必拒（防跨块重排）
         let base = temp_base("lf3-v2-swap");
         fs::create_dir_all(&base).unwrap();
         let src = base.join("m.bin");
@@ -2265,7 +2265,7 @@ mod tests {
 
     #[test]
     fn lfen2_v2_truncation_rejected() {
-        // B3v2：截断密文（total_len 与实际不符）→ 解密必拒
+        // 截断密文（total_len 与实际不符）→ 解密必拒
         let base = temp_base("lf3-v2-trunc");
         fs::create_dir_all(&base).unwrap();
         let src = base.join("m.bin");
@@ -2372,7 +2372,7 @@ mod tests {
 
     #[test]
     fn android_range_query_channel_serves_exact_200() {
-        // 锚点 android-range-workaround：URL-query 通道（请求不带 `Range` 头）→
+        // URL-query 区间通道（请求不带 `Range` 头）→
         // 200 精确切片 + `X-Total-Size`，且**不带** `Content-Range`/`Accept-Ranges`
         // （请求本无 Range 头，若仍以 range 语义回响应会再次落进 WebView 的二次偏移）。
         let base = temp_base("lf3-range-query");
@@ -2464,7 +2464,7 @@ mod tests {
 
     #[test]
     fn v2_block_lru_cache_bounds_and_isolation() {
-        // 锚点 v2-block-lru-cache：有界 LRU（容量/淘汰序/刷新保真）+ 路径参与键不串味 + 计数
+        // 有界 LRU（容量/淘汰序/刷新保真）+ 路径参与键不串味 + 计数
         let mut cache = V2BlockCache::new(2_400); // 恰容 2 块（1000B 块）
         let fp = v2_key_fp(KEY);
         let k = |name: &str, index: u64| V2CacheKey {

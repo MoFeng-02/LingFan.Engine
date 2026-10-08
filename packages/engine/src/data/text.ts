@@ -12,6 +12,7 @@ import type {
   Story,
   StoryColumn,
   StoryCommand,
+  TextProjection,
 } from "../contracts";
 import { isElementType } from "../contracts";
 import { baseName } from "./format";
@@ -2031,11 +2032,11 @@ function generateElement(node: ElementNode, pad: string, out: string[]): void {
   }
 }
 
-/** 06 编辑器文本模式契约：容错投影——不可投影部分（未知 op）收集为 issues，其余照常输出 */
-export interface TextProjection {
-  text: string;
-  issues: string[];
-}
+/**
+ * 文本投影的结果形状定义在契约层（`contracts/text.ts`），此处按原路径转出，
+ * 既有消费方无需改动即可继续从本模块取；收口时统一改走包出口。
+ */
+export type { TextProjection } from "../contracts";
 
 export function projectText(
   story: Story,

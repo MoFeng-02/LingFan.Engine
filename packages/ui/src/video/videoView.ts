@@ -11,7 +11,7 @@ import type {
   VideoPort,
   StoryEngine,
 } from "@lingfan/engine";
-import { SYS } from "@lingfan/engine";
+import { createStateReader, SYS } from "@lingfan/engine";
 
 export interface VideoRendererOptions {
   /** 资源解析失败诊断（报错诊断：不静默吞错） */
@@ -36,6 +36,7 @@ export function createVideoRenderer(
   /** 解析代际：异步解析落地时若已被更新命令取代，丢弃该次播放（防错播） */
   let generation = 0;
   const urls = new Map<string, string>();
+  const reader = createStateReader(engine);
 
   async function resolveUrl(resource: string): Promise<string | null> {
     const cached = urls.get(resource);
@@ -80,8 +81,8 @@ export function createVideoRenderer(
   }
 
   function sync(): void {
-    const command = engine.get(SYS.video) as VideoCommand | null | undefined;
-    if (command == null) {
+    const command = reader.videoCommand();
+    if (command === null) {
       if (lastSeq >= 0) {
         port.stop(); // 命令流被清空（重启/重建）：停播
         lastSeq = -1;

@@ -1,6 +1,8 @@
 /**
- * 媒体契约（四音频通道）：核心只写状态，播放由适配器落地。
- * 端口入参为**已解析 URL**——资源寻址归 ResourcePort，媒体可能是加密资源。
+ * 媒体契约的数据形态：音频通道状态与视频命令，都是写进系统键、随后被界面读走的值。
+ * 引擎只写这些值，真正的播放交给适配器。
+ *
+ * 端口（播放器要实现的方法集合）见同目录 `ports.ts`。
  */
 
 /** 四通道：bgm 循环 / se 一次性 / ambient 独立循环层 / voice 互斥 */
@@ -44,20 +46,6 @@ export interface AudioPlayOptions {
 }
 
 /**
- * 音频端口：实现 = infra 适配器（WebView 解码，Desktop/Mobile 同契约）。
- * 入参为已解析 URL（资源寻址归 ResourcePort）；同 URL 且 restart=false = 更新而非重头播。
- */
-export interface AudioPort {
-  play(channel: AudioChannel, url: string, options: AudioPlayOptions): void;
-  stop(channel: AudioChannel, fadeMs?: number): void;
-  /** 当前播放位置（秒）；未播放返回 0（帧级回写用） */
-  position(channel: AudioChannel): number;
-  dispose(): void;
-}
-
-// —— 视频（单通道命令流）：新 video 替换当前；Desktop/Mobile 同契约 ——
-
-/**
  * 视频命令（SSOT 系统键值，seq 单调有序）：渲染器按 seq 执行——
  * `video`/`cutscene` 发 play，`pause_video`/`resume_video`/`seek_video`/`stop_video`
  * 各发对应命令。cutscene = play 且 cutscene:true（引擎进入 video 等待）。
@@ -79,27 +67,3 @@ export type VideoCommand =
   | { kind: "resume"; seq: number }
   | { kind: "seek"; seconds: number; seq: number }
   | { kind: "stop"; seq: number };
-
-/**
- * 视频端口：实现 = infra 适配器（WebView 解码，舞台层覆盖呈现）。
- * 入参为已解析 URL（资源寻址归 ResourcePort）。
- * `onEnded`：自然播放结束回调（cutscene 由它解除引擎等待；非阻塞 video 可忽略）。
- */
-export interface VideoPort {
-  play(
-    url: string,
-    options: { volume: number; loop: boolean },
-    onEnded?: () => void,
-  ): void;
-  pause(): void;
-  resume(): void;
-  seek(seconds: number): void;
-  stop(): void;
-  dispose(): void;
-  /**
-   * 实例级 z：运行期改本层 z（源 = `video`/`cutscene` 命令上的 `z`；
-   * 宿主在实例 z 变化时调用，值由 `resolveInstanceZ("video", 实例z, 表)` 解析）。
-   * 可选能力：未实现者保持构造期 `zIndex` 行为（调用方用 `?.` 容错）。
-   */
-  setZIndex?(z: number): void;
-}

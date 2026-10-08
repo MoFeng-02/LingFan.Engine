@@ -7,16 +7,12 @@ export { createTauriSavePort, createWebStorageSavePort } from "./save";
 export {
   createWebAudioPort,
   type WebAudioPortOptions,
-} from "./media/audioPort";
-export {
   createWebVideoPort,
   type WebVideoPortOptions,
-} from "./media/videoPort";
-export {
   createBlobSource,
   type BlobSource,
   type BlobSourceOptions,
-} from "./media/blobSource";
+} from "./media";
 export {
   createStaticResourcePort,
   createTauriEncryptedResourcePort,
@@ -41,10 +37,13 @@ export {
   pickProjectDirectory,
   supportsDirectoryPicker,
   type BlobUrlOptions,
-  type DiagnosticSupply,
-  type LastProjectHandleStore,
-  type ProjectFileSource,
 } from "./resources";
+// 供给面契约定义在引擎里（编辑器与适配器共用同一份）：此处转发只为兼容既有取用点
+export type {
+  DiagnosticSupply,
+  LastProjectHandleStore,
+  ProjectFileSource,
+} from "@lingfan/engine";
 export {
   createFetchProjectFilesPort,
   loadProject,

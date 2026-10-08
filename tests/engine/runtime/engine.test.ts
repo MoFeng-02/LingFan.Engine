@@ -1078,8 +1078,7 @@ describe("func/call/return", () => {
       { op: "say", text: "s" },
     ]);
     engine.start();
-    // 码由 `call-unknown-function` 改为 `call-unknown-target`：`call` 的目标
-    // 现在**既可以是 func 也可以是列**（「func 或 label」）
+    // `call` 的目标现在**既可以是 func 也可以是列**（「func 或 label」）
     // ⇒ 「目标不存在」比「函数未注册」准确。
     expect(errorPayload(errors[0]).code).toBe("call-unknown-target");
     dispose();

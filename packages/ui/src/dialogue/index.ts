@@ -9,3 +9,11 @@ export {
   type DialogueLineInput,
   type DialogueLineView,
 } from "./textView";
+export {
+  builtinBubbleTemplate,
+  createDialogueTemplateRegistry,
+  type DialogueTemplateFn,
+  type DialogueTemplateInput,
+  type DialogueTemplateRegistry,
+  type DialogueTemplateView,
+} from "./templates";

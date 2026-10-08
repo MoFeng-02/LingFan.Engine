@@ -16,14 +16,14 @@
  *
  * 由调用方按**自身频率**选择，引擎不猜（猜错要么丢 UI 响应，要么事件风暴）。
  */
+import { SHORT_ID_PATTERN } from "./identifiers";
+import type { AbortHandle } from "./runtime";
 
-/** 外部玩法系统标识形态：小写字母开头，小写字母/数字/`_`/`-`，1..32（与扩展 id 同口径） */
-export const GAME_SYSTEM_ID_PATTERN = /^[a-z][a-z0-9_-]{0,31}$/;
-
-/** 玩法系统写状态的命名空间前缀（`game.<systemId>.`）——与作者变量、`ext.` 三方隔离 */
-export function gameScopedKey(systemId: string, key: string): string {
-  return `game.${systemId}.${key}`;
-}
+/**
+ * 外部玩法系统标识的合法形态：小写字母开头，小写字母/数字/`_`/`-`，1..32。
+ * 具体写法与理由见 `identifiers.ts`（与扩展 id 共用同一套，不各写一份）。
+ */
+export const GAME_SYSTEM_ID_PATTERN = SHORT_ID_PATTERN;
 
 /**
  * 外部状态写入端口（宿主组合根持有；外部玩法系统只经它写引擎状态）。
@@ -71,8 +71,8 @@ export interface GameStateWriter {
 export interface InteractionContext {
   /** 该系统的配置（`interaction` op 的 `config`，原样透传，引擎不解释） */
   readonly config: Readonly<Record<string, unknown>>;
-  /** 中止信号：回溯 / 导航 / 读档 / 销毁时 abort，外部系统据此卸载（不得回填结果） */
-  readonly signal: AbortSignal;
+  /** 中止句柄：回溯 / 导航 / 读档 / 销毁时 `aborted` 置位，外部系统据此卸载（不得回填结果） */
+  readonly signal: AbortHandle;
   /** 本次挂载的单调序号（重放 = 新序号新 signal） */
   readonly seq: number;
 }
@@ -91,10 +91,13 @@ export interface InteractionResult {
 /**
  * 玩法系统工厂：宿主注册到注册表后，引擎等待期经 `interaction.mount` 事件唤起。
  *
- * **不得抛**（同 minigame 约束）；返回的 Promise 在 `signal` abort 后应尽快结束
+ * **不得抛**（同 minigame 约束）；返回的 Promise 在 `signal.aborted` 置位后应尽快结束
  * （引擎不再接收其结果，见 `resolveInteraction` 的等待态守卫）。
+ *
+ * `host` 是宿主提供的挂载容器，契约层只承诺「有个可挂载的东西」，不承诺它是什么类型
+ * （契约层只用语言核心类型表达）；宿主在自己的实现里把它收窄回具体容器类型即可。
  */
 export type InteractionFactory = (
-  host: HTMLElement,
+  host: unknown,
   ctx: InteractionContext,
 ) => Promise<InteractionResult>;

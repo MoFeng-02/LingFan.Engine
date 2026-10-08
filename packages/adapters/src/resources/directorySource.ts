@@ -26,7 +26,10 @@ import {
   STORIES_DIR,
   synthesizeDegradedManifest,
   type DegradedOpen,
+  type DiagnosticSupply,
   type FileStamp,
+  type LastProjectHandleStore,
+  type ProjectFileSource,
   type ProjectFilesPort,
   type ProjectWriteReport,
   type ProjectWriterPort,
@@ -39,19 +42,14 @@ import {
 import { normalizeResourceId } from "./resourcePort";
 
 /**
- * 目录取径的统一供给面：逻辑路径 → 原始文本 / 文件对象。
- * 两类取径各一实现（FSA 句柄 / 目录 input 文件表），端口构造只依赖此面。
+ * 这三个供给契约定义在引擎里（编辑器与适配器共用同一份）：这里只转发名字，
+ * 让既有取用点（资源域出口与包出口）继续可用。
  */
-export interface ProjectFileSource {
-  /** 资源根名（诊断与界面显示；FSA = 句柄名，文件表 = 路径前缀末段） */
-  readonly name: string;
-  /** 资源根内全部文件逻辑路径（`/` 分隔、字典序确定、已跳点文件） */
-  paths(): Promise<readonly string[]>;
-  /** 按逻辑路径读原始文本（UTF-8；不存在/不可读必须抛错，不静默降级） */
-  text(path: string): Promise<string>;
-  /** 按逻辑路径取文件对象（Blob URL 供给用；不存在必须抛错） */
-  file(path: string): Promise<File>;
-}
+export type {
+  DiagnosticSupply,
+  LastProjectHandleStore,
+  ProjectFileSource,
+} from "@lingfan/engine";
 
 /** 点文件/点目录（任何一层）：资源根里 `.*` 一律不是工程内容（Rust 跳点文件同口径，目录一并跳） */
 function isDotName(name: string): boolean {
@@ -475,24 +473,6 @@ export function createSourceResourcePort(
 /** overlay 根目录名（Rust `LANG_ROOT` 同名） */
 const LANG_ROOT = "Lang";
 
-/** 编辑器诊断的两份供给侧数据（= `analyzeStory` 的可选入参形态） */
-export interface DiagnosticSupply {
-  /** 资源根内实际文件的**逻辑路径**集合（相对资源根，原样） */
-  resourceFiles: ReadonlySet<string>;
-  /** overlay 译文键并集（`Lang/**` 全部语言；无 `Lang/` = 空集） */
-  overlayKeys: ReadonlySet<string>;
-  /**
-   * **按语言分组**的 overlay 键（本地化工作台用；契约**只增**）。
-   *
-   * 为何与 `overlayKeys` 并存而不替换：诊断的「多余译文」判据要的是**并集**口径
-   * （任一语言多译即报），而工作台要的是**逐语言**口径（每个语言各自缺哪些）
-   * ⇒ 两种口径都是对的，合成一个会毁掉其中一个。
-   *
-   * 键 = 语言码（目录形态 `Lang/{lang}/**` 取 `{lang}`；单文件 `Lang/{lang}.json` 取文件名）。
-   */
-  overlayKeysByLang: ReadonlyMap<string, ReadonlySet<string>>;
-}
-
 /** 从 overlay 逻辑路径取语言码（`Lang/en/main.json` → `en`；`Lang/en.json` → `en`） */
 export function langOfOverlayPath(path: string): string | undefined {
   if (!isOverlayPath(path)) return undefined;
@@ -826,17 +806,6 @@ export async function ensureReadAccess(
   }
   if (dir.requestPermission === undefined) return true;
   return (await dir.requestPermission({ mode: "read" })) === "granted";
-}
-
-/**
- * 上次工程句柄的持久化（IndexedDB）：句柄是可结构化克隆对象，IDB 原生支持存取；
- * 下次启动据此提供「重新打开上次工程」一键（免开选择器）。**任何 IDB 失败
- * （隐私模式 / 配额 / 不支持）一律静默**——功能退化为不存在，编辑器不受影响。
- * 保存入口 = `pickProjectDirectory` / 重开成功后由组合根调用（真实手势路径上）。
- */
-export interface LastProjectHandleStore {
-  load(): Promise<FileSystemDirectoryHandle | undefined>;
-  save(handle: FileSystemDirectoryHandle): Promise<void>;
 }
 
 const LAST_PROJECT_DB = "lingfan-editor";

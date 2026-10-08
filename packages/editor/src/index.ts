@@ -26,7 +26,7 @@ export {
   describeForm,
   describeNodeLabel,
   listOps,
-} from "./schema/forms";
+} from "./schema";
 export {
   describeElement,
   elementLabel,
@@ -34,7 +34,7 @@ export {
   specificAttrsOf,
   UNIMPLEMENTED_ELEMENT_ATTRS,
   type ElementFormDescriptor,
-} from "./schema/elementForms";
+} from "./schema";
 export {
   ELEMENT_TYPE_GROUPS,
   listOpGroups,
@@ -42,15 +42,15 @@ export {
   OP_GROUP_ORDER,
   type ElementTypeGroup,
   type OpGroupEntries,
-} from "./schema/elementPalette";
-export { draggedPosition, parseNumericPosition } from "./element/drag";
+} from "./schema";
+export { draggedPosition, parseNumericPosition } from "./element";
 export {
   createElementDraft,
   planElementDrop,
   type DropContainerHit,
   type ElementDropPlan,
-} from "./element/dragCreate";
-export { OP_SCHEMAS, validateCommand } from "./schema/opSchemas";
+} from "./element";
+export { OP_SCHEMAS, validateCommand } from "./schema";
 /**
  * 内建 op 判别联合（op 决定字段）+ 单 op 命令类型 + 标量值口径——
  * 全部派生自 op schema 单一事实源；词汇层 builder 返回与裸写命令注解共用。
@@ -60,22 +60,22 @@ export type {
   ScriptCommand,
   ScriptOpName,
   ScriptValue,
-} from "./schema/opSchemas";
+} from "./schema";
 /** 词汇层构建期轻类型校验警告（expr/cond 组装时按引擎类型规则产出；drain 取走） */
-export type { ExpressionWarning } from "./script/expr";
+export type { ExpressionWarning } from "./script";
 export {
   BUILTIN_OP_SURFACE,
   mergeOpMeta,
   mergeOpSchemas,
   mergeOpSurface,
   type OpSurface,
-} from "./schema/surface";
-export { validateStory } from "./schema/validation";
+} from "./schema";
+export { validateStory } from "./schema";
 export {
   walkCommandBodies,
   walkStoryCommands,
   walkStoryElements,
-} from "./schema/walk";
+} from "./schema";
 
 export { analyzeStory, extractExpressionRefs, indexStory } from "./diagnostics";
 export {
@@ -87,12 +87,12 @@ export {
   type DiagnosticGroup,
   type DiagnosticSummary,
   type SeverityFilter,
-} from "./diagnostics/grouping";
+} from "./diagnostics";
 export {
   diagnosticBrief,
   splitDiagnosticMessage,
   type DiagnosticMessageParts,
-} from "./diagnostics/message";
+} from "./diagnostics";
 export {
   buildChapterIndex,
   chapterDirOf,
@@ -153,7 +153,7 @@ export {
   type SelectionDescription,
   type SelectionKind,
   type SelectionNodeKind,
-} from "./editing/pointers";
+} from "./editing";
 export {
   addColumn,
   columnContainers,
@@ -166,15 +166,15 @@ export {
   renameColumn,
   suggestColumnId,
   updateCommandField,
-} from "./editing/storyOps";
-export { EditorSession } from "./editing/session";
+} from "./editing";
+export { EditorSession } from "./editing";
 export {
   branchPointerToCommand,
   isBranchTarget,
   planBranchInsertion,
   type BranchColumnLike,
   type BranchPlan,
-} from "./editing/graphConnect";
+} from "./editing";
 export {
   addGroup,
   assignColumn,
@@ -189,19 +189,19 @@ export {
   renameGroup,
   serializeGroupingView,
   toggleCollapsed,
-} from "./editing/columnGrouping";
+} from "./editing";
 export type {
   ColumnGroup,
   ColumnGroupingView,
   GroupedLayout,
   KeyValueStorage,
-} from "./editing/columnGrouping";
+} from "./editing";
 export {
   describeNormalization,
   NORMALIZATION_NOTICE_PREF_KEY,
   readSkipNormalizationNotice,
   writeSkipNormalizationNotice,
-} from "./editing/saveNormalization";
+} from "./editing";
 /**
  * 步骤布局：列内切分为「步骤」（等待态边界）+ 列间分支边。
  * 边界判据取自引擎的等待声明表（`@lingfan/engine` 的 `waitingStateOfOp`），本模块不做逐 op 判定。
@@ -215,7 +215,7 @@ export {
   type StepLayout,
   type StepOptions,
   type StoryStep,
-} from "./layout/steps";
+} from "./layout";
 
 /**
  * Script 词汇层：构建期作者词汇——builder 全部产出 StoryCommand

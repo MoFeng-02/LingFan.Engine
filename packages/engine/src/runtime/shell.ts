@@ -9,58 +9,37 @@
  * 逐键合并工程覆盖 `project.json shell.*`，非法键/值一律忽略回默认（不猜、不抛）。
  */
 
-import { isOrientationMode, SYS, type OrientationMode } from "../contracts";
-
-/* ============================ 层级（z 序）============================ */
-
-/** 舞台渲染层 id（与 RenderTargets 及舞台 DOM 一一对应） */
-export type LayerId =
-  | "stage"
-  | "video"
-  | "dialogue"
-  | "choices"
-  | "minigame"
-  | "notifications"
-  | "toolbar"
-  | "history"
-  | "prefs";
-
-export type LayerZTable = Record<LayerId, number>;
-export type LayerZOverrides = Partial<Record<LayerId, number>>;
-
-export const LAYER_IDS: readonly LayerId[] = [
-  "stage",
-  "video",
-  "dialogue",
-  "choices",
-  "minigame",
-  "notifications",
-  "toolbar",
-  "history",
-  "prefs",
-];
+import {
+  DEFAULT_LAYER_Z,
+  DEFAULT_SAVES_CONFIG,
+  isOrientationMode,
+  LAYER_IDS,
+  SYS,
+  type LayerId,
+  type LayerZTable,
+  type OrientationMode,
+  type SavesConfig,
+} from "../contracts";
 
 /**
- * 内建默认 z（语义化基线，间隔 100 便于工程插入自定义层）：
- * - `stage`(0)：舞台容器（背景 + 元素）——位于 video(100) 之下，元素间叠放在舞台内独立比较（两级叠放）
- * - `video`(100)：过场视频——盖舞台，**不盖 say**（对话层在 video 等待期让位）
- * - `dialogue`(999)：say/对话层——内容层中最高
- * - `choices`(1100)：menu/input——对话层之上（等待期对话层已让位）
- * - `minigame`(1200)：整屏小游戏
- * - `notifications`(1300)：toast
- * - `toolbar`(1400) / `history`(1500) / `prefs`(1500)：常驻 HUD 与面板
+ * 层级与存档壳的契约类型定义在契约层（`contracts/shell.ts`），
+ * 此处按原路径转出，既有消费方无需改动即可继续从本模块取；
+ * 收口时统一改走包出口。
  */
-export const DEFAULT_LAYER_Z: LayerZTable = {
-  stage: 0,
-  video: 100,
-  dialogue: 999,
-  choices: 1100,
-  minigame: 1200,
-  notifications: 1300,
-  toolbar: 1400,
-  history: 1500,
-  prefs: 1500,
-};
+export {
+  DEFAULT_LAYER_Z,
+  DEFAULT_SAVES_CONFIG,
+  LAYER_IDS,
+} from "../contracts";
+export type {
+  LayerId,
+  LayerZOverrides,
+  LayerZTable,
+  SavesConfig,
+  SavesThumbnailConfig,
+} from "../contracts";
+
+/* ============================ 层级（z 序）============================ */
 
 function isFiniteNonNegative(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
@@ -129,28 +108,6 @@ export function instanceZLayer(key: string): LayerId | undefined {
 }
 
 /* ============================ 存档壳配置 ============================ */
-
-export interface SavesThumbnailConfig {
-  /** 缩略图宽（px） */
-  width: number;
-  /** 缩略图高（px） */
-  height: number;
-  /** JPEG 质量（0..1） */
-  quality: number;
-  /** 是否在缩略图上绘制文本（说话人/正文/时间戳） */
-  showText: boolean;
-}
-
-export interface SavesConfig {
-  /** 存档槽位数（slot_1..slot_N） */
-  slots: number;
-  thumbnail: SavesThumbnailConfig;
-}
-
-export const DEFAULT_SAVES_CONFIG: SavesConfig = {
-  slots: 6,
-  thumbnail: { width: 320, height: 180, quality: 0.7, showText: true },
-};
 
 function finiteInt(value: unknown, min: number, max: number): number | null {
   return typeof value === "number" &&

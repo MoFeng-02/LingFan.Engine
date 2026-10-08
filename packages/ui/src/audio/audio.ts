@@ -2,6 +2,9 @@
  * 音频渲染：核心只写状态，此处把状态差量翻译成端口动作（可测纯逻辑），
  * 由适配器（infra/audioPort）落地播放；资源寻址经 ResourcePort，
  * 播放位置回写走帧级键。
+ *
+ * 状态经引擎的类型化读口读取（`createStateReader`）：通道形状校验与降级在引擎侧
+ * 只有一份，本层只负责「差量 → 端口动作」。
  */
 import type {
   AudioChannel,
@@ -11,7 +14,7 @@ import type {
   ResourcePort,
   StoryEngine,
 } from "@lingfan/engine";
-import { SYS } from "@lingfan/engine";
+import { createStateReader, SYS } from "@lingfan/engine";
 
 /** 渲染视图：四通道状态 + bgm 播放位置（帧级键直读，不进事件流） */
 export interface AudioView {
@@ -54,53 +57,6 @@ export const EMPTY_AUDIO_VIEW: AudioView = {
   bgmPosition: 0,
 };
 
-/**
- * 通道状态读入校验（信任边界：状态可来自被篡改的存档或异版本载荷）：
- * 形态非法一律降级为 null / 安全默认值，绝不把畸形值翻译成播放动作。
- */
-function channelState(
-  engine: StoryEngine,
-  key: string,
-): AudioChannelState | null {
-  const value = engine.get(key);
-  if (value === null || typeof value !== "object") return null;
-  const state = value as {
-    kind?: unknown;
-    resource?: unknown;
-    volume?: unknown;
-    loop?: unknown;
-    fadeMs?: unknown;
-    autoStop?: unknown;
-    restart?: unknown;
-    seq?: unknown;
-  };
-  const fadeMs =
-    typeof state.fadeMs === "number" &&
-    Number.isFinite(state.fadeMs) &&
-    state.fadeMs > 0
-      ? state.fadeMs
-      : 0;
-  if (state.kind === "stop") return { kind: "stop", fadeMs };
-  if (state.kind !== "play") return null;
-  if (typeof state.resource !== "string" || state.resource === "") return null;
-  const volume =
-    typeof state.volume === "number" && Number.isFinite(state.volume)
-      ? Math.min(1, Math.max(0, state.volume))
-      : 1;
-  return {
-    kind: "play",
-    resource: state.resource,
-    volume,
-    loop: state.loop === true,
-    fadeMs,
-    ...(state.autoStop === true ? { autoStop: true } : {}),
-    ...(state.restart === true ? { restart: true } : {}),
-    ...(typeof state.seq === "number" && Number.isFinite(state.seq)
-      ? { seq: state.seq }
-      : {}),
-  };
-}
-
 /** 有效音量合成末端：op 音量 × 通道偏好（prefs 缺省/偏好 1 = 原样，不复制对象） */
 function withPrefs(
   state: AudioChannelState | null,
@@ -116,25 +72,19 @@ export function readAudioView(
   engine: StoryEngine,
   prefs?: PlayerPreferences,
 ): AudioView {
-  const position = engine.get(SYS.bgmPosition);
+  const reader = createStateReader(engine);
   return {
-    bgm: withPrefs(
-      channelState(engine, SYS.audioBgm),
-      prefs?.effectiveVolume("bgm"),
-    ),
+    bgm: withPrefs(reader.audioChannel("bgm"), prefs?.effectiveVolume("bgm")),
     ambient: withPrefs(
-      channelState(engine, SYS.audioAmbient),
+      reader.audioChannel("ambient"),
       prefs?.effectiveVolume("ambient"),
     ),
     voice: withPrefs(
-      channelState(engine, SYS.audioVoice),
+      reader.audioChannel("voice"),
       prefs?.effectiveVolume("voice"),
     ),
-    se: withPrefs(
-      channelState(engine, SYS.audioSe),
-      prefs?.effectiveVolume("se"),
-    ),
-    bgmPosition: typeof position === "number" ? position : 0,
+    se: withPrefs(reader.audioChannel("se"), prefs?.effectiveVolume("se")),
+    bgmPosition: reader.mediaPosition(),
   };
 }
 
@@ -276,6 +226,7 @@ export function createAudioRenderer(
     SYS.audioAmbient,
     SYS.audioVoice,
   ]);
+  const reader = createStateReader(engine);
   let view: AudioView = EMPTY_AUDIO_VIEW;
   /**
    * 已解析 URL 缓存（逻辑资源 → URL）：常驻曲目复用解析结果，会话结束统一 release。
@@ -346,7 +297,7 @@ export function createAudioRenderer(
   return {
     sync,
     pollPosition(): void {
-      const bgm = channelState(engine, SYS.audioBgm);
+      const bgm = reader.audioChannel("bgm");
       if (bgm === null || bgm.kind !== "play") return;
       const seconds = port.position("bgm");
       if (seconds <= 0) return;

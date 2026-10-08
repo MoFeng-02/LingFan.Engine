@@ -11,6 +11,7 @@ import {
 } from "@lingfan/editor";
 import { elementSource } from "@lingfan/ui";
 import EmptyState from "./EmptyState.vue";
+import { EDITOR_API_KEY } from "../contracts";
 import type { EmptyAction } from "../viewState";
 import { interactionIntent, shouldSuppressClick } from "../pointerIntent";
 import { snapGuides, type SnapCandidate, type SnapResult } from "../snapGuides";
@@ -72,19 +73,7 @@ function elementThumb(element: Record<string, unknown>): string | undefined {
   return undefined;
 }
 
-interface EditorApi {
-  update(pointer: string, value: unknown): void;
-  select(pointer: string | null): void;
-  /** 切换活动列文档（空态动作「去选一个场景列」用——工程级导航归宿主） */
-  selectColumn(id: string): void;
-  /** 组件拖入的落点创建（一次拖入 = 一个 undo 单元，提交在宿主会话中枢） */
-  insertElement(
-    columnPointer: string,
-    element: Record<string, unknown>,
-    parentPointer?: string,
-  ): void;
-}
-const api = inject<EditorApi>("editorApi")!;
+const api = inject(EDITOR_API_KEY)!;
 
 /**
  * 舞台编辑的**当前列 = 活动文档切片的列**（`props.story.columns[0]`）。

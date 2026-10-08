@@ -1,9 +1,11 @@
 /**
- * 故事格式契约 + 工程清单。
+ * 故事格式契约：作者写的故事文件在引擎里长什么样——命令、列、故事、工程清单与坐标。
  * op 全集渐进补齐；契约只增不改。
+ *
+ * 供给端口（语言文件从哪来）见同目录 `ports.ts`。
  */
-import type { ProjectShellConfig } from "./shell";
-import type { ElementNode } from "./element";
+import type { ProjectShellConfig } from "../shell";
+import type { ElementNode } from "../element";
 
 /** 命令：已知 op 的负载由解析器/执行器窄化校验，未知字段/未知 op fail-closed */
 export interface StoryCommand {
@@ -26,11 +28,6 @@ export interface StoryCommand {
  * **缺省 = `game`** ⇒ 既有工程零改动。
  */
 export type SceneType = "game" | "menu" | "ui";
-
-/** 场景类型判据（非法值由解析层 fail-closed，此处只做窄化） */
-export function isSceneType(value: unknown): value is SceneType {
-  return value === "game" || value === "menu" || value === "ui";
-}
 
 /** 两类列：scene（空间层）与 flow（纯流程） */
 export interface StoryColumn {
@@ -62,11 +59,6 @@ export interface StoryColumn {
   entry?: StoryCommand[];
   /** flow 专有：纯流程命令 */
   commands?: StoryCommand[];
-}
-
-/** 该列是否参与历史/存档（`type` 缺省 = game ⇒ 参与）。**单一判定点**——引擎守卫与编辑器分组共用。 */
-export function isReplayableColumn(column: Pick<StoryColumn, "type">): boolean {
-  return (column.type ?? "game") === "game";
 }
 
 /** 故事 = 列的集合（多文件组装后的运行时形态）；formatVersion 自 v1 起版本化 */
@@ -122,22 +114,6 @@ export interface ProjectManifest {
 export interface I18nOverlayFile {
   path: string;
   entries: Record<string, string>;
-}
-
-/**
- * I18N overlay 供给端口（按需加载；组合根经 EngineOptions 注入；缺省 = 原文直出）。
- * 文件列举/解密归供给侧（Rust `load_i18n_overlay`：目录 `Lang/{lang}/` 递归收集 +
- * 降级单文件 `Lang/{lang}.json` 以 `main.json` 供给）；main.json 兜底合并序归引擎
- * （mergeOverlayFiles——叙事语义，引擎侧可测）。返回列表顺序必须确定（适配器保证）；
- * Promise 拒绝 = 载入失败（引擎 fail-closed 保持原语言不变）。
- */
-export interface I18nPort {
-  loadOverlayFiles(lang: string): Promise<I18nOverlayFile[]>;
-  /**
-   * 可用语言列表（扫描 `Lang/` 子目录与单文件，恒含默认语言 zh-CN）。
-   * 可选——缺省 = ["zh-CN"]（组合根未实现时语言选择器只显默认语言）。
-   */
-  listLanguages?(): Promise<string[]>;
 }
 
 /** 坐标：故事流唯一位置 `(columnId, index)` */

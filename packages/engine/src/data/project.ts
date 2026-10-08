@@ -3,7 +3,15 @@
  * 纯函数：文件内容由平台适配器供给（WebView 无 Node——I/O 归 Rust/打包器）。
  * fail-closed：清单、文件、columnId 唯一、入口存在性任何不符 = 整次拒绝。
  */
-import type { DegradedOpen, Story, StoryColumn } from "../contracts";
+import type {
+  DegradedOpen,
+  FileStamp,
+  ProjectFileDiff,
+  SerializedProject,
+  Story,
+  StoryColumn,
+  WriteNormalizationFinding,
+} from "../contracts";
 import { isOrientationMode, isSceneType } from "../contracts";
 import {
   isSingleColumnFile,
@@ -11,6 +19,18 @@ import {
   parseStoryFile,
   StoryFormatError,
 } from "./format";
+
+/**
+ * 工程文件形态的契约类型定义在契约层（`contracts/project.ts`），
+ * 此处按原路径转出，既有消费方无需改动即可继续从本模块取；
+ * 收口时统一改走包出口。
+ */
+export type {
+  FileStamp,
+  ProjectFileDiff,
+  SerializedProject,
+  WriteNormalizationFinding,
+} from "../contracts";
 
 export class ProjectAssemblyError extends Error {
   readonly issues: string[];
@@ -251,29 +271,6 @@ export class ProjectSerializationError extends Error {
     this.name = "ProjectSerializationError";
     this.issues = issues;
   }
-}
-
-/** 期望文件全集（逻辑路径相对资源根 → 完整文本；键按码元序） */
-export interface SerializedProject {
-  readonly files: Map<string, string>;
-  /**
-   * **列 id → 本次实际落盘路径**（写回回执）。
-   *
-   * **为什么不回填进 `StoryColumn.sourcePath`**：`sourcePath` 是编辑期记账，
-   * 塞进 Story 会让「内存态」与「序列化往返结果」不再深等（每次保存都多一个字段），
-   * 且**重命名**时它会跟着变——但「这列落在哪个文件」是**写回的事实**，不是列的属性。
-   * 归入回执 ⇒ Story 保持纯语义，往返仍深等。
-   *
-   * 用途：编辑器保存后据此更新自己的记账（下次保存不必再猜）。
-   */
-  readonly written: ReadonlyMap<string, string>;
-}
-
-export interface ProjectFileDiff {
-  /** 需写入（新增或内容不同）；键按码元序 */
-  readonly changes: Map<string, string>;
-  /** 需删除的陈旧故事文件（仅 `Stories/**`）；码元序 */
-  readonly deletes: readonly string[];
 }
 
 /** Windows/APFS 上非法的文件名字符（`: * ? " < > |` + 路径分隔符） */
@@ -613,12 +610,6 @@ export function diffProjectFiles(
   return { changes, deletes };
 }
 
-/** 文件指纹（FSA `File` 与 Rust `metadata` 都能给出的最小面）——写回冲突检测用 */
-export interface FileStamp {
-  lastModified: number;
-  size: number;
-}
-
 /**
  * 写回冲突判定：
  * 打开工程的指纹快照 vs 保存时刻磁盘现状，不一致 = 外部改动会被**静默覆盖**。
@@ -656,17 +647,6 @@ export function conflictMessage(paths: readonly string[]): string {
 }
 
 // —— 写回规范化的保存前检测 ——
-
-/**
- * 保存将触发的「规范化」动作（文件级）。列序按 id 固化与 `Stories/` 空目录不清理
- * 没有文件级证据，由界面静态文案一并说明。
- */
-export interface WriteNormalizationFinding {
-  /** `.story` 文本形态 → 将被同名 JSON 列文件替换（内容等价转换，原文件移除） */
-  readonly toConvert: readonly string[];
-  /** 其余非规范文件 → 保存后将从磁盘移除（多列拆分 / 文件名与列 id 不一致 / 不再被引用） */
-  readonly toRemove: readonly string[];
-}
 
 /**
  * 对比「打开时磁盘上的故事文件」与当前故事的标准布局（每列一个 `Stories/<id>.json`，

@@ -121,25 +121,17 @@ export {
   type CellHandle,
   type GuardNameRegistry,
   type KnownGuardName,
-} from "./words/cells";
+} from "./words";
 
 // —— 叙事 ——
-export {
-  say,
-  option,
-  menu,
-  input,
-  notify,
-  nvl,
-  character,
-} from "./words/narrative";
+export { say, option, menu, input, notify, nvl, character } from "./words";
 export type {
   MenuOption,
   SayOptions,
   NotifyOptions,
   NvlMode,
   CharacterOptions,
-} from "./words/narrative";
+} from "./words";
 
 // —— 流程 ——
 export {
@@ -162,7 +154,7 @@ export {
   continueLoop,
   assert,
   guard,
-} from "./words/flow";
+} from "./words";
 
 // —— 变量 ——
 export {
@@ -176,10 +168,10 @@ export {
   arrayPop,
   dict,
   dictSet,
-} from "./words/vars";
+} from "./words";
 
 // —— 存档 / 音频 / 视频 / 小游戏 ——
-export { save, load, autoSave, saveDelete } from "./words/save";
+export { save, load, autoSave, saveDelete } from "./words";
 export {
   bgm,
   stopBgm,
@@ -188,13 +180,13 @@ export {
   stopAmbient,
   voice,
   stopVoice,
-} from "./words/audio";
+} from "./words";
 export type {
   PlayOptions,
   BgmOptions,
   StopOptions,
   VoiceOptions,
-} from "./words/audio";
+} from "./words";
 export {
   video,
   cutscene,
@@ -203,15 +195,15 @@ export {
   resumeVideo,
   stopVideo,
   videoSkipable,
-} from "./words/video";
-export type { VideoOptions, CutsceneOptions } from "./words/video";
-export { minigame, reward } from "./words/minigame";
-export type { MinigameOptions } from "./words/minigame";
-export { interaction } from "./words/interaction";
-export type { InteractionOptions } from "./words/interaction";
+} from "./words";
+export type { VideoOptions, CutsceneOptions } from "./words";
+export { minigame, reward } from "./words";
+export type { MinigameOptions } from "./words";
+export { interaction } from "./words";
+export type { InteractionOptions } from "./words";
 
 // —— 扩展 ——
-export { extOp } from "./words/extension";
+export { extOp } from "./words";
 
 // —— 元素 ——
 export {
@@ -227,7 +219,7 @@ export {
   transition,
   shake,
   textTypewriter,
-} from "./words/elements";
+} from "./words";
 export type {
   ShowOptions,
   AnimateOptions,
@@ -235,7 +227,7 @@ export type {
   ShakeOptions,
   TypewriterOptions,
   DialogWindowMode,
-} from "./words/elements";
+} from "./words";
 
 // —— 复合词 ——
 export {
@@ -244,5 +236,5 @@ export {
   textElement,
   imageElement,
   sceneType,
-} from "./words/composite";
-export type { ElementOptions } from "./words/composite";
+} from "./words";
+export type { ElementOptions } from "./words";
