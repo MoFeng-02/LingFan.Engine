@@ -8,9 +8,11 @@
 //!    Tauri 2 自动转换，参数名含下划线时两侧书写即分叉——互锁点）
 //! 4. 负载形状：Rust serde 输出键必须与 TS 期待接口键一致（SlotSummary 契约——
 //!    save_count/slot/timestamp/mode 曾是无测试的隐性契约）
-//! 5. Kotlin 自注册插件字符串契约（gen/android 平台适配层）：插件标识（= Kotlin 包名）/
-//!    命令名（= @Command 方法名）/参数与响应键/方向模式字面量——Rust ↔ Kotlin 之间同样是
-//!    编译期不可见的字符串契约，失配只在真机运行时才炸
+//! 5. Android JNI 字符串契约：方法名 / 方法签名 / `ActivityInfo` 常量 / 三态字面量——
+//!    JNI 调用编译期完全不校验，方法名拼错只在真机静默失败；本测试兼守「自维护 Kotlin
+//!    插件不得回流」（历史形态是 Rust 契约 + Kotlin 实现成对演进，两侧失配无编译期信号）
+//! 6. iOS Swift 自注册插件字符串契约（C 入口符号 / 命令名 / 参数键 / 模式字面量）——
+//!    Swift 在本机（Windows）不可编译，源断言是当前唯一可自动化的防线
 //!
 //! TS 侧编组行为已由契约替身测试覆盖（tests/adapters/**），本模块只补跨边界字符串契约；
 //! 局限注明：invoke 泛型提取不支持嵌套尖括号（当前代码库无此形态）。
@@ -312,89 +314,74 @@ const y = await invoke("real_cmd", { foo: 1 });"#;
         assert_eq!(missing, vec!["other_cmd".to_string()]);
     }
 
-    /// 自注册 Kotlin 插件源（gen/android 平台适配层）
-    fn kotlin_plugin_source(pkg: &str, file: &str) -> String {
-        let path = crate_dir()
-            .join("gen/android/app/src/main/java/com/langfeng/lingfanengine")
-            .join(pkg)
-            .join(file);
-        fs::read_to_string(&path).unwrap_or_else(|e| panic!("读 Kotlin 插件源 {pkg}/{file}：{e}"))
-    }
-
     fn rust_source(file: &str) -> String {
         fs::read_to_string(crate_dir().join("src").join(file))
             .unwrap_or_else(|e| panic!("读 {file}：{e}"))
     }
 
+    /// Android 自维护 Kotlin 插件已退役（供给收进 APK-ZIP 直读，方向收进 JNI 直调），
+    /// 本测试锁住「不再回流」并固定 JNI 字符串面。
+    ///
+    /// 为什么仍需测试：JNI 调用是**纯字符串契约**（类方法名 `setRequestedOrientation`、
+    /// 签名 `(I)V`、`ActivityInfo` 常量），编译期完全不校验——方法名拼错只在真机静默失败。
+    /// 这些字面量在桌面门禁下也只能靠源断言（Android cfg 分支桌面编译不到）。
     #[test]
-    fn kotlin_plugin_string_contracts_match_rust() {
-        // 自注册 Kotlin 插件与 Rust 之间同样是纯字符串
-        // 契约（插件标识 = Kotlin 包名 / 命令名 = @Command 方法名 / 参数与响应键 / 模式字面量），
-        // 编译期不可见：缺了互锁，失配只在真机运行时才炸。
-        let shell_kt = kotlin_plugin_source("shell", "ShellPlugin.kt");
+    fn android_jni_string_contracts_match_platform_api() {
         let shell_rs = rust_source("shell.rs");
-        let assets_kt = kotlin_plugin_source("assets", "AssetListPlugin.kt");
         let fs_rs = rust_source("resource_fs.rs");
+        let lib_rs = lib_rs_text();
 
-        // 插件标识必须等于 Kotlin 包名（register_android_plugin 内 replace('.', '/') 拼类路径）
-        assert!(
-            shell_kt.contains("package com.langfeng.lingfanengine.shell"),
-            "ShellPlugin.kt 包名漂移"
-        );
-        assert!(
-            shell_rs.contains("\"com.langfeng.lingfanengine.shell\""),
-            "Rust 注册的 shell 插件标识与 Kotlin 包名失配（运行时找不到类）"
-        );
-        assert!(
-            assets_kt.contains("package com.langfeng.lingfanengine.assets"),
-            "AssetListPlugin.kt 包名漂移"
-        );
-        assert!(
-            fs_rs.contains("\"com.langfeng.lingfanengine.assets\""),
-            "Rust 注册的 asset 插件标识与 Kotlin 包名失配"
-        );
-
-        // 命令名 == Kotlin @Command 方法名；参数键 == @InvokeArg 字段名
-        assert!(
-            shell_kt.contains("fun setOrientation("),
-            "Kotlin 缺 setOrientation 命令"
-        );
-        assert!(
-            shell_rs.contains("\"setOrientation\""),
-            "Rust 调用的命令名与 Kotlin 失配"
-        );
-        assert!(shell_kt.contains("mode: String"), "Kotlin 缺 mode 参数");
-        assert!(shell_rs.contains("\"mode\""), "Rust 负载键 mode 缺失");
-        assert!(assets_kt.contains("fun list("), "Kotlin 缺 list 命令");
-        assert!(fs_rs.contains("\"list\""), "Rust 调用的枚举命令名失配");
-        assert!(assets_kt.contains("path: String"), "Kotlin 缺 path 参数");
-        assert!(fs_rs.contains("\"path\""), "Rust 枚举负载键 path 缺失");
-
-        // 方向模式字面量：Rust OrientationMode 三态 == Kotlin when 分支
-        for mode in ["auto", "portrait", "landscape"] {
+        // ① 自维护 Kotlin 插件不得回流（历史包路径：assets / shell）
+        for legacy in ["com/langfeng/lingfanengine/assets", "com/langfeng/lingfanengine/shell"] {
+            let dir = crate_dir().join("gen/android/app/src/main/java").join(legacy);
             assert!(
-                shell_kt.contains(&format!("\"{mode}\"")),
-                "Kotlin 缺方向模式 {mode}"
+                !dir.exists(),
+                "自维护 Kotlin 插件目录不应存在：{}（供给与方向已收进 Rust）",
+                dir.display()
             );
+        }
+        assert!(
+            !fs_rs.contains(concat!("register_", "android_plugin")),
+            "resource_fs 不应再注册自维护 Android 插件"
+        );
+
+        // ② JNI 调用面字面量（方法名 / 签名 / 常量）——与 Android 平台 API 对齐
+        assert!(
+            shell_rs.contains("\"setRequestedOrientation\""),
+            "方向 JNI 方法名缺失或漂移（须为 Activity.setRequestedOrientation）"
+        );
+        assert!(
+            shell_rs.contains("\"(I)V\""),
+            "方向 JNI 方法签名缺失或漂移（须为接收单个 int 的 void 方法）"
+        );
+        // 常量映射：UNSPECIFIED(-1) / PORTRAIT(1) / LANDSCAPE(0)
+        for (mode, constant) in [("Auto", -1), ("Portrait", 1), ("Landscape", 0)] {
+            assert!(
+                shell_rs.contains(&format!("OrientationMode::{mode} => {constant}")),
+                "方向常量映射漂移：{mode} 应为 {constant}"
+            );
+        }
+        // 三态字面量（TS 契约面）
+        for mode in ["auto", "portrait", "landscape"] {
             assert!(
                 shell_rs.contains(&format!("\"{mode}\"")),
                 "Rust 缺方向模式 {mode}"
             );
         }
 
-        // 响应键：Kotlin JSObject 键 == Rust serde 结构体字段
-        for key in ["entries", "dir", "path"] {
-            assert!(
-                assets_kt.contains(&format!("\"{key}\"")),
-                "Kotlin 响应缺键 {key}"
-            );
-        }
+        // ③ Android 侧不再有 Kotlin 插件注册，且 apkzip 插件是唯一供给装配点
         assert!(
-            fs_rs.contains("entries: Vec<AssetListEntry>"),
-            "Rust 响应结构缺 entries"
+            !lib_rs.contains("asset_list_plugin"),
+            "lib.rs 不应再装配 Kotlin asset 插件"
         );
-        assert!(fs_rs.contains("pub dir: bool"), "Rust 响应结构缺 dir");
-        assert!(fs_rs.contains("pub path: String"), "Rust 响应结构缺 path");
+        assert!(
+            !lib_rs.contains("shell::android_plugin"),
+            "lib.rs 不应再装配 Kotlin shell 插件"
+        );
+        assert!(
+            lib_rs.contains("apk_zip_fs_plugin"),
+            "lib.rs 必须装配 APK-ZIP 供给插件"
+        );
     }
 
     #[test]

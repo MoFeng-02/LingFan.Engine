@@ -118,9 +118,10 @@ export const ELEMENT_ATTRIBUTES: ReadonlySet<string> = new Set([
   "color",
   "fontColor",
   "textColor",
-  // 交互（优先级：disabled > nav > cmd > hover_* > selected_*）
+  // 交互（点击优先级：disabled > nav > ops > cmd；视觉态 hover_* / selected_* / disabled_* 与点击正交）
   "disabled",
   "nav",
+  "ops",
   "cmd",
   "value",
   "hover_source",
@@ -128,6 +129,9 @@ export const ELEMENT_ATTRIBUTES: ReadonlySet<string> = new Set([
   "hover_opacity",
   "selected_source",
   "selected_color",
+  "disabled_source",
+  "disabled_color",
+  "disabled_opacity",
   // Grid 附着
   "col",
   "row",
@@ -188,7 +192,12 @@ export const ELEMENT_SPECIFIC_ATTRS: Readonly<Record<string, readonly string[]>>
     stack: ["direction", "spacing"],
     stackpanel: ["direction", "spacing"],
     image: ["stretch"],
-    imagebutton: ["stretch", "hover_source", "selected_source"],
+    imagebutton: [
+      "stretch",
+      "hover_source",
+      "selected_source",
+      "disabled_source",
+    ],
     portrait: ["stretch"],
     slider: ["min", "max", "orientation"],
     progressbar: ["min", "max"],

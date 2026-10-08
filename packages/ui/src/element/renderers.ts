@@ -11,7 +11,7 @@ import {
   elementSource,
   elementStyle,
 } from "./style";
-import { hasElementInteraction } from "./interaction";
+import { hasElementInteraction, isElementDisabled } from "./interaction";
 import type {
   ElementRegistry,
   ElementRenderContext,
@@ -47,10 +47,43 @@ function createRoot(tag: string, ctx: ElementRenderContext): HTMLElement {
   return el;
 }
 
-/** 元素是否被禁用（最高优先级 `disabled`；`enabled=false` 同义） */
+/**
+ * 元素是否被禁用（最高优先级 `disabled`；`enabled=false` 同义）。
+ * 表达式形态的 `disabled` 由宿主求值后经 `ctx.evalDisable` 注入——UI 层不解析表达式语法。
+ */
 function isDisabled(ctx: ElementRenderContext): boolean {
   const props = ctx.element.props;
-  return props.disabled === true || props.enabled === false;
+  return isElementDisabled(props, { evalDisable: ctx.evalDisable });
+}
+
+/**
+ * `disabled_*` 视觉（Ren'Py `insensitive_*` 对应物）：禁用时改前景色/透明度/换图。
+ * 与点击正交——禁用元素不挂点击，但仍有可辨识的视觉态（否则玩家只看到「点了没反应」）。
+ */
+function bindDisabled(el: HTMLElement, ctx: ElementRenderContext): void {
+  if (!isDisabled(ctx)) return;
+  const props = ctx.element.props;
+  const color =
+    typeof props.disabled_color === "string" && props.disabled_color !== ""
+      ? props.disabled_color
+      : undefined;
+  const rawOpacity = props.disabled_opacity;
+  const opacity =
+    typeof rawOpacity === "number"
+      ? String(rawOpacity)
+      : typeof rawOpacity === "string" && rawOpacity !== ""
+        ? rawOpacity
+        : undefined;
+  const source =
+    typeof props.disabled_source === "string" && props.disabled_source !== ""
+      ? props.disabled_source
+      : undefined;
+  const url = source === undefined ? undefined : ctx.resolveResource?.(source);
+  if (color !== undefined) el.style.color = color;
+  if (opacity !== undefined) el.style.opacity = opacity;
+  if (url !== undefined && el.tagName === "IMG") {
+    (el as HTMLImageElement).src = url;
+  }
 }
 
 /**
@@ -124,18 +157,23 @@ function bindSelected(el: HTMLElement, ctx: ElementRenderContext): void {
 }
 
 /**
- * 交互绑定，完整优先级：`disabled` > `nav` > `cmd` > `hover_*` > `selected_*`。
- * - 点击：`disabled` 短路（不挂任何交互）→ `nav`（核心 `navigate`）→ `cmd`（宿主命名命令）；
- *   两者的分支判定在宿主（`activate` 回调内按该优先级选路），本层只负责挂载与短路。
- * - 视觉：`hover_*` / `selected_*` 与点击正交，独立绑定。
+ * 交互绑定，完整优先级：`disabled` > `nav` > `ops` > `cmd` > `hover_*` > `selected_*`。
+ * - 点击：`disabled` 短路（不挂任何交互，但保留禁用视觉态）→ `nav`（核心 `navigate`）→
+ *   `ops`（引擎按序执行数据侧动作）→ `cmd`（宿主命名命令）；
+ *   分支判定在宿主（`activate` 回调内按该优先级选路），本层只负责挂载与短路。
+ * - 视觉：`hover_*` / `selected_*` / `disabled_*` 与点击正交，独立绑定。
  */
 function bindInteraction(el: HTMLElement, ctx: ElementRenderContext): void {
+  bindDisabled(el, ctx); // 禁用视觉态（不挂点击）
   if (isDisabled(ctx)) return; // 最高优先级：禁用即不挂任何交互
   bindHover(el, ctx);
   bindSelected(el, ctx);
 
   // 点击类交互判定走纯函数（与宿主分支同源，避免两处判定漂移）
-  if (!hasElementInteraction(ctx.element.props)) return;
+  if (
+    !hasElementInteraction(ctx.element.props, { evalDisable: ctx.evalDisable })
+  )
+    return;
   el.style.cursor = "pointer";
   // 元素层容器 pointer-events:none（不阻塞舞台推进）——可交互元素自行恢复
   el.style.pointerEvents = "auto";
