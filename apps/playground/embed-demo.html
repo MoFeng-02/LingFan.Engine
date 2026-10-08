@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>叙事覆盖层 · 嵌入演示</title>
+    <!--
+      嵌入形态的**开发期演示页**（`pnpm dev` 下访问 /embed-demo.html）。
+
+      为什么是独立页而不是正式产物：它模拟的是「宿主游戏已经在跑」的场景，
+      与参考宿主（`index.html` → `App.vue`）是两种互斥的接入形态——
+      同页共存会让两者互相污染。构建产物只含 `index.html`（另加壳用的
+      `splashscreen.html`），本页不进产物，是刻意的范围划定。
+
+      为什么必须有它：装配器若只有单测与文档，就落进「抽象做完但没人接」这一类
+      ——故留一个真实可跑的接入页（成本低于写文档，证据强于写文档）。
+    -->
+    <style>
+      /* 模拟「宿主游戏正在跑」：一个自有渲染循环的背景 + 自绘角色。
+         叙事层只覆盖其上，宿主循环不暂停——这正是嵌入形态的判据。 */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #10131c;
+        color: #c8d3f5;
+        font-family: system-ui, sans-serif;
+        overflow: hidden;
+      }
+      #game {
+        position: fixed;
+        inset: 0;
+      }
+      #hero {
+        position: absolute;
+        left: 80px;
+        bottom: 120px;
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        background: linear-gradient(160deg, #7aa2f7, #3d59a1);
+        transition: none;
+      }
+      #game-hud {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        font: 13px/1.5 ui-monospace, monospace;
+        color: #9aa5ce;
+        white-space: pre;
+      }
+      #embed {
+        position: fixed;
+        inset: 0;
+      }
+      /* 覆盖层内的最小皮肤（真实宿主可换成自己的样式；骨架类名由装配器给出） */
+      .lf-dialogue {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 0 24px 88px;
+        box-sizing: border-box;
+      }
+      .lf-dialogue .lf-speaker {
+        margin: 0 0 6px;
+        font-weight: 600;
+        font-size: 15px;
+      }
+      .lf-dialogue .lf-text {
+        margin: 0;
+        padding: 16px 20px;
+        border-radius: 12px;
+        background: rgba(16, 19, 28, 0.88);
+        border: 1px solid #2f3549;
+        font-size: 17px;
+        line-height: 1.7;
+        min-height: 1.7em;
+      }
+      .lf-dialogue .lf-hint {
+        align-self: flex-end;
+        margin-top: 6px;
+        color: #7aa2f7;
+      }
+      .lf-choices {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        box-sizing: border-box;
+      }
+      .lf-choices .lf-prompt {
+        margin: 0 0 6px;
+        font-size: 16px;
+      }
+      .lf-choices .lf-choice-row {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .lf-choices button {
+        min-width: 260px;
+        padding: 12px 18px;
+        border-radius: 10px;
+        border: 1px solid #3b4261;
+        background: rgba(26, 27, 38, 0.92);
+        color: #c8d3f5;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      .lf-choices button:hover {
+        border-color: #7aa2f7;
+        background: rgba(41, 46, 66, 0.95);
+      }
+      .lf-notifications {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+        padding: 16px;
+        box-sizing: border-box;
+        justify-content: flex-start;
+      }
+      .lf-notifications > div {
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(26, 27, 38, 0.94);
+        border: 1px solid #3b4261;
+        font-size: 14px;
+      }
+      .lf-notifications .tpl-notify-warning {
+        border-color: #e0af68;
+        color: #e0af68;
+      }
+      .lf-notifications .tpl-notify-error {
+        border-color: #f7768e;
+        color: #f7768e;
+      }
+      #error {
+        position: fixed;
+        left: 12px;
+        bottom: 12px;
+        max-width: 60vw;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: rgba(247, 118, 142, 0.14);
+        border: 1px solid #f7768e;
+        color: #f7768e;
+        font: 13px/1.5 ui-monospace, monospace;
+        display: none;
+        white-space: pre-wrap;
+      }
+      #error.on {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 宿主游戏层：自己跑自己的循环（本页只画一个方块示意） -->
+    <div id="game">
+      <div id="hero"></div>
+      <div id="game-hud"></div>
+    </div>
+    <!-- 叙事覆盖层挂载点：宿主只给这一个容器 -->
+    <div id="embed"></div>
+    <div id="error"></div>
+    <script type="module" src="/src/overlayDemo.ts"></script>
+  </body>
+</html>

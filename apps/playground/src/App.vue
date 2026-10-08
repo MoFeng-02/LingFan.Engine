@@ -39,6 +39,7 @@ import {
   createDialogueTemplateRegistry,
   createElementRegistry,
   createElementResourceResolver,
+  createInputScopeState,
   createMinigameRegistry,
   createNotifyTemplateRegistry,
   createVideoRenderer,
@@ -47,6 +48,7 @@ import {
   renderDialogueLine,
   renderElementTree,
   resolveElementAction,
+  routesToNarrative,
   shakeOffset,
   toNotifyTone,
   transitionOpacity,
@@ -55,8 +57,8 @@ import {
   type NotifyTemplateView,
   type AudioRenderer,
   type VideoRenderer,
-} from "@lingfan/ui";import { captureSaveThumbnail, captureStageComposite, collectStageMedia, stripHtml } from "./shell/thumbnail";
-import { isGameInputTarget } from "./gameZone";
+} from "@lingfan/ui";
+import { captureSaveThumbnail, captureStageComposite, collectStageMedia, stripHtml } from "./shell/thumbnail";
 // 守卫实现来自 stories:build 的 cell 生成物（源 = Stories.src/story.ts 的 cell 槽位）——
 // 组合根零手写注册；名字闭合由构建期闸门执法（故事引用 ⊆ 生成注册表）。
 import { guards as engineGuards } from "../Stories.src/gen/fun_register.g";
@@ -271,6 +273,12 @@ const interactions = new Map<
     ctx: InteractionContext & { writer: GameStateWriter },
   ) => Promise<InteractionResult>
 >();
+/**
+ * 输入域（宿主状态）：叙事层消费推进/回溯键的前提。
+ * `dialogue` = 叙事激活（默认）；玩法系统接管时切 `world` 整体让位。
+ * 与 `data-ui-zone`（控件消费优先）正交——前者管「模式」，后者管「事件目标」。
+ */
+const inputScope = createInputScopeState();
 interactions.set("walk", (host, ctx) => {
   const target = typeof ctx.config.target === "number" ? ctx.config.target : 120;
   return new Promise((resolve) => {
@@ -322,6 +330,8 @@ interactions.set("walk", (host, ctx) => {
       window.removeEventListener("keyup", onKeyUp);
       host.innerHTML = "";
     };
+    // abort（回溯/导航/读档/销毁）走 cleanup；正常抵达与异常由宿主收口统一清理
+    // （见 interaction.mount 分支的 onAbort —— 两条结束路径只写一处）。
     ctx.signal.addEventListener("abort", cleanup, { once: true });
     window.addEventListener("keydown", onKey);
     window.addEventListener("keyup", onKeyUp);
@@ -721,6 +731,9 @@ function handleEvent({
     const onAbort = (): void => {
       payload.signal.removeEventListener("abort", onAbort);
       host.innerHTML = "";
+      // 工厂在共享宿主上加的演示类必须随收尾移除（本处是两条结束路径的唯一收口，
+      // 故只写一次；写在工厂内会漏掉「正常完成」那条路）
+      host.classList.remove("minigame-demo");
       inMinigame.value = false;
     };
     payload.signal.addEventListener("abort", onAbort, { once: true });
@@ -744,10 +757,19 @@ function handleEvent({
     const host = minigameHostEl.value;
     if (host === null) return;
     inInteraction.value = true;
+    // 接管期间切「玩法域」：推进/回溯键整体让位（不必逐事件 preventDefault）。
+    // 域归宿主状态——输入路由是展示层职责，引擎只暴露等待态。
+    inputScope.set("world");
     const onAbort = (): void => {
       payload.signal.removeEventListener("abort", onAbort);
       host.innerHTML = "";
       inInteraction.value = false;
+      // 工厂在共享宿主上加的演示类必须随收尾移除。本处是**两条结束路径的唯一收口**
+      // （回填成功与中断都经此），故只写一次——分两处写必然漏一条，
+      // 症状是残留类让「已结束的接管」在下次仍被算作进行中。
+      host.classList.remove("walk-demo");
+      // 外部接管结束：域交还叙事
+      inputScope.set("dialogue");
     };
     payload.signal.addEventListener("abort", onAbort, { once: true });
     void factory(host, {
@@ -936,7 +958,8 @@ function keyMatches(
 
 function onKeydown(e: KeyboardEvent): void {
   if (captureAction.value !== null) return; // 捕获中：capture 阶段监听器已处理
-  if (!isGameInputTarget(e.target)) return; // 输入控件/面板内：不吞键、不误触发
+  // 域非对话（玩法接管/面板）或目标在控件内：叙事层不消费，连 advance 都不发
+  if (!routesToNarrative(inputScope.current(), e.target)) return;
   if (keyMatches("advance", DEFAULT_KEYMAP.advance, e)) {
     e.preventDefault();
     onStageClick();
@@ -1106,7 +1129,7 @@ function rollbackToEntry(index: number): void {
 /** 滚轮上=回退、下=前进（历史面板是回溯的 UI 皮，核心层只暴露坐标回溯）；
  *  仅在游戏域生效——面板/控件内的滚动归控件自己消费，不触发游戏回溯 */
 function onWheel(event: WheelEvent): void {
-  if (!isGameInputTarget(event.target)) return;
+  if (!routesToNarrative(inputScope.current(), event.target)) return;
   if (event.deltaY < 0) engine.back();
   else if (event.deltaY > 0) engine.forward();
 }
