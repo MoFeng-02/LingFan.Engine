@@ -46,3 +46,4 @@ apps/playground/src-tauri/gen/android/app/src/main/assets/Resources/
 # iOS 插件 Swift 包的 tauri-api 拷贝（build.rs 生成，与 gen/ 同类产物）
 /apps/playground/src-tauri/.tauri/
 /.trae
+/.agent-teams
