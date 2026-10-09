@@ -7,6 +7,11 @@
 import type { PlayerPrefsData, PreferencesPort } from "@lingfan/engine";
 import { defaultInvoke, type TauriInvoke } from "../platform";
 
+/**
+ * 造一个偏好端口（桌面/移动原生）：读调 Rust `preferences_read`，写调 `preferences_write`
+ * （落 app_data 下的 preferences.json，明文——偏好不含密钥）。
+ * 缺文件返回 null 由上层取默认值；字段非法由 `PlayerPreferences.hydrate` 兜。
+ */
 export function createTauriPreferencesPort(
   invoke: TauriInvoke = defaultInvoke,
 ): PreferencesPort {

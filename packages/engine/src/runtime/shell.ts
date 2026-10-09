@@ -41,6 +41,7 @@ export type {
 
 /* ============================ 层级（z 序）============================ */
 
+/** z 序取值判据：有限且不小于 0 的 number 才采纳，否则回落到默认层 z */
 function isFiniteNonNegative(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
@@ -109,6 +110,7 @@ export function instanceZLayer(key: string): LayerId | undefined {
 
 /* ============================ 存档壳配置 ============================ */
 
+/** 取 [min,max] 闭区间内的整数；不是整数或越界一律返回 null，由调用方保持默认 */
 function finiteInt(value: unknown, min: number, max: number): number | null {
   return typeof value === "number" &&
     Number.isInteger(value) &&
@@ -118,6 +120,7 @@ function finiteInt(value: unknown, min: number, max: number): number | null {
     : null;
 }
 
+/** 取 0..1 之间的有限数（比例类参数）；越界或非有限一律 null */
 function finiteIn01(value: unknown): number | null {
   return typeof value === "number" &&
     Number.isFinite(value) &&

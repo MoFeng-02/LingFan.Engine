@@ -14,10 +14,12 @@ import { EXTENSION_ID_PATTERN, type OpExtension } from "../contracts";
 /** 宿主注入的模块装载器（如 `(s) => import(s)` / vite `import.meta.glob` 取得的 loader） */
 export type ExtensionModuleLoader = (specifier: string) => Promise<unknown>;
 
+/** 统一构造装载失败错误：带上模块说明符，便于定位是清单里哪条声明出的问题 */
 function invalid(specifier: string, reason: string): Error {
   return new Error(`扩展装载失败：${specifier} —— ${reason}`);
 }
 
+/** 非 null 的对象判据；数组也会通过（此处只用于粗形状守卫，不区分数组与字典） */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

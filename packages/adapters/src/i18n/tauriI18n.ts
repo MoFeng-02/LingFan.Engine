@@ -14,6 +14,11 @@ export interface TauriOverlayFile {
   entries: Record<string, string>;
 }
 
+/**
+ * 造一个多语言端口（桌面/移动原生）：`loadOverlayFiles` 调 Rust `load_i18n_overlay`
+ * 取某语言的译文文件，`listLanguages` 调 `list_i18n_languages`。
+ * 目录形式与单文件兜底、main.json 合并序都在 Rust 与引擎两侧，本侧只做转发与拷贝。
+ */
 export function createTauriI18nPort(
   invoke: TauriInvoke = defaultInvoke,
 ): I18nPort {

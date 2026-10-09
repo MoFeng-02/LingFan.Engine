@@ -4,8 +4,14 @@
  */
 import type { PlayerPrefsData, PreferencesPort } from "@lingfan/engine";
 
+/** 偏好 JSON 的 localStorage 键 */
 const STORAGE_KEY = "lingfan.prefs.v1";
 
+/**
+ * 造一个偏好端口（浏览器/WebView 演示兜底）：明文 JSON 存在 `lingfan.prefs.v1` 键下。
+ * 没存过或存坏了都返回 null（上层用默认值起航，不因偏好损坏挡住启动）；
+ * `storage` 可换成别的实现以便测试。
+ */
 export function createWebStoragePreferencesPort(
   storage: Pick<Storage, "getItem" | "setItem"> = localStorage,
 ): PreferencesPort {

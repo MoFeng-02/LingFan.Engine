@@ -4,6 +4,7 @@
  * （浏览器 Fullscreen API 缺用户手势时会被拒绝——偏好已持久化，下次有手势的切换生效）。
  */
 
+/** 全屏偏好应用接口（实现负责吞掉平台拒绝与不支持） */
 export interface FullscreenApplier {
   /** 应用全屏偏好（on = 进入全屏 / off = 退出）；拒绝与不支持均静默 */
   apply(on: boolean): Promise<void>;

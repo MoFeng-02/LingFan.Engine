@@ -37,7 +37,9 @@ export function isValidSayColor(value: unknown): value is string {
   return typeof value === "string" && HEX_COLOR_RE.test(value);
 }
 
+/** wait 的合法负载字段；出现集合外字段即 fail-closed（`wait-unknown-field`） */
 const WAIT_FIELDS = new Set(["op", "seconds", "skipable"]);
+/** pause 的合法负载字段（无 `skipable`：pause 恒为 hard）；集合外字段同样 fail-closed */
 const PAUSE_FIELDS = new Set(["op", "seconds"]);
 
 /** say：写对话系统键 → 进入 dialog 等待（文本先翻译后插值） */

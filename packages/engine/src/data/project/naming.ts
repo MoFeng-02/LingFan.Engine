@@ -28,6 +28,7 @@ export function isDotPath(path: string): boolean {
 
 /** Windows/APFS 上非法的文件名字符（`: * ? " < > |` + 路径分隔符） */
 const UNSAFE_FILE_CHARS = /[\\/:*?"<>|]/;
+/** 文件名段长度上限：列 id 超过它就不能直接作文件名 */
 const MAX_FILE_NAME_SEGMENT = 200;
 
 /**

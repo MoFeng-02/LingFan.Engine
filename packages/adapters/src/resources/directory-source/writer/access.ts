@@ -81,10 +81,12 @@ export interface WritableDirectoryHost {
   }): Promise<PermissionState>;
 }
 
+/** 把目录句柄收窄成 `WritableDirectoryHost`：调用方只看得见本仓库用到的那些方法 */
 export function asWritableDir(handle: FileSystemDirectoryHandle): WritableDirectoryHost {
   return handle as unknown as WritableDirectoryHost;
 }
 
+/** 把文件句柄收窄成 `WritableFileHost`：写文件只经 `createWritable` 这一面 */
 export function asWritableFile(handle: FileSystemFileHandle): WritableFileHost {
   return handle as unknown as WritableFileHost;
 }

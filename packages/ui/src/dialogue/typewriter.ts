@@ -8,6 +8,7 @@
  *   已完成 → no-op（UI 转 advance）
  */
 
+/** 打字流快照：流文本、停顿点坐标与可见字符总数 */
 export interface TypingStream {
   /** 打字流：原文去 {p}/{w}/{fast}；样式标记整段保留（零宽，渲染层据此着色） */
   stream: string;
@@ -60,7 +61,18 @@ export function tokenizeStream(text: string): TypingStream {
  * 本类只管进度，不碰 DOM，也不自己计时。
  */
 export class Typewriter {
+  /**
+   * 打字进度：已显示的可见字符数，流内样式标记不算。
+   * `tick` 每帧按预算累加、`click` 瞬间置满，因此它只增不减，上界是 `visibleTotal`。
+   * `visible` 用它决定前缀取到哪里，`done` / `pausedAtMark` 也由它推导；达到上界即打完。
+   */
   private shown = 0; // 已显示的可见字符数（流内标记不计）
+  /**
+   * 下一个未消费的停顿点在 `pausePoints` 中的下标。只有「正停在 {p}/{w} 上点击」
+   * （`click` 返回 passed-pause）会把它 +1，其余路径都不动它，所以它也只增不减。
+   * `currentPause()` 靠它取出当前停顿坐标；`pausePoints` 升序，于是「`shown` 是否已够到
+   * 该坐标」就是「是否停在停顿点上」的判定（`pausedAtMark`）。
+   */
   private nextPause = 0; // 下一个未消费的停顿点（在 pausePoints 中的下标）
   /** 停顿点的可见字符坐标（升序，构造时由分词结果一次算定；只读） */
   private readonly pausePoints: number[];

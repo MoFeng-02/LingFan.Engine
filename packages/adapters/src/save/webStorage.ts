@@ -4,13 +4,21 @@
  */
 import type { SavePort, SlotSummary } from "@lingfan/engine";
 
+/** 高水位计数键：本侧自管，`list` 时跳过它 */
 const HW_KEY = "lf3-demo:highwater";
+/** 槽位键前缀：拼键与 `list` 过滤共用，免得混入页面上的其它键 */
 const PREFIX = "lf3-demo:";
 
+/** 槽位名 → localStorage 键：加 `lf3-demo:` 前缀，免得与页面上其它键撞名 */
 function slotKey(slot: string): string {
   return `${PREFIX}${slot}`;
 }
 
+/**
+ * 造一个存档端口（浏览器演示兜底）：数据明文存 localStorage，同一台浏览器就是同一个档位空间。
+ * 高水位计数由本侧自管，因此读旧档同样会被拒；`list` 只认 `lf3-demo:` 前缀且跳过高水位键。
+ * 它不是安全边界，正式形态用原生端口。
+ */
 export function createWebStorageSavePort(): SavePort {
   return {
     async write(slot, payload, mode): Promise<void> {

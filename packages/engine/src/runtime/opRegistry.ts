@@ -99,6 +99,7 @@ export const BUILTIN_OP_NAMES: ReadonlySet<string> = new Set([
   "text_typewriter",
 ]);
 
+/** op 名须匹配扩展短 id 形态（小写字母开头、1..32 位），保证注册表键空间可控 */
 function validOpName(op: string): boolean {
   return EXTENSION_ID_PATTERN.test(op);
 }

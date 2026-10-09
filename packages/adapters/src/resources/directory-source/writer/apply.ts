@@ -23,6 +23,12 @@ import { asWritableDir, ensureWriteAccess, normalizeWriteError } from "./access"
 import { removeFileAt, writeFileAt } from "./entry";
 import { collectFileStamps } from "./stamps";
 
+/**
+ * 造一个写回端口（浏览器真目录）：`picked` 是用户选的目录句柄，`previous` 是打开时的基线文件集。
+ * 造端口时先对基线采一遍文件指纹，之后每次保存先比对指纹再落盘，外部改动会让保存抛错且零写入；
+ * 写权限申请必须是保存流程里第一个 await（权限弹窗要靠用户点击这个手势）；
+ * 只有写成功才更新基线与指纹，于是重复保存幂等。
+ */
 export async function createHandleProjectWriter(
   picked: FileSystemDirectoryHandle,
   previous: ReadonlyMap<string, string>,

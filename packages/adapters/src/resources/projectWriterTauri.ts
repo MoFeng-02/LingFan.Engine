@@ -27,6 +27,7 @@ import {
 } from "@lingfan/engine";
 import { defaultInvoke, type TauriInvoke } from "../platform";
 
+/** 原生写回端口的装配参数（测试可注入 invoke 替身，不连 Tauri 运行时） */
 export interface TauriProjectWriterOptions {
   /** invoke 可注入（测试替身）；缺省 = 真实 Tauri invoke（动态 import） */
   invoke?: TauriInvoke;
@@ -38,10 +39,12 @@ interface RawWriteReport {
   deleted?: unknown;
 }
 
+/** 类型守卫：Rust 返回的数组必须逐项是字符串才当作路径列表用 */
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+/** 校验 Rust 写回负载并取回已写/已删路径；形状非法即抛错（不假装成功） */
 function normalizeReport(payload: unknown): ProjectWriteReport {
   if (payload === null || typeof payload !== "object") {
     throw new Error("写回返回了不可识别的负载（fail-closed）");
@@ -85,6 +88,12 @@ async function readStamps(
   return stamps;
 }
 
+/**
+ * 造一个写回端口（桌面/移动原生）：差量交给引擎算，落盘交给 Rust `apply_project_files`。
+ * `root` 是打开工程时对话框选中的目录；`previous` 是打开时的基线文件集。
+ * 造端口时先采一遍基线指纹（因此是 async），之后每次保存都先比对指纹，外部改动会让保存
+ * 抛错且零写入；只有写成功才换基线，于是重复保存幂等。
+ */
 export async function createTauriProjectWriter(
   root: string,
   previous: ReadonlyMap<string, string>,

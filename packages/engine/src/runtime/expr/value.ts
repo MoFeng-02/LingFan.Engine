@@ -10,8 +10,13 @@ export interface ExprDict {
   [key: string]: ExprValue;
 }
 
+/**
+ * 表达式运行期的值域：标量（number/boolean/string）或数组/字典复合值。
+ * 复合值只由 array/dict 系列 op 产出；文本插值遇到复合值直接报错，不做隐式字符串化。
+ */
 export type ExprValue = number | boolean | string | ExprValue[] | ExprDict;
 
+/** 表达式错误的稳定分类；上层按码分流（如落成失败码），message 只作展示 */
 export type ExpressionErrorCode =
   | "parse-error"
   | "non-chained-comparison"
@@ -22,7 +27,12 @@ export type ExpressionErrorCode =
   | "invalid-range"
   | "division-by-zero";
 
+/**
+ * 表达式解析/求值错误：code 给程序判定，message 给作者看。
+ * name 固定为 "ExpressionError"，便于跨模块按字符串识别。
+ */
 export class ExpressionError extends Error {
+  /** @param code 稳定错误分类；@param message 面向作者的说明 */
   constructor(
     readonly code: ExpressionErrorCode,
     message: string,

@@ -50,6 +50,11 @@ import {
 } from "./ops";
 import type { OpContext } from "./internal";
 
+/**
+ * 命令分发主循环：不断从最内层帧取命令执行，直到所有帧结束。
+ * 进入等待态的 op（say/menu/交互等）直接 return 暂停循环，由外部事件续跑；
+ * 帧内命令耗尽时按 while/iterate 的语义决定再迭代一轮还是出循环。
+ */
 export function runDispatch(ctx: OpContext): void {
   for (;;) {
     const frame = ctx.frames[ctx.frames.length - 1];

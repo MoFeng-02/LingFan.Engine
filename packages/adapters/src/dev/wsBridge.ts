@@ -25,6 +25,11 @@ export interface WsBridge {
 /** dev 通道缺省地址（紧邻 Vite 1420；Rust 侧 LFEN_WS_PORT 可改，改端口经 options.url） */
 export const DEFAULT_WS_BRIDGE_URL = "ws://127.0.0.1:1421";
 
+/**
+ * `connectWsBridge` 的装配参数：`url` 换端口（Rust 侧 `LFEN_WS_PORT` 改了才需要）、
+ * `timeoutMs` 控连接超时（宿主没起来就快速失败，让组合根回退 web 端口）、
+ * `makeSocket` 注入测试替身，缺省用浏览器原生 `WebSocket`。
+ */
 export interface ConnectWsBridgeOptions {
   url?: string;
   /** 连接超时（宿主未运行 = 快速失败，组合根回退 web 端口） */

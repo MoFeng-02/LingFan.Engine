@@ -7,6 +7,7 @@
 import { elementClassName, elementStyle } from "../style";
 import type { ElementRenderContext } from "../registry";
 
+/** 元素根节点基类名：所有渲染器共用，类型类与作者 class 另加 */
 const BASE_CLASS = "lf-el";
 
 /** 元素根节点：基类 + 类型类 + 作者 class（style 别名）+ 属性 → CSS */

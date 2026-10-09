@@ -22,6 +22,7 @@ const INLINE_SHORT_TAGS = new Set([
   "font",
   "size", // 裸标签名（用户可能写 {color} 作为闭合）
 ]);
+/** 带参行内标记前缀集（`color=` / `font=` / `size=` 及闭合形式）；与 INLINE_SHORT_TAGS 共同构成 isInlineTag 判据 */
 const INLINE_PREFIXED_TAGS = [
   "color=",
   "/color",
@@ -31,11 +32,13 @@ const INLINE_PREFIXED_TAGS = [
   "/size",
 ];
 
+/** 判断 {…} 内容是否是行内富文本标记（短标签名，或 color=/font=/size= 这类前缀标签） */
 function isInlineTag(content: string): boolean {
   if (INLINE_SHORT_TAGS.has(content)) return true;
   return INLINE_PREFIXED_TAGS.some((p) => content.startsWith(p));
 }
 
+/** 插值结果：text 是替换后文本（失败片段保留原文），errors 收集全部求值失败 */
 export interface TextInterpolation {
   text: string;
   errors: ExpressionError[];
@@ -98,6 +101,10 @@ export function interpolateText(
   return { text: out, errors };
 }
 
+/**
+ * 把求值结果转成展示文本：复合值报错；格式符只对整数 number 生效
+ * （全 0 = 按位数补零，X/x = 十六进制，未知格式原样返回）。
+ */
 function applyFormat(value: ExprValue, format: string | null): string {
   let s: string;
   if (typeof value === "number") s = String(value);

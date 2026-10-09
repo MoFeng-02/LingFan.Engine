@@ -31,10 +31,12 @@ const AUDIO_CHANNEL_KEY: Record<AudioChannel, string> = {
   voice: SYS.audioVoice,
 };
 
+/** 只把有限 number 当成有效读数，其余一律 null（与「读到 0」区分开） */
 function finiteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+/** 把音量类读数钳到 0..1；解析不出有限数时用 fallback 兜底 */
 function inUnitRange(value: unknown, fallback: number): number {
   const num = finiteNumber(value);
   return num === null ? fallback : Math.min(1, Math.max(0, num));
@@ -122,6 +124,7 @@ function videoCommandOf(value: unknown): VideoCommand | null {
   return null;
 }
 
+/** 只接受字符串，其余（含 null、数字、对象）一律当空串——界面文本的 fail-closed 口径 */
 function textOf(value: unknown): string {
   return typeof value === "string" ? value : "";
 }

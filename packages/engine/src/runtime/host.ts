@@ -14,6 +14,7 @@ const PLATFORM_BY_RAW: Record<string, Exclude<HostOs, "unknown">> = {
   ios: "ios",
 };
 
+/** 把 Tauri 注入的平台字符串解析成 HostInfo；无法识别或缺省一律 unknown + desktop，不猜 */
 export function resolveHost(rawPlatform: string | undefined): HostInfo {
   const key = rawPlatform?.trim().toLowerCase();
   const os: HostOs = (key && PLATFORM_BY_RAW[key]) || "unknown";

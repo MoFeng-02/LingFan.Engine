@@ -4,8 +4,10 @@
  * 出域销毁 = 丢弃子 Scope 对象；undef = 沿父链删除声明槽。
  */
 export class Scope {
+  /** 本层变量表；名字只在声明层可见，子层同名写入落哪一层由 assignExisting 决定 */
   private readonly vars = new Map<string, unknown>();
 
+  /** @param parent 父层（链根传 null）；构造私有，只能经 root/enterChild 建链 */
   private constructor(private readonly parent: Scope | null) {}
 
   /** 新作用域链的根（执行器中即「列级」层） */
@@ -47,6 +49,7 @@ export class Scope {
     return this.parent?.undef(name) ?? false;
   }
 
+  /** 只看本层有没有该名字（不沿父链），用于区分「本层未声明」与「整条链上都没有」 */
   hasOwn(name: string): boolean {
     return this.vars.has(name);
   }

@@ -25,6 +25,12 @@ interface PlayOptions {
   loop: boolean;
 }
 
+/**
+ * 造一个视频端口：整块铺在舞台上方的 `<video>` 覆盖层，默认 `z-index: 5`；
+ * 层不吃点击（`pointer-events: none`），所以跳过过场靠引擎命令而不是点画面。
+ * 播完经 `onEnded` 通知调用方；自动播放被浏览器拒绝时不报错（玩家很快会交互）。
+ * 解码失败只在 `<video>` 真带 MediaError 时上报（WebView 会为内建封面派发无错误码的 error）。
+ */
 export function createWebVideoPort(
   portOptions: WebVideoPortOptions = {},
 ): VideoPort {

@@ -6,8 +6,11 @@
  */
 import type { LastProjectHandleStore } from "@lingfan/engine";
 
+/** IndexedDB 数据库名 */
 const LAST_PROJECT_DB = "lingfan-editor";
+/** IndexedDB 对象仓库名 */
 const LAST_PROJECT_STORE = "last-project";
+/** 句柄记录键（库内仅此一条记录） */
 const LAST_PROJECT_KEY = "last";
 
 /**
@@ -22,6 +25,12 @@ function isDirectoryHandleLike(value: unknown): value is FileSystemDirectoryHand
   );
 }
 
+/**
+ * 造一个「上次工程」句柄存储：句柄存进 IndexedDB（目录句柄不可序列化，但 IndexedDB 能原样存取）。
+ * 读写全程尽力而为——IndexedDB 不可用、事务失败、被阻塞都只是「当没存过」，绝不阻断打开流程；
+ * 取回的值必须过形状校验（见 `isDirectoryHandleLike`）才当作可用句柄。
+ * `idbFactory` 可注入以便测试。
+ */
 export function createLastProjectStore(
   idbFactory?: IDBFactory,
 ): LastProjectHandleStore {

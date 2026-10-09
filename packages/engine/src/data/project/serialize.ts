@@ -70,6 +70,7 @@ function manifestText(
   return stableJson(out);
 }
 
+/** 按路径码元序重排文件表，让写回/比对顺序不随 Map 插入顺序漂移（结果可复现） */
 function sortByCodeUnit(files: Map<string, string>): Map<string, string> {
   return new Map([...files.entries()].sort((a, b) => byPath(a[0], b[0])));
 }
