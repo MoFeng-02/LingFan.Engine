@@ -44,6 +44,17 @@ export function isOrientationMode(value: unknown): value is OrientationMode {
   return value === "auto" || value === "portrait" || value === "landscape";
 }
 
+/**
+ * 是否是**普通对象**（JSON 意义上的记录）：`null` 与数组都不算。
+ *
+ * **单一判定点**——数据层的结构校验（元素节点、列对象、工程清单）都调用这里，
+ * 谁都不许另写一份：少写一个 `!Array.isArray` 就会让数组通过对象校验，
+ * 那是**静默的行为变化**（解析器会拿下标当字段名继续走）。
+ */
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /** 是否是已知的场景类型（非法值由解析层 fail-closed，这里只做收窄） */
 export function isSceneType(value: unknown): value is SceneType {
   return value === "game" || value === "menu" || value === "ui";

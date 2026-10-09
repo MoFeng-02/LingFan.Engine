@@ -5,7 +5,7 @@ import { parseTextStory, projectText, TextFormatError } from "@lingfan/engine";
 import { EDITOR_API_KEY } from "../contracts";
 
 /**
- * 文本模式：text.ts 双向投影。容错投影（projectText）——
+ * 文本模式：`data/text/` 双向投影。容错投影（projectText）——
  * scene 列/未知 op 收集为警告清单（部分内容可见可改），不整视图崩塌。
  * 「应用到故事」= parseTextStory 整树替换，一个 undo 单元；解析失败整次拒绝。
  * 该按钮**必须带 `dirty` 门**：无改动时点击会落一棵内容相同的树 ⇒ **凭空产生一个

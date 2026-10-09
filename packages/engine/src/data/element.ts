@@ -3,10 +3,10 @@
  *
  * 职责边界：本模块只做**形状校验**与**归一化装载**，不做渲染（UI 层）、
  * 不碰平台（adapters）。scene 列的 `elements[]` 经这里校验后装载为 `ElementInstance[]`
- * 写入 `SYS.elements`（运行期，见 runtime/engine.ts）。
+ * 写入 `SYS.elements`（运行期，见 runtime/ops/element/visual.ts）。
  *
  * 校验口径（fail-closed）：未知类型、未知属性、非法结构一律**整次拒绝**
- * （与 `format.ts` 的 StoryFormatError 同一风格：收集 issues 后一次抛出）。
+ * （与 `data/format/error.ts` 的 StoryFormatError 同一风格：收集 issues 后一次抛出）。
  */
 
 import {
@@ -17,10 +17,7 @@ import {
   type ElementInstance,
   type ElementNode,
 } from "../contracts";
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+import { isPlainObject } from "../shared";
 
 /** 可选标识字段校验（缺省合法；存在则必须为非空字符串） */
 function validateOptionalName(
@@ -110,7 +107,7 @@ export function validateElementNode(
 }
 
 /**
- * 单元素节点校验（**含 `children` 递归**）——引擎解析链用（`format.ts` 的 scene 列校验）。
+ * 单元素节点校验（**含 `children` 递归**）——引擎解析链用（`data/format/column.ts` 的 scene 列校验）。
  * 返回 false 表示该节点结构非法（调用方应中止装载）。
  */
 export function validateElement(

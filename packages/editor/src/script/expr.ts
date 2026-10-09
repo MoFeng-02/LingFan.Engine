@@ -6,7 +6,7 @@
  * 拼写检查（未注册变量在 expr 求值时抛错）与统一的 `{}` 包装。
  *
  * **构建期轻类型校验**：`expr`/`cond` 组装时按
- * **引擎求值器的类型规则与优先级链**（`runtime/expr.ts`——口径权威）做递归下降
+ * **引擎求值器的类型规则与优先级链**（`runtime/expr/`——口径权威）做递归下降
  * 判类，命中记入**警告池**（`drainExpressionWarnings()` 取走）。这是编辑期诊断与
  * 运行期 type-error 的构建期预告——**不拦构建、不改产物**，引擎求值与编辑期诊断
  * 仍是权威。手写片段里的未知结构（函数调用、括号组、裸变量名、成员路径）一律
@@ -61,7 +61,7 @@ export function drainExpressionWarnings(): readonly ExpressionWarning[] {
 
 /**
  * 构建期轻类型校验警告（引擎 type-error 的构建期预告；不拦构建）。
- * 规则名与引擎 `runtime/expr.ts` 的类型规则一一对应（见 `ExpressionAuditor`）。
+ * 规则名与引擎 `runtime/expr/` 的类型规则一一对应（见 `ExpressionAuditor`）。
  */
 export interface ExpressionWarning {
   /** 完整表达式文本（含 `{}` 包装） */
@@ -131,7 +131,7 @@ export function varKeyOf(
   return handle.key;
 }
 
-// ====== 构建期轻类型校验（判类器镜像引擎 runtime/expr.ts 的规则与优先级链）======
+// ====== 构建期轻类型校验（判类器镜像引擎 runtime/expr/ 的规则与优先级链）======
 
 type OperandKind = VarKind | "unknown";
 

@@ -125,8 +125,8 @@ describe("编辑器 schema 动态注册", () => {
   });
 
   it("互锁：引擎 op 面（内建 + 动态注册）⊆ 编辑器 op 面", () => {
-    // 内建半边：BUILTIN_OP_NAMES 全部在编辑器 schema 面（既有 schema.test.ts 另以 format.ts
-    // 源提取做更强互锁；此处以注册表口径补动态维度）
+    // 内建半边：BUILTIN_OP_NAMES 全部在编辑器 schema 面（既有 schema.test.ts 另以 format 子域
+    // 源码提取做更强互锁；此处以注册表口径补动态维度）
     for (const op of BUILTIN_OP_NAMES) {
       expect(OP_SCHEMAS[op], `内建 op ${op} 应有编辑器 schema`).not.toBeUndefined();
     }

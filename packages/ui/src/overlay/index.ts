@@ -1,7 +1,7 @@
-export {
-  createNarrativeOverlay,
-  type NarrativeMounts,
-  type NarrativeOverlay,
-  type NarrativeOverlayOptions,
-  type NarrativeOverlayView,
-} from "./overlay";
+export { createNarrativeOverlay } from "./create";
+export type {
+  NarrativeMounts,
+  NarrativeOverlay,
+  NarrativeOverlayOptions,
+  NarrativeOverlayView,
+} from "./types";

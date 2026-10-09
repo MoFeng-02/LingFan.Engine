@@ -14,8 +14,18 @@ import {
   encryptedProjectMessage,
   type ProjectFileSource,
 } from "@lingfan/adapters";
-import directorySourceSource from "../../../packages/adapters/src/resources/directorySource.ts?raw";
 import encryptedProjectSource from "../../../packages/adapters/src/resources/encryptedProject.ts?raw";
+
+/** 目录取径供给的源码全集（键排序只为失败信息稳定，结果不影响判定） */
+const DIRECTORY_SOURCE_MODULES = import.meta.glob(
+  "../../../packages/adapters/src/resources/directory-source/**/*.ts",
+  { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
+
+const directorySourceSource = Object.keys(DIRECTORY_SOURCE_MODULES)
+  .sort()
+  .map((path) => DIRECTORY_SOURCE_MODULES[path] ?? "")
+  .join("\n");
 
 /** 替身供给：只给路径与文本，**记录 text() 调用**（供「前置拒绝」验证） */
 function fakeSource(

@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import type { StoryCommand } from "@lingfan/engine";
 import {
+  drainTextProjectionWarnings,
   generateText,
   parseStory,
   parseStoryFile,
@@ -348,5 +349,49 @@ describe("半成品命令的容错投影（不允许抛非契约异常）", () =
     expect(() => generateText(withHalfFilled({ op: "navigate" }))).toThrow(
       TextFormatError,
     );
+  });
+});
+
+/**
+ * 文本投影警告的出口：解析不因「语义暂未生效」失败，但警告不能丢——
+ * 调用方在解析后取走一次即可拿到，取走即清空，陈旧警告不会混进下一次。
+ */
+describe("警告池出口（取走并清空）", () => {
+  it("无参 pause 照常解析，警告可取出且第二次取走为空", () => {
+    drainTextProjectionWarnings(); // 起手清池，避免上一条用例的残留
+    const story = parseTextStory("label a:\n  pause\n", "warn.story");
+    expect(story.columns[0]?.commands).toEqual([{ op: "pause", seconds: 0 }]);
+
+    const first = drainTextProjectionWarnings();
+    expect(first).toHaveLength(1);
+    expect(first[0]).toContain("warn.story:2");
+    expect(first[0]).toContain("pause 无参数");
+
+    expect(drainTextProjectionWarnings()).toEqual([]);
+  });
+
+  it("无参 wait 同样产警告（与 pause 同分支）", () => {
+    drainTextProjectionWarnings();
+    parseTextStory("label a:\n  wait\n", "warn.story");
+    const warnings = drainTextProjectionWarnings();
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("wait 无参数");
+  });
+
+  it("带参数的 wait 不产警告", () => {
+    drainTextProjectionWarnings();
+    parseTextStory("label a:\n  wait 1.5 skipable\n", "warn.story");
+    expect(drainTextProjectionWarnings()).toEqual([]);
+  });
+
+  it("整次拒绝时警告已先记录，不随异常丢失", () => {
+    drainTextProjectionWarnings();
+    expect(() =>
+      parseTextStory("label a:\n  pause\n  teleport far\n", "warn.story"),
+    ).toThrow(TextFormatError);
+
+    const warnings = drainTextProjectionWarnings();
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("pause 无参数");
   });
 });

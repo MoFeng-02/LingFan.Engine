@@ -21,7 +21,7 @@ import { UNIMPLEMENTED_ELEMENT_ATTRS } from "../schema/elementForms";
 import { walkStoryCommands, walkStoryElements } from "../schema/walk";
 import { validateStory } from "../schema/validation";
 
-/** 行内富文本标记（镜像 packages/engine/src/runtime/expr.ts；行为互锁见 tests/editor/schema.test.ts） */
+/** 行内富文本标记（镜像 packages/engine/src/runtime/expr/interpolate.ts；行为互锁见 tests/editor/schema.test.ts） */
 const INLINE_SHORT_TAGS = new Set([
   "b",
   "/b",

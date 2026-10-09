@@ -6,7 +6,7 @@
  * - 首选 = File System Access（`showDirectoryPicker`，Chromium）：真目录句柄，
  *   可枚举、可读、可写（保存时按需申请写权限）；
  * - 兜底 = 目录 input 的只读文件快照（`<input webkitdirectory>`，全浏览器）；
- * 两者都实现同一组端口契约（`packages/adapters` 的 `directorySource`），组件零感知。
+ * 两者都实现同一组端口契约（`packages/adapters` 的 `resources/directory-source/` 域），组件零感知。
  *
  * 未打开工程时 = 内存示例故事（现状语义不变：预览不解析资源、音频静音）。
  * 只支持**明文**工程：加密包（lfenpack 产物）无法在无壳形态打开——形态判定归供给层

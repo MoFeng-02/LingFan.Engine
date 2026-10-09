@@ -12,6 +12,7 @@ import type {
   StoryEngine,
 } from "@lingfan/engine";
 import { createStateReader, SYS } from "@lingfan/engine";
+import { createResourceUrlCache } from "../resources";
 
 export interface VideoRendererOptions {
   /** 资源解析失败诊断（报错诊断：不静默吞错） */
@@ -35,16 +36,12 @@ export function createVideoRenderer(
   let lastSeq = -1;
   /** 解析代际：异步解析落地时若已被更新命令取代，丢弃该次播放（防错播） */
   let generation = 0;
-  const urls = new Map<string, string>();
+  const urls = createResourceUrlCache((resource) => resources.resolve(resource));
   const reader = createStateReader(engine);
 
   async function resolveUrl(resource: string): Promise<string | null> {
-    const cached = urls.get(resource);
-    if (cached !== undefined) return cached;
     try {
-      const url = await resources.resolve(resource);
-      urls.set(resource, url);
-      return url;
+      return await urls.resolve(resource);
     } catch (e) {
       options.onError?.(`资源解析失败：${resource}（${String(e)}）`);
       return null; // fail-closed：不播放（诊断已上报，不静默）

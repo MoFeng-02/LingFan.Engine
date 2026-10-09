@@ -4,7 +4,7 @@
  * 测试要点：
  * - **注册期 fail-fast**：id/op 名形态、内建冲突、跨扩展重复 → 构造抛错带定位
  * - **内建逐字节等价**：扩展查找前置但 switch 一行未动 ⇒ 全量既有测试（949 例）即回归；
- *   本文件另做互锁（BUILTIN_OP_NAMES ↔ engine.ts 分发 case 集合精确相等，防漏搬/漂移）
+ *   本文件另做互锁（BUILTIN_OP_NAMES ↔ dispatch.ts 分发 case 集合精确相等，防漏搬/漂移）
  * - **前缀门卫**：ctx.set/get 物理强制 `ext.<id>.`——扩展物理写不出前缀外的键
  * - **状态进 SSOT**：ctx.set 写入随 ValueChanged/存档/回溯随行（"能进存档"的 SSOT 充分条件）
  * - **fail-closed**：exec 失败/抛出 → engine.error + 停在当前命令；未注册 op 仍 unknown-op
@@ -12,7 +12,7 @@
 import { describe, expect, it } from "vitest";
 import type { OpExtension, SaveDataV1 } from "@lingfan/engine";
 import { BUILTIN_OP_NAMES, StoryEngine, SYS } from "@lingfan/engine";
-import engineSource from "../../../packages/engine/src/runtime/engine.ts?raw";
+import dispatchSource from "../../../packages/engine/src/runtime/dispatch.ts?raw";
 
 function extension(overrides: Partial<OpExtension> = {}): OpExtension {
   return {
@@ -235,15 +235,15 @@ describe("扩展 op 执行：状态进 SSOT + 前缀门卫", () => {
   });
 });
 
-describe("互锁：BUILTIN_OP_NAMES ↔ engine.ts 分发 case 集合精确相等", () => {
+describe("互锁：BUILTIN_OP_NAMES ↔ dispatch.ts 分发 case 集合精确相等", () => {
   it("分发 switch 的 case 全集 = 内建名清单（防漏搬/防漂移）", () => {
-    const start = engineSource.indexOf("switch (cmd.op) {");
-    const end = engineSource.indexOf("default:", start);
+    const start = dispatchSource.indexOf("switch (cmd.op) {");
+    const end = dispatchSource.indexOf("default:", start);
     expect(start).toBeGreaterThan(0);
     expect(end).toBeGreaterThan(start);
     const dispatchCases = new Set(
       [
-        ...engineSource
+        ...dispatchSource
           .slice(start, end)
           .matchAll(/case "([^"]+)":/g),
       ].map((m) => m[1]!),

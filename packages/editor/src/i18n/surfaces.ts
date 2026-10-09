@@ -16,7 +16,7 @@ export const TRANSLATE_SURFACES: Readonly<Record<string, readonly string[]>> = {
   input: ["prompt"],
   notify: ["text"],
   // 翻译面：角色注册的显示名 screen
-  // （说话人显示名解析产物走 say 的 Translate 挂接，查表见 runtime/engine.ts execSay）。
+  // （说话人显示名解析产物走 say 的 Translate 挂接，查表见 runtime/ops/dialog.ts execSay）。
   character: ["screen"],
 };
 

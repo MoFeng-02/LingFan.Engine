@@ -69,7 +69,7 @@ import { guards as engineGuards } from "../Stories.src/gen/fun_register.g";
 const props = defineProps<{
   /** 热重载：宿主以 ref 包装供给（换 value = 注入新 Story），消费方显式 .value */
   story: Ref<Story>;
-  /** ③ 平台区分：宿主事实（os/form，组合根装配；只读，用于展示与按端分支） */
+  /** 平台区分：宿主事实（os/form，组合根装配；只读，用于展示与按端分支） */
   host: HostInfo;
   /** 层级（z 序）：内建默认 × 工程覆盖（shell.layers），组合根解析后注入 */
   layerZ: LayerZTable;

@@ -5,7 +5,7 @@
  * - **抽取 ≡ 诊断 ≡ 运行期三方互锁**：extractStoryKeys 与 indexStory.originals 同表
  *   （TRANSLATE_SURFACES 单一事实源）逐集合相等；再用**真引擎旅程**（哨兵译文表）证明
  *   「引擎真查的键 = 抽取器输出」——新增挂接点没跟上抽取器 → 运行期哨兵缺失立刻红；
- * - **源码绊线**：engine.ts 的 `this.translate(...)` 实参形态全集合锁定，引擎侧新增
+ * - **源码绊线**：运行层的 `translate(...)` 实参形态全集合锁定，引擎侧新增
  *   挂接点而面表未同步时红（提示改 TRANSLATE_SURFACES，抽取器/诊断自动跟随）；
  * - **骨架往返**：planOverlaySkeleton 喂回 mergeOverlayFiles → 键集合与抽取输出
  *   双向一致（无缺、无多）；增量模式既有译文（含空串）绝不覆盖；
@@ -27,7 +27,16 @@ import {
   planOverlaySkeleton,
   reconcileTranslations,
 } from "@lingfan/editor";
-import engineSource from "../../packages/engine/src/runtime/engine.ts?raw";
+
+/** 引擎运行层全部源码，键 = 仓库相对路径（前端不碰文件系统，改用打包器读取） */
+const ENGINE_RUNTIME_SOURCES = import.meta.glob(
+  "../../packages/engine/src/runtime/**/*.ts",
+  {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  },
+) as Record<string, string>;
 
 /* ———————————————— 原文键抽取器 ———————————————— */
 
@@ -242,11 +251,15 @@ describe("抽取器：运行期真值互锁（真引擎 + 哨兵译文表）", (
   });
 });
 
-describe("源码绊线：engine.ts 的 translate 挂接点 ↔ 面表同口径", () => {
+describe("源码绊线：运行层的 translate 挂接点 ↔ 面表同口径", () => {
   it("translate 实参形态全集合锁定（引擎新增挂接点而面表未同步 → 红）", () => {
+    // 扫整个运行层：命令处理逻辑分散在执行器与各命令处理器里，
+    // 只看单个文件会漏掉挂接点；`this.` 与 `ctx.` 两种接收者形态都算。
     const args = new Set(
-      [...engineSource.matchAll(/this\.translate\(([^)]*)\)/g)].map((m) =>
-        m[1]!.replace(/\s+as string$/, "").trim(),
+      Object.values(ENGINE_RUNTIME_SOURCES).flatMap((source) =>
+        [...source.matchAll(/\b(?:this|ctx)\.translate\(([^)]*)\)/g)].map((m) =>
+          m[1]!.replace(/\s+as string$/, "").trim(),
+        ),
       ),
     );
     // 逐一对应：cmd.text → say/notify.text；cmd.prompt → menu/input.prompt；

@@ -139,7 +139,7 @@ export function forIn(
 
 /**
  * foreach：`collection` = 集合**变量名**（运行期按名 resolve，须为数组）。
- * 形状 = 规范四事实（format.ts 校验 / foreachSchema / parseTextStory 产物 /
+ * 形状 = 规范四事实（`data/format/` 校验 / foreachSchema / parseTextStory 产物 /
  * generateText 投影）：`{var, key, body}`——`in` 是 DSL 行文法（`foreach "v" in "k"`）
  * 的分隔符，**不属于 op 数据**（`in` 字段属于 `for` op）；多产 `in` 会被编辑器
  * 判 unknown-field。漏 `key` parseStory 即拒（执行层以 key resolve，互锁测试锚定）。

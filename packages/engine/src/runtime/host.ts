@@ -1,5 +1,5 @@
 /**
- * ③ 宿主信息解析（纯函数，可测）：把宿主提供的「编译期平台字符串」收敛为 HostInfo。
+ * 宿主信息解析（纯函数，可测）：把宿主提供的「编译期平台字符串」收敛为 HostInfo。
  * 输入 = Tauri CLI 注入的 `TAURI_ENV_PLATFORM`（windows/macos/linux/android/ios，
  * 大小写不敏感）；无法识别/缺省 → `unknown·desktop`（显式未知，不猜）。
  */

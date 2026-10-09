@@ -3,14 +3,17 @@
  * 写入契约守卫 / op 注册表 / 等待声明表 / 扩展装载 / 表达式求值 / 状态读口）。
  *
  * 这是包出口（`src/index.ts`）取运行层符号的唯一入口——包出口不再逐个深入实现文件；
- * 运行层内部各模块之间仍按需直接引用（`./scope`、`./resolver` 属内部零件，不经此出口）。
+ * 运行层内部各模块之间仍按需直接引用（`./resolver` 属内部零件，不经此出口；
+ * `./scope` 供 `tests/engine/runtime/scope.test.ts` 的白盒用例经域出口取用）。
  */
-export { isValidSayColor, StoryEngine } from "./engine";
+export { StoryEngine } from "./engine";
 export type { EngineOptions, GuardContext, GuardFn } from "./engine";
+export { isValidSayColor } from "./ops";
 export { resolveHost } from "./host";
 export { mergeOverlayFiles } from "./i18n";
 export { PlayerPreferences } from "./preferences";
-export { createStateReader } from "./stateReader";
+export { createStateReader } from "./state";
+export { Scope } from "./scope";
 export {
   DEFAULT_LAYER_Z,
   DEFAULT_SAVES_CONFIG,
