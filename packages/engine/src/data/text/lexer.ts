@@ -31,6 +31,16 @@ export function stripComment(line: string): string {
   return line;
 }
 
+/**
+ * 把源文本切成带缩进与行号的逻辑行表，供后续读取。
+ *
+ * 输入：故事文本全文 + 源名（仅用于报错定位）+ 外部 issues 数组。
+ * 产出：非空逻辑行 `{ indent, text, no }`，`indent` = 行首空格数（缩进是块归属的唯一依据），
+ * `no` = 原文行号（1 起），`text` 已剥除行内注释（`//` 与 `#`，引号内的不算）并去掉行尾空白。
+ * 空行与纯注释行不产出条目——行号仍按原文计数，故 `no` 不连续是预期的。
+ * 失败表现：不抛异常。缩进中出现 Tab 时向 `issues` 推一条带 `源名:行号` 的定位信息并跳过该行
+ * （跳过而非中断：一次报全所有缩进问题，调用方按 `issues` 非空整次拒绝）。
+ */
 export function tokenizeLines(
   source: string,
   sourceName: string,

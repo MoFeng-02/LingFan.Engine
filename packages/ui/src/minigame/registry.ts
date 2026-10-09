@@ -6,6 +6,10 @@
 
 import type { MinigameFactory } from "@lingfan/engine";
 
+/**
+ * 小游戏 id → 工厂的查表。`get` 未命中即 `undefined`，调用方必须显式上报
+ * ——玩法系统没注册时不能假装玩完了，否则叙事会带着假的完成结果往下走。
+ */
 export interface MinigameRegistry {
   /** 注册/覆盖更新（同 gameId 再注册 = 替换，开发热替换语义） */
   register(gameId: string, factory: MinigameFactory): void;
@@ -14,6 +18,7 @@ export interface MinigameRegistry {
   has(gameId: string): boolean;
 }
 
+/** 造一张空的小游戏表；玩法系统由宿主在装配期逐个注册 */
 export function createMinigameRegistry(): MinigameRegistry {
   const factories = new Map<string, MinigameFactory>();
   return {

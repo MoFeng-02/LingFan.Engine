@@ -29,13 +29,16 @@ export interface NotifyTemplateView {
   bodyHtml: string;
 }
 
+/** 通知层模板：吃投影出的单条通知，吐骨架挂点内容。纯函数——不控消失时机、不挂定时器 */
 export type NotifyTemplateFn = (input: NotifyTemplateInput) => NotifyTemplateView;
 
+/** 通知层模板注册表：按名存 `NotifyTemplateFn`，按名解析，未知名回退默认 */
 export type NotifyTemplateRegistry = TemplateRegistry<
   NotifyTemplateInput,
   NotifyTemplateView
 >;
 
+/** 造一张空的通知层模板注册表；宿主在装配期向它 `register` 模板（本函数不装内建默认） */
 export function createNotifyTemplateRegistry(): NotifyTemplateRegistry {
   return createTemplateRegistry<NotifyTemplateInput, NotifyTemplateView>();
 }

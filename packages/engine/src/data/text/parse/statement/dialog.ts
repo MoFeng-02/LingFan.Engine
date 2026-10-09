@@ -4,6 +4,14 @@ import { unquote } from "../../lexer";
 import { StoryCommand } from "../../../../contracts";
 import { StatementContext } from "../state";
 
+/**
+ * 解析本族的 op 行（`say` `assert` `guard` `notify` `wait` `pause` `input` `nvl`）。
+ *
+ * 入参是分发骨架建好的 `StatementContext`（已切好的词表、定位前缀、issue 出口与警告通道）。
+ * 只处理本族的 op，不匹配时落到末尾 `return null`，由骨架决定后续。
+ * 失败表现：不抛异常；语法或参数不符时用 `c.fail` 记一条带定位的 issue 并返回 `null`，
+ * 由调用方按 issues 非空整次拒绝。语义暂未生效的情况记到警告通道，不阻塞解析。
+ */
 export function parseDialogStatement(c: StatementContext): StoryCommand | null {
   const { op, rest, tokens, at, issues, warnings, fail } = c;
   switch (op) {

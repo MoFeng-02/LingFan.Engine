@@ -30,6 +30,11 @@ export interface ElementRenderContext {
 /** 渲染器：把元素渲染进自己的容器（返回根节点以便统一应用样式） */
 export type ElementRenderer = (ctx: ElementRenderContext) => HTMLElement;
 
+/**
+ * 元素类型 → 渲染器的查表。`get` 未命中即 `undefined`，本表不做兜底
+ * （画一个空占位会让内容错误看起来「渲染成功」）。
+ * 表本身不持有渲染状态；渲染器是无状态函数，同一个可跨元素层复用。
+ */
 export interface ElementRegistry {
   /** 注册/覆盖（同类型再注册 = 替换，宿主扩展与开发热替换语义） */
   register(type: string, renderer: ElementRenderer): void;
@@ -40,6 +45,7 @@ export interface ElementRegistry {
   types(): string[];
 }
 
+/** 造一张空的元素渲染器表——内建 36 类型由元素域的注册入口另行登记 */
 export function createElementRegistry(): ElementRegistry {
   const renderers = new Map<string, ElementRenderer>();
   return {

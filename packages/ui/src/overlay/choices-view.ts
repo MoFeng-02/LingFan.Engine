@@ -18,6 +18,10 @@ export interface ChoicesRenderInput {
   inputPrompt: string;
 }
 
+/**
+ * 选择层的装配输入。`choose` / `submitInput` 是回核心的两条出口——视图不认识引擎，
+ * 只把「点了哪一项」「输了什么字」原样交出去。`templates` 不传即用内建模板。
+ */
 export interface ChoicesViewDeps {
   container: HTMLElement;
   mounts: NarrativeMounts;
@@ -28,6 +32,13 @@ export interface ChoicesViewDeps {
   submitInput: (value: string) => void;
 }
 
+/**
+ * 造一个选择层渲染函数：调用它即用当帧的渲染态整体重渲挂载点。
+ *
+ * 等待态不是 `menu` / `input` 时整层隐藏（`display: none`，不卸载节点——挂载点由装配器拥有）。
+ * 重渲先清空再重建，因此层内不留任何跨帧状态；点击直接调 `deps.choose` /
+ * `deps.submitInput`，视图自己不判叙事流向。
+ */
 export function createChoicesView(
   deps: ChoicesViewDeps,
 ): (input: ChoicesRenderInput) => void {

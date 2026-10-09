@@ -174,6 +174,14 @@ export function quoteForText(value: unknown): string {
   return `"${escapeForText(value)}"`;
 }
 
+/**
+ * 把一个命令字段值投影成文本字面量。
+ *
+ * 数字与布尔原样写出；字符串若形如 `{表达式}` 或复合赋值前缀（`+=` 等）原样透传
+ * （执行器求值语义，加引号会改变含义），其余字符串按字面量加引号；
+ * 对象/数组走 `JSON.stringify` 后加引号。
+ * 非字符串以外都能投影，故本函数不会抛错。
+ */
 export function generateValue(value: unknown): string {
   if (typeof value === "number" || typeof value === "boolean")
     return String(value);
@@ -186,6 +194,12 @@ export function generateValue(value: unknown): string {
   return quoteForText(JSON.stringify(value));
 }
 
+/**
+ * 把字典字段投影成 `{ "键": 值, … }` 字面量，每个值经 `generateValue` 处理。
+ *
+ * 字段缺失或不是对象 = 不可投影，抛 `TextFormatError`；
+ * 上层按命令粒度捕获后降级为 issue，不会让半个命令带崩整棵树。
+ */
 export function generateDictLiteral(value: Record<string, unknown>): string {
   // 同 quoteForText：字典字段缺失 = 不可投影（降级为 issue，不让半个命令带崩整棵树）
   if (value === null || typeof value !== "object") {

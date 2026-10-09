@@ -20,6 +20,12 @@ export interface PlayerKeymap {
   history?: string[];
 }
 
+/**
+ * 玩家偏好的持久化快照：音量、静音、打字机速度、屏幕方向、键位与全屏。
+ *
+ * 与存档**分离**——偏好是「玩的人怎么用这台机器」，跨存档共享；
+ * 因此它不进存档文件，由 `PreferencesPort` 单独落盘，缺失字段按各自注释的缺省处理。
+ */
 export interface PlayerPrefsData {
   v: 1;
   /** 四通道音量 0..1（键 = AudioChannel；有效音量 = op 音量 × 通道偏好，静音再归零） */
@@ -44,6 +50,7 @@ export const DEFAULT_KEYMAP: Required<PlayerKeymap> = {
 
 /** 键位动作全集（键位覆盖的合法键） */
 export const KEYMAP_ACTIONS = ["advance", "history"] as const;
+/** 键位动作的合法取值（从 `KEYMAP_ACTIONS` 派生，两者不会脱节） */
 export type KeymapAction = (typeof KEYMAP_ACTIONS)[number];
 
 /** 偏好持久化端口（组合根注入；Tauri = app_data JSON 文件，浏览器 = localStorage 兜底） */

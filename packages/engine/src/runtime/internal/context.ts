@@ -37,6 +37,10 @@ import type { ExprValue } from "../expr";
 import type { RegisteredOp } from "../opRegistry";
 import type { Checkpoint, Frame, LoopState } from "./frame";
 
+/**
+ * 命令处理器与执行器私有面之间的通道：处理器只读这里列出的成员，
+ * 增删成员必须同时在执行器侧核对（见上方「唯一转换点」与「逐名核对」说明）。
+ */
 export interface OpContext {
   // —— 故事与状态容器 ——
 

@@ -25,6 +25,12 @@ export function setLayerOverride(
   controller.overrides = { ...controller.overrides, [layer]: instanceZ };
 }
 
+/**
+ * 造一个层级控制器：覆盖表初始为空（全部层走默认），需调 `apply()` 才写样式。
+ *
+ * `layerZ` 是工程级的层默认表，控制器只在其上加一层「实例显式指定」的覆盖；
+ * 覆盖表逐实例持有，所以两个覆盖层不会互相改 z。写样式是幂等的，重复调无副作用。
+ */
 export function createLayerZController(
   mounts: NarrativeMounts,
   layerZ: LayerZTable,

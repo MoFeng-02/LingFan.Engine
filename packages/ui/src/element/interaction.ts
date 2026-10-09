@@ -14,6 +14,13 @@
  */
 import type { ElementInstance } from "@lingfan/engine";
 
+/**
+ * 点击动作的解析结果：调用方据 `kind` 选路，不自行读属性。
+ *
+ * `none` / `disabled` 都不产生动作，区别在语义——前者是「元素没声明交互」，
+ * 后者是「声明了但当下被禁用」。调用方只看 `hasElementInteraction` 时两者等价，
+ * 但要区分「未声明」与「被禁用」（例如做提示文案）时用得上。
+ */
 export type ElementAction =
   | { kind: "none" }
   /** 禁用：不产生任何动作（调用方应短路，不挂点击） */
@@ -24,6 +31,10 @@ export type ElementAction =
   /** `value` 为原文（可能含 `{expr}`）——宿主按点击时刻插值后再交处理器 */
   | { kind: "cmd"; name: string; value?: string };
 
+/**
+ * 动作解析的可选注入点：宿主提供「表达式怎么求值」。
+ * 不传 = 不求解——字符串形态的 `disabled` 一律按「未禁用」处理（见 `isElementDisabled`）。
+ */
 export interface ElementActionOptions {
   /**
    * `disabled` 表达式求值（返回 null = 求值失败）。
@@ -68,6 +79,13 @@ function readOps(value: unknown): readonly Record<string, unknown>[] | null {
   return value as readonly Record<string, unknown>[];
 }
 
+/**
+ * 按优先级解析出该元素在点击时应产生的动作。
+ *
+ * 优先级 `disabled` > `nav` > `ops` > `cmd`，全不命中 = `{ kind: "none" }`。
+ * 只读属性、不写状态：同一组属性任何时候调都得到同一个结果（表达式求值那步除外，
+ * 它按调用时刻求值）。交给调用方选路的，是这个判别联合——不是原始属性。
+ */
 export function resolveElementAction(
   props: Record<string, unknown>,
   options: ElementActionOptions = {},

@@ -208,6 +208,10 @@ export interface AudioRenderer {
   dispose(): void;
 }
 
+/**
+ * 宿主侧回调：解析失败的诊断出口；不传则该失败被静默吞掉。
+ * `preferences` 是唯一的可选注入——不传即无偏好，音量按引擎状态算。
+ */
 export interface AudioRendererOptions {
   /** 资源解析失败诊断（报错诊断：不静默吞错） */
   onError?: (message: string) => void;
@@ -215,6 +219,12 @@ export interface AudioRendererOptions {
   preferences?: PlayerPreferences;
 }
 
+/**
+ * 造一个音频渲染器并立即订阅四条通道的音频状态（构造末尾先自同步一次）。
+ *
+ * 它按通道分代际，迟到的旧解析结果不误播；资源 URL 经共享缓存取，`dispose` 时
+ * 逐个 `resources.release` 并退订。位置回写不由本层计时——宿主每帧调 `pollPosition`。
+ */
 export function createAudioRenderer(
   engine: StoryEngine,
   port: AudioPort,

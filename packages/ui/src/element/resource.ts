@@ -10,6 +10,10 @@
  */
 import { createResourceUrlCache } from "../resources";
 
+/**
+ * 装配输入：一个异步解析函数 + 一个「落地了」的回调。
+ * 缓存不关心 URL 怎么来的——换掉 `resolve` 就换了取源方式（本地 / 远端 / 测试替身）。
+ */
 export interface ElementResourceResolverOptions {
   /** 资源解析（通常即 `resourcePort.resolve`） */
   resolve: (path: string) => Promise<string>;
@@ -17,11 +21,22 @@ export interface ElementResourceResolverOptions {
   onResolved: () => void;
 }
 
+/**
+ * 元素渲染侧看到的解析器：**同步**的一问一答。
+ * 只暴露这一个方法——在途去重、缓存、失败重试的细节都封在工厂里，
+ * 调用点（`renderElementTree`）不需要知道资源是异步拿到的。
+ */
 export interface ElementResourceResolver {
   /** 供 `renderElementTree` 的 `resolveResource` 使用；未就绪返回 `undefined`（显示替代文本） */
   resolveForElement: (path: string) => string | undefined;
 }
 
+/**
+ * 把异步资源端口接到元素渲染的同步契约上。
+ *
+ * 未命中时启动一次解析并立即返回 `undefined`（这一帧显示替代文本），
+ * 落地后经 `onResolved` 让宿主重渲染；解析失败不缓存失败态，下次问还会再试。
+ */
 export function createElementResourceResolver(
   options: ElementResourceResolverOptions,
 ): ElementResourceResolver {

@@ -9,11 +9,16 @@ import { resolveHost } from "@lingfan/engine";
 import type { HostInfo, HostPort } from "@lingfan/engine";
 import { defaultInvoke } from "../platform";
 
+/** 宿主端口的供值：组合根把「编译目标平台」交进来，适配器只负责解析与缓存 */
 export interface HostPortOptions {
   /** 编译目标平台（缺省 = 浏览器/无壳形态 → unknown·desktop，显式未知不猜） */
   platform: string | undefined;
 }
 
+/**
+ * 造一个宿主端口：首次 `get()` 解析出结果后缓存，之后一直复用同一份。
+ * 宿主事实在进程生命周期内不变，因此无需失效逻辑。
+ */
 export function createHostPort(options: HostPortOptions): HostPort {
   let cached: HostInfo | undefined;
   return {

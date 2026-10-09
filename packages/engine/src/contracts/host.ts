@@ -32,6 +32,12 @@ export interface HostPort {
   get(): HostInfo;
 }
 
+/**
+ * 宿主操作系统取值的运行时可枚举形式（`HostOs` 联合的字面量清单）。
+ *
+ * 类型在编译期被擦除，需要遍历或校验取值时用这个数组；
+ * `"unknown"` 兜底：宿主无法识别自身平台时归此档，而不是抛错。
+ */
 export const HOST_OS_VALUES: readonly HostOs[] = [
   "windows",
   "macos",

@@ -9,6 +9,10 @@
  */
 import { renderInlineMarkup } from "./inline";
 
+/**
+ * 一行对话的渲染请求。`typed` 与 `text` 二选一即可——给了 `typed` 就按它渲染，
+ * 这是「打字中每帧变、打完不变」两种调用形态共用同一入口的方式。
+ */
 export interface DialogueLineInput {
   /** 原始标记文本（`{b}{color=#…}` 等，核心层透传） */
   text: string;
@@ -16,6 +20,10 @@ export interface DialogueLineInput {
   typed?: string;
 }
 
+/**
+ * 渲染产物：转义后的富文本 HTML。内容已安全，容器可直接 `innerHTML` 上屏；
+ * 输出刻意只有这一个字段——渲染接缝不掺布局决策。
+ */
 export interface DialogueLineView {
   /** 富文本 HTML（已全量转义；容器用 v-html / innerHTML 上屏） */
   html: string;

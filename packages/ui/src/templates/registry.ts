@@ -16,15 +16,24 @@ export interface TemplateViewBase {
   rootClass: string;
 }
 
+/** 模板函数：吃宿主投影出的渲染状态，吐该挂点的内容与根皮肤类（纯函数，不碰 DOM、无副作用） */
 export type TemplateFn<TInput, TView extends TemplateViewBase> = (
   input: TInput,
 ) => TView;
 
+/**
+ * 模板注册与解析：按名存模板，解析时未知名 / null / 空串一律回退默认，未设默认则返回 `null`。
+ *
+ * 用法：宿主装配期 `register` 一批模板（可指定其中之一为兜底），渲染挂载点时用 `resolve` 取函数。
+ * 模板缺失不算错误——由宿主的内建实现兜底，因此本表是 fail-soft 的。
+ * 本类不持有渲染状态，同一实例可跨挂载点共享。
+ */
 export class TemplateRegistry<
   TInput,
   TView extends TemplateViewBase,
 > {
   private readonly templates = new Map<string, TemplateFn<TInput, TView>>();
+  /** 默认模板名（`register` 传 `makeDefault: true` 时改成它）；`null` = 未设默认，解析时返回 `null` */
   private defaultName: string | null = null;
 
   /** 注册模板（同名覆盖更新——注册即生效的可选语义） */
@@ -38,6 +47,7 @@ export class TemplateRegistry<
     if (opts.makeDefault === true) this.defaultName = name;
   }
 
+  /** 该名是否已被注册（**不走回退**：问的是表里有没有这个名字） */
   has(name: string): boolean {
     return this.templates.has(name);
   }
@@ -58,6 +68,7 @@ export class TemplateRegistry<
   }
 }
 
+/** 造一张空的模板注册表（未设默认）；默认模板需在 `register` 时用 `makeDefault: true` 指定 */
 export function createTemplateRegistry<
   TInput,
   TView extends TemplateViewBase,

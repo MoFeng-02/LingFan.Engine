@@ -18,6 +18,15 @@ import { TextFormatError } from "../error";
 import type { CustomOpProjections, StoryCommand } from "../../../contracts";
 import type { GenerateContext } from "./context";
 
+/**
+ * 单条命令的写向入口：把命令对象投影成一行文本并追加到输出缓冲。
+ *
+ * 输入：`cmd`（要投影的命令）、`pad`（本行缩进前缀，块体逐层加深）、
+ * `out`（输出缓冲，行直接推入，不留空行）、可选 `projections`（自定义 op 的文本投影表）。
+ * 产出：无返回值，结果通过 `out` 交付；自定义 op 命中 `projections` 时用其投影结果，空行视为不可投影。
+ * 失败表现：抛 `TextFormatError`（op 无文本投影、字段缺字符串等不可投影情形）——**不是**静默跳过，
+ * 由上层 `tolerant` 按命令粒度捕获后降级为 issue，从而使整棵树的其余部分照常输出。
+ */
 export function generateCommand(
   cmd: StoryCommand,
   pad: string,

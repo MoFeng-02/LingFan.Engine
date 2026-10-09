@@ -39,6 +39,7 @@ export interface DialogueTemplateView {
   hintHtml: string;
 }
 
+/** 对话层模板：吃投影出的对话状态，吐骨架三挂点内容。纯函数——打字帧每帧调用，不得有副作用 */
 export type DialogueTemplateFn = (
   input: DialogueTemplateInput,
 ) => DialogueTemplateView;
@@ -49,6 +50,7 @@ export type DialogueTemplateRegistry = TemplateRegistry<
   DialogueTemplateView
 >;
 
+/** 造一张空的对话层模板注册表；宿主在装配期向它 `register` 模板（本函数不装内建默认） */
 export function createDialogueTemplateRegistry(): DialogueTemplateRegistry {
   return createTemplateRegistry<DialogueTemplateInput, DialogueTemplateView>();
 }

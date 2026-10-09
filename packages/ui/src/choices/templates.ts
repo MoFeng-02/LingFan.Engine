@@ -44,13 +44,16 @@ export interface ChoiceTemplateView {
   optionHtml: readonly string[];
 }
 
+/** 选择层模板：吃投影出的选项状态，吐骨架各挂点内容。纯函数——不挂点击、不改 `target` */
 export type ChoiceTemplateFn = (input: ChoiceTemplateInput) => ChoiceTemplateView;
 
+/** 选择层模板注册表：按名存 `ChoiceTemplateFn`，按名解析，未知名回退默认 */
 export type ChoiceTemplateRegistry = TemplateRegistry<
   ChoiceTemplateInput,
   ChoiceTemplateView
 >;
 
+/** 造一张空的选择层模板注册表；宿主在装配期向它 `register` 模板（本函数不装内建默认） */
 export function createChoiceTemplateRegistry(): ChoiceTemplateRegistry {
   return createTemplateRegistry<ChoiceTemplateInput, ChoiceTemplateView>();
 }
