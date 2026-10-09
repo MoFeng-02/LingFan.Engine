@@ -1,7 +1,16 @@
+//! Tauri 宿主 crate 的装配入口：模块声明 + `run()` 里的插件装配与命令注册。
+//!
+//! 各模块自己实现能力，这里只做三件事——把模块挂上、把命令注册进 `invoke_handler!`、
+//! 在启动序列里按平台装配插件与后台任务。命令名与前端 `invoke` 的对应关系由源级测试守护。
+
+pub mod boot;
 pub mod crypto;
 pub mod diagnostics;
+pub mod fs;
 pub mod host;
+pub mod http;
 pub mod media_http;
+pub mod paths;
 pub mod preferences;
 pub mod project_files;
 pub mod project_writer;
@@ -17,8 +26,7 @@ pub mod ws_dev;
 #[cfg(test)]
 mod bridge_check;
 
-use tauri::Manager;
-
+/// 应用入口：装配插件与命令注册，随后进入 Tauri 事件循环（不返回）。
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -67,21 +75,7 @@ pub fn run() {
 
     builder
         .setup(|app| {
-            // 启动路径面包屑：应用可能在页面起来约 1 秒后整体卡住（心跳条数起消失、WebKit 合成
-            // 停摆、录屏全白）。以下每条都在卡点之前/之后留痕，用于把卡点夹到具体一步。
-            eprintln!("[lfen] setup: 进入");
-            // 临时流缓存随启动清理（同 DEK 同路径 → 内容确定性可重建）
-            if let Ok(data) = app.path().app_data_dir() {
-                resource_crypto::cleanup_tmp_stream(&data);
-            }
-            eprintln!("[lfen] setup: tmp 清理完成");
-            // 诊断探针已改前端 build-flag（VITE_LFEN_DIAG=1，src/diag.ts）；lfen_diag 命令保留为回传通道
-            splash_then_show(app.handle());
-            eprintln!("[lfen] setup: 窗口显示流程返回");
-            // 启动期窗口状态心跳：前端探针会随页面节流一起冻结（日志往往只到启动后不到一秒），
-            // 只有 Rust 侧心跳能区分「页面被节流」与「整个进程被挂起」——白屏归因的分水岭
-            #[cfg(debug_assertions)]
-            spawn_boot_probe(app.handle());
+            boot::setup(app.handle());
             // 开发期 WS 通道：debug 构建启动 127.0.0.1 监听（浏览器页面复用宿主能力）；
             // release 构建整段不参与编译（由 ws_dev 内的源级断言守护）
             #[cfg(debug_assertions)]
@@ -90,75 +84,4 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-/// 启动期窗口状态心跳（仅 debug）：每 2 秒一条心跳，共 20 条（40s）。
-///
-/// 为什么必须由 Rust 打：前端探针一旦页面被节流或进程被挂起就一起冻结。Rust 线程的心跳
-/// **若继续往下打**，说明进程活着、被冻的是页面/WebView 一侧；**若同时停在同一点**，
-/// 则是整个进程被挂起（例如应用始终没拿到前台）。窗口的可见/聚焦读数同批给出。
-///
-/// 20 条（而非 6 条）：iOS 冷启动下前端 JS 比 Rust 侧晚数秒才起来——心跳条数太少
-/// 会整段落在「页面还没起来」的时段里，覆盖不到冻结点。
-#[cfg(debug_assertions)]
-fn spawn_boot_probe(app: &tauri::AppHandle) {
-    let handle = app.clone();
-    std::thread::spawn(move || {
-        for i in 1..=20 {
-            std::thread::sleep(std::time::Duration::from_secs(2));
-            // **必须先打这一条**：下面的窗口读数要走 Tauri、最终落到主线程；若主线程被卡，
-            // 那次调用会把这个线程一起挂住。先打印就能区分两种成因——
-            //   只出现「心跳 #n」而无窗口读数 ⇒ 主线程卡住（Tauri 调用阻塞在此）
-            //   连「心跳 #n」都没有        ⇒ 整个进程被挂起/线程调度停止
-            eprintln!("[lfen] 心跳 #{i}");
-            let state = match handle.get_webview_window("main") {
-                Some(window) => format!(
-                    "可见={:?} 聚焦={:?} 最小化={:?}",
-                    window.is_visible(),
-                    window.is_focused(),
-                    window.is_minimized()
-                ),
-                None => "无 main 窗口".to_string(),
-            };
-            eprintln!("[lfen] 启动心跳 #{i}：{state}");
-        }
-    });
-}
-
-/// 双窗启动画面（桌面）：splash 先行显示，盖住资源根定位 / DEK 首启信封化解封
-/// 的时延；预热完成后显示主窗口并关闭 splash。移动端无第二窗口——直接显示主窗口
-/// （防御 conf `visible: false` 在移动端生效导致的白屏）。
-/// splash 创建失败不阻塞启动（fail 尽力）；主窗口显示失败打印可见错误（fail-closed 不静默）。
-fn splash_then_show(app: &tauri::AppHandle) {
-    #[cfg(desktop)]
-    let splash = tauri::WebviewWindowBuilder::new(
-        app,
-        "splashscreen",
-        tauri::WebviewUrl::App("splashscreen.html".into()),
-    )
-    .title("lingfanengine")
-    .inner_size(420.0, 240.0)
-    .center()
-    .resizable(false)
-    .decorations(false)
-    .build()
-    .map_err(|e| eprintln!("[lfen] splash 窗口创建失败（继续启动）：{e}"))
-    .ok();
-
-    // 首启 seed→KEK 信封化解封在此完成（明文形态失败无害）——show 之后 v2 供给立即可用
-    eprintln!("[lfen] 预热资源密钥：开始");
-    resource_crypto::preheat_resource_key(app);
-    eprintln!("[lfen] 预热资源密钥：完成");
-
-    if let Some(main) = app.get_webview_window("main") {
-        eprintln!("[lfen] 主窗口 show：调用");
-        if let Err(e) = main.show() {
-            eprintln!("[lfen] 主窗口显示失败：{e}");
-        }
-        eprintln!("[lfen] 主窗口 show：返回");
-    }
-    #[cfg(desktop)]
-    if let Some(splash) = splash {
-        let _ = splash.close();
-    }
 }

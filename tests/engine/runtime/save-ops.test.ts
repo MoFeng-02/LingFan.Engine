@@ -7,7 +7,7 @@
  * - fail-closed：无 SavePort / 槽名非法 / enabled 非布尔 → engine.error，状态原样
  * - 命令面 save/load 完成信号 save.done/load.done：成功才发、
  *   守卫与校验失败不发；故事 save op 的等待点落档不发——信号归属命令面）
- * SavePort 为契约替身（内存实现）；Rust 侧安全校验在 cargo 侧测（save.rs），两侧各测一半。
+ * SavePort 为契约替身（内存实现）；Rust 侧安全校验在 cargo 侧测（save/），两侧各测一半。
  */
 import { describe, expect, it, vi } from "vitest";
 import type { SaveDataV1, SaveMode, SlotSummary } from "@lingfan/engine";

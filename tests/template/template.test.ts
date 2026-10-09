@@ -2,20 +2,35 @@
  * 脚手架防腐测试：模板是交付物，必须与引擎契约保持同构——
  * 模板故事能被文本投影器解析、清单合 ProjectManifest 契约、资源根配置与宿主接线不漂移。
  * 用 `?raw` 导入（不碰 fs：前端与核心层禁 Node）。
+ *
+ * 宿主接线断言的扫描面 = 模板宿主全目录（新增文件自动纳入）：组合根只留节点解析与装配调用，
+ * 端口、订阅、帧循环、输入映射都在 `host/**` 里；单文件锚点会随拆分失效，
+ * 故按目录合成一份文本再断言。
  */
 import { describe, expect, it } from "vitest";
 import projectJson from "../../template/v1/__PROJECT__/Resources/project.json?raw";
 import viteConfig from "../../template/v1/__PROJECT__/vite.config.ts?raw";
-import mainTs from "../../template/v1/__PROJECT__/src/main.ts?raw";
 import indexHtml from "../../template/v1/__PROJECT__/index.html?raw";
 import templatePkg from "../../template/v1/__PROJECT__/package.json?raw";
 import storySource from "../../template/v1/__PROJECT__/Resources/Stories/title/title_main.story?raw";
 import type { ProjectManifest } from "@lingfan/engine";
 import { parseStory, parseTextStory } from "@lingfan/engine";
 
+/** 模板宿主全部源码，键 = 仓库相对路径（前端不碰文件系统，改用打包器读取） */
+const SRC_SOURCES = import.meta.glob(
+  "../../template/v1/__PROJECT__/src/**/*.ts",
+  { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
+
+/** 组合根与 `host/**` 合成一份文本：宿主接线断言按整目录判定 */
+const srcText = Object.keys(SRC_SOURCES)
+  .sort()
+  .map((path) => SRC_SOURCES[path] ?? "")
+  .join("\n");
+
 /** 宿主断言用的 DOM id 表：`must("#x")` 与 index.html 的 `id="x"` 必须互锁 */
 function mustedIds(): string[] {
-  return [...mainTs.matchAll(/must(?:<[^>]*>)?\(\s*"#([\w-]+)"\s*\)/g)].map(
+  return [...srcText.matchAll(/must(?:<[^>]*>)?\(\s*"#([\w-]+)"\s*\)/g)].map(
     (m) => m[1]!,
   );
 }
@@ -63,7 +78,14 @@ describe("template/v1 脚手架防腐", () => {
     // dev 下 Vite 顺带服务根目录能取到，但 dist/ 里没有 → 生产环境 404。
     const manifest = JSON.parse(projectJson) as ProjectManifest;
     expect(manifest.entry).toBe("title_main");
-    expect(mainTs).toContain('"project.json"');
+    expect(srcText).toContain('"project.json"');
+  });
+
+  it("扫描面覆盖模板宿主全目录（文件数 ≥8 且含组合根与宿主叶子，防假绿）", () => {
+    const paths = Object.keys(SRC_SOURCES);
+    expect(paths.length).toBeGreaterThanOrEqual(8);
+    expect(paths.some((path) => path.endsWith("/src/main.ts"))).toBe(true);
+    expect(paths.some((path) => path.endsWith("/host/stage-dom.ts"))).toBe(true);
   });
 
   it("宿主按契约接线：端口 + 订阅渲染 + 帧循环 + 输入映射", () => {
@@ -78,10 +100,10 @@ describe("template/v1 脚手架防腐", () => {
       "createStaticResourcePort",
       "createAudioRenderer",
     ]) {
-      expect(mainTs).toContain(token);
+      expect(srcText).toContain(token);
     }
     // 宿主不得直接 import UI 框架（模板宿主是「框架无关」的活证明）
-    expect(mainTs).not.toMatch(/from "(vue|react|@vue\/)/);
+    expect(srcText).not.toMatch(/from "(vue|react|@vue\/)/);
   });
 
   it("宿主 must() 的每个 DOM id 都在 index.html 里存在（回归：宿主 ↔ 骨架互锁）", () => {
@@ -96,7 +118,7 @@ describe("template/v1 脚手架防腐", () => {
   it("每个等待态都有可推进出口（回归：曾只有 dialogue，menu/input/video 会永久卡死）", () => {
     // 引擎能进入的等待态全集（WaitingState）都必须被宿主识别
     for (const state of ["dialog", "menu", "input", "wait", "video", "minigame"]) {
-      expect(mainTs, `宿主未处理等待态 ${state}`).toContain(`"${state}"`);
+      expect(srcText, `宿主未处理等待态 ${state}`).toContain(`"${state}"`);
     }
     // 三类推进出口：菜单选择 / 输入提交 / advance（含 wait·video 跳过）
     for (const call of [
@@ -106,27 +128,27 @@ describe("template/v1 脚手架防腐", () => {
       "engine.videoFinished()",
       "engine.animationFinished(",
     ]) {
-      expect(mainTs, `宿主缺少推进出口 ${call}`).toContain(call);
+      expect(srcText, `宿主缺少推进出口 ${call}`).toContain(call);
     }
     // 未接注册表的小游戏等待必须**可见 fail-closed**（不静默停在等待）
-    expect(mainTs).toContain('"minigame.mount"');
-    expect(mainTs).toContain("engine.resolveMinigame");
+    expect(srcText).toContain('"minigame.mount"');
+    expect(srcText).toContain("engine.resolveMinigame");
   });
 
   it("工程配置被宿主消费（回归：shell.* 不得静默失效）", () => {
-    expect(mainTs).toContain("resolveLayerZ");
-    expect(mainTs).toContain("layerZ.");
-    expect(mainTs).toContain("resolveSavesConfig");
-    expect(mainTs).toContain("slotIds(saves.slots)");
+    expect(srcText).toContain("resolveLayerZ");
+    expect(srcText).toContain("layerZ.");
+    expect(srcText).toContain("resolveSavesConfig");
+    expect(srcText).toContain("slotIds(saves.slots)");
     // window auto|show|hide 的消费点（曾是无宿主消费的死键）
-    expect(mainTs).toContain("SYS.dialogVisible");
+    expect(srcText).toContain("SYS.dialogVisible");
     // 舞台元素层
-    expect(mainTs).toContain("renderElementTree");
-    expect(mainTs).toContain("SYS.elements");
+    expect(srcText).toContain("renderElementTree");
+    expect(srcText).toContain("SYS.elements");
   });
 
   it("模板宿主不用 ES2022 的 Array.prototype.at（旧 WebView 兼容性）", () => {
-    expect(mainTs).not.toMatch(/\.at\(/);
+    expect(srcText).not.toMatch(/\.at\(/);
   });
 
   it("模板声明引擎三包依赖（发布形态正确）", () => {

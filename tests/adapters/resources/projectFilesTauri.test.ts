@@ -1,6 +1,6 @@
 /**
  * TauriProjectFilesPort 适配器测试：invoke 契约替身（不依赖 Tauri 运行时）。
- * 契约接缝 = TauriInvoke/TauriListen 签名；Rust 侧行为在 cargo 侧测（project_files.rs），两侧各测一半。
+ * 契约接缝 = TauriInvoke/TauriListen 签名；Rust 侧行为在 cargo 侧测（project_files/），两侧各测一半。
  */
 import { describe, expect, it } from "vitest";
 import {

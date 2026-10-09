@@ -7,6 +7,7 @@ use std::fs;
 use std::path::Path;
 use tauri::Manager;
 
+/// 偏好读写的失败类型；序列化为 `{code, detail}`，前端按 `code` 分支处理。
 #[derive(Debug, Serialize, Clone)]
 #[serde(tag = "code", content = "detail")]
 pub enum PreferencesError {
