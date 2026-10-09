@@ -28,6 +28,7 @@ export interface BlobSource {
   dispose(): void;
 }
 
+/** 物化参数：上限决定「哪些资源值得整段驻留内存」，取数实现可替身注入 */
 export interface BlobSourceOptions {
   /** 单资源物化上限（字节）：超过则不物化（大媒体按需流式，Blob 会把整段读进内存） */
   maxBytes: number;
@@ -45,6 +46,10 @@ export interface BlobSourceOptions {
  */
 const CHUNKED_SUPPLY_MARKER = "/v2/";
 
+/**
+ * 造一个物化器：按逻辑 URL 记忆化 `blob:`，同 URL 并发物化只保留先到者（后到的当场 revoke）。
+ * 记忆化表逐实例持有；释放归调用方——端口销毁时记得调 `dispose()`。
+ */
 export function createBlobSource(options: BlobSourceOptions): BlobSource {
   const doFetch = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
   const objectUrls = new Map<string, string>();

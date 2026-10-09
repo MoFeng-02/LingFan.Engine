@@ -19,6 +19,10 @@ import type { EventListener, StoryCommand } from "../../../contracts";
 import type { OpContext } from "../../internal";
 import { Scope } from "../../scope";
 
+/**
+ * 执行一次点击动作：按序跑完 ops，成功返回 true；
+ * 任一 op 失败或进入等待态则整体回滚并返回 false（已出站错误）。
+ */
 export function runElementOps(
   ctx: OpContext,
   ops: readonly Record<string, unknown>[],

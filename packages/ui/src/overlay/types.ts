@@ -53,6 +53,12 @@ export interface NarrativeOverlayView {
   hasElements: boolean;
 }
 
+/**
+ * 装配覆盖层的全部输入：一个容器 + 一个已构造的引擎，其余都可省。
+ *
+ * 省掉的每一项都有明确后果（用内建默认或不做）——例如不传 `resolveResource`
+ * 则元素里的图片一律显示替代文本。逐字段说明见下。
+ */
 export interface NarrativeOverlayOptions {
   /** 挂载点父容器（本装配器在其内创建层骨架） */
   container: HTMLElement;
@@ -91,6 +97,12 @@ export interface NarrativeOverlayOptions {
   onError?: (message: string) => void;
 }
 
+/**
+ * 装配出的覆盖层实例：一面是宿主可读的挂载点（`mounts`），一面是交给宿主的动作。
+ *
+ * 引擎的推进权仍在宿主手里——`advance` / `choose` / `submitInput` 是宿主根据
+ * 自己的输入路由决定要不要调的，覆盖层不替宿主拍板。
+ */
 export interface NarrativeOverlay {
   /** 挂载点（宿主可进一步定制，如往 stage 内插自己的背景） */
   readonly mounts: NarrativeMounts;

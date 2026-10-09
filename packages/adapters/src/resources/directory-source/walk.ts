@@ -8,10 +8,12 @@ export function isDotName(name: string): boolean {
   return name.startsWith(".");
 }
 
+/** 路径的段数（按 `/` 数）：`"a/b/c"` → 3，`""` → 1 —— 用于判断「在资源根下几层」 */
 export function segmentDepth(path: string): number {
   return path.split("/").length;
 }
 
+/** 取父目录前缀（**带尾斜杠**）：`"a/b/c"` → `"a/b/"`；无斜杠（顶层）→ 空串 */
 export function dirOf(path: string): string {
   const at = path.lastIndexOf("/");
   return at < 0 ? "" : path.slice(0, at + 1);
@@ -25,6 +27,10 @@ export function isMissingHandle(error: unknown): boolean {
   );
 }
 
+/**
+ * 尝试取直接子文件：**缺了就是 `undefined`**（探测语义，不是错误）。
+ * 权限之类的真异常照旧抛出——把它们也当成「没有」会让权限问题变成内容问题。
+ */
 export async function tryFileHandle(
   dir: FileSystemDirectoryHandle,
   name: string,
@@ -37,6 +43,10 @@ export async function tryFileHandle(
   }
 }
 
+/**
+ * 尝试取直接子目录：与 `tryFileHandle` 同一形态——缺了算 `undefined`，
+ * 真异常（权限等）继续往上抛。
+ */
 export async function tryDirectoryHandle(
   dir: FileSystemDirectoryHandle,
   name: string,
@@ -49,6 +59,12 @@ export async function tryDirectoryHandle(
   }
 }
 
+/**
+ * 递归收集 `dir` 下的全部文件，把相对路径追加进 `into`（原地写入，不返回新数组）。
+ *
+ * 路径以 `/` 连接、不含 `dir` 自身的名字；点文件与点目录整棵跳过。
+ * 结果顺序即目录枚举顺序，**未排序**——需要稳定顺序的调用方自己排。
+ */
 export async function walkHandle(
   dir: FileSystemDirectoryHandle,
   prefix: string,

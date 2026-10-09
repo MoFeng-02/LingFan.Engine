@@ -16,6 +16,15 @@ import { unquote } from "../lexer";
 import type { StoryCommand } from "../../../contracts";
 import type { StatementContext } from "./state";
 
+/**
+ * 单条命令行语句的读向入口：把一行已切词的语句解析成命令对象。
+ *
+ * 输入：`op`（首词）、`rest`（首词之后的行内剩余文本）、`tokens`（`rest` 按引号规则切好的参数词表）、
+ * `at`（定位前缀，形如 `文件名:行号`，用于拼接报错）、`issues`（外部错误收集器）、可选 `warnings`（警告级收集器）。
+ * 产出：对应的 `StoryCommand`；语句本身合法但语义暂未生效时（如无参 `pause`）除命令外还向警告池记一条提示。
+ * 失败表现：不抛异常，一律返回 `null` 并把原因推入 `issues`（缺参、类型不符、未知参数、未知 op 等）；
+ * 调用方按 `issues` 非空整次拒绝。分发按 op 族转交 `statement/` 下的族文件，本函数只负责建上下文与路由。
+ */
 export function parseSimpleStatement(
   op: string,
   rest: string,

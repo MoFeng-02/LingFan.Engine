@@ -19,6 +19,11 @@ export type NamedCommandHandler = (
   source: ElementInstance,
 ) => void;
 
+/**
+ * 宿主命令表：`register` 与 `get` 是配对的两端，`get` 未命中即 `undefined`
+ * （这里不兜底——命令没注册就是没注册，由调用方决定怎么上报）。
+ * 表本身不持有状态，命令处理器持有的状态与它无关。
+ */
 export interface CommandRegistry {
   /** 注册/覆盖（同名再注册 = 替换，宿主扩展与开发热替换语义） */
   register(name: string, handler: NamedCommandHandler): void;
@@ -29,6 +34,7 @@ export interface CommandRegistry {
   names(): string[];
 }
 
+/** 造一张空的宿主命令表；命令由宿主在装配期注册，本函数不预置任何命令 */
 export function createCommandRegistry(): CommandRegistry {
   const handlers = new Map<string, NamedCommandHandler>();
   return {

@@ -93,6 +93,7 @@ export const ELEMENT_TYPES = [
   "spacer",
 ] as const;
 
+/** 元素类型名（从 `ELEMENT_TYPES` 派生，是元素表与校验白名单的共同键） */
 export type ElementType = (typeof ELEMENT_TYPES)[number];
 
 /** 结构字段（非属性）：type 必填，id/name 为寻址标识，children 为容器嵌套 */

@@ -49,6 +49,13 @@ export interface RenderState {
   layerZ: LayerZController;
 }
 
+/**
+ * 投影器：持有**一个实例**的渲染态，并把状态变更翻译成「该重渲什么」。
+ *
+ * 两条入口（增量 `applyChange` / 全量 `sync`）读同一批字段，因此不会出现
+ * 「读档后与逐条变更后长得不一样」。渲染目标集也是这里算出来的——视图层只负责
+ * 按 `RenderTarget` 重画，不自判该不该画。
+ */
 export interface Projector {
   readonly state: RenderState;
   /** 应用一次增量状态变更；层级键返回 `layers`，其余返回需要重渲的目标 */
@@ -67,6 +74,12 @@ export interface Projector {
   finishTypewriter(): boolean;
 }
 
+/**
+ * 造一个投影器：状态从空投影起步，需调 `sync()` 做首次全量对齐。
+ *
+ * 打字机随句子重建，`textSpeed` 在每次重建时读取（改它不影响正在打的这句）。
+ * 层级 z 控制器由调用方注入——同一份控制器可被多个投影器共享（层级属覆盖层而非投影）。
+ */
 export function createProjector(deps: {
   reader: StateReader;
   engine: StoryEngine;

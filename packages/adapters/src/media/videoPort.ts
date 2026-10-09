@@ -8,6 +8,7 @@
 import type { VideoPort } from "@lingfan/engine";
 import { createBlobSource, type BlobSourceOptions } from "./blobSource";
 
+/** 视频端口的装配参数：诊断出口、层 z 与可选的媒体源物化 */
 export interface WebVideoPortOptions {
   /** 播放失败诊断（缺失/损坏资源不静默：报错诊断） */
   onError?: (message: string) => void;

@@ -44,6 +44,7 @@ function applyContainerBox(el: HTMLElement, ctx: ElementRenderContext): void {
   else if (typeof spacing === "string" && spacing !== "") el.style.gap = spacing;
 }
 
+/** 面板族容器：默认 flex 盒 + 递归渲染子元素 + 交互绑定（`panel`/`frame`/`window`/`vbox` 等共用） */
 export function renderContainer(ctx: ElementRenderContext): HTMLElement {
   const el = createRoot("div", ctx);
   applyContainerBox(el, ctx);

@@ -16,6 +16,10 @@ export type ElementCommandHandler = (
   element: ElementInstance,
 ) => void;
 
+/**
+ * 元素树渲染的装配输入。除 `engine` 外全部可选或可替换——
+ * `registry` 换掉即换元素类型全集，`commands` 不传则元素上的 `cmd` 一律走 fail-closed 上报。
+ */
 export interface ElementTreeDeps {
   /** 元素渲染器注册表（36 类型全集，或宿主替换的实现） */
   registry: ElementRegistry;
@@ -30,6 +34,10 @@ export interface ElementTreeDeps {
   report: (message: string) => void;
 }
 
+/**
+ * 元素树接线器：宿主只需调 `render` 提交一帧元素列表，交互语义由本层消化。
+ * 两个方法都是无状态的——元素数据每次由调用方给全，本层不缓存上一帧。
+ */
 export interface ElementTree {
   /** `disabled` 表达式求值（返回 `null` = 求值失败，表达式语法归核心层） */
   evalDisable(expression: string): boolean | null;
@@ -37,6 +45,13 @@ export interface ElementTree {
   render(elements: readonly ElementInstance[]): void;
 }
 
+/**
+ * 造一个元素树接线器。
+ *
+ * `evalDisable` 与 `activate` 共用同一套判定（同一组属性、同一个求值函数），
+ * 因此「看起来能点」与「点下去真的做了」不会分叉。元素列表逐帧传入、整体重渲，
+ * 本层不持有元素状态。
+ */
 export function createElementTree(deps: ElementTreeDeps): ElementTree {
   const { engine } = deps;
 

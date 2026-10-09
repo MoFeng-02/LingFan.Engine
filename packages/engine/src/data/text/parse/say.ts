@@ -2,8 +2,16 @@
 import { unquote } from "../lexer";
 import type { StoryCommand } from "../../../contracts";
 
+/** `say` 行的无值开关全集：出现即置 `true`，未知词按参数解析规则处理 */
 export const SAY_FLAGS = new Set(["clickable", "okey", "noskip", "instant"]);
 
+/**
+ * 解析一条 `say` 行（已切好的参数词表）。
+ *
+ * 第一个未加引号的词若是引号串 = 台词文本；`key=value` 收敛到命令字段；
+ * `SAY_FLAGS` 中的裸词置 `true`。未知参数记一条 issue 到 `issues` 后继续解析。
+ * 始终返回命令对象（文本缺省为空串），不返回 null。
+ */
 export function parseSay(
   tokens: string[],
   at: string,

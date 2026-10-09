@@ -77,6 +77,14 @@ export function columnShapeDefect(
   return null;
 }
 
+/**
+ * 把一段未知 JSON 解析成故事列，形状不合法即拒。
+ *
+ * 输入：`raw` 待解析的列数据、`at` 定位前缀、`issues` 收集器。
+ * 产出：解析成功的 `StoryColumn`；`id` 缺失或形状不合法时返回 `null`。
+ * 失败表现：不抛异常，一律把原因（带 `at` 定位）推入 `issues` 后返回 `null`。
+ * 形状判定收敛在 `columnShapeDefect`，本函数只负责把缺陷码渲染成既有的用户可见文案。
+ */
 export function parseColumn(
   raw: unknown,
   at: string,

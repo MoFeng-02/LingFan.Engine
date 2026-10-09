@@ -7,6 +7,7 @@ import { bindInteraction, isDisabled } from "./bindings";
 import { createRoot, numProp } from "./base";
 import type { ElementRenderContext } from "../registry";
 
+/** 按钮：取 `text` 作正文，禁用态落到 DOM 的 `disabled`，再挂交互绑定 */
 export function renderButton(ctx: ElementRenderContext): HTMLElement {
   const el = createRoot("button", ctx) as HTMLButtonElement;
   el.type = "button";
@@ -47,6 +48,7 @@ export function renderProgress(ctx: ElementRenderContext): HTMLElement {
   return el;
 }
 
+/** 滑块：`min`/`max`/`value` 归一后写进原生 input；纵向由 `orientation` 决定书写方向 */
 export function renderSlider(ctx: ElementRenderContext): HTMLElement {
   const el = createRoot("input", ctx) as HTMLInputElement;
   el.type = "range";
@@ -60,6 +62,7 @@ export function renderSlider(ctx: ElementRenderContext): HTMLElement {
   return el;
 }
 
+/** 复选框：`checked === true` 才勾上（其余取值一律不勾，不猜真值） */
 export function renderCheckbox(ctx: ElementRenderContext): HTMLElement {
   const el = createRoot("input", ctx) as HTMLInputElement;
   el.type = "checkbox";

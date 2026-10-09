@@ -33,6 +33,7 @@ export function applySource(
   el.style.backgroundImage = `url("${url}")`;
 }
 
+/** 图像：`img` 壳 + 资源（解析不出时把路径落在 `alt` 上，让读者看得见缺了什么） */
 export function renderImage(ctx: ElementRenderContext): HTMLElement {
   const el = createRoot("img", ctx);
   applySource(el, ctx, "src");
@@ -40,6 +41,7 @@ export function renderImage(ctx: ElementRenderContext): HTMLElement {
   return el;
 }
 
+/** 视频：原生 `video` 壳（隐藏控件，播放由视频域驱动），资源接法与图像同一条路 */
 export function renderVideo(ctx: ElementRenderContext): HTMLElement {
   const el = createRoot("video", ctx) as HTMLVideoElement;
   el.controls = false;

@@ -52,13 +52,27 @@ export function tokenizeStream(text: string): TypingStream {
   return { stream, pausePoints, visibleTotal };
 }
 
+/**
+ * 一句话的打字进度机：按 cps 推进可见字符，遇停顿点停下等点击。
+ *
+ * 进度用「已显示的可见字符数」表示，不用流下标——样式标记零宽，不参与计时与停顿坐标。
+ * 用法：宿主每帧调 `tick(dt)`，用户点击调 `click()`，用 `visible` 取当前该上屏的文本前缀。
+ * 本类只管进度，不碰 DOM，也不自己计时。
+ */
 export class Typewriter {
   private shown = 0; // 已显示的可见字符数（流内标记不计）
   private nextPause = 0; // 下一个未消费的停顿点（在 pausePoints 中的下标）
+  /** 停顿点的可见字符坐标（升序，构造时由分词结果一次算定；只读） */
   private readonly pausePoints: number[];
+  /** 打字流：原文去 {p}/{w}/{fast}，样式标记整段保留（见 `tokenizeStream`） */
   private readonly stream: string;
+  /** 可见字符总数；`shown` 达到它即打完 */
   private readonly visibleTotal: number;
 
+  /**
+   * @param text 原始富文本（含 {p}/{w}/{fast} 与样式标记），构造时就地分词
+   * @param cps 每秒推进的可见字符数；`setSpeed` 可在播放中调整
+   */
   constructor(
     text: string,
     private cps: number,
@@ -83,6 +97,12 @@ export class Typewriter {
       : null;
   }
 
+  /**
+   * 推进一帧：按 `cps × dtSeconds` 增加已显示字符数，但**不越过下一个停顿点**。
+   *
+   * 停在停顿点后本方法变为空转，直到 `click()` 消费掉该停顿点。已打完或正停在
+   * 停顿点时直接返回；`cps` 使本帧预算不足 1 个字符时也返回（等下一帧累积）。
+   */
   tick(dtSeconds: number): void {
     if (this.done || this.pausedAtMark) return;
     const budget = Math.ceil(this.cps * dtSeconds);
@@ -103,6 +123,7 @@ export class Typewriter {
     return "completed";
   }
 
+  /** 是否已打完（可见字符全部显示；停在停顿点上时**不算**打完） */
   get done(): boolean {
     return this.shown >= this.visibleTotal;
   }
@@ -141,6 +162,7 @@ export class Typewriter {
     return pause !== null && this.shown >= pause;
   }
 
+  /** 本条文本的可见字符总数（`shown` 的上界；进度条与「打完了吗」的分母） */
   get total(): number {
     return this.visibleTotal;
   }

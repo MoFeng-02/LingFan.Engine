@@ -10,6 +10,10 @@
 import type { ElementInstance } from "@lingfan/engine";
 import type { ElementRegistry } from "./registry";
 
+/**
+ * 一帧元素树的渲染请求：`registry` / `container` / `elements` 必给，
+ * 其余三个回调不传即「没有对应的宿主能力」（表现为元素不可点、表达式不求解、资源显示替代文本）。
+ */
 export interface ElementTreeRenderOptions {
   registry: ElementRegistry;
   container: HTMLElement;
@@ -24,6 +28,12 @@ export interface ElementTreeRenderOptions {
   onUnknownType?: (type: string) => void;
 }
 
+/**
+ * 把一帧元素列表渲染进 `container`（先清空，再整棵重建）。
+ *
+ * 调用方每帧给全量元素——本函数不记上一帧、不做增量对比。未注册类型跳过并上报，
+ * 不画占位：宁可少一个节点，也不让内容错误看起来像渲染成功。
+ */
 export function renderElementTree(options: ElementTreeRenderOptions): void {
   const { container, registry, elements } = options;
   container.innerHTML = "";

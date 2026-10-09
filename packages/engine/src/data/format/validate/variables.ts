@@ -4,6 +4,13 @@
  */
 import { requireNonEmptyString } from "../guards";
 
+/**
+ * 校验本族 op 的负载（5 个 op：`set` `define` `let` `local` `undef`）。
+ *
+ * 入参由分发骨架给出：`cmd` 已收窄为非空 op 的对象，`at` 是报错定位前缀，`issues` 是收集器。
+ * 无返回值，问题通过 `issues` 交付；不匹配的 op 直接落到函数末尾，等于放行（结构从简）。
+ * 失败表现：不抛异常。必填缺失或类型不符时推一条带 `at` 定位的中文 issue，尽量一次报全本族问题。
+ */
 export function validateVariablesCommand(
   cmd: Record<string, unknown>,
   at: string,

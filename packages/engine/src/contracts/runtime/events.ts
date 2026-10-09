@@ -98,6 +98,12 @@ export interface LoadNoticePayload {
   text: string;
 }
 
+/**
+ * 出站负载的全集：核心层向外发事件时，`payload` 只可能是这里列出的成员之一。
+ *
+ * 宿主按各自的 `kind` 判别式分支处理；新增一种出站事件 = 在此联合加一个成员，
+ * 消费方的穷尽分支会随之报错，因此不会漏接。
+ */
 export type OutboundPayload =
   | EngineErrorPayload
   | NotifyPayload
@@ -115,5 +121,7 @@ export interface OutboundEvent {
   payload: OutboundPayload;
 }
 
+/** 状态变化订阅者：收到「哪个键变成了什么值」，只读回调，不应回写引擎 */
 export type StateListener = (change: ValueChanged) => void;
+/** 出站事件订阅者：收到统一信封，按 `payload.kind` 分派处理 */
 export type EventListener = (event: OutboundEvent) => void;

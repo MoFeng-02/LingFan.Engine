@@ -14,6 +14,15 @@ import { validateSaveCommand } from "./validate/save";
 import { validatePresentCommand } from "./validate/present";
 import { validateBlocksCommand } from "./validate/blocks";
 
+/**
+ * 校验单条命令的负载结构，把问题记进 `issues`。
+ *
+ * 输入：`cmd` 待校验的命令对象（形态未知，本函数负责收窄）、`at` 报错定位前缀
+ * （如 `列 id.commands[2]`，各条 issue 都以它开头）、`issues` 外部收集器。
+ * 产出：无返回值。先判对象与 op，再把剩余判定按 op 族交给 `validate/` 下的族文件，
+ * 因此一次调用可以同时收集多条问题。
+ * 失败表现：不抛异常。非对象或 op 非法的命令在此提前返回；其余情况由各族函数补齐。
+ */
 export function validateCommand(cmd: unknown, at: string, issues: string[]): void {
   if (!isPlainObject(cmd)) {
     issues.push(`${at} 必须为对象`);

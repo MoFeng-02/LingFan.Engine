@@ -151,6 +151,15 @@ export function parseTextStory(
  */
 export type { TextProjection } from "../../contracts";
 
+/**
+ * 把一个故事对象投影成文本，**不抛异常**：单条不可投影的命令只记一条 issue。
+ *
+ * 输入：`story` 完整故事对象、可选 `projections` 自定义 op 的文本投影表。
+ * 产出：`{ text, issues }`；`text` 以换行结尾，含 `define` 行、元素的 `scene` 行、
+ * `label` 行与逐条命令行；`issues` 逐条说明哪条命令没投影出来（带 op 与列定位），
+ * 空数组表示全部成功。缩进一律 2 空格起步，块体逐层加深。
+ * 失败表现：命令级失败降级为 issue 而不中断；调用方可用 `issues` 非空判定整次拒绝。
+ */
 export function projectText(
   story: Story,
   projections?: CustomOpProjections,

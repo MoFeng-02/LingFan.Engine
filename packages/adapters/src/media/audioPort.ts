@@ -30,6 +30,7 @@ function clamp(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
+/** 音频端口的装配参数：诊断出口与可选的媒体源物化 */
 export interface WebAudioPortOptions {
   /** 播放失败诊断（缺失/损坏资源不静默：报错诊断） */
   onError?: (message: string) => void;
@@ -38,6 +39,10 @@ export interface WebAudioPortOptions {
   blobSource?: BlobSourceOptions;
 }
 
+/**
+ * 造一个音频端口：常驻通道各持一个 `HTMLAudioElement`，`se` 一次性不入表（允许叠放）。
+ * 元素、URL 与状态逐实例持有；被自动播放策略拒绝的通道登记后等首次用户交互重试。
+ */
 export function createWebAudioPort(
   portOptions: WebAudioPortOptions = {},
 ): AudioPort {

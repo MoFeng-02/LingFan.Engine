@@ -86,6 +86,10 @@ const EASING_LOOKUP: ReadonlyMap<string, (t: number) => number> = new Map(
   Object.entries(EASINGS).map(([name, fn]) => [name.toLowerCase(), fn]),
 );
 
+/**
+ * 按名取缓动函数（大小写不敏感）。名字不认识时不报错——回退到默认缓动，
+ * 让动画照常跑完；名字写错属于作者侧问题，不该把一帧动画变成一次崩溃。
+ */
 export function easingFn(name: string): (t: number) => number {
   return (
     EASING_LOOKUP.get(name.toLowerCase()) ??

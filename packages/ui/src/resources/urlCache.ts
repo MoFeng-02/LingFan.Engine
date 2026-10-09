@@ -14,6 +14,13 @@ export interface ResourceUrlCacheOptions {
   onResolved?: () => void;
 }
 
+/**
+ * 缓存实例的两条取用路径：`get` 是同步的（拿不到就先别用），`resolve` 是异步的
+ * （一定会给一个结果，或在失败时抛）。
+ *
+ * `values` / `clear` 是留给消费方做释放的——缓存自己不认识「释放」这个概念，
+ * 因为 URL 怎么建、怎么撤销只有消费方的端口知道。
+ */
 export interface ResourceUrlCache {
   /** 同步查表：已落地返回 URL；未落地（未请求或在途）返回 `undefined` */
   get(path: string): string | undefined;
@@ -25,6 +32,12 @@ export interface ResourceUrlCache {
   clear(): void;
 }
 
+/**
+ * 造一个缓存：`resolveUrl` 负责真正取源，本模块负责「同一路径只解析一次」。
+ *
+ * 每个实例一张表，多个消费方共用一个实例才能共享解析结果；要隔离就各造各的。
+ * 失败不写进表，因此坏路径会重试，而 `onResolved` 只在真正落地时触发。
+ */
 export function createResourceUrlCache(
   resolveUrl: (path: string) => Promise<string>,
   options: ResourceUrlCacheOptions = {},

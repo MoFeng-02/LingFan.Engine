@@ -14,6 +14,10 @@ import type {
 import { createStateReader, SYS } from "@lingfan/engine";
 import { createResourceUrlCache } from "../resources";
 
+/**
+ * 宿主侧回调：只收「出事了」与「放完了」两件本层无法自行处理的事。
+ * 都不传也能跑——只是解析失败会静默不播、cutscene 结束后引擎会一直等。
+ */
 export interface VideoRendererOptions {
   /** 资源解析失败诊断（报错诊断：不静默吞错） */
   onError?: (message: string) => void;
@@ -21,12 +25,21 @@ export interface VideoRendererOptions {
   onVideoFinished?: () => void;
 }
 
+/**
+ * 视频渲染器：命令的订阅与执行都在工厂内建好，外部只需处理偶尔的显式对齐。
+ */
 export interface VideoRenderer {
   /** 与引擎命令流对齐（订阅外的显式同步，如回溯/读档完成） */
   sync(): void;
   dispose(): void;
 }
 
+/**
+ * 造一个视频渲染器并立即订阅引擎的 `__video` 命令流（构造末尾先自同步一次）。
+ *
+ * 它按 seq 去重、按代际取消迟到的解析结果；资源 URL 经共享缓存取，`dispose` 时逐个
+ * `resources.release` 并退订——释放与订阅成对，调用方不必自己记账。
+ */
 export function createVideoRenderer(
   engine: StoryEngine,
   port: VideoPort,

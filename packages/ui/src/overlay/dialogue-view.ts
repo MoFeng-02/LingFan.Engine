@@ -20,6 +20,10 @@ export interface DialogueRenderInput {
   lineHtml: string;
 }
 
+/**
+ * 对话层的装配输入。模板名不是参数而是回调——它逐帧从引擎状态读，
+ * 因此对话框换装（角色 screen / 逐句 template）不需要重建视图。
+ */
 export interface DialogueViewDeps {
   /** 挂载点父容器（`ownerDocument` 的来源） */
   container: HTMLElement;
@@ -30,6 +34,13 @@ export interface DialogueViewDeps {
   readTemplateName: () => string | null;
 }
 
+/**
+ * 造一个对话层渲染函数：调用它即用当帧的渲染态整体重渲对话层。
+ *
+ * 骨架固定为「说话人 / 正文 / 推进提示」三段，模板只填内容；每帧重建是因为打字帧
+ * 本来就要重写正文，增量对比省不下什么却要再养一份骨架知识。等待菜单、输入或
+ * 视频时整层隐藏——是隐藏而非清空，避免恢复时闪一下。
+ */
 export function createDialogueView(
   deps: DialogueViewDeps,
 ): (input: DialogueRenderInput) => void {
