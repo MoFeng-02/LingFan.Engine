@@ -20,18 +20,13 @@ import {
   createNarrativeOverlay,
   type NarrativeOverlay,
 } from "@lingfan/ui";
-// 守卫实现来自构建期生成物（与引擎仓库参考宿主同源）——
-// 故事里用了 guard op，未注册即 fail-closed 停住，故宿主必须装配同一份。
-import { guards } from "../Stories.src/gen/fun_register.g";
+// 默认故事清单与守卫都从故事侧出口取：生成物路径与清单形态只在那一个目录里出现，
+// 覆盖层演示与组合根共用同一份（换生成器输出名或调整默认清单时只改一处）。
+import { STORIES, guards } from "./stories";
 
 const MANIFEST = "project.json";
-const STORIES = [
-  "Stories/chapter1/chapter1.story",
-  "Stories/chapter2/chapter2.story",
-  "Stories/chapter3/chapter3.story",
-  "Stories/chapter4/vocab_tour.story",
-];
-const CPS = 30;
+/** 覆盖层字速（字符/秒）：演示用固定值，正式宿主按玩家偏好注入 */
+const OVERLAY_TEXT_SPEED = 30;
 
 const errorEl = document.querySelector<HTMLElement>("#error")!;
 function report(message: string): void {
@@ -82,7 +77,7 @@ async function main(): Promise<void> {
   const overlay: NarrativeOverlay = createNarrativeOverlay({
     container: document.querySelector<HTMLElement>("#embed")!,
     engine,
-    textSpeed: CPS,
+    textSpeed: OVERLAY_TEXT_SPEED,
     resolveResource: elementResources.resolveForElement,
     onError: report,
   });

@@ -2,7 +2,7 @@
 //! 明文工程根 → 加密发布根。用法：
 //! `lfenpack <工程根> <输出根> [--force] [--strict] [--dist <前端产物目录>]`
 //!
-//! 语义归 `pack_project` / `pack_project_with_dist`（resource_crypto.rs，单测覆盖）：
+//! 语义归 `pack_project` / `pack_project_with_dist`（`resource_crypto/`，单测覆盖）：
 //! 清单明文转换（resourceEncryption=true）+ 内容文件全量 LFEN2（原路径+.enc）+
 //! 排除 Saves/ 与点文件 + 新随机 DEK 写 `__key__.seed`（运行时首次导入即封装）+
 //! 输出逐文件解密回读自检。`--force` = 输出目录已存在且非空时先清空（显式覆盖确认）。

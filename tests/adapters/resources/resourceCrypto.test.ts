@@ -2,7 +2,7 @@
  * 加密 ResourcePort 适配器测试（流式形态）：invoke 契约替身
  * （不依赖 Tauri 运行时）。覆盖：JSON 负载解析（Rust 构造的 url 直通，平台编码归 Rust）、
  * 命令名与路径透传、坏负载 fail-closed、解密失败抛错。
- * Rust 侧行为在 cargo 侧测（resource_crypto.rs），两侧各测一半。
+ * Rust 侧行为在 cargo 侧测（`resource_crypto/`），两侧各测一半。
  */
 import { describe, expect, it } from "vitest";
 import { createTauriEncryptedResourcePort } from "@lingfan/adapters";

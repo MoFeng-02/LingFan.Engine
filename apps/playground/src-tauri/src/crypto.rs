@@ -1,4 +1,4 @@
-//! 共享加密原语（KEK + AES-256-GCM 信封）：存档（save.rs）与资源（resource_crypto.rs）共用。
+//! 共享加密原语（KEK + AES-256-GCM 信封）：存档（save/）与资源（resource_crypto/）共用。
 //! 密钥分层三级：DEK（每文件/每档随机）→ KEK（每机器随机，桌面 DPAPI/Keychain/libsecret、
 //! 移动端 Keychain / Android Keystore）→ OS 凭据；零明文密钥落盘。
 //! GCM 信封 = nonce(12) + ciphertext + tag(16)。
@@ -12,11 +12,14 @@ use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use base64::engine::general_purpose::STANDARD as B64;
 use base64::Engine as _;
 
+/// OS 凭据条目的服务名（与 [`KEK_USER`] 一起定位本机唯一的那条 KEK 凭据）。
 pub(crate) const KEK_SERVICE: &str = "lingfanengine";
+/// OS 凭据条目内的用户名；服务名相同而用户名不同即为另一条凭据。
 pub(crate) const KEK_USER: &str = "kek";
 
-/// 备注：高水位文件本身也被 KEK 加密（AAD 域分离），防篡改；删除重置为已知边界（攻击者持文件系统写权限时无法防，属已知边界）。
+/// 进程内 KEK 缓存：命中即直接返回，后续加解密不再访问系统凭据库。
 static KEK_CACHE: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+/// 首次取 KEK 的进程内互斥：缓存未命中时只放一个线程去生成并写入凭据，其余线程等它完成后读缓存。
 static KEK_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// 凭据 store 一次性装配（进程内只做一次，结果缓存——含失败结果，避免反复创建/重试）。
@@ -95,6 +98,7 @@ pub(crate) fn kek_from_keyring(service: &str, user: &str) -> Result<Vec<u8>, Str
     Ok(kek)
 }
 
+/// 取 `n` 字节密码学随机数；随机源不可用时返回错误，不退回弱随机。
 pub(crate) fn random_bytes(n: usize) -> Result<Vec<u8>, String> {
     let mut buf = vec![0u8; n];
     getrandom::fill(&mut buf).map_err(|e| format!("随机源失败：{e}"))?;

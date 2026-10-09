@@ -296,23 +296,33 @@ mod tests {
 
     #[test]
     fn tungstenite_referenced_only_inside_ws_dev_module() {
-        // src 下除本模块外不得引用 WS 栈（release 排除的补充断言：无旁路调用点）
-        let src_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-        for entry in std::fs::read_dir(&src_dir).unwrap().flatten() {
-            let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) != Some("rs") {
-                continue;
+        // src 下除本模块外不得引用 WS 栈（release 排除的补充断言：无旁路调用点）。
+        // 递归下钻：WS 栈引用若出现在 src 的子目录里，同样必须被判出。
+        fn assert_no_ws_stack(dir: &std::path::Path) {
+            let Ok(entries) = std::fs::read_dir(dir) else {
+                panic!("读 src 目录失败：{}", dir.display());
+            };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    assert_no_ws_stack(&path);
+                    continue;
+                }
+                if path.extension().and_then(|e| e.to_str()) != Some("rs") {
+                    continue;
+                }
+                if path.file_name().and_then(|e| e.to_str()) == Some("ws_dev.rs") {
+                    continue;
+                }
+                let text = std::fs::read_to_string(&path).unwrap();
+                assert!(
+                    !text.contains("tungstenite"),
+                    "{} 引用了 WS 栈（WS 代码应全部收敛在 ws_dev.rs）",
+                    path.display()
+                );
             }
-            if path.file_name().and_then(|e| e.to_str()) == Some("ws_dev.rs") {
-                continue;
-            }
-            let text = std::fs::read_to_string(&path).unwrap();
-            assert!(
-                !text.contains("tungstenite"),
-                "{} 引用了 WS 栈（WS 代码应全部收敛在 ws_dev.rs）",
-                path.display()
-            );
         }
+        assert_no_ws_stack(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src"));
     }
 
     // —— WS 层集成：真实 TCP + 握手 + 帧往返（合成 handler，无需 AppHandle）——

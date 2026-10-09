@@ -43,6 +43,7 @@ impl OrientationMode {
     }
 }
 
+/// 屏幕方向切换的失败类型；序列化为 `{code, detail}`，前端按 `code` 分支处理。
 #[derive(Debug, Serialize, Clone)]
 #[serde(tag = "code", content = "detail")]
 pub enum ShellError {
@@ -154,6 +155,7 @@ mod ios {
             .build()
     }
 
+    /// 经 Swift 插件下发方向模式；成功返回 `true`，插件报错转 [`super::ShellError`]。
     pub fn apply(app: &tauri::AppHandle, mode: OrientationMode) -> Result<bool, super::ShellError> {
         use super::ShellError;
         let bridge = app.state::<std::sync::Arc<ShellBridge>>();

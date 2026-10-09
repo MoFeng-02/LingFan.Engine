@@ -4,7 +4,7 @@
  * 「契约层同一套测试用例在两个适配器上跑」的 TS 半边：invoke 替身按 Rust
  * `apply_project_files` / `stamp_project_files` 的**同语义**实现内存盘
  * （白名单 / 先写后删 / 幂等 / 指纹 = mtime+size），断言形状与
- * `directorySource.test.ts` 的 FSA 用例对齐；Rust 行为由 `project_writer.rs`
+ * `directorySource.test.ts` 的 FSA 用例对齐；Rust 行为由 `project_writer/`
  * cargo 测试锁定。
  */
 

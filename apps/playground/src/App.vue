@@ -1,33 +1,34 @@
 <script setup lang="ts">
-import { computed, nextTick, onUnmounted, ref, watch, type Ref } from "vue";
+/**
+ * 浏览器参考宿主：订阅引擎状态与事件，把状态渲染成舞台，把输入翻译成引擎命令。
+ *
+ * 组件只做三件事——订阅、落状态、转发输入；具体策略（状态投影、层 z、帧驱动、
+ * 面板装配、演示工厂）都住在 `host/` 下，本组件负责把它们接到一起。
+ * 平台端口与工程装配由组合根（`main.ts`）注入：本组件只消费契约，不知道任何具体实现。
+ */
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import {
   DEFAULT_KEYMAP,
-  INSTANCE_Z_KEYS,
   SYS,
   StoryEngine,
   instanceZLayer,
-  resolveInstanceZ,
   slotIds,
-  type AbortHandle,
-  type AudioChannel,
   type AudioPort,
-  type ElementInstance,
+  type GameStateWriter,
   type HostInfo,
   type I18nPort,
+  type InteractionContext,
+  type InteractionResult,
   type KeymapAction,
+  type LayerId,
   type LayerZTable,
   type OpExtension,
-  type OrientationMode,
   type PlayerPreferences,
   type ResourcePort,
-  type SaveDataV1,
   type SavePort,
   type SavesConfig,
   type Story,
   type VideoPort,
-  type GameStateWriter,
-  type InteractionContext,
-  type InteractionResult,
 } from "@lingfan/engine";
 import {
   Typewriter,
@@ -38,31 +39,44 @@ import {
   createChoiceTemplateRegistry,
   createCommandRegistry,
   createDialogueTemplateRegistry,
-  createElementRegistry,
-  createElementResourceResolver,
   createInputScopeState,
   createMinigameRegistry,
   createNotifyTemplateRegistry,
   createVideoRenderer,
-  interpolateAnimation,
-  registerBuiltinElementRenderers,
   renderDialogueLine,
-  renderElementTree,
-  resolveElementAction,
   routesToNarrative,
-  shakeOffset,
   toNotifyTone,
-  transitionOpacity,
+  type AudioRenderer,
   type ChoiceTemplateView,
   type DialogueTemplateView,
   type NotifyTemplateView,
-  type AudioRenderer,
   type VideoRenderer,
 } from "@lingfan/ui";
-import { captureSaveThumbnail, captureStageComposite, collectStageMedia, stripHtml } from "./shell/thumbnail";
+import { captureSaveThumbnail, captureStageComposite, collectStageMedia, stripHtml } from "./shell";
+import {
+  abortSignalOf,
+  buildHistoryBlocks,
+  createClick3Demo,
+  createElementLayer,
+  createHostEffects,
+  createInteractionWalk,
+  createKeybindingPanel,
+  createLayerZController,
+  createNarrativeEvents,
+  createNarrativeState,
+  createNotices,
+  createPreferencesPanel,
+  filterHistoryEntries,
+  loadSlotViews,
+  startHostFrameLoop,
+  type HistoryBlock,
+  type HistoryEntry,
+  type SlotPanelMode,
+  type SlotView,
+} from "./host";
 // 守卫实现来自 stories:build 的 cell 生成物（源 = Stories.src/story.ts 的 cell 槽位）——
 // 组合根零手写注册；名字闭合由构建期闸门执法（故事引用 ⊆ 生成注册表）。
-import { guards as engineGuards } from "../Stories.src/gen/fun_register.g";
+import { guards as engineGuards } from "./stories";
 
 // —— 核心层只写状态，UI 只经 ValueChanged 订阅渲染 ——
 // 工程与平台端口都由组合根（main.ts）装配注入：本组件只消费契约，不知道任何具体实现
@@ -88,25 +102,75 @@ const props = defineProps<{
   createVideoPort: (onError: (message: string) => void) => VideoPort;
 }>();
 
-const speaker = ref("");
-const text = ref("");
-const canAdvance = ref(false);
-const inMenu = ref(false);
-const inWait = ref(false);
-const inInput = ref(false);
-const inVideo = ref(false);
-const inMinigame = ref(false);
-// window auto|show|hide：hide 即隐藏对话框（叙事语义归核心层，DOM 可见性归 UI）
-const dialogHidden = ref(false);
-const minigameHostEl = ref<HTMLElement | null>(null);
-// —— 元素系统：舞台元素（声明式空间层；核心层只写 __elements，UI 只经槽位渲染） ——
-const elements = ref<ElementInstance[]>([]);
-const elementLayerEl = ref<HTMLElement | null>(null);
-// 帧驱动：舞台根（震动偏移）与全屏转场遮罩
-const stageEl = ref<HTMLElement | null>(null);
-const transitionEl = ref<HTMLElement | null>(null);
-const elementRegistry = createElementRegistry();
-registerBuiltinElementRenderers(elementRegistry);
+// —— 视图状态：状态键 → 视图意图 → 响应式字段 ——
+// 解读规则来自共享的 host 域；本组件只注入宿主侧事实（层级键、角色配色、打字机重建）
+const narrative = createNarrativeState({
+  resolveLayer: (key) => instanceZLayer(key),
+  // 本宿主不提供故事级打字机设置：字速一律取玩家偏好
+  readTypingSetting: () => undefined,
+  readCharacterColor: (name) => engine.getCharacter(name)?.color ?? null,
+  readColorOverride: () => {
+    const value = engine.get(SYS.currentDialogColor);
+    return typeof value === "string" ? value : null;
+  },
+  onLayerZ: (layer, z) => {
+    zController.set(layer, z);
+  },
+  onLayerZRestore: (z) => {
+    zController.restore(z);
+  },
+  onDialogText: (line) => {
+    // 打字速度 = 玩家偏好（SetTextSpeed 语义；每句重建取最新值）
+    typewriter = new Typewriter(line, props.preferences.textSpeed);
+  },
+});
+/** 叙事视图状态：模板直接读这些字段，组件不再自持字段 */
+const {
+  speaker,
+  text,
+  shownText,
+  speakerColor,
+  canAdvance,
+  inMenu,
+  inWait,
+  inInput,
+  inVideo,
+  inMinigame,
+  inInteraction,
+  dialogHidden,
+  menuPrompt,
+  inputPrompt,
+  inputValue,
+  rawTexts,
+  rawTargets,
+  menuOptions,
+  dialogTemplateName,
+  nvlMode,
+  nvlBuffer,
+  elements,
+} = narrative;
+
+/**
+ * 层 z 控制器：实例级覆盖的**响应式镜像** + 视频层下发。
+ * 镜像必须响应式——模板绑定读它，才会在该层 z 变化时重渲染。
+ */
+const zController = createLayerZController({
+  layerZ: props.layerZ,
+  applyVideoZ: (z) => {
+    videoPort.setZIndex?.(z);
+  },
+});
+/** 层最终 z（实例 > 层默认 > 内建）——模板直接用 */
+function zOf(layer: LayerId): number {
+  return zController.zOf(layer);
+}
+
+/** 错误横幅内容（元素、小游戏、事件分支的 fail-closed 上报都落这里） */
+const error = ref("");
+/** 提示条出口：装配与驻留归共享的宿主层，本组件只把列表交给模板 */
+const notices = createNotices();
+/** 提示条列表（模板 v-for 读它） */
+const notifications = notices.items;
 // 命令注册制：元素 `cmd` 的业务命令由宿主注册（未注册 fail-closed，不静默吞掉）
 const commands = createCommandRegistry();
 // —— 语言选择：可用语言 = Lang/ 目录扫描（供给侧 API）；切换 = setLanguage 按需载入 ——
@@ -116,50 +180,14 @@ const availableLangs = ref<string[]>([]);
 void props.i18nPort?.listLanguages?.().then((langs) => {
   if (langs.length > 0) availableLangs.value = langs;
 }).catch(() => {});
-const menuPrompt = ref("");
-const inputPrompt = ref("");
-const inputValue = ref("");
-const error = ref("");
-const rawTexts = ref<string[]>([]);
-const rawTargets = ref<string[]>([]);
-const menuOptions = computed(() =>
-  rawTexts.value.map((t, i) => ({
-    text: t,
-    target: rawTargets.value[i] ?? "",
-  })),
-);
-const notifications = ref<
-  Array<{ id: number; text: string; tone: "info" | "warning" | "error" }>
->([]);
-let notifySeq = 0;
-// —— 提示驻留时长（提常量，零行为变化；数值沿袭现状，差异有意）——
-// notify op 未自带 duration 时的驻留：通知要供阅读，最长
-const NOTIFY_DURATION_MS = 3000;
-// 操作反馈 toast（存/读按钮等）：短促即可
-const TOAST_DURATION_MS = 1500;
-// 读档完成提示：文案含「回到存档时刻」说明，比普通反馈多留一档时间
-const LOAD_TOAST_DURATION_MS = 2500;
-// 「已回溯」轻提示：与普通反馈同档
-const ROLLBACK_NOTICE_DURATION_MS = 1500;
-// —— 打字机 / NVL / 历史面板 / 角色样式 ——
-const shownText = ref(""); // 打字机可见前缀（渲染层 v-html）
-const speakerColor = ref(""); // 角色样式自动应用
-/**
- * 重算说话人颜色 = **本句覆盖值优先，其次角色定义**。
- *
- * **为什么是函数而不是「在 speaker 分支里算」**：`speakerColor` 是
- * `(speaker, currentDialogColor)` 的**派生值**——引擎按 `color → speaker` 顺序写两个键，
- * 若只在 speaker 分支算，本句的 color 可能还没到（算成上一句的颜色，**滞后一句**）。
- * 派生值不该依赖事件到达顺序 ⇒ 两个键变更都调它（幂等）。
- */
-function refreshSpeakerColor(): void {
-  const def = engine.getCharacter(speaker.value);
-  const override = engine.get(SYS.currentDialogColor);
-  speakerColor.value =
-    (typeof override === "string" && override !== "" ? override : def?.color) ?? "";
-}
-const nvlMode = ref("none");
-const nvlBuffer = ref<string[]>([]);
+/** 外部系统挂载点（小游戏与玩法系统共用同一容器） */
+const minigameHostEl = ref<HTMLElement | null>(null);
+/** 舞台元素层容器（声明式空间层的挂载点） */
+const elementLayerEl = ref<HTMLElement | null>(null);
+/** 舞台根（震动偏移写它的 transform） */
+const stageEl = ref<HTMLElement | null>(null);
+/** 全屏转场遮罩（不透明度与显隐由帧驱动写入） */
+const transitionEl = ref<HTMLElement | null>(null);
 // —— NVL 累积层：已打完的行 memo 一次（O(新增)——静态行若随打字帧全量重渲染即 O(全文) 每帧），
 // 最新一行走打字机（统一渲染接缝）——
 const nvlPastLines = computed(() =>
@@ -189,7 +217,6 @@ dialogueTemplates.register("center", (input) => ({
   bodyHtml: input.lineHtml,
   hintHtml: input.canAdvance ? "▼" : "",
 }));
-const dialogTemplateName = ref<string | null>("");
 // —— 选择层 / 通知层模板注册制（与对话模板同一形态：语义骨架挂点 + 根皮肤类）——
 // 骨架由宿主固定渲染（提示行 / 选项列表 / 通知正文），模板只填各挂点内容：
 // 未知模板名回退默认（展示层缺失应兜底，与元素/小游戏注册表的 fail-closed 口径不同）。
@@ -226,50 +253,18 @@ const notifyViewOf = (text: string, tone: string): NotifyTemplateView => {
   const template = notifyTemplates.resolve(null) ?? builtinNotifyTemplate;
   return template({ text, tone: toNotifyTone(tone) });
 };
-/**
- * 中止句柄收窄（宿主侧）：契约层只用语言核心类型，只承诺 `signal.aborted` 可轮询；
- * 本宿主（浏览器）拿到的其实是 `AbortSignal` 实例，需要订阅中止事件时就收窄回来。
- * 只做类型收窄，运行时对象不变——引擎给的就是宿主环境自己的中止实现。
- */
-const abortSignalOf = (handle: AbortHandle): AbortSignal =>
-  handle as AbortSignal;
-
 // —— 小游戏注册表：宿主注册（任意技术实现工厂）；未注册 = fail-closed 不伪造完成 ——
 const minigames = createMinigameRegistry();
-// 演示小游戏「点够次数」：config.target 次点击后成功（signal abort = 立即收尾不回填）
-minigames.register("click3", (container, ctx) => {
-  // 契约层只承诺「有个可挂载的容器」，不承诺类型；本宿主用 DOM 渲染，故收窄回元素
-  const host = container as HTMLElement;
-  return new Promise((resolve) => {
-    const target =
-      typeof ctx.config.target === "number" ? ctx.config.target : 3;
-    host.innerHTML = "";
-    host.classList.add("minigame-demo");
-    const label = document.createElement("p");
-    label.className = "minigame-label";
-    label.textContent = `演示小游戏：点 ${target} 次完成`;
-    const counter = document.createElement("div");
-    counter.className = "minigame-count";
-    counter.textContent = `0 / ${target}`;
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = "点我";
-    let clicks = 0;
-    button.addEventListener("click", () => {
-      clicks += 1;
-      counter.textContent = `${clicks} / ${target}`;
-      if (clicks >= target) resolve({ outcome: "success", score: clicks });
-    });
-    abortSignalOf(ctx.signal).addEventListener(
-      "abort",
-      () => {
-        host.innerHTML = ""; // 回溯/导航/销毁：立即收尾（不回填结果）
-      },
-      { once: true },
-    );
-    host.append(label, counter, button);
-  });
-});
+// 演示小游戏「点够次数」：config.target 次点击后成功（signal abort = 立即收尾不回填）。
+// DOM 构建在 `host/minigame-demo.ts`；本组件只提供宿主侧事实（容器类标记的写法）。
+minigames.register(
+  "click3",
+  createClick3Demo({
+    markHost: (host) => {
+      host.classList.add("minigame-demo");
+    },
+  }),
+);
 /**
  * —— 外部玩法系统注册表（演示：极简 WASD 行走）——
  *
@@ -290,69 +285,13 @@ const interactions = new Map<
  * 与 `data-ui-zone`（控件消费优先）正交——前者管「模式」，后者管「事件目标」。
  */
 const inputScope = createInputScopeState();
-interactions.set("walk", (host, ctx) => {
-  const target = typeof ctx.config.target === "number" ? ctx.config.target : 120;
-  return new Promise((resolve) => {
-    host.innerHTML = "";
+// 演示玩法系统：DOM 与按键循环在 `host/interaction-walk.ts`；
+// 本组件只提供宿主侧事实（容器类标记的写法）与可调参数（默认值即演示值）。
+interactions.set("walk", createInteractionWalk({
+  markHost: (host) => {
     host.classList.add("walk-demo");
-    const avatar = document.createElement("div");
-    avatar.className = "walk-avatar";
-    const hint = document.createElement("p");
-    hint.className = "walk-hint";
-    host.append(hint, avatar);
-
-    let x = 0;
-    const speed = 40; // 像素/秒（演示用；真实系统自定）
-    let pressed: string | null = null;
-    const render = (): void => {
-      avatar.style.transform = `translateX(${x}px)`;
-      hint.textContent = `WASD/A-D 移动 → 走到 ${target}px 结束（当前 ${Math.round(x)}）`;
-      // 每帧写引擎状态（静默通道：高频，不进事件流）；作者侧可读 {game.walk.x}
-      ctx.writer.setScopedSilent("walk", "x", Math.round(x));
-    };
-    const onKey = (e: KeyboardEvent): void => {
-      const k = e.key.toLowerCase();
-      if (k === "a" || k === "arrowleft") pressed = "left";
-      else if (k === "d" || k === "arrowright") pressed = "right";
-      else return;
-      e.preventDefault(); // 玩法系统独占方向键（不触发宿主滚轮/回溯）
-    };
-    const onKeyUp = (): void => {
-      pressed = null;
-    };
-    let raf = 0;
-    let last = performance.now();
-    const tick = (now: number): void => {
-      const dt = (now - last) / 1000;
-      last = now;
-      if (pressed === "left") x = Math.max(0, x - speed * dt);
-      if (pressed === "right") x = Math.min(target, x + speed * dt);
-      render();
-      if (x >= target) {
-        ctx.writer.setScoped("walk", "x", target); // 抵达：低频变更走事件流
-        resolve({ outcome: "success", state: { arrived: true } });
-        return;
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    const cleanup = (): void => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("keyup", onKeyUp);
-      host.innerHTML = "";
-    };
-    // abort（回溯/导航/读档/销毁）走 cleanup；正常抵达与异常由宿主收口统一清理
-    // （见 interaction.mount 分支的 onAbort —— 两条结束路径只写一处）。
-    abortSignalOf(ctx.signal).addEventListener("abort", cleanup, {
-      once: true,
-    });
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("keyup", onKeyUp);
-    render();
-    raf = requestAnimationFrame(tick);
-  });
-});
-const inInteraction = ref(false);
+  },
+}));
 const dialogView = computed<DialogueTemplateView>(() => {
   const template =
     dialogueTemplates.resolve(dialogTemplateName.value) ??
@@ -365,53 +304,11 @@ const dialogView = computed<DialogueTemplateView>(() => {
   });
 });
 const showHistory = ref(false);
-const historyEntries = ref<
-  Array<{
-    index: number;
-    speaker: string;
-    text: string;
-    nvl: boolean;
-    nvlLines: string[];
-  }>
->([]);
-
-/** 历史呈现：**连续 NVL 条目聚合为一个块**——
- * 玩家所见本来就是整块累积画面，块级回溯 = 回到「块尾检查点」（整块可见的时刻，
- * 检查点语义的自然延伸）；buffer 收缩（nvl clear）即分段。回溯粒度不减：
- * 逐检查点仍全在 history 里，只是呈现聚合。 */
-interface HistoryBlock {
-  key: string; // 块首条目 index（稳定，避免 Vue 重建）
-  index: number; // 回溯目标 = 块尾检查点
-  speaker: string;
-  lines: string[];
-  nvl: boolean;
-}
-const historyBlocks = computed<HistoryBlock[]>(() => {
-  const blocks: HistoryBlock[] = [];
-  for (const entry of historyEntries.value) {
-    const prev = blocks[blocks.length - 1];
-    if (
-      entry.nvl &&
-      prev?.nvl === true &&
-      entry.nvlLines.length >= prev.lines.length
-    ) {
-      prev.index = entry.index; // 同段延续：块尾推进为最新检查点
-      prev.lines = entry.nvlLines;
-      continue;
-    }
-    blocks.push({
-      key: `blk-${entry.index}`,
-      index: entry.index,
-      speaker: entry.speaker,
-      lines: entry.nvl ? [...entry.nvlLines] : [entry.text],
-      nvl: entry.nvl,
-    });
-  }
-  return blocks;
-});
+/** 历史条目（引擎快照经筛选后的可回溯行；刷新时机见 `refreshHistory`） */
+const historyEntries = ref<HistoryEntry[]>([]);
+/** 呈现块：连续 NVL 聚合成一行，回溯目标是块尾检查点 */
+const historyBlocks = computed<HistoryBlock[]>(() => buildHistoryBlocks(historyEntries.value));
 let typewriter: Typewriter | null = null;
-let rafId = 0;
-let lastFrame = 0;
 let engine: StoryEngine;
 // 守卫实现来自 stories:build 的 cell 生成物（源 = Stories.src/story.ts 的 cell 槽位）——
 // 组合根零手写注册；名字闭合由构建期闸门执法（故事引用 ⊆ 生成注册表）。
@@ -440,282 +337,89 @@ function createVideo(): VideoRenderer {
   });
 }
 
-function tickLoop(now: number): void {
-  const dt = lastFrame > 0 ? (now - lastFrame) / 1000 : 0;
-  lastFrame = now;
-  typewriter?.tick(dt);
-  shownText.value = typewriter?.visible ?? text.value;
-  audioRenderer?.pollPosition(); // 媒体位置帧级回写
-  driveVisualEffects(dt); // 元素动画 / 转场 / 震动
-  rafId = requestAnimationFrame(tickLoop);
-}
-
-// —— 元素渲染：核心层只写 __elements，此处经注册表渲染到舞台层 ——
-// 资源解析缓存 = @lingfan/ui 共用实现（宿主只提供端口与重渲染回调）
-const elementResources = createElementResourceResolver({
-  resolve: (path) => props.resourcePort.resolve(path),
-  onResolved: renderElements,
-});
-
-/**
- * `disabled` 表达式求值（元素禁用态）：表达式原文经引擎插值取**当前**变量值，
- * 结果必须是 `true`/`false`；其余（含求值失败）返回 null = 形态未定。
- *
- * 渲染与点击两条路共用同一求值器——两处判定必须同源，否则会出现
- * 「看着能点却点不动」或反之的不一致。
- */
-function evalElementDisable(expression: string): boolean | null {
-  const text = engine.interpolate(expression);
-  if (text === "true") return true;
-  if (text === "false") return false;
-  return null;
-}
-
-/**
- * 元素意图 → 命令。点击分支走纯函数 `resolveElementAction`
- * （`disabled` > `nav` > `ops` > `cmd`，与 UI 侧渲染器同源）；`nav` → 核心 `navigate`，
- * `ops` → 引擎按序执行（数据侧动作，复用 op 分发表、入历史），
- * `cmd` → 宿主命令注册表，`value` 按**点击时**插值取最新变量（既有实现取值语义）。
- */
-function activateElement(element: ElementInstance): void {
-  const action = resolveElementAction(element.props, {
-    evalDisable: evalElementDisable,
-  });
-  if (action.kind === "nav") {
-    engine.navigate(action.target);
-    return;
-  }
-  if (action.kind === "ops") {
-    if (!engine.runElementOps(action.ops)) {
-      error.value = "元素动作执行失败（详见错误横幅：等待/位置类 op 与畸形负载会被拒绝）";
-    }
-    return;
-  }
-  if (action.kind !== "cmd") return;
-  const handler = commands.get(action.name);
-  if (handler === undefined) {
-    error.value = `元素命令未注册：${action.name}（fail-closed：宿主需经命令注册表提供）`;
-    return;
-  }
-  handler(
-    action.value === undefined ? undefined : engine.interpolate(action.value),
-    element,
-  );
-}
-
-function renderElements(): void {
-  const host = elementLayerEl.value;
-  if (host === null) return;
-  renderElementTree({
-    registry: elementRegistry,
-    container: host,
-    elements: elements.value,
-    activate: activateElement,
-    evalDisable: evalElementDisable,
-    resolveResource: elementResources.resolveForElement,
-    onUnknownType: (type) => {
-      error.value = `元素类型未注册：${type}（fail-closed：不伪造渲染）`;
+// —— 元素层：核心层只写 __elements，此处经注册表渲染到舞台层 ——
+// 渲染、禁用态求值与动作分流都在宿主层叶子；本组件只把引擎命令面与容器接进去。
+const elementLayer = createElementLayer({
+  readContainer: () => elementLayerEl.value,
+  resolveResource: (path) => props.resourcePort.resolve(path),
+  readElements: () => elements.value,
+  engine: {
+    navigate: (target) => {
+      engine.navigate(target);
     },
-  });
-}
+    runElementOps: (ops) => engine.runElementOps(ops),
+    interpolate: (source) => engine.interpolate(source),
+  },
+  commands,
+  reportError: (message) => {
+    error.value = message;
+  },
+});
 
 watch(elements, () => {
-  void nextTick(renderElements); // 容器挂载后再渲染（首帧容器可能尚未就绪）
+  void nextTick(() => {
+    elementLayer.render(); // 容器挂载后再渲染（首帧容器可能尚未就绪）
+  });
 });
 
-// —— 帧驱动：元素动画 / 全屏转场 / 屏幕震动 ——
-// 核心只写「描述」（离散、进快照），逐帧插值在此完成（不逐帧写 SSOT）。
-const animationElapsed = new Map<number, number>(); // seq → 已播秒数
-let transitionElapsed = 0;
-let shakeClock = 0;
+// —— 帧驱动表现：元素动画 / 全屏转场 / 屏幕震动 ——
+// 核心只写「描述」（离散、进快照），逐帧插值归宿主层叶子（不逐帧写 SSOT）。
+const driveEffects = createHostEffects({
+  source: {
+    animations: () => engine.animations(),
+    transition: () => {
+      const live = engine.get(SYS.transition) as { duration: number } | null | undefined;
+      return live ?? undefined;
+    },
+    shake: () => {
+      const live = engine.get(SYS.shake) as
+        | { intensity: number; duration: number }
+        | null
+        | undefined;
+      return live ?? undefined;
+    },
+    animationFinished: (seq) => {
+      engine.animationFinished(seq);
+    },
+    transitionFinished: () => {
+      engine.transitionFinished();
+    },
+    shakeFinished: () => {
+      engine.shakeFinished();
+    },
+  },
+  readElementHost: () => elementLayerEl.value,
+  readOverlay: () => transitionEl.value,
+  readStage: () => stageEl.value,
+});
 
-/** 数值属性 → CSS（与 `elementStyle` 的映射口径一致） */
-function applyAnimatedProperty(
-  node: HTMLElement,
-  property: string,
-  value: number,
-): void {
-  if (property === "x") node.style.left = `${value}px`;
-  else if (property === "y") node.style.top = `${value}px`;
-  else if (property === "opacity") node.style.opacity = String(value);
-  else if (property === "rotation") node.style.transform = `rotate(${value}deg)`;
-  else if (property === "scale") node.style.transform = `scale(${value})`;
+function handleState({ key, value }: { key: string; value: unknown }): void {
+  narrative.handleState(key, value);
 }
 
-function driveVisualEffects(dt: number): void {
-  // ① 元素动画：累计 elapsed → 插值写 DOM → 播毕交回引擎（终值写回 props）
-  const anims = engine.animations();
-  if (anims.length > 0) {
-    const host = elementLayerEl.value;
-    for (const spec of anims) {
-      const elapsed = (animationElapsed.get(spec.seq) ?? 0) + dt;
-      animationElapsed.set(spec.seq, elapsed);
-      const { value, done } = interpolateAnimation(spec, elapsed);
-      const node = host?.querySelector<HTMLElement>(
-        `[data-lf-id="${spec.target}"]`,
-      );
-      if (node != null) applyAnimatedProperty(node, spec.property, value);
-      if (done) {
-        animationElapsed.delete(spec.seq);
-        engine.animationFinished(spec.seq);
-      }
-    }
-  }
-
-  // ② 全屏转场：读启动键按进度改遮罩，播毕清除
-  const transition = engine.get(SYS.transition) as
-    | { duration: number }
-    | null
-    | undefined;
-  const overlay = transitionEl.value;
-  if (overlay != null) {
-    if (transition != null) {
-      transitionElapsed += dt;
-      const progress =
-        transition.duration > 0 ? transitionElapsed / transition.duration : 1;
-      overlay.style.opacity = String(transitionOpacity(progress));
-      overlay.style.display = "block";
-      if (progress >= 1) {
-        transitionElapsed = 0;
-        overlay.style.display = "none";
-        engine.transitionFinished();
-      }
-    } else if (transitionElapsed !== 0) {
-      transitionElapsed = 0;
-      overlay.style.display = "none";
-    }
-  }
-
-  // ③ 屏幕震动：对舞台根施加衰减偏移，播毕归位
-  const shake = engine.get(SYS.shake) as
-    | { intensity: number; duration: number }
-    | null
-    | undefined;
-  const stage = stageEl.value;
-  if (shake != null && stage != null) {
-    shakeClock += dt;
-    const progress = shake.duration > 0 ? shakeClock / shake.duration : 1;
-    const { x, y } = shakeOffset(shake.intensity, progress, shakeClock);
-    stage.style.transform = `translate(${x}px, ${y}px)`;
-    if (progress >= 1) {
-      shakeClock = 0;
-      stage.style.transform = "";
-      engine.shakeFinished();
-    }
-  }
+/** 回放或读档后，渲染状态与引擎对齐（回溯/读档重写了对话与 NVL 系统键） */
+function syncFromEngine(): void {
+  narrative.syncFromEngine((key) => engine.get(key));
 }
 
 /**
- * 实例级 z：命令参数 `z` 进 SSOT → 该**层**的实例覆盖。
- * `undefined` = 未指定 = 回层默认（`resolveInstanceZ` 三级链：实例 > 工程层默认 > 内建）。
+ * 事件落点：提示条、读档诊断与错误横幅。
+ * 分流顺序留在本组件（接线契约），每条分支做什么归 `host/narrative-event.ts`。
  */
-const zOverride = ref<Partial<Record<string, number>>>({});
-/** 层最终 z（实例 > 层默认 > 内建）——模板直接用 |
- *
- * 注：在 render 期调用 → 读 `zOverride` 建立响应式依赖 ✓
- */
-function zOf(layer: keyof LayerZTable): number {
-  return resolveInstanceZ(layer, zOverride.value[layer], props.layerZ);
-}
-
-function handleState({ key, value }: { key: string; value: unknown }): void {
-  const zLayer = instanceZLayer(key);
-  if (zLayer !== undefined) {
-    zOverride.value = {
-      ...zOverride.value,
-      [zLayer]: typeof value === "number" ? value : undefined,
-    };
-    // video 层的 z 不在 DOM 上而在端口内部：解析后交 VideoPort
-    if (zLayer === "video") videoPort.setZIndex?.(zOf("video"));
-    return;
-  }
-  if (key === SYS.currentDialogSpeaker && typeof value === "string") {
-    speaker.value = value;
-    refreshSpeakerColor();
-  } else if (key === SYS.currentDialogColor) {
-    // `say color="#888"` 的覆盖值（命令参数覆盖整句说话人颜色）
-    refreshSpeakerColor();
-  } else if (key === SYS.currentDialogText && typeof value === "string") {
-    text.value = value;
-    // 打字速度 = 玩家偏好（SetTextSpeed 语义；每句重建取最新值）
-    typewriter = new Typewriter(value, props.preferences.textSpeed);
-  } else if (key === SYS.waiting) {
-    canAdvance.value = value === "dialog";
-    inMenu.value = value === "menu";
-    inWait.value = value === "wait";
-    inInput.value = value === "input";
-    inVideo.value = value === "video"; // cutscene 等待（点击/空格 = 跳过）
-    inMinigame.value = value === "minigame"; // 小游戏等待（宿主经注册表挂载）
-  } else if (key === SYS.dialogVisible) {
-    dialogHidden.value = value === "hide"; // window hide/show/auto
-  } else if (key === SYS.menuPrompt && typeof value === "string")
-    menuPrompt.value = value;
-  else if (key === SYS.inputPrompt && typeof value === "string")
-    inputPrompt.value = value;
-  else if (key === SYS.menuOptions && Array.isArray(value))
-    rawTexts.value = value as string[];
-  else if (key === SYS.menuTargets && Array.isArray(value))
-    rawTargets.value = value as string[];
-  // 模板名（三级优先级解析结果；null = 全局默认回退）
-  else if (key === SYS.dialogTemplate)
-    dialogTemplateName.value = typeof value === "string" ? value : null;
-  // NVL 系统键（前进播放时 NVL 累积不显示——
-  // 这两个键须在此同步，不能只靠回溯/读档的 syncFromEngine）
-  else if (key === SYS.nvlMode && typeof value === "string")
-    nvlMode.value = value;
-  else if (key === SYS.nvlBuffer && Array.isArray(value))
-    nvlBuffer.value = value;
-  // 舞台元素：进列整体装载 / 列切换清空 / 回溯随快照还原（语义在核心层）
-  else if (key === SYS.elements && Array.isArray(value))
-    elements.value = value as ElementInstance[];
-}
-
-function syncFromEngine(): void {
-  // 回放或读档后，渲染状态与引擎对齐（回溯/读档重写了对话与 NVL 系统键）
-  const sp = engine.get(SYS.currentDialogSpeaker);
-  const tx = engine.get(SYS.currentDialogText);
-  speaker.value = typeof sp === "string" ? sp : "";
-  text.value = typeof tx === "string" ? tx : "";
-  const w = engine.get(SYS.waiting);
-  canAdvance.value = w === "dialog";
-  inMenu.value = w === "menu";
-  inWait.value = w === "wait";
-  inInput.value = w === "input";
-  inMinigame.value = w === "minigame";
-  inInteraction.value = w === "interaction"; // 外部玩法系统接管等待
-  dialogHidden.value = engine.get(SYS.dialogVisible) === "hide"; // 随快照/存档回档
-  const mp = engine.get(SYS.menuPrompt);
-  menuPrompt.value = typeof mp === "string" ? mp : "";
-  const ip = engine.get(SYS.inputPrompt);
-  inputPrompt.value = typeof ip === "string" ? ip : "";
-  const opts = engine.get(SYS.menuOptions);
-  rawTexts.value = Array.isArray(opts) ? (opts as string[]) : [];
-  const tgts = engine.get(SYS.menuTargets);
-  rawTargets.value = Array.isArray(tgts) ? (tgts as string[]) : [];
-  const nm = engine.get(SYS.nvlMode);
-  nvlMode.value = typeof nm === "string" ? nm : "none";
-  const nb = engine.get(SYS.nvlBuffer);
-  nvlBuffer.value = Array.isArray(nb) ? (nb as string[]) : [];
-  // 元素：回溯/读档后元素随快照还原（渲染随 elements 变化重建）
-  const els = engine.get(SYS.elements);
-  elements.value = Array.isArray(els) ? (els as ElementInstance[]) : [];
-  // 模板名随恢复对齐（回溯/读档后模板随快照走）
-  const dt = engine.get(SYS.dialogTemplate);
-  dialogTemplateName.value = typeof dt === "string" ? dt : null;
-  // 实例级 z：随快照/存档回档
-  const zNext: Partial<Record<string, number>> = {};
-  for (const [layer, zKey] of Object.entries(INSTANCE_Z_KEYS)) {
-    const z = engine.get(zKey as string);
-    if (typeof z === "number") zNext[layer] = z;
-  }
-  zOverride.value = zNext;
-  // video 层：端口内部 z 也要跟着回档
-  videoPort.setZIndex?.(resolveInstanceZ("video", zNext.video, props.layerZ));
-  // 说话人色随恢复同步
-  refreshSpeakerColor();
-  // 打字机随恢复文本重建（速度 = 玩家偏好）
-  typewriter = new Typewriter(text.value, props.preferences.textSpeed);
-}
+const narrativeEvents = createNarrativeEvents({
+  notices,
+  clearError: () => {
+    error.value = "";
+  },
+  syncFromEngine,
+  syncMedia: () => {
+    audioRenderer?.sync(); // 媒体位置随快照恢复（回滚 seek）
+    videoRenderer?.sync(); // 视频命令流对齐（回溯到段内 = 重播）
+  },
+  reportError: (message) => {
+    error.value = message;
+  },
+});
 
 function handleEvent({
   payload,
@@ -723,15 +427,7 @@ function handleEvent({
   payload: import("@lingfan/engine").OutboundPayload;
 }): void {
   if (payload.kind === "notify") {
-    const id = ++notifySeq;
-    notifications.value.push({
-      id,
-      text: payload.text,
-      tone: toNotifyTone(payload.notifyType),
-    });
-    setTimeout(() => {
-      notifications.value = notifications.value.filter((n) => n.id !== id);
-    }, payload.duration ?? NOTIFY_DURATION_MS);
+    narrativeEvents.notify(payload.text, payload.notifyType, payload.duration);
   } else if (payload.kind === "minigame.mount") {
     // 宿主经注册表解析工厂挂载；未注册 fail-closed（不伪造完成，等待保持）
     const factory = minigames.get(payload.game);
@@ -806,33 +502,17 @@ function handleEvent({
       });
   } else if (payload.kind === "save.done") {
     // 写档成功（失败走 engine.error 分支，不提示成功）
-    toast(`已保存到 ${payload.slot}`);
+    narrativeEvents.saved(payload.slot);
   } else if (payload.kind === "load.done") {
     // 读档完成（引擎已重放到存档坐标）——清错误、同步渲染与媒体
-    error.value = "";
-    syncFromEngine();
-    audioRenderer?.sync(); // 读档恢复媒体状态（bgm 曲目 + 播放位置）
-    videoRenderer?.sync();
-    toast(`已读取 ${payload.slot}（回到存档时刻）`, LOAD_TOAST_DURATION_MS);
+    narrativeEvents.loaded(payload.slot);
   } else if (payload.kind === "rollback.done") {
-    error.value = "";
-    syncFromEngine(); // 回放完成解除输入锁并同步渲染
-    audioRenderer?.sync(); // 媒体位置随快照恢复（回滚 seek）
-    videoRenderer?.sync(); // 视频命令流对齐（回溯到段内 = 重播）
-    const id = ++notifySeq;
-    notifications.value.push({ id, text: "已回溯", tone: "info" });
-    setTimeout(() => {
-      notifications.value = notifications.value.filter((n) => n.id !== id);
-    }, ROLLBACK_NOTICE_DURATION_MS);
+    narrativeEvents.rollbackDone(); // 回放完成解除输入锁并同步渲染
   } else if (payload.kind === "load.notice") {
     // 读档诊断（非致命，宿主应知情）：演示宿主以通知条展示
-    const id = ++notifySeq;
-    notifications.value.push({ id, text: payload.text, tone: "warning" });
-    setTimeout(() => {
-      notifications.value = notifications.value.filter((n) => n.id !== id);
-    }, ROLLBACK_NOTICE_DURATION_MS);
+    narrativeEvents.loadNotice(payload.text);
   } else {
-    error.value = `${payload.code}: ${payload.message}`;
+    narrativeEvents.failed(payload.code, payload.message);
   }
 }
 
@@ -910,67 +590,62 @@ engine.start();
 watch(props.story, (fresh) => engine.reloadStory(fresh));
 
 // —— rAF 帧循环驱动打字机 ——
-rafId = requestAnimationFrame(tickLoop);
+// 帧内顺序（推进打字机 → 上交可见文本 → 媒体位置回写 → 帧驱动表现）归宿主层叶子，
+// 本组件只把四个出口接进去。打字机为空时用正文兜底：整句直出（不经打字机）也得上屏。
+const frameLoop = startHostFrameLoop({
+  readTypewriter: () => typewriter,
+  onText: (visible) => {
+    shownText.value = typewriter === null ? text.value : visible;
+  },
+  onMediaTick: () => {
+    audioRenderer?.pollPosition();
+  },
+  onFrame: (dt) => {
+    driveEffects(dt);
+  },
+});
 
 // —— 玩家偏好：状态归核心层（PlayerPreferences），面板只是 UI 皮 ——
+// 镜像与五个 setter 都在宿主层叶子；本组件只把「字速即时作用于当前句」接进去。
 const showPrefs = ref(false);
-const prefsView = ref(props.preferences.snapshot()); // 响应式镜像（onChange 同步）
-const offPrefs = props.preferences.onChange(() => {
-  prefsView.value = props.preferences.snapshot();
-  // 速度偏好即时生效于当前句（SetTextSpeed；下句重建自然取新值）
-  typewriter?.setSpeed(props.preferences.textSpeed);
+const prefs = createPreferencesPanel({
+  preferences: props.preferences,
+  onChanged: () => {
+    // 速度偏好即时生效于当前句（SetTextSpeed；下句重建自然取新值）
+    typewriter?.setSpeed(props.preferences.textSpeed);
+  },
 });
-const PREF_CHANNELS: Array<{ channel: AudioChannel; label: string }> = [
-  { channel: "bgm", label: "BGM" },
-  { channel: "se", label: "音效" },
-  { channel: "ambient", label: "环境" },
-  { channel: "voice", label: "语音" },
-];
-
-function setPrefVolume(channel: AudioChannel, event: Event): void {
-  props.preferences.setVolume(
-    channel,
-    Number((event.target as HTMLInputElement).value),
-  );
-}
-
-function setPrefMuted(event: Event): void {
-  props.preferences.setMuted((event.target as HTMLInputElement).checked);
-}
-
-function setPrefTextSpeed(event: Event): void {
-  props.preferences.setTextSpeed(
-    Number((event.target as HTMLInputElement).value),
-  );
-}
-
-/**
- * 方向偏好：面板只写偏好（空值 = 清除 = 跟随工程默认）；
- * 落壳（OrientationPort）归组合根——组件不碰平台桥接。
- */
-function setPrefOrientation(event: Event): void {
-  const value = (event.target as HTMLSelectElement).value;
-  if (value === "") {
-    props.preferences.clearOrientation();
-    return;
-  }
-  props.preferences.setOrientation(value as OrientationMode);
-}
-
-function setPrefFullscreen(event: Event): void {
-  props.preferences.setFullscreen((event.target as HTMLInputElement).checked);
-}
+/** 偏好快照的响应式镜像（模板读它，才会在偏好变化时重渲染） */
+const prefsView = prefs.view;
+/** 音量通道表（面板行） */
+const PREF_CHANNELS = prefs.channels;
+/** 音量滑杆 */
+const setPrefVolume = prefs.setVolume;
+/** 静音开关 */
+const setPrefMuted = prefs.setMuted;
+/** 字速滑杆 */
+const setPrefTextSpeed = prefs.setTextSpeed;
+/** 屏幕方向下拉（空值 = 清除 = 跟随工程默认；落壳归组合根） */
+const setPrefOrientation = prefs.setOrientation;
+/** 全屏开关 */
+const setPrefFullscreen = prefs.setFullscreen;
 
 // —— 键位映射：偏好覆盖（prefs-keymap）× 内建默认（DEFAULT_KEYMAP）——
-// 大小写不敏感匹配；捕获模式经 capture 阶段监听器优先于普通键位处理。
+// 匹配与捕获在宿主层叶子；`keyMatches` 这个名字连同调用形态留在本组件：
+// 叙事键的判定顺序（先问域、再问键）是源级契约的一部分。
+const keys = createKeybindingPanel({
+  preferences: props.preferences,
+  readKeymap: () => prefs.view.value.keymap,
+});
+/** 捕获中的动作（null = 不在捕获态） */
+const captureAction = keys.captureAction;
+/** 按键匹配（大小写不敏感） */
 function keyMatches(
   action: KeymapAction,
   fallback: readonly string[],
   e: KeyboardEvent,
 ): boolean {
-  const override = prefsView.value.keymap?.[action];
-  const pressed = e.key.toLowerCase();
-  return (override ?? fallback).some((k) => k.toLowerCase() === pressed);
+  return keys.matches(action, fallback, e);
 }
 
 function onKeydown(e: KeyboardEvent): void {
@@ -984,96 +659,40 @@ function onKeydown(e: KeyboardEvent): void {
     toggleHistory();
   }
 }
-window.addEventListener("keydown", onKeydown);
 
-const captureAction = ref<KeymapAction | null>(null);
+/** 进入捕获态 */
+const startCapture = keys.startCapture;
+/** 复位某个动作的键位（回内建默认） */
+const resetKeybinding = keys.resetKeybinding;
+/** capture 阶段键位捕获（优先于普通键位处理） */
+const onCaptureKeydown = keys.handleCaptureKey;
+/** 键位显示文本（空格与单字符的写法） */
+const displayKeys = keys.displayKeys;
 
-function startCapture(action: KeymapAction): void {
-  captureAction.value = action;
-}
-
-function resetKeybinding(action: KeymapAction): void {
-  props.preferences.clearKeybinding(action);
-}
-
-function onCaptureKeydown(e: KeyboardEvent): void {
-  const action = captureAction.value;
-  if (action === null) return;
-  e.preventDefault();
-  e.stopPropagation();
-  captureAction.value = null;
-  if (e.key === "Escape") return; // Esc = 取消捕获（不改键位）
-  props.preferences.setKeybinding(action, [e.key]);
-}
-window.addEventListener("keydown", onCaptureKeydown, true);
-
-function displayKeys(keys: readonly string[]): string {
-  return keys
-    .map((k) => (k === " " ? "空格" : k.length === 1 ? k.toUpperCase() : k))
-    .join(" / ");
-}
+// 键位监听在挂载期注册、卸载期注销（成对）：窗口级监听的生命周期与组件一致，
+// 不随模块求值残留。捕获监听走 capture 阶段，优先于普通键位处理。
+onMounted(() => {
+  window.addEventListener("keydown", onKeydown);
+  window.addEventListener("keydown", onCaptureKeydown, true);
+});
 
 // —— 05 存档：编排归引擎命令面（槽位校验/写读/错误出站都在核心层）——
 // UI 只发 save/load 命令并反应完成信号（save.done / load.done）；端口经装配通道注入引擎。
-
-function toast(
-  text: string,
-  duration = TOAST_DURATION_MS,
-  tone: "info" | "warning" | "error" = "info",
-): void {
-  const id = ++notifySeq;
-  notifications.value.push({ id, text, tone });
-  setTimeout(() => {
-    notifications.value = notifications.value.filter((n) => n.id !== id);
-  }, duration);
-}
 
 /**
  * 多槽位：存/读共用槽位面板（槽位数与缩略图参数来自 shell.saves 配置）。
  * 打开时 list() + 逐槽 read() 取标题/缩略图（读取失败按空槽呈现，点选时再走引擎 fail-closed）。
  * 存 = 合成缩略图（canvas 卡片）+ engine.save(slot, { screenshot })；读 = engine.load(slot)。
  */
-type SlotPanelMode = "save" | "load";
-interface SlotView {
-  id: string;
-  label: string;
-  empty: boolean;
-  timestamp?: number;
-  title?: string;
-  screenshot?: string;
-}
 const slotPanel = ref<SlotPanelMode | null>(null);
 const slotViews = ref<SlotView[]>([]);
 
 async function openSlotPanel(mode: SlotPanelMode): Promise<void> {
   slotPanel.value = mode;
-  const summaries = await props.savePort.list().catch(() => []);
-  const byId = new Map(summaries.map((s) => [s.slot, s]));
-  const views: SlotView[] = [];
-  for (const id of slotIds(props.saves.slots)) {
-    const summary = byId.get(id);
-    let title: string | undefined;
-    let screenshot: string | undefined;
-    if (summary !== undefined) {
-      try {
-        const parsed = JSON.parse(await props.savePort.read(id)) as Partial<SaveDataV1>;
-        title = typeof parsed.title === "string" ? parsed.title : undefined;
-        screenshot =
-          typeof parsed.screenshot === "string" ? parsed.screenshot : undefined;
-      } catch {
-        // 读取失败按空槽呈现（真实读档失败由引擎 fail-closed 上报）
-      }
-    }
-    views.push({
-      id,
-      label: id.replace("slot_", "槽位 "),
-      empty: summary === undefined,
-      timestamp: summary?.timestamp,
-      title,
-      screenshot,
-    });
-  }
-  slotViews.value = views;
+  slotViews.value = await loadSlotViews({
+    savePort: props.savePort,
+    slotIds: slotIds(props.saves.slots),
+  });
 }
 
 async function chooseSlot(view: SlotView): Promise<void> {
@@ -1127,9 +746,7 @@ function onStageClick(): void {
 
 /** 打开历史面板时刷新快照（历史面板是回溯的 UI 皮） */
 function refreshHistory(): void {
-  historyEntries.value = engine
-    .historyView()
-    .filter((h) => h.text !== "" || h.speaker !== "");
+  historyEntries.value = filterHistoryEntries(engine.historyView());
 }
 
 function toggleHistory(): void {
@@ -1178,13 +795,13 @@ commands.register("restart", () => restart());
 onUnmounted(() => {
   offState?.();
   offEvent?.();
-  offPrefs?.();
+  prefs.dispose(); // 退订偏好变更（与构造期订阅成对）
   props.preferences.dispose(); // 补发未落盘的末次偏好修改（防抖尾结算）
   audioPort.dispose(); // 先停播
   videoPort.dispose();
   audioRenderer?.dispose(); // 再释放已解析资源
   engine.dispose(); // 清挂起的 wait 定时器
-  cancelAnimationFrame(rafId); // 停 rAF 帧循环
+  frameLoop.stop(); // 停 rAF 帧循环
   window.removeEventListener("keydown", onKeydown);
   window.removeEventListener("keydown", onCaptureKeydown, true);
 });

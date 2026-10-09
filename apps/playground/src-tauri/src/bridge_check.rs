@@ -37,9 +37,8 @@ mod tests {
     }
 
     fn collect_ts(dir: &std::path::Path, out: &mut Vec<(String, String)>) {
-        let Ok(entries) = fs::read_dir(dir) else {
-            return; // 目录缺失 = 环境异常，由后续断言显式失败
-        };
+        // 扫描面读不到必须显式失败：静默跳过会让「有没有未注册命令」的断言在空集上通过
+        let entries = fs::read_dir(dir).unwrap_or_else(|e| panic!("读 {} 失败：{e}", dir.display()));
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
@@ -60,19 +59,42 @@ mod tests {
         fs::read_to_string(crate_dir().join("src/lib.rs")).expect("读 lib.rs")
     }
 
-    /// src/*.rs 全文拼接（命令签名检索；bridge_check.rs 自身无命令定义）
-    fn rust_sources_text() -> String {
-        let dir = crate_dir().join("src");
-        let mut out = String::new();
-        for entry in fs::read_dir(&dir).expect("读 src").flatten() {
-            let path = entry.path();
-            let is_rs = path.extension().and_then(|e| e.to_str()) == Some("rs");
-            if is_rs {
-                if let Ok(text) = fs::read_to_string(&path) {
-                    out.push_str(&text);
-                    out.push('\n');
+    /// src 下的 `.rs` 路径全集：递归下钻，子目录与 `src/bin/` 一并纳入——
+    /// 命令真身可以落在任意深度，扫描面必须覆盖整个 src 树，不能只看顶层文件。
+    ///
+    /// 目录读不到即 panic：静默返回空集会退化成「没有命令缺定义」的假绿。
+    fn rust_source_paths() -> Vec<std::path::PathBuf> {
+        fn collect(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+            let entries =
+                fs::read_dir(dir).unwrap_or_else(|e| panic!("读 {} 失败：{e}", dir.display()));
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    collect(&path, out);
+                    continue;
+                }
+                if path.extension().and_then(|e| e.to_str()) == Some("rs") {
+                    out.push(path);
                 }
             }
+        }
+        let mut out = Vec::new();
+        collect(&crate_dir().join("src"), &mut out);
+        assert!(
+            !out.is_empty(),
+            "src 下未收集到任何 .rs：扫描面异常，断言不可在空集上通过"
+        );
+        out
+    }
+
+    /// src/**/*.rs 全文拼接（命令签名检索；bridge_check.rs 自身无命令定义）
+    fn rust_sources_text() -> String {
+        let mut out = String::new();
+        for path in rust_source_paths() {
+            let text =
+                fs::read_to_string(&path).unwrap_or_else(|e| panic!("读 {} 失败：{e}", path.display()));
+            out.push_str(&text);
+            out.push('\n');
         }
         out
     }
@@ -319,6 +341,43 @@ const y = await invoke("real_cmd", { foo: 1 });"#;
             .unwrap_or_else(|e| panic!("读 {file}：{e}"))
     }
 
+    /// 目录下 `**/*.rs` 全文拼接：一个模块拆成多个文件时，源级断言必须覆盖全部叶子，
+    /// 否则断言会随着实现搬进新文件而悄悄失效。
+    ///
+    /// 目录读不到、或一个 `.rs` 都没收集到即 panic：静默返回空串会让 `contains` 断言假绿。
+    fn rust_source_tree_text(dir: &str) -> String {
+        fn collect(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+            let entries =
+                fs::read_dir(dir).unwrap_or_else(|e| panic!("读 {} 失败：{e}", dir.display()));
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    collect(&path, out);
+                    continue;
+                }
+                if path.extension().and_then(|e| e.to_str()) == Some("rs") {
+                    out.push(path);
+                }
+            }
+        }
+        let root = crate_dir().join("src").join(dir);
+        let mut paths = Vec::new();
+        collect(&root, &mut paths);
+        assert!(
+            !paths.is_empty(),
+            "{} 下未收集到任何 .rs：扫描面异常，断言不可在空集上通过",
+            root.display()
+        );
+        let mut out = String::new();
+        for path in paths {
+            let text =
+                fs::read_to_string(&path).unwrap_or_else(|e| panic!("读 {} 失败：{e}", path.display()));
+            out.push_str(&text);
+            out.push('\n');
+        }
+        out
+    }
+
     /// Android 自维护 Kotlin 插件已退役（供给收进 APK-ZIP 直读，方向收进 JNI 直调），
     /// 本测试锁住「不再回流」并固定 JNI 字符串面。
     ///
@@ -328,7 +387,7 @@ const y = await invoke("real_cmd", { foo: 1 });"#;
     #[test]
     fn android_jni_string_contracts_match_platform_api() {
         let shell_rs = rust_source("shell.rs");
-        let fs_rs = rust_source("resource_fs.rs");
+        let fs_rs = rust_source_tree_text("resource_fs");
         let lib_rs = lib_rs_text();
 
         // ① 自维护 Kotlin 插件不得回流（历史包路径：assets / shell）

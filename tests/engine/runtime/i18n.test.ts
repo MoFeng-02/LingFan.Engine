@@ -8,7 +8,7 @@
  * - 按需加载（不 setLanguage 则端口零调用——启动零成本）
  * - 供给失败保持原语言与译文表，engine.error 上报
  * - 检查点重放按当前语言重新 Translate
- * I18nPort 为契约替身；Rust 侧文件列举/解密在 cargo 测（project_files.rs），两侧各测一半。
+ * I18nPort 为契约替身；Rust 侧文件列举/解密在 cargo 测（project_files/），两侧各测一半。
  */
 import { describe, expect, it } from "vitest";
 import type { I18nOverlayFile } from "@lingfan/engine";
