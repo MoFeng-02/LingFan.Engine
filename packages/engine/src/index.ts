@@ -8,7 +8,7 @@
  */
 export * from "./contracts";
 /**
- * 运行层：执行器与运行期支撑 —— 宿主解析、文本国际化、玩家偏好、壳配置解析、写入契约守卫、
+ * 运行层：执行器与运行期支撑 —— 宿主信息解析、文本国际化、玩家偏好、壳配置解析、写入契约守卫、
  * op 注册表、等待声明表、声明制扩展装载、表达式求值。
  *
  * 三条「单一事实源」在这里成面，宿主与静态消费者一律从这里取，禁止各自复制：
@@ -73,6 +73,8 @@ export {
  * - 元素形状校验：编辑器编辑期与运行期**同口径**。
  * 元素装载与寻址（`loadElements` / `findElements` / `removeElements`）是同一套元素形状知识的
  * 消费口，与校验函数一同公开，避免调用方另写一份结构假设。
+ * 文本投影警告（`drainTextProjectionWarnings`）取走并清空最近一次解析的警告：解析本身不因
+ * 「语义暂未生效」失败，但这些警告不能丢，故给调用方一个显式取口。
  */
 export {
   assembleProject,
@@ -81,6 +83,7 @@ export {
   detectWriteConflicts,
   detectWriteNormalization,
   diffProjectFiles,
+  drainTextProjectionWarnings,
   findElements,
   generateText,
   isSafeFileNameSegment,

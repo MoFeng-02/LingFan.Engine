@@ -30,7 +30,7 @@ export interface RegisteredOp {
   readonly definition: OpDefinition;
 }
 
-/** 内建 op 名全集（分发 switch 的 case 清单；互锁测试锁定与 engine.ts 分发一致） */
+/** 内建 op 名全集（分发 switch 的 case 清单；互锁测试锁定与 dispatch.ts 分发一致） */
 export const BUILTIN_OP_NAMES: ReadonlySet<string> = new Set([
   "say",
   "menu",

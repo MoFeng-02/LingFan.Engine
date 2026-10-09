@@ -2,7 +2,7 @@
  * op 目录：op 标签/分组 + 字段呈现语义（label/kind）。
  * 字段的类型/必填/可选值/默认值以 opSchemas（Zod）为唯一事实源——本文件只承载
  * 呈现与诊断语义元数据，字段名集合与 schema 由互锁测试锁定（schema.test.ts）。
- * 字段语义以执行器为权威（packages/engine/src/runtime/engine.ts）。
+ * 字段语义以执行器为权威（packages/engine/src/runtime/ops/）。
  */
 
 import type { FieldKind, OpMeta } from "../contracts";

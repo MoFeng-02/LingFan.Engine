@@ -33,6 +33,7 @@ export {
   validateElementNode,
 } from "./element";
 export {
+  drainTextProjectionWarnings,
   generateText,
   parseTextStory,
   projectText,

@@ -18,6 +18,7 @@ import {
   KEYMAP_ACTIONS,
   isOrientationMode,
 } from "../contracts";
+import { clamp01 } from "../shared";
 
 type PrefsListener = (data: PlayerPrefsData) => void;
 
@@ -30,10 +31,6 @@ const PERSIST_DEBOUNCE_MS = 300;
 const KEY_NAME_MAX = 32;
 /** 单动作键位条数上限（防畸形载荷撑爆列表） */
 const KEYMAP_ENTRIES_MAX = 8;
-
-function clamp01(value: number): number {
-  return Math.min(1, Math.max(0, value));
-}
 
 /**
  * 键位覆盖逐项校验（信任边界）：非字符串/空白/超长条目丢弃，大小写不敏感去重，

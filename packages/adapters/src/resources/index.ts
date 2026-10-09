@@ -19,7 +19,7 @@ export {
   type DiagnosticSupply,
   type LastProjectHandleStore,
   type ProjectFileSource,
-} from "./directorySource";
+} from "./directory-source";
 export {
   createFetchProjectFilesPort,
   loadProject,

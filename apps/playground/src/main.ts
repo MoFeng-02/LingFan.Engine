@@ -168,7 +168,7 @@ async function boot(): Promise<void> {
   const layerZ: LayerZTable = resolveLayerZ(manifest);
   // 存档壳配置：槽位数与缩略图参数（project.json shell.saves 可覆盖）
   const saves: SavesConfig = resolveSavesConfig(manifest);
-  // ③ 平台区分（宿主信息）：取数来源 = Tauri CLI 注入的编译期平台（浏览器形态 undefined →
+  // 平台区分（宿主信息）：取数来源 = Tauri CLI 注入的编译期平台（浏览器形态 undefined →
   // unknown·desktop，显式未知不猜）。宿主事实不可变，适配器内缓存；UI 只展示，按端分支后续按需加。
   // 置于媒体端口之前：媒体源物化的开关取决于宿主事实（见下）。
   const hostPort = createHostPort({

@@ -1,7 +1,7 @@
 /**
  * 编辑期故事级校验：envelope（故事/列结构）+ 共享遍历器的逐命令校验
  * （嵌套块体里的未知 op/坏负载同样拿到精确 JSON Pointer 诊断）。
- * 结构校验面与 packages/engine format.ts 对齐（单列文件名不变量归组装器，此处不管）。
+ * 结构校验面与 packages/engine 的 `data/format/` 对齐（单列文件名不变量归组装器，此处不管）。
  */
 
 import { z } from "zod";

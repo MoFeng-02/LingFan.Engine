@@ -1,4 +1,4 @@
-//! ③ 平台区分（宿主事实源）：把编译目标平台暴露给渲染端。
+//! 平台区分（宿主事实源）：把编译目标平台暴露给渲染端。
 //!
 //! 为什么是 Rust 命令而不是编译期环境变量（`TAURI_ENV_PLATFORM`）：Tauri CLI 的
 //! `beforeBuildCommand` 子进程**没有**注入该变量（Android 构建下前端拿到 undefined →

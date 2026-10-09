@@ -3,7 +3,7 @@
  *
  * （8+1 个元素属性写了不生效且不报错）之所以能长期潜伏，是因为没有任何测试同时看
  * 这三面：新增 op 时要同步的 5 处声明与 `bridge_check.rs` 的跨语言互锁都只覆盖
- * 「声明 ↔ schema」，不覆盖「**是否有消费者**」。本测试从 `packages/ui/src/element/*.ts`
+ * 「声明 ↔ schema」，不覆盖「**是否有消费者**」。本测试从 `packages/ui/src/element/**`
  * **源码**提取真实读取的属性名（`props.x` / `pick(props, "a", "b")` / 解构），与
  * `ELEMENT_ATTRIBUTES` 求差集，并断言：
  *
@@ -23,27 +23,19 @@ import { describe, expect, it } from "vitest";
 import { ELEMENT_ATTRIBUTES } from "@lingfan/engine";
 import { UNIMPLEMENTED_ELEMENT_ATTRS } from "@lingfan/editor";
 
-// 运行期消费面 = `packages/ui/src/element/**`（新文件加入时必须同步此清单——漏了会红）
-import STYLE_SOURCE from "../../packages/ui/src/element/style.ts?raw";
-import INTERACTION_SOURCE from "../../packages/ui/src/element/interaction.ts?raw";
-import RENDERERS_SOURCE from "../../packages/ui/src/element/renderers.ts?raw";
-import RENDER_SOURCE from "../../packages/ui/src/element/render.ts?raw";
-import RESOURCE_SOURCE from "../../packages/ui/src/element/resource.ts?raw";
-import ANIMATION_SOURCE from "../../packages/ui/src/element/animation.ts?raw";
-import REGISTRY_SOURCE from "../../packages/ui/src/element/registry.ts?raw";
+// 运行期消费面 = `packages/ui/src/element/**` 全目录（按目录取，新增文件自动纳入）
+const ELEMENT_SOURCES = import.meta.glob(
+  "../../packages/ui/src/element/**/*.ts",
+  { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
 
 /** 消费面提取不到、但确属渲染器职责的键（键 → 用途说明；**必须写理由**） */
 const RENDERER_ONLY_ATTRS: Readonly<Record<string, string>> = {};
 
-const SOURCES = [
-  STYLE_SOURCE,
-  INTERACTION_SOURCE,
-  RENDERERS_SOURCE,
-  RENDER_SOURCE,
-  RESOURCE_SOURCE,
-  ANIMATION_SOURCE,
-  REGISTRY_SOURCE,
-];
+// 排序只为让失败信息与源码顺序稳定对应；抽取结果是 Set，顺序不影响判定
+const SOURCES = Object.keys(ELEMENT_SOURCES)
+  .sort()
+  .map((path) => ELEMENT_SOURCES[path] ?? "");
 
 /** 去注释（字符串里的 `://` 不当行注释切） */
 function stripComments(source: string): string {

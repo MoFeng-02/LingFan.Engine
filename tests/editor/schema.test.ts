@@ -1,8 +1,8 @@
 /**
  * op schema 单一事实源测试：
- * - 引擎 op 面 ⊆ 编辑器 schema（读 format.ts 源提取，防「引擎有、编辑器漏」）
+ * - 引擎 op 面 ⊆ 编辑器 schema（读 format 子域源提取，防「引擎有、编辑器漏」）
  * - 全 op canonical 样本「引擎 parseStory 与编辑器 schema 双接受」跨包互锁
- * - 必填字段删除「两侧同拒」（format.ts 深校验子集）
+ * - 必填字段删除「两侧同拒」（format 子域深校验）
  * - 未知字段 / 未知 op / 类型错 fail-closed（编辑期）
  * - 表单描述符派生 + 目录×schema 字段名集合互锁
  * - 行内标记白名单与执行器 interpolateText 行为互锁
@@ -24,11 +24,23 @@ import {
   parseStory,
   StoryFormatError,
 } from "../../packages/engine/src/data/format";
-/** 引擎深校验源（只读提取 op 面；跨包字符串契约互锁，同 bridge_check.rs 手法） */
-import ENGINE_FORMAT_SOURCE from "../../packages/engine/src/data/format.ts?raw";
 import { interpolateText } from "@lingfan/engine";
 
-/** format.ts 深校验 op 集（validateCommand switch 覆盖面）——必填删除需两侧同拒 */
+/**
+ * 引擎深校验源（只读提取 op 面；跨包字符串契约互锁，同 bridge_check.rs 手法）。
+ * 校验按 op 族分片存放在 format 子域下，故整片读入——扫描面覆盖全部族文件，
+ * 单文件改名或挪位不会让提取静默变空。
+ */
+const ENGINE_FORMAT_SOURCES = import.meta.glob(
+  "../../packages/engine/src/data/format/**/*.ts",
+  {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  },
+) as Record<string, string>;
+
+/** format 深校验 op 集（validateCommand switch 覆盖面）——必填删除需两侧同拒 */
 const DEEP_FORMAT_OPS = new Set([
   "say",
   "if",
@@ -66,7 +78,7 @@ const DEEP_FORMAT_OPS = new Set([
   "input",
   "random",
   "minigame",
-  // 元素系统（format.ts 均已加深校验分支）
+  // 元素系统（format 子域均已加深校验分支）
   "show",
   "hide",
   "background",
@@ -304,15 +316,17 @@ function corpusStory(): Story {
 }
 
 /**
- * 引擎 op 面（format.ts 深校验 switch 的 `case "op"`）——**只读源码提取**：
+ * 引擎 op 面（format 子域深校验 switch 的 `case "op"`）——**只读源码提取**：
  * 与 Rust `bridge_check.rs` 同一手法（跨语言/跨包字符串契约靠读源互锁）。
  * 作用：堵住「引擎有、编辑器 schema 漏」的静默缺口——`func` 就是这么漏的
  * （canonical 语料两侧都没有它，双向互锁自然发现不了；编辑器打开真实工程才报假红）。
  */
 const ENGINE_OPS = [
   ...new Set(
-    [...ENGINE_FORMAT_SOURCE.matchAll(/^\s*case "([a-z_]+)":/gm)].map(
-      (match) => match[1] ?? "",
+    Object.values(ENGINE_FORMAT_SOURCES).flatMap((source) =>
+      [...source.matchAll(/^\s*case "([a-z_]+)":/gm)].map(
+        (match) => match[1] ?? "",
+      ),
     ),
   ),
 ];
@@ -345,7 +359,7 @@ describe("op 全集 canonical 语料：引擎解析与编辑器 schema 双接受
   });
 });
 
-describe("必填字段删除：两侧同拒（format.ts 深校验子集互锁）", () => {
+describe("必填字段删除：两侧同拒（format 子域深校验互锁）", () => {
   for (const [op, cmd] of Object.entries(CANONICAL)) {
     const descriptor = describeForm(op);
     if (descriptor === undefined) throw new Error(`缺表单：${op}`);

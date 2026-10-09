@@ -3,3 +3,4 @@
  * 实现按用途分文件，消费方只从这里取。
  */
 export * from "./guards";
+export * from "./numbers";
