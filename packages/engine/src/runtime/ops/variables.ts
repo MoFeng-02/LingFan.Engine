@@ -136,6 +136,7 @@ export function execArray(ctx: OpContext, cmd: StoryCommand): boolean {
   }
 }
 
+/** array_push：目标必须已存在且是数组；写入新数组引用，让观察者能感知到变化 */
 export function execArrayPush(ctx: OpContext, cmd: StoryCommand): boolean {
   const key = cmd.key as string;
   try {
@@ -156,6 +157,7 @@ export function execArrayPush(ctx: OpContext, cmd: StoryCommand): boolean {
   }
 }
 
+/** array_pop：目标不存在、非数组或已空都算失败（fail-closed，不拿 undefined 占位） */
 export function execArrayPop(ctx: OpContext, cmd: StoryCommand): boolean {
   const key = cmd.key as string;
   const arr = ctx.state.get(key);
@@ -189,6 +191,7 @@ export function execDict(ctx: OpContext, cmd: StoryCommand): boolean {
   }
 }
 
+/** dict_set：目标必须已存在且是字典（数组不算）；写回新字典引用，不就地改动旧值 */
 export function execDictSet(ctx: OpContext, cmd: StoryCommand): boolean {
   const key = cmd.key as string;
   try {

@@ -7,6 +7,11 @@ import type { FileStamp } from "@lingfan/engine";
 import { isMissingHandle } from "../walk";
 import { asWritableDir, safeSegments } from "./access";
 
+/**
+ * 采集一批逻辑路径的修改时间与大小（用于保存前的并发修改检测）。
+ * 路径不存在或读不到就跳过、不写进结果表——比对时「表里没有」就是「被删了」，
+ * 与「内容被改」区分开来；其余错误照旧抛出，不吞。
+ */
 export async function collectFileStamps(
   root: FileSystemDirectoryHandle,
   paths: readonly string[],

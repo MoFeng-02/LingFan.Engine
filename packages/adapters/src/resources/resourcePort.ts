@@ -25,6 +25,11 @@ export function normalizeResourceId(id: string): string {
   return trimmed;
 }
 
+/**
+ * 造一个静态资源端口：把逻辑资源路径拼到资源根下，交给 WebView 直接取。
+ * `root` 缺省为源根 `/`，资源落在应用资源根之内；路径非法（空段、`..`）会抛错。
+ * 静态 URL 没有需要回收的句柄，因此 `release` 是空的。
+ */
 export function createStaticResourcePort(
   root: string = RESOURCE_ROOT,
 ): ResourcePort {

@@ -20,6 +20,7 @@ function sameJsonText(a: string, b: string): boolean {
   return deepEqualJson(left, right);
 }
 
+/** JSON 值深等：数组按序逐项比较，普通对象只比键集合与各键值（与键顺序无关） */
 function deepEqualJson(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (Array.isArray(a) || Array.isArray(b)) {

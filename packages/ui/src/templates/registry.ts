@@ -32,6 +32,11 @@ export class TemplateRegistry<
   TInput,
   TView extends TemplateViewBase,
 > {
+  /**
+   * 模板表：模板名 → 模板函数。`register` 写入（同名覆盖），`resolve` / `has` / `names` 读取。
+   * 空串是「无模板」哨兵，`register` 直接拒收，所以键集合恰好等于真正注册过的模板名；
+   * Map 保插入序，`names()` 就按这个顺序返回。引用只读，内容随注册变化。
+   */
   private readonly templates = new Map<string, TemplateFn<TInput, TView>>();
   /** 默认模板名（`register` 传 `makeDefault: true` 时改成它）；`null` = 未设默认，解析时返回 `null` */
   private defaultName: string | null = null;

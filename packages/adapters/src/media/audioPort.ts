@@ -18,6 +18,7 @@ import { createBlobSource, type BlobSourceOptions } from "./blobSource";
 /** 位置写入容差（秒）：小于此不写 currentTime，避免每帧抖动 */
 const SEEK_EPSILON = 0.25;
 
+/** 一条在跑的淡入淡出：音量从 from 线性走到 to，start/ms 给出时间轴 */
 interface Ramp {
   element: HTMLAudioElement;
   from: number;
@@ -26,6 +27,7 @@ interface Ramp {
   ms: number;
 }
 
+/** 音量夹到 [0, 1]：外部传入的音量不合法时按边界值处理，而不是整段静音 */
 function clamp(value: number): number {
   return Math.min(1, Math.max(0, value));
 }

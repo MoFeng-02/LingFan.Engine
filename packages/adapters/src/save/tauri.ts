@@ -7,6 +7,7 @@
 import type { SavePort, SlotSummary } from "@lingfan/engine";
 import { defaultInvoke, type TauriInvoke } from "../platform";
 
+/** Rust `save_list` 的返回行（snake_case；本侧映射成引擎的 camelCase 槽位摘要） */
 interface RustSlotSummary {
   slot: string;
   save_count: number;
@@ -14,6 +15,11 @@ interface RustSlotSummary {
   mode: string;
 }
 
+/**
+ * 造一个存档端口（桌面/移动原生）：读写删列都转发给 Tauri 的
+ * `save_write`/`save_read`/`save_delete`/`save_list` 命令，加密、校验与回档保护都在 Rust 侧。
+ * 列表把 Rust 的 snake_case 字段翻成引擎要的 camelCase；`invoke` 可注入以便测试不连运行时。
+ */
 export function createTauriSavePort(
   invoke: TauriInvoke = defaultInvoke,
 ): SavePort {

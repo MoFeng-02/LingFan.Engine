@@ -20,8 +20,10 @@ import {
 } from "../contracts";
 import { clamp01 } from "../shared";
 
+/** 偏好变更回调；收到的是快照副本，调用方改写它不会穿透到内部状态 */
 type PrefsListener = (data: PlayerPrefsData) => void;
 
+/** 音量通道全集（bgm / se / ambient / voice） */
 const CHANNELS: readonly AudioChannel[] = ["bgm", "se", "ambient", "voice"];
 
 /** 持久化防抖静默窗：滑块拖动连发 set 合并为一次落盘 */
@@ -99,11 +101,22 @@ function sanitize(raw: unknown): PlayerPrefsData {
   return data;
 }
 
+/**
+ * 玩家偏好状态机（纯 TS，可测）：只读访问器供 UI/渲染层取用。
+ * 除启动期 hydrate 直接写入真值再广播（不落盘）外，所有写入都收口到 update（换真值 → 广播快照 → 防抖落盘）；
+ * 故事读档/回溯不经过这里，所以玩家设置在整局里保持稳定。
+ */
 export class PlayerPreferences {
+  /** 当前偏好真值；由 sanitize 产出，可选字段缺失表示「未设置」而不是默认值 */
   private data: PlayerPrefsData;
+  /** 变更订阅者；Set 保证同一监听器重复注册也只收到一次回调 */
   private readonly listeners = new Set<PrefsListener>();
+  /** 防抖计时器句柄，非 null 表示还有一次落盘待补发 */
   private pendingSave: ReturnType<typeof setTimeout> | null = null;
 
+  /**
+   * @param port 持久化端口；缺省 = 纯内存模式（不落盘，hydrate/dispose 均为空操作）
+   */
   constructor(private readonly port?: PreferencesPort) {
     this.data = sanitize(undefined);
   }
@@ -136,10 +149,12 @@ export class PlayerPreferences {
     return snap;
   }
 
+  /** 是否静音；为 true 时 effectiveVolume 一律归零，但各通道音量偏好照旧保留 */
   get muted(): boolean {
     return this.data.muted;
   }
 
+  /** 文本显示速度（单位口径由渲染层解释）；下限 1，非法写入被忽略 */
   get textSpeed(): number {
     return this.data.textSpeed;
   }
@@ -149,6 +164,7 @@ export class PlayerPreferences {
     return this.data.orientation;
   }
 
+  /** 指定通道的偏好音量（0..1，未经静音合成）；从未设置过该通道时回默认值 */
   volume(channel: AudioChannel): number {
     return this.data.volumes[channel];
   }
@@ -159,6 +175,7 @@ export class PlayerPreferences {
     return this.data.volumes[channel];
   }
 
+  /** 设置单通道音量：非有限数忽略，其余钳到 0..1（fail-closed，不抛出） */
   setVolume(channel: AudioChannel, value: number): void {
     if (typeof value !== "number" || !Number.isFinite(value)) return; // 畸形值忽略（fail-closed）
     this.update({
@@ -167,11 +184,13 @@ export class PlayerPreferences {
     });
   }
 
+  /** 设置静音（非布尔忽略）；只改合成末端，不改写任何通道的音量偏好 */
   setMuted(muted: boolean): void {
     if (typeof muted !== "boolean") return;
     this.update({ ...this.data, muted });
   }
 
+  /** 设置文本速度：非有限数忽略，起点夹到 1（0 或负数会让打字机永远推不完） */
   setTextSpeed(value: number): void {
     if (typeof value !== "number" || !Number.isFinite(value)) return;
     this.update({ ...this.data, textSpeed: Math.max(1, value) });
@@ -235,6 +254,7 @@ export class PlayerPreferences {
     return this.data.fullscreen;
   }
 
+  /** 设置全屏偏好（非布尔忽略）；窗口是否真的全屏由宿主尽力而为 */
   setFullscreen(on: boolean): void {
     if (typeof on !== "boolean") return;
     this.update({ ...this.data, fullscreen: on });
@@ -272,17 +292,23 @@ export class PlayerPreferences {
     void this.port.save(this.snapshot()).catch(() => {}); // 持久化失败不影响运行时
   }
 
+  /** 唯一写入口：先落真值，再广播快照，最后安排落盘（顺序固定，订阅者看到的是新值） */
   private update(next: PlayerPrefsData): void {
     this.data = next;
     this.emit();
     this.scheduleSave();
   }
 
+  /**
+   * 把同一份快照依次推给所有订阅者（同一引用，订阅者不应依赖它随后的变化）。
+   * 某个订阅者抛错会中断本次通知并向上冒泡，故监听器应当自己吞掉可预期的异常。
+   */
   private emit(): void {
     const snap = this.snapshot();
     for (const listener of this.listeners) listener(snap);
   }
 
+  /** 防抖落盘：静默窗内的连续写入只落最后一次；无端口时跳过；落盘失败被吞掉 */
   private scheduleSave(): void {
     if (this.port === undefined) return;
     if (this.pendingSave !== null) clearTimeout(this.pendingSave);

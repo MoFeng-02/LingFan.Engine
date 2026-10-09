@@ -5,13 +5,16 @@
  */
 import { ExpressionError } from "./value";
 
+/** 一个词法标记：kind 判类型，text 是原文切片，数值/字符串另在 value 上存解析结果 */
 export interface Token {
   kind: "num" | "str" | "ident" | "op" | "eof";
   text: string;
   value?: number | string;
 }
 
+/** 双字符运算符：`==` `!=` `>=` `<=` `&&` `||` */
 const TWO_CHAR_OPS = ["==", "!=", ">=", "<=", "&&", "||"];
+/** 单字符运算符与分组符号：`>` `<` `!` `?` `:` `+` `-` `*` `/` `%` `(` `)` `,` `.` */
 const ONE_CHAR_OPS = [
   ">",
   "<",
@@ -38,6 +41,7 @@ const ESCAPES: Record<string, string> = {
   "\\": "\\",
 };
 
+/** 把表达式源文本切成标记序列（末尾必带一个 eof）；遇到无法识别的字符抛 parse-error */
 export function tokenize(src: string): Token[] {
   const tokens: Token[] = [];
   let i = 0;

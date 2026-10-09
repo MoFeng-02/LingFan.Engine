@@ -76,6 +76,7 @@ function easeOutBounce(t: number): number {
   return n1 * t4 * t4 + 0.984375;
 }
 
+/** 默认缓动名（缓动查表的兜底） */
 const DEFAULT_EASING = "EaseOutQuad";
 
 /**

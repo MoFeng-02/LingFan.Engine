@@ -20,12 +20,18 @@ import {
   encryptedProjectMessage,
 } from "../encryptedProject";
 
+/** 一次装载的结果：清单对象、逻辑路径 → 故事原文，以及「缺清单」时的降级回执 */
 interface LoadedProject {
   manifest: unknown;
   stories: Map<string, string>;
   degraded: DegradedOpen | undefined;
 }
 
+/**
+ * 读一遍工程内容。先判加密形态（命中就直接拒绝，不去逐个读文件），再定故事文件：
+ * 没有 `Stories/` 就没有可打开的内容，照旧拒绝；缺清单是唯一可降级的情形，
+ * 合成最小清单并把降级事实一起返回。清单存在但不是合法 JSON 属结构损坏，照旧抛错。
+ */
 async function readProject(source: ProjectFileSource): Promise<LoadedProject> {
   const paths = await source.paths();
   // 加密形态前置识别（唯一判定点）：读取任何文件之前拒绝

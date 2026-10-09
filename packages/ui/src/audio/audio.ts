@@ -41,6 +41,12 @@ export type AudioAction =
     }
   | { type: "stop"; channel: AudioChannel; fadeMs: number };
 
+/**
+ * `AudioAction` 中 play 分支的别名（按 `type` 判别后的收窄形态）。
+ * 它不是新的动作形状，字段仍以 `AudioAction` 的 play 分支为唯一来源，只是给
+ * 「已经排除了 stop」的本地执行边界一个名字：`apply` 处理掉 stop 后把剩下的交给
+ * `playAction` 逐条落地播放，参数用它写明「这里拿到的必然是 play」。
+ */
 type PlayAction = Extract<AudioAction, { type: "play" }>;
 
 /** 常驻通道（se 为一次性触发，单独按 seq 判定） */

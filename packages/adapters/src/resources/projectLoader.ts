@@ -13,6 +13,7 @@ import {
   type Story,
 } from "@lingfan/engine";
 
+/** `createFetchProjectFilesPort` 的装配参数：清单路径、故事文件路径表、资源根 URL 前缀 */
 export interface FetchProjectFilesOptions {
   /** 工程清单逻辑路径（相对资源根），如 `"project.json"` */
   manifest: string;

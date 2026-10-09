@@ -11,6 +11,7 @@ interface DirectoryPickerHost {
   }) => Promise<FileSystemDirectoryHandle>;
 }
 
+/** 取宿主 `window` 的目录选择器面（`showDirectoryPicker` 未进 lib.dom，故在此窄化） */
 function pickerHost(): DirectoryPickerHost {
   return window as unknown as DirectoryPickerHost;
 }

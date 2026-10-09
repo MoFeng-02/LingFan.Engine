@@ -7,6 +7,7 @@
  * - 未知 {…}（含用户字面量）按原文渲染；HTML 全量转义防注入
  */
 
+/** HTML 特殊字符全量转义（`&` `<` `>` `"` `'`），防注入 */
 function escapeHtml(s: string): string {
   return s
     .replaceAll("&", "&amp;")
@@ -31,6 +32,7 @@ function sanitizeFont(v: string): string | null {
   return /^[\w\u4e00-\u9fa5 ,]+$/.test(v) ? v : null;
 }
 
+/** 闭合标记集（`/b` `/i` `/u` `/color` `/font` `/size`）；裸 `{color}` 这类也按闭合处理 */
 const CLOSERS = new Set([
   "/b",
   "/i",

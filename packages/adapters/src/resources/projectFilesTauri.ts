@@ -22,6 +22,11 @@ export interface TauriProjectFiles {
   stories: Record<string, string>;
 }
 
+/**
+ * 造一个工程供给端口（桌面/移动原生）：调 Rust `project_files` 一次取回清单与全部故事原文。
+ * 结果 memo 一次，`manifest()` 与 `stories()` 共享同一次调用；失败会一直复现（启动期 fail-closed，
+ * 不重试也不给空工程）。热重载由组合根重建端口实现，不走本端口。
+ */
 export function createTauriProjectFilesPort(
   invoke: TauriInvoke = defaultInvoke,
 ): ProjectFilesPort {

@@ -12,6 +12,7 @@
 import type { ResourcePort } from "@lingfan/engine";
 import { defaultInvoke, type TauriInvoke } from "../platform";
 
+/** Rust `decrypt_resource` 返回形状：v2 与 file 互斥（url 总随行），取到哪个由解密形态决定 */
 interface StreamPayload {
   /** LFEN2 v2 分块形态标记：协议按 Range 按需解密，明文不落盘 */
   v2?: string;
@@ -21,6 +22,11 @@ interface StreamPayload {
   url?: string;
 }
 
+/**
+ * 造一个加密资源端口（原生形态）：每次 `resolve` 调 Rust `decrypt_resource`，
+ * 拿到自定义协议 URL（带 Range 支持，视频/音频可直接流式 seek）。解密失败一律抛错，
+ * 不返回坏 URL；临时明文的清理由 Rust 侧随应用启动处理，因此 `release` 是空实现。
+ */
 export function createTauriEncryptedResourcePort(
   invoke: TauriInvoke = defaultInvoke,
 ): ResourcePort {
