@@ -3,7 +3,7 @@
  * UI 组件由注册制挂载（未知 gameId 运行期 fail-closed）——builder 只产数据。
  * onSuccess/onFail 是作者侧驼峰词，builder 负责映射到 op 的 snake_case 字段。
  */
-import type { CommandOf, ScriptValue } from "../../schema/opSchemas";
+import type { CommandOf, ScriptValue } from "../../schema";
 
 export interface MinigameOptions {
   config?: Record<string, unknown>;

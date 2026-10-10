@@ -5,9 +5,11 @@
  * `--mode tauri`（Tauri 壳，Desktop/Mobile 双端）走原生实现，浏览器构建走纯 Web 实现；
  * 展示层与核心零改动。工程文件由 `ProjectFilesPort` 实现供给（Tauri = Rust 命令读资源根，
  * 浏览器 = fetch 静态根），组装是引擎纯函数；资源加密管线同理只换 ResourcePort。
+ *
+ * 可独立成面的策略（交付守卫、WS dev 通道、媒体端口装配、方向与全屏去重）在 `./boot`；
+ * 这里留下装配顺序，以及必须同时看过构建形态、加密事实与宿主平台才能定的判定行。
  */
 import { createApp, ref } from "vue";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   createBrowserFullscreenApplier,
   createFetchProjectFilesPort,
@@ -22,30 +24,22 @@ import {
   createTauriProjectFilesPort,
   createTauriOrientationPort,
   createTauriSavePort,
-  createWebAudioPort,
   createWebStoragePreferencesPort,
   createWebStorageSavePort,
-  createWebVideoPort,
-  connectWsBridge,
-  createWsProjectFilesPort,
-  createWsSavePort,
-  createWsHostPlatform,
   loadProject,
   watchTauriProjectFiles,
 } from "@lingfan/adapters";
 import {
+  MANIFEST_FILE,
   PlayerPreferences,
   loadDeclaredExtensions,
   manifestOrientation,
   resolveLayerZ,
-  resolveOrientationMode,
   resolveSavesConfig,
-  type AudioPort,
   type HostInfo,
   type I18nPort,
   type LayerZTable,
   type OpExtension,
-  type OrientationMode,
   type OrientationPort,
   type PreferencesPort,
   type ProjectFilesPort,
@@ -53,27 +47,26 @@ import {
   type SavePort,
   type SavesConfig,
   type Story,
-  type VideoPort,
 } from "@lingfan/engine";
 import demoQuestExtension from "../extensions/demo-quest";
 import App from "./App.vue";
-import { browserBlockedMessage, browserPlayAllowed } from "./browserGuard";
+import {
+  connectWsDevChannel,
+  createFullscreenPolicy,
+  createMediaPortFactories,
+  createOrientationPolicy,
+  detectTauriWindow,
+  loadTauriWindow,
+  MEDIA_BLOB_SOURCE_MAX_BYTES,
+  renderBrowserBlocked,
+} from "./boot";
+import { browserPlayAllowed } from "./browserGuard";
 
 // 渲染诊断探针：`VITE_LFEN_DIAG=1` 构建时启用（iOS CI 白屏取证）；默认构建
 // 动态 import 被 tree-shake，产物零增重。独立于 boot——白屏时 boot 可能挂，探针必须无条件跑。
 if (import.meta.env.VITE_LFEN_DIAG === "1") {
   void import("./diag").then((module) => module.startDiag());
 }
-
-/** 浏览器游戏模式未开启时的可见拒绝：写进 `#app` 的可操作说明（不白屏、不静默失败） */
-function renderBrowserBlocked(): void {
-  const root = document.querySelector("#app");
-  const message = browserBlockedMessage();
-  if (root !== null) root.textContent = message;
-  console.error(`[lfen] ${message}`);
-}
-
-const MANIFEST = "project.json";
 
 /**
  * 浏览器形态的故事清单（Tauri 形态由 Rust `project_files` 枚举目录，不用此表）。
@@ -87,20 +80,14 @@ const STORIES = [
   "Stories/chapter4/vocab_tour.story",
 ];
 
-/**
- * 媒体源物化上限（字节）：物化后整段驻留内存，故只承载小媒体（本工程 v1 媒体 ≤ 8 MiB）；
- * 超过即维持按需流式，不使用 Blob。
- */
-const MEDIA_BLOB_SOURCE_MAX_BYTES = 16 * 1024 * 1024;
-
+/** 入口引导：判定运行形态（构建期 mode + 运行期探测）→ 门禁 → 建引擎 → 挂载 UI；分层口径见函数内注释。 */
 async function boot(): Promise<void> {
   // —— 平台装配（构建期 + 运行期双层）——
   // 构建层：mode `tauri` 编译 Tauri 形态产物（含 invoke 路径）；纯浏览器构建编译 Web 形态。
   // 运行层：tauri 形态页面可能落在**外部浏览器**（tauri dev 时浏览器打开 localhost:1420）——
   // 此时无 `__TAURI_INTERNALS__`，invoke 不可用 ⇒ 升级走 WS dev 通道（宿主运行时），
   // 宿主未运行则回退 web 端口（尽力而为）。
-  const isTauriWindow =
-    typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+  const isTauriWindow = detectTauriWindow();
   const useNative = import.meta.env.MODE === "tauri" && isTauriWindow;
   // 浏览器游戏模式守卫：无壳 + 非开发模式 + 未显式声明浏览器游戏模式 ⇒ 拒绝（不外泄）。
   // 交付形态只应是 Tauri 壳；Web 供给面（静态根 + 明文资源）不得随交付物一同存在。
@@ -115,23 +102,24 @@ async function boot(): Promise<void> {
     filesPort = createTauriProjectFilesPort();
     savePort = createTauriSavePort();
   } else {
-    filesPort = createFetchProjectFilesPort({ manifest: MANIFEST, stories: STORIES });
+    filesPort = createFetchProjectFilesPort({
+      manifest: MANIFEST_FILE,
+      stories: STORIES,
+    });
     savePort = createWebStorageSavePort();
     if (import.meta.env.DEV) {
       // WS dev 通道：宿主（tauri dev）运行时，外部浏览器经 WS 复用真实能力
       // （读工程/存档/平台——Rust 侧白名单最小暴露面）；宿主未运行 = 连接超时回退
       // 上方 web 端口（现状不变，尽力而为）。
-      try {
-        const bridge = await connectWsBridge({ timeoutMs: 1500 });
-        filesPort = createWsProjectFilesPort(bridge);
-        savePort = createWsSavePort(bridge);
-        wsPlatform = await createWsHostPlatform(bridge);
-        console.info("[lfen-ws] 浏览器已接入宿主 dev 通道（读工程/存档/平台）");
-      } catch {
-        console.info(
-          "[lfen-ws] 宿主 WS 通道不可用，维持 web 端口（静态根 + webStorage）",
-        );
-      }
+      await connectWsDevChannel({
+        usePorts(files, saves) {
+          filesPort = files;
+          savePort = saves;
+        },
+        usePlatform(platform) {
+          wsPlatform = platform;
+        },
+      });
     }
   }
   // ref 包装：热重载重新组装后注入新 Story（App watch → engine.reloadStory）
@@ -175,24 +163,18 @@ async function boot(): Promise<void> {
     platform: useNative ? await readTauriPlatform() : wsPlatform,
   });
   const host: HostInfo = hostPort.get();
-  // 媒体源物化（Android WebView 的 Range 拦截缺陷绕过）：加密形态下媒体由 lfstream 自定义协议供给，
-  // 而该 WebView 对**带 `Range` 头**的拦截响应会在网络层直接失败（非零起点区间必错）——非 faststart 的
-  // MP4 解复用必然读尾部 ⇒ 播放必坏。改经「无 `Range` 取回全量 → Blob URL」本地解码；其余平台保持
-  // 直供（Range 按需流式正常）。上限内才物化：超过即按需流式，不使用 Blob。
-  // 注：v2 分块形态的大媒体（音视频）已由 Rust 改走本机回环 HTTP 供给（带完整 Range 语义），
-  // 不会到这里；本例只覆盖上限内的小媒体（详见 media_http.rs 模块头）。
-  const mediaBlobSource =
+  // 媒体源物化的开关：加密形态下媒体由自定义协议供给，而 Android WebView 对**带 `Range` 头**的
+  // 拦截响应会在网络层直接失败（非零起点区间必错）——非 faststart 的 MP4 解复用必然读尾部，
+  // 于是播放必坏。故只有该平台走「无 `Range` 取回全量 → Blob URL」的物化供给，其余平台保持直供
+  // （Range 按需流式正常）。上限取值与两个媒体端口的装配见 `./boot`（`platform-policy`）。
+  const mediaBlobSourceMaxBytes =
     useNative && encrypted && host.os === "android"
-      ? { maxBytes: MEDIA_BLOB_SOURCE_MAX_BYTES }
+      ? MEDIA_BLOB_SOURCE_MAX_BYTES
       : undefined;
-  const createAudioPort = (onError: (message: string) => void): AudioPort =>
-    createWebAudioPort({ onError, blobSource: mediaBlobSource });
-  const createVideoPort = (onError: (message: string) => void): VideoPort =>
-    createWebVideoPort({
-      onError,
-      zIndex: layerZ.video,
-      blobSource: mediaBlobSource,
-    });
+  const { createAudioPort, createVideoPort } = createMediaPortFactories({
+    mediaBlobSourceMaxBytes,
+    videoZIndex: layerZ.video,
+  });
   // I18N 装配：Tauri 形态走 Rust overlay 供给（按需加载）；浏览器形态暂无
   // 静态根供给（未注入 = 原文直出，引擎契约缺省语义）
   const i18nPort: I18nPort | undefined =
@@ -208,46 +190,31 @@ async function boot(): Promise<void> {
   // 屏幕方向装配：工程默认（project.json shell.orientation）× 玩家偏好 →
   // 壳端口。**落壳归组合根**（组件不碰平台桥接）：启动即应用一次（早于内容绘制，
   // 尽量规避首帧先竖后横），此后订阅偏好变化实时应用。未生效（平台忽略/无壳形态）
-  // 只记诊断，不视作错误（apply 的「尽力而为」契约）。
+  // 只记诊断，不视作错误（apply 的「尽力而为」契约）。去重状态在 `./boot` 的策略闭包内。
   const orientationPort: OrientationPort =
     useNative
       ? createTauriOrientationPort()
       : createNoopOrientationPort();
-  let appliedOrientation: OrientationMode | undefined;
-  const applyOrientation = (): void => {
-    const mode = resolveOrientationMode(
-      preferences.orientation,
-      manifestOrientation(manifest),
-    );
-    if (mode === appliedOrientation) return; // 其他偏好变化（音量/速度）不重复落壳
-    appliedOrientation = mode;
-    void orientationPort.apply(mode).then(
-      (applied) => {
-        if (!applied) console.info(`[orientation] ${mode} 未被当前平台应用`);
-      },
-      (error: unknown) => {
-        console.error("[orientation] 应用失败：", error);
-      },
-    );
-  };
+  const applyOrientation = createOrientationPolicy({
+    orientationPort,
+    preference: () => preferences.orientation,
+    manifestDefault: () => manifestOrientation(manifest),
+  });
   applyOrientation();
   preferences.onChange(applyOrientation);
 
   // 全屏偏好装配（与方向同模式：组合根落平台，偏好变化去重应用）。
   // 尽力而为契约：浏览器形态缺用户手势的启动期恢复会被 Fullscreen API 拒绝 =
   // 静默（偏好已持久化，下次有手势的切换生效）；Tauri 窗口命令无需手势。
-  const fullscreenApplier =
-    useNative
-      ? createTauriFullscreenApplier(getCurrentWindow())
-      : createBrowserFullscreenApplier();
-  let appliedFullscreen = preferences.fullscreen ?? false;
-  const applyFullscreen = (): void => {
-    const on = preferences.fullscreen ?? false;
-    if (on === appliedFullscreen) return; // 其他偏好变化（音量/速度/键位）不重复落窗
-    appliedFullscreen = on;
-    void fullscreenApplier.apply(on);
-  };
-  void fullscreenApplier.apply(appliedFullscreen); // 启动即恢复上次状态
+  const fullscreenApplier = useNative
+    ? createTauriFullscreenApplier(await loadTauriWindow())
+    : createBrowserFullscreenApplier();
+  const fullscreenPolicy = createFullscreenPolicy({
+    applier: fullscreenApplier,
+    preference: () => preferences.fullscreen,
+  });
+  const applyFullscreen = (): void => fullscreenPolicy.apply();
+  void fullscreenApplier.apply(fullscreenPolicy.initial); // 启动即恢复上次状态
   preferences.onChange(applyFullscreen);
 
   const app = createApp(App, {

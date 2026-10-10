@@ -1,7 +1,7 @@
 /**
  * Script 词汇层 · **存档域**（save / load / auto_save / save_delete）。
  */
-import type { CommandOf } from "../../schema/opSchemas";
+import type { CommandOf } from "../../schema";
 
 export function save(slot: string, title?: string): CommandOf<"save"> {
   return { op: "save", slot, ...(title === undefined ? {} : { title }) };

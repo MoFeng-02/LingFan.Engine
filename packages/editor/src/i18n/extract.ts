@@ -8,12 +8,9 @@
  */
 
 import type { Story } from "@lingfan/engine";
-import { walkStoryCommands, walkStoryElements } from "../schema/walk";
+import { walkStoryCommands, walkStoryElements } from "../schema";
+import { isPlainObject } from "../shared";
 import { TRANSLATE_SURFACES, valuesAtPath } from "./surfaces";
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 /**
  * 从故事抽取可翻译原文键集合（= 运行期会查 overlay 表的全部字符串，插值前原文）。

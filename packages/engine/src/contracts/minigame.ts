@@ -17,12 +17,16 @@ export type { MinigameMountPayload };
 export interface MinigameContext {
   config: Record<string, unknown>;
   signal: AbortHandle;
+  /** 本次挂载的单调序号（重放 = 新序号新 signal） */
+  readonly seq: number;
 }
 
 /** 小游戏完成结果：outcome 驱动 on_success/on_fail 分流；score 供 UI/统计，核心层不消费 */
 export interface MinigameResult {
   outcome: "success" | "fail";
   score?: number;
+  /** 可选：小游戏写入的补充状态（键 = 本游戏命名空间内的键，引擎负责落 `game.<gameId>.` 前缀） */
+  state?: Readonly<Record<string, unknown>>;
 }
 
 /**

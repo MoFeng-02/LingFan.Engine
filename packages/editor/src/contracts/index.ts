@@ -4,7 +4,7 @@ export type {
   DiagnosticSeverity,
   SymbolIndex,
 } from "./diagnostics";
-export { escapePointerToken, joinPointer } from "./diagnostics";
+export { escapePointerToken, joinPointer } from "../shared";
 export type {
   FieldDescriptor,
   FieldKind,

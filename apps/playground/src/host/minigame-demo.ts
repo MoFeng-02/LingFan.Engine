@@ -26,7 +26,9 @@ export interface Click3DemoOptions {
 /**
  * 造 click3 工厂：宿主装配期注册进小游戏注册表。
  *
- * 计数与完成判定都在按钮监听里，完成时回填 `{ outcome: "success", score }`。
+ * 计数与完成判定都在按钮监听里，完成时回填
+ * `{ outcome: "success", score, state: { clicks, target } }`——state 两个键经引擎落
+ * `game.<gameId>.` 前缀，故事表达式按 `game.click3.clicks` 读取。
  * 中止信号只清空挂载点内容，演示类标记由事件分支的中止回调负责摘除。
  */
 export function createClick3Demo(options: Click3DemoOptions): MinigameFactory {
@@ -50,7 +52,8 @@ export function createClick3Demo(options: Click3DemoOptions): MinigameFactory {
       button.addEventListener("click", () => {
         clicks += 1;
         counter.textContent = `${clicks} / ${target}`;
-        if (clicks >= target) resolve({ outcome: "success", score: clicks });
+        if (clicks >= target)
+          resolve({ outcome: "success", score: clicks, state: { clicks, target } });
       });
       abortSignalOf(ctx.signal).addEventListener(
         "abort",

@@ -6,6 +6,7 @@
 
 import type { FieldDescriptor } from "../contracts";
 import { escapePointerToken } from "../contracts";
+import { isPlainObject } from "../shared";
 import { describeForm } from "./forms";
 import { BUILTIN_OP_SURFACE, type OpSurface } from "./surface";
 
@@ -14,10 +15,6 @@ export type CommandVisitor = (
   pointer: string,
   fields: readonly FieldDescriptor[] | undefined,
 ) => void;
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function walkDescriptor(
   desc: FieldDescriptor,

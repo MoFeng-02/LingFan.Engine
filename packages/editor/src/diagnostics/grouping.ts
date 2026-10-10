@@ -21,7 +21,7 @@
  * 只有 `warning` 组在条数 > 1 时可默认折叠，且**只对每组第一条生效**（其余由用户手动控制）。
  */
 
-import type { Diagnostic, DiagnosticSeverity } from "../contracts/diagnostics";
+import type { Diagnostic, DiagnosticSeverity } from "../contracts";
 
 /** 严重度排序权重（数字小 = 靠前） */
 const SEVERITY_RANK: Readonly<Record<DiagnosticSeverity, number>> = {

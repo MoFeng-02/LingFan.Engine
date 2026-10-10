@@ -167,6 +167,7 @@ export interface OpContext {
   minigameSeq: number;
   minigameController: AbortController | null;
   pendingMinigame: {
+    game: string;
     onSuccess?: string;
     onFail?: string;
     reward: { key: string; value: unknown }[];
