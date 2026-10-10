@@ -22,10 +22,11 @@ import type {
   WaitingState,
 } from "@lingfan/engine";
 import { waitSpecOfOp, waitingStateOfOp } from "@lingfan/engine";
-import { getAtPointer } from "../editing/pointers";
+import { getAtPointer } from "../editing";
 import { indexStory } from "../diagnostics";
-import { BUILTIN_OP_SURFACE, type OpSurface } from "../schema/surface";
-import { walkCommandBodies } from "../schema/walk";
+import { BUILTIN_OP_SURFACE, type OpSurface } from "../schema";
+import { walkCommandBodies } from "../schema";
+import { isPlainObject } from "../shared";
 
 /** 步骤出边（分叉来源）：菜单选项 / 跳转 / 导航 */
 export interface StepFork {
@@ -92,10 +93,6 @@ export interface StepLayout {
 export interface StepOptions {
   /** op 合并面（扩展注册后由组合根传入；缺省 = 内建） */
   surface?: OpSurface;
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function opOf(cmd: unknown): string | undefined {

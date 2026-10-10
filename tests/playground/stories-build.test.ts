@@ -579,14 +579,30 @@ describe("Stories.src/story.ts · 真实演示源完整性（端到端健康检�
   });
 
   it("特性覆盖守卫（把 TS 能力用上——防退化成 JSON-ish 普通文件）", async () => {
-    const story = readFileSync(
-      new URL("../../apps/playground/Stories.src/story.ts", import.meta.url),
-      "utf8",
-    );
-    const helpers = readFileSync(
-      new URL("../../apps/playground/Stories.src/lib/helpers.ts", import.meta.url),
-      "utf8",
-    );
+    // 扫描面 = Stories.src 全部 TS 源（story.ts + lib/ 子域；源约定顶层恰好一个 .ts，
+    // lib/ 不参与源计数）。合成文本随源目录伸缩，断言只认内容不认文件名。
+    const sources = import.meta.glob(
+      "../../apps/playground/Stories.src/**/*.ts",
+      { eager: true, query: "?raw", import: "default" },
+    ) as Record<string, string>;
+    const keys = Object.keys(sources);
+    expect(
+      keys.length,
+      `扫描面文件数（应覆盖 story.ts 与 lib/ 各叶子，实测：${keys.join("、")}）`,
+    ).toBeGreaterThanOrEqual(5);
+    expect(
+      keys.some((k) => k.endsWith("story.ts") && !k.includes("lib/")),
+      "story.ts 必须在扫描面内",
+    ).toBe(true);
+    expect(
+      keys.some((k) => k.includes("lib/vocabulary.ts")),
+      "lib/vocabulary.ts 必须在扫描面内",
+    ).toBe(true);
+    const story = keys
+      .map((k) => sources[k])
+      .sort()
+      .join("\n");
+    const helpers = story;
     // story.ts：类型断言 / 构建期条件 / 展开成组 / 模板字符串 / map 生成
     expect(story).toContain("satisfies Story");
     expect(story).toContain("包含教学列 ?");

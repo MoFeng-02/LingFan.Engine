@@ -5,7 +5,9 @@
  * 结果由宿主经命令面回填，奖励在命令执行期求值以保证重放确定性。
  */
 import {
+  GAME_SYSTEM_ID_PATTERN,
   SYS,
+  gameScopedKey,
   type MinigameResult,
   type OutboundEvent,
   type OutboundPayload,
@@ -13,6 +15,7 @@ import {
 } from "../../contracts";
 import { ExpressionError } from "../expr";
 import type { Frame, OpContext } from "../internal";
+import { writeExternal } from "../state";
 
 /** minigame 已知负载字段（未知字段 fail-closed） */
 const MINIGAME_FIELDS = new Set([
@@ -44,10 +47,10 @@ export function execMinigame(
     );
     return;
   }
-  if (typeof cmd.game !== "string" || cmd.game === "") {
+  if (typeof cmd.game !== "string" || !GAME_SYSTEM_ID_PATTERN.test(cmd.game)) {
     ctx.fail(
       "minigame-invalid",
-      "minigame 需要非空 game 字符串（注册 gameId）",
+      `minigame.game 必填且为合法系统标识（匹配 ${String(GAME_SYSTEM_ID_PATTERN)}）`,
     );
     return;
   }
@@ -113,6 +116,7 @@ export function execMinigame(
   const controller = new AbortController();
   ctx.minigameController = controller;
   ctx.pendingMinigame = {
+    game: cmd.game,
     onSuccess: typeof cmd.on_success === "string" ? cmd.on_success : undefined,
     onFail: typeof cmd.on_fail === "string" ? cmd.on_fail : undefined,
     reward,
@@ -144,7 +148,10 @@ export function execMinigame(
  * 会话命令 `resolveMinigame`：UI 小游戏完成后回填结果（命令面）。
  *
  * success → 奖励写状态（走 ValueChanged 事件流，历史可溯）→ on_success 分流；
- * fail → on_fail 分流；目标缺省 = 原列继续。非等待期 / 畸形结果 fail-closed。
+ * fail → on_fail 分流；目标缺省 = 原列继续。
+ * `result.state` 与 interaction 同构：逐键落 `game.<gameId>.` 命名空间
+ * （与 outcome 无关；写失败 = 结果整体被拒、挂起态保留）。
+ * 非等待期 / 畸形结果 fail-closed。
  */
 export function resolveMinigame(
   ctx: OpContext,
@@ -182,6 +189,25 @@ export function resolveMinigame(
   if (pending === null) {
     ctx.fail("minigame-state-corrupt", "__waiting=minigame 但挂起状态缺失");
     return false;
+  }
+  // 结果附带的状态：落本局命名空间（小游戏不必自己拼前缀，也不该裸写全局）；
+  // 任一键写失败即整体拒绝——挂起态保留，修正后可再次回填
+  if (result.state !== undefined) {
+    if (
+      typeof result.state !== "object" ||
+      result.state === null ||
+      Array.isArray(result.state)
+    ) {
+      ctx.fail("minigame-result-invalid", "resolveMinigame.state 必须是对象");
+      return false;
+    }
+    for (const [key, value] of Object.entries(result.state)) {
+      if (
+        !writeExternal(ctx, gameScopedKey(pending.game, key), value, true, pending.game)
+      ) {
+        return false;
+      }
+    }
   }
   ctx.pendingMinigame = null;
   ctx.minigameController = null; // 正常完成：不 abort（UI 已自行收尾）

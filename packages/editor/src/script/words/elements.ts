@@ -4,7 +4,7 @@
  * x/y = 数字（px）或 CSS 长度串（`"50%"`）——与元素系统契约一致。
  * Options 派生自 schema（零漂移）；返回类型 = `CommandOf<op>` 判别联合成员。
  */
-import type { CommandOf, ScriptValue } from "../../schema/opSchemas";
+import type { CommandOf, ScriptValue } from "../../schema";
 
 export type ShowOptions = Omit<CommandOf<"show">, "op" | "target">;
 

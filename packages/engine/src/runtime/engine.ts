@@ -92,8 +92,9 @@ export class StoryEngine {
   private shakeSeq = 0;
   /** 小游戏挂载序号：单调递增且不进快照（重放重新挂载与旧挂载可分辨） */
   private minigameSeq = 0;
-  /** 挂起的小游戏等待：分流目标与已求值奖励（resolveMinigame 消费；中断即清除） */
+  /** 挂起的小游戏等待：注册 game 标识、分流目标与已求值奖励（resolveMinigame 消费；中断即清除） */
   private pendingMinigame: {
+    game: string;
     onSuccess?: string;
     onFail?: string;
     reward: { key: string; value: unknown }[];

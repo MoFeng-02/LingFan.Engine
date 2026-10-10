@@ -15,17 +15,6 @@ export interface Diagnostic {
   op?: string;
 }
 
-/** 转义 JSON Pointer 单段（RFC 6901：~ → ~0，/ → ~1） */
-export function escapePointerToken(token: string | number): string {
-  return String(token).replaceAll("~", "~0").replaceAll("/", "~1");
-}
-
-/** 由段序列组装 JSON Pointer（空段 = 根 ""） */
-export function joinPointer(...segments: (string | number)[]): string {
-  if (segments.length === 0) return "";
-  return "/" + segments.map(escapePointerToken).join("/");
-}
-
 /** 符号索引：columnId / defines 键 / 变量 / 函数 / 跳转目标 / 资源引用 / 可翻译原文 */
 export interface SymbolIndex {
   /** columnId → 首个同名列的指针（重复列另见 duplicateColumns） */

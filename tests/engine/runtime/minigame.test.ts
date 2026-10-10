@@ -347,3 +347,172 @@ describe("边界条件", () => {
     h.dispose();
   });
 });
+
+describe("minigame · game 标识契约（与 interaction 同构）", () => {
+  it("非法 gameId（大写/中文/33 字符）fail-closed 且不建立等待", () => {
+    const cases = ["Click3", "带中文", "a".repeat(33)];
+    for (const game of cases) {
+      const h = makeEngine([column("a", [{ op: "minigame", game }])]);
+      h.engine.start();
+      expect(h.engine.get(SYS.waiting), `${game} 不应建立等待`).not.toBe(
+        "minigame",
+      );
+      expect(lastErrorCode(h), `${game} 错误码`).toBe("minigame-invalid");
+      h.dispose();
+    }
+  });
+
+  it("空串与非字符串 game 同一守卫拒绝（直构 Story 绕过 parse 层，负载级 fail-closed 是执行器职责）", () => {
+    for (const game of ["", 1]) {
+      const h = instrument(
+        new StoryEngine({
+          formatVersion: 1,
+          id: "t",
+          entry: "a",
+          columns: [column("a", [{ op: "minigame", game } as object])],
+        } as never),
+      );
+      h.engine.start();
+      expect(h.engine.get(SYS.waiting), String(game)).not.toBe("minigame");
+      expect(lastErrorCode(h), String(game)).toBe("minigame-invalid");
+      h.dispose();
+    }
+  });
+
+  it("合法 gameId（注册表既有五个）逐条建立等待且挂载信息携带 game", () => {
+    const cases = ["click3", "puzzle", "p", "g", "coin"];
+    for (const game of cases) {
+      const h = makeEngine([column("a", [{ op: "minigame", game }])]);
+      h.engine.start();
+      expect(h.engine.get(SYS.waiting), game).toBe("minigame");
+      expect(h.engine.get(SYS.minigame)).toMatchObject({ game, seq: 1 });
+      h.dispose();
+    }
+  });
+});
+
+describe("minigame · resolveMinigame.state（落 game.<gameId>.* 命名空间）", () => {
+  it("success：state 逐键落 game.<gameId>.* 前缀，且写入先于 reward（事件顺序）", () => {
+    const h = makeEngine([
+      column("a", [
+        {
+          op: "minigame",
+          game: "puzzle",
+          reward: [{ key: "gold", value: 10 }],
+        },
+      ]),
+    ]);
+    h.engine.start();
+    expect(
+      h.engine.resolveMinigame({
+        outcome: "success",
+        state: { hp: 2, tag: "x" },
+      }),
+    ).toBe(true);
+    expect(h.engine.get("game.puzzle.hp")).toBe(2);
+    expect(h.engine.get("game.puzzle.tag")).toBe("x");
+    expect(h.engine.get("gold")).toBe(10);
+    const keys = h.changes.map((c) => c.key);
+    expect(keys.indexOf("gold")).toBeGreaterThan(
+      keys.indexOf("game.puzzle.tag"),
+    );
+    h.dispose();
+  });
+
+  it("fail 分流：state 照写（与 outcome 无关，同 interaction），reward 不写", () => {
+    const h = makeEngine([
+      column("a", [
+        {
+          op: "minigame",
+          game: "puzzle",
+          on_fail: "lose",
+          reward: [{ key: "gold", value: 10 }],
+        },
+      ]),
+      column("lose", [{ op: "say", text: "败" }]),
+    ]);
+    h.engine.start();
+    expect(
+      h.engine.resolveMinigame({ outcome: "fail", state: { hp: 0 } }),
+    ).toBe(true);
+    expect(h.engine.get("game.puzzle.hp")).toBe(0);
+    expect(h.engine.get("gold")).toBeUndefined();
+    expect(h.engine.get(SYS.currentSceneColumn)).toBe("lose");
+    h.dispose();
+  });
+
+  it("state 非对象（数组/null/标量）拒绝：挂起态保留，修正后可重试", () => {
+    const h = makeEngine([column("a", [{ op: "minigame", game: "puzzle" }])]);
+    h.engine.start();
+    for (const bad of [[1, 2], null, "x", 5]) {
+      expect(
+        h.engine.resolveMinigame({ outcome: "success", state: bad } as never),
+        JSON.stringify(bad),
+      ).toBe(false);
+      expect(lastErrorCode(h)).toBe("minigame-result-invalid");
+      expect(h.engine.get(SYS.waiting)).toBe("minigame");
+    }
+    expect(
+      h.engine.resolveMinigame({ outcome: "success", state: { hp: 1 } }),
+    ).toBe(true);
+    expect(h.engine.get("game.puzzle.hp")).toBe(1);
+    h.dispose();
+  });
+
+  it("state 值不可序列化（循环引用）拒绝：挂起态保留，修正后可重试", () => {
+    const h = makeEngine([column("a", [{ op: "minigame", game: "puzzle" }])]);
+    h.engine.start();
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    expect(
+      h.engine.resolveMinigame({
+        outcome: "success",
+        state: { bad: circular },
+      }),
+    ).toBe(false);
+    expect(lastErrorCode(h)).toBe("value-not-serializable");
+    expect(h.engine.get(SYS.waiting)).toBe("minigame");
+    expect(
+      h.engine.resolveMinigame({ outcome: "success", state: { hp: 3 } }),
+    ).toBe(true);
+    expect(h.engine.get("game.puzzle.hp")).toBe(3);
+    h.dispose();
+  });
+
+  it("保留键被命名空间屏蔽：state 键与 SYS 精确名同名也落在 game.<gameId>.* 下，不污染等待状态机", () => {
+    const h = makeEngine([
+      column("a", [
+        { op: "minigame", game: "puzzle", on_success: "win" },
+      ]),
+      column("win", [{ op: "say", text: "胜" }]),
+    ]);
+    h.engine.start();
+    expect(
+      h.engine.resolveMinigame({
+        outcome: "success",
+        state: { __waiting: "fake" },
+      }),
+    ).toBe(true);
+    expect(h.engine.get("game.puzzle.__waiting")).toBe("fake");
+    expect(h.engine.get(SYS.waiting)).toBe("dialog"); // 正常收尾，FSM 未被污染
+    h.dispose();
+  });
+
+  it("state 可被故事表达式读到：say 文本插值 {game.<gameId>.<key>}", () => {
+    const h = makeEngine([
+      column("a", [
+        { op: "minigame", game: "puzzle" },
+        { op: "say", text: "积分 {game.puzzle.score}" },
+      ]),
+    ]);
+    h.engine.start();
+    expect(
+      h.engine.resolveMinigame({
+        outcome: "success",
+        state: { score: 7 },
+      }),
+    ).toBe(true);
+    expect(h.engine.get(SYS.currentDialogText)).toBe("积分 7");
+    h.dispose();
+  });
+});

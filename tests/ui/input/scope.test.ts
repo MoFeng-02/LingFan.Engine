@@ -7,7 +7,6 @@
  * 本用例以真值表分别锁定，并以源级断言锁接线顺序与「判据只写一份」。
  */
 import { describe, expect, it } from "vitest";
-import appSource from "../../../apps/playground/src/App.vue?raw";
 import {
   GAME_INPUT_BLOCKED_SELECTOR,
   INPUT_SCOPES,
@@ -17,6 +16,38 @@ import {
   routesToNarrative,
   type ClosestLike,
 } from "@lingfan/ui";
+
+/**
+ * 宿主扫描面：App.vue 拆分后，宿主接线散在宿主与其面板组件——
+ * 存在性/计数类断言扫拼接面（只增不减）；**保序断言锚 App.vue 自身文本**
+ * （序契约是「同文件」契约，拼接会把不同文件间的序关系稀释成假阳性）。
+ */
+const playgroundSources = import.meta.glob(
+  "../../../apps/playground/src/**/*.{vue,ts}",
+  { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
+const appSource = Object.values(playgroundSources).join("\n");
+const appVueKey = Object.keys(playgroundSources).find((key) =>
+  key.endsWith("/App.vue"),
+);
+if (appVueKey === undefined) {
+  throw new Error("扫描面缺 App.vue：glob 模式与目录结构失配");
+}
+const appVueText = playgroundSources[appVueKey] ?? "";
+
+/** 保序契约的 needle 全集：每一个都必须命中在 App.vue 自身文本内 */
+const ORDER_NEEDLES = [
+  "function onWheel",
+  "function onKeydown",
+  "routesToNarrative(",
+  "engine.back()",
+  "engine.forward()",
+  'keyMatches("advance"',
+  'interactions.set("walk"',
+  'payload.kind === "interaction.mount"',
+  'inputScope.set("world")',
+  'inputScope.set("dialogue")',
+];
 
 /** 最小替身：模拟 Element.closest 的命中语义，并记录收到的选择器 */
 function targetMock(matched: boolean): { el: ClosestLike; seen: string[] } {
@@ -115,10 +146,14 @@ describe("选择器契约：四类关键项在场（防选择器被改窄而静�
 
 describe("组合根接线：滚轮与键盘都先过判据，再谈游戏动作", () => {
   it("onWheel 判据位于 engine.back/forward 之前", () => {
-    const fnAt = appSource.indexOf("function onWheel");
-    const judgeAt = appSource.indexOf("routesToNarrative(", fnAt);
-    const backAt = appSource.indexOf("engine.back()", fnAt);
-    const forwardAt = appSource.indexOf("engine.forward()", fnAt);
+    // 保序锚面 = App.vue 自身文本：全集 needle 逐个确认在场（防 glob 键取错文件）
+    for (const needle of ORDER_NEEDLES) {
+      expect(appVueText.indexOf(needle)).toBeGreaterThan(-1);
+    }
+    const fnAt = appVueText.indexOf("function onWheel");
+    const judgeAt = appVueText.indexOf("routesToNarrative(", fnAt);
+    const backAt = appVueText.indexOf("engine.back()", fnAt);
+    const forwardAt = appVueText.indexOf("engine.forward()", fnAt);
     expect(fnAt).toBeGreaterThan(-1);
     expect(judgeAt).toBeGreaterThan(fnAt);
     expect(judgeAt).toBeLessThan(backAt);
@@ -126,29 +161,29 @@ describe("组合根接线：滚轮与键盘都先过判据，再谈游戏动作"
   });
 
   it("onKeydown 判据位于推进/历史键位处理之前", () => {
-    const fnAt = appSource.indexOf("function onKeydown");
-    const judgeAt = appSource.indexOf("routesToNarrative(", fnAt);
-    const advanceAt = appSource.indexOf('keyMatches("advance"', fnAt);
+    const fnAt = appVueText.indexOf("function onKeydown");
+    const judgeAt = appVueText.indexOf("routesToNarrative(", fnAt);
+    const advanceAt = appVueText.indexOf('keyMatches("advance"', fnAt);
     expect(judgeAt).toBeGreaterThan(fnAt);
     expect(judgeAt).toBeLessThan(advanceAt);
   });
 
   it("外部接管期间声明玩法域，两条结束路径都交还叙事域", () => {
     // 接管建立时切域
-    const mountAt = appSource.indexOf('payload.kind === "interaction.mount"');
-    const toWorldAt = appSource.indexOf('inputScope.set("world")', mountAt);
+    const mountAt = appVueText.indexOf('payload.kind === "interaction.mount"');
+    const toWorldAt = appVueText.indexOf('inputScope.set("world")', mountAt);
     expect(mountAt).toBeGreaterThan(-1);
     expect(toWorldAt).toBeGreaterThan(mountAt);
     // 结束（回填 / 中断共用收尾）切回对话域
-    const backAt = appSource.indexOf('inputScope.set("dialogue")', toWorldAt);
+    const backAt = appVueText.indexOf('inputScope.set("dialogue")', toWorldAt);
     expect(backAt).toBeGreaterThan(toWorldAt);
   });
 
   it("判据只写一份：宿主不再自持输入域实现", () => {
     // 域判据与状态归 @lingfan/ui（换宿主复用同一份），宿主只消费
-    expect(appSource).toMatch(/createInputScopeState/);
-    expect(appSource).not.toMatch(/GAME_INPUT_BLOCKED_SELECTOR\s*=/);
-    expect(appSource).not.toMatch(/function isGameInputTarget/);
+    expect(appVueText).toMatch(/createInputScopeState/);
+    expect(appVueText).not.toMatch(/GAME_INPUT_BLOCKED_SELECTOR\s*=/);
+    expect(appVueText).not.toMatch(/function isGameInputTarget/);
   });
 });
 
@@ -166,13 +201,13 @@ describe("共享宿主类名随接管卸载移除（回归：残留类会让已�
   // ⇒ 残留类跟到下一次接管，症状是「已结束的接管仍被算作进行中」。
   // 修法：类名移除写在**两条结束路径的唯一收口**（宿主 onAbort / abort 监听）里。
   it("两个演示工厂都在共享宿主上加类", () => {
-    expect(appSource).toMatch(/host\.classList\.add\("walk-demo"\)/);
-    expect(appSource).toMatch(/host\.classList\.add\("minigame-demo"\)/);
+    expect(appVueText).toMatch(/host\.classList\.add\("walk-demo"\)/);
+    expect(appVueText).toMatch(/host\.classList\.add\("minigame-demo"\)/);
   });
 
   it("两个类都在收尾处被移除（加了几次就摘几次）", () => {
-    const adds = appSource.match(/host\.classList\.add\("([a-z-]+)"\)/g) ?? [];
-    const removes = appSource.match(/host\.classList\.remove\("([a-z-]+)"\)/g) ?? [];
+    const adds = appVueText.match(/host\.classList\.add\("([a-z-]+)"\)/g) ?? [];
+    const removes = appVueText.match(/host\.classList\.remove\("([a-z-]+)"\)/g) ?? [];
     expect(removes.length).toBeGreaterThanOrEqual(adds.length);
     for (const add of adds) {
       const cls = /"([a-z-]+)"/.exec(add)![1];
@@ -182,12 +217,15 @@ describe("共享宿主类名随接管卸载移除（回归：残留类会让已�
 
   it("walk 的类移除以宿主收口为唯一处（不在工厂内分两处写）", () => {
     // 工厂内只 add 不 remove：移除归宿主 onAbort（覆盖「抵达」与「中断」两条路径）
-    const factoryAt = appSource.indexOf('interactions.set("walk"');
-    const hostAbortAt = appSource.indexOf('payload.kind === "interaction.mount"');
+    const factoryAt = appVueText.indexOf('interactions.set("walk"');
+    const hostAbortAt = appVueText.indexOf('payload.kind === "interaction.mount"');
     expect(factoryAt).toBeGreaterThan(-1);
-    const factoryBody = appSource.slice(factoryAt, hostAbortAt);
+    // 两条判据同在 App.vue 且有序；切片非空 = 判据之间确有工厂体（防拼接面假绿）
+    expect(hostAbortAt).toBeGreaterThan(factoryAt);
+    const factoryBody = appVueText.slice(factoryAt, hostAbortAt);
+    expect(factoryBody.length).toBeGreaterThan(0);
     expect(factoryBody).not.toMatch(/classList\.remove\("walk-demo"\)/);
-    const after = appSource.slice(hostAbortAt);
+    const after = appVueText.slice(hostAbortAt);
     expect(after).toMatch(/classList\.remove\("walk-demo"\)/);
   });
 });

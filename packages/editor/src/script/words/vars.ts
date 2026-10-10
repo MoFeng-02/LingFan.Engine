@@ -2,7 +2,7 @@
  * Script 词汇层 · **变量域**（set / define / let / local / undef / array / dict）。
  * value 参数 = 引擎 Value（字面量 / `{expr}` 表达式串 / `+=` 复合赋值串——口径同 JSON v1）。
  */
-import type { CommandOf, ScriptValue } from "../../schema/opSchemas";
+import type { CommandOf, ScriptValue } from "../../schema";
 
 export function set(key: string, value: ScriptValue): CommandOf<"set"> {
   return { op: "set", key, value };

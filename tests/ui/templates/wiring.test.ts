@@ -10,20 +10,36 @@
  * 与其它源级接线守卫同套路：读源码断言接线，防「抽象做完了但没人用」。
  */
 import { describe, expect, it } from "vitest";
-import playgroundApp from "../../../apps/playground/src/App.vue?raw";
 import previewHost from "../../../apps/editor/src/components/PreviewHost.vue?raw";
+
+/**
+ * playground 宿主扫描面：App.vue 拆分后，接线字样散在宿主与其面板组件里，
+ * 扫描面随之放大为宿主源码全量拼接（只增不减）。本文件的断言均与顺序无关；
+ * 保序类契约仍锚单文件，见 tests/ui/input/scope.test.ts。
+ */
+const playgroundSources = import.meta.glob(
+  "../../../apps/playground/src/**/*.{vue,ts}",
+  { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
+const playgroundKeys = Object.keys(playgroundSources);
+const appVueKey = playgroundKeys.find((key) => key.endsWith("/App.vue"));
+if (appVueKey === undefined) {
+  throw new Error("扫描面缺 App.vue：glob 模式与目录结构失配");
+}
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
 const code = (source: string): string =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/<!--[\s\S]*?-->/g, "");
 
 const HOSTS = [
-  { label: "playground", src: code(playgroundApp) },
+  { label: "playground", src: code(Object.values(playgroundSources).join("\n")) },
   { label: "editor-preview", src: code(previewHost) },
 ];
 
 describe("挂载点模板 · 接线互锁（两宿主）", () => {
   it.each(HOSTS)("$label：选择层骨架挂点来自模板产出", ({ src }) => {
+    // 扫描面守卫：宿主与面板族至少在场（glob 模式失配会让断言静默扫空）
+    expect(playgroundKeys.length).toBeGreaterThanOrEqual(6);
     // 注册了默认模板（未知名回退到它）
     expect(src).toMatch(/createChoiceTemplateRegistry\(\)/);
     expect(src).toMatch(/builtinChoiceTemplate/);

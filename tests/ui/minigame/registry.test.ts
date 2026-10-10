@@ -34,12 +34,14 @@ describe("MinigameRegistry（fail-closed 注册制）", () => {
       mountedHost = host as HTMLElement;
       expect(ctx.config).toEqual({ target: 3 });
       expect(ctx.signal.aborted).toBe(false);
+      expect(ctx.seq).toBe(1);
       return { outcome: "success", score: ctx.config.target as number };
     });
     const host = { mounted: true } as unknown as HTMLElement;
     const result = await registry.get("counter")!(host, {
       config: { target: 3 },
       signal: new AbortController().signal,
+      seq: 1,
     });
     expect(result).toEqual({ outcome: "success", score: 3 });
     expect(mountedHost).toBe(host);

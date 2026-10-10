@@ -101,7 +101,7 @@ export type {
   ScriptCommand,
   ScriptOpName,
   ScriptValue,
-} from "../schema/opSchemas";
+} from "../schema";
 
 // —— 表达式句柄 ——
 export {

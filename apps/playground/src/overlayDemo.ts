@@ -24,23 +24,33 @@ import {
 // 覆盖层演示与组合根共用同一份（换生成器输出名或调整默认清单时只改一处）。
 import { STORIES, guards } from "./stories";
 
+/** 工程清单文件名：与适配器 fetch 端口约定一致（Tauri 形态走 Rust 枚举，不经此）。 */
 const MANIFEST = "project.json";
 /** 覆盖层字速（字符/秒）：演示用固定值，正式宿主按玩家偏好注入 */
 const OVERLAY_TEXT_SPEED = 30;
 
+/** 错误横幅元素（#error，index.html 提供）：本页所有失败信息只往这里写。 */
 const errorEl = document.querySelector<HTMLElement>("#error")!;
+/** 把消息写进 #error 并点亮横幅：演示页的轻量失败面。 */
 function report(message: string): void {
   errorEl.textContent = message;
   errorEl.classList.add("on");
 }
 
 // —— 宿主游戏：自有循环，接入叙事层后照常运行（不暂停）——
+/** 宿主方块（#hero）：自有循环的演员——覆盖式对话期间也不停。 */
 const hero = document.querySelector<HTMLElement>("#hero")!;
+/** 宿主 HUD（#game-hud）：帧数与按键消费计数，证明宿主循环未暂停。 */
 const hud = document.querySelector<HTMLElement>("#game-hud")!;
+/** 方块当前 x（px）：宿主游戏自己的状态，叙事层不读它。 */
 let heroX = 80;
+/** 方块方向（1 右 / -1 左）：碰边折返用。 */
 let heroDir = 1;
+/** 累计帧数：HUD 上证明宿主循环持续在跑。 */
 let frames = 0;
+/** 宿主侧消费的按键计数：覆盖层收起后数字才增长（输入域让位的证据）。 */
 let hostKeys = 0;
+/** 宿主单帧：移动方块 + 刷新 HUD；不触碰叙事层。 */
 function hostFrame(dt: number): void {
   frames += 1;
   heroX += heroDir * 90 * dt;
@@ -49,7 +59,9 @@ function hostFrame(dt: number): void {
   hero.style.left = `${Math.round(heroX)}px`;
   hud.textContent = `宿主循环帧 ${frames}\n宿主按键被消费 ${hostKeys}\n（覆盖层收起时方向键归宿主）`;
 }
+/** 上一帧时间戳（ms）：dt 计算基准，dt 钳在 50ms 内防后台切回大步跳。 */
 let last = performance.now();
+/** 宿主主循环：requestAnimationFrame 自续；接入叙事层后照常运行。 */
 function hostLoop(now: number): void {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -58,6 +70,7 @@ function hostLoop(now: number): void {
 }
 requestAnimationFrame(hostLoop);
 
+/** 接入演示主体：容器 → 建引擎 → createNarrativeOverlay → 输入转发，四步接入在此展开。 */
 async function main(): Promise<void> {
   // ① 加载工程（组装归引擎纯函数）
   const filesPort = createFetchProjectFilesPort({ manifest: MANIFEST, stories: STORIES });
