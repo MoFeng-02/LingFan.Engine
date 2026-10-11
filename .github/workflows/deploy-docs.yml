@@ -1,0 +1,88 @@
+# docs 站（Astro/Starlight）构建并发布到 GitHub Pages
+#
+# 发布地址：https://mofeng-02.github.io/LingFan.Engine/
+# base 与 site 只在 docs/astro.config.mjs 一处维护（`/LingFan.Engine` + 项目页域名），
+# 与 Pages 项目页口径天然一致——本工作流不碰任何构建配置。
+#
+# 一次性启用（仅首次）：仓库 Settings → Pages → Build and deployment → Source 选
+# 「GitHub Actions」。没启用前 deploy 步会直接报错，属预期。
+#
+# 三条实测依据（勿随意改动）：
+# 1. 安装必须在 docs/ 内独立进行：docs 不在根 pnpm-workspace.yaml 的 packages 清单里，
+#    自带 pnpm-lock.yaml。pnpm 检测到 cwd 有自己的锁文件即按独立项目处理（本地实测
+#    350 包 1.5s 正常走完），不会爬到根 workspace 去装无关的 packages/apps。
+# 2. 不需要构建脚本批准面（allowBuilds）：根 workspace 的 ERR_PNPM_IGNORED_BUILDS
+#    教训来自 playground 的 esbuild——docs 依赖树里根本没有 esbuild，sharp 0.35 也没有
+#    install 脚本（只剩 build/test 等开发脚本，pnpm 不执行）。全新安装零待批准项。
+# 3. cache-dependency-path 必须显式指 docs/pnpm-lock.yaml：默认会拿仓库根的
+#    pnpm-lock.yaml 做缓存键，而 docs 的依赖不在根锁文件里——docs 依赖变更时缓存
+#    永远不失效，等于缓存了个寂寞。
+
+name: Deploy Docs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      # 工作流自身变更也要触发，否则改完推上去毫无反应（ios-verify 同款教训）
+      - ".github/workflows/deploy-docs.yml"
+
+# Pages 部署需要写 pages 与 OIDC token；contents 保持只读最小面
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 部署类工作流不取消进行中的运行：排队串行发布，避免中途取消把环境留在半更新状态
+# （ios-verify 的 cancel-in-progress: true 是验证工作流的取舍，这里相反）
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: pnpm 与 Node
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: docs/pnpm-lock.yaml
+
+      - name: 安装依赖
+        working-directory: docs
+        run: pnpm install --frozen-lockfile
+
+      - name: 构建
+        working-directory: docs
+        run: |
+          set -euo pipefail
+          pnpm build
+          test -f dist/index.html || { echo "::error::dist/index.html 缺失"; exit 1; }
+          find dist -name "*.html" | wc -l
+
+      - name: 上传 Pages 产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
