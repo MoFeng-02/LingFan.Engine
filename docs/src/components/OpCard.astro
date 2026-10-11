@@ -1,0 +1,102 @@
+---
+/**
+ * OpCard.astro · 单条 op 指令卡（界面规范 P0）
+ *
+ * 纯静态渲染、零客户端 JS。正文走默认 slot，Markdown 直接写在标签内
+ * （参数表 / 最小 JSON 示例由内容页作者放进 slot，不做 props 化）。
+ *
+ * ── 锚点 id 生成规则 ──────────────────────────────────────────────────
+ *   `op-` + `name` 原样拼接，不做转义、不做归一化。
+ *     name="say"        → id="op-say"
+ *     name="array_push" → id="op-array_push"
+ *   之所以敢原样拼接：内建 op 名匹配 SHORT_ID_PATTERN
+ *   `/^[a-z][a-z0-9_-]{0,31}$/`（packages/engine/src/contracts/identifiers.ts:12），
+ *   字符集全部落在合法 HTML id 内，且不含空格/引号/`#`。
+ *   规则稳定、可离线预测 —— 域页页首索引直接写 `[say](#op-say)` 即可。
+ *   id 挂在 <article> 上（不是名字上），配合 components.css 里的
+ *   `scroll-margin-block-start` 让跳转目标落在吸顶导航之下。
+ *
+ * ── 两个刻意的取舍 ────────────────────────────────────────────────────
+ * 1. op 名**不是**标题元素。界面规范 把它定义为「mono 徽标」，而域页里
+ *    一张卡就是一条 op —— 若用 h3，页面的 h1→h3 会形成标题跳级（对应章节 E 组
+ *    拦截级），且这取决于 T4 各域页的标题结构，本组件不该替它下判断。
+ *    页首索引已承担导航职责。
+ * 2. **不加** `not-content`。slot 里的 Markdown（参数表 / JSON 示例）需要
+ *    继续吃到 Starlight 与 markdown.css 的正文样式；加了 not-content 会让
+ *    它们退化成裸 DOM。卡片自身的间距改由 .lf-op__* 显式声明（我们的
+ *    customCss 未分层，天然胜过 @layer starlight.content，无需 !important）。
+ */
+import { Badge } from '@astrojs/starlight/components';
+
+interface Props {
+  /** op 名；渲染为等宽徽标，并据此生成锚点 id `op-<name>` */
+  name: string;
+  /** 一句话语义（允许内联 HTML，如 <code>label</code>） */
+  summary: string;
+  /** 等待点徽标 */
+  waits?: boolean;
+  /** 回溯行为徽标 */
+  rollback?: 'full' | 'none' | 'partial';
+  /** 存档兼容 / 版本徽标，如 '1.0' */
+  since?: string;
+  /** 弃用徽标 */
+  deprecated?: boolean;
+}
+
+const { name, summary, waits, rollback, since, deprecated } = Astro.props;
+
+/* lang 是 StarlightRouteData 的顶层字段（不在 entry.data 里），缺省回落到中文 */
+const isZh = (Astro.locals.starlightRoute?.lang ?? 'zh-CN').startsWith('zh');
+
+const label = isZh
+  ? {
+      waits: '等待点',
+      full: '完整回溯',
+      partial: '部分回溯',
+      none: '不可回溯',
+      since: '自',
+      sinceTail: ' 起',
+      deprecated: '已弃用',
+    }
+  : {
+      waits: 'Waits',
+      full: 'Full rollback',
+      partial: 'Partial rollback',
+      none: 'No rollback',
+      since: 'Since',
+      sinceTail: '',
+      deprecated: 'Deprecated',
+    };
+
+/* 回溯语义：完整 = 安全（绿）／部分 = 需留意（橙）／无 = 危险（红） */
+const rollbackVariant =
+  rollback === 'full' ? 'success' : rollback === 'partial' ? 'caution' : 'danger';
+const rollbackText = rollback ? label[rollback] : '';
+
+const hasBadges = Boolean(waits || rollback || since || deprecated);
+---
+
+<article
+  class:list={['lf-op', { 'lf-op--deprecated': deprecated }]}
+  id={`op-${name}`}
+>
+  <header class="lf-op__head">
+    <p class="lf-op__name">{name}</p>
+    {
+      hasBadges && (
+        <p class="lf-op__badges">
+          {deprecated && <Badge variant="danger" text={label.deprecated} />}
+          {waits && <Badge variant="caution" text={label.waits} />}
+          {rollback && <Badge variant={rollbackVariant} text={rollbackText} />}
+          {since && (
+            <Badge variant="note" text={`${label.since} ${since}${label.sinceTail}`} />
+          )}
+        </p>
+      )
+    }
+  </header>
+  <p class="lf-op__summary" set:html={summary} />
+  <div class="lf-op__body">
+    <slot />
+  </div>
+</article>

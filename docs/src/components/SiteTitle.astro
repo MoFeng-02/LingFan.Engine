@@ -1,0 +1,44 @@
+---
+/**
+ * SiteTitle.astro · 覆盖 Starlight 内置站点标题（导航栏左侧）
+ *
+ * 文字标识「灵泛引擎」+「LingFan Engine」+ 32px 圆角 logo 位。
+ *
+ * 契约要点（改这个文件前务必读）：
+ *   · Astro 7 按 JSX 规则处理空白：相邻元素之间**不会**自动保留空格，
+ *     因此中文名与英文名并排必须显式写 {' '}，否则会渲染成
+ *     「灵泛引擎LingFan Engine」。这一行不是冗余代码，删掉就出错。
+ *   · Rust 编译器不再替我们容错 HTML：本文件必须始终是合法 HTML，
+ *     未闭合标签会直接让构建失败（不是警告）。
+ *   · 文本取自 Astro.locals.starlightRoute.siteTitle（即 astro.config 的
+ *     title），按首个空格切成中文名与英文名两段，保持配置是唯一来源。
+ *   · logo 用 public/logo-mark.png（方案 B：从原图头部遮罩裁切、透明底、
+ *     圆角 8px），尺寸与圆角由 --lf-logo-size / --lf-logo-radius 控制。
+ *   · 图片路径经 withBase() 补部署基路径：Starlight 只给「自己生成的」链接
+ *     加 base，写在组件里的字面路径不会被改写，线上会 404。
+ *   · 不使用 Starlight 的 config.logo：那会走 dark/light 双图分支，
+ *     而本项目只有一张适配深浅两色的透明底图。
+ */
+import { withBase } from '../utils/url';
+
+const { siteTitle, siteTitleHref } = Astro.locals.starlightRoute;
+
+const [primary, ...rest] = siteTitle.trim().split(/\s+/);
+const secondary = rest.join(' ');
+---
+
+<a href={siteTitleHref} class="site-title lf-brand sl-flex" translate="no">
+	<img
+		class="lf-brand__mark"
+		src={withBase('/logo-mark.png')}
+		alt=""
+		width="32"
+		height="32"
+		decoding="async"
+		aria-hidden="true"
+	/>
+	<span class="lf-brand__text">
+		<span class="lf-brand__name">{primary}</span>{' '}
+		{secondary && <span class="lf-brand__alt">{secondary}</span>}
+	</span>
+</a>

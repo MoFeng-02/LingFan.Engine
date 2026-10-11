@@ -1,0 +1,96 @@
+---
+/**
+ * Hero.astro · 覆盖 Starlight 内置 hero
+ *
+ * 「夜幕舞台 · 单束追光」自绘静态 SVG，零客户端 JS：
+ * 灯位 → 光锥 → 地面光斑 → 竹简三道横纹（叙事载体的意象），
+ * 全部颜色经 CSS 令牌注入（见 src/styles/components.css），SVG 内不写字面量。
+ *
+ * 契约要点（改这个文件前务必读）：
+ *   · <h1> 必须带 id="_top" 与 data-page-title —— Starlight 的跳转链接、
+ *     TOC 与「页内标题」检测都依赖它们（上游 PAGE_TITLE_ID 常量值就是 _top）。
+ *   · 不使用 hero.image：界面规范 明确 logo 资产为浅色底插画，
+ *     直出深色站点会变白方块。若要换成插画，改本组件的 .lf-hero__stage 节点。
+ *   · hero.actions 的 link 走 withBase()：frontmatter 不经 Markdown 管线，
+ *     构建期插件补不到，必须在这里补部署基路径。
+ *   · 只输出 HTML/CSS，无 <script>，无 client:* 指令。
+ */
+import DraftContentNotice from 'virtual:starlight/components/DraftContentNotice';
+import { LinkButton } from '@astrojs/starlight/components';
+import { withBase } from '../utils/url';
+
+const { data } = Astro.locals.starlightRoute.entry;
+const { title = data.title, tagline, actions = [] } = data.hero || {};
+---
+
+<div class="lf-hero">
+	<svg
+		class="lf-hero__stage"
+		viewBox="0 0 320 260"
+		role="presentation"
+		aria-hidden="true"
+		focusable="false"
+		xmlns="http://www.w3.org/2000/svg"
+	>
+		<defs>
+			<linearGradient id="lf-beam" x1="0" y1="0" x2="0" y2="1">
+				<stop class="lf-hero__beam-a" offset="0" />
+				<stop class="lf-hero__beam-b" offset="1" />
+			</linearGradient>
+			<radialGradient id="lf-pool" cx="0.5" cy="0.5" r="0.5">
+				<stop class="lf-hero__pool-a" offset="0" />
+				<stop class="lf-hero__pool-b" offset="1" />
+			</radialGradient>
+			<radialGradient id="lf-halo" cx="0.5" cy="0.5" r="0.5">
+				<stop class="lf-hero__halo" offset="0" />
+				<stop class="lf-hero__pool-b" offset="1" />
+			</radialGradient>
+		</defs>
+
+		<!-- 舞台外框 -->
+		<rect class="lf-hero__frame" x="6" y="6" width="308" height="248" rx="20" ry="20" />
+
+		<!-- 紫调泛光：全站唯一使用配角紫的地方（渐变） -->
+		<circle cx="160" cy="192" r="74" fill="url(#lf-halo)" />
+
+		<!-- 光锥 -->
+		<polygon points="151,28 169,28 242,198 78,198" fill="url(#lf-beam)" />
+
+		<!-- 灯位 -->
+		<ellipse class="lf-hero__lamp" cx="160" cy="27" rx="17" ry="5" />
+
+		<!-- 尘埃微粒 -->
+		<circle class="lf-hero__mote" cx="120" cy="120" r="1.9" />
+		<circle class="lf-hero__mote lf-hero__mote-b" cx="196" cy="96" r="1.5" />
+		<circle class="lf-hero__mote lf-hero__mote-c" cx="140" cy="64" r="1.2" />
+
+		<!-- 地面与光斑 -->
+		<line class="lf-hero__floor" x1="22" y1="198" x2="298" y2="198" />
+		<ellipse cx="160" cy="198" rx="96" ry="17" fill="url(#lf-pool)" />
+
+		<!-- 竹简：叙事载体的意象，自下而上渐隐 -->
+		<line class="lf-hero__slat lf-hero__slat-a" x1="112" y1="206" x2="208" y2="206" />
+		<line class="lf-hero__slat lf-hero__slat-b" x1="100" y1="197" x2="220" y2="197" />
+		<line class="lf-hero__slat lf-hero__slat-c" x1="112" y1="188" x2="208" y2="188" />
+	</svg>
+
+	<div class="lf-hero__copy">
+		<h1 id="_top" data-page-title class="lf-hero__title" set:html={title} />
+		{data.draft && <DraftContentNotice />}
+		{tagline && <div class="lf-hero__tagline" set:html={tagline} />}
+		{
+			actions.length > 0 && (
+				<div class="lf-hero__actions">
+					{actions.map(
+						({ attrs: { class: className, ...attrs } = {}, icon, link: href, text, variant }) => (
+							<LinkButton {variant} icon={icon?.name} class:list={[className]} {...attrs} href={withBase(href)}>
+								{text}
+								{icon?.html && <Fragment set:html={icon.html} />}
+							</LinkButton>
+						)
+					)}
+				</div>
+			)
+		}
+	</div>
+</div>

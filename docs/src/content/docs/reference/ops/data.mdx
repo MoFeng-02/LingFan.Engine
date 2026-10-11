@@ -1,0 +1,402 @@
+---
+title: 数据与表达式指令
+description: set、let、local、define、undef、array、dict 系列与 random 的签名、参数与常见错误。
+---
+
+import OpCard from '../../../../components/OpCard.astro';
+
+变量分两层：全局层跟着存档和回溯走，块级作用域出帧就销毁。`set` 写已有的声明层，找不到就落全局；`let` 和 `local` 总是声明在当前最内层。集合用 `array` 和 `dict` 起头，`random` 抽数。
+
+## 指令
+
+### set
+
+<OpCard name="set" summary="给变量赋值；未声明时落到全局。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+set "键" 值
+set "键" += 值
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `key` | string | 必填 |
+| `value` | unknown | 值或 `{表达式}`。文本形态还接受 `+=` `-=` `*=` `/=` `%=` |
+
+**最小示例**
+
+```text
+set "player.gold" 7
+set "player.gold" += 5
+```
+
+**常见错误**
+
+:::caution
+`set` 先沿作用域链找同名声明：找到就写那一层，找不到才落全局。所以块里 `set` 一个外层 `let` 过的变量，改的是外层那个。
+
+`.` 只是命名习惯，不构成嵌套。`player.gold` 是一个键名，不是 `player` 里的 `gold`。
+
+复合赋值只对数字成立，字符串上写 `+=` 报 `type-error`「复合赋值 += 只支持 number」。`/=` 和 `%=` 的除数为 0 报 `division-by-zero`。
+
+想「只在没定义时给个初值」，用 `define`。
+:::
+
+</OpCard>
+
+### let
+
+<OpCard name="let" summary="在当前最内层作用域声明一个变量。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+let "键" 值
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `key` | string | 必填。变量名 |
+| `value` | unknown | 必填。初始值 |
+
+**最小示例**
+
+```text
+if {player.gold >= 30}
+  let "hint" "钥匙在你手里"
+  say "{hint}"
+```
+
+**常见错误**
+
+:::caution
+`let` 总是声明进**当前最内层**作用域，哪怕外层已经有同名的。出帧即销毁，也不进存档。
+
+块级变量回溯时靠重放重建，不是从快照里恢复。所以它初始值必须是确定性的——别在 `let` 里放 `random` 的结果再指望它每次都一样。
+
+要在整个故事里活着，用 `set`。
+:::
+
+</OpCard>
+
+### local
+
+<OpCard name="local" summary="和 let 一样，声明在块级作用域。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+local "键" 值
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `key` | string | 必填。变量名 |
+| `value` | unknown | 必填。初始值 |
+
+**最小示例**
+
+```text
+func 抽一次()
+  local "hit" {random 1 6}
+  say "掷出 {hit}。"
+```
+
+**常见错误**
+
+:::caution
+`local` 和 `let` 行为完全一样，写哪个都行——两个名字都留着，是因为不同作者习惯不同。
+
+它和 `let` 一样不进存档。函数里用它是安全的：函数帧出栈时变量跟着走。
+
+别指望它「局部到函数」。它局部到**块**——函数体里的 `if` 分支里声明的，出了分支就没了。
+:::
+
+</OpCard>
+
+### define
+
+<OpCard name="define" summary="全局赋值，但已存在时不覆盖。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+define "键" 值
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `key` | string | 必填。变量名 |
+| `value` | unknown | 必填。初始值 |
+
+**最小示例**
+
+```text
+define "max_hp" 100
+set "max_hp" 200
+```
+
+**常见错误**
+
+:::caution
+`define` 只在键**不存在**时才写。上面这段跑完 `max_hp` 还是 100——第二行的 `set` 改了，但 `define` 那行确实没动。
+
+读档重放时 `define` 会再执行一遍，因为键已存在所以是空操作。这正是它存在的理由：给初值，又不覆盖玩家进度。
+
+想强制覆盖，用 `set`。
+:::
+
+</OpCard>
+
+### undef
+
+<OpCard name="undef" summary="删掉一个变量声明。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+undef "键"
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `key` | string | 必填。变量名 |
+
+**最小示例**
+
+```text
+undef "hint"
+```
+
+**常见错误**
+
+:::caution
+作用域链和全局层都没有这个键时报 `unknown-variable`「undef：未定义变量 hint」。删不存在的变量是错误，不是空操作。
+
+`undef` 会把那一层的声明整个摘掉。如果外层还有同名的，摘掉内层之后读到的就是外层那个。
+:::
+
+</OpCard>
+
+### array
+
+<OpCard name="array" summary="声明一个数组变量。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+array "键" [项, 项]
+array "键" [项, 项] once
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `key` | string | 必填 |
+| `items` | unknown[] | 数组项，可写 `{表达式}` |
+| `once` | boolean | 为真时已存在就跳过 |
+
+**最小示例**
+
+```text
+array "names" ["阿澈", "阿岚"]
+array "names" ["阿岑"] once
+```
+
+**常见错误**
+
+:::caution
+不带 `once` 的 `array` 每次执行都整个替换掉旧数组。上面第二行写了 `once`，所以 `names` 还是两项。
+
+文本形态的文法很挑：`array "键" [项, …]`，方括号和逗号都不能省。写成 `array "键" 项` 解析期就报「array 文法」。
+
+它声明的是**新数组**。要往已有数组里加，用 `array_push`。
+:::
+
+</OpCard>
+
+### array_push
+
+<OpCard name="array_push" summary="往数组末尾追加一项。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+array_push "键" 值
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `key` | string | 必填。数组变量名 |
+| `value` | unknown | 必填。追加的值 |
+
+**最小示例**
+
+```text
+array_push "names" "阿岑"
+```
+
+**常见错误**
+
+:::caution
+目标不存在或不是数组，报 `type-error`「array_push 目标 names 不存在或不是数组」。它**不会**替你建数组——先用 `array` 声明。
+
+推入的是求值后的值。写 `{player.gold}` 推的是当时的数字，之后 `player.gold` 再变也不会影响数组里那一项。
+:::
+
+</OpCard>
+
+### array_pop
+
+<OpCard name="array_pop" summary="弹出数组最后一项。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+array_pop "键"
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `key` | string | 必填。数组变量名 |
+
+**最小示例**
+
+```text
+array_pop "names"
+```
+
+**常见错误**
+
+:::caution
+目标不存在、不是数组、或者已经空了，三种情况报的都是同一个 `type-error`「array_pop 目标 names 不存在、非数组或已空」。想区分，先自己判长度。
+
+弹出来的值不会自动存进变量。要留就紧跟着 `set` 一个变量接住。
+:::
+
+</OpCard>
+
+### dict
+
+<OpCard name="dict" summary="声明一个字典变量。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+dict "键" {"字段": 值}
+dict "键" {"字段": 值} once
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `key` | string | 必填 |
+| `value` | object | JSON 对象字面量，字段值可写 `{表达式}` |
+| `once` | boolean | 为真时已存在就跳过 |
+
+**最小示例**
+
+```text
+dict "player" {"hp": 100, "mp": {base_mp}}
+```
+
+**常见错误**
+
+:::caution
+文本形态要求花括号包住的 JSON 对象字面量，写成别的解析期报「dict 文法：dict "key" `{...}` [once]」。
+
+不带 `once` 时整个替换。字段少写了就真的没了，不是合并。
+
+字典和数组在引擎里是两种不同的值，互不兼容——`array_push` 推不进字典，`dict_set` 也改不了数组。
+:::
+
+</OpCard>
+
+### dict_set
+
+<OpCard name="dict_set" summary="改字典里的一个字段。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+dict_set "键" "字段" 值
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `key` | string | 必填。字典变量名 |
+| `field` | string | 必填。字段名 |
+| `value` | unknown | 必填。新值 |
+
+**最小示例**
+
+```text
+dict_set "player" "hp" 80
+```
+
+**常见错误**
+
+:::caution
+目标不存在、或者不是字典（数组不算），报 `type-error`「dict_set 目标 player 不存在或不是字典」。它不建字典，也不建字段——字段必须已经在里面。
+
+改的是顶层字段，没有嵌套路径。`dict_set "player" "stats.hp" 80` 会建出一个名叫 `stats.hp` 的字段。
+:::
+
+</OpCard>
+
+### random
+
+<OpCard name="random" summary="用给定种子在闭区间里抽一个整数。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+random seed=1 min=1 max=6 var="骰子"
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `seed` | number | 必填，整数 |
+| `range` | [number, number] | 必填，`[min, max]` 闭区间 |
+| `var` | string | 必填，结果写进哪个变量 |
+
+**最小示例**
+
+```text
+random seed=20261010 min=1 max=6 var="dice"
+say "掷出 {dice}。"
+```
+
+**常见错误**
+
+:::caution
+种子进状态，所以回溯重放会抽到同一串值。这不是缺陷，是设计——否则读档后玩家每次抽到的都不一样。
+
+`min > max` 报 `invalid-range`「random 下界必须 ≤ 上界」。`seed` 不是整数、`range` 不是两个数字的数组、`var` 是空串，三种都报 `type-error`。
+
+结果写进的是**全局**变量。文本形态四个参数一个都不能少，缺了报「random 需要 seed/min/max/var」。
+:::
+
+</OpCard>

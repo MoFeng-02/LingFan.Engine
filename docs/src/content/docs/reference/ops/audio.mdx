@@ -1,0 +1,293 @@
+---
+title: 音频指令
+description: bgm、se、ambient、voice 四条通道与三条停止指令的签名、参数与常见错误。七条都不建立等待点。
+---
+
+import OpCard from '../../../../components/OpCard.astro';
+
+音频走四条通道：`bgm`、`ambient`、`voice` 是常驻通道，`se` 是一次性触发。引擎只往状态里写通道对象，真正的播放由宿主落地——所以这些指令执行完立刻往下走，不等声音播完。
+
+路径相对资源根写：`bgm "Audio/main.mp3"` 指的是 `Resources/Audio/main.mp3`。
+
+## 指令
+
+### bgm
+
+<OpCard name="bgm" summary="播放背景乐，写常驻通道。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+bgm "Audio/main.mp3"
+bgm "Audio/rain.mp3" volume=0.6 fade=800
+bgm "Audio/theme.mp3" restart
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `resource` | string | 必填。相对资源根的路径 |
+| `volume` | number | 可选，缺省 1。越界钳到 0..1 |
+| `loop` | boolean | 可选，缺省 `true` |
+| `fade` | number | 可选，缺省 0。毫秒 |
+| `restart` | boolean | 可选。文本形态里裸写 `restart` 即为真 |
+
+**最小示例**
+
+```text
+label chapter_one:
+  bgm "Audio/main.mp3" fade=1200
+  say "雨点打在铁皮上。"
+  bgm "Audio/rain.mp3" volume=0.5
+```
+
+**常见错误**
+
+:::caution
+播放位置只在三种情况下归零：第一次播、换了一首、显式 `restart`。**同一首再写一遍不会重头播**，音量变了就只改音量。这条是为了让回滚和读档不打断正在放的曲子——引擎重放这条命令时，位置还接着原来的走。
+
+想要「同一首从头再来一遍」就写 `restart`。它会把序号加一，宿主据此收到一次独立的重播事件；连续两次 `restart` 也是两次事件，不会被合并。
+
+`volume` 写非有限数字（`NaN`、`Infinity`）报 `bgm-invalid-volume`；`fade` 写负数报 `bgm-invalid-fade`。越界的音量会被钳到 0..1，但越界不会报错——`volume=2` 是静默变成 1。
+
+路径写空串报 `bgm-invalid-resource`。
+:::
+
+</OpCard>
+
+### se
+
+<OpCard name="se" summary="播一次性音效，每次执行都触发。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+se "Audio/click.mp3"
+se "Audio/thunder.mp3" volume=0.8
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `resource` | string | 必填 |
+| `volume` | number | 可选，缺省 1 |
+
+**最小示例**
+
+```text
+se "Audio/thunder.mp3"
+say "一道闪电把屋子照亮。"
+```
+
+**常见错误**
+
+:::caution
+`se` 没有 `loop`、`fade`、`restart`，写了报 `se 未知负载字段`。文本形态里写 `se "…" restart` 会直接拒绝整个文件，报「se 不支持 restart（一次性音效恒重播）」。
+
+它靠单调递增的序号判定，所以**同一条 `se` 连续执行两次就是两声**，不会像 `bgm` 那样被当成「同一首，跳过」。反过来，回溯到 `se` 之前再往前走，也会再响一次——它是重放出来的，引擎没法让已经响过的声音「没响过」。
+:::
+
+</OpCard>
+
+### ambient
+
+<OpCard name="ambient" summary="播放环境音，独立于背景乐。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+ambient "Audio/wind.mp3" volume=0.4
+stop_ambient fade=600
+```
+
+**参数**
+
+字段和 `bgm` 完全一致：`resource`、`volume`、`loop`、`fade`、`restart`。`loop` 同样缺省 `true`。
+
+**最小示例**
+
+```text
+bgm "Audio/main.mp3"
+ambient "Audio/wind.mp3" volume=0.3 fade=2000
+say "风从山口灌下来。"
+```
+
+**常见错误**
+
+:::caution
+`ambient` 是独立通道，不是 `bgm` 的第二个音量层。想「压低背景乐突出环境音」得自己写两个 `bgm` / `ambient` 命令分别调音量，引擎不会替你把它们混在一起算。
+
+和 `bgm` 一样，同一首再写一遍只更新参数，不重头播。想要重播加 `restart`。
+
+环境音**不会因为换场景自动停**。离开一个场景要显式 `stop_ambient`，否则它会一直响到故事结束或者被下一条 `ambient` 换掉。
+:::
+
+</OpCard>
+
+### voice
+
+<OpCard name="voice" summary="播放语音，常驻通道。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+voice "Audio/ache_01.mp3"
+voice "Audio/ache_02.mp3" volume=0.9 auto_stop=false
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `resource` | string | 必填 |
+| `volume` | number | 可选，缺省 1 |
+| `auto_stop` | boolean | 可选，缺省 `true` |
+| `restart` | boolean | 可选 |
+
+**最小示例**
+
+```text
+voice "Audio/ache_01.mp3"
+say "「别站在雨里。」" speaker="阿澈"
+```
+
+**常见错误**
+
+:::caution
+`voice` **不接受 `loop`**，写 `loop=true` 报未知字段——语音恒不循环。想让它多放几遍就写多条 `voice`。
+
+`auto_stop` 缺省为真，意思是：这句对话被玩家推进过去时，语音自动停。把它设成 `false`，语音会一直放下去，直到下一条 `voice` 或 `stop_voice`。
+
+`say voice="…"` 是另一条路——它把语音绑在这一句对话上，效果和「先 `voice` 再 `say`」一样，但少写一条命令。用哪个都行，别同一条对话两边都写。
+:::
+
+</OpCard>
+
+### stop_bgm
+
+<OpCard name="stop_bgm" summary="停止背景乐。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+stop_bgm
+stop_bgm fade=1500
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `fade` | number | 可选，缺省 0。毫秒 |
+
+**最小示例**
+
+```text
+say "门在身后关上。"
+stop_bgm fade=2000
+```
+
+**常见错误**
+
+:::caution
+`stop_bgm` 把通道写成停止形态，并且**把播放位置归零**。这意味着之后重新 `bgm` 同一首会从头播——即使不写 `restart`。
+
+它只认 `fade` 一个参数，写别的报「stop_bgm 未知负载字段」。想改音量用 `bgm` 重写一遍，不是 `stop_bgm`。
+
+`fade` 是淡出时长，命令本身不等它。写 `stop_bgm fade=3000` 之后下一句 `say` 会立刻显示，背景乐在背后慢慢淡掉。
+:::
+
+</OpCard>
+
+### stop_ambient
+
+<OpCard name="stop_ambient" summary="停止环境音。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+stop_ambient
+stop_ambient fade=800
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `fade` | number | 可选，缺省 0。毫秒 |
+
+**最小示例**
+
+```text
+stop_ambient fade=800
+bgm "Audio/indoor.mp3"
+```
+
+**常见错误**
+
+:::caution
+和 `stop_bgm` 不同，`stop_ambient` **不动播放位置**——`ambient` 没有位置归零的逻辑，所以停掉之后再放同一首是重新开始还是接着放，取决于宿主怎么实现。要确定的行为就换一首或者显式写 `restart`。
+
+只认 `fade`，写别的报「stop_ambient 未知负载字段」。
+:::
+
+</OpCard>
+
+### stop_voice
+
+<OpCard name="stop_voice" summary="停止语音通道。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+stop_voice
+stop_voice fade=300
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `fade` | number | 可选，缺省 0。毫秒 |
+
+**最小示例**
+
+```text
+say "「……算了。」" speaker="阿澈"
+stop_voice
+```
+
+**常见错误**
+
+:::caution
+只认 `fade`，写别的报「stop_voice 未知负载字段」。
+
+语音通常靠 `auto_stop` 自动收尾，所以 `stop_voice` 更多用在「玩家点得比语音快，得让它立刻断掉」这种场合。淡出时长写太大会和下一句语音叠在一起。
+:::
+
+</OpCard>
+
+## 音量叠了两层
+
+宿主侧算出来的实际音量是 `op 的音量 × 玩家偏好`。玩家在设置面板把背景乐拉到 60%，那么 `bgm "…" volume=0.5` 实际响的是 0.3。偏好为 1（或者没接偏好系统）时就是原值。
+
+引擎不管这件事，它只写 op 的音量。宿主合成。
+
+## 换曲与不换曲
+
+宿主收到的是状态差量，判定规则是：
+
+- 通道从 `play` 变成 `stop` 或消失 → 停（带淡出参数）
+- 资源变了 → 播
+- 资源没变、序号变了（也就是写了 `restart`）→ 从头重播
+- 资源没变、只有音量或 `loop` 变了 → 更新参数，**不重头播**
+
+背景乐的位置回写有个 0.5 秒的阈值：宿主上报的位置和引擎记的位置差不到半秒，就当成播放器抖动，不触发定位。这条是为了避免每帧都去 seek 一下把曲子卡出杂音。
+
+## 下一步
+
+- [视频指令](/reference/ops/video/)——`cutscene` 会建立等待点，`video` 不会。
+- [对话与叙事指令](/reference/ops/dialogue/)——`say voice=` 把语音绑在句子上。
+- [Resources 目录约定](/reference/resources-layout/)——音频文件放哪、路径怎么写。

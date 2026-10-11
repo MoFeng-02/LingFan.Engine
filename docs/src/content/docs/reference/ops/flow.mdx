@@ -1,0 +1,194 @@
+---
+title: 流程与跳转指令
+description: jump、navigate、func、call、return 的签名、参数与常见错误。五条都不建立等待点，落点才建。
+---
+
+import OpCard from '../../../../components/OpCard.astro';
+
+这一族管「下一句在哪」。`jump` 和 `navigate` 换列，`func` 和 `call` 复用一段命令，`return` 把控制权交回去。五条都不建立等待点——等待点由落点上的命令建立。
+
+## 指令
+
+### jump
+
+<OpCard name="jump" summary="跳到另一个列，不区分列的类型。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+jump 目标列名
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `target` | string | 必填。目标列 id，文本形态里不加引号 |
+
+**最小示例**
+
+```text
+say "门在你身后关上了。"
+jump chapter_two
+```
+
+**常见错误**
+
+:::caution
+目标列不存在时报 `unknown-column`「目标列不存在：chapter_two」，故事停在这里。
+
+`jump` 只换列，不清对话残留——上一句的台词还留在屏幕上；要在换列时收掉对话，用 `navigate`。它不建立检查点——检查点由落点的 `say`、`menu` 这类命令建立。
+
+跳转目标写列 id，不是文件名。两者可以不一样：`Stories/chapter1/chapter1.story` 里装的列叫 `chapter1_start` 也合法。
+:::
+
+</OpCard>
+
+### navigate
+
+<OpCard name="navigate" summary="切换场景列，可同时指定场景名。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+navigate "目标列" [scene "场景名"]
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `path` | string | 目标列 id |
+| `scene` | string | 场景名。同时给出时 `scene` 优先 |
+
+**最小示例**
+
+```text
+navigate "stage_demo"
+```
+
+**常见错误**
+
+:::caution
+`path` 和 `scene` 都不给报 `navigate-invalid`「navigate 需要 path（scene 可选；二者皆为目标列 id）」。
+
+两个都给时 `scene` 赢，`path` 被忽略。这跟直觉相反，写的时候别两个都填。
+
+`navigate` 和 `jump` 的行为差异只有一处：`navigate` 换列前清掉对话残留（文本、说话人、颜色），`jump` 不清，上一句台词会留在屏幕上。语义上 `navigate` 表示「换一个空间层」，`jump` 表示「流程往下走」，两条都不建检查点。列内写 `scene "目标"` 等价于 `navigate "目标"`。
+:::
+
+</OpCard>
+
+### func
+
+<OpCard name="func" summary="声明一个可复用的命令块。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+func 名称(参数, 参数)
+  命令…
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `name` | string | 必填。可中文，首字符是字母、下划线或汉字 |
+| `params` | string[] | 参数名列表，按位置取值 |
+| `body` | 命令[] | 函数体 |
+
+**最小示例**
+
+```text
+func 给钱(数量)
+  set "player.gold" += {数量}
+
+call 给钱(30)
+```
+
+**常见错误**
+
+:::caution
+函数在**执行期**注册，不是装载期。写到 `func` 那一行之前就 `call` 它，会报 `call-unknown-target`。
+
+同名函数重复注册且参数与函数体不一致，报 `func-duplicate`「函数重复注册：给钱」。只有参数逐位相同、函数体序列化后也相同才放行——读档重放时会重新走一遍 `func`，那一次不算重复。
+
+函数体里 `return` 会截断整个函数帧。函数里声明的 `let` / `local` 出了函数就没了。
+:::
+
+</OpCard>
+
+### call
+
+<OpCard name="call" summary="调用函数，或把流程列当子过程执行一次。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+call 目标
+call 函数名(实参, 实参)
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `target` | string | 必填。先当函数名查，查不到再当列 id 查 |
+| `args` | unknown[] | 只有走函数路径时用得上 |
+
+**最小示例**
+
+```text
+call 给钱(30)
+call common_intro
+```
+
+**常见错误**
+
+:::caution
+两头都查不到报 `call-unknown-target`「调用目标不存在：xxx（既不是 func 也不是列）」。
+
+目标是场景列时被拒，报 `call-invalid-target`「call 只能调用流程列（flow）；xxx 是场景列（scene）——空间层切换请用 navigate/jump」。原因很直接：`call` 要回到调用点继续走，场景列是空间层，回不去。
+
+实参个数不对报 `arity-error`「函数 给钱 需要 1 个参数，收到 2 个」。参数按位置绑定，没有默认值也没有具名传参。
+:::
+
+</OpCard>
+
+### return
+
+<OpCard name="return" summary="结束当前函数或流程列，把控制权交回调用点。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+return
+return 值
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `value` | unknown | 可选。返回值 |
+
+**最小示例**
+
+```text
+func 检查金币()
+  assert {player.gold >= 30} "金币不够"
+  return
+
+call 检查金币()
+```
+
+**常见错误**
+
+:::caution
+在函数体外 `return` 报 `return-outside-func`「return 必须在 func 体内」。它不会替你结束整个故事。
+
+`return` 从帧栈顶往下找最近的函数帧，把那个帧和它里面剩下的帧一起丢掉——函数里没走完的命令不会补执行。
+:::
+
+</OpCard>

@@ -1,0 +1,357 @@
+---
+title: 条件与循环指令
+description: if、while、for、foreach、switch、break、continue、assert、guard 的签名、参数与常见错误。
+---
+
+import OpCard from '../../../../components/OpCard.astro';
+
+`if` 和 `switch` 选分支，`while` / `for` / `foreach` 重复执行，`break` 和 `continue` 管循环的进出，`assert` 和 `guard` 在条件不成立时停机。九条都不建立等待点。
+
+## 指令
+
+### if
+
+<OpCard name="if" summary="按条件选一段命令执行。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+if {条件}
+  命令…
+else if {条件}
+  命令…
+else
+  命令…
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `cond` | string | 条件表达式。文本形态里用 `{}` 包住 |
+| `then` | 命令[] | 命中时执行 |
+| `elif` | `{cond, then}[]` | 依次判断，第一个为真的胜出 |
+| `else` | 命令[] | 都没命中时执行 |
+
+**最小示例**
+
+```text
+if {player.gold >= 30}
+  say "钱够了。"
+else
+  say "还差一点。"
+```
+
+**常见错误**
+
+:::caution
+条件在**执行到这一行时**求值，不是装载时。变量后来变了，判断跟着变。
+
+分支体有自己的块级作用域：里面 `let` 的变量出了分支就没了。想让值活下来，用 `set`。
+
+分支体为空或不写，`if` 直接往下走，不压帧也不报错。
+:::
+
+</OpCard>
+
+### while
+
+<OpCard name="while" summary="条件为真时反复执行一段命令。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+while {条件}
+  命令…
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `cond` | string | 每轮开头重判 |
+| `body` | 命令[] | 循环体 |
+
+**最小示例**
+
+```text
+set "i" 0
+while {i < 3}
+  set "i" += 1
+  say "第 {i} 次。"
+```
+
+**常见错误**
+
+:::caution
+循环体里没有建立等待点的命令，会一口气跑到底。上面这个例子每轮都有 `say`，所以每轮都会停下来等玩家。
+
+迭代超过 10000 次报 `loop-limit`「循环迭代超过 10000 次上限，已中断（防死循环安全网）」。这是兜底，不是让你写到 9999 轮。
+
+条件为假时不压帧，直接往下走。
+:::
+
+</OpCard>
+
+### for
+
+<OpCard name="for" summary="遍历一个数组。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+for "项" in {表达式}
+  命令…
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `var` | string | 循环变量名，每轮声明在块级作用域 |
+| `in` | string | 求值结果必须是数组 |
+| `body` | 命令[] | 循环体 |
+
+**最小示例**
+
+```text
+array "names" ["阿澈", "阿岚", "阿岑"]
+for "who" in {names}
+  say "{who} 举了下手。"
+```
+
+**常见错误**
+
+:::caution
+`in` 表达式求值结果不是数组，报 `type-error`「for 的 in 表达式必须为数组」。空数组不报错，直接跳过。
+
+文本形态里 `in` 后面要写 `{}`：`for "who" in {names}`。写成裸变量名会被当字面量。
+
+循环变量每轮重新声明，循环体里改它不影响下一轮。
+:::
+
+</OpCard>
+
+### foreach
+
+<OpCard name="foreach" summary="按名字查一个数组变量并遍历。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+foreach "项" in "变量名"
+  命令…
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `var` | string | 循环变量名 |
+| `key` | string | 集合的变量名。写字符串，不是表达式 |
+| `body` | 命令[] | 循环体 |
+
+**最小示例**
+
+```text
+foreach "who" in "names"
+  say "{who} 举了下手。"
+```
+
+**常见错误**
+
+:::caution
+变量不存在或不是数组，报 `type-error`「foreach 集合 names 不存在或不是数组」。
+
+它和 `for` 的区别只在第二个参数：`for` 收表达式，`foreach` 收变量名。名字要加引号，写成 `foreach "who" in names` 会去找名为 `names` 的字面量而失败。
+
+需要遍历表达式的结果（比如 `{a.concat(b)}`）时用 `for`，`foreach` 做不到。
+:::
+
+</OpCard>
+
+### switch
+
+<OpCard name="switch" summary="按值相等挑一个分支。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+switch {表达式}
+case 字面量
+  命令…
+default
+  命令…
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `on` | string | 被比较的表达式 |
+| `cases` | `{value, body}[]` | 逐项与 `value` 比较 |
+| `default` | 命令[] | 都没命中时执行 |
+
+**最小示例**
+
+```text
+switch {player.route}
+case "north"
+  say "北边的路封了。"
+case "south"
+  jump south_gate
+default
+  say "原地不动。"
+```
+
+**常见错误**
+
+:::caution
+命中一个 `case` 就执行完那个分支然后整个 `switch` 结束，不会往下穿透到下一个 `case`。所以不需要 `break`，写了 `break` 反而会去结束外层循环。
+
+比较是值相等，不是表达式相等：`case` 后面写字面量。
+
+`switch` 里的 `break` 会跳出**最近的循环**——如果 `switch` 在循环里，那会结束循环，不是结束 `switch`。
+:::
+
+</OpCard>
+
+### break
+
+<OpCard name="break" summary="结束当前循环。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+break
+```
+
+**参数**
+
+无。
+
+**最小示例**
+
+```text
+while {true}
+  say "再抽一次？"
+  if {player.stop}
+    break
+```
+
+**常见错误**
+
+:::caution
+在循环体外写 `break` 报 `break-outside-loop`「break 必须在循环体内（while/for/foreach）」。
+
+它结束的是最近的循环，`switch` 不算循环。函数边界也拦得住：函数体里没有循环时写 `break` 一样报错。
+:::
+
+</OpCard>
+
+### continue
+
+<OpCard name="continue" summary="跳过本轮剩下的命令，进入下一轮。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+continue
+```
+
+**参数**
+
+无。
+
+**最小示例**
+
+```text
+foreach "who" in "names"
+  if {who == "阿岚"}
+    continue
+  say "{who} 举了下手。"
+```
+
+**常见错误**
+
+:::caution
+在循环体外写 `continue` 报 `continue-outside-loop`「continue 必须在循环体内（while/for/foreach）」。
+
+跳过的只是本轮剩下的命令，不是整个循环，也不会重判 `while` 的条件之外的东西——`while` 的条件下一轮照样重新算。
+:::
+
+</OpCard>
+
+### assert
+
+<OpCard name="assert" summary="条件不成立就停机报错。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+assert {条件} ["消息"]
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `cond` | string | 必填 |
+| `message` | string | 可选。缺省用条件本身的文本 |
+
+**最小示例**
+
+```text
+assert {player.gold >= 30} "金币不够，买不了这把伞"
+```
+
+**常见错误**
+
+:::caution
+失败时报 `assert-failed`「断言失败：金币不够，买不了这把伞」，故事**停在当前命令**，状态原样不推进。
+
+这是给作者用的自检，不是给玩家的提示。要跟玩家解释，用 `say` 或 `notify`。
+
+条件成立时它什么也不做，不写系统键、不留痕迹。
+:::
+
+</OpCard>
+
+### guard
+
+<OpCard name="guard" summary="调用宿主注册的守卫函数，失败即停机。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+guard "守卫名"
+guard "守卫名" {"参数": 值}
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `fn` | string | 守卫名，注册在 `EngineOptions.guards` |
+| `args` | object | 可选。必须是 JSON 安全的对象字面量 |
+
+**最小示例**
+
+```text
+guard "hasItem" {"id": "umbrella"}
+say "你撑开伞，雨声一下子远了。"
+```
+
+**常见错误**
+
+:::caution
+守卫没注册报 `guard-unknown`「未注册的守卫：hasItem」。默认没有任何守卫注册，`guard` 一律失败。
+
+参数带函数、`undefined` 之类非 JSON 安全的值报 `guard-args-unsafe`。参数是**纯 JSON**，不写表达式——想要变量值，先在 `set` 里算好再写进去。
+
+守卫里调 `fail("...")` 报 `guard-failed`，消息就是你写的那句；守卫自己抛异常报 `guard-threw`。
+
+守卫拿不到写状态的能力（上下文只有 `get`），所以它不会改任何变量。同一个状态加同一组参数，结果永远一样。
+:::
+
+</OpCard>

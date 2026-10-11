@@ -1,0 +1,476 @@
+/* components.css · 自绘组件样式（.lf-* BEM）
+   服务 Hero / Footer / SiteTitle / OpCard / VersionBadge 五个自绘组件与卡片泛光。
+   约束：不出现颜色字面量（唯一色值来源 tokens.css）；不使用 !important；
+   不覆盖 Starlight 组件内部类名（自绘组件走官方 components 覆盖槽，
+   卡片泛光用 :where() 零特异性 + 变量重指向实现）。 */
+
+/* 1. 站点标识 SiteTitle.astro */
+.lf-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lf-space-sm);
+  min-width: 0;
+  color: var(--lf-text);
+  text-decoration: none;
+  font-size: var(--sl-text-h4);
+  font-weight: 600;
+  letter-spacing: var(--lf-tracking-cjk);
+}
+
+.lf-brand:hover,
+.lf-brand:focus {
+  color: var(--lf-text);
+}
+
+/* 导航栏 logo 位：32px 圆角遮罩裁切（方案 B），深色底上不出现白方块 */
+.lf-brand__mark {
+  display: block;
+  flex: none;
+  inline-size: var(--lf-logo-size);
+  block-size: var(--lf-logo-size);
+  border-radius: var(--lf-logo-radius);
+  object-fit: cover;
+  /* 品牌泛光：只在 logo 与 hero 出现（界面规范） */
+  box-shadow: 0 0 0 1px var(--lf-glow-border), 0 0 12px var(--lf-glow-halo);
+}
+
+.lf-brand__text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.375em;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.lf-brand__name {
+  color: var(--lf-text);
+}
+
+/* 拉丁副名：等宽、次级色、小一号 —— 文字标识的第二层 */
+.lf-brand__alt {
+  color: var(--lf-text-muted);
+  font-family: var(--lf-font-mono);
+  font-size: 0.75em;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 30rem) {
+  /* 窄屏只留中文名，避免与导航按钮抢空间 */
+  .lf-brand__alt {
+    display: none;
+  }
+}
+
+/* 2. 首页 hero Hero.astro（自绘静态 SVG「舞台追光」，零客户端 JS） */
+.lf-hero {
+  display: grid;
+  grid-template-columns: 100%;
+  align-items: center;
+  gap: var(--lf-space-xl);
+  padding-block: var(--lf-space-xl) var(--lf-space-lg);
+}
+
+.lf-hero__stage {
+  order: -1;
+  inline-size: min(72%, 18rem);
+  block-size: auto;
+  margin-inline: auto;
+}
+
+.lf-hero__copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lf-space-md);
+  text-align: center;
+}
+
+.lf-hero__title {
+  max-inline-size: 22ch;
+  font-size: clamp(var(--sl-text-3xl), calc(0.25rem + 5vw), var(--sl-text-6xl));
+  font-weight: 600;
+  line-height: var(--sl-line-height-headings);
+  color: var(--lf-text);
+  letter-spacing: var(--lf-tracking-cjk);
+}
+
+.lf-hero__tagline {
+  max-inline-size: 46ch;
+  font-size: clamp(var(--sl-text-base), calc(0.0625rem + 2vw), var(--sl-text-xl));
+  line-height: var(--lf-leading);
+  color: var(--lf-text-muted);
+}
+
+.lf-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--lf-space-md) var(--lf-space-xl);
+  margin-block-start: var(--lf-space-2xs);
+}
+
+/* 追光光束与光斑的色值经令牌注入，SVG 内不写字面量 */
+.lf-hero__beam-a {
+  stop-color: var(--lf-brand);
+  stop-opacity: 0.34;
+}
+
+.lf-hero__beam-b {
+  stop-color: var(--lf-brand);
+  stop-opacity: 0;
+}
+
+.lf-hero__pool-a {
+  stop-color: var(--lf-brand);
+  stop-opacity: 0.5;
+}
+
+.lf-hero__pool-b {
+  stop-color: var(--lf-brand);
+  stop-opacity: 0;
+}
+
+.lf-hero__halo {
+  stop-color: var(--lf-alt);
+  stop-opacity: 0.3;
+}
+
+.lf-hero__frame {
+  fill: none;
+  stroke: var(--lf-border);
+  stroke-width: 1.5;
+}
+
+.lf-hero__floor {
+  stroke: var(--lf-border-strong);
+  stroke-width: 1.5;
+}
+
+/* 灯位：追光的光源本身，用品牌色实心 + 微弱泛光 */
+.lf-hero__lamp {
+  fill: var(--lf-brand);
+  filter: drop-shadow(0 0 6px var(--lf-glow-halo));
+}
+
+/* 竹简意象：三道横纹，自下而上渐隐 */
+.lf-hero__slat {
+  stroke: var(--lf-brand);
+  stroke-linecap: round;
+}
+
+.lf-hero__slat-a {
+  stroke-width: 3;
+  opacity: 0.55;
+}
+
+.lf-hero__slat-b {
+  stroke-width: 3;
+  opacity: 0.32;
+}
+
+.lf-hero__slat-c {
+  stroke-width: 3;
+  opacity: 0.16;
+}
+
+/* 尘埃微粒：静止，不做动画（零 JS，也不与 prefers-reduced-motion 冲突） */
+.lf-hero__mote {
+  fill: var(--lf-brand-strong);
+  opacity: 0.5;
+}
+
+.lf-hero__mote-b {
+  opacity: 0.3;
+}
+
+.lf-hero__mote-c {
+  opacity: 0.18;
+}
+
+@media (min-width: 50rem) {
+  .lf-hero {
+    grid-template-columns: 7fr 4fr;
+    gap: 3%;
+    padding-block: clamp(2.5rem, calc(1rem + 10vmin), 8rem);
+  }
+
+  .lf-hero__stage {
+    order: 2;
+    inline-size: min(100%, 24rem);
+  }
+
+  .lf-hero__copy {
+    align-items: flex-start;
+    text-align: start;
+  }
+
+  .lf-hero__actions {
+    justify-content: flex-start;
+  }
+}
+
+/* 3. 三段式页脚 Footer.astro */
+.lf-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lf-space-xl);
+  margin-block-start: var(--lf-space-2xl);
+  padding-block-start: var(--lf-space-lg);
+  border-block-start: 1px solid var(--lf-border);
+  font-size: var(--sl-text-sm);
+  color: var(--lf-text-muted);
+}
+
+.lf-footer__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--lf-space-xl);
+}
+
+.lf-footer__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lf-space-xs);
+  min-inline-size: 0;
+}
+
+.lf-footer__heading {
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lf-text-muted);
+}
+
+/* 段一：品牌 */
+.lf-footer__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--lf-space-sm);
+  color: var(--lf-text);
+  font-weight: 600;
+}
+
+.lf-footer__mark {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border-radius: var(--lf-radius-xs);
+  flex: none;
+  box-shadow: 0 0 0 1px var(--lf-glow-border);
+}
+
+.lf-footer__brand-text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.375em;
+  min-inline-size: 0;
+}
+
+.lf-footer__brand-name {
+  color: var(--lf-text);
+}
+
+.lf-footer__brand-alt {
+  font-family: var(--lf-font-mono);
+  font-size: 0.75em;
+  font-weight: 400;
+  color: var(--lf-text-muted);
+}
+
+.lf-footer__pitch {
+  max-inline-size: 40ch;
+  line-height: var(--lf-leading);
+}
+
+/* 段二：导航三列 */
+.lf-footer__columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--lf-space-lg);
+}
+
+.lf-footer__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lf-footer__link {
+  color: var(--lf-text-muted);
+  text-decoration: none;
+  transition: color var(--lf-dur-fast) var(--lf-ease);
+}
+
+.lf-footer__link:hover,
+.lf-footer__link:focus {
+  color: var(--lf-brand);
+}
+
+/* 段三：元信息（编辑链接 / 更新时间 / 版权） */
+.lf-footer__meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lf-space-xs);
+  font-size: var(--sl-text-xs);
+  color: var(--lf-text-muted);
+}
+
+.lf-footer__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lf-space-xs) var(--lf-space-lg);
+  align-items: baseline;
+}
+
+/* 只有一项时推到右侧，避免与左侧留白失衡（本行为空时 :only-child 不匹配）。 */
+.lf-footer__meta-row > :only-child {
+  margin-inline-start: auto;
+}
+
+.lf-footer__copyright {
+  margin: 0;
+  line-height: var(--lf-leading);
+}
+
+@media (min-width: 50rem) {
+  .lf-footer__grid {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 2fr) minmax(0, 1.2fr);
+    gap: var(--lf-space-2xl);
+  }
+}
+
+/* 4. 卡片 hover 泛光（界面规范）
+   :where() 把特异性压到 0，只重指向 Starlight 自己暴露的 --sl-card-border
+   变量并追加它未设的 box-shadow，不覆盖内部类规则；不做 translateY。 */
+:where(.sl-markdown-content .card) {
+  transition:
+    box-shadow var(--lf-dur) var(--lf-ease),
+    border-color var(--lf-dur) var(--lf-ease);
+}
+
+:where(.sl-markdown-content .card:hover) {
+  --sl-card-border: var(--lf-glow-border);
+  box-shadow: 0 0 12px var(--lf-glow-halo);
+  border-color: var(--lf-glow-border);
+}
+
+/* 卡片内图标块自带 border-color: var(--sl-card-border)，变量重指向经继承链传到它。 */
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.sl-markdown-content .card) {
+    transition: none;
+  }
+}
+
+/* 5. op 指令卡 OpCard.astro（界面规范 P0）
+   锚点 id `op-<name>` 挂在 <article> 上（生成规则见组件文件头）。
+   刻意不加 not-content：slot 里的参数表 / JSON 示例要继续吃正文样式。 */
+.lf-op {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lf-space-sm);
+  padding: var(--lf-space-md) var(--lf-space-lg);
+  border: 1px solid var(--lf-border);
+  border-radius: var(--lf-radius-md);
+  background-color: var(--lf-surface);
+  /* Starlight 不设 scroll-padding，这里自己让位给吸顶导航 */
+  scroll-margin-block-start: calc(var(--sl-nav-height) + var(--lf-space-md));
+}
+
+/* 从索引跳进来时点亮目标卡片 */
+.lf-op:target {
+  border-color: var(--lf-brand);
+  box-shadow: 0 0 12px var(--lf-glow-halo);
+}
+
+/* 弃用态：虚线描边作为非色彩信号（文字侧已有 danger 徽标） */
+.lf-op--deprecated {
+  border-style: dashed;
+}
+
+.lf-op__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lf-space-xs) var(--lf-space-md);
+}
+
+/* op 名 = 等宽徽标：品牌深底 + 品牌亮字（8.61:1） */
+.lf-op__name {
+  margin: 0;
+  padding: 0.15em 0.5em;
+  border: 1px solid var(--lf-glow-border);
+  border-radius: var(--lf-radius-xs);
+  background-color: var(--lf-brand-dim);
+  color: var(--lf-brand-strong);
+  font-family: var(--lf-font-mono);
+  font-size: var(--sl-text-sm);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.lf-op__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lf-space-2xs) var(--lf-space-xs);
+  margin: 0;
+}
+
+.lf-op__summary {
+  margin: 0;
+  color: var(--lf-text-body);
+}
+
+/* slot 内容自带块级节奏，这里只收首尾两端，避免卡片内出现半空档 */
+.lf-op__body > :first-child {
+  margin-block-start: 0;
+}
+
+.lf-op__body > :last-child {
+  margin-block-end: 0;
+}
+
+/* 6. 版本徽标 VersionBadge.astro（界面规范 P0） */
+.lf-version {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4em;
+  padding: 0.1em 0.6em;
+  border: 1px solid var(--lf-border-strong);
+  border-radius: var(--lf-radius-pill);
+  background-color: var(--lf-surface-2);
+  color: var(--lf-text-body);
+  font-size: var(--sl-text-xs);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* 主体标签：默认中性色；引擎走品牌蓝、模板走配角紫（均 ≥7:1） */
+.lf-version__kind {
+  color: var(--lf-text-muted);
+  font-size: 0.9em;
+}
+
+.lf-version--engine .lf-version__kind {
+  color: var(--lf-brand);
+}
+
+.lf-version--template .lf-version__kind {
+  color: var(--lf-alt);
+}
+
+.lf-version__value {
+  font-family: var(--lf-font-mono);
+  font-weight: 600;
+  color: var(--lf-text);
+}
+
+.lf-version__note {
+  color: var(--lf-text-muted);
+}
