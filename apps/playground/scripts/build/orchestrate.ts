@@ -108,7 +108,7 @@ export async function buildStories(
     );
   }
 
-  // —— 列归一：产物路径 = 源文件路径（`Stories/<相对源路径去扩展名>.story`；
+  // —— 列归一：产物路径 = 源文件路径（`Stories/<相对源路径去扩展名>.json`；
   // 文件名与列 id 解耦）。parseStory 不在链上（设计稿 §六③）：编译器静态产出 Story
   // 同形，形状契约由防御读取 + serialize/assemble 既有校验兜底。——
   const bySource = new Map<string, { story: Story; columns: StoryColumn[] }>();
@@ -218,7 +218,7 @@ function readCompiledEntry(
   }
   const story = entry.story as unknown as Story;
   const typedColumn = column as unknown as StoryColumn;
-  typedColumn.sourcePath = `${STORIES_DIR}/${entry.sourceRelPath.replace(/\.ts$/, ".story")}`;
+  typedColumn.sourcePath = `${STORIES_DIR}/${entry.sourceRelPath.replace(/\.ts$/, ".json")}`;
   return { story, column: typedColumn };
 }
 

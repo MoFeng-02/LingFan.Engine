@@ -5,8 +5,8 @@
  * `project.json` 另行声明目录结构，这里只列入口用到的故事）。
  */
 export const STORIES: readonly string[] = [
-  "Stories/chapter1/chapter1.story",
-  "Stories/chapter2/chapter2.story",
-  "Stories/chapter3/chapter3.story",
-  "Stories/chapter4/vocab_tour.story",
+  "Stories/chapter1/chapter1.json",
+  "Stories/chapter2/chapter2.json",
+  "Stories/chapter3/chapter3.json",
+  "Stories/chapter4/vocab_tour.json",
 ];

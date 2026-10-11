@@ -30,6 +30,18 @@ export type KnownGuardName = keyof GuardNameRegistry extends never
   ? string
   : keyof GuardNameRegistry & string;
 
+/**
+ * 声明一个守卫实现槽位：构建期扫描收集 `impl` 生成注册物，故事数据里
+ * 只留名字（{@link guard} 的 fn 字段）。运行期是纯声明——不执行 impl。
+ * 返回的句柄可直接传给 {@link guard}，名字只写一次。
+ *
+ * @param name 守卫名（进故事 JSON 与生成注册物）。
+ * @param impl 守卫实现纯函数（构建期 AST 提取，不在运行期调用）。
+ * @returns 实现句柄（传给 {@link guard} 引用）。
+ * @example
+ * export const checkMoney = cell("checkMoney", (ctx, args) => true);
+ * guard(checkMoney, { args: { cost: 50 } });
+ */
 export function cell<const N extends string>(
   name: N,
   impl: GuardFn,

@@ -19,7 +19,8 @@ import {
 
 /** 磁盘真实存在的故事文件（glob 键即文件清单）→ `Stories/<file>` 逻辑路径
  *  playground 启用 **TS 源工程**（`Stories.src/` → `stories:build`）：
- *  产物 = **章节目录 + 多列 `.story`**（平铺形态已否决）⇒ glob 必须递归且含 .story */
+ *  产物 = **章节目录 + 多列 `.json`**（平铺形态已否决）⇒ glob 必须递归且含 .json
+ *  （.story 条目为旧工程文本形态/混存语境兜底） */
 const STORY_MODULES = {
   ...(import.meta.glob("../../apps/playground/Resources/Stories/**/*.story", {
     eager: true,

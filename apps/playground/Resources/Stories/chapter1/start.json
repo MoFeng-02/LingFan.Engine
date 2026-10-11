@@ -29,6 +29,11 @@
       "value": "+= {20}"
     },
     {
+      "op": "set",
+      "key": "player.sex",
+      "value": "male"
+    },
+    {
       "op": "character",
       "key": "灵泛",
       "name": "灵泛",
@@ -114,7 +119,7 @@
       "op": "cutscene",
       "resource": "Video/m1.mp4",
       "volume": 0.8,
-      "skipable": true,
+      "skipable": false,
       "z": 1450
     },
     {

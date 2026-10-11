@@ -74,20 +74,20 @@ if (import.meta.env.VITE_LFEN_DIAG === "1") {
  * 防漂移由 `tests/playground/project.test.ts` 的「本表 ↔ 磁盘文件」互锁测试守护。
  */
 const STORIES = [
-  "Stories/chapter1/inn.story",
-  "Stories/chapter1/start.story",
-  "Stories/chapter2/square.story",
-  "Stories/chapter2/stage-demo.story",
-  "Stories/chapter3/end.story",
-  "Stories/chapter3/ts-power.story",
-  "Stories/chapter4/tour-av.story",
-  "Stories/chapter4/tour-ext.story",
-  "Stories/chapter4/tour-flow.story",
-  "Stories/chapter4/tour-guard.story",
-  "Stories/chapter4/tour-save.story",
-  "Stories/chapter4/tour-stage.story",
-  "Stories/chapter4/tour-vars.story",
-  "Stories/chapter4/tour.story",
+  "Stories/chapter1/inn.json",
+  "Stories/chapter1/start.json",
+  "Stories/chapter2/square.json",
+  "Stories/chapter2/stage-demo.json",
+  "Stories/chapter3/end.json",
+  "Stories/chapter3/ts-power.json",
+  "Stories/chapter4/tour-av.json",
+  "Stories/chapter4/tour-ext.json",
+  "Stories/chapter4/tour-flow.json",
+  "Stories/chapter4/tour-guard.json",
+  "Stories/chapter4/tour-save.json",
+  "Stories/chapter4/tour-stage.json",
+  "Stories/chapter4/tour-vars.json",
+  "Stories/chapter4/tour.json",
 ];
 
 /** 入口引导：判定运行形态（构建期 mode + 运行期探测）→ 门禁 → 建引擎 → 挂载 UI；分层口径见函数内注释。 */

@@ -14,6 +14,21 @@ export interface InteractionOptions {
   z?: number;
 }
 
+/**
+ * 让外部玩法系统接管整屏（行走 / 战斗 / QTE…）：系统名由宿主注册制提供
+ * （未注册的 system 报错停机）。接管期间建立回溯检查点；开启 autoSave 时
+ * 此处自动存档。
+ *
+ * 系统回报结果后：成功走 `onSuccess` 列、失败走 `onFail` 列；
+ * 两者都省略则在原列继续。系统附带的状态由引擎归档，回溯/存档一致。
+ *
+ * @param system 外部玩法系统标识（宿主已注册的）。
+ * @param opts 可选项：config 透传给系统的配置（任意 JSON）、
+ *   onSuccess/onFail 分流目标列、z 实例层级。
+ * @returns `interaction` 故事命令。
+ * @example
+ * interaction("walk", { onSuccess: "arrived", onFail: "cancelled" });
+ */
 export function interaction(
   system: string,
   opts?: InteractionOptions,

@@ -189,7 +189,7 @@ describe("宿主接线互锁（源级扫描）", () => {
     expect(entries.length, "STORIES 清单空（判据失效空跑）").toBeGreaterThan(0);
     for (const entry of entries) {
       expect(entry, `STORIES 条目须是 Stories/ 产物路径：${entry}`).toMatch(
-        /^Stories\/.+\.story$/,
+        /^Stories\/.+\.json$/,
       );
     }
     expect([...entries].sort(), "STORIES 清单须按码元序递增").toEqual(entries);
