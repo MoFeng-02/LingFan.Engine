@@ -261,6 +261,12 @@ function initDemo(): void {
     overlay.advance();
   });
 
+  // 鼠标推进：与空格同路径（叙事层的点击转发由宿主实现，demo 直接映射 advance）。
+  container.addEventListener("click", () => {
+    if (s.overlay === null || s.mode !== "preview") return;
+    s.overlay.advance();
+  });
+
   must<HTMLButtonElement>("lf-mode-preview").addEventListener("click", () => setMode(s, "preview"));
   must<HTMLButtonElement>("lf-mode-source").addEventListener("click", () => setMode(s, "source"));
   for (const tab of ["story", "json", "ts"] as const) {
