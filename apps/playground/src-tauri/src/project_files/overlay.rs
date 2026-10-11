@@ -24,7 +24,8 @@ fn valid_lang(lang: &str) -> bool {
 
 /// 读取某语言 overlay 文件（按需加载策略）：
 /// 目录形式 `Lang/{lang}/` 递归收集 .json（含 `.json.enc` 加密译文），按路径排序输出确定性；
-/// 目录缺失 → 降级单文件 `Lang/{lang}.json`（以 `main.json` 供给 = 全局兜底语义）。
+/// 目录缺失 → 降级单文件 `Lang/{lang}.json`（以 `main.json` 供给 = 全局兜底语义）；
+/// 两条供给路均产出为零（双缺失 / 目录无有效 JSON / 单文件损坏）→ Err：读不到任何译文 = 失败路径（对齐 docs i18n 供给语义）。
 /// 合并序（main.json 最先、其余按序覆盖）归引擎 TS 侧（mergeOverlayFiles——叙事语义引擎可测）；
 /// key = 清单声明 resourceEncryption 时的 DEK（`.enc` 译文解密，AAD 与故事同规则 = 资源根相对路径去 .enc）。
 pub(crate) fn load_overlay_files(
@@ -103,6 +104,13 @@ pub(crate) fn load_overlay_files(
             path: overlay_rel,
             entries,
         });
+    }
+    // 收紧口径：两条供给路（目录扫描 / 单文件降级）产出为零 → Err；
+    // 个别坏文件宽松跳过保留（:99-101），但全零供给 = 失败路径，不再宽容返回空数组。
+    if out.is_empty() {
+        return Err(ProjectFilesError::Io(format!(
+            "I18N 译文供给为空：Lang/{lang}/ 目录与 Lang/{lang}.json 单文件均无有效译文"
+        )));
     }
     Ok(out)
 }
