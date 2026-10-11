@@ -1,9 +1,6 @@
 /**
- * 具名实现槽位（cell）：构建期扫描进 `fun_register.g.ts`，故事里 guard(handle) 引用——
- * 名字只写一次（声明点即引用点）。
- *
- * 注意：实现里只能引用导入绑定 / 参数 / 全局（构建期名字闸门 fail-closed）；
- * 参数类型由 cell 签名语境推断（GuardFn），无需注记。
+ * 具名实现槽位（cell）：构建期扫描进 `gen/fun_register.g.ts`，故事里 guard(handle) 引用——
+ * 名字只写一次（声明点即引用点）。cell 是构建期声明，编译器不为其产出 op。
  */
 import { cell } from "./vocabulary";
 

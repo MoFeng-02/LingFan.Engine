@@ -72,22 +72,23 @@ describe("示例工程防腐", () => {
     const story = assemble();
     expect(story.entry).toBe("start");
     // 组装通过即断言了：columnId 唯一 + 文件名=章节名与列 id 解耦（真实工程形态）；
-    // 列序 = 文件路径码元序（组装器确定性排序；同文件多列保持文件内顺序）
+    // TS 源工程 v2 产物 = 一文件一列（sourcePath 镜像 Stories.src 布局），
+    // 列序 = 文件路径码元序（组装器确定性排序）
     expect(story.columns.map((c) => c.id)).toEqual([
-      "start",
       "inn",
+      "start",
       "square",
       "stage_demo",
-      "ts_power",
       "end",
-      "tour",
-      "tour_vars",
-      "tour_flow",
-      "tour_save",
+      "ts_power",
       "tour_av",
-      "tour_stage",
       "tour_ext",
+      "tour_flow",
       "tour_guard",
+      "tour_save",
+      "tour_stage",
+      "tour_vars",
+      "tour",
     ]);
   });
 

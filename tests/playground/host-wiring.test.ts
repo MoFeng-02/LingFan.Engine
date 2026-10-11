@@ -175,19 +175,24 @@ describe("宿主接线互锁（源级扫描）", () => {
     ]);
   });
 
-  it("main.ts 浏览器故事清单保持 const 声明与四章路径按序形态", () => {
+  it("main.ts 浏览器故事清单保持 const 声明与路径清单按码元序形态（结构断言，对增删列鲁棒）", () => {
     if (mainKey === undefined) throw new Error("扫描面缺 src/main.ts（glob 失配）");
     const raw = playground[mainKey];
     const start = raw.indexOf("const STORIES = [");
     expect(start, "main.ts 缺 const STORIES = [ 声明").toBeGreaterThan(-1);
     const end = raw.indexOf("];", start);
     expect(end, "main.ts 的 STORIES 清单缺完成 ];").toBeGreaterThan(-1);
-    expectOrderedNeedles(raw.slice(start, end), 0, [
-      "Stories/chapter1/chapter1.story",
-      "Stories/chapter2/chapter2.story",
-      "Stories/chapter3/chapter3.story",
-      "Stories/chapter4/vocab_tour.story",
-    ]);
+    // 结构判据（v2 形态，具体路径与磁盘的互锁在 project.test.ts）：
+    // ① 每个条目都是 Stories/ 产物路径；② 条目按码元序递增（与组装器确定性排序一致）
+    const block = raw.slice(start, end);
+    const entries = [...block.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    expect(entries.length, "STORIES 清单空（判据失效空跑）").toBeGreaterThan(0);
+    for (const entry of entries) {
+      expect(entry, `STORIES 条目须是 Stories/ 产物路径：${entry}`).toMatch(
+        /^Stories\/.+\.story$/,
+      );
+    }
+    expect([...entries].sort(), "STORIES 清单须按码元序递增").toEqual(entries);
   });
 
   it("生成守卫注册表在 src/** 只经 stories/guards.ts 单点进入", () => {

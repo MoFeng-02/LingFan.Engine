@@ -1,0 +1,123 @@
+{
+  "formatVersion": 1,
+  "id": "tour_vars",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "say",
+      "text": "变量盛宴——数组、字典、临时变量都是 SSOT 状态，随快照/存档/回溯随行。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "array",
+      "key": "bag",
+      "items": [
+        "火把"
+      ]
+    },
+    {
+      "op": "array_push",
+      "key": "bag",
+      "value": "面包"
+    },
+    {
+      "op": "array_push",
+      "key": "bag",
+      "value": "旧地图"
+    },
+    {
+      "op": "array_push",
+      "key": "bag",
+      "value": "提灯"
+    },
+    {
+      "op": "say",
+      "text": "行囊就绪：array 建列 + 三次 array_push（火把、面包、旧地图、提灯）。"
+    },
+    {
+      "op": "array_pop",
+      "key": "bag"
+    },
+    {
+      "op": "say",
+      "text": "array_pop 取走最后一件（提灯）——现在剩三件。"
+    },
+    {
+      "op": "dict",
+      "key": "gear",
+      "value": {
+        "weapon": "木剑",
+        "armor": "布衣"
+      }
+    },
+    {
+      "op": "dict_set",
+      "key": "gear",
+      "field": "weapon",
+      "value": "铁剑"
+    },
+    {
+      "op": "say",
+      "text": "装备字典：dict 建档 + dict_set 把武器从木剑升级成铁剑（历史面板可查每次变更）。"
+    },
+    {
+      "op": "let",
+      "key": "ticket",
+      "value": 1
+    },
+    {
+      "op": "say",
+      "text": "let 临时变量：ticket = {ticket}。"
+    },
+    {
+      "op": "undef",
+      "key": "ticket"
+    },
+    {
+      "op": "say",
+      "text": "undef 已把 ticket 从变量表回收（这句故意不再插值它）。"
+    },
+    {
+      "op": "menu",
+      "prompt": "下一道？",
+      "options": [
+        {
+          "text": "变量盛宴",
+          "target": "tour_vars"
+        },
+        {
+          "text": "流程厨房",
+          "target": "tour_flow"
+        },
+        {
+          "text": "存档试吃",
+          "target": "tour_save"
+        },
+        {
+          "text": "声光餐车",
+          "target": "tour_av"
+        },
+        {
+          "text": "舞台窗口",
+          "target": "tour_stage"
+        },
+        {
+          "text": "扩展工坊",
+          "target": "tour_ext"
+        },
+        {
+          "text": "守卫工坊",
+          "target": "tour_guard"
+        },
+        {
+          "text": "回主线菜单",
+          "target": "start"
+        },
+        {
+          "text": "离席（终幕）",
+          "target": "end"
+        }
+      ]
+    }
+  ]
+}
