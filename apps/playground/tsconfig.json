@@ -1,0 +1,26 @@
+{
+  /* playground 自身的 TS 项目配置：
+     - Stories.src 是「真 TS 项目」源（作者可 import npm 依赖，IDE 出类型），
+       由 stories-typecheck（tsc --noEmit）检查本文件 include 的范围；
+     - src/** 仍归根 tsconfig（vue-tsc）检查——纯 tsc 处理不了 .vue 导入，
+       故这里不 include；scripts/** 经 tsx 运行，同样不进本检查。 */
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "skipLibCheck": true,
+    "types": ["vite/client"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["Stories.src/**/*.ts"]
+}

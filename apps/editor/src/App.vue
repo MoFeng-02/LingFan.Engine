@@ -92,7 +92,7 @@ import {
 } from "./contracts";
 import { decideAddColumn } from "./addColumnIntent";
 import { detectLocalHost, fetchWatchStatus, pollWatch, type LocalHostEndpoint } from "./localHost";
-import { extractStoryKeys, groupKeysByStory, planOverlaySkeleton, type SkeletonLayoutChoice } from "@lingfan/editor";
+import { extractStoryKeys, columnStoryKey, groupKeysByStory, planOverlaySkeleton, type SkeletonLayoutChoice } from "@lingfan/editor";
 import { searchResources, type SearchCorpus } from "./search";
 import type { EmptyAction } from "./viewState";
 
@@ -652,10 +652,16 @@ async function generateLangSkeleton(request: {
     });
     return;
   }
-  // 每个故事 → 该故事的原文键（键 = 故事文件相对 Stories/ 的路径，不含扩展名）
+  // 每个故事 → 该故事的原文键（键 = 列产物路径相对 Stories/ 的路径，不含扩展名；
+  // 多目录形态下产物路径 = 源文件路径镜像，与列 id 解耦）
   const tree = projectTree.value ?? story.value;
   const storyKeys = groupKeysByStory(
-    new Map(tree.columns.map((c) => [c.id, extractStoryKeys({ ...tree, entry: c.id, columns: [c] })])),
+    new Map(
+      tree.columns.map((c) => [
+        columnStoryKey(c),
+        extractStoryKeys({ ...tree, entry: c.id, columns: [c] }),
+      ]),
+    ),
   );
   // 增量：该语言已存在的译文（键 = 逻辑路径）
   const read = readTextFn.value;

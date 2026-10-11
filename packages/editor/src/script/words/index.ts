@@ -6,6 +6,7 @@
  */
 export * from "./audio";
 export * from "./cells";
+export * from "./compile-time";
 export * from "./composite";
 export * from "./elements";
 export * from "./extension";

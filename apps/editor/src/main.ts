@@ -48,6 +48,11 @@ import {
   type Story,
   type VideoPort,
 } from "@lingfan/engine";
+import {
+  TS_SOURCE_READONLY_HINT,
+  assertTsSourceWritable,
+  isTsSourceProject,
+} from "@lingfan/editor";
 // 设计 token 唯一源：先于所有组件样式加载（组件里只准引用 var(--lf-*)）
 import "./styles/tokens.css";
 import App from "./App.vue";
@@ -85,6 +90,9 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
     ...(await filesPort.stories()),
   ]);
   const writer = await createHandleProjectWriter(handle, previous);
+  // TS 源工程只读守卫：清单标记键（构建写入）判定——产物归构建管线管理，
+  // 编辑器不写回 `Stories/**` 与 `project.json`（改源后跑 `pnpm stories:build`）。
+  const tsSource = isTsSourceProject(manifest);
   // 规范化检测的输入 = **打开时**的故事文件形态（真源快照，永不漂移）。
   // 首次成功保存后磁盘即标准布局（打开时的非规范文件全部进了差量的删除集），
   // 与 writer 基线「成功才换新」同一处理：失败 / 冲突不置位，下次保存仍提示。
@@ -105,6 +113,7 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
      * **由当前全部文档重组出的工程树**——`save` 的契约不变，组装责任在调用方。
      */
     save: async (next: Story): Promise<ProjectWriteReport> => {
+      if (tsSource) throw new Error(TS_SOURCE_READONLY_HINT);
       const product = serializeProject(next, manifest);
       const report = await writer.apply(product.files);
       normalizedOnce = true;
@@ -116,6 +125,7 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
     },
     /** 单文档写回：只落该列文件，不产删除、不改清单（多标签并存时的正确路径） */
     saveColumn: async (columnId: string, columnStory: Story): Promise<ProjectWriteReport> => {
+      if (tsSource) throw new Error(TS_SOURCE_READONLY_HINT);
       const product = serializeColumnDocument(columnStory, columnId);
       const report = await writer.apply(assembleColumnWrite(previous, product));
       normalizedOnce = true;
@@ -125,8 +135,11 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
      * 单文本资源写回（译文表 / 清单）：只落该文件。
      * 期望集 = 打开基线 + 本次覆盖 ⇒ 其余文件逐字节不动（与 `saveColumn` 同一约束）。
      */
-    saveText: async (path: string, text: string): Promise<ProjectWriteReport> =>
-      writer.apply(assembleColumnWrite(previous, { files: new Map([[path, text]]) })),
+    saveText: async (path: string, text: string): Promise<ProjectWriteReport> => {
+      // TS 源工程：`Stories/**` 与 `project.json` 拦下；`Lang/**` 等译文面照常可写。
+      if (tsSource) assertTsSourceWritable([path]);
+      return writer.apply(assembleColumnWrite(previous, { files: new Map([[path, text]]) }));
+    },
     inspectSave: (next: Story) =>
       normalizedOnce
         ? undefined

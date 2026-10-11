@@ -1,0 +1,156 @@
+{
+  "formatVersion": 1,
+  "id": "tour_flow",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "say",
+      "text": "流程厨房——随机、多路分支、循环与循环控制全是运行期 op（显式种子 ⇒ 回溯确定性）。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "random",
+      "seed": 2026,
+      "range": [
+        1,
+        6
+      ],
+      "var": "dice"
+    },
+    {
+      "op": "say",
+      "text": "掷骰（种子 2026，回溯重放同点数）：{dice} 点。"
+    },
+    {
+      "op": "switch",
+      "on": "{dice}",
+      "cases": [
+        {
+          "value": 1,
+          "body": [
+            {
+              "op": "say",
+              "text": "一点——运气垫底，正适合从头再来。"
+            }
+          ]
+        },
+        {
+          "value": 6,
+          "body": [
+            {
+              "op": "say",
+              "text": "六点——大吉！今晚酒钱我出。"
+            }
+          ]
+        }
+      ],
+      "default": [
+        {
+          "op": "say",
+          "text": "{dice} 点，中规中矩。"
+        }
+      ]
+    },
+    {
+      "op": "let",
+      "key": "n",
+      "value": 0
+    },
+    {
+      "op": "while",
+      "cond": "{n < 3}",
+      "body": [
+        {
+          "op": "let",
+          "key": "n",
+          "value": "+= {1}"
+        },
+        {
+          "op": "if",
+          "cond": "{n == 2}",
+          "then": [
+            {
+              "op": "continue"
+            }
+          ]
+        },
+        {
+          "op": "say",
+          "text": "报数 {n}（while + continue：2 被跳过）"
+        }
+      ]
+    },
+    {
+      "op": "let",
+      "key": "m",
+      "value": 0
+    },
+    {
+      "op": "while",
+      "cond": "{m < 99}",
+      "body": [
+        {
+          "op": "let",
+          "key": "m",
+          "value": "+= {1}"
+        },
+        {
+          "op": "if",
+          "cond": "{m >= 3}",
+          "then": [
+            {
+              "op": "break"
+            }
+          ]
+        },
+        {
+          "op": "say",
+          "text": "冲刺 {m}（break 在 3 收步）"
+        }
+      ]
+    },
+    {
+      "op": "array",
+      "key": "supplies",
+      "items": [
+        "火把",
+        "面包",
+        "旧地图"
+      ]
+    },
+    {
+      "op": "for",
+      "var": "item",
+      "in": "{supplies}",
+      "body": [
+        {
+          "op": "say",
+          "text": "for 迭代：{item}"
+        }
+      ]
+    },
+    {
+      "op": "foreach",
+      "var": "thing",
+      "key": "supplies",
+      "body": [
+        {
+          "op": "say",
+          "text": "foreach 迭代：{thing}"
+        }
+      ]
+    },
+    {
+      "op": "say",
+      "text": "两站同料双炊：for-of 吃 state 路径、foreach 词按名取集合——产物都是静态 op 序列。"
+    },
+    {
+      "op": "say",
+      "text": "本站用 jump 导入故事引用回菜单（编译期解析为列 id）。"
+    },
+    {
+      "op": "jump",
+      "target": "tour"
+    }
+  ]
+}

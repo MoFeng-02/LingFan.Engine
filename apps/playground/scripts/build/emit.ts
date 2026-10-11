@@ -16,26 +16,30 @@ export interface EmitOptions {
 
 /**
  * 差量写盘 + 生成物更新：
- * - `Stories/**` 由源全量管理——内容不同的产物才写，不在产物集内的既有列文件 = 陈旧，删除；
+ * - `Stories/**` 由源全量管理——内容不同的产物才写（新增/更新分开计），不在产物集内的
+ *   既有列文件 = 陈旧，删除；
  * - 生成物（`<sourcesDir>/<generatedDir>/fun_register.g.ts`）同规则：零守卫时若存在则删除，
  *   否则内容不同才写。它的逻辑路径与 `Stories/**` 不同命名空间，报告里以 `Stories.src/`
  *   开头即生成物。
  * 返回值里的路径都是逻辑路径（相对工程根），供 CLI 直接打印。
  */
 export function emitArtifacts(options: EmitOptions): {
-  written: string[];
+  added: string[];
+  updated: string[];
   removed: string[];
 } {
   const { root, resourcesDir, storiesDir, generatedRel, serialized, cellScan } = options;
   const existing = walkFiles(storiesDir);
-  const written: string[] = [];
+  const added: string[] = [];
+  const updated: string[] = [];
   const removed: string[] = [];
   for (const [rel, text] of serialized.files) {
     const target = join(resourcesDir, rel);
-    if (existsSync(target) && readFileSync(target, "utf8") === text) continue;
+    const exists = existsSync(target);
+    if (exists && readFileSync(target, "utf8") === text) continue;
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, text);
-    written.push(rel);
+    (exists ? updated : added).push(rel);
   }
   for (const rel of existing.keys()) {
     const logical = `${STORIES_DIR}/${rel}`;
@@ -52,11 +56,16 @@ export function emitArtifacts(options: EmitOptions): {
     }
   } else {
     const content = renderFunRegister(cellScan);
-    if (!existsSync(genTarget) || readFileSync(genTarget, "utf8") !== content) {
+    if (existsSync(genTarget)) {
+      if (readFileSync(genTarget, "utf8") !== content) {
+        writeFileSync(genTarget, content);
+        updated.push(generatedRel);
+      }
+    } else {
       mkdirSync(dirname(genTarget), { recursive: true });
       writeFileSync(genTarget, content);
-      written.push(generatedRel);
+      added.push(generatedRel);
     }
   }
-  return { written, removed };
+  return { added, updated, removed };
 }

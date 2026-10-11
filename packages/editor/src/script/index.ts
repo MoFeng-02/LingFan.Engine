@@ -115,6 +115,10 @@ export {
   type ExpressionWarning,
 } from "./expr";
 
+// —— 编译期构造（仅 Stories.src 源内可用，运行期不提供实现）——
+export { staticFor } from "./words";
+export type { StoryFn } from "./words";
+
 // —— 具名实现槽位（build-time 声明词）——
 export {
   cell,

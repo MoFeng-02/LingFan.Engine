@@ -7,6 +7,7 @@
 
 export { TRANSLATE_SURFACES, valuesAtPath } from "./surfaces";
 export { extractStoryKeys } from "./extract";
+export { columnStoryKey } from "./storyKeys";
 export {
   planOverlaySkeleton,
   type OverlaySkeletonFile,

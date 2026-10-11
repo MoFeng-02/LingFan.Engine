@@ -109,6 +109,7 @@ export {
 
 export {
   addTranslationRow,
+  columnStoryKey,
   coverageLabelOf,
   coveragePercentOf,
   coverageWeightedPercentOf,
@@ -201,6 +202,13 @@ export {
   NORMALIZATION_NOTICE_PREF_KEY,
   readSkipNormalizationNotice,
   writeSkipNormalizationNotice,
+} from "./editing";
+export {
+  TS_SOURCE_MANIFEST_KEY,
+  TS_SOURCE_READONLY_HINT,
+  assertTsSourceWritable,
+  isTsSourceProject,
+  tsSourceWriteBlockers,
 } from "./editing";
 /**
  * 步骤布局：列内切分为「步骤」（等待态边界）+ 列间分支边。

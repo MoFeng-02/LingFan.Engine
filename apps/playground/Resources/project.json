@@ -1,6 +1,6 @@
 {
   "formatVersion": 1,
-  "id": "demo",
+  "id": "start",
   "entry": "start",
   "name": "灵泛演示",
   "extensions": [
@@ -9,7 +9,15 @@
   "shell": {
     "orientation": "auto"
   },
+  "tsSource": true,
   "defines": {
-    "player.gold": 7
+    "player.gold": 100,
+    "player.level": 1,
+    "player.sex": "male",
+    "player.name": "旅人",
+    "dice": 1,
+    "supplies": [],
+    "mouch.other": "other",
+    "mouch.other2": "other2"
   }
 }

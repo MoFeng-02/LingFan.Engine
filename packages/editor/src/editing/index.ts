@@ -49,6 +49,13 @@ export {
   writeSkipNormalizationNotice,
   describeNormalization,
 } from "./saveNormalization";
+export {
+  TS_SOURCE_MANIFEST_KEY,
+  TS_SOURCE_READONLY_HINT,
+  assertTsSourceWritable,
+  isTsSourceProject,
+  tsSourceWriteBlockers,
+} from "./tsSourceGuard";
 export { EditorSession } from "./session";
 export {
   columnContainers,
