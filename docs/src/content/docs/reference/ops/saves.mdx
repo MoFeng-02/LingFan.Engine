@@ -1,0 +1,190 @@
+---
+title: 存档指令
+description: save、load、auto_save、save_delete 的签名、参数与常见错误。存档坐标必须是可重放重建的等待点。
+---
+
+import OpCard from '../../../../components/OpCard.astro';
+
+这四条都不建立等待点。`save` 只是声明「下一个等待画面建立时写档」，`load` 是异步读档，`auto_save` 开关持续写档，`save_delete` 删槽位。
+
+## 指令
+
+### save
+
+<OpCard name="save" summary="声明存档点：载荷落到下一个玩家所见的等待画面。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+save "slot_1"
+save "slot_1" title "雨夜·码头"
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `slot` | string | 必填。字母数字、`_`、`-`，长度 1..64 |
+| `title` | string | 可选。存档标题 |
+
+**最小示例**
+
+```text
+say "要在这里留个记录吗？"
+menu "存哪儿？"
+  "存档 1" -> save_slot_1
+  "算了" -> back_to_story
+```
+
+```text
+label save_slot_1:
+  save "slot_1" title "雨夜·码头"
+  jump back_to_story
+```
+
+**常见错误**
+
+:::caution
+`save` 自己**不建立等待点**，声明完故事继续往下走。真正写盘发生在下一个等待画面建立的那一刻——玩家看到的画面和存档点必须是同一个。
+
+所以别把 `save` 写在列尾或 `jump` 前面。写档时如果还没等到下一个等待点，这一次声明就白费了。
+
+槽位名不合法报 `save-invalid-slot`「save.slot 必填且槽位名合法（字母数字/_/-，1..64）」。没装配 `SavePort` 报 `save-unavailable`。
+
+在 `type=menu` / `type=ui` 的列里存档，存下的是**进入菜单之前的游戏进度**，不是菜单状态。这两类列本来就不进历史，所以引擎会拿进入前的坐标替换掉当前坐标。
+
+状态里有不可序列化的值（比如原地改过的对象）会拒档，报 `value-not-serializable`「状态含不可序列化值，存档被拒绝：…（请检查是否有原地修改已写入的值；应整值替换）」。
+:::
+
+</OpCard>
+
+### load
+
+<OpCard name="load" summary="读档并传送到存档坐标。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+load "slot_1"
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `slot` | string | 必填且非空 |
+
+**最小示例**
+
+```text
+menu "读取哪个存档？"
+  "存档 1" -> load_slot_1
+```
+
+```text
+label load_slot_1:
+  load "slot_1"
+```
+
+**常见错误**
+
+:::caution
+`slot` 为空报 `load-invalid`「load.slot 必填（槽位名）」。它比 `save` 宽松——只要求非空字符串，不校验字符集。
+
+读档是异步的：命令返回后引擎先挂起，等 `importSave` 走完再从存档坐标重放重建等待画面。所以 `load` 后面写什么都不会执行。
+
+存档与当前故事对不上时整档拒绝，报 `save-story-mismatch`「该存档与当前故事版本不匹配（列定义已变更）」——列被删过或改名过就会这样。
+
+结构损坏报 `save-format`「存档结构不完整」，历史检查点缺字段报「存档历史检查点不完整（state/rngState 缺失或类型错误）」。这些都不进恢复流程，是拒绝，不是部分恢复。
+:::
+
+</OpCard>
+
+### auto_save
+
+<OpCard name="auto_save" summary="开关自动存档。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+auto_save true
+auto_save false
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `enabled` | boolean | 必填。必须是 `true` 或 `false` |
+
+**最小示例**
+
+```text
+auto_save true
+say "从这里开始会自动记录。"
+```
+
+**常见错误**
+
+:::caution
+`enabled` 不是布尔报 `auto_save-invalid`「auto_save.enabled 必须为布尔（true/false）」。写字符串 `"true"` 也不行。
+
+它写的是系统键 `__auto_save`（保留键，作者的 `set` 写不了它，只有 `auto_save` op 能改）。这个开关随状态一起进存档、读档后原样恢复——读档点之前开着的自动存档，读档后仍然是开的，不用重新开。
+
+消费点是等待画面建立时。开了之后每个等待画面都往 `auto` 槽写一次；关掉之前已经写进去的档不会被删。
+
+自动存档失败报 `save-write-failed`「自动存档写入失败：…」，从 `engine.error` 事件出来。
+:::
+
+</OpCard>
+
+### save_delete
+
+<OpCard name="save_delete" summary="删除一个槽位。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+save_delete "slot_1"
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `slot` | string | 必填。校验规则和 `save` 一样 |
+
+**最小示例**
+
+```text
+save_delete "slot_1"
+notify "存档 1 已删除"
+```
+
+**常见错误**
+
+:::caution
+槽位名不合法报 `save_delete-invalid`「save_delete.slot 必填且槽位名合法」。没装配 `SavePort` 报 `save-unavailable`。
+
+删除是异步的，命令本身立刻往下走。删失败报 `save-delete-failed`「槽位 slot_1 删除失败：…」，同样从 `engine.error` 出来。
+
+删档**不动高水位**：删掉最新那个存档，剩下的存档不会因此变成「可以往前翻更多」。这是为了防止删档顺带把回档基准也退回去。
+:::
+
+</OpCard>
+
+## 槽位从哪来
+
+`slot` 是字符串，引擎只校验格式，不维护槽位清单。默认槽位名是 `slot_1` 到 `slot_N`，`N` 由 `project.json` 的 `shell.saves.slots` 决定（缺省 6，取值 1..32）。
+
+`slotIds(count)` 按这个规则生成名字。宿主做存档界面时按它列槽位，就能和命令面写的名字对上。
+
+自动存档写的是 `auto` 槽——它不在 `slot_N` 序列里。
+
+## 存档里有什么
+
+一份存档包含：存档坐标（列 id + 命令下标）、全部全局变量、随机数状态、函数表、历史检查点列表。
+
+不含块级和列级作用域，也不含帧栈。读档时从坐标确定性重放，把这些重建出来——所以重放路径上的命令必须能再执行一次。`define` 是幂等的（已存在就跳过），`random` 的种子进了状态所以抽到同一串值，都是为了让重放安全。
+
+细节见 [存档系统](/concepts/saves/)。

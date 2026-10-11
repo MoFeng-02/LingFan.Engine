@@ -1,40 +1,73 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
-template: splash # Remove or comment out this line to display the site sidebar on this page.
+title: 框架无关的叙事引擎
+description: 灵泛引擎（LingFan Engine）是框架无关的 TypeScript 叙事引擎：用文本或 JSON 写故事，65 个内建 op 管叙事流、状态、回溯与存档，核心不依赖任何 UI 框架。
+template: splash
 hero:
-  tagline: Congrats on setting up a new Starlight project!
-  image:
-    file: ../../assets/houston.webp
+  title: 核心管规则，平台管安全，外观随便换
+  tagline: 写故事用文本或 JSON——say、menu、if、save 这些指令排成叙事流，引擎负责执行、回溯与存档。画面长什么样它不管：对话框、立绘、音频由你选的展示层接线。
   actions:
-    - text: Example Guide
-      link: /guides/example/
-      icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
-      icon: external
-      variant: minimal
+    - text: 5 分钟跑起来
+      link: /getting-started/
+      icon: rocket
+    - text: 看看 op 都能做什么
+      link: /reference/ops/
+      icon: list-format
+      variant: secondary
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid, LinkCard, Steps } from '@astrojs/starlight/components';
 
-## Next steps
+灵泛引擎把「故事」和「画面」拆成两件事。故事是指令序列，引擎负责执行；画面是 DOM，由你写的宿主决定怎么渲染。引擎核心不 import 任何 UI 框架、Tauri API 或 Node 内建模块——这条边界由 lint 规则守着，不是口头约定。
 
-<CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
+## 能力
+
+<CardGrid>
+	<Card title="写故事就是写指令" icon="open-book">
+		故事由若干列组成：`label` 是流程列，`scene` 是空间列，列里排的是 `say` / `menu` / `if` 这样的指令。文本形态是 JSON v1 的投影，两种文件在同一个工程里混存合法。
 	</Card>
-	<Card title="Change page layout" icon="document">
-		Delete `template: splash` in `src/content/docs/index.mdx` to display a
-		sidebar on this page.
+	<Card title="65 个内建 op" icon="list-format">
+		从 `say`、`menu` 到 `save`、`bgm`、`video`、`minigame`，按 9 个域分页收录在参考区。op 名写错不会静默跳过——引擎停在 `unknown-op`，并告诉你卡在哪一条。
 	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
+	<Card title="36 种舞台元素" icon="puzzle">
+		`text`、`image`、`portrait`、`panel`、`grid`、`scrollviewer`、`slider`……元素可以嵌套。层级 z 由 `project.json` 解析后写入，不在样式里写死。
 	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
+	<Card title="回溯到任意一步" icon="clock">
+		引擎保留历史游标，`back()` / `forward()` / `rollbackTo()` 直接跳。存档也是普通指令（`save` / `load` / `auto_save`），槽位数与缩略图开关写在工程清单里。
 	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
+	<Card title="多语言不是外挂" icon="translate">
+		`Resources/Lang/{lang}/` 放译文覆盖表，`setLanguage()` 切换。没写译文的条目原文直出，不会渲染成空白。
+	</Card>
+	<Card title="换框架不用动核心" icon="code-branch">
+		核心包不依赖 Vue、React 或 Tauri。脚手架模板的宿主是零框架的纯 DOM 实现——想换成 Vue / React，改的只有 `src/main.ts` 和 `index.html`。
 	</Card>
 </CardGrid>
+
+## 三步跑起来
+
+<Steps>
+
+1. 在仓库根装依赖。
+
+   ```bash
+   pnpm install
+   ```
+
+2. 起参考宿主。
+
+   ```bash
+   pnpm dev
+   ```
+
+3. 打开终端打印的地址（默认 `http://localhost:1420`），点击或按空格推进对话。故事文件在 `Resources/Stories/` 下，媒体放 `Resources/{Audio,Images,Video}`。
+
+</Steps>
+
+想从零建自己的工程，看[从模板创建工程](/from-template/)；想知道每个 op 接受哪些参数，看 [op 指令参考](/reference/ops/)。
+
+## 源码
+
+<LinkCard
+	title="MoFeng-02/LingFan.Engine"
+	description="引擎核心、预设适配器、参考宿主、脚手架和这个文档站都在同一个仓库里。问题与建议走 Issues。"
+	href="https://github.com/MoFeng-02/LingFan.Engine"
+/>

@@ -1,0 +1,517 @@
+---
+title: 舞台与表现指令
+description: show、hide、background、zindex、style、window 与四条效果指令、animate 系列的签名、参数与常见错误。12 条都不建立等待点。
+---
+
+import OpCard from '../../../../components/OpCard.astro';
+
+这 12 条改元素表或者触发屏幕效果，在任何列都能用——不只是 `scene` 列。它们全部不建立等待点，执行完立刻往下走。
+
+元素表本身、36 种类型、寻址规则见 [舞台元素](/concepts/elements/)。这一页讲命令。
+
+## 元素增删
+
+### show
+
+<OpCard name="show" summary="往元素表追加一张图。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+show "Images/box.png"
+show "Images/ache.png" id="ache" x=10% y=0
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `target` | string | 必填。资源路径，写进 `props.source` |
+| `x` | number \| string | 可选。数字或 CSS 长度 |
+| `y` | number \| string | 可选 |
+| `id` | string | 可选。寻址标识 |
+| `name` | string | 可选 |
+| `background` | boolean | 可选。真则当背景处理 |
+
+**最小示例**
+
+```text
+label chapter_one:
+  background "Images/room.png"
+  show "Images/ache.png" id="ache" x=40% y=10%
+  say "阿澈站在窗边。"
+```
+
+**常见错误**
+
+:::caution
+`show` 造出来的元素类型固定是 `image`（除非 `background=true`，那是 `background`）。想要面板、按钮、文字这些，得写在 `scene` 列里，`show` 做不到。
+
+不带 `id` 时会按追加序派生 `${base.length}`——先追加的叫 `show#0`，第二个叫 `show#1`。同序重放得到同一个 id，所以回溯是安全的；但这个值只用来兜底，别在故事里写死它。要按名字操作就显式给 `id`。
+
+`x`/`y` 只收数字和字符串，**不做表达式求值**——写 `x={someExpr}` 不报错，`{someExpr}` 会被当成字符串原样存进属性，渲染层原样交给 CSS，坐标等于没设。「show.x 必须为数字或字符串（CSS 长度）」只在命令形态给了布尔、对象这类值时才报。要动态位置，用 `animate` 把 `x`/`y` 动起来。
+
+不带 `z` 参数（那是元素属性，不是命令字段），追加序就是它的叠放序。要改就写 `zindex`。
+
+`target` 为空报 `show-invalid`「show.target 必须为非空资源路径（写入 source）」。
+:::
+
+</OpCard>
+
+### hide
+
+<OpCard name="hide" summary="按目标移除元素。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+hide "ache"
+hide "Images/ache.png"
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `target` | string | 必填。`id` / `name` / 资源路径，任一命中即可 |
+
+**最小示例**
+
+```text
+say "「我走了。」"
+hide "ache"
+background "Images/street.png"
+```
+
+**常见错误**
+
+:::caution
+**没命中不报错**。`hide` 是幂等的——元素本来就不在，命令照样成功，故事继续走。这是唯一一条「找不到目标不报错」的元素命令，`zindex` 和 `style` 都会报。
+
+命中是递归的，包含子元素。所以 `hide "hud"` 会把 `name="hud"` 的面板连里面的血条一起拿掉。
+
+它按 `id` 精确匹配优先，没命中再按 `name` 批量匹配。资源路径也能命中——同一张图 `show` 了两次，`hide "Images/ache.png"` 会一次全拿掉。
+
+`target` 为空报 `hide-invalid`「hide.target 必须为非空目标（id / name / source 任一）」。
+:::
+
+</OpCard>
+
+### background
+
+<OpCard name="background" summary="换背景。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+background "Images/room.png"
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `resource` | string | 必填。相对资源根的路径 |
+
+**最小示例**
+
+```text
+background "Images/room.png"
+say "屋里只有一盏灯。"
+```
+
+**常见错误**
+
+:::caution
+换背景会**先清掉旧背景**，再把新的追加进去。所以连着写两条 `background` 不会叠两层图，后一条直接替换前一条。
+
+背景固定用底层序（-1000），`show` 追加的图按追加序（0 起）叠在它**上面**。给某张图 `zindex=-5000` 会把它压到背景底下——这时反过来是背景盖住它。
+
+背景的 `x`/`y` 被强制写成 0，`show` 上写的坐标对它无效。
+
+`resource` 为空报 `background-invalid`「background.resource 必须为非空资源路径」。
+:::
+
+</OpCard>
+
+### bg_switch
+
+<OpCard name="bg_switch" summary="换背景，带切换效果。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+bg_switch "Images/street.png"
+```
+
+**参数**
+
+和 `background` 完全一致：只有一个 `resource`。
+
+**最小示例**
+
+```text
+say "门开了。"
+bg_switch "Images/street.png"
+say "外面下着雨。"
+```
+
+**常见错误**
+
+:::caution
+`bg_switch` 和 `background` 在引擎里**是同一个执行分支**——清旧背景、追加新的、固定底层序。差别只在名字，真正的切换效果由展示层按命令名决定。
+
+也就是说：如果展示层没为 `bg_switch` 实现过渡动画，它跟 `background` 的效果一模一样。别指望引擎替你做淡入淡出。
+
+`resource` 为空报 `bg_switch-invalid`。
+:::
+
+</OpCard>
+
+### zindex
+
+<OpCard name="zindex" summary="改元素的叠放序。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+zindex "hud" value=20
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `target` | string | 必填。`id` 或 `name` |
+| `value` | number | 必填。有限数字 |
+
+**最小示例**
+
+```text
+show "Images/curtain.png" id="curtain"
+zindex "curtain" value=100
+```
+
+**常见错误**
+
+:::caution
+`value` 写负数**是合法的**——元素叠放序没有下界，`zindex "curtain" value=-5` 会把它压到后面去。这和视频层、对话层的实例 z 不一样，那边不允许负数。
+
+`value` 必须是有限数字。写字符串 `"20"` 报 `zindex-invalid`「zindex 需要 target（非空）与 value（有限数字）」。
+
+目标没命中报 `zindex-target-not-found`「zindex 未命中任何元素：curtain」——这里**不幂等**，和 `hide` 不一样。
+
+按 `name` 命中时会批量改掉所有同名元素。
+:::
+
+</OpCard>
+
+### style
+
+<OpCard name="style" summary="改元素的属性。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+style "hud" props={opacity: 0.5}
+style "ache" props={x: "20%", opacity: 1}
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `target` | string | 必填 |
+| `props` | object | 必填。键必须在元素属性表内 |
+
+**最小示例**
+
+```text
+show "Images/ache.png" id="ache"
+style "ache" props={opacity: 0.4, rotation: 8}
+```
+
+**常见错误**
+
+:::caution
+`props` 的键**必须**是元素属性表里的名字。写 `props={width2: 100}` 报 `style-unknown-attr`「style 未知元素属性：width2」。拼错一个字母就整条命令失败。
+
+合并是**浅合并**：`style "ache" props={opacity: 0.4}` 只改 `opacity`，别的属性保留。但如果你传的是嵌套对象，整个子对象会被替换掉，不是深合并。
+
+`props` 传数组、`null` 或非对象报 `style-invalid`「style 需要 target（非空）与 props（对象）」。空对象 `props={}` 是合法的——什么也不改。
+
+目标没命中报 `style-target-not-found`，同样不幂等。
+
+文本形态里 `props` 用花括号写字典，解析比 JSON 宽容：尾逗号（`props={opacity: 0.5,}`）不报错、会被忽略；没有冒号的片段（`props={opacity}`）也会被静默丢弃。
+:::
+
+</OpCard>
+
+### window
+
+<OpCard name="window" summary="控制对话框显隐。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+window hide
+window show
+window auto
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `mode` | string | 必填。`auto` / `show` / `hide` 三选一 |
+
+**最小示例**
+
+```text
+window hide
+show "Images/letter.png" id="letter"
+say "信上只有一行字。"
+window auto
+```
+
+**常见错误**
+
+:::caution
+`mode` 写别的值报 `window-invalid`「window.mode 必须为 "auto" | "show" | "hide"」——注意引号，报错原文里带引号。
+
+`auto` 是跟随对话态：有 `say` 时显示，没 `say` 时隐藏。`show` 和 `hide` 是强制覆盖，一旦设了就一直保持，直到再写一条 `window`。
+
+它**只写状态**，真正的 DOM 显隐归展示层。所以宿主没实现这一层的话，`window hide` 什么也不会发生。
+
+`window` 是元素类型名之一（36 种里有个 `window` 容器）。`scene` 列里的裸词 `window` 按**语句优先**解析成这条指令，不是元素——要写同名元素必须显式加前缀：`element window x=0 y=0`。
+:::
+
+</OpCard>
+
+## 动画
+
+### animate
+
+<OpCard name="animate" summary="单属性动画。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+animate "hud" property=opacity value=0 duration=0.5
+animate "ache" property=x value=100 easing=EaseInOutQuad
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `target` | string | 必填 |
+| `property` | string | 必填。属性名 |
+| `value` | number | 必填。终值 |
+| `duration` | number | 可选，缺省 0.3。秒 |
+| `easing` | string | 可选，缺省 `EaseOutQuad` |
+
+**最小示例**
+
+```text
+show "Images/ache.png" id="ache"
+animate "ache" property=opacity value=0 duration=1.2
+wait 1.2
+hide "ache"
+```
+
+**常见错误**
+
+:::caution
+`animate` **不等待**。它把一条动画描述写进队列就返回，故事继续往下走。要「等动画放完」得自己补 `wait`，秒数对得上就行。
+
+起点取元素**当前**的属性值。如果这个属性之前没设过，或者不是数字（比如 `x="10%"`），起点当成 0——所以从 `10%` 动画到 `0` 会从 0 开始，不是从 10%。
+
+动画描述里的目标是**元素 id**，不是 `name`。用 `name` 寻址会命中第一个，动画绑在它身上；同名的其他元素不动。
+
+播完之后引擎把终值写回元素属性。所以存档、回溯看到的都是终态，不会存到某个中间帧。中途回退的话，整条动画描述跟着回退，元素回到动画前的位置。
+
+`property` 为空或 `value` 非有限数报 `animate-invalid`「animate 需要 property（非空）与 value（有限数字）」。目标没命中报 `animate-target-not-found`。
+:::
+
+</OpCard>
+
+### animate_block
+
+<OpCard name="animate_block" summary="多属性同时动画。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+animate_block "hud" x=100 opacity=1 duration=0.4
+animate_block "ache" scale=1.2 rotation=15 duration=0.6 easing=EaseOutBack
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `target` | string | 必填 |
+| `x` `y` `opacity` `rotation` `scale` | number | 至少给一个 |
+| `duration` | number | 可选，缺省 0.3 |
+| `easing` | string | 可选，缺省 `EaseOutQuad` |
+
+**最小示例**
+
+```text
+show "Images/ache.png" id="ache"
+animate_block "ache" x=200 y=50 opacity=0.8 duration=0.8
+```
+
+**常见错误**
+
+:::caution
+只能动这五个属性：`x`、`y`、`opacity`、`rotation`、`scale`。写 `animate_block "hud" width=200` 报「animate_block 未知参数：width」（命令形态报 `animate_block-unknown-field`「animate_block 未知负载字段：width」）——`width` 是元素属性表里的合法属性，但不是可动画属性。要改尺寸用 `style`。
+
+一个都不给报 `animate_block-invalid`「animate_block 至少需要一个属性（x / y / opacity / rotation / scale）」。
+
+多个属性**同时**开始，共用同一个 `duration`。它不是「先动 x 再动 y」。要串行就写多条 `animate`。
+
+写 `animate_block "ache" x=100 x=200` 这种重复键在 JSON 里本来就取最后一个，引擎不会报错——但别这么写。
+:::
+
+</OpCard>
+
+## 屏幕效果
+
+### transition
+
+<OpCard name="transition" summary="全屏过渡。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+transition "fade"
+transition "fade" duration=1.5
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `type` | string | 必填。效果名 |
+| `duration` | number | 可选，缺省 0.5。秒 |
+
+**最小示例**
+
+```text
+transition "fade" duration=1.5
+background "Images/night.png"
+say "天黑了。"
+```
+
+**常见错误**
+
+:::caution
+`transition` 不等待，效果由展示层播。要等它放完再继续得补 `wait`。
+
+`type` 是**效果名**，不是「淡入」或「淡出」这种方向词。引擎不校验有哪些效果名——写 `transition "whatever"` 也能通过；自带展示层不做类型区分，不管写什么名字播的都是同一套不透明度过渡。`type` 为空才报 `transition-invalid`「transition.type 必须为非空效果名」。
+
+一次只有一条过渡在跑。连续两条 `transition` 会让第二条顶掉第一条——引擎侧序号递增；自带展示层不跟踪序号，转场中途被顶掉时进度接着算，不会从零重启。
+
+播完之后展示层调 `transitionFinished()` 清掉状态键。没调的话键会一直挂着，下一条 `transition` 的序号照样递增，不影响功能。
+:::
+
+</OpCard>
+
+### shake
+
+<OpCard name="shake" summary="屏幕抖动。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+shake
+shake intensity=12 duration=0.6
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `intensity` | number | 可选，缺省 8。像素 |
+| `duration` | number | 可选，缺省 0.5。秒 |
+
+**最小示例**
+
+```text
+se "Audio/thunder.mp3"
+shake intensity=14 duration=0.8
+say "屋顶在响。"
+```
+
+**常见错误**
+
+:::caution
+两个参数都能省——`shake` 一行就够，用缺省值。这是 12 条表现指令里唯一一条可以完全不带参数写的。
+
+不等待，抖动在背后进行。抖完展示层调 `shakeFinished()` 清除。
+
+`intensity` 没有上界校验，写 `intensity=10000` 也能通过。写负数也是——它只是偏移量，负值相当于反向抖。
+
+和 `transition` 一样，连续两次 `shake` 后者顶掉前者。
+:::
+
+</OpCard>
+
+### text_typewriter
+
+<OpCard name="text_typewriter" summary="设置故事级打字机开关与速度。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+text_typewriter enabled=true
+text_typewriter speed=40
+text_typewriter enabled=true speed=40
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `enabled` | boolean | 可选。开关 |
+| `speed` | number | 可选。正数，字符/秒 |
+
+**最小示例**
+
+```text
+text_typewriter speed=60
+say "这一句会打得快一些。"
+```
+
+**常见错误**
+
+:::caution
+`enabled` 和 `speed` **至少要给一个**，两个都不给报「text_typewriter 至少需要 enabled 或 speed」。它不像 `say` 那样每次上屏都重设——这条命令设一次，之后所有对话都按它走。
+
+只给 `enabled` 时速度保持不变，只给 `speed` 时开关保持不变。写一次 `text_typewriter speed=40` 不会把之前 `enabled=false` 的结果覆盖掉。
+
+`speed` 必须是正数，写 0 或负数报「text_typewriter.speed 必须为正数（字符/秒）」。注意 `duration` 那种「0 表示瞬间」的约定在这里不适用——想关掉打字机用 `enabled=false`。
+
+这条设的是**故事级**设置。玩家的文字速度偏好优先级更高，会盖过它。所以玩家在设置面板调过速度之后，故事里的 `text_typewriter` 就不生效了——这是有意的。
+
+它写的是系统键 `__typewriter`，随存档和回溯走。回退到这条命令之前，打字机设置也跟着回去。
+:::
+
+</OpCard>
+
+## 两条 z 的规则
+
+元素叠放和图层叠放是两套东西：
+
+- **元素之间**用实例 `z` 比：取 `zindex`，没写则取 `order`，再没写退到声明/追加序（装载期同一处求值，`data/element.ts:157`）。`order` 不在编辑器元素表单里暴露，但引擎装载在用——别当成 `zindex` 之外的死属性。
+- **图层之间**用 `shell.layers` 配，舞台、视频、对话、选项各占一层。
+
+所以 `zindex "curtain" value=999999` 也盖不住对话框——它只在舞台层里排第一。要盖住对话得改图层配置，见 [工程清单 project.json](/reference/manifest/)。
+
+## 下一步
+
+- [舞台元素](/concepts/elements/)——36 种类型、寻址规则、点击动作。
+- [交互与小游戏指令](/reference/ops/interaction/)——`menu` 和 `input` 也是等待点。
+- [工程清单 project.json](/reference/manifest/)——`shell.layers` 怎么配图层 z。

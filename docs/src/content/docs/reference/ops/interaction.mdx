@@ -1,0 +1,230 @@
+---
+title: 交互与小游戏指令
+description: menu、input、minigame、interaction 的签名、参数与常见错误。四条都建立等待点，解除权都不在引擎手里。
+---
+
+import OpCard from '../../../../components/OpCard.astro';
+
+这四条都建立等待点，而且**解除权都在引擎外面**——玩家点选项、玩家敲字、宿主回填结果。引擎写下等待态就停下，等到有人调命令面才继续。
+
+它们的检查点都在等待建立的那一刻提交，所以这四屏都能回退、都能自动存档。
+
+## menu
+
+<OpCard name="menu" summary="弹出选项，玩家选一个跳到对应列。" waits rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+menu "接下来去哪里？"
+  "去码头" -> dock
+  "回家" -> home
+```
+
+`menu` 是块语句：提示行后面跟缩进的选项行，选项行是 `"文案" -> 目标列`。
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `prompt` | string | 可选。菜单提示 |
+| `options` | array | 必填，至少一项。每项 `{ text, target }` |
+| `z` | number | 可选。本次菜单的实例 z（choices 层） |
+
+**最小示例**
+
+```text
+label crossroad:
+  say "两条路。"
+  menu "走哪边？"
+    "左边" -> left_way
+    "右边" -> right_way
+```
+
+**常见错误**
+
+:::caution
+选项**至少要有一个**。写成空的块体在解析期就报「menu 至少需要一个选项」，整个文件打不开——不是运行到那里才失败。
+
+目标列**不加引号**。写 `"去码头" -> "dock"` 解析失败，报的是选项文法提示「menu 选项文法："文本" -> 目标列」。
+
+目标列**不存在**时，是在玩家点下去那一刻才报 `unknown-column`「目标列不存在：dock」——菜单能弹出来，点了才炸。这类错在静态检查里看不出来，改列名时记得全局搜一遍。
+
+选项文案会被翻译，目标列不会。目标列名是列 id，进的是 `__menu_targets`，原样保留。
+
+玩家选了什么**不写变量**。要记住选择，在目标列里自己 `set`。`__menu_selected` 是引擎内部记账，别当业务变量读。
+
+`menu` 指令和 `type=menu` 的列**不是一回事**。前者是命令，建检查点，回退落回菜单重选；后者是列的运行语义，不参与历史也不进存档。
+:::
+
+</OpCard>
+
+## input
+
+<OpCard name="input" summary="向玩家要一行文本，写进变量。" waits rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+input "你叫什么名字？" store="player.name"
+input "密码" store="code" z=20
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `prompt` | string | 必填。输入提示 |
+| `store` | string | 必填。变量名 |
+| `z` | number | 可选。实例 z（choices 层） |
+
+**最小示例**
+
+```text
+label ask_name:
+  input "先问一句：你叫什么名字？" store="player.name"
+  say "你好，{player.name}！"
+```
+
+**常见错误**
+
+:::caution
+`prompt` 和 `store` **两个都必填**。少一个在文本形态解析期就报「input 需要 prompt 与 store」；JSON 形态报 `.prompt` / `.store` 相关 issue。
+
+写进去的是**全局**变量。`store="player.name"` 里的 `.` 只是命名习惯，不构成嵌套结构——它不是「`player` 对象下的 `name`」，就是一个叫 `player.name` 的键。
+
+**没有选项式输入**。写 `options` 报「.options 选项式输入暂未实现（fail-closed）」，解析层直接拒。三选一请用 `menu`。
+
+解除靠宿主调 `engine.input("阿岚")`。不在输入等待时调用报 `input-invalid`「input 仅在输入等待中有效（当前 __waiting=dialog）」；等待态在但 `store` 丢了报 `input-state-corrupt`「输入等待缺少 store 目标」——后者属于引擎内部不一致，见到就该报障。
+
+空串是合法的输入值。玩家什么都不填直接确认，写进去的就是 `""`。
+:::
+
+</OpCard>
+
+## minigame
+
+<OpCard name="minigame" summary="把控制权交给宿主注册的小游戏。" waits rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+minigame "coin_flip" on_success "win" on_fail "lose"
+minigame "fishing" config {difficulty: 2} reward {fish: 1} on_success "caught"
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `game` | string | 必填。小游戏标识 |
+| `config` | object | 可选。原样透传宿主 |
+| `on_success` | string | 可选。成功跳转的目标列 |
+| `on_fail` | string | 可选。失败跳转的目标列 |
+| `reward` | array | 可选。`{key, value}` 键值数组 |
+| `z` | number | 可选。实例 z（minigame 层） |
+
+**最小示例**
+
+```text
+label fishing_spot:
+  say "水面上有动静。"
+  minigame "fishing" on_success "caught" on_fail "missed" reward {fish: 1}
+```
+
+**常见错误**
+
+:::caution
+`game` 的写法有限制：小写字母开头，只含小写字母、数字、`_`、`-`，最长 32 字符。写 `"CoinFlip"` 报 `minigame-invalid`「minigame.game 必填且为合法系统标识（匹配 `/^[a-z][a-z0-9_-]{0,31}$/`）」。
+
+`reward` 是**键值数组**不是对象——JSON 形态要写成 `[{ "key": "fish", "value": 1 }]`。文本形态的 `reward {fish: 1}` 由解析器转成这个形状，键序就是条目序。`value` 支持 `{expr}`，在执行到这条命令时求值，所以回溯重放拿到的是同一个数。
+
+`reward` **只在成功时写**。失败不写奖励，但 `state` 照写——输了也要记分。
+
+`on_success` / `on_fail` 缺省时原列继续往下走，不跳转。给了空串报「minigame.on_success 必须为非空字符串（目标列）」——注意和缺省是两回事，空串是错的。
+
+宿主注册表里**没有这个标识时没有默认回退**。模板宿主会显示一条「未注册」提示，不会假装玩过。所以故事里写了 `minigame` 而宿主没注册，玩家会卡在这一屏。
+:::
+
+</OpCard>
+
+## interaction
+
+<OpCard name="interaction" summary="把整屏交给外部玩法系统。" waits rollback="full" since="0.1.0">
+
+**签名**
+
+```json
+{
+  "op": "interaction",
+  "system": "battle",
+  "config": { "enemy": "slime" },
+  "on_success": "battle_win",
+  "on_fail": "battle_lose"
+}
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `system` | string | 必填。系统标识，写法同 `game` |
+| `config` | object | 可选。原样透传宿主 |
+| `on_success` | string | 可选。目标列 |
+| `on_fail` | string | 可选。目标列 |
+| `z` | number | 可选。实例 z（minigame 层） |
+
+**最小示例**
+
+```json
+{
+  "op": "interaction",
+  "system": "battle",
+  "config": { "enemy": "slime", "hp": 40 },
+  "on_success": "battle_win",
+  "on_fail": "battle_lose"
+}
+```
+
+**常见错误**
+
+:::caution
+**它没有文本写法**。`minigame` 能用一行文本写，`interaction` 不行——文本形态里出现 `interaction` 会报「文本投影暂不支持的语句：interaction」。故事文件里只能用 JSON 形态写这一条。
+
+回填时要带上系统标识：`engine.resolveInteraction("battle", { outcome: "success" })`。跟发起时对不上报 `interaction-system-mismatch`「resolveInteraction 的系统标识不符：期望 battle，收到 fishing」。
+
+`on_success` / `on_fail` 只校验类型不校验非空——空串会通过校验，然后在跳转时报列不存在。这是它和 `minigame` 的一个不一致，写的时候给个真列名。
+
+`config` 传数组、`null` 或非对象报「interaction.config 必须为对象（原样透传宿主）」。传空对象或不传都行。
+
+`state` 里的键会落到 `game.<system>.` 命名空间下。有一个键写不进去就整批不写，挂起态保留——改对可以再回填一次。
+:::
+
+</OpCard>
+
+## 四条共有的东西
+
+**等待态字符串**。这四条各自写一个等待态：`menu` → `"menu"`，`input` → `"input"`，`minigame` → `"minigame"`，`interaction` → `"interaction"`。宿主可以用 `__waiting` 判断当前该显示什么。
+
+**挂载序号与中断信号**。`minigame` 和 `interaction` 发挂载事件时带 `seq` 和 `signal`。回溯到这一屏会重新挂载——新的 `seq`、新的 `signal`，旧的 `signal.aborted` 置位。所以工厂每次挂载都要重新建状态。
+
+**`z` 的三级链**。`z` 是可选的实例级覆盖，取值必须是非负有限数。非法值报 `instance-z-invalid`「实例级 z 必须为非负有限数，收到 -1」，并且**不动任何状态**——命令原地失败，不会写一半。不写 `z` 时删掉键回层默认，所以上一条命令的覆盖不会漏到下一条。
+
+**回填的命令面**：
+
+| 等待 | 回填方式 |
+| --- | --- |
+| `menu` | `engine.choose(目标列)` |
+| `input` | `engine.input(值)` |
+| `minigame` | `engine.resolveMinigame(result)` |
+| `interaction` | `engine.resolveInteraction(system, result)` |
+
+在错误的等待态调用一律 fail-closed，报各自的 `*-invalid`，不写入、不推进。
+
+机制细节见 [小游戏与玩法系统](/concepts/minigame/)，操作步骤见 [菜单、输入与通知](/guides/menu-input/)。
+
+## 下一步
+
+- [小游戏与玩法系统](/concepts/minigame/)——工厂签名、结果结构、玩法状态怎么进存档。
+- [回溯与历史](/concepts/rollback/)——为什么回溯会让小游戏重新挂载。
+- [模板能力边界](/reference/template-boundaries/)——模板宿主接了哪些等待态出口。

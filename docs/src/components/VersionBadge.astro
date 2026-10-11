@@ -1,0 +1,33 @@
+---
+/**
+ * VersionBadge.astro · 版本徽标（设计稿 §3.4 P0）
+ *
+ * 纯静态渲染、零客户端 JS。用于标注「引擎 ≥x」「模板 1.1+」这类
+ * 能力边界与随引擎演进的说明。
+ *
+ * 刻意不生成锚点 id：版本徽标会在同一页出现多次（每个版本区间一个），
+ * 生成 id 必然重复。锚点职责归 OpCard。
+ */
+interface Props {
+  /** 版本号，如 '≥1.2'、'1.1+' */
+  version: string;
+  /** 版本主体；缺省 'engine' */
+  kind?: 'engine' | 'template';
+  /** 可选补充说明 */
+  note?: string;
+}
+
+const { version, kind = 'engine', note } = Astro.props;
+
+const isZh = (Astro.locals.starlightRoute?.lang ?? 'zh-CN').startsWith('zh');
+
+const label = isZh
+  ? { engine: '引擎', template: '模板' }
+  : { engine: 'Engine', template: 'Template' };
+---
+
+<span class:list={['lf-version', `lf-version--${kind}`]}>
+  <span class="lf-version__kind">{label[kind]}</span>
+  <span class="lf-version__value">{version}</span>
+  {note && <span class="lf-version__note">{note}</span>}
+</span>

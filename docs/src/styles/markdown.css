@@ -1,0 +1,136 @@
+/* markdown.css · Markdown 正文层微调
+   选择器全部限定在 .sl-markdown-content 内，并沿用 Starlight 自己的
+   :not(:where(.not-content *)) 排除约定，以免影响组件内的 Markdown 片段。
+   不出现颜色字面量、不使用 !important（未分层样式天然胜过 @layer starlight.*）。
+   标题字号交给 Starlight，这里只加层级节奏。 */
+
+/* 1. 标题：中文微字距 + 更清晰的层级节奏 */
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6):not(:where(.not-content *)) {
+  letter-spacing: var(--lf-tracking-cjk);
+  color: var(--lf-text);
+}
+
+/* h2 是长文档的主要分节，给一道极细的分隔，读起来有"幕次"感 */
+.sl-markdown-content h2:not(:where(.not-content *)) {
+  margin-block-start: 2em;
+  padding-block-start: 0.6em;
+  border-block-start: 1px solid var(--lf-border);
+}
+
+.sl-markdown-content h3:not(:where(.not-content *)) {
+  margin-block-start: 1.6em;
+}
+
+/* 锚点链接：默认几乎不可见，hover 时才亮起品牌色 */
+.sl-markdown-content .sl-anchor-link:not(:where(.not-content *)) {
+  color: var(--lf-text-faint);
+  transition: color var(--lf-dur-fast) var(--lf-ease);
+}
+
+.sl-markdown-content .sl-anchor-link:hover:not(:where(.not-content *)),
+.sl-markdown-content .sl-anchor-link:focus-visible:not(:where(.not-content *)) {
+  color: var(--lf-brand);
+}
+
+/* 2. 行内代码与代码块 */
+.sl-markdown-content code:not(:where(.not-content *)) {
+  border: 1px solid var(--lf-border);
+  border-radius: var(--lf-radius-xs);
+  font-family: var(--lf-font-mono);
+  font-variant-ligatures: none;
+}
+
+/* Expressive Code 已接管 pre 的外观；这里只兜底非 EC 的原生 pre */
+.sl-markdown-content pre:not(:where(.not-content *)) {
+  border-radius: var(--lf-radius-md);
+}
+
+.sl-markdown-content pre > code:not(:where(.not-content *)) {
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+/* 3. 引用块：品牌色竖线 + 极淡底 */
+.sl-markdown-content blockquote:not(:where(.not-content *)) {
+  border-inline-start: 3px solid var(--lf-brand);
+  border-radius: 0 var(--lf-radius-sm) var(--lf-radius-sm) 0;
+  background-color: var(--lf-surface-2);
+  padding: var(--lf-space-sm) var(--lf-space-md);
+  color: var(--lf-text-muted);
+}
+
+.sl-markdown-content blockquote
+  > :first-child:not(:where(.not-content *)) {
+  margin-block-start: 0;
+}
+
+/* 4. 表格：细边框 + 斑马纹 + 圆角外壳 */
+.sl-markdown-content table:not(:where(.not-content *)) {
+  border: 1px solid var(--lf-border);
+  border-radius: var(--lf-radius-md);
+  font-size: var(--sl-text-sm);
+}
+
+.sl-markdown-content :is(th, td):not(:where(.not-content *)) {
+  border-block-end: 1px solid var(--lf-border);
+  padding: 0.5rem 0.75rem;
+}
+
+/* 首末列不再贴边，让表格边框内的内容有呼吸 */
+.sl-markdown-content :is(th:first-child, td:first-child):not(:where(.not-content *)) {
+  padding-inline-start: 0.75rem;
+}
+
+.sl-markdown-content :is(th:last-child, td:last-child):not(:where(.not-content *)) {
+  padding-inline-end: 0.75rem;
+}
+
+.sl-markdown-content thead th:not(:where(.not-content *)) {
+  background-color: var(--lf-surface-2);
+  color: var(--lf-text);
+  white-space: nowrap;
+}
+
+.sl-markdown-content tbody tr:nth-child(even):not(:where(.not-content *)) {
+  background-color: var(--lf-surface);
+}
+
+/* 最后一行不再画底线，交给表格外框 */
+.sl-markdown-content tbody tr:last-child :is(th, td):not(:where(.not-content *)) {
+  border-block-end: 0;
+}
+
+/* 5. 图片、分割线、折叠块 */
+.sl-markdown-content :is(img, video, canvas):not(:where(.not-content *)) {
+  border: 1px solid var(--lf-border);
+  border-radius: var(--lf-radius-md);
+}
+
+.sl-markdown-content hr:not(:where(.not-content *)) {
+  margin-block: var(--lf-space-xl);
+  border-block-end-color: var(--lf-border);
+}
+
+.sl-markdown-content details:not(:where(.not-content *)) {
+  --sl-details-border-color: var(--lf-border-strong);
+  --sl-details-border-color--hover: var(--lf-brand);
+  border-inline-start-width: 3px;
+}
+
+.sl-markdown-content summary:not(:where(.not-content *)) {
+  color: var(--lf-text);
+}
+
+/* 6. 列表：中文行高下的行间距 */
+.sl-markdown-content :is(ol, ul):not(:where(.not-content *)) {
+  padding-inline-start: 1.5rem;
+}
+
+.sl-markdown-content li + li:not(:where(.not-content *)) {
+  margin-block-start: 0.375rem;
+}
+
+.sl-markdown-content li::marker:not(:where(.not-content *)) {
+  color: var(--lf-text-faint);
+}

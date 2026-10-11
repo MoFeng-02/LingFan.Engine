@@ -1,0 +1,198 @@
+/* base.css · 映射层与全局微调
+   把 --lf-* 语义层映射到 Starlight 的 --sl-* 变量。本文件不出现颜色字面量
+   （唯一色值来源是 tokens.css），也不使用 !important：Starlight 自身样式位于
+   @layer starlight.*，未分层样式天然优先。
+   打印态：print.css 不重置 --sl-color-bg / --sl-color-text，屏幕映射若不限定
+   媒体就会把打印压回深色底。故屏幕配色包在 @media screen 内，打印落回
+   Starlight 亮色令牌；自绘组件读的 --lf-* 另在 @media print 内重指向同一套。 */
+
+/* 1. 主题无关：字体与排版节奏（屏幕、打印共用） */
+:root {
+  /* 必须显式覆盖：Starlight 默认 --sl-font-system 不含中文字族 */
+  --sl-font: var(--lf-font-sans);
+  --sl-font-mono: var(--lf-font-mono);
+  --sl-line-height: var(--lf-leading);
+  --sl-line-height-headings: var(--lf-leading-tight);
+}
+
+/* 2. 屏幕配色映射 */
+@media screen {
+  :root {
+    /* 品牌三档：直接指向语义层，亮色块无需重复声明 */
+    --sl-color-accent-low: var(--lf-brand-dim);
+    --sl-color-accent: var(--lf-brand);
+    --sl-color-accent-high: var(--lf-brand-strong);
+
+    /* 五色相：单点驱动 Starlight 内置的 hsl(var(--sl-hue-X)) 家族 */
+    --sl-hue-blue: var(--lf-hue-brand);
+    --sl-hue-purple: var(--lf-hue-alt);
+    --sl-hue-green: var(--lf-hue-ok);
+    --sl-hue-orange: var(--lf-hue-warn);
+    --sl-hue-red: var(--lf-hue-err);
+
+    /* 色家族：aside / Badge / Card 的配色全部经此换血 */
+    --sl-color-blue: var(--lf-brand);
+    --sl-color-blue-low: var(--lf-brand-dim);
+    --sl-color-blue-high: var(--lf-brand-strong);
+    --sl-color-purple: var(--lf-alt);
+    --sl-color-purple-low: var(--lf-alt-dim);
+    --sl-color-purple-high: var(--lf-alt-strong);
+    --sl-color-green: var(--lf-ok);
+    --sl-color-green-low: var(--lf-ok-dim);
+    --sl-color-green-high: var(--lf-ok-strong);
+    --sl-color-orange: var(--lf-warn);
+    --sl-color-orange-low: var(--lf-warn-dim);
+    --sl-color-orange-high: var(--lf-warn-strong);
+    --sl-color-red: var(--lf-err);
+    --sl-color-red-low: var(--lf-err-dim);
+    --sl-color-red-high: var(--lf-err-strong);
+
+    /* 中性阶梯：gray-1 最亮 → gray-7 最暗（亮色下由 tokens.css 整体反转） */
+    --sl-color-white: var(--lf-text);
+    --sl-color-gray-1: var(--lf-text);
+    --sl-color-gray-2: var(--lf-text-body);
+    --sl-color-gray-3: var(--lf-text-muted);
+    --sl-color-gray-4: var(--lf-text-faint);
+    --sl-color-gray-5: var(--lf-border-strong);
+    --sl-color-gray-6: var(--lf-border);
+    --sl-color-gray-7: var(--lf-surface-2);
+    --sl-color-black: var(--lf-bg);
+
+    /* 文本语义 */
+    --sl-color-text: var(--lf-text-body);
+    --sl-color-text-accent: var(--lf-brand);
+    --sl-color-text-invert: var(--lf-on-brand);
+
+    /* 背景语义 */
+    --sl-color-bg: var(--lf-bg);
+    --sl-color-bg-nav: var(--lf-surface);
+    --sl-color-bg-sidebar: var(--lf-surface);
+    --sl-color-bg-inline-code: var(--lf-surface-2);
+    --sl-color-bg-accent: var(--lf-brand);
+    --sl-color-banner-text: var(--lf-on-brand);
+
+    /* 分隔线与遮罩 */
+    --sl-color-hairline-light: var(--lf-border-strong);
+    --sl-color-hairline: var(--lf-border);
+    --sl-color-hairline-shade: var(--lf-bg);
+    --sl-color-backdrop-overlay: var(--lf-overlay);
+
+    /* 阴影：打印态由 print.css 置 none，故只在屏幕生效 */
+    --sl-shadow-sm: var(--lf-shadow-sm);
+    --sl-shadow-md: var(--lf-shadow-md);
+    --sl-shadow-lg: var(--lf-shadow-lg);
+  }
+}
+
+/* 3. 打印配色：把 --lf-* 重指向 Starlight 亮色令牌（此时 --sl-color-black 已是
+   白纸、gray-1..7 已按 print.css 反转），自绘 hero / 页脚 / OpCard 随之转浅色。 */
+@media print {
+  :root {
+    --lf-bg: var(--sl-color-black);
+    --lf-surface: var(--sl-color-gray-7);
+    --lf-surface-2: var(--sl-color-gray-6);
+    --lf-border: var(--sl-color-gray-5);
+    --lf-border-strong: var(--sl-color-gray-4);
+    --lf-text: var(--sl-color-gray-1);
+    --lf-text-body: var(--sl-color-gray-2);
+    --lf-text-muted: var(--sl-color-gray-3);
+    --lf-text-faint: var(--sl-color-gray-4);
+    --lf-brand: var(--sl-color-accent);
+    --lf-brand-strong: var(--sl-color-accent-high);
+    --lf-brand-dim: var(--sl-color-accent-low);
+    --lf-alt: var(--sl-color-purple);
+    --lf-alt-strong: var(--sl-color-purple-high);
+    --lf-alt-dim: var(--sl-color-purple-low);
+    --lf-ok: var(--sl-color-green);
+    --lf-ok-strong: var(--sl-color-green-high);
+    --lf-ok-dim: var(--sl-color-green-low);
+    --lf-warn: var(--sl-color-orange);
+    --lf-warn-strong: var(--sl-color-orange-high);
+    --lf-warn-dim: var(--sl-color-orange-low);
+    --lf-err: var(--sl-color-red);
+    --lf-err-strong: var(--sl-color-red-high);
+    --lf-err-dim: var(--sl-color-red-low);
+    --lf-on-brand: var(--sl-color-white);
+    --lf-glow-border: transparent;
+    --lf-glow-halo: transparent;
+    --lf-link-underline: currentColor;
+  }
+}
+
+/* 4. 代码块外壳（Expressive Code）：astro.config 显式指定 themes 后 EC 不再套用
+   --sl-* 配色（沿用 tokyo-night / min-light 自带配色，见设计稿 §3.5⑤），
+   这里只统一圆角与投影。投影走 --sl-shadow-md 以便打印被置 none。 */
+:root {
+  --ec-brdRad: var(--lf-radius-md);
+  --ec-frm-editorTabBrdRad: var(--lf-radius-sm);
+  --ec-frm-frameBoxShadowCssVal: var(--sl-shadow-md);
+}
+
+/* 5. 全局微调。body 的 color / background-color 不在此声明：reset 已用
+   --sl-color-text / --sl-color-bg 设过，重复声明会把打印压成深色底。 */
+html {
+  letter-spacing: var(--lf-tracking-cjk); /* 中文微字距 */
+  -moz-osx-font-smoothing: grayscale;
+  scrollbar-color: var(--lf-border-strong) transparent;
+}
+
+::selection {
+  background-color: var(--lf-selection); /* 品牌色 15% */
+  color: var(--lf-text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--lf-brand);
+  outline-offset: 2px;
+  border-radius: var(--lf-radius-xs);
+}
+
+/* 正文内链：走 --sl-* 让打印态自动换色 */
+.sl-markdown-content a:not(:where(.not-content *)) {
+  color: var(--sl-color-text-accent);
+  text-decoration-color: var(--lf-link-underline);
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color var(--lf-dur-fast) var(--lf-ease);
+}
+
+.sl-markdown-content a:not(:where(.not-content *)):hover {
+  text-decoration-color: currentColor;
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--lf-font-mono);
+  font-variant-ligatures: none;
+}
+
+/* kbd 走 --sl-* 中性档，打印时随亮色令牌一起反转 */
+kbd {
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: var(--lf-radius-xs);
+  background-color: var(--sl-color-gray-7);
+  color: var(--sl-color-white);
+  padding: 0.1em 0.4em;
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--sl-color-hairline);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001s;
+    animation-iteration-count: 1;
+    transition-duration: 0.001s;
+  }
+}

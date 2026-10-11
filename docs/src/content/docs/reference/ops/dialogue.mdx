@@ -1,0 +1,234 @@
+---
+title: 对话与叙事指令
+description: say、nvl、character、notify、wait、pause 的签名、参数与常见错误。六条里 say、wait、pause 建立等待点，notify、nvl、character 不停。
+---
+
+import OpCard from '../../../../components/OpCard.astro';
+
+`say` 把一句话送上屏并停下来，`nvl` 换成全屏累积，`character` 给说话人配色，`notify` 弹一条浮层就走，`wait` 和 `pause` 拖时间。六条里建立等待点的是 `say`、`wait`、`pause`，`notify`、`nvl`、`character` 执行完就往下走。
+
+## 指令
+
+### say
+
+<OpCard name="say" summary="显示一句对话文本，等玩家点击或按键。" waits rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+say "文本" [speaker="名"] [color="#FFD700"] [template="名"] [voice="Audio/a.mp3"] [z=N] [clickable] [noskip]
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `text` | string | 必填且非空。文本形态里是第一个引号串 |
+| `speaker` | string | 说话人。文本形态也接受 `by=` |
+| `color` | string | 覆盖本句颜色，只认 `#888` / `#FFD700` / `#FFD700CC` |
+| `template` | string | 对话框模板注册名，优先于 `character` 的 `screen` |
+| `voice` | string | 本句语音，路径相对资源根 |
+| `z` | number | 只改这一句的对话层 z |
+| `clickable`、`noskip` | 裸词 | 写进 `__dialog_clickable`、`__dialog_noskip`，宿主可据此禁用点击 |
+| `typewriter`、`instant` | — | 解析期接受，引擎不读。打字机速度用 `text_typewriter` |
+
+**最小示例**
+
+```text
+say "夜里十一点，雨还没停。" speaker="阿澈"
+```
+
+:::caution
+`text` 为空报 `say-invalid`「say 负载必须有非空 text 字符串」。文本形态漏写文本更早一步——解析期记一条「say 缺少 text 字符串」，整个文件跟着被拒。
+
+`color="red"` 报 `say-invalid-color`。只收十六进制，三位、六位、八位都行，八位是 `#RRGGBBAA`。
+
+`color` 每句都写：缺省写空串，所以上一句的覆盖不会漏到下一句。想让某个角色一直有颜色，配 `character`，别每句都写 `color=`。
+:::
+
+</OpCard>
+
+### nvl
+
+<OpCard name="nvl" summary="切换全屏累积叙事层。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+nvl [clear|exit|auto|enter]
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `mode` | string | 缺省 `enter`。`enter` 和 `auto` 同义，都进入累积层；`clear` 清空但留在累积层；`exit` 清空并退出 |
+
+**最小示例**
+
+```text
+nvl
+say "雨水顺着屋檐往下淌，一条线，又一条线。"
+say "她没回头。"
+nvl exit
+```
+
+**常见错误**
+
+:::caution
+`nvl` 只是开关，之后每句 `say` 照样建立等待点、照样等点击。累积的是文本，不是「自动播放」。
+
+`nvl clear` 清屏但仍在累积层——后面还会继续往里堆。要回到普通对话框得用 `nvl exit`。
+
+文本形态写别的子命令，解析期报「nvl 未知子命令」，不会静默当成 `enter`。
+:::
+
+</OpCard>
+
+### character
+
+<OpCard name="character" summary="登记一个说话人的名字、颜色与默认对话框模板。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+character "key" [name=] [color=] [size=] [font=] [textColor=] [screen=]
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `key` | string | 必填。`say speaker=` 里的字符串要和它完全一致 |
+| `name` | string | 显示名，可和 `key` 不同 |
+| `color` | string | 这个角色的默认颜色 |
+| `size`、`font`、`textColor` | — | 字号、字体、文字色 |
+| `screen` | string | 默认对话框模板注册名 |
+
+**最小示例**
+
+```text
+character "阿澈" name="阿澈" color="#7aa2f7"
+say "我先走了。" speaker="阿澈"
+```
+
+**常见错误**
+
+:::caution
+同名再写一次 `character` 是**整条替换**，不是合并。第二次只写 `color=` 的话，之前设的 `screen` 就没了。
+
+角色表不进快照也不进存档，所以回溯不会把说话人配色退回去。它是全局声明，写得越早越省事。
+
+`color` 的优先级是 `say color=` > `character color` > 空串。两头都不写，这一句就没有颜色。
+:::
+
+</OpCard>
+
+### notify
+
+<OpCard name="notify" summary="发一条浮层提示事件，不打断故事。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+notify "文本" [type="分类"] [duration=3000] [z=N]
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `text` | string | 必填。插值规则和 `say` 一样 |
+| `type` | string | 给宿主分类用的字符串，引擎不解释 |
+| `duration` | number | 建议显示毫秒数，交给宿主 |
+| `z` | number | 通知层 z |
+
+**最小示例**
+
+```text
+notify "任务更新：找到雨夜的伞" type="quest" duration=3000
+```
+
+**常见错误**
+
+:::caution
+`notify` 不建立等待点，也不推进对话状态。它发完事件就往下走，玩家看不到也不影响剧情。
+
+宿主没订阅事件，这条提示就是静默丢弃——引擎不报错。模板宿主订阅了 `notify`，可以直接用。
+
+`type` 和 `duration` 只是原样透传给宿主的字段，引擎不做校验也不做默认值。
+:::
+
+</OpCard>
+
+### wait
+
+<OpCard name="wait" summary="等待若干秒，可选允许玩家跳过。" waits rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+wait 1.5
+wait 3 skipable
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `seconds` | number | 必填。秒，允许小数 |
+| `skipable` | boolean | 为真时玩家点击或按键可提前结束等待 |
+
+**最小示例**
+
+```text
+say "远处传来一声闷响。"
+wait 1.5
+say "然后是第二声。"
+```
+
+**常见错误**
+
+:::caution
+不带 `skipable` 的 `wait` 上调用 `engine.advance()` 会被拒，报 `advance-invalid`「当前 wait 不可跳过（仅 skipable 的 wait 可点击解除）」。
+
+文本形态漏写秒数不会报错——解析期给一条警告并按 0 秒处理，等待点建立后立刻解除。想要「等玩家点击」，用 `say`，不是无参 `wait`。
+
+计时器在回溯时被清掉，重放时重新开始计时。
+:::
+
+</OpCard>
+
+### pause
+
+<OpCard name="pause" summary="等待若干秒，玩家无法跳过。" waits rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+pause 2
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `seconds` | number | 必填。秒，允许小数 |
+
+**最小示例**
+
+```text
+pause 0.8
+```
+
+**常见错误**
+
+:::caution
+`pause` 恒不可跳过，也没有 `skipable` 参数——写了会被当成未知字段拒掉。
+
+它和 `wait` 走同一个等待态 `wait`，区别只在能不能被玩家提前解除。演出节奏用 `pause`，可跳过的停顿用 `wait ... skipable`。
+
+无参 `pause` 同样是「警告 + 按 0 秒处理」。
+:::
+
+</OpCard>

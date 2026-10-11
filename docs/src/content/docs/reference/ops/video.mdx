@@ -1,0 +1,304 @@
+---
+title: 视频指令
+description: video、cutscene、seek_video、pause_video、resume_video、stop_video、video_skipable 的签名、参数与常见错误。只有 cutscene 建立等待点。
+---
+
+import OpCard from '../../../../components/OpCard.astro';
+
+七条指令写的是同一路「视频命令流」：一条命令一个单调递增的序号，宿主按序号执行。引擎不持有播放器，播放成功与否它不知道。
+
+`video` 和 `cutscene` 的区别只有一处：`cutscene` 会停下来等播完，`video` 不会。
+
+## 指令
+
+### video
+
+<OpCard name="video" summary="开始播放视频，不阻塞故事。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+video "Video/op.mp4"
+video "Video/op.mp4" volume=0.8 loop=true
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `resource` | string | 必填。相对资源根的路径 |
+| `volume` | number | 可选，缺省 1。越界钳到 0..1 |
+| `loop` | boolean | 可选，缺省 `false` |
+| `z` | number | 可选。视频层的实例 z |
+
+**最小示例**
+
+```text
+video "Video/rain_loop.mp4" loop=true
+say "雨一直在下。"
+stop_video
+```
+
+**常见错误**
+
+:::caution
+`video` **不建立等待点**。它开始播放就立刻往下走，所以后面必须紧跟 `say`、`wait` 之类会停下来的命令，否则故事会在视频刚开始时冲过去。
+
+`loop` 缺省是 `false`——和 `bgm` 的缺省相反。想要循环播必须显式写 `loop=true`。
+
+播放位置和暂停状态都是宿主的责任。引擎只发命令，不记录「现在播到第几秒」。
+
+视频层默认在对话层下面（100 对 999），所以视频播着的时候 `say` 照样盖在上面。想反过来得改 `shell.layers`，见 [工程清单 project.json](/reference/manifest/)。
+:::
+
+</OpCard>
+
+### cutscene
+
+<OpCard name="cutscene" summary="播放过场并等它结束。" waits rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+cutscene "Video/chapter_two.mp4"
+cutscene "Video/logo.mp4" skipable=false
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `resource` | string | 必填 |
+| `volume` | number | 可选，缺省 1 |
+| `skipable` | boolean | 可选。缺省看 `video_skipable` |
+| `z` | number | 可选 |
+
+**最小示例**
+
+```text
+label chapter_two:
+  cutscene "Video/chapter_two.mp4"
+  say "三个月后。"
+```
+
+**常见错误**
+
+:::caution
+`cutscene` 是等待点，也是检查点。玩家回退会退到过场**之前**——检查点在过场建立那一刻就提交了，重放不会再放一遍。
+
+`skipable` 的判定顺序是：`cutscene` 自己写的参数 > `video_skipable` 设的持久开关 > 缺省可跳。所以 `cutscene skipable=false` 是「这一段必须看完」，跟之前设过什么无关。
+
+宿主必须调 `engine.videoFinished()` 才能解除等待。没调就永远停在这里——这是宿主集成问题，不是故事写法问题。不在视频等待中调它会报 `video-finish-invalid`「当前不在视频等待中」。
+
+玩家想跳过时走的是 `engine.advance()`。`skipable=false` 的过场上调它会报 `advance-invalid`「当前过场不可跳过（cutscene skipable=false）」。
+
+播完或跳过后引擎会把视频层收起来（写一条 `stop`）。这一步不能省——视频层 z 通常高于对话层，不收起会一直盖着对话和 HUD，界面看着像卡死了。
+:::
+
+</OpCard>
+
+### seek_video
+
+<OpCard name="seek_video" summary="跳到视频的某个时间点。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+seek_video 12.5
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `seconds` | number | 必填。非负有限数字，单位秒 |
+
+**最小示例**
+
+```text
+video "Video/long_take.mp4"
+wait 1
+seek_video 30
+```
+
+**常见错误**
+
+:::caution
+`seconds` 写负数或非有限数报 `seek_video-invalid-seconds`「seek_video 需要非负有限数字（秒）」。
+
+文本形态里 `seek_video` 后面只认一个数字。写 `seek_video 12 seconds` 会报「seek_video 需要数字秒数」——多出来的词让它解析不了。
+
+它只往命令流里塞一条 `seek`，不管当前有没有在播。没有视频在播的时候调，宿主收到一条无从执行的命令，通常是静默忽略。
+:::
+
+</OpCard>
+
+### pause_video
+
+<OpCard name="pause_video" summary="暂停当前视频。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+pause_video
+```
+
+**参数**
+
+无。
+
+**最小示例**
+
+```text
+video "Video/tutorial.mp4"
+wait 2
+pause_video
+notify "按空格继续"
+```
+
+**常见错误**
+
+:::caution
+`pause_video` 不接受任何参数，多写一个词就报「pause_video 未知负载字段」。
+
+它**不会建立等待点**。想「暂停并等玩家点继续」，得自己补一条 `wait` 或者 `menu`——否则暂停之后故事继续往下跑，玩家看到的是一个静止画面配着后面的对话。
+:::
+
+</OpCard>
+
+### resume_video
+
+<OpCard name="resume_video" summary="继续播放已暂停的视频。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+resume_video
+```
+
+**参数**
+
+无。
+
+**最小示例**
+
+```text
+menu "继续看吗？"
+  "继续" -> keep_watching
+  "跳过" -> skip_it
+```
+
+```text
+label keep_watching:
+  resume_video
+  jump after_video
+```
+
+**常见错误**
+
+:::caution
+和 `pause_video` 一样不接受参数。
+
+它不会从头播——只是解除暂停。想重头来一遍用 `seek_video 0`。
+
+暂停期间玩家回退，视频命令流会跟着回退，`resume` 这条命令可能根本没被执行过。所以别在故事逻辑里假设「暂停了一定会被恢复」。
+:::
+
+</OpCard>
+
+### stop_video
+
+<OpCard name="stop_video" summary="停止视频并收起视频层。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+stop_video
+```
+
+**参数**
+
+无。
+
+**最小示例**
+
+```text
+video "Video/rain_loop.mp4" loop=true
+say "雨停了。"
+stop_video
+```
+
+**常见错误**
+
+:::caution
+不接受参数。
+
+它是**唯一一条由故事主动收起视频层的命令**——`cutscene` 播完也会收起，但那是引擎做的。用 `video` 循环播放做背景时，忘了写 `stop_video` 就会一直盖在那儿。
+
+`stop_video` 不会解除视频等待。如果你在 `cutscene` 的等待期从宿主那边调它，等待态还在，故事照样停着——解除等待只有 `videoFinished()` 和 `advance()` 两条路。
+:::
+
+</OpCard>
+
+### video_skipable
+
+<OpCard name="video_skipable" summary="设置后续视频的缺省可跳过开关。" rollback="none" since="0.1.0">
+
+**签名**
+
+```text
+video_skipable true
+video_skipable false
+```
+
+**参数**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `value` | boolean | 必填。必须是 `true` 或 `false` |
+
+**最小示例**
+
+```text
+video_skipable false
+cutscene "Video/ending.mp4"
+```
+
+**常见错误**
+
+:::caution
+文本形态里只认 `true` 或 `false`，写别的报「video_skipable 需要 true|false」。
+
+这个开关写的是系统键 `__video_skipable`（保留键，作者的 `set` 写不了它）。它会随状态进存档、读档后原样恢复——存档时是「不可跳」，读档后仍然是「不可跳」，不会自动复位。想让后面的剧情恢复默认，得显式写一次 `video_skipable true`。
+
+它只管缺省值。`cutscene` 自己写了 `skipable=` 就以自己的为准，所以 `video_skipable true` 挡不住 `cutscene skipable=false`。
+
+`video` 命令不受这个开关影响——它本来就不建立等待点，没有「跳不跳」这回事。
+:::
+
+</OpCard>
+
+## z 序
+
+`video` 和 `cutscene` 可以带 `z=`。它写进视频层的实例 z，宿主解析后交给播放器。
+
+不带 `z` 时**会删掉这个键**回到层默认值，而不是沿用上一条命令的值。所以「这条视频浮起来、下一条回到默认」不需要手动复位。
+
+`z` 必须是非负有限数。写 `z=-1`、`z=NaN` 报 `instance-z-invalid`「实例级 z 必须为非负有限数，收到 -1」。
+
+文本形态里 `z=` 后面跟的不是数字时**解析期不报错**——`Number("abc")` 得到 `NaN`，一路走到执行期才被 `instance-z-invalid` 拦下。所以文本形态写错了报错位置会偏晚。
+
+## 命令流的判定
+
+宿主收到的是状态差量，规则是：
+
+- 资源变了，或者序号变了 → 执行新命令
+- 序号没变 → 什么都不做
+
+序号在每条视频命令上都会递增，包括 `pause_video` 这种没有参数的。所以连续两次 `pause_video` 是两次独立命令，宿主会收到两次——不会因为「状态看起来一样」被吃掉。
+
+## 下一步
+
+- [音频指令](/reference/ops/audio/)——四条音频通道的换曲与淡出规则。
+- [对话与叙事指令](/reference/ops/dialogue/)——`wait` 与 `pause` 怎么停故事。
+- [模板能力边界](/reference/template-boundaries/)——模板宿主怎么接视频层。
