@@ -45,7 +45,7 @@ export interface SymbolIndex {
     name: string;
     kind: "expression" | "interpolation";
   }[];
-  /** 可翻译原文集合（say.text/speaker、menu.prompt、menu.options[].text、input.prompt、notify.text、character.screen、元素 text——全部走运行期 Translate） */
+  /** 可翻译原文集合（say.text/speaker、menu.prompt、menu.options[].text、input.prompt、notify.text、元素 text——走运行期 Translate；character.screen 仅编辑器比对面，运行期不翻） */
   originals: Set<string>;
 }
 

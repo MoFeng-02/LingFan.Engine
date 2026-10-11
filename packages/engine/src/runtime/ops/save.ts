@@ -84,7 +84,9 @@ export function execLoadOp(
 
 /**
  * auto_save op：开关系统键 `__auto_save`（编译期与 set 同语义）。
- * 消费点 = 等待画面建立时（autoSaveAtCheckpoint）；开关是系统键 → 不进用户存档、读档后复位。
+ * 消费点 = 等待画面建立时（autoSaveAtCheckpoint）；开关是系统键 → 随状态一起进存档、
+ * 读档后原样恢复（runtime/save/export.ts:74 全量导出无 `__` 过滤；runtime/save/import.ts:85
+ * 全量恢复、:125 仅复位 SYS.waiting）。
  */
 export function execAutoSaveOp(
   ctx: OpContext,

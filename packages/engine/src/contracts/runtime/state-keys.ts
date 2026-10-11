@@ -3,7 +3,7 @@
  * 这些键写进状态后就随快照 / 存档 / 回溯自动随行，界面按同一份键名读取。
  */
 
-/** 系统键（`__` 前缀：不进用户存档、不进变量命名空间；v1 起类型化单一来源） */
+/** 系统键（`__` 前缀：随状态一起进存档、读档后原样恢复——state/writer.ts:50 写入、runtime/save/export.ts:74 无 `__` 过滤全量导出（:36 auto_save、:78 videoSkipable 等持久开关同理）；不进变量命名空间 = RESERVED_STATE_KEYS 精确键名判定（非 `__` 前缀一刀切，见 :113）；v1 起类型化单一来源） */
 export const SYS = {
   currentDialogText: "__current_dialog_text",
   currentDialogSpeaker: "__current_dialog_speaker",
