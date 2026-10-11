@@ -5,7 +5,7 @@
  * 布局声明 `Stories.src/config.ts`（根级唯一根文件）：`{ folders, start }`——folders
  * 声明源目录（可含 `"*"` 全量兜底），start 声明入口故事文件名（跨目录全局恰一）。
  * 源发现按「default 导出存在」区分故事/模块文件；产物路径 = 源文件路径
- * （`Stories/<相对源路径>.story`，文件名与列 id 解耦）。`config.start` 经托管键
+ * （`Stories/<相对源路径>.json`，文件名与列 id 解耦）。`config.start` 经托管键
  * 更新落到 `project.json` 的 `entry`（`serializeProject` 既有语义）。
  *
  * 零第二套规则：TS 源合法 ⇔ 其编译产物作为 JSON 合法（与 JSON 同一 `parseStory`）。

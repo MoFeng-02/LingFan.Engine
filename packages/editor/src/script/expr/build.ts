@@ -22,6 +22,19 @@ import { ExpressionAuditor, type AuditToken, type OperandKind } from "./audit";
  *
  * 组装同时做轻类型校验（见文件头）：警告进池，由 `drainExpressionWarnings` 取走；
  * 表达式产物与既有行为逐字节一致（校验零侵入）。
+ *
+ * 产物是 `"{…}"` 表达式串：引擎在**执行到包含它的命令时**求值——
+ * 条件语境（{@link when} / whileDo）求出布尔；赋值语境（{@link set} 等）
+ * 求出值；台词/通知文本在显示时插值。
+ *
+ * 必须先经 defineVars 注册变量，否则抛错。
+ *
+ * @param strings 模板字面量的静态片段。
+ * @param parts 插值：变量句柄 / number / boolean / string。
+ * @returns `"{…}"` 表达式串（放进故事数据，运行期求值）。
+ * @example
+ * expr`${vars.player.gold} >= 25`   // ⇒ "{player.gold >= 25}"
+ * expr`${vars.greeting}, 旅行者`    // string 插值 ⇒ 带引号字面量
  */
 export function expr(
   strings: TemplateStringsArray,
@@ -171,5 +184,13 @@ export function expr(
   return finalize();
 }
 
-/** `expr` 的别名（条件语境的语义化写法；同一实现、同一校验） */
+/**
+ * `expr` 的别名（条件语境的语义化写法；同一实现、同一校验）。
+ *
+ * @param strings 模板字面量的静态片段。
+ * @param parts 插值：变量句柄 / number / boolean / string。
+ * @returns `"{…}"` 条件表达式串（引擎执行条件命令时求值，须产出布尔）。
+ * @example
+ * when(cond`${vars.door.locked} == false`, [navigate("hall")]);
+ */
 export const cond = expr;

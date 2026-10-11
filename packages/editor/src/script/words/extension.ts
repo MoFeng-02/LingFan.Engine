@@ -9,7 +9,14 @@
  */
 import type { StoryCommand } from "@lingfan/engine";
 
-/** 扩展 op 通用构造：op 恒由首参决定（负载展开在前、op 在后——负载不得劫持 op 键） */
+/**
+ * 扩展 op 通用构造：op 恒由首参决定（负载展开在前、op 在后——负载不得劫持 op 键）。
+ * @param op 扩展 op 名（须由宿主注册的扩展模块提供）。
+ * @param payload 扩展负载（原样透传，形状由扩展自定）。
+ * @returns 扩展故事命令。
+ * @example
+ * extOp("weather:set", { sky: "rain" });
+ */
 export function extOp(
   op: string,
   payload?: Record<string, unknown>,

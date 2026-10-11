@@ -8,13 +8,13 @@
  * - report 口径：{ added, updated, removed, columns, extensions, functions, warnings }；
  *   旧 written 字段已废除。逻辑路径两个命名空间：资源根（Stories/…、project.json）
  *   与源根（Stories.src/gen/…）。
- * - sourcePath 由源相对路径派生（Stories/<相对目录>/<名>.story），不再可声明。
+ * - sourcePath 由源相对路径派生（Stories/<相对目录>/<名>.json），不再可声明。
  * - project.json：tsSource 标记、entry/defines 托管；其余键原值保真。
  *
  * 8 类行为 → 测试映射（任务书口径）：
  *   ① report 计数（added/updated）……「多目录 folders：首跑 added…」「源文本变化 ⇒ 仅该列 updated」
  *   ② 幂等二跑零差量 ……………………「幂等：二跑零差量」「cell 全链路 … 幂等零差量」
- *   ③ 陈旧 .story 清理 ……………………「陈旧 .story 清理…」「cell 全部移除 ⇒ 陈旧 gen 删除」
+ *   ③ 陈旧产物清理 …………………………「陈旧产物清理…」「cell 全部移除 ⇒ 陈旧 gen 删除」
  *   ④ tsSource 清单标记 …………………「清单托管：project.json 获得 tsSource 标记…」
  *   ⑤ sourcePath 镜像落点 ………………「多目录 folders：首跑 added + sourcePath 镜像落点」
  *   ⑥ fail-closed E02/E03/E04/E05/E07 ……「v2 fail-closed」describe 全部
@@ -118,19 +118,19 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
     expect(report.storyId).toBe("start");
     // 差量计数：3 个故事产物新增 + 清单更新（tsSource 标记）
     expect([...report.added].sort()).toEqual([
-      "Stories/common/start.story",
-      "Stories/common/tavern.story",
-      "Stories/other/market.story",
+      "Stories/common/start.json",
+      "Stories/common/tavern.json",
+      "Stories/other/market.json",
     ]);
     expect(report.updated).toEqual(["project.json"]);
     expect(report.removed).toEqual([]);
-    // sourcePath 镜像：源 common/start.ts → 产物 Stories/common/start.story（单列原子形态）
+    // sourcePath 镜像：源 common/start.ts → 产物 Stories/common/start.json（单列原子形态）
     const startFile = JSON.parse(
-      readFileSync(join(root, "Resources/Stories/common/start.story"), "utf8"),
+      readFileSync(join(root, "Resources/Stories/common/start.json"), "utf8"),
     ) as { formatVersion: number; id: string; kind: string; commands: { op: string; text: string }[] };
     expect(startFile).toMatchObject({ formatVersion: 1, id: "start", kind: "flow" });
     expect(startFile.commands).toEqual([{ op: "say", text: "欢迎来到灵泛" }]);
-    expect(existsSync(join(root, "Resources/Stories/other/market.story"))).toBe(true);
+    expect(existsSync(join(root, "Resources/Stories/other/market.json"))).toBe(true);
   });
 
   it("②幂等：二跑零差量（added/updated/removed 全空）", async () => {
@@ -160,25 +160,25 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
     );
     const report = await buildStories(root);
     expect(report.added).toEqual([]);
-    expect(report.updated).toEqual(["Stories/common/tavern.story"]);
+    expect(report.updated).toEqual(["Stories/common/tavern.json"]);
     expect(report.removed).toEqual([]);
   });
 
-  it("③陈旧 .story 清理：源里已删除的故事进 removed 并真实删盘", async () => {
+  it("③陈旧产物清理：源里已删除的故事进 removed 并真实删盘", async () => {
     const root = makeProject("v2-stale", {
       "Stories.src/config.ts": config(["common"]),
       "Stories.src/common/start.ts": SYNTHETIC_STORY,
       "Resources/project.json": MANIFEST,
       // 陈旧产物：手写遗留 / 章节删除后的残留（源里已无对应故事）
       "Resources/Stories/legacy.json": `{"formatVersion":1,"id":"legacy","kind":"flow","commands":[]}`,
-      "Resources/Stories/old-chapter/ghost.story": `{"formatVersion":1,"columns":[]}`,
+      "Resources/Stories/old-chapter/ghost.json": `{"formatVersion":1,"columns":[]}`,
     });
     const report = await buildStories(root);
     expect(report.removed).toContain("Stories/legacy.json");
-    expect(report.removed).toContain("Stories/old-chapter/ghost.story");
+    expect(report.removed).toContain("Stories/old-chapter/ghost.json");
     expect(existsSync(join(root, "Resources/Stories/legacy.json"))).toBe(false);
-    expect(existsSync(join(root, "Resources/Stories/old-chapter/ghost.story"))).toBe(false);
-    expect(report.added).toContain("Stories/common/start.story");
+    expect(existsSync(join(root, "Resources/Stories/old-chapter/ghost.json"))).toBe(false);
+    expect(report.added).toContain("Stories/common/start.json");
   });
 
   it("④清单托管：project.json 获得 tsSource 标记；entry 防御补齐；非托管键保真", async () => {
@@ -212,9 +212,9 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
     });
     const report = await buildStories(root);
     expect(report.columns).toBe(2);
-    expect(report.added).toContain("Stories/common/start.story");
-    expect(report.added).toContain("Stories/chapter1/tavern.story");
-    expect(existsSync(join(root, "Resources/Stories/chapter1/tavern.story"))).toBe(true);
+    expect(report.added).toContain("Stories/common/start.json");
+    expect(report.added).toContain("Stories/chapter1/tavern.json");
+    expect(existsSync(join(root, "Resources/Stories/chapter1/tavern.json"))).toBe(true);
   });
 });
 
@@ -407,7 +407,7 @@ export default extension;
     });
     const report = await buildStories(root);
     expect(report.extensions).toEqual(["./extensions/demo.ts"]);
-    const product = readFileSync(join(root, "Resources/Stories/common/start.story"), "utf8");
+    const product = readFileSync(join(root, "Resources/Stories/common/start.json"), "utf8");
     expect(product).toContain('"quest"');
     expect(product).toContain('"step": "接取"');
     const again = await buildStories(root);
@@ -500,7 +500,7 @@ export default extension;
     });
     const report = await buildStories(root);
     expect(report.extensions).toEqual(["./extensions/demo.ts", "./extensions/stateful.ts"]);
-    expect(report.added).toContain("Stories/common/start.story");
+    expect(report.added).toContain("Stories/common/start.json");
   });
 
   it("边界：内建 op 故事 + 无扩展声明 ⇒ 行为零变化（零装载）", async () => {
@@ -511,7 +511,7 @@ export default extension;
     });
     const report = await buildStories(root);
     expect(report.extensions).toEqual([]);
-    expect(report.added).toContain("Stories/common/start.story");
+    expect(report.added).toContain("Stories/common/start.json");
   });
 });
 
@@ -711,7 +711,7 @@ describe("stories:build v2 · 状态根名自定义（export declare const <根�
     });
     const report = await buildStories(root);
     expect(report.columns).toBe(1);
-    const product = readFileSync(join(root, "Resources/Stories/common/start.story"), "utf8");
+    const product = readFileSync(join(root, "Resources/Stories/common/start.json"), "utf8");
     expect(product).toContain('"player.gold"');
     expect(product).not.toContain('"s.player.gold"');
   });
@@ -734,7 +734,7 @@ describe("stories:build v2 · 状态根名自定义（export declare const <根�
     });
     const report = await buildStories(root);
     expect(report.columns).toBe(1);
-    const product = readFileSync(join(root, "Resources/Stories/common/start.story"), "utf8");
+    const product = readFileSync(join(root, "Resources/Stories/common/start.json"), "utf8");
     expect(product).toContain('"player.gold"');
     expect(product).not.toContain('"state.player.gold"');
   });
