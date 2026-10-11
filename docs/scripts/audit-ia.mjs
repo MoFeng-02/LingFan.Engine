@@ -211,10 +211,13 @@ if (!dead.length) {
 }
 
 const reachable = new Set(allSidebarLinks.map((l) => resolveLink(l.href).path))
-const unreachable = zhPages.filter((p) => !p.url.startsWith('/404') && p.url !== '/' && !reachable.has(p.url))
+// 独立路由页豁免：/demo/（内嵌引擎演示页）按产品判定不进侧栏，与首页、404 一样不算「不可达内容页」。
+const standalonePages = ['/demo/']
+const unreachable = zhPages.filter((p) => !p.url.startsWith('/404') && p.url !== '/'
+  && !standalonePages.includes(p.url) && !reachable.has(p.url))
 if (!unreachable.length) {
   pass('A1-4', 'A', 'zh 内容页 100% 可从侧栏到达', '拦截',
-    `${zhPages.length - 2} 个内容页（除首页与 404）全部在侧栏中`, '')
+    `${zhPages.length - 2 - standalonePages.length} 个内容页（除首页、404 与独立路由页）全部在侧栏中`, '')
 } else {
   fail('A1-4', 'A', 'zh 内容页 100% 可从侧栏到达', '拦截',
     `${unreachable.length} 页不可达`, unreachable.map((p) => p.url).join(', '))
