@@ -123,7 +123,7 @@ function open(lang: string): void {
           <span
             class="wb-ratio"
             :data-state="coverageStateOf(c)"
-            :title="`按**字数**加权 ${coverageWeightedPercentOf(c)}（长句权重更大）· 按条数 ${coveragePercentOf(c)} · 原文 ${c.totalChars} 字`"
+            :title="`按字数加权 ${coverageWeightedPercentOf(c)}（长句权重更大）· 按条数 ${coveragePercentOf(c)} · 原文 ${c.totalChars} 字`"
           >
             {{ coverageWeightedPercentOf(c) }}
           </span>
@@ -141,7 +141,7 @@ function open(lang: string): void {
         <ul v-if="expanded === c.lang && c.missing.length > 0" class="wb-missing">
           <li v-for="k in c.missing" :key="k" class="wb-missing-item">
             <span class="wb-key">{{ k }}</span>
-            <button class="mini" title="打开该语言的译文表并定位" @click="open(c.lang)">去译</button>
+            <button class="mini" title="打开该语言的译文表" @click="open(c.lang)">去译</button>
           </li>
         </ul>
         <p v-if="c.unused.length > 0" class="wb-unused">
@@ -151,7 +151,7 @@ function open(lang: string): void {
     </ul>
 
     <p v-if="overview.unusedAll.length > 0" class="wb-unused-all">
-      全部语言合计多译 {{ overview.unusedAll.length }} 条 —— 与诊断面板的「多余译文」同源。
+      全部语言合计多译 {{ overview.unusedAll.length }} 条 —— 与诊断面板的「未使用的译文键」同源。
     </p>
 
     <!-- 骨架生成 -->

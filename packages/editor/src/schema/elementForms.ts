@@ -72,6 +72,10 @@ export const UNIMPLEMENTED_ELEMENT_ATTRS: ReadonlySet<string> = new Set([
   "valign",
   "xalign",
   "yalign",
+  // 例外（文档终验判定口径）：order 不是死属性——引擎装载期在用（z 兜底：
+  // packages/engine/src/data/element.ts:157、runtime/internal/frame-stack.ts:62 消费）。
+  // 保留本条仅为维持现状行为（编辑器表单不下发 + unimplemented-element-attr warning +
+  // 互锁白名单 attr-alignment.test.ts），即「编辑器表单不暴露但引擎装载在用」。
   "order",
   "xoffset",
   "yoffset",

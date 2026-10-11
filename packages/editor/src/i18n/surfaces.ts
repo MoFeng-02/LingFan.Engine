@@ -9,14 +9,16 @@
  * 路径语法：`a.b` 逐段取值；`a[].b` 的 `[]` = 对数组逐项迭代（`options[].text`）。
  */
 
-/** 可翻译原文面（运行期 Translate 挂接：say 文本+说话人 / menu prompt+选项 / input prompt / notify 文本 / character 显示名） */
+/** 可翻译原文面（运行期 Translate 挂接：say 文本+说话人 / menu prompt+选项 / input prompt / notify 文本。character.screen 见下——仅入编辑器比对面，运行期不翻） */
 export const TRANSLATE_SURFACES: Readonly<Record<string, readonly string[]>> = {
   say: ["text", "speaker"],
   menu: ["prompt", "options[].text"],
   input: ["prompt"],
   notify: ["text"],
-  // 翻译面：角色注册的显示名 screen
-  // （说话人显示名解析产物走 say 的 Translate 挂接，查表见 runtime/ops/dialog.ts execSay）。
+  // character.screen 仅入编辑器比对面（原文收集/键抽取），运行期**不翻**：引擎恰好 7 个
+  // translate 调用点（runtime/i18n/translate.ts:31、ops/dialog.ts:92/107/171/175、
+  // ops/interaction.ts:42、ops/media.ts:262），均不含 screen（说话人显示名解析产物
+  // 走 say 的 Translate 挂接，查表见 runtime/ops/dialog.ts execSay；docs concepts/i18n.md 同口径）。
   character: ["screen"],
 };
 
