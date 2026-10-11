@@ -334,6 +334,28 @@ fn overlay_single_file_fallback_supplies_main_json() {
 }
 
 #[test]
+fn overlay_both_supply_paths_empty_fails_closed() {
+    // 收紧口径：双缺失（无 Lang/{lang}/ 目录且无 Lang/{lang}.json）= 失败路径 → Err，不再宽容返回空数组
+    let root = test_root("i18n-none");
+    assert!(matches!(
+        load_overlay_files(&StdFs, &root, "en", None),
+        Err(ProjectFilesError::Io(_))
+    ));
+}
+
+#[test]
+fn overlay_dir_all_broken_json_fails_closed() {
+    // 目录存在但全部 JSON 损坏 → 产出为零 → 同一规则落 Err（个别坏文件宽松跳过仍保留）
+    let root = test_root("i18n-all-broken");
+    write(&root, "Lang/en/main.json", "{ not json");
+    write(&root, "Lang/en/nonstring.json", r#"{"num":42}"#);
+    assert!(matches!(
+        load_overlay_files(&StdFs, &root, "en", None),
+        Err(ProjectFilesError::Io(_))
+    ));
+}
+
+#[test]
 fn overlay_invalid_lang_fails_closed() {
     // lang 路径段校验（防路径穿越），fail-closed 显式报错
     let root = test_root("i18n-bad-lang");
