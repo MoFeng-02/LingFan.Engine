@@ -1,5 +1,6 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import { fileURLToPath } from 'node:url';
 import starlight from '@astrojs/starlight';
 import { satteri } from '@astrojs/markdown-satteri';
 import { hastBaseLinks } from './src/plugins/hast-base-links.mjs';
@@ -28,6 +29,20 @@ export default defineConfig({
 	base,
 	trailingSlash: 'always',
 	build: { format: 'directory' },
+	// /demo/ 内嵌真引擎 demo（一期）：把工作区源码包 alias 进 docs 构建，
+	// demo 页的引擎与参考展示层直接从 packages/*/src 的 TS 直出构建
+	// （两个包的 package.json exports 本就指向 src/index.ts），不给 docs 增加依赖。
+	// 本节是 demo 相关的唯一配置改动，其余配置一律不动。
+	vite: {
+		resolve: {
+			alias: {
+				'@lingfan/engine': fileURLToPath(
+					new URL('../packages/engine/src/index.ts', import.meta.url),
+				),
+				'@lingfan/ui': fileURLToPath(new URL('../packages/ui/src/index.ts', import.meta.url)),
+			},
+		},
+	},
 	// Markdown 正文里的站内链接写根绝对路径即可（例如 `/getting-started/`），
 	// 构建期由 hastBaseLinks 补上 base。见 src/plugins/hast-base-links.mjs。
 	markdown: {
