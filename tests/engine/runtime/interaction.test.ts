@@ -70,14 +70,14 @@ describe("interaction · 建立等待与挂载事件", () => {
   });
 
   it("等待建立即提交检查点（与 menu/wait/input/minigame 同语义）", () => {
-    const { engine } = makeEngine([
-      { op: "interaction", system: "walk" },
-    ]);
+    const { engine } = makeEngine([{ op: "interaction", system: "walk" }]);
     expect(engine.historyCursor()).toBeGreaterThanOrEqual(0);
   });
 
   it("config 缺省 = 空对象（宿主拿到稳定形状）", () => {
-    const { engine, events } = makeEngine([{ op: "interaction", system: "walk" }]);
+    const { engine, events } = makeEngine([
+      { op: "interaction", system: "walk" },
+    ]);
     expect(engine.get(SYS.waiting)).toBe("interaction");
     expect(mountPayload(events)!.config).toEqual({});
   });
@@ -138,15 +138,22 @@ describe("interaction · resolveInteraction 分流", () => {
       }),
     );
     engine.start();
-    expect(engine.resolveInteraction("walk", { outcome: "success" })).toBe(true);
+    expect(engine.resolveInteraction("walk", { outcome: "success" })).toBe(
+      true,
+    );
     expect(engine.get(SYS.currentDialogText)).toContain("接管之后");
   });
 
   it("score 有限数校验（畸形拒绝）", () => {
-    const { engine, events } = makeEngine([{ op: "interaction", system: "walk" }]);
+    const { engine, events } = makeEngine([
+      { op: "interaction", system: "walk" },
+    ]);
     mountPayload(events);
     expect(
-      engine.resolveInteraction("walk", { outcome: "success", score: Number.NaN }),
+      engine.resolveInteraction("walk", {
+        outcome: "success",
+        score: Number.NaN,
+      }),
     ).toBe(false);
     expect(engine.get(SYS.waiting)).toBe("interaction"); // 仍在等待
   });
@@ -155,7 +162,9 @@ describe("interaction · resolveInteraction 分流", () => {
 describe("interaction · 故意错误（fail-closed）", () => {
   it("非等待期 resolve 拒绝", () => {
     const { engine, errors } = makeEngine([{ op: "say", text: "无接管" }]);
-    expect(engine.resolveInteraction("walk", { outcome: "success" })).toBe(false);
+    expect(engine.resolveInteraction("walk", { outcome: "success" })).toBe(
+      false,
+    );
     expect(errorCodes(errors)).toContain("interaction-resolve-invalid");
   });
 
@@ -164,13 +173,17 @@ describe("interaction · 故意错误（fail-closed）", () => {
       { op: "interaction", system: "walk" },
     ]);
     mountPayload(events);
-    expect(engine.resolveInteraction("battle", { outcome: "success" })).toBe(false);
+    expect(engine.resolveInteraction("battle", { outcome: "success" })).toBe(
+      false,
+    );
     expect(errorCodes(errors)).toContain("interaction-system-mismatch");
     expect(engine.get(SYS.waiting)).toBe("interaction");
   });
 
   it("畸形结果（缺 outcome / 非法 outcome / null）拒绝", () => {
-    const { engine, events } = makeEngine([{ op: "interaction", system: "walk" }]);
+    const { engine, events } = makeEngine([
+      { op: "interaction", system: "walk" },
+    ]);
     mountPayload(events);
     for (const bad of [null, {}, { outcome: "maybe" }, "success"]) {
       expect(
@@ -189,7 +202,11 @@ describe("interaction · 故意错误（fail-closed）", () => {
           formatVersion: 1,
           id: "demo",
           columns: [
-            { id: "s", kind: "flow", commands: [{ op: "interaction", system }] },
+            {
+              id: "s",
+              kind: "flow",
+              commands: [{ op: "interaction", system }],
+            },
           ],
         }),
       );
@@ -275,7 +292,9 @@ describe("interaction · 中断与重放（回溯一致性）", () => {
   });
 
   it("navigate 打断：abort 挂载信号", () => {
-    const { engine, events } = makeEngine([{ op: "interaction", system: "walk" }]);
+    const { engine, events } = makeEngine([
+      { op: "interaction", system: "walk" },
+    ]);
     const payload = mountPayload(events)!;
     engine.navigate("ok");
     expect(payload.signal.aborted).toBe(true);
@@ -325,14 +344,18 @@ describe("interaction · 中断与重放（回溯一致性）", () => {
     const mounts = events.filter((e) => e.payload.kind === "interaction.mount");
     expect(mounts.length).toBeGreaterThanOrEqual(2);
     const latest = mounts.at(-1)!.payload;
-    expect(latest.kind === "interaction.mount" && latest.seq).not.toBe(first.seq);
+    expect(latest.kind === "interaction.mount" && latest.seq).not.toBe(
+      first.seq,
+    );
     expect(latest.kind === "interaction.mount" && latest.signal).not.toBe(
       first.signal,
     );
   });
 
   it("dispose 打断：abort 挂载信号", () => {
-    const { engine, events } = makeEngine([{ op: "interaction", system: "walk" }]);
+    const { engine, events } = makeEngine([
+      { op: "interaction", system: "walk" },
+    ]);
     const payload = mountPayload(events)!;
     engine.dispose();
     expect(payload.signal.aborted).toBe(true);

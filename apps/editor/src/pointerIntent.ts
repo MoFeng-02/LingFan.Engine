@@ -26,7 +26,10 @@ export function dragDistance(probe: DragProbe): number {
 }
 
 /** 是否已达「拖拽」阈值（≥ 阈值）。`==` 阈值本身算拖拽（与业界惯例一致） */
-export function isDragPastThreshold(probe: DragProbe, threshold = DRAG_THRESHOLD_PX): boolean {
+export function isDragPastThreshold(
+  probe: DragProbe,
+  threshold = DRAG_THRESHOLD_PX,
+): boolean {
   return dragDistance(probe) >= threshold;
 }
 
@@ -48,6 +51,9 @@ export function interactionIntent(
  * 存在的意义：拖拽结束会紧跟一个 `click`（浏览器原生行为），若不抑制，
  * 元素会在落位后**再被选中一次**——在舞台里就会二次触发定位（`reveal`）跳走。
  */
-export function shouldSuppressClick(probe: DragProbe, threshold = DRAG_THRESHOLD_PX): boolean {
+export function shouldSuppressClick(
+  probe: DragProbe,
+  threshold = DRAG_THRESHOLD_PX,
+): boolean {
   return isDragPastThreshold(probe, threshold);
 }

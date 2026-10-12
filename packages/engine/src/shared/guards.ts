@@ -51,7 +51,9 @@ export function isOrientationMode(value: unknown): value is OrientationMode {
  * 谁都不许另写一份：少写一个 `!Array.isArray` 就会让数组通过对象校验，
  * 那是**静默的行为变化**（解析器会拿下标当字段名继续走）。
  */
-export function isPlainObject(value: unknown): value is Record<string, unknown> {
+export function isPlainObject(
+  value: unknown,
+): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 

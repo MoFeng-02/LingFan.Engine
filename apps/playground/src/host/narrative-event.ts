@@ -28,7 +28,11 @@ export interface NarrativeEventOptions {
 /** 叙事事件落点 */
 export interface NarrativeEvents {
   /** 通知：语气由 `notifyType` 归一，时长缺省走通知档 */
-  notify(text: string, notifyType: unknown, durationMs: number | undefined): void;
+  notify(
+    text: string,
+    notifyType: unknown,
+    durationMs: number | undefined,
+  ): void;
   /** 写档成功（失败走错误分支，不提示成功） */
   saved(slot: string): void;
   /** 读档完成：引擎已重放到存档坐标 */
@@ -55,7 +59,11 @@ export function createNarrativeEvents(
   }
 
   return {
-    notify(text: string, notifyType: unknown, durationMs: number | undefined): void {
+    notify(
+      text: string,
+      notifyType: unknown,
+      durationMs: number | undefined,
+    ): void {
       options.notices.notify(text, notifyType, durationMs);
     },
     saved(slot: string): void {

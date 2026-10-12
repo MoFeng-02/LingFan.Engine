@@ -36,7 +36,9 @@ describe("编辑器包结构不变式", () => {
   it("扫描面自检：glob 命中数量与已知文件（防空扫描假绿）", () => {
     expect(SOURCE_KEYS.length).toBeGreaterThanOrEqual(60);
     expect(SOURCE_KEYS).toContain("../../packages/editor/src/index.ts");
-    expect(SOURCE_KEYS).toContain("../../packages/editor/src/contracts/index.ts");
+    expect(SOURCE_KEYS).toContain(
+      "../../packages/editor/src/contracts/index.ts",
+    );
   });
 
   it("契约层只放类型：contracts/** 内 export function / export class = 0", () => {
@@ -47,14 +49,22 @@ describe("编辑器包结构不变式", () => {
     expect(TYPE_ONLY_VIOLATION_PATTERN.test(allSources)).toBe(true);
     // 正样本自检 2（正则级）：合成字面量必须命中、类型导出必须放过，
     // 证明正则没有写反成恒真/恒假。
-    expect(TYPE_ONLY_VIOLATION_PATTERN.test("export function f() {}")).toBe(true);
+    expect(TYPE_ONLY_VIOLATION_PATTERN.test("export function f() {}")).toBe(
+      true,
+    );
     expect(TYPE_ONLY_VIOLATION_PATTERN.test("export class C {}")).toBe(true);
     expect(TYPE_ONLY_VIOLATION_PATTERN.test("export type T = 1;")).toBe(false);
-    expect(TYPE_ONLY_VIOLATION_PATTERN.test("export interface I {}")).toBe(false);
+    expect(TYPE_ONLY_VIOLATION_PATTERN.test("export interface I {}")).toBe(
+      false,
+    );
 
-    const contractKeys = SOURCE_KEYS.filter((key) => key.includes("/src/contracts/"));
+    const contractKeys = SOURCE_KEYS.filter((key) =>
+      key.includes("/src/contracts/"),
+    );
     expect(contractKeys.length).toBeGreaterThanOrEqual(4);
-    expect(contractKeys).toContain("../../packages/editor/src/contracts/index.ts");
+    expect(contractKeys).toContain(
+      "../../packages/editor/src/contracts/index.ts",
+    );
     const offenders = contractKeys.filter((key) =>
       TYPE_ONLY_VIOLATION_PATTERN.test(EDITOR_SOURCES[key]),
     );
@@ -65,13 +75,15 @@ describe("编辑器包结构不变式", () => {
     expect(SOURCE_KEYS.length).toBeGreaterThanOrEqual(60);
     // 正/负样本自检：正则必须命中两种深度的深引、放过出口形态。
     expect(DEEP_IMPORT_PATTERN.test('from "../schema/opSchemas";')).toBe(true);
-    expect(DEEP_IMPORT_PATTERN.test('from "../../schema/opSchemas";')).toBe(true);
+    expect(DEEP_IMPORT_PATTERN.test('from "../../schema/opSchemas";')).toBe(
+      true,
+    );
     expect(DEEP_IMPORT_PATTERN.test('from "../schema";')).toBe(false);
     expect(DEEP_IMPORT_PATTERN.test('from "../../i18n";')).toBe(false);
 
-    const offenders = SOURCE_KEYS
-      .filter((key) => key.includes("/src/"))
-      .filter((key) => DEEP_IMPORT_PATTERN.test(EDITOR_SOURCES[key]));
+    const offenders = SOURCE_KEYS.filter((key) => key.includes("/src/")).filter(
+      (key) => DEEP_IMPORT_PATTERN.test(EDITOR_SOURCES[key]),
+    );
     expect(offenders).toEqual([]);
   });
 
@@ -82,7 +94,13 @@ describe("编辑器包结构不变式", () => {
     );
     expect(revivals).toEqual([]);
     // 正样本自检：拆分后的目录出口必须存在（否则空扫描也会恒真）。
-    expect(SOURCE_KEYS.some((key) => /\/src\/script\/expr\/index\.ts$/.test(key))).toBe(true);
-    expect(SOURCE_KEYS.some((key) => /\/src\/schema\/opSchemas\/index\.ts$/.test(key))).toBe(true);
+    expect(
+      SOURCE_KEYS.some((key) => /\/src\/script\/expr\/index\.ts$/.test(key)),
+    ).toBe(true);
+    expect(
+      SOURCE_KEYS.some((key) =>
+        /\/src\/schema\/opSchemas\/index\.ts$/.test(key),
+      ),
+    ).toBe(true);
   });
 });

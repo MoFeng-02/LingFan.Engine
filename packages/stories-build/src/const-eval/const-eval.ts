@@ -23,10 +23,12 @@ import { Worker } from "node:worker_threads";
 import type { CompilerDiagnostic } from "../compiler";
 
 /** JSON 可序列化值（求值产物的唯一合法形态）。 */
-export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+export type JsonValue =
+  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 /** 求值结果：要么拿到全部导出常量的可序列化值，要么拿到一组诊断（fail-closed）。 */
-export type ConstEvalResult = { values: Record<string, JsonValue> } | { diags: CompilerDiagnostic[] };
+export type ConstEvalResult =
+  { values: Record<string, JsonValue> } | { diags: CompilerDiagnostic[] };
 
 /** 单轮求值超时（模块顶层死循环不应拖死构建）。 */
 const EVAL_TIMEOUT_MS = 30_000;
@@ -54,7 +56,8 @@ export async function evalConstModule(entry: string): Promise<ConstEvalResult> {
     };
   }
 
-  const evaluateRound = (): Promise<ConstEvalResult> => evaluateOnce(absEntry, esbuildPath);
+  const evaluateRound = (): Promise<ConstEvalResult> =>
+    evaluateOnce(absEntry, esbuildPath);
 
   const first = await evaluateRound();
   if ("diags" in first) return first;
@@ -110,7 +113,10 @@ type WorkerOutcome =
   | WorkerRuntimeMessage
   | { kind: "timeout" };
 
-async function evaluateOnce(absEntry: string, esbuildPath: string): Promise<ConstEvalResult> {
+async function evaluateOnce(
+  absEntry: string,
+  esbuildPath: string,
+): Promise<ConstEvalResult> {
   const outcome = await runWorkerRound({
     entry: absEntry,
     esbuildPath,
@@ -162,7 +168,11 @@ async function evaluateOnce(absEntry: string, esbuildPath: string): Promise<Cons
   }
 }
 
-function runWorkerRound(data: { entry: string; esbuildPath: string; workDir: string }): Promise<WorkerOutcome> {
+function runWorkerRound(data: {
+  entry: string;
+  esbuildPath: string;
+  workDir: string;
+}): Promise<WorkerOutcome> {
   return new Promise((resolve) => {
     const worker = new Worker(WORKER_SOURCE, { eval: true, workerData: data });
     let settled = false;
@@ -173,9 +183,16 @@ function runWorkerRound(data: { entry: string; esbuildPath: string; workDir: str
       void worker.terminate();
       resolve(outcome);
     };
-    const timer = setTimeout(() => finish({ kind: "timeout" }), EVAL_TIMEOUT_MS);
+    const timer = setTimeout(
+      () => finish({ kind: "timeout" }),
+      EVAL_TIMEOUT_MS,
+    );
     worker.on("message", (message: { kind?: unknown }) => {
-      if (message !== null && typeof message === "object" && typeof message.kind === "string") {
+      if (
+        message !== null &&
+        typeof message === "object" &&
+        typeof message.kind === "string"
+      ) {
         finish(message as WorkerOutcome);
       } else {
         finish({ kind: "runtime-error", message: "worker 返回了未知消息形态" });
@@ -188,7 +205,11 @@ function runWorkerRound(data: { entry: string; esbuildPath: string; workDir: str
       });
     });
     worker.on("exit", (code: number) => {
-      if (!settled) finish({ kind: "runtime-error", message: `worker 异常退出（exit code ${code}）` });
+      if (!settled)
+        finish({
+          kind: "runtime-error",
+          message: `worker 异常退出（exit code ${code}）`,
+        });
     });
   });
 }
@@ -302,7 +323,10 @@ function classify(value, seen) {
 // ---------------------------------------------------------------------------
 
 /** 在入口源文件里定位 `export <key>` 声明（1 基 line/col）；找不到退回 1:1。 */
-function locateExport(absEntry: string, key: string): { line: number; col: number } {
+function locateExport(
+  absEntry: string,
+  key: string,
+): { line: number; col: number } {
   let text: string;
   try {
     text = readFileSync(absEntry, "utf8");
@@ -317,7 +341,9 @@ function locateExport(absEntry: string, key: string): { line: number; col: numbe
           new RegExp(
             `(^|\\n)[ \\t]*export[ \t]+(?:const|let|var|async[ \t]+function|function|class)[ \t]+${escaped}\\b`,
           ),
-          new RegExp(`(^|\\n)[ \\t]*export[ \t]*\\{[^}]*\\b${escaped}\\b[^}]*\\}`),
+          new RegExp(
+            `(^|\\n)[ \\t]*export[ \t]*\\{[^}]*\\b${escaped}\\b[^}]*\\}`,
+          ),
         ];
   for (const pattern of patterns) {
     const match = pattern.exec(text);
@@ -326,9 +352,15 @@ function locateExport(absEntry: string, key: string): { line: number; col: numbe
   return { line: 1, col: 1 };
 }
 
-function offsetToPos(text: string, offset: number): { line: number; col: number } {
+function offsetToPos(
+  text: string,
+  offset: number,
+): { line: number; col: number } {
   const lines = text.slice(0, offset).split("\n");
-  return { line: lines.length, col: (lines[lines.length - 1] ?? "").length + 1 };
+  return {
+    line: lines.length,
+    col: (lines[lines.length - 1] ?? "").length + 1,
+  };
 }
 
 function firstDeterminismDiff(
@@ -342,11 +374,15 @@ function firstDeterminismDiff(
   return null;
 }
 
-function deepEqual(a: JsonValue | undefined, b: JsonValue | undefined): boolean {
+function deepEqual(
+  a: JsonValue | undefined,
+  b: JsonValue | undefined,
+): boolean {
   if (a === b) return true;
   if (a === null || b === null || typeof a !== typeof b) return false;
   if (Array.isArray(a) || Array.isArray(b)) {
-    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length)
+      return false;
     return a.every((item, index) => deepEqual(item, b[index]));
   }
   if (typeof a === "object" && typeof b === "object") {
@@ -354,7 +390,12 @@ function deepEqual(a: JsonValue | undefined, b: JsonValue | undefined): boolean 
     const keysB = Object.keys(b);
     if (keysA.length !== keysB.length) return false;
     return keysA.every(
-      (key) => key in b && deepEqual((a as { [k: string]: JsonValue })[key], (b as { [k: string]: JsonValue })[key]),
+      (key) =>
+        key in b &&
+        deepEqual(
+          (a as { [k: string]: JsonValue })[key],
+          (b as { [k: string]: JsonValue })[key],
+        ),
     );
   }
   return false;

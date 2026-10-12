@@ -97,7 +97,9 @@ describe.skipIf(!hasRealProject)("真实工程 · **能打开**", () => {
   it("**写回不产生拍平产物**（不出现 `Stories/<id>.json`）", () => {
     const story = loadReal();
     const { files } = serializeProject(story, MANIFEST);
-    const storyPaths = [...files.keys()].filter((p) => p.startsWith("Stories/"));
+    const storyPaths = [...files.keys()].filter((p) =>
+      p.startsWith("Stories/"),
+    );
     expect(storyPaths.length).toBeGreaterThan(0);
     // 一个都不该是「按 id 重算」的平铺路径
     expect(storyPaths.filter((p) => /\/[^/]+\.json$/.test(p))).toEqual([]);

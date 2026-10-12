@@ -22,7 +22,9 @@ describe("文档按需打开 · 接线互锁（防「预开所有列」回流）
     const src = code(appSource);
     expect(src).toContain("openColumnDocument(tree.entry)");
     // 反面：不得再有「遍历所有列 ⇒ workspace.open」的批量预开
-    expect(src).not.toMatch(/for \(const column of tree\.columns\)\s*\{\s*workspace\.open/);
+    expect(src).not.toMatch(
+      /for \(const column of tree\.columns\)\s*\{\s*workspace\.open/,
+    );
   });
 
   it("选列**按需打开**（点到未开的列必须先建会话）", () => {
@@ -50,7 +52,9 @@ describe("文档按需打开 · 接线互锁（防「预开所有列」回流）
     // `applyOpened` 必须先开 entry，再把它设为活动文档
     const src = code(appSource);
     const open = src.indexOf("openColumnDocument(tree.entry)");
-    const activate = src.indexOf("workspace.activate(storyDocumentPath(tree.entry))");
+    const activate = src.indexOf(
+      "workspace.activate(storyDocumentPath(tree.entry))",
+    );
     expect(open).toBeGreaterThan(-1);
     expect(activate).toBeGreaterThan(open); // 顺序：先开，再激活
   });

@@ -206,8 +206,7 @@ export function removeElements(
         removed = true;
         continue;
       }
-      const children =
-        el.children.length > 0 ? walk(el.children) : el.children;
+      const children = el.children.length > 0 ? walk(el.children) : el.children;
       kept.push(children === el.children ? el : { ...el, children });
     }
     return kept;

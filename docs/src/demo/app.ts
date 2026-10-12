@@ -55,7 +55,9 @@ function setStatus(message: string): void {
 }
 
 function showErrors(tab: Tab, issues: readonly string[]): void {
-  const list = must<HTMLUListElement>(tab === "json" ? "lf-err-json" : "lf-err-story");
+  const list = must<HTMLUListElement>(
+    tab === "json" ? "lf-err-json" : "lf-err-story",
+  );
   list.replaceChildren(
     ...issues.map((issue) => {
       const li = document.createElement("li");
@@ -84,8 +86,10 @@ function syncEditorDom(s: DemoState): void {
   tsArea.value = tsDoc(s.story);
   must<HTMLSpanElement>("lf-dirty-story").hidden = !s.textDirty;
   must<HTMLSpanElement>("lf-dirty-json").hidden = !s.jsonDirty;
-  (must<HTMLButtonElement>("lf-apply-story") as HTMLButtonElement).disabled = !s.textDirty;
-  (must<HTMLButtonElement>("lf-apply-json") as HTMLButtonElement).disabled = !s.jsonDirty;
+  (must<HTMLButtonElement>("lf-apply-story") as HTMLButtonElement).disabled =
+    !s.textDirty;
+  (must<HTMLButtonElement>("lf-apply-json") as HTMLButtonElement).disabled =
+    !s.jsonDirty;
 }
 
 function refreshEditors(s: DemoState): void {
@@ -98,8 +102,14 @@ function setMode(s: DemoState, mode: Mode): void {
   s.mode = mode;
   must<HTMLDivElement>("lf-demo-preview").hidden = mode !== "preview";
   must<HTMLDivElement>("lf-demo-source").hidden = mode !== "source";
-  must<HTMLButtonElement>("lf-mode-preview").setAttribute("aria-pressed", String(mode === "preview"));
-  must<HTMLButtonElement>("lf-mode-source").setAttribute("aria-pressed", String(mode === "source"));
+  must<HTMLButtonElement>("lf-mode-preview").setAttribute(
+    "aria-pressed",
+    String(mode === "preview"),
+  );
+  must<HTMLButtonElement>("lf-mode-source").setAttribute(
+    "aria-pressed",
+    String(mode === "source"),
+  );
   if (mode === "preview") {
     const container = must<HTMLDivElement>("lf-demo-preview");
     container.focus({ preventScroll: true });
@@ -267,14 +277,21 @@ function initDemo(): void {
     s.overlay.advance();
   });
 
-  must<HTMLButtonElement>("lf-mode-preview").addEventListener("click", () => setMode(s, "preview"));
-  must<HTMLButtonElement>("lf-mode-source").addEventListener("click", () => setMode(s, "source"));
+  must<HTMLButtonElement>("lf-mode-preview").addEventListener("click", () =>
+    setMode(s, "preview"),
+  );
+  must<HTMLButtonElement>("lf-mode-source").addEventListener("click", () =>
+    setMode(s, "source"),
+  );
   for (const tab of ["story", "json", "ts"] as const) {
-    must<HTMLButtonElement>(`lf-tab-${tab}`).addEventListener("click", () => setTab(s, tab));
+    must<HTMLButtonElement>(`lf-tab-${tab}`).addEventListener("click", () =>
+      setTab(s, tab),
+    );
   }
   for (const meta of DEMO_STORIES) {
-    must<HTMLButtonElement>(`lf-story-${meta.id}`).addEventListener("click", () =>
-      selectStory(s, meta.id),
+    must<HTMLButtonElement>(`lf-story-${meta.id}`).addEventListener(
+      "click",
+      () => selectStory(s, meta.id),
     );
   }
 
@@ -282,17 +299,20 @@ function initDemo(): void {
     ["story", "textDirty"],
     ["json", "jsonDirty"],
   ] as const) {
-    must<HTMLTextAreaElement>(`lf-text-${tab}`).addEventListener("input", () => {
-      if (tab === "story") {
-        s.textDraft = must<HTMLTextAreaElement>("lf-text-story").value;
-        s.textDirty = true;
-      } else {
-        s.jsonDraft = must<HTMLTextAreaElement>("lf-text-json").value;
-        s.jsonDirty = true;
-      }
-      void dirtyKey;
-      syncEditorDom(s);
-    });
+    must<HTMLTextAreaElement>(`lf-text-${tab}`).addEventListener(
+      "input",
+      () => {
+        if (tab === "story") {
+          s.textDraft = must<HTMLTextAreaElement>("lf-text-story").value;
+          s.textDirty = true;
+        } else {
+          s.jsonDraft = must<HTMLTextAreaElement>("lf-text-json").value;
+          s.jsonDirty = true;
+        }
+        void dirtyKey;
+        syncEditorDom(s);
+      },
+    );
   }
   must<HTMLButtonElement>("lf-regen-story").addEventListener("click", () => {
     s.textDirty = false;
@@ -304,8 +324,12 @@ function initDemo(): void {
     clearErrors("json");
     refreshEditors(s);
   });
-  must<HTMLButtonElement>("lf-apply-story").addEventListener("click", () => applyStory(s));
-  must<HTMLButtonElement>("lf-apply-json").addEventListener("click", () => applyJson(s));
+  must<HTMLButtonElement>("lf-apply-story").addEventListener("click", () =>
+    applyStory(s),
+  );
+  must<HTMLButtonElement>("lf-apply-json").addEventListener("click", () =>
+    applyJson(s),
+  );
 
   selectStory(s, first.id);
 }

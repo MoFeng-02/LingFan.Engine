@@ -94,10 +94,15 @@ describe("assembleProject", () => {
     const files = new Map<string, unknown>([
       ["Stories/chapter1/chapter1.story", singleColumn("chapter1_start")],
     ]);
-    const story = assembleProject({ ...manifest, entry: "chapter1_start" }, files);
+    const story = assembleProject(
+      { ...manifest, entry: "chapter1_start" },
+      files,
+    );
     expect(story.columns.map((c) => c.id)).toEqual(["chapter1_start"]);
     // 「按 id 定位」改由 sourcePath 承担
-    expect(story.columns[0]?.sourcePath).toBe("Stories/chapter1/chapter1.story");
+    expect(story.columns[0]?.sourcePath).toBe(
+      "Stories/chapter1/chapter1.story",
+    );
   });
 
   it("**错位仍被守**（原意图保留）：两个文件声明同一 columnId ⇒ 拒绝", () => {
@@ -177,9 +182,11 @@ describe("assembleProject", () => {
       { shell: { orientation: "diagonal" } },
       { shell: { orientation: 90 } },
     ]) {
-      expect(issuesOf(() => assembleProject({ ...manifest, ...bad }, files)).join("\n")).toMatch(
-        /shell/,
-      );
+      expect(
+        issuesOf(() => assembleProject({ ...manifest, ...bad }, files)).join(
+          "\n",
+        ),
+      ).toMatch(/shell/);
     }
   });
 
@@ -265,10 +272,7 @@ describe("serializeProject（写回往返互锁）", () => {
       "Stories/start.json": flowJson("start", [{ op: "say", text: "甲" }]),
     });
     const { files } = serializeProject(story, manifest);
-    expect([...files.keys()]).toEqual([
-      "Stories/start.json",
-      MANIFEST_FILE,
-    ]);
+    expect([...files.keys()]).toEqual(["Stories/start.json", MANIFEST_FILE]);
     expect(files.get("Stories/start.json")).toBe(
       '{\n  "formatVersion": 1,\n  "id": "start",\n  "kind": "flow",\n  "commands": [\n    {\n      "op": "say",\n      "text": "甲"\n    }\n  ]\n}\n',
     );
@@ -293,7 +297,8 @@ describe("serializeProject（写回往返互锁）", () => {
     expect([...files.keys()]).toEqual(["Stories/ch1.json", MANIFEST_FILE]);
     // 零删除
     expect(
-      diffProjectFiles(files, new Map([["Stories/ch1.json", "旧内容"]])).deletes,
+      diffProjectFiles(files, new Map([["Stories/ch1.json", "旧内容"]]))
+        .deletes,
     ).toEqual([]);
     expect(reAssemble(files)).toEqual(story);
   });
@@ -505,7 +510,10 @@ describe("diffProjectFiles（最小差量）", () => {
     const story = load(entry, { "Stories/start.json": flowJson("start") });
     const withNew: Story = {
       ...story,
-      columns: [...story.columns, column("side", [{ op: "say", text: "支线" }])],
+      columns: [
+        ...story.columns,
+        column("side", [{ op: "say", text: "支线" }]),
+      ],
     };
     const files = serializeProject(withNew, entry).files;
     const diff = diffProjectFiles(files, serializeProject(story, entry).files);
@@ -526,7 +534,10 @@ describe("diffProjectFiles（最小差量）", () => {
     };
     const baseline = new Map(serializeProject(story, entry).files);
     baseline.set("Audio/x.mp3", "音频不该被删");
-    const diff = diffProjectFiles(serializeProject(trimmed, entry).files, baseline);
+    const diff = diffProjectFiles(
+      serializeProject(trimmed, entry).files,
+      baseline,
+    );
     expect(diff.deletes).toEqual(["Stories/side.json"]);
   });
 });
@@ -660,7 +671,12 @@ describe("serializeColumnDocument（单列文档写回）", () => {
 
   it("只产目标列文件一个，不产删除、不碰清单", () => {
     const single = parseStory(
-      { formatVersion: 1, id: "tavern", kind: "flow", commands: [{ op: "say", text: "酒馆" }] },
+      {
+        formatVersion: 1,
+        id: "tavern",
+        kind: "flow",
+        commands: [{ op: "say", text: "酒馆" }],
+      },
       "tavern.json",
     );
     const { files } = serializeColumnDocument(single, "tavern");
@@ -683,17 +699,26 @@ describe("serializeColumnDocument（单列文档写回）", () => {
       ["Stories/tavern.json", JSON.stringify(singleColumn("tavern"), null, 2)],
     ]);
     const single = parseStory(
-      { formatVersion: 1, id: "tavern", kind: "flow", commands: [{ op: "say", text: "改过" }] },
+      {
+        formatVersion: 1,
+        id: "tavern",
+        kind: "flow",
+        commands: [{ op: "say", text: "改过" }],
+      },
       "tavern.json",
     );
     // `diffProjectFiles` 是**整工程**差量器（不在期望集 ⇒ 陈旧），
     // 单文档保存不能直接把单列产物喂给它——必须由调用方按「基线 + 本文档覆盖」组装期望集。
     // 这条断言锁住该边界：喂单列产物 ⇒ start 被判陈旧。
-    const naive = diffProjectFiles(serializeColumnDocument(single, "tavern").files, baseline);
+    const naive = diffProjectFiles(
+      serializeColumnDocument(single, "tavern").files,
+      baseline,
+    );
     expect(naive.deletes).toEqual(["Stories/start.json"]);
     // 正解：期望集 = 打开基线，只覆盖目标文档 ⇒ 差量恰一项、无删除。
     const wanted = new Map(baseline);
-    for (const [path, text] of serializeColumnDocument(single, "tavern").files) {
+    for (const [path, text] of serializeColumnDocument(single, "tavern")
+      .files) {
       wanted.set(path, text);
     }
     const diff = diffProjectFiles(wanted, baseline);
@@ -703,11 +728,19 @@ describe("serializeColumnDocument（单列文档写回）", () => {
 
   it("往返互锁：写出的列文件能重新解析回等价的单列文档", () => {
     const single = parseStory(
-      { formatVersion: 1, id: "tavern", kind: "flow", commands: [{ op: "say", text: "酒馆" }] },
+      {
+        formatVersion: 1,
+        id: "tavern",
+        kind: "flow",
+        commands: [{ op: "say", text: "酒馆" }],
+      },
       "tavern.json",
     );
     const { files } = serializeColumnDocument(single, "tavern");
-    const back = parseStory(JSON.parse(files.get("Stories/tavern.json") ?? "{}"), "tavern.json");
+    const back = parseStory(
+      JSON.parse(files.get("Stories/tavern.json") ?? "{}"),
+      "tavern.json",
+    );
     expect(back.columns).toEqual(single.columns);
   });
 
@@ -732,14 +765,23 @@ describe("serializeColumnDocument（单列文档写回）", () => {
       ).join("\n"),
     ).toContain("恰载一列");
     // 目标列与文档所载不符
-    expect(issues(() => serializeColumnDocument(single, "other")).join("\n")).toContain(
-      "目标不匹配",
-    );
+    expect(
+      issues(() => serializeColumnDocument(single, "other")).join("\n"),
+    ).toContain("目标不匹配");
     // 列结构非法（flow 缺 commands）
     expect(
       issues(() =>
         serializeColumnDocument(
-          storyOf([{ id: "x", kind: "flow", commands: undefined as unknown as StoryCommand[] }], "x"),
+          storyOf(
+            [
+              {
+                id: "x",
+                kind: "flow",
+                commands: undefined as unknown as StoryCommand[],
+              },
+            ],
+            "x",
+          ),
           "x",
         ),
       ).join("\n"),

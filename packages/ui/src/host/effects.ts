@@ -26,7 +26,11 @@
  * 逐帧读 `animations()` 而非构造期取一次：动画由故事命令在任意时刻建立。
  */
 
-import { interpolateAnimation, shakeOffset, transitionOpacity } from "../element";
+import {
+  interpolateAnimation,
+  shakeOffset,
+  transitionOpacity,
+} from "../element";
 import type { AnimationSpec } from "@lingfan/engine";
 
 /**

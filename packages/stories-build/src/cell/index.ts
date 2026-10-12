@@ -25,4 +25,9 @@ export { renderFunRegister } from "./render-register";
 /** 标准全局白名单（16 项），供调用方比对或拼接自己的白名单 */
 export { DEFAULT_GLOBAL_WHITELIST } from "./whitelist";
 /** 提取产出、问题与可配置项的形状 */
-export type { CellIssue, CellScan, FileImports, ScanCellsOptions } from "./types";
+export type {
+  CellIssue,
+  CellScan,
+  FileImports,
+  ScanCellsOptions,
+} from "./types";

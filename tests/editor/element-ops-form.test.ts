@@ -16,7 +16,14 @@ function sceneStory(elements: ElementNode[]): Story {
     formatVersion: 1,
     id: "demo",
     entry: "stage",
-    columns: [{ id: "stage", kind: "scene", elements, entry: [{ op: "say", text: "x" }] }],
+    columns: [
+      {
+        id: "stage",
+        kind: "scene",
+        elements,
+        entry: [{ op: "say", text: "x" }],
+      },
+    ],
   };
 }
 
@@ -49,7 +56,11 @@ describe("元素表单 · ops 字段", () => {
 
   it("三个 disabled_* 视觉态字段下发（对 Ren'Py insensitive_*）", () => {
     const keys = describeElement("imagebutton")!.fields.map((f) => f.key);
-    for (const key of ["disabled_source", "disabled_color", "disabled_opacity"]) {
+    for (const key of [
+      "disabled_source",
+      "disabled_color",
+      "disabled_opacity",
+    ]) {
       expect(keys, `${key} 应在表单里`).toContain(key);
     }
   });
@@ -68,7 +79,10 @@ describe("编辑期诊断 · 序列里的必拒 op", () => {
       {
         type: "button",
         text: "点我",
-        ops: [{ op: "set", key: "a", value: 1 }, { op: "jump", target: "x" }],
+        ops: [
+          { op: "set", key: "a", value: 1 },
+          { op: "jump", target: "x" },
+        ],
       },
     ]);
     const diagnostics = analyzeStory(story).filter(
@@ -94,9 +108,7 @@ describe("编辑期诊断 · 序列里的必拒 op", () => {
     expect(diagnostics).toHaveLength(ELEMENT_OPS_BLOCKED.size);
     // 指针覆盖每一个下标（精确到条目）
     const pointers = diagnostics.map((d) => d.pointer).sort();
-    const expected = ops
-      .map((_, i) => `/columns/0/elements/0/ops/${i}`)
-      .sort();
+    const expected = ops.map((_, i) => `/columns/0/elements/0/ops/${i}`).sort();
     expect(pointers).toEqual(expected);
   });
 

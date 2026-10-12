@@ -154,7 +154,9 @@ function badgeOf(node: ChapterNode): string | null {
                        「章节名」已由目录标题承担，节点若仍用 label 会在目录下重复同一个名字。
                        列 id 才是能区分场景的标识（时间线/诊断也都用它）。 -->
                   <span class="ch-label">{{ node.id }}</span>
-                  <span v-if="badgeOf(node)" class="ch-badge">{{ badgeOf(node) }}</span>
+                  <span v-if="badgeOf(node)" class="ch-badge">{{
+                    badgeOf(node)
+                  }}</span>
                   <span class="ch-meta">{{ node.commandCount }}</span>
                 </button>
               </li>
@@ -173,13 +175,14 @@ function badgeOf(node: ChapterNode): string | null {
               @click="api.selectColumn(node.id)"
             >
               <span class="ch-label">{{ node.label }}</span>
-              <span v-if="badgeOf(node)" class="ch-badge">{{ badgeOf(node) }}</span>
+              <span v-if="badgeOf(node)" class="ch-badge">{{
+                badgeOf(node)
+              }}</span>
               <span class="ch-meta">{{ node.commandCount }}</span>
             </button>
           </li>
         </ul>
       </section>
-
     </template>
   </div>
 </template>

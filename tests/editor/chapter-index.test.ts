@@ -22,11 +22,18 @@ import {
 } from "../../packages/editor/src/chapters";
 import type { StoryColumn } from "@lingfan/engine";
 
-function col(id: string, type?: "game" | "menu" | "ui", kind: "flow" | "scene" = "flow"): StoryColumn {
+function col(
+  id: string,
+  type?: "game" | "menu" | "ui",
+  kind: "flow" | "scene" = "flow",
+): StoryColumn {
   const base: StoryColumn = {
     id,
     kind,
-    commands: Array.from({ length: 10 }, (_, i) => ({ op: "say", text: `${id}-${i}` })),
+    commands: Array.from({ length: 10 }, (_, i) => ({
+      op: "say",
+      text: `${id}-${i}`,
+    })),
   };
   return type === undefined ? base : { ...base, type };
 }
@@ -40,7 +47,10 @@ const realInputs: ChapterInput[] = [
   { path: "Stories/system/showcase.story", column: col("showcase") },
   { path: "Stories/system/about.story", column: col("about", "menu") },
   { path: "Stories/system/sandbox.story", column: col("sandbox", "menu") },
-  { path: "Stories/system/audio_demo.story", column: col("audio_demo", "menu") },
+  {
+    path: "Stories/system/audio_demo.story",
+    column: col("audio_demo", "menu"),
+  },
   { path: "Stories/title/title_main.story", column: col("title_main", "menu") },
 ];
 
@@ -55,7 +65,10 @@ describe("章节树 · 分组**只看 type，不看目录**（核心约定）", 
   it("**回归：system/showcase 在界面目录下但 type=game ⇒ 归剧情组**", () => {
     const index = buildChapterIndex(realInputs);
     const showcase = index.story.find((n) => n.id === "showcase");
-    expect(showcase, "showcase 是剧情，不该因目录名 system 被归到界面组").toBeDefined();
+    expect(
+      showcase,
+      "showcase 是剧情，不该因目录名 system 被归到界面组",
+    ).toBeDefined();
     expect(index.ui.find((n) => n.id === "showcase")).toBeUndefined();
   });
 
@@ -97,12 +110,17 @@ describe("章节树 · **任意深度递归**（不写死层数）", () => {
     ];
     const index = buildChapterIndex(deep);
     // 目录键是**剥掉 `Stories/` 前缀后**的相对链（容器根不算章节）
-    expect(index.dirs.map((d) => d.path).sort()).toEqual(["part1/act1/", "part1/act2/"]);
+    expect(index.dirs.map((d) => d.path).sort()).toEqual([
+      "part1/act1/",
+      "part1/act2/",
+    ]);
     expect(index.dirs[0]?.children).toHaveLength(1);
   });
 
   it("**目录分组不分深度**（1 层与 3 层同一套判据）", () => {
-    const one = buildChapterIndex([{ path: "Stories/c1/a.story", column: col("a") }]);
+    const one = buildChapterIndex([
+      { path: "Stories/c1/a.story", column: col("a") },
+    ]);
     const three = buildChapterIndex([
       { path: "Stories/x/y/z/a.story", column: col("a") },
     ]);
@@ -182,11 +200,15 @@ describe("章节树 · 边界条件", () => {
   });
 
   it("汇总文案：有场景时分类计数", () => {
-    expect(chapterSummaryText(buildChapterIndex(realInputs))).toBe("4 个剧情 · 4 个界面");
+    expect(chapterSummaryText(buildChapterIndex(realInputs))).toBe(
+      "4 个剧情 · 4 个界面",
+    );
   });
 
   it("只有剧情时不提界面（不显示「0 个界面」）", () => {
-    const index = buildChapterIndex([{ path: "Stories/a.story", column: col("a") }]);
+    const index = buildChapterIndex([
+      { path: "Stories/a.story", column: col("a") },
+    ]);
     expect(chapterSummaryText(index)).toBe("1 个剧情");
   });
 
@@ -195,9 +217,14 @@ describe("章节树 · 边界条件", () => {
       id: "s",
       kind: "scene",
       elements: [],
-      entry: [{ op: "say", text: "a" }, { op: "say", text: "b" }],
+      entry: [
+        { op: "say", text: "a" },
+        { op: "say", text: "b" },
+      ],
     };
-    const index = buildChapterIndex([{ path: "Stories/s.story", column: sceneCol }]);
+    const index = buildChapterIndex([
+      { path: "Stories/s.story", column: sceneCol },
+    ]);
     expect(index.story[0]?.commandCount).toBe(2);
   });
 
@@ -252,7 +279,9 @@ describe("章节目录 · 按组过滤（storyDirs / uiDirs）", () => {
   });
 
   it("**平铺工程**：两组目录均为空（退化为平铺列表，不报错）", () => {
-    const index = buildChapterIndex([{ path: "Stories/start.json", column: col("start") }]);
+    const index = buildChapterIndex([
+      { path: "Stories/start.json", column: col("start") },
+    ]);
     expect(index.storyDirs).toEqual([]);
     expect(index.uiDirs).toEqual([]);
     expect(index.flat).toBe(true);

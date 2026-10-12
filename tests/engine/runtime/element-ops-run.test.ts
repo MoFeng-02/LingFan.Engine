@@ -158,7 +158,13 @@ describe("runElementOps · 故意错误（fail-closed + 原子回滚）", () => 
       parseStory({
         formatVersion: 1,
         id: "demo",
-        columns: [{ id: "s", kind: "flow", commands: [{ op: "set", key: "a", value: 1 }] }],
+        columns: [
+          {
+            id: "s",
+            kind: "flow",
+            commands: [{ op: "set", key: "a", value: 1 }],
+          },
+        ],
       }),
     );
     const errors: OutboundEvent[] = [];
@@ -175,12 +181,16 @@ describe("runElementOps · 故意错误（fail-closed + 原子回滚）", () => 
       parseStory({
         formatVersion: 1,
         id: "demo",
-        columns: [{ id: "s", kind: "flow", commands: [{ op: "say", text: "x" }] }],
+        columns: [
+          { id: "s", kind: "flow", commands: [{ op: "say", text: "x" }] },
+        ],
       }),
     );
     const errors: OutboundEvent[] = [];
     engine.onEvent((e) => errors.push(e));
-    expect(engine.runElementOps([{ op: "set", key: "a", value: 1 }])).toBe(false);
+    expect(engine.runElementOps([{ op: "set", key: "a", value: 1 }])).toBe(
+      false,
+    );
     expect(errorCodes(errors)).toContain("element-ops-invalid");
   });
 

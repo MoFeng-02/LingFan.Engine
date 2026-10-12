@@ -17,10 +17,22 @@ export type PathVerdict =
 
 /** 允许外部编辑器打开的扩展名（**白名单**：不在表内一律拒绝，不做"猜测编辑器"） */
 export const OPENABLE_EXTENSIONS: readonly string[] = [
-  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
-  ".json", ".jsonc",
-  ".md", ".txt", ".html", ".css",
-  ".yml", ".yaml", ".toml", ".env",
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+  ".json",
+  ".jsonc",
+  ".md",
+  ".txt",
+  ".html",
+  ".css",
+  ".yml",
+  ".yaml",
+  ".toml",
+  ".env",
 ];
 
 /** 允许「外部编辑器打开」的**目录白名单**（相对资源根）——源码面在资源根**之外**，需显式放行 */
@@ -101,7 +113,10 @@ function extensionOf(path: string): string {
  * token 校验：**不符一律 404**（不区分"token 错"与"路径不存在"，避免探测）。
  * 每次启动随机 ⇒ 别的进程/别的标签页拿不到。
  */
-export function tokenMatches(expected: string, received: string | null): boolean {
+export function tokenMatches(
+  expected: string,
+  received: string | null,
+): boolean {
   if (typeof received !== "string" || received.length === 0) return false;
   // 定长比较（避免按前缀早退泄露信息）
   if (received.length !== expected.length) return false;
@@ -129,7 +144,14 @@ export function tokenHex(bytes: Uint8Array): string {
 
 /** 打包请求的校验结果 */
 export type PackVerdict =
-  | { readonly ok: true; readonly input: string; readonly output: string; readonly force: boolean; readonly strict: boolean; readonly dist: string | undefined }
+  | {
+      readonly ok: true;
+      readonly input: string;
+      readonly output: string;
+      readonly force: boolean;
+      readonly strict: boolean;
+      readonly dist: string | undefined;
+    }
   | { readonly ok: false; readonly reason: string };
 
 /**
@@ -146,33 +168,52 @@ export type PackVerdict =
  * - 路径不得含 `..` 段。
  */
 export function packRequestOf(raw: unknown): PackVerdict {
-  if (typeof raw !== "object" || raw === null) return { ok: false, reason: "请求体必须是对象" };
-  const o = raw as { input?: unknown; output?: unknown; force?: unknown; strict?: unknown; dist?: unknown };
+  if (typeof raw !== "object" || raw === null)
+    return { ok: false, reason: "请求体必须是对象" };
+  const o = raw as {
+    input?: unknown;
+    output?: unknown;
+    force?: unknown;
+    strict?: unknown;
+    dist?: unknown;
+  };
   if (typeof o.input !== "string" || typeof o.output !== "string") {
     return { ok: false, reason: "缺少 input / output（两者都是绝对路径）" };
   }
-  for (const [label, value] of [["input", o.input], ["output", o.output]] as const) {
+  for (const [label, value] of [
+    ["input", o.input],
+    ["output", o.output],
+  ] as const) {
     if (value === "") return { ok: false, reason: `${label} 不能为空` };
     if (!/^[a-zA-Z]:[\\/]/.test(value) && !value.startsWith("/")) {
       return { ok: false, reason: `${label} 必须是绝对路径（当前是相对路径）` };
     }
     const segments = value.replace(/\\/g, "/").split("/");
-    if (segments.includes("..")) return { ok: false, reason: `${label} 不得含 .. 段` };
+    if (segments.includes(".."))
+      return { ok: false, reason: `${label} 不得含 .. 段` };
   }
   const input = o.input;
   const output = o.output;
-  if (input === output) return { ok: false, reason: "输出目录不能与工程根相同（--force 会清空它）" };
+  if (input === output)
+    return {
+      ok: false,
+      reason: "输出目录不能与工程根相同（--force 会清空它）",
+    };
   const inNorm = input.replace(/\\/g, "/").replace(/\/+$/, "");
   const outNorm = output.replace(/\\/g, "/").replace(/\/+$/, "");
   if (outNorm === inNorm || outNorm.startsWith(`${inNorm}/`)) {
     return { ok: false, reason: "输出目录不能位于工程根之内" };
   }
   if (inNorm.startsWith(`${outNorm}/`)) {
-    return { ok: false, reason: "工程根不能位于输出目录之内（--force 清空输出时会连带删除工程）" };
+    return {
+      ok: false,
+      reason: "工程根不能位于输出目录之内（--force 清空输出时会连带删除工程）",
+    };
   }
   let dist: string | undefined;
   if (o.dist !== undefined && o.dist !== null && o.dist !== "") {
-    if (typeof o.dist !== "string") return { ok: false, reason: "dist 必须是字符串路径" };
+    if (typeof o.dist !== "string")
+      return { ok: false, reason: "dist 必须是字符串路径" };
     if (!/^[a-zA-Z]:[\\/]/.test(o.dist) && !o.dist.startsWith("/")) {
       return { ok: false, reason: "dist 必须是绝对路径" };
     }
@@ -216,13 +257,17 @@ export const WATCH_IGNORED_DIRS: ReadonlySet<string> = new Set([
  *
  * **不忽略** `Saves/`：它是作者数据（存档）—— 与 Rust 侧一致（Rust 监视整个源根）。
  */
-export function shouldReloadOn(path: string, kind: "change" | "rename"): WatchVerdict {
+export function shouldReloadOn(
+  path: string,
+  kind: "change" | "rename",
+): WatchVerdict {
   if (path === "") return { reload: false, reason: "空路径" };
   const unified = path.replace(/\\/g, "/");
   const segments = unified.split("/").filter((s) => s !== "" && s !== ".");
   if (segments.length === 0) return { reload: false, reason: "无有效路径段" };
   const file = segments[segments.length - 1] ?? "";
-  if (file.startsWith(".") && file.length > 1) return { reload: false, reason: "点文件" };
+  if (file.startsWith(".") && file.length > 1)
+    return { reload: false, reason: "点文件" };
   // 临时/备份文件：先删后建过程中的中间态
   if (
     file.endsWith("~") ||

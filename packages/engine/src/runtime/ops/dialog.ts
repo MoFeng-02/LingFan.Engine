@@ -43,11 +43,7 @@ const WAIT_FIELDS = new Set(["op", "seconds", "skipable"]);
 const PAUSE_FIELDS = new Set(["op", "seconds"]);
 
 /** say：写对话系统键 → 进入 dialog 等待（文本先翻译后插值） */
-export function execSay(
-  ctx: OpContext,
-  frame: Frame,
-  cmd: StoryCommand,
-): void {
+export function execSay(ctx: OpContext, frame: Frame, cmd: StoryCommand): void {
   if (ctx.rejectBadInstanceZ(cmd)) return; // 先拒非法 z（不动状态）
   if (typeof cmd.text !== "string" || cmd.text === "") {
     ctx.fail("say-invalid", "say 负载必须有非空 text 字符串");

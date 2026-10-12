@@ -37,14 +37,16 @@ describe("四区骨架 · 接线互锁", () => {
     const src = code(appSource);
     expect(src).toContain('side="left"');
     expect(src).toContain('side="right"');
-    expect(src).toContain("@resize=\"setLeftWidth\"");
-    expect(src).toContain("@resize=\"setRightWidth\"");
+    expect(src).toContain('@resize="setLeftWidth"');
+    expect(src).toContain('@resize="setRightWidth"');
   });
 
   it("侧栏宽度由内联样式驱动（不写死在 CSS 里）", () => {
     expect(code(appSource)).toContain("layout.leftWidth");
     // CSS 里不得再有写死的侧栏宽度
-    expect(code(appSource)).not.toMatch(/\.columns-pane\s*\{[^}]*width:\s*\d+px/);
+    expect(code(appSource)).not.toMatch(
+      /\.columns-pane\s*\{[^}]*width:\s*\d+px/,
+    );
   });
 
   it("三个侧栏切面**共享同一份树**（不各持数据源）", () => {
@@ -58,8 +60,8 @@ describe("四区骨架 · 接线互锁", () => {
   });
 
   it("状态栏接宿主能力与脏计数（工程级事实，不复制别处已有信息）", () => {
-    expect(code(appSource)).toContain(":dirty-count=\"workspace.dirtyCount\"");
-    expect(code(appSource)).toContain(":local-host=\"localHostAvailable\"");
+    expect(code(appSource)).toContain(':dirty-count="workspace.dirtyCount"');
+    expect(code(appSource)).toContain(':local-host="localHostAvailable"');
     expect(code(statusSource)).toContain("localHost");
   });
 
@@ -86,7 +88,7 @@ describe("四区骨架 · 接线互锁", () => {
     expect(leftTabs.slice(0, 400)).toContain('class="tab-strip left-tabs"');
     // 顶栏的视图切换（步1）补齐了 tab 语义
     expect(src).toContain('role="tablist"');
-    expect(src).toContain('aria-selected');
+    expect(src).toContain("aria-selected");
     // 活动栏组件已随之删除
     expect(src).not.toContain("ActivityBar");
   });
@@ -104,17 +106,24 @@ describe("回归 · 脏标记必须同时点亮工具栏与标签栏", () => {
   it("会话订阅回调里同时投影 `dirty` 与 `documentDirty`", () => {
     const src = code(appSource);
     // bindActive 的订阅体 = 唯一会在「编辑动作」后触发的地方
-    const sub = src.slice(src.indexOf("unsubscribeSession = doc.session.subscribe"));
+    const sub = src.slice(
+      src.indexOf("unsubscribeSession = doc.session.subscribe"),
+    );
     expect(sub).toContain("dirty.value = doc.session.dirty");
     // 缺这一行 ⇒ 标签脏点永不亮（结构没变时结构订阅不会触发）
-    expect(sub).toContain("documentDirty.value = new Set(workspace.dirtyPaths)");
+    expect(sub).toContain(
+      "documentDirty.value = new Set(workspace.dirtyPaths)",
+    );
   });
 
   it("bindActive 绑定完成时也投影一次（切标签即刷新该标签的脏态）", () => {
     const src = code(appSource);
     const fn = src.slice(src.indexOf("function bindActive"));
     const tail = fn.slice(0, fn.indexOf("let unsubscribeSession"));
-    const occurrences = (tail.match(/documentDirty\.value = new Set\(workspace\.dirtyPaths\)/g) ?? []).length;
+    const occurrences = (
+      tail.match(/documentDirty\.value = new Set\(workspace\.dirtyPaths\)/g) ??
+      []
+    ).length;
     // 订阅回调内 1 次 + 绑定完成 1 次 = 2 次
     expect(occurrences).toBe(2);
   });
@@ -122,7 +131,9 @@ describe("回归 · 脏标记必须同时点亮工具栏与标签栏", () => {
   it("工具栏与标签栏读的是**同一**事实源（`session.dirty` / `workspace.dirtyPaths`）", () => {
     const src = code(appSource);
     expect(src).toContain("dirty.value = doc.session.dirty");
-    expect(src).toContain("documentDirty.value = new Set(workspace.dirtyPaths)");
+    expect(src).toContain(
+      "documentDirty.value = new Set(workspace.dirtyPaths)",
+    );
   });
 });
 
@@ -139,7 +150,11 @@ describe("回归 · 脏标记必须同时点亮工具栏与标签栏", () => {
  */
 describe("TDZ 守卫 · 声明顺序", () => {
   /** @param name 变量名 @param before 必须在它之前的标记（按源码位置） */
-  const declaredBefore = (name: string, before: string, src: string): boolean => {
+  const declaredBefore = (
+    name: string,
+    before: string,
+    src: string,
+  ): boolean => {
     const at = src.indexOf(`const ${name}`);
     const use = src.indexOf(before);
     return at >= 0 && use >= 0 && at < use;
@@ -154,18 +169,24 @@ describe("TDZ 守卫 · 声明顺序", () => {
 
   it("documentDirty 声明在 attachSession 首次调用之前（setup 中途会执行）", () => {
     const src = code(appSource);
-    expect(declaredBefore("documentDirty", "attachSession(session)", src)).toBe(true);
+    expect(declaredBefore("documentDirty", "attachSession(session)", src)).toBe(
+      true,
+    );
   });
 
   it("resourcePaths 依赖的 diagnosticSupply 声明在 resourcePaths 之前", () => {
     const src = code(appSource);
-    expect(declaredBefore("diagnosticSupply", "const resourcePaths", src)).toBe(true);
+    expect(declaredBefore("diagnosticSupply", "const resourcePaths", src)).toBe(
+      true,
+    );
   });
 
   it("layout / searchCorpus 声明在用它们的 computed 之前", () => {
     const src = code(appSource);
     expect(declaredBefore("layout", "setLeftWidth", src)).toBe(true);
-    expect(declaredBefore("searchCorpus", "const searchReport", src)).toBe(true);
+    expect(declaredBefore("searchCorpus", "const searchReport", src)).toBe(
+      true,
+    );
   });
 });
 
@@ -180,7 +201,9 @@ describe("回归 · 原生对话框清零 + 五态接线", () => {
     ] as const) {
       const src = code(raw);
       // 守卫对象是**代码**（注释里提到 window.prompt 是正常的）
-      expect(src, `${name} 仍用原生对话框`).not.toMatch(/[^.\w]window\.(prompt|confirm|alert)\s*\(/);
+      expect(src, `${name} 仍用原生对话框`).not.toMatch(
+        /[^.\w]window\.(prompt|confirm|alert)\s*\(/,
+      );
       expect(src, `${name} 仍有裸 alert(`).not.toMatch(/(^|[^.\w])alert\s*\(/);
     }
   });
@@ -199,7 +222,9 @@ describe("回归 · 原生对话框清零 + 五态接线", () => {
     }
     // 至少一处带常显 + 低强调 + hover 提升
     const timeline = code(timelineSource);
-    expect(timeline).toMatch(/\.row-ops\s*\{[^}]*display:\s*inline-flex[^}]*opacity:/);
+    expect(timeline).toMatch(
+      /\.row-ops\s*\{[^}]*display:\s*inline-flex[^}]*opacity:/,
+    );
     expect(timeline).toMatch(/:hover \.row-ops\s*\{[^}]*opacity:\s*1/);
   });
 
@@ -252,7 +277,9 @@ describe("回归 · 切标签同步选中列", () => {
   });
 
   it("时间线按 `columnId` 在**当前 story** 里找列（这条前提不能变）", () => {
-    expect(timelineSource).toMatch(/props\.story\.columns\.find\(\(c\)\s*=>\s*c\.id\s*===\s*props\.columnId\)/);
+    expect(timelineSource).toMatch(
+      /props\.story\.columns\.find\(\(c\)\s*=>\s*c\.id\s*===\s*props\.columnId\)/,
+    );
   });
 
   it("非故事文档（译文表/清单）切标签**不动** `selectedColumnId`", () => {
@@ -289,8 +316,12 @@ describe("热重载 · 接线与顺序", () => {
   it("探测命中且开关开着 ⇒ 起轮询", () => {
     expect(appSource).toContain("pollWatch(host");
     // 结构改成 if/else-if（探测失败走横幅，不再是 else 兜底）
-    expect(appSource).toContain("if (host === undefined) hostHint.value = true;");
-    expect(appSource).toContain("if (hotReloadEnabled.value) startHotReload(host);");
+    expect(appSource).toContain(
+      "if (host === undefined) hostHint.value = true;",
+    );
+    expect(appSource).toContain(
+      "if (hotReloadEnabled.value) startHotReload(host);",
+    );
   });
 
   it("**脏文档时不自动重载**（静默重载会丢作者改动）", () => {
@@ -302,7 +333,9 @@ describe("热重载 · 接线与顺序", () => {
 
   it("页面卸载停轮询（定时器不泄漏）", () => {
     expect(appSource).toContain("onBeforeUnmount");
-    expect(appSource).toMatch(/onBeforeUnmount\(\(\) => \{[\s\S]*?stopHotReload\?\.\(\)/);
+    expect(appSource).toMatch(
+      /onBeforeUnmount\(\(\) => \{[\s\S]*?stopHotReload\?\.\(\)/,
+    );
   });
 });
 
@@ -316,7 +349,9 @@ describe("热重载 · 接线与顺序", () => {
  */
 describe("宿主未启动提示 · 非阻塞", () => {
   it("用**横幅**（`hostHint` 状态）而非 `dialog.notify`", () => {
-    expect(appSource).toContain("if (host === undefined) hostHint.value = true;");
+    expect(appSource).toContain(
+      "if (host === undefined) hostHint.value = true;",
+    );
     // 窗口只取**探测 IIFE 内部**（前面几百字符里有骨架生成等无关的 dialog.notify）
     const fnAt = appSource.indexOf("const host = await detectLocalHost();");
     expect(fnAt).toBeGreaterThan(-1);
@@ -328,7 +363,9 @@ describe("宿主未启动提示 · 非阻塞", () => {
     expect(body).toContain("hostHint.value = true");
     // 必须**去注释**再判：说明文字里也写着「用 `dialog.notify`」，
     //    那是说明，不是代码（否则拿源码断言当代码断言）。
-    const bodyCode = body.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    const bodyCode = body
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/[^\n]*/g, "");
     expect(bodyCode).not.toContain("dialog.notify");
   });
 
@@ -341,7 +378,7 @@ describe("宿主未启动提示 · 非阻塞", () => {
 
   it("横幅可关闭（`@click` 把 `hostHint` 置回 false）", () => {
     expect(appSource).toContain('class="host-hint-x"');
-    expect(appSource).toContain("@click=\"hostHint = false\"");
+    expect(appSource).toContain('@click="hostHint = false"');
   });
 
   it("横幅文案给出**可执行**的启用命令（不是空话）", () => {
@@ -362,13 +399,21 @@ describe("宿主未启动提示 · 非阻塞", () => {
  */
 describe("能力探测 · 触发时机", () => {
   it("探测在 `onMounted` 内（不是 setup 顶层的裸 IIFE）", () => {
-    expect(appSource).toMatch(/onMounted\(\(\) => \{\s*void \(async \(\) => \{[\s\S]*?detectLocalHost\(\)/);
+    expect(appSource).toMatch(
+      /onMounted\(\(\) => \{\s*void \(async \(\) => \{[\s\S]*?detectLocalHost\(\)/,
+    );
     // 顶层裸 IIFE 的形态（`void (async` 紧跟在 computed 之后、无 onMounted 包裹）不再允许
-    expect(appSource).not.toMatch(/\nvoid \(async \(\) => \{\n\s*\/\/ 能力探测/);
+    expect(appSource).not.toMatch(
+      /\nvoid \(async \(\) => \{\n\s*\/\/ 能力探测/,
+    );
   });
 
   it("探测命中 ⇒ 起热重载；未命中 ⇒ 显示**非阻塞横幅**", () => {
-    expect(appSource).toContain("if (host === undefined) hostHint.value = true;");
-    expect(appSource).toContain("if (hotReloadEnabled.value) startHotReload(host);");
+    expect(appSource).toContain(
+      "if (host === undefined) hostHint.value = true;",
+    );
+    expect(appSource).toContain(
+      "if (hotReloadEnabled.value) startHotReload(host);",
+    );
   });
 });

@@ -19,7 +19,11 @@ export function elementValueText(value: unknown): string {
  * op（见 `parseCommands`），加前缀后元素与 op 两侧都可达，往返精确。其余类型裸写，
  * 与既有文本写法保持一致（不制造无谓改动）。
  */
-export function generateElement(node: ElementNode, pad: string, out: string[]): void {
+export function generateElement(
+  node: ElementNode,
+  pad: string,
+  out: string[],
+): void {
   const tokens: string[] = ELEMENT_OP_CONFLICTS.has(node.type)
     ? ["element", node.type]
     : [node.type];

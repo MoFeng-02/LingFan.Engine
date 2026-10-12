@@ -44,7 +44,10 @@ export type DialogRequest =
       readonly kind: "choice";
       readonly title: string;
       readonly message?: string;
-      readonly options: readonly { readonly value: string; readonly label: string }[];
+      readonly options: readonly {
+        readonly value: string;
+        readonly label: string;
+      }[];
     }
   | {
       readonly kind: "notice";
@@ -187,9 +190,13 @@ export class DialogHostState {
  */
 export interface DialogPort {
   /** 返回 `null` = 取消；返回 `""` = 确定但无值 */
-  askText(request: Omit<Extract<DialogRequest, { kind: "text" }>, "kind">): Promise<string | null>;
+  askText(
+    request: Omit<Extract<DialogRequest, { kind: "text" }>, "kind">,
+  ): Promise<string | null>;
   /** `false` = 取消 */
-  askConfirm(request: Omit<Extract<DialogRequest, { kind: "confirm" }>, "kind">): Promise<boolean>;
+  askConfirm(
+    request: Omit<Extract<DialogRequest, { kind: "confirm" }>, "kind">,
+  ): Promise<boolean>;
   /**
    * 选项选择：返回所选 `value`；`null` = 取消（含越界值 fail-closed）。
    * 泛型直通：调用方给出的 `options[].value` 字面量类型（如 `"game"|"menu"|"ui"`）
@@ -202,7 +209,9 @@ export interface DialogPort {
     readonly options: readonly { readonly value: T; readonly label: string }[];
   }): Promise<T | null>;
   /** 通知（无取消） */
-  notify(request: Omit<Extract<DialogRequest, { kind: "notice" }>, "kind">): Promise<void>;
+  notify(
+    request: Omit<Extract<DialogRequest, { kind: "notice" }>, "kind">,
+  ): Promise<void>;
 }
 
 /** 把状态机接成 Promise 外观（渲染由宿主订阅 `state.subscribe`） */
@@ -219,7 +228,10 @@ export function createDialogPort(state: DialogHostState): DialogPort {
     async askChoice<T extends string>(request: {
       readonly title: string;
       readonly message?: string;
-      readonly options: readonly { readonly value: T; readonly label: string }[];
+      readonly options: readonly {
+        readonly value: T;
+        readonly label: string;
+      }[];
     }): Promise<T | null> {
       const raw = await state.ask({ kind: "choice", ...request });
       const parsed = parseChoiceAnswer(

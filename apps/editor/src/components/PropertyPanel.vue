@@ -18,23 +18,19 @@ const api = inject(EDITOR_API_KEY)!;
  * 选中态**四态**：`none` / `non-command` / `unknown-op` / `command`。
  * 判定收在 `@lingfan/editor` 的纯函数里（可测），本组件只按 `kind` 选文案。
  */
-const selection = computed(() =>
-  describeSelection(props.story, props.pointer),
-);
+const selection = computed(() => describeSelection(props.story, props.pointer));
 
 const cmd = computed(() =>
   props.pointer === null
     ? undefined
     : (getAtPointer(props.story, props.pointer) as
-        | Record<string, unknown>
-        | undefined),
+        Record<string, unknown> | undefined),
 );
 
 /** 仅 `command` / `unknown-op` 是「落在命令上」（面包屑与表单区只对这两态有意义） */
 const onCommand = computed(
   () =>
-    selection.value.kind === "command" ||
-    selection.value.kind === "unknown-op",
+    selection.value.kind === "command" || selection.value.kind === "unknown-op",
 );
 
 const opName = computed(() =>
@@ -154,7 +150,10 @@ const ancestors = computed(() => {
           :field="field"
           :value="cmd![field.key]"
         />
-        <p v-if="descriptor !== undefined && descriptor.fields.length === 0" class="hint">
+        <p
+          v-if="descriptor !== undefined && descriptor.fields.length === 0"
+          class="hint"
+        >
           该命令无负载字段。
         </p>
       </div>

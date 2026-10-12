@@ -125,7 +125,9 @@ interface FakeEngine {
   listeners: Array<(c: { key: string; value: unknown; scope: string }) => void>;
   events: Array<(e: unknown) => void>;
   state: Map<string, unknown>;
-  onStateChanged: (l: (c: { key: string; value: unknown; scope: string }) => void) => () => void;
+  onStateChanged: (
+    l: (c: { key: string; value: unknown; scope: string }) => void,
+  ) => () => void;
   onEvent: (l: (e: unknown) => void) => () => void;
   get: (key: string) => unknown;
   advance: ReturnType<typeof vi.fn>;
@@ -233,7 +235,9 @@ describe("骨架：五挂载点建齐且层级正确", () => {
     expect(z(overlay.mounts.choices)).toBe(1100);
     expect(z(overlay.mounts.overlay)).toBe(1300);
     expect(z(overlay.mounts.dialogue)).toBeGreaterThan(z(overlay.mounts.stage));
-    expect(z(overlay.mounts.overlay)).toBeGreaterThan(z(overlay.mounts.dialogue));
+    expect(z(overlay.mounts.overlay)).toBeGreaterThan(
+      z(overlay.mounts.dialogue),
+    );
   });
 
   it("层自身不吃事件，控件另行恢复（空白区透传给宿主游戏）", () => {
@@ -275,8 +279,12 @@ describe("骨架：五挂载点建齐且层级正确", () => {
         prefs: 1500,
       },
     });
-    expect((overlay.mounts.dialogue as unknown as FakeEl).style.zIndex).toBe("500");
-    expect((overlay.mounts.overlay as unknown as FakeEl).style.zIndex).toBe("800");
+    expect((overlay.mounts.dialogue as unknown as FakeEl).style.zIndex).toBe(
+      "500",
+    );
+    expect((overlay.mounts.overlay as unknown as FakeEl).style.zIndex).toBe(
+      "800",
+    );
   });
 });
 
@@ -323,15 +331,21 @@ describe("状态投影：只经 ValueChanged 渲染", () => {
     const { overlay, engine } = build();
     engine.emit(SYS.currentDialogText, "x");
     engine.emit(SYS.dialogVisible, "show");
-    expect((overlay.mounts.dialogue as unknown as FakeEl).style.display).toBe("");
+    expect((overlay.mounts.dialogue as unknown as FakeEl).style.display).toBe(
+      "",
+    );
     engine.emit(SYS.dialogVisible, "hide");
-    expect((overlay.mounts.dialogue as unknown as FakeEl).style.display).toBe("none");
+    expect((overlay.mounts.dialogue as unknown as FakeEl).style.display).toBe(
+      "none",
+    );
   });
 
   it("实例级 z（命令带 z）覆盖层默认", () => {
     const { overlay, engine } = build();
     engine.emit(SYS.dialogueZ, 42);
-    expect((overlay.mounts.dialogue as unknown as FakeEl).style.zIndex).toBe("42");
+    expect((overlay.mounts.dialogue as unknown as FakeEl).style.zIndex).toBe(
+      "42",
+    );
   });
 
   it("说话人色：命令覆盖色 > 角色定义色", () => {
@@ -392,7 +406,10 @@ describe("选项：点击交核心 choose，且传的是目标列 id", () => {
     engine.emit(SYS.waiting, "menu");
     engine.emit(SYS.menuOptions, ["A"]);
     const buttons = (): FakeEl[] =>
-      findAll(overlay.mounts.choices as unknown as FakeEl, (el) => el.tagName === "BUTTON");
+      findAll(
+        overlay.mounts.choices as unknown as FakeEl,
+        (el) => el.tagName === "BUTTON",
+      );
     expect(buttons()[0]!.attrs["aria-label"]).toBe("A");
     engine.emit(SYS.menuTargets, ["col-a"]);
     buttons()[0]!.listeners["click"]![0]!({});
@@ -468,9 +485,8 @@ describe("通知：引擎事件 → 覆盖层，到时自动移除", () => {
     engine.events[0]!({
       payload: { kind: "notify", text: "钱袋沉了一点", notifyType: "warning" },
     });
-    const items = findAll(
-      overlay.mounts.overlay as unknown as FakeEl,
-      (el) => el.className.includes("tpl-notify"),
+    const items = findAll(overlay.mounts.overlay as unknown as FakeEl, (el) =>
+      el.className.includes("tpl-notify"),
     );
     expect(items).toHaveLength(1);
     expect(items[0]!.className).toContain("warning");
@@ -530,7 +546,9 @@ describe("输入判据：复用展示层唯一口径（不另立第二份）", (
     expect(overlay.shouldConsumeInput(inControl)).toBe(false);
     expect(overlay.shouldConsumeInput(onStage)).toBe(true);
     // 非元素目标保守视为可消费
-    expect(overlay.shouldConsumeInput({ target: null } as unknown as Event)).toBe(true);
+    expect(
+      overlay.shouldConsumeInput({ target: null } as unknown as Event),
+    ).toBe(true);
   });
 });
 
@@ -538,7 +556,9 @@ describe("视图投影：状态同步与元素在场", () => {
   it("view 反映当前等待态与元素在场", () => {
     const { overlay, engine } = build();
     engine.emit(SYS.waiting, "dialog");
-    engine.emit(SYS.elements, [{ id: "a", type: "text", props: {}, z: 0, children: [] }]);
+    engine.emit(SYS.elements, [
+      { id: "a", type: "text", props: {}, z: 0, children: [] },
+    ]);
     const v = overlay.view();
     expect(v.waiting).toBe("dialog");
     expect(v.canAdvance).toBe(true);

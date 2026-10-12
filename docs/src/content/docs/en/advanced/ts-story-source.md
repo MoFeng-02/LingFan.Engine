@@ -76,19 +76,19 @@ Column ids are unique across the project, the same rule as the JSON form. Two fi
 
 This is the mechanism behind the whole mode: **the build statically compiles your TypeScript statements into an op sequence, and the engine runs it.** The TypeScript itself never executes — except for module-level constants, covered below.
 
-| What you write | What it compiles to |
-|---|---|
-| `say(…)` / `menu(…)` / `guard(…)` | the same-named op, shaped like the vocabulary layer |
-| `if (c) {…} else if (c2) {…} else {…}` | an `if` op with `cond` / `then` / `elif[]` / `else` |
-| `while (c) {…}` | a `while` op |
-| `for (let i = 0; i < n; i++)` | `let` + `while`, advancing at the end of the body |
-| `for (const v of state.items)` | a `for` op |
-| `switch (e) { case v: … }` | a `switch` op; case values must be literals |
-| `break` / `continue` | `break` / `continue` ops bound to the nearest loop |
-| `function f(a, b) {…}` plus a call | a `func` op hoisted to the column head, plus a `call` op |
-| `let x = e` | a `let` op, a runtime local |
-| `state.gold = 10` / `state.gold += 5` | a `set` op, keeping `+=` semantics |
-| `` `You have ${state.gold} gold` `` | the string `You have {gold} gold` |
+| What you write                         | What it compiles to                                      |
+| -------------------------------------- | -------------------------------------------------------- |
+| `say(…)` / `menu(…)` / `guard(…)`      | the same-named op, shaped like the vocabulary layer      |
+| `if (c) {…} else if (c2) {…} else {…}` | an `if` op with `cond` / `then` / `elif[]` / `else`      |
+| `while (c) {…}`                        | a `while` op                                             |
+| `for (let i = 0; i < n; i++)`          | `let` + `while`, advancing at the end of the body        |
+| `for (const v of state.items)`         | a `for` op                                               |
+| `switch (e) { case v: … }`             | a `switch` op; case values must be literals              |
+| `break` / `continue`                   | `break` / `continue` ops bound to the nearest loop       |
+| `function f(a, b) {…}` plus a call     | a `func` op hoisted to the column head, plus a `call` op |
+| `let x = e`                            | a `let` op, a runtime local                              |
+| `state.gold = 10` / `state.gold += 5`  | a `set` op, keeping `+=` semantics                       |
+| `` `You have ${state.gold} gold` ``    | the string `You have {gold} gold`                        |
 
 A function of yours is not inlined at each call site. It compiles to a real subroutine: the definition emits a `func` op hoisted to the head of the column's command sequence, and each call site emits a `call` op. Recursion works as a result.
 
@@ -98,7 +98,7 @@ function greet(who: string): void {
 }
 
 export default function start(): void {
-  greet("traveler");   // → call greet, a real jump at runtime
+  greet("traveler"); // → call greet, a real jump at runtime
 }
 ```
 
@@ -108,18 +108,18 @@ Sharing a function across files needs `export` + `import`. A module-level functi
 
 There are three ways to get a vocabulary function out of `@lingfan/editor`, and all three work:
 
-| What you write | What you get |
-|---|---|
-| `import { say, menu } from "@lingfan/editor";` | the function itself, called directly |
-| `import { script } from "@lingfan/editor";` then `script.say(…)` | the vocabulary namespace |
-| `import * as ct from "@lingfan/editor";` then `ct.say(…)` | the whole namespace |
+| What you write                                                   | What you get                         |
+| ---------------------------------------------------------------- | ------------------------------------ |
+| `import { say, menu } from "@lingfan/editor";`                   | the function itself, called directly |
+| `import { script } from "@lingfan/editor";` then `script.say(…)` | the vocabulary namespace             |
+| `import * as ct from "@lingfan/editor";` then `ct.say(…)`        | the whole namespace                  |
 
 Rename with `as`: `import { say as greet }` and `import { script as ct }` both work, and the vocabulary functions follow the alias of the namespace.
 
 The four forms below are build-time errors. The error text is quoted verbatim; the examples differ only in the import lines.
 
 ```ts
-import script from "@lingfan/editor";   // ← default import
+import script from "@lingfan/editor"; // ← default import
 
 export default function start(): void {
   script.say("Default import.");
@@ -133,7 +133,7 @@ export default function start(): void {
 ```
 
 ```ts
-import * as v from "../lib/vocabulary";   // ← namespace of a relative module
+import * as v from "../lib/vocabulary"; // ← namespace of a relative module
 
 export default function start(): void {
   v.say("Namespace of a relative module.");
@@ -147,7 +147,7 @@ export default function start(): void {
 ```
 
 ```ts
-import { say, notAWord } from "@lingfan/editor";   // ← no such word
+import { say, notAWord } from "@lingfan/editor"; // ← no such word
 
 export default function start(): void {
   say("A word that does not exist.");
@@ -160,7 +160,7 @@ export default function start(): void {
 ```
 
 ```ts
-import "@lingfan/editor";   // ← side-effect import
+import "@lingfan/editor"; // ← side-effect import
 import { say } from "@lingfan/editor";
 
 export default function start(): void {
@@ -192,7 +192,17 @@ These forms fail the build instead of being quietly ignored:
 - `const f = () => {}` — custom functions only accept `function` declarations
 - `return v` inside a function body — the engine's `call` has no return channel, so `return v` is stopped at build time rather than silently discarded at runtime
 
-What you may write in condition expressions, `let` values and arguments is decided by the engine's expression grammar, not by a subset of TypeScript. Literals, `state.a.b` paths, local variable names and operator combinations are fine; function-call expressions, optional chaining, `new`, method calls, `typeof`, destructuring and spread all fail the build.
+What you may write in condition expressions, `let` values and arguments is decided by the engine's expression grammar, not by a subset of TypeScript. Literals, `state.a.b` paths, local variable names, operator combinations and built-in function calls (`random`/`min`/`max`/`abs`/`clamp`/`arrayGet`/`dictGet`/`optGet`/`len`) are fine; calls to anything outside the built-ins, `new`, method calls, `typeof`, destructuring and spread all fail the build.
+
+Optional chaining and element access are the exception to the exception: `state.player?.nick` is desugared into the engine's `optGet("player.nick")` (a missing path yields null; the `state.` prefix is stripped in the output), `state.bag[0]` into `arrayGet("bag", 0)`, and `state.cfg["speed"]` into `dictGet("cfg", "speed")`; `len(state.bag)` gives the length. All four are value-position only — `for...of` sources and assignment targets still require a path that really exists, and the path built-ins refuse a variable as the path (paths must be fixed at build time). Pair missing values with `??`:
+
+```ts
+let nick = state.player?.nick ?? "Stranger";
+say(`Hello, ${nick}`);
+state.last = state.bag[0] ?? 0;
+say(`Items: ${len(state.bag)}`);
+say(`Absent: ${state.cfg["ghost"] ?? "none"}`);
+```
 
 ## npm dependencies
 
@@ -206,7 +216,7 @@ The line falls between code at module level and code inside a function body.
 import { weatherTable } from "some-data-pkg";
 import { cities } from "another-pkg";
 
-const defaultCity = weatherTable[cities.beijing];   // other consts in the chain are fine too
+const defaultCity = weatherTable[cities.beijing]; // other consts in the chain are fine too
 ```
 
 This is actually executed once at build time, and the result is inlined into the JSON output. The package code itself does not enter the output; only the evaluated value does. That value must therefore be JSON-serializable — a scalar, an array, a plain object. Function values, class instances, `Symbol` and circular references are all errors.
@@ -247,7 +257,7 @@ import { version } from "typescript";
 export const v = version;
 
 function describe(): void {
-  say(version);   // ← error
+  say(version); // ← error
 }
 ```
 
@@ -271,11 +281,12 @@ Keep the npm value at module level as pure data, and leave the runtime behaviour
 ```ts
 import { defaultEndpoint } from "some-config-pkg";
 
-const endpoint = defaultEndpoint;   // ✅ module level, inlined as a string at build time
+const endpoint = defaultEndpoint; // ✅ module level, inlined as a string at build time
 
 export default function start(): void {
-  extOp("http.get", { url: endpoint, saveTo: "player.apiData" });   // the engine runs this
-  if (state.player.apiData.status === 200) {                        // ✅ a runtime branch
+  extOp("http.get", { url: endpoint, saveTo: "player.apiData" }); // the engine runs this
+  if (state.player.apiData.status === 200) {
+    // ✅ a runtime branch
     say("Request succeeded.");
   }
 }

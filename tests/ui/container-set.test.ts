@@ -135,13 +135,16 @@ describe("容器判据 · 源级互锁（结构合法性 vs 默认 flex 排布�
     expect(callers.map((p) => p.slice(p.lastIndexOf("/") + 1))).toEqual([
       CONTAINER_FILE,
     ]);
-    expect(containerSource().match(new RegExp(FLEX_CONSUME, "g")) ?? [])
-      .toHaveLength(1);
+    expect(
+      containerSource().match(new RegExp(FLEX_CONSUME, "g")) ?? [],
+    ).toHaveLength(1);
   });
 
   it("机制自证：差集多一项时，它与契约集合的包含关系仍成立但派生结果必变", () => {
     const tampered = new Set([...NON_FLEX_CONTAINERS, "panel"]);
-    const derived = [...ELEMENT_CONTAINER_TYPES].filter((t) => !tampered.has(t));
+    const derived = [...ELEMENT_CONTAINER_TYPES].filter(
+      (t) => !tampered.has(t),
+    );
     expect(derived).toHaveLength(11);
     expect(derived).not.toContain("panel");
   });

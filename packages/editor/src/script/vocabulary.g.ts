@@ -1,0 +1,173 @@
+/**
+ * 生成文件：词汇层声明（勿手改）。
+ *
+ * 由 packages/editor/src/script/generate-vocabulary.ts 重建（两个真相源）：
+ * - OP_SCHEMA_MAP 键快照 → VOCABULARY_OPS（op 注册表面的单一来源）；
+ * - words/*.ts 导出函数扫描 → SCRIPT_COVERAGE（builder ↔ op 双射面，
+ *   返回注解 CommandOf<"op"> = 直接词条；不产独立 op 的走补充表）。
+ * 手改会在下次重建时被覆盖；改注册表/词条后未重建 =
+ * tests/editor/script-vocabulary.test.ts 的生成物新鲜度用例红。
+ */
+
+/** op 注册表键快照（与 OP_SCHEMA_MAP 键集恒等；排序保证 diff 稳定） */
+export const VOCABULARY_OPS = [
+  "ambient",
+  "animate",
+  "animate_block",
+  "array",
+  "array_pop",
+  "array_push",
+  "assert",
+  "auto_save",
+  "background",
+  "bg_switch",
+  "bgm",
+  "break",
+  "call",
+  "character",
+  "continue",
+  "cutscene",
+  "define",
+  "dict",
+  "dict_set",
+  "for",
+  "foreach",
+  "func",
+  "guard",
+  "hide",
+  "if",
+  "input",
+  "interaction",
+  "jump",
+  "let",
+  "load",
+  "local",
+  "menu",
+  "minigame",
+  "navigate",
+  "notify",
+  "nvl",
+  "pause",
+  "pause_video",
+  "random",
+  "resume_video",
+  "return",
+  "save",
+  "save_delete",
+  "say",
+  "se",
+  "seek_video",
+  "set",
+  "shake",
+  "show",
+  "stop_ambient",
+  "stop_bgm",
+  "stop_video",
+  "stop_voice",
+  "style",
+  "switch",
+  "text_typewriter",
+  "transition",
+  "undef",
+  "video",
+  "video_skipable",
+  "voice",
+  "wait",
+  "while",
+  "window",
+  "zindex",
+] as const;
+
+/** op 名字面量联合（快照派生，与 ScriptOpName 同键集） */
+export type VocabularyOp = (typeof VOCABULARY_OPS)[number];
+
+/**
+ * builder ↔ op 双射面（词汇层互锁守卫的数据源）。
+ * `$` 前缀 = 辅助词（不直接产出独立 op）——互锁比较时跳过。
+ */
+export const SCRIPT_COVERAGE: Readonly<Record<string, string>> = {
+  // —— audio.ts ——
+  bgm: "bgm",
+  stopBgm: "stop_bgm",
+  se: "se",
+  ambient: "ambient",
+  stopAmbient: "stop_ambient",
+  voice: "voice",
+  stopVoice: "stop_voice",
+  // —— elements.ts ——
+  show: "show",
+  hide: "hide",
+  background: "background",
+  bgSwitch: "bg_switch",
+  setZ: "zindex",
+  style: "style",
+  dialogWindow: "window",
+  animate: "animate",
+  animateBlock: "animate_block",
+  transition: "transition",
+  shake: "shake",
+  textTypewriter: "text_typewriter",
+  // —— flow.ts ——
+  wait: "wait",
+  pause: "pause",
+  random: "random",
+  jump: "jump",
+  navigate: "navigate",
+  func: "func",
+  call: "call",
+  ret: "return",
+  when: "if",
+  whileDo: "while",
+  forIn: "for",
+  forEach: "foreach",
+  switchOn: "switch",
+  breakLoop: "break",
+  continueLoop: "continue",
+  assert: "assert",
+  guard: "guard",
+  // —— interaction.ts ——
+  interaction: "interaction",
+  // —— minigame.ts ——
+  minigame: "minigame",
+  // —— narrative.ts ——
+  say: "say",
+  menu: "menu",
+  input: "input",
+  notify: "notify",
+  nvl: "nvl",
+  character: "character",
+  // —— save.ts ——
+  save: "save",
+  load: "load",
+  autoSave: "auto_save",
+  saveDelete: "save_delete",
+  // —— vars.ts ——
+  set: "set",
+  define: "define",
+  letVar: "let",
+  localVar: "local",
+  undef: "undef",
+  newArray: "array",
+  arrayPush: "array_push",
+  arrayPop: "array_pop",
+  dict: "dict",
+  dictSet: "dict_set",
+  // —— video.ts ——
+  video: "video",
+  cutscene: "cutscene",
+  seekVideo: "seek_video",
+  pauseVideo: "pause_video",
+  resumeVideo: "resume_video",
+  stopVideo: "stop_video",
+  videoSkipable: "video_skipable",
+  // —— 辅助词（补充表登记，不产独立 op） ——
+  option: "$menu.option",
+  whenChain: "$if.chain",
+  reward: "$minigame.reward",
+  extOp: "$ext.op",
+  sceneSetup: "$composite.scene",
+  buttonElement: "$composite.button",
+  textElement: "$composite.text",
+  imageElement: "$composite.image",
+  sceneType: "$column.type",
+};

@@ -34,13 +34,17 @@ function isInlineTag(content: string): boolean {
   return INLINE_PREFIXED_TAGS.some((prefix) => content.startsWith(prefix));
 }
 
-/** 表达式内置名与字面量 */
+/** 表达式内置名与字面量（与引擎 runtime/expr/builtins.ts 全集互锁：新增内建须同步） */
 const EXPR_BUILTINS = new Set([
   "random",
   "min",
   "max",
   "abs",
   "clamp",
+  "arrayGet",
+  "dictGet",
+  "optGet",
+  "len",
   "true",
   "false",
 ]);

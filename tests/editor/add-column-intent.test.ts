@@ -25,7 +25,7 @@ describe("真值表：取消 / 留空 / 有值 三态互不相同", () => {
     expect(decideAddColumn(null)).toEqual({ run: false });
   });
 
-  it("留空（\"\"）→ 执行，且无建议（引擎兜底 column-N）", () => {
+  it('留空（""）→ 执行，且无建议（引擎兜底 column-N）', () => {
     expect(decideAddColumn("")).toEqual({ run: true, hint: undefined });
   });
 
@@ -64,7 +64,9 @@ describe("拟态作者旅程：判定 + 引擎提交串起来跑三条路径", (
       formatVersion: 1,
       id: "t",
       entry: "start",
-      columns: [{ id: "start", kind: "flow", commands: [{ op: "say", text: "句" }] }],
+      columns: [
+        { id: "start", kind: "flow", commands: [{ op: "say", text: "句" }] },
+      ],
     });
   }
 

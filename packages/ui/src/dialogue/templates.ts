@@ -12,7 +12,10 @@
  * 注册语义（注册 / 解析 / 默认回退）由通用 [`TemplateRegistry`] 承载——
  * 本模块只定义对话挂载点的输入输出形状与内置模板。
  */
-import { TemplateRegistry, createTemplateRegistry } from "../templates/registry";
+import {
+  TemplateRegistry,
+  createTemplateRegistry,
+} from "../templates/registry";
 import { renderDialogueLine } from "./textView";
 
 /** 模板输入：对话渲染状态投影（宿主从引擎状态/渲染态映射） */

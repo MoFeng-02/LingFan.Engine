@@ -5,10 +5,12 @@ import type { GuardFn } from "@lingfan/engine";
 export const guards: Record<string, GuardFn> = {
   "gold-non-negative": (ctx) => {
   const gold = ctx.get("player.gold");
-  if (typeof gold !== "number" || gold < 0) ctx.fail(`player.gold 非法：${String(gold)}`);
+  if (typeof gold !== "number" || gold < 0)
+    ctx.fail(`player.gold 非法：${String(gold)}`);
 },
   "tour-open": (ctx) => {
-  if (ctx.get("tour.open") !== true) ctx.fail("巡礼尚未开始（tour.open 未置位）");
+  if (ctx.get("tour.open") !== true)
+    ctx.fail("巡礼尚未开始（tour.open 未置位）");
 },
 };
 

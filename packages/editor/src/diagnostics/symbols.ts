@@ -31,7 +31,10 @@ const VAR_DEF_FIELDS: Readonly<Record<string, readonly string[]>> = {
 
 /** 跳转目标字段（op → [字段路径, 目标种类]） */
 const TARGET_FIELDS: Readonly<
-  Record<string, readonly (readonly [string, "column" | "function" | "callable"])[]>
+  Record<
+    string,
+    readonly (readonly [string, "column" | "function" | "callable"])[]
+  >
 > = {
   jump: [["target", "column"]],
   // `call` 的目标**可以是列（label）或 func**（「调用子过程（func 或 label）」）

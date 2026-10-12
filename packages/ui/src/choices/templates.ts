@@ -13,7 +13,10 @@
  * 未知名 / null 回退默认（模板只影响展示，缺失应兜底——与元素/小游戏注册表的
  * fail-closed 口径不同）。
  */
-import { TemplateRegistry, createTemplateRegistry } from "../templates/registry";
+import {
+  TemplateRegistry,
+  createTemplateRegistry,
+} from "../templates/registry";
 import { renderDialogueLine } from "../dialogue/textView";
 
 /** 单个选项的渲染投影（宿主从 `SYS.menuOptions` 映射） */
@@ -45,7 +48,9 @@ export interface ChoiceTemplateView {
 }
 
 /** 选择层模板：吃投影出的选项状态，吐骨架各挂点内容。纯函数——不挂点击、不改 `target` */
-export type ChoiceTemplateFn = (input: ChoiceTemplateInput) => ChoiceTemplateView;
+export type ChoiceTemplateFn = (
+  input: ChoiceTemplateInput,
+) => ChoiceTemplateView;
 
 /** 选择层模板注册表：按名存 `ChoiceTemplateFn`，按名解析，未知名回退默认 */
 export type ChoiceTemplateRegistry = TemplateRegistry<
@@ -62,9 +67,7 @@ export function createChoiceTemplateRegistry(): ChoiceTemplateRegistry {
 export const builtinChoiceTemplate: ChoiceTemplateFn = (input) => ({
   rootClass: "tpl-choice",
   promptHtml:
-    input.prompt === ""
-      ? ""
-      : renderDialogueLine({ text: input.prompt }).html,
+    input.prompt === "" ? "" : renderDialogueLine({ text: input.prompt }).html,
   optionHtml: input.options.map(
     (opt) => renderDialogueLine({ text: opt.text }).html,
   ),

@@ -57,16 +57,19 @@ describe("validateElement（fail-closed）", () => {
     expect(
       issuesOf({ type: "panel", children: [{ type: "text", text: "甲" }] }),
     ).toEqual([]);
-    expect(issuesOf({ type: "panel", children: [{ type: "nope" }] })[0]).toContain(
-      "children[0]",
-    );
+    expect(
+      issuesOf({ type: "panel", children: [{ type: "nope" }] })[0],
+    ).toContain("children[0]");
   });
 });
 
 describe("loadElements（装载与派生）", () => {
   it("id 缺省派生 `列id#序号`，显式 id 优先", () => {
     const els = loadElements(
-      [{ type: "text", text: "甲" }, { type: "text", id: "named" }],
+      [
+        { type: "text", text: "甲" },
+        { type: "text", id: "named" },
+      ],
       "start",
     );
     expect(els[0]?.id).toBe("start#0");

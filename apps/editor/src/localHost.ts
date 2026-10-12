@@ -48,7 +48,9 @@ export async function detectLocalHost(
           const baseUrl = at > 0 ? candidate.slice(0, at) : undefined;
           return baseUrl === undefined ? undefined : { baseUrl, token };
         }
-        return typeof location === "undefined" ? undefined : { baseUrl: location.origin, token };
+        return typeof location === "undefined"
+          ? undefined
+          : { baseUrl: location.origin, token };
       }
     } catch {
       // 该候选不可用 ⇒ 试下一个（**不视为错误**）
@@ -63,7 +65,8 @@ export async function detectLocalHost(
 async function readTokenOf(res: Response): Promise<string | undefined> {
   try {
     const body: unknown = await res.clone().json();
-    if (typeof body !== "object" || body === null || !("token" in body)) return undefined;
+    if (typeof body !== "object" || body === null || !("token" in body))
+      return undefined;
     const token = (body as { token: unknown }).token;
     return typeof token === "string" && token !== "" ? token : undefined;
   } catch {
@@ -78,11 +81,14 @@ export async function openExternal(
   fetchImpl: typeof fetch = globalThis.fetch,
 ): Promise<{ ok: boolean; reason?: string }> {
   try {
-    const res = await fetchImpl(`${host.baseUrl}/__editor_host__/${host.token}/open`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ path }),
-    });
+    const res = await fetchImpl(
+      `${host.baseUrl}/__editor_host__/${host.token}/open`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ path }),
+      },
+    );
     if (!res.ok) return { ok: false, reason: `宿主返回 ${res.status}` };
     return (await res.json()) as { ok: boolean; reason?: string };
   } catch (error: unknown) {
@@ -99,12 +105,17 @@ export async function listHostFiles(
   fetchImpl: typeof fetch = globalThis.fetch,
 ): Promise<readonly string[] | undefined> {
   try {
-    const res = await fetchImpl(`${host.baseUrl}/__editor_host__/${host.token}/list`);
+    const res = await fetchImpl(
+      `${host.baseUrl}/__editor_host__/${host.token}/list`,
+    );
     if (!res.ok) return undefined;
     const body: unknown = await res.json();
-    if (typeof body !== "object" || body === null || !("files" in body)) return undefined;
+    if (typeof body !== "object" || body === null || !("files" in body))
+      return undefined;
     const files = (body as { files: unknown }).files;
-    return Array.isArray(files) ? (files.filter((f): f is string => typeof f === "string") as string[]) : undefined;
+    return Array.isArray(files)
+      ? (files.filter((f): f is string => typeof f === "string") as string[])
+      : undefined;
   } catch {
     return undefined; // 无宿主 / 出错 ⇒ "没有这个能力"（不是错误）
   }
@@ -118,12 +129,19 @@ export async function fetchWatchStatus(
   fetchImpl: typeof fetch = globalThis.fetch,
 ): Promise<WatchStatus | undefined> {
   try {
-    const res = await fetchImpl(`${host.baseUrl}/__editor_host__/${host.token}/watch`);
+    const res = await fetchImpl(
+      `${host.baseUrl}/__editor_host__/${host.token}/watch`,
+    );
     if (!res.ok) return undefined;
     const body: unknown = await res.json();
     if (typeof body !== "object" || body === null) return undefined;
-    const o = body as { revision?: unknown; watching?: unknown; root?: unknown };
-    if (typeof o.revision !== "number" || typeof o.watching !== "boolean") return undefined;
+    const o = body as {
+      revision?: unknown;
+      watching?: unknown;
+      root?: unknown;
+    };
+    if (typeof o.revision !== "number" || typeof o.watching !== "boolean")
+      return undefined;
     return {
       revision: o.revision,
       watching: o.watching,

@@ -75,9 +75,9 @@ export class Parser {
     return expr;
   }
 
-  /** 三元 `?:`（右结合）：条件必须为 boolean，且只对选中的那一支求值 */
+  /** 三元 `?:`（右结合）：条件必须为 boolean，且只对选中的那一支求值。条件侧为 nullish（`??` 优先级高于三元） */
   private ternary(): Thunk {
-    const cond = this.or();
+    const cond = this.nullish();
     if (!this.matchOp("?")) return cond;
     const whenTrue = this.ternary();
     this.expectOp(":");
@@ -91,7 +91,7 @@ export class Parser {
     };
   }
 
-  /** `||`：两侧都必须为 boolean；左侧为 true 时右支不求值（短路，右支错误不会暴露） */
+  /** `||`：两侧都必须为 boolean；左侧为 true 时右支不求值（短路，右支错误不会暴露）。优先级低于 `??` */
   private or(): Thunk {
     let left = this.and();
     while (this.matchOp("||")) {
@@ -108,6 +108,26 @@ export class Parser {
           throw new ExpressionError("type-error", "'||' 操作数必须为 boolean");
         }
         return r;
+      };
+    }
+    return left;
+  }
+
+  /**
+   * `??`：左结合（a ?? b ?? c = (a ?? b) ?? c）；左侧为 null/undefined 时取右侧，
+   * 否则不求值右支（短路）。优先级同 JS：低于 || 与 &&、高于三元，左结合短路；
+   * 与 JS 的差异是 JS 禁止 ?? 与 ||/&& 无括号混用，引擎按优先级直接分组
+   * （如 flag ?? false || true = flag ?? (false || true)，左支非空短路）。
+   */
+  private nullish(): Thunk {
+    let left = this.or();
+    while (this.matchOp("??")) {
+      const l = left;
+      const right = this.or();
+      left = () => {
+        const v = l();
+        if (v === null || v === undefined) return right();
+        return v;
       };
     }
     return left;
@@ -312,6 +332,7 @@ export class Parser {
             name,
             args.map((a) => a()),
             this.rng,
+            this.resolve,
           );
       }
       // 成员路径 ident('.'ident)*：点路径 = 全局键路径/字典下钻，查法由 resolver 决定

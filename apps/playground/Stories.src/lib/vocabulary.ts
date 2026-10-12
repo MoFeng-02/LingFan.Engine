@@ -85,6 +85,9 @@ export const vars = defineVars({
   n: "num",
   m: "num",
   dice: "num",
+  // journal.flag 只在本清单出现（schema、let 声明、插值文本均无此键）——
+  // 变量清单是它在插值键注册表里的唯一来源。
+  "journal.flag": "num",
 });
 
 /** 构建期常量枚举：地点 id 的具名写法，菜单选项引用它；运行期不存在——产物只有展开后的数据。 */

@@ -46,8 +46,8 @@ export function jsonUnsafeReason(value: unknown): string | null {
   const proto = Object.getPrototypeOf(value);
   if (proto !== Object.prototype && proto !== null) {
     const name =
-      typeof (proto as { constructor?: { name?: string } }).constructor?.name ===
-      "string"
+      typeof (proto as { constructor?: { name?: string } }).constructor
+        ?.name === "string"
         ? (proto as { constructor: { name: string } }).constructor.name
         : "未知原型";
     return `非普通对象（${name} 实例）`;

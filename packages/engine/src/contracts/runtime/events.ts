@@ -77,6 +77,28 @@ export interface InteractionMountPayload {
   seq: number;
 }
 
+/**
+ * 扩展自定义 op 等待挂载事件：宿主据此挂载该 op 的等待界面/流程
+ * （身份键 = `op`，引擎注册表视角；未注册 op 根本执行不到）；
+ * `signal.aborted` 置位 = 立即卸载（回溯/导航/读档/销毁）。
+ *
+ * 与 [`InteractionMountPayload`] 同构——同是「引擎让出控制权 → 外部跑 → 回传结果 →
+ * 引擎继续」的等待形态；区别在身份键（interaction 用宿主注册表的 `system`，
+ * 扩展用引擎注册表的 `op`）与解除入口（`resolveExtensionOp`）。
+ */
+export interface ExtensionMountPayload {
+  kind: "extension.mount";
+  /** 自定义 op 名（引擎注册表键；解除时以此匹配挂起记录） */
+  op: string;
+  /** 提供该 op 的扩展 id（回填命名空间 `game.<extensionId>.<key>` 的事实源） */
+  extensionId: string;
+  config: Record<string, unknown>;
+  /** 本次挂载的中止句柄（回溯 / 导航 / 读档 / 销毁时置位） */
+  signal: AbortHandle;
+  /** 单调序号：重放重新挂载与旧挂载可分辨 */
+  seq: number;
+}
+
 /** 存档命令面完成信号：`save(slot, title)` 写档成功（UI 据此提示；写失败走 engine.error） */
 export interface SaveDonePayload {
   kind: "save.done";
@@ -112,7 +134,8 @@ export type OutboundPayload =
   | LoadDonePayload
   | LoadNoticePayload
   | MinigameMountPayload
-  | InteractionMountPayload;
+  | InteractionMountPayload
+  | ExtensionMountPayload;
 
 /** 出站统一信封：核心层出站全部 `{v, kind:'event', payload}` */
 export interface OutboundEvent {

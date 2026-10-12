@@ -24,6 +24,7 @@ declare module "@lingfan/editor" {
     "dice": 1;
     "gear": 1;
     "item": 1;
+    "journal.flag": 1;
     "m": 1;
     "mouch.other": 1;
     "mouch.other2": 1;

@@ -40,11 +40,12 @@ export function clearTimer(ctx: OpContext): void {
 }
 
 /**
- * 中断全部外部接管（小游戏与玩法系统）：向宿主发挂载信号的 abort，重放到该坐标时重新挂载。
- * 合成单一入口是因为五处中断点（导航、销毁、读档、回溯、热重载）对两类接管的处置完全相同，
+ * 中断全部外部接管（小游戏、玩法系统与扩展 op 等待）：向宿主发挂载信号的 abort，重放到该坐标时重新挂载。
+ * 合成单一入口是因为五处中断点（导航、销毁、读档、回溯、热重载）对三类接管的处置完全相同，
  * 分开调用迟早漏掉一边，那时表现为「回溯后旧系统还在跑」。
  */
 export function abortExternalTakeovers(ctx: OpContext): void {
   ctx.abortMinigame();
   ctx.abortInteraction();
+  ctx.abortExtensionOp();
 }

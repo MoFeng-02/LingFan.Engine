@@ -15,18 +15,22 @@ import { describe, expect, it } from "vitest";
 import { validateCommand } from "../../packages/editor/src/schema/opSchemas";
 
 function messageOf(cmd: unknown): string {
-  return validateCommand(cmd).map((d) => d.message).join(" | ");
+  return validateCommand(cmd)
+    .map((d) => d.message)
+    .join(" | ");
 }
 
 describe("诊断消息人话化 · 空资源指向正确的停止命令", () => {
-  it("**回归**：`bgm \"\"` 给出 `stop_bgm` 指引（真实工程 9 处这种写法）", () => {
+  it('**回归**：`bgm ""` 给出 `stop_bgm` 指引（真实工程 9 处这种写法）', () => {
     const msg = messageOf({ op: "bgm", resource: "" });
     expect(msg).toContain("资源路径不能为空");
     expect(msg).toContain("stop_bgm");
   });
 
   it("ambient / voice 各自指向自己的停止命令", () => {
-    expect(messageOf({ op: "ambient", resource: "" })).toContain("stop_ambient");
+    expect(messageOf({ op: "ambient", resource: "" })).toContain(
+      "stop_ambient",
+    );
     expect(messageOf({ op: "voice", resource: "" })).toContain("stop_voice");
   });
 

@@ -10,7 +10,11 @@
  * 键名显示（`displayKeys`）与匹配同一处，避免「显示的是这个、匹配的是那个」。
  */
 import { ref, type Ref } from "vue";
-import type { KeymapAction, PlayerKeymap, PlayerPreferences } from "@lingfan/engine";
+import type {
+  KeymapAction,
+  PlayerKeymap,
+  PlayerPreferences,
+} from "@lingfan/engine";
 
 /** 键位面板的输入 */
 export interface KeybindingPanelOptions {

@@ -144,7 +144,9 @@ export function describeForm(
 }
 
 /** op 目录（时间线插入菜单/节点图调色板用；`surface` = 扩展合并面，缺省内建） */
-export function listOps(surface: OpSurface = BUILTIN_OP_SURFACE): readonly OpMeta[] {
+export function listOps(
+  surface: OpSurface = BUILTIN_OP_SURFACE,
+): readonly OpMeta[] {
   return surface.meta;
 }
 

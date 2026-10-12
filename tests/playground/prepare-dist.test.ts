@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveProtocolBase, rewriteHtml } from "../../apps/playground/scripts/prepare-dist.mjs";
+import {
+  resolveProtocolBase,
+  rewriteHtml,
+} from "../../apps/playground/scripts/prepare-dist.mjs";
 
 describe("prepare-dist · resolveProtocolBase（与 Rust protocol_base 同口径）", () => {
   it("宿主平台推断：win32 → http 虚拟 host（覆盖 Windows 桌面 + Android 构建）；darwin → 原生 scheme（覆盖 macOS 桌面 + iOS 构建）", () => {
@@ -8,9 +11,11 @@ describe("prepare-dist · resolveProtocolBase（与 Rust protocol_base 同口径
     expect(resolveProtocolBase("linux", {})).toBe("lfstream://localhost");
   });
   it("LFEN_PROTOCOL_BASE 显式覆盖优先（非默认宿主 × 移动端目标组合的出口）", () => {
-    expect(resolveProtocolBase("darwin", { LFEN_PROTOCOL_BASE: "http://lfstream.localhost" })).toBe(
-      "http://lfstream.localhost",
-    );
+    expect(
+      resolveProtocolBase("darwin", {
+        LFEN_PROTOCOL_BASE: "http://lfstream.localhost",
+      }),
+    ).toBe("http://lfstream.localhost");
   });
 });
 
@@ -25,10 +30,17 @@ describe("prepare-dist · rewriteHtml（构建期静态改写）", () => {
   <body><div id="app"></div></body>
 </html>`;
     const { html, assets } = rewriteHtml(source, "http://lfstream.localhost");
-    expect(html).toContain('src="http://lfstream.localhost/v2/dist%2Fassets%2Findex-Cx1Ab.js"');
-    expect(html).toContain('href="http://lfstream.localhost/v2/dist%2Fassets%2Findex-Cx1Ab.css"');
+    expect(html).toContain(
+      'src="http://lfstream.localhost/v2/dist%2Fassets%2Findex-Cx1Ab.js"',
+    );
+    expect(html).toContain(
+      'href="http://lfstream.localhost/v2/dist%2Fassets%2Findex-Cx1Ab.css"',
+    );
     expect(html).not.toContain('"/assets/index-Cx1Ab.js"');
-    expect(assets).toEqual(["dist/assets/index-Cx1Ab.js", "dist/assets/index-Cx1Ab.css"]);
+    expect(assets).toEqual([
+      "dist/assets/index-Cx1Ab.js",
+      "dist/assets/index-Cx1Ab.css",
+    ]);
   });
   it("外链（动态/远程 URL）一概不碰（只碰构建产物内相对引用）", () => {
     const source = `<html><head>
@@ -44,6 +56,8 @@ describe("prepare-dist · rewriteHtml（构建期静态改写）", () => {
       '<script type="module" src="/assets/index-Dj2Kl-mno_.js"></script>',
       "lfstream://localhost",
     );
-    expect(html).toContain("lfstream://localhost/v2/dist%2Fassets%2Findex-Dj2Kl-mno_.js");
+    expect(html).toContain(
+      "lfstream://localhost/v2/dist%2Fassets%2Findex-Dj2Kl-mno_.js",
+    );
   });
 });

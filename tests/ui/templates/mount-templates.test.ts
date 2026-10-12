@@ -22,10 +22,12 @@ describe("通用模板注册表（TemplateRegistry）", () => {
   type In = { text: string };
   type View = { rootClass: string; bodyHtml: string };
 
-  const fn = (root: string): ((i: In) => View) => (i) => ({
-    rootClass: root,
-    bodyHtml: i.text,
-  });
+  const fn =
+    (root: string): ((i: In) => View) =>
+    (i) => ({
+      rootClass: root,
+      bodyHtml: i.text,
+    });
 
   it("按名解析；未知名/null/空串回退默认；未设默认 = null（宿主兜底）", () => {
     const r = createTemplateRegistry<In, View>();
@@ -100,7 +102,7 @@ describe("选择层模板（choices）", () => {
 
   it("选项文本恶意 HTML 被统一接缝转义（XSS 防线——故意错误）", () => {
     const view = builtinChoiceTemplate({
-      prompt: '<script>alert(1)</script>',
+      prompt: "<script>alert(1)</script>",
       options: [{ text: '<img src=x onerror="alert(1)">', target: "t" }],
     });
     expect(view.promptHtml).not.toContain("<script");

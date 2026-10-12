@@ -125,7 +125,8 @@ export function createDialogueView(options: DialogueViewOptions): DialogueView {
       prompt.textContent = String(engine.get(SYS.menuPrompt) ?? "");
       dom.choices.append(prompt);
       const texts = (engine.get(SYS.menuOptions) as string[] | undefined) ?? [];
-      const targets = (engine.get(SYS.menuTargets) as string[] | undefined) ?? [];
+      const targets =
+        (engine.get(SYS.menuTargets) as string[] | undefined) ?? [];
       texts.forEach((label, i) => {
         const button = document.createElement("button");
         button.className = "choice";

@@ -119,7 +119,12 @@ describe("拟态作者旅程", () => {
     expect(reopened.groups[0]?.columns).toEqual(["start", "tavern"]);
     expect(reopened.collapsed).toEqual([groupId]);
 
-    const plan = layoutColumns(reopened, ["start", "tavern", "square", "stage"]);
+    const plan = layoutColumns(reopened, [
+      "start",
+      "tavern",
+      "square",
+      "stage",
+    ]);
     expect(plan.groups[0]?.columns).toEqual(["start", "tavern"]);
     expect(plan.groups[0]?.collapsed).toBe(true);
     expect(plan.ungrouped).toEqual(["square", "stage"]);
@@ -194,7 +199,10 @@ describe("互锁：分组不改故事、元数据不出故事面", () => {
   it("store 按 story.id 归位：不同故事的分组互不串门", () => {
     const storage = new MemoryStorage();
     const store = createColumnGroupingStore(storage);
-    store.save("demo", assignColumn(addGroup(emptyGroupingView(), "A"), "start", "group-1"));
+    store.save(
+      "demo",
+      assignColumn(addGroup(emptyGroupingView(), "A"), "start", "group-1"),
+    );
     expect(store.load("other").groups).toEqual([]);
     expect(store.load("demo").groups.length).toBe(1);
     expect(storage.map.has(`${COLUMN_GROUPING_KEY_PREFIX}demo`)).toBe(true);
@@ -220,7 +228,11 @@ describe("故意错误：坏存储一律降级，零抛", () => {
       version: 1,
       groups: [{ id: "g", name: 5, columns: [1, null, "start", "start"] }],
     },
-    { version: 1, groups: [{ id: "g", name: "组" }], collapsed: ["g", "ghost", 9] },
+    {
+      version: 1,
+      groups: [{ id: "g", name: "组" }],
+      collapsed: ["g", "ghost", 9],
+    },
   ];
 
   it("逐项解析不抛；顶层形状/版本不符 → 空视图", () => {
@@ -267,9 +279,7 @@ describe("故意错误：坏存储一律降级，零抛", () => {
     };
     const hostileStore = createColumnGroupingStore(hostile);
     expect(hostileStore.load("demo")).toEqual(emptyGroupingView());
-    expect(() =>
-      hostileStore.save("demo", emptyGroupingView()),
-    ).not.toThrow();
+    expect(() => hostileStore.save("demo", emptyGroupingView())).not.toThrow();
 
     const noStore = createColumnGroupingStore(undefined);
     expect(noStore.load("demo")).toEqual(emptyGroupingView());
@@ -388,11 +398,9 @@ describe("边界：裁剪 / 改名 / 空组 / 未知分组 fail-closed / id 避�
       "groups",
       "collapsed",
     ]);
-    expect(Object.keys((JSON.parse(text) as { groups: object[] }).groups[0]!)).toEqual([
-      "id",
-      "name",
-      "columns",
-    ]);
+    expect(
+      Object.keys((JSON.parse(text) as { groups: object[] }).groups[0]!),
+    ).toEqual(["id", "name", "columns"]);
   });
 });
 
@@ -427,21 +435,19 @@ describe("混沌游走：200 步混合编辑，不变量恒成立", () => {
         const columnId =
           ids.length === 0 ? undefined : ids[Math.floor(prng() * ids.length)];
         const groupId =
-          view.groups[Math.floor(prng() * (view.groups.length + 1))]?.id ?? null;
+          view.groups[Math.floor(prng() * (view.groups.length + 1))]?.id ??
+          null;
         if (columnId !== undefined) {
-          view = assignColumn(
-            view,
-            columnId,
-            prng() < 0.85 ? groupId : null,
-          );
+          view = assignColumn(view, columnId, prng() < 0.85 ? groupId : null);
         }
       } else if (roll < 0.68) {
         const groupId = view.groups[0]?.id;
         if (groupId !== undefined) view = toggleCollapsed(view, groupId);
       } else if (roll < 0.78) {
         storyTouched = true;
-        story = addColumn(story, { kind: prng() < 0.5 ? "flow" : "scene" })
-          .story;
+        story = addColumn(story, {
+          kind: prng() < 0.5 ? "flow" : "scene",
+        }).story;
       } else if (roll < 0.88) {
         storyTouched = true;
         const candidates = ids.filter((id) => id !== story.entry);
@@ -459,7 +465,8 @@ describe("混沌游走：200 步混合编辑，不变量恒成立", () => {
         }
       } else if (roll < 0.98) {
         storyTouched = true;
-        const from = ids.length === 0 ? undefined : ids[Math.floor(prng() * ids.length)];
+        const from =
+          ids.length === 0 ? undefined : ids[Math.floor(prng() * ids.length)];
         if (from !== undefined) {
           const to = `${from}_r${counter}`;
           counter += 1;

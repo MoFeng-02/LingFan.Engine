@@ -24,7 +24,15 @@
  * 边界：管线真 bug 不得在本文件内改 packages/stories-build/src/**，记录 finding 回报。
  * fixture 全部自建在 tests/stories-build/.tmp-build/ 下（vite fs.allow 白名单内）。
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -85,18 +93,24 @@ const SYNTHETIC_STORY = story("start", `  say("欢迎来到灵泛");`);
 
 /** 过渡期注入缝：合成编译器（按 discovery 清单生成空列条目；可携带 defines）。
  * definesByFile 的键 = 相对 Stories.src/ 的 posix 路径（与 input.stories 同口径）。 */
-function syntheticCompiler(definesByFile?: Record<string, Record<string, unknown>>): StoriesCompiler {
+function syntheticCompiler(
+  definesByFile?: Record<string, Record<string, unknown>>,
+): StoriesCompiler {
   return {
     compileStories: async (input) => ({
       diags: [],
       stories: input.stories.map((rel) => {
-        const columnId = rel.slice(rel.lastIndexOf("/") + 1).replace(/\.ts$/, "");
+        const columnId = rel
+          .slice(rel.lastIndexOf("/") + 1)
+          .replace(/\.ts$/, "");
         const entry = {
           formatVersion: 1,
           id: columnId,
           entry: columnId,
           columns: [{ id: columnId, kind: "flow", commands: [] }],
-          ...(definesByFile?.[rel] === undefined ? {} : { defines: definesByFile[rel] }),
+          ...(definesByFile?.[rel] === undefined
+            ? {}
+            : { defines: definesByFile[rel] }),
         };
         return { columnId, sourceRelPath: rel, story: entry };
       }),
@@ -128,10 +142,21 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
     // sourcePath 镜像：源 common/start.ts → 产物 Stories/common/start.json（单列原子形态）
     const startFile = JSON.parse(
       readFileSync(join(root, "Resources/Stories/common/start.json"), "utf8"),
-    ) as { formatVersion: number; id: string; kind: string; commands: { op: string; text: string }[] };
-    expect(startFile).toMatchObject({ formatVersion: 1, id: "start", kind: "flow" });
+    ) as {
+      formatVersion: number;
+      id: string;
+      kind: string;
+      commands: { op: string; text: string }[];
+    };
+    expect(startFile).toMatchObject({
+      formatVersion: 1,
+      id: "start",
+      kind: "flow",
+    });
     expect(startFile.commands).toEqual([{ op: "say", text: "欢迎来到灵泛" }]);
-    expect(existsSync(join(root, "Resources/Stories/other/market.json"))).toBe(true);
+    expect(existsSync(join(root, "Resources/Stories/other/market.json"))).toBe(
+      true,
+    );
   });
 
   it("②幂等：二跑零差量（added/updated/removed 全空）", async () => {
@@ -178,7 +203,9 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
     expect(report.removed).toContain("Stories/legacy.json");
     expect(report.removed).toContain("Stories/old-chapter/ghost.json");
     expect(existsSync(join(root, "Resources/Stories/legacy.json"))).toBe(false);
-    expect(existsSync(join(root, "Resources/Stories/old-chapter/ghost.json"))).toBe(false);
+    expect(
+      existsSync(join(root, "Resources/Stories/old-chapter/ghost.json")),
+    ).toBe(false);
     expect(report.added).toContain("Stories/common/start.json");
   });
 
@@ -193,10 +220,9 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
       }`,
     });
     await buildStories(root);
-    const manifest = JSON.parse(readFileSync(join(root, "Resources/project.json"), "utf8")) as Record<
-      string,
-      unknown
-    >;
+    const manifest = JSON.parse(
+      readFileSync(join(root, "Resources/project.json"), "utf8"),
+    ) as Record<string, unknown>;
     expect(manifest.tsSource).toBe(true);
     expect(manifest.entry).toBe("start");
     expect(manifest.name).toBe("演示工程");
@@ -204,7 +230,7 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
     expect(manifest.formatVersion).toBe(1);
   });
 
-  it("⑧\"*\" 兜底：folders:[\"*\"] 覆盖全部子目录，故事全部编译", async () => {
+  it('⑧"*" 兜底：folders:["*"] 覆盖全部子目录，故事全部编译', async () => {
     const root = makeProject("v2-star", {
       "Stories.src/config.ts": config(["*"]),
       "Stories.src/common/start.ts": SYNTHETIC_STORY,
@@ -215,13 +241,19 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
     expect(report.columns).toBe(2);
     expect(report.added).toContain("Stories/common/start.json");
     expect(report.added).toContain("Stories/chapter1/tavern.json");
-    expect(existsSync(join(root, "Resources/Stories/chapter1/tavern.json"))).toBe(true);
+    expect(
+      existsSync(join(root, "Resources/Stories/chapter1/tavern.json")),
+    ).toBe(true);
   });
 });
 
 describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工程形态）", () => {
   /** 深层故事源：目录层级本身就是产物的落点，故每个用例都按真实路径写文件。 */
-  const deep = (rel: string, name: string, line: string): Record<string, string> => ({
+  const deep = (
+    rel: string,
+    name: string,
+    line: string,
+  ): Record<string, string> => ({
     [`Stories.src/${rel}/${name}.ts`]: story(name, `  ${line}`),
   });
 
@@ -248,19 +280,35 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
         join(root, "Resources/Stories/chapter1/act1/scene1/start.json"),
         "utf8",
       ),
-    ) as { formatVersion: number; id: string; kind: string; commands: { op: string; text: string }[] };
-    expect(startFile).toMatchObject({ formatVersion: 1, id: "start", kind: "flow" });
+    ) as {
+      formatVersion: number;
+      id: string;
+      kind: string;
+      commands: { op: string; text: string }[];
+    };
+    expect(startFile).toMatchObject({
+      formatVersion: 1,
+      id: "start",
+      kind: "flow",
+    });
     expect(startFile.commands).toEqual([{ op: "say", text: "开场" }]);
     const tavernFile = JSON.parse(
       readFileSync(
-        join(root, "Resources/Stories/chapter1/act1/scene2/deep/deeper/tavern.json"),
+        join(
+          root,
+          "Resources/Stories/chapter1/act1/scene2/deep/deeper/tavern.json",
+        ),
         "utf8",
       ),
     ) as { id: string; commands: { op: string; text: string }[] };
     expect(tavernFile.id).toBe("tavern");
     expect(tavernFile.commands).toEqual([{ op: "say", text: "到了酒馆" }]);
     // 深层目录由产物写入侧递归创建（源侧没有预置 Resources 结构）
-    expect(existsSync(join(root, "Resources/Stories/chapter1/act1/scene2/deep/deeper"))).toBe(true);
+    expect(
+      existsSync(
+        join(root, "Resources/Stories/chapter1/act1/scene2/deep/deeper"),
+      ),
+    ).toBe(true);
   });
 
   it("folders 直接声明嵌套路径（chapter1/act1）⇒ 合法且生效", async () => {
@@ -276,7 +324,11 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
       "Stories.src/gen/stories.gen.d.ts",
       "Stories/chapter1/act1/scene1/start.json",
     ]);
-    expect(existsSync(join(root, "Resources/Stories/chapter1/act1/scene1/start.json"))).toBe(true);
+    expect(
+      existsSync(
+        join(root, "Resources/Stories/chapter1/act1/scene1/start.json"),
+      ),
+    ).toBe(true);
   });
 
   it("故意错误：start 文件名落在不同嵌套子目录 ⇒ E04 全局恰一（带两处定位）", async () => {
@@ -334,9 +386,14 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
     // 关键：深层目录不在扫描域顶层，清理逻辑不得把它们的产物误判成陈旧
     expect(again.removed).toEqual([]);
     expect(again.columns).toBe(2);
-    expect(existsSync(join(root, "Resources/Stories/chapter1/act1/scene1/deep/more/tavern.json"))).toBe(
-      true,
-    );
+    expect(
+      existsSync(
+        join(
+          root,
+          "Resources/Stories/chapter1/act1/scene1/deep/more/tavern.json",
+        ),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -409,7 +466,7 @@ describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦�
     );
   });
 
-  it("E07 覆盖外 default ⇒ 全量管理删除警告，指向 folders 或 \"*\" 兜底", async () => {
+  it('E07 覆盖外 default ⇒ 全量管理删除警告，指向 folders 或 "*" 兜底', async () => {
     const root = makeProject("e07", {
       "Stories.src/config.ts": config(["common"]),
       "Stories.src/common/start.ts": SYNTHETIC_STORY,
@@ -455,10 +512,9 @@ describe("stories:build v2 · defines 工程级收敛与冲突（注入编译器
       }),
     });
     expect(report.columns).toBe(2);
-    const manifest = JSON.parse(readFileSync(join(root, "Resources/project.json"), "utf8")) as Record<
-      string,
-      unknown
-    >;
+    const manifest = JSON.parse(
+      readFileSync(join(root, "Resources/project.json"), "utf8"),
+    ) as Record<string, unknown>;
     expect(manifest.defines).toEqual({ "player.gold": 7 });
     expect(manifest.tsSource).toBe(true);
   });
@@ -473,7 +529,12 @@ describe("stories:build v2 · defines 工程级收敛与冲突（注入编译器
       compileStories: async () => ({
         stories: [],
         diags: [
-          { file: "Stories.src/common/start.ts", line: 3, col: 1, message: "词汇层未知词 nope" },
+          {
+            file: "Stories.src/common/start.ts",
+            line: 3,
+            col: 1,
+            message: "词汇层未知词 nope",
+          },
         ],
       }),
     };
@@ -518,7 +579,10 @@ const extension: OpExtension = {
 export default extension;
 `;
 
-  const extStory = story("start", `  extOp("quest", { step: "接取" });\n  say("出发");`);
+  const extStory = story(
+    "start",
+    `  extOp("quest", { step: "接取" });\n  say("出发");`,
+  );
 
   it("扩展放行：清单声明 ⇒ report.extensions + 产物含扩展 op（含往返幂等）", async () => {
     const root = makeProject("ext-ok", {
@@ -529,7 +593,10 @@ export default extension;
     });
     const report = await buildStories(root);
     expect(report.extensions).toEqual(["./extensions/demo.ts"]);
-    const product = readFileSync(join(root, "Resources/Stories/common/start.json"), "utf8");
+    const product = readFileSync(
+      join(root, "Resources/Stories/common/start.json"),
+      "utf8",
+    );
     expect(product).toContain('"quest"');
     expect(product).toContain('"step": "接取"');
     const again = await buildStories(root);
@@ -621,7 +688,10 @@ export default extension;
       }`,
     });
     const report = await buildStories(root);
-    expect(report.extensions).toEqual(["./extensions/demo.ts", "./extensions/stateful.ts"]);
+    expect(report.extensions).toEqual([
+      "./extensions/demo.ts",
+      "./extensions/stateful.ts",
+    ]);
     expect(report.added).toContain("Stories/common/start.json");
   });
 
@@ -687,7 +757,7 @@ export default function start(): void {
     expect(again.functions).toEqual(["gold-non-negative", "helper-guard"]);
   });
 
-  it("③去重：同名同实现写两处 ⇒ 合并为一条（\"dup\" 落两处：条目 + 类型扩充）", async () => {
+  it('③去重：同名同实现写两处 ⇒ 合并为一条（"dup" 落两处：条目 + 类型扩充）', async () => {
     const impl = `cell("dup", (ctx, args) => { ctx.get("x"); });`;
     const root = makeProject("cell-dedupe", {
       "Stories.src/config.ts": config(["common"]),
@@ -745,7 +815,9 @@ export default function start(): void {
 `,
       "Resources/project.json": MANIFEST,
     });
-    await expect(buildStories(root)).rejects.toThrow(/未导入的标识符[\s\S]*阈值/s);
+    await expect(buildStories(root)).rejects.toThrow(
+      /未导入的标识符[\s\S]*阈值/s,
+    );
   });
 
   it("故意错误：故事用了未声明的守卫名 ⇒ 名字闸门 fail-closed（带指针）", async () => {
@@ -792,7 +864,9 @@ export default function start(): void {
   it("回归：playground 真源 gen 生成物 ⇄ 重提取逐字节一致（防手改漂移）", () => {
     // 真实工程 = Stories.src 源里 cell 槽位是守卫实现的唯一住所——
     // 改了 cell 不跑 stories:build（或手改生成物）⇒ 本测试红，漂移在 CI 拦下
-    const realRoot = fileURLToPath(new URL("../../apps/playground", import.meta.url));
+    const realRoot = fileURLToPath(
+      new URL("../../apps/playground", import.meta.url),
+    );
     const sourcesDir = join(realRoot, "Stories.src");
     const files = new Map<string, string>();
     const walk = (dir: string, rel = ""): void => {
@@ -809,7 +883,10 @@ export default function start(): void {
     walk(sourcesDir);
     const { errors, scan } = scanCells(files);
     expect(errors).toEqual([]);
-    expect(scan.guards.map((g) => g.name)).toEqual(["gold-non-negative", "tour-open"]);
+    expect(scan.guards.map((g) => g.name)).toEqual([
+      "gold-non-negative",
+      "tour-open",
+    ]);
     expect(renderFunRegister(scan)).toBe(
       readFileSync(join(sourcesDir, "gen", "fun_register.g.ts"), "utf8"),
     );
@@ -828,12 +905,18 @@ describe("stories:build v2 · 状态根名自定义（export declare const <根�
     const root = makeProject("state-root-custom", {
       "Stories.src/config.ts": config(["common"]),
       "Stories.src/lib/state.ts": stateRoot("s"),
-      "Stories.src/common/start.ts": story("start", `  s.player.gold += 20;\n  say("x");\n`),
+      "Stories.src/common/start.ts": story(
+        "start",
+        `  s.player.gold += 20;\n  say("x");\n`,
+      ),
       "Resources/project.json": MANIFEST,
     });
     const report = await buildStories(root);
     expect(report.columns).toBe(1);
-    const product = readFileSync(join(root, "Resources/Stories/common/start.json"), "utf8");
+    const product = readFileSync(
+      join(root, "Resources/Stories/common/start.json"),
+      "utf8",
+    );
     expect(product).toContain('"player.gold"');
     expect(product).not.toContain('"s.player.gold"');
   });
@@ -842,21 +925,32 @@ describe("stories:build v2 · 状态根名自定义（export declare const <根�
     const root = makeProject("state-root-conflict", {
       "Stories.src/config.ts": config(["common"]),
       "Stories.src/lib/state.ts": stateRoot("say"),
-      "Stories.src/common/start.ts": story("start", `  say.player.gold += 20;\n`),
+      "Stories.src/common/start.ts": story(
+        "start",
+        `  say.player.gold += 20;\n`,
+      ),
       "Resources/project.json": MANIFEST,
     });
-    await expect(buildStories(root)).rejects.toThrow(/状态根名 `say` 与词汇层词函数冲突/);
+    await expect(buildStories(root)).rejects.toThrow(
+      /状态根名 `say` 与词汇层词函数冲突/,
+    );
   });
 
   it("回退：无状态根声明 ⇒ 默认根 state 仍然生效（现状零迁移）", async () => {
     const root = makeProject("state-root-fallback", {
       "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": story("start", `  state.player.gold += 20;\n  say("x");\n`),
+      "Stories.src/common/start.ts": story(
+        "start",
+        `  state.player.gold += 20;\n  say("x");\n`,
+      ),
       "Resources/project.json": MANIFEST,
     });
     const report = await buildStories(root);
     expect(report.columns).toBe(1);
-    const product = readFileSync(join(root, "Resources/Stories/common/start.json"), "utf8");
+    const product = readFileSync(
+      join(root, "Resources/Stories/common/start.json"),
+      "utf8",
+    );
     expect(product).toContain('"player.gold"');
     expect(product).not.toContain('"state.player.gold"');
   });

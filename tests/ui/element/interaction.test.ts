@@ -13,7 +13,9 @@ import {
 
 describe("resolveElementAction（点击优先级）", () => {
   it("disabled 短路：不产生任何动作（最高优先级）", () => {
-    expect(resolveElementAction({ disabled: true, nav: "a", cmd: "b" })).toEqual({
+    expect(
+      resolveElementAction({ disabled: true, nav: "a", cmd: "b" }),
+    ).toEqual({
       kind: "disabled",
     });
     expect(resolveElementAction({ enabled: false, nav: "a" })).toEqual({

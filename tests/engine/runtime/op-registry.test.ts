@@ -23,7 +23,8 @@ function extension(overrides: Partial<OpExtension> = {}): OpExtension {
         op: "demo_counter",
         exec: (cmd, ctx) => {
           const key = typeof cmd.key === "string" ? cmd.key : "default";
-          const current = typeof ctx.get(key) === "number" ? (ctx.get(key) as number) : 0;
+          const current =
+            typeof ctx.get(key) === "number" ? (ctx.get(key) as number) : 0;
           ctx.set(key, current + 1);
           return { ok: true };
         },
@@ -51,7 +52,14 @@ function makeEngine(extensions: readonly OpExtension[], columns: object[]) {
 describe("op 注册表：注册期 fail-fast", () => {
   it("id 形态非法（大写 / 空 / 超长）→ 构造抛错", () => {
     for (const id of ["Demo", "", "a".repeat(33), "1abc", "a b"]) {
-      expect(() => new StoryEngine({ formatVersion: 1, id: "t", entry: "a", columns: [] } as never, { extensions: [extension({ id })] }).start(), id).toThrow();
+      expect(
+        () =>
+          new StoryEngine(
+            { formatVersion: 1, id: "t", entry: "a", columns: [] } as never,
+            { extensions: [extension({ id })] },
+          ).start(),
+        id,
+      ).toThrow();
     }
   });
 
@@ -90,17 +98,20 @@ describe("op 注册表：注册期 fail-fast", () => {
 
 describe("扩展 op 执行：状态进 SSOT + 前缀门卫", () => {
   it("注册的扩展 op 可执行：写入进 SSOT（ext.demo.* 命名空间）+ 随 ValueChanged/存档随行", () => {
-    const { engine, errors, off } = makeEngine([extension()], [
-      {
-        id: "a",
-        kind: "flow",
-        commands: [
-          { op: "demo_counter", key: "runs" },
-          { op: "demo_counter", key: "runs" },
-          { op: "say", text: "完成" },
-        ],
-      },
-    ]);
+    const { engine, errors, off } = makeEngine(
+      [extension()],
+      [
+        {
+          id: "a",
+          kind: "flow",
+          commands: [
+            { op: "demo_counter", key: "runs" },
+            { op: "demo_counter", key: "runs" },
+            { op: "say", text: "完成" },
+          ],
+        },
+      ],
+    );
     const changes: string[] = [];
     const offState = engine.onStateChanged((c) => {
       if (c.key === "ext.demo.runs") changes.push(String(c.value));
@@ -132,13 +143,16 @@ describe("扩展 op 执行：状态进 SSOT + 前缀门卫", () => {
         },
       ],
     });
-    const { engine, off } = makeEngine([escaping], [
-      {
-        id: "a",
-        kind: "flow",
-        commands: [{ op: "demo_escape" }, { op: "say", text: "x" }],
-      },
-    ]);
+    const { engine, off } = makeEngine(
+      [escaping],
+      [
+        {
+          id: "a",
+          kind: "flow",
+          commands: [{ op: "demo_escape" }, { op: "say", text: "x" }],
+        },
+      ],
+    );
     engine.start();
     expect(engine.get("ext.demo.innocent")).toBe("经门卫落 ext.demo.innocent");
     expect(engine.get("innocent")).toBeUndefined(); // 无前缀键物理不存在
@@ -162,15 +176,20 @@ describe("扩展 op 执行：状态进 SSOT + 前缀门卫", () => {
         },
       ],
     });
-    const { engine, errors, off } = makeEngine([bad], [
-      {
-        id: "a",
-        kind: "flow",
-        commands: [{ op: "demo_bad" }, { op: "say", text: "x" }],
-      },
-    ]);
+    const { engine, errors, off } = makeEngine(
+      [bad],
+      [
+        {
+          id: "a",
+          kind: "flow",
+          commands: [{ op: "demo_bad" }, { op: "say", text: "x" }],
+        },
+      ],
+    );
     engine.start();
-    expect(errors.some((e) => e.message.includes("JSON") || e.code.length > 0)).toBe(true);
+    expect(
+      errors.some((e) => e.message.includes("JSON") || e.code.length > 0),
+    ).toBe(true);
     expect(engine.get("ext.demo.cfg")).toBeUndefined(); // 状态原样（未写入）
     off();
     engine.dispose();
@@ -181,7 +200,11 @@ describe("扩展 op 执行：状态进 SSOT + 前缀门卫", () => {
       ops: [
         {
           op: "demo_fail",
-          exec: () => ({ ok: false, code: "demo-failed", message: "扩展主动失败" }),
+          exec: () => ({
+            ok: false,
+            code: "demo-failed",
+            message: "扩展主动失败",
+          }),
         },
         {
           op: "demo_throw",
@@ -191,29 +214,32 @@ describe("扩展 op 执行：状态进 SSOT + 前缀门卫", () => {
         },
       ],
     });
-    const { engine, errors, off } = makeEngine([failing], [
-      {
-        id: "a",
-        kind: "flow",
-        commands: [
-          { op: "demo_fail" },
-          { op: "say", text: "不应到达" },
-        ],
-      },
-    ]);
+    const { engine, errors, off } = makeEngine(
+      [failing],
+      [
+        {
+          id: "a",
+          kind: "flow",
+          commands: [{ op: "demo_fail" }, { op: "say", text: "不应到达" }],
+        },
+      ],
+    );
     engine.start();
     expect(errors.some((e) => e.code === "demo-failed")).toBe(true);
     expect(engine.get(SYS.waiting)).toBeUndefined(); // 循环停驻（未进入后续等待）
     off();
     engine.dispose();
 
-    const thrown = makeEngine([failing], [
-      {
-        id: "a",
-        kind: "flow",
-        commands: [{ op: "demo_throw" }, { op: "say", text: "不应到达" }],
-      },
-    ]);
+    const thrown = makeEngine(
+      [failing],
+      [
+        {
+          id: "a",
+          kind: "flow",
+          commands: [{ op: "demo_throw" }, { op: "say", text: "不应到达" }],
+        },
+      ],
+    );
     thrown.engine.start();
     expect(thrown.errors.some((e) => e.code === "custom-op-threw")).toBe(true);
     thrown.off();
@@ -221,13 +247,16 @@ describe("扩展 op 执行：状态进 SSOT + 前缀门卫", () => {
   });
 
   it("未注册的扩展 op = unknown-op fail-closed（回归：口径不变）", () => {
-    const { engine, errors, off } = makeEngine([], [
-      {
-        id: "a",
-        kind: "flow",
-        commands: [{ op: "no_such_op" }, { op: "say", text: "x" }],
-      },
-    ]);
+    const { engine, errors, off } = makeEngine(
+      [],
+      [
+        {
+          id: "a",
+          kind: "flow",
+          commands: [{ op: "no_such_op" }, { op: "say", text: "x" }],
+        },
+      ],
+    );
     engine.start();
     expect(errors.some((e) => e.code === "unknown-op")).toBe(true);
     off();
@@ -242,11 +271,9 @@ describe("互锁：BUILTIN_OP_NAMES ↔ dispatch.ts 分发 case 集合精确相�
     expect(start).toBeGreaterThan(0);
     expect(end).toBeGreaterThan(start);
     const dispatchCases = new Set(
-      [
-        ...dispatchSource
-          .slice(start, end)
-          .matchAll(/case "([^"]+)":/g),
-      ].map((m) => m[1]!),
+      [...dispatchSource.slice(start, end).matchAll(/case "([^"]+)":/g)].map(
+        (m) => m[1]!,
+      ),
     );
     expect(dispatchCases).toEqual(BUILTIN_OP_NAMES);
   });
@@ -281,9 +308,7 @@ describe("拟态旅程：扩展状态随存档与回溯", () => {
 
     const revived = makeEngine([extension()], journey);
     expect(
-      revived.engine.importSave(
-        JSON.parse(JSON.stringify(data)) as SaveDataV1,
-      ),
+      revived.engine.importSave(JSON.parse(JSON.stringify(data)) as SaveDataV1),
     ).toBe(true);
     expect(revived.engine.get("ext.demo.runs")).toBe(2);
     revived.off();

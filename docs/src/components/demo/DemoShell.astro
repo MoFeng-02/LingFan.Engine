@@ -1,0 +1,320 @@
+---
+// 独立路由页（内嵌演示页、英文 404）共用的自备外壳：
+// 不挂 Starlight 布局，自带 head（canonical、hreflang 三向、og）与页头导航，
+// 让这些页与文档站共享主题切换、语言切换与跳转正文等站点级行为。
+// 颜色全部收敛为 --lf-d-* 局部令牌，亮暗两套各定义一次；
+// 引用令牌的页面样式不再出现颜色字面量。
+interface Props {
+  lang: 'zh' | 'en';
+  /** 本页规范路径（不含 base，含尾斜杠），如 demo/、en/demo/、en/404/ */
+  path: string;
+  /** 中文对应路径（hreflang zh-CN 与 x-default 指向），如 demo/、404/ */
+  zhPath: string;
+  title: string;
+  description: string;
+  t: {
+    skip: string;
+    navLabel: string;
+    docsHome: string;
+    themeLabel: string;
+    dark: string;
+    light: string;
+    langLabel: string;
+    menuLabel: string;
+    menu: { href: string; label: string }[];
+  };
+}
+const { lang, path, zhPath, title, description, t } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const SITE = Astro.site?.origin ?? '';
+const abs = (p: string) => `${SITE}${base}${p}`;
+const self = abs(path);
+const enPath = lang === 'zh' ? `en/${path}` : path;
+---
+
+<!doctype html>
+<html lang={lang === 'zh' ? 'zh-CN' : 'en'} dir="ltr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={self} />
+    <link rel="alternate" hreflang="zh-CN" href={abs(zhPath)} />
+    <link rel="alternate" hreflang="en" href={abs(enPath)} />
+    <link rel="alternate" hreflang="x-default" href={abs(zhPath)} />
+    <link rel="sitemap" href={`${base}sitemap-index.xml`} />
+    <link rel="shortcut icon" href={`${base}favicon.png`} type="image/png" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content={self} />
+    <meta property="og:title" content={title} />
+    <meta property="og:site_name" content="灵泛引擎 LingFan Engine" />
+    <meta property="og:description" content={description} />
+    <meta property="og:locale" content={lang === 'zh' ? 'zh-CN' : 'en'} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style is:global>
+      /* —— 页面外壳（独立路由页私有）—— */
+      :root {
+        --lf-d-bg: #0f1117;
+        --lf-d-text: #c8d3f5;
+        --lf-d-heading: #e6ecff;
+        --lf-d-muted: #9aa5ce;
+        --lf-d-line: #2f3549;
+        --lf-d-line-strong: #3b4261;
+        --lf-d-accent: #7aa2f7;
+        --lf-d-panel: #161926;
+        --lf-d-panel-raise: #1e2438;
+        --lf-d-stage: #10131c;
+        --lf-d-stage-deep: #0d1017;
+        --lf-d-warn: #e0af68;
+        --lf-d-error: #f7768e;
+        --lf-d-error-tint: rgba(247, 118, 142, 0.12);
+        --lf-d-overlay: rgba(16, 19, 28, 0.9);
+        --lf-d-choice: rgba(26, 27, 38, 0.94);
+        --lf-d-choice-hover: rgba(41, 46, 66, 0.96);
+        --lf-d-input: rgba(16, 19, 28, 0.94);
+        --lf-d-shadow: rgba(0, 0, 0, 0.4);
+      }
+      [data-theme='light'] {
+        --lf-d-bg: #fbfbfd;
+        --lf-d-text: #2b3145;
+        --lf-d-heading: #1a1f33;
+        --lf-d-muted: #5b6478;
+        --lf-d-line: #d8dcea;
+        --lf-d-line-strong: #c3c9da;
+        --lf-d-accent: #3d63dd;
+        --lf-d-panel: #f0f2f8;
+        --lf-d-panel-raise: #e4e8f1;
+        --lf-d-stage: #eef0f6;
+        --lf-d-stage-deep: #e8ebf2;
+        --lf-d-warn: #8a5a1c;
+        --lf-d-error: #c4374f;
+        --lf-d-error-tint: rgba(196, 55, 79, 0.08);
+        --lf-d-overlay: rgba(255, 255, 255, 0.9);
+        --lf-d-choice: rgba(255, 255, 255, 0.94);
+        --lf-d-choice-hover: rgba(224, 229, 242, 0.96);
+        --lf-d-input: rgba(255, 255, 255, 0.95);
+        --lf-d-shadow: rgba(31, 36, 54, 0.12);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--lf-d-bg);
+        color: var(--lf-d-text);
+        font: 15px/1.7 system-ui, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      .sl-skip-link {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        z-index: 100;
+        padding: 8px 14px;
+        background: var(--lf-d-panel-raise);
+        color: var(--lf-d-heading);
+        border: 1px solid var(--lf-d-accent);
+        border-radius: 0 0 8px 0;
+        text-decoration: none;
+      }
+      .sl-skip-link:focus { left: 0; }
+      .lf-shell { max-width: 900px; margin: 0 auto; padding: 14px 20px 56px; }
+      .lf-topnav {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        padding: 4px 0 12px;
+      }
+      .lf-navlink { color: var(--lf-d-accent); text-decoration: none; font-size: 14px; }
+      .lf-navlink:hover { text-decoration: underline; }
+      .lf-topnav__tools { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+      starlight-theme-select,
+      starlight-lang-select { display: inline-block; }
+      .lf-select-wrap select {
+        padding: 6px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--lf-d-line-strong);
+        background: var(--lf-d-panel);
+        color: var(--lf-d-text);
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .lf-select-wrap select:focus { outline: none; border-color: var(--lf-d-accent); }
+      .lf-menu { position: relative; }
+      .lf-menu summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--lf-d-line-strong);
+        background: var(--lf-d-panel);
+        color: var(--lf-d-text);
+        font-size: 13px;
+        user-select: none;
+      }
+      .lf-menu summary::-webkit-details-marker { display: none; }
+      .lf-menu[open] summary { border-color: var(--lf-d-accent); }
+      .lf-menu__list {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 6px);
+        z-index: 20;
+        min-width: 200px;
+        display: flex;
+        flex-direction: column;
+        padding: 8px;
+        border-radius: 10px;
+        border: 1px solid var(--lf-d-line);
+        background: var(--lf-d-panel-raise);
+        box-shadow: 0 10px 24px var(--lf-d-shadow);
+      }
+      .lf-menu__list a {
+        color: var(--lf-d-text);
+        text-decoration: none;
+        padding: 7px 10px;
+        border-radius: 6px;
+        font-size: 13px;
+      }
+      .lf-menu__list a:hover {
+        background: var(--lf-d-panel);
+        color: var(--lf-d-heading);
+      }
+
+      /* —— 正文公共件（各独立路由页共用）—— */
+      .lf-page { padding-top: 14px; }
+      .lf-page h1 { margin: 0 0 6px; font-size: 24px; color: var(--lf-d-heading); }
+      .lf-page .lf-lede { margin: 0 0 20px; color: var(--lf-d-muted); }
+      .lf-page .lf-lede code {
+        background: var(--lf-d-panel);
+        border: 1px solid var(--lf-d-line);
+        border-radius: 6px;
+        padding: 1px 6px;
+        font-size: 13px;
+      }
+      .lf-page footer {
+        margin-top: 18px;
+        padding-top: 14px;
+        border-top: 1px solid var(--lf-d-line);
+        color: var(--lf-d-muted);
+        font-size: 13px;
+      }
+      .lf-page footer a { color: var(--lf-d-accent); text-decoration: none; }
+      .lf-page footer a:hover { text-decoration: underline; }
+      .lf-chip {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 2px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--lf-d-line-strong);
+        background: var(--lf-d-panel);
+        color: var(--lf-d-accent);
+        font-size: 12px;
+        font-weight: 400;
+        vertical-align: middle;
+      }
+      .lf-btn {
+        padding: 7px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--lf-d-line-strong);
+        background: var(--lf-d-panel);
+        color: var(--lf-d-text);
+        font: inherit;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .lf-btn:hover { border-color: var(--lf-d-accent); }
+      .lf-btn[aria-pressed='true'] {
+        border-color: var(--lf-d-accent);
+        background: var(--lf-d-panel-raise);
+        color: var(--lf-d-heading);
+      }
+      .lf-btn:disabled { opacity: 0.45; cursor: default; }
+      a.lf-btn { display: inline-block; text-decoration: none; }
+      .lf-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      .lf-row + .lf-row { margin-top: 10px; }
+      .lf-row-label { color: var(--lf-d-muted); font-size: 13px; margin-right: 2px; }
+    </style>
+    <script is:inline>
+      // 首帧前定主题：与站点约定同键（localStorage 'starlight-theme'），
+      // 未存储时跟随系统亮暗，避免独立路由页与文档站之间来回闪烁。
+      (function () {
+        var stored = null;
+        try { stored = localStorage.getItem('starlight-theme'); } catch (e) { stored = null; }
+        var theme =
+          stored === 'dark' || stored === 'light'
+            ? stored
+            : window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+              ? 'light'
+              : 'dark';
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="sl-skip-link" href="#_top">{t.skip}</a>
+    <div class="lf-shell">
+      <nav class="lf-topnav" aria-label={t.navLabel}>
+        <a class="lf-navlink" href={base}>{t.docsHome}</a>
+        <div class="lf-topnav__tools">
+          <starlight-theme-select>
+            <label class="lf-select-wrap">
+              <span class="sr-only">{t.themeLabel}</span>
+              <select id="lf-theme-select" autocomplete="off">
+                <option value="dark">{t.dark}</option>
+                <option value="light">{t.light}</option>
+              </select>
+            </label>
+          </starlight-theme-select>
+          <starlight-lang-select>
+            <label class="lf-select-wrap">
+              <span class="sr-only">{t.langLabel}</span>
+              <select id="lf-lang-select" autocomplete="off">
+                <option value={abs(zhPath)} selected={lang === 'zh'}>简体中文</option>
+                <option value={abs(enPath)} selected={lang === 'en'}>English</option>
+              </select>
+            </label>
+          </starlight-lang-select>
+          <details class="lf-menu">
+            <summary>{t.menuLabel}</summary>
+            <div class="lf-menu__list">
+              {t.menu.map((item) => <a href={item.href}>{item.label}</a>)}
+            </div>
+          </details>
+        </div>
+      </nav>
+      <slot />
+    </div>
+    <script is:inline>
+      // 页头两个选择器的行为：主题写入 html data-theme 并持久化；语言整页跳转。
+      (function () {
+        var root = document.documentElement;
+        var picker = document.getElementById('lf-theme-select');
+        if (picker) {
+          picker.value = root.dataset.theme === 'light' ? 'light' : 'dark';
+          picker.addEventListener('change', function () {
+            root.dataset.theme = picker.value;
+            try { localStorage.setItem('starlight-theme', picker.value); } catch (e) { /* 隐私模式下忽略 */ }
+          });
+        }
+        var langPicker = document.getElementById('lf-lang-select');
+        if (langPicker) {
+          langPicker.addEventListener('change', function () {
+            if (langPicker.value) window.location.assign(langPicker.value);
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

@@ -40,7 +40,13 @@ export {
   buildOpRegistry,
   collectTextProjections,
 } from "./opRegistry";
-export { waitSpecOfOp, WAITING_OPS, waitingStateOfOp } from "./waitingOps";
+export {
+  collectWaitSpecs,
+  waitSpecOfOp,
+  WAITING_OPS,
+  waitingStateOfOp,
+  type WaitSpec,
+} from "./waitingOps";
 export {
   loadDeclaredExtensions,
   type ExtensionModuleLoader,

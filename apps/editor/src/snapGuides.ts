@@ -34,7 +34,11 @@ export const SNAP_THRESHOLD_PX = 5;
  * 多个候选都在阈值内时取**最近的那个**（不是第一个）——
  * 否则元素从右往左拖时，参考线会跳到另一条。
  */
-export function nearestSnap(pos: number, candidates: readonly number[], threshold = SNAP_THRESHOLD_PX): number | null {
+export function nearestSnap(
+  pos: number,
+  candidates: readonly number[],
+  threshold = SNAP_THRESHOLD_PX,
+): number | null {
   let best: number | null = null;
   let bestDist = threshold;
   for (const c of candidates) {
@@ -54,7 +58,12 @@ export function nearestSnap(pos: number, candidates: readonly number[], threshol
  * @param others **其它**元素（不含被拖的那个）的候选线
  */
 export function snapGuides(
-  box: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+  box: {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+  },
   others: SnapCandidate,
   threshold = SNAP_THRESHOLD_PX,
 ): SnapResult {
@@ -66,7 +75,11 @@ export function snapGuides(
 }
 
 /** 从"被拖元素的三个关键 x"里找任一命中（命中即给参考线） */
-function nearestSnap2(probes: readonly number[], candidates: readonly number[], threshold: number): number | null {
+function nearestSnap2(
+  probes: readonly number[],
+  candidates: readonly number[],
+  threshold: number,
+): number | null {
   let best: number | null = null;
   let bestDist = threshold;
   for (const p of probes) {

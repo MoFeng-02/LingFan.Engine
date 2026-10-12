@@ -7,7 +7,13 @@
  * 两条路径迟早会对同一个文件给出不同结论。
  */
 import { isPlainObject } from "../../shared";
-import { isSceneType, type ElementNode, type SceneType, type StoryColumn, type StoryCommand } from "../../contracts";
+import {
+  isSceneType,
+  type ElementNode,
+  type SceneType,
+  type StoryColumn,
+  type StoryCommand,
+} from "../../contracts";
 import { validateElement } from "../element";
 import { validateCommand } from "./validate";
 
@@ -70,10 +76,12 @@ export function columnShapeDefect(
     return { reason: "bad-type", received: column.type };
   }
   if (kind === "flow") {
-    if (!Array.isArray(column.commands)) return { reason: "flow-without-commands" };
+    if (!Array.isArray(column.commands))
+      return { reason: "flow-without-commands" };
     return null;
   }
-  if (!Array.isArray(column.elements)) return { reason: "scene-without-elements" };
+  if (!Array.isArray(column.elements))
+    return { reason: "scene-without-elements" };
   return null;
 }
 
@@ -133,7 +141,11 @@ export function parseColumn(
     const seenElementIds = new Set<string>();
     for (const [j, node] of raw.elements.entries()) {
       validateElement(node, `${at}.elements[${j}]`, issues);
-      if (isPlainObject(node) && typeof node.id === "string" && node.id !== "") {
+      if (
+        isPlainObject(node) &&
+        typeof node.id === "string" &&
+        node.id !== ""
+      ) {
         if (seenElementIds.has(node.id)) {
           issues.push(
             `${at}.elements[${j}].id 重复：${node.id}（同列内元素 id 必须唯一，寻址前提）`,

@@ -108,7 +108,10 @@ export function sampleStory(): Story {
             duration: 1,
             easing: "EaseOutQuad",
           },
-          { op: "say", text: "scene 列：元素是声明式空间层，可在舞台视图拖拽。" },
+          {
+            op: "say",
+            text: "scene 列：元素是声明式空间层，可在舞台视图拖拽。",
+          },
         ],
       },
       { id: "end", kind: "flow", commands: [{ op: "say", text: "（完）" }] },

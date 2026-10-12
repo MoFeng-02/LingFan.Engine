@@ -7,7 +7,10 @@
  *
  * 未知名 / null 回退默认（模板只影响展示）。
  */
-import { TemplateRegistry, createTemplateRegistry } from "../templates/registry";
+import {
+  TemplateRegistry,
+  createTemplateRegistry,
+} from "../templates/registry";
 import { renderDialogueLine } from "../dialogue/textView";
 
 /** 通知层级（作者可选；模板据以换装/加图标） */
@@ -30,7 +33,9 @@ export interface NotifyTemplateView {
 }
 
 /** 通知层模板：吃投影出的单条通知，吐骨架挂点内容。纯函数——不控消失时机、不挂定时器 */
-export type NotifyTemplateFn = (input: NotifyTemplateInput) => NotifyTemplateView;
+export type NotifyTemplateFn = (
+  input: NotifyTemplateInput,
+) => NotifyTemplateView;
 
 /** 通知层模板注册表：按名存 `NotifyTemplateFn`，按名解析，未知名回退默认 */
 export type NotifyTemplateRegistry = TemplateRegistry<

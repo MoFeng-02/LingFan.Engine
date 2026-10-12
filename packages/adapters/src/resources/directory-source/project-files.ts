@@ -55,7 +55,10 @@ async function readProject(source: ProjectFileSource): Promise<LoadedProject> {
   }
   if (!hasManifest) {
     // 降级：合成最小清单（formatVersion/id/entry），降级事实显式上交（端口 `degraded()`）
-    const { manifest, degraded } = synthesizeDegradedManifest(source.name, stories);
+    const { manifest, degraded } = synthesizeDegradedManifest(
+      source.name,
+      stories,
+    );
     return { manifest, stories, degraded };
   }
   const raw = await source.text(MANIFEST_FILE);

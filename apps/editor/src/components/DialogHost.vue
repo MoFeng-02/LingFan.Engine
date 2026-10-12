@@ -9,7 +9,11 @@
  * 组件与调用方都不自己判 `=== null`）——「取消被当成留空」那类数据丢失的根治点。
  */
 import { nextTick, ref, useTemplateRef, watch } from "vue";
-import { parseTextAnswer, type DialogAnswer, type DialogRequest } from "../dialog";
+import {
+  parseTextAnswer,
+  type DialogAnswer,
+  type DialogRequest,
+} from "../dialog";
 
 const props = defineProps<{ request: DialogRequest | undefined }>();
 const emit = defineEmits<{
@@ -38,9 +42,11 @@ watch(
       lastRequest = next;
     }
     await nextTick();
-    const focusTarget = panel.value?.querySelector<HTMLElement>("input, button");
+    const focusTarget =
+      panel.value?.querySelector<HTMLElement>("input, button");
     focusTarget?.focus();
-    if (next.kind === "text") panel.value?.querySelector<HTMLInputElement>("input")?.select();
+    if (next.kind === "text")
+      panel.value?.querySelector<HTMLInputElement>("input")?.select();
   },
   { immediate: true },
 );
@@ -89,7 +95,13 @@ function submit(): void {
 </script>
 
 <template>
-  <div v-if="request" class="dialog-backdrop" @pointerdown.self="((emit('answer', request.kind === 'text' ? null : false), emit('dismiss')))">
+  <div
+    v-if="request"
+    class="dialog-backdrop"
+    @pointerdown.self="
+      (emit('answer', request.kind === 'text' ? null : false), emit('dismiss'))
+    "
+  >
     <div
       ref="panel"
       class="dialog-panel"
@@ -100,7 +112,10 @@ function submit(): void {
     >
       <h2 id="dialog-title" class="dialog-title">{{ request.title }}</h2>
 
-      <p v-if="request.kind !== 'text' && request.message" class="dialog-message">
+      <p
+        v-if="request.kind !== 'text' && request.message"
+        class="dialog-message"
+      >
         {{ request.message }}
       </p>
 
@@ -115,11 +130,16 @@ function submit(): void {
       <!-- 选项选择：点选项即提交（无确定按钮）；Esc / 遮罩 / 取消按钮 = 取消。
            用按钮组（role=group）而非 listbox —— 「点选即提交」没有持久选中态，
            给每个 option 标 aria-selected=true 反而是错的。 -->
-      <div v-if="request.kind === 'choice'" class="dialog-choices" role="group" aria-label="选项">
+      <div
+        v-if="request.kind === 'choice'"
+        class="dialog-choices"
+        role="group"
+        aria-label="选项"
+      >
         <button
           v-for="option in request.options"
           :key="option.value"
-          @click="((emit('answer', option.value), emit('dismiss')))"
+          @click="(emit('answer', option.value), emit('dismiss'))"
         >
           {{ option.label }}
         </button>
@@ -128,7 +148,10 @@ function submit(): void {
       <div class="dialog-actions">
         <button
           v-if="request.kind !== 'notice'"
-          @click="((emit('answer', request.kind === 'text' ? null : false), emit('dismiss')))"
+          @click="
+            (emit('answer', request.kind === 'text' ? null : false),
+            emit('dismiss'))
+          "
         >
           取消
         </button>
@@ -139,7 +162,9 @@ function submit(): void {
         >
           {{ request.kind === "text" ? "确定" : "确定" }}
         </button>
-        <button v-else @click="((emit('answer', undefined), emit('dismiss')))">知道了</button>
+        <button v-else @click="(emit('answer', undefined), emit('dismiss'))">
+          知道了
+        </button>
       </div>
     </div>
   </div>

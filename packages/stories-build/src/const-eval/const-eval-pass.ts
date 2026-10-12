@@ -24,7 +24,10 @@ import type { CompilerConstValues } from "../compiler";
 import { StoryBuildError } from "../shared";
 
 /** 词汇层两包不触发求值：editor 是词汇出口（图谱层按词/命名空间绑定），engine 不参与创作导入。 */
-const RESERVED_SPECS: ReadonlySet<string> = new Set(["@lingfan/editor", "@lingfan/engine"]);
+const RESERVED_SPECS: ReadonlySet<string> = new Set([
+  "@lingfan/editor",
+  "@lingfan/engine",
+]);
 
 interface NpmValueImport {
   spec: string;
@@ -88,7 +91,8 @@ export async function runConstEvalPass(
     if ("diags" in result) {
       failures.push(
         ...result.diags.map(
-          (diag) => `- ${formatConstDiagFile(diag.file, sourcesDir, sourcesDirName)}:${diag.line}:${diag.col} ${diag.message}`,
+          (diag) =>
+            `- ${formatConstDiagFile(diag.file, sourcesDir, sourcesDirName)}:${diag.line}:${diag.col} ${diag.message}`,
         ),
       );
       continue;
@@ -96,14 +100,22 @@ export async function runConstEvalPass(
     constValues[rel] = result.values;
   }
   if (failures.length > 0) {
-    throw new StoryBuildError(`编译期求值失败（${failures.length} 条）：\n${failures.join("\n")}`);
+    throw new StoryBuildError(
+      `编译期求值失败（${failures.length} 条）：\n${failures.join("\n")}`,
+    );
   }
   return constValues;
 }
 
 /** const-eval 诊断的 file 是绝对入口路径；归一为 `Stories.src/<rel>` 与其余诊断同构。 */
-export function formatConstDiagFile(file: string, sourcesDir: string, sourcesDirName: string): string {
+export function formatConstDiagFile(
+  file: string,
+  sourcesDir: string,
+  sourcesDirName: string,
+): string {
   const norm = file.replace(/\\/g, "/");
   const prefix = `${sourcesDir.replace(/\\/g, "/").replace(/\/$/, "")}/`;
-  return norm.startsWith(prefix) ? `${sourcesDirName}/${norm.slice(prefix.length)}` : norm;
+  return norm.startsWith(prefix)
+    ? `${sourcesDirName}/${norm.slice(prefix.length)}`
+    : norm;
 }

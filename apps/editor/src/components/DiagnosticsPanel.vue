@@ -28,9 +28,13 @@ const api = inject(EDITOR_API_KEY)!;
  *  汇总（summary）吃**全量**诊断——它是「严重度普查」，筛选不得改变计数；
  *     分组（groups）吃**筛选后**的子集（徽章可点筛选）。 */
 const groups = computed(() =>
-  groupDiagnostics(filterDiagnosticsBySeverity(props.diagnostics, severityFilter.value)),
+  groupDiagnostics(
+    filterDiagnosticsBySeverity(props.diagnostics, severityFilter.value),
+  ),
 );
-const summary = computed(() => summarizeDiagnostics(groupDiagnostics(props.diagnostics)));
+const summary = computed(() =>
+  summarizeDiagnostics(groupDiagnostics(props.diagnostics)),
+);
 const summaryText = computed(() => diagnosticSummaryText(summary.value));
 
 /** 徽章筛选态（null = 全部）。再点同枚 = 取消筛选（toggle 语义） */
@@ -95,7 +99,8 @@ function itemTitle(diagnostic: Diagnostic): string {
 }
 
 /** 诊断带 JSON Pointer——点击定位到命令（空指针 = 全局诊断，不可定位） */
-function locate(diagnostic: Diagnostic): void {  // 必须用 `reveal`（不是 `select`）：点诊断必须「看得见」——
+function locate(diagnostic: Diagnostic): void {
+  // 必须用 `reveal`（不是 `select`）：点诊断必须「看得见」——
   // 目标行可能在视口外/其他视图下，单纯改选中态会被用户感知为"点了没反应"。
   if (diagnostic.pointer !== "") api.reveal(diagnostic.pointer);
 }
@@ -121,20 +126,26 @@ const keyOf = (d: Diagnostic): string => `${d.code}@${d.pointer}:${d.message}`;
             :class="badgeClass('error')"
             :aria-pressed="severityFilter === 'error'"
             :disabled="summary.errors === 0"
-            :title="severityFilter === 'error' ? '取消筛选（显示全部）' : '只看错误'"
+            :title="
+              severityFilter === 'error' ? '取消筛选（显示全部）' : '只看错误'
+            "
             @click="toggleFilter('error')"
           >
-            <span class="diag-x-badge-dot" aria-hidden="true"></span>{{ summary.errors }} 错误
+            <span class="diag-x-badge-dot" aria-hidden="true"></span
+            >{{ summary.errors }} 错误
           </button>
           <button
             class="diag-x-badge diag-x-warning"
             :class="badgeClass('warning')"
             :aria-pressed="severityFilter === 'warning'"
             :disabled="summary.warnings === 0"
-            :title="severityFilter === 'warning' ? '取消筛选（显示全部）' : '只看警告'"
+            :title="
+              severityFilter === 'warning' ? '取消筛选（显示全部）' : '只看警告'
+            "
             @click="toggleFilter('warning')"
           >
-            <span class="diag-x-badge-dot" aria-hidden="true"></span>{{ summary.warnings }} 警告
+            <span class="diag-x-badge-dot" aria-hidden="true"></span
+            >{{ summary.warnings }} 警告
           </button>
         </span>
       </div>
@@ -142,7 +153,10 @@ const keyOf = (d: Diagnostic): string => `${d.code}@${d.pointer}:${d.message}`;
       <section v-for="g in groups" :key="g.code" class="diag-x-group">
         <button
           class="diag-x-group-head"
-          :class="[g.severity, { collapsed: isCollapsed(g.code, g.collapsedByDefault) }]"
+          :class="[
+            g.severity,
+            { collapsed: isCollapsed(g.code, g.collapsedByDefault) },
+          ]"
           :aria-expanded="!isCollapsed(g.code, g.collapsedByDefault)"
           :title="`${g.label}（${g.items.length} 条）`"
           @click="toggle(g.code)"
@@ -163,7 +177,10 @@ const keyOf = (d: Diagnostic): string => `${d.code}@${d.pointer}:${d.message}`;
           <li
             v-for="diagnostic in g.items"
             :key="keyOf(diagnostic)"
-            :class="[diagnostic.severity, { global: diagnostic.pointer === '' }]"
+            :class="[
+              diagnostic.severity,
+              { global: diagnostic.pointer === '' },
+            ]"
             :title="itemTitle(diagnostic)"
             @click="locate(diagnostic)"
           >

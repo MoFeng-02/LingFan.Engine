@@ -80,7 +80,9 @@ describe("演示工厂消费 state 通道（registry + 引擎全链路）", () =
   });
 
   it("click3 回传的 state 逐键落 game.click3.*，engine.get 可读；score 行为不变", async () => {
-    vi.stubGlobal("document", { createElement: (tag: string) => createEl(tag) });
+    vi.stubGlobal("document", {
+      createElement: (tag: string) => createEl(tag),
+    });
 
     const registry = createMinigameRegistry();
     const marked: unknown[] = [];

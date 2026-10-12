@@ -126,12 +126,12 @@ notify "金币 +{reward}"
 
 ## 四个等待点的解除方
 
-| 指令 | 等待态 | 谁来解除 | 宿主调什么 |
-| --- | --- | --- | --- |
-| `menu` | `menu` | 玩家选中一项 | `engine.choose(目标列)` |
-| `input` | `input` | 玩家提交输入 | `engine.input(值)` |
-| `wait` | `wait` | 计时器 | 自动；`skipable` 时也可 `engine.advance()` |
-| `pause` | `wait` | 计时器 | 自动。不可跳过 |
+| 指令    | 等待态  | 谁来解除     | 宿主调什么                                 |
+| ------- | ------- | ------------ | ------------------------------------------ |
+| `menu`  | `menu`  | 玩家选中一项 | `engine.choose(目标列)`                    |
+| `input` | `input` | 玩家提交输入 | `engine.input(值)`                         |
+| `wait`  | `wait`  | 计时器       | 自动；`skipable` 时也可 `engine.advance()` |
+| `pause` | `wait`  | 计时器       | 自动。不可跳过                             |
 
 `menu` 和 `input` 的解除权在宿主——引擎不知道玩家点了哪个选项、输了什么字，得你告诉它。
 

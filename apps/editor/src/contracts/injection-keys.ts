@@ -22,12 +22,14 @@ export const EDITOR_API_KEY: InjectionKey<EditorApiPort> =
  * 章节树据此把「列」按作者的目录编排分组。可选：单文件工程没有路径概念，
  * 取不到时章节树退化为「无分组的全列表」，不报错。
  */
-export const COLUMN_PATHS_KEY: InjectionKey<Ref<Map<string, string>>> =
-  Symbol("lingfan-editor-column-paths");
+export const COLUMN_PATHS_KEY: InjectionKey<Ref<Map<string, string>>> = Symbol(
+  "lingfan-editor-column-paths",
+);
 
 /** 当前选中的 JSON Pointer（`null` = 未选中） */
-export const SELECTED_POINTER_KEY: InjectionKey<Ref<string | null>> =
-  Symbol("lingfan-editor-selected-pointer");
+export const SELECTED_POINTER_KEY: InjectionKey<Ref<string | null>> = Symbol(
+  "lingfan-editor-selected-pointer",
+);
 
 /**
  * 列分组视图的读写面。

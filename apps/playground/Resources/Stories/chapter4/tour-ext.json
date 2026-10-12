@@ -17,6 +17,10 @@
       "text": "任务面板：{ext.demoquest.step}——extOp 写入插件命名空间，插值按路径读取。"
     },
     {
+      "title": "交付确认",
+      "op": "quest_gate"
+    },
+    {
       "step": "完成交付",
       "op": "quest"
     },

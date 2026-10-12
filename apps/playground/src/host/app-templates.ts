@@ -63,13 +63,9 @@ export function createAppTemplates(options: AppTemplatesOptions): AppTemplates {
   // —— 对话框模板注册制：宿主装配注册表。核心层解析模板名三级优先级 →
   // __dialog_template，此处按名解析（未知名/null 回退默认）。
   const dialogueTemplates = createDialogueTemplateRegistry();
-  dialogueTemplates.register(
-    "bubble",
-    builtinBubbleTemplate,
-    {
-      makeDefault: true,
-    },
-  );
+  dialogueTemplates.register("bubble", builtinBubbleTemplate, {
+    makeDefault: true,
+  });
   // 演示自定义模板（作者纯 TS 创作形态）：居中独白——隐藏说话人行 + 皮肤类
   dialogueTemplates.register("center", (input) => ({
     rootClass: "tpl-center",
@@ -79,13 +75,9 @@ export function createAppTemplates(options: AppTemplatesOptions): AppTemplates {
   }));
   // —— 选择层 / 通知层模板注册制（与对话模板同一形态：语义骨架挂点 + 根皮肤类）——
   const choiceTemplates = createChoiceTemplateRegistry();
-  choiceTemplates.register(
-    "default",
-    builtinChoiceTemplate,
-    {
-      makeDefault: true,
-    },
-  );
+  choiceTemplates.register("default", builtinChoiceTemplate, {
+    makeDefault: true,
+  });
   // 演示自定义选择模板（作者纯 TS 创作形态）：编号列表 + 独立皮肤类
   choiceTemplates.register("numbered", (input) => ({
     rootClass: "tpl-choice-numbered",
@@ -100,16 +92,13 @@ export function createAppTemplates(options: AppTemplatesOptions): AppTemplates {
   }));
   const choiceTemplateName = ref<string | null>("");
   const notifyTemplates = createNotifyTemplateRegistry();
-  notifyTemplates.register(
-    "default",
-    builtinNotifyTemplate,
-    {
-      makeDefault: true,
-    },
-  );
+  notifyTemplates.register("default", builtinNotifyTemplate, {
+    makeDefault: true,
+  });
   const choiceView = computed<ChoiceTemplateView>(() => {
     const template =
-      choiceTemplates.resolve(choiceTemplateName.value) ?? builtinChoiceTemplate;
+      choiceTemplates.resolve(choiceTemplateName.value) ??
+      builtinChoiceTemplate;
     return template({
       prompt: menuPrompt.value,
       options: menuOptions.value,
@@ -135,7 +124,9 @@ export function createAppTemplates(options: AppTemplatesOptions): AppTemplates {
       .slice(0, -1)
       .map((line) => renderDialogueLine({ text: line }).html),
   );
-  const nvlTypingLine = computed(() => nvlBuffer.value[nvlBuffer.value.length - 1] ?? "");
+  const nvlTypingLine = computed(
+    () => nvlBuffer.value[nvlBuffer.value.length - 1] ?? "",
+  );
   watch(nvlBuffer, () => {
     void nextTick(() => {
       const body = readNvlBody();

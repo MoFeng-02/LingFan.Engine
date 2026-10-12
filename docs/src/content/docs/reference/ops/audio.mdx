@@ -3,7 +3,7 @@ title: 音频指令
 description: bgm、se、ambient、voice 四条通道与三条停止指令的签名、参数与常见错误。七条都不建立等待点。
 ---
 
-import OpCard from '../../../../components/OpCard.astro';
+import OpCard from "../../../../components/OpCard.astro";
 
 音频走四条通道：`bgm`、`ambient`、`voice` 是常驻通道，`se` 是一次性触发。引擎只往状态里写通道对象，真正的播放由宿主落地——所以这些指令执行完立刻往下走，不等声音播完。
 
@@ -25,13 +25,13 @@ bgm "Audio/theme.mp3" restart
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `resource` | string | 必填。相对资源根的路径 |
-| `volume` | number | 可选，缺省 1。越界钳到 0..1 |
-| `loop` | boolean | 可选，缺省 `true` |
-| `fade` | number | 可选，缺省 0。毫秒 |
-| `restart` | boolean | 可选。文本形态里裸写 `restart` 即为真 |
+| 字段       | 类型    | 说明                                  |
+| ---------- | ------- | ------------------------------------- |
+| `resource` | string  | 必填。相对资源根的路径                |
+| `volume`   | number  | 可选，缺省 1。越界钳到 0..1           |
+| `loop`     | boolean | 可选，缺省 `true`                     |
+| `fade`     | number  | 可选，缺省 0。毫秒                    |
+| `restart`  | boolean | 可选。文本形态里裸写 `restart` 即为真 |
 
 **最小示例**
 
@@ -69,10 +69,10 @@ se "Audio/thunder.mp3" volume=0.8
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `resource` | string | 必填 |
-| `volume` | number | 可选，缺省 1 |
+| 字段       | 类型   | 说明         |
+| ---------- | ------ | ------------ |
+| `resource` | string | 必填         |
+| `volume`   | number | 可选，缺省 1 |
 
 **最小示例**
 
@@ -139,12 +139,12 @@ voice "Audio/ache_02.mp3" volume=0.9 auto_stop=false
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `resource` | string | 必填 |
-| `volume` | number | 可选，缺省 1 |
+| 字段        | 类型    | 说明              |
+| ----------- | ------- | ----------------- |
+| `resource`  | string  | 必填              |
+| `volume`    | number  | 可选，缺省 1      |
 | `auto_stop` | boolean | 可选，缺省 `true` |
-| `restart` | boolean | 可选 |
+| `restart`   | boolean | 可选              |
 
 **最小示例**
 
@@ -178,8 +178,8 @@ stop_bgm fade=1500
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
+| 字段   | 类型   | 说明               |
+| ------ | ------ | ------------------ |
 | `fade` | number | 可选，缺省 0。毫秒 |
 
 **最小示例**
@@ -214,8 +214,8 @@ stop_ambient fade=800
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
+| 字段   | 类型   | 说明               |
+| ------ | ------ | ------------------ |
 | `fade` | number | 可选，缺省 0。毫秒 |
 
 **最小示例**
@@ -248,8 +248,8 @@ stop_voice fade=300
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
+| 字段   | 类型   | 说明               |
+| ------ | ------ | ------------------ |
 | `fade` | number | 可选，缺省 0。毫秒 |
 
 **最小示例**

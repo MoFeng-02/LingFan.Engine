@@ -6,7 +6,9 @@ import { menu, option, say } from "../lib/vocabulary";
 
 export default function tour(): void {
   say("词汇全席开席——每个站点把一个词汇域做成一道菜，随便点、随便续。", "灵泛");
-  say("（本列由 TS 源第四章生成：源里就是普通函数体，编译器逐句转译成 op 序列。）");
+  say(
+    "（本列由 TS 源第四章生成：源里就是普通函数体，编译器逐句转译成 op 序列。）",
+  );
   menu("下一道？", [
     option("变量盛宴", "tour_vars"),
     option("流程厨房", "tour_flow"),

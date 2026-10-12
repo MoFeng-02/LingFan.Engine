@@ -43,9 +43,10 @@ export function createNotifyView(deps: NotifyViewDeps): NotifyView {
   const timers = new Set<ReturnType<typeof setTimeout>>();
   return {
     render(payload: NotifyPayload): void {
-      const built = (
-        deps.templates?.resolve(null) ?? builtinNotifyTemplate
-      )({ text: payload.text, tone: toNotifyTone(payload.notifyType) });
+      const built = (deps.templates?.resolve(null) ?? builtinNotifyTemplate)({
+        text: payload.text,
+        tone: toNotifyTone(payload.notifyType),
+      });
       const item = deps.container.ownerDocument.createElement("div");
       item.className = built.rootClass;
       item.innerHTML = built.bodyHtml;

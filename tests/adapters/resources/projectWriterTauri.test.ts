@@ -44,12 +44,16 @@ function makeMemoryBackend() {
       const deleteOk = (p: string) => p.startsWith("Stories/");
       for (const change of changes ?? []) {
         if (!writeOk(change.path)) {
-          throw new Error(`写入路径非法（越出资源根或非白名单）：${change.path}`);
+          throw new Error(
+            `写入路径非法（越出资源根或非白名单）：${change.path}`,
+          );
         }
       }
       for (const path of deletes ?? []) {
         if (!deleteOk(path)) {
-          throw new Error(`删除路径非法（只允许删除 Stories/ 内的陈旧文件）：${path}`);
+          throw new Error(
+            `删除路径非法（只允许删除 Stories/ 内的陈旧文件）：${path}`,
+          );
         }
       }
       for (const change of changes ?? []) {
@@ -182,7 +186,7 @@ describe("createTauriProjectWriter（project-writer-parity / project-write-confl
 
   it("负载形状 fail-closed：stamps 坏 → 构造抛；报告坏 → apply 抛（不静默采信）", async () => {
     // 拦截点前移：stamps 形状非法在工厂构造期即拦（零副作用）
-    const badStamps: TauriInvoke = async <T>() => ({ foo: 1 } as T);
+    const badStamps: TauriInvoke = async <T>() => ({ foo: 1 }) as T;
     await expect(
       createTauriProjectWriter("E:/proj/Resources", new Map(), {
         invoke: badStamps,
@@ -190,7 +194,9 @@ describe("createTauriProjectWriter（project-writer-parity / project-write-confl
     ).rejects.toThrow("指纹负载形状非法");
     // 契约保留：stamps 合法但写回报告 written/deleted 非字符串数组 → apply 抛
     const badReport: TauriInvoke = async <T>(command: string) =>
-      command === "stamp_project_files" ? ({ stamps: [] } as T) : ({ foo: 1 } as T);
+      command === "stamp_project_files"
+        ? ({ stamps: [] } as T)
+        : ({ foo: 1 } as T);
     const writer = await createTauriProjectWriter(
       "E:/proj/Resources",
       new Map(),

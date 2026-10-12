@@ -102,29 +102,51 @@ export function createStateView(
     // 实例级 z：先问宿主这个键是不是层级键，值非数字时视为「回层默认」
     const layer = options.resolveLayer(key);
     if (layer !== undefined) {
-      return { kind: "layer", layer, z: typeof value === "number" ? value : undefined };
+      return {
+        kind: "layer",
+        layer,
+        z: typeof value === "number" ? value : undefined,
+      };
     }
     if (key === keys.speaker) {
       return readSpeakerIntent(value, options.readCharacterColor);
     }
     if (key === keys.dialogText) {
       const text = typeof value === "string" ? value : "";
-      return { kind: "dialog-text", text, setting: options.readTypingSetting() };
+      return {
+        kind: "dialog-text",
+        text,
+        setting: options.readTypingSetting(),
+      };
     }
     if (key === keys.waiting) {
-      return { kind: "waiting", waiting: typeof value === "string" ? value : "none" };
+      return {
+        kind: "waiting",
+        waiting: typeof value === "string" ? value : "none",
+      };
     }
     if (key === keys.nvlMode) {
-      return { kind: "nvl-mode", mode: typeof value === "string" ? value : "none" };
+      return {
+        kind: "nvl-mode",
+        mode: typeof value === "string" ? value : "none",
+      };
     }
     if (key === keys.nvlBuffer) {
-      return { kind: "nvl-buffer", lines: Array.isArray(value) ? (value as string[]) : [] };
+      return {
+        kind: "nvl-buffer",
+        lines: Array.isArray(value) ? (value as string[]) : [],
+      };
     }
     // 选项与目标两键分别写入：任一到达都做一次整体重建
-    if (key === keys.menuOptions || key === keys.menuTargets) return { kind: "choices" };
-    if (key === keys.dialogVisible) return { kind: "dialog-visible", hidden: value === "hide" };
+    if (key === keys.menuOptions || key === keys.menuTargets)
+      return { kind: "choices" };
+    if (key === keys.dialogVisible)
+      return { kind: "dialog-visible", hidden: value === "hide" };
     if (key === keys.elements) {
-      return { kind: "elements", elements: (value as ElementInstance[] | undefined) ?? [] };
+      return {
+        kind: "elements",
+        elements: (value as ElementInstance[] | undefined) ?? [],
+      };
     }
     return { kind: "none" };
   };

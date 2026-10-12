@@ -57,7 +57,9 @@ describe("easingFn", () => {
 
   it("大小写不敏感：Linear 与既有语料 linear 等价（回归）", () => {
     expect(easingFn("Linear")(0.3)).toBeCloseTo(easingFn("linear")(0.3));
-    expect(easingFn("easeoutquad")(0.4)).toBeCloseTo(easingFn("EaseOutQuad")(0.4));
+    expect(easingFn("easeoutquad")(0.4)).toBeCloseTo(
+      easingFn("EaseOutQuad")(0.4),
+    );
   });
 
   it("每个缓动都是归一化函数：f(0)=0、f(1)=1（边界）", () => {

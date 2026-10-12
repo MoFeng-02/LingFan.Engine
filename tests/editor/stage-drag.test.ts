@@ -19,7 +19,8 @@ import timelineSource from "../../apps/editor/src/components/StoryTimeline.vue?r
 import editorApiContractSource from "../../apps/editor/src/contracts/editor.ts?raw";
 
 /** 去注释（守卫对象是代码，注释里提到旧行为是正常的） */
-const code = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+const code = (s: string): string =>
+  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
 describe("舞台拖拽回归 · select 不得再切视图", () => {
   it("`select()` 只做选中，**不含** `centerView` 赋值（修法 a）", () => {
@@ -39,7 +40,7 @@ describe("舞台拖拽回归 · select 不得再切视图", () => {
     const start = src.indexOf("reveal(pointer: string): void {");
     expect(start).toBeGreaterThan(-1);
     const body = src.slice(start, src.indexOf("\n  },", start));
-    expect(body).toContain("centerView.value = \"timeline\"");
+    expect(body).toContain('centerView.value = "timeline"');
     expect(body).toContain("scrollIntoView");
   });
 
@@ -47,7 +48,9 @@ describe("舞台拖拽回归 · select 不得再切视图", () => {
     const src = code(appSource);
     const start = src.indexOf("reveal(pointer: string): void {");
     const body = src.slice(start, src.indexOf("\n  },", start));
-    expect(body.indexOf("api.select(")).toBeLessThan(body.indexOf("centerView.value"));
+    expect(body.indexOf("api.select(")).toBeLessThan(
+      body.indexOf("centerView.value"),
+    );
     expect(body.indexOf("api.select(")).toBeGreaterThan(-1);
   });
 });
@@ -55,15 +58,23 @@ describe("舞台拖拽回归 · select 不得再切视图", () => {
 describe("舞台拖拽回归 · 依赖切视图副作用的两处已显式化", () => {
   it("诊断面板走 `reveal`（点诊断必须看得见）", () => {
     expect(code(diagnosticsSource)).toContain("api.reveal(diagnostic.pointer)");
-    expect(code(diagnosticsSource)).not.toMatch(/api\.select\(diagnostic\.pointer\)/);
+    expect(code(diagnosticsSource)).not.toMatch(
+      /api\.select\(diagnostic\.pointer\)/,
+    );
     // 契约面必须声明 reveal（两处消费点共用同一份契约，不再各写一份 interface）
-    expect(editorApiContractSource).toMatch(/interface\s+EditorApiPort\s*\{[^}]*reveal\(/);
+    expect(editorApiContractSource).toMatch(
+      /interface\s+EditorApiPort\s*\{[^}]*reveal\(/,
+    );
   });
 
   it("步骤图走 `reveal`（从步骤图定位回时间线）", () => {
     expect(code(stepLayoutSource)).toContain("api.reveal(step.endPointer)");
-    expect(code(stepLayoutSource)).not.toMatch(/api\.select\(step\.endPointer\)/);
-    expect(editorApiContractSource).toMatch(/interface\s+EditorApiPort\s*\{[^}]*reveal\(/);
+    expect(code(stepLayoutSource)).not.toMatch(
+      /api\.select\(step\.endPointer\)/,
+    );
+    expect(editorApiContractSource).toMatch(
+      /interface\s+EditorApiPort\s*\{[^}]*reveal\(/,
+    );
   });
 
   it("舞台走**就地选中**（组件不再被卸载）", () => {
@@ -90,10 +101,15 @@ describe("舞台拖拽回归 · 拖拽阈值接线", () => {
 
   it("阈值内不显示位移（点一下不该看到元素跟手抖动）", () => {
     const src = code(stageEditorSource);
-    const onMove = src.slice(src.indexOf("const onMove"), src.indexOf("const onUp"));
+    const onMove = src.slice(
+      src.indexOf("const onMove"),
+      src.indexOf("const onUp"),
+    );
     expect(onMove).toContain("shouldSuppressClick");
     // 早返回必须在赋值 drag.value 之前
-    expect(onMove.indexOf("if (!shouldSuppressClick")).toBeLessThan(onMove.indexOf("drag.value ="));
+    expect(onMove.indexOf("if (!shouldSuppressClick")).toBeLessThan(
+      onMove.indexOf("drag.value ="),
+    );
   });
 
   it("时间线等「就地选中」路径不受影响（仍用 select）", () => {

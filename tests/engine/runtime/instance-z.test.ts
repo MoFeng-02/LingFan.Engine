@@ -91,7 +91,12 @@ describe("实例级 z：层映射", () => {
     const menu = makeHarness([
       column("a", [
         say("一"),
-        { op: "menu", prompt: "选", options: [{ text: "走", target: "a" }], z: 7 },
+        {
+          op: "menu",
+          prompt: "选",
+          options: [{ text: "走", target: "a" }],
+          z: 7,
+        },
       ]),
     ]);
     menu.engine.start();
@@ -178,7 +183,13 @@ describe("实例级 z：fail-closed", () => {
   it("解析期拒绝：负数 / 字符串 / NaN / Infinity", () => {
     for (const bad of [-1, "20", Number.NaN, Number.POSITIVE_INFINITY]) {
       expect(
-        () => parseStory({ formatVersion: 1, id: "t", entry: "a", columns: [column("a", [say("一", bad as number)])] }),
+        () =>
+          parseStory({
+            formatVersion: 1,
+            id: "t",
+            entry: "a",
+            columns: [column("a", [say("一", bad as number)])],
+          }),
         String(bad),
       ).toThrow(/z 必须为非负有限数/);
     }
@@ -228,7 +239,12 @@ describe("实例级 z：文本投影往返", () => {
     columns: [
       column("a", [
         say("一", 20),
-        { op: "menu", prompt: "选", options: [{ text: "走", target: "a" }], z: 7 },
+        {
+          op: "menu",
+          prompt: "选",
+          options: [{ text: "走", target: "a" }],
+          z: 7,
+        },
         { op: "input", prompt: "名", store: "n", z: 8 },
         { op: "notify", text: "提示", z: 50 },
         { op: "minigame", game: "g", z: 9 },

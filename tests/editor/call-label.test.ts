@@ -53,10 +53,11 @@ function callStory(subCommands: object[]) {
 
 describe("call <label> · 调用与返回", () => {
   it("**`call <列>` 真能进入子过程**", () => {
-    const h = instrument(new StoryEngine(callStory([
-      { op: "say", text: "in-sub" },
-      { op: "return" },
-    ])));
+    const h = instrument(
+      new StoryEngine(
+        callStory([{ op: "say", text: "in-sub" }, { op: "return" }]),
+      ),
+    );
     h.engine.start();
     expect(h.engine.get(SYS.currentDialogText)).toBe("before");
     h.engine.advance();
@@ -66,10 +67,11 @@ describe("call <label> · 调用与返回", () => {
   });
 
   it("**`return` 回到调用点的下一条**", () => {
-    const h = instrument(new StoryEngine(callStory([
-      { op: "say", text: "in-sub" },
-      { op: "return" },
-    ])));
+    const h = instrument(
+      new StoryEngine(
+        callStory([{ op: "say", text: "in-sub" }, { op: "return" }]),
+      ),
+    );
     h.engine.start();
     h.engine.advance(); // before → in-sub
     h.engine.advance(); // in-sub → return → after
@@ -78,9 +80,9 @@ describe("call <label> · 调用与返回", () => {
   });
 
   it("**无 `return` 时列尾自动返回**（子过程可以不写 return）", () => {
-    const h = instrument(new StoryEngine(callStory([
-      { op: "say", text: "in-sub" },
-    ])));
+    const h = instrument(
+      new StoryEngine(callStory([{ op: "say", text: "in-sub" }])),
+    );
     h.engine.start();
     h.engine.advance(); // before → in-sub
     h.engine.advance(); // 列尾 → 回到 after
@@ -98,7 +100,12 @@ describe("call <label> · 调用与返回", () => {
           id: "main",
           kind: "flow",
           commands: [
-            { op: "func", name: "fx", params: [], body: [{ op: "say", text: "in-func" }] },
+            {
+              op: "func",
+              name: "fx",
+              params: [],
+              body: [{ op: "say", text: "in-func" }],
+            },
             { op: "call", target: "fx" },
             { op: "say", text: "after-func" },
           ],
@@ -122,18 +129,27 @@ describe("call <label> · 调用与返回", () => {
       id: "t",
       entry: "main",
       columns: [
-        { id: "main", kind: "flow", commands: [
-          { op: "call", target: "lvl1" },
-          { op: "say", text: "M" },
-        ] },
-        { id: "lvl1", kind: "flow", commands: [
-          { op: "call", target: "lvl2" },
-          { op: "say", text: "L1" },
-        ] },
-        { id: "lvl2", kind: "flow", commands: [
-          { op: "say", text: "L2" },
-          { op: "return" },
-        ] },
+        {
+          id: "main",
+          kind: "flow",
+          commands: [
+            { op: "call", target: "lvl1" },
+            { op: "say", text: "M" },
+          ],
+        },
+        {
+          id: "lvl1",
+          kind: "flow",
+          commands: [
+            { op: "call", target: "lvl2" },
+            { op: "say", text: "L1" },
+          ],
+        },
+        {
+          id: "lvl2",
+          kind: "flow",
+          commands: [{ op: "say", text: "L2" }, { op: "return" }],
+        },
       ],
     });
     const h = instrument(new StoryEngine(story));
@@ -154,7 +170,11 @@ describe("call <label> · 失败路径（语义明确）", () => {
       id: "t",
       entry: "main",
       columns: [
-        { id: "main", kind: "flow", commands: [{ op: "call", target: "ghost" }] },
+        {
+          id: "main",
+          kind: "flow",
+          commands: [{ op: "call", target: "ghost" }],
+        },
       ],
     });
     const h = instrument(new StoryEngine(story));
@@ -169,7 +189,11 @@ describe("call <label> · 失败路径（语义明确）", () => {
       id: "t",
       entry: "main",
       columns: [
-        { id: "main", kind: "flow", commands: [{ op: "call", target: "stage" }] },
+        {
+          id: "main",
+          kind: "flow",
+          commands: [{ op: "call", target: "stage" }],
+        },
         { id: "stage", kind: "scene", elements: [], entry: [] },
       ],
     });
@@ -202,7 +226,9 @@ describe("call <label> · 编辑器诊断（两层同口径）", () => {
         },
       ],
     });
-    expect(analyzeStory(story).filter((d) => d.severity === "error")).toEqual([]);
+    expect(analyzeStory(story).filter((d) => d.severity === "error")).toEqual(
+      [],
+    );
   });
 
   it("`call` 到不存在 ⇒ `missing-target`（通用「目标不存在」）", () => {
@@ -211,7 +237,11 @@ describe("call <label> · 编辑器诊断（两层同口径）", () => {
       id: "t",
       entry: "main",
       columns: [
-        { id: "main", kind: "flow", commands: [{ op: "call", target: "ghost" }] },
+        {
+          id: "main",
+          kind: "flow",
+          commands: [{ op: "call", target: "ghost" }],
+        },
       ],
     });
     const errs = analyzeStory(story).filter((d) => d.severity === "error");

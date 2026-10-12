@@ -13,11 +13,20 @@ import {
 } from "@lingfan/engine";
 
 const ATOMIC = (id: string, text: string) =>
-  JSON.stringify({ formatVersion: 1, id, kind: "flow", commands: [{ op: "say", text }] });
+  JSON.stringify({
+    formatVersion: 1,
+    id,
+    kind: "flow",
+    commands: [{ op: "say", text }],
+  });
 const MULTI = JSON.stringify({
   formatVersion: 1,
   columns: [
-    { id: "chapter1_start", kind: "flow", commands: [{ op: "say", text: "开场" }] },
+    {
+      id: "chapter1_start",
+      kind: "flow",
+      commands: [{ op: "say", text: "开场" }],
+    },
     { id: "chapter1_end", kind: "flow", commands: [{ op: "say", text: "终" }] },
   ],
 });
@@ -34,7 +43,9 @@ describe("synthesizeDegradedManifest · 合成判据", () => {
   });
 
   it("合成清单能被组装器原样接受（入口存在性校验通过）", () => {
-    const files = new Map<string, string>([["Stories/start.json", ATOMIC("start", "甲")]]);
+    const files = new Map<string, string>([
+      ["Stories/start.json", ATOMIC("start", "甲")],
+    ]);
     const { manifest } = synthesizeDegradedManifest("Demo", files);
     const story = assembleProject(manifest, files);
     expect(story.entry).toBe("start");
@@ -43,7 +54,9 @@ describe("synthesizeDegradedManifest · 合成判据", () => {
 
   it("多列文件：第一个列是该文件的**文件序首列**（chapter1_start 在 chapter1_end 前）", () => {
     const files = new Map<string, string>([["Stories/chapter1.story", MULTI]]);
-    expect(synthesizeDegradedManifest("D", files).degraded.entry).toBe("chapter1_start");
+    expect(synthesizeDegradedManifest("D", files).degraded.entry).toBe(
+      "chapter1_start",
+    );
   });
 
   it("坏故事文件**跳过采集**（与组装器同口径；坏了由组装器 issues 整次拒绝）", () => {
@@ -55,12 +68,18 @@ describe("synthesizeDegradedManifest · 合成判据", () => {
   });
 
   it("零可解析列 ⇒ fail-closed（ProjectAssemblyError，不合成空壳清单）", () => {
-    const files = new Map<string, string>([["Stories/broken.json", "{ 纯属坏档"]]);
-    expect(() => synthesizeDegradedManifest("D", files)).toThrow(ProjectAssemblyError);
+    const files = new Map<string, string>([
+      ["Stories/broken.json", "{ 纯属坏档"],
+    ]);
+    expect(() => synthesizeDegradedManifest("D", files)).toThrow(
+      ProjectAssemblyError,
+    );
   });
 
   it("回执 reason 含入口 id（显式告知的文案面，可直上状态栏 title）", () => {
-    const files = new Map<string, string>([["Stories/start.json", ATOMIC("start", "甲")]]);
+    const files = new Map<string, string>([
+      ["Stories/start.json", ATOMIC("start", "甲")],
+    ]);
     const { degraded } = synthesizeDegradedManifest("Demo", files);
     expect(degraded.reason).toContain("project.json");
     expect(degraded.reason).toContain("start");

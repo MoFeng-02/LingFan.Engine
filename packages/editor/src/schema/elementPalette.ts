@@ -25,9 +25,21 @@ export interface ElementTypeGroup {
  * `types` 显式列出而非按索引切分——可读性优先；一致性由互锁测试锁定。
  */
 export const ELEMENT_TYPE_GROUPS: readonly ElementTypeGroup[] = [
-  { group: "text", label: "文本", types: ["text", "dialog", "narrator", "speaker"] },
-  { group: "interaction", label: "交互", types: ["button", "choice", "imagebutton"] },
-  { group: "media", label: "图像", types: ["image", "background", "portrait", "video"] },
+  {
+    group: "text",
+    label: "文本",
+    types: ["text", "dialog", "narrator", "speaker"],
+  },
+  {
+    group: "interaction",
+    label: "交互",
+    types: ["button", "choice", "imagebutton"],
+  },
+  {
+    group: "media",
+    label: "图像",
+    types: ["image", "background", "portrait", "video"],
+  },
   {
     group: "container",
     label: "容器",
@@ -49,7 +61,11 @@ export const ELEMENT_TYPE_GROUPS: readonly ElementTypeGroup[] = [
       "border",
     ],
   },
-  { group: "scroll", label: "滚动", types: ["scroll", "scrollviewer", "viewport"] },
+  {
+    group: "scroll",
+    label: "滚动",
+    types: ["scroll", "scrollviewer", "viewport"],
+  },
   {
     group: "progress",
     label: "进度",

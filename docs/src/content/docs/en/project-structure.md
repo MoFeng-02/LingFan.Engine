@@ -42,25 +42,25 @@ For the same reason, resource paths in stories are relative to `Resources/`: `bg
 }
 ```
 
-| Field | Required | Meaning |
-|---|---|---|
-| `formatVersion` | Yes | Fixed at `1`. Any other value is refused outright. |
-| `id` | Yes | Project identifier. Written into saves, and checked on load to confirm the save belongs to this project. |
-| `entry` | Yes | Entry column id. The engine starts here; if the column does not exist the whole project fails to load. |
-| `name` | No | Display name. Falls back to `id`. |
-| `lang` | No | Default language, `zh-CN` when omitted. The I18N overlay layer looks up translations by it. |
+| Field           | Required | Meaning                                                                                                  |
+| --------------- | -------- | -------------------------------------------------------------------------------------------------------- |
+| `formatVersion` | Yes      | Fixed at `1`. Any other value is refused outright.                                                       |
+| `id`            | Yes      | Project identifier. Written into saves, and checked on load to confirm the save belongs to this project. |
+| `entry`         | Yes      | Entry column id. The engine starts here; if the column does not exist the whole project fails to load.   |
+| `name`          | No       | Display name. Falls back to `id`.                                                                        |
+| `lang`          | No       | Default language, `zh-CN` when omitted. The I18N overlay layer looks up translations by it.              |
 
 Beyond those four there are a few optional fields you will rarely touch:
 
-| Field | Meaning |
-|---|---|
-| `shell.layers` | Z-order overrides for the nine layers, e.g. `{"dialogue": 999}`. |
-| `shell.saves.slots` | Save slot count, 1 to 32, 6 by default. |
-| `shell.saves.thumbnail` | Thumbnail dimensions and quality. |
-| `shell.orientation` | `auto` / `portrait` / `landscape`. A plain web host has no orientation API, so only the desktop shell acts on it. |
-| `extensions` | List of host module specifiers, e.g. `["ext/demo.ts"]`. |
-| `defines` | Global initial values. A definition of the same name in a story file overrides it. |
-| `resourceEncryption` | When `true`, the resource root is an encrypted `.enc` bundle. The manifest itself always stays plaintext. |
+| Field                   | Meaning                                                                                                           |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `shell.layers`          | Z-order overrides for the nine layers, e.g. `{"dialogue": 999}`.                                                  |
+| `shell.saves.slots`     | Save slot count, 1 to 32, 6 by default.                                                                           |
+| `shell.saves.thumbnail` | Thumbnail dimensions and quality.                                                                                 |
+| `shell.orientation`     | `auto` / `portrait` / `landscape`. A plain web host has no orientation API, so only the desktop shell acts on it. |
+| `extensions`            | List of host module specifiers, e.g. `["ext/demo.ts"]`.                                                           |
+| `defines`               | Global initial values. A definition of the same name in a story file overrides it.                                |
+| `resourceEncryption`    | When `true`, the resource root is an encrypted `.enc` bundle. The manifest itself always stays plaintext.         |
 
 ## Stories/
 

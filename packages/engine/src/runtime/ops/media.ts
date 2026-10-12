@@ -149,10 +149,7 @@ function audioVolume(ctx: OpContext, raw: unknown, op: string): number | null {
 function audioFade(ctx: OpContext, raw: unknown, op: string): number | null {
   if (raw === undefined) return 0;
   if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) {
-    ctx.fail(
-      `${op}-invalid-fade`,
-      `${op} 的 fade 必须是非负有限数字（毫秒）`,
-    );
+    ctx.fail(`${op}-invalid-fade`, `${op} 的 fade 必须是非负有限数字（毫秒）`);
     return null;
   }
   return raw;

@@ -1,7 +1,11 @@
 /**
  * 历史回溯：游标移动、可达性判定与历史视图。
  */
-import { SYS, isReplayableColumn, type ColumnCoordinate } from "../../contracts";
+import {
+  SYS,
+  isReplayableColumn,
+  type ColumnCoordinate,
+} from "../../contracts";
 import { snapshotText, type Frame, type OpContext } from "../internal";
 import { Scope } from "../scope";
 import { restore } from "./snapshot";
@@ -54,8 +58,7 @@ export function columnFrameAt(ctx: OpContext, coord: ColumnCoordinate): Frame {
   const column = ctx.columnById(coord.columnId)!;
   return {
     columnId: coord.columnId,
-    commands:
-      column.kind === "flow" ? column.commands! : (column.entry ?? []),
+    commands: column.kind === "flow" ? column.commands! : (column.entry ?? []),
     index: coord.index,
     scope: Scope.root(),
   };
@@ -65,7 +68,10 @@ export function columnFrameAt(ctx: OpContext, coord: ColumnCoordinate): Frame {
  * 回溯三步：找目标检查点 → 恢复快照 → 重放到该等待点。
  * target = 检查点下标或坐标（取坐标之前最近的检查点）。
  */
-export function rollbackTo(ctx: OpContext, target: number | ColumnCoordinate): void {
+export function rollbackTo(
+  ctx: OpContext,
+  target: number | ColumnCoordinate,
+): void {
   if (!ctx.started) {
     ctx.fail("rollback-invalid", "故事尚未启动");
     return;
@@ -82,10 +88,7 @@ export function rollbackTo(ctx: OpContext, target: number | ColumnCoordinate): v
     index = -1;
     for (let i = 0; i <= ctx.cursor; i += 1) {
       const c = ctx.history[i]!;
-      if (
-        c.coord.columnId === target.columnId &&
-        c.coord.index <= target.index
-      )
+      if (c.coord.columnId === target.columnId && c.coord.index <= target.index)
         index = i;
     }
     if (index < 0) {
@@ -187,9 +190,7 @@ export function historyView(ctx: OpContext): Array<{
       text: snapshotText(cp, SYS.currentDialogText),
       nvl: mode === "active",
       nvlLines:
-        mode === "active" && Array.isArray(buffer)
-          ? (buffer as string[])
-          : [],
+        mode === "active" && Array.isArray(buffer) ? (buffer as string[]) : [],
     };
   });
 }

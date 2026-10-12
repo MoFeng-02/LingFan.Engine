@@ -80,7 +80,9 @@ function onKeydown(event: KeyboardEvent): void {
   }
 }
 
-const cursor = computed(() => (props.side === "left" ? "ew-resize" : "ew-resize"));
+const cursor = computed(() =>
+  props.side === "left" ? "ew-resize" : "ew-resize",
+);
 </script>
 
 <template>

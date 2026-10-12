@@ -24,7 +24,10 @@ export interface FrameSource {
 export interface FrameLoopOptions {
   frame: FrameSource;
   /** 读当前打字机（整句直出时为 null）；用 getter 保证每句重建后拿到的是最新实例 */
-  readTypewriter(): { tick(dtSeconds: number): void; readonly visible: string } | null;
+  readTypewriter(): {
+    tick(dtSeconds: number): void;
+    readonly visible: string;
+  } | null;
   /** 上交本句当前的可见文本（每帧一次；是否重写 DOM 由宿主判定） */
   onText(visible: string): void;
   /** 媒体位置帧级回写（音频/视频端口自带的做法） */

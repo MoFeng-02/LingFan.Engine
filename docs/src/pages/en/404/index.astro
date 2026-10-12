@@ -1,0 +1,44 @@
+---
+// /en/404/ — English counterpart of the site error page. Starlight only
+// generates a 404 entity for the default locale, so the zh 404 page's
+// hreflang="en" used to point at a missing URL; this page supplies the real
+// route and closes the loop in both directions. Shell, header navigation,
+// theme/language switches and head metadata come from DemoShell.
+import DemoShell from '../../../components/demo/DemoShell.astro';
+const base = import.meta.env.BASE_URL;
+---
+
+<DemoShell
+  lang="en"
+  path="en/404/"
+  zhPath="404/"
+  title="Page not found | 灵泛引擎 LingFan Engine"
+  description="The page you are looking for does not exist in the LingFan Engine documentation. Use the menu or head back to the documentation home."
+  t={{
+    skip: 'Skip to content',
+    navLabel: 'Site navigation',
+    docsHome: 'Docs home',
+    themeLabel: 'Select theme',
+    dark: 'Dark',
+    light: 'Light',
+    langLabel: 'Select language',
+    menuLabel: 'Menu',
+    menu: [
+      { href: `${base}en/`, label: 'Documentation home' },
+      { href: `${base}en/introduction/`, label: 'Getting started' },
+      { href: `${base}en/guides/dialogue/`, label: 'Dialogue guide' },
+      { href: `${base}en/reference/ops/`, label: 'Instruction reference' },
+    ],
+  }}
+>
+  <main id="lf-en-404" class="lf-page">
+    <h1>Page not found</h1>
+    <p class="lf-lede">
+      The address you followed doesn't match any page of the LingFan Engine documentation.
+      It may have been moved or renamed — use the links below or the menu above to get back on track.
+    </p>
+    <p class="lf-lede" style="margin-top: 0">
+      <a class="lf-btn" href={base}>Documentation home</a>
+    </p>
+  </main>
+</DemoShell>

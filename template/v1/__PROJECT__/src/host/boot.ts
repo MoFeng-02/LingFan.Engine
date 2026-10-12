@@ -89,10 +89,17 @@ export async function bootHost(options: HostBootOptions): Promise<void> {
   // 视频端口的 z 在端口内部（与 DOM 层不同），故端口晚于首次落 DOM 建立，
   // 由 getter 交给层级视图按需下发。
   let videoPort: VideoPort | null = null;
-  const layers = createHostLayerZ({ dom, layerZ, readVideoPort: () => videoPort });
+  const layers = createHostLayerZ({
+    dom,
+    layerZ,
+    readVideoPort: () => videoPort,
+  });
   layers.apply();
 
-  videoPort = createWebVideoPort({ onError: reportError, zIndex: layerZ.video });
+  videoPort = createWebVideoPort({
+    onError: reportError,
+    zIndex: layerZ.video,
+  });
 
   // —— 存档壳配置：槽位（project.json 的 shell.saves.slots 可覆盖）——
   fillSaveSlots(dom, manifest);
@@ -125,7 +132,8 @@ export async function bootHost(options: HostBootOptions): Promise<void> {
     toast,
     reportError,
     // 故事级打字机设置（`text_typewriter` 命令）；未设置时按默认字速走
-    readTypingSetting: () => engine.get(SYS.typewriter) as TypingSetting | undefined,
+    readTypingSetting: () =>
+      engine.get(SYS.typewriter) as TypingSetting | undefined,
     // 读档后媒体位置需显式对齐：引擎只回状态，播放位置由渲染器自己同步
     syncMedia: () => {
       audio.sync();

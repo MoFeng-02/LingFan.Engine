@@ -11,7 +11,8 @@ import type { WriteNormalizationFinding } from "@lingfan/engine";
 import type { KeyValueStorage } from "./columnGrouping";
 
 /** 「不再提示」键（全局一次性偏好，非按工程——规范化行为是引擎布局规则，不随工程变） */
-export const NORMALIZATION_NOTICE_PREF_KEY = "lingfan-editor-skip-normalization-notice";
+export const NORMALIZATION_NOTICE_PREF_KEY =
+  "lingfan-editor-skip-normalization-notice";
 
 /** 读偏好：键缺失 / 坏值 / 存储失败一律 `false`（提示默认开启，fail-open 到可见侧） */
 export function readSkipNormalizationNotice(

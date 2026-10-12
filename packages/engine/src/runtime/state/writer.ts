@@ -57,7 +57,11 @@ export function setSystem(ctx: OpContext, key: string, value: unknown): void {
  * 用途：高频变更（每帧媒体位置、外部玩法系统的每帧坐标）——进事件流会造成
  * 事件风暴（每帧一次全量广播）。值仍随快照/存档持久化，回溯一致性与普通写相同。
  */
-export function setSilentKey(ctx: OpContext, key: string, value: unknown): boolean {
+export function setSilentKey(
+  ctx: OpContext,
+  key: string,
+  value: unknown,
+): boolean {
   const unsafe = findJsonValueError(value, key);
   if (unsafe !== null) {
     ctx.fail(
@@ -74,7 +78,8 @@ export function setSilentKey(ctx: OpContext, key: string, value: unknown): boole
  * 外部写入的公共实现：键校验（保留键 + 命名空间合法性）→ 值契约 → 落 SSOT。
  * `emitChange = false` 走静默通道（帧级高频写）。
  */
-export function writeExternal(ctx: OpContext, 
+export function writeExternal(
+  ctx: OpContext,
   key: string,
   value: unknown,
   emitChange: boolean,

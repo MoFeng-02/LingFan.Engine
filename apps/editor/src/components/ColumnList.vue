@@ -132,7 +132,8 @@ async function promptAddGroup(): Promise<void> {
 async function promptAddColumn(kind: "flow" | "scene"): Promise<void> {
   const raw = await dialog.askText({
     title: `新${kind === "flow" ? "流程" : "场景"}列`,
-    message: "语义化短 id（如 tavern）更利于按 id 定位；留空将自动生成 column-N。",
+    message:
+      "语义化短 id（如 tavern）更利于按 id 定位；留空将自动生成 column-N。",
     initial: "",
     allowEmpty: true,
   });
@@ -140,7 +141,8 @@ async function promptAddColumn(kind: "flow" | "scene"): Promise<void> {
   if (!intent.run) return;
   const type = await dialog.askChoice({
     title: "场景类型（运行语义）",
-    message: "剧情可回溯、可存档；菜单（标题/设置）与界面（覆盖层）不进历史、不进存档。",
+    message:
+      "剧情可回溯、可存档；菜单（标题/设置）与界面（覆盖层）不进历史、不进存档。",
     options: [
       { value: "game", label: "剧情（缺省：可回溯、可存档）" },
       { value: "menu", label: "菜单：标题 / 设置页" },
@@ -219,7 +221,8 @@ function onDrop(event: DragEvent, sectionKey: string): void {
 <template>
   <div class="grouped" :class="{ flat: !grouped }">
     <p v-if="grouped" class="grouping-hint">
-      分组仅存本机、不改列序（列序 = 文件路径码元序）：拖列到分组即归类，拖回「未归类」即取出。
+      分组仅存本机、不改列序（列序 =
+      文件路径码元序）：拖列到分组即归类，拖回「未归类」即取出。
     </p>
     <section
       v-for="section in sections"
@@ -281,10 +284,17 @@ function onDrop(event: DragEvent, sectionKey: string): void {
           <span
             v-if="sceneTypeBadgeOf(column.type)"
             class="type-badge"
-            :title="column.type === 'menu' ? '菜单场景：不参与存档与回溯' : '界面场景：不参与存档与回溯'"
+            :title="
+              column.type === 'menu'
+                ? '菜单场景：不参与存档与回溯'
+                : '界面场景：不参与存档与回溯'
+            "
             >{{ sceneTypeBadgeOf(column.type) }}</span
           >
-          <span v-if="column.id === story.entry" class="entry-badge" title="入口列"
+          <span
+            v-if="column.id === story.entry"
+            class="entry-badge"
+            title="入口列"
             >入口</span
           >
           <span class="ops">
@@ -312,7 +322,9 @@ function onDrop(event: DragEvent, sectionKey: string): void {
   <div class="add-row">
     <button @click="promptAddColumn('flow')">+ 流程列</button>
     <button @click="promptAddColumn('scene')">+ 场景列</button>
-    <button title="新建列分组（仅存本机）" @click="promptAddGroup">+ 分组</button>
+    <button title="新建列分组（仅存本机）" @click="promptAddGroup">
+      + 分组
+    </button>
   </div>
 </template>
 

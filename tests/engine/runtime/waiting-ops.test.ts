@@ -19,14 +19,14 @@ import {
 } from "@lingfan/engine";
 
 /** 造引擎：首列放待测命令（可按需补后续命令），需要目标列的用例自行构造列 */
-function engineOf(commands: object[], extraColumns: object[] = []): StoryEngine {
+function engineOf(
+  commands: object[],
+  extraColumns: object[] = [],
+): StoryEngine {
   const json: unknown = {
     formatVersion: 1,
     id: "waiting-probe",
-    columns: [
-      { id: "start", kind: "flow", commands },
-      ...extraColumns,
-    ],
+    columns: [{ id: "start", kind: "flow", commands }, ...extraColumns],
   };
   return new StoryEngine(parseStory(json));
 }
@@ -57,7 +57,9 @@ const MINIMAL_PROBES: Record<string, object> = {
 
 /** 等待 op 进入等待所需的额外列（menu 的选项目标必须在场，否则 fail-closed 报 unknown-column） */
 const PROBE_COLUMNS: Record<string, object[]> = {
-  menu: [{ id: "inn", kind: "flow", commands: [{ op: "say", text: "酒馆线" }] }],
+  menu: [
+    { id: "inn", kind: "flow", commands: [{ op: "say", text: "酒馆线" }] },
+  ],
 };
 
 describe("行为正例：表里每个 op 跑一遍，等待态必须与声明一致", () => {

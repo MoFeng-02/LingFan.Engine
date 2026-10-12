@@ -5,7 +5,17 @@
  *
  * 只在运行层内部使用，不进包出口。
  */
-import { SYS, type AudioChannelState, type EventListener, type I18nOverlayFile, type SaveDataV1, type SaveOptions, type StateListener, type Story, type VideoCommand } from "../../contracts";
+import {
+  SYS,
+  type AudioChannelState,
+  type EventListener,
+  type I18nOverlayFile,
+  type SaveDataV1,
+  type SaveOptions,
+  type StateListener,
+  type Story,
+  type VideoCommand,
+} from "../../contracts";
 import { mergeOverlayFiles } from "../i18n";
 import { validSlot } from "./helpers";
 import type { OpContext } from "./context";
@@ -168,16 +178,17 @@ export function navigate(ctx: OpContext, columnId: string): void {
  * 非等待语义——把写档交给宿主后立即返回，完成与失败都经出站事件可观测（不吞错）。
  * 未启动、槽位名非法或未装配存档端口时 fail-closed 并返回 false。
  */
-export function save(ctx: OpContext, slot: string, options?: SaveOptions): boolean {
+export function save(
+  ctx: OpContext,
+  slot: string,
+  options?: SaveOptions,
+): boolean {
   if (!ctx.started) {
     ctx.fail("save-invalid", "故事尚未启动");
     return false;
   }
   if (!validSlot(slot)) {
-    ctx.fail(
-      "save-invalid-slot",
-      `槽位名非法：${slot}（字母数字/_/-，1..64）`,
-    );
+    ctx.fail("save-invalid-slot", `槽位名非法：${slot}（字母数字/_/-，1..64）`);
     return false;
   }
   if (ctx.savePort === undefined) {
@@ -310,7 +321,10 @@ export function reloadStory(ctx: OpContext, story: Story): void {
  * 订阅状态变化：`ValueChanged` 是唯一观察接缝，所有状态写入都经 set 系方法镜像到这里。
  * 返回注销函数，界面卸载时调用即可退订。
  */
-export function onStateChanged(ctx: OpContext, listener: StateListener): () => void {
+export function onStateChanged(
+  ctx: OpContext,
+  listener: StateListener,
+): () => void {
   ctx.stateListeners.add(listener);
   return () => {
     ctx.stateListeners.delete(listener);

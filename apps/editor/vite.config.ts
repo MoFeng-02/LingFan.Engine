@@ -11,7 +11,10 @@ export default defineConfig({
     // 目标端口与 `server/main.ts` 的 `PORT` 固定值一致（生产期用内核分配端口，
     //   那时前端拿到的是构建期注入的基址，不走此代理）。
     proxy: {
-      "/__editor_host__": { target: "http://127.0.0.1:14250", changeOrigin: false },
+      "/__editor_host__": {
+        target: "http://127.0.0.1:14250",
+        changeOrigin: false,
+      },
       "/__host__": { target: "http://127.0.0.1:14250", changeOrigin: false },
     },
   },

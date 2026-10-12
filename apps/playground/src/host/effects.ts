@@ -35,7 +35,9 @@ export interface HostEffectsOptions {
  *
  * 返回值可直接接进帧循环的「帧驱动表现」这一段（见 `./frame-loop`）。
  */
-export function createHostEffects(options: HostEffectsOptions): (dt: number) => void {
+export function createHostEffects(
+  options: HostEffectsOptions,
+): (dt: number) => void {
   const { source } = options;
   /** 转场进度镜像：与共享实现内部那份同步推进、同步复位 */
   let transitionElapsed = 0;

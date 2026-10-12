@@ -205,8 +205,15 @@ const emit = defineEmits<{
     </label>
   </section>
   <!-- 多槽位面板：存/读共用；槽位数 = shell.saves.slots，缩略图随档存储 -->
-  <section v-if="slotPanel" class="history-panel saves-panel" data-ui-zone @click.stop>
-    <p class="layer-prompt">{{ slotPanel === "save" ? "保存到槽位" : "读取槽位" }}</p>
+  <section
+    v-if="slotPanel"
+    class="history-panel saves-panel"
+    data-ui-zone
+    @click.stop
+  >
+    <p class="layer-prompt">
+      {{ slotPanel === "save" ? "保存到槽位" : "读取槽位" }}
+    </p>
     <div class="slot-grid">
       <button
         v-for="v in slotViews"

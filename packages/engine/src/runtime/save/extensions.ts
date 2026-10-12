@@ -9,10 +9,12 @@ import { buildExtensionContext } from "../opRegistry";
  * `formatVersion` 非 1 的档——优先经宿主 migrateSave 钩子迁移（成功发 `load.notice`）；
  * 不可迁移才拒绝，且文案必须可操作（说明档/引擎版本与可选路径，不得只说「不支持」）。
  */
-export function tryMigrateSave(ctx: OpContext, data: SaveDataV1): SaveDataV1 | null {
-  const fromVersion = (
-    data as { formatVersion?: unknown } | null | undefined
-  )?.formatVersion;
+export function tryMigrateSave(
+  ctx: OpContext,
+  data: SaveDataV1,
+): SaveDataV1 | null {
+  const fromVersion = (data as { formatVersion?: unknown } | null | undefined)
+    ?.formatVersion;
   const hook = ctx.migrateSaveHook;
   if (hook) {
     try {
@@ -39,7 +41,10 @@ export function tryMigrateSave(ctx: OpContext, data: SaveDataV1): SaveDataV1 | n
  * 读档扩展依赖校验 + 状态迁移（fail-closed 整档预校验——任何不符在进入恢复流程前拒绝）。
  * 返回迁移后的状态条目（无迁移 = 原引用原样返回）；null = 已发 engine.error（整档拒绝，状态原样）。
  */
-export function resolveSaveExtensions(ctx: OpContext, data: SaveDataV1): [string, unknown][] | null {
+export function resolveSaveExtensions(
+  ctx: OpContext,
+  data: SaveDataV1,
+): [string, unknown][] | null {
   const marks = data.extensions;
   if (marks === undefined) return data.state; // 未用到扩展的存档不带标记（防假阳性：缺扩展也能读）
   if (!Array.isArray(marks)) {
@@ -116,7 +121,10 @@ export function resolveSaveExtensions(ctx: OpContext, data: SaveDataV1): [string
  * 返回 false（或抛出）= 不可恢复 → 调用方整档拒绝（此时仅字段引用交换、零事件出站，
  * 引擎状态即原样）；engine.error 由本方法发出。
  */
-export function restoreSaveExtensions(ctx: OpContext, marks: SaveDataV1["extensions"]): boolean {
+export function restoreSaveExtensions(
+  ctx: OpContext,
+  marks: SaveDataV1["extensions"],
+): boolean {
   for (const mark of marks ?? []) {
     const ext = ctx.extensionById.get(mark.id);
     if (ext?.restore === undefined) continue;

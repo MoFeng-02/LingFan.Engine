@@ -439,7 +439,11 @@ onBeforeUnmount(() => {
           v-html="choiceView.optionHtml[idx] ?? ''"
         ></button>
       </div>
-      <div v-if="waiting === 'video'" class="choices" :style="{ zIndex: zOf('choices') }">
+      <div
+        v-if="waiting === 'video'"
+        class="choices"
+        :style="{ zIndex: zOf('choices') }"
+      >
         <p class="layer-prompt">
           {{
             resourcePort === undefined

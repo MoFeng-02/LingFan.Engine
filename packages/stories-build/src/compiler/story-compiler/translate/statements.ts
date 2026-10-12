@@ -3,17 +3,41 @@ import type { StoryCommand } from "@lingfan/engine";
 import { diag, isAssignmentOperator } from "./shared";
 import type { BodyCtx } from "./shared";
 import { emitCommand, callWord } from "./words";
-import { translateVariableStatement, emitAssignment, translateIncrement } from "./assign";
-import { translateIf, translateWhile, translateFor, translateForOf, translateSwitch } from "./control-flow";
+import { lowerValue, loweredToScriptValue } from "./expr";
+import {
+  translateVariableStatement,
+  emitAssignment,
+  translateIncrement,
+} from "./assign";
+import {
+  translateIf,
+  translateWhile,
+  translateFor,
+  translateForOf,
+  translateSwitch,
+} from "./control-flow";
 
-export function translateStatement(ctx: BodyCtx, stmt: ts.Statement): StoryCommand[] {
+export function translateStatement(
+  ctx: BodyCtx,
+  stmt: ts.Statement,
+): StoryCommand[] {
   const sf = ctx.shared.mod.sf;
-  if (ts.isVariableStatement(stmt)) return translateVariableStatement(ctx, stmt);
+  if (ts.isVariableStatement(stmt))
+    return translateVariableStatement(ctx, stmt);
   if (ts.isExpressionStatement(stmt)) {
     const expr = stmt.expression;
     if (ts.isCallExpression(expr)) return emitCommand(ctx, expr);
-    if (ts.isBinaryExpression(expr) && isAssignmentOperator(expr.operatorToken.getText(sf))) {
-      return emitAssignment(ctx, expr, expr.left, expr.operatorToken.getText(sf), expr.right);
+    if (
+      ts.isBinaryExpression(expr) &&
+      isAssignmentOperator(expr.operatorToken.getText(sf))
+    ) {
+      return emitAssignment(
+        ctx,
+        expr,
+        expr.left,
+        expr.operatorToken.getText(sf),
+        expr.right,
+      );
     }
     if (ts.isPrefixUnaryExpression(expr) || ts.isPostfixUnaryExpression(expr)) {
       return translateIncrement(ctx, expr);
@@ -40,8 +64,12 @@ export function translateStatement(ctx: BodyCtx, stmt: ts.Statement): StoryComma
       return [];
     }
     if (stmt.expression !== undefined) {
-      diag(ctx, stmt, "return 不支持返回值：引擎 call 没有结果通道，返回值会被静默丢弃");
-      return [];
+      // 带值 return：调用点用 `call into` 接收（语句级 const x = f(1) 降级形态）；
+      // 不带 into 的调用点把返回值静默丢弃（向后兼容旧故事）
+      const lowered = lowerValue(ctx, stmt.expression);
+      if (lowered === undefined) return [];
+      const op = callWord(ctx, stmt, "ret", [loweredToScriptValue(lowered)]);
+      return op === undefined ? [] : [op];
     }
     const op = callWord(ctx, stmt, "ret", []);
     return op === undefined ? [] : [op];
@@ -77,17 +105,29 @@ export function translateStatement(ctx: BodyCtx, stmt: ts.Statement): StoryComma
   }
   if (ts.isFunctionDeclaration(stmt)) {
     if (stmt.body === undefined) return [];
-    diag(ctx, stmt, "块内函数声明不支持：函数请声明在函数体/列体顶层（会前置为 func 命令）");
+    diag(
+      ctx,
+      stmt,
+      "块内函数声明不支持：函数请声明在函数体/列体顶层（会前置为 func 命令）",
+    );
     return [];
   }
   if (ts.isBlock(stmt)) return translateStatements(ctx, stmt.statements);
   if (ts.isEmptyStatement(stmt)) return [];
-  if (ts.isInterfaceDeclaration(stmt) || ts.isTypeAliasDeclaration(stmt)) return [];
-  diag(ctx, stmt, "此语句不支持转译（转译总表：if/while/for/for-of/switch/return/break/continue/let/赋值/调用）");
+  if (ts.isInterfaceDeclaration(stmt) || ts.isTypeAliasDeclaration(stmt))
+    return [];
+  diag(
+    ctx,
+    stmt,
+    "此语句不支持转译（转译总表：if/while/for/for-of/switch/return/break/continue/let/赋值/调用）",
+  );
   return [];
 }
 
-export function translateStatements(ctx: BodyCtx, statements: readonly ts.Statement[]): StoryCommand[] {
+export function translateStatements(
+  ctx: BodyCtx,
+  statements: readonly ts.Statement[],
+): StoryCommand[] {
   const out: StoryCommand[] = [];
   for (const stmt of statements) {
     out.push(...translateStatement(ctx, stmt));

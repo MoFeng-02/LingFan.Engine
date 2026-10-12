@@ -1,6 +1,16 @@
 import { isSafeFileNameSegment, type Story } from "@lingfan/engine";
-import { DiagBag, buildGraph, resolveStart, type CompileDiag, type Graph } from "./story-compiler/graph";
-import { compileStoryFile, createAssembleSession, type CompiledStory } from "./story-compiler/assemble";
+import {
+  DiagBag,
+  buildGraph,
+  resolveStart,
+  type CompileDiag,
+  type Graph,
+} from "./story-compiler/graph";
+import {
+  compileStoryFile,
+  createAssembleSession,
+  type CompiledStory,
+} from "./story-compiler/assemble";
 import type { CompilerConstValues } from "./compiler-contract";
 
 export interface CompileStoriesResult {
@@ -39,7 +49,12 @@ export function compileStories(input: {
 
   const list = diags.list();
   if (list.length > 0) return { stories: [], diags: list };
-  return { stories, diags: [], entryColumnId: entry, defineVarsKeys: collectDefineVarsKeys(graph) };
+  return {
+    stories,
+    diags: [],
+    entryColumnId: entry,
+    defineVarsKeys: collectDefineVarsKeys(graph),
+  };
 }
 
 /** 全工程 defineVars 键合并去重（排序保证生成物文本稳定） */
@@ -51,20 +66,39 @@ function collectDefineVarsKeys(graph: Graph): string[] {
   return [...keys].sort();
 }
 
-function checkColumnIds(graph: Graph, diags: DiagBag, stories: readonly CompiledStory[]): void {
+function checkColumnIds(
+  graph: Graph,
+  diags: DiagBag,
+  stories: readonly CompiledStory[],
+): void {
   const seen = new Map<string, string>();
   for (const item of stories) {
     const record = graph.records.get(item.sourceRelPath);
     const storyName = record?.story?.node.name;
-    if (record === undefined || record.story === null || storyName === undefined) continue;
+    if (
+      record === undefined ||
+      record.story === null ||
+      storyName === undefined
+    )
+      continue;
     if (item.columnId === "" || !isSafeFileNameSegment(item.columnId)) {
-      diags.add(record.rel, record.sf, storyName, `列 id \`${item.columnId}\` 为空或含不安全字符（E06）`);
+      diags.add(
+        record.rel,
+        record.sf,
+        storyName,
+        `列 id \`${item.columnId}\` 为空或含不安全字符（E06）`,
+      );
       continue;
     }
     const lower = item.columnId.toLowerCase();
     const prev = seen.get(lower);
     if (prev !== undefined) {
-      diags.add(record.rel, record.sf, storyName, `列 id \`${item.columnId}\` 与 ${prev} 重复（大小写不敏感，E06）`);
+      diags.add(
+        record.rel,
+        record.sf,
+        storyName,
+        `列 id \`${item.columnId}\` 与 ${prev} 重复（大小写不敏感，E06）`,
+      );
       continue;
     }
     seen.set(lower, item.sourceRelPath);

@@ -19,7 +19,15 @@ describe("五态判定", () => {
   it("错误最优先：不被加载中/空掩盖", () => {
     expect(viewStateOf({ error: "读取失败", loading: true })).toBe("error");
     expect(viewStateOf({ error: "读取失败", empty: true })).toBe("error");
-    expect(viewStateOf({ error: "x", readonly: true, dirty: true, loading: true, empty: true })).toBe("error");
+    expect(
+      viewStateOf({
+        error: "x",
+        readonly: true,
+        dirty: true,
+        loading: true,
+        empty: true,
+      }),
+    ).toBe("error");
   });
 
   it("加载中优先于空（内容还没到，不能说「没有内容」）", () => {
@@ -76,12 +84,19 @@ describe("对话框 · askText 答案判据", () => {
   });
 
   it("有值 ⇒ 执行并带值", () => {
-    expect(parseTextAnswer("tavern", true)).toEqual({ run: true, value: "tavern" });
+    expect(parseTextAnswer("tavern", true)).toEqual({
+      run: true,
+      value: "tavern",
+    });
   });
 });
 
 describe("对话框栈 · 后进先出 + 嵌套", () => {
-  const req = (title: string): DialogRequest => ({ kind: "notice", title, message: "x" });
+  const req = (title: string): DialogRequest => ({
+    kind: "notice",
+    title,
+    message: "x",
+  });
 
   it("空栈 ⇒ current 为 undefined、depth 0", () => {
     const s = new DialogHostState();
@@ -126,7 +141,11 @@ describe("对话框栈 · 后进先出 + 嵌套", () => {
  * 一帧 ⇒ 框留在栈顶，全屏遮罩永久挡住所有点击。
  */
 describe("对话框栈 · 并发 ask 全部结算", () => {
-  const req = (title: string): DialogRequest => ({ kind: "notice", title, message: "x" });
+  const req = (title: string): DialogRequest => ({
+    kind: "notice",
+    title,
+    message: "x",
+  });
 
   it("两次 ask 都挂起 ⇒ 回答两次后**两个 Promise 都结算**、栈归零", async () => {
     const s = new DialogHostState();
@@ -284,6 +303,8 @@ describe("空态约束 · 必须给可点动作", () => {
 
   it("一个 scene 列都没有时**不给假出路**（按钮点了没反应比不给更糟）", () => {
     // 工程级事实由宿主传入；宿主给不出（工程无 scene 列）⇒ 原地不动，不造半个导航
-    expect(stageSource).toContain('if (id === undefined || id === null || id === "") return;');
+    expect(stageSource).toContain(
+      'if (id === undefined || id === null || id === "") return;',
+    );
   });
 });

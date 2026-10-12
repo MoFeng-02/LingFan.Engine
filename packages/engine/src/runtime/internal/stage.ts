@@ -19,7 +19,10 @@ export function elements(ctx: OpContext): ElementInstance[] {
  * 元素寻址：`id` 精确匹配优先，未命中再按 `name` 批量匹配（递归含 children）。
  * 未命中返回空数组——调用方 fail-closed（不静默、不伪造目标）。
  */
-export function findElements(ctx: OpContext, target: string): ElementInstance[] {
+export function findElements(
+  ctx: OpContext,
+  target: string,
+): ElementInstance[] {
   return findElementsIn(ctx.elements(), target);
 }
 
@@ -27,7 +30,10 @@ export function findElements(ctx: OpContext, target: string): ElementInstance[] 
  * 元素表递归映射（含 children）。命中判定按**引用**：寻址结果与当前元素表同源同引用，
  * 故可用 `hits.includes(el)` 精确命中，无需按 id 反查，避免派生 id 重名歧义。
  */
-export function mapElements(ctx: OpContext, mapper: (el: ElementInstance) => ElementInstance): ElementInstance[] {
+export function mapElements(
+  ctx: OpContext,
+  mapper: (el: ElementInstance) => ElementInstance,
+): ElementInstance[] {
   const walk = (list: readonly ElementInstance[]): ElementInstance[] =>
     list.map((el) => {
       const mapped = mapper(el);
@@ -43,18 +49,17 @@ export function mapElements(ctx: OpContext, mapper: (el: ElementInstance) => Ele
  */
 export function interpolate(ctx: OpContext, source: string): string {
   if (typeof source !== "string" || source === "") return "";
-  const { text, errors } = interpolateText(
-    source,
-    ctx.resolveName,
-    ctx.draw,
-  );
+  const { text, errors } = interpolateText(source, ctx.resolveName, ctx.draw);
   for (const e of errors)
     ctx.fail(e.code, `插值失败（保留原文）：${e.message}`);
   return text;
 }
 
 /** 按名取角色定义（未登记返回 undefined，调用方自行 fail-closed） */
-export function getCharacter(ctx: OpContext, key: string): CharacterDef | undefined {
+export function getCharacter(
+  ctx: OpContext,
+  key: string,
+): CharacterDef | undefined {
   return ctx.characters.get(key);
 }
 

@@ -10,7 +10,8 @@
  */
 
 /** 资源视图的五态（`ready` = 正常可读） */
-export type ViewState = "loading" | "empty" | "readonly" | "error" | "dirty" | "ready";
+export type ViewState =
+  "loading" | "empty" | "readonly" | "error" | "dirty" | "ready";
 
 /** 判定入参（全部可选 ⇒ 缺省即「无特殊状态」） */
 export interface ViewStateInput {
@@ -43,7 +44,12 @@ export function viewStateOf(input: ViewStateInput): ViewState {
 
 /** 空态的**主动作**（空态必须给可点击的下一步，不是一行灰字） */
 export interface EmptyAction {
-  readonly id: "open-project" | "new-project" | "open-external" | "goto-scene-column" | "none";
+  readonly id:
+    | "open-project"
+    | "new-project"
+    | "open-external"
+    | "goto-scene-column"
+    | "none";
   readonly label: string;
   /** 是否为主动作（视觉权重） */
   readonly primary?: boolean;

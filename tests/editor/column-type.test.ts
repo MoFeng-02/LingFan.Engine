@@ -9,7 +9,12 @@
  * 3. `parseChoiceAnswer` 判据（取消/越界一律不执行 —— 「取消 ≠ 缺省」）
  */
 import { describe, expect, it } from "vitest";
-import { addColumn, chapterGroupOf, buildChapterIndex, sceneTypeBadgeOf } from "@lingfan/editor";
+import {
+  addColumn,
+  chapterGroupOf,
+  buildChapterIndex,
+  sceneTypeBadgeOf,
+} from "@lingfan/editor";
 import { parseChoiceAnswer } from "../../apps/editor/src/dialog";
 import { sampleStory } from "../../apps/editor/src/sample";
 
@@ -19,8 +24,15 @@ const jsonOf = (story: ReturnType<typeof addColumn>["story"]) =>
 
 describe("addColumn · type 透传（契约只增）", () => {
   it("type=menu / ui 落字段", () => {
-    const menu = addColumn(sampleStory(), { id: "title_screen", kind: "scene", type: "menu" });
-    expect(menu.story.columns.at(-1)).toMatchObject({ id: "title_screen", type: "menu" });
+    const menu = addColumn(sampleStory(), {
+      id: "title_screen",
+      kind: "scene",
+      type: "menu",
+    });
+    expect(menu.story.columns.at(-1)).toMatchObject({
+      id: "title_screen",
+      type: "menu",
+    });
     const ui = addColumn(menu.story, { id: "toast", kind: "flow", type: "ui" });
     expect(ui.story.columns.at(-1)).toMatchObject({ id: "toast", type: "ui" });
   });
@@ -33,7 +45,11 @@ describe("addColumn · type 透传（契约只增）", () => {
   });
 
   it("type 与 kind 正交：flow+menu / scene+ui 的容器形态不受影响", () => {
-    const flow = addColumn(sampleStory(), { id: "f", kind: "flow", type: "menu" });
+    const flow = addColumn(sampleStory(), {
+      id: "f",
+      kind: "flow",
+      type: "menu",
+    });
     const flowCol = flow.story.columns.at(-1)!;
     expect(flowCol.kind).toBe("flow");
     expect(flowCol.commands).toEqual([]);
@@ -46,20 +62,37 @@ describe("addColumn · type 透传（契约只增）", () => {
   });
 
   it("type 与 hint（语义化 id 建议）同用不互扰", () => {
-    const result = addColumn(sampleStory(), { kind: "scene", hint: "settings", type: "menu" });
+    const result = addColumn(sampleStory(), {
+      kind: "scene",
+      hint: "settings",
+      type: "menu",
+    });
     expect(result.id).toBe("settings");
-    expect(result.story.columns.at(-1)).toMatchObject({ id: "settings", type: "menu" });
+    expect(result.story.columns.at(-1)).toMatchObject({
+      id: "settings",
+      type: "menu",
+    });
   });
 
   it("与分组判定互锁：type=menu/ui 的列归界面组（chapterGroupOf 单一判定点）", () => {
-    const { story } = addColumn(sampleStory(), { id: "pause_overlay", kind: "scene", type: "ui" });
+    const { story } = addColumn(sampleStory(), {
+      id: "pause_overlay",
+      kind: "scene",
+      type: "ui",
+    });
     const column = story.columns.at(-1)!;
     expect(chapterGroupOf(column)).toBe("ui");
   });
 
   it("ChapterNode 透传原始 type（组件据此精确区分 菜单/界面，不再按 group 猜）", () => {
-    const { story } = addColumn(sampleStory(), { id: "title", kind: "scene", type: "menu" });
-    const index = buildChapterIndex([{ path: "Stories/chapter1/title.json", column: story.columns.at(-1)! }]);
+    const { story } = addColumn(sampleStory(), {
+      id: "title",
+      kind: "scene",
+      type: "menu",
+    });
+    const index = buildChapterIndex([
+      { path: "Stories/chapter1/title.json", column: story.columns.at(-1)! },
+    ]);
     expect(index.ui[0]).toMatchObject({ id: "title", type: "menu" });
   });
 });
@@ -77,7 +110,10 @@ describe("parseChoiceAnswer · 取消与越界一律不执行", () => {
   const values = ["game", "menu", "ui"];
 
   it("命中选项 ⇒ 执行", () => {
-    expect(parseChoiceAnswer("menu", values)).toEqual({ run: true, value: "menu" });
+    expect(parseChoiceAnswer("menu", values)).toEqual({
+      run: true,
+      value: "menu",
+    });
   });
 
   it("取消形态（undefined/false/null）⇒ 不执行（取消 ≠ 缺省）", () => {

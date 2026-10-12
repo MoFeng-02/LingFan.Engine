@@ -21,7 +21,8 @@ function readSources(root: string): { file: string; text: string }[] {
     for (const name of readdirSync(dir)) {
       const p = join(dir, name);
       if (statSync(p).isDirectory()) out.push(...walk(p));
-      else if (/\.(vue|ts)$/.test(p)) out.push({ file: p, text: readFileSync(p, "utf8") });
+      else if (/\.(vue|ts)$/.test(p))
+        out.push({ file: p, text: readFileSync(p, "utf8") });
     }
     return out;
   };
@@ -58,7 +59,9 @@ describe("token 唯一源 · 防回流守卫", () => {
       const hits = code(text).match(/#[0-9a-fA-F]{3,8}\b/g);
       if (hits !== null) offenders.push(`${file}: ${hits.join(", ")}`);
     }
-    expect(offenders, `组件里出现裸色值：\n${offenders.join("\n")}`).toEqual([]);
+    expect(offenders, `组件里出现裸色值：\n${offenders.join("\n")}`).toEqual(
+      [],
+    );
   });
 
   it("组件里零裸字号（只准 var(--lf-font-*)）", () => {
@@ -67,7 +70,9 @@ describe("token 唯一源 · 防回流守卫", () => {
       const hits = code(text).match(/font-size: *(9|10|11|12|13|14|15|16)px/g);
       if (hits !== null) offenders.push(`${file}: ${hits.join(", ")}`);
     }
-    expect(offenders, `组件里出现裸字号：\n${offenders.join("\n")}`).toEqual([]);
+    expect(offenders, `组件里出现裸字号：\n${offenders.join("\n")}`).toEqual(
+      [],
+    );
   });
 
   it("无被截断的 8 位色值（`var(--lf-x)44` 这类破损）", () => {
@@ -132,7 +137,9 @@ describe("交互态与布局守卫", () => {
     // button 基类必须 white-space: nowrap（否则中文按钮文案被拆两行）
     expect(appText0).toMatch(/^button\s*\{[^}]*white-space:\s*nowrap/m);
     // 长路径必须可收缩 + 省略号（它是最占宽项）
-    expect(appText0).toMatch(/\.project-root\s*\{[^}]*max-width[^}]*text-overflow:\s*ellipsis/);
+    expect(appText0).toMatch(
+      /\.project-root\s*\{[^}]*max-width[^}]*text-overflow:\s*ellipsis/,
+    );
   });
 
   it("⑧ 控件右缘统一（不再有 260px 硬顶与 grow 打架）", () => {
@@ -143,10 +150,9 @@ describe("交互态与布局守卫", () => {
     // `.control` 自身不许再出现 max-width 硬顶
     // 必须**去注释**再判：规则里若写着「曾有 max-width:260px」这类说明文字，
     //    那是注释（不是声明），别把它当成违规。
-    const controlRule = (fieldRow.match(/\.control\s*\{[^}]*\}/)?.[0] ?? "").replace(
-      /\/\*[\s\S]*?\*\//g,
-      "",
-    );
+    const controlRule = (
+      fieldRow.match(/\.control\s*\{[^}]*\}/)?.[0] ?? ""
+    ).replace(/\/\*[\s\S]*?\*\//g, "");
     expect(controlRule).not.toMatch(/max-width:\s*\d+px/);
     expect(controlRule).toContain("flex: 1");
   });
@@ -162,18 +168,24 @@ describe("交互态与布局守卫", () => {
 describe("hover 可见性", () => {
   it("hover 底色 token ≠ button 基类底色 token", () => {
     const pick = (name: string): string => {
-      const m = tokensText.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{3,8})`));
+      const m = tokensText.match(
+        new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{3,8})`),
+      );
       return m?.[1] ?? "";
     };
     const hover = pick("lf-surface-hover-strong");
     const base = pick("lf-border-subtle");
     expect(hover).not.toBe("");
     expect(base).not.toBe("");
-    expect(hover.toLowerCase(), "hover 底色与基类底色同值 ⇒ 看起来没反应").not.toBe(base.toLowerCase());
+    expect(
+      hover.toLowerCase(),
+      "hover 底色与基类底色同值 ⇒ 看起来没反应",
+    ).not.toBe(base.toLowerCase());
   });
 
   it("hover 规则用的是那个专用 token", () => {
-    const hoverRule = appText0.match(/button:hover:not\(:disabled\)\s*\{[^}]*\}/)?.[0] ?? "";
+    const hoverRule =
+      appText0.match(/button:hover:not\(:disabled\)\s*\{[^}]*\}/)?.[0] ?? "";
     expect(hoverRule).toContain("var(--lf-surface-hover-strong)");
     expect(hoverRule).not.toContain("var(--lf-surface-selected)");
   });

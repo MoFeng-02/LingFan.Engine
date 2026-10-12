@@ -1,6 +1,11 @@
 import { isPlainObject } from "../../shared";
 import { ProjectSerializationError } from "./error";
-import { byPath, MANIFEST_FILE, STORIES_DIR, isSafeFileNameSegment } from "./naming";
+import {
+  byPath,
+  MANIFEST_FILE,
+  STORIES_DIR,
+  isSafeFileNameSegment,
+} from "./naming";
 import { columnShapeDefect } from "../format/column";
 import type { SerializedProject, Story, StoryColumn } from "../../contracts";
 
@@ -23,7 +28,8 @@ function columnFileText(column: StoryColumn): string {
   // `type`（运行语义）**必须写回**：漏了会让 menu/ui 场景在下次打开时
   // 变成 game（保存 = 悄悄改语义，且**不可逆**——作者下次打开发现菜单能回溯了）。
   // 缺省 game 不写（保持文件干净），非缺省才写。
-  if (column.type !== undefined && column.type !== "game") ordered.type = column.type;
+  if (column.type !== undefined && column.type !== "game")
+    ordered.type = column.type;
   if (column.kind === "flow") {
     ordered.commands = column.commands ?? [];
   } else {
@@ -41,14 +47,10 @@ function columnFileText(column: StoryColumn): string {
  * 按文件回写不可复原；上移后「清单 define = 合并值、文件贡献为空」再组装恒等——语义等价，
  * 代价 = provenance 丢失）。空 defines 省略该键。
  */
-function manifestText(
-  story: Story,
-  manifest: Record<string, unknown>,
-): string {
+function manifestText(story: Story, manifest: Record<string, unknown>): string {
   const out: Record<string, unknown> = {};
   const defines = story.defines;
-  const hasDefines =
-    defines !== undefined && Object.keys(defines).length > 0;
+  const hasDefines = defines !== undefined && Object.keys(defines).length > 0;
   for (const [key, value] of Object.entries(manifest)) {
     if (key === "formatVersion") {
       out[key] = 1;
@@ -119,7 +121,9 @@ export function serializeProject(
 
     // type 的运行语义非法值同样 fail-closed：组装器是另一条入口（多文件工程），
     // 只在单文件解析层拦下会漏掉这条路（缺省 game 合法）。
-    const shape = columnShapeDefect(column as unknown as Record<string, unknown>);
+    const shape = columnShapeDefect(
+      column as unknown as Record<string, unknown>,
+    );
     if (shape !== null) {
       if (shape.reason === "bad-kind") {
         issues.push(
@@ -141,9 +145,7 @@ export function serializeProject(
     }
   }
   if (typeof story.entry !== "string" || !seen.has(story.entry)) {
-    issues.push(
-      `入口列 ${JSON.stringify(story.entry)} 不存在于列集`,
-    );
+    issues.push(`入口列 ${JSON.stringify(story.entry)} 不存在于列集`);
   }
   if (issues.length > 0) throw new ProjectSerializationError(issues);
 
@@ -182,12 +184,18 @@ export function serializeProject(
  * 这与 `parseStoryFile` 的识别口径一致（它按内容识别两种形态），
  * 所以**往返可逆**（守卫`writeback-fidelity` 与真实工程守卫都验这一条）。
  */
-function columnGroupFileText(group: readonly StoryColumn[], path: string): string {
+function columnGroupFileText(
+  group: readonly StoryColumn[],
+  path: string,
+): string {
   if (group.length === 1) return columnFileText(group[0]!);
   return stableJson({
     formatVersion: 1,
     columns: group.map((column) => {
-      const ordered: Record<string, unknown> = { id: column.id, kind: column.kind };
+      const ordered: Record<string, unknown> = {
+        id: column.id,
+        kind: column.kind,
+      };
       if (column.type !== undefined && column.type !== "game") {
         ordered.type = column.type;
       }
@@ -215,7 +223,11 @@ function columnFilePath(column: StoryColumn): string {
     return `${STORIES_DIR}/${column.id}.json`;
   }
   // fail-closed：越界路径直接退回默认并由调用方校验（这里先保底不生成越界路径）
-  if (raw.startsWith("/") || raw.includes("..") || !raw.startsWith(`${STORIES_DIR}/`)) {
+  if (
+    raw.startsWith("/") ||
+    raw.includes("..") ||
+    !raw.startsWith(`${STORIES_DIR}/`)
+  ) {
     return `${STORIES_DIR}/${column.id}.json`;
   }
   return raw;

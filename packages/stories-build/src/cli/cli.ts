@@ -27,14 +27,19 @@ export { StoryBuildError, buildStories, type BuildReport } from "../index";
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const envRoot = process.env.DSH_STORIES_ROOT;
   const root = resolve(
-    process.argv[2] ?? (envRoot !== undefined && envRoot !== "" ? envRoot : process.cwd()),
+    process.argv[2] ??
+      (envRoot !== undefined && envRoot !== "" ? envRoot : process.cwd()),
   );
   try {
     const report = await buildStories(root);
     console.log(
       `TS 故事源编译完成：${DEFAULT_SOURCES_DIR}/${report.source} → story "${report.storyId}"（${report.columns} 列）`,
     );
-    if (report.added.length === 0 && report.updated.length === 0 && report.removed.length === 0) {
+    if (
+      report.added.length === 0 &&
+      report.updated.length === 0 &&
+      report.removed.length === 0
+    ) {
       console.log("已是最新（零差量）");
     }
     if (report.added.length > 0) {

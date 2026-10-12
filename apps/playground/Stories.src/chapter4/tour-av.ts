@@ -18,7 +18,10 @@ import {
 } from "../lib/vocabulary";
 
 export default function tour_av(): void {
-  say("声光餐车——BGM、环境音、配音三轨各停各的；视频支持暂停/续播/跳帧/点击跳过。", "灵泛");
+  say(
+    "声光餐车——BGM、环境音、配音三轨各停各的；视频支持暂停/续播/跳帧/点击跳过。",
+    "灵泛",
+  );
   stopBgm({ fade: 600 });
   say("stop_bgm（600ms 淡出）——序幕的夜蟋蟀退场。");
   ambient("Audio/crickets_night01.mp3", { volume: 0.4, loop: true });

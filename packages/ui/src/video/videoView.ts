@@ -49,7 +49,9 @@ export function createVideoRenderer(
   let lastSeq = -1;
   /** 解析代际：异步解析落地时若已被更新命令取代，丢弃该次播放（防错播） */
   let generation = 0;
-  const urls = createResourceUrlCache((resource) => resources.resolve(resource));
+  const urls = createResourceUrlCache((resource) =>
+    resources.resolve(resource),
+  );
   const reader = createStateReader(engine);
 
   async function resolveUrl(resource: string): Promise<string | null> {

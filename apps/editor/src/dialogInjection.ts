@@ -8,7 +8,9 @@
 import { inject, type InjectionKey } from "vue";
 import type { DialogPort } from "./dialog";
 
-export const DIALOG_PORT_KEY: InjectionKey<DialogPort> = Symbol("lingfan-editor-dialog-port");
+export const DIALOG_PORT_KEY: InjectionKey<DialogPort> = Symbol(
+  "lingfan-editor-dialog-port",
+);
 
 /** 取对话框端口；宿主未装配时**静默降级**为「取消一切」的桩（不崩溃） */
 export function useDialog(): DialogPort {

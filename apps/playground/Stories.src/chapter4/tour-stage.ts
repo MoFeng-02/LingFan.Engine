@@ -19,12 +19,20 @@ export default function tour_stage(): void {
   background("Images/lingfan.png");
   say("background 换底图。");
   dialogWindow("hide");
-  notify("对话窗已隐藏（dialog_window hide），正文走全屏舞台。", { type: "info" });
+  notify("对话窗已隐藏（dialog_window hide），正文走全屏舞台。", {
+    type: "info",
+  });
   say("这句仍照常推进——列命令流不受窗口开合影响。");
   dialogWindow("show");
   say("对话窗回到台前。");
   show("Images/lingfan.png", { id: "tour_block", x: 180, y: 120 });
-  animateBlock("tour_block", { x: 420, y: 180, opacity: 0.8, duration: 1.2, easing: "EaseOutQuad" });
+  animateBlock("tour_block", {
+    x: 420,
+    y: 180,
+    opacity: 0.8,
+    duration: 1.2,
+    easing: "EaseOutQuad",
+  });
   say("animate_block 一次做完移动/淡入/时长/缓动（单元素块动画）。");
   textTypewriter({ enabled: false });
   say("打字机关掉后，这句是整段浮出（对比下面一句）。");

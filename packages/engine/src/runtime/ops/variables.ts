@@ -38,7 +38,10 @@ export function execAssign(
       const rhs = ctx.evalValue(compound[2]);
       const current = ctx.readVariable(key);
       if (typeof current !== "number" || typeof rhs !== "number") {
-        throw new ExpressionError("type-error", `复合赋值 ${sym} 只支持 number`);
+        throw new ExpressionError(
+          "type-error",
+          `复合赋值 ${sym} 只支持 number`,
+        );
       }
       value = applyCompound(sym, current, rhs);
     } else {

@@ -58,4 +58,15 @@ export interface Frame {
   loop?: LoopState;
   /** 函数帧标记（return 回溯锚点；break/continue 不得跨函数边界） */
   func?: true;
+  /**
+   * 调用结果槽：execReturn 带值返回时写入调用方帧（call `into` 依据被调帧的
+   * into 名把同一值声明进调用方作用域）。值走写时复制（ExprValue 全为不可变
+   * 形态），克隆帧浅引用即可。
+   */
+  result?: unknown;
+  /**
+   * call into 的绑定名：execCall 从命令抄到被调帧上，return 与函数体自然跑完
+   * （帧耗尽）两条路都据此回写调用方——中途经过存读档/回溯时随帧快照保留。
+   */
+  into?: string;
 }

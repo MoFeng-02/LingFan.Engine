@@ -29,7 +29,9 @@ export interface DiagnosticMessageParts {
  *
  * **不切 `pointer`**：pointer 是另一个字段，不参与文案分层。
  */
-export function splitDiagnosticMessage(message: string): DiagnosticMessageParts {
+export function splitDiagnosticMessage(
+  message: string,
+): DiagnosticMessageParts {
   const start = message.indexOf("（");
   if (start <= 0) return { brief: message, detail: "" };
   // 说明本身若含「（…）」嵌套，只取到**配对**的右括号

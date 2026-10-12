@@ -82,7 +82,9 @@ const emit = defineEmits<{
       :value="currentLang"
       title="语言"
       @click.stop
-      @change.stop="emit('change-lang', ($event.target as HTMLSelectElement).value)"
+      @change.stop="
+        emit('change-lang', ($event.target as HTMLSelectElement).value)
+      "
     >
       <option value="">默认</option>
       <option v-for="lang in availableLangs" :key="lang" :value="lang">

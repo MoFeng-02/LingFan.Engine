@@ -43,7 +43,9 @@ describe("createTauriEncryptedResourcePort（流式供给）", () => {
   });
 
   it("坏负载 fail-closed：非 JSON / 缺 url 字段均抛错", async () => {
-    const notJson = createTauriEncryptedResourcePort(makeInvoke("not-json", []));
+    const notJson = createTauriEncryptedResourcePort(
+      makeInvoke("not-json", []),
+    );
     await expect(notJson.resolve("Video/v.mp4")).rejects.toThrow("负载异常");
     const noUrl = createTauriEncryptedResourcePort(
       makeInvoke(JSON.stringify({ file: "x.mp4" }), []),

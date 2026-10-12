@@ -10,7 +10,11 @@
  * 两个覆盖层实例各有自己的说话人、等待态与打字机，互不串扰。
  */
 import { instanceZLayer, SYS } from "@lingfan/engine";
-import type { ElementInstance, StateReader, StoryEngine } from "@lingfan/engine";
+import type {
+  ElementInstance,
+  StateReader,
+  StoryEngine,
+} from "@lingfan/engine";
 import { renderDialogueLine } from "../dialogue/textView";
 import { Typewriter } from "../dialogue/typewriter";
 import { setLayerOverride } from "./layer-z";
@@ -22,8 +26,7 @@ export type RenderTarget = "dialogue" | "choices" | "elements";
 
 /** 一次状态变更的处理结果：层级键走层级重写，其余键走渲染目标列表 */
 export type ChangeEffect =
-  | { kind: "layers" }
-  | { kind: "render"; targets: readonly RenderTarget[] };
+  { kind: "layers" } | { kind: "render"; targets: readonly RenderTarget[] };
 
 /**
  * 渲染态：全部字段都只由状态投影写入，
@@ -134,7 +137,11 @@ export function createProjector(deps: {
   function applyChange(key: string, value: unknown): ChangeEffect {
     const zLayer = instanceZLayer(key);
     if (zLayer !== undefined) {
-      setLayerOverride(state.layerZ, zLayer, typeof value === "number" ? value : undefined);
+      setLayerOverride(
+        state.layerZ,
+        zLayer,
+        typeof value === "number" ? value : undefined,
+      );
       state.layerZ.apply();
       return { kind: "layers" };
     }

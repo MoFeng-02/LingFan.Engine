@@ -74,7 +74,7 @@ describe("成对互锁：两个「应用」按钮都必须带 dirty 门（只改
 });
 
 describe("防回流：dirty 门的完整形态不得被简写掉", () => {
-  it("两个 apply 按钮都不存在「无门」写法（`class=\"apply\"` 后紧跟 @click）", () => {
+  it('两个 apply 按钮都不存在「无门」写法（`class="apply"` 后紧跟 @click）', () => {
     for (const code of [textCode, jsonCode]) {
       expect(code).not.toMatch(/class="apply"\s+@click/);
     }

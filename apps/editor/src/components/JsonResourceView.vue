@@ -17,24 +17,31 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: "save", path: string, text: string): void }>();
 
 /** 坏 JSON ⇒ 如实报错（fail-closed） */
-const parsed = computed<{ entries: [string, unknown][] } | { error: string }>(() => {
-  try {
-    const value: unknown = JSON.parse(props.source);
-    if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      return { error: "根节点必须是对象" };
+const parsed = computed<{ entries: [string, unknown][] } | { error: string }>(
+  () => {
+    try {
+      const value: unknown = JSON.parse(props.source);
+      if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return { error: "根节点必须是对象" };
+      }
+      return { entries: Object.entries(value as Record<string, unknown>) };
+    } catch (e) {
+      return { error: `不是合法 JSON：${String(e)}` };
     }
-    return { entries: Object.entries(value as Record<string, unknown>) };
-  } catch (e) {
-    return { error: `不是合法 JSON：${String(e)}` };
-  }
-});
+  },
+);
 
 /** 草稿（编辑后才可保存；未改则禁用——不产生无意义的重写） */
 const draft = ref<string | undefined>(undefined);
-watch(() => props.path, () => (draft.value = undefined));
+watch(
+  () => props.path,
+  () => (draft.value = undefined),
+);
 
 const current = computed(() => draft.value ?? props.source);
-const dirty = computed(() => draft.value !== undefined && draft.value !== props.source);
+const dirty = computed(
+  () => draft.value !== undefined && draft.value !== props.source,
+);
 const typeOf = (value: unknown): string =>
   value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
 </script>
@@ -46,7 +53,9 @@ const typeOf = (value: unknown): string =>
       <span class="path" :title="path">{{ path }}</span>
       <span class="spacer"></span>
       <span v-if="dirty" class="warn">未保存</span>
-      <button :disabled="!dirty" @click="emit('save', path, current)">保存</button>
+      <button :disabled="!dirty" @click="emit('save', path, current)">
+        保存
+      </button>
     </header>
 
     <p v-if="'error' in parsed" class="error">{{ parsed.error }}</p>
@@ -56,9 +65,7 @@ const typeOf = (value: unknown): string =>
           <span class="key">{{ key }}</span>
           <span class="type">{{ typeOf(value) }}</span>
           <span class="value">{{
-            typeof value === "string"
-              ? value
-              : JSON.stringify(value)
+            typeof value === "string" ? value : JSON.stringify(value)
           }}</span>
         </li>
       </ul>

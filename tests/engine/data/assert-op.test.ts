@@ -7,7 +7,13 @@
  */
 import { describe, expect, it } from "vitest";
 import type { OutboundEvent, ValueChanged } from "@lingfan/engine";
-import { SYS, StoryEngine, generateText, parseStory, parseTextStory } from "@lingfan/engine";
+import {
+  SYS,
+  StoryEngine,
+  generateText,
+  parseStory,
+  parseTextStory,
+} from "@lingfan/engine";
 
 interface Harness {
   engine: StoryEngine;
@@ -33,10 +39,20 @@ function instrument(engine: StoryEngine): Harness {
   };
 }
 
-function makeEngine(columns: object[], entry = "a", defines?: Record<string, unknown>): Harness {
+function makeEngine(
+  columns: object[],
+  entry = "a",
+  defines?: Record<string, unknown>,
+): Harness {
   return instrument(
     new StoryEngine(
-      parseStory({ formatVersion: 1, id: "t", entry, columns, ...(defines === undefined ? {} : { defines }) }),
+      parseStory({
+        formatVersion: 1,
+        id: "t",
+        entry,
+        columns,
+        ...(defines === undefined ? {} : { defines }),
+      }),
     ),
   );
 }
@@ -59,20 +75,31 @@ function lastError(h: Harness): { code?: string; message?: string } {
 describe("assert · 契约校验（format 层 fail-closed）", () => {
   it("缺 cond / 空 cond ⇒ issue", () => {
     expect(() =>
-      parseStory({ formatVersion: 1, id: "t", entry: "a", columns: [column("a", [{ op: "assert" }])] },
-    )).toThrow(/cond/);
+      parseStory({
+        formatVersion: 1,
+        id: "t",
+        entry: "a",
+        columns: [column("a", [{ op: "assert" }])],
+      }),
+    ).toThrow(/cond/);
     expect(() =>
-      parseStory(
-        { formatVersion: 1, id: "t", entry: "a", columns: [column("a", [{ op: "assert", cond: "" }])] },
-      ),
+      parseStory({
+        formatVersion: 1,
+        id: "t",
+        entry: "a",
+        columns: [column("a", [{ op: "assert", cond: "" }])],
+      }),
     ).toThrow(/cond/);
   });
 
   it("message 非字符串 ⇒ issue", () => {
     expect(() =>
-      parseStory(
-        { formatVersion: 1, id: "t", entry: "a", columns: [column("a", [{ op: "assert", cond: "{1}", message: 3 }])] },
-      ),
+      parseStory({
+        formatVersion: 1,
+        id: "t",
+        entry: "a",
+        columns: [column("a", [{ op: "assert", cond: "{1}", message: 3 }])],
+      }),
     ).toThrow(/message/);
   });
 });
@@ -90,7 +117,12 @@ describe("assert · 运行期拦截语义", () => {
   });
 
   it("失败 ⇒ engine.error(assert-failed) + 自定义 message + **停在当前命令**（状态原样 + 阻止推进）", () => {
-    const h = makeEngine([column("a", [{ op: "assert", cond: "{1 > 2}", message: "数学崩坏了" }, say("不应到达")])]);
+    const h = makeEngine([
+      column("a", [
+        { op: "assert", cond: "{1 > 2}", message: "数学崩坏了" },
+        say("不应到达"),
+      ]),
+    ]);
     h.engine.start();
     expect(lastError(h)).toMatchObject({ code: "assert-failed" });
     expect(lastError(h).message).toContain("数学崩坏了");

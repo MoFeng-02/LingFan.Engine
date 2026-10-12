@@ -80,8 +80,11 @@ export function groupDiagnostics(
   const groups: DiagnosticGroup[] = [];
   for (const [code, items] of buckets) {
     // 组严重度 = 取最高（error > warning）——同组可能混档
-    const severity: DiagnosticSeverity =
-      items.some((d) => d.severity === "error") ? "error" : "warning";
+    const severity: DiagnosticSeverity = items.some(
+      (d) => d.severity === "error",
+    )
+      ? "error"
+      : "warning";
     groups.push({
       code,
       label: diagnosticCodeLabel(code),
@@ -98,7 +101,8 @@ export function groupDiagnostics(
 
 /** 组内比较：有 pointer 优先 → pointer 码元序 → message 码元序（**全序，确定性**） */
 function compareItems(a: Diagnostic, b: Diagnostic): number {
-  if ((a.pointer === "") !== (b.pointer === "")) return a.pointer === "" ? 1 : -1;
+  if ((a.pointer === "") !== (b.pointer === ""))
+    return a.pointer === "" ? 1 : -1;
   if (a.pointer !== b.pointer) return a.pointer < b.pointer ? -1 : 1;
   return a.message < b.message ? -1 : a.message > b.message ? 1 : 0;
 }
@@ -119,7 +123,9 @@ export interface DiagnosticSummary {
   readonly warnings: number;
 }
 
-export function summarizeDiagnostics(groups: readonly DiagnosticGroup[]): DiagnosticSummary {
+export function summarizeDiagnostics(
+  groups: readonly DiagnosticGroup[],
+): DiagnosticSummary {
   let errors = 0;
   let warnings = 0;
   for (const g of groups) {

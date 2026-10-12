@@ -28,10 +28,7 @@ export type TemplateFn<TInput, TView extends TemplateViewBase> = (
  * 模板缺失不算错误——由宿主的内建实现兜底，因此本表是 fail-soft 的。
  * 本类不持有渲染状态，同一实例可跨挂载点共享。
  */
-export class TemplateRegistry<
-  TInput,
-  TView extends TemplateViewBase,
-> {
+export class TemplateRegistry<TInput, TView extends TemplateViewBase> {
   /**
    * 模板表：模板名 → 模板函数。`register` 写入（同名覆盖），`resolve` / `has` / `names` 读取。
    * 空串是「无模板」哨兵，`register` 直接拒收，所以键集合恰好等于真正注册过的模板名；

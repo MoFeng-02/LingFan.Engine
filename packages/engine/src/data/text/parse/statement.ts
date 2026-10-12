@@ -39,7 +39,16 @@ export function parseSimpleStatement(
     return null;
   };
   const quoted = (index: number): string => unquote(tokens[index] ?? "");
-  const ctx: StatementContext = { op, rest, tokens, at, issues, warnings, fail, quoted };
+  const ctx: StatementContext = {
+    op,
+    rest,
+    tokens,
+    at,
+    issues,
+    warnings,
+    fail,
+    quoted,
+  };
   switch (op) {
     case "say":
     case "nvl":

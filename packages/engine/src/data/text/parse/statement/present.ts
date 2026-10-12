@@ -13,7 +13,9 @@ import { StatementContext } from "../state";
  * 失败表现：不抛异常；语法或参数不符时用 `c.fail` 记一条带定位的 issue 并返回 `null`，
  * 由调用方按 issues 非空整次拒绝。语义暂未生效的情况记到警告通道，不阻塞解析。
  */
-export function parsePresentStatement(c: StatementContext): StoryCommand | null {
+export function parsePresentStatement(
+  c: StatementContext,
+): StoryCommand | null {
   const { op, rest, tokens, fail } = c;
   switch (op) {
     // ====== 元素增删改 ======
@@ -117,7 +119,8 @@ export function parsePresentStatement(c: StatementContext): StoryCommand | null 
         }
         return fail(`animate 未知参数：${key}`);
       }
-      if (cmd.property === undefined) return fail("animate 需要 property=属性名");
+      if (cmd.property === undefined)
+        return fail("animate 需要 property=属性名");
       if (cmd.value === undefined) return fail("animate 需要 value=数字");
       return cmd;
     }
@@ -125,7 +128,10 @@ export function parsePresentStatement(c: StatementContext): StoryCommand | null 
       const target = tokens[0];
       if (target === undefined || !target.startsWith('"'))
         return fail("animate_block 需要目标字符串");
-      const cmd: StoryCommand = { op: "animate_block", target: unquote(target) };
+      const cmd: StoryCommand = {
+        op: "animate_block",
+        target: unquote(target),
+      };
       for (const token of tokens.slice(1)) {
         const eq = token.indexOf("=");
         if (eq <= 0) return fail(`animate_block 未知参数：${token}`);

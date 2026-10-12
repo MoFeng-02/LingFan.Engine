@@ -87,7 +87,8 @@ describe("ElementRegistry（fail-closed 注册制）", () => {
     expect(registry.has("text")).toBe(true);
     expect(registry.has("button")).toBe(true);
     expect(registry.has("image")).toBe(true);
-    const custom = (): HTMLElement => createFake("div") as unknown as HTMLElement;
+    const custom = (): HTMLElement =>
+      createFake("div") as unknown as HTMLElement;
     registry.register("text", custom);
     expect(registry.get("text")).toBe(custom);
   });
@@ -173,7 +174,11 @@ describe("renderElementTree（未知类型不渲染）", () => {
       z: 0,
       children: [instance("c1", "text")],
     };
-    renderElementTree({ registry, container: asHost(container), elements: [panel] });
+    renderElementTree({
+      registry,
+      container: asHost(container),
+      elements: [panel],
+    });
     expect(container.children).toHaveLength(1);
     const panelNode = container.children[0]!;
     expect(panelNode.className).toContain("lf-panel");
@@ -223,43 +228,78 @@ describe("全量类型渲染（36 类落地语义）", () => {
 
   it("progressbar / vbar：value 在 [min,max] 内的填充比例（横向 / 纵向）", () => {
     const bar = render([
-      { id: "b", type: "progressbar", props: { min: 0, max: 100, value: 40 }, z: 0, children: [] },
+      {
+        id: "b",
+        type: "progressbar",
+        props: { min: 0, max: 100, value: 40 },
+        z: 0,
+        children: [],
+      },
     ]).children[0]!;
     expect(bar.children[0]?.style.width).toBe("40%");
 
     const vbar = render([
-      { id: "v", type: "vbar", props: { min: 0, max: 10, value: 5 }, z: 0, children: [] },
+      {
+        id: "v",
+        type: "vbar",
+        props: { min: 0, max: 10, value: 5 },
+        z: 0,
+        children: [],
+      },
     ]).children[0]!;
     expect(vbar.children[0]?.style.height).toBe("50%");
   });
 
   it("scroll → overflow:auto；viewport → hidden；scroll_h=false 关闭横轴", () => {
     expect(
-      render([{ id: "s", type: "scroll", props: {}, z: 0, children: [] }]).children[0]
-        ?.style.overflow,
+      render([{ id: "s", type: "scroll", props: {}, z: 0, children: [] }])
+        .children[0]?.style.overflow,
     ).toBe("auto");
     expect(
-      render([{ id: "v", type: "viewport", props: {}, z: 0, children: [] }]).children[0]
-        ?.style.overflow,
+      render([{ id: "v", type: "viewport", props: {}, z: 0, children: [] }])
+        .children[0]?.style.overflow,
     ).toBe("hidden");
     expect(
       render([
-        { id: "s2", type: "scrollviewer", props: { scroll_h: false }, z: 0, children: [] },
+        {
+          id: "s2",
+          type: "scrollviewer",
+          props: { scroll_h: false },
+          z: 0,
+          children: [],
+        },
       ]).children[0]?.style.overflowX,
     ).toBe("hidden");
   });
 
   it("slider / checkbox：原生 input 承载 min/max/value/checked", () => {
     const slider = render([
-      { id: "sl", type: "slider", props: { min: 2, max: 8, value: 5 }, z: 0, children: [] },
-    ]).children[0] as unknown as { type: string; min: string; max: string; value: string };
+      {
+        id: "sl",
+        type: "slider",
+        props: { min: 2, max: 8, value: 5 },
+        z: 0,
+        children: [],
+      },
+    ]).children[0] as unknown as {
+      type: string;
+      min: string;
+      max: string;
+      value: string;
+    };
     expect(slider.type).toBe("range");
     expect(slider.min).toBe("2");
     expect(slider.max).toBe("8");
     expect(slider.value).toBe("5");
 
     const box = render([
-      { id: "ck", type: "checkbox", props: { checked: true }, z: 0, children: [] },
+      {
+        id: "ck",
+        type: "checkbox",
+        props: { checked: true },
+        z: 0,
+        children: [],
+      },
     ]).children[0] as unknown as { type: string; checked: boolean };
     expect(box.type).toBe("checkbox");
     expect(box.checked).toBe(true);
@@ -267,23 +307,35 @@ describe("全量类型渲染（36 类落地语义）", () => {
 
   it("spacer → flex:1；separator → 1px 线（direction=vertical 转竖线）", () => {
     expect(
-      render([{ id: "sp", type: "spacer", props: {}, z: 0, children: [] }]).children[0]
-        ?.style.flex,
+      render([{ id: "sp", type: "spacer", props: {}, z: 0, children: [] }])
+        .children[0]?.style.flex,
     ).toBe("1 1 auto");
     expect(
-      render([{ id: "se", type: "separator", props: {}, z: 0, children: [] }]).children[0]
-        ?.style.height,
+      render([{ id: "se", type: "separator", props: {}, z: 0, children: [] }])
+        .children[0]?.style.height,
     ).toBe("1px");
     expect(
       render([
-        { id: "sv", type: "separator", props: { direction: "vertical" }, z: 0, children: [] },
+        {
+          id: "sv",
+          type: "separator",
+          props: { direction: "vertical" },
+          z: 0,
+          children: [],
+        },
       ]).children[0]?.style.width,
     ).toBe("1px");
   });
 
   it("imagebutton：有 source 时渲染 img 子节点", () => {
     const node = render([
-      { id: "ib", type: "imagebutton", props: { source: "Images/lingfan.png" }, z: 0, children: [] },
+      {
+        id: "ib",
+        type: "imagebutton",
+        props: { source: "Images/lingfan.png" },
+        z: 0,
+        children: [],
+      },
     ]).children[0]!;
     expect(node.tagName).toBe("BUTTON");
     expect(node.children).toHaveLength(0); // 资源未装配（无 resolveResource）→ 退化为文本

@@ -15,4 +15,6 @@ export declare const state: StoryState;
  * 跨故事跳转：目标是列名字符串或导入的故事引用（default 导入），编译期统一解析为列 id。
  * declare 宽类型只为 IDE；引擎 jump 词签名收 string，编译器对两种实参走同一 emitJump。
  */
-export declare function jump(target: string | (() => void)): import("@lingfan/engine").StoryCommand;
+export declare function jump(
+  target: string | (() => void),
+): import("@lingfan/engine").StoryCommand;

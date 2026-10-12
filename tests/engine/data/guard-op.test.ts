@@ -59,7 +59,10 @@ function lastError(h: Harness): { code?: string; message?: string } {
 describe("guard · 注册与未注册（fail-closed 口径）", () => {
   it("未注册名 ⇒ guard-unknown（停在当前命令，状态原样）", () => {
     const h = makeEngine([
-      column("a", [{ op: "guard", fn: "不存在" }, { op: "say", text: "不可达" }]),
+      column("a", [
+        { op: "guard", fn: "不存在" },
+        { op: "say", text: "不可达" },
+      ]),
     ]);
     h.engine.start();
     expect(lastError(h)).toMatchObject({ code: "guard-unknown" });
@@ -77,7 +80,10 @@ describe("guard · 注册与未注册（fail-closed 口径）", () => {
 
 describe("guard · ctx 沙箱面与 args（签名 (ctx, args)）", () => {
   it("ctx.get 读 SSOT；args 纯数据透传；通过 = 纯推进", () => {
-    const seen: { ctxKeys: string[]; args: unknown } = { ctxKeys: [], args: undefined };
+    const seen: { ctxKeys: string[]; args: unknown } = {
+      ctxKeys: [],
+      args: undefined,
+    };
     const h = makeEngine(
       [
         column("a", [
@@ -99,7 +105,10 @@ describe("guard · ctx 沙箱面与 args（签名 (ctx, args)）", () => {
       },
     );
     h.engine.start();
-    expect(seen).toMatchObject({ ctxKeys: ["gold=30"], args: { min: 25, tag: "金币校验" } });
+    expect(seen).toMatchObject({
+      ctxKeys: ["gold=30"],
+      args: { min: 25, tag: "金币校验" },
+    });
     // 通过 = 纯推进：后续 say 上屏，零 engine.error
     h.engine.advance();
     expect(h.engine.get(SYS.currentDialogText)).toBe("通过");
@@ -134,10 +143,13 @@ describe("guard · ctx 沙箱面与 args（签名 (ctx, args)）", () => {
   });
 
   it("守卫抛出非 fail 异常 ⇒ guard-threw 兜底（不静默、不裸崩）", () => {
-    const h = makeEngine(
-      [column("a", [{ op: "guard", fn: "boom" }])],
-      { guards: { boom: () => { throw new TypeError("逻辑炸了"); } } },
-    );
+    const h = makeEngine([column("a", [{ op: "guard", fn: "boom" }])], {
+      guards: {
+        boom: () => {
+          throw new TypeError("逻辑炸了");
+        },
+      },
+    });
     h.engine.start();
     expect(lastError(h)).toMatchObject({ code: "guard-threw" });
     expect(lastError(h).message).toContain("逻辑炸了");
@@ -146,7 +158,11 @@ describe("guard · ctx 沙箱面与 args（签名 (ctx, args)）", () => {
 
   it("args 非 JSON 安全（数组内函数——stringify 语义拒收）⇒ guard-args-unsafe fail-closed", () => {
     const h = makeEngine(
-      [column("a", [{ op: "guard", fn: "check", args: { history: [() => 1] } } as never])],
+      [
+        column("a", [
+          { op: "guard", fn: "check", args: { history: [() => 1] } } as never,
+        ]),
+      ],
       { guards: { check: () => undefined } },
     );
     h.engine.start();
@@ -170,7 +186,8 @@ describe("guard · 回溯重放同判（纯函数语义）", () => {
         guards: {
           check: (ctx: GuardContext) => {
             const gold = ctx.get("player.gold");
-            if ((typeof gold === "number" ? gold : 0) + 偏置 < 25) ctx.fail("金币不足");
+            if ((typeof gold === "number" ? gold : 0) + 偏置 < 25)
+              ctx.fail("金币不足");
           },
         },
       },
@@ -212,12 +229,20 @@ describe("guard · 文本投影往返", () => {
 describe("guard · 契约校验（format 层 fail-closed）", () => {
   it("缺 fn / args 非对象 ⇒ issue", () => {
     expect(() =>
-      parseStory({ formatVersion: 1, id: "t", entry: "a", columns: [column("a", [{ op: "guard" }])] }),
+      parseStory({
+        formatVersion: 1,
+        id: "t",
+        entry: "a",
+        columns: [column("a", [{ op: "guard" }])],
+      }),
     ).toThrow(/fn/);
     expect(() =>
-      parseStory(
-        { formatVersion: 1, id: "t", entry: "a", columns: [column("a", [{ op: "guard", fn: "x", args: "nope" }])] },
-      ),
+      parseStory({
+        formatVersion: 1,
+        id: "t",
+        entry: "a",
+        columns: [column("a", [{ op: "guard", fn: "x", args: "nope" }])],
+      }),
     ).toThrow(/args/);
   });
 });

@@ -1,0 +1,143 @@
+---
+// 内嵌演示页的演示台与叙事覆盖层皮肤，仅被 /demo/ 与 /en/demo/ 引入，
+// 404 等纯文本独立页不携带这批样式。骨架类名由装配器给出（宿主可换皮），
+// 颜色一律引用 DemoShell 的 --lf-d-* 令牌。
+---
+
+<style is:global>
+  #lf-demo-stage {
+    margin-top: 14px;
+    height: 440px;
+    border: 1px solid var(--lf-d-line);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--lf-d-stage);
+  }
+  #lf-demo-preview { position: relative; height: 100%; outline: none; cursor: pointer; }
+  #lf-demo-source {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: var(--lf-d-stage-deep);
+  }
+  #lf-demo-source[hidden] { display: none; }
+  .lf-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  .lf-pane[hidden] { display: none; }
+  .lf-pane-head { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--lf-d-muted); }
+  .lf-dirty { color: var(--lf-d-warn); }
+  .lf-readonly { color: var(--lf-d-accent); }
+  .lf-pane textarea {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    resize: none;
+    border: 1px solid var(--lf-d-line);
+    border-radius: 8px;
+    background: var(--lf-d-stage);
+    color: var(--lf-d-text);
+    font: 13px/1.6 Consolas, ui-monospace, monospace;
+    padding: 10px 12px;
+  }
+  .lf-pane textarea:focus { outline: none; border-color: var(--lf-d-accent); }
+  .lf-errors {
+    margin: 0;
+    padding: 8px 12px;
+    max-height: 96px;
+    overflow: auto;
+    border: 1px solid var(--lf-d-error);
+    border-radius: 8px;
+    background: var(--lf-d-error-tint);
+    color: var(--lf-d-error);
+    font-size: 13px;
+    font-family: Consolas, ui-monospace, monospace;
+  }
+  .lf-errors:empty { display: none; }
+  #lf-status {
+    margin: 12px 2px 0;
+    min-height: 1.6em;
+    color: var(--lf-d-muted);
+    font-size: 13px;
+  }
+
+  /* —— 叙事覆盖层最小皮肤 —— */
+  .lf-dialogue {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 0 24px 64px;
+  }
+  .lf-dialogue .lf-speaker { margin: 0 0 6px; font-weight: 600; font-size: 14px; color: var(--lf-d-heading); }
+  .lf-dialogue .lf-text {
+    margin: 0;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: var(--lf-d-overlay);
+    border: 1px solid var(--lf-d-line);
+    font-size: 16px;
+    line-height: 1.7;
+    min-height: 1.7em;
+    color: var(--lf-d-text);
+  }
+  .lf-dialogue .lf-hint { align-self: flex-end; margin-top: 6px; color: var(--lf-d-accent); font-size: 13px; }
+  .lf-choices {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+  }
+  .lf-choices .lf-prompt { margin: 0 0 6px; font-size: 15px; color: var(--lf-d-heading); }
+  .lf-choices .lf-choice-row { display: flex; flex-direction: column; gap: 10px; }
+  .lf-choices button {
+    min-width: 240px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1px solid var(--lf-d-line-strong);
+    background: var(--lf-d-choice);
+    color: var(--lf-d-text);
+    font: inherit;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .lf-choices button:hover {
+    border-color: var(--lf-d-accent);
+    background: var(--lf-d-choice-hover);
+  }
+  .lf-choices input {
+    width: 280px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--lf-d-line-strong);
+    background: var(--lf-d-input);
+    color: var(--lf-d-heading);
+    font: inherit;
+    font-size: 15px;
+  }
+  .lf-choices input:focus { outline: none; border-color: var(--lf-d-accent); }
+  .lf-notifications {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 14px;
+  }
+  .lf-notifications > div {
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--lf-d-choice);
+    border: 1px solid var(--lf-d-line-strong);
+    font-size: 13px;
+    color: var(--lf-d-text);
+  }
+  .lf-notifications .tpl-notify-warning { border-color: var(--lf-d-warn); color: var(--lf-d-warn); }
+  .lf-notifications .tpl-notify-error { border-color: var(--lf-d-error); color: var(--lf-d-error); }
+</style>

@@ -25,7 +25,9 @@ export function execSaveOp(
   frame: Frame,
   cmd: StoryCommand,
 ): boolean {
-  const unknownFields = Object.keys(cmd).filter((k) => !SAVE_FIELDS.save.has(k));
+  const unknownFields = Object.keys(cmd).filter(
+    (k) => !SAVE_FIELDS.save.has(k),
+  );
   if (unknownFields.length > 0) {
     ctx.fail(
       "save-unknown-field",
@@ -65,7 +67,9 @@ export function execLoadOp(
   frame: Frame,
   cmd: StoryCommand,
 ): boolean {
-  const unknownFields = Object.keys(cmd).filter((k) => !SAVE_FIELDS.load.has(k));
+  const unknownFields = Object.keys(cmd).filter(
+    (k) => !SAVE_FIELDS.load.has(k),
+  );
   if (unknownFields.length > 0) {
     ctx.fail(
       "load-unknown-field",
@@ -104,10 +108,7 @@ export function execAutoSaveOp(
     return false;
   }
   if (cmd.enabled !== true && cmd.enabled !== false) {
-    ctx.fail(
-      "auto_save-invalid",
-      "auto_save.enabled 必须为布尔（true/false）",
-    );
+    ctx.fail("auto_save-invalid", "auto_save.enabled 必须为布尔（true/false）");
     return false;
   }
   ctx.setSystem(SYS.autoSave, cmd.enabled);

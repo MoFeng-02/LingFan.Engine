@@ -36,7 +36,10 @@ export function createClick3Demo(options: Click3DemoOptions): MinigameFactory {
   return (container, ctx) => {
     const host = container as HTMLElement;
     return new Promise((resolve) => {
-      const target = typeof ctx.config.target === "number" ? ctx.config.target : defaultTarget;
+      const target =
+        typeof ctx.config.target === "number"
+          ? ctx.config.target
+          : defaultTarget;
       host.innerHTML = "";
       options.markHost(host);
       const label = document.createElement("p");
@@ -53,7 +56,11 @@ export function createClick3Demo(options: Click3DemoOptions): MinigameFactory {
         clicks += 1;
         counter.textContent = `${clicks} / ${target}`;
         if (clicks >= target)
-          resolve({ outcome: "success", score: clicks, state: { clicks, target } });
+          resolve({
+            outcome: "success",
+            score: clicks,
+            state: { clicks, target },
+          });
       });
       abortSignalOf(ctx.signal).addEventListener(
         "abort",

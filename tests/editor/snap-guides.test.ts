@@ -2,7 +2,11 @@
  * 对齐吸附判据测试（**边界条件** + **多方位** + **不变量**）—— UI 改造步 4。
  */
 import { describe, expect, it } from "vitest";
-import { nearestSnap, SNAP_THRESHOLD_PX, snapGuides } from "../../apps/editor/src/snapGuides";
+import {
+  nearestSnap,
+  SNAP_THRESHOLD_PX,
+  snapGuides,
+} from "../../apps/editor/src/snapGuides";
 
 describe("最近线吸附", () => {
   it("阈值内命中最近的那条（不是第一条）", () => {

@@ -23,7 +23,9 @@ import componentPaletteSource from "../../apps/editor/src/components/ComponentPa
 import storyTimelineSource from "../../apps/editor/src/components/StoryTimeline.vue?raw";
 import appSource from "../../apps/editor/src/App.vue?raw";
 
-const flatElementTypes = ELEMENT_TYPE_GROUPS.flatMap((group) => [...group.types]);
+const flatElementTypes = ELEMENT_TYPE_GROUPS.flatMap((group) => [
+  ...group.types,
+]);
 
 describe("互锁：元素分组表 ↔ ELEMENT_TYPES 契约", () => {
   it("按组序拍平逐项等于 ELEMENT_TYPES（不越界、不缺项、顺序一致）", () => {
@@ -111,7 +113,9 @@ describe("源码互锁：分组清单只在纯逻辑模块，视图不另立一�
 
   it("时间线复用同一 op 分组源，旧的硬编码标签表已消除", () => {
     expect(storyTimelineSource).toContain("listOpGroups");
-    expect(storyTimelineSource).not.toMatch(/group:\s*"narrative",\s*label:\s*"叙事"/);
+    expect(storyTimelineSource).not.toMatch(
+      /group:\s*"narrative",\s*label:\s*"叙事"/,
+    );
     expect(storyTimelineSource).not.toContain("listOps"); // 不再自行拼装分组
   });
 
@@ -120,7 +124,7 @@ describe("源码互锁：分组清单只在纯逻辑模块，视图不另立一�
       'const DRAG_TYPE = "application/x-lingfan-palette"',
     );
     expect(componentPaletteSource).toContain("draggable");
-    expect(componentPaletteSource).toContain('kind, id');
+    expect(componentPaletteSource).toContain("kind, id");
   });
 
   it("左栏 tab 用容器 div 承接 v-show（多根组件上挂运行时指令会静默失效）", () => {

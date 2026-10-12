@@ -17,4 +17,8 @@ export { isSafeFileNameSegment, MANIFEST_FILE, STORIES_DIR } from "./naming";
 export { assembleProject, synthesizeDegradedManifest } from "./assemble";
 export { serializeColumnDocument, serializeProject } from "./serialize";
 export { diffProjectFiles } from "./diff";
-export { conflictMessage, detectWriteConflicts, detectWriteNormalization } from "./conflict";
+export {
+  conflictMessage,
+  detectWriteConflicts,
+  detectWriteNormalization,
+} from "./conflict";

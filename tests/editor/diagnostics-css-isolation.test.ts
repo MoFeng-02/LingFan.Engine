@@ -16,7 +16,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const COMPONENTS = "E:/Project/MyProject/LingFan/LingFan.Engine/apps/editor/src/components";
+const COMPONENTS =
+  "E:/Project/MyProject/LingFan/LingFan.Engine/apps/editor/src/components";
 
 /**
  * 组件模板里出现的静态 class 名。
@@ -42,7 +43,9 @@ function classesOf(file: string): Set<string> {
   return out;
 }
 
-const componentFiles = readdirSync(COMPONENTS).filter((f) => f.endsWith(".vue"));
+const componentFiles = readdirSync(COMPONENTS).filter((f) =>
+  f.endsWith(".vue"),
+);
 
 describe("诊断面板 · 类名隔离", () => {
   it("诊断面板的类名**全部带 `diag-` 前缀**", () => {

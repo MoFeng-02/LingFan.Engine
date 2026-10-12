@@ -16,7 +16,9 @@ import propertyPanelSource from "../../apps/editor/src/components/PropertyPanel.
 const code = (source: string): string =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
-const rightPane = code(appSource).slice(code(appSource).indexOf('class="pane right-pane"'));
+const rightPane = code(appSource).slice(
+  code(appSource).indexOf('class="pane right-pane"'),
+);
 const centerTimeline = code(appSource).slice(
   code(appSource).indexOf("centerView === 'timeline'"),
   code(appSource).indexOf("centerView === 'stage'"),
@@ -34,12 +36,16 @@ describe("属性面板入右栏 · 接线互锁", () => {
 
   it("属性是**首 tab 且默认页**（跟随选中项的主编辑面，不该藏在第二位）", () => {
     const src = code(appSource);
-    // 复杂判定用字符串 includes（正则里的 <> 引号会被工具链切坏）
-    expect(src).toContain(
-      'ref<"property" | "diagnostics" | "json" | "text" | "i18n" | "pack">("property")',
+    // 复杂判定用字符串 includes（正则里的 <> 引号会被工具链切坏）；
+    // 双侧去空白后再比（prettier 可能把泛型折成多行，语义不变）
+    expect(src.replace(/\s+/g, "")).toContain(
+      'ref<"property"|"diagnostics"|"json"|"text"|"i18n"|"pack">("property")',
     );
     // 右栏 tab strip 里「属性」在「诊断」之前
-    const strip = rightPane.slice(rightPane.indexOf("右栏面板"), rightPane.indexOf("</div>"));
+    const strip = rightPane.slice(
+      rightPane.indexOf("右栏面板"),
+      rightPane.indexOf("</div>"),
+    );
     expect(strip.indexOf("属性")).toBeGreaterThan(-1);
     expect(strip.indexOf("属性")).toBeLessThan(strip.indexOf("诊断"));
   });
@@ -54,6 +60,8 @@ describe("属性面板入右栏 · 接线互锁", () => {
   });
 
   it("PropertyPanel 本体**零改动**（props 仍是 story+pointer —— 只移动不重设计）", () => {
-    expect(code(propertyPanelSource)).toContain('defineProps<{ story: Story; pointer: string | null }>');
+    expect(code(propertyPanelSource)).toContain(
+      "defineProps<{ story: Story; pointer: string | null }>",
+    );
   });
 });

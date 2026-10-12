@@ -162,12 +162,8 @@ describe("拒绝文案：可操作（是什么 / 为什么 / 怎么办），不�
   });
 
   it("口径区分：故事密文是拒绝依据；仅资源密文不拒绝（各有正当语义）", () => {
-    expect(
-      detectEncryptedProject(["Stories/a.json.enc"]).encrypted,
-    ).toBe(true);
-    expect(
-      detectEncryptedProject(["Images/a.png.enc"]).encrypted,
-    ).toBe(false);
+    expect(detectEncryptedProject(["Stories/a.json.enc"]).encrypted).toBe(true);
+    expect(detectEncryptedProject(["Images/a.png.enc"]).encrypted).toBe(false);
   });
 
   it("样例最多列三条，其余以「等」收尾（长列表不刷屏）", () => {
@@ -261,7 +257,7 @@ describe("唯一判定点：不得出现第二份「.enc 形态」判定", () =>
     // 有解密能力的供给——如 Tauri 形态 text() 经 Rust 解密——照常入集参与对账）；
     // 「是不是加密工程」的判定不得在此再写一份。
     expect(directorySourceSource).toContain('path.endsWith(".json.enc")');
-    expect((directorySourceSource.match(/\.enc"/g) ?? [])).toHaveLength(1);
+    expect(directorySourceSource.match(/\.enc"/g) ?? []).toHaveLength(1);
     expect(directorySourceSource).not.toMatch(/endsWith\(\s*"\.enc"\s*\)/);
   });
 

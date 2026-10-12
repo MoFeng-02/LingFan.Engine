@@ -2,14 +2,23 @@
  * 检查点快照的建立、恢复与落档。
  */
 import { SYS, type ColumnCoordinate, type SaveDataV1 } from "../../contracts";
-import { cloneFrame, sameCoord, type Checkpoint, type Frame, type OpContext } from "../internal";
+import {
+  cloneFrame,
+  sameCoord,
+  type Checkpoint,
+  type Frame,
+  type OpContext,
+} from "../internal";
 
 /**
  * 检查点/存档坐标恒指「能重放重建本等待点」的列内顶层位置。
  * - 列帧等待点：index 尚未前移 → 即等待命令本身（读档/重放重新执行它）
  * - 块帧（if/while/func 体）等待点：所在列帧 index 已指向块进入命令的下一命令 → 回退一格 = 重入命令
  */
-export function checkpointCoord(ctx: OpContext, waitingFrame: Frame): ColumnCoordinate {
+export function checkpointCoord(
+  ctx: OpContext,
+  waitingFrame: Frame,
+): ColumnCoordinate {
   if (waitingFrame.columnId !== null) {
     return { columnId: waitingFrame.columnId, index: waitingFrame.index };
   }
@@ -23,7 +32,10 @@ export function checkpointCoord(ctx: OpContext, waitingFrame: Frame): ColumnCoor
 }
 
 /** 快照捕获：状态 + rngState + 帧栈 + 函数表（Scope 深拷贝，回溯恢复后互不串扰） */
-export function takeSnapshot(ctx: OpContext, coord: ColumnCoordinate): Checkpoint {
+export function takeSnapshot(
+  ctx: OpContext,
+  coord: ColumnCoordinate,
+): Checkpoint {
   return {
     coord,
     snapshot: {

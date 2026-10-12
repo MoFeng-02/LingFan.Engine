@@ -17,7 +17,8 @@ export async function ensureWriteAccess(
 ): Promise<void> {
   const dir = asWritableDir(root);
   if (dir.queryPermission !== undefined) {
-    if ((await dir.queryPermission({ mode: "readwrite" })) === "granted") return;
+    if ((await dir.queryPermission({ mode: "readwrite" })) === "granted")
+      return;
   }
   if (dir.requestPermission !== undefined) {
     const state = await dir.requestPermission({ mode: "readwrite" });
@@ -43,7 +44,8 @@ export async function ensureReadAccess(
     }) => Promise<PermissionState>;
   };
   if (dir.queryPermission !== undefined) {
-    if ((await dir.queryPermission({ mode: "read" })) === "granted") return true;
+    if ((await dir.queryPermission({ mode: "read" })) === "granted")
+      return true;
   }
   if (dir.requestPermission === undefined) return true;
   return (await dir.requestPermission({ mode: "read" })) === "granted";
@@ -82,7 +84,9 @@ export interface WritableDirectoryHost {
 }
 
 /** 把目录句柄收窄成 `WritableDirectoryHost`：调用方只看得见本仓库用到的那些方法 */
-export function asWritableDir(handle: FileSystemDirectoryHandle): WritableDirectoryHost {
+export function asWritableDir(
+  handle: FileSystemDirectoryHandle,
+): WritableDirectoryHost {
   return handle as unknown as WritableDirectoryHost;
 }
 

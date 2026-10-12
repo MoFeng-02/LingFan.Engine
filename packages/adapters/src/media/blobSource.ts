@@ -67,7 +67,11 @@ export function createBlobSource(options: BlobSourceOptions): BlobSource {
     }
     if (!response.ok) return url;
     const declared = Number(response.headers.get("content-length"));
-    if (!Number.isFinite(declared) || declared <= 0 || declared > options.maxBytes) {
+    if (
+      !Number.isFinite(declared) ||
+      declared <= 0 ||
+      declared > options.maxBytes
+    ) {
       // 无声明长度 / 空资源 / 超上限：一律不物化，避免把未知大小的资源整段读进内存
       void response.body?.cancel();
       return url;

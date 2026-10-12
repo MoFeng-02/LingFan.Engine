@@ -8,8 +8,16 @@
  */
 import type { ProjectFileSource } from "@lingfan/engine";
 import { normalizeResourceId } from "../resourcePort";
-import { locateResourceRootHandle, locateResourceRootFromPaths } from "./root-locate";
-import { isDotName, tryDirectoryHandle, tryFileHandle, walkHandle } from "./walk";
+import {
+  locateResourceRootHandle,
+  locateResourceRootFromPaths,
+} from "./root-locate";
+import {
+  isDotName,
+  tryDirectoryHandle,
+  tryFileHandle,
+  walkHandle,
+} from "./walk";
 
 /**
  * 目录句柄取径（Chromium FSA）：路径列表按需装载一次并 memo，
@@ -28,9 +36,7 @@ export async function createHandleFileSource(
     })();
     return listing;
   };
-  const resolveHandle = async (
-    path: string,
-  ): Promise<FileSystemFileHandle> => {
+  const resolveHandle = async (path: string): Promise<FileSystemFileHandle> => {
     const segments = normalizeResourceId(path).split("/");
     let dir: FileSystemDirectoryHandle = root;
     for (const segment of segments.slice(0, -1)) {

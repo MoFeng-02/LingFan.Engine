@@ -67,8 +67,7 @@ export function encryptedProjectMessage(
   finding: EncryptedProjectFinding,
 ): string {
   const sample = finding.encryptedStories.slice(0, 3).join("、");
-  const more =
-    finding.encryptedStories.length > 3 ? " 等" : "";
+  const more = finding.encryptedStories.length > 3 ? " 等" : "";
   const others = finding.count - finding.encryptedStories.length;
   const tail = others > 0 ? `（资源/译文另有 ${others} 个密文文件）` : "";
   return [

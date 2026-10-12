@@ -12,11 +12,7 @@
 
 /** 视图 id（`"story"` 之外的资源视图） */
 export type ResourceViewId =
-  | "story"
-  | "lang"
-  | "manifest"
-  | "media"
-  | "readonly";
+  "story" | "lang" | "manifest" | "media" | "readonly";
 
 export interface ResourceViewSpec {
   readonly view: ResourceViewId;
@@ -46,7 +42,9 @@ const DISPATCH: Readonly<Record<string, ResourceViewSpec>> = {
 
 /** 分派：资源种类 → 视图（未登记的种类归 `readonly`，**不抛错**） */
 export function viewOfKind(kind: string): ResourceViewSpec {
-  return DISPATCH[kind] ?? { view: "readonly", editable: false, title: "未识别资源" };
+  return (
+    DISPATCH[kind] ?? { view: "readonly", editable: false, title: "未识别资源" }
+  );
 }
 
 /** 该资源在编辑器内**是否可改**（宿主唯一口径，UI 据此决定保存按钮有无） */

@@ -8,21 +8,45 @@
  */
 import { onMounted, onUnmounted, ref, type Ref } from "vue";
 import {
-  DEFAULT_KEYMAP, StoryEngine,
-  type AudioPort, type GameStateWriter, type HostInfo, type I18nPort,
-  type InteractionContext, type InteractionResult, type LayerZTable,
-  type OpExtension, type PlayerPreferences, type ResourcePort,
-  type SavePort, type SavesConfig, type Story, type VideoPort,
+  DEFAULT_KEYMAP,
+  StoryEngine,
+  type AbortHandle,
+  type AudioPort,
+  type GameStateWriter,
+  type HostInfo,
+  type I18nPort,
+  type InteractionContext,
+  type InteractionResult,
+  type LayerZTable,
+  type OpExtension,
+  type PlayerPreferences,
+  type ResourcePort,
+  type SavePort,
+  type SavesConfig,
+  type Story,
+  type VideoPort,
 } from "@lingfan/engine";
 import {
-  createCommandRegistry, createInputScopeState,
-  createMinigameRegistry, routesToNarrative,
+  createCommandRegistry,
+  createInputScopeState,
+  createMinigameRegistry,
+  routesToNarrative,
 } from "@lingfan/ui";
 import {
-  abortSignalOf, createClick3Demo, createInteractionWalk,
-  createAppElementLayer, createAppEngineLife, createAppEvents, createAppFrame,
-  createAppHistory, createAppLang, createAppMedia, createAppNarrative,
-  createAppPrefs, createAppSlots, createAppTemplates,
+  abortSignalOf,
+  createClick3Demo,
+  createInteractionWalk,
+  createAppElementLayer,
+  createAppEngineLife,
+  createAppEvents,
+  createAppFrame,
+  createAppHistory,
+  createAppLang,
+  createAppMedia,
+  createAppNarrative,
+  createAppPrefs,
+  createAppSlots,
+  createAppTemplates,
 } from "./host";
 import { DemoHost, DialoguePanel, SettingsPanels, ToolbarPanel } from "./App";
 
@@ -58,20 +82,27 @@ let engine: StoryEngine;
 // 解读规则来自共享的叙事状态域；这里注入宿主侧事实（层级键、角色配色、打字机重建）
 /** 叙事状态装配：订阅引擎状态并投影成视图字段；zOf 出层级 z 序，typewriter 出打字机 */
 const { narrative, zOf, typewriter } = createAppNarrative({
-  getEngine: () => engine, layerZ: props.layerZ, preferences: props.preferences,
-  applyVideoZ: (z) => { media.videoPort.setZIndex?.(z); },
+  getEngine: () => engine,
+  layerZ: props.layerZ,
+  preferences: props.preferences,
+  applyVideoZ: (z) => {
+    media.videoPort.setZIndex?.(z);
+  },
 });
 /** 叙事视图状态：模板直接读这些字段，组件不再自持字段 */
-const { inMenu, inWait, inInput, inVideo, inMinigame, inInteraction } = narrative;
+const { inMenu, inWait, inInput, inVideo, inMinigame, inInteraction, inExtension } =
+  narrative;
 /** 对话层显隐与内容字段：面板开关、NVL 模式、菜单选项、输入提示与输入值 */
-const { dialogHidden, nvlMode, menuOptions, inputPrompt, inputValue } = narrative;
+const { dialogHidden, nvlMode, menuOptions, inputPrompt, inputValue } =
+  narrative;
 /** 对话文本视效字段：打字机可见文本、说话人配色与推进许可 */
 const { shownText, speakerColor, canAdvance } = narrative;
 
 // —— 语言选择：可用语言 = Lang/ 目录扫描（供给侧 API）；切换 = setLanguage 按需载入 ——
 /** 语言能力：当前语言、可用语言清单与切换动作（切换按需载入语言包） */
 const { currentLang, availableLangs, changeLang } = createAppLang({
-  props, getEngine: () => engine,
+  props,
+  getEngine: () => engine,
 });
 
 /** 错误横幅内容（元素、小游戏、事件分支的 fail-closed 上报都落这里） */
@@ -79,6 +110,29 @@ const error = ref("");
 // 命令注册制：元素 `cmd` 的业务命令由宿主注册（未注册 fail-closed，不静默吞掉）
 /** 舞台命令注册表：元素 cmd 属性的业务命令在此注册；未注册命令 fail-closed */
 const commands = createCommandRegistry();
+
+// —— 扩展 op 等待覆盖层（extension.mount 出站的宿主接管面，判定⑧）——
+/** 当前扩展等待的展示态（null = 无扩展等待）；解除权在宿主——覆盖层「确认」触发 resolve */
+interface ExtensionOverlay {
+  op: string;
+  extensionId: string;
+  title: string;
+  detail: string;
+  signal: AbortHandle;
+}
+const extensionOverlay = ref<ExtensionOverlay | null>(null);
+/** 当前挂载的 abort 订阅解除（重放的新挂载顶掉旧订阅；非响应式，仅组件内流转） */
+let extensionAbort: (() => void) | null = null;
+/** 扩展等待解除：清覆盖层与订阅后回填成功结果（信号已中止则以 abort 收尾为准，不回填） */
+function resolveExtension(): void {
+  const overlay = extensionOverlay.value;
+  if (overlay === null) return;
+  extensionAbort?.();
+  extensionAbort = null;
+  extensionOverlay.value = null;
+  if (overlay.signal.aborted) return; // 中断竞态：以 abort 收尾为准
+  engine.resolveExtensionOp(overlay.op, { outcome: "success" });
+}
 
 /** 小游戏与玩法系统共用挂载点（DemoHost 组件；真元素经其暴露的 minigameHostEl 取用） */
 const demoHostRef = ref<InstanceType<typeof DemoHost> | null>(null);
@@ -94,7 +148,10 @@ const dialoguePanelRef = ref<InstanceType<typeof DialoguePanel> | null>(null);
 // —— 模板注册制与视图投影（对话框/选择层/通知层；NVL 累积层贴底监听随装配注册）——
 /** 模板视图装配：注册模板族并把叙事字段投影成骨架挂点数据 */
 const { choiceView, dialogView, notifyViewOf, nvlPastLines, nvlTypingLine } =
-  createAppTemplates({ narrative, readNvlBody: () => dialoguePanelRef.value?.nvlBody ?? null });
+  createAppTemplates({
+    narrative,
+    readNvlBody: () => dialoguePanelRef.value?.nvlBody ?? null,
+  });
 
 // —— 小游戏注册表：宿主注册（任意技术实现工厂）；未注册 = fail-closed 不伪造完成 ——
 /** 小游戏注册表：game 名 → 工厂；未注册的挂载请求 fail-closed（等待保持，不伪造完成） */
@@ -131,11 +188,14 @@ const interactions = new Map<
 const inputScope = createInputScopeState();
 // 演示玩法系统：DOM 与按键循环在 `host/interaction-walk.ts`；
 // 本组件只提供宿主侧事实（容器类标记的写法）与可调参数（默认值即演示值）。
-interactions.set("walk", createInteractionWalk({
-  markHost: (host) => {
-    host.classList.add("walk-demo");
-  },
-}));
+interactions.set(
+  "walk",
+  createInteractionWalk({
+    markHost: (host) => {
+      host.classList.add("walk-demo");
+    },
+  }),
+);
 
 // —— 音视频渲染：端口由组合根注入（装配只见契约）；重启经单元格整体重建 ——
 /** 音视频装配：订阅引擎事件渲染媒体；restart 时按单元格整体重建，旧端口成对释放 */
@@ -143,20 +203,39 @@ const media = createAppMedia({ props, getEngine: () => engine, error });
 
 // —— 元素层装配（元素表渲染 + 容器挂载后渲染监听）——
 createAppElementLayer({
-  narrative, elementLayerEl, props, commands, error, getEngine: () => engine,
+  narrative,
+  elementLayerEl,
+  props,
+  commands,
+  error,
+  getEngine: () => engine,
 });
 
 // —— 提示条出口、叙事事件落点与舞台命令（打字机二段式、选项与输入转发）——
 /** 事件与输入出口：通知条状态、叙事事件落点、状态同步与舞台输入转发 */
 const {
-  notifications, narrativeEvents, handleState, syncFromEngine, choose, submitInput, onStageClick,
-} = createAppEvents({ narrative, media, error, getEngine: () => engine, typewriter });
+  notifications,
+  narrativeEvents,
+  handleState,
+  syncFromEngine,
+  choose,
+  submitInput,
+  onStageClick,
+} = createAppEvents({
+  narrative,
+  media,
+  error,
+  getEngine: () => engine,
+  typewriter,
+});
 
 // —— 历史聚合（快照筛选 + NVL 块化 + 回溯完成）——
 /** 历史面板能力：快照聚合视图、面板开关与按坐标回溯 */
-const { showHistory, historyBlocks, toggleHistory, rollbackToEntry } = createAppHistory({
-  getEngine: () => engine, syncFromEngine,
-});
+const { showHistory, historyBlocks, toggleHistory, rollbackToEntry } =
+  createAppHistory({
+    getEngine: () => engine,
+    syncFromEngine,
+  });
 
 /**
  * 事件落点：提示条、读档诊断与错误横幅。
@@ -251,6 +330,31 @@ function handleEvent({
         error.value = `玩法系统异常：${String(e)}`;
         onAbort();
       });
+  } else if (payload.kind === "extension.mount") {
+    // 扩展 op 等待接管：宿主展示关闭式覆盖层（本组件唯一的扩展演示接缝）。
+    // 中断（回溯/导航/读档/热重载/销毁）以 abort 收尾——订阅先行，重放的新挂载顶掉旧订阅。
+    extensionAbort?.();
+    const abortSignal = abortSignalOf(payload.signal);
+    const onAbort = (): void => {
+      abortSignal.removeEventListener("abort", onAbort);
+      extensionAbort = null;
+      extensionOverlay.value = null;
+    };
+    abortSignal.addEventListener("abort", onAbort, { once: true });
+    extensionAbort = () => abortSignal.removeEventListener("abort", onAbort);
+    extensionOverlay.value = {
+      op: payload.op,
+      extensionId: payload.extensionId,
+      title: `扩展等待 · ${payload.extensionId}.${payload.op}`,
+      // 详情优先取扩展算好的 state 读数（config.detail），回退 title 字段（都缺省则不渲染详情行）
+      detail:
+        typeof payload.config.detail === "string"
+          ? payload.config.detail
+          : typeof payload.config.title === "string"
+            ? payload.config.title
+            : "",
+      signal: payload.signal,
+    };
   } else if (payload.kind === "save.done") {
     // 写档成功（失败走 engine.error 分支，不提示成功）
     narrativeEvents.saved(payload.slot);
@@ -270,9 +374,20 @@ function handleEvent({
 // —— 引擎生命周期（构造/订阅接线/整体重建/订阅解除）——
 /** 引擎生命周期：首次构造并接线订阅、restart 整体重建、卸载时解除订阅 */
 const { initEngine, restart, unbind } = createAppEngineLife({
-  props, getEngine: () => engine,
-  setEngine: (next) => { engine = next; },
-  media, narrative, currentLang, error, elementLayerEl, typewriter, zOf, handleState, handleEvent,
+  props,
+  getEngine: () => engine,
+  setEngine: (next) => {
+    engine = next;
+  },
+  media,
+  narrative,
+  currentLang,
+  error,
+  elementLayerEl,
+  typewriter,
+  zOf,
+  handleState,
+  handleEvent,
   readMinigameHost: () => demoHostRef.value?.minigameHostEl ?? null,
 });
 
@@ -281,13 +396,21 @@ initEngine();
 // —— 帧驱动表现与 rAF 帧循环（打字机推进 → 可见文本 → 媒体回写 → 表现）——
 /** 帧驱动：rAF 循环串起打字机推进、媒体回写与舞台表现（遮罩透明度/层偏移） */
 const { frameLoop } = createAppFrame({
-  getEngine: () => engine, narrative, media, typewriter,
-  elementLayerEl, transitionEl, stageEl,
+  getEngine: () => engine,
+  narrative,
+  media,
+  typewriter,
+  elementLayerEl,
+  transitionEl,
+  stageEl,
 });
 
 // —— 玩家偏好与键位映射（状态归核心层，面板只是 UI 皮）——
 /** 偏好面板能力：音量/静音/文字速度/方向/全屏视图、键位捕获与展示（状态归核心层） */
-const prefsFaces = createAppPrefs({ preferences: props.preferences, typewriter });
+const prefsFaces = createAppPrefs({
+  preferences: props.preferences,
+  typewriter,
+});
 /** 面板显隐、偏好视图与音量通道清单 */
 const { showPrefs, prefsView, PREF_CHANNELS } = prefsFaces;
 /** 音量、静音与文字速度的写入口 */
@@ -333,7 +456,10 @@ onMounted(() => {
  * 存 = 合成缩略图（canvas 卡片）+ engine.save(slot, { screenshot })；读 = engine.load(slot)。
  */
 const { slotPanel, slotViews, openSlotPanel, chooseSlot } = createAppSlots({
-  props, dialogView, stageEl, getEngine: () => engine,
+  props,
+  dialogView,
+  stageEl,
+  getEngine: () => engine,
 });
 
 // 命令注册制示例：元素 `cmd="history"` / `cmd="prefs"` / `cmd="restart"` 由此分发
@@ -361,7 +487,11 @@ onUnmounted(() => {
 <template>
   <main ref="stageEl" class="stage" @click="onStageClick" @wheel="onWheel">
     <!-- 舞台元素层：声明式空间层（z 由 shell.layers.stage 决定，默认 0 = 位于 video 之下） -->
-    <div ref="elementLayerEl" class="element-layer" :style="{ zIndex: layerZ.stage }"></div>
+    <div
+      ref="elementLayerEl"
+      class="element-layer"
+      :style="{ zIndex: layerZ.stage }"
+    ></div>
     <!-- 全屏转场遮罩（屏幕级效果，恒在最上；透明度由帧驱动写入） -->
     <div ref="transitionEl" class="transition-overlay" aria-hidden="true"></div>
     <!-- 固定工具条：单条 flex 行（布局由构造保证不重叠；safe-area 适配移动端） -->
@@ -384,6 +514,28 @@ onUnmounted(() => {
         v-html="notifyViewOf(n.text, n.tone).bodyHtml"
       ></li>
     </ul>
+    <!-- 扩展 op 等待覆盖层：extension.mount 展示，「确认」即 resolveExtensionOp 解除（解除权在宿主） -->
+    <div
+      v-if="extensionOverlay !== null"
+      class="extension-overlay"
+      :style="{ zIndex: zOf('dialogue') }"
+      @click.stop
+    >
+      <div class="extension-card">
+        <p class="extension-title">{{ extensionOverlay.title }}</p>
+        <p v-if="extensionOverlay.detail !== ''" class="extension-detail">
+          {{ extensionOverlay.detail }}
+        </p>
+        <p class="extension-hint">回溯 / 读档 / 导航会中断这次等待</p>
+        <button
+          type="button"
+          class="extension-close"
+          @click.stop="resolveExtension"
+        >
+          确认
+        </button>
+      </div>
+    </div>
     <!-- 叙事层四层（选择 / 输入 / 玩法挂载 / 对话）共用一个面板骨架 -->
     <DialoguePanel
       ref="dialoguePanelRef"
@@ -396,6 +548,7 @@ onUnmounted(() => {
       :input-prompt="inputPrompt"
       :in-minigame="inMinigame"
       :in-interaction="inInteraction"
+      :in-extension="inExtension"
       :in-video="inVideo"
       :dialog-hidden="dialogHidden"
       :dialog-view="dialogView"
@@ -525,5 +678,56 @@ body,
 
 .notifications li.tpl-notify-error {
   color: #f7768e;
+}
+
+/* 扩展 op 等待覆盖层：叙事暂停的「接管画面」，z 与对话层同面、靠 DOM 顺序盖在其上 */
+.extension-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #12121aaa;
+}
+
+.extension-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(86vw, 420px);
+  padding: clamp(16px, 2.4vh, 24px) clamp(18px, 2.6vw, 28px);
+  border-radius: 12px;
+  background: #1c2136;
+  border: 1px solid #3b4261;
+  cursor: default;
+}
+
+.extension-card p {
+  margin: 0;
+}
+
+.extension-title {
+  font-weight: 600;
+  font-size: 1.05em;
+}
+
+.extension-detail {
+  color: #9ece6a;
+}
+
+.extension-hint {
+  color: #565f89;
+  font-size: 0.8em;
+}
+
+.extension-close {
+  align-self: flex-end;
+  padding: 8px 22px;
+  border-radius: 8px;
+  border: none;
+  background: #3d59a1;
+  color: #e6e6f0;
+  font-size: 0.9em;
+  cursor: pointer;
 }
 </style>

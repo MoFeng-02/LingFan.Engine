@@ -126,6 +126,8 @@ describe("工程加载器（loadProjectFromFetch）", () => {
     });
     expect(story.columns.map((c) => c.id)).toEqual(["start"]);
     // 「按 id 定位」改由 sourcePath 承担
-    expect(story.columns[0]?.sourcePath).toBe("Stories/chapter1/chapter1.story");
+    expect(story.columns[0]?.sourcePath).toBe(
+      "Stories/chapter1/chapter1.story",
+    );
   });
 });

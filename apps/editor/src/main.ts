@@ -75,7 +75,9 @@ const lastProjectStore = createLastProjectStore();
 const lastProject = ref<LastProjectEntry | undefined>(undefined);
 
 /** FSA 句柄 → 供给 → 组装（`pick` 与「重新打开」共用同一条装配路径，含写回绑定） */
-async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProject> {
+async function openHandle(
+  handle: FileSystemDirectoryHandle,
+): Promise<OpenedProject> {
   const source = await createHandleFileSource(handle);
   const filesPort = createSourceProjectFilesPort(source);
   const { opened, manifest } = await loadFromSource(source, filesPort);
@@ -124,7 +126,10 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
       return report;
     },
     /** 单文档写回：只落该列文件，不产删除、不改清单（多标签并存时的正确路径） */
-    saveColumn: async (columnId: string, columnStory: Story): Promise<ProjectWriteReport> => {
+    saveColumn: async (
+      columnId: string,
+      columnStory: Story,
+    ): Promise<ProjectWriteReport> => {
       if (tsSource) throw new Error(TS_SOURCE_READONLY_HINT);
       const product = serializeColumnDocument(columnStory, columnId);
       const report = await writer.apply(assembleColumnWrite(previous, product));
@@ -135,10 +140,15 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
      * 单文本资源写回（译文表 / 清单）：只落该文件。
      * 期望集 = 打开基线 + 本次覆盖 ⇒ 其余文件逐字节不动（与 `saveColumn` 同一约束）。
      */
-    saveText: async (path: string, text: string): Promise<ProjectWriteReport> => {
+    saveText: async (
+      path: string,
+      text: string,
+    ): Promise<ProjectWriteReport> => {
       // TS 源工程：`Stories/**` 与 `project.json` 拦下；`Lang/**` 等译文面照常可写。
       if (tsSource) assertTsSourceWritable([path]);
-      return writer.apply(assembleColumnWrite(previous, { files: new Map([[path, text]]) }));
+      return writer.apply(
+        assembleColumnWrite(previous, { files: new Map([[path, text]]) }),
+      );
     },
     inspectSave: (next: Story) =>
       normalizedOnce
@@ -159,7 +169,9 @@ async function openHandle(handle: FileSystemDirectoryHandle): Promise<OpenedProj
 }
 
 /** 上次工程的一键重开入口（同一句柄的权限申请与装配只此一处定义） */
-function lastProjectEntryFor(handle: FileSystemDirectoryHandle): LastProjectEntry {
+function lastProjectEntryFor(
+  handle: FileSystemDirectoryHandle,
+): LastProjectEntry {
   return {
     name: handle.name,
     reopen: async () => {
@@ -174,7 +186,9 @@ function lastProjectEntryFor(handle: FileSystemDirectoryHandle): LastProjectEntr
 }
 
 /** 成功打开后记住句柄（下次启动可一键重开）；IDB 失败静默 */
-async function rememberHandle(handle: FileSystemDirectoryHandle): Promise<void> {
+async function rememberHandle(
+  handle: FileSystemDirectoryHandle,
+): Promise<void> {
   await lastProjectStore.save(handle);
   lastProject.value = lastProjectEntryFor(handle);
 }
@@ -230,7 +244,9 @@ void lastProjectStore.load().then((handle) => {
   if (handle !== undefined) {
     // 有持久化句柄但尚未在本会话验证过权限：reopen 内部按需申请（按钮点击 = 手势）
     // 形状已由 store 在读出时校验过，这里只把类型收回本环境的目录句柄
-    lastProject.value = lastProjectEntryFor(handle as FileSystemDirectoryHandle);
+    lastProject.value = lastProjectEntryFor(
+      handle as FileSystemDirectoryHandle,
+    );
   }
 });
 

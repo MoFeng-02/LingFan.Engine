@@ -52,21 +52,40 @@ const packLabel = computed(() => (props.packing ? "打包中…" : "打包"));
       class="status-item warn"
       role="status"
       :title="degraded.reason"
-    >降级打开</span>
-    <span class="status-item" :class="{ muted: !localHost }" :title="localHost ? '本地服务已就绪：可绝对路径 / 外部打开 / 原生监视' : '浏览器形态：能力降级（无外部打开、无绝对路径）'">
+      >降级打开</span
+    >
+    <span
+      class="status-item"
+      :class="{ muted: !localHost }"
+      :title="
+        localHost
+          ? '本地服务已就绪：可绝对路径 / 外部打开 / 原生监视'
+          : '浏览器形态：能力降级（无外部打开、无绝对路径）'
+      "
+    >
       {{ localHost ? "本地宿主" : "浏览器" }}
     </span>
     <span class="spacer"></span>
     <span class="status-item">{{ documentCount }} 文档</span>
-    <span class="status-item" :class="{ warn: dirtyCount > 0 }">{{ dirtyText }}</span>
-    <span class="status-item" :class="{ err: errorCount > 0, warn: errorCount === 0 && warningCount > 0 }">
+    <span class="status-item" :class="{ warn: dirtyCount > 0 }">{{
+      dirtyText
+    }}</span>
+    <span
+      class="status-item"
+      :class="{
+        err: errorCount > 0,
+        warn: errorCount === 0 && warningCount > 0,
+      }"
+    >
       诊断 {{ errorCount }}/{{ warningCount }}
     </span>
     <button
       class="pack-entry"
       :class="{ active: packActive, busy: packing }"
       :aria-pressed="packActive"
-      :title="packActive ? '收起打包面板' : '快速打包：产出加密发布包（lfenpack）'"
+      :title="
+        packActive ? '收起打包面板' : '快速打包：产出加密发布包（lfenpack）'
+      "
       @click="emit('toggle-pack')"
     >
       {{ packLabel }}

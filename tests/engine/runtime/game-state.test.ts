@@ -110,7 +110,9 @@ describe("GameStateWriter · 故意错误（fail-closed，状态原样）", () =
     const { engine, errors } = makeEngine();
     const bad = ["", "Walk", "带中文", "a b", "../etc", "x".repeat(33), "1abc"];
     for (const id of bad) {
-      expect(engine.gameState.setScoped(id, "x", 1), `${id} 应被拒绝`).toBe(false);
+      expect(engine.gameState.setScoped(id, "x", 1), `${id} 应被拒绝`).toBe(
+        false,
+      );
     }
     expect(
       errorCodes(errors).filter((c) => c === "game-system-invalid").length,
@@ -133,9 +135,9 @@ describe("GameStateWriter · 故意错误（fail-closed，状态原样）", () =
       expect(engine.gameState.set(key, value), `${key} 应被拒绝`).toBe(false);
       expect(engine.get(key), `${key} 拒绝后状态应原样`).toBeUndefined();
     }
-    expect(errorCodes(errors).filter((c) => c === "value-not-serializable").length).toBe(
-      cases.length,
-    );
+    expect(
+      errorCodes(errors).filter((c) => c === "value-not-serializable").length,
+    ).toBe(cases.length);
     // 循环引用的诊断必须带定位（不然不知道是哪个键）
     const cyclicError = errors.find(
       (e) =>
@@ -145,7 +147,9 @@ describe("GameStateWriter · 故意错误（fail-closed，状态原样）", () =
     );
     expect(cyclicError).toBeDefined();
     expect(
-      cyclicError!.payload.kind === "engine.error" ? cyclicError!.payload.message : "",
+      cyclicError!.payload.kind === "engine.error"
+        ? cyclicError!.payload.message
+        : "",
     ).toContain("player.cyclic");
   });
 
@@ -159,7 +163,9 @@ describe("GameStateWriter · 故意错误（fail-closed，状态原样）", () =
 
   it("对象成员上的 undefined 按 JSON 语义放行（可选字段惯用形态）", () => {
     const { engine } = makeEngine();
-    expect(engine.gameState.set("player.opt", { id: 1, name: undefined })).toBe(true);
+    expect(engine.gameState.set("player.opt", { id: 1, name: undefined })).toBe(
+      true,
+    );
   });
 
   it("数组元素上的 undefined 拒绝（JSON 会变形为 null）", () => {
@@ -232,7 +238,9 @@ describe("GameStateWriter · 与既有写入面的一致性", () => {
         formatVersion: 1,
         id: "demo",
         defines: { "game.battle.hp": 100 },
-        columns: [{ id: "s", kind: "flow", commands: [{ op: "say", text: "x" }] }],
+        columns: [
+          { id: "s", kind: "flow", commands: [{ op: "say", text: "x" }] },
+        ],
       }),
     );
     engine.start();

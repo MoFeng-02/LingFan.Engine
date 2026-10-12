@@ -19,7 +19,11 @@ import {
   loadDiagnosticSupply,
   loadProject,
 } from "@lingfan/adapters";
-import { analyzeStory, getAtPointer, type AnalyzeOptions } from "@lingfan/editor";
+import {
+  analyzeStory,
+  getAtPointer,
+  type AnalyzeOptions,
+} from "@lingfan/editor";
 import type { Story } from "@lingfan/engine";
 
 type Tree = { [name: string]: Tree | string };
@@ -43,7 +47,11 @@ function filesUnder(folder: string, tree: Tree): File[] {
   return out;
 }
 
-const MANIFEST = JSON.stringify({ formatVersion: 1, id: "demo", entry: "start" });
+const MANIFEST = JSON.stringify({
+  formatVersion: 1,
+  id: "demo",
+  entry: "start",
+});
 
 /** 最小合法资源根（单列 flow；命令由用例给） */
 function projectTree(parts: {
@@ -104,7 +112,11 @@ describe("编辑器诊断接线", () => {
       resources: { Audio: { "ok.mp3": "bytes" } },
       lang: {
         "zh-CN": {
-          "main.json": JSON.stringify({ 你好: "你好", 第二句: "第二句", 孤儿键: "x" }),
+          "main.json": JSON.stringify({
+            你好: "你好",
+            第二句: "第二句",
+            孤儿键: "x",
+          }),
         },
         "en-US.json": JSON.stringify({ 你好: "Hello", "en 专属死键": "y" }),
       },
@@ -142,7 +154,9 @@ describe("编辑器诊断接线", () => {
     expect(unused.every((d) => d.severity === "warning")).toBe(true);
 
     // 缺译（正向）：原文 − overlay 并集 → 「缺语音」无任何译文
-    const missingT = diagnostics.filter((d) => d.code === "missing-translation");
+    const missingT = diagnostics.filter(
+      (d) => d.code === "missing-translation",
+    );
     expect(missingT).toHaveLength(1);
     expect(missingT[0]?.severity).toBe("warning");
     expect(missingT[0]?.message).toContain("缺语音");
@@ -171,7 +185,9 @@ describe("编辑器诊断接线", () => {
       overlayKeys: new Set<string>(),
     });
     // 空集合 = 全报；不传 = 全跳过 —— 两者**必须**区分（前者会误报全部资源）
-    expect(withoutSupply.filter((d) => d.code === "missing-resource")).toEqual([]);
+    expect(withoutSupply.filter((d) => d.code === "missing-resource")).toEqual(
+      [],
+    );
     expect(
       emptySupply.filter((d) => d.code === "missing-resource"),
     ).toHaveLength(2);
@@ -217,7 +233,9 @@ describe("编辑器诊断接线", () => {
           { op: "say", text: "乙", voice: "Audio/sub.enc" }, // 真名叫 .enc 的明文资源 → 原样命中，不误报
           { op: "say", text: "丙", voice: "Audio/y.mp3" }, // 对照项：真缺
         ],
-        resources: { Audio: { "x.mp3.enc": "cipher-bytes", "sub.enc": "plain" } },
+        resources: {
+          Audio: { "x.mp3.enc": "cipher-bytes", "sub.enc": "plain" },
+        },
       }),
     );
     expect([...supply.resourceFiles].sort()).toEqual([
@@ -250,12 +268,16 @@ describe("编辑器诊断接线", () => {
       commands: [{ op: "say", text: "你好" }],
       lang: { "zh-CN": { "main.json.enc": "cipher-bytes" } },
     });
-    const source = await createFileListFileSource(filesUnder("Resources", tree));
+    const source = await createFileListFileSource(
+      filesUnder("Resources", tree),
+    );
     const encPath = "Lang/zh-CN/main.json.enc";
     const decryptingSource = {
       ...source,
       text: async (path: string): Promise<string> =>
-        path === encPath ? JSON.stringify({ 你好: "Hello" }) : source.text(path),
+        path === encPath
+          ? JSON.stringify({ 你好: "Hello" })
+          : source.text(path),
     };
     const supply = await loadDiagnosticSupply(decryptingSource);
     expect([...supply.overlayKeys]).toEqual(["你好"]);

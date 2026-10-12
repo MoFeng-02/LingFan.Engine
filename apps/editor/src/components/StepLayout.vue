@@ -63,7 +63,10 @@ const laneBoxOf = computed(
 );
 
 /** 步骤盒左上角坐标（泳道 y + 泳道头高 + 步序） */
-function stepPos(columnId: string, stepIndex: number): { x: number; y: number } {
+function stepPos(
+  columnId: string,
+  stepIndex: number,
+): { x: number; y: number } {
   const box = laneBoxOf.value.get(columnId);
   const x = box?.x ?? PAD;
   const y = (box?.y ?? PAD) + HEADER_H + stepIndex * (STEP_H + GAP_Y);
@@ -178,8 +181,9 @@ export default { name: "StoryStepLayout" };
 <template>
   <div class="step-layout">
     <p class="step-hint">
-      一步 = 两个等待态之间的所有命令（阻塞是这一步的终点）；泳道 = 列，盒内为该步的顶层命令 ·
-      边：蓝=跳转 · 黄=选项 · 绿=导航 · 边上的数字 = 汇入该列的合流条数 ·
+      一步 = 两个等待态之间的所有命令（阻塞是这一步的终点）；泳道 =
+      列，盒内为该步的顶层命令 · 边：蓝=跳转 · 黄=选项 · 绿=导航 · 边上的数字 =
+      汇入该列的合流条数 ·
       <b>点击步骤 = 定位到时间线对应行</b> · 点击泳道头 = 选中该列
     </p>
     <div class="step-scroll">
@@ -230,7 +234,9 @@ export default { name: "StoryStepLayout" };
           @click="api.selectColumn(lane.columnId)"
         >
           <span class="lane-id">{{ lane.columnId }}</span>
-          <span class="lane-kind">{{ lane.kind === "flow" ? "流" : "景" }}</span>
+          <span class="lane-kind">{{
+            lane.kind === "flow" ? "流" : "景"
+          }}</span>
           <span class="lane-count">{{
             lane.kind === "flow"
               ? `${lane.steps.length} 步`
@@ -256,7 +262,8 @@ export default { name: "StoryStepLayout" };
           <span class="step-no">{{ step.index + 1 }}</span>
           <span class="step-ops">{{ opSummary(step) }}</span>
           <span class="step-wait">
-            {{ stepLabel(step) }}<template v-if="step.hard">（不可跳过）</template>
+            {{ stepLabel(step)
+            }}<template v-if="step.hard">（不可跳过）</template>
           </span>
           <span
             v-if="mergeTextOfStep(step) !== ''"
@@ -276,7 +283,11 @@ export default { name: "StoryStepLayout" };
             width: `${LANE_W}px`,
           }"
         >
-          0 步{{ lane.kind === "scene" ? "（元素列：元素是声明式空间层，不计步）" : "" }}
+          0 步{{
+            lane.kind === "scene"
+              ? "（元素列：元素是声明式空间层，不计步）"
+              : ""
+          }}
         </p>
       </div>
     </div>
@@ -300,8 +311,12 @@ export default { name: "StoryStepLayout" };
   flex: 1;
   overflow: auto;
   position: relative;
-  background: radial-gradient(circle, color-mix(in srgb, var(--lf-border-subtle) 13%, transparent) 1px, transparent 1px) 0 0 / 22px
-    22px;
+  background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--lf-border-subtle) 13%, transparent) 1px,
+      transparent 1px
+    )
+    0 0 / 22px 22px;
   border-radius: var(--lf-radius-md);
 }
 .step-canvas {

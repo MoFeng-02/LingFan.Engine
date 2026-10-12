@@ -23,8 +23,7 @@ const EASINGS: Record<string, (t: number) => number> = {
   EaseInOutQuad: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
   EaseInCubic: (t) => t * t * t,
   EaseOutCubic: (t) => 1 - (1 - t) ** 3,
-  EaseInOutCubic: (t) =>
-    t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2,
+  EaseInOutCubic: (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2),
   // —— Back / Elastic / Bounce族（补齐缓动全集，逐条给定公式）——
   // 命名与公式：Linear + Quad×3 + Cubic×3 + Back×3 + Elastic×3 + Bounce×3
   EaseInBack: (t) => t * t * (2.70158 * t - 1.70158),
@@ -46,9 +45,11 @@ const EASINGS: Record<string, (t: number) => number> = {
     t === 0 || t === 1
       ? t
       : t < 0.5
-        ? -(Math.pow(2, 20 * t - 10) * Math.sin((20 * t - 11.125) * 1.396263402)) /
-          2
-        : (Math.pow(2, -20 * t + 10) * Math.sin((20 * t - 11.125) * 1.396263402)) /
+        ? -(
+            Math.pow(2, 20 * t - 10) * Math.sin((20 * t - 11.125) * 1.396263402)
+          ) / 2
+        : (Math.pow(2, -20 * t + 10) *
+            Math.sin((20 * t - 11.125) * 1.396263402)) /
             2 +
           1,
   EaseOutBounce: (t) => easeOutBounce(t),
@@ -92,10 +93,7 @@ const EASING_LOOKUP: ReadonlyMap<string, (t: number) => number> = new Map(
  * 让动画照常跑完；名字写错属于作者侧问题，不该把一帧动画变成一次崩溃。
  */
 export function easingFn(name: string): (t: number) => number {
-  return (
-    EASING_LOOKUP.get(name.toLowerCase()) ??
-    EASINGS[DEFAULT_EASING]!
-  );
+  return EASING_LOOKUP.get(name.toLowerCase()) ?? EASINGS[DEFAULT_EASING]!;
 }
 
 /** 已知缓动名（编辑器表单/诊断可枚举；不含回退项）——恒为全集 16 个 */

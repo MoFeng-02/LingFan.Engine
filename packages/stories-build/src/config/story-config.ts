@@ -71,7 +71,10 @@ function assertSingleRootScript(
 }
 
 /** folders 校验：非空数组，元素 = "*" 或相对 `Stories.src/` 的段级安全目录路径；禁指生成物目录。 */
-function parseFolders(value: unknown, sourcesDirName: string): readonly string[] {
+function parseFolders(
+  value: unknown,
+  sourcesDirName: string,
+): readonly string[] {
   if (!Array.isArray(value) || value.length === 0) {
     throw new StoryBuildError(
       `${sourcesDirName}/${CONFIG_FILE}: folders 须为非空目录名数组（可含 "*" 兜底）`,
@@ -92,9 +95,7 @@ function parseFolders(value: unknown, sourcesDirName: string): readonly string[]
     if (
       entry.length === 0 ||
       entry.includes("\\") ||
-      !entry
-        .split("/")
-        .every((segment) => isSafeFileNameSegment(segment))
+      !entry.split("/").every((segment) => isSafeFileNameSegment(segment))
     ) {
       throw new StoryBuildError(
         `${sourcesDirName}/${CONFIG_FILE}: folders[${index}] "${entry}" 不是合法目录名（须为相对 ${sourcesDirName}/ 的段级安全路径）`,
@@ -126,9 +127,5 @@ function parseStart(value: unknown, sourcesDirName: string): string {
 }
 
 function describe(value: unknown): string {
-  return value === null
-    ? "null"
-    : Array.isArray(value)
-      ? "数组"
-      : typeof value;
+  return value === null ? "null" : Array.isArray(value) ? "数组" : typeof value;
 }

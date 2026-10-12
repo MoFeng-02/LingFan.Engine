@@ -31,13 +31,16 @@ const running = ref(false);
 const result = ref<PackResult | undefined>(undefined);
 
 /** 必填项齐备才让点（不靠 disabled 掩盖原因，点了也给提示） */
-const ready = computed(() => input.value.trim() !== "" && output.value.trim() !== "");
+const ready = computed(
+  () => input.value.trim() !== "" && output.value.trim() !== "",
+);
 
 async function onPack(): Promise<void> {
   if (!props.canPack) {
     await dialog.notify({
       title: "当前形态无法打包",
-      message: "打包需要本地宿主（pnpm --filter @lingfan/editor-app host）。请先启动它。",
+      message:
+        "打包需要本地宿主（pnpm --filter @lingfan/editor-app host）。请先启动它。",
       tone: "info",
     });
     return;
@@ -78,7 +81,12 @@ async function onPack(): Promise<void> {
 const verdict = computed(() => {
   const r = result.value;
   if (r === undefined) return undefined;
-  if (r.ok) return { tone: "ok", title: "打包完成", detail: `退出码 ${String(r.exitCode ?? 0)}` };
+  if (r.ok)
+    return {
+      tone: "ok",
+      title: "打包完成",
+      detail: `退出码 ${String(r.exitCode ?? 0)}`,
+    };
   return { tone: "bad", title: "打包未完成", detail: r.reason ?? "未知原因" };
 });
 </script>
@@ -86,12 +94,17 @@ const verdict = computed(() => {
 <template>
   <div class="pack">
     <p class="pack-hint">
-      产出加密发布包（等价于终端跑 <code>lfenpack</code>）。路径都是本机绝对路径。
+      产出加密发布包（等价于终端跑
+      <code>lfenpack</code>）。路径都是本机绝对路径。
     </p>
 
     <label class="field">
       <span class="field-label">工程根（明文）</span>
-      <input v-model="input" class="control" placeholder="E:/proj/game/Resources" />
+      <input
+        v-model="input"
+        class="control"
+        placeholder="E:/proj/game/Resources"
+      />
     </label>
     <label class="field">
       <span class="field-label">输出根（加密包）</span>
@@ -121,7 +134,9 @@ const verdict = computed(() => {
       <p class="result-title">{{ verdict.title }}</p>
       <p class="result-detail">{{ verdict.detail }}</p>
       <pre v-if="result?.stdout" class="result-log">{{ result.stdout }}</pre>
-      <pre v-if="result?.stderr" class="result-log err">{{ result.stderr }}</pre>
+      <pre v-if="result?.stderr" class="result-log err">{{
+        result.stderr
+      }}</pre>
     </div>
   </div>
 </template>

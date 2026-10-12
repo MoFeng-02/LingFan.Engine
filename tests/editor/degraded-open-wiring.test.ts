@@ -37,6 +37,6 @@ describe("降级打开 · 接线互锁", () => {
     const src = code(statusBarSource);
     expect(src).toContain("降级打开");
     expect(src).toContain('role="status"');
-    expect(src).toContain(":title=\"degraded.reason\"");
+    expect(src).toContain(':title="degraded.reason"');
   });
 });

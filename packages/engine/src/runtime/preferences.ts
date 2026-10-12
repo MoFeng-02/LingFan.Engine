@@ -92,12 +92,14 @@ function sanitize(raw: unknown): PlayerPrefsData {
     data.textSpeed = Math.max(1, source.textSpeed);
   }
   // 方向偏好：合法三态才采纳；非法值 = 未设置（跟随工程默认，绝不翻译成非法方向）
-  if (isOrientationMode(source.orientation)) data.orientation = source.orientation;
+  if (isOrientationMode(source.orientation))
+    data.orientation = source.orientation;
   // 键位覆盖：逐项降级；全部无效 = 无覆盖（动作走内建默认键位）
   const keymap = sanitizeKeymap(source.keymap);
   if (keymap !== undefined) data.keymap = keymap;
   // 全屏偏好：仅布尔采纳；非布尔 = 未设置（窗口化默认）
-  if (typeof source.fullscreen === "boolean") data.fullscreen = source.fullscreen;
+  if (typeof source.fullscreen === "boolean")
+    data.fullscreen = source.fullscreen;
   return data;
 }
 
@@ -233,7 +235,10 @@ export class PlayerPreferences {
     }
     const base: PlayerKeymap =
       this.data.keymap !== undefined
-        ? { advance: this.data.keymap.advance, history: this.data.keymap.history }
+        ? {
+            advance: this.data.keymap.advance,
+            history: this.data.keymap.history,
+          }
         : {};
     const next: PlayerKeymap = { ...base, [action]: sanitized };
     this.update({ ...this.data, keymap: next });

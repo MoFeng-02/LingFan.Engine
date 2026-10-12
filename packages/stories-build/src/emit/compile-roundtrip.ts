@@ -11,7 +11,10 @@ import { StoryBuildError } from "../shared";
  * 编译：`serializeProject` = 编辑器写回同一条布局规则
  * （单列拆分 + 清单托管键更新 + 非托管键保真）。
  */
-export function compileStory(story: Story, manifest: unknown): SerializedProject {
+export function compileStory(
+  story: Story,
+  manifest: unknown,
+): SerializedProject {
   return serializeProject(story, manifest);
 }
 

@@ -37,7 +37,11 @@ function byKey(a: TranslationRow, b: TranslationRow): number {
 function displayTextOf(value: unknown): string {
   if (typeof value === "string") return value;
   if (value === undefined) return "";
-  if (value === null || typeof value === "number" || typeof value === "boolean") {
+  if (
+    value === null ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
     return String(value);
   }
   try {
@@ -64,17 +68,21 @@ export function parseTranslationTable(source: string): TableParse {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return { ok: false, error: "译文表根节点必须是对象（键 → 译文）" };
   }
-  const rows = Object.entries(value as Record<string, unknown>).map(([key, v]) => ({
-    key,
-    value: v,
-    text: displayTextOf(v),
-  }));
+  const rows = Object.entries(value as Record<string, unknown>).map(
+    ([key, v]) => ({
+      key,
+      value: v,
+      text: displayTextOf(v),
+    }),
+  );
   rows.sort(byKey);
   return { ok: true, rows };
 }
 
 /** 序列化回规范形（**键按码元序** + 2 空格缩进 + 结尾换行；值原样往返） */
-export function serializeTranslationTable(rows: readonly TranslationRow[]): string {
+export function serializeTranslationTable(
+  rows: readonly TranslationRow[],
+): string {
   const out: Record<string, unknown> = {};
   for (const row of [...rows].sort(byKey)) out[row.key] = row.value;
   return `${JSON.stringify(out, null, 2)}\n`;
@@ -108,7 +116,10 @@ export function addTranslationRow(
   if (rows.some((r) => r.key === key)) {
     return { ok: false, error: `键「${key}」已存在` };
   }
-  return { ok: true, rows: [...rows, { key, value: "", text: "" }].sort(byKey) };
+  return {
+    ok: true,
+    rows: [...rows, { key, value: "", text: "" }].sort(byKey),
+  };
 }
 
 /** 删行（键不存在 ⇒ 显式失败，不静默noop——上层据此提示「状态已变」） */
@@ -161,7 +172,9 @@ export function setTranslationValue(
   }
   return {
     ok: true,
-    rows: rows.map((r) => (r.key === key ? { ...r, value: coerceLike(r.value, text), text } : r)),
+    rows: rows.map((r) =>
+      r.key === key ? { ...r, value: coerceLike(r.value, text), text } : r,
+    ),
   };
 }
 

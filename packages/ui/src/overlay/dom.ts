@@ -12,7 +12,11 @@
  * 于是层内空白区透传给宿主游戏——对话框铺满视口时，玩家仍能点击对话框之外的地方。
  * 层里的实际控件（按钮/输入框/元素节点）由渲染处单独恢复点击。
  */
-export function el(parent: HTMLElement, className: string, z: number): HTMLElement {
+export function el(
+  parent: HTMLElement,
+  className: string,
+  z: number,
+): HTMLElement {
   const node = parent.ownerDocument.createElement("div");
   node.className = className;
   node.style.position = "absolute";

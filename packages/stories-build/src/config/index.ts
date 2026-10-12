@@ -5,5 +5,9 @@
  * 分成两域是因为清单读的是 `project.json`、布局读的是 `Stories.src/config.ts`，
  * 校验规则各成一套，混在一个目录里只会让入口面变糊。
  */
-export { CONFIG_FILE, loadStoryConfig, type StorySourceConfig } from "./story-config";
+export {
+  CONFIG_FILE,
+  loadStoryConfig,
+  type StorySourceConfig,
+} from "./story-config";
 export { readManifest } from "./manifest-read";

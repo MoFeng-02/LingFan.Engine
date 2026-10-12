@@ -26,8 +26,20 @@ import { describe, expect, it } from "vitest";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..");
-const CONST_EVAL_PATH = path.join(repoRoot, "packages", "stories-build", "src", "const-eval", "const-eval.ts");
-const MANIFEST_PATH = path.join(repoRoot, "packages", "stories-build", "package.json");
+const CONST_EVAL_PATH = path.join(
+  repoRoot,
+  "packages",
+  "stories-build",
+  "src",
+  "const-eval",
+  "const-eval.ts",
+);
+const MANIFEST_PATH = path.join(
+  repoRoot,
+  "packages",
+  "stories-build",
+  "package.json",
+);
 
 /**
  * 探针里的锚点占位符。裸 URL 会被 Node 警告成「像 import 调用」的歧义表达式
@@ -61,7 +73,10 @@ function runProbe(anchorUrl: string): string {
   const script = PROBE.replace(ANCHOR_PLACEHOLDER, anchorUrl);
   const env = { ...process.env };
   delete env.NODE_PATH;
-  return execFileSync(process.execPath, ["-e", script], { encoding: "utf8", env }).trim();
+  return execFileSync(process.execPath, ["-e", script], {
+    encoding: "utf8",
+    env,
+  }).trim();
 }
 
 describe("创作链编译包 · 求值器的 esbuild 解析", () => {

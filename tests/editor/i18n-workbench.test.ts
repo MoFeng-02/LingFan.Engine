@@ -99,7 +99,11 @@ describe("三态文案（描述状态，不叙述历史）", () => {
 
 describe("多语言汇总", () => {
   it("按语言码码元序稳定排序", () => {
-    const o = workbenchOverview(["a", "b"], { zh: ["a"], en: ["a", "b"], ja: [] });
+    const o = workbenchOverview(["a", "b"], {
+      zh: ["a"],
+      en: ["a", "b"],
+      ja: [],
+    });
     expect(o.coverages.map((c) => c.lang)).toEqual(["en", "ja", "zh"]);
   });
 

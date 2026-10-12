@@ -22,8 +22,14 @@ import hostContractSource from "../../apps/editor/src/contracts/host.ts?raw";
 
 describe("路径归一：越界形态一律拒绝", () => {
   it("接受正常相对路径（去空段与 .）", () => {
-    expect(normalizeRelativePath("src/main.ts")).toEqual({ ok: true, relative: "src/main.ts" });
-    expect(normalizeRelativePath("./src//main.ts")).toEqual({ ok: true, relative: "src/main.ts" });
+    expect(normalizeRelativePath("src/main.ts")).toEqual({
+      ok: true,
+      relative: "src/main.ts",
+    });
+    expect(normalizeRelativePath("./src//main.ts")).toEqual({
+      ok: true,
+      relative: "src/main.ts",
+    });
   });
 
   it("拒绝路径穿越的各种写法", () => {
@@ -89,7 +95,11 @@ describe("外部编辑器打开：白名单（扩展名 ∧ 目录）", () => {
   });
 
   it("拒绝非白名单目录（生成物不外开）", () => {
-    for (const bad of ["Saves/slot_1.json", "Lang/en/main.json", "Stories/start.json"]) {
+    for (const bad of [
+      "Saves/slot_1.json",
+      "Lang/en/main.json",
+      "Stories/start.json",
+    ]) {
       const v = canOpenExternal(bad);
       expect(v.ok, `${bad} 应被拒`).toBe(false);
       if (!v.ok) expect(v.reason).toContain("目录");
@@ -111,7 +121,11 @@ describe("外部编辑器打开：白名单（扩展名 ∧ 目录）", () => {
     expect(OPENABLE_EXTENSIONS).toContain(".ts");
     expect(OPENABLE_EXTENSIONS).not.toContain(".png");
     expect(OPENABLE_EXTENSIONS).not.toContain(".exe");
-    expect(OPENABLE_EXTENSIONS.every((e) => e.startsWith(".") && e === e.toLowerCase())).toBe(true);
+    expect(
+      OPENABLE_EXTENSIONS.every(
+        (e) => e.startsWith(".") && e === e.toLowerCase(),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -144,18 +158,24 @@ describe("能力探测（浏览器侧 · 零 Node 依赖）", () => {
   const TOKEN = "a".repeat(32);
   /** 宿主 ping 的应答：**必须带 token**（前端后续调用要靠它） */
   const pong = (body: unknown) =>
-    Promise.resolve(new Response(JSON.stringify(body), { status: 200 }) as never);
+    Promise.resolve(
+      new Response(JSON.stringify(body), { status: 200 }) as never,
+    );
 
   it("命中**绝对**候选 ⇒ 返回 `{baseUrl, token}`", async () => {
     const seen: string[] = [];
     const host = await detectLocalHost(async (input) => {
       seen.push(String(input));
       // 第一个（相对）候选失败 ⇒ 落到绝对候选并命中
-      if (String(input).startsWith("/")) return new Response("", { status: 500 }) as never;
+      if (String(input).startsWith("/"))
+        return new Response("", { status: 500 }) as never;
       return pong({ ok: true, token: TOKEN });
     });
     expect(host).toEqual({ baseUrl: "http://127.0.0.1:14250", token: TOKEN });
-    expect(seen).toEqual(["/__editor_host__/ping", "http://127.0.0.1:14250/__editor_host__/ping"]);
+    expect(seen).toEqual([
+      "/__editor_host__/ping",
+      "http://127.0.0.1:14250/__editor_host__/ping",
+    ]);
   });
 
   it("**响应无 token ⇒ 不算命中**（别的服务恰好 200 也不认）", async () => {
@@ -164,7 +184,9 @@ describe("能力探测（浏览器侧 · 零 Node 依赖）", () => {
   });
 
   it("token 为空串 ⇒ 不算命中", async () => {
-    const host = await detectLocalHost(async () => pong({ ok: true, token: "" }));
+    const host = await detectLocalHost(async () =>
+      pong({ ok: true, token: "" }),
+    );
     expect(host).toBeUndefined();
   });
 
@@ -176,7 +198,9 @@ describe("能力探测（浏览器侧 · 零 Node 依赖）", () => {
   });
 
   it("全部候选失败 ⇒ undefined（**不抛错**：无宿主是正常形态）", async () => {
-    const host = await detectLocalHost(() => Promise.reject(new Error("ECONNREFUSED")));
+    const host = await detectLocalHost(() =>
+      Promise.reject(new Error("ECONNREFUSED")),
+    );
     expect(host).toBeUndefined();
   });
 
@@ -232,13 +256,19 @@ describe("打包判据 · 路径安全（本机最危险的动作）", () => {
   });
 
   it("**拒绝输出位于工程根之内**", () => {
-    const v = packRequestOf({ input: "E:/proj/game", output: "E:/proj/game/dist" });
+    const v = packRequestOf({
+      input: "E:/proj/game",
+      output: "E:/proj/game/dist",
+    });
     expect(v.ok).toBe(false);
     if (!v.ok) expect(v.reason).toContain("之内");
   });
 
   it("**拒绝工程根位于输出之内**（--force 清空输出会连带删工程）", () => {
-    const v = packRequestOf({ input: "E:/proj/game/src", output: "E:/proj/game" });
+    const v = packRequestOf({
+      input: "E:/proj/game/src",
+      output: "E:/proj/game",
+    });
     expect(v.ok).toBe(false);
     if (!v.ok) expect(v.reason).toContain("之内");
   });
@@ -254,7 +284,15 @@ describe("打包判据 · 路径安全（本机最危险的动作）", () => {
   });
 
   it("拒绝坏形状（null / 非对象 / 缺字段 / 非字符串）", () => {
-    for (const bad of [null, "x", 42, {}, { input: "E:/a" }, { output: "E:/b" }, { input: 1, output: 2 }]) {
+    for (const bad of [
+      null,
+      "x",
+      42,
+      {},
+      { input: "E:/a" },
+      { output: "E:/b" },
+      { input: 1, output: 2 },
+    ]) {
       expect(packRequestOf(bad).ok, JSON.stringify(bad)).toBe(false);
     }
   });
@@ -264,7 +302,7 @@ describe("打包判据 · 路径安全（本机最危险的动作）", () => {
     expect(v.ok).toBe(false);
   });
 
-  it("`force` / `strict` 只认布尔真值（字符串 \"true\" 不算）", () => {
+  it('`force` / `strict` 只认布尔真值（字符串 "true" 不算）', () => {
     const v = packRequestOf({ ...ok, force: "true", strict: 1 });
     expect(v.ok).toBe(true);
     if (v.ok) {
@@ -289,7 +327,13 @@ describe("打包判据 · 路径安全（本机最危险的动作）", () => {
 
 describe("热重载判据 · 该不该因这次变更重载", () => {
   it("正常内容变更 ⇒ 重载", () => {
-    for (const p of ["Stories/start.json", "Lang/en/main.json", "project.json", "src/main.ts", "Saves/slot_1.json"]) {
+    for (const p of [
+      "Stories/start.json",
+      "Lang/en/main.json",
+      "project.json",
+      "src/main.ts",
+      "Saves/slot_1.json",
+    ]) {
       expect(shouldReloadOn(p, "change").reload, p).toBe(true);
     }
   });
@@ -335,7 +379,9 @@ describe("热重载判据 · 该不该因这次变更重载", () => {
 
   it("Windows 反斜杠路径同样判得住", () => {
     expect(shouldReloadOn("Stories\\start.json", "change").reload).toBe(true);
-    expect(shouldReloadOn("node_modules\\x\\y.js", "change").reload).toBe(false);
+    expect(shouldReloadOn("node_modules\\x\\y.js", "change").reload).toBe(
+      false,
+    );
   });
 
   it("空路径 / 无有效段 ⇒ 不重载（不抛）", () => {
@@ -344,8 +390,14 @@ describe("热重载判据 · 该不该因这次变更重载", () => {
   });
 
   it("增删（rename）与内容变更都重载，但理由不同", () => {
-    expect(shouldReloadOn("Stories/new.json", "rename")).toMatchObject({ reload: true, reason: "文件增删" });
-    expect(shouldReloadOn("Stories/start.json", "change")).toMatchObject({ reload: true, reason: "内容变更" });
+    expect(shouldReloadOn("Stories/new.json", "rename")).toMatchObject({
+      reload: true,
+      reason: "文件增删",
+    });
+    expect(shouldReloadOn("Stories/start.json", "change")).toMatchObject({
+      reload: true,
+      reason: "内容变更",
+    });
   });
 
   it("删目录时 path 就是目录本身 ⇒ 末段也要查忽略表", () => {
@@ -358,8 +410,12 @@ describe("跨边界互锁：宿主只取类型，契约层不放运行期代码"
   it("宿主侧以 `import type` 取契约（编译期擦除，不把契约层拖进 Node 进程）", () => {
     // 裸 `import` 会让 Node 真的去加载契约层；契约层一旦掺进运行期代码，
     //    两侧就从「共用一份类型」变成「共用同一个模块」——那是另一件事。
-    expect(hostServerSource).toMatch(/import\s+type\s*\{[^}]*\}\s*from\s+"\.\.\/src\/contracts"/);
-    expect(hostServerSource).not.toMatch(/import\s*\{[^}]*\}\s*from\s+"\.\.\/src\/contracts"/);
+    expect(hostServerSource).toMatch(
+      /import\s+type\s*\{[^}]*\}\s*from\s+"\.\.\/src\/contracts"/,
+    );
+    expect(hostServerSource).not.toMatch(
+      /import\s*\{[^}]*\}\s*from\s+"\.\.\/src\/contracts"/,
+    );
   });
 
   it("契约层只有类型（无 const / function / class，擦除后真的什么都不剩）", () => {
@@ -369,6 +425,8 @@ describe("跨边界互锁：宿主只取类型，契约层不放运行期代码"
   it("声明只有一份：宿主侧不再自写 HostCapabilities / PackResult", () => {
     expect(hostContractSource).toMatch(/interface\s+HostCapabilities\b/);
     expect(hostContractSource).toMatch(/interface\s+PackResult\b/);
-    expect(hostServerSource).not.toMatch(/interface\s+(HostCapabilities|PackResult)\b/);
+    expect(hostServerSource).not.toMatch(
+      /interface\s+(HostCapabilities|PackResult)\b/,
+    );
   });
 });

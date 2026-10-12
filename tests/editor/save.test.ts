@@ -170,7 +170,9 @@ describe("写回·拟态用户旅程", () => {
     const disk = demoDisk();
     const { story, manifest } = await openDisk(disk);
     const session = new EditorSession(story);
-    session.apply("改", (s) => setAtPointer(s, "/columns/0/commands/0/text", "X"));
+    session.apply("改", (s) =>
+      setAtPointer(s, "/columns/0/commands/0/text", "X"),
+    );
     expect(session.dirty).toBe(true);
     session.undo();
     expect(session.dirty).toBe(false);
@@ -199,14 +201,18 @@ describe("写回·混沌随机游走（种子化 300 步）", () => {
     const ID_POOL = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta"];
     const unusedId = (s: Story): string => {
       const free = ID_POOL.filter((id) => !s.columns.some((c) => c.id === id));
-      return free.length === 0 ? `auto-${int(1e6)}` : (free[int(free.length)] ?? "auto");
+      return free.length === 0
+        ? `auto-${int(1e6)}`
+        : (free[int(free.length)] ?? "auto");
     };
     const flowIndexes = (s: Story): number[] =>
       s.columns
         .map((c, i) => (c.kind === "flow" ? i : -1))
         .filter((i) => i >= 0);
     const editableIndexes = (s: Story): number[] =>
-      s.columns.map((c, i) => (c.id === s.entry ? -1 : i)).filter((i) => i >= 0);
+      s.columns
+        .map((c, i) => (c.id === s.entry ? -1 : i))
+        .filter((i) => i >= 0);
 
     let saves = 0;
 
@@ -220,17 +226,25 @@ describe("写回·混沌随机游走（种子化 300 步）", () => {
             const i = flows[int(flows.length)];
             if (i === undefined) return null;
             const list = s.columns[i]?.commands ?? [];
-            return insertAtPointer(s, `/columns/${i}/commands`, int(list.length + 1), {
-              op: "say",
-              text: `t${step}`,
-            });
+            return insertAtPointer(
+              s,
+              `/columns/${i}/commands`,
+              int(list.length + 1),
+              {
+                op: "say",
+                text: `t${step}`,
+              },
+            );
           }
           case 1: {
             const i = flows[int(flows.length)];
             if (i === undefined) return null;
             const list = s.columns[i]?.commands ?? [];
             if (list.length === 0) return null;
-            return removeAtPointer(s, `/columns/${i}/commands/${int(list.length)}`);
+            return removeAtPointer(
+              s,
+              `/columns/${i}/commands/${int(list.length)}`,
+            );
           }
           case 2: {
             const i = flows[int(flows.length)];

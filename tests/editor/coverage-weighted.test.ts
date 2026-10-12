@@ -37,7 +37,9 @@ describe("覆盖率字数加权 · 核心：**加权 ≠ 条数**", () => {
   });
 
   it("**百分比文本也分两种口径**（UI 主显示加权、tooltip 给条数）", () => {
-    const c = langCoverage(["短", "这是一个很长的句子需要很多字符"], "en", ["短"]);
+    const c = langCoverage(["短", "这是一个很长的句子需要很多字符"], "en", [
+      "短",
+    ]);
     expect(coveragePercentOf(c)).toBe("50%");
     expect(coverageWeightedPercentOf(c)).toBe("6%"); // 1/15 = 6.67 → 7
   });

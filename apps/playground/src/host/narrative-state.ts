@@ -91,6 +91,8 @@ export interface NarrativeState {
   readonly inMinigame: Ref<boolean>;
   /** 外部玩法系统接管中 */
   readonly inInteraction: Ref<boolean>;
+  /** 扩展 op 等待接管中（覆盖层显隐走 mount 事件，此位供对齐与让位判定） */
+  readonly inExtension: Ref<boolean>;
   /** 对话框被故事显式隐藏（`window hide`） */
   readonly dialogHidden: Ref<boolean>;
   /** 菜单提示行 */
@@ -136,6 +138,7 @@ export function createNarrativeState(
   const inVideo = ref(false);
   const inMinigame = ref(false);
   const inInteraction = ref(false);
+  const inExtension = ref(false);
   const dialogHidden = ref(false);
   const menuPrompt = ref("");
   const inputPrompt = ref("");
@@ -200,6 +203,7 @@ export function createNarrativeState(
         inInput.value = value === "input";
         inVideo.value = value === "video";
         inMinigame.value = value === "minigame";
+        inExtension.value = value === "extension";
         return;
       case "dialog-visible":
         dialogHidden.value = value === "hide";
@@ -251,6 +255,7 @@ export function createNarrativeState(
     inVideo,
     inMinigame,
     inInteraction,
+    inExtension,
     dialogHidden,
     menuPrompt,
     inputPrompt,
@@ -278,6 +283,7 @@ export function createNarrativeState(
       inInput.value = w === "input";
       inMinigame.value = w === "minigame";
       inInteraction.value = w === "interaction";
+      inExtension.value = w === "extension";
       dialogHidden.value = read(SYS.dialogVisible) === "hide";
       const mp = read(SYS.menuPrompt);
       menuPrompt.value = typeof mp === "string" ? mp : "";

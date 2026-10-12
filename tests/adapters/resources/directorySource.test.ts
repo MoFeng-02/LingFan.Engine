@@ -34,7 +34,9 @@ function dirHandle(name: string, tree: Tree): FileSystemDirectoryHandle {
   return {
     kind: "directory",
     name,
-    async *values(): AsyncGenerator<FileSystemDirectoryHandle | FileSystemFileHandle> {
+    async *values(): AsyncGenerator<
+      FileSystemDirectoryHandle | FileSystemFileHandle
+    > {
       for (const [entryName, value] of Object.entries(tree)) {
         yield typeof value === "string"
           ? fileHandle(entryName, value)
@@ -48,7 +50,9 @@ function dirHandle(name: string, tree: Tree): FileSystemDirectoryHandle {
       }
       return fileHandle(entryName, value);
     },
-    async getDirectoryHandle(entryName: string): Promise<FileSystemDirectoryHandle> {
+    async getDirectoryHandle(
+      entryName: string,
+    ): Promise<FileSystemDirectoryHandle> {
       const value = tree[entryName];
       if (value === undefined || typeof value === "string") {
         throw new DOMException("not found", "NotFoundError");
@@ -58,7 +62,11 @@ function dirHandle(name: string, tree: Tree): FileSystemDirectoryHandle {
   } as unknown as FileSystemDirectoryHandle;
 }
 
-const MANIFEST = JSON.stringify({ formatVersion: 1, id: "demo", entry: "start" });
+const MANIFEST = JSON.stringify({
+  formatVersion: 1,
+  id: "demo",
+  entry: "start",
+});
 const START = JSON.stringify({
   formatVersion: 1,
   id: "start",
@@ -108,7 +116,9 @@ function blobUrls(): {
 
 describe("目录取径·FSA 句柄", () => {
   it("直选资源根：枚举相对逻辑路径 + 引擎组装整链（清单/故事原始文本）", async () => {
-    const source = await createHandleFileSource(dirHandle("Resources", resourceRoot()));
+    const source = await createHandleFileSource(
+      dirHandle("Resources", resourceRoot()),
+    );
     expect(source.name).toBe("Resources");
     expect(await source.paths()).toEqual([
       "Audio/bgm.mp3",
@@ -135,9 +145,9 @@ describe("目录取径·FSA 句柄", () => {
     const source = await createHandleFileSource(
       dirHandle("Desktop", { Stories: { "a.json": "{}" } }),
     );
-    await expect(loadProject(createSourceProjectFilesPort(source))).rejects.toThrow(
-      "没有可打开的内容",
-    );
+    await expect(
+      loadProject(createSourceProjectFilesPort(source)),
+    ).rejects.toThrow("没有可打开的内容");
   });
 
   it("既无清单也无 Stories/ → 定位即拒（连降级候选都不是）", async () => {
@@ -168,24 +178,26 @@ describe("目录取径·FSA 句柄", () => {
     );
     // 形态判定归 encryptedProject 唯一判定点（前置、统一可操作文案）——
     // 这里只锁「打开必被拒 + 文案说明形态与出路」，具体措辞由该模块的测试守护。
-    await expect(loadProject(createSourceProjectFilesPort(source))).rejects.toThrow(
-      /加密工程（lfenpack 产物）[\s\S]*明文工程/,
-    );
+    await expect(
+      loadProject(createSourceProjectFilesPort(source)),
+    ).rejects.toThrow(/加密工程（lfenpack 产物）[\s\S]*明文工程/);
   });
 
   it("缺 Stories/ → fail-closed", async () => {
     const source = await createHandleFileSource(
       dirHandle("Resources", { "project.json": MANIFEST }),
     );
-    await expect(loadProject(createSourceProjectFilesPort(source))).rejects.toThrow(
-      "缺少 Stories/",
-    );
+    await expect(
+      loadProject(createSourceProjectFilesPort(source)),
+    ).rejects.toThrow("缺少 Stories/");
   });
 });
 
 describe("目录取径·资源端口（Blob URL）", () => {
   it("resolve → 文件 → Blob URL；同路径复用同一 URL 且只建一次", async () => {
-    const source = await createHandleFileSource(dirHandle("Resources", resourceRoot()));
+    const source = await createHandleFileSource(
+      dirHandle("Resources", resourceRoot()),
+    );
     const urls = blobUrls();
     const port = createSourceResourcePort(source, {
       createObjectURL: urls.create,
@@ -200,7 +212,9 @@ describe("目录取径·资源端口（Blob URL）", () => {
   });
 
   it("并发 resolve 同路径只解析一次（在途去重）", async () => {
-    const source = await createHandleFileSource(dirHandle("Resources", resourceRoot()));
+    const source = await createHandleFileSource(
+      dirHandle("Resources", resourceRoot()),
+    );
     const urls = blobUrls();
     const port = createSourceResourcePort(source, {
       createObjectURL: urls.create,
@@ -216,7 +230,9 @@ describe("目录取径·资源端口（Blob URL）", () => {
   });
 
   it("release 只 revoke 本端口产出的 URL，之后可重新解析", async () => {
-    const source = await createHandleFileSource(dirHandle("Resources", resourceRoot()));
+    const source = await createHandleFileSource(
+      dirHandle("Resources", resourceRoot()),
+    );
     const urls = blobUrls();
     const port = createSourceResourcePort(source, {
       createObjectURL: urls.create,
@@ -231,14 +247,20 @@ describe("目录取径·资源端口（Blob URL）", () => {
   });
 
   it("资源不存在 / 路径逃逸 → 抛错（调用方 fail-closed 不显示）", async () => {
-    const source = await createHandleFileSource(dirHandle("Resources", resourceRoot()));
+    const source = await createHandleFileSource(
+      dirHandle("Resources", resourceRoot()),
+    );
     const urls = blobUrls();
     const port = createSourceResourcePort(source, {
       createObjectURL: urls.create,
       revokeObjectURL: urls.revoke,
     });
-    await expect(port.resolve("Images/ghost.png")).rejects.toThrow("资源不存在");
-    await expect(port.resolve("../outside.png")).rejects.toThrow("资源路径非法");
+    await expect(port.resolve("Images/ghost.png")).rejects.toThrow(
+      "资源不存在",
+    );
+    await expect(port.resolve("../outside.png")).rejects.toThrow(
+      "资源路径非法",
+    );
   });
 
   it("解析失败不粘滞：资源补齐后重试成功", async () => {
@@ -249,9 +271,13 @@ describe("目录取径·资源端口（Blob URL）", () => {
       createObjectURL: urls.create,
       revokeObjectURL: urls.revoke,
     });
-    await expect(port.resolve("Images/later.png")).rejects.toThrow("资源不存在");
+    await expect(port.resolve("Images/later.png")).rejects.toThrow(
+      "资源不存在",
+    );
     (tree.Images as Tree)["later.png"] = "arrived";
-    await expect(port.resolve("Images/later.png")).resolves.toContain("later.png");
+    await expect(port.resolve("Images/later.png")).resolves.toContain(
+      "later.png",
+    );
   });
 });
 
@@ -311,14 +337,18 @@ describe("目录取径·目录 input 文件快照", () => {
       fileAt("x/project.json", "{ not-json"),
       fileAt("x/Stories/a.json", START),
     ]);
-    await expect(loadProject(createSourceProjectFilesPort(source))).rejects.toThrow(
-      "不是合法 JSON",
-    );
+    await expect(
+      loadProject(createSourceProjectFilesPort(source)),
+    ).rejects.toThrow("不是合法 JSON");
   });
 
   it("locateResourceRootFromPaths：取最浅清单，前缀含目录分隔符", () => {
     expect(
-      locateResourceRootFromPaths(["a/b/project.json", "project.json", "Stories/x.json"]),
+      locateResourceRootFromPaths([
+        "a/b/project.json",
+        "project.json",
+        "Stories/x.json",
+      ]),
     ).toEqual({ root: "", manifest: "project.json" });
     expect(locateResourceRootFromPaths(["Resources/project.json"])).toEqual({
       root: "Resources/",
@@ -328,7 +358,9 @@ describe("目录取径·目录 input 文件快照", () => {
 
   it("locateResourceRootFromPaths：无清单时以 Stories/ 定位，多个 Stories/ = fail-closed", () => {
     // 根层 Stories ⇒ root = ""
-    expect(locateResourceRootFromPaths(["Stories/a.json", "Audio/b.mp3"])).toEqual({
+    expect(
+      locateResourceRootFromPaths(["Stories/a.json", "Audio/b.mp3"]),
+    ).toEqual({
       root: "",
       manifest: "project.json",
     });
@@ -604,7 +636,8 @@ async function readText(
 }
 
 const WRITE_MANIFEST = '{"formatVersion":1,"id":"demo","entry":"start"}';
-const WRITE_START = '{"formatVersion":1,"id":"start","kind":"flow","commands":[]}';
+const WRITE_START =
+  '{"formatVersion":1,"id":"start","kind":"flow","commands":[]}';
 
 function grantedHooks(): WriteHooks {
   return { log: [], permissionCalls: [], permission: { query: "granted" } };
@@ -629,7 +662,10 @@ describe("写回·FSA 目录句柄", () => {
     const writer = await createHandleProjectWriter(root, previous);
     expect(writer.writable).toBe(true);
     const wanted = new Map<string, string>([
-      ["Stories/new.json", '{"formatVersion":1,"id":"new","kind":"flow","commands":[]}'],
+      [
+        "Stories/new.json",
+        '{"formatVersion":1,"id":"new","kind":"flow","commands":[]}',
+      ],
       [
         "Stories/start.json",
         '{"formatVersion":1,"id":"start","kind":"flow","commands":[{"op":"say","text":"改"}]}',
@@ -666,7 +702,10 @@ describe("写回·FSA 目录句柄", () => {
     const writer = await createHandleProjectWriter(root, new Map());
     const report = await writer.apply(
       new Map([
-        ["Stories/a.json", '{"formatVersion":1,"id":"a","kind":"flow","commands":[]}'],
+        [
+          "Stories/a.json",
+          '{"formatVersion":1,"id":"a","kind":"flow","commands":[]}',
+        ],
       ]),
     );
     expect(report.written).toEqual(["Stories/a.json"]);
@@ -684,7 +723,10 @@ describe("写回·FSA 目录句柄", () => {
       new Map([["Stories/old.json", WRITE_START]]),
     );
     const wanted = new Map<string, string>([
-      ["Stories/a.json", '{"formatVersion":1,"id":"a","kind":"flow","commands":[]}'],
+      [
+        "Stories/a.json",
+        '{"formatVersion":1,"id":"a","kind":"flow","commands":[]}',
+      ],
     ]);
     hooks.failWrite = new Map([["Stories/a.json", new Error("磁盘写满")]]);
     await expect(writer.apply(wanted)).rejects.toThrow("磁盘写满");
@@ -711,7 +753,10 @@ describe("写回·FSA 目录句柄", () => {
     await expect(
       writer.apply(
         new Map([
-          ["Stories/a.json", '{"formatVersion":1,"id":"a","kind":"flow","commands":[]}'],
+          [
+            "Stories/a.json",
+            '{"formatVersion":1,"id":"a","kind":"flow","commands":[]}',
+          ],
         ]),
       ),
     ).rejects.toThrow("文件被占用");
@@ -794,7 +839,10 @@ describe("写回·FSA 目录句柄", () => {
 
   it("权限：granted 不询问；prompt→granted 先申请后写；denied / NotAllowedError 归一且零写入", async () => {
     const one = new Map([
-      ["Stories/a.json", '{"formatVersion":1,"id":"a","kind":"flow","commands":[]}'],
+      [
+        "Stories/a.json",
+        '{"formatVersion":1,"id":"a","kind":"flow","commands":[]}',
+      ],
     ]);
 
     // granted：不调用 requestPermission

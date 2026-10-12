@@ -26,11 +26,7 @@ import {
  * 此处按原路径转出，既有消费方无需改动即可继续从本模块取；
  * 完成时统一改走包出口。
  */
-export {
-  DEFAULT_LAYER_Z,
-  DEFAULT_SAVES_CONFIG,
-  LAYER_IDS,
-} from "../contracts";
+export { DEFAULT_LAYER_Z, DEFAULT_SAVES_CONFIG, LAYER_IDS } from "../contracts";
 export type {
   LayerId,
   LayerZOverrides,
@@ -157,7 +153,8 @@ export function resolveSavesConfig(manifest: unknown): SavesConfig {
     if (height !== null) resolved.thumbnail.height = height;
     const quality = finiteIn01(t.quality);
     if (quality !== null) resolved.thumbnail.quality = quality;
-    if (typeof t.showText === "boolean") resolved.thumbnail.showText = t.showText;
+    if (typeof t.showText === "boolean")
+      resolved.thumbnail.showText = t.showText;
   }
   return resolved;
 }

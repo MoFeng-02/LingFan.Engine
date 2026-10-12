@@ -1,14 +1,24 @@
 import * as ts from "typescript";
 import type { Binding, ConstValue, DiagBag } from "./core";
 
-function foldNumeric(op: string, left: number, right: number): number | undefined {
+function foldNumeric(
+  op: string,
+  left: number,
+  right: number,
+): number | undefined {
   switch (op) {
-    case "+": return left + right;
-    case "-": return left - right;
-    case "*": return left * right;
-    case "/": return right === 0 ? undefined : left / right;
-    case "%": return right === 0 ? undefined : left % right;
-    default: return undefined;
+    case "+":
+      return left + right;
+    case "-":
+      return left - right;
+    case "*":
+      return left * right;
+    case "/":
+      return right === 0 ? undefined : left / right;
+    case "%":
+      return right === 0 ? undefined : left % right;
+    default:
+      return undefined;
   }
 }
 
@@ -20,14 +30,18 @@ export function foldConst(
   lookup: (name: string) => Binding | undefined,
 ): ConstValue | undefined {
   if (ts.isNumericLiteral(expr)) return Number(expr.text);
-  if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) return expr.text;
+  if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr))
+    return expr.text;
   if (expr.kind === ts.SyntaxKind.TrueKeyword) return true;
   if (expr.kind === ts.SyntaxKind.FalseKeyword) return false;
   if (expr.kind === ts.SyntaxKind.NullKeyword) return null;
   if (ts.isParenthesizedExpression(expr)) {
     return foldConst(expr.expression, sf, diags, file, lookup);
   }
-  if (ts.isPrefixUnaryExpression(expr) && expr.operator === ts.SyntaxKind.MinusToken) {
+  if (
+    ts.isPrefixUnaryExpression(expr) &&
+    expr.operator === ts.SyntaxKind.MinusToken
+  ) {
     const v = foldConst(expr.operand, sf, diags, file, lookup);
     return typeof v === "number" ? -v : undefined;
   }
@@ -45,7 +59,8 @@ export function foldConst(
     const left = foldConst(expr.left, sf, diags, file, lookup);
     const right = foldConst(expr.right, sf, diags, file, lookup);
     if (left === undefined || right === undefined) return undefined;
-    if (typeof left === "string" && typeof right === "string" && op === "+") return left + right;
+    if (typeof left === "string" && typeof right === "string" && op === "+")
+      return left + right;
     if (typeof left === "number" && typeof right === "number") {
       const n = foldNumeric(op, left, right);
       return n === undefined || Number.isFinite(n) ? n : undefined;
@@ -71,7 +86,12 @@ export function foldConst(
   return undefined;
 }
 
-export function scanEnum(node: ts.EnumDeclaration, sf: ts.SourceFile, diags: DiagBag, file: string): Map<string, ConstValue> | null {
+export function scanEnum(
+  node: ts.EnumDeclaration,
+  sf: ts.SourceFile,
+  diags: DiagBag,
+  file: string,
+): Map<string, ConstValue> | null {
   const members = new Map<string, ConstValue>();
   let next = 0;
   for (const m of node.members) {
@@ -86,7 +106,12 @@ export function scanEnum(node: ts.EnumDeclaration, sf: ts.SourceFile, diags: Dia
       return v === undefined ? undefined : { kind: "const", value: v };
     });
     if (value === undefined) {
-      diags.add(file, sf, m, "枚举成员初始化仅支持字符串、数字字面量或已声明的枚举成员");
+      diags.add(
+        file,
+        sf,
+        m,
+        "枚举成员初始化仅支持字符串、数字字面量或已声明的枚举成员",
+      );
       return null;
     }
     if (typeof value === "number") next = value + 1;

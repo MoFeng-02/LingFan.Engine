@@ -32,9 +32,7 @@ function deepEqualJson(a: unknown, b: unknown): boolean {
   if (!isPlainObject(a) || !isPlainObject(b)) return false;
   const aKeys = Object.keys(a);
   if (aKeys.length !== Object.keys(b).length) return false;
-  return aKeys.every(
-    (key) => key in b && deepEqualJson(a[key], b[key]),
-  );
+  return aKeys.every((key) => key in b && deepEqualJson(a[key], b[key]));
 }
 
 /**

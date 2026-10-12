@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, inject, ref, type CSSProperties } from "vue";
-import { ELEMENT_CONTAINER_TYPES, type ResourcePort, type Story } from "@lingfan/engine";
+import {
+  ELEMENT_CONTAINER_TYPES,
+  type ResourcePort,
+  type Story,
+} from "@lingfan/engine";
 import {
   createElementDraft,
   describeElement,
@@ -175,9 +179,21 @@ function snapCandidatesOf(index: number): SnapCandidate {
     // 参考线永远命中且无参考价值（用户只看到一条贴边的线）。
     // 阈值必须**两个方向同时**判：若写成 `||`（单方向 90% 即跳），
     //   会把「宽 945 / 画布 1050」这类正常元素也误杀 ⇒ 参考线永不出现。
-    if (r.width >= canvasBox.width * 0.92 && r.height >= canvasBox.height * 0.92) return;
-    v.push(r.left - origin.left, r.left - origin.left + r.width / 2, r.left - origin.left + r.width);
-    h.push(r.top - origin.top, r.top - origin.top + r.height / 2, r.top - origin.top + r.height);
+    if (
+      r.width >= canvasBox.width * 0.92 &&
+      r.height >= canvasBox.height * 0.92
+    )
+      return;
+    v.push(
+      r.left - origin.left,
+      r.left - origin.left + r.width / 2,
+      r.left - origin.left + r.width,
+    );
+    h.push(
+      r.top - origin.top,
+      r.top - origin.top + r.height / 2,
+      r.top - origin.top + r.height,
+    );
   });
   return { v, h };
 }
@@ -191,7 +207,12 @@ function snapCandidatesOf(index: number): SnapCandidate {
 function updateGuides(index: number): void {
   const canvas = canvasEl.value;
   const node = canvas?.querySelector<HTMLElement>(`[data-idx="${index}"]`);
-  if (canvas === null || canvas === undefined || node === null || node === undefined) {
+  if (
+    canvas === null ||
+    canvas === undefined ||
+    node === null ||
+    node === undefined
+  ) {
     guides.value = { vx: null, hy: null };
     return;
   }
@@ -244,7 +265,11 @@ function onPointerDown(index: number, event: PointerEvent): void {
     probe.clientX = upEvent.clientX;
     probe.clientY = upEvent.clientY;
     // 释放前查引用：拖拽中组件可能已被卸载（切工程/换标签）⇒ 空引用会抛。
-    if (handle !== null && handle.isConnected && handle.hasPointerCapture?.(upEvent.pointerId)) {
+    if (
+      handle !== null &&
+      handle.isConnected &&
+      handle.hasPointerCapture?.(upEvent.pointerId)
+    ) {
       handle.releasePointerCapture(upEvent.pointerId);
     }
     const dx = upEvent.clientX - startX;
@@ -398,12 +423,22 @@ function onDrop(event: DragEvent): void {
           :style="blockStyle(element, index)"
           @pointerdown.prevent="onPointerDown(index, $event)"
         >
-          <span class="tag">{{ elementLabel(String(element.type ?? "")) }}</span>
+          <span class="tag">{{
+            elementLabel(String(element.type ?? ""))
+          }}</span>
           <span v-if="element.id" class="id">#{{ element.id }}</span>
         </div>
         <!-- 对齐参考线（步4）：拖拽中显示，pointer-events:none 不吃点击 -->
-        <div v-if="guides.vx !== null" class="guide guide-v" :style="{ left: `${guides.vx}px` }"></div>
-        <div v-if="guides.hy !== null" class="guide guide-h" :style="{ top: `${guides.hy}px` }"></div>
+        <div
+          v-if="guides.vx !== null"
+          class="guide guide-v"
+          :style="{ left: `${guides.vx}px` }"
+        ></div>
+        <div
+          v-if="guides.hy !== null"
+          class="guide guide-h"
+          :style="{ top: `${guides.hy}px` }"
+        ></div>
         <EmptyState
           v-if="elements.length === 0"
           class="stage-empty"

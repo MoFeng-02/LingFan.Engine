@@ -21,7 +21,8 @@ export function translate(ctx: OpContext, original: string): string {
  * （与 menu 挂接同语义：下次 Translate 生效），再次进列重新装载时生效。递归 children。
  * 无 `text` 的元素原样返回（引用不变，不触发无谓的 ValueChanged 噪声之外的对象复制）。
  */
-export function translateElements(ctx: OpContext, 
+export function translateElements(
+  ctx: OpContext,
   instances: readonly ElementInstance[],
 ): ElementInstance[] {
   return instances.map((instance) => {

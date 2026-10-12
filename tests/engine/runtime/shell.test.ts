@@ -88,7 +88,10 @@ describe("resolveSavesConfig（存档壳配置：内建默认 × 工程覆盖）
   it("shell.saves 逐键覆盖（含嵌套 thumbnail）", () => {
     const config = resolveSavesConfig({
       shell: {
-        saves: { slots: 12, thumbnail: { width: 480, quality: 0.9, showText: false } },
+        saves: {
+          slots: 12,
+          thumbnail: { width: 480, quality: 0.9, showText: false },
+        },
       },
     });
     expect(config.slots).toBe(12);
@@ -159,8 +162,14 @@ describe("resolveOrientationMode（优先级链）", () => {
   it("拟态场景：作者定横屏作品，玩家未设置 → 横屏；玩家改竖屏 → 竖屏；清除偏好 → 回到横屏", () => {
     const manifest = { shell: { orientation: "landscape" as const } };
     const manifestDefault = manifestOrientation(manifest);
-    expect(resolveOrientationMode(undefined, manifestDefault)).toBe("landscape");
-    expect(resolveOrientationMode("portrait", manifestDefault)).toBe("portrait");
-    expect(resolveOrientationMode(undefined, manifestDefault)).toBe("landscape");
+    expect(resolveOrientationMode(undefined, manifestDefault)).toBe(
+      "landscape",
+    );
+    expect(resolveOrientationMode("portrait", manifestDefault)).toBe(
+      "portrait",
+    );
+    expect(resolveOrientationMode(undefined, manifestDefault)).toBe(
+      "landscape",
+    );
   });
 });

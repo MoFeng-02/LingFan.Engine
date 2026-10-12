@@ -5,7 +5,7 @@
  * builder 产出未知 op 名（红）——词汇层与引擎 op 面零漂移的机器保障。
  * 形状抽测 + builder 旅程锁「产物真的是合法 Story 数据」。
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   generateText,
@@ -14,8 +14,16 @@ import {
   type StoryCommand,
 } from "@lingfan/engine";
 import { OP_SCHEMAS } from "../../packages/editor/src/schema/opSchemas";
+import { OP_SCHEMA_MAP } from "../../packages/editor/src/schema/opSchemas/map";
 import * as script from "../../packages/editor/src/script";
-import { SCRIPT_COVERAGE } from "../../packages/editor/src/script";
+import {
+  SCRIPT_COVERAGE,
+  VOCABULARY_OPS,
+} from "../../packages/editor/src/script";
+import {
+  renderVocabulary,
+  selectWordSources,
+} from "../../packages/editor/src/script/vocabulary-gen";
 
 /** $ 前缀 = 辅助词（不直接产出独立 op），互锁比较时跳过 */
 const directOps = new Set(
@@ -29,30 +37,39 @@ describe("词汇层全集互锁（builder ↔ op 双射）", () => {
   });
 
   it("每个登记项都有真实的 builder 函数（防登记与导出漂移）", () => {
+    // $ 辅助词同样核对——补充表登记的也是真实导出，不允许幽灵条目
     for (const [builderName, op] of Object.entries(SCRIPT_COVERAGE)) {
-      if (op.startsWith("$")) continue;
       const fn = (script as unknown as Record<string, unknown>)[builderName];
-      expect(typeof fn, `builder 缺失：${builderName} (${op})`).toBe("function");
+      expect(typeof fn, `builder 缺失：${builderName} (${op})`).toBe(
+        "function",
+      );
     }
   });
 
-  it("覆盖登记与源文件导出一致（SCRIPT_COVERAGE 不是孤岛清单）", () => {
-    const indexSource = readFileSync(
-      new URL("../../packages/editor/src/script/index.ts", import.meta.url),
+  it("op 注册表快照与 OP_SCHEMAS 键集恒等（生成物携带面不漂移）", () => {
+    expect(new Set(VOCABULARY_OPS)).toEqual(new Set(Object.keys(OP_SCHEMAS)));
+    // 长度相等 = 快照无重复项（Set 相等无法区分去重后的收敛）
+    expect(VOCABULARY_OPS.length).toBe(Object.keys(OP_SCHEMAS).length);
+  });
+});
+
+describe("词汇层声明 · 生成物新鲜度（与重建 CLI 同一纯函数现场比对）", () => {
+  it("vocabulary.g.ts 与「words 源 × OP_SCHEMA_MAP」重建产物逐字节一致", () => {
+    // 改注册表/词条后未跑 generate-vocabulary ⇒ 此处红；重建后 ⇒ 绿
+    const wordsDir = new URL(
+      "../../packages/editor/src/script/words/",
+      import.meta.url,
+    );
+    const sources = selectWordSources(readdirSync(wordsDir)).map((file) => ({
+      file,
+      text: readFileSync(new URL(file, wordsDir), "utf8"),
+    }));
+    const rendered = renderVocabulary(Object.keys(OP_SCHEMA_MAP), sources);
+    const committed = readFileSync(
+      new URL("../../packages/editor/src/script/vocabulary.g.ts", import.meta.url),
       "utf8",
     );
-    // 抓全部 `export { … }` 块的内容再按逗号拆（多行块首项没有前导逗号——
-    // 单一 `,(\w+)` 口径会漏块首项）
-    const exported = new Set<string>();
-    for (const m of indexSource.matchAll(/export \{([^}]*)\}/g)) {
-      for (const name of m[1]!.split(",")) {
-        const trimmed = name.trim();
-        if (trimmed !== "") exported.add(trimmed.replace(/^type /, ""));
-      }
-    }
-    for (const builderName of Object.keys(SCRIPT_COVERAGE)) {
-      expect(exported.has(builderName), `导出缺失：${builderName}`).toBe(true);
-    }
+    expect(rendered).toBe(committed);
   });
 });
 
@@ -109,7 +126,11 @@ describe("词汇层 · 形状抽测（产物 = 合法 op 数据）", () => {
       bgOpacity: 0.4,
     });
     expect(bg).toMatchObject({ type: "background", source: "Images/town.jpg" });
-    expect(title).toMatchObject({ type: "text", text: "小镇入口", halign: "center" });
+    expect(title).toMatchObject({
+      type: "text",
+      text: "小镇入口",
+      halign: "center",
+    });
   });
 
   it("extOp：扩展 op 通用构造（负载展开在前，op 恒由首参决定）", () => {
@@ -219,7 +240,13 @@ describe("词汇层 · 全 builder 可解析守卫（形状漂移零容忍）", 
     ["continueLoop", script.continueLoop()],
     ["assert", script.assert("{x >= 0}", "校验")],
     // 本行用合成守卫名，与工程注册表（Stories.src/gen）无关——故走 cell 句柄形态
-    ["guard", script.guard(script.cell("g", () => true), { args: { a: 1 } })],
+    [
+      "guard",
+      script.guard(
+        script.cell("g", () => true),
+        { args: { a: 1 } },
+      ),
+    ],
     ["set", script.set("k", 1)],
     ["define", script.define("k", 1)],
     ["letVar", script.letVar("k", 1)],

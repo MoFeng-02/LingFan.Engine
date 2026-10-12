@@ -39,7 +39,9 @@ export interface CompiledStories {
  * 求值出的 JSON 可序列化值。由编排层求值段（const-eval-pass）填充；缺省 =
  * 没有被求值的文件，编译器行为与未接入求值时逐字一致。
  */
-export type CompilerConstValues = Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+export type CompilerConstValues = Readonly<
+  Record<string, Readonly<Record<string, unknown>>>
+>;
 
 export interface StoriesCompiler {
   compileStories(input: {

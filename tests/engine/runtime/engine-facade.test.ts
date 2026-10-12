@@ -87,9 +87,9 @@ describe("StoryEngine 门面：源级互锁", () => {
     expect(
       execImplementationBodies("  execSay(this.ctx, frame, cmd);\n"),
     ).toEqual([]);
-    expect(execImplementationBodies("  const spec = makeAnimation(…);\n")).toEqual(
-      [],
-    );
+    expect(
+      execImplementationBodies("  const spec = makeAnimation(…);\n"),
+    ).toEqual([]);
   });
 
   it("门面内 `exec` 实现体计数为 0（处理器只能住在处理器域）", () => {

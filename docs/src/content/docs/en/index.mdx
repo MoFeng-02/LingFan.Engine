@@ -18,31 +18,46 @@ hero:
       variant: secondary
 ---
 
-import { Card, CardGrid, LinkCard, Steps } from '@astrojs/starlight/components';
+import { Card, CardGrid, LinkCard, Steps } from "@astrojs/starlight/components";
 
 LingFan Engine treats the story and the picture as two separate problems. A story is a sequence of instructions, and executing it is the engine's job; the picture is DOM, and how it renders is up to the host you write. The core imports no UI framework, no Tauri API and no Node built-in — a lint rule enforces that boundary, it is not a verbal promise.
 
 ## Capabilities
 
 <CardGrid>
-	<Card title="Stories are instructions" icon="open-book">
-		A story is a set of columns: `label` holds flow, `scene` holds what sits on stage, and inside them you line up instructions like `say`, `menu` and `if`. The text form is a projection of JSON v1, and one project may mix both file types.
-	</Card>
-	<Card title="65 built-in ops" icon="list-format">
-		From `say` and `menu` to `save`, `bgm`, `video` and `minigame`, catalogued across nine domains in the reference. A misspelled op name is not skipped silently — the engine stops on `unknown-op` and tells you which instruction tripped it.
-	</Card>
-	<Card title="36 stage element types" icon="puzzle">
-		`text`, `image`, `portrait`, `panel`, `grid`, `scrollviewer`, `slider` and more, and elements nest. Layer z-index is resolved from `project.json` and written into the DOM rather than hard-coded in a stylesheet.
-	</Card>
-	<Card title="Roll back to any step" icon="clock">
-		The engine keeps a history cursor, and `back()` / `forward()` / `rollbackTo()` move it directly. Saving is more instructions (`save` / `load` / `auto_save`), and slot count plus thumbnail settings live in the project manifest.
-	</Card>
-	<Card title="Translation is not an add-on" icon="translate">
-		Translation overrides go in `Resources/Lang/{lang}/`, and `setLanguage()` switches between them. A string with no translation falls through to the original text instead of rendering blank.
-	</Card>
-	<Card title="Swap the framework, keep the core" icon="code-branch">
-		The core package depends on neither Vue, React nor Tauri. The template's host is plain DOM with no framework at all — moving to Vue or React touches only `src/main.ts` and `index.html`.
-	</Card>
+  <Card title="Stories are instructions" icon="open-book">
+    A story is a set of columns: `label` holds flow, `scene` holds what sits on
+    stage, and inside them you line up instructions like `say`, `menu` and `if`.
+    The text form is a projection of JSON v1, and one project may mix both file
+    types.
+  </Card>
+  <Card title="65 built-in ops" icon="list-format">
+    From `say` and `menu` to `save`, `bgm`, `video` and `minigame`, catalogued
+    across nine domains in the reference. A misspelled op name is not skipped
+    silently — the engine stops on `unknown-op` and tells you which instruction
+    tripped it.
+  </Card>
+  <Card title="36 stage element types" icon="puzzle">
+    `text`, `image`, `portrait`, `panel`, `grid`, `scrollviewer`, `slider` and
+    more, and elements nest. Layer z-index is resolved from `project.json` and
+    written into the DOM rather than hard-coded in a stylesheet.
+  </Card>
+  <Card title="Roll back to any step" icon="clock">
+    The engine keeps a history cursor, and `back()` / `forward()` /
+    `rollbackTo()` move it directly. Saving is more instructions (`save` /
+    `load` / `auto_save`), and slot count plus thumbnail settings live in the
+    project manifest.
+  </Card>
+  <Card title="Translation is not an add-on" icon="translate">
+    Translation overrides go in `Resources/Lang/{lang}/`, and `setLanguage()`
+    switches between them. A string with no translation falls through to the
+    original text instead of rendering blank.
+  </Card>
+  <Card title="Swap the framework, keep the core" icon="code-branch">
+    The core package depends on neither Vue, React nor Tauri. The template's
+    host is plain DOM with no framework at all — moving to Vue or React touches
+    only `src/main.ts` and `index.html`.
+  </Card>
 </CardGrid>
 
 ## Running in three steps
@@ -70,7 +85,7 @@ To build your own project from scratch, see [Create from a Template](/en/from-te
 ## Source
 
 <LinkCard
-	title="MoFeng-02/LingFan.Engine"
-	description="The engine core, preset adapters, reference host, scaffold and this documentation site all live in one repository. Questions and suggestions go through Issues."
-	href="https://github.com/MoFeng-02/LingFan.Engine"
+  title="MoFeng-02/LingFan.Engine"
+  description="The engine core, preset adapters, reference host, scaffold and this documentation site all live in one repository. Questions and suggestions go through Issues."
+  href="https://github.com/MoFeng-02/LingFan.Engine"
 />

@@ -3,18 +3,125 @@
  * 作用域：块/列级 Scope 树 + 全局（SSOT Map）；块/列级不进存档。
  * 框架无关：只写状态与事件，渲染归 UI 层。
  */
-import type { AnimationSpec, CharacterDef, ColumnCoordinate, ElementInstance, EngineOptions, EventListener, GuardFn, I18nPort, MinigameResult, OpExtension, OutboundPayload, SaveDataV1, SaveMode, SavePort, StateListener, Story, StoryColumn, StoryCommand, SaveOptions } from "../contracts";
-import { gameScopedKey, type GameStateWriter, type InteractionResult } from "../contracts";
+import type {
+  AnimationSpec,
+  CharacterDef,
+  ColumnCoordinate,
+  ElementInstance,
+  EngineOptions,
+  EventListener,
+  GuardFn,
+  I18nPort,
+  MinigameResult,
+  OpExtension,
+  OutboundPayload,
+  SaveDataV1,
+  SaveMode,
+  SavePort,
+  StateListener,
+  Story,
+  StoryColumn,
+  StoryCommand,
+  SaveOptions,
+} from "../contracts";
+import {
+  gameScopedKey,
+  type ExtensionOpResult,
+  type GameStateWriter,
+  type InteractionResult,
+} from "../contracts";
 import { buildOpRegistry } from "./opRegistry";
 import type { RegisteredOp } from "./opRegistry";
 import { runDispatch } from "./dispatch";
-import { abortInteraction, abortMinigame, resolveInteraction, resolveMinigame, runElementOps } from "./ops";
-import { emitChange, emitErrorEvent, evalValue, publishEvent, readVariable, rejectBadInstanceZ, resolveName, setGlobal, setInstanceZ, setSilentKey, setSystem, writeExternal } from "./state";
-import { autoSaveAtCheckpoint, back, checkpointCoord, columnFrame, columnFrameAt, commitCheckpoint, flushPendingCheckpoint, forward, historyCursor, historyLength, historyView, isCurrentColumnReplayable, lastReplayableCursor, restore, rollbackTo, takeSnapshot } from "./history";
-import { exportSave, importSave, resolveSaveExtensions, restoreSaveExtensions, tryMigrateSave } from "./save";
+import {
+  abortExtensionOp,
+  abortInteraction,
+  abortMinigame,
+  resolveExtensionOp,
+  resolveInteraction,
+  resolveMinigame,
+  runElementOps,
+} from "./ops";
+import {
+  emitChange,
+  emitErrorEvent,
+  evalValue,
+  publishEvent,
+  readVariable,
+  rejectBadInstanceZ,
+  resolveName,
+  setGlobal,
+  setInstanceZ,
+  setSilentKey,
+  setSystem,
+  writeExternal,
+} from "./state";
+import {
+  autoSaveAtCheckpoint,
+  back,
+  checkpointCoord,
+  columnFrame,
+  columnFrameAt,
+  commitCheckpoint,
+  flushPendingCheckpoint,
+  forward,
+  historyCursor,
+  historyLength,
+  historyView,
+  isCurrentColumnReplayable,
+  lastReplayableCursor,
+  restore,
+  rollbackTo,
+  takeSnapshot,
+} from "./history";
+import {
+  exportSave,
+  importSave,
+  resolveSaveExtensions,
+  restoreSaveExtensions,
+  tryMigrateSave,
+} from "./save";
 import { type ExprValue } from "./expr";
 import { translate, translateElements } from "./i18n";
-import { abortExternalTakeovers, advance, animationFinished, animations, beginLoopIteration, choose, clearTimer, columnById, dispose, draw, elements, enterColumn, evalCond, findElements, getCharacter, getCharacters, input, interpolate, load, mapElements, navigate, nearestLoopIndex, onEvent, onStateChanged, pushIterateLoop, reloadStory, reportMediaPosition, save, setLanguage, shakeFinished, start, transitionFinished, videoFinished, type Checkpoint, type Frame, type LoopState, type OpContext } from "./internal";
+import {
+  abortExternalTakeovers,
+  advance,
+  animationFinished,
+  animations,
+  beginLoopIteration,
+  choose,
+  clearTimer,
+  columnById,
+  dispose,
+  draw,
+  elements,
+  enterColumn,
+  evalCond,
+  findElements,
+  getCharacter,
+  getCharacters,
+  input,
+  interpolate,
+  load,
+  mapElements,
+  navigate,
+  nearestLoopIndex,
+  onEvent,
+  onStateChanged,
+  pushIterateLoop,
+  reloadStory,
+  reportMediaPosition,
+  save,
+  setLanguage,
+  shakeFinished,
+  start,
+  transitionFinished,
+  videoFinished,
+  type Checkpoint,
+  type Frame,
+  type LoopState,
+  type OpContext,
+} from "./internal";
 import type { NameResolver } from "./resolver";
 
 /**
@@ -111,6 +218,17 @@ export class StoryEngine {
   } | null = null;
   /** 当前玩法系统挂载的中断信号源（回溯/读档/导航/销毁时 abort） */
   private interactionController: AbortController | null = null;
+  /** 扩展 op 等待挂载序号（与 interactionSeq 同构：单调、不进快照） */
+  private extensionWaitSeq = 0;
+  /** 挂起的扩展 op 等待：op 标识 + 扩展 id + 分流目标（resolveExtensionOp 消费；中断即清除） */
+  private pendingExtensionOp: {
+    op: string;
+    extensionId: string;
+    onSuccess?: string;
+    onFail?: string;
+  } | null = null;
+  /** 当前扩展挂载的中断信号源（回溯/读档/导航/销毁时 abort） */
+  private extensionController: AbortController | null = null;
 
   /** 存档编排端口与模式（组合根注入；缺省 = 存档类 op/命令面 fail-closed） */
   private savePort: SavePort | undefined;
@@ -169,6 +287,7 @@ export class StoryEngine {
       this.shakeSeq,
       this.minigameSeq,
       this.interactionSeq,
+      this.extensionWaitSeq,
       // 实例 z 校验与落账
       this.rejectBadInstanceZ,
       this.setInstanceZ,
@@ -199,6 +318,8 @@ export class StoryEngine {
       this.minigameController,
       this.pendingInteraction,
       this.interactionController,
+      this.pendingExtensionOp,
+      this.extensionController,
       this.functions,
       this.usedExtensions,
       // 文本国际化
@@ -225,6 +346,7 @@ export class StoryEngine {
       this.abortExternalTakeovers,
       this.abortInteraction,
       this.abortMinigame,
+      this.abortExtensionOp,
       this.setGlobal,
       this.setSystem,
       this.emitEvent,
@@ -268,9 +390,13 @@ export class StoryEngine {
   // —— 观察接缝 ——
 
   /** ValueChanged 是唯一观察接缝；所有状态写入都经 set 系方法镜像到这里 */
-  onStateChanged(listener: StateListener): () => void { return onStateChanged(this.ctx, listener); }
+  onStateChanged(listener: StateListener): () => void {
+    return onStateChanged(this.ctx, listener);
+  }
   /** 订阅对外事件（进度事件与错误事件同路）。返回退订函数 */
-  onEvent(listener: EventListener): () => void { return onEvent(this.ctx, listener); }
+  onEvent(listener: EventListener): () => void {
+    return onEvent(this.ctx, listener);
+  }
   /** 读 SSOT 里的当前值；从未写过的键返回 undefined。只读，不触发观察事件 */
   get(key: string): unknown {
     return this.state.get(key);
@@ -281,50 +407,101 @@ export class StoryEngine {
   // private 成员是同一转发模式的内部版本，供迁出的自由函数经 ctx 回调本类私有面。
 
   /** story.start：导航至入口列（entry 取自 project.json） */
-  start(): void { start(this.ctx); }
+  start(): void {
+    start(this.ctx);
+  }
   /** 推进到下一个玩家可见状态（宿主「继续」入口）：仅对话等待、可跳过的 wait、可跳过的视频播放有效，其余 fail-closed 发 advance-invalid */
-  advance(): void { advance(this.ctx); }
+  advance(): void {
+    advance(this.ctx);
+  }
   /** 提交选项答案；选项挂起期间有效，optionId 取自 choices 事件载荷 */
-  choose(optionId: string): void { choose(this.ctx, optionId); }
+  choose(optionId: string): void {
+    choose(this.ctx, optionId);
+  }
   /** 直接跳转到指定列，不经过流程控制命令 */
-  navigate(columnId: string): void { navigate(this.ctx, columnId); }
+  navigate(columnId: string): void {
+    navigate(this.ctx, columnId);
+  }
   /** 写档到槽位；返回是否成功。未装配存档端口时固定 false（fail-closed） */
-  save(slot: string, options?: SaveOptions): boolean { return save(this.ctx, slot, options); }
+  save(slot: string, options?: SaveOptions): boolean {
+    return save(this.ctx, slot, options);
+  }
   /** 读档并恢复到档内检查点；返回是否成功 */
-  load(slot: string): boolean { return load(this.ctx, slot); }
+  load(slot: string): boolean {
+    return load(this.ctx, slot);
+  }
   /** 切换语言：异步载入语言包并整表重建译文表；失败时保持原语言并发错误事件 */
-  async setLanguage(lang: string): Promise<void> { return setLanguage(this.ctx, lang); }
+  async setLanguage(lang: string): Promise<void> {
+    return setLanguage(this.ctx, lang);
+  }
   /** 销毁引擎：清掉挂起的等待定时器、中断外部接管；订阅退订由各注册方法返回的注销函数负责 */
-  dispose(): void { dispose(this.ctx); }
+  dispose(): void {
+    dispose(this.ctx);
+  }
   /** 当前舞台上的元素实例列表，供宿主渲染 */
-  elements(): ElementInstance[] { return elements(this.ctx); }
+  elements(): ElementInstance[] {
+    return elements(this.ctx);
+  }
   /** 按 target 筛选舞台元素实例 */
-  findElements(target: string): ElementInstance[] { return findElements(this.ctx, target); }
+  findElements(target: string): ElementInstance[] {
+    return findElements(this.ctx, target);
+  }
   /** 文本插值：替换 `{var}` 占位符；不查译文表（译文替换在命令层调用点，先 translate 后插值） */
-  interpolate(source: string): string { return interpolate(this.ctx, source); }
+  interpolate(source: string): string {
+    return interpolate(this.ctx, source);
+  }
   /** 直接下发一批元素操作（外部玩法系统用，绕开脚本层）；返回是否全部执行成功（false = 已出站 engine.error 且状态已回滚） */
-  runElementOps(ops: readonly Record<string, unknown>[]): boolean { return runElementOps(this.ctx, ops); }
+  runElementOps(ops: readonly Record<string, unknown>[]): boolean {
+    return runElementOps(this.ctx, ops);
+  }
   /** 上报小游戏结果，按挂起等待声明的成功/失败目标继续；没有挂起时返回 false */
-  resolveMinigame(result: MinigameResult): boolean { return resolveMinigame(this.ctx, result); }
+  resolveMinigame(result: MinigameResult): boolean {
+    return resolveMinigame(this.ctx, result);
+  }
   /** 内部转发 → ./internal：清掉挂起等待的定时器 */
-  private clearTimer(): void { clearTimer(this.ctx); }
+  private clearTimer(): void {
+    clearTimer(this.ctx);
+  }
   /** 上报外部玩法系统的接管结果，按挂起接管声明的分流目标继续 */
-  resolveInteraction(system: string, result: InteractionResult): boolean { return resolveInteraction(this.ctx, system, result); }
+  resolveInteraction(system: string, result: InteractionResult): boolean {
+    return resolveInteraction(this.ctx, system, result);
+  }
+  /** 上报扩展 op 的等待结果，按挂起等待声明的分流目标继续；op 不符/无挂起时返回 false */
+  resolveExtensionOp(op: string, result: ExtensionOpResult): boolean {
+    return resolveExtensionOp(this.ctx, op, result);
+  }
   /** 内部转发 → ./internal：中断所有外部接管（导航、销毁、读档、回溯、热重载时用） */
-  private abortExternalTakeovers(): void { abortExternalTakeovers(this.ctx); }
+  private abortExternalTakeovers(): void {
+    abortExternalTakeovers(this.ctx);
+  }
   /** 内部转发 → ./internal：中断当前玩法系统接管并清除挂起状态 */
-  private abortInteraction(): void { abortInteraction(this.ctx); }
+  private abortInteraction(): void {
+    abortInteraction(this.ctx);
+  }
   /** 内部转发 → ./internal：中断当前小游戏挂载并清除挂起状态 */
-  private abortMinigame(): void { abortMinigame(this.ctx); }
+  private abortMinigame(): void {
+    abortMinigame(this.ctx);
+  }
+  /** 内部转发 → ./internal：中断当前扩展 op 等待并清除挂起状态 */
+  private abortExtensionOp(): void {
+    abortExtensionOp(this.ctx);
+  }
   /** 内部转发 → ./state：写全局用户键（系统键见 setSystem） */
-  private setGlobal(key: string, value: unknown): void { setGlobal(this.ctx, key, value); }
+  private setGlobal(key: string, value: unknown): void {
+    setGlobal(this.ctx, key, value);
+  }
   /** 内部转发 → ./state：写系统键（引擎自用，与用户键分开以便存档区分） */
-  private setSystem(key: string, value: unknown): void { setSystem(this.ctx, key, value); }
+  private setSystem(key: string, value: unknown): void {
+    setSystem(this.ctx, key, value);
+  }
   /** 内部转发 → ./state：静默写入（不触发观察事件），返回是否真的写入 */
-  private setSilentKey(key: string, value: unknown): boolean { return setSilentKey(this.ctx, key, value); }
+  private setSilentKey(key: string, value: unknown): boolean {
+    return setSilentKey(this.ctx, key, value);
+  }
   /** 外部玩法系统的状态写入面：作用域化键与「是否触发观察事件」的四种组合 */
   readonly gameState: GameStateWriter = {
-    set: (key: string, value: unknown): boolean => this.writeExternal(key, value, true),
+    set: (key: string, value: unknown): boolean =>
+      this.writeExternal(key, value, true),
     setSilent: (key: string, value: unknown): boolean =>
       this.writeExternal(key, value, false),
     setScoped: (systemId: string, key: string, value: unknown): boolean =>
@@ -338,107 +515,228 @@ export class StoryEngine {
    * 外部写入的公共实现：键校验（保留键 + 命名空间合法性）→ 值契约 → 落 SSOT。
    * `emitChange = false` 走静默通道（帧级高频写）。
    */
-  private writeExternal(key: string, value: unknown, emitChange: boolean, systemId?: string): boolean { return writeExternal(this.ctx, key, value, emitChange, systemId); }
+  private writeExternal(
+    key: string,
+    value: unknown,
+    emitChange: boolean,
+    systemId?: string,
+  ): boolean {
+    return writeExternal(this.ctx, key, value, emitChange, systemId);
+  }
   /** 内部转发 → ./state：实例 z 合法性检查（上层据此拒绝非法命令） */
-  private rejectBadInstanceZ(cmd: StoryCommand): boolean { return rejectBadInstanceZ(this.ctx, cmd); }
+  private rejectBadInstanceZ(cmd: StoryCommand): boolean {
+    return rejectBadInstanceZ(this.ctx, cmd);
+  }
   /** 内部转发 → ./state：写入实例 z 字段 */
-  private setInstanceZ(key: string, raw: unknown): void { setInstanceZ(this.ctx, key, raw); }
+  private setInstanceZ(key: string, raw: unknown): void {
+    setInstanceZ(this.ctx, key, raw);
+  }
   /** 内部转发 → ./state：把一次状态写入镜像成 ValueChanged */
-  private emit(key: string, value: unknown, scope: string): void { emitChange(this.ctx, key, value, scope); }
+  private emit(key: string, value: unknown, scope: string): void {
+    emitChange(this.ctx, key, value, scope);
+  }
   /** 内部转发 → ./state：发布对外事件 */
-  private emitEvent(payload: OutboundPayload): void { publishEvent(this.ctx, payload); }
+  private emitEvent(payload: OutboundPayload): void {
+    publishEvent(this.ctx, payload);
+  }
   /** 内部转发 → ./state：发错误事件（诊断码 + 可读消息） */
-  private fail(code: string, message: string): void { emitErrorEvent(this.ctx, code, message); }
+  private fail(code: string, message: string): void {
+    emitErrorEvent(this.ctx, code, message);
+  }
   /** 内部转发 → ./i18n：翻译单条文本（未载入译文表时原样返回） */
-  private translate(original: string): string { return translate(this.ctx, original); }
+  private translate(original: string): string {
+    return translate(this.ctx, original);
+  }
   /** 内部转发 → ./i18n：批量翻译元素实例上的可见文本 */
-  private translateElements(instances: readonly ElementInstance[]): ElementInstance[] { return translateElements(this.ctx, instances); }
+  private translateElements(
+    instances: readonly ElementInstance[],
+  ): ElementInstance[] {
+    return translateElements(this.ctx, instances);
+  }
   /** 内部转发 → ./internal：按 id 取列定义 */
-  private columnById(id: string): StoryColumn | undefined { return columnById(this.ctx, id); }
+  private columnById(id: string): StoryColumn | undefined {
+    return columnById(this.ctx, id);
+  }
   /** 内部转发 → ./history：最近一个可重放检查点的光标（没有则为 null） */
-  private lastReplayableCursor(): number | null { return lastReplayableCursor(this.ctx); }
+  private lastReplayableCursor(): number | null {
+    return lastReplayableCursor(this.ctx);
+  }
   /** 内部转发 → ./history：当前列是否可重放（回溯与自动存档的判据之一） */
-  private isCurrentColumnReplayable(): boolean { return isCurrentColumnReplayable(this.ctx); }
+  private isCurrentColumnReplayable(): boolean {
+    return isCurrentColumnReplayable(this.ctx);
+  }
   /** 内部转发 → ./internal：进入指定列；返回是否进入成功 */
-  private enterColumn(columnId: string): boolean { return enterColumn(this.ctx, columnId); }
+  private enterColumn(columnId: string): boolean {
+    return enterColumn(this.ctx, columnId);
+  }
   /** 内部转发 → ./dispatch：命令分发主循环（op 分发逻辑的唯一所有者） */
-  private run(): void { runDispatch(this.ctx); }
+  private run(): void {
+    runDispatch(this.ctx);
+  }
   /** 内部转发 → ./history：等待帧对应的检查点坐标 */
-  private checkpointCoord(waitingFrame: Frame): ColumnCoordinate { return checkpointCoord(this.ctx, waitingFrame); }
+  private checkpointCoord(waitingFrame: Frame): ColumnCoordinate {
+    return checkpointCoord(this.ctx, waitingFrame);
+  }
   /** 内部转发 → ./internal：压入一层循环帧；返回循环是否正常建立（空数组视为无迭代仍返回 true） */
-  private pushIterateLoop(frame: Frame, cmd: StoryCommand, items: ExprValue[]): boolean { return pushIterateLoop(this.ctx, frame, cmd, items); }
+  private pushIterateLoop(
+    frame: Frame,
+    cmd: StoryCommand,
+    items: ExprValue[],
+  ): boolean {
+    return pushIterateLoop(this.ctx, frame, cmd, items);
+  }
   /** 内部转发 → ./internal：开始一轮循环迭代；返回是否成功开始（超迭代上限 fail-closed 返回 false） */
-  private beginLoopIteration(frame: Frame, loop: LoopState): boolean { return beginLoopIteration(this.ctx, frame, loop); }
+  private beginLoopIteration(frame: Frame, loop: LoopState): boolean {
+    return beginLoopIteration(this.ctx, frame, loop);
+  }
   /** 内部转发 → ./internal：定位当前最近的循环帧下标（loop 中断用） */
-  private nearestLoopIndex(): number { return nearestLoopIndex(this.ctx); }
+  private nearestLoopIndex(): number {
+    return nearestLoopIndex(this.ctx);
+  }
   /** 内部转发 → ./internal：条件表达式求值；null = 求值失败（已发诊断） */
-  private evalCond(src: unknown): boolean | null { return evalCond(this.ctx, src); }
+  private evalCond(src: unknown): boolean | null {
+    return evalCond(this.ctx, src);
+  }
   /** 查角色定义（character op 注册；say 的 speaker 按它套样式） */
-  getCharacter(key: string): CharacterDef | undefined { return getCharacter(this.ctx, key); }
+  getCharacter(key: string): CharacterDef | undefined {
+    return getCharacter(this.ctx, key);
+  }
   /** 全部已注册的角色定义 */
-  getCharacters(): CharacterDef[] { return getCharacters(this.ctx); }
+  getCharacters(): CharacterDef[] {
+    return getCharacters(this.ctx);
+  }
   /** 内部转发 → ./internal：整体改写舞台的元素实例列表 */
-  private mapElements(mapper: (el: ElementInstance) => ElementInstance): ElementInstance[] { return mapElements(this.ctx, mapper); }
+  private mapElements(
+    mapper: (el: ElementInstance) => ElementInstance,
+  ): ElementInstance[] {
+    return mapElements(this.ctx, mapper);
+  }
   /** 当前待播的元素动画清单（宿主按 seq 驱动并回报 animationFinished） */
-  animations(): AnimationSpec[] { return animations(this.ctx); }
+  animations(): AnimationSpec[] {
+    return animations(this.ctx);
+  }
   /** 宿主回报：序号为 seq 的动画已播完 */
-  animationFinished(seq: number): void { animationFinished(this.ctx, seq); }
+  animationFinished(seq: number): void {
+    animationFinished(this.ctx, seq);
+  }
   /** 宿主回报：转场动画已播完 */
-  transitionFinished(): void { transitionFinished(this.ctx); }
+  transitionFinished(): void {
+    transitionFinished(this.ctx);
+  }
   /** 宿主回报：震屏已结束 */
-  shakeFinished(): void { shakeFinished(this.ctx); }
+  shakeFinished(): void {
+    shakeFinished(this.ctx);
+  }
   /** 宿主回报：视频播放结束 */
-  videoFinished(): void { videoFinished(this.ctx); }
+  videoFinished(): void {
+    videoFinished(this.ctx);
+  }
   /** 宿主回报：当前媒体已播到第 seconds 秒（存档定位与等待媒体命令的判据） */
-  reportMediaPosition(seconds: number): void { reportMediaPosition(this.ctx, seconds); }
+  reportMediaPosition(seconds: number): void {
+    reportMediaPosition(this.ctx, seconds);
+  }
   /** 提交 input 命令等待的文本；当前没有 input 等待时 fail-closed（发 input-invalid，不写入） */
-  input(value: string): void { input(this.ctx, value); }
+  input(value: string): void {
+    input(this.ctx, value);
+  }
   /** 内部转发 → ./internal：当前列的执行帧 */
-  private columnFrame(): Frame | undefined { return columnFrame(this.ctx); }
+  private columnFrame(): Frame | undefined {
+    return columnFrame(this.ctx);
+  }
   /** 内部转发 → ./internal：按坐标取执行帧（回溯重建用） */
-  private columnFrameAt(coord: ColumnCoordinate): Frame { return columnFrameAt(this.ctx, coord); }
+  private columnFrameAt(coord: ColumnCoordinate): Frame {
+    return columnFrameAt(this.ctx, coord);
+  }
   /** 导出当前进度为存档数据（不落盘，写到哪由宿主决定）；不在等待点、菜单场景缺少回退坐标、载荷不可序列化时返回 null 并发诊断 */
-  exportSave(): SaveDataV1 | null { return exportSave(this.ctx); }
+  exportSave(): SaveDataV1 | null {
+    return exportSave(this.ctx);
+  }
   /** 从存档数据恢复进度；旧版本先走迁移钩子，迁移不了返回 false */
-  importSave(data: SaveDataV1): boolean { return importSave(this.ctx, data); }
+  importSave(data: SaveDataV1): boolean {
+    return importSave(this.ctx, data);
+  }
   /** 内部转发 → ./save：旧版本存档迁移；未注入迁移钩子时拒绝 */
-  private tryMigrateSave(data: SaveDataV1): SaveDataV1 | null { return tryMigrateSave(this.ctx, data); }
+  private tryMigrateSave(data: SaveDataV1): SaveDataV1 | null {
+    return tryMigrateSave(this.ctx, data);
+  }
   /** 内部转发 → ./save：校对本档所需扩展是否齐备；无标记时原样返回状态，标记非法/扩展缺失/版本迁移失败返回 null（已发 engine.error） */
-  private resolveSaveExtensions(data: SaveDataV1): [string, unknown][] | null { return resolveSaveExtensions(this.ctx, data); }
+  private resolveSaveExtensions(data: SaveDataV1): [string, unknown][] | null {
+    return resolveSaveExtensions(this.ctx, data);
+  }
   /** 内部转发 → ./save：按档内标记恢复扩展状态 */
-  private restoreSaveExtensions(marks: SaveDataV1["extensions"]): boolean { return restoreSaveExtensions(this.ctx, marks); }
+  private restoreSaveExtensions(marks: SaveDataV1["extensions"]): boolean {
+    return restoreSaveExtensions(this.ctx, marks);
+  }
   /** 内部转发 → ./history：按坐标拍一份检查点快照 */
-  private takeSnapshot(coord: ColumnCoordinate): Checkpoint { return takeSnapshot(this.ctx, coord); }
+  private takeSnapshot(coord: ColumnCoordinate): Checkpoint {
+    return takeSnapshot(this.ctx, coord);
+  }
   /** 内部转发 → ./history：从检查点恢复状态 */
-  private restore(cp: Checkpoint): void { restore(this.ctx, cp); }
+  private restore(cp: Checkpoint): void {
+    restore(this.ctx, cp);
+  }
   /** 内部转发 → ./history：把检查点归档进历史（未回溯且超出上限时从最旧端丢弃） */
-  private commitCheckpoint(cp: Checkpoint): void { commitCheckpoint(this.ctx, cp); }
+  private commitCheckpoint(cp: Checkpoint): void {
+    commitCheckpoint(this.ctx, cp);
+  }
   /** 内部转发 → ./history：检查点处的自动存档 */
-  private autoSaveAtCheckpoint(): void { autoSaveAtCheckpoint(this.ctx); }
+  private autoSaveAtCheckpoint(): void {
+    autoSaveAtCheckpoint(this.ctx);
+  }
   /** 内部转发 → ./history：提交挂起的检查点（等玩家看过的画面解除等待后才入档） */
-  private flushPendingCheckpoint(): void { flushPendingCheckpoint(this.ctx); }
+  private flushPendingCheckpoint(): void {
+    flushPendingCheckpoint(this.ctx);
+  }
   /** 回溯到历史检查点：给下标表示第几个，给坐标表示取该坐标之前最近的检查点（非精确定位；找不到即报错） */
-  rollbackTo(target: number | ColumnCoordinate): void { rollbackTo(this.ctx, target); }
+  rollbackTo(target: number | ColumnCoordinate): void {
+    rollbackTo(this.ctx, target);
+  }
   /** 已归档的检查点数量 */
-  historyLength(): number { return historyLength(this.ctx); }
+  historyLength(): number {
+    return historyLength(this.ctx);
+  }
   /** 当前光标：最后归档的检查点下标（回溯后会小于 historyLength - 1） */
-  historyCursor(): number { return historyCursor(this.ctx); }
+  historyCursor(): number {
+    return historyCursor(this.ctx);
+  }
   /** 历史后退一格（回到上一个已归档检查点） */
-  back(): void { back(this.ctx); }
+  back(): void {
+    back(this.ctx);
+  }
   /** 历史前进一格；已到末尾或分岔后前向被截断时 fail-closed 报 no-forward */
-  forward(): void { forward(this.ctx); }
+  forward(): void {
+    forward(this.ctx);
+  }
   /** 热重载：原子替换故事定义，后续推进基于新定义 */
-  reloadStory(story: Story): void { reloadStory(this.ctx, story); }
+  reloadStory(story: Story): void {
+    reloadStory(this.ctx, story);
+  }
   /** 历史浏览视图：逐条给出序号、坐标、说话人与文本（nvl 另带多行） */
-  historyView(): Array<{ index: number; coord: ColumnCoordinate; speaker: string; text: string; nvl: boolean; nvlLines: string[]; }> { return historyView(this.ctx); }
+  historyView(): Array<{
+    index: number;
+    coord: ColumnCoordinate;
+    speaker: string;
+    text: string;
+    nvl: boolean;
+    nvlLines: string[];
+  }> {
+    return historyView(this.ctx);
+  }
   /** 内部转发 → ./internal：取一个确定性随机数 [0,1)（mulberry32，状态进快照，重放序列一致） */
-  private draw(): number { return draw(this.ctx); }
+  private draw(): number {
+    return draw(this.ctx);
+  }
   /** 内部转发 → ./state：表达式求值（Value 口径） */
-  private evalValue(raw: unknown): ExprValue { return evalValue(this.ctx, raw); }
+  private evalValue(raw: unknown): ExprValue {
+    return evalValue(this.ctx, raw);
+  }
   /** 内部转发 → ./state：读取变量（作用域链 → 全局） */
-  private readVariable(key: string): ExprValue { return readVariable(this.ctx, key); }
+  private readVariable(key: string): ExprValue {
+    return readVariable(this.ctx, key);
+  }
   /** 名字解析端口：表达式与插值靠它取值，求值器因此不必接触本类内部 */
   private resolveName: NameResolver = (
     name: string,
-  ): { found: true; value: unknown } | { found: false } => resolveName(this.ctx, name);
+  ): { found: true; value: unknown } | { found: false } =>
+    resolveName(this.ctx, name);
 }

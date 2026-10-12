@@ -39,7 +39,8 @@ function demoCommandModule(): unknown {
           return { ok: true };
         },
         project: {
-          toText: (cmd) => `say_command ${JSON.stringify(String(cmd.text ?? ""))}`,
+          toText: (cmd) =>
+            `say_command ${JSON.stringify(String(cmd.text ?? ""))}`,
           fromText: (text) => {
             const m = /^say_command\s+("((?:[^"\\]|\\.)*)")$/.exec(text);
             if (m === null) return null;
@@ -80,7 +81,10 @@ describe("声明制扩展装载", () => {
   });
 
   it("四链路旅程：声明装载 → json 可用 → dsl 往返 → 状态进存档 → 读档校验", async () => {
-    const extensions = await loadDeclaredExtensions([DEMO_SPECIFIER], demoLoader);
+    const extensions = await loadDeclaredExtensions(
+      [DEMO_SPECIFIER],
+      demoLoader,
+    );
     const story = storyWith([
       { op: "say", text: "一" },
       { op: "say_command", text: "自定义台词" },
@@ -155,7 +159,10 @@ describe("声明制扩展装载", () => {
 
   it("清单声明校验：extensions 非法形态 → 组装拒绝；合法 → Story 透传", () => {
     const files = new Map<string, unknown>([
-      ["Stories/start.json", { formatVersion: 1, id: "start", kind: "flow", commands: [] }],
+      [
+        "Stories/start.json",
+        { formatVersion: 1, id: "start", kind: "flow", commands: [] },
+      ],
     ]);
     const issuesOf = (manifest: unknown): string[] => {
       try {
@@ -166,9 +173,14 @@ describe("声明制扩展装载", () => {
       }
       return [];
     };
-    expect(issuesOf({ formatVersion: 1, id: "p", entry: "start", extensions: "demo" })).toEqual(
-      [expect.stringContaining("extensions 必须为非空字符串数组")],
-    );
+    expect(
+      issuesOf({
+        formatVersion: 1,
+        id: "p",
+        entry: "start",
+        extensions: "demo",
+      }),
+    ).toEqual([expect.stringContaining("extensions 必须为非空字符串数组")]);
     expect(
       issuesOf({ formatVersion: 1, id: "p", entry: "start", extensions: [42] }),
     ).toEqual([expect.stringContaining("extensions 必须为非空字符串数组")]);

@@ -18,15 +18,15 @@ scene stage_demo
 
 按用途分七组：
 
-| 组 | 类型 |
-|---|---|
-| 文本 | `text` `dialog` `narrator` `speaker` |
-| 交互 | `button` `choice` `imagebutton` |
-| 图像 | `image` `background` `portrait` `video` |
+| 组   | 类型                                                                                                                                     |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 文本 | `text` `dialog` `narrator` `speaker`                                                                                                     |
+| 交互 | `button` `choice` `imagebutton`                                                                                                          |
+| 图像 | `image` `background` `portrait` `video`                                                                                                  |
 | 容器 | `panel` `frame` `window` `dialogbox` `choicebox` `infobox` `overlay` `popup` `vbox` `hbox` `grid` `stack` `stackpanel` `canvas` `border` |
-| 滚动 | `scroll` `scrollviewer` `viewport` |
-| 进度 | `bar` `vbar` `progressbar` `slider` `checkbox` |
-| 间隔 | `separator` `spacer` |
+| 滚动 | `scroll` `scrollviewer` `viewport`                                                                                                       |
+| 进度 | `bar` `vbar` `progressbar` `slider` `checkbox`                                                                                           |
+| 间隔 | `separator` `spacer`                                                                                                                     |
 
 只有容器类型能带子元素。给 `text` 写嵌套会报「`.children` 仅容器类型可带（text 不是容器：ELEMENT_CONTAINER_TYPES）」。
 
@@ -150,20 +150,20 @@ disabled  >  nav  >  ops  >  cmd
 
 这 12 个命令改元素表或者触发效果，在任何列都能用：
 
-| 命令 | 做什么 |
-|---|---|
-| `show "Images/box.png"` | 追加一张图，可带 `x` `y` `id` `name` |
-| `hide "hp_label"` | 按 `id`/`name`/资源路径移除 |
-| `background "Images/bg.png"` | 换背景，固定底层序 |
-| `bg_switch "Images/bg2.png"` | 同上，带切换效果 |
-| `zindex "hud" value=20` | 改叠放序 |
-| `style "hud" props={opacity: 0.5}` | 改属性，键必须在属性表内 |
-| `window hide` / `window show` / `window auto` | 对话框显隐 |
-| `animate "hud" property=opacity value=0 duration=0.5` | 单属性动画 |
-| `animate_block "hud" x=100 opacity=1 duration=0.4` | 多属性同时动 |
-| `transition "fade" duration=0.5` | 全屏过渡 |
-| `shake intensity=8 duration=0.3` | 屏幕抖动 |
-| `text_typewriter enabled=true speed=40` | 打字机开关与速度 |
+| 命令                                                  | 做什么                               |
+| ----------------------------------------------------- | ------------------------------------ |
+| `show "Images/box.png"`                               | 追加一张图，可带 `x` `y` `id` `name` |
+| `hide "hp_label"`                                     | 按 `id`/`name`/资源路径移除          |
+| `background "Images/bg.png"`                          | 换背景，固定底层序                   |
+| `bg_switch "Images/bg2.png"`                          | 同上，带切换效果                     |
+| `zindex "hud" value=20`                               | 改叠放序                             |
+| `style "hud" props={opacity: 0.5}`                    | 改属性，键必须在属性表内             |
+| `window hide` / `window show` / `window auto`         | 对话框显隐                           |
+| `animate "hud" property=opacity value=0 duration=0.5` | 单属性动画                           |
+| `animate_block "hud" x=100 opacity=1 duration=0.4`    | 多属性同时动                         |
+| `transition "fade" duration=0.5`                      | 全屏过渡                             |
+| `shake intensity=8 duration=0.3`                      | 屏幕抖动                             |
+| `text_typewriter enabled=true speed=40`               | 打字机开关与速度                     |
 
 `animate` 和 `animate_block` 的核心只记「从哪到哪、多长时间」这一条描述，每帧的中间值由展示层算。播完把终值写回元素属性——所以存档和回溯看到的都是终态，不会存到某个中间帧。
 

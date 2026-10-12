@@ -351,7 +351,11 @@ const connecting = ref<{
 } | null>(null);
 
 /** 落点命中：逻辑坐标落在哪个节点矩形内（不含源节点） */
-function hitNode(x: number, y: number, excludeId: string): GraphNode | undefined {
+function hitNode(
+  x: number,
+  y: number,
+  excludeId: string,
+): GraphNode | undefined {
   return graph.value.nodes.find(
     (node) =>
       node.id !== excludeId &&
@@ -391,7 +395,9 @@ async function endConnect(event: PointerEvent): Promise<void> {
     await dialog.notify({
       title: "无法连分支",
       message: `源列与目标列都必须是「流程列」（scene 列是空间层，${
-        source?.kind === "flow" ? `「${target.id}」是场景列` : `「${current.fromId}」是场景列`
+        source?.kind === "flow"
+          ? `「${target.id}」是场景列`
+          : `「${current.fromId}」是场景列`
       }）。`,
       tone: "error",
     });
@@ -411,7 +417,11 @@ async function endConnect(event: PointerEvent): Promise<void> {
         })
       : undefined;
   if (plan.kind === "menu-option" && optionText === null) return;
-  const applied = api.connectBranch(current.fromId, target.id, optionText ?? undefined);
+  const applied = api.connectBranch(
+    current.fromId,
+    target.id,
+    optionText ?? undefined,
+  );
   if (!applied) {
     await dialog.notify({
       title: "无法连分支",
@@ -447,7 +457,8 @@ export default { name: "StoryNodeGraph" };
   <div class="node-graph">
     <p class="graph-hint">
       拖节点排列 · 拖背景平移 · Ctrl+滚轮缩放；边：蓝=跳转 · 黄=选项 · 绿=导航 ·
-      点击节点选列 · <b>从流程节点右缘圆点拉线到另一节点 = 建分支</b>（点边选中命令）
+      点击节点选列 ·
+      <b>从流程节点右缘圆点拉线到另一节点 = 建分支</b>（点边选中命令）
     </p>
     <div
       ref="scrollEl"
@@ -513,10 +524,26 @@ export default { name: "StoryNodeGraph" };
         </div>
       </div>
       <div class="zoom-controls" @pointerdown.stop>
-        <button class="mini" title="缩小" aria-label="缩小视图" @click="zoomOut">−</button>
+        <button
+          class="mini"
+          title="缩小"
+          aria-label="缩小视图"
+          @click="zoomOut"
+        >
+          −
+        </button>
         <span class="zoom-value">{{ Math.round(zoom * 100) }}%</span>
-        <button class="mini" title="放大" aria-label="放大视图" @click="zoomIn">＋</button>
-        <button class="mini" title="重置缩放" aria-label="重置缩放" @click="zoomReset">⟲</button>
+        <button class="mini" title="放大" aria-label="放大视图" @click="zoomIn">
+          ＋
+        </button>
+        <button
+          class="mini"
+          title="重置缩放"
+          aria-label="重置缩放"
+          @click="zoomReset"
+        >
+          ⟲
+        </button>
       </div>
     </div>
   </div>
@@ -539,8 +566,12 @@ export default { name: "StoryNodeGraph" };
   flex: 1;
   overflow: auto;
   position: relative;
-  background: radial-gradient(circle, color-mix(in srgb, var(--lf-border-subtle) 13%, transparent) 1px, transparent 1px) 0 0 / 22px
-    22px;
+  background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--lf-border-subtle) 13%, transparent) 1px,
+      transparent 1px
+    )
+    0 0 / 22px 22px;
   border-radius: var(--lf-radius-md);
   cursor: grab;
 }

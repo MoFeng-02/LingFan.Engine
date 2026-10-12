@@ -17,7 +17,10 @@ const TOKEN_URL = `http://lfstream.localhost/${"a".repeat(64)}.mp4`;
 const CHUNKED_URL = "http://lfstream.localhost/v2/Video%2Fbig.mp4";
 
 /** 取数实现签名（与 `typeof fetch` 兼容） */
-type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+type FetchLike = (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => Promise<Response>;
 
 /** 供给替身：按调用序返回同一内容（调用参数由用例断言） */
 function fetchStub(impl: () => Promise<Response>) {
@@ -74,7 +77,10 @@ describe("物化行为", () => {
   });
 
   it("超过上限 = 原样返回（大媒体按需流式，不进 Blob）", async () => {
-    const source = createBlobSource({ maxBytes: 1024, fetchImpl: okFetch(4096) });
+    const source = createBlobSource({
+      maxBytes: 1024,
+      fetchImpl: okFetch(4096),
+    });
     expect(await source.materialize(TOKEN_URL)).toBe(TOKEN_URL);
   });
 
@@ -139,7 +145,9 @@ describe("物化行为", () => {
 
 describe("接线与跨边界互锁", () => {
   it("组合根只在「原生 + 加密 + Android」三条件下开启物化（其余平台保持直供，桌面零改动）", () => {
-    expect(mainSource).toContain('useNative && encrypted && host.os === "android"');
+    expect(mainSource).toContain(
+      'useNative && encrypted && host.os === "android"',
+    );
     expect(mainSource).toContain("MEDIA_BLOB_SOURCE_MAX_BYTES");
   });
 

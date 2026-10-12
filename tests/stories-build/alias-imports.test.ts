@@ -14,7 +14,13 @@
  *
  * 边界：管线真 bug 不得在本文件内改 packages/stories-build/src/**，记录 finding 回报。
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -68,8 +74,12 @@ function readStart(root: string, rel = "ch1/start.json"): Command[] {
   return (JSON.parse(text) as { commands: Command[] }).commands;
 }
 
-function funcs(commands: readonly Command[]): Array<{ name: string; body: Command[]; params?: string[] }> {
-  return commands.filter((c) => c.op === "func").map((c) => ({ name: c.name ?? "", body: c.body ?? [], params: c.params }));
+function funcs(
+  commands: readonly Command[],
+): Array<{ name: string; body: Command[]; params?: string[] }> {
+  return commands
+    .filter((c) => c.op === "func")
+    .map((c) => ({ name: c.name ?? "", body: c.body ?? [], params: c.params }));
 }
 
 function calls(commands: readonly Command[]): string[] {
@@ -90,7 +100,8 @@ function allCalls(commands: readonly Command[]): string[] {
     }
     if (value === null || typeof value !== "object") return;
     const record = value as Record<string, unknown>;
-    if (record.op === "call") out.push(typeof record.target === "string" ? record.target : "");
+    if (record.op === "call")
+      out.push(typeof record.target === "string" ? record.target : "");
     for (const nested of Object.values(record)) visit(nested);
   };
   visit(commands);
@@ -140,13 +151,20 @@ export default function start(): void {
 
     const commands = readStart(root);
     // func 名全部是**声明名**，与调用点别名无关。
-    expect(funcs(commands).map((f) => f.name)).toEqual(["noArg", "recur", "withArg"]);
+    expect(funcs(commands).map((f) => f.name)).toEqual([
+      "noArg",
+      "recur",
+      "withArg",
+    ]);
     // call 目标同样是声明名；两个别名 a1/a4 指同一声明 ⇒ 两条 call 都落到 noArg。
     expect(calls(commands)).toEqual(["noArg", "withArg", "noArg", "recur"]);
     // 实参个数与 params 一致（withArg 收了两个字面量实参）。
     const withArg = funcs(commands).find((f) => f.name === "withArg")!;
     expect(withArg.params).toEqual(["tag", "times"]);
-    expect(commands.filter((c) => c.op === "call" && c.target === "withArg")[0]!.args).toEqual(["带参", 3]);
+    expect(
+      commands.filter((c) => c.op === "call" && c.target === "withArg")[0]!
+        .args,
+    ).toEqual(["带参", 3]);
     // 递归：函数体内部的自我调用也必须用声明名；调用点在 if 体内，需下钻。
     const recur = funcs(commands).find((f) => f.name === "recur")!;
     expect(allCalls(recur.body)).toEqual(["recur"]);
@@ -178,11 +196,17 @@ export default function start(): void {
     expect(report.columns).toBe(1);
 
     const commands = readStart(root);
-    expect(funcs(commands).map((f) => f.name).sort()).toEqual(["leaf", "mid"]);
+    expect(
+      funcs(commands)
+        .map((f) => f.name)
+        .sort(),
+    ).toEqual(["leaf", "mid"]);
     expect(calls(commands)).toEqual(["mid"]);
     const mid = funcs(commands).find((f) => f.name === "mid")!;
     expect(calls(mid.body)).toEqual(["leaf"]);
-    expect(firstSay(funcs(commands).find((f) => f.name === "leaf")!.body)).toBe("叶子");
+    expect(firstSay(funcs(commands).find((f) => f.name === "leaf")!.body)).toBe(
+      "叶子",
+    );
   });
 
   it("故意错误：两个不同文件里的同名函数经别名拉进同一列 ⇒ fail-closed，不产该列产物", async () => {
@@ -209,9 +233,13 @@ export default function start(): void {
       "Resources/project.json": MANIFEST,
     });
 
-    await expect(buildStories(root)).rejects.toThrow(/同列存在同名 func `helper`/);
+    await expect(buildStories(root)).rejects.toThrow(
+      /同列存在同名 func `helper`/,
+    );
     // fail-closed：报错即不产该列产物，别留半成品让运行期去踩。
-    expect(existsSync(join(root, "Resources/Stories/ch1/start.json"))).toBe(false);
+    expect(existsSync(join(root, "Resources/Stories/ch1/start.json"))).toBe(
+      false,
+    );
   });
 
   it("边界条件：别名指向不存在的导出 ⇒ 报未导出并列出模块，不静默降级", async () => {
@@ -251,7 +279,10 @@ export default function start(): void {
 
     const report = await buildStories(root);
     expect(report.columns).toBe(1);
-    expect(readStart(root).map((c) => c.text)).toEqual(["中文别名", "命名空间别名"]);
+    expect(readStart(root).map((c) => c.text)).toEqual([
+      "中文别名",
+      "命名空间别名",
+    ]);
   });
 
   it("严格多方位：ct.staticFor / ct.cell 作命令 / ct.option 值位置，与具名形态产物逐字节一致", async () => {
@@ -263,7 +294,10 @@ export default function start(): void {
         "Resources/project.json": MANIFEST,
       });
       await buildStories(root);
-      return readFileSync(join(root, "Resources/Stories/ch1/start.json"), "utf8");
+      return readFileSync(
+        join(root, "Resources/Stories/ch1/start.json"),
+        "utf8",
+      );
     };
 
     // staticFor：命名空间 vs 具名（模板串，不能用 "第"+i 拼接）。
@@ -309,7 +343,9 @@ export default function start(): void {
 `,
     );
     expect(optNs).toBe(optNamed);
-    expect(JSON.parse(optNs).commands[0].options).toEqual([{ text: "去看", target: "start" }]);
+    expect(JSON.parse(optNs).commands[0].options).toEqual([
+      { text: "去看", target: "start" },
+    ]);
   });
 
   it("故意错误：ct.cell 作命令 ⇒ 报「构建期声明词」，不得退化成「实参形态非法」", async () => {
@@ -327,7 +363,9 @@ export default function start(): void {
 
     // 文案是设计意图的一部分：说「实参形态非法」会把作者引向去改实参，
     // 而真正的问题是 cell 只能出现在模块层 const。
-    await expect(buildStories(root)).rejects.toThrow(/cell 是构建期声明词，只能用于模块层 const，不能作为命令/);
+    await expect(buildStories(root)).rejects.toThrow(
+      /cell 是构建期声明词，只能用于模块层 const，不能作为命令/,
+    );
     await expect(buildStories(root)).rejects.not.toThrow(/实参形态非法/);
   });
 
@@ -342,7 +380,9 @@ export default function start(): void {
     expect(keys).toHaveLength(1);
     const importsSrc = sources[keys[0]!]!;
 
-    expect(importsSrc).toContain("纯模块 ${targetRel} 没有 default 导出——跨故事引用请导入故事文件");
+    expect(importsSrc).toContain(
+      "纯模块 ${targetRel} 没有 default 导出——跨故事引用请导入故事文件",
+    );
     expect(importsSrc).toContain("命名空间导入仅支持词汇层 script");
     // 这两条是设计意图（用户选 A 的判定），不是可选措辞：改错位时不得顺手删改。
   });
@@ -375,8 +415,14 @@ export default function start(): void {
     expect(report.columns).toBe(1);
 
     const commands = readStart(root);
-    expect(funcs(commands).map((f) => f.name).sort()).toEqual(["local", "plain"]);
+    expect(
+      funcs(commands)
+        .map((f) => f.name)
+        .sort(),
+    ).toEqual(["local", "plain"]);
     expect(calls(commands).sort()).toEqual(["local", "plain"]);
-    expect(commands.filter((c) => c.op === "say").map((c) => c.text)).toEqual(["命名空间直调"]);
+    expect(commands.filter((c) => c.op === "say").map((c) => c.text)).toEqual([
+      "命名空间直调",
+    ]);
   });
 });

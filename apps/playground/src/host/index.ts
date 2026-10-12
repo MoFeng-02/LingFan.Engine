@@ -26,16 +26,28 @@ export {
   type AppTemplatesOptions,
 } from "./app-templates";
 /** 音视频渲染：端口与渲染器的可变单元格（重启经单元格重建） */
-export { createAppMedia, type AppMedia, type AppMediaOptions } from "./app-media";
+export {
+  createAppMedia,
+  type AppMedia,
+  type AppMediaOptions,
+} from "./app-media";
 /** 舞台元素层：元素表渲染与挂载后渲染监听 */
 export {
   createAppElementLayer,
   type AppElementLayerOptions,
 } from "./app-element-layer";
 /** 事件落点与舞台命令：提示条、叙事事件、舞台点击与选项/输入转发 */
-export { createAppEvents, type AppEvents, type AppEventsOptions } from "./app-events";
+export {
+  createAppEvents,
+  type AppEvents,
+  type AppEventsOptions,
+} from "./app-events";
 /** 历史聚合：快照筛选、NVL 块化与回溯完成 */
-export { createAppHistory, type AppHistory, type AppHistoryOptions } from "./app-history";
+export {
+  createAppHistory,
+  type AppHistory,
+  type AppHistoryOptions,
+} from "./app-history";
 /** 引擎生命周期：构造、订阅接线、整体重建与订阅解除 */
 export {
   createAppEngineLife,
@@ -43,11 +55,23 @@ export {
   type AppEngineLifeOptions,
 } from "./app-engine";
 /** 帧驱动表现与 rAF 帧循环 */
-export { createAppFrame, type AppFrame, type AppFrameOptions } from "./app-frame";
+export {
+  createAppFrame,
+  type AppFrame,
+  type AppFrameOptions,
+} from "./app-frame";
 /** 玩家偏好与键位映射装配 */
-export { createAppPrefs, type AppPrefs, type AppPrefsOptions } from "./app-prefs";
+export {
+  createAppPrefs,
+  type AppPrefs,
+  type AppPrefsOptions,
+} from "./app-prefs";
 /** 槽位面板：存/读共用面板的打开与点选 */
-export { createAppSlots, type AppSlots, type AppSlotsOptions } from "./app-slots";
+export {
+  createAppSlots,
+  type AppSlots,
+  type AppSlotsOptions,
+} from "./app-slots";
 /** 舞台元素层：元素表渲染与动作分流 */
 export {
   createElementLayer,
@@ -107,7 +131,12 @@ export {
   type NarrativeStateOptions,
 } from "./narrative-state";
 /** 提示条：驻留时长与摘除 */
-export { createNotices, type Notice, type NoticeOptions, type Notices } from "./notices";
+export {
+  createNotices,
+  type Notice,
+  type NoticeOptions,
+  type Notices,
+} from "./notices";
 /** 偏好面板：音量、静音、字速、方向、全屏 */
 export {
   createPreferencesPanel,

@@ -1,5 +1,9 @@
 /** flow 族的读向解析。 */
-import { parseValueLiteral, parseDictLiteral, extractDictLiteral } from "../../literals";
+import {
+  parseValueLiteral,
+  parseDictLiteral,
+  extractDictLiteral,
+} from "../../literals";
 import { unquote } from "../../lexer";
 import { StoryCommand } from "../../../../contracts";
 import { StatementContext } from "../state";

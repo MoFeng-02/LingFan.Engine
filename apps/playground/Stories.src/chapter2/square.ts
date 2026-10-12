@@ -3,7 +3,9 @@ import { minigame, reward, say, staticFor } from "../lib/vocabulary";
 import { jump } from "../lib/compile-time";
 
 export default function square(): void {
-  staticFor(3, (i) => [say(`热身第 ${i + 1} 组：甩了甩手腕（构建期 staticFor 生成）。`, "旁白")]);
+  staticFor(3, (i) => [
+    say(`热身第 ${i + 1} 组：甩了甩手腕（构建期 staticFor 生成）。`, "旁白"),
+  ]);
   say("广场上只有风声。");
   minigame("click3", {
     config: { target: 3 },

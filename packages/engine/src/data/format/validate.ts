@@ -23,7 +23,11 @@ import { validateBlocksCommand } from "./validate/blocks";
  * 因此一次调用可以同时收集多条问题。
  * 失败表现：不抛异常。非对象或 op 非法的命令在此提前返回；其余情况由各族函数补齐。
  */
-export function validateCommand(cmd: unknown, at: string, issues: string[]): void {
+export function validateCommand(
+  cmd: unknown,
+  at: string,
+  issues: string[],
+): void {
   if (!isPlainObject(cmd)) {
     issues.push(`${at} 必须为对象`);
     return;

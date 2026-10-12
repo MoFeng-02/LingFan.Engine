@@ -80,7 +80,9 @@ describe("ScriptCommand · 编译期断言（vue-tsc 把关）", () => {
     const bad: CommandOf<"pause"> = { op: "pause", seconds: 1, skipable: true };
     void bad;
     // 本测试用合成守卫名，与工程注册表（Stories.src/gen）无关——故走 cell 句柄形态
-    const guarded: CommandOf<"guard"> = script.guard(script.cell("quest-state", () => true));
+    const guarded: CommandOf<"guard"> = script.guard(
+      script.cell("quest-state", () => true),
+    );
     expect(guarded.op).toBe("guard");
     expect(guarded.fn).toBe("quest-state");
   });
@@ -123,9 +125,12 @@ describe("ScriptCommand · 运行期互锁", () => {
     // 被求值的走 Value（call args / reward / set）；被运输的走 JSON（guard args）——
     // 编辑期 schema 必须与运行期 findJsonValueError（JSON 语义）同口径，不得更严
     // 本测试用合成守卫名，与工程注册表（Stories.src/gen）无关——故走 cell 句柄形态
-    const cmd = script.guard(script.cell("quest-state", () => true), {
-      args: { required: ["sword", "shield"], state: { step: 2, ring: null } },
-    });
+    const cmd = script.guard(
+      script.cell("quest-state", () => true),
+      {
+        args: { required: ["sword", "shield"], state: { step: 2, ring: null } },
+      },
+    );
     expect(cmd).toEqual({
       op: "guard",
       fn: "quest-state",
