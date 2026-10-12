@@ -80,7 +80,9 @@ describe("词汇层 · 形状抽测（产物 = 合法 op 数据）", () => {
   });
 
   it("guard 带 args ⇒ 参数原样入数据（JSON 安全口径由运行期校验）", () => {
-    expect(script.guard("inventory-consistent", { args: { maxSlots: 8 } })).toEqual({
+    // 本测试用合成守卫名，与工程注册表（Stories.src/gen）无关——故走 cell 句柄形态
+    const check = script.cell("inventory-consistent", () => true);
+    expect(script.guard(check, { args: { maxSlots: 8 } })).toEqual({
       op: "guard",
       fn: "inventory-consistent",
       args: { maxSlots: 8 },
@@ -216,7 +218,8 @@ describe("词汇层 · 全 builder 可解析守卫（形状漂移零容忍）", 
     ["breakLoop", script.breakLoop()],
     ["continueLoop", script.continueLoop()],
     ["assert", script.assert("{x >= 0}", "校验")],
-    ["guard", script.guard("g", { args: { a: 1 } })],
+    // 本行用合成守卫名，与工程注册表（Stories.src/gen）无关——故走 cell 句柄形态
+    ["guard", script.guard(script.cell("g", () => true), { args: { a: 1 } })],
     ["set", script.set("k", 1)],
     ["define", script.define("k", 1)],
     ["letVar", script.letVar("k", 1)],

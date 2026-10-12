@@ -231,3 +231,15 @@ export {
  * （set/define/say）与既有出口冲突；作者 `const { say, menu, when } = script` 解构即用。
  */
 export * as script from "./script";
+
+/**
+ * 字符串域类型扩充点：词汇层声明的空注册表接口必须经**包根**再导出一次，
+ * 生成物 `stories.gen.d.ts` 的 `declare module "@lingfan/editor"` 才合得上——
+ * 模块增强只认包根出口面，`export * as script` 是命名空间、不是根出口
+ * （实测：不 re-export 时增强静默落空，注册表恒为空表、收窄失效）。
+ */
+export {
+  type ColumnNameRegistry,
+  type GuardNameRegistry,
+  type InterpolationKeyRegistry,
+} from "./script";

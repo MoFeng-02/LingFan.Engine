@@ -123,8 +123,12 @@ export type { StoryFn } from "./words";
 export {
   cell,
   type CellHandle,
+  type ColumnNameRegistry,
   type GuardNameRegistry,
+  type InterpolationKeyRegistry,
+  type KnownColumnName,
   type KnownGuardName,
+  type KnownInterpolationKey,
 } from "./words";
 
 // —— 叙事 ——

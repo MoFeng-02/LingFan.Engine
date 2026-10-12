@@ -2,7 +2,7 @@ import type { InferStateSchema } from "./state-type";
 
 /**
  * state 唯一数据来源（C12）：stateSchema 数据声明 → TS 类型经 InferStateSchema 推导；
- * 引擎初始 defines 由编排层求值降维生成（scripts/build/state-schema.ts）。
+ * 引擎初始 defines 由编排层求值降维生成（packages/stories-build/src/const-eval/state-schema.ts）。
  * 词函数逃生舱的字符串键（如 tour.open / bag / gear / ticket）不经本 schema。
  */
 export enum Sex {

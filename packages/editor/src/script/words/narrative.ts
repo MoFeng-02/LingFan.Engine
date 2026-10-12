@@ -5,6 +5,58 @@
  * builder 形状漂移（漏字段 / 错字段）编译期报红，不再只靠互锁测试兜底。
  */
 import type { CommandOf } from "../../schema";
+import type { KnownColumnName, KnownInterpolationKey } from "./cells";
+
+// —— `{key}` 插值键的编译期校验（纯类型层，零运行期成本）——
+//
+// 只在**字符串字面量**上生效：模板串、变量、宽 string 全部放行（动态文本没法查，
+// 也不该吓唬作者）；键表来自生成物 `Stories.src/gen/stories.gen.d.ts`。
+// 富文本行内标记必须豁免——`{b}`/`{color=#FFD700}` 这类与插值共用一个花括号语法，
+// 豁免表对齐引擎 `runtime/expr/interpolate.ts` 的行内标记集。
+type TrimText<S extends string> = S extends ` ${infer R}`
+  ? TrimText<R>
+  : S extends `${infer R} `
+    ? TrimText<R>
+    : S;
+
+type InlineTextTag =
+  | "b"
+  | "/b"
+  | "i"
+  | "/i"
+  | "u"
+  | "/u"
+  | "w"
+  | "fast"
+  | "p"
+  | `color=${string}`
+  | "/color"
+  | `font=${string}`
+  | "/font"
+  | `size=${string}`
+  | "/size";
+
+/** `{key:00}` 的 `:格式` 后缀先剥掉再查表 */
+type StripTextFormat<S extends string> = S extends `${infer K}:${string}`
+  ? TrimText<K>
+  : TrimText<S>;
+
+/** 查表失败时把这个键留在参数类型里，报错信息即可读出是哪个键 */
+type BadInterpolationKey<K extends string> = {
+  readonly __插值键未登记: K;
+};
+
+type CheckTextAt<S extends string, Whole extends string> =
+  S extends `${string}{${infer Inner}}${infer Rest}`
+    ? StripTextFormat<Inner> extends InlineTextTag
+      ? CheckTextAt<Rest, Whole>
+      : StripTextFormat<Inner> extends KnownInterpolationKey
+        ? CheckTextAt<Rest, Whole>
+        : BadInterpolationKey<StripTextFormat<Inner>>
+    : Whole;
+
+/** 文本参数类型：字面量按 `{…}` 逐键校验，非字面量原样放行 */
+export type InterpolatedText<S extends string> = S & CheckTextAt<S, S>;
 
 /** say 的可选项（say 负载中除 text / speaker 外的全部字段，均可省略） */
 export type SayOptions = Omit<CommandOf<"say">, "op" | "text" | "speaker">;
@@ -20,6 +72,7 @@ export type SayOptions = Omit<CommandOf<"say">, "op" | "text" | "speaker">;
  *   `template` 指定本句对话框模板（优先于角色定义的 screen）。
  *
  * @param text 台词；可含 `{var}` 插值，在显示时求值。必填非空。
+ *   字面量文本的插值键在编译期对表（生成物注册表），拼错即红；富文本行内标记豁免。
  * @param speaker 说话人显示名（同样支持翻译与插值）；省略则本句不显示说话人名。
  * @param opts 其余可选项，见 {@link SayOptions}。
  * @returns `say` 故事命令，写进当前列即为一句对话。
@@ -27,8 +80,8 @@ export type SayOptions = Omit<CommandOf<"say">, "op" | "text" | "speaker">;
  * say("欢迎来到 {place}！", "向导");
  * say("上好绸缎，客官……", "商人", { color: "#FFD700", voice: "audio/hi.ogg" });
  */
-export function say(
-  text: string,
+export function say<const S extends string>(
+  text: InterpolatedText<S>,
   speaker?: string,
   opts?: SayOptions,
 ): CommandOf<"say"> {
@@ -47,7 +100,7 @@ export type MenuOption = CommandOf<"menu">["options"][number];
  * 构造一个菜单选项，配合 {@link menu} 使用：玩家点中这一项后，
  * 故事跳进 `target` 指向的那一列（列名即标签）继续。
  * @param text 选项上显示的文字（支持翻译与插值）。
- * @param target 选中后进入的目标列名。
+ * @param target 选中后进入的目标列名（`stories.gen.d.ts` 存在时收窄为列名字面量联合）。
  * @returns 菜单选项数据。
  * @example
  * menu("去哪儿？", [
@@ -55,7 +108,7 @@ export type MenuOption = CommandOf<"menu">["options"][number];
  *   option("广场", "to_square"),
  * ]);
  */
-export function option(text: string, target: string): MenuOption {
+export function option(text: string, target: KnownColumnName): MenuOption {
   return { text, target };
 }
 
@@ -117,15 +170,15 @@ export interface NotifyOptions {
  * - 通知是一次性画面效果，不进存档/回溯状态。
  * - 文本先查翻译表再做 `{var}` 插值（同 {@link say}）。
  *
- * @param text 通知内容（必填非空）。
+ * @param text 通知内容（必填非空）；插值键同 {@link say} 在编译期对表。
  * @param opts 可选项：type 决定样式（info/success/warning/error，缺省 info）、
  *   duration 控制停留时长、z 控制层级。
  * @returns `notify` 故事命令。
  * @example
  * notify("已保存", { type: "success" });
  */
-export function notify(
-  text: string,
+export function notify<const S extends string>(
+  text: InterpolatedText<S>,
   opts?: NotifyOptions,
 ): CommandOf<"notify"> {
   return { op: "notify", text, ...opts };
