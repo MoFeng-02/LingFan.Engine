@@ -1,4 +1,5 @@
 import { StoryBuildError } from "../shared";
+import type { StorySourceConfig } from "../config/story-config";
 
 /**
  * story-compiler 契约（编译器下游的唯一对接面）：
@@ -25,13 +26,6 @@ export interface CompilerDiagnostic {
 export interface CompiledStories {
   readonly stories: readonly CompiledStoryEntry[];
   readonly diags: readonly CompilerDiagnostic[];
-  /**
-   * 全工程 `defineVars({...})` 清单里的变量键（已合并去重排序）。
-   *
-   * 类型面生成器的数据源之一。可选：注入式合成编译器（测试缝）不产这份数据，
-   * 那样类型面的变量键域退化为 empty——与「工程里没有 defineVars」同义。
-   */
-  readonly defineVarsKeys?: readonly string[];
 }
 
 /**
@@ -47,6 +41,8 @@ export interface StoriesCompiler {
   compileStories(input: {
     readonly root: string;
     readonly sourcesDir: string;
+    /** 布局声明（config.ts 求值产物；folders/start 必需）——图谱层只消费，不再解析 config */
+    readonly config: StorySourceConfig;
     /** 故事文件清单（相对 `Stories.src/`，posix；default 导出 Story 的 .ts） */
     readonly stories: readonly string[];
     /** 模块文件清单（相对 `Stories.src/`，posix；被 import 的支撑 .ts） */

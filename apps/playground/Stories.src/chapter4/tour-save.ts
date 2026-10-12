@@ -1,13 +1,9 @@
 /** 第四章 · 存档试吃：autoSave 开关 + 命名档 save + 临时档 saveDelete 的时机演示（编排归引擎命令面，安全归 Rust）。 */
-import {
-  autoSave,
-  menu,
-  notify,
-  option,
-  say,
-  save,
-  saveDelete,
-} from "../lib/vocabulary";
+import { script } from "@lingfan/editor";
+
+const { autoSave, notify, say, save, saveDelete } = script;
+
+import { stationsMenu } from "../lib/stations";
 
 export default function tour_save(): void {
   say("存档试吃——存档编排归引擎命令面、安全归 Rust；故事只按名声明。", "灵泛");
@@ -22,15 +18,5 @@ export default function tour_save(): void {
   saveDelete("temp_demo");
   say("save_delete 已删掉临时档——tour_slot 不受影响。");
   notify("存档域演示完毕：试试右上角「存 / 读」。", { type: "success" });
-  menu("下一道？", [
-    option("变量盛宴", "tour_vars"),
-    option("流程厨房", "tour_flow"),
-    option("存档试吃", "tour_save"),
-    option("声光餐车", "tour_av"),
-    option("舞台窗口", "tour_stage"),
-    option("扩展工坊", "tour_ext"),
-    option("守卫工坊", "tour_guard"),
-    option("回主线菜单", "start"),
-    option("离席（终幕）", "end"),
-  ]);
+  stationsMenu();
 }

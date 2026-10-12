@@ -1,6 +1,8 @@
 /** 第一章 · 酒馆列：老板招呼 + 跨文件函数调用（lib/cast.ts 的 farewell）→ jump 收束到终幕。 */
-import { say } from "../lib/vocabulary";
-import { jump } from "../lib/compile-time";
+import { script } from "@lingfan/editor";
+
+const { say, jump } = script;
+
 import { farewell } from "../lib/cast";
 
 export default function inn(): void {

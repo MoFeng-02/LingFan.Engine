@@ -135,7 +135,7 @@ export default function start(): void {
 ```
 
 ```ts
-import * as v from "../lib/vocabulary"; // ← 相对模块的命名空间
+import * as v from "../lib/cast"; // ← 相对模块的命名空间
 
 export default function start(): void {
   v.say("相对模块命名空间。");
@@ -318,9 +318,9 @@ TS 创作模式在实现中，还没有对外发布。构建 CLI、语句转译�
 
 具体到你写故事时可能碰到的：
 
-- 词函数的类型签名目前由 `Stories.src/lib/vocabulary.ts` 手工收敛，未随引擎 op 注册表生成。引擎加了新 op，词汇层要跟着补出口。
+- 词汇层出口由源生成：`vocabulary.g.ts` 由 generate-vocabulary CLI 从 words/ 源自动生成，并带 fail-closed 登记一致性校验。引擎加了新 op，跑一次生成即同步，无需手写。
 - `extOp` 能调用哪些命令名，取决于引擎侧注册了哪些——这套创作模式本身不新增 op。
-- `state` 的类型来自 `Stories.src/lib/state.ts` 的 `stateSchema` 声明，`export declare const state` 是纯类型、零运行时。它不进产物，只给 IDE 做跳转和检查。
+- `state` 的声明住进 `Stories.src/config.ts`（`define` 累积，构建期求值后降维为扁平 defines）；`export declare const state` 是纯类型、零运行时的垫片，由 `@lingfan/stories-build` 包出口提供。它不进产物，只给 IDE 做跳转和检查；形态 B 的精确类型面生成还在路上，当前以宽索引签名过渡。
 
 ## 下一步
 

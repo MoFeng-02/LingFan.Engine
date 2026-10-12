@@ -2,17 +2,9 @@
  * 第二章 · 元素舞台列：新范式纯命令流——原 scene 列的 elements[] 面板不再由故事源承载，
  * 元素能力（show/animate/style/setZ/shake/transition/bgSwitch）全部经词函数发射运行期 op。
  */
-import {
-  animate,
-  bgSwitch,
-  hide,
-  say,
-  setZ,
-  show,
-  shake,
-  style,
-  transition,
-} from "../lib/vocabulary";
+import { script } from "@lingfan/editor";
+
+const { animate, bgSwitch, hide, say, setZ, show, shake, style, transition } = script;
 
 export default function stage_demo(): void {
   say("这里是元素舞台——人物、特效与转场全部由命令 op 承载。", "灵泛");

@@ -1,11 +1,14 @@
 /**
  * 第四章 · 流程厨房：switch / while + break·continue / for-of 全部语句化（编译为
  * switchOn / whileDo / for 运行期 op，显式种子 ⇒ 回溯确定性）；forEach 保留词逃生舱。
- * 站尾 jump 接收导入的故事引用——编译期解析为列 id。
+ * 站尾 jump 接收导入的故事引用——编译期解析为列 id（declare 通道，lib/jump.ts）。
  */
-import { forEach, newArray, random, say } from "../lib/vocabulary";
+import { script } from "@lingfan/editor";
+
+const { forEach, newArray, random, say } = script;
+
 import tourStory from "./tour";
-import { jump, state } from "../lib/compile-time";
+import { jump } from "../lib/jump";
 
 export default function tour_flow(): void {
   say(

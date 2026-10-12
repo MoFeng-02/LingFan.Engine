@@ -1,16 +1,9 @@
 /** 第四章 · 变量盛宴：数组 / 字典 / let / undef 词逃生舱——SSOT 状态随快照、存档、回溯随行。 */
-import {
-  arrayPop,
-  arrayPush,
-  dict,
-  dictSet,
-  letVar,
-  menu,
-  newArray,
-  option,
-  say,
-  undef,
-} from "../lib/vocabulary";
+import { script } from "@lingfan/editor";
+
+const { arrayPop, arrayPush, dict, dictSet, letVar, newArray, say, undef } = script;
+
+import { stationsMenu } from "../lib/stations";
 
 export default function tour_vars(): void {
   say(
@@ -33,15 +26,5 @@ export default function tour_vars(): void {
   say("let 临时变量：ticket = {ticket}。");
   undef("ticket");
   say("undef 已把 ticket 从变量表回收（这句故意不再插值它）。");
-  menu("下一道？", [
-    option("变量盛宴", "tour_vars"),
-    option("流程厨房", "tour_flow"),
-    option("存档试吃", "tour_save"),
-    option("声光餐车", "tour_av"),
-    option("舞台窗口", "tour_stage"),
-    option("扩展工坊", "tour_ext"),
-    option("守卫工坊", "tour_guard"),
-    option("回主线菜单", "start"),
-    option("离席（终幕）", "end"),
-  ]);
+  stationsMenu();
 }

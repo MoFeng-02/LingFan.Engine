@@ -1,8 +1,8 @@
 /** 第四章 · 声光餐车：bgm/ambient/voice 三轨 + 视频族（暂停/续播/跳帧/跳过开关）一条龙。 */
-import {
+import { script } from "@lingfan/editor";
+
+const {
   ambient,
-  menu,
-  option,
   pauseVideo,
   resumeVideo,
   say,
@@ -15,7 +15,9 @@ import {
   videoSkipable,
   voice,
   wait,
-} from "../lib/vocabulary";
+} = script;
+
+import { stationsMenu } from "../lib/stations";
 
 export default function tour_av(): void {
   say(
@@ -44,15 +46,5 @@ export default function tour_av(): void {
   wait(1.5, { skipable: true });
   stopVideo();
   say("stop_video 收屏——声光餐车打烊。");
-  menu("下一道？", [
-    option("变量盛宴", "tour_vars"),
-    option("流程厨房", "tour_flow"),
-    option("存档试吃", "tour_save"),
-    option("声光餐车", "tour_av"),
-    option("舞台窗口", "tour_stage"),
-    option("扩展工坊", "tour_ext"),
-    option("守卫工坊", "tour_guard"),
-    option("回主线菜单", "start"),
-    option("离席（终幕）", "end"),
-  ]);
+  stationsMenu();
 }

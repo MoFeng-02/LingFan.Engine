@@ -2,7 +2,9 @@
  * 具名实现槽位（cell）：构建期扫描进 `gen/fun_register.g.ts`，故事里 guard(handle) 引用——
  * 名字只写一次（声明点即引用点）。cell 是构建期声明，编译器不为其产出 op。
  */
-import { cell } from "./vocabulary";
+import { script } from "@lingfan/editor";
+
+const { cell } = script;
 
 /** 金币非负守卫：`player.gold` 被改成负数即 fail，阻止故事继续推进。 */
 export const checkGold = cell("gold-non-negative", (ctx) => {

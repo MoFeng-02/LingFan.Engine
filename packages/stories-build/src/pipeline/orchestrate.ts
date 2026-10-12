@@ -15,7 +15,7 @@ import { StoryBuildError } from "../shared";
 import { loadExtensions } from "../compiler";
 import { readManifest } from "../config";
 import { drainBuildWarnings, type BuildReport } from "../emit";
-import { runStateSchemaPass, STATE_SCHEMA_REL } from "../const-eval";
+import { evalConfigModule, runStateSchemaPass } from "../const-eval";
 import { discoverSources } from "../discovery";
 import { collectDeclaredNames, renderTypegen } from "../typegen";
 import { walkFiles } from "../shared";
@@ -51,11 +51,12 @@ const TYPEGEN_FILE = "stories.gen.d.ts";
  * 编译 `root/Stories.src/` 下的 TS 源 → `root/Resources/`（纯编排，fs 全在参数 root 之下；
  * 测试用临时工程根直测，CLI 主守卫传真实根）。
  *
- * 十三段串行：源发现（config 布局声明 + folders 多目录 + start 全局恰一）→ cell 扫描
- * → 编译期求值（§十二：node_modules 值导入的模块整体求值，导出常量喂给编译器内联）
- * 与 state schema 降维（C12：lib/state.ts 的 stateSchema 求值并扁平化为 defines）
- * → story-compiler 编译（诊断非空 fail-closed）→ parseStory 校验兜底 → 列归一与
- * sourcePath 回填（源文件路径 = 产物路径）→ 工程合并（id/entry 取 start 故事，
+ * 十三段串行：config.ts 单次求值（named exports 四导出 folders/start/vars/state +
+ * 形态 B define 累积，读取/校验统一在此）→ 源发现（folders 多目录 + start 全局恰一）
+ * → cell 扫描 → 编译期求值（§十二：node_modules 值导入的模块整体求值，导出常量喂给
+ * 编译器内联）与 state 降维（C12：config.state/define 合并树走同一降维文法扁平化为
+ * defines）→ story-compiler 编译（诊断非空 fail-closed）→ parseStory 校验兜底 →
+ * 列归一与 sourcePath 回填（源文件路径 = 产物路径）→ 工程合并（id/entry 取 start 故事，
  * defines 冲突 fail-closed）→ 清单读取 → 扩展装载 → op/守卫闸门 → 编译与往返自检
  * → 差量写盘 → 生成物与警告收集。交错的顺序本身即契约（前置段的失败文案要先于
  * 后置段发出），调整即改变可观测行为。
@@ -72,8 +73,13 @@ export async function buildStories(
   const resourcesDir = join(root, resourcesDirName);
   const storiesDir = join(resourcesDir, STORIES_DIR);
 
-  // —— 源发现：config.ts 布局声明 → folders 多目录递归 → start 全局恰一 ——
-  const discovery = await discoverSources(root, sourcesDirName);
+  // —— config.ts 单次求值：named exports 四导出（folders/start/vars/state）+ 形态 B
+  // define 累积一并取出；布局校验（parseFolders/parseStart）、define 合并冲突与
+  // 形态 A/B 互斥全部 fail-closed（读取统一走本通道，图谱层不再解析 config）——
+  const evaluated = await evalConfigModule(root, sourcesDirName);
+
+  // —— 源发现：config 布局声明 → folders 多目录递归 → start 全局恰一 ——
+  const discovery = await discoverSources(root, sourcesDirName, evaluated.config);
 
   // —— cell 声明扫描（构建期 AST 扫描）：源树（排除生成物目录，仅 .ts；机制不动）——
   const cellScan = scanCellSources(walkFiles(sourcesDir), generatedDirName);
@@ -87,15 +93,20 @@ export async function buildStories(
     sourcesDirName,
   );
 
-  // —— state schema 降维（C12）：约定 lib/state.ts 的 stateSchema 求值并扁平化为
-  // defines；求值/形态诊断 fail-closed，无该文件 = 无 schema 贡献 ——
-  const schemaDefines = await runStateSchemaPass(sourcesDir, sourcesDirName);
+  // —— state 降维（C12）：config.state（形态 A）与 define 合并树（形态 B，二选一）
+  // 走同一降维文法扁平化为 defines；文法诊断 fail-closed，皆缺省 = 空 schema 贡献 ——
+  const schemaDefines = runStateSchemaPass(
+    evaluated.state,
+    evaluated.defineTree,
+    sourcesDirName,
+  );
 
   // —— story-compiler：故事/模块清单一次性编译（诊断非空 = fail-closed，一次报全部）——
   const compiler = options.compiler ?? (await loadDefaultCompiler());
   const compiled = await compiler.compileStories({
     root,
     sourcesDir,
+    config: evaluated.config,
     stories: discovery.stories,
     modules: discovery.modules,
     constValues,
@@ -164,15 +175,14 @@ export async function buildStories(
   assertRoundTrip(serialized);
 
   // —— 类型面生成物：字符串域全部取上面已算好的结果，不重跑任何一段 ——
-  // 列 id 取编译产物、state 键取 schemaDefines、变量键取编译器的 defineVars 清单
-  // （图谱层扫描期收集，见 CompiledStories.defineVarsKeys——它不来自 constValues：
-  // 编译期求值只作用于 npm 值导入，真实工程的 defineVars 住在相对导入的词汇表里，永不命中），
-  // 声明名从列的命令流里收（let/for/input 这类运行期变量名只存在于产物里），
+  // 列 id 取编译产物、state 键取 schemaDefines、变量键取 config.vars 导出的键集
+  // （config.ts 求值通道；图谱层的 defineVars 扫描已退役为守卫），声明名从列的
+  // 命令流里收（let/for/input 这类运行期变量名只存在于产物里），
   // 扩展 id 取第 ⑨ 段的装载结果（装载在写盘之前，数据现成）。
   const typegenContent = renderTypegen({
     columns: merged.columns.map((column) => column.id),
     schemaKeys: Object.keys(schemaDefines),
-    defineKeys: [...(compiled.defineVarsKeys ?? [])],
+    defineKeys: [...evaluated.vars],
     declaredNames: collectDeclaredNames(merged.columns),
     extensionPrefixes: ids,
   });
@@ -249,7 +259,8 @@ function readCompiledEntry(
 
 /**
  * 跨来源的 defines 合并：同键同值收敛，同键异值 = 冲突 fail-closed（一次报全部）。
- * 来源 = state schema（C12，schema 先行）+ 各故事文件；schema 与故事同键异值同样冲突。
+ * 来源 = config 状态（C12，config 先行：形态 A state 或形态 B define 合并树）+ 各故事文件；
+ * config 与故事同键异值同样冲突。
  */
 function mergeDefines(
   bySource: ReadonlyMap<string, { story: Story; columns: StoryColumn[] }>,
@@ -268,7 +279,7 @@ function mergeDefines(
     merged[key] = value;
   };
   for (const [key, value] of Object.entries(schemaDefines)) {
-    put(key, value, `${STATE_SCHEMA_REL}（stateSchema）`);
+    put(key, value, "config.ts（state/define）");
   }
   for (const [source, { story }] of bySource) {
     for (const [key, value] of Object.entries(story.defines ?? {})) {

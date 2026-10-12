@@ -1,10 +1,33 @@
 /**
- * Stories.src 配置清单（源约定：本目录根级唯一 .ts）。
+ * Stories.src 唯一声明点（config 化，设计稿 §二）：
+ * named exports 四导出——folders/start 必需，vars/state 可缺省。
+ * - folders/start：构建布局（列清单与开场列）；
+ * - vars：插值键声明（defineVars 清单，进 InterpolationKeyRegistry）；
+ * - state：形态 B（define 累积）示范——构建期求值后降维为 defines（全平铺存储，§二裁定）。
  *
- * folders：参与构建的故事目录（递归扫描，凡含 default 导出函数的文件即一列）。
- * start：入口故事文件名——按文件名跨所有目录全局查找，恰好命中一个故事，否则构建期报错。
+ * 本文件是构建期被求值的唯一根文件（根级唯一，相对导入仅限作者常量，如 Sex 枚举）。
  */
-export default {
-  folders: ["chapter1", "chapter2", "chapter3", "chapter4"],
-  start: "start.ts",
-};
+import { Sex } from "./lib/enums";
+
+export const folders = ["chapter1", "chapter2", "chapter3", "chapter4"];
+
+export const start = "start.ts";
+
+export const vars = defineVars({
+  "player.gold": "num",
+  "player.name": "str",
+  n: "num",
+  m: "num",
+  dice: "num",
+  "journal.flag": "num",
+});
+
+// 形态 B：define 累积（与旧 stateSchema 全键等值）。
+// 简写标量 = 常量默认值；{ type, default } descriptor = 类型 + 默认值；
+// 数组类型用 ["string"]；枚举 type 传 Sex（成员值联合）。
+define("player.gold", 100);
+define("player.level", { type: "number", default: 1 });
+define("player.sex", { type: Sex, default: Sex.Male });
+define("player.name", { type: "string", default: "旅人" });
+define("dice", { type: "number", default: 1 });
+define("supplies", { type: ["string"], default: [] });

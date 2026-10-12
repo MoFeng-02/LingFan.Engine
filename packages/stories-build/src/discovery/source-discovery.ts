@@ -1,11 +1,7 @@
 import { join } from "node:path";
 import ts from "typescript";
 import { walkFiles } from "../shared";
-import {
-  CONFIG_FILE,
-  loadStoryConfig,
-  type StorySourceConfig,
-} from "../config";
+import { CONFIG_FILE, type StorySourceConfig } from "../config";
 import { StoryBuildError } from "../shared";
 
 /**
@@ -33,8 +29,8 @@ export interface DiscoveredSources {
 export async function discoverSources(
   root: string,
   sourcesDirName: string,
+  config: StorySourceConfig,
 ): Promise<DiscoveredSources> {
-  const config = await loadStoryConfig(root, sourcesDirName);
   const tree = walkFiles(join(root, sourcesDirName));
   const dirs = collectCoveredDirs(config, tree);
 

@@ -26,8 +26,6 @@ declare module "@lingfan/editor" {
     "item": 1;
     "journal.flag": 1;
     "m": 1;
-    "mouch.other": 1;
-    "mouch.other2": 1;
     "n": 1;
     "player.gold": 1;
     "player.level": 1;

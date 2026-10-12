@@ -2,24 +2,12 @@
  * 第一章 · 序幕列（列 id = default 导出函数名）：bgm / 状态复合赋值 / 插值 / input /
  * if-else + 嵌套函数（func+call）/ wait / NVL / cutscene / 守卫 / 菜单，一章内集中亮相。
  */
-import {
-  bgm,
-  character,
-  cutscene,
-  guard,
-  input,
-  menu,
-  notify,
-  nvl,
-  option,
-  say,
-  se,
-  wait,
-  地点,
-} from "../lib/vocabulary";
+import { script } from "@lingfan/editor";
+
+const { bgm, character, cutscene, guard, input, menu, notify, nvl, option, say, se, wait } = script;
+
 import { checkGold } from "../lib/guards";
-import { state } from "../lib/compile-time";
-import { Sex } from "../lib/state";
+import { Sex, 地点 } from "../lib/enums";
 
 /** 列体嵌套函数：编译期前置到列头 func 命令，调用点发射 call（运行期真子程序）。 */
 function greet(who: string): void {

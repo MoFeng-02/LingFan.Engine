@@ -4,6 +4,55 @@
   "kind": "flow",
   "commands": [
     {
+      "op": "func",
+      "name": "stationsMenu",
+      "params": [],
+      "body": [
+        {
+          "op": "menu",
+          "prompt": "下一道？",
+          "options": [
+            {
+              "text": "变量盛宴",
+              "target": "tour_vars"
+            },
+            {
+              "text": "流程厨房",
+              "target": "tour_flow"
+            },
+            {
+              "text": "存档试吃",
+              "target": "tour_save"
+            },
+            {
+              "text": "声光餐车",
+              "target": "tour_av"
+            },
+            {
+              "text": "舞台窗口",
+              "target": "tour_stage"
+            },
+            {
+              "text": "扩展工坊",
+              "target": "tour_ext"
+            },
+            {
+              "text": "守卫工坊",
+              "target": "tour_guard"
+            },
+            {
+              "text": "回主线菜单",
+              "target": "start"
+            },
+            {
+              "text": "离席（终幕）",
+              "target": "end"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "op": "say",
       "text": "变量盛宴——数组、字典、临时变量都是 SSOT 状态，随快照/存档/回溯随行。",
       "speaker": "灵泛"
@@ -78,46 +127,9 @@
       "text": "undef 已把 ticket 从变量表回收（这句故意不再插值它）。"
     },
     {
-      "op": "menu",
-      "prompt": "下一道？",
-      "options": [
-        {
-          "text": "变量盛宴",
-          "target": "tour_vars"
-        },
-        {
-          "text": "流程厨房",
-          "target": "tour_flow"
-        },
-        {
-          "text": "存档试吃",
-          "target": "tour_save"
-        },
-        {
-          "text": "声光餐车",
-          "target": "tour_av"
-        },
-        {
-          "text": "舞台窗口",
-          "target": "tour_stage"
-        },
-        {
-          "text": "扩展工坊",
-          "target": "tour_ext"
-        },
-        {
-          "text": "守卫工坊",
-          "target": "tour_guard"
-        },
-        {
-          "text": "回主线菜单",
-          "target": "start"
-        },
-        {
-          "text": "离席（终幕）",
-          "target": "end"
-        }
-      ]
+      "op": "call",
+      "target": "stationsMenu",
+      "args": []
     }
   ]
 }

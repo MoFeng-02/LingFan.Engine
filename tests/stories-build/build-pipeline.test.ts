@@ -58,7 +58,7 @@ function makeProject(name: string, files: Record<string, string>): string {
 
 /** config.ts 布局声明（v2 源侧根文件）。 */
 const config = (folders: string[], start = "start.ts"): string =>
-  `export default { folders: ${JSON.stringify(folders)}, start: ${JSON.stringify(start)} };\n`;
+  `export const folders = ${JSON.stringify(folders)};\nexport const start = ${JSON.stringify(start)};\n`;
 
 /** 工程清单（不归 TS 源管；v2 编译器产物无 defines，fixture 不预置）。 */
 const MANIFEST = `{
@@ -895,15 +895,15 @@ export default function start(): void {
 
 describe("stories:build v2 · 状态根名自定义（export declare const <根名>: StoryState）", () => {
   /** 状态根声明（发现域：注解文本引用 StoryState 或本文件别名链）；
-   * lib/state.ts 同场携带 stateSchema（编排层 C12 约定：该文件存在就必须有 schema 导出）。 */
+   * 值源已换道 config.state（形态 A，根无关的键集树）——声明文件只留根声明与类型别名。 */
   const stateRoot = (name: string): string =>
-    `export const stateSchema = { player: { gold: 100 } } as const;\n` +
     `export type StoryState = { player: { gold: number } };\n` +
     `export declare const ${name}: StoryState;\n`;
+  const stateValues = `export const state = { player: { gold: 100 } } as const;\n`;
 
   it("发现：根名 s ⇒ set 键剥根为裸 player.gold（前缀只是源侧命名空间）", async () => {
     const root = makeProject("state-root-custom", {
-      "Stories.src/config.ts": config(["common"]),
+      "Stories.src/config.ts": config(["common"]) + stateValues,
       "Stories.src/lib/state.ts": stateRoot("s"),
       "Stories.src/common/start.ts": story(
         "start",
@@ -923,7 +923,7 @@ describe("stories:build v2 · 状态根名自定义（export declare const <根�
 
   it("冲突：根名 say 与词汇层词函数同名 ⇒ fail-closed（带声明定位）", async () => {
     const root = makeProject("state-root-conflict", {
-      "Stories.src/config.ts": config(["common"]),
+      "Stories.src/config.ts": config(["common"]) + stateValues,
       "Stories.src/lib/state.ts": stateRoot("say"),
       "Stories.src/common/start.ts": story(
         "start",
