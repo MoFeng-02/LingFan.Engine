@@ -2,8 +2,10 @@
  * TS 故事源编译流水线出口（唯一出口）：把 `Stories.src/` 多目录原生 TS 语句源编译成
  * `Resources/Stories/**` + `project.json`，并维护 cell 生成物。
  *
- * 布局声明 `Stories.src/config.ts`（根级唯一根文件）：`{ folders, start }`——folders
- * 声明源目录（可含 `"*"` 全量兜底），start 声明入口故事文件名（跨目录全局恰一）。
+ * 布局声明 `Stories.src/config.ts`（根级唯一根文件，named exports 单次求值）：
+ * `folders` 声明源目录（可含 `"*"` 全量兜底）、`start` 声明入口故事文件名（跨目录全局
+ * 恰一）；`vars`（键集对象）登记插值变量键、`state`（形态 A）/`define(...)`（形态 B）
+ * 声明 state 初始值，两者可缺省但互斥。
  * 源发现按「default 导出存在」区分故事/模块文件；产物路径 = 源文件路径
  * （`Stories/<相对源路径>.json`，文件名与列 id 解耦）。`config.start` 经托管键
  * 更新落到 `project.json` 的 `entry`（`serializeProject` 既有语义）。
@@ -40,8 +42,15 @@ export {
 } from "./pipeline";
 /** 十二段串行编排（流水线主入口） */
 export { buildStories } from "./pipeline";
-/** 布局声明装载与校验（`Stories.src/config.ts`） */
-export { CONFIG_FILE, loadStoryConfig, type StorySourceConfig } from "./config";
+/** 编译期求值域（config.ts 单次求值 + define 内建 + 形态 A/B 状态降维） */
+export {
+  evalConfigModule,
+  type ConfigEvalOutcome,
+} from "./const-eval";
+/** 布局声明与 config.ts 契约类型 */
+export { CONFIG_FILE, type StorySourceConfig } from "./config";
+/** 创作垫片类型（@lingfan/stories-build/authoring 随包 .d.ts 的主出口同源） */
+export type { InferStateSchema } from "./config/state-type";
 /** 源发现 v2（folders 多目录 + start 全局恰一） */
 export { discoverSources, type DiscoveredSources } from "./discovery";
 /** 编译器契约（story-compiler 对接面） */

@@ -8,11 +8,11 @@
  * 根工程看不见（分层，不是遗漏）。
  *
  * 五类覆盖（内部规约 对应章节 测试纪律）：
- *   ① 拟态用户：真实工程形态（词汇表 + 多列 + defineVars + 扩展）走完整管线
- *   ② 故意错误：fail-closed 且诊断可定位（defineVars 形态非法、列 id 非法）
+ *   ① 拟态用户：真实工程形态（词汇表 + 多列 + config.vars/state + 扩展）走完整管线
+ *   ② 故意错误：fail-closed 且诊断可定位（config.vars 形态非法、图谱 defineVars 守卫、列 id 非法）
  *   ③ 不变量：同输入逐字节同输出、排序去重、幂等
  *   ④ 边界条件：空列集 / 极大列集 / 超长列名 / 特殊字符键
- *   ⑤ 回归锚定：defineVars 键只在插值里用时必须进注册表（用户实测缺陷）
+ *   ⑤ 回归锚定：config.vars 键只在插值里用时必须进注册表（用户实测缺陷的换道版）
  *
  * 白盒访问内部渲染器走相对深引（内部规约：公共 API 走 @lingfan/*，内部走相对深引）。
  */
@@ -49,7 +49,7 @@ function makeProject(name: string, files: Record<string, string>): string {
 }
 
 const config = (folders: string[], start = "start.ts"): string =>
-  `export default { folders: ${JSON.stringify(folders)}, start: ${JSON.stringify(start)} };\n`;
+  `export const folders = ${JSON.stringify(folders)};\nexport const start = ${JSON.stringify(start)};\n`;
 
 const manifest = (extensions?: readonly string[]): string =>
   JSON.stringify({
@@ -80,13 +80,13 @@ function registryKeys(text: string, interfaceName: string): string[] {
 }
 
 /**
- * 用一份最小但真实的工程跑完整管线（词汇表 + 多列 + defineVars + 扩展）。
+ * 用一份最小但真实的工程跑完整管线（词汇表 + 多列 + config 变量/状态 + 扩展）。
  *
  * 为什么不用合成编译器：类型面数据全部来自真实编译结果（列 id 来自编译产物、
- * defineVars 键来自图谱扫描、声明名来自 op 流），合成缝产的条目没有这些。
+ * 键域来自 config 单次求值、声明名来自 op 流），合成缝产的条目没有这些。
  */
 const WORDS_LIB = `import { script } from "@lingfan/editor";
-export const { say, option, menu, cell, guard, defineVars, extOp, staticFor, jump } = script;
+export const { say, option, menu, cell, guard, extOp, staticFor, jump } = script;
 
 `;
 
@@ -128,18 +128,13 @@ describe("类型面生成器 · 拟态用户（真实工程形态走完整管线
     // 扩展 op 必须在清单里声明（gates 的 assertKnownOps），所以本用例自带 EXT_DEMO 与
     // 声明它的清单——顺带让「扩展模式行」与「三源字面量键」在同一份生成物里并存，验证混排合法。
     const root = makeProject("mimic", {
-      "Stories.src/config.ts": config(["lib", "ch1"], "start.ts"),
+      "Stories.src/config.ts":
+        config(["lib", "ch1"]) +
+        `export const vars = defineVars({ "bag.size": "num", hp: "num" });\n` +
+        `export const state = {\n  player: { gold: 0, name: "" },\n} as const;\n`,
       "Stories.src/lib/vocabulary.ts": WORDS_LIB,
       "Resources/project.json": manifest(["./extensions/demo.ts"]),
       "extensions/demo.ts": EXT_DEMO,
-      "Stories.src/lib/state.ts": `export const stateSchema = {
-  player: { gold: 0, name: "" },
-} as const;
-`,
-      "Stories.src/lib/vars.ts": `import { script } from "@lingfan/editor";
-const { defineVars } = script;
-export const vars = defineVars({ "bag.size": "num", hp: "num" });
-`,
       "Stories.src/ch1/start.ts": `import { say, extOp } from "../lib/vocabulary";
 
 export default function start(): void {
@@ -170,9 +165,9 @@ export default function start(): void {
       '"start": 1;',
     ]);
 
-    // 插值键三源合并，逐源各取一条锚定：
-    // ① state schema 源（player.gold 只来自 lib/state.ts 的 schema）
-    // ② defineVars 源（bag.size / hp 只在 lib/vars.ts 的清单里，且从不出现在任何 op 流）
+    // 插值键键域合并，逐源各取一条锚定：
+    // ① state 源（player.gold 只来自 config.ts 的 state 导出）
+    // ② config.vars 源（bag.size / hp 只在 config.ts 的 vars 清单里，且从不出现在任何 op 流）
     // ③ 产物声明名源（本工程无声明型 op，该源为空，由别的用例单独锚定）
     const keys = registryKeys(text, "InterpolationKeyRegistry");
     expect(keys).toContain('"player.gold": 1;');
@@ -187,18 +182,15 @@ export default function start(): void {
     );
   });
 
-  it("defineVars 键即使只在插值里用、不进任何 op 流，也必须进注册表（回归锚定：用户实测缺陷）", async () => {
-    // 用户实测回归：defineVars 的键曾经恒不出现（数据源走的是编译期求值，而真实工程的
+  it("config.vars 键即使只在插值里用、不进任何 op 流，也必须进注册表（回归锚定：用户实测缺陷的换道版）", async () => {
+    // 用户实测回归（原缺陷）：变量键曾经恒不出现（数据源走的是编译期求值，而真实工程的
     // defineVars 住在相对导入的词汇表里，永不触发求值），导致合法插值被判红。
     //
-    // 故事文件**刻意不 import** 定义 defineVars 的模块：键的收集发生在图谱层对所有
-    // module record 的扫描（build.ts:55-57），只要 lib/vars.ts 落在 folders 覆盖内就会
-    // 被扫到——本用例正是在锚定「与故事是否 import 无关」这一点。
+    // 换道后键域来自 config.ts 单次求值——config 恒被读取、与故事是否 import 无关；
+    // 本用例故事文件**刻意不 import** 任何变量清单模块，锚定的正是这一点。
     const root = await buildDefaultProject("definevars-only-interp", {
-      "Stories.src/lib/vars.ts": `import { script } from "@lingfan/editor";
-const { defineVars } = script;
-export const vars = defineVars({ "player.hp": "num", mana: "num" });
-`,
+      "Stories.src/config.ts": config(["lib", "ch1"]) +
+        `export const vars = defineVars({ "player.hp": "num", mana: "num" });\n`,
       "Stories.src/ch1/start.ts": `import { say } from "../lib/vocabulary";
 
 export default function start(): void {
@@ -235,14 +227,13 @@ export default function start(): void {
 });
 
 describe("类型面生成器 · 故意错误（fail-closed 且诊断可定位）", () => {
-  it("defineVars 清单不是对象字面量（变量中转）⇒ 拒绝构建并说明键不可知", async () => {
+  it("图谱模块里调用 defineVars ⇒ 换道守卫报错并指路 config（声明通道唯一化）", async () => {
     const root = makeProject("bad-definevars", {
-      "Stories.src/config.ts": config(["lib", "ch1"], "start.ts"),
+      "Stories.src/config.ts": config(["lib", "ch1"]),
       "Stories.src/lib/vocabulary.ts": WORDS_LIB,
       "Stories.src/lib/vars.ts": `import { script } from "@lingfan/editor";
 const { defineVars } = script;
-const spec = { "player.hp": "num" };
-export const vars = defineVars(spec);
+export const vars = defineVars({ "player.hp": "num" });
 `,
       "Stories.src/ch1/start.ts": `export default function start(): void {
 }
@@ -251,20 +242,17 @@ export const vars = defineVars(spec);
     });
 
     await expect(buildStories(root)).rejects.toThrow(
-      /defineVars 的清单必须是对象字面量/,
+      /defineVars 已迁入 config\.ts（config\.vars）/,
     );
     // fail-closed：不产类型面文件，绝不留一份缺键的注册表让作者看着合法的插值报红。
     expect(() => readTypegen(root)).toThrow();
   });
 
-  it("defineVars 实参个数不对 ⇒ 拒绝构建", async () => {
-    const root = makeProject("arity", {
-      "Stories.src/config.ts": config(["lib", "ch1"], "start.ts"),
+  it("config.vars 导出不是键集对象 ⇒ 拒绝构建（vars 键域不可知）", async () => {
+    const root = makeProject("bad-vars-shape", {
+      "Stories.src/config.ts": config(["lib", "ch1"]) +
+        `export const vars = ["bag.size", "hp"];\n`,
       "Stories.src/lib/vocabulary.ts": WORDS_LIB,
-      "Stories.src/lib/vars.ts": `import { script } from "@lingfan/editor";
-const { defineVars } = script;
-export const vars = defineVars();
-`,
       "Stories.src/ch1/start.ts": `export default function start(): void {
 }
 `,
@@ -272,8 +260,9 @@ export const vars = defineVars();
     });
 
     await expect(buildStories(root)).rejects.toThrow(
-      /defineVars\(spec\) 恰好接受一个实参/,
+      /vars 导出须为键集对象/,
     );
+    expect(() => readTypegen(root)).toThrow();
   });
 
   it("列 id 非法（含不安全字符）⇒ 拒绝构建（E06），不产类型面文件", async () => {
@@ -476,7 +465,7 @@ describe("类型面生成器 · 边界条件", () => {
       true,
     );
     expect(text).toContain("export {};");
-    // 插值键注册表零键——本工程既无 state schema、也无 defineVars、也无声明型 op，
+    // 插值键注册表零键——本工程既无 config.state/define、也无 config.vars、也无声明型 op，
     // 空集合仍照常落两个空接口（不产空壳文件的旧语义是错的）。
     expect(text).toContain("interface InterpolationKeyRegistry {\n  }");
     expect(

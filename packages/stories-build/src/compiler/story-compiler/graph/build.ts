@@ -1,16 +1,21 @@
 import * as ts from "typescript";
 import { walkFiles } from "../../../shared";
+import type { StorySourceConfig } from "../../../config/story-config";
 import type { CompilerConstValues } from "../../compiler-contract";
 import { DiagBag, ROOT_TS_FILES_ALLOWED, GEN_PREFIX, toPosix } from "./core";
 import type { Graph, ModuleRecord } from "./core";
-import { readConfig } from "./config";
 import { scanModule, discoverStateRoot } from "./module-scan";
 import { scanConstStatement, assertNpmNamesConstOnly } from "./bindings";
 import { resolveImports } from "./imports";
 
+/**
+ * 图谱构建：布局声明（config 求值产物）为必填入参——本层不再解析 config.ts
+ *（读取/校验统一走 const-eval/config-eval），只消费 folders/start。
+ */
 export function buildGraph(
   sourcesDir: string,
   diags: DiagBag,
+  config: StorySourceConfig,
   constValues?: CompilerConstValues,
 ): Graph | null {
   const files = new Map<string, string>();
@@ -36,8 +41,6 @@ export function buildGraph(
     ts.ScriptTarget.Latest,
     true,
   );
-  const config = readConfig(configSf, "config.ts", diags);
-  if (config === null) return null;
   if (config.folders.length === 0) {
     diags.addPos(
       "config.ts",
@@ -75,7 +78,6 @@ export function buildGraph(
       imports: [],
       consts: [],
       npmNames: new Set(),
-      defineVarsKeys: new Set(),
       evaluated: constValues?.[rel],
     });
   }

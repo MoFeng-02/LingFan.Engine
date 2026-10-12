@@ -1,4 +1,5 @@
 import { isSafeFileNameSegment, type Story } from "@lingfan/engine";
+import type { StorySourceConfig } from "../config/story-config";
 import {
   DiagBag,
   buildGraph,
@@ -17,25 +18,20 @@ export interface CompileStoriesResult {
   stories: Array<{ columnId: string; sourceRelPath: string; story: Story }>;
   diags: CompileDiag[];
   entryColumnId?: string;
-  /**
-   * 全工程 `defineVars({...})` 清单里的变量键（已合并去重排序）。
-   *
-   * 类型面生成器的数据源之一：变量键在插值里合法，但可能从不出现在 op 流中，
-   * 故既推不出自列集也推不出自 state schema。
-   */
-  defineVarsKeys?: string[];
 }
 
 export function compileStories(input: {
   readonly root: string;
   readonly sourcesDir: string;
+  /** 布局声明（config.ts 求值产物；folders/start 必需）——图谱层只消费，不再解析 config */
+  readonly config: StorySourceConfig;
   readonly stories: readonly string[];
   readonly modules: readonly string[];
   /** 编译期求值喂入（对应章节）；缺省 = 无被求值文件（行为不变） */
   readonly constValues?: CompilerConstValues;
 }): CompileStoriesResult {
   const diags = new DiagBag();
-  const graph = buildGraph(input.sourcesDir, diags, input.constValues);
+  const graph = buildGraph(input.sourcesDir, diags, input.config, input.constValues);
   if (graph === null) return { stories: [], diags: diags.list() };
   const entry = resolveStart(graph, diags);
 
@@ -53,17 +49,7 @@ export function compileStories(input: {
     stories,
     diags: [],
     entryColumnId: entry,
-    defineVarsKeys: collectDefineVarsKeys(graph),
   };
-}
-
-/** 全工程 defineVars 键合并去重（排序保证生成物文本稳定） */
-function collectDefineVarsKeys(graph: Graph): string[] {
-  const keys = new Set<string>();
-  for (const record of graph.records.values()) {
-    for (const key of record.defineVarsKeys) keys.add(key);
-  }
-  return [...keys].sort();
 }
 
 function checkColumnIds(

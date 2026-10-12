@@ -63,19 +63,11 @@ export interface ModuleRecord {
   npmNames: Set<string>;
   /** 编译期求值喂入（对应章节）：导出名 → JSON 可序列化值；未被求值的文件 = undefined */
   evaluated?: Readonly<Record<string, unknown>>;
-  /**
-   * `defineVars({...})` 清单里的变量键（扫描期收集，不折叠值）。
-   *
-   * 变量句柄是纯类型面的东西：`defineVars` 只登记键名与类型标签，键在插值里合法，
-   * 但可能从不出现在任何 op 流中（只写 `say("…{player.hp}…")` 而不 set 它）。
-   * 因此类型面生成器必须单独拿到这份清单——产物列集与 state schema 都推不出来。
-   */
-  defineVarsKeys: Set<string>;
 }
 
 export interface StoryConfig {
-  folders: string[];
-  start: string;
+  readonly folders: readonly string[];
+  readonly start: string;
 }
 
 export interface Graph {

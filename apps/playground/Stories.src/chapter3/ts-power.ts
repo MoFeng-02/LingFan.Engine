@@ -2,8 +2,9 @@
  * 第三章 · TS 能力列：清单逐条对应 Stories.src 新范式源真实用到的能力，
  * assert 用引擎表达式文法做运行期断言收尾。
  */
-import { assert, say } from "../lib/vocabulary";
-import { jump } from "../lib/compile-time";
+import { script } from "@lingfan/editor";
+
+const { assert, say, jump } = script;
 
 export default function ts_power(): void {
   say(

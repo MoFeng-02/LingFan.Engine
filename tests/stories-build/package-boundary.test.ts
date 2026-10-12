@@ -84,7 +84,7 @@ const HOST_GUESS_PATTERN =
   /new URL\(\s*"\.\.(?:\/\.\.)*"\s*,\s*import\.meta\.url\s*\)/;
 
 /** 出口面必须是这几条，多一条少一条都算契约变更（改这里要同时改 package.json） */
-const EXPECTED_EXPORTS = [".", "./cell", "./cli"];
+const EXPECTED_EXPORTS = [".", "./authoring", "./cell", "./cli"];
 
 describe("创作链编译包 · 边界与结构不变式", () => {
   it("扫描面自检：三张 glob 都非空且命中已知文件（防空扫描假绿）", () => {
@@ -174,12 +174,17 @@ describe("创作链编译包 · 边界与结构不变式", () => {
     );
   });
 
-  it("包的出口面由实物 package.json 决定：恰为 ., ./cell, ./cli 三条且落点正确", () => {
+  it("包的出口面由实物 package.json 决定：恰为 ., ./authoring, ./cell, ./cli 四条且落点正确", () => {
     // 实物断言：键集与值都来自真 manifest，不是合成字面量。
     expect(Object.keys(PACKAGE_MANIFEST.exports ?? {}).sort()).toEqual(
       EXPECTED_EXPORTS,
     );
     expect(PACKAGE_MANIFEST.exports?.["."]).toBe("./src/index.ts");
+    // authoring.d.ts 是创作面随包垫片（state/jump declare + define/defineVars 全局内建），
+    // t2 config 化后模板工程从这里接线；.d.ts 落点同受「出口都在包内真实存在」校验。
+    expect(PACKAGE_MANIFEST.exports?.["./authoring"]).toBe(
+      "./src/authoring.d.ts",
+    );
     expect(PACKAGE_MANIFEST.exports?.["./cell"]).toBe("./src/cell/index.ts");
     // CLI 必须是包的一等入口：模板工程只有 `pnpm add @lingfan/stories-build` 这一条路，
     // 拿不到 ./cli 就只能写 monorepo 内部裸路径，包化对模板即失效。

@@ -16,8 +16,6 @@
     "player.sex": "male",
     "player.name": "旅人",
     "dice": 1,
-    "supplies": [],
-    "mouch.other": "other",
-    "mouch.other2": "other2"
+    "supplies": []
   }
 }

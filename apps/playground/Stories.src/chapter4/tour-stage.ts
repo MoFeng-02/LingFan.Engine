@@ -1,18 +1,11 @@
 /**
  * 第四章 · 舞台窗口：背景 + 对话窗开合 + 单元素 animate_block + 打字机开关 + notify 角标。
  */
-import {
-  animateBlock,
-  background,
-  dialogWindow,
-  hide,
-  menu,
-  notify,
-  option,
-  say,
-  show,
-  textTypewriter,
-} from "../lib/vocabulary";
+import { script } from "@lingfan/editor";
+
+const { animateBlock, background, dialogWindow, hide, notify, say, show, textTypewriter } = script;
+
+import { stationsMenu } from "../lib/stations";
 
 export default function tour_stage(): void {
   say("舞台窗口——背景与对话窗都是 op 层的舞台资产，故事按名开关。", "灵泛");
@@ -39,15 +32,5 @@ export default function tour_stage(): void {
   textTypewriter({ enabled: true, speed: 30 });
   say("打字机以每秒 30 字符的速度逐字上屏——两段体感不同。");
   hide("tour_block");
-  menu("下一道？", [
-    option("变量盛宴", "tour_vars"),
-    option("流程厨房", "tour_flow"),
-    option("存档试吃", "tour_save"),
-    option("声光餐车", "tour_av"),
-    option("舞台窗口", "tour_stage"),
-    option("扩展工坊", "tour_ext"),
-    option("守卫工坊", "tour_guard"),
-    option("回主线菜单", "start"),
-    option("离席（终幕）", "end"),
-  ]);
+  stationsMenu();
 }

@@ -55,7 +55,8 @@ export function renderTypegen(input: TypegenInput): string {
   lines.push('declare module "@lingfan/editor" {');
   renderRegistry(lines, "ColumnNameRegistry", input.columns);
 
-  // 插值键域 = state schema 键 ∪ defineVars 键 ∪ 产物声明名 ∪ 扩展 id 模式（三份合并去重后再排序）
+  // 插值键域 = state 键 ∪ config.vars 键 ∪ 产物声明名 ∪ 扩展 id 模式（合并去重后再排序；
+  // defineKeys 现取自 config.ts 的 vars 导出——config 化换道后图谱层不再扫 defineVars）
   renderRegistry(
     lines,
     "InterpolationKeyRegistry",

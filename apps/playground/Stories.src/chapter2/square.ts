@@ -1,6 +1,7 @@
 /** 第二章 · 广场列：staticFor 构建期展开热身三行 → click3 小游戏（通关金币 +10）→ jump 收束。 */
-import { minigame, reward, say, staticFor } from "../lib/vocabulary";
-import { jump } from "../lib/compile-time";
+import { script } from "@lingfan/editor";
+
+const { minigame, reward, say, staticFor, jump } = script;
 
 export default function square(): void {
   staticFor(3, (i) => [

@@ -43,7 +43,7 @@ function makeProject(name: string, files: Record<string, string>): string {
 }
 
 const config = (folders: string[], start = "start.ts"): string =>
-  `export default { folders: ${JSON.stringify(folders)}, start: ${JSON.stringify(start)} };\n`;
+  `export const folders = ${JSON.stringify(folders)};\nexport const start = ${JSON.stringify(start)};\n`;
 
 const MANIFEST = `{
   "formatVersion": 1,

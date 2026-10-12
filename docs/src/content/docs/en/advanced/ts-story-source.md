@@ -133,7 +133,7 @@ export default function start(): void {
 ```
 
 ```ts
-import * as v from "../lib/vocabulary"; // ← namespace of a relative module
+import * as v from "../lib/cast"; // ← namespace of a relative module
 
 export default function start(): void {
   v.say("Namespace of a relative module.");
@@ -316,9 +316,9 @@ TypeScript authoring is still being implemented and has not shipped. The build C
 
 Concretely, what you may run into while writing:
 
-- The vocabulary functions' type signatures are currently collapsed by hand in `Stories.src/lib/vocabulary.ts` rather than generated from the engine's op registry. When the engine gains an op, the vocabulary layer needs an export added.
+- The vocabulary layer's exports are source-generated: `vocabulary.g.ts` is produced by the generate-vocabulary CLI from the words/ sources, with fail-closed consistency checks. When the engine gains an op, one generation run syncs it — no hand-written export layer.
 - Which command names `extOp` can call depends on what the engine has registered — this authoring mode adds no ops of its own.
-- The type of `state` comes from the `stateSchema` declaration in `Stories.src/lib/state.ts`; `export declare const state` is types only, with zero runtime. It never enters the output and exists to give the IDE jumps and checks.
+- The `state` declaration lives in `Stories.src/config.ts` (the `define` accumulation form, evaluated at build time and flattened into flat defines); `export declare const state` is a types-only, zero-runtime shim provided by the `@lingfan/stories-build` package exports. It never enters the output and exists to give the IDE jumps and checks; precise type-face generation for the define form is still on the way, bridged by a wide index signature.
 
 ## Next
 

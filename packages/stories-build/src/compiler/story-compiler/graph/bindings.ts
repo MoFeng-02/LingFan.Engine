@@ -118,13 +118,14 @@ export function scanConstStatement(
     ts.isCallExpression(init) &&
     calleeWordName(init, record) === "defineVars"
   ) {
-    collectDefineVarsKeys(init, record, diags);
-    bind(name, { kind: "opaque" });
-    return;
-  }
-  if (exported && name === "stateSchema") {
-    // 构建期数据声明（C12）：state schema 由编排层求值降维成 defines，图谱层仅登记
-    // opaque——不参与故事表达式，词/表达式通道不可见。
+    // 换道守卫（config 化）：变量键声明统一走 config.vars（config.ts 求值通道）。
+    // 图谱层不再收集 defineVars——保留 opaque 绑定只是防级联误报，键不进任何注册表。
+    diags.add(
+      rel,
+      sf,
+      init,
+      "defineVars 已迁入 config.ts（config.vars）——图谱模块里不再支持 defineVars 调用，请把变量键声明移入 Stories.src/config.ts",
+    );
     bind(name, { kind: "opaque" });
     return;
   }
@@ -224,59 +225,6 @@ function calleeWordName(
     if (target?.kind === "namespace") return callee.name.text;
   }
   return undefined;
-}
-
-/**
- * 收集 `defineVars({...})` 清单里的键名。
- *
- * 键是**类型面**的输入（生成器要把它写进插值键注册表），因此这里只关心键的拼写，
- * 不校验值（值域由 `VarKind` 与 typecheck 各自负责）。
- *
- * spec 必须是单实参对象字面量：变量中转（`const spec = {...}; defineVars(spec)`）会让
- * 键在扫描期不可知，静默产出不完整的注册表比报错更坏——那时作者只会在 IDE 里看到
- * 一个「明明写了却报红」的键，且无从得知是构建器漏收了。因此 fail-closed。
- */
-function collectDefineVarsKeys(
-  init: ts.CallExpression,
-  record: ModuleRecord,
-  diags: DiagBag,
-): void {
-  const { sf, rel } = record;
-  if (init.arguments.length !== 1) {
-    diags.add(
-      rel,
-      sf,
-      init,
-      "defineVars(spec) 恰好接受一个实参（变量清单对象字面量）",
-    );
-    return;
-  }
-  const spec = init.arguments[0];
-  if (!ts.isObjectLiteralExpression(spec)) {
-    diags.add(
-      rel,
-      sf,
-      spec,
-      "defineVars 的清单必须是对象字面量——变量中转会让键在构建期不可知，插值键注册表将不完整",
-    );
-    return;
-  }
-  for (const prop of spec.properties) {
-    if (ts.isPropertyAssignment(prop) && ts.isStringLiteral(prop.name)) {
-      record.defineVarsKeys.add(prop.name.text);
-      continue;
-    }
-    if (ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name)) {
-      record.defineVarsKeys.add(prop.name.text);
-      continue;
-    }
-    diags.add(
-      rel,
-      sf,
-      prop,
-      "defineVars 清单的键必须是不含计算的字符串字面量或标识符",
-    );
-  }
 }
 
 function referencesNpmName(

@@ -7,6 +7,9 @@
  * 2. 在隔离 worker（node worker_threads）中执行 bundle，取导出常量值；
  * 3. 导出分类：仅接受 JSON 可序列化值；函数 / undefined / symbol / bigint / NaN /
  *    非普通对象（Date/Map/Set/class 实例）等一律报诊断。
+ * 4. 构建期内建注入：`define` / `defineVars` 以求值环境实参进 factory（无运行时实体）——
+ *    define 调用按书写序累积成 DefineCall 序列（形态 B），defineVars 返回实参本身
+ *    （`export const vars = defineVars({...})` 的导出值 = 键集对象，即 config.vars 键来源）。
  *
  * 确定性闸门（fail-closed）：同一 entry 求值两次，逐键 deepEqual；不一致即报错，
  * 文案指明禁 Date / Math.random / IO 等不确定源。
@@ -28,7 +31,24 @@ export type JsonValue =
 
 /** 求值结果：要么拿到全部导出常量的可序列化值，要么拿到一组诊断（fail-closed）。 */
 export type ConstEvalResult =
-  { values: Record<string, JsonValue> } | { diags: CompilerDiagnostic[] };
+  | { values: Record<string, JsonValue>; defineCalls: readonly DefineCall[] }
+  | { diags: CompilerDiagnostic[] };
+
+/**
+ * define() 构建期内建的调用记录（形态 B 累积；书写序即合并序）：
+ * - `path`：`define("a.b", value)` 点路径单值声明；
+ * - `spec`：`define({...})` 对象字面量子树声明。
+ * 值在 worker 内已过 classify（JSON 安全）；非法值不进此表（走 defineBad 诊断）。
+ */
+export type DefineCall =
+  | { kind: "path"; path: string; value: JsonValue }
+  | { kind: "spec"; spec: Record<string, JsonValue> };
+
+/** define() 非法调用的记录（求值段把每条翻成诊断，统一挂入口 1:1）。 */
+export interface DefineBad {
+  readonly path: string;
+  readonly reason: string;
+}
 
 /** 单轮求值超时（模块顶层死循环不应拖死构建）。 */
 const EVAL_TIMEOUT_MS = 30_000;
@@ -79,7 +99,21 @@ export async function evalConstModule(entry: string): Promise<ConstEvalResult> {
       ],
     };
   }
-  return { values: first.values };
+  if (!deepEqual(first.defineCalls, second.defineCalls)) {
+    return {
+      diags: [
+        {
+          file: absEntry,
+          line: 1,
+          col: 1,
+          message:
+            "编译期求值不确定：define() 声明在两次求值间不一致 —— " +
+            "模块顶层代码必须确定性求值：禁用 Date（new Date()/Date.now()）、Math.random、文件/网络 IO 等不确定源",
+        },
+      ],
+    };
+  }
+  return { values: first.values, defineCalls: first.defineCalls };
 }
 
 function resolveEsbuildPath(): string | null {
@@ -98,6 +132,8 @@ interface WorkerExportsMessage {
   kind: "exports";
   values: Record<string, unknown>;
   bad: { key: string; reason: string }[];
+  defineCalls: DefineCall[];
+  defineBad: DefineBad[];
 }
 interface WorkerEsbuildMessage {
   kind: "esbuild-error";
@@ -138,8 +174,21 @@ async function evaluateOnce(
           }),
         };
       }
+      if (outcome.defineBad.length > 0) {
+        return {
+          diags: outcome.defineBad.map((item) => ({
+            file: absEntry,
+            line: 1,
+            col: 1,
+            message: `define("${item.path}")：${item.reason}——define 值文法与 state 同规（仅 JSON 可序列化值；函数/undefined/symbol/bigint 拒）`,
+          })),
+        };
+      }
       // worker 分类已保证 JSON 安全，边界处收窄类型
-      return { values: outcome.values as Record<string, JsonValue> };
+      return {
+        values: outcome.values as Record<string, JsonValue>,
+        defineCalls: outcome.defineCalls,
+      };
     }
     case "esbuild-error":
       return { diags: outcome.diags };
@@ -277,15 +326,49 @@ function classify(value, seen) {
 
     const moduleObj = { exports: {} };
     const runRequire = createRequire(workerData.entry);
+
+    // define / defineVars：config.ts 构建期内建（求值环境注入，无运行时实体）。
+    // define 二态：字符串首参 = 点路径单值；普通对象首参 = 子树声明；值过 classify
+    // 才入列（非法值进 defineBad，由求值段翻成诊断）。defineVars 返回实参本身，
+    // 使 export const vars = defineVars({...}) 的导出值 = 键集对象（vars 键来源）。
+    const defineCalls = [];
+    const defineBad = [];
+    function define(pathOrSpec, value) {
+      if (typeof pathOrSpec === "string") {
+        const reason = classify(value, new Set());
+        if (reason !== null) {
+          defineBad.push({ path: pathOrSpec, reason: "值不可序列化（" + reason + "）" });
+          return;
+        }
+        defineCalls.push({ kind: "path", path: pathOrSpec, value: value });
+        return;
+      }
+      if (pathOrSpec !== null && typeof pathOrSpec === "object" && !Array.isArray(pathOrSpec)) {
+        const reason = classify(pathOrSpec, new Set());
+        if (reason !== null) {
+          defineBad.push({ path: "(对象实参)", reason: "对象实参不可序列化（" + reason + "）" });
+          return;
+        }
+        defineCalls.push({ kind: "spec", spec: pathOrSpec });
+        return;
+      }
+      defineBad.push({ path: "(实参)", reason: "首参须为点路径字符串或对象字面量" });
+    }
+    function defineVars(spec) {
+      return spec;
+    }
+
     const factory = new Function(
       "module",
       "exports",
       "require",
       "__filename",
       "__dirname",
+      "define",
+      "defineVars",
       code,
     );
-    factory(moduleObj, moduleObj.exports, runRequire, workerData.entry, path.dirname(workerData.entry));
+    factory(moduleObj, moduleObj.exports, runRequire, workerData.entry, path.dirname(workerData.entry), define, defineVars);
     try { delete moduleObj.exports.__esModule; } catch { /* 不可删则忽略 */ }
 
     const values = {};
@@ -295,7 +378,7 @@ function classify(value, seen) {
       if (reason === null) values[key] = moduleObj.exports[key];
       else bad.push({ key, reason });
     }
-    parentPort.postMessage({ kind: "exports", values, bad });
+    parentPort.postMessage({ kind: "exports", values, bad, defineCalls, defineBad });
   } catch (error) {
     if (error !== null && typeof error === "object" && Array.isArray(error.errors)) {
       const diags = error.errors.map((item) => {
@@ -374,10 +457,7 @@ function firstDeterminismDiff(
   return null;
 }
 
-function deepEqual(
-  a: JsonValue | undefined,
-  b: JsonValue | undefined,
-): boolean {
+function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (a === null || b === null || typeof a !== typeof b) return false;
   if (Array.isArray(a) || Array.isArray(b)) {

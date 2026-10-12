@@ -7,7 +7,9 @@
  */
 export {
   CONFIG_FILE,
-  loadStoryConfig,
+  assertSingleRootScript,
+  parseFolders,
+  parseStart,
   type StorySourceConfig,
 } from "./story-config";
 export { readManifest } from "./manifest-read";
