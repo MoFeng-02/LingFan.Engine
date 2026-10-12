@@ -59,6 +59,9 @@ export function runElementOps(
   // 只在**等待画面**允许点击动作：避免与正在推进的命令流交叉。
   // 未等待时 `SYS.waiting` 通常为 "none"，但脚本跑完/从未建立等待时可能是 undefined
   // ⇒ 用「是否为已知等待态」正向判定，不假设键一定存在。
+  // `interaction`（外部玩法系统接管）与 `extension`（扩展 op 等待）同为引擎等待态：
+  // 前者是裁定⑥补漏（既存缺陷——接管画面同样是被暂停的叙事，元素动作应可用），
+  // 后者与扩展等待面同期纳入。
   const waiting = ctx.get(SYS.waiting);
   if (
     waiting !== "dialog" &&
@@ -66,7 +69,9 @@ export function runElementOps(
     waiting !== "input" &&
     waiting !== "wait" &&
     waiting !== "video" &&
-    waiting !== "minigame"
+    waiting !== "minigame" &&
+    waiting !== "interaction" &&
+    waiting !== "extension"
   ) {
     ctx.fail(
       "element-ops-invalid",

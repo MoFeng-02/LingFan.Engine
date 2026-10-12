@@ -38,7 +38,9 @@ export function createTauriEncryptedResourcePort(
       try {
         payload = JSON.parse(raw) as StreamPayload;
       } catch {
-        throw new Error(`decrypt_resource 负载异常（非 JSON）：${raw.slice(0, 64)}`);
+        throw new Error(
+          `decrypt_resource 负载异常（非 JSON）：${raw.slice(0, 64)}`,
+        );
       }
       if (typeof payload?.url === "string" && payload.url !== "") {
         return payload.url; // 平台 URL 构造归 Rust（协议段编码 + wry 形态差异）

@@ -46,14 +46,16 @@ type BadInterpolationKey<K extends string> = {
   readonly __插值键未登记: K;
 };
 
-type CheckTextAt<S extends string, Whole extends string> =
-  S extends `${string}{${infer Inner}}${infer Rest}`
-    ? StripTextFormat<Inner> extends InlineTextTag
+type CheckTextAt<
+  S extends string,
+  Whole extends string,
+> = S extends `${string}{${infer Inner}}${infer Rest}`
+  ? StripTextFormat<Inner> extends InlineTextTag
+    ? CheckTextAt<Rest, Whole>
+    : StripTextFormat<Inner> extends KnownInterpolationKey
       ? CheckTextAt<Rest, Whole>
-      : StripTextFormat<Inner> extends KnownInterpolationKey
-        ? CheckTextAt<Rest, Whole>
-        : BadInterpolationKey<StripTextFormat<Inner>>
-    : Whole;
+      : BadInterpolationKey<StripTextFormat<Inner>>
+  : Whole;
 
 /** 文本参数类型：字面量按 `{…}` 逐键校验，非字面量原样放行 */
 export type InterpolatedText<S extends string> = S & CheckTextAt<S, S>;

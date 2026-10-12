@@ -54,8 +54,7 @@ export function createInteractionWalk(
   options: InteractionWalkOptions,
 ): WalkFactory {
   const defaultTargetPx = options.defaultTargetPx ?? DEFAULT_WALK_TARGET_PX;
-  const speedPxPerSec =
-    options.speedPxPerSec ?? DEFAULT_WALK_SPEED_PX_PER_SEC;
+  const speedPxPerSec = options.speedPxPerSec ?? DEFAULT_WALK_SPEED_PX_PER_SEC;
   return (host, ctx) => {
     const target =
       typeof ctx.config.target === "number"

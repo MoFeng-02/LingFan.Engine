@@ -41,11 +41,7 @@ export {
 /** 十二段串行编排（流水线主入口） */
 export { buildStories } from "./pipeline";
 /** 布局声明装载与校验（`Stories.src/config.ts`） */
-export {
-  CONFIG_FILE,
-  loadStoryConfig,
-  type StorySourceConfig,
-} from "./config";
+export { CONFIG_FILE, loadStoryConfig, type StorySourceConfig } from "./config";
 /** 源发现 v2（folders 多目录 + start 全局恰一） */
 export { discoverSources, type DiscoveredSources } from "./discovery";
 /** 编译器契约（story-compiler 对接面） */

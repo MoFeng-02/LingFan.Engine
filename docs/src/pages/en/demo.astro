@@ -1,0 +1,123 @@
+---
+// /en/demo/ — English counterpart of the embedded engine demo page.
+// Independent route, not listed in the sidebar (IA freeze). Shell, header
+// navigation, theme/language switches and head metadata come from DemoShell;
+// the stage skin lives in DemoSkin. Element ids stay identical to the zh page
+// so the same bootstrap can drive both; visible strings are localized here.
+import DemoShell from '../../components/demo/DemoShell.astro';
+import DemoSkin from '../../components/demo/DemoSkin.astro';
+const base = import.meta.env.BASE_URL;
+---
+
+<DemoShell
+  lang="en"
+  path="en/demo/"
+  zhPath="demo/"
+  title="Embedded engine demo · 灵泛引擎 LingFan Engine"
+  description="Run the LingFan Engine right inside the docs site: story DSL → assembly → engine → narrative overlay, with live switching between source and preview."
+  t={{
+    skip: 'Skip to content',
+    navLabel: 'Page navigation',
+    docsHome: 'Docs home',
+    themeLabel: 'Select theme',
+    dark: 'Dark',
+    light: 'Light',
+    langLabel: 'Select language',
+    menuLabel: 'Menu',
+    menu: [
+      { href: `${base}en/`, label: 'Documentation home' },
+      { href: `${base}en/introduction/`, label: 'Getting started' },
+      { href: `${base}en/guides/dialogue/`, label: 'Dialogue guide' },
+      { href: `${base}en/reference/ops/`, label: 'Instruction reference' },
+    ],
+  }}
+>
+  <DemoSkin />
+  <main id="lf-demo" class="lf-page">
+    <h1>Embedded engine demo<span class="lf-chip">Real engine · runs on this page</span></h1>
+    <p class="lf-lede">
+      This page embeds the LingFan Engine itself (assembler + StoryEngine + narrative overlay)
+      directly into the docs site: preview mode runs the real pipeline —
+      <code>assembleProject → StoryEngine → createNarrativeOverlay</code> — and in source mode you
+      can edit the story DSL or JSON, then apply it to rebuild the engine in place. Story text is
+      shown in its original language.
+    </p>
+
+    <div class="lf-row">
+      <span class="lf-row-label">Stories:</span>
+      <button class="lf-btn" id="lf-story-greeting" type="button" aria-pressed="false">Greeting &amp; variables</button>
+      <button class="lf-btn" id="lf-story-crossroads" type="button" aria-pressed="false">Crossroads &amp; menu</button>
+      <button class="lf-btn" id="lf-story-tour" type="button" aria-pressed="false">Three-column tour</button>
+    </div>
+    <div class="lf-row">
+      <span class="lf-row-label">View:</span>
+      <button class="lf-btn" id="lf-mode-preview" type="button" aria-pressed="true">Preview</button>
+      <button class="lf-btn" id="lf-mode-source" type="button" aria-pressed="false">Source</button>
+    </div>
+
+    <div id="lf-demo-stage">
+      <div id="lf-demo-preview" tabindex="0" aria-label="Narrative preview. Click or press Space to advance the dialogue."></div>
+      <div id="lf-demo-source" hidden>
+        <div class="lf-row" role="group" aria-label="Source view tabs">
+          <button class="lf-btn" id="lf-tab-story" type="button" aria-pressed="true">story DSL</button>
+          <button class="lf-btn" id="lf-tab-json" type="button" aria-pressed="false">JSON</button>
+          <button class="lf-btn" id="lf-tab-ts" type="button" aria-pressed="false">TS</button>
+        </div>
+
+        <div class="lf-pane" id="lf-pane-story">
+          <div class="lf-pane-head">
+            <button class="lf-btn" id="lf-regen-story" type="button">⟳ Regenerate</button>
+            <span id="lf-dirty-story" class="lf-dirty" hidden>Unapplied changes</span>
+            <span style="flex: 1"></span>
+            <button class="lf-btn" id="lf-apply-story" type="button" disabled>✓ Apply</button>
+          </div>
+          <ul class="lf-errors" id="lf-err-story"></ul>
+          <textarea id="lf-text-story" spellcheck="false" aria-label="story DSL editor"></textarea>
+        </div>
+
+        <div class="lf-pane" id="lf-pane-json" hidden>
+          <div class="lf-pane-head">
+            <button class="lf-btn" id="lf-regen-json" type="button">⟳ Regenerate</button>
+            <span id="lf-dirty-json" class="lf-dirty" hidden>Unapplied changes</span>
+            <span style="flex: 1"></span>
+            <button class="lf-btn" id="lf-apply-json" type="button" disabled>✓ Apply</button>
+          </div>
+          <ul class="lf-errors" id="lf-err-json"></ul>
+          <textarea id="lf-text-json" spellcheck="false" aria-label="Story JSON editor"></textarea>
+        </div>
+
+        <div class="lf-pane" id="lf-pane-ts" hidden>
+          <div class="lf-pane-head">
+            <span class="lf-readonly">Read-only view</span>
+          </div>
+          <textarea id="lf-text-ts" readonly spellcheck="false" aria-label="Story TS form (read-only)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <p id="lf-status" role="status"></p>
+    <p class="lf-lede" style="margin-top: 0">
+      How to use: click the preview area to focus it, then press any key to advance the dialogue;
+      menus and text input are picked with the mouse. "Apply" in source mode runs the full
+      re-assembly — parse failures are only listed, the running state is never interrupted.
+    </p>
+
+    <footer>
+      <a href={base}>Docs home</a> · <a href={`${base}en/introduction/`}>Back to docs</a>
+      · This page is an in-site demo and is not listed in the docs sidebar.
+    </footer>
+  </main>
+
+  <script>
+    // Bootstrap shell (the only eager script): the engine and UI enter via async chunks.
+    import("../../demo/app")
+      .then((mod) => {
+        mod.initDemo();
+      })
+      .catch((error: unknown) => {
+        console.error(error);
+        const status = document.getElementById("lf-status");
+        if (status !== null) status.textContent = `Failed to load the demo module: ${String(error)}`;
+      });
+  </script>
+</DemoShell>

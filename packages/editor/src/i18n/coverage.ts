@@ -104,7 +104,9 @@ export function workbenchOverview(
   overlayKeysByLang: Readonly<Record<string, readonly string[]>>,
 ): WorkbenchOverview {
   const langs = Object.keys(overlayKeysByLang).sort();
-  const coverages = langs.map((lang) => langCoverage(sources, lang, overlayKeysByLang[lang] ?? []));
+  const coverages = langs.map((lang) =>
+    langCoverage(sources, lang, overlayKeysByLang[lang] ?? []),
+  );
   const unusedAll = [...new Set(coverages.flatMap((c) => c.unused))].sort();
   return {
     coverages,

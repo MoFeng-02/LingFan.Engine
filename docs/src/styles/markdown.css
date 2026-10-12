@@ -60,8 +60,7 @@
   color: var(--lf-text-muted);
 }
 
-.sl-markdown-content blockquote
-  > :first-child:not(:where(.not-content *)) {
+.sl-markdown-content blockquote > :first-child:not(:where(.not-content *)) {
   margin-block-start: 0;
 }
 
@@ -78,11 +77,13 @@
 }
 
 /* 首末列不再贴边，让表格边框内的内容有呼吸 */
-.sl-markdown-content :is(th:first-child, td:first-child):not(:where(.not-content *)) {
+.sl-markdown-content
+  :is(th:first-child, td:first-child):not(:where(.not-content *)) {
   padding-inline-start: 0.75rem;
 }
 
-.sl-markdown-content :is(th:last-child, td:last-child):not(:where(.not-content *)) {
+.sl-markdown-content
+  :is(th:last-child, td:last-child):not(:where(.not-content *)) {
   padding-inline-end: 0.75rem;
 }
 
@@ -97,7 +98,10 @@
 }
 
 /* 最后一行不再画底线，交给表格外框 */
-.sl-markdown-content tbody tr:last-child :is(th, td):not(:where(.not-content *)) {
+.sl-markdown-content
+  tbody
+  tr:last-child
+  :is(th, td):not(:where(.not-content *)) {
   border-block-end: 0;
 }
 

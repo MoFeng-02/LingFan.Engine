@@ -75,7 +75,8 @@ export function drawTextOverlay(
     const charSize = Math.round(input.height * 0.07);
     ctx.font = `${charSize}px sans-serif`;
     // 简单逐字符折行（缩略图场景够用；CJK 为主无断词问题）
-    let cursorY = Math.round(input.height * 0.46) + (input.speaker ? charSize * 1.8 : 0);
+    let cursorY =
+      Math.round(input.height * 0.46) + (input.speaker ? charSize * 1.8 : 0);
     let cursorX = pad;
     for (const ch of line) {
       if (cursorX + charSize > maxWidth) {

@@ -32,8 +32,12 @@ const realPaths = [
   "project.json",
 ];
 
-const names = (nodes: readonly ResourceNode[]): string[] => nodes.map((n) => n.name);
-const find = (nodes: readonly ResourceNode[], name: string): ResourceNode | undefined => {
+const names = (nodes: readonly ResourceNode[]): string[] =>
+  nodes.map((n) => n.name);
+const find = (
+  nodes: readonly ResourceNode[],
+  name: string,
+): ResourceNode | undefined => {
   for (const n of nodes) {
     if (n.name === name) return n;
     const hit = find(n.children, name);
@@ -98,7 +102,10 @@ describe("buildResourceTree · 真实工程", () => {
   it("嵌套两层（Lang/en/*.json）", () => {
     const lang = find(tree, "Lang")!;
     expect(names(lang.children)).toEqual(["en"]);
-    expect(names(lang.children[0].children)).toEqual(["main.json", "title_main.json"]);
+    expect(names(lang.children[0].children)).toEqual([
+      "main.json",
+      "title_main.json",
+    ]);
   });
 
   it("目录节点标 collapsible、根级 manifest 不标", () => {
@@ -107,7 +114,11 @@ describe("buildResourceTree · 真实工程", () => {
   });
 
   it("Saves 显式在树里但只读（不隐藏 —— 隐藏会让用户以为文件丢了）", () => {
-    const withSaves = buildResourceTree([...realPaths, "Saves/slot_1.json", "Saves/slot_2.json"]);
+    const withSaves = buildResourceTree([
+      ...realPaths,
+      "Saves/slot_1.json",
+      "Saves/slot_2.json",
+    ]);
     const saves = find(withSaves, "Saves")!;
     expect(saves).toBeDefined();
     expect(saves.readOnly).toBe(true);
@@ -174,9 +185,14 @@ describe("createCollapsedDirsStore · 收展持久化", () => {
     const store = createCollapsedDirsStore(storage);
     store.save("demo", new Set(["Stories/", "Audio/"]));
     // 模拟会话重启：新 store 实例、同一存储
-    const reopened = createCollapsedDirsStore(memoryStorage({
-      [`${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`]: JSON.stringify(["Stories/", "Audio/"]),
-    }));
+    const reopened = createCollapsedDirsStore(
+      memoryStorage({
+        [`${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`]: JSON.stringify([
+          "Stories/",
+          "Audio/",
+        ]),
+      }),
+    );
     expect(reopened.load("demo")).toEqual(new Set(["Stories/", "Audio/"]));
     // 工程隔离：另一工程读不到这份折叠集
     expect(reopened.load("other")).toEqual(new Set());
@@ -184,29 +200,63 @@ describe("createCollapsedDirsStore · 收展持久化", () => {
 
   it("故意错误：坏 JSON / 非数组 / 含非字符串条目 ⇒ 降级空集或剔除（不抛）", () => {
     const key = `${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`;
-    expect(createCollapsedDirsStore(memoryStorage({ [key]: "{not-json" })).load("demo")).toEqual(new Set());
-    expect(createCollapsedDirsStore(memoryStorage({ [key]: JSON.stringify("Stories/") })).load("demo")).toEqual(new Set());
-    expect(createCollapsedDirsStore(memoryStorage({ [key]: JSON.stringify({ a: 1 }) })).load("demo")).toEqual(new Set());
     expect(
-      createCollapsedDirsStore(memoryStorage({ [key]: JSON.stringify(["Stories/", "", 42, null]) })).load("demo"),
+      createCollapsedDirsStore(memoryStorage({ [key]: "{not-json" })).load(
+        "demo",
+      ),
+    ).toEqual(new Set());
+    expect(
+      createCollapsedDirsStore(
+        memoryStorage({ [key]: JSON.stringify("Stories/") }),
+      ).load("demo"),
+    ).toEqual(new Set());
+    expect(
+      createCollapsedDirsStore(
+        memoryStorage({ [key]: JSON.stringify({ a: 1 }) }),
+      ).load("demo"),
+    ).toEqual(new Set());
+    expect(
+      createCollapsedDirsStore(
+        memoryStorage({ [key]: JSON.stringify(["Stories/", "", 42, null]) }),
+      ).load("demo"),
     ).toEqual(new Set(["Stories/"]));
   });
 
   it("边界：无存储 / 读失败 / 写失败 / 空工程 id / 超限截断", () => {
     // undefined 存储 = 无持久化（读写皆空操作）
     expect(createCollapsedDirsStore(undefined).load("demo")).toEqual(new Set());
-    expect(() => createCollapsedDirsStore(undefined).save("demo", new Set(["A/"]))).not.toThrow();
+    expect(() =>
+      createCollapsedDirsStore(undefined).save("demo", new Set(["A/"])),
+    ).not.toThrow();
     // 读失败 = 空集；写失败 = 静默（仅本次会话有效）
-    expect(createCollapsedDirsStore(memoryStorage({}, { failRead: true })).load("demo")).toEqual(new Set());
-    expect(() => createCollapsedDirsStore(memoryStorage({}, { failWrite: true })).save("demo", new Set(["A/"]))).not.toThrow();
+    expect(
+      createCollapsedDirsStore(memoryStorage({}, { failRead: true })).load(
+        "demo",
+      ),
+    ).toEqual(new Set());
+    expect(() =>
+      createCollapsedDirsStore(memoryStorage({}, { failWrite: true })).save(
+        "demo",
+        new Set(["A/"]),
+      ),
+    ).not.toThrow();
     // 空工程 id = 不读写（存储原值不动）
-    const storage = memoryStorage({ [`${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`]: `["Stories/"]` });
+    const storage = memoryStorage({
+      [`${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`]: `["Stories/"]`,
+    });
     createCollapsedDirsStore(storage).save("", new Set(["X/"]));
-    expect(storage.getItem(`${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`)).toBe(`["Stories/"]`);
+    expect(storage.getItem(`${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`)).toBe(
+      `["Stories/"]`,
+    );
     // 超限截断（目录数远小于上限；截断而非报错——视图偏好不值得拦人）
-    const bloated = Array.from({ length: COLLAPSED_DIRS_LIMIT + 50 }, (_, i) => `Dir${i}/`);
+    const bloated = Array.from(
+      { length: COLLAPSED_DIRS_LIMIT + 50 },
+      (_, i) => `Dir${i}/`,
+    );
     const loaded = createCollapsedDirsStore(
-      memoryStorage({ [`${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`]: JSON.stringify(bloated) }),
+      memoryStorage({
+        [`${RESOURCE_TREE_COLLAPSED_KEY_PREFIX}demo`]: JSON.stringify(bloated),
+      }),
     ).load("demo");
     expect(loaded.size).toBe(COLLAPSED_DIRS_LIMIT);
   });

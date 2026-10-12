@@ -11,7 +11,11 @@
  * 那一次写没有任何语义，却足以让「谁在改 DOM」变得难查。
  */
 
-import { resolveInstanceZ, type LayerId, type LayerZTable } from "@lingfan/engine";
+import {
+  resolveInstanceZ,
+  type LayerId,
+  type LayerZTable,
+} from "@lingfan/engine";
 
 /** 由 DOM 承载的层（顺序即写入顺序；视频/小游戏/历史/偏好不在此表） */
 const DOM_LAYERS: readonly LayerId[] = [

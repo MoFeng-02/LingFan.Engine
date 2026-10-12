@@ -124,7 +124,10 @@ function bindSelected(el: HTMLElement, ctx: ElementRenderContext): void {
  *   分支判定在宿主（`activate` 回调内按该优先级选路），本层只负责挂载与短路。
  * - 视觉：`hover_*` / `selected_*` / `disabled_*` 与点击正交，独立绑定。
  */
-export function bindInteraction(el: HTMLElement, ctx: ElementRenderContext): void {
+export function bindInteraction(
+  el: HTMLElement,
+  ctx: ElementRenderContext,
+): void {
   bindDisabled(el, ctx); // 禁用视觉态（不挂点击）
   if (isDisabled(ctx)) return; // 最高优先级：禁用即不挂任何交互
   bindHover(el, ctx);

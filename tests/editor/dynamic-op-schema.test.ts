@@ -97,7 +97,9 @@ describe("编辑器 schema 动态注册", () => {
       formatVersion: 1,
       id: "t",
       entry: "a",
-      columns: [{ id: "a", kind: "flow", commands: [{ op: "roll_dice", sides: 6 }] }],
+      columns: [
+        { id: "a", kind: "flow", commands: [{ op: "roll_dice", sides: 6 }] },
+      ],
     };
     expect(validateStory(structuredClone(story), [diceExtension])).toEqual([]);
     const without = validateStory(structuredClone(story));
@@ -114,7 +116,11 @@ describe("编辑器 schema 动态注册", () => {
         {
           op: "bad_op",
           exec: () => ({ ok: true }),
-          schema: { label: "坏归组", group: "not-a-group" as never, schema: diceSchema },
+          schema: {
+            label: "坏归组",
+            group: "not-a-group" as never,
+            schema: diceSchema,
+          },
         },
       ],
     };
@@ -128,12 +134,18 @@ describe("编辑器 schema 动态注册", () => {
     // 内建半边：BUILTIN_OP_NAMES 全部在编辑器 schema 面（既有 schema.test.ts 另以 format 子域
     // 源码提取做更强互锁；此处以注册表口径补动态维度）
     for (const op of BUILTIN_OP_NAMES) {
-      expect(OP_SCHEMAS[op], `内建 op ${op} 应有编辑器 schema`).not.toBeUndefined();
+      expect(
+        OP_SCHEMAS[op],
+        `内建 op ${op} 应有编辑器 schema`,
+      ).not.toBeUndefined();
     }
     // 动态半边：经引擎注册表校验的扩展 op 必须出现在合并面
     const registry = buildOpRegistry([diceExtension]);
     for (const op of registry.keys()) {
-      expect(merged.schemas[op], `扩展 op ${op} 应入合并面`).not.toBeUndefined();
+      expect(
+        merged.schemas[op],
+        `扩展 op ${op} 应入合并面`,
+      ).not.toBeUndefined();
     }
     expect(registry.has("roll_dice")).toBe(true);
   });
@@ -141,9 +153,7 @@ describe("编辑器 schema 动态注册", () => {
   it("组件面板：合并面上扩展 op 落入声明归组", () => {
     const groups = listOpGroups(merged);
     const variables = groups.find((g) => g.group === "variables");
-    expect(
-      variables?.ops.some((entry) => entry.op === "roll_dice"),
-    ).toBe(true);
+    expect(variables?.ops.some((entry) => entry.op === "roll_dice")).toBe(true);
     // 内建面不含扩展 op（口径不变）
     const builtin = listOpGroups();
     expect(

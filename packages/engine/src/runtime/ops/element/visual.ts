@@ -53,10 +53,7 @@ const BACKGROUND_Z = -1000;
  * - `hide`：按 `id`/`name`/`source` 移除，递归含 children；未命中**幂等不报错**
  * - `background` / `bg_switch`：换背景（先清旧背景 → 追加，固定底层序）
  */
-export function execElementVisual(
-  ctx: OpContext,
-  cmd: StoryCommand,
-): boolean {
+export function execElementVisual(ctx: OpContext, cmd: StoryCommand): boolean {
   const known = ELEMENT_OP_FIELDS[cmd.op]!;
   const unknown = Object.keys(cmd).filter((k) => !known.has(k));
   if (unknown.length > 0) {
@@ -94,10 +91,7 @@ export function execElementVisual(
         typeof value !== "number" &&
         typeof value !== "string"
       ) {
-        ctx.fail(
-          "show-invalid",
-          `show.${key} 必须为数字或字符串（CSS 长度）`,
-        );
+        ctx.fail("show-invalid", `show.${key} 必须为数字或字符串（CSS 长度）`);
         return false;
       }
     }
@@ -165,7 +159,9 @@ export function execElementVisual(
     ctx.setSystem(
       SYS.elements,
       ctx.mapElements((el) =>
-        hits.includes(el) ? { ...el, props: { ...el.props, ...styleProps } } : el,
+        hits.includes(el)
+          ? { ...el, props: { ...el.props, ...styleProps } }
+          : el,
       ),
     );
     return true;
@@ -223,7 +219,8 @@ function appendElement(
   }
   const element: ElementInstance = {
     id:
-      options.id ?? (options.isBackground ? "background" : `show#${base.length}`),
+      options.id ??
+      (options.isBackground ? "background" : `show#${base.length}`),
     type: options.isBackground ? "background" : "image",
     props,
     z: options.isBackground ? BACKGROUND_Z : base.length,

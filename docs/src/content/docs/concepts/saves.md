@@ -117,13 +117,13 @@ engine.load("slot_1");
 
 校验挡下这些情况：
 
-| 错误码 | 什么时候 |
-|---|---|
-| `save-format` | 存档结构不完整、历史检查点缺字段、`cursor` 类型不对 |
-| `save-story-mismatch` | `storyId` 对不上，或者档里的列在当前故事里不存在了 |
-| `load-invalid-slot` | 槽位名不合法 |
-| `load-failed` | 槽位读不出来或者 JSON 解析失败 |
-| `save-unavailable` / `load-unavailable` | 没装配存档端口 |
+| 错误码                                  | 什么时候                                            |
+| --------------------------------------- | --------------------------------------------------- |
+| `save-format`                           | 存档结构不完整、历史检查点缺字段、`cursor` 类型不对 |
+| `save-story-mismatch`                   | `storyId` 对不上，或者档里的列在当前故事里不存在了  |
+| `load-invalid-slot`                     | 槽位名不合法                                        |
+| `load-failed`                           | 槽位读不出来或者 JSON 解析失败                      |
+| `save-unavailable` / `load-unavailable` | 没装配存档端口                                      |
 
 第二行是改故事时最容易撞上的：你删了或改名了一个列，玩家手上的旧档就报「该存档与当前故事版本不匹配（列定义已变更）」。存档坐标指向的列必须还在。
 
@@ -162,7 +162,12 @@ await savePort.list();
 {
   "shell": {
     "saves": {
-      "thumbnail": { "width": 320, "height": 180, "quality": 0.7, "showText": true }
+      "thumbnail": {
+        "width": 320,
+        "height": 180,
+        "quality": 0.7,
+        "showText": true
+      }
     }
   }
 }

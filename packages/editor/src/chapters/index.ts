@@ -75,14 +75,20 @@ export function chapterLabelOf(path: string): string {
   const dot = file.indexOf(".");
   const name = dot < 0 ? file : file.slice(0, dot);
   const dir = chapterDirOf(path);
-  const dirName = dir.slice(0, dir.length - 1).split("/").pop() ?? "";
+  const dirName =
+    dir
+      .slice(0, dir.length - 1)
+      .split("/")
+      .pop() ?? "";
   // 目录名与文件名同前缀时（如 chapter1/chapter1.story）**取目录名**——
   // 目录才是「章节」，文件名只是文件。
   return dirName !== "" ? dirName : name;
 }
 
 /** 章节所属分组（**单一判定点**：直接用引擎的 `isReplayableColumn`，不另写一份） */
-export function chapterGroupOf(column: Pick<StoryColumn, "type">): ChapterGroup {
+export function chapterGroupOf(
+  column: Pick<StoryColumn, "type">,
+): ChapterGroup {
   return isReplayableColumn(column) ? "story" : "ui";
 }
 
@@ -151,9 +157,15 @@ function dirsOfGroup(
   }
   return [...byDir.entries()]
     .map(([path, children]) => ({
-      label: path.slice(0, path.length - 1).split("/").pop() ?? path,
+      label:
+        path
+          .slice(0, path.length - 1)
+          .split("/")
+          .pop() ?? path,
       path,
-      children: [...children].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)),
+      children: [...children].sort((a, b) =>
+        a.path < b.path ? -1 : a.path > b.path ? 1 : 0,
+      ),
     }))
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
@@ -165,7 +177,9 @@ function dirsOfGroup(
  * 把菜单放进 `chapter1/`。按目录分组会把它们错分。
  * **目录只表达「作者的编排意图」，类型才表达「运行语义」。**
  */
-export function buildChapterIndex(inputs: readonly ChapterInput[]): ChapterIndex {
+export function buildChapterIndex(
+  inputs: readonly ChapterInput[],
+): ChapterIndex {
   const nodes: ChapterNode[] = inputs.map(({ path, column }) => ({
     id: column.id,
     label: chapterLabelOf(path),
@@ -191,7 +205,11 @@ export function buildChapterIndex(inputs: readonly ChapterInput[]): ChapterIndex
   }
   const dirNodes: ChapterDir[] = [...dirs.entries()]
     .map(([path, children]) => ({
-      label: path.slice(0, path.length - 1).split("/").pop() ?? path,
+      label:
+        path
+          .slice(0, path.length - 1)
+          .split("/")
+          .pop() ?? path,
       path,
       children: [...children].sort(byCodeUnit),
     }))

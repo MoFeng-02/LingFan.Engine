@@ -32,7 +32,8 @@ export interface AppElementLayerOptions {
 
 /** 装配元素层渲染：元素表变化后经 nextTick 渲到容器（首帧容器可能尚未挂载） */
 export function createAppElementLayer(options: AppElementLayerOptions): void {
-  const { narrative, elementLayerEl, props, commands, error, getEngine } = options;
+  const { narrative, elementLayerEl, props, commands, error, getEngine } =
+    options;
   const { elements } = narrative;
   const elementLayer = createElementLayer({
     readContainer: () => elementLayerEl.value,

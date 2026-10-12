@@ -1,8 +1,22 @@
 /** 第四章 · 变量盛宴：数组 / 字典 / let / undef 词逃生舱——SSOT 状态随快照、存档、回溯随行。 */
-import { arrayPop, arrayPush, dict, dictSet, letVar, menu, newArray, option, say, undef } from "../lib/vocabulary";
+import {
+  arrayPop,
+  arrayPush,
+  dict,
+  dictSet,
+  letVar,
+  menu,
+  newArray,
+  option,
+  say,
+  undef,
+} from "../lib/vocabulary";
 
 export default function tour_vars(): void {
-  say("变量盛宴——数组、字典、临时变量都是 SSOT 状态，随快照/存档/回溯随行。", "灵泛");
+  say(
+    "变量盛宴——数组、字典、临时变量都是 SSOT 状态，随快照/存档/回溯随行。",
+    "灵泛",
+  );
   newArray("bag", ["火把"]);
   arrayPush("bag", "面包");
   arrayPush("bag", "旧地图");
@@ -12,7 +26,9 @@ export default function tour_vars(): void {
   say("array_pop 取走最后一件（提灯）——现在剩三件。");
   dict("gear", { weapon: "木剑", armor: "布衣" });
   dictSet("gear", "weapon", "铁剑");
-  say("装备字典：dict 建档 + dict_set 把武器从木剑升级成铁剑（历史面板可查每次变更）。");
+  say(
+    "装备字典：dict 建档 + dict_set 把武器从木剑升级成铁剑（历史面板可查每次变更）。",
+  );
   letVar("ticket", 1);
   say("let 临时变量：ticket = {ticket}。");
   undef("ticket");

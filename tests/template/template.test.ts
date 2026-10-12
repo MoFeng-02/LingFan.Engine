@@ -85,7 +85,9 @@ describe("template/v1 脚手架防腐", () => {
     const paths = Object.keys(SRC_SOURCES);
     expect(paths.length).toBeGreaterThanOrEqual(8);
     expect(paths.some((path) => path.endsWith("/src/main.ts"))).toBe(true);
-    expect(paths.some((path) => path.endsWith("/host/stage-dom.ts"))).toBe(true);
+    expect(paths.some((path) => path.endsWith("/host/stage-dom.ts"))).toBe(
+      true,
+    );
   });
 
   it("宿主按契约接线：端口 + 订阅渲染 + 帧循环 + 输入映射", () => {
@@ -117,7 +119,14 @@ describe("template/v1 脚手架防腐", () => {
 
   it("每个等待态都有可推进出口（回归：曾只有 dialogue，menu/input/video 会永久卡死）", () => {
     // 引擎能进入的等待态全集（WaitingState）都必须被宿主识别
-    for (const state of ["dialog", "menu", "input", "wait", "video", "minigame"]) {
+    for (const state of [
+      "dialog",
+      "menu",
+      "input",
+      "wait",
+      "video",
+      "minigame",
+    ]) {
       expect(srcText, `宿主未处理等待态 ${state}`).toContain(`"${state}"`);
     }
     // 三类推进出口：菜单选择 / 输入提交 / advance（含 wait·video 跳过）

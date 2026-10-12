@@ -21,7 +21,9 @@ export interface HostEffectsOptions {
 }
 
 /** 造本宿主的逐帧驱动函数：宿主每帧调用一次，传入距上一帧的秒数 */
-export function createHostEffects(options: HostEffectsOptions): (dt: number) => void {
+export function createHostEffects(
+  options: HostEffectsOptions,
+): (dt: number) => void {
   const { dom, engine } = options;
   return createVisualEffects({
     source: {
@@ -30,8 +32,7 @@ export function createHostEffects(options: HostEffectsOptions): (dt: number) => 
         engine.get(SYS.transition) as { duration: number } | undefined,
       shake: () =>
         engine.get(SYS.shake) as
-          | { intensity: number; duration: number }
-          | undefined,
+          { intensity: number; duration: number } | undefined,
       animationFinished: (seq) => engine.animationFinished(seq),
       transitionFinished: () => engine.transitionFinished(),
       shakeFinished: () => engine.shakeFinished(),

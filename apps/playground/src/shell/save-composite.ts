@@ -19,12 +19,17 @@ export interface StageMediaLayer {
  * DOM 顺序 = 叠放顺序）+ body 直挂的覆盖层视频（videoPort fixed 全屏）。
  * 无帧视频（readyState < 2）与零尺寸跳过。
  */
-export function collectStageMedia(stage: HTMLElement | null): StageMediaLayer[] {
+export function collectStageMedia(
+  stage: HTMLElement | null,
+): StageMediaLayer[] {
   if (stage === null) return [];
   const stageRect = stage.getBoundingClientRect();
   const out: StageMediaLayer[] = [];
   const push = (el: Element): void => {
-    if (!(el instanceof HTMLImageElement) && !(el instanceof HTMLVideoElement)) {
+    if (
+      !(el instanceof HTMLImageElement) &&
+      !(el instanceof HTMLVideoElement)
+    ) {
       return;
     }
     if (el instanceof HTMLVideoElement && el.readyState < 2) return;

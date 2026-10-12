@@ -50,13 +50,15 @@ export function analyzeStory(
         : target.kind === "function"
           ? index.functions.has(target.target)
           : // callable：列或 func **任一存在**即通过
-            index.columnPointers.has(target.target) || index.functions.has(target.target);
+            index.columnPointers.has(target.target) ||
+            index.functions.has(target.target);
     if (!found) {
       out.push({
         // `"function"` 分支当前**无字段产出**（`call` 用的是 `callable`）——
         // 保留它是**契约完备性**（`TargetKind` 有三种，判定要覆盖三种），
         // 将来若出现「只允许 func」的新字段即可直接复用（当前无产出路径，非冗余代码）。
-        code: target.kind === "function" ? "unknown-function" : "missing-target",
+        code:
+          target.kind === "function" ? "unknown-function" : "missing-target",
         severity: "error",
         message:
           target.kind === "column"

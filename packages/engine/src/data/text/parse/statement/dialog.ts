@@ -21,7 +21,7 @@ export function parseDialogStatement(c: StatementContext): StoryCommand | null {
       // 文法：assert {expr} ["可选消息"] —— cond 取花括号跨度（与 if/while 同口径，
       // rest 保原样所以花括号内空格安全）；消息取行尾带引号串。无 body（单点校验）。
       const m = /^(\{.*\})\s*(?:"([^"]*)")?\s*$/.exec(rest);
-      if (m === null) return fail("assert 文法：assert {expr} [\"消息\"]");
+      if (m === null) return fail('assert 文法：assert {expr} ["消息"]');
       const cmd: StoryCommand = { op: "assert", cond: m[1]! };
       if (m[2] !== undefined) cmd.message = m[2]!;
       return cmd;
@@ -30,7 +30,7 @@ export function parseDialogStatement(c: StatementContext): StoryCommand | null {
       // 文法：guard "守卫名" {JSON 参数对象?} —— 参数是**纯 JSON 数据**（非表达式），
       // 与 generate 端 JSON.stringify 严格互逆；解析失败 fail-closed（不静默丢参数）。
       const m = /^"([^"]*)"\s*(\{.*\})?\s*$/.exec(rest);
-      if (m === null) return fail("guard 文法：guard \"守卫名\" {参数对象?}");
+      if (m === null) return fail('guard 文法：guard "守卫名" {参数对象?}');
       const cmd: StoryCommand = { op: "guard", fn: m[1]! };
       if (m[2] !== undefined) {
         let args: unknown;

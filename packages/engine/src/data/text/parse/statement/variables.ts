@@ -12,7 +12,9 @@ import { StatementContext } from "../state";
  * 失败表现：不抛异常；语法或参数不符时用 `c.fail` 记一条带定位的 issue 并返回 `null`，
  * 由调用方按 issues 非空整次拒绝。语义暂未生效的情况记到警告通道，不阻塞解析。
  */
-export function parseVariablesStatement(c: StatementContext): StoryCommand | null {
+export function parseVariablesStatement(
+  c: StatementContext,
+): StoryCommand | null {
   const { op, rest, tokens, fail, quoted } = c;
   switch (op) {
     case "set":

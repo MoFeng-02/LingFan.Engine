@@ -6,7 +6,12 @@
  */
 import type { ElementRegistry, ElementRenderer } from "../registry";
 import { renderImage, renderImageButton, renderVideo } from "./media";
-import { renderButton, renderCheckbox, renderProgress, renderSlider } from "./controls";
+import {
+  renderButton,
+  renderCheckbox,
+  renderProgress,
+  renderSlider,
+} from "./controls";
 import {
   renderBorder,
   renderCanvas,
@@ -18,7 +23,9 @@ import { renderSeparator, renderSpacer } from "./decoration";
 import { renderText } from "./text";
 
 /** 内建渲染器注册（宿主可在其后覆盖任意类型；未注册类型由宿主 fail-closed 上报） */
-export function registerBuiltinElementRenderers(registry: ElementRegistry): void {
+export function registerBuiltinElementRenderers(
+  registry: ElementRegistry,
+): void {
   const reg: Record<string, ElementRenderer> = {
     // 文本族 4
     text: renderText,

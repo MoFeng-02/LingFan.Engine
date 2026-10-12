@@ -32,7 +32,10 @@ const code = (source: string): string =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/<!--[\s\S]*?-->/g, "");
 
 const HOSTS = [
-  { label: "playground", src: code(Object.values(playgroundSources).join("\n")) },
+  {
+    label: "playground",
+    src: code(Object.values(playgroundSources).join("\n")),
+  },
   { label: "editor-preview", src: code(previewHost) },
 ];
 
@@ -49,9 +52,12 @@ describe("挂载点模板 · 接线互锁（两宿主）", () => {
     expect(src).toMatch(/choiceView\.optionHtml\[/);
   });
 
-  it.each(HOSTS)("$label：选项点击仍走核心 choose（模板不改叙事流向）", ({ src }) => {
-    expect(src).toMatch(/@click[^>]*choose\(/);
-  });
+  it.each(HOSTS)(
+    "$label：选项点击仍走核心 choose（模板不改叙事流向）",
+    ({ src }) => {
+      expect(src).toMatch(/@click[^>]*choose\(/);
+    },
+  );
 
   it.each(HOSTS)("$label：v-html 渲染的选项按钮带可访问名", ({ src }) => {
     // 无障碍名必须由宿主显式给出：v-html 内容不进无障碍树计算
@@ -65,11 +71,14 @@ describe("挂载点模板 · 接线互锁（两宿主）", () => {
     expect(src).toMatch(/\.bodyHtml/);
   });
 
-  it.each(HOSTS)("$label：通知 tone 由事件透传（预览/宿主不得写死 info）", ({ src }) => {
-    // tone 必须来自 payload 或已归一化的条目字段——写死字面量会让警告/错误皮肤失真
-    expect(src).toMatch(/toNotifyTone\(/);
-    expect(src).not.toMatch(/tone:\s*"info"\s*,\s*\}\)/);
-  });
+  it.each(HOSTS)(
+    "$label：通知 tone 由事件透传（预览/宿主不得写死 info）",
+    ({ src }) => {
+      // tone 必须来自 payload 或已归一化的条目字段——写死字面量会让警告/错误皮肤失真
+      expect(src).toMatch(/toNotifyTone\(/);
+      expect(src).not.toMatch(/tone:\s*"info"\s*,\s*\}\)/);
+    },
+  );
 });
 
 describe("挂载点模板 · 未引入第二套布局语言", () => {

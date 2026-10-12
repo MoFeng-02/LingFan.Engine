@@ -81,9 +81,13 @@ describe("元素资源解析缓存（createElementResourceResolver）", () => {
     resolver.resolveForElement("Images/a.png");
     resolver.resolveForElement("Images/b.png");
     await vi.waitFor(() => {
-      expect(resolver.resolveForElement("Images/b.png")).toBe("blob:Images/b.png");
+      expect(resolver.resolveForElement("Images/b.png")).toBe(
+        "blob:Images/b.png",
+      );
     });
     expect(seen).toEqual(["Images/a.png", "Images/b.png"]);
-    expect(resolver.resolveForElement("Images/a.png")).toBe("blob:Images/a.png");
+    expect(resolver.resolveForElement("Images/a.png")).toBe(
+      "blob:Images/a.png",
+    );
   });
 });

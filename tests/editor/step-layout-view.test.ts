@@ -25,12 +25,12 @@ describe("视图接线：centerView 四态 + 步骤分支", () => {
   });
 
   it("中心区按 centerView 渲染 StepLayout", () => {
-    expect(appSource).toContain('v-else-if="centerView === \'step\'"');
+    expect(appSource).toContain("v-else-if=\"centerView === 'step'\"");
     expect(appSource).toContain("<StepLayout");
   });
 
   it("防回退：NodeGraph 分支必须是 v-else-if（裸 v-else 会把步骤视图吃掉）", () => {
-    expect(appSource).toContain('v-else-if="centerView === \'graph\'"');
+    expect(appSource).toContain("v-else-if=\"centerView === 'graph'\"");
     expect(appSource).not.toMatch(/<NodeGraph\s+v-else[\s>]/);
   });
 
@@ -49,7 +49,9 @@ describe("点击步骤 → 定位时间线（验收③，零新增管道）", ()
     //    本断言守的是「点步骤能定位到时间线」这个**意图**，不是"必须调 select"这个字面。
     expect(stepLayoutSource).toContain("api.reveal(step.endPointer)");
     // 契约面必须声明 reveal（注入键的类型即取自这份契约）
-    expect(editorApiContractSource).toMatch(/interface\s+EditorApiPort\s*\{[^}]*reveal\(/);
+    expect(editorApiContractSource).toMatch(
+      /interface\s+EditorApiPort\s*\{[^}]*reveal\(/,
+    );
   });
 
   it("泳道头走既有 selectColumn（与节点图同语义）", () => {

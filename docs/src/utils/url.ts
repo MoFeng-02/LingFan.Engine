@@ -10,7 +10,7 @@
  *
  * Astro 会把 BASE_URL 规范成带尾斜杠的形式（根部署时为 `/`）。
  */
-const BASE = import.meta.env.BASE_URL.replace(/\/+$/, '');
+const BASE = import.meta.env.BASE_URL.replace(/\/+$/, "");
 
 /**
  * 给站内根绝对路径补上 base。已经是外链、锚点、相对路径或已带 base 的值原样返回。
@@ -18,9 +18,9 @@ const BASE = import.meta.env.BASE_URL.replace(/\/+$/, '');
  * @param path 以 `/` 开头的站内路径，例如 `/logo-mark.png`。
  */
 export function withBase(path: string): string {
-	if (!path.startsWith('/') || path.startsWith('//')) return path;
-	if (!BASE || path === BASE || path.startsWith(`${BASE}/`)) return path;
-	return BASE + path;
+  if (!path.startsWith("/") || path.startsWith("//")) return path;
+  if (!BASE || path === BASE || path.startsWith(`${BASE}/`)) return path;
+  return BASE + path;
 }
 
 /**
@@ -37,7 +37,8 @@ export function withBase(path: string): string {
  * @param locale 当前页的 locale 路径段（如 `en`），root locale 页面传 undefined。
  */
 export function withLocale(path: string, locale: string | undefined): string {
-	const internal = path.startsWith('/') && !path.startsWith('//');
-	if (!internal || !locale || path.startsWith(`/${locale}/`)) return withBase(path);
-	return withBase(`/${locale}${path}`);
+  const internal = path.startsWith("/") && !path.startsWith("//");
+  if (!internal || !locale || path.startsWith(`/${locale}/`))
+    return withBase(path);
+  return withBase(`/${locale}${path}`);
 }

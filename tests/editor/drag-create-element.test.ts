@@ -127,14 +127,26 @@ describe("拟态作者旅程：拖入 → 一步回到原状（诊断零新增�
     const session = new EditorSession(story);
 
     // 先补 children 数组能力的容器已存在但无 children —— 拖入文本落点在其内
-    const plan = planElementDrop(170, 95, { index: 0, originX: 40, originY: 140 });
+    const plan = planElementDrop(170, 95, {
+      index: 0,
+      originX: 40,
+      originY: 140,
+    });
     expect(plan).toEqual({ parentIndex: 0, x: 130, y: -45 });
     const draft = createElementDraft("text", plan.x, plan.y);
     expect(draft).not.toBeNull();
-    insertElementViaApi(session, "/columns/1", draft ?? {}, "/columns/1/elements/0");
+    insertElementViaApi(
+      session,
+      "/columns/1",
+      draft ?? {},
+      "/columns/1/elements/0",
+    );
 
     expect(session.undoDepth).toBe(1); // 补数组 + 插入 = 同一次提交
-    const children = getAtPointer(session.story, "/columns/1/elements/0/children");
+    const children = getAtPointer(
+      session.story,
+      "/columns/1/elements/0/children",
+    );
     expect(children).toEqual([{ type: "text", x: 130, y: -45 }]);
     // 顶级元素面不变（没把子元素误插到顶层）
     expect(getAtPointer(session.story, "/columns/1/elements")).toHaveLength(1);
@@ -160,8 +172,16 @@ describe("拟态作者旅程：拖入 → 一步回到原状（诊断零新增�
     const session = new EditorSession(story);
     const draft = createElementDraft("button", 10, 20);
     expect(draft).not.toBeNull();
-    insertElementViaApi(session, "/columns/1", draft ?? {}, "/columns/1/elements/0");
-    const children = getAtPointer(session.story, "/columns/1/elements/0/children");
+    insertElementViaApi(
+      session,
+      "/columns/1",
+      draft ?? {},
+      "/columns/1/elements/0",
+    );
+    const children = getAtPointer(
+      session.story,
+      "/columns/1/elements/0/children",
+    );
     expect(children).toEqual([
       { type: "text", text: "既有子元素" },
       { type: "button", x: 10, y: 20 },
@@ -190,6 +210,8 @@ describe("源码互锁：fail-closed 分支与单提交真实在位", () => {
 
   it("宿主 insertElement 走 session.apply（一次拖入 = 一个 undo 单元），标签带元素类型", () => {
     expect(appSource).toContain("insertElement(");
-    expect(appSource).toMatch(/session\.apply\(`拖入元素 \$\{elementLabel\(type\)\}`/);
+    expect(appSource).toMatch(
+      /session\.apply\(`拖入元素 \$\{elementLabel\(type\)\}`/,
+    );
   });
 });

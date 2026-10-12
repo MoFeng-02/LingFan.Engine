@@ -42,7 +42,12 @@ export type Binding =
   | { kind: "cell"; guard: string }
   | { kind: "const"; value: ConstValue }
   | { kind: "opaque" }
-  | { kind: "enum"; file: string; name: string; members: ReadonlyMap<string, ConstValue> }
+  | {
+      kind: "enum";
+      file: string;
+      name: string;
+      members: ReadonlyMap<string, ConstValue>;
+    }
   | { kind: "story"; file: string; name: string };
 
 export interface ModuleRecord {
@@ -87,7 +92,9 @@ export const ROOT_TS_FILES_ALLOWED = new Set(["config.ts"]);
 export const GEN_PREFIX = "gen/";
 
 export const WORD_NAMES: ReadonlySet<string> = new Set(
-  Object.keys(script).filter((k) => typeof (script as Record<string, unknown>)[k] === "function"),
+  Object.keys(script).filter(
+    (k) => typeof (script as Record<string, unknown>)[k] === "function",
+  ),
 );
 
 export const DEFAULT_STATE_ROOT = "state";

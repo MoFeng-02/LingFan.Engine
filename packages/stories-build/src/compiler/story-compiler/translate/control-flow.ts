@@ -1,7 +1,12 @@
 import * as ts from "typescript";
 import type { StoryCommand } from "@lingfan/engine";
 import { foldConst } from "../graph";
-import { diag, lookupBinding, lookupScope, isAssignmentOperator } from "./shared";
+import {
+  diag,
+  lookupBinding,
+  lookupScope,
+  isAssignmentOperator,
+} from "./shared";
 import type { BodyCtx, Scope } from "./shared";
 import { statePath } from "./expr-core";
 import { lowerCond, lowerValue, loweredToScriptValue } from "./expr";
@@ -13,7 +18,10 @@ function isUnlabeledBreak(stmt: ts.Statement): boolean {
   return ts.isBreakStatement(stmt) && stmt.label === undefined;
 }
 
-export function translateBlockBody(ctx: BodyCtx, stmt: ts.Statement): StoryCommand[] {
+export function translateBlockBody(
+  ctx: BodyCtx,
+  stmt: ts.Statement,
+): StoryCommand[] {
   if (ts.isBlock(stmt)) return translateStatements(ctx, stmt.statements);
   return translateStatement(ctx, stmt);
 }
@@ -24,9 +32,14 @@ interface IfChainInput {
 }
 
 function collectIfChain(stmt: ts.IfStatement): IfChainInput {
-  const branches: Array<{ cond: ts.Expression; then: ts.Statement }> = [{ cond: stmt.expression, then: stmt.thenStatement }];
+  const branches: Array<{ cond: ts.Expression; then: ts.Statement }> = [
+    { cond: stmt.expression, then: stmt.thenStatement },
+  ];
   let current = stmt;
-  while (current.elseStatement !== undefined && ts.isIfStatement(current.elseStatement)) {
+  while (
+    current.elseStatement !== undefined &&
+    ts.isIfStatement(current.elseStatement)
+  ) {
     current = current.elseStatement;
     branches.push({ cond: current.expression, then: current.thenStatement });
   }
@@ -39,7 +52,10 @@ interface Chain {
   end(): StoryCommand;
 }
 
-export function translateIf(ctx: BodyCtx, stmt: ts.IfStatement): StoryCommand[] {
+export function translateIf(
+  ctx: BodyCtx,
+  stmt: ts.IfStatement,
+): StoryCommand[] {
   const { branches, elseStmt } = collectIfChain(stmt);
   const rendered: Array<[string, StoryCommand[]]> = [];
   for (const branch of branches) {
@@ -68,11 +84,15 @@ export function translateIf(ctx: BodyCtx, stmt: ts.IfStatement): StoryCommand[] 
   for (let i = 1; i < rendered.length; i += 1) {
     result = result.elif(rendered[i][0], rendered[i][1]) as Chain;
   }
-  const finished = elseStmt !== undefined ? result.else(elseBody) : result.end();
+  const finished =
+    elseStmt !== undefined ? result.else(elseBody) : result.end();
   return [finished];
 }
 
-export function translateWhile(ctx: BodyCtx, stmt: ts.WhileStatement): StoryCommand[] {
+export function translateWhile(
+  ctx: BodyCtx,
+  stmt: ts.WhileStatement,
+): StoryCommand[] {
   const cond = lowerCond(ctx, stmt.expression);
   if (cond === undefined) return [];
   ctx.scopes.push(new Map());
@@ -84,22 +104,40 @@ export function translateWhile(ctx: BodyCtx, stmt: ts.WhileStatement): StoryComm
   return op === undefined ? [] : [op];
 }
 
-export function translateFor(ctx: BodyCtx, stmt: ts.ForStatement): StoryCommand[] {
-  if (stmt.initializer === undefined || !ts.isVariableDeclarationList(stmt.initializer)) {
-    diag(ctx, stmt, "for 初始化只支持单个带初值的 let 声明（for (let i = 0; …)）");
+export function translateFor(
+  ctx: BodyCtx,
+  stmt: ts.ForStatement,
+): StoryCommand[] {
+  if (
+    stmt.initializer === undefined ||
+    !ts.isVariableDeclarationList(stmt.initializer)
+  ) {
+    diag(
+      ctx,
+      stmt,
+      "for 初始化只支持单个带初值的 let 声明（for (let i = 0; …)）",
+    );
     return [];
   }
   const decls = stmt.initializer.declarations;
-  if (decls.length !== 1 || !ts.isIdentifier(decls[0].name) || decls[0].initializer === undefined) {
+  if (
+    decls.length !== 1 ||
+    !ts.isIdentifier(decls[0].name) ||
+    decls[0].initializer === undefined
+  ) {
     diag(ctx, stmt.initializer, "for 初始化只支持单个带初值的 let 声明");
     return [];
   }
   const lowered = lowerValue(ctx, decls[0].initializer);
   if (lowered === undefined) return [];
   const varName = decls[0].name.text;
-  const initOp = callWord(ctx, stmt.initializer, "letVar", [varName, loweredToScriptValue(lowered)]);
+  const initOp = callWord(ctx, stmt.initializer, "letVar", [
+    varName,
+    loweredToScriptValue(lowered),
+  ]);
   if (initOp === undefined) return [];
-  const cond = stmt.condition === undefined ? undefined : lowerCond(ctx, stmt.condition);
+  const cond =
+    stmt.condition === undefined ? undefined : lowerCond(ctx, stmt.condition);
   if (cond === undefined) {
     diag(ctx, stmt, "for 缺少循环条件");
     return [];
@@ -113,19 +151,35 @@ export function translateFor(ctx: BodyCtx, stmt: ts.ForStatement): StoryCommand[
   ctx.scopes.pop();
   if (update.length === 0 && stmt.incrementor !== undefined) return [];
   if (stmt.incrementor === undefined) {
-    diag(ctx, stmt, "for 缺少更新表达式（循环会无法推进；固定次数请用 staticFor）");
+    diag(
+      ctx,
+      stmt,
+      "for 缺少更新表达式（循环会无法推进；固定次数请用 staticFor）",
+    );
     return [];
   }
   const op = callWord(ctx, stmt, "whileDo", [cond, [...body, ...update]]);
   return op === undefined ? [] : [initOp, op];
 }
 
-function translateForUpdate(ctx: BodyCtx, stmt: ts.ForStatement): StoryCommand[] {
+function translateForUpdate(
+  ctx: BodyCtx,
+  stmt: ts.ForStatement,
+): StoryCommand[] {
   const inc = stmt.incrementor;
   if (inc === undefined) return [];
   const sf = ctx.shared.mod.sf;
-  if (ts.isBinaryExpression(inc) && isAssignmentOperator(inc.operatorToken.getText(sf))) {
-    return emitAssignment(ctx, inc, inc.left, inc.operatorToken.getText(sf), inc.right);
+  if (
+    ts.isBinaryExpression(inc) &&
+    isAssignmentOperator(inc.operatorToken.getText(sf))
+  ) {
+    return emitAssignment(
+      ctx,
+      inc,
+      inc.left,
+      inc.operatorToken.getText(sf),
+      inc.right,
+    );
   }
   if (ts.isPrefixUnaryExpression(inc) || ts.isPostfixUnaryExpression(inc)) {
     return translateIncrement(ctx, inc);
@@ -134,9 +188,16 @@ function translateForUpdate(ctx: BodyCtx, stmt: ts.ForStatement): StoryCommand[]
   return [];
 }
 
-export function translateForOf(ctx: BodyCtx, stmt: ts.ForOfStatement): StoryCommand[] {
+export function translateForOf(
+  ctx: BodyCtx,
+  stmt: ts.ForOfStatement,
+): StoryCommand[] {
   const initializer = stmt.initializer;
-  if (!ts.isVariableDeclarationList(initializer) || initializer.declarations.length !== 1 || !ts.isIdentifier(initializer.declarations[0].name)) {
+  if (
+    !ts.isVariableDeclarationList(initializer) ||
+    initializer.declarations.length !== 1 ||
+    !ts.isIdentifier(initializer.declarations[0].name)
+  ) {
     diag(ctx, initializer, "for-of 只支持 (let x of 集合) 形式");
     return [];
   }
@@ -152,7 +213,10 @@ export function translateForOf(ctx: BodyCtx, stmt: ts.ForOfStatement): StoryComm
   return op === undefined ? [] : [op];
 }
 
-function forOfCollection(ctx: BodyCtx, expr: ts.Expression): string | undefined {
+function forOfCollection(
+  ctx: BodyCtx,
+  expr: ts.Expression,
+): string | undefined {
   const root = ctx.shared.stateRoot;
   if (ts.isIdentifier(expr)) {
     if (expr.text === root) {
@@ -160,22 +224,37 @@ function forOfCollection(ctx: BodyCtx, expr: ts.Expression): string | undefined 
       return undefined;
     }
     const scoped = lookupScope(ctx, expr.text);
-    if (scoped !== undefined && (scoped.kind === "let" || scoped.kind === "param")) {
+    if (
+      scoped !== undefined &&
+      (scoped.kind === "let" || scoped.kind === "param")
+    ) {
       return `{${expr.text}}`;
     }
-    diag(ctx, expr, `for-of 集合 \`${expr.text}\` 必须是已声明的局部变量或 ${root} 路径`);
+    diag(
+      ctx,
+      expr,
+      `for-of 集合 \`${expr.text}\` 必须是已声明的局部变量或 ${root} 路径`,
+    );
     return undefined;
   }
   if (ts.isPropertyAccessExpression(expr)) {
-    const path = statePath(ctx, expr);
-    if (path === undefined) return undefined;
-    return `{${path}}`;
+    const target = statePath(ctx, expr);
+    if (target === undefined) return undefined;
+    if (target.optional) {
+      // 迭代集合必须真实存在（缺失语义无从谈起），fail-closed
+      diag(ctx, expr, `for-of 集合不支持可选链：${target.path}`);
+      return undefined;
+    }
+    return `{${target.path}}`;
   }
   diag(ctx, expr, `for-of 集合只能是 ${root} 路径或局部变量名`);
   return undefined;
 }
 
-export function translateSwitch(ctx: BodyCtx, stmt: ts.SwitchStatement): StoryCommand[] {
+export function translateSwitch(
+  ctx: BodyCtx,
+  stmt: ts.SwitchStatement,
+): StoryCommand[] {
   const sf = ctx.shared.mod.sf;
   const on = lowerCond(ctx, stmt.expression);
   if (on === undefined) return [];
@@ -186,9 +265,14 @@ export function translateSwitch(ctx: BodyCtx, stmt: ts.SwitchStatement): StoryCo
     const clause = clauses[i];
     const isLast = i === clauses.length - 1;
     const body = clause.statements;
-    const endsWithBreak = body.length > 0 && isUnlabeledBreak(body[body.length - 1]);
+    const endsWithBreak =
+      body.length > 0 && isUnlabeledBreak(body[body.length - 1]);
     if (body.length === 0 && !isLast) {
-      diag(ctx, clause, "case 体不能为空（引擎 switch 无穿透，请合并条件或补 break）");
+      diag(
+        ctx,
+        clause,
+        "case 体不能为空（引擎 switch 无穿透，请合并条件或补 break）",
+      );
       continue;
     }
     if (body.length > 0 && !endsWithBreak && !isLast) {
@@ -208,9 +292,19 @@ export function translateSwitch(ctx: BodyCtx, stmt: ts.SwitchStatement): StoryCo
       defaultBody = commands;
       continue;
     }
-    const value = foldConst(clause.expression, sf, ctx.shared.diags, ctx.shared.file, (name) => lookupBinding(ctx, name));
+    const value = foldConst(
+      clause.expression,
+      sf,
+      ctx.shared.diags,
+      ctx.shared.file,
+      (name) => lookupBinding(ctx, name),
+    );
     if (value === undefined || value === null) {
-      diag(ctx, clause.expression, "case 值必须是字面量或可折叠的模块常量/枚举成员");
+      diag(
+        ctx,
+        clause.expression,
+        "case 值必须是字面量或可折叠的模块常量/枚举成员",
+      );
       continue;
     }
     cases.push([value, commands]);

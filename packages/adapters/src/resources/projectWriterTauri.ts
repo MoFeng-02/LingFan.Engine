@@ -41,7 +41,9 @@ interface RawWriteReport {
 
 /** 类型守卫：Rust 返回的数组必须逐项是字符串才当作路径列表用 */
 function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === "string")
+  );
 }
 
 /** 校验 Rust 写回负载并取回已写/已删路径；形状非法即抛错（不假装成功） */
@@ -104,7 +106,9 @@ export async function createTauriProjectWriter(
   let stamps = await readStamps(invoke, root, [...baseline.keys()]);
   return {
     writable: true,
-    async apply(files: ReadonlyMap<string, string>): Promise<ProjectWriteReport> {
+    async apply(
+      files: ReadonlyMap<string, string>,
+    ): Promise<ProjectWriteReport> {
       const { changes, deletes } = diffProjectFiles(files, baseline);
       // 并发检测：任何落盘之前重采基线指纹比对（外部改动/删除 → 冲突，零写入）
       const current = await readStamps(invoke, root, [...stamps.keys()]);

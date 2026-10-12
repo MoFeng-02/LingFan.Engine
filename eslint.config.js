@@ -56,6 +56,12 @@ export default defineConfigWithVueTs(
       // 私有文档（验收脚本 / 临时探针）：不入版本库，其中 .cjs 探针
       // 按 CommonJS 写(require)，与仓库 TS 源的模块规范不同
       "**/私有文档/**",
+      // 取证探针目录（.vitest/）：会话级临时验证脚本，git-ignored、非仓库源码，
+      // 探针为一次性证据常带意写快风格——免检（同私有文档性质）
+      "**/.vitest/**",
+      // docs 站的 Astro 生成物（content.d.ts / types.d.ts）：astro build/sync 产物，
+      // 风格由生成器负责，不入版本库——免检
+      "**/.astro/**",
       // stories:build 的 cell 生成物（fun_register.g.ts）：实现文本从源原样搬运，
       // 缩进/风格由生成器负责——入库但免检（.prettierignore 已同步）
       "**/Stories.src/gen/**",
@@ -69,6 +75,17 @@ export default defineConfigWithVueTs(
     files: ["apps/playground/src/App.vue", "apps/editor/src/App.vue"],
     rules: {
       "vue/multi-word-component-names": "off",
+    },
+  },
+  {
+    name: "lingfan/unused-conventions",
+    // `_` 前缀 = 有意不用的形参/变量（如 fail-closed 运行期守卫的签名占位：
+    // 参数只为调用点类型存在，运行期必抛）——生态标准约定，显式放行
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
     },
   },
   {
@@ -89,8 +106,7 @@ export default defineConfigWithVueTs(
           patterns: [
             {
               group: ["vue", "vue-*", "pinia", "@vue/*", "@tauri-apps/*"],
-              message:
-                "核心层框架无关：禁止 import UI 框架与 Tauri API",
+              message: "核心层框架无关：禁止 import UI 框架与 Tauri API",
             },
             NODE_GROUP,
             ASSET_GROUP,
@@ -180,37 +196,44 @@ export default defineConfigWithVueTs(
             "String.prototype.toWellFormed 是 ES2024（Chrome 111+/Safari 16.4+），基线不含——用显式孤立代理项替换替代",
         },
         {
-          selector: "MemberExpression[object.name='Object'][property.name='hasOwn']",
+          selector:
+            "MemberExpression[object.name='Object'][property.name='hasOwn']",
           message:
             "Object.hasOwn 是 ES2022（Chrome 93+/Safari 15.4+），基线不含——用 Object.prototype.hasOwnProperty.call 替代",
         },
         {
-          selector: "MemberExpression[object.name='Promise'][property.name='any']",
+          selector:
+            "MemberExpression[object.name='Promise'][property.name='any']",
           message:
             "Promise.any 是 ES2021（Chrome 85+ 但 Safari 15+），目标 WebView 含 Safari 13-15——用 Promise 链或手写聚合替代",
         },
         {
-          selector: "MemberExpression[object.name='Array'][property.name='fromAsync']",
+          selector:
+            "MemberExpression[object.name='Array'][property.name='fromAsync']",
           message:
             "Array.fromAsync 是 ES2024（Chrome 121+/Safari 16.4+），基线不含——用 for 循环 push 替代",
         },
         {
-          selector: "MemberExpression[object.name='Object'][property.name='groupBy']",
+          selector:
+            "MemberExpression[object.name='Object'][property.name='groupBy']",
           message:
             "Object.groupBy 是 ES2024（Chrome 117+/Safari 17.4+），基线不含——用 reduce 替代",
         },
         {
-          selector: "MemberExpression[object.name='Map'][property.name='groupBy']",
+          selector:
+            "MemberExpression[object.name='Map'][property.name='groupBy']",
           message:
             "Map.groupBy 是 ES2024（Chrome 117+/Safari 17.4+），基线不含——用 reduce + Map 替代",
         },
         {
-          selector: "MemberExpression[object.name='AbortSignal'][property.name='timeout']",
+          selector:
+            "MemberExpression[object.name='AbortSignal'][property.name='timeout']",
           message:
             "AbortSignal.timeout 需 Chrome 103+/Safari 16+，基线不含——用 AbortController + setTimeout 替代",
         },
         {
-          selector: "MemberExpression[object.name='crypto'][property.name='randomUUID']",
+          selector:
+            "MemberExpression[object.name='crypto'][property.name='randomUUID']",
           message:
             "crypto.randomUUID 需 Chrome 92+/Safari 15.4+，基线不含——用 crypto.getRandomValues 手写 UUID 替代",
         },
@@ -261,6 +284,9 @@ export default defineConfigWithVueTs(
       "tests/engine/data/real-project-open.test.ts",
       // Script 词汇层互锁守卫：读词汇层源文件做「登记 ↔ 导出」一致性核对（测试期工具）
       "tests/editor/script-vocabulary.test.ts",
+      // 词汇层声明重建 CLI：读 words 源 + 注册表键，差量写生成物（Node 侧生成工具；
+      // 渲染是纯函数 vocabulary-gen，本文件只做 IO 与主模块守卫）
+      "packages/editor/src/script/generate-vocabulary.ts",
     ],
     rules: {
       "no-restricted-imports": "off",

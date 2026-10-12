@@ -51,7 +51,11 @@ describe("划分口径：步骤是顶层命令行的有序精确划分", () => {
           say("一"),
           { op: "set", key: "n", value: 1 },
           say("二"),
-          { op: "menu", prompt: "选", options: [{ text: "走", target: "start" }] },
+          {
+            op: "menu",
+            prompt: "选",
+            options: [{ text: "走", target: "start" }],
+          },
           { op: "set", key: "m", value: 2 },
           { op: "wait", seconds: 1 },
           { op: "input", prompt: "名", store: "name" },
@@ -154,7 +158,11 @@ describe("引擎驱动交叉验证：等待转移次数 == 等待步骤数", () 
 
   it("纯对话列：3 句 say → 3 个等待步骤 = 3 次转移", () => {
     const story = storyOf([
-      { id: "start", kind: "flow", commands: [say("一"), say("二"), say("三")] },
+      {
+        id: "start",
+        kind: "flow",
+        commands: [say("一"), say("二"), say("三")],
+      },
     ]);
     expect(waitStepsOf(story)).toBe(3);
     expect(countWaits(story)).toBe(3);
@@ -219,7 +227,9 @@ describe("分叉：菜单选项 / 跳转 / 导航各自成边（验收②）", (
       "酒馆",
     ]);
     // 三条边同源（同一列同一步）——这就是「一条链分叉」而非「三条独立链」
-    expect(new Set(menuEdges.map((e) => `${e.fromColumnId}#${e.fromStep}`)).size).toBe(1);
+    expect(
+      new Set(menuEdges.map((e) => `${e.fromColumnId}#${e.fromStep}`)).size,
+    ).toBe(1);
     expect(menuEdges[0]!.fromColumnId).toBe("start");
     expect(menuEdges[0]!.fromStep).toBe(0); // set + menu 同属第一步
   });
@@ -255,7 +265,11 @@ describe("分叉：菜单选项 / 跳转 / 导航各自成边（验收②）", (
         id: "start",
         kind: "flow",
         commands: [
-          { op: "menu", prompt: "选", options: [{ text: "去", target: "ghost" }] },
+          {
+            op: "menu",
+            prompt: "选",
+            options: [{ text: "去", target: "ghost" }],
+          },
         ],
       },
     ]);
@@ -301,7 +315,12 @@ describe("函数调用：call 到含等待的函数算边界（引擎的块帧�
         id: "start",
         kind: "flow",
         commands: [
-          { op: "func", name: "noop", params: [], body: [{ op: "set", key: "k", value: 1 }] },
+          {
+            op: "func",
+            name: "noop",
+            params: [],
+            body: [{ op: "set", key: "k", value: 1 }],
+          },
           { op: "call", target: "noop" },
           say("尾"),
         ],
@@ -319,8 +338,18 @@ describe("函数调用：call 到含等待的函数算边界（引擎的块帧�
         id: "start",
         kind: "flow",
         commands: [
-          { op: "func", name: "a", params: [], body: [{ op: "call", target: "b" }] },
-          { op: "func", name: "b", params: [], body: [{ op: "call", target: "a" }] },
+          {
+            op: "func",
+            name: "a",
+            params: [],
+            body: [{ op: "call", target: "b" }],
+          },
+          {
+            op: "func",
+            name: "b",
+            params: [],
+            body: [{ op: "call", target: "a" }],
+          },
           { op: "call", target: "a" },
           say("尾"),
         ],
@@ -339,7 +368,10 @@ describe("scene 列与泳道总装", () => {
       {
         id: "stage",
         kind: "scene",
-        elements: [{ type: "text", x: 0, y: 0 }, { type: "image", x: 1, y: 1 }],
+        elements: [
+          { type: "text", x: 0, y: 0 },
+          { type: "image", x: 1, y: 1 },
+        ],
         entry: [say("场景内")],
       },
     ]);
@@ -442,7 +474,12 @@ describe("对抗：畸形输入不崩且不误报", () => {
   });
 
   it("storySteps 对空故事 / 无 columns 不崩", () => {
-    const empty = { formatVersion: 1, id: "e", entry: "x", columns: [] } as Story;
+    const empty = {
+      formatVersion: 1,
+      id: "e",
+      entry: "x",
+      columns: [],
+    } as Story;
     expect(storySteps(empty)).toEqual({
       lanes: [],
       edges: [],

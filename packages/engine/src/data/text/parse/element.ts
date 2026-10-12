@@ -14,7 +14,11 @@ import { isElementType, type ElementNode } from "../../../contracts";
 export const ELEMENT_OP_CONFLICTS = new Set(["video", "background", "window"]);
 
 /** 图像类元素的位置参归属 `source`，其余归 `text` */
-export const ELEMENT_SOURCE_TYPES = new Set(["image", "background", "portrait"]);
+export const ELEMENT_SOURCE_TYPES = new Set([
+  "image",
+  "background",
+  "portrait",
+]);
 
 /** 属性值：true/false → 布尔；纯数字 → 数字；其余去引号原样（同语义） */
 export function parseElementAttrValue(raw: string): unknown {

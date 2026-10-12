@@ -98,7 +98,12 @@ function makeTypedStory(): Story {
         ],
       },
       { id: "play2", kind: "flow", commands: [{ op: "say", text: "第二步" }] },
-      { id: "overlay", kind: "flow", type: "ui", commands: [{ op: "say", text: "弹窗" }] },
+      {
+        id: "overlay",
+        kind: "flow",
+        type: "ui",
+        commands: [{ op: "say", text: "弹窗" }],
+      },
     ],
   });
 }
@@ -283,7 +288,12 @@ describe("场景类型 · 存档守卫（**菜单态存的是菜单前的游戏�
       id: "menu-only",
       entry: "m",
       columns: [
-        { id: "m", kind: "flow", type: "menu", commands: [{ op: "say", text: "只有菜单" }] },
+        {
+          id: "m",
+          kind: "flow",
+          type: "menu",
+          commands: [{ op: "say", text: "只有菜单" }],
+        },
       ],
     });
     const h = instrument(new StoryEngine(story));
@@ -307,7 +317,11 @@ describe("场景类型 · 边界条件", () => {
           id: "play",
           kind: "flow",
           commands: [
-            { op: "menu", prompt: "去？", options: [{ text: "A", target: "menuA" }] },
+            {
+              op: "menu",
+              prompt: "去？",
+              options: [{ text: "A", target: "menuA" }],
+            },
           ],
         },
         {
@@ -315,10 +329,19 @@ describe("场景类型 · 边界条件", () => {
           kind: "flow",
           type: "menu",
           commands: [
-            { op: "menu", prompt: "B？", options: [{ text: "B", target: "menuB" }] },
+            {
+              op: "menu",
+              prompt: "B？",
+              options: [{ text: "B", target: "menuB" }],
+            },
           ],
         },
-        { id: "menuB", kind: "flow", type: "menu", commands: [{ op: "say", text: "另一个" }] },
+        {
+          id: "menuB",
+          kind: "flow",
+          type: "menu",
+          commands: [{ op: "say", text: "另一个" }],
+        },
       ],
     });
     const h = instrument(new StoryEngine(story));
@@ -350,8 +373,18 @@ describe("场景类型 · 真实工程形态与自证", () => {
       id: "ui-only",
       entry: "title",
       columns: [
-        { id: "title", kind: "flow", type: "menu", commands: [{ op: "say", text: "标题" }] },
-        { id: "about", kind: "flow", type: "menu", commands: [{ op: "say", text: "关于" }] },
+        {
+          id: "title",
+          kind: "flow",
+          type: "menu",
+          commands: [{ op: "say", text: "标题" }],
+        },
+        {
+          id: "about",
+          kind: "flow",
+          type: "menu",
+          commands: [{ op: "say", text: "关于" }],
+        },
       ],
     });
     const h = instrument(new StoryEngine(story));

@@ -54,7 +54,8 @@
   --lf-font-md: 12px; /* 正文默认（控件与列表） */
   --lf-font-lg: 13px; /* 面板标题 */
   --lf-font-mono: Consolas, "Cascadia Mono", "Courier New", monospace;
-  --lf-font-sans: "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --lf-font-sans:
+    "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
 
   /* ——— 间距与圆角（沿用既有量表级，不自造尺度） ——— */
   --lf-space-xs: 2px;
@@ -65,7 +66,6 @@
   --lf-radius-sm: 3px;
   --lf-radius-md: 5px;
   --lf-radius-lg: 10px;
-
 
   /* ——— 语义底色（提示条/选中态的着色背景） ——— */
   --lf-danger-tint: #1a1218; /* 错误提示条底 */

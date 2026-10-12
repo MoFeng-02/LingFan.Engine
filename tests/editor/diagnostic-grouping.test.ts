@@ -74,7 +74,11 @@ describe("分组：排序确定性（**不随输入顺序抖**）", () => {
   });
 
   it("**输入顺序不同 ⇒ 分组结果逐字节相同**（写回判等的前提是确定性）", () => {
-    const a = [d("x", "warning", "/1"), d("y", "warning", "/1"), d("y", "warning", "/2")];
+    const a = [
+      d("x", "warning", "/1"),
+      d("y", "warning", "/1"),
+      d("y", "warning", "/2"),
+    ];
     const b = [...a].reverse();
     expect(JSON.stringify(groupDiagnostics(a))).toBe(
       JSON.stringify(groupDiagnostics(b)),
@@ -169,11 +173,16 @@ describe("汇总（**不逐条罗列**——那正是淹没的来源）", () => 
 
   it("文案：只有错误时不说警告", () => {
     const groups = groupDiagnostics([d("a", "error", "/1")]);
-    expect(diagnosticSummaryText(summarizeDiagnostics(groups))).toBe("1 条 · 1 个错误");
+    expect(diagnosticSummaryText(summarizeDiagnostics(groups))).toBe(
+      "1 条 · 1 个错误",
+    );
   });
 
   it("文案：两类都有时都列出", () => {
-    const groups = groupDiagnostics([d("a", "error", "/1"), d("b", "warning", "/1")]);
+    const groups = groupDiagnostics([
+      d("a", "error", "/1"),
+      d("b", "warning", "/1"),
+    ]);
     expect(diagnosticSummaryText(summarizeDiagnostics(groups))).toBe(
       "2 条 · 1 个错误 · 1 个警告",
     );
@@ -194,19 +203,26 @@ describe("严重度筛选 filterDiagnosticsBySeverity（#9 徽章判据）", () 
 
   it("error 筛选：只留 error，**相对顺序保持**（排序仍归 groupDiagnostics）", () => {
     const filtered = filterDiagnosticsBySeverity(list, "error");
-    expect(filtered.map((x) => x.code)).toEqual(["missing-target", "invalid-value"]);
+    expect(filtered.map((x) => x.code)).toEqual([
+      "missing-target",
+      "invalid-value",
+    ]);
   });
 
   it("warning 筛选：只留 warning", () => {
     expect(filterDiagnosticsBySeverity(list, "warning")).toHaveLength(2);
-    expect(filterDiagnosticsBySeverity(list, "warning").every((x) => x.severity === "warning")).toBe(
-      true,
-    );
+    expect(
+      filterDiagnosticsBySeverity(list, "warning").every(
+        (x) => x.severity === "warning",
+      ),
+    ).toBe(true);
   });
 
   it("**边界**：空输入 / 全是同档时筛另一档 ⇒ 空数组（不抛、不塞占位）", () => {
     expect(filterDiagnosticsBySeverity([], "error")).toEqual([]);
-    expect(filterDiagnosticsBySeverity([d("a", "error", "/1")], "warning")).toEqual([]);
+    expect(
+      filterDiagnosticsBySeverity([d("a", "error", "/1")], "warning"),
+    ).toEqual([]);
   });
 
   it("筛选不改诊断对象（同一引用子集，不是深拷贝赝品）", () => {

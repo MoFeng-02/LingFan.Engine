@@ -35,17 +35,20 @@ export function readVariable(ctx: OpContext, key: string): ExprValue {
  * 块/列作用域链 → 全局扁平键；点路径再走「扁平优先 → 字典逐层下钻」。
  */
 export function resolveName(
-ctx: OpContext,
-name: string,
-): {
-  found: true; value: unknown } | { found: false } {
+  ctx: OpContext,
+  name: string,
+):
+  | {
+      found: true;
+      value: unknown;
+    }
+  | { found: false } {
   const scope = ctx.frames[ctx.frames.length - 1]?.scope;
   if (scope !== undefined) {
     const hit = scope.lookup(name);
     if (hit.found) return hit;
   }
-  if (ctx.state.has(name))
-    return { found: true, value: ctx.state.get(name) };
+  if (ctx.state.has(name)) return { found: true, value: ctx.state.get(name) };
   if (name.includes(".")) {
     const parts = name.split(".");
     let cur: unknown;

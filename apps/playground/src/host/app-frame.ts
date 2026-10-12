@@ -40,8 +40,15 @@ export interface AppFrame {
 
 /** 装配帧驱动：启动 rAF 循环，逐帧串起打字机、媒体回写与舞台表现 */
 export function createAppFrame(options: AppFrameOptions): AppFrame {
-  const { getEngine, narrative, media, typewriter, elementLayerEl, transitionEl, stageEl } =
-    options;
+  const {
+    getEngine,
+    narrative,
+    media,
+    typewriter,
+    elementLayerEl,
+    transitionEl,
+    stageEl,
+  } = options;
   const { text, shownText } = narrative;
   // —— 帧驱动表现：元素动画 / 全屏转场 / 屏幕震动 ——
   // 核心只写「描述」（离散、进快照），逐帧插值归宿主层叶子（不逐帧写 SSOT）。
@@ -49,14 +56,13 @@ export function createAppFrame(options: AppFrameOptions): AppFrame {
     source: {
       animations: () => getEngine().animations(),
       transition: () => {
-        const live = getEngine().get(SYS.transition) as { duration: number } | null | undefined;
+        const live = getEngine().get(SYS.transition) as
+          { duration: number } | null | undefined;
         return live ?? undefined;
       },
       shake: () => {
         const live = getEngine().get(SYS.shake) as
-          | { intensity: number; duration: number }
-          | null
-          | undefined;
+          { intensity: number; duration: number } | null | undefined;
         return live ?? undefined;
       },
       animationFinished: (seq) => {

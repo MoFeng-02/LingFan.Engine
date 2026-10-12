@@ -119,13 +119,13 @@ It completes asynchronously: read the raw data back, validate it, restore global
 
 Validation rejects these cases:
 
-| Error code | When |
-|---|---|
-| `save-format` | The save structure is incomplete, a history checkpoint is missing fields, or `cursor` has the wrong type |
-| `save-story-mismatch` | `storyId` does not match, or a column the save references no longer exists in the current story |
-| `load-invalid-slot` | The slot name is invalid |
-| `load-failed` | The slot cannot be read, or JSON parsing failed |
-| `save-unavailable` / `load-unavailable` | No save port is wired up |
+| Error code                              | When                                                                                                     |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `save-format`                           | The save structure is incomplete, a history checkpoint is missing fields, or `cursor` has the wrong type |
+| `save-story-mismatch`                   | `storyId` does not match, or a column the save references no longer exists in the current story          |
+| `load-invalid-slot`                     | The slot name is invalid                                                                                 |
+| `load-failed`                           | The slot cannot be read, or JSON parsing failed                                                          |
+| `save-unavailable` / `load-unavailable` | No save port is wired up                                                                                 |
 
 The second row is the one you hit most when editing a story: delete or rename a column and existing player saves report `save-story-mismatch`. The column a save's coordinate points at has to still be there.
 
@@ -164,7 +164,12 @@ await savePort.list();
 {
   "shell": {
     "saves": {
-      "thumbnail": { "width": 320, "height": 180, "quality": 0.7, "showText": true }
+      "thumbnail": {
+        "width": 320,
+        "height": 180,
+        "quality": 0.7,
+        "showText": true
+      }
     }
   }
 }

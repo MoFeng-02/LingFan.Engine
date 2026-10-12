@@ -27,7 +27,11 @@ const projectRoot = process.argv[2] ?? join(ROOT, "apps", "playground");
 const host = spawn(
   "pnpm",
   ["--filter", "@lingfan/editor-app", "host", projectRoot],
-  { cwd: ROOT, shell: process.platform === "win32", env: { ...process.env, LFEN_EDITOR_HOST_PORT: HOST_PORT } },
+  {
+    cwd: ROOT,
+    shell: process.platform === "win32",
+    env: { ...process.env, LFEN_EDITOR_HOST_PORT: HOST_PORT },
+  },
   { stdio: ["ignore", "pipe", "pipe"] },
 );
 const web = spawn("pnpm", ["--filter", "@lingfan/editor-app", "dev"], {
@@ -47,7 +51,9 @@ web.stdout.on("data", tag("前端"));
 web.stderr.on("data", tag("前端"));
 
 host.on("exit", (code) => {
-  process.stdout.write(`[编排] 宿主已退出（${String(code)}）—— 前端将降级为浏览器形态\n`);
+  process.stdout.write(
+    `[编排] 宿主已退出（${String(code)}）—— 前端将降级为浏览器形态\n`,
+  );
 });
 web.on("exit", (code) => {
   process.stdout.write(`[编排] 前端已退出（${String(code)}）\n`);

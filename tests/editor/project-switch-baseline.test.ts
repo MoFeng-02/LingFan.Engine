@@ -29,7 +29,9 @@ function applyOpenedBlock(): string {
 describe("打开工程 = 新基线会话 · 防同名入口列撞车", () => {
   it("applyOpened 先关闭全部既有文档，再打开新工程入口列", () => {
     const block = applyOpenedBlock();
-    const closeAll = block.indexOf("for (const doc of [...workspace.documents])");
+    const closeAll = block.indexOf(
+      "for (const doc of [...workspace.documents])",
+    );
     const openEntry = block.indexOf("openColumnDocument(tree.entry)");
     expect(closeAll).toBeGreaterThan(-1);
     expect(openEntry).toBeGreaterThan(closeAll); // 顺序：先清旧会话，再开新入口
@@ -37,7 +39,9 @@ describe("打开工程 = 新基线会话 · 防同名入口列撞车", () => {
 
   it("按路径过滤保留旧文档的写法不得回流", () => {
     const block = applyOpenedBlock();
-    expect(block).not.toContain("ordered.includes(path)) workspace.close(path)");
+    expect(block).not.toContain(
+      "ordered.includes(path)) workspace.close(path)",
+    );
     expect(block).not.toContain("if (!ordered.includes(path))");
   });
 });

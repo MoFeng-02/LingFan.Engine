@@ -41,7 +41,8 @@ function applyContainerBox(el: HTMLElement, ctx: ElementRenderContext): void {
   el.style.flexDirection = horizontal || type === "hbox" ? "row" : "column";
   const spacing = props.spacing;
   if (typeof spacing === "number") el.style.gap = `${spacing}px`;
-  else if (typeof spacing === "string" && spacing !== "") el.style.gap = spacing;
+  else if (typeof spacing === "string" && spacing !== "")
+    el.style.gap = spacing;
 }
 
 /** 面板族容器：默认 flex 盒 + 递归渲染子元素 + 交互绑定（`panel`/`frame`/`window`/`vbox` 等共用） */
@@ -82,7 +83,8 @@ export function renderGrid(ctx: ElementRenderContext): HTMLElement {
     const { col, row, colspan, rowspan } = child.props;
     if (typeof col === "number") node.style.gridColumnStart = String(col + 1);
     if (typeof row === "number") node.style.gridRowStart = String(row + 1);
-    if (typeof colspan === "number") node.style.gridColumnEnd = `span ${colspan}`;
+    if (typeof colspan === "number")
+      node.style.gridColumnEnd = `span ${colspan}`;
     if (typeof rowspan === "number") node.style.gridRowEnd = `span ${rowspan}`;
   });
   bindInteraction(el, ctx);

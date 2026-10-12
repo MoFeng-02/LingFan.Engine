@@ -20,8 +20,10 @@ export function createSourceResourcePort(
   source: ProjectFileSource,
   options: BlobUrlOptions = {},
 ): ResourcePort {
-  const create = options.createObjectURL ?? ((file: Blob) => URL.createObjectURL(file));
-  const revoke = options.revokeObjectURL ?? ((url: string) => URL.revokeObjectURL(url));
+  const create =
+    options.createObjectURL ?? ((file: Blob) => URL.createObjectURL(file));
+  const revoke =
+    options.revokeObjectURL ?? ((url: string) => URL.revokeObjectURL(url));
   /** 逻辑路径 → 已解析 URL（release 时反查并清空） */
   const resolved = new Map<string, string>();
   const inFlight = new Map<string, Promise<string>>();

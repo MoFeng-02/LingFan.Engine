@@ -14,11 +14,17 @@ import {
 
 /** 测试替身 WS：事件注册表 + 已发帧记录（回放由测试驱动） */
 class FakeSocket implements WsSocketLike {
-  private listeners = new Map<string, Array<(ev: { data?: unknown }) => void>>();
+  private listeners = new Map<
+    string,
+    Array<(ev: { data?: unknown }) => void>
+  >();
   readonly sent: string[] = [];
   closed = false;
 
-  addEventListener(type: string, listener: (ev: { data?: unknown }) => void): void {
+  addEventListener(
+    type: string,
+    listener: (ev: { data?: unknown }) => void,
+  ): void {
     const list = this.listeners.get(type) ?? [];
     list.push(listener);
     this.listeners.set(type, list);
@@ -87,7 +93,10 @@ describe("connectWsBridge（TS 侧）", () => {
     sockets[0].open();
     const bridge = await pending;
     const call = bridge.call("save_read", { slot: "slot_1" });
-    const request = JSON.parse(sockets[0].sent[0]) as { id: number; args: { slot: string } };
+    const request = JSON.parse(sockets[0].sent[0]) as {
+      id: number;
+      args: { slot: string };
+    };
     expect(request.args).toEqual({ slot: "slot_1" });
     sockets[0].reply({
       id: request.id,
@@ -113,7 +122,9 @@ describe("connectWsBridge（TS 侧）", () => {
 });
 
 /** 端口测试用的脚本化假桥（不需要 socket 层） */
-function fakeBridge(handler: (cmd: string, args: Record<string, unknown>) => unknown): WsBridge {
+function fakeBridge(
+  handler: (cmd: string, args: Record<string, unknown>) => unknown,
+): WsBridge {
   return {
     async call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
       const result = handler(cmd, args ?? {});
@@ -131,14 +142,14 @@ describe("WS 端口契约映射（与 Tauri 适配器同形）", () => {
         expect(cmd).toBe("project_files");
         return {
           manifest: { id: "demo" },
-          stories: { "Stories/a.json": "{\"x\":1}", "Stories/b/c.story": "text" },
+          stories: { "Stories/a.json": '{"x":1}', "Stories/b/c.story": "text" },
         };
       }),
     );
     expect(await port.manifest()).toEqual({ id: "demo" });
     const stories = await port.stories();
     expect(stories).toBeInstanceOf(Map);
-    expect(stories.get("Stories/a.json")).toBe("{\"x\":1}");
+    expect(stories.get("Stories/a.json")).toBe('{"x":1}');
     expect(stories.get("Stories/b/c.story")).toBe("text");
   });
 
@@ -150,7 +161,12 @@ describe("WS 端口契约映射（与 Tauri 适配器同形）", () => {
         if (cmd === "save_read") return "{}";
         if (cmd === "save_list") {
           return [
-            { slot: "slot_1", save_count: 2, timestamp: 100, mode: "machine-bound" },
+            {
+              slot: "slot_1",
+              save_count: 2,
+              timestamp: 100,
+              mode: "machine-bound",
+            },
           ];
         }
         return cmd === "save_write"
@@ -158,7 +174,7 @@ describe("WS 端口契约映射（与 Tauri 适配器同形）", () => {
           : undefined;
       }),
     );
-    await port.write("slot_1", "{\"gold\":1}", "machine-bound");
+    await port.write("slot_1", '{"gold":1}', "machine-bound");
     expect(await port.read("slot_1")).toBe("{}");
     await port.remove("slot_1");
     const list = await port.list();
@@ -173,7 +189,7 @@ describe("WS 端口契约映射（与 Tauri 适配器同形）", () => {
     ]);
     expect(calls[0].args).toEqual({
       slot: "slot_1",
-      payload: "{\"gold\":1}",
+      payload: '{"gold":1}',
       mode: "machine-bound",
     });
   });

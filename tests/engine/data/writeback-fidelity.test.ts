@@ -50,7 +50,9 @@ function loadReal(): ReturnType<typeof assembleProject> {
 describe("写回保真 · **不拍平**", () => {
   it("路径与扩展名**完全不变**（章节层级 + `.story` 都保住）", () => {
     const { files } = serializeProject(loadReal(), MANIFEST);
-    const storyPaths = [...files.keys()].filter((p) => p.startsWith("Stories/"));
+    const storyPaths = [...files.keys()].filter((p) =>
+      p.startsWith("Stories/"),
+    );
     expect(storyPaths.sort()).toEqual([
       "Stories/chapter1/chapter1.story",
       "Stories/system/about.story",
@@ -70,7 +72,9 @@ describe("写回保真 · **不拍平**", () => {
     expect(files.get("Stories/system/about.story")).toContain("menu");
     expect(files.get("Stories/title/title_main.story")).toContain("menu");
     // game 是缺省 ⇒ 不写（保持文件干净）
-    expect(files.get("Stories/chapter1/chapter1.story")).not.toContain('"type"');
+    expect(files.get("Stories/chapter1/chapter1.story")).not.toContain(
+      '"type"',
+    );
   });
 
   it("`sourcePath` **不进文件内容**（编辑期元数据，写进去会自指）", () => {
@@ -85,7 +89,13 @@ describe("写回保真 · **不拍平**", () => {
     // `.story` 路径 + JSON 内容会被组装器按文本解析（那是另一个待治项——
     // 「.story 文本形态写回」；本守卫只锁「不拍平」）。
     const files = new Map([
-      ["Stories/a.json", JSON.stringify({ formatVersion: 1, columns: [{ id: "a", kind: "flow", commands: [] }] })],
+      [
+        "Stories/a.json",
+        JSON.stringify({
+          formatVersion: 1,
+          columns: [{ id: "a", kind: "flow", commands: [] }],
+        }),
+      ],
     ]);
     const first = assembleProject(MANIFEST_A, files);
     const product = serializeProject(first, MANIFEST_A);
@@ -98,11 +108,20 @@ describe("写回保真 · **不拍平**", () => {
 
   it("**幂等**：再保存一次 ⇒ 零写零删", () => {
     const files = new Map([
-      ["Stories/a.json", JSON.stringify({ formatVersion: 1, columns: [{ id: "a", kind: "flow", commands: [] }] })],
+      [
+        "Stories/a.json",
+        JSON.stringify({
+          formatVersion: 1,
+          columns: [{ id: "a", kind: "flow", commands: [] }],
+        }),
+      ],
     ]);
     const first = assembleProject(MANIFEST_A, files);
     const once = serializeProject(first, MANIFEST_A).files;
-    const second = diffProjectFiles(serializeProject(first, MANIFEST_A).files, once);
+    const second = diffProjectFiles(
+      serializeProject(first, MANIFEST_A).files,
+      once,
+    );
     expect([...second.changes.keys()]).toEqual([]);
     expect([...second.deletes]).toEqual([]);
   });
@@ -119,12 +138,19 @@ describe("写回保真 · 冲突与边界", () => {
       entry: "a",
       columns: [
         { id: "a", kind: "flow", commands: [], sourcePath: "Stories/ch1.json" },
-        { id: "a_explore", kind: "flow", commands: [], sourcePath: "Stories/ch1.json" },
+        {
+          id: "a_explore",
+          kind: "flow",
+          commands: [],
+          sourcePath: "Stories/ch1.json",
+        },
       ],
     } as never;
     const { files } = serializeProject(story, MANIFEST);
     // 一个文件、不报错、内容是多列形态
-    const storyPaths = [...files.keys()].filter((p) => p.startsWith("Stories/"));
+    const storyPaths = [...files.keys()].filter((p) =>
+      p.startsWith("Stories/"),
+    );
     expect(storyPaths).toEqual(["Stories/ch1.json"]);
     const text = files.get("Stories/ch1.json")!;
     expect(JSON.parse(text).columns).toHaveLength(2);
@@ -148,7 +174,11 @@ describe("写回保真 · 冲突与边界", () => {
     const { files } = serializeProject(story, MANIFEST);
     expect([...files.keys()]).toContain("Stories/a.json");
     // 绝不写到Stories/ 之外
-    expect([...files.keys()].every((p) => p.startsWith("Stories/") || p === MANIFEST_FILE)).toBe(true);
+    expect(
+      [...files.keys()].every(
+        (p) => p.startsWith("Stories/") || p === MANIFEST_FILE,
+      ),
+    ).toBe(true);
   });
 
   it("**单列写回同样保真**（编辑器保存一列也不该拍平它）", () => {
@@ -176,9 +206,18 @@ describe("写回保真 · 冲突与边界", () => {
   });
 
   it("**`sourcePath` 只表达例外**（默认路径不显式存 ⇒ 往返深等的前提）", () => {
-    const story = assembleProject(MANIFEST_A, new Map([
-      ["Stories/a.json", JSON.stringify({ formatVersion: 1, columns: [{ id: "a", kind: "flow", commands: [] }] })],
-    ]));
+    const story = assembleProject(
+      MANIFEST_A,
+      new Map([
+        [
+          "Stories/a.json",
+          JSON.stringify({
+            formatVersion: 1,
+            columns: [{ id: "a", kind: "flow", commands: [] }],
+          }),
+        ],
+      ]),
+    );
     // 默认路径 ⇒ 列上**没有** sourcePath 字段
     expect(story.columns[0]?.sourcePath).toBeUndefined();
   });

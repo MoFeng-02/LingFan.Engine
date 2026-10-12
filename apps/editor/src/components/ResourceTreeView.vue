@@ -11,10 +11,7 @@
 import { computed, nextTick, ref, watch } from "vue";
 import type { KeyValueStorage } from "@lingfan/editor";
 import type { ResourceNode } from "../resourceTree";
-import {
-  createCollapsedDirsStore,
-  flattenResources,
-} from "../resourceTree";
+import { createCollapsedDirsStore, flattenResources } from "../resourceTree";
 
 const props = defineProps<{
   /** 树节点（已分组排序）；空数组 = 未打开工程 */
@@ -70,7 +67,8 @@ function toggle(node: ResourceNode): void {
 /** 关键词（由父组件经 v-model 传入，避免本组件自持搜索状态） */
 const keyword = defineModel<string>("keyword", { default: "" });
 
-const isCollapsed = (node: ResourceNode): boolean => collapsed.value.has(node.path);
+const isCollapsed = (node: ResourceNode): boolean =>
+  collapsed.value.has(node.path);
 
 /** 容器（定位当前打开时滚动用） */
 const container = ref<HTMLElement | null>(null);
@@ -87,12 +85,15 @@ watch(
     if (active === undefined || active === "") return;
     // 展开全部祖先目录（`Stories/chapter1/x.story` ⇒ `Stories/`、`Stories/chapter1/`）
     const ancestors = new Set(collapsed.value);
-    let dir = active.includes("/") ? active.slice(0, active.lastIndexOf("/") + 1) : "";
+    let dir = active.includes("/")
+      ? active.slice(0, active.lastIndexOf("/") + 1)
+      : "";
     while (dir !== "") {
       ancestors.delete(dir);
-      dir = dir.includes("/") && dir.lastIndexOf("/") > 0
-        ? dir.slice(0, dir.lastIndexOf("/", dir.length - 2) + 1)
-        : "";
+      dir =
+        dir.includes("/") && dir.lastIndexOf("/") > 0
+          ? dir.slice(0, dir.lastIndexOf("/", dir.length - 2) + 1)
+          : "";
     }
     if (ancestors.size !== collapsed.value.size) {
       collapsed.value = ancestors;
@@ -134,7 +135,9 @@ const rows = computed<{ node: ResourceNode; depth: number }[]>(() => {
 /** 当前视图下的空态文案（区分「没工程」与「没匹配」） */
 const emptyText = computed(() => {
   if (props.nodes.length === 0) return "未打开工程";
-  return keyword.value.trim() === "" ? "无条目" : `无匹配「${keyword.value.trim()}」`;
+  return keyword.value.trim() === ""
+    ? "无条目"
+    : `无匹配「${keyword.value.trim()}」`;
 });
 </script>
 
@@ -172,7 +175,11 @@ const emptyText = computed(() => {
               :class="{ closed: isCollapsed(row.node) }"
               aria-hidden="true"
             ></span>
-            <span class="tree-kind" :data-kind="row.node.kind" aria-hidden="true"></span>
+            <span
+              class="tree-kind"
+              :data-kind="row.node.kind"
+              aria-hidden="true"
+            ></span>
             <span class="tree-name">{{ row.node.name }}</span>
             <span v-if="row.node.readOnly" class="tree-badge">只读</span>
           </button>

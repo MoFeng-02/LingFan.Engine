@@ -49,4 +49,7 @@ export interface GuardContext {
 }
 
 /** 运行期守卫函数：纯逻辑（同状态同 args 同结果 ⇒ 重放同位同判）；不改状态 */
-export type GuardFn = (ctx: GuardContext, args: Record<string, unknown>) => void;
+export type GuardFn = (
+  ctx: GuardContext,
+  args: Record<string, unknown>,
+) => void;

@@ -73,7 +73,10 @@ requestAnimationFrame(hostLoop);
 /** 接入演示主体：容器 → 建引擎 → createNarrativeOverlay → 输入转发，四步接入在此展开。 */
 async function main(): Promise<void> {
   // ① 加载工程（组装归引擎纯函数）
-  const filesPort = createFetchProjectFilesPort({ manifest: MANIFEST, stories: STORIES });
+  const filesPort = createFetchProjectFilesPort({
+    manifest: MANIFEST,
+    stories: STORIES,
+  });
   const story: Story = await loadProject(filesPort);
 
   // ② 建引擎（平台端口按形态注入；嵌入场景通常还有宿主的存档端口）

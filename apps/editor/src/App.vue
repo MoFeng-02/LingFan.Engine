@@ -68,7 +68,9 @@ import NodeGraph from "./components/NodeGraph.vue";
 import StepLayout from "./components/StepLayout.vue";
 import PreviewHost from "./components/PreviewHost.vue";
 import DialogHost from "./components/DialogHost.vue";
-import LangWorkbench, { type LangSummary } from "./components/LangWorkbench.vue";
+import LangWorkbench, {
+  type LangSummary,
+} from "./components/LangWorkbench.vue";
 import PackPanel from "./components/PackPanel.vue";
 import EmptyState from "./components/EmptyState.vue";
 import LangView from "./components/LangView.vue";
@@ -91,8 +93,19 @@ import {
   type PackResult,
 } from "./contracts";
 import { decideAddColumn } from "./addColumnIntent";
-import { detectLocalHost, fetchWatchStatus, pollWatch, type LocalHostEndpoint } from "./localHost";
-import { extractStoryKeys, columnStoryKey, groupKeysByStory, planOverlaySkeleton, type SkeletonLayoutChoice } from "@lingfan/editor";
+import {
+  detectLocalHost,
+  fetchWatchStatus,
+  pollWatch,
+  type LocalHostEndpoint,
+} from "./localHost";
+import {
+  extractStoryKeys,
+  columnStoryKey,
+  groupKeysByStory,
+  planOverlaySkeleton,
+  type SkeletonLayoutChoice,
+} from "@lingfan/editor";
 import { searchResources, type SearchCorpus } from "./search";
 import type { EmptyAction } from "./viewState";
 
@@ -116,11 +129,7 @@ import {
   Workspace,
   type EditorDocument,
 } from "./workspace";
-import type {
-  LastProjectEntry,
-  OpenedProject,
-  ProjectOpener,
-} from "./ports";
+import type { LastProjectEntry, OpenedProject, ProjectOpener } from "./ports";
 
 /**
  * 组合根注入（本组件不碰任何平台 API / 适配器）：
@@ -149,10 +158,20 @@ let session = new EditorSession(props.initialStory);
  * 标签切换 = 重绑 + 重投影状态，不触碰任何组件。
  */
 const workspace = new Workspace();
-workspace.open(storyDocumentPath(props.initialStory.entry), "story", props.initialStory);
+workspace.open(
+  storyDocumentPath(props.initialStory.entry),
+  "story",
+  props.initialStory,
+);
 /** 文档态（供标签栏渲染；空数组 = 无标签，界面据此走空态） */
-const documentPaths = ref<string[]>([storyDocumentPath(props.initialStory.entry)]);
-const documentKinds = ref(new Map<string, string>([[storyDocumentPath(props.initialStory.entry), "story"]]));
+const documentPaths = ref<string[]>([
+  storyDocumentPath(props.initialStory.entry),
+]);
+const documentKinds = ref(
+  new Map<string, string>([
+    [storyDocumentPath(props.initialStory.entry), "story"],
+  ]),
+);
 const documentDirty = ref(new Set<string>());
 
 /** 重绑到某文档的会话：订阅状态回投到视图面（`attachSession` 的同款投影） */
@@ -190,7 +209,9 @@ const selectedColumnId = ref<string>(session.story.entry);
 const selectedPointer = ref<string | null>(null);
 /** 右栏 tab（属性面板从中央移入右栏作首 tab —— 跟随选中项的主编辑面；
  *  打包页无 tab 位，由状态栏「打包」按钮 toggle） */
-const rightTab = ref<"property" | "diagnostics" | "json" | "text" | "i18n" | "pack">("property");
+const rightTab = ref<
+  "property" | "diagnostics" | "json" | "text" | "i18n" | "pack"
+>("property");
 const centerView = ref<"timeline" | "stage" | "graph" | "step">("timeline");
 /**
  * 侧栏内页（活动栏的三个投影 + 故事编辑器专属的内页，同一面板内切）。
@@ -200,7 +221,8 @@ const centerView = ref<"timeline" | "stage" | "graph" | "step">("timeline");
  * - `columns` 列列表 = **作者显式的手动分组**（编排视图）
  * 两者语义不同（见 `ChapterTree.vue` 头部说明），故为两个内页。
  */
-type LeftTab = "resources" | "search" | "recent" | "chapters" | "columns" | "palette";
+type LeftTab =
+  "resources" | "search" | "recent" | "chapters" | "columns" | "palette";
 /**
  * 侧栏内页。
  *
@@ -209,8 +231,16 @@ type LeftTab = "resources" | "search" | "recent" | "chapters" | "columns" | "pal
  * `hint` 作为 tab 的 `title` 悬停可读，**一句话说清口径差异**。
  */
 const LEFT_TABS: readonly { id: LeftTab; label: string; hint?: string }[] = [
-  { id: "resources", label: "资源", hint: "按文件种类浏览资源根（Resources/）" },
-  { id: "search", label: "搜索", hint: "按**内容**搜索全部资源（先于名称匹配，它更精确）" },
+  {
+    id: "resources",
+    label: "资源",
+    hint: "按文件种类浏览资源根（Resources/）",
+  },
+  {
+    id: "search",
+    label: "搜索",
+    hint: "按**内容**搜索全部资源（先于名称匹配，它更精确）",
+  },
   { id: "recent", label: "最近", hint: "最近改动过的资源" },
   {
     id: "chapters",
@@ -222,7 +252,11 @@ const LEFT_TABS: readonly { id: LeftTab; label: string; hint?: string }[] = [
     label: "列",
     hint: "列列表：按作者手动分组排列（可自定义分组名与成员），与目录结构无关",
   },
-  { id: "palette", label: "组件", hint: "插入元素：按类型挑模板（落到当前选中命令）" },
+  {
+    id: "palette",
+    label: "组件",
+    hint: "插入元素：按类型挑模板（落到当前选中命令）",
+  },
 ];
 const leftTab = ref<LeftTab>("resources");
 
@@ -244,7 +278,9 @@ function setRightWidth(width: number): void {
  * 诊断供给侧：打开工程才注入（`resourceFiles` / `overlayKeys`）。
  * 未打开 = `undefined` ⇒ `analyzeStory` 收到空 options，两个检查器族整体跳过（不误报）。
  */
-const diagnosticSupply = ref<OpenedProject["diagnosticSupply"] | undefined>(undefined);
+const diagnosticSupply = ref<OpenedProject["diagnosticSupply"] | undefined>(
+  undefined,
+);
 
 /* ——— 资源树（工程维度，资源管理器的主体面） ——— */
 /** 工程资源集（逻辑路径）——由诊断供给侧顺带供给，零新增 IO */
@@ -270,7 +306,9 @@ const i18nLangs = computed<readonly LangSummary[]>(() => {
     .map(([lang, keys]) => ({
       lang,
       // 单文件形态用语言码本身作路径键（`Lang/{lang}.json`）；目录形态用 `main.json`
-      files: new Map<string, readonly string[]>([[`Lang/${lang}/main.json`, [...keys].sort()]]),
+      files: new Map<string, readonly string[]>([
+        [`Lang/${lang}/main.json`, [...keys].sort()],
+      ]),
     }))
     .sort((a, b) => (a.lang < b.lang ? -1 : 1));
 });
@@ -284,7 +322,9 @@ const corpusLoading = ref(false);
 function isSearchable(path: string): boolean {
   if (path.endsWith(".enc")) return false;
   const kind = kindOfPath(path);
-  return kind !== "image" && kind !== "audio" && kind !== "video" && kind !== "saves";
+  return (
+    kind !== "image" && kind !== "audio" && kind !== "video" && kind !== "saves"
+  );
 }
 /** 加载语料：逐个读，**单个失败不阻断**（跳过即可，如实计入失败数） */
 async function ensureCorpus(): Promise<void> {
@@ -387,7 +427,6 @@ function onDocumentPointerDown(event: PointerEvent): void {
   toolMenuOpen.value = false;
 }
 
-
 /**
  * 热重载开关（作者可关）。默认**开**——它是「代码归外部编辑器」这个定位能成立的
  * **前提能力**：外部改完看不到，定位就只是半截。
@@ -443,7 +482,8 @@ function startHotReload(host: LocalHostEndpoint): void {
     if (workspace.dirtyCount > 0) {
       void dialog.notify({
         title: "检测到磁盘变更，但当前有未保存改动",
-        message: "为避免丢失你的改动，未自动重载。请先保存，或撤销改动后等待自动重载。",
+        message:
+          "为避免丢失你的改动，未自动重载。请先保存，或撤销改动后等待自动重载。",
         tone: "warning",
       });
       return;
@@ -468,8 +508,12 @@ onBeforeUnmount(() => {
   stopHotReload?.();
   stopHotReload = undefined;
 });
-onMounted(() => document.addEventListener("pointerdown", onDocumentPointerDown));
-onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPointerDown));
+onMounted(() =>
+  document.addEventListener("pointerdown", onDocumentPointerDown),
+);
+onBeforeUnmount(() =>
+  document.removeEventListener("pointerdown", onDocumentPointerDown),
+);
 
 /**
  * 空态主动作（空态必须给出可点的下一步）。
@@ -483,7 +527,8 @@ function onEmptyAction(action: EmptyAction): void {
   // 无宿主 ⇒ 如实提示"不可用"（浏览器形态物理上无法启动进程）
   void dialog.notify({
     title: "当前形态无法用外部编辑器打开",
-    message: "需要本地应用宿主（pnpm --filter @lingfan/editor-app host）。请先用「打开工程」。",
+    message:
+      "需要本地应用宿主（pnpm --filter @lingfan/editor-app host）。请先用「打开工程」。",
     tone: "info",
   });
 }
@@ -507,15 +552,21 @@ async function sendPackRequest(request: PackRequest): Promise<PackResult> {
   }
   packing.value = true;
   try {
-    const res = await fetch(`${host.baseUrl}/__editor_host__/${host.token}/pack`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(request),
-    });
+    const res = await fetch(
+      `${host.baseUrl}/__editor_host__/${host.token}/pack`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(request),
+      },
+    );
     if (!res.ok) return { ok: false, reason: `宿主返回 ${String(res.status)}` };
     return (await res.json()) as PackResult;
   } catch (error: unknown) {
-    return { ok: false, reason: `无法联系本地宿主：${error instanceof Error ? error.message : String(error)}` };
+    return {
+      ok: false,
+      reason: `无法联系本地宿主：${error instanceof Error ? error.message : String(error)}`,
+    };
   } finally {
     packing.value = false;
   }
@@ -554,7 +605,9 @@ function openResource(path: string): void {
       selectDocument(docPath);
     } else {
       // 工程里已存在的列但未打开 ⇒ 打开它（真实单列文档，从整工程树切出）
-      const column = (projectTree.value ?? story.value).columns.find((c) => c.id === columnId);
+      const column = (projectTree.value ?? story.value).columns.find(
+        (c) => c.id === columnId,
+      );
       if (column === undefined) return;
       workspace.open(docPath, "story", {
         ...(projectTree.value ?? story.value),
@@ -596,9 +649,13 @@ async function loadResourceText(path: string): Promise<void> {
 }
 
 /** 活动资源的种类与视图分派（分派表是路由唯一事实源） */
-const activePath = computed<string>(() => activeResource.value ?? workspace.activePath ?? "");
+const activePath = computed<string>(
+  () => activeResource.value ?? workspace.activePath ?? "",
+);
 const activeKind = computed<ResourceKind>(() =>
-  activeResource.value !== undefined ? kindOfPath(activeResource.value) : "story",
+  activeResource.value !== undefined
+    ? kindOfPath(activeResource.value)
+    : "story",
 );
 const activeSpec = computed(() => viewOfKind(activeKind.value));
 /**
@@ -607,10 +664,13 @@ const activeSpec = computed(() => viewOfKind(activeKind.value));
  */
 const activeMediaKind = computed<"image" | "audio" | "video" | "other">(() => {
   const kind = activeKind.value;
-  return kind === "image" || kind === "audio" || kind === "video" ? kind : "other";
+  return kind === "image" || kind === "audio" || kind === "video"
+    ? kind
+    : "other";
 });
 const activeReadOnlyReason = computed(() => {
-  if (activeKind.value === "saves") return "运行时产物：Saves 归工程运行时，编辑器不提供编辑面";
+  if (activeKind.value === "saves")
+    return "运行时产物：Saves 归工程运行时，编辑器不提供编辑面";
   return "未识别的资源类型：编辑器不提供编辑面（可用外部工具查看）";
 });
 
@@ -674,7 +734,11 @@ async function generateLangSkeleton(request: {
       if (text === undefined) continue;
       try {
         const parsed: unknown = JSON.parse(text);
-        if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        if (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          !Array.isArray(parsed)
+        ) {
           existing.set(path, parsed as Record<string, string>);
         }
       } catch {
@@ -735,10 +799,13 @@ const saveFn = ref<((s: Story) => Promise<ProjectWriteReport>) | undefined>(
 );
 /** 单文档写回（多文档面的实际保存路径；存在即优先于整工程 `saveFn`） */
 const saveColumnFn = ref<
-  ((columnId: string, columnStory: Story) => Promise<ProjectWriteReport>) | undefined
+  | ((columnId: string, columnStory: Story) => Promise<ProjectWriteReport>)
+  | undefined
 >(undefined);
 /** 按逻辑路径读资源文本（非故事视图的数据源；缺省 = 未打开工程） */
-const readTextFn = ref<((path: string) => Promise<string>) | undefined>(undefined);
+const readTextFn = ref<((path: string) => Promise<string>) | undefined>(
+  undefined,
+);
 /** 保存单个文本资源（译文表 / 清单）；缺省 = 无写回能力 */
 const saveTextFn = ref<
   ((path: string, text: string) => Promise<ProjectWriteReport>) | undefined
@@ -763,9 +830,9 @@ const toolMenuAnchor = useTemplateRef<HTMLElement>("toolMenuAnchor");
  * 存储失败静默降级 = 仅本次会话有效）。
  */
 const normalizationNotice = ref<string[]>([]);
-const pendingSave = ref<((s: Story) => Promise<ProjectWriteReport>) | undefined>(
-  undefined,
-);
+const pendingSave = ref<
+  ((s: Story) => Promise<ProjectWriteReport>) | undefined
+>(undefined);
 const skipNormalizationNotice = ref(
   readSkipNormalizationNotice(readLocalStorage()),
 );
@@ -814,8 +881,7 @@ function syncGroupingColumns(): void {
 }
 
 /** 未绑定磁盘工程时的提示（状态口径：不携带「刚点了新建/导入」这类历史） */
-const UNBOUND_HINT =
-  "未绑定磁盘工程：请用「打开工程」选择目录以启用保存";
+const UNBOUND_HINT = "未绑定磁盘工程：请用「打开工程」选择目录以启用保存";
 
 /**
  * 换会话基线与绑定订阅：打开工程 = **新基线**（不是一次 undo——
@@ -825,11 +891,7 @@ const UNBOUND_HINT =
  * 这样「打开工程」与「切标签」走**同一条**绑定路径（不新增第二处投影逻辑）。
  */
 function attachSession(next: EditorSession): void {
-  workspace.open(
-    storyDocumentPath(next.story.entry),
-    "story",
-    next.story,
-  );
+  workspace.open(storyDocumentPath(next.story.entry), "story", next.story);
   bindActive(workspace.activeDocument);
 }
 attachSession(session);
@@ -849,7 +911,9 @@ workspace.subscribe(() => {
   activeDocumentPath.value = workspace.activePath;
   bindActive(workspace.activeDocument);
   documentPaths.value = workspace.documents.map((d) => d.path);
-  documentKinds.value = new Map(workspace.documents.map((d) => [d.path, d.kind]));
+  documentKinds.value = new Map(
+    workspace.documents.map((d) => [d.path, d.kind]),
+  );
   documentDirty.value = new Set(workspace.dirtyPaths);
 });
 
@@ -950,7 +1014,9 @@ function redistributeDocuments(tree: Story): void {
       columns: [column],
     });
   }
-  documentPaths.value = tree.columns.map((column) => storyDocumentPath(column.id));
+  documentPaths.value = tree.columns.map((column) =>
+    storyDocumentPath(column.id),
+  );
   documentDirty.value = new Set(workspace.dirtyPaths);
 }
 
@@ -1073,7 +1139,8 @@ function unbindProject(): void {
 async function addFlowColumn(): Promise<void> {
   const result = await dialog.askText({
     title: "新增流程列",
-    message: "列 id 建议用语义化短标识（如 tavern / morning）；留空则自动生成 column-N。",
+    message:
+      "列 id 建议用语义化短标识（如 tavern / morning）；留空则自动生成 column-N。",
     initial: "",
     allowEmpty: true,
   });
@@ -1279,7 +1346,9 @@ const api: EditorApiPort = {
       selectDocument(path);
     }
     selectedColumnId.value = id;
-    const index = (projectTree.value ?? story.value).columns.findIndex((c) => c.id === id);
+    const index = (projectTree.value ?? story.value).columns.findIndex(
+      (c) => c.id === id,
+    );
     selectedPointer.value = index >= 0 ? `/columns/${index}` : null;
   },
   renameColumn(from: string, to: string): void {
@@ -1358,8 +1427,7 @@ const api: EditorApiPort = {
     if (!applied || parentPointer !== undefined) return;
     selectedPointer.value = `${target}/${appendedAt}`;
     const column = getAtPointer(story.value, columnPointer) as
-      | { id?: string }
-      | undefined;
+      { id?: string } | undefined;
     if (typeof column?.id === "string") selectedColumnId.value = column.id;
   },
   /**
@@ -1600,8 +1668,12 @@ function onExport(): void {
           :title="projectChipTitle"
           @click="openProject"
         >
-          <span class="project-chip-name">{{ projectRoot !== '' ? projectName : story.id }}</span>
-          <span v-if="projectRoot !== ''" class="project-chip-path">{{ projectRoot }}</span>
+          <span class="project-chip-name">{{
+            projectRoot !== "" ? projectName : story.id
+          }}</span>
+          <span v-if="projectRoot !== ''" class="project-chip-path">{{
+            projectRoot
+          }}</span>
         </button>
         <button
           v-if="props.lastProject?.value !== undefined"
@@ -1653,7 +1725,9 @@ function onExport(): void {
 
       <!-- 右：预览 + 动作溢出菜单 -->
       <div class="tb-group tb-right" @keydown="onToolMenuKeydown">
-        <button class="preview-button btn-filled" @click="previewing = true">▶ 预览</button>
+        <button class="preview-button btn-filled" @click="previewing = true">
+          ▶ 预览
+        </button>
         <div ref="toolMenuAnchor" class="menu-anchor">
           <button
             class="icon-button"
@@ -1666,23 +1740,84 @@ function onExport(): void {
           </button>
           <div v-if="toolMenuOpen" class="menu" role="menu">
             <p class="menu-title">编辑</p>
-            <button class="menu-item" role="menuitem" :disabled="!canSave" :title="saveTooltip" @click="onSave(); toolMenuOpen = false">
+            <button
+              class="menu-item"
+              role="menuitem"
+              :disabled="!canSave"
+              :title="saveTooltip"
+              @click="
+                onSave();
+                toolMenuOpen = false;
+              "
+            >
               {{ saving ? "保存中…" : "保存" }}<kbd>Ctrl+S</kbd>
             </button>
-            <button class="menu-item" role="menuitem" :disabled="undoDepth === 0" @click="session.undo(); toolMenuOpen = false">
+            <button
+              class="menu-item"
+              role="menuitem"
+              :disabled="undoDepth === 0"
+              @click="
+                session.undo();
+                toolMenuOpen = false;
+              "
+            >
               撤销<span class="menu-hint">{{ undoDepth }} 步可回溯</span>
             </button>
-            <button class="menu-item" role="menuitem" :disabled="redoDepth === 0" @click="session.redo(); toolMenuOpen = false">
+            <button
+              class="menu-item"
+              role="menuitem"
+              :disabled="redoDepth === 0"
+              @click="
+                session.redo();
+                toolMenuOpen = false;
+              "
+            >
               重做<span class="menu-hint">{{ redoDepth }} 步</span>
             </button>
             <p class="menu-sep" role="separator"></p>
             <p class="menu-title">工程与文件</p>
-            <button class="menu-item" role="menuitem" @click="pickImport(); toolMenuOpen = false">导入 JSON…</button>
-            <button class="menu-item" role="menuitem" @click="onExport(); toolMenuOpen = false">导出工程</button>
-            <button class="menu-item" role="menuitem" @click="openProject(); toolMenuOpen = false">打开工程…</button>
+            <button
+              class="menu-item"
+              role="menuitem"
+              @click="
+                pickImport();
+                toolMenuOpen = false;
+              "
+            >
+              导入 JSON…
+            </button>
+            <button
+              class="menu-item"
+              role="menuitem"
+              @click="
+                onExport();
+                toolMenuOpen = false;
+              "
+            >
+              导出工程
+            </button>
+            <button
+              class="menu-item"
+              role="menuitem"
+              @click="
+                openProject();
+                toolMenuOpen = false;
+              "
+            >
+              打开工程…
+            </button>
             <p class="menu-sep" role="separator"></p>
             <p class="menu-title">危险操作</p>
-            <button class="menu-item btn-danger" role="menuitem" @click="onNew(); toolMenuOpen = false">新建工程（覆盖当前）</button>
+            <button
+              class="menu-item btn-danger"
+              role="menuitem"
+              @click="
+                onNew();
+                toolMenuOpen = false;
+              "
+            >
+              新建工程（覆盖当前）
+            </button>
           </div>
         </div>
       </div>
@@ -1731,10 +1866,18 @@ function onExport(): void {
       </p>
       <div class="normalization-actions">
         <label>
-          <input v-model="skipNormalizationNotice" type="checkbox" @change="onSkipNormalizationChange" />
+          <input
+            v-model="skipNormalizationNotice"
+            type="checkbox"
+            @change="onSkipNormalizationChange"
+          />
           不再提示
         </label>
-        <button class="save-button" :disabled="saving" @click="confirmNormalization">
+        <button
+          class="save-button"
+          :disabled="saving"
+          @click="confirmNormalization"
+        >
           {{ saving ? "保存中…" : "继续保存" }}
         </button>
         <button :disabled="saving" @click="cancelNormalization">取消</button>
@@ -1837,15 +1980,36 @@ function onExport(): void {
           <div v-show="leftTab === 'search'" class="left-pane-body">
             <!-- 内容搜索结果（先于名称匹配，因为它更精确） -->
             <ul v-if="searchReport.hits.length > 0" class="hits">
-              <li v-for="(hit, i) in searchReport.hits" :key="`${hit.path}:${hit.line}:${i}`">
-                <button class="hit" :title="`${hit.path}:${hit.line}`" @click="openResource(hit.path)">
-                  <span class="hit-path">{{ hit.path }}<span class="hit-line">:{{ hit.line }}</span></span>
-                  <span class="hit-text">{{ hit.text.trim().slice(0, 80) }}</span>
+              <li
+                v-for="(hit, i) in searchReport.hits"
+                :key="`${hit.path}:${hit.line}:${i}`"
+              >
+                <button
+                  class="hit"
+                  :title="`${hit.path}:${hit.line}`"
+                  @click="openResource(hit.path)"
+                >
+                  <span class="hit-path"
+                    >{{ hit.path
+                    }}<span class="hit-line">:{{ hit.line }}</span></span
+                  >
+                  <span class="hit-text">{{
+                    hit.text.trim().slice(0, 80)
+                  }}</span>
                 </button>
               </li>
             </ul>
-            <p v-if="searchReport.truncated" class="hits-more">已达上限，还有更多结果</p>
-            <p v-if="searchKeyword.trim() !== '' && searchReport.searchedFiles > 0 && searchReport.hits.length === 0" class="hits-none">
+            <p v-if="searchReport.truncated" class="hits-more">
+              已达上限，还有更多结果
+            </p>
+            <p
+              v-if="
+                searchKeyword.trim() !== '' &&
+                searchReport.searchedFiles > 0 &&
+                searchReport.hits.length === 0
+              "
+              class="hits-none"
+            >
               内容中无匹配
             </p>
             <ResourceTreeView
@@ -1875,7 +2039,10 @@ function onExport(): void {
             <!-- 常驻说明：「章节」与「列」都是"工程里的列"，光看名字分不出区别。
                  tab 的 `title` 只在悬停时可见 ⇒ 面板顶部给一行**常驻**口径说明。 -->
             <p class="left-pane-note">按文件路径分章（目录即章节）</p>
-            <ChapterTree :story="projectTree ?? story" :selected-id="selectedColumnId" />
+            <ChapterTree
+              :story="projectTree ?? story"
+              :selected-id="selectedColumnId"
+            />
           </div>
           <!-- v-show 必须落在**单根元素**上：ColumnList 是多根模板，直接给它 v-show 会让指令失效
                （Vue: "Runtime directive used on component with non-element root node"）⇒ 命令面板不会隐藏 -->
@@ -1885,7 +2052,10 @@ function onExport(): void {
             <!-- 列树取**整工程树**（工程级视图）：活动文档是单列切片，
                  若喂切片则列树只剩一列，用户失去「工程里有哪些列」的视野。
                  选列 = 切标签（`api.selectColumn` 内部完成，两者同一动作不重复实现）。 -->
-            <ColumnList :story="projectTree ?? story" :selected-id="selectedColumnId" />
+            <ColumnList
+              :story="projectTree ?? story"
+              :selected-id="selectedColumnId"
+            />
           </div>
           <div v-show="leftTab === 'palette'" class="left-pane-body">
             <ComponentPalette />
@@ -1901,168 +2071,177 @@ function onExport(): void {
           @resize="setLeftWidth"
         />
 
-      <section class="pane center-pane">
-        <!-- 首屏空态：**未打开工程时显示空态** ——
+        <section class="pane center-pane">
+          <!-- 首屏空态：**未打开工程时显示空态** ——
              内存示例故事只是"可试玩"，不是"你的工程"。主动作是「打开工程」。 -->
-        <EmptyState
-          v-if="!projectRoot && activeResource === undefined && documentPaths.length <= 1 && !dirty"
-          reason="no-project"
-          @action="onEmptyAction"
-        />
-
-        <!-- 非故事资源：按分派表走专用视图（译文表 / 清单 / 媒体 / 只读） -->
-        <LangView
-          v-else-if="activeSpec.view === 'lang' && activeSource !== undefined"
-          :key="activePath"
-          :path="activePath"
-          :source="activeSource"
-          @save="saveTextResource"
-        />
-        <JsonResourceView
-          v-else-if="activeSpec.view === 'manifest' && activeSource !== undefined"
-          :key="activePath"
-          :path="activePath"
-          :title="activeSpec.title"
-          :source="activeSource"
-          @save="saveTextResource"
-        />
-        <MediaView
-          v-else-if="activeSpec.view === 'media'"
-          :key="activePath"
-          :path="activePath"
-          :kind="activeMediaKind"
-          :resource-port="resourcePort"
-        />
-        <ReadOnlyView
-          v-else-if="activeSpec.view === 'readonly'"
-          :path="activePath"
-          :reason="activeReadOnlyReason"
-        />
-        <!-- 读取失败：如实展示（`readError` 必须渲染，否则失败会被静默成空白） -->
-        <p v-else-if="readError" class="center-error">{{ readError }}</p>
-        <p v-else-if="activeSpec.view !== 'story'" class="center-loading">正在读取资源…</p>
-
-        <!-- 故事资源：四视图仍是它的内部切面（不是四类资源） -->
-        <template v-else-if="centerView === 'timeline'">
-          <StoryTimeline
-            :story="story"
-            :column-id="selectedColumnId"
-            :selected-pointer="selectedPointer"
+          <EmptyState
+            v-if="
+              !projectRoot &&
+              activeResource === undefined &&
+              documentPaths.length <= 1 &&
+              !dirty
+            "
+            reason="no-project"
+            @action="onEmptyAction"
           />
-        </template>
-        <StageEditor
-          v-else-if="centerView === 'stage'"
-          :story="story"
-          :pointer="selectedPointer"
-          :resource-port="resourcePort"
-          :first-scene-column-id="firstSceneColumnId"
-        />
-        <!-- key = story.id ⇒ 换工程/新建/导入必重挂载，布局缓存从新工程的存储键重读 -->
-        <NodeGraph
-          v-else-if="centerView === 'graph'"
-          :key="story.id"
-          :story="story"
-          :selected-id="selectedColumnId"
-        />
-        <!-- 步骤视图：确定性排布（无布局缓存）——key 仅用于换工程时归零选中态派生 -->
-        <StepLayout
-          v-else-if="centerView === 'step'"
-          :key="story.id"
-          :story="story"
-          :selected-id="selectedColumnId"
-        />
-      </section>
 
-      <aside
-        v-show="!layout.rightCollapsed"
-        class="pane right-pane"
-        :style="{ width: `${layout.rightWidth}px` }"
-      >
-        <!-- a11y：tablist 语义 —— 右栏与左栏的 tab 若都是裸 button，
+          <!-- 非故事资源：按分派表走专用视图（译文表 / 清单 / 媒体 / 只读） -->
+          <LangView
+            v-else-if="activeSpec.view === 'lang' && activeSource !== undefined"
+            :key="activePath"
+            :path="activePath"
+            :source="activeSource"
+            @save="saveTextResource"
+          />
+          <JsonResourceView
+            v-else-if="
+              activeSpec.view === 'manifest' && activeSource !== undefined
+            "
+            :key="activePath"
+            :path="activePath"
+            :title="activeSpec.title"
+            :source="activeSource"
+            @save="saveTextResource"
+          />
+          <MediaView
+            v-else-if="activeSpec.view === 'media'"
+            :key="activePath"
+            :path="activePath"
+            :kind="activeMediaKind"
+            :resource-port="resourcePort"
+          />
+          <ReadOnlyView
+            v-else-if="activeSpec.view === 'readonly'"
+            :path="activePath"
+            :reason="activeReadOnlyReason"
+          />
+          <!-- 读取失败：如实展示（`readError` 必须渲染，否则失败会被静默成空白） -->
+          <p v-else-if="readError" class="center-error">{{ readError }}</p>
+          <p v-else-if="activeSpec.view !== 'story'" class="center-loading">
+            正在读取资源…
+          </p>
+
+          <!-- 故事资源：四视图仍是它的内部切面（不是四类资源） -->
+          <template v-else-if="centerView === 'timeline'">
+            <StoryTimeline
+              :story="story"
+              :column-id="selectedColumnId"
+              :selected-pointer="selectedPointer"
+            />
+          </template>
+          <StageEditor
+            v-else-if="centerView === 'stage'"
+            :story="story"
+            :pointer="selectedPointer"
+            :resource-port="resourcePort"
+            :first-scene-column-id="firstSceneColumnId"
+          />
+          <!-- key = story.id ⇒ 换工程/新建/导入必重挂载，布局缓存从新工程的存储键重读 -->
+          <NodeGraph
+            v-else-if="centerView === 'graph'"
+            :key="story.id"
+            :story="story"
+            :selected-id="selectedColumnId"
+          />
+          <!-- 步骤视图：确定性排布（无布局缓存）——key 仅用于换工程时归零选中态派生 -->
+          <StepLayout
+            v-else-if="centerView === 'step'"
+            :key="story.id"
+            :story="story"
+            :selected-id="selectedColumnId"
+          />
+        </section>
+
+        <aside
+          v-show="!layout.rightCollapsed"
+          class="pane right-pane"
+          :style="{ width: `${layout.rightWidth}px` }"
+        >
+          <!-- a11y：tablist 语义 —— 右栏与左栏的 tab 若都是裸 button，
              读屏只知道「6 个按钮」，不知道它们是互斥视图切换。 -->
-        <div class="tab-strip" role="tablist" aria-label="右栏面板">
-          <button
-            role="tab"
-            :aria-selected="rightTab === 'property'"
-            :class="{ active: rightTab === 'property' }"
-            @click="rightTab = 'property'"
-          >
-            属性
-          </button>
-          <button
-            role="tab"
-            :aria-selected="rightTab === 'diagnostics'"
-            :class="{ active: rightTab === 'diagnostics' }"
-            @click="rightTab = 'diagnostics'"
-          >
-            诊断
-          </button>
-          <button
-            role="tab"
-            :aria-selected="rightTab === 'json'"
-            :class="{ active: rightTab === 'json' }"
-            @click="rightTab = 'json'"
-          >
-            JSON
-          </button>
-          <button
-            role="tab"
-            :aria-selected="rightTab === 'text'"
-            :class="{ active: rightTab === 'text' }"
-            @click="rightTab = 'text'"
-          >
-            文本
-          </button>
-          <!-- 本地化工作台（聚合面：多语言覆盖率 / 缺译清单 / 骨架生成） -->
-          <button
-            role="tab"
-            :aria-selected="rightTab === 'i18n'"
-            :class="{ active: rightTab === 'i18n' }"
-            title="本地化：多语言覆盖率与译文表骨架"
-            @click="rightTab = 'i18n'"
-          >
-            本地化
-          </button>
-          <!-- 打包**不作为右栏 tab**：低频动作（以分钟计），
+          <div class="tab-strip" role="tablist" aria-label="右栏面板">
+            <button
+              role="tab"
+              :aria-selected="rightTab === 'property'"
+              :class="{ active: rightTab === 'property' }"
+              @click="rightTab = 'property'"
+            >
+              属性
+            </button>
+            <button
+              role="tab"
+              :aria-selected="rightTab === 'diagnostics'"
+              :class="{ active: rightTab === 'diagnostics' }"
+              @click="rightTab = 'diagnostics'"
+            >
+              诊断
+            </button>
+            <button
+              role="tab"
+              :aria-selected="rightTab === 'json'"
+              :class="{ active: rightTab === 'json' }"
+              @click="rightTab = 'json'"
+            >
+              JSON
+            </button>
+            <button
+              role="tab"
+              :aria-selected="rightTab === 'text'"
+              :class="{ active: rightTab === 'text' }"
+              @click="rightTab = 'text'"
+            >
+              文本
+            </button>
+            <!-- 本地化工作台（聚合面：多语言覆盖率 / 缺译清单 / 骨架生成） -->
+            <button
+              role="tab"
+              :aria-selected="rightTab === 'i18n'"
+              :class="{ active: rightTab === 'i18n' }"
+              title="本地化：多语言覆盖率与译文表骨架"
+              @click="rightTab = 'i18n'"
+            >
+              本地化
+            </button>
+            <!-- 打包**不作为右栏 tab**：低频动作（以分钟计），
                不占一级 tab；入口移到**状态栏**（带文字标签按钮，toggle 打包页）。 -->
-        </div>
-        <!-- 属性面板**已移入右栏**：中央时间线拿回全部高度
+          </div>
+          <!-- 属性面板**已移入右栏**：中央时间线拿回全部高度
              （旧布局中央属性面板 188px 高、下方 483px 空）。 -->
-        <PropertyPanel
-          v-show="rightTab === 'property'"
-          :story="story"
-          :pointer="selectedPointer"
+          <PropertyPanel
+            v-show="rightTab === 'property'"
+            :story="story"
+            :pointer="selectedPointer"
+          />
+          <DiagnosticsPanel
+            v-show="rightTab === 'diagnostics'"
+            :diagnostics="diagnostics"
+          />
+          <JsonView v-show="rightTab === 'json'" :story="story" />
+          <TextModeView v-show="rightTab === 'text'" :story="story" />
+          <!-- 本地化工作台：数据全部来自既有诊断供给（**零新增 IO**） -->
+          <LangWorkbench
+            v-show="rightTab === 'i18n'"
+            :sources="i18nSources"
+            :langs="i18nLangs"
+            @open="openResource"
+            @generate="generateLangSkeleton"
+          />
+          <!-- 快速打包：**前端不 spawn 进程**，只转发给本地宿主 -->
+          <PackPanel
+            v-show="rightTab === 'pack'"
+            :can-pack="localHostAvailable"
+            :send="sendPackRequest"
+          />
+        </aside>
+        <PaneSplitter
+          v-if="!layout.rightCollapsed"
+          :size="layout.rightWidth"
+          :min="MIN_RIGHT_WIDTH"
+          :max="MAX_RIGHT_WIDTH"
+          side="right"
+          label="调整属性栏宽度"
+          @resize="setRightWidth"
         />
-        <DiagnosticsPanel
-          v-show="rightTab === 'diagnostics'"
-          :diagnostics="diagnostics"
-        />
-        <JsonView v-show="rightTab === 'json'" :story="story" />
-        <TextModeView v-show="rightTab === 'text'" :story="story" />
-        <!-- 本地化工作台：数据全部来自既有诊断供给（**零新增 IO**） -->
-        <LangWorkbench
-          v-show="rightTab === 'i18n'"
-          :sources="i18nSources"
-          :langs="i18nLangs"
-          @open="openResource"
-          @generate="generateLangSkeleton"
-        />
-        <!-- 快速打包：**前端不 spawn 进程**，只转发给本地宿主 -->
-        <PackPanel
-          v-show="rightTab === 'pack'"
-          :can-pack="localHostAvailable"
-          :send="sendPackRequest"
-        />
-      </aside>
-      <PaneSplitter
-        v-if="!layout.rightCollapsed"
-        :size="layout.rightWidth"
-        :min="MIN_RIGHT_WIDTH"
-        :max="MAX_RIGHT_WIDTH"
-        side="right"
-        label="调整属性栏宽度"
-        @resize="setRightWidth"
-      />
       </div>
     </main>
 
@@ -2083,8 +2262,8 @@ function onExport(): void {
     <!-- 「宿主未启动」非阻塞横幅：`pointer-events:none` ⇒ 绝不拦点击（模态遮罩会挡住所有点击） -->
     <div v-if="hostHint" class="host-hint" role="status">
       <span class="host-hint-text">
-        未检测到本地宿主 —— 绝对路径 / 外部打开 / 一键打包 / 热重载**不可用**（其余功能正常）。
-        启用：<code>pnpm editor:dev</code>
+        未检测到本地宿主 —— 绝对路径 / 外部打开 / 一键打包 /
+        热重载**不可用**（其余功能正常）。 启用：<code>pnpm editor:dev</code>
       </span>
       <button
         class="host-hint-x"
@@ -2099,7 +2278,9 @@ function onExport(): void {
     <!-- 对话框宿主：渲染 `dialogRequest`（栈顶），并在回答后回抛 -->
     <DialogHost
       :request="dialogRequest"
-      @answer="(v) => dialogState.answer(v as string | boolean | null | undefined)"
+      @answer="
+        (v) => dialogState.answer(v as string | boolean | null | undefined)
+      "
       @dismiss="dialogRequest = dialogState.current"
     />
 
@@ -2430,11 +2611,13 @@ textarea:hover:not(:disabled) {
 }
 .save-notice {
   color: var(--lf-success);
-  border-bottom: 1px solid color-mix(in srgb, var(--lf-success) 27%, transparent);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--lf-success) 27%, transparent);
   background: var(--lf-success-tint);
 }
 .save-normalization {
-  border-bottom: 1px solid color-mix(in srgb, var(--lf-warning) 27%, transparent);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--lf-warning) 27%, transparent);
   background: var(--lf-warning-tint);
   color: var(--lf-warning);
   padding: 8px 12px;

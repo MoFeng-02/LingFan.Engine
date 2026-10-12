@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { STORIES_DIR, type SerializedProject } from "@lingfan/engine";
 import { renderFunRegister, type CellScan } from "../cell";
@@ -30,7 +36,15 @@ export function emitArtifacts(options: EmitOptions): {
   updated: string[];
   removed: string[];
 } {
-  const { root, resourcesDir, storiesDir, generatedRel, serialized, cellScan, typegen } = options;
+  const {
+    root,
+    resourcesDir,
+    storiesDir,
+    generatedRel,
+    serialized,
+    cellScan,
+    typegen,
+  } = options;
   const existing = walkFiles(storiesDir);
   const added: string[] = [];
   const updated: string[] = [];

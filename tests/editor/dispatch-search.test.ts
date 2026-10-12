@@ -12,7 +12,11 @@ import { searchResources } from "../../apps/editor/src/search";
 
 describe("分派表 · 路由", () => {
   it("故事 → 可编辑的故事视图", () => {
-    expect(viewOfKind("story")).toEqual({ view: "story", editable: true, title: "故事" });
+    expect(viewOfKind("story")).toEqual({
+      view: "story",
+      editable: true,
+      title: "故事",
+    });
     expect(isEditableKind("story")).toBe(true);
   });
 
@@ -42,7 +46,16 @@ describe("分派表 · 路由", () => {
   });
 
   it("完备账：`ResourceKind` 的每个成员都有登记（漏登记会被抓到）", () => {
-    const all = ["story", "lang", "image", "audio", "video", "manifest", "saves", "other"];
+    const all = [
+      "story",
+      "lang",
+      "image",
+      "audio",
+      "video",
+      "manifest",
+      "saves",
+      "other",
+    ];
     expect(registeredKinds()).toEqual([...all].sort());
   });
 });
@@ -69,7 +82,9 @@ describe("全局搜索 · 命中判据", () => {
 
   it("大小写不敏感（默认）⇒ `Gold` 与 `gold` 都命中", () => {
     expect(searchResources(corpus, "gold").hits.length).toBeGreaterThan(0);
-    expect(searchResources(corpus, "gold", { caseSensitive: true }).hits.length).toBe(0);
+    expect(
+      searchResources(corpus, "gold", { caseSensitive: true }).hits.length,
+    ).toBe(0);
   });
 
   it("确定性：语料插入顺序不同也产出同序结果（按路径码元序遍历）", () => {
@@ -78,7 +93,9 @@ describe("全局搜索 · 命中判据", () => {
       new Map([...corpus.entries()].reverse()),
       "金币",
     );
-    expect(reversed.hits.map((h) => h.path)).toEqual(forward.hits.map((h) => h.path));
+    expect(reversed.hits.map((h) => h.path)).toEqual(
+      forward.hits.map((h) => h.path),
+    );
   });
 
   it("空查询 ⇒ 零命中且**不扫描**（不该因空白输入触发全量遍历）", () => {

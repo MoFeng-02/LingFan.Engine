@@ -31,7 +31,9 @@
   border-radius: var(--lf-logo-radius);
   object-fit: cover;
   /* 品牌泛光：只在 logo 与 hero 出现（设计稿 §3.1） */
-  box-shadow: 0 0 0 1px var(--lf-glow-border), 0 0 12px var(--lf-glow-halo);
+  box-shadow:
+    0 0 0 1px var(--lf-glow-border),
+    0 0 12px var(--lf-glow-halo);
 }
 
 .lf-brand__text {
@@ -98,7 +100,11 @@
 
 .lf-hero__tagline {
   max-inline-size: 46ch;
-  font-size: clamp(var(--sl-text-base), calc(0.0625rem + 2vw), var(--sl-text-xl));
+  font-size: clamp(
+    var(--sl-text-base),
+    calc(0.0625rem + 2vw),
+    var(--sl-text-xl)
+  );
   line-height: var(--lf-leading);
   color: var(--lf-text-muted);
 }

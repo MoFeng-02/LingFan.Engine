@@ -110,6 +110,11 @@ function applyFormat(value: ExprValue, format: string | null): string {
   if (typeof value === "number") s = String(value);
   else if (typeof value === "boolean") s = value ? "true" : "false";
   else if (typeof value === "string") s = value;
+  else if (value === null)
+    throw new ExpressionError(
+      "type-error",
+      "文本插值不支持 null 值（可用 ?? 提供默认值）",
+    );
   else throw new ExpressionError("type-error", "文本插值不支持数组/字典值");
   if (format === null || typeof value !== "number" || !Number.isInteger(value))
     return s;

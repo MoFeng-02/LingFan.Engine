@@ -147,7 +147,7 @@ describe("自定义 op 文本投影", () => {
             exec: () => ({ ok: true }),
             project: {
               toText: () => "boom_op",
-               
+
               fromText: () => {
                 throw new Error("投影器炸了");
               },
@@ -180,9 +180,9 @@ describe("自定义 op 文本投影", () => {
         ],
       },
     ]);
-    expect(() => generateText(storyWith([{ op: "nx_op" }]), nullToText)).toThrow(
-      /文本投影失败/,
-    );
+    expect(() =>
+      generateText(storyWith([{ op: "nx_op" }]), nullToText),
+    ).toThrow(/文本投影失败/);
     const throwToText = collectTextProjections([
       {
         id: "tx",
@@ -191,9 +191,8 @@ describe("自定义 op 文本投影", () => {
           {
             op: "tx_op",
             exec: () => ({ ok: true }),
-             
+
             project: {
-               
               toText: () => {
                 throw new Error("toText 炸了");
               },
@@ -202,9 +201,9 @@ describe("自定义 op 文本投影", () => {
         ],
       },
     ]);
-    expect(() => generateText(storyWith([{ op: "tx_op" }]), throwToText)).toThrow(
-      TextFormatError,
-    );
+    expect(() =>
+      generateText(storyWith([{ op: "tx_op" }]), throwToText),
+    ).toThrow(TextFormatError);
   });
 
   it("collectTextProjections：只聚合声明了 project 的 op", () => {

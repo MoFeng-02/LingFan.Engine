@@ -62,7 +62,9 @@ describe("资源树折叠与定位 · 接线互锁", () => {
 
   it("定位路径吃**响应式投影** activeDocumentPath（workspace 非响应式——computed 读它永不重算）", () => {
     const src = code(appSource);
-    expect(src).toContain("const activeDocumentPath = ref<string | undefined>(workspace.activePath)");
+    expect(src).toContain(
+      "const activeDocumentPath = ref<string | undefined>(workspace.activePath)",
+    );
     // 反面：computed 里直接读 workspace.activePath = 挂载初值卡死
     const computed = src.slice(src.indexOf("const resourceFocusPath"));
     expect(computed.slice(0, 700)).not.toContain("workspace.activePath");
@@ -80,7 +82,9 @@ describe("`.story` 文件打开 · 接线互锁", () => {
   it("文档身份恒 = storyDocumentPath(columnId)（**不是磁盘文件路径**——身份不变量）", () => {
     // 回归：用 .story 文件路径开档 ⇒ 标签名错 + redistribute 身份失配
     const src = code(appSource);
-    const branch = src.slice(src.indexOf("const docPath = storyDocumentPath(columnId)"));
+    const branch = src.slice(
+      src.indexOf("const docPath = storyDocumentPath(columnId)"),
+    );
     expect(branch.slice(0, 500)).toContain('workspace.open(docPath, "story"');
     expect(branch).toContain("selectDocument(docPath)");
   });
@@ -98,6 +102,8 @@ describe("文档标签关闭 · 接线互锁", () => {
   it("关闭后同步选中列（停在**被关列** ⇒ 时间线空白的同类问题）", () => {
     const src = code(appSource);
     const block = src.slice(src.indexOf("async function closeDocument"));
-    expect(block.slice(0, 900)).toContain("selectDocument(workspace.activePath)");
+    expect(block.slice(0, 900)).toContain(
+      "selectDocument(workspace.activePath)",
+    );
   });
 });

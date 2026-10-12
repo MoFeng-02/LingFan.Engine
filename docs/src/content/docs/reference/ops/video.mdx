@@ -3,7 +3,7 @@ title: 视频指令
 description: video、cutscene、seek_video、pause_video、resume_video、stop_video、video_skipable 的签名、参数与常见错误。只有 cutscene 建立等待点。
 ---
 
-import OpCard from '../../../../components/OpCard.astro';
+import OpCard from "../../../../components/OpCard.astro";
 
 七条指令写的是同一路「视频命令流」：一条命令一个单调递增的序号，宿主按序号执行。引擎不持有播放器，播放成功与否它不知道。
 
@@ -24,12 +24,12 @@ video "Video/op.mp4" volume=0.8 loop=true
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `resource` | string | 必填。相对资源根的路径 |
-| `volume` | number | 可选，缺省 1。越界钳到 0..1 |
-| `loop` | boolean | 可选，缺省 `false` |
-| `z` | number | 可选。视频层的实例 z |
+| 字段       | 类型    | 说明                        |
+| ---------- | ------- | --------------------------- |
+| `resource` | string  | 必填。相对资源根的路径      |
+| `volume`   | number  | 可选，缺省 1。越界钳到 0..1 |
+| `loop`     | boolean | 可选，缺省 `false`          |
+| `z`        | number  | 可选。视频层的实例 z        |
 
 **最小示例**
 
@@ -66,12 +66,12 @@ cutscene "Video/logo.mp4" skipable=false
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `resource` | string | 必填 |
-| `volume` | number | 可选，缺省 1 |
+| 字段       | 类型    | 说明                          |
+| ---------- | ------- | ----------------------------- |
+| `resource` | string  | 必填                          |
+| `volume`   | number  | 可选，缺省 1                  |
 | `skipable` | boolean | 可选。缺省看 `video_skipable` |
-| `z` | number | 可选 |
+| `z`        | number  | 可选                          |
 
 **最小示例**
 
@@ -109,8 +109,8 @@ seek_video 12.5
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
+| 字段      | 类型   | 说明                       |
+| --------- | ------ | -------------------------- |
 | `seconds` | number | 必填。非负有限数字，单位秒 |
 
 **最小示例**
@@ -253,8 +253,8 @@ video_skipable false
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
+| 字段    | 类型    | 说明                           |
+| ------- | ------- | ------------------------------ |
 | `value` | boolean | 必填。必须是 `true` 或 `false` |
 
 **最小示例**

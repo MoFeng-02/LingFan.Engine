@@ -23,10 +23,7 @@
  *
  * 编辑器**唯一**接线点 = 组合根调用 `loadDiagnosticSupply`。
  */
-import type {
-  DiagnosticSupply,
-  ProjectFileSource,
-} from "@lingfan/engine";
+import type { DiagnosticSupply, ProjectFileSource } from "@lingfan/engine";
 
 /** overlay 根目录名（Rust `LANG_ROOT` 同名） */
 const LANG_ROOT = "Lang";
@@ -42,7 +39,9 @@ function isOverlayPath(path: string): boolean {
 /** 从 overlay 逻辑路径取语言码（`Lang/en/main.json` → `en`；`Lang/en.json` → `en`） */
 export function langOfOverlayPath(path: string): string | undefined {
   if (!isOverlayPath(path)) return undefined;
-  const rest = path.slice(`${LANG_ROOT}/`.length).replace(/\.json(\.enc)?$/, "");
+  const rest = path
+    .slice(`${LANG_ROOT}/`.length)
+    .replace(/\.json(\.enc)?$/, "");
   // 目录形态取首段、单文件形态整段就是语言码（`rest` 内不含 `/` 时即单文件）
   const head = rest.split("/")[0] ?? "";
   return head === "" ? undefined : head;

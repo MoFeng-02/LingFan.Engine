@@ -25,6 +25,9 @@ export function cloneFrame(f: Frame): Frame {
     index: f.index,
     scope: Scope.cloneDeep(f.scope),
     func: f.func,
+    // result 值走写时复制（ExprValue 全为不可变形态），浅引用即可
+    result: f.result,
+    into: f.into,
     loop: f.loop
       ? {
           kind: f.loop.kind,

@@ -29,7 +29,8 @@ function evaluateWordArg(ctx: BodyCtx, expr: ts.Expression): unknown {
         return undefined;
       }
       const item = evaluateWordArg(ctx, el);
-      const isExplicitUndefined = ts.isIdentifier(el) && el.text === "undefined";
+      const isExplicitUndefined =
+        ts.isIdentifier(el) && el.text === "undefined";
       if (item === undefined && !isExplicitUndefined) return undefined;
       out.push(item);
     }
@@ -39,16 +40,25 @@ function evaluateWordArg(ctx: BodyCtx, expr: ts.Expression): unknown {
     const out: Record<string, unknown> = {};
     for (const prop of expr.properties) {
       if (!ts.isPropertyAssignment(prop)) {
-        diag(ctx, prop, "对象实参只支持 key: value 形式（不支持展开/方法/计算键）");
+        diag(
+          ctx,
+          prop,
+          "对象实参只支持 key: value 形式（不支持展开/方法/计算键）",
+        );
         return undefined;
       }
-      const key = ts.isIdentifier(prop.name) || ts.isStringLiteral(prop.name) ? prop.name.text : undefined;
+      const key =
+        ts.isIdentifier(prop.name) || ts.isStringLiteral(prop.name)
+          ? prop.name.text
+          : undefined;
       if (key === undefined) {
         diag(ctx, prop, "对象实参键必须是标识符或字符串字面量");
         return undefined;
       }
       const value = evaluateWordArg(ctx, prop.initializer);
-      const isExplicitUndefined = ts.isIdentifier(prop.initializer) && prop.initializer.text === "undefined";
+      const isExplicitUndefined =
+        ts.isIdentifier(prop.initializer) &&
+        prop.initializer.text === "undefined";
       if (value === undefined && !isExplicitUndefined) return undefined;
       out[key] = value;
     }
@@ -76,7 +86,12 @@ function evaluateWordArg(ctx: BodyCtx, expr: ts.Expression): unknown {
 
 // —— 命令发射 ——
 
-export function callWord(ctx: BodyCtx, node: ts.Node, name: string, args: unknown[]): StoryCommand | undefined {
+export function callWord(
+  ctx: BodyCtx,
+  node: ts.Node,
+  name: string,
+  args: unknown[],
+): StoryCommand | undefined {
   const word = WORDS[name];
   if (word === undefined) {
     diag(ctx, node, `词汇层不存在词 \`${name}\``);
@@ -96,7 +111,10 @@ export function callWord(ctx: BodyCtx, node: ts.Node, name: string, args: unknow
   }
 }
 
-function emitJump(ctx: BodyCtx, call: ts.CallExpression): StoryCommand | undefined {
+function emitJump(
+  ctx: BodyCtx,
+  call: ts.CallExpression,
+): StoryCommand | undefined {
   if (call.arguments.length !== 1) {
     diag(ctx, call, "jump 恰好接受一个实参（导入的故事标识符或列名字符串）");
     return undefined;
@@ -110,22 +128,39 @@ function emitJump(ctx: BodyCtx, call: ts.CallExpression): StoryCommand | undefin
     if (binding?.kind === "story") {
       return callWord(ctx, call, "jump", [binding.name]);
     }
-    diag(ctx, arg, `jump 实参 \`${arg.text}\` 不是导入的故事（default 导出函数）`);
+    diag(
+      ctx,
+      arg,
+      `jump 实参 \`${arg.text}\` 不是导入的故事（default 导出函数）`,
+    );
     return undefined;
   }
   diag(ctx, arg, "jump 实参必须是导入的故事标识符或字符串字面量");
   return undefined;
 }
 
-function foldStaticCount(ctx: BodyCtx, expr: ts.Expression): number | undefined {
-  const value = foldConst(expr, ctx.shared.mod.sf, ctx.shared.diags, ctx.shared.file, (name) => {
-    const scoped = lookupScope(ctx, name);
-    if (scoped?.kind === "index" && typeof scoped.value === "number") {
-      return { kind: "const", value: scoped.value };
-    }
-    return lookupBinding(ctx, name);
-  });
-  if (value === undefined || typeof value !== "number" || !Number.isInteger(value)) {
+function foldStaticCount(
+  ctx: BodyCtx,
+  expr: ts.Expression,
+): number | undefined {
+  const value = foldConst(
+    expr,
+    ctx.shared.mod.sf,
+    ctx.shared.diags,
+    ctx.shared.file,
+    (name) => {
+      const scoped = lookupScope(ctx, name);
+      if (scoped?.kind === "index" && typeof scoped.value === "number") {
+        return { kind: "const", value: scoped.value };
+      }
+      return lookupBinding(ctx, name);
+    },
+  );
+  if (
+    value === undefined ||
+    typeof value !== "number" ||
+    !Number.isInteger(value)
+  ) {
     diag(ctx, expr, "staticFor 次数必须是编译期可折叠的整数");
     return undefined;
   }
@@ -148,12 +183,20 @@ function emitStaticFor(ctx: BodyCtx, call: ts.CallExpression): StoryCommand[] {
     return [];
   }
   const generator = call.arguments[1];
-  if (!ts.isArrowFunction(generator) || generator.parameters.length !== 1 || !ts.isIdentifier(generator.parameters[0].name)) {
+  if (
+    !ts.isArrowFunction(generator) ||
+    generator.parameters.length !== 1 ||
+    !ts.isIdentifier(generator.parameters[0].name)
+  ) {
     diag(ctx, generator, "staticFor 生成器必须是单参数箭头函数");
     return [];
   }
   if (!ts.isArrayLiteralExpression(generator.body)) {
-    diag(ctx, generator.body, "staticFor 生成器函数体必须是数组字面量（命令列表）");
+    diag(
+      ctx,
+      generator.body,
+      "staticFor 生成器函数体必须是数组字面量（命令列表）",
+    );
     return [];
   }
   const paramName = generator.parameters[0].name.text;
@@ -164,7 +207,11 @@ function emitStaticFor(ctx: BodyCtx, call: ts.CallExpression): StoryCommand[] {
     try {
       for (const element of generator.body.elements) {
         if (!ts.isCallExpression(element)) {
-          diag(ctx, element, "staticFor 生成器元素只能是词函数调用或 staticFor 调用");
+          diag(
+            ctx,
+            element,
+            "staticFor 生成器元素只能是词函数调用或 staticFor 调用",
+          );
           continue;
         }
         out.push(...emitCommand(ctx, element));
@@ -176,21 +223,63 @@ function emitStaticFor(ctx: BodyCtx, call: ts.CallExpression): StoryCommand[] {
   return out;
 }
 
-function emitCallCommand(ctx: BodyCtx, call: ts.CallExpression, fnName: string): StoryCommand | undefined {
+/**
+ * 解析「函数 callee」：具名标识符，绑定面（词表 import）或函数作用域里命中
+ * kind 为 function 的绑定。返回 undefined = 这个 callee 不是子程序调用
+ * （词调用、`obj.method()`、未知名字），由各调用方走自己的分支。
+ *
+ * emitCommand 与语句级 `const x = f(1)` 拦截共用，保证两种位置对「什么算函数」
+ * 的判定逐字节一致。
+ */
+export function resolveFunctionCallee(
+  ctx: BodyCtx,
+  call: ts.CallExpression,
+): { name: string; file: string } | undefined {
+  const callee = call.expression;
+  if (!ts.isIdentifier(callee)) return undefined;
+  const name = callee.text;
+  let binding = lookupBinding(ctx, name);
+  const scopedFn = lookupScope(ctx, name);
+  if (scopedFn?.kind === "function") {
+    binding = {
+      kind: "function",
+      name,
+      file: scopedFn.file ?? ctx.shared.file,
+    };
+  }
+  return binding?.kind === "function"
+    ? { name: binding.name, file: binding.file }
+    : undefined;
+}
+
+export function emitCallCommand(
+  ctx: BodyCtx,
+  call: ts.CallExpression,
+  fn: { name: string; file: string },
+  into?: string,
+): StoryCommand | undefined {
   const args: Array<string | number | boolean> = [];
   for (const arg of call.arguments) {
     const lowered = lowerValue(ctx, arg);
     if (lowered === undefined) continue;
     args.push(loweredToScriptValue(lowered));
   }
-  const binding = lookupBinding(ctx, fnName);
   // refs 的键与 call.target 都用**声明名**：`import { alpha as ah }` 后调用点是 `ah()`，
   // 但已发射的 func 声明名叫 alpha，函数体登记（funcs.body）也按声明名索引。用调用点
   // 局部名会得到一个永远解析不到的函数引用——产物里留下悬空的 call。
-  const declared = binding?.kind === "function" ? binding.name : fnName;
-  const originFile = binding?.kind === "function" ? binding.file : ctx.shared.file;
-  ctx.shared.funcs.refs.set(`${originFile}#${declared}`, { file: originFile, name: declared });
-  return callWord(ctx, call, "call", [declared, args]);
+  // fn 由 resolveFunctionCallee 给出（携带声明名 + 声明文件），此处不再二次查绑定面：
+  // 别名场景按声明名回查必然落空，会把声明文件错记成当前文件、refs 归位到错误文件。
+  ctx.shared.funcs.refs.set(`${fn.file}#${fn.name}`, {
+    file: fn.file,
+    name: fn.name,
+  });
+  // into = 结果绑定名（语句级 const x = f(1) 的降级形态）：引擎把 ret 带值
+  // 声明成调用方局部变量，无带值 ret / 自然跑完则绑 null
+  return callWord(ctx, call, "call", [
+    fn.name,
+    args,
+    ...(into === undefined ? [] : [into]),
+  ]);
 }
 
 /**
@@ -199,7 +288,10 @@ function emitCallCommand(ctx: BodyCtx, call: ts.CallExpression, fnName: string):
  *
  * 返回 undefined 表示这个 callee 不是词调用（普通函数、`obj.method()` 等），该走别的分支。
  */
-function wordCalleeName(ctx: BodyCtx, call: ts.CallExpression): string | undefined {
+function wordCalleeName(
+  ctx: BodyCtx,
+  call: ts.CallExpression,
+): string | undefined {
   const callee = call.expression;
   if (ts.isIdentifier(callee)) {
     const binding = lookupBinding(ctx, callee.text);
@@ -207,7 +299,10 @@ function wordCalleeName(ctx: BodyCtx, call: ts.CallExpression): string | undefin
     // 但词表里登记的名字仍是 say。
     return binding?.kind === "word" ? binding.name : undefined;
   }
-  if (ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression)) {
+  if (
+    ts.isPropertyAccessExpression(callee) &&
+    ts.isIdentifier(callee.expression)
+  ) {
     const target = lookupBinding(ctx, callee.expression.text);
     if (target?.kind === "namespace") return callee.name.text;
   }
@@ -223,7 +318,11 @@ function wordCalleeName(ctx: BodyCtx, call: ts.CallExpression): string | undefin
  * 返回数组而非单条命令：staticFor 会静态展开成多条（`staticFor(3, …)` → 3 条命令），
  * 是这条通道里唯一的展开点。调用方负责扁平化。
  */
-function emitWordCommand(ctx: BodyCtx, call: ts.CallExpression, wordName: string): StoryCommand[] {
+function emitWordCommand(
+  ctx: BodyCtx,
+  call: ts.CallExpression,
+  wordName: string,
+): StoryCommand[] {
   if (wordName === "jump") {
     const op = emitJump(ctx, call);
     return op === undefined ? [] : [op];
@@ -238,25 +337,25 @@ function emitWordCommand(ctx: BodyCtx, call: ts.CallExpression, wordName: string
   return op === undefined ? [] : [op];
 }
 
-export function emitCommand(ctx: BodyCtx, call: ts.CallExpression): StoryCommand[] {
+export function emitCommand(
+  ctx: BodyCtx,
+  call: ts.CallExpression,
+): StoryCommand[] {
   const callee = call.expression;
   if (ts.isIdentifier(callee)) {
-    const name = callee.text;
-    let binding = lookupBinding(ctx, name);
-    const scopedFn = lookupScope(ctx, name);
-    if (scopedFn?.kind === "function") {
-      binding = { kind: "function", name, file: scopedFn.file ?? ctx.shared.file };
+    const fn = resolveFunctionCallee(ctx, call);
+    if (fn !== undefined) {
+      const op = emitCallCommand(ctx, call, fn);
+      return op === undefined ? [] : [op];
     }
+    const name = callee.text;
+    const binding = lookupBinding(ctx, name);
     if (binding === undefined) {
       diag(ctx, call, `未知调用目标 \`${name}\`（须是词函数或声明的函数）`);
       return [];
     }
     if (binding.kind === "word") {
       return emitWordCommand(ctx, call, binding.name);
-    }
-    if (binding.kind === "function") {
-      const op = emitCallCommand(ctx, call, name);
-      return op === undefined ? [] : [op];
     }
     if (binding.kind === "declare" && name === "jump") {
       const op = emitJump(ctx, call);
@@ -271,7 +370,10 @@ export function emitCommand(ctx: BodyCtx, call: ts.CallExpression): StoryCommand
   }
   // 属性访问但接收者不是词汇层命名空间（`obj.method()` 之类）：这条文案比末尾的兜底更能
   // 指路，故单独保留——原来的实现把它挂在这个分支上，重构时别顺手丢掉。
-  if (ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression)) {
+  if (
+    ts.isPropertyAccessExpression(callee) &&
+    ts.isIdentifier(callee.expression)
+  ) {
     diag(ctx, call, "方法调用不支持：词函数通过具名导入或 script 命名空间调用");
     return [];
   }

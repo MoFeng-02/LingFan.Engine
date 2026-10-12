@@ -97,9 +97,11 @@ const navigateSchema = z.strictObject({
   scene: NonEmpty.optional(),
 });
 
+/** `call`：target 必填；`into` 为结果绑定名（ret 带值返回时声明成调用方局部变量，无带值 ret 则绑 `null`） */
 const callSchema = z.strictObject({
   target: NonEmpty,
   args: z.array(Value).optional(),
+  into: NonEmpty.optional(),
 });
 
 const returnSchema = z.strictObject({

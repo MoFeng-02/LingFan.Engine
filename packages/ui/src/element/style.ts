@@ -35,10 +35,7 @@ function bool(value: unknown): boolean | undefined {
 }
 
 /** 首个子属性值（多键别名：source/src/path、color/fontColor/textColor） */
-function pick(
-  props: Record<string, unknown>,
-  ...keys: string[]
-): unknown {
+function pick(props: Record<string, unknown>, ...keys: string[]): unknown {
   for (const key of keys) {
     const value = props[key];
     if (value !== undefined) return value;
@@ -63,7 +60,12 @@ export function elementStyle(
   const y = len(props.y);
   const right = len(props.right);
   const bottom = len(props.bottom);
-  if (x !== undefined || y !== undefined || right !== undefined || bottom !== undefined) {
+  if (
+    x !== undefined ||
+    y !== undefined ||
+    right !== undefined ||
+    bottom !== undefined
+  ) {
     set("position", "absolute");
     if (x !== undefined) set("left", x);
     if (y !== undefined) set("top", y);
@@ -71,7 +73,10 @@ export function elementStyle(
     if (bottom !== undefined) set("bottom", bottom);
   }
   // align 是 halign 的安全网：显式 textAlign/halign 优先
-  set("textAlign", len(props.textAlign) ?? len(props.halign) ?? len(props.align));
+  set(
+    "textAlign",
+    len(props.textAlign) ?? len(props.halign) ?? len(props.align),
+  );
 
   // —— 尺寸 ——
   set("width", len(props.width));
@@ -113,7 +118,10 @@ export function elementStyle(
   const borderThickness = len(props.borderThickness);
   const borderColor = len(props.borderColor) ?? len(props.borderBrush);
   if (borderThickness !== undefined || borderColor !== undefined) {
-    set("border", `${borderThickness ?? "1px"} solid ${borderColor ?? "currentColor"}`);
+    set(
+      "border",
+      `${borderThickness ?? "1px"} solid ${borderColor ?? "currentColor"}`,
+    );
   }
 
   // —— 文本 ——
@@ -134,7 +142,9 @@ export function elementClassName(props: Record<string, unknown>): string {
 }
 
 /** 图片类元素的资源路径（source 优先，src/path 兜底） */
-export function elementSource(props: Record<string, unknown>): string | undefined {
+export function elementSource(
+  props: Record<string, unknown>,
+): string | undefined {
   const raw = pick(props, "source", "src", "path");
   return typeof raw === "string" && raw !== "" ? raw : undefined;
 }

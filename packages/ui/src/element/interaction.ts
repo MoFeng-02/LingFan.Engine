@@ -94,7 +94,8 @@ export function resolveElementAction(
   if (isElementDisabled(props, options)) return { kind: "disabled" };
 
   const nav = props.nav;
-  if (typeof nav === "string" && nav !== "") return { kind: "nav", target: nav };
+  if (typeof nav === "string" && nav !== "")
+    return { kind: "nav", target: nav };
 
   const ops = readOps(props.ops);
   if (ops !== null) return { kind: "ops", ops };

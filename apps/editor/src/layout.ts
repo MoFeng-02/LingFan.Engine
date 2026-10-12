@@ -55,20 +55,44 @@ export function defaultLayout(): LayoutState {
 /** 夹取到合法区间（非有限值回落默认——存储被外部改坏时安全回落） */
 export function clampLayout(state: LayoutState): LayoutState {
   const d = defaultLayout();
-  const num = (value: unknown, min: number, max: number, fallback: number): number =>
+  const num = (
+    value: unknown,
+    min: number,
+    max: number,
+    fallback: number,
+  ): number =>
     typeof value === "number" && Number.isFinite(value)
       ? Math.min(max, Math.max(min, Math.round(value)))
       : fallback;
   const mode = (value: unknown): SidebarMode =>
-    value === "search" || value === "recent" || value === "resources" ? value : d.sidebar;
+    value === "search" || value === "recent" || value === "resources"
+      ? value
+      : d.sidebar;
   return {
     version: 1,
-    leftWidth: num(state.leftWidth, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH, d.leftWidth),
-    rightWidth: num(state.rightWidth, MIN_RIGHT_WIDTH, MAX_RIGHT_WIDTH, d.rightWidth),
-    leftCollapsed: typeof state.leftCollapsed === "boolean" ? state.leftCollapsed : d.leftCollapsed,
-    rightCollapsed: typeof state.rightCollapsed === "boolean" ? state.rightCollapsed : d.rightCollapsed,
+    leftWidth: num(
+      state.leftWidth,
+      MIN_SIDEBAR_WIDTH,
+      MAX_SIDEBAR_WIDTH,
+      d.leftWidth,
+    ),
+    rightWidth: num(
+      state.rightWidth,
+      MIN_RIGHT_WIDTH,
+      MAX_RIGHT_WIDTH,
+      d.rightWidth,
+    ),
+    leftCollapsed:
+      typeof state.leftCollapsed === "boolean"
+        ? state.leftCollapsed
+        : d.leftCollapsed,
+    rightCollapsed:
+      typeof state.rightCollapsed === "boolean"
+        ? state.rightCollapsed
+        : d.rightCollapsed,
     sidebar: mode(state.sidebar),
-    statusBar: typeof state.statusBar === "boolean" ? state.statusBar : d.statusBar,
+    statusBar:
+      typeof state.statusBar === "boolean" ? state.statusBar : d.statusBar,
   };
 }
 
@@ -107,7 +131,10 @@ export function createLayoutStore(storage: KeyValueStorage | undefined): {
     },
     save(state: LayoutState): void {
       try {
-        storage?.setItem(LAYOUT_STORAGE_KEY, serializeLayout(clampLayout(state)));
+        storage?.setItem(
+          LAYOUT_STORAGE_KEY,
+          serializeLayout(clampLayout(state)),
+        );
       } catch {
         // 隐私模式 / 配额满：布局偏好失效但功能不受影响
       }

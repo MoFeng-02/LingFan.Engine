@@ -60,7 +60,9 @@ watch(
 );
 
 const dirty = computed(() => isTableDirty(rows.value, baseRows.value));
-const missingCount = computed(() => rows.value.filter((r) => r.text === "").length);
+const missingCount = computed(
+  () => rows.value.filter((r) => r.text === "").length,
+);
 
 function emitText(): string {
   return serializeTranslationTable(rows.value);
@@ -68,7 +70,11 @@ function emitText(): string {
 
 /** 把一次失败的编辑（重复键 / 空键…）如实说给用户——不静默忽略 */
 async function reportFailure(reason: string): Promise<void> {
-  await dialog.notify({ title: "无法应用该操作", message: reason, tone: "warning" });
+  await dialog.notify({
+    title: "无法应用该操作",
+    message: reason,
+    tone: "warning",
+  });
 }
 
 /** 增行：**先问键名，判据通过才插行**。
@@ -141,9 +147,14 @@ function onValueInput(key: string, text: string): void {
       <h2>译文表</h2>
       <span class="path" :title="path">{{ path }}</span>
       <span class="spacer"></span>
-      <span v-if="missingCount > 0" class="warn">{{ missingCount }} 条未译</span>
+      <span v-if="missingCount > 0" class="warn"
+        >{{ missingCount }} 条未译</span
+      >
       <span class="count">{{ rows.length }} 条</span>
-      <button class="mini" title="新增一个译文行" @click="onAdd">+行</button>      <button :disabled="!dirty" @click="emit('save', path, emitText())">保存</button>
+      <button class="mini" title="新增一个译文行" @click="onAdd">+行</button>
+      <button :disabled="!dirty" @click="emit('save', path, emitText())">
+        保存
+      </button>
     </header>
 
     <p v-if="!parsed.ok" class="error">{{ parsed.error }}</p>
@@ -153,7 +164,11 @@ function onValueInput(key: string, text: string): void {
 
     <table v-else class="entries">
       <thead>
-        <tr><th>原文键</th><th>译文</th><th class="ops-col"></th></tr>
+        <tr>
+          <th>原文键</th>
+          <th>译文</th>
+          <th class="ops-col"></th>
+        </tr>
       </thead>
       <tbody>
         <tr v-for="row in rows" :key="row.key">
@@ -164,9 +179,19 @@ function onValueInput(key: string, text: string): void {
                 class="rename-input"
                 :value="row.key"
                 autofocus
-                @keydown.enter.prevent="onRenameCommit(row.key, ($event.target as HTMLInputElement).value)"
+                @keydown.enter.prevent="
+                  onRenameCommit(
+                    row.key,
+                    ($event.target as HTMLInputElement).value,
+                  )
+                "
                 @keydown.esc.prevent="onRenameCancel"
-                @blur="onRenameCommit(row.key, ($event.target as HTMLInputElement).value)"
+                @blur="
+                  onRenameCommit(
+                    row.key,
+                    ($event.target as HTMLInputElement).value,
+                  )
+                "
               />
             </template>
             <template v-else>
@@ -177,7 +202,9 @@ function onValueInput(key: string, text: string): void {
             <input
               :value="row.text"
               :placeholder="row.text === '' ? '未翻译' : ''"
-              @input="onValueInput(row.key, ($event.target as HTMLInputElement).value)"
+              @input="
+                onValueInput(row.key, ($event.target as HTMLInputElement).value)
+              "
             />
           </td>
           <td class="ops">
@@ -189,7 +216,9 @@ function onValueInput(key: string, text: string): void {
             >
               改键
             </button>
-            <button class="mini danger" title="删除该行" @click="onRemove(row)">删</button>
+            <button class="mini danger" title="删除该行" @click="onRemove(row)">
+              删
+            </button>
           </td>
         </tr>
       </tbody>

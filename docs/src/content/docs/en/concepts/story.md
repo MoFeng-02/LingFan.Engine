@@ -37,16 +37,16 @@ Column ids are unique across the project and may cross files. File names are unr
 
 The engine stops at these commands and waits for the player:
 
-| Command | Waits for |
-|---|---|
-| `say` | The player clicking or pressing Space |
-| `menu` | The player picking an option |
-| `input` | The player typing a line of text |
-| `wait` | The timer to finish, or the player clicking to skip |
-| `pause` | The timer to finish. Cannot be skipped |
-| `cutscene` | The video to finish playing |
-| `minigame` | A result from the minigame |
-| `interaction` | A result from the interaction system |
+| Command       | Waits for                                           |
+| ------------- | --------------------------------------------------- |
+| `say`         | The player clicking or pressing Space               |
+| `menu`        | The player picking an option                        |
+| `input`       | The player typing a line of text                    |
+| `wait`        | The timer to finish, or the player clicking to skip |
+| `pause`       | The timer to finish. Cannot be skipped              |
+| `cutscene`    | The video to finish playing                         |
+| `minigame`    | A result from the minigame                          |
+| `interaction` | A result from the interaction system                |
 
 `video` does not stop — playback starts and the story keeps going. When you need "play to the end, then continue", use `cutscene`.
 

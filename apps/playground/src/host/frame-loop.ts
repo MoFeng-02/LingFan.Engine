@@ -12,7 +12,10 @@ import { createFrameLoop, type FrameLoop } from "@lingfan/ui";
 /** 本宿主帧循环需要的回调；帧源由本模块内建 */
 export interface HostFrameLoopOptions {
   /** 取当前打字机；返回 null 表示本帧没有打字机 */
-  readTypewriter(): { tick(dtSeconds: number): void; readonly visible: string } | null;
+  readTypewriter(): {
+    tick(dtSeconds: number): void;
+    readonly visible: string;
+  } | null;
   /** 每帧上交打字机可见前缀（无打字机时为空串，由调用方决定怎么兜底） */
   onText(visible: string): void;
   /** 媒体位置回写（播放进度轮询等） */

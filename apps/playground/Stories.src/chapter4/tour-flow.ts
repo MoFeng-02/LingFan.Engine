@@ -8,7 +8,10 @@ import tourStory from "./tour";
 import { jump, state } from "../lib/compile-time";
 
 export default function tour_flow(): void {
-  say("流程厨房——随机、多路分支、循环与循环控制全是运行期 op（显式种子 ⇒ 回溯确定性）。", "灵泛");
+  say(
+    "流程厨房——随机、多路分支、循环与循环控制全是运行期 op（显式种子 ⇒ 回溯确定性）。",
+    "灵泛",
+  );
   random(2026, 1, 6, "dice");
   say("掷骰（种子 2026，回溯重放同点数）：{dice} 点。");
   switch (state.dice) {
@@ -38,7 +41,9 @@ export default function tour_flow(): void {
     say(`for 迭代：${item}`);
   }
   forEach("thing", "supplies", [say(`foreach 迭代：{thing}`)]);
-  say("两站同料双炊：for-of 吃 state 路径、foreach 词按名取集合——产物都是静态 op 序列。");
+  say(
+    "两站同料双炊：for-of 吃 state 路径、foreach 词按名取集合——产物都是静态 op 序列。",
+  );
   say("本站用 jump 导入故事引用回菜单（编译期解析为列 id）。");
   jump(tourStory);
 }

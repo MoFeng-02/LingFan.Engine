@@ -195,14 +195,11 @@ describe("抽取器：运行期真值互锁（真引擎 + 哨兵译文表）", (
     const keys = extractStoryKeys(story);
     expect(keys).toHaveLength(10); // 全表面逐一入集（缺一处哨兵即红）
 
-    const engine = new StoryEngine(
-      story,
-      {
-        i18nPort: new MemoryI18nPort(
-          Object.fromEntries(keys.map((key) => [key, `⟦${key}⟧`])),
-        ),
-      },
-    );
+    const engine = new StoryEngine(story, {
+      i18nPort: new MemoryI18nPort(
+        Object.fromEntries(keys.map((key) => [key, `⟦${key}⟧`])),
+      ),
+    });
     const errors: string[] = [];
     const notes: string[] = [];
     const off = engine.onEvent((e) => {
@@ -241,7 +238,10 @@ describe("抽取器：运行期真值互锁（真引擎 + 哨兵译文表）", (
     const unwrapped: string[] = [];
     for (const value of observed) {
       const m = /^⟦(.+)⟧$/s.exec(value);
-      expect(m, `观测值未走译文表（哨兵缺失 = 抽取器漏面）：${value}`).not.toBeNull();
+      expect(
+        m,
+        `观测值未走译文表（哨兵缺失 = 抽取器漏面）：${value}`,
+      ).not.toBeNull();
       unwrapped.push(m![1]!);
     }
     // 双向：无遗漏（每个抽取键都被真查）+ 无多收（引擎查的都在抽取输出里）
@@ -315,16 +315,26 @@ describe("骨架生成", () => {
   });
 
   it("内容 = 合法 JSON；键与抽取并集一致（无缺无多）；同输入逐字节确定", () => {
-    const file = planOverlaySkeleton({ lang: "en", layout: "main", storyKeys })[0]!;
+    const file = planOverlaySkeleton({
+      lang: "en",
+      layout: "main",
+      storyKeys,
+    })[0]!;
     expect(JSON.parse(file.content)).toEqual(file.entries);
     expect(Object.keys(file.entries)).toEqual(["你好", "独有", "世界"].sort());
-    const again = planOverlaySkeleton({ lang: "en", layout: "main", storyKeys })[0]!;
+    const again = planOverlaySkeleton({
+      lang: "en",
+      layout: "main",
+      storyKeys,
+    })[0]!;
     expect(again.content).toBe(file.content);
     expect(file.content.endsWith("\n")).toBe(true);
   });
 
   it("增量模式：既有译文（含空串 = 命中语义）保留，缺键补占位", () => {
-    const existing = new Map([["Lang/en/main.json", { 你好: "Hello", 世界: "" }]]);
+    const existing = new Map([
+      ["Lang/en/main.json", { 你好: "Hello", 世界: "" }],
+    ]);
     const file = planOverlaySkeleton({
       lang: "en",
       layout: "main",
@@ -348,9 +358,7 @@ describe("骨架生成", () => {
         (f) => ({
           // 运行期供给路径相对 Lang/{lang}/（single 形态 Rust 归一为 main.json）
           path:
-            layout === "single"
-              ? "main.json"
-              : f.path.replace("Lang/en/", ""),
+            layout === "single" ? "main.json" : f.path.replace("Lang/en/", ""),
           entries: f.entries,
         }),
       );
@@ -368,7 +376,10 @@ describe("骨架生成", () => {
       lang: "en",
       layout: "per-story",
       storyKeys: nested,
-    }).map((f) => ({ path: f.path.replace("Lang/en/", ""), entries: f.entries }));
+    }).map((f) => ({
+      path: f.path.replace("Lang/en/", ""),
+      entries: f.entries,
+    }));
     const merged = mergeOverlayFiles(files);
     expect(new Set(merged.keys())).toEqual(new Set(["炉火", "木桶", "共有"]));
   });
@@ -464,7 +475,16 @@ describe("缺译诊断：originals − overlay 并集（与 unused-translation �
       formatVersion: 1,
       id: "t",
       entry: "a",
-      columns: [{ id: "a", kind: "flow", commands: [{ op: "say", text: "甲" }, { op: "say", text: "乙" }] }],
+      columns: [
+        {
+          id: "a",
+          kind: "flow",
+          commands: [
+            { op: "say", text: "甲" },
+            { op: "say", text: "乙" },
+          ],
+        },
+      ],
     });
 
   it("overlay 非空：未覆盖原文报 warning（提醒级，不拦保存）", () => {

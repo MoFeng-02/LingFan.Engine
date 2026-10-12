@@ -1,97 +1,17 @@
 /**
- * Script 词汇层 · 出口（全量 64 op 覆盖 + 复合词 + 表达式句柄）。
+ * Script 词汇层 · 出口（全量 op 覆盖 + 复合词 + 表达式句柄）。
  *
- * **SCRIPT_COVERAGE = builder ↔ op 双射的机器可读面**（互锁守卫的数据源）：
- * 新增 builder 必须登记（遗漏 = 全集互锁测试红）；builder 产出未知 op 名 = 同红。
+ * **SCRIPT_COVERAGE = builder ↔ op 双射的机器可读面**——生成物（./vocabulary.g.ts，
+ * 由 generate-vocabulary.ts 重建，勿手改）：直接词条来自 words 源返回注解扫描，
+ * 辅助词走显式补充表，注册表键集快照同步入内。改注册表/词条后未重建 =
+ * tests/editor/script-vocabulary.test.ts 的生成物新鲜度用例红。
  * `$` 前缀 = 辅助词（不直接产出独立 op）——互锁比较时跳过。
  */
-export const SCRIPT_COVERAGE: Readonly<Record<string, string>> = {
-  // 叙事
-  say: "say",
-  option: "$menu.option",
-  menu: "menu",
-  input: "input",
-  notify: "notify",
-  nvl: "nvl",
-  character: "character",
-  // 流程
-  wait: "wait",
-  pause: "pause",
-  random: "random",
-  jump: "jump",
-  navigate: "navigate",
-  func: "func",
-  call: "call",
-  ret: "return",
-  when: "if",
-  whileDo: "while",
-  forIn: "for",
-  forEach: "foreach",
-  switchOn: "switch",
-  breakLoop: "break",
-  continueLoop: "continue",
-  whenChain: "$if.chain",
-  assert: "assert",
-  guard: "guard",
-  // 变量
-  set: "set",
-  define: "define",
-  letVar: "let",
-  localVar: "local",
-  undef: "undef",
-  newArray: "array",
-  arrayPush: "array_push",
-  arrayPop: "array_pop",
-  dict: "dict",
-  dictSet: "dict_set",
-  // 存档
-  save: "save",
-  load: "load",
-  autoSave: "auto_save",
-  saveDelete: "save_delete",
-  // 音频
-  bgm: "bgm",
-  stopBgm: "stop_bgm",
-  se: "se",
-  ambient: "ambient",
-  stopAmbient: "stop_ambient",
-  voice: "voice",
-  stopVoice: "stop_voice",
-  // 视频
-  video: "video",
-  cutscene: "cutscene",
-  seekVideo: "seek_video",
-  pauseVideo: "pause_video",
-  resumeVideo: "resume_video",
-  stopVideo: "stop_video",
-  videoSkipable: "video_skipable",
-  // 小游戏
-  minigame: "minigame",
-  reward: "$minigame.reward",
-  // 外部玩法系统接管
-  interaction: "interaction",
-  // 元素
-  show: "show",
-  hide: "hide",
-  background: "background",
-  bgSwitch: "bg_switch",
-  setZ: "zindex",
-  style: "style",
-  dialogWindow: "window",
-  animate: "animate",
-  animateBlock: "animate_block",
-  transition: "transition",
-  shake: "shake",
-  textTypewriter: "text_typewriter",
-  // 扩展（通用出口：产出任意 op 名——互锁比较时跳过；白名单归构建期声明与运行期注册）
-  extOp: "$ext.op",
-  // 复合词（辅助词：纯展开，不产新语义）
-  sceneSetup: "$composite.scene",
-  buttonElement: "$composite.button",
-  textElement: "$composite.text",
-  imageElement: "$composite.image",
-  sceneType: "$column.type",
-};
+export {
+  SCRIPT_COVERAGE,
+  VOCABULARY_OPS,
+  type VocabularyOp,
+} from "./vocabulary.g";
 
 // —— 类型（裸写命令的强类型形态：op 判别联合，与 OP_SCHEMA_MAP / validateCommand 同源）——
 // 裸对象 `const cmd: ScriptCommand = { op: "say", text, z }` ⇒ op 决定字段、未知字段编译期红；

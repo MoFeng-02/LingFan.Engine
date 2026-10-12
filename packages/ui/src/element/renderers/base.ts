@@ -11,7 +11,10 @@ import type { ElementRenderContext } from "../registry";
 const BASE_CLASS = "lf-el";
 
 /** 元素根节点：基类 + 类型类 + 作者 class（style 别名）+ 属性 → CSS */
-export function createRoot(tag: string, ctx: ElementRenderContext): HTMLElement {
+export function createRoot(
+  tag: string,
+  ctx: ElementRenderContext,
+): HTMLElement {
   const el = document.createElement(tag);
   const authorClass = elementClassName(ctx.element.props);
   el.className = [BASE_CLASS, `lf-${ctx.element.type}`, authorClass]

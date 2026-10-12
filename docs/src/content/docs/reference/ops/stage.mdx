@@ -3,7 +3,7 @@ title: 舞台与表现指令
 description: show、hide、background、zindex、style、window 与四条效果指令、animate 系列的签名、参数与常见错误。12 条都不建立等待点。
 ---
 
-import OpCard from '../../../../components/OpCard.astro';
+import OpCard from "../../../../components/OpCard.astro";
 
 这 12 条改元素表或者触发屏幕效果，在任何列都能用——不只是 `scene` 列。它们全部不建立等待点，执行完立刻往下走。
 
@@ -24,14 +24,14 @@ show "Images/ache.png" id="ache" x=10% y=0
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `target` | string | 必填。资源路径，写进 `props.source` |
-| `x` | number \| string | 可选。数字或 CSS 长度 |
-| `y` | number \| string | 可选 |
-| `id` | string | 可选。寻址标识 |
-| `name` | string | 可选 |
-| `background` | boolean | 可选。真则当背景处理 |
+| 字段         | 类型             | 说明                                |
+| ------------ | ---------------- | ----------------------------------- |
+| `target`     | string           | 必填。资源路径，写进 `props.source` |
+| `x`          | number \| string | 可选。数字或 CSS 长度               |
+| `y`          | number \| string | 可选                                |
+| `id`         | string           | 可选。寻址标识                      |
+| `name`       | string           | 可选                                |
+| `background` | boolean          | 可选。真则当背景处理                |
 
 **最小示例**
 
@@ -71,8 +71,8 @@ hide "Images/ache.png"
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
+| 字段     | 类型   | 说明                                         |
+| -------- | ------ | -------------------------------------------- |
 | `target` | string | 必填。`id` / `name` / 资源路径，任一命中即可 |
 
 **最小示例**
@@ -109,8 +109,8 @@ background "Images/room.png"
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
+| 字段       | 类型   | 说明                   |
+| ---------- | ------ | ---------------------- |
 | `resource` | string | 必填。相对资源根的路径 |
 
 **最小示例**
@@ -180,10 +180,10 @@ zindex "hud" value=20
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
+| 字段     | 类型   | 说明                 |
+| -------- | ------ | -------------------- |
 | `target` | string | 必填。`id` 或 `name` |
-| `value` | number | 必填。有限数字 |
+| `value`  | number | 必填。有限数字       |
 
 **最小示例**
 
@@ -219,10 +219,10 @@ style "ache" props={x: "20%", opacity: 1}
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `target` | string | 必填 |
-| `props` | object | 必填。键必须在元素属性表内 |
+| 字段     | 类型   | 说明                       |
+| -------- | ------ | -------------------------- |
+| `target` | string | 必填                       |
+| `props`  | object | 必填。键必须在元素属性表内 |
 
 **最小示例**
 
@@ -261,8 +261,8 @@ window auto
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
+| 字段   | 类型   | 说明                                  |
+| ------ | ------ | ------------------------------------- |
 | `mode` | string | 必填。`auto` / `show` / `hide` 三选一 |
 
 **最小示例**
@@ -303,13 +303,13 @@ animate "ache" property=x value=100 easing=EaseInOutQuad
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `target` | string | 必填 |
-| `property` | string | 必填。属性名 |
-| `value` | number | 必填。终值 |
-| `duration` | number | 可选，缺省 0.3。秒 |
-| `easing` | string | 可选，缺省 `EaseOutQuad` |
+| 字段       | 类型   | 说明                     |
+| ---------- | ------ | ------------------------ |
+| `target`   | string | 必填                     |
+| `property` | string | 必填。属性名             |
+| `value`    | number | 必填。终值               |
+| `duration` | number | 可选，缺省 0.3。秒       |
+| `easing`   | string | 可选，缺省 `EaseOutQuad` |
 
 **最小示例**
 
@@ -349,12 +349,12 @@ animate_block "ache" scale=1.2 rotation=15 duration=0.6 easing=EaseOutBack
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `target` | string | 必填 |
-| `x` `y` `opacity` `rotation` `scale` | number | 至少给一个 |
-| `duration` | number | 可选，缺省 0.3 |
-| `easing` | string | 可选，缺省 `EaseOutQuad` |
+| 字段                                 | 类型   | 说明                     |
+| ------------------------------------ | ------ | ------------------------ |
+| `target`                             | string | 必填                     |
+| `x` `y` `opacity` `rotation` `scale` | number | 至少给一个               |
+| `duration`                           | number | 可选，缺省 0.3           |
+| `easing`                             | string | 可选，缺省 `EaseOutQuad` |
 
 **最小示例**
 
@@ -392,9 +392,9 @@ transition "fade" duration=1.5
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `type` | string | 必填。效果名 |
+| 字段       | 类型   | 说明               |
+| ---------- | ------ | ------------------ |
+| `type`     | string | 必填。效果名       |
 | `duration` | number | 可选，缺省 0.5。秒 |
 
 **最小示例**
@@ -432,10 +432,10 @@ shake intensity=12 duration=0.6
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
+| 字段        | 类型   | 说明               |
+| ----------- | ------ | ------------------ |
 | `intensity` | number | 可选，缺省 8。像素 |
-| `duration` | number | 可选，缺省 0.5。秒 |
+| `duration`  | number | 可选，缺省 0.5。秒 |
 
 **最小示例**
 
@@ -473,10 +473,10 @@ text_typewriter enabled=true speed=40
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `enabled` | boolean | 可选。开关 |
-| `speed` | number | 可选。正数，字符/秒 |
+| 字段      | 类型    | 说明                |
+| --------- | ------- | ------------------- |
+| `enabled` | boolean | 可选。开关          |
+| `speed`   | number  | 可选。正数，字符/秒 |
 
 **最小示例**
 

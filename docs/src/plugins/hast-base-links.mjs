@@ -12,28 +12,28 @@
 
 /** 需要改写的元素与属性。 */
 const URL_ATTRS = {
-	a: ['href'],
-	img: ['src'],
-	source: ['src'],
-	video: ['src', 'poster'],
-	audio: ['src'],
-	iframe: ['src'],
-	embed: ['src'],
-	track: ['src'],
+  a: ["href"],
+  img: ["src"],
+  source: ["src"],
+  video: ["src", "poster"],
+  audio: ["src"],
+  iframe: ["src"],
+  embed: ["src"],
+  track: ["src"],
 };
 
 /** `/LingFan.Engine/` -> `/LingFan.Engine`；`/` 或空 -> `''`（根部署，不做任何事）。 */
 function normalizeBase(base) {
-	if (!base || base === '/') return '';
-	return base.replace(/\/+$/, '');
+  if (!base || base === "/") return "";
+  return base.replace(/\/+$/, "");
 }
 
 /** 只改「本站根绝对路径」，放过外链、协议相对链接、锚点、相对路径和已带 base 的值。 */
 function withBase(value, prefix) {
-	if (typeof value !== 'string' || !value.startsWith('/')) return value;
-	if (value.startsWith('//')) return value;
-	if (value === prefix || value.startsWith(`${prefix}/`)) return value;
-	return prefix + value;
+  if (typeof value !== "string" || !value.startsWith("/")) return value;
+  if (value.startsWith("//")) return value;
+  if (value === prefix || value.startsWith(`${prefix}/`)) return value;
+  return prefix + value;
 }
 
 /**
@@ -41,24 +41,24 @@ function withBase(value, prefix) {
  * @returns Sätteri hast 插件（纯对象字面量，无需运行时依赖）。
  */
 export function hastBaseLinks({ base } = {}) {
-	const prefix = normalizeBase(base);
-	if (!prefix) return { name: 'lf-base-links-noop' };
+  const prefix = normalizeBase(base);
+  if (!prefix) return { name: "lf-base-links-noop" };
 
-	return {
-		name: 'lf-base-links',
-		element: {
-			filter: Object.keys(URL_ATTRS),
-			// 必须用 ctx.setProperty 写回：Sätteri 在 Rust 侧持有节点 arena，
-			// 传给 visitor 的 node 只是只读快照，直接改 node.properties 会被丢弃
-			// （不报错，静默无效）。内置插件同样只走 setProperty。
-			visit(node, ctx) {
-				const properties = node.properties;
-				if (!properties) return;
-				for (const attr of URL_ATTRS[node.tagName] ?? []) {
-					const next = withBase(properties[attr], prefix);
-					if (next !== properties[attr]) ctx.setProperty(node, attr, next);
-				}
-			},
-		},
-	};
+  return {
+    name: "lf-base-links",
+    element: {
+      filter: Object.keys(URL_ATTRS),
+      // 必须用 ctx.setProperty 写回：Sätteri 在 Rust 侧持有节点 arena，
+      // 传给 visitor 的 node 只是只读快照，直接改 node.properties 会被丢弃
+      // （不报错，静默无效）。内置插件同样只走 setProperty。
+      visit(node, ctx) {
+        const properties = node.properties;
+        if (!properties) return;
+        for (const attr of URL_ATTRS[node.tagName] ?? []) {
+          const next = withBase(properties[attr], prefix);
+          if (next !== properties[attr]) ctx.setProperty(node, attr, next);
+        }
+      },
+    },
+  };
 }

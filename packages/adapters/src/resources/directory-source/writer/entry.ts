@@ -14,7 +14,9 @@ export async function writeFileAt(
   const segments = safeSegments(path);
   let dir = asWritableDir(root);
   for (const segment of segments.slice(0, -1)) {
-    dir = asWritableDir(await dir.getDirectoryHandle(segment, { create: true }));
+    dir = asWritableDir(
+      await dir.getDirectoryHandle(segment, { create: true }),
+    );
   }
   const file = await dir.getFileHandle(segments[segments.length - 1] ?? "", {
     create: true,

@@ -52,12 +52,20 @@ export interface SkeletonOptions {
 export function planOverlaySkeleton(
   options: SkeletonOptions,
 ): OverlaySkeletonFile[] {
-  const { lang, layout, storyKeys, existing, placeholder = "original" } =
-    options;
+  const {
+    lang,
+    layout,
+    storyKeys,
+    existing,
+    placeholder = "original",
+  } = options;
   if (typeof lang !== "string" || !isSafeFileNameSegment(lang)) {
     throw new Error(`语言码不合法：${String(lang)}（须为单段安全文件名）`);
   }
-  const build = (path: string, keys: readonly string[]): OverlaySkeletonFile => {
+  const build = (
+    path: string,
+    keys: readonly string[],
+  ): OverlaySkeletonFile => {
     const prior = existing?.get(path) ?? {};
     const entries: Record<string, string> = {};
     for (const key of [...keys].sort()) {

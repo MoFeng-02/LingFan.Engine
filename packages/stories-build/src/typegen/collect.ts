@@ -6,7 +6,6 @@
  * 字段名是引擎 op 契约，逐类照着 op 定义写死；出现新 op 时在此补一行即可。
  */
 
-
 /** 声明名所在的字段：op → 该 op 里承载名字的字段名 */
 const DECL_NAME_FIELDS: Readonly<Record<string, string>> = {
   set: "key",
@@ -51,7 +50,10 @@ function readDeclaredName(op: unknown): string | undefined {
  * 控制流（if/while/for/switch/when）把名字藏在 body/then/else/cases 里，
  * `func` 自带 body、`call` 带 args，都要照走；`minigame.reward[].key` 是奖励发到哪个变量。
  */
-function collectFromCommands(commands: readonly unknown[], into: Set<string>): void {
+function collectFromCommands(
+  commands: readonly unknown[],
+  into: Set<string>,
+): void {
   for (const command of commands) {
     if (!isRecord(command)) continue;
 
@@ -61,7 +63,8 @@ function collectFromCommands(commands: readonly unknown[], into: Set<string>): v
     // 容器字段：值为命令数组的（body/then/else 等）
     for (const [field, value] of Object.entries(command)) {
       if (!Array.isArray(value)) continue;
-      if (field === "options" || field === "cases" || field === "reward") continue;
+      if (field === "options" || field === "cases" || field === "reward")
+        continue;
       collectFromCommands(value, into);
     }
 
@@ -87,7 +90,9 @@ function collectFromCommands(commands: readonly unknown[], into: Set<string>): v
  * 从编译产物的列集合里收集所有声明名。
  * 排序去重后返回——同输入同输出是渲染器零随机的前提。
  */
-export function collectDeclaredNames(columns: readonly { readonly commands?: readonly unknown[] }[]): string[] {
+export function collectDeclaredNames(
+  columns: readonly { readonly commands?: readonly unknown[] }[],
+): string[] {
   const names = new Set<string>();
   for (const column of columns) {
     const commands = column.commands;

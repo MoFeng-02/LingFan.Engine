@@ -481,9 +481,7 @@ describe("minigame · resolveMinigame.state（落 game.<gameId>.* 命名空间�
 
   it("保留键被命名空间屏蔽：state 键与 SYS 精确名同名也落在 game.<gameId>.* 下，不污染等待状态机", () => {
     const h = makeEngine([
-      column("a", [
-        { op: "minigame", game: "puzzle", on_success: "win" },
-      ]),
+      column("a", [{ op: "minigame", game: "puzzle", on_success: "win" }]),
       column("win", [{ op: "say", text: "胜" }]),
     ]);
     h.engine.start();

@@ -131,6 +131,7 @@ export const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   "func.body": { label: "函数体", kind: "body" },
   "call.target": { label: "函数名", kind: "identifier" },
   "call.args": { label: "实参", kind: "array" },
+  "call.into": { label: "结果绑定名", kind: "identifier" },
   "return.value": { label: "返回值", kind: "value" },
   "if.cond": { label: "条件", kind: "expression" },
   "if.then": { label: "则", kind: "body" },

@@ -13,7 +13,10 @@ export function scanCells(
 ): { errors: CellIssue[]; scan: CellScan } {
   const globalWhitelist = options.globalWhitelist ?? DEFAULT_GLOBAL_WHITELIST;
   const issues: CellIssue[] = [];
-  const byName = new Map<string, { name: string; implText: string; origin: string }>();
+  const byName = new Map<
+    string,
+    { name: string; implText: string; origin: string }
+  >();
   const importsInOrder: string[] = [];
   const seenImports = new Set<string>();
 
@@ -37,7 +40,8 @@ export function scanCells(
         new RegExp(`\\b${binding}\\b`).test(found.implText),
       );
       for (const statement of found.imports.statements) {
-        if (!statement.bindings.some((binding) => needed.includes(binding))) continue;
+        if (!statement.bindings.some((binding) => needed.includes(binding)))
+          continue;
         if (!seenImports.has(statement.adjustedText)) {
           seenImports.add(statement.adjustedText);
           importsInOrder.push(statement.adjustedText);
@@ -49,7 +53,10 @@ export function scanCells(
   return {
     errors: issues,
     scan: {
-      guards: [...byName.values()].map(({ name, implText }) => ({ name, implText })),
+      guards: [...byName.values()].map(({ name, implText }) => ({
+        name,
+        implText,
+      })),
       importStatements: importsInOrder,
     },
   };

@@ -86,7 +86,11 @@ function firstDepthZeroMutable(skeleton: string): string | null {
   for (const token of tokens) {
     if (token === "{") depth += 1;
     else if (token === "}") depth -= 1;
-    else if (depth === 0 && (token === "let" || token === "var") && prev !== "for") {
+    else if (
+      depth === 0 &&
+      (token === "let" || token === "var") &&
+      prev !== "for"
+    ) {
       return token;
     } else if (/^[A-Za-z_$]/.test(token)) {
       prev = token;
@@ -96,18 +100,28 @@ function firstDepthZeroMutable(skeleton: string): string | null {
 }
 
 /** 断言 `needles` 在 `raw` 的 `from` 偏移之后按给定顺序依次出现（保序钉）。 */
-function expectOrderedNeedles(raw: string, from: number, needles: string[]): void {
+function expectOrderedNeedles(
+  raw: string,
+  from: number,
+  needles: string[],
+): void {
   let cursor = from;
   for (const needle of needles) {
     const at = raw.indexOf(needle, cursor);
-    expect(at, `自偏移 ${cursor} 起找不到判据串：${needle}`).toBeGreaterThan(-1);
+    expect(at, `自偏移 ${cursor} 起找不到判据串：${needle}`).toBeGreaterThan(
+      -1,
+    );
     cursor = at + needle.length;
   }
 }
 
 describe("宿主接线互锁（源级扫描）", () => {
-  const appVueKey = Object.keys(playground).find((key) => key.endsWith("/src/App.vue"));
-  const mainKey = Object.keys(playground).find((key) => key.endsWith("/src/main.ts"));
+  const appVueKey = Object.keys(playground).find((key) =>
+    key.endsWith("/src/App.vue"),
+  );
+  const mainKey = Object.keys(playground).find((key) =>
+    key.endsWith("/src/main.ts"),
+  );
   const guardsKey = Object.keys(playground).find((key) =>
     key.endsWith("/src/stories/guards.ts"),
   );
@@ -119,7 +133,14 @@ describe("宿主接线互锁（源级扫描）", () => {
     expect(guardsKey, "扫描面缺 src/stories/guards.ts").toBeDefined();
     const hostKeys = Object.keys(hostSources);
     expect(hostKeys.length).toBeGreaterThanOrEqual(6);
-    for (const name of ["index", "frame-loop", "duration", "effects", "layer-view", "state-view"]) {
+    for (const name of [
+      "index",
+      "frame-loop",
+      "duration",
+      "effects",
+      "layer-view",
+      "state-view",
+    ]) {
       expect(
         hostKeys.some((key) => key.endsWith(`/${name}.ts`)),
         `host 扫描面缺 ${name}.ts`,
@@ -131,34 +152,53 @@ describe("宿主接线互锁（源级扫描）", () => {
     for (const [key, raw] of Object.entries(hostSources)) {
       const skeleton = stripToCodeSkeleton(raw);
       const mutable = firstDepthZeroMutable(skeleton);
-      expect(mutable, `${key} 出现模块级可变状态（${mutable ?? "?"}）`).toBeNull();
+      expect(
+        mutable,
+        `${key} 出现模块级可变状态（${mutable ?? "?"}）`,
+      ).toBeNull();
       const domGlobals = skeleton.match(/\b(document|window)\b/) ?? [];
       expect(domGlobals, `${key} 出现 document/window 引用`).toEqual([]);
-      expect(
-        raw,
-        `${key} 出现框架 import`,
-      ).not.toMatch(/(from|import)\s*\(?\s*["'](vue|react)["']/);
+      expect(raw, `${key} 出现框架 import`).not.toMatch(
+        /(from|import)\s*\(?\s*["'](vue|react)["']/,
+      );
     }
   });
 
   it("纯度扫描器自检：深度 0 的 let 判红；函数内 let、注释/字符串提及、for 变量、正则花括号判绿", () => {
-    expect(firstDepthZeroMutable(stripToCodeSkeleton("let x = 1;\nconst a = 2;"))).toBe("let");
-    expect(firstDepthZeroMutable(stripToCodeSkeleton("export let y = 1;"))).toBe("let");
     expect(
-      firstDepthZeroMutable(stripToCodeSkeleton("function f(): void {\n  let inner = 1;\n}")),
+      firstDepthZeroMutable(stripToCodeSkeleton("let x = 1;\nconst a = 2;")),
+    ).toBe("let");
+    expect(
+      firstDepthZeroMutable(stripToCodeSkeleton("export let y = 1;")),
+    ).toBe("let");
+    expect(
+      firstDepthZeroMutable(
+        stripToCodeSkeleton("function f(): void {\n  let inner = 1;\n}"),
+      ),
     ).toBeNull();
-    expect(firstDepthZeroMutable(stripToCodeSkeleton("// let ghost = 1;\nconst a = 1;"))).toBeNull();
-    expect(firstDepthZeroMutable(stripToCodeSkeleton('const note = "let ghost";'))).toBeNull();
     expect(
-      firstDepthZeroMutable(stripToCodeSkeleton("for (let i = 0; i < 3; i += 1) {\n  step(i);\n}")),
+      firstDepthZeroMutable(
+        stripToCodeSkeleton("// let ghost = 1;\nconst a = 1;"),
+      ),
     ).toBeNull();
     expect(
-      firstDepthZeroMutable(stripToCodeSkeleton("const re = /\\d{2}/g;\nlet after = 1;")),
+      firstDepthZeroMutable(stripToCodeSkeleton('const note = "let ghost";')),
+    ).toBeNull();
+    expect(
+      firstDepthZeroMutable(
+        stripToCodeSkeleton("for (let i = 0; i < 3; i += 1) {\n  step(i);\n}"),
+      ),
+    ).toBeNull();
+    expect(
+      firstDepthZeroMutable(
+        stripToCodeSkeleton("const re = /\\d{2}/g;\nlet after = 1;"),
+      ),
     ).toBe("let");
   });
 
   it("App.vue 输入判据顺序保持基线：onKeydown 先捕获态再叙事路由，onWheel 路由门槛先于 back/forward", () => {
-    if (appVueKey === undefined) throw new Error("扫描面缺 src/App.vue（glob 失配）");
+    if (appVueKey === undefined)
+      throw new Error("扫描面缺 src/App.vue（glob 失配）");
     const raw = playground[appVueKey];
     expectOrderedNeedles(raw, 0, [
       "function onKeydown(e: KeyboardEvent): void {",
@@ -176,7 +216,8 @@ describe("宿主接线互锁（源级扫描）", () => {
   });
 
   it("main.ts 浏览器故事清单保持 const 声明与路径清单按码元序形态（结构断言，对增删列鲁棒）", () => {
-    if (mainKey === undefined) throw new Error("扫描面缺 src/main.ts（glob 失配）");
+    if (mainKey === undefined)
+      throw new Error("扫描面缺 src/main.ts（glob 失配）");
     const raw = playground[mainKey];
     const start = raw.indexOf("const STORIES = [");
     expect(start, "main.ts 缺 const STORIES = [ 声明").toBeGreaterThan(-1);
@@ -196,14 +237,18 @@ describe("宿主接线互锁（源级扫描）", () => {
   });
 
   it("生成守卫注册表在 src/** 只经 stories/guards.ts 单点进入", () => {
-    if (guardsKey === undefined) throw new Error("扫描面缺 src/stories/guards.ts（glob 失配）");
+    if (guardsKey === undefined)
+      throw new Error("扫描面缺 src/stories/guards.ts（glob 失配）");
     const hits = Object.entries(playground)
       .map(([key, raw]) => ({
         key,
         count: (raw.match(/Stories\.src\/gen\/fun_register/g) ?? []).length,
       }))
       .filter((entry) => entry.count > 0);
-    expect(hits.map((entry) => entry.key), "生成注册表引用点漂移").toEqual([guardsKey]);
+    expect(
+      hits.map((entry) => entry.key),
+      "生成注册表引用点漂移",
+    ).toEqual([guardsKey]);
     expect(hits.length).toBe(1);
     expect(playground[guardsKey]).toContain(
       'export { guards } from "../../Stories.src/gen/fun_register.g";',

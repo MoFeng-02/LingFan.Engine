@@ -63,7 +63,8 @@ export function locateResourceRootFromPaths(paths: readonly string[]): {
     const first = sorted[0] ?? MANIFEST_FILE;
     const ambiguous = sorted.filter(
       (path) =>
-        segmentDepth(path) === segmentDepth(first) && dirOf(path) !== dirOf(first),
+        segmentDepth(path) === segmentDepth(first) &&
+        dirOf(path) !== dirOf(first),
     );
     if (ambiguous.length > 0) {
       throw new Error(

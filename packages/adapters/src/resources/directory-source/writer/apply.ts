@@ -19,7 +19,11 @@ import {
   type ProjectWriterPort,
 } from "@lingfan/engine";
 import { locateResourceRootHandle } from "../root-locate";
-import { asWritableDir, ensureWriteAccess, normalizeWriteError } from "./access";
+import {
+  asWritableDir,
+  ensureWriteAccess,
+  normalizeWriteError,
+} from "./access";
 import { removeFileAt, writeFileAt } from "./entry";
 import { collectFileStamps } from "./stamps";
 
@@ -38,7 +42,9 @@ export async function createHandleProjectWriter(
   let stamps = await collectFileStamps(root, [...baseline.keys()]);
   return {
     writable: true,
-    async apply(files: ReadonlyMap<string, string>): Promise<ProjectWriteReport> {
+    async apply(
+      files: ReadonlyMap<string, string>,
+    ): Promise<ProjectWriteReport> {
       const { changes, deletes } = diffProjectFiles(files, baseline);
       const written: string[] = [];
       const deleted: string[] = [];

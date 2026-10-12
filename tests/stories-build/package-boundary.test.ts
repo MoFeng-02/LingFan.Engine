@@ -19,11 +19,14 @@
 import { describe, expect, it } from "vitest";
 
 /** 包内全部源码，键 = 相对本测试文件的 glob 模式（打包器读取） */
-const PACKAGE_SOURCE_FILES = import.meta.glob("../../packages/stories-build/src/**/*.ts", {
-  eager: true,
-  query: "?raw",
-  import: "default",
-}) as Record<string, string>;
+const PACKAGE_SOURCE_FILES = import.meta.glob(
+  "../../packages/stories-build/src/**/*.ts",
+  {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  },
+) as Record<string, string>;
 
 /** 全仓测试与宿主侧残留引用扫描面（源码域）；测试域单独一张 */
 const WORKSPACE_SOURCE_FILES = import.meta.glob(
@@ -46,11 +49,14 @@ const TEST_KEYS = Object.keys(WORKSPACE_TEST_FILES);
  * 再解析——不用 `import pkg from "...json"`：根 tsconfig 未开 resolveJsonModule
  * （统一 moduleResolution: "bundler"），JSON 导入会额外要断言/插件，不值当。
  */
-const PACKAGE_MANIFEST_FILES = import.meta.glob("../../packages/stories-build/package.json", {
-  eager: true,
-  query: "?raw",
-  import: "default",
-}) as Record<string, string>;
+const PACKAGE_MANIFEST_FILES = import.meta.glob(
+  "../../packages/stories-build/package.json",
+  {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  },
+) as Record<string, string>;
 
 const MANIFEST_KEYS = Object.keys(PACKAGE_MANIFEST_FILES);
 
@@ -74,7 +80,8 @@ const STALE_SPECIFIER_PATTERN =
 /**
  * 包内不得出现「猜宿主工程在哪」的写法：包不知道谁在调它
  */
-const HOST_GUESS_PATTERN = /new URL\(\s*"\.\.(?:\/\.\.)*"\s*,\s*import\.meta\.url\s*\)/;
+const HOST_GUESS_PATTERN =
+  /new URL\(\s*"\.\.(?:\/\.\.)*"\s*,\s*import\.meta\.url\s*\)/;
 
 /** 出口面必须是这几条，多一条少一条都算契约变更（改这里要同时改 package.json） */
 const EXPECTED_EXPORTS = [".", "./cell", "./cli"];
@@ -82,50 +89,96 @@ const EXPECTED_EXPORTS = [".", "./cell", "./cli"];
 describe("创作链编译包 · 边界与结构不变式", () => {
   it("扫描面自检：三张 glob 都非空且命中已知文件（防空扫描假绿）", () => {
     expect(PACKAGE_KEYS.length).toBeGreaterThanOrEqual(40);
-    expect(PACKAGE_KEYS.some((key) => key.endsWith("/src/index.ts"))).toBe(true);
-    expect(PACKAGE_KEYS.some((key) => key.endsWith("/src/cell/index.ts"))).toBe(true);
-    expect(PACKAGE_KEYS.some((key) => key.endsWith("/src/cli/cli.ts"))).toBe(true);
+    expect(PACKAGE_KEYS.some((key) => key.endsWith("/src/index.ts"))).toBe(
+      true,
+    );
+    expect(PACKAGE_KEYS.some((key) => key.endsWith("/src/cell/index.ts"))).toBe(
+      true,
+    );
+    expect(PACKAGE_KEYS.some((key) => key.endsWith("/src/cli/cli.ts"))).toBe(
+      true,
+    );
     expect(SOURCE_KEYS.length).toBeGreaterThanOrEqual(50);
     expect(TEST_KEYS.length).toBeGreaterThanOrEqual(20);
   });
 
   it("旧路径零残留：宿主源码与全仓测试都不再引用 scripts/build、cell-extract", () => {
     // 正样本自检：正则必须命中历史写法，且放过新写法。
-    expect(STALE_SPECIFIER_PATTERN.test('from "../../apps/playground/scripts/stories-build";')).toBe(true);
-    expect(STALE_SPECIFIER_PATTERN.test('from "../../apps/playground/scripts/build/compiler-contract";')).toBe(true);
-    expect(STALE_SPECIFIER_PATTERN.test('from "../../apps/playground/scripts/cell-extract";')).toBe(true);
-    expect(STALE_SPECIFIER_PATTERN.test('from "@lingfan/stories-build";')).toBe(false);
-    expect(STALE_SPECIFIER_PATTERN.test('from "@lingfan/stories-build/cell";')).toBe(false);
+    expect(
+      STALE_SPECIFIER_PATTERN.test(
+        'from "../../apps/playground/scripts/stories-build";',
+      ),
+    ).toBe(true);
+    expect(
+      STALE_SPECIFIER_PATTERN.test(
+        'from "../../apps/playground/scripts/build/compiler-contract";',
+      ),
+    ).toBe(true);
+    expect(
+      STALE_SPECIFIER_PATTERN.test(
+        'from "../../apps/playground/scripts/cell-extract";',
+      ),
+    ).toBe(true);
+    expect(STALE_SPECIFIER_PATTERN.test('from "@lingfan/stories-build";')).toBe(
+      false,
+    );
+    expect(
+      STALE_SPECIFIER_PATTERN.test('from "@lingfan/stories-build/cell";'),
+    ).toBe(false);
 
     // 管道级自检：把历史写法拼进扫描面必须能被抓到（证明扫的是真文本）。
     const allText = [...SOURCE_KEYS, ...TEST_KEYS]
       .map((key) => WORKSPACE_SOURCE_FILES[key] ?? WORKSPACE_TEST_FILES[key])
       .join("\n");
-    expect(STALE_SPECIFIER_PATTERN.test(`${allText}\nfrom "../../apps/playground/scripts/cell-extract";`)).toBe(true);
+    expect(
+      STALE_SPECIFIER_PATTERN.test(
+        `${allText}\nfrom "../../apps/playground/scripts/cell-extract";`,
+      ),
+    ).toBe(true);
 
     const offenders = [...SOURCE_KEYS, ...TEST_KEYS].filter((key) =>
-      STALE_SPECIFIER_PATTERN.test(WORKSPACE_SOURCE_FILES[key] ?? WORKSPACE_TEST_FILES[key] ?? ""),
+      STALE_SPECIFIER_PATTERN.test(
+        WORKSPACE_SOURCE_FILES[key] ?? WORKSPACE_TEST_FILES[key] ?? "",
+      ),
     );
     expect(offenders).toEqual([]);
   });
 
   it("包不猜宿主工程：没有「import.meta.url 的上一级即工程根」这种写法", () => {
-    expect(HOST_GUESS_PATTERN.test('fileURLToPath(new URL("..", import.meta.url));')).toBe(true);
-    expect(HOST_GUESS_PATTERN.test('fileURLToPath(new URL("../../..", import.meta.url));')).toBe(true);
-    expect(HOST_GUESS_PATTERN.test('fileURLToPath(new URL("../../packages/x", import.meta.url));')).toBe(false);
+    expect(
+      HOST_GUESS_PATTERN.test('fileURLToPath(new URL("..", import.meta.url));'),
+    ).toBe(true);
+    expect(
+      HOST_GUESS_PATTERN.test(
+        'fileURLToPath(new URL("../../..", import.meta.url));',
+      ),
+    ).toBe(true);
+    expect(
+      HOST_GUESS_PATTERN.test(
+        'fileURLToPath(new URL("../../packages/x", import.meta.url));',
+      ),
+    ).toBe(false);
 
-    const offenders = PACKAGE_KEYS.filter((key) => HOST_GUESS_PATTERN.test(PACKAGE_SOURCE_FILES[key]));
+    const offenders = PACKAGE_KEYS.filter((key) =>
+      HOST_GUESS_PATTERN.test(PACKAGE_SOURCE_FILES[key]),
+    );
     expect(offenders).toEqual([]);
   });
 
   it("包清单先被真读到：glob 恰命中一个 manifest 且能解析出 exports（防空扫描假绿）", () => {
-    expect(MANIFEST_KEYS).toEqual(["../../packages/stories-build/package.json"]);
-    expect(Object.keys(PACKAGE_MANIFEST.exports ?? {}).length).toBeGreaterThan(0);
+    expect(MANIFEST_KEYS).toEqual([
+      "../../packages/stories-build/package.json",
+    ]);
+    expect(Object.keys(PACKAGE_MANIFEST.exports ?? {}).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("包的出口面由实物 package.json 决定：恰为 ., ./cell, ./cli 三条且落点正确", () => {
     // 实物断言：键集与值都来自真 manifest，不是合成字面量。
-    expect(Object.keys(PACKAGE_MANIFEST.exports ?? {}).sort()).toEqual(EXPECTED_EXPORTS);
+    expect(Object.keys(PACKAGE_MANIFEST.exports ?? {}).sort()).toEqual(
+      EXPECTED_EXPORTS,
+    );
     expect(PACKAGE_MANIFEST.exports?.["."]).toBe("./src/index.ts");
     expect(PACKAGE_MANIFEST.exports?.["./cell"]).toBe("./src/cell/index.ts");
     // CLI 必须是包的一等入口：模板工程只有 `pnpm add @lingfan/stories-build` 这一条路，
@@ -144,7 +197,10 @@ describe("创作链编译包 · 边界与结构不变式", () => {
     }
 
     // CLI 自己必须走包的唯一出口，不得绕过出口面直接取实现叶子。
-    const cliSource = PACKAGE_SOURCE_FILES[PACKAGE_KEYS.find((key) => key.endsWith("/src/cli/cli.ts")) ?? ""];
+    const cliSource =
+      PACKAGE_SOURCE_FILES[
+        PACKAGE_KEYS.find((key) => key.endsWith("/src/cli/cli.ts")) ?? ""
+      ];
     expect(typeof cliSource).toBe("string");
     expect(cliSource).toMatch(/from "\.\.\/index"/);
     expect(cliSource).not.toMatch(/from "\.\.\/pipeline"/);
@@ -152,7 +208,9 @@ describe("创作链编译包 · 边界与结构不变式", () => {
 
   it("目录索引导入是包内一等形态（不写 ../cell/index.ts），相对导入保持无扩展名", () => {
     // 无扩展名的相对导入是本仓 house style（tsx 与 vite 都按 TS 解析）；带 .ts 一律算失配。
-    expect(/from "\.{1,2}\/[^"]+\.ts"/.test('from "./cell/index.ts";')).toBe(true);
+    expect(/from "\.{1,2}\/[^"]+\.ts"/.test('from "./cell/index.ts";')).toBe(
+      true,
+    );
     expect(/from "\.{1,2}\/[^"]+\.ts"/.test('from "../cell";')).toBe(false);
 
     const extensioned = PACKAGE_KEYS.filter((key) =>

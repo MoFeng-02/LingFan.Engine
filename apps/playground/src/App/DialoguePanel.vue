@@ -39,6 +39,8 @@ defineProps<{
   inMinigame: boolean;
   /** 外部玩法系统接管是否在场（与小游戏共用挂载层） */
   inInteraction: boolean;
+  /** 扩展 op 等待是否在场（覆盖层由宿主渲染，此处只让对话层让位） */
+  inExtension: boolean;
   /** 视频层在场时对话层让位 */
   inVideo: boolean;
   /** 对白被隐藏 */
@@ -82,7 +84,11 @@ const submitInput = (): void => emit("submit-input");
     :style="{ zIndex: zOf('choices') }"
     aria-live="polite"
   >
-    <p v-if="choiceView.promptHtml" class="layer-prompt" v-html="choiceView.promptHtml"></p>
+    <p
+      v-if="choiceView.promptHtml"
+      class="layer-prompt"
+      v-html="choiceView.promptHtml"
+    ></p>
     <div class="choice-row">
       <button
         v-for="(opt, idx) in menuOptions"
@@ -115,9 +121,10 @@ const submitInput = (): void => emit("submit-input");
   </section>
   <!-- 外部系统挂载层：小游戏经注册表挂载，外部玩法系统接管复用同一层。
        两者都是「整屏接管」形态，可见性分别由 inMinigame / inInteraction 决定；
-       容器由默认插槽填入（宿主在收尾回调里清空它）。 -->
+       容器由默认插槽填入（宿主在收尾回调里清空它）。
+       扩展 op 等待（inExtension）只有宿主渲染的覆盖层，无挂载内容，仅让对话层让位。 -->
   <section
-    v-show="inMinigame || inInteraction"
+    v-show="inMinigame || inInteraction || inExtension"
     class="choices"
     :style="{ zIndex: zOf('minigame') }"
     aria-live="polite"
@@ -143,7 +150,9 @@ const submitInput = (): void => emit("submit-input");
       ></p>
       <p
         class="text"
-        v-html="renderDialogueLine({ text: nvlTypingLine, typed: shownText }).html"
+        v-html="
+          renderDialogueLine({ text: nvlTypingLine, typed: shownText }).html
+        "
       ></p>
     </div>
     <!-- 模板骨架三挂点：说话人 / 正文 / 推进指示器。内容 = 注册模板产出；

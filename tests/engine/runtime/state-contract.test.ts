@@ -34,7 +34,13 @@ interface Harness {
 
 /** 直构（**绕过** parseStory 深校验）——TS 侧构造故事正是非 JSON 值的真实入口（09 故事源） */
 function rawStory(columns: object[], defines?: Record<string, unknown>): Story {
-  return { formatVersion: 1, id: "t", entry: "a", columns, defines } as unknown as Story;
+  return {
+    formatVersion: 1,
+    id: "t",
+    entry: "a",
+    columns,
+    defines,
+  } as unknown as Story;
 }
 
 function makeEngine(story: Story): Harness {
@@ -144,7 +150,10 @@ describe("state-value-contract：写入值必须 JSON 安全", () => {
       arr: [{ k: 1 }, [2, 3]],
     };
     const h = makeEngine(
-      rawStory([column("a", [{ op: "say", text: "一" }])], ok as Record<string, unknown>),
+      rawStory(
+        [column("a", [{ op: "say", text: "一" }])],
+        ok as Record<string, unknown>,
+      ),
     );
     h.engine.start();
     expect(h.errors).toEqual([]);
@@ -228,10 +237,7 @@ describe("序列化边界：exportSave 全量深校验（兜「写后原地改�
     // defines 直构：持有**写入值的同一引用**（TS 侧构造的真实入口），先合法写入
     const cfg: Record<string, unknown> = { name: "a" };
     const h = makeEngine(
-      rawStory(
-        [column("a", [{ op: "say", text: "停在等待点" }])],
-        { cfg },
-      ),
+      rawStory([column("a", [{ op: "say", text: "停在等待点" }])], { cfg }),
     );
     h.engine.start();
     expect(h.errors).toEqual([]);

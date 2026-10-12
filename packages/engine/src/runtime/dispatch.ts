@@ -81,15 +81,26 @@ export function runDispatch(ctx: OpContext): void {
         if (!ctx.beginLoopIteration(frame, loop)) return;
         continue;
       }
-      ctx.frames.pop(); // 出块/出列：块级作用域随之不可达
+      // 出块/出列：块级作用域随之不可达。函数帧自然跑完也走这里——
+      // 被调帧带 into 名（call into）时把 null 绑回调用方（无带值 ret 的
+      // 函数返回 null，与表达式内建的缺失语义同族），确定性重放两侧一致
+      const popped = ctx.frames.pop()!;
+      if (popped.func === true && popped.into !== undefined) {
+        const caller = ctx.frames[ctx.frames.length - 1];
+        if (caller !== undefined) {
+          caller.result = null;
+          caller.scope.declare(popped.into, null);
+        }
+      }
       continue;
     }
     const cmd = frame.commands[frame.index]!;
     // 扩展查找前置：内建 switch 一行不动 ⇒ 内建行为逐字节等价；
-    // 扩展 op 的推进语义 = 执行成功即步进（v1 无等待态）
+    // 扩展 op 的落点三态：advanced = 执行成功即步进；wait = 已建立等待并自帧前进（等解除）；fail = 已停机
     const extensionOp = ctx.extensionOps.get(cmd.op);
     if (extensionOp !== undefined) {
-      if (!execExtensionOp(ctx, extensionOp, cmd)) return;
+      const settled = execExtensionOp(ctx, frame, extensionOp, cmd);
+      if (settled !== "advanced") return;
       frame.index += 1;
       continue;
     }
@@ -115,9 +126,7 @@ export function runDispatch(ctx: OpContext): void {
         frame.index += 1;
         continue;
       case "jump":
-        if (
-          !ctx.enterColumn(typeof cmd.target === "string" ? cmd.target : "")
-        )
+        if (!ctx.enterColumn(typeof cmd.target === "string" ? cmd.target : ""))
           return;
         continue;
       case "navigate":
@@ -191,7 +200,7 @@ export function runDispatch(ctx: OpContext): void {
         if (!execCall(ctx, frame, cmd)) return;
         continue;
       case "return":
-        if (!execReturn(ctx)) return;
+        if (!execReturn(ctx, cmd)) return;
         continue;
       case "input":
         execInput(ctx, frame, cmd);

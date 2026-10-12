@@ -34,10 +34,17 @@ function resolveModuleImportPath(rel: string, spec: string): string | null {
   return null;
 }
 
-export function resolveImports(record: ModuleRecord, records: Map<string, ModuleRecord>, diags: DiagBag, editorPass: boolean): void {
+export function resolveImports(
+  record: ModuleRecord,
+  records: Map<string, ModuleRecord>,
+  diags: DiagBag,
+  editorPass: boolean,
+): void {
   const { sf, rel } = record;
   for (const imp of record.imports) {
-    const spec = ts.isStringLiteral(imp.moduleSpecifier) ? imp.moduleSpecifier.text : "";
+    const spec = ts.isStringLiteral(imp.moduleSpecifier)
+      ? imp.moduleSpecifier.text
+      : "";
     if (editorPass !== (spec === "@lingfan/editor")) continue;
     const clause = imp.importClause;
     if (clause === undefined) {
@@ -46,12 +53,25 @@ export function resolveImports(record: ModuleRecord, records: Map<string, Module
     }
     if (spec === "@lingfan/editor") {
       if (clause.name !== undefined) {
-        diags.add(rel, sf, clause.name, "词汇层请以具名导入（import { say, … } from \"@lingfan/editor\"）或 script 命名空间使用");
+        diags.add(
+          rel,
+          sf,
+          clause.name,
+          '词汇层请以具名导入（import { say, … } from "@lingfan/editor"）或 script 命名空间使用',
+        );
       }
-      if (clause.namedBindings !== undefined && ts.isNamespaceImport(clause.namedBindings)) {
-        record.bindings.set(clause.namedBindings.name.text, { kind: "namespace" });
+      if (
+        clause.namedBindings !== undefined &&
+        ts.isNamespaceImport(clause.namedBindings)
+      ) {
+        record.bindings.set(clause.namedBindings.name.text, {
+          kind: "namespace",
+        });
       }
-      if (clause.namedBindings !== undefined && ts.isNamedImports(clause.namedBindings)) {
+      if (
+        clause.namedBindings !== undefined &&
+        ts.isNamedImports(clause.namedBindings)
+      ) {
         for (const el of clause.namedBindings.elements) {
           if (el.isTypeOnly) continue;
           // `import { script as ct }` 里 ct 是本地名、script 才是被导入的名字。判定与查表
@@ -78,7 +98,12 @@ export function resolveImports(record: ModuleRecord, records: Map<string, Module
     }
     if (!spec.startsWith(".")) {
       if (record.evaluated === undefined) {
-        diags.add(rel, sf, imp, `导入仅限相对路径与词汇层既有出口，不支持外部包 \`${spec}\``);
+        diags.add(
+          rel,
+          sf,
+          imp,
+          `导入仅限相对路径与词汇层既有出口，不支持外部包 \`${spec}\``,
+        );
         continue;
       }
       // §十二/C10：经编译期求值的文件允许 node_modules 值导入——值经求值结果内联，
@@ -101,15 +126,35 @@ export function resolveImports(record: ModuleRecord, records: Map<string, Module
     }
     if (clause.name !== undefined) {
       if (target.story === null) {
-        diags.add(rel, sf, clause.name, `纯模块 ${targetRel} 没有 default 导出——跨故事引用请导入故事文件`);
+        diags.add(
+          rel,
+          sf,
+          clause.name,
+          `纯模块 ${targetRel} 没有 default 导出——跨故事引用请导入故事文件`,
+        );
       } else {
-        record.bindings.set(clause.name.text, { kind: "story", file: targetRel, name: target.story.name });
+        record.bindings.set(clause.name.text, {
+          kind: "story",
+          file: targetRel,
+          name: target.story.name,
+        });
       }
     }
-    if (clause.namedBindings !== undefined && ts.isNamespaceImport(clause.namedBindings)) {
-      diags.add(rel, sf, clause.namedBindings, "命名空间导入仅支持词汇层 script");
+    if (
+      clause.namedBindings !== undefined &&
+      ts.isNamespaceImport(clause.namedBindings)
+    ) {
+      diags.add(
+        rel,
+        sf,
+        clause.namedBindings,
+        "命名空间导入仅支持词汇层 script",
+      );
     }
-    if (clause.namedBindings !== undefined && ts.isNamedImports(clause.namedBindings)) {
+    if (
+      clause.namedBindings !== undefined &&
+      ts.isNamedImports(clause.namedBindings)
+    ) {
       for (const el of clause.namedBindings.elements) {
         if (el.isTypeOnly) continue;
         const wanted = el.propertyName?.text ?? el.name.text;

@@ -22,7 +22,11 @@ import { StoryBuildError } from "../shared";
 export const STATE_SCHEMA_REL = "lib/state.ts";
 
 const STATE_SCHEMA_EXPORT = "stateSchema";
-const PRIMITIVE_TYPES: ReadonlySet<string> = new Set(["number", "string", "boolean"]);
+const PRIMITIVE_TYPES: ReadonlySet<string> = new Set([
+  "number",
+  "string",
+  "boolean",
+]);
 
 /** 求值 lib/state.ts 并把 stateSchema 降维为扁平 defines（无该文件 = 无 schema 贡献）。 */
 export async function runStateSchemaPass(
@@ -55,7 +59,10 @@ export async function runStateSchemaPass(
   if (errors.length > 0) {
     throw new StoryBuildError(
       `state schema 降维失败（${errors.length} 条）：\n${errors
-        .map((message) => `- ${sourcesDirName}/${STATE_SCHEMA_REL}:${origin.line}:${origin.col} ${message}`)
+        .map(
+          (message) =>
+            `- ${sourcesDirName}/${STATE_SCHEMA_REL}:${origin.line}:${origin.col} ${message}`,
+        )
         .join("\n")}`,
     );
   }
@@ -107,10 +114,17 @@ function flattenValue(
     return;
   }
   if (Array.isArray(value)) {
-    errors.push(`${path}：数组值请用 descriptor { type: [leaf], default: [...] }`);
+    errors.push(
+      `${path}：数组值请用 descriptor { type: [leaf], default: [...] }`,
+    );
     return;
   }
-  if (value === undefined || typeof value === "function" || typeof value === "symbol" || typeof value === "bigint") {
+  if (
+    value === undefined ||
+    typeof value === "function" ||
+    typeof value === "symbol" ||
+    typeof value === "bigint"
+  ) {
     errors.push(`${path}：不可序列化的 schema 值`);
     return;
   }
@@ -138,7 +152,8 @@ function validateDescriptor(
       (type === "number" && typeof def === "number" && Number.isFinite(def)) ||
       (type === "string" && typeof def === "string") ||
       (type === "boolean" && typeof def === "boolean");
-    if (!ok) errors.push(`${path}：descriptor type "${type}" 与 default 不一致`);
+    if (!ok)
+      errors.push(`${path}：descriptor type "${type}" 与 default 不一致`);
     return ok;
   }
   if (Array.isArray(type)) {
@@ -151,12 +166,16 @@ function validateDescriptor(
       return false;
     }
     const bad = def.filter((element) => !leafMatches(type[0], element)).length;
-    if (bad > 0) errors.push(`${path}：数组 default 有 ${bad} 个元素与 leaf 类型不一致`);
+    if (bad > 0)
+      errors.push(`${path}：数组 default 有 ${bad} 个元素与 leaf 类型不一致`);
     return bad === 0;
   }
   const enumValues = asEnumValues(type);
   if (enumValues !== undefined) {
-    if ((typeof def !== "string" && typeof def !== "number") || !enumValues.includes(def)) {
+    if (
+      (typeof def !== "string" && typeof def !== "number") ||
+      !enumValues.includes(def)
+    ) {
       errors.push(`${path}：descriptor default 不在枚举值域内`);
       return false;
     }
@@ -169,13 +188,19 @@ function validateDescriptor(
 function leafMatches(leaf: unknown, value: unknown): boolean {
   if (typeof leaf === "string" && PRIMITIVE_TYPES.has(leaf)) {
     return (
-      (leaf === "number" && typeof value === "number" && Number.isFinite(value)) ||
+      (leaf === "number" &&
+        typeof value === "number" &&
+        Number.isFinite(value)) ||
       (leaf === "string" && typeof value === "string") ||
       (leaf === "boolean" && typeof value === "boolean")
     );
   }
   const enumValues = asEnumValues(leaf);
-  return enumValues !== undefined && (typeof value === "string" || typeof value === "number") && enumValues.includes(value);
+  return (
+    enumValues !== undefined &&
+    (typeof value === "string" || typeof value === "number") &&
+    enumValues.includes(value)
+  );
 }
 
 /** 枚举对象判定：非空普通对象且值全为 string|number（descriptor 不落此形——type 槽位专用）。 */
@@ -195,10 +220,17 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 /** 在源文件里定位 `export const stateSchema` 声明行（形态诊断的统一挂点）；找不到 = 1:1 兜底。 */
 function locateSchemaDecl(abs: string): { line: number; col: number } {
   try {
-    const sf = ts.createSourceFile(abs, readFileSync(abs, "utf8"), ts.ScriptTarget.Latest, true);
+    const sf = ts.createSourceFile(
+      abs,
+      readFileSync(abs, "utf8"),
+      ts.ScriptTarget.Latest,
+      true,
+    );
     for (const stmt of sf.statements) {
       if (!ts.isVariableStatement(stmt)) continue;
-      const exported = stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
+      const exported =
+        stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ??
+        false;
       const decl = stmt.declarationList.declarations[0];
       if (
         exported &&

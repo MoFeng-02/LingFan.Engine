@@ -4,7 +4,13 @@
  * 判类器是一个整体（方法共享游标 `pos` 与警告池），所以实现文件刻意只留一条导入。
  */
 
-import { BAIL, type AuditToken, type ExpressionWarning, type OperandKind, type VarKind } from "./token";
+import {
+  BAIL,
+  type AuditToken,
+  type ExpressionWarning,
+  type OperandKind,
+  type VarKind,
+} from "./token";
 
 /**
  * 递归下降判类器——**优先级链与引擎逐层一致**：`?: → || → && → ==/!= → 比较 →

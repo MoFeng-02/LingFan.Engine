@@ -19,7 +19,9 @@ const code = (source: string): string =>
 describe("章节树 · 接线互锁（防「判据绿但没接上」）", () => {
   it("App.vue **import 并渲染** ChapterTree（能力真的接进了主界面）", () => {
     const src = code(appSource);
-    expect(src).toContain('import ChapterTree from "./components/ChapterTree.vue"');
+    expect(src).toContain(
+      'import ChapterTree from "./components/ChapterTree.vue"',
+    );
     // 必须用**词边界**：`toContain("<ChapterTree")` 会被 `ChapterTreeDX` 前缀匹配骗过
     //    （自证时实测：把标签改名成 `ChapterTreeDX` 守卫仍绿）⇒ 守卫形同虚设。
     expect(src).toMatch(/<ChapterTree\s/);

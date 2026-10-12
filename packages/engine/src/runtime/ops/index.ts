@@ -4,7 +4,11 @@
  * 执行器与运行层内部模块统一从这里取处理器；域内各文件之间仍按需直接引用。
  * 这里只做转发，不放任何实现。
  */
-export { execExtensionOp } from "./extension";
+export {
+  abortExtensionOp,
+  execExtensionOp,
+  resolveExtensionOp,
+} from "./extension";
 export {
   execCharacter,
   execMenu,
@@ -49,5 +53,10 @@ export {
   execSaveDeleteOp,
   execSaveOp,
 } from "./save";
-export { abortInteraction, execInput, execInteraction, resolveInteraction } from "./interaction";
+export {
+  abortInteraction,
+  execInput,
+  execInteraction,
+  resolveInteraction,
+} from "./interaction";
 export { abortMinigame, execMinigame, resolveMinigame } from "./minigame";

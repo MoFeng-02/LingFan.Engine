@@ -37,7 +37,10 @@ export function execAnimate(ctx: OpContext, cmd: StoryCommand): boolean {
   }
   const hits = ctx.findElements(target);
   if (hits.length === 0) {
-    ctx.fail(`${cmd.op}-target-not-found`, `${cmd.op} 未命中任何元素：${target}`);
+    ctx.fail(
+      `${cmd.op}-target-not-found`,
+      `${cmd.op} 未命中任何元素：${target}`,
+    );
     return false;
   }
   const element = hits[0]!;
@@ -139,10 +142,7 @@ export function execScreenEffect(ctx: OpContext, cmd: StoryCommand): boolean {
  * 故事级打字机设置（`text_typewriter`）：`enabled`（开关）与/或
  * `speed`（字符/秒）。与玩家偏好（独立存储）分离——偏好优先级更高，由 UI 合成。
  */
-export function execTextTypewriter(
-  ctx: OpContext,
-  cmd: StoryCommand,
-): boolean {
+export function execTextTypewriter(ctx: OpContext, cmd: StoryCommand): boolean {
   const enabled = cmd.enabled;
   const speed = cmd.speed;
   if (enabled !== undefined && typeof enabled !== "boolean") {

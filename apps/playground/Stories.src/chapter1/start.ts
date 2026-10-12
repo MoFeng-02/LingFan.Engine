@@ -32,7 +32,9 @@ export default function start(): void {
   state.player.sex = Sex.Male;
   character("灵泛", { name: "灵泛", color: "#7aa2f7" });
   say("你有 {player.gold:000} 枚金币（插值 + 补零格式化）。", "灵泛");
-  say("富文本：{b}加粗{/b}、{i}斜体{/i}、{u}下划线{/u}、{color=#FFD700}金色{/color}、{color=#9ece6a}{size=22}大字{/size}{/color}。");
+  say(
+    "富文本：{b}加粗{/b}、{i}斜体{/i}、{u}下划线{/u}、{color=#FFD700}金色{/color}、{color=#9ece6a}{size=22}大字{/size}{/color}。",
+  );
   input("旅人，报上名来：", "player.name");
   if (state.player.gold >= 25) {
     notify("金币充足！当前 {player.gold} 枚。", { type: "info" });

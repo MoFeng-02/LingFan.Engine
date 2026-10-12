@@ -72,9 +72,9 @@ describe("animate", () => {
     const seq = engine.animations()[0]!.seq;
     engine.animationFinished(seq);
     expect(engine.animations()).toEqual([]);
-    expect(
-      engine.elements().find((e) => e.id === "title")?.props.opacity,
-    ).toBe(0.8);
+    expect(engine.elements().find((e) => e.id === "title")?.props.opacity).toBe(
+      0.8,
+    );
     engine.dispose();
   });
 
@@ -151,7 +151,12 @@ describe("transition / shake", () => {
         formatVersion: 1,
         id: "demo",
         columns: [
-          { id: "s", kind: "scene", elements: [], entry: [{ op: "transition" }] },
+          {
+            id: "s",
+            kind: "scene",
+            elements: [],
+            entry: [{ op: "transition" }],
+          },
         ],
       }),
     ).toThrow(/必须为非空字符串/);
@@ -183,9 +188,7 @@ describe("text_typewriter", () => {
         parseStory({
           formatVersion: 1,
           id: "demo",
-          columns: [
-            { id: "s", kind: "scene", elements: [], entry: [bad] },
-          ],
+          columns: [{ id: "s", kind: "scene", elements: [], entry: [bad] }],
         }),
       ).toThrow(/至少需要 enabled 或 speed|必须为正数/);
     }

@@ -84,7 +84,10 @@ export function kindOfPath(path: string): ResourceKind {
  */
 export function isReadOnlyPath(path: string): boolean {
   const kind = kindOfPath(path);
-  return kind === "saves" || (kind !== "story" && kind !== "manifest" && kind !== "lang");
+  return (
+    kind === "saves" ||
+    (kind !== "story" && kind !== "manifest" && kind !== "lang")
+  );
 }
 
 /**
@@ -138,7 +141,9 @@ export function buildResourceTree(paths: readonly string[]): ResourceNode[] {
     // 点文件/点目录**任何一层**都不是工程内容（与 `ProjectFileSource.paths()` 的
     // 既有口径同源；此处再挡一次是因为本函数也吃外部喂入的路径集）。
     if (path === "" || path.endsWith(DIR_SUFFIX) || isDotPath(path)) continue;
-    const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
+    const dir = path.includes("/")
+      ? path.slice(0, path.lastIndexOf("/") + 1)
+      : "";
     const kind = kindOfPath(path);
     const leaf: MutableNode = {
       name: nameOf(path),
@@ -155,7 +160,9 @@ export function buildResourceTree(paths: readonly string[]): ResourceNode[] {
 }
 
 /** 扁平化（搜索结果 / 「最近打开」共用一份遍历口径） */
-export function flattenResources(nodes: readonly ResourceNode[]): ResourceNode[] {
+export function flattenResources(
+  nodes: readonly ResourceNode[],
+): ResourceNode[] {
   const out: ResourceNode[] = [];
   const walk = (list: readonly ResourceNode[]): void => {
     for (const node of list) {
@@ -186,7 +193,9 @@ function byCodeUnit(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-/** 父目录路径（带尾斜杠，根为 `""`）：`Lang/en/` → `Lang/`；`Stories/` → `""` */function parentOf(dirPath: string): string {
+/** 父目录路径（带尾斜杠，根为 `""`）：`Lang/en/` → `Lang/`；`Stories/` → `""` */ function parentOf(
+  dirPath: string,
+): string {
   const trimmed = dirPath.endsWith(DIR_SUFFIX) ? dirPath.slice(0, -1) : dirPath;
   const at = trimmed.lastIndexOf("/");
   return at < 0 ? "" : `${trimmed.slice(0, at + 1)}`;
@@ -219,7 +228,9 @@ export const RESOURCE_TREE_COLLAPSED_KEY_PREFIX = "lingfan-editor-restree:";
 export const COLLAPSED_DIRS_LIMIT = 512;
 
 /** 折叠集读写（注入式存储；`undefined`/空工程 id = 无持久化，读写皆空操作） */
-export function createCollapsedDirsStore(storage: KeyValueStorage | undefined): {
+export function createCollapsedDirsStore(
+  storage: KeyValueStorage | undefined,
+): {
   load(projectId: string): ReadonlySet<string>;
   save(projectId: string, dirs: ReadonlySet<string>): void;
 } {
@@ -228,7 +239,9 @@ export function createCollapsedDirsStore(storage: KeyValueStorage | undefined): 
       if (projectId === "") return new Set();
       let raw: string | null;
       try {
-        raw = storage?.getItem(RESOURCE_TREE_COLLAPSED_KEY_PREFIX + projectId) ?? null;
+        raw =
+          storage?.getItem(RESOURCE_TREE_COLLAPSED_KEY_PREFIX + projectId) ??
+          null;
       } catch {
         return new Set();
       }

@@ -102,7 +102,10 @@ export function execInteraction(
       cmd.config === null ||
       Array.isArray(cmd.config))
   ) {
-    ctx.fail("interaction-invalid", "interaction.config 必须为对象（原样透传宿主）");
+    ctx.fail(
+      "interaction-invalid",
+      "interaction.config 必须为对象（原样透传宿主）",
+    );
     return;
   }
   ctx.interactionSeq += 1;
@@ -157,7 +160,10 @@ export function resolveInteraction(
   }
   const pending = ctx.pendingInteraction;
   if (pending === null) {
-    ctx.fail("interaction-state-corrupt", "__waiting=interaction 但挂起状态缺失");
+    ctx.fail(
+      "interaction-state-corrupt",
+      "__waiting=interaction 但挂起状态缺失",
+    );
     return false;
   }
   if (typeof system !== "string" || system !== pending.system) {
@@ -195,12 +201,21 @@ export function resolveInteraction(
       result.state === null ||
       Array.isArray(result.state)
     ) {
-      ctx.fail("interaction-result-invalid", "resolveInteraction.state 必须是对象");
+      ctx.fail(
+        "interaction-result-invalid",
+        "resolveInteraction.state 必须是对象",
+      );
       return false;
     }
     for (const [key, value] of Object.entries(result.state)) {
       if (
-        !writeExternal(ctx, gameScopedKey(pending.system, key), value, true, pending.system)
+        !writeExternal(
+          ctx,
+          gameScopedKey(pending.system, key),
+          value,
+          true,
+          pending.system,
+        )
       ) {
         return false;
       }

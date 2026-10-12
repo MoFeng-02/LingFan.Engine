@@ -76,10 +76,7 @@ export async function buildStories(
   const discovery = await discoverSources(root, sourcesDirName);
 
   // —— cell 声明扫描（构建期 AST 扫描）：源树（排除生成物目录，仅 .ts；机制不动）——
-  const cellScan = scanCellSources(
-    walkFiles(sourcesDir),
-    generatedDirName,
-  );
+  const cellScan = scanCellSources(walkFiles(sourcesDir), generatedDirName);
 
   // —— 编译期求值（§十二）：含 node_modules 值导入的文件整体求值，导出常量值喂给
   // 编译器内联；求值诊断与 E13 确定性闸门 fail-closed，一次报全部 ——
@@ -106,7 +103,9 @@ export async function buildStories(
   if (compiled.diags.length > 0) {
     throw new StoryBuildError(
       `故事编译失败（${compiled.diags.length} 条）：\n${compiled.diags
-        .map((diag) => `- ${diag.file}:${diag.line}:${diag.col} ${diag.message}`)
+        .map(
+          (diag) => `- ${diag.file}:${diag.line}:${diag.col} ${diag.message}`,
+        )
         .join("\n")}`,
     );
   }
@@ -232,7 +231,12 @@ function readCompiledEntry(
       `${sourceLabel}: 编译器条目 columnId "${entry.columnId}" 不在产物列集中（compileStories 契约破坏）`,
     );
   }
-  if (typeof entry.story.id !== "string" || entry.story.id === "" || typeof entry.story.entry !== "string" || entry.story.entry === "") {
+  if (
+    typeof entry.story.id !== "string" ||
+    entry.story.id === "" ||
+    typeof entry.story.entry !== "string" ||
+    entry.story.entry === ""
+  ) {
     throw new StoryBuildError(
       `${sourceLabel}: 编译器条目 story 缺少 id/entry（compileStories 契约破坏）`,
     );

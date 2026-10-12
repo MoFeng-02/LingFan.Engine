@@ -16,12 +16,22 @@ const manifestText = JSON.stringify(
   2,
 );
 const startText = JSON.stringify(
-  { formatVersion: 1, id: "start", kind: "flow", commands: [{ op: "say", text: "开场" }] },
+  {
+    formatVersion: 1,
+    id: "start",
+    kind: "flow",
+    commands: [{ op: "say", text: "开场" }],
+  },
   null,
   2,
 );
 const tavernText = JSON.stringify(
-  { formatVersion: 1, id: "tavern", kind: "flow", commands: [{ op: "say", text: "酒馆" }] },
+  {
+    formatVersion: 1,
+    id: "tavern",
+    kind: "flow",
+    commands: [{ op: "say", text: "酒馆" }],
+  },
   null,
   2,
 );
@@ -37,7 +47,12 @@ const baseline = (): Map<string, string> =>
 const editedTavern = (text: string) =>
   serializeColumnDocument(
     parseStory(
-      { formatVersion: 1, id: "tavern", kind: "flow", commands: [{ op: "say", text }] },
+      {
+        formatVersion: 1,
+        id: "tavern",
+        kind: "flow",
+        commands: [{ op: "say", text }],
+      },
       "tavern.json",
     ),
     "tavern",
@@ -45,7 +60,9 @@ const editedTavern = (text: string) =>
 
 describe("assembleColumnWrite（单文档写回 → 整工程期望集）", () => {
   it("只改一列 ⇒ 差量恰一项、零删除、清单逐字节不动", () => {
-    const wanted = assembleColumnWrite(baseline(), { files: editedTavern("酒馆改") });
+    const wanted = assembleColumnWrite(baseline(), {
+      files: editedTavern("酒馆改"),
+    });
     const diff = diffProjectFiles(wanted, baseline());
     expect([...diff.changes.keys()]).toEqual(["Stories/tavern.json"]);
     expect(diff.deletes).toEqual([]);
@@ -74,7 +91,12 @@ describe("assembleColumnWrite（单文档写回 → 整工程期望集）", () =
     // 标签 b 随后存：它的期望集 = 新基线 + 自己的改动
     const editedStart = serializeColumnDocument(
       parseStory(
-        { formatVersion: 1, id: "start", kind: "flow", commands: [{ op: "say", text: "开场改" }] },
+        {
+          formatVersion: 1,
+          id: "start",
+          kind: "flow",
+          commands: [{ op: "say", text: "开场改" }],
+        },
         "start.json",
       ),
       "start",
@@ -91,7 +113,9 @@ describe("assembleColumnWrite（单文档写回 → 整工程期望集）", () =
 
   it("显式删除（列被删）才进删除集：不在产物里的列**不会**被顺手删", () => {
     // 产物里没有 start，但没声明删除 ⇒ start 必须保住
-    const wanted = assembleColumnWrite(baseline(), { files: editedTavern("酒馆改") });
+    const wanted = assembleColumnWrite(baseline(), {
+      files: editedTavern("酒馆改"),
+    });
     expect(wanted.has("Stories/start.json")).toBe(true);
     // 显式声明删除 ⇒ 才删
     const removed = assembleColumnWrite(baseline(), {
@@ -121,7 +145,12 @@ describe("assembleColumnWrite（单文档写回 → 整工程期望集）", () =
     // 文档没改，直接保存 ⇒ 差量为空
     const unchanged = serializeColumnDocument(
       parseStory(
-        { formatVersion: 1, id: "tavern", kind: "flow", commands: [{ op: "say", text: "酒馆" }] },
+        {
+          formatVersion: 1,
+          id: "tavern",
+          kind: "flow",
+          commands: [{ op: "say", text: "酒馆" }],
+        },
         "tavern.json",
       ),
       "tavern",

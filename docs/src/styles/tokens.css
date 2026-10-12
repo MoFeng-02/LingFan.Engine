@@ -44,7 +44,6 @@
   --lf-palette-rose-300: #f5b0bd;
   --lf-palette-rose-900: #2f1b22;
 
-
   /* ② 语义层 · 夜幕 */
   --lf-bg: var(--lf-palette-night-950);
   --lf-surface: var(--lf-palette-night-900);
@@ -88,10 +87,12 @@
   --lf-hue-err: 349;
 
   /* ③ 非颜色令牌（两套主题共用） */
-  --lf-font-sans: 'Inter', 'HarmonyOS Sans SC', 'MiSans', 'PingFang SC',
-    'Microsoft YaHei UI', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, sans-serif;
-  --lf-font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, 'Sarasa Mono SC',
-    ui-monospace, monospace;
+  --lf-font-sans:
+    "Inter", "HarmonyOS Sans SC", "MiSans", "PingFang SC", "Microsoft YaHei UI",
+    "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+  --lf-font-mono:
+    "JetBrains Mono", "Cascadia Code", Consolas, "Sarasa Mono SC", ui-monospace,
+    monospace;
 
   --lf-leading: 1.75; /* 中文行高 */
   --lf-leading-tight: 1.2;
@@ -123,7 +124,7 @@
 }
 
 /* 亮色 · 日光舞台：只重绑语义层，非颜色令牌与暗色共用 */
-:root[data-theme='light'] {
+:root[data-theme="light"] {
   /* ① 原始调色板 · 日光 */
   --lf-palette-paper-000: #ffffff;
   --lf-palette-paper-050: #fbfbfd; /* 页面底色 */

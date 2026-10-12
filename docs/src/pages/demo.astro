@@ -1,293 +1,118 @@
 ---
-// /demo/ 内嵌真引擎演示页（一期）：独立路由、不进侧栏（IA 冻结），
-// 样式页内私有（不碰 docs/src/styles 的 D6 预算），脚本懒加载——
-// 下方唯一脚本是引导壳，只做动态 import()；引擎 + 参考展示层进异步 chunk。
-// 本页是自备 <html> 外壳的裸 Astro 页，不挂 Starlight 布局。
+// /demo/ 内嵌真引擎演示页：独立路由、不进侧栏（IA 冻结）。
+// 外壳、页头导航、主题/语言切换与 head 元信息复用 DemoShell，
+// 演示台皮肤在 DemoSkin；页面自身不再出现颜色字面量。
+// 本页唯一脚本是引导壳，只做动态 import()——引擎与展示层进异步 chunk。
+import DemoShell from '../components/demo/DemoShell.astro';
+import DemoSkin from '../components/demo/DemoSkin.astro';
 const base = import.meta.env.BASE_URL;
 ---
 
-<!doctype html>
-<html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>内嵌引擎 demo · 灵泛引擎</title>
-    <meta
-      name="description"
-      content="在文档站里直接运行灵泛引擎：story DSL → 组装 → 引擎 → 叙事覆盖层，源码与预览实时互切。"
-    />
-    <style is:global>
-      /* —— 页面外壳（demo 页私有）—— */
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        background: #0f1117;
-        color: #c8d3f5;
-        font: 15px/1.7 system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
-      }
-      #lf-demo { max-width: 900px; margin: 0 auto; padding: 28px 20px 56px; }
-      #lf-demo h1 { margin: 0 0 6px; font-size: 24px; color: #e6ecff; }
-      #lf-demo .lf-lede { margin: 0 0 20px; color: #9aa5ce; }
-      #lf-demo h1 .lf-chip,
-      .lf-chip {
-        display: inline-block;
-        margin-left: 8px;
-        padding: 2px 10px;
-        border-radius: 999px;
-        border: 1px solid #3b4261;
-        background: #161926;
-        color: #7aa2f7;
-        font-size: 12px;
-        font-weight: 400;
-        vertical-align: middle;
-      }
-      .lf-btn {
-        padding: 7px 14px;
-        border-radius: 8px;
-        border: 1px solid #3b4261;
-        background: #161926;
-        color: #c8d3f5;
-        font: inherit;
-        font-size: 14px;
-        cursor: pointer;
-      }
-      .lf-btn:hover { border-color: #7aa2f7; }
-      .lf-btn[aria-pressed="true"] {
-        border-color: #7aa2f7;
-        background: #1e2438;
-        color: #e6ecff;
-      }
-      .lf-btn:disabled { opacity: 0.45; cursor: default; }
-      .lf-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-      .lf-row + .lf-row { margin-top: 10px; }
-      .lf-row-label { color: #9aa5ce; font-size: 13px; margin-right: 2px; }
-      #lf-demo-stage {
-        margin-top: 14px;
-        height: 440px;
-        border: 1px solid #2f3549;
-        border-radius: 12px;
-        overflow: hidden;
-        background: #10131c;
-      }
-      #lf-demo-preview { position: relative; height: 100%; outline: none; cursor: pointer; }
-      #lf-demo-source {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 12px;
-        background: #0d1017;
-      }
-      #lf-demo-source[hidden] { display: none; }
-      .lf-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
-      .lf-pane[hidden] { display: none; }
-      .lf-pane-head { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #9aa5ce; }
-      .lf-dirty { color: #e0af68; }
-      .lf-readonly { color: #7aa2f7; }
-      .lf-pane textarea {
-        flex: 1;
-        min-height: 0;
-        width: 100%;
-        resize: none;
-        border: 1px solid #2f3549;
-        border-radius: 8px;
-        background: #10131c;
-        color: #c8d3f5;
-        font: 13px/1.6 Consolas, ui-monospace, monospace;
-        padding: 10px 12px;
-      }
-      .lf-pane textarea:focus { outline: none; border-color: #7aa2f7; }
-      .lf-errors {
-        margin: 0;
-        padding: 8px 12px;
-        max-height: 96px;
-        overflow: auto;
-        border: 1px solid #f7768e;
-        border-radius: 8px;
-        background: rgba(247, 118, 142, 0.12);
-        color: #f7768e;
-        font-size: 13px;
-        font-family: Consolas, ui-monospace, monospace;
-      }
-      .lf-errors:empty { display: none; }
-      #lf-status {
-        margin: 12px 2px 0;
-        min-height: 1.6em;
-        color: #9aa5ce;
-        font-size: 13px;
-      }
-      #lf-demo footer {
-        margin-top: 18px;
-        padding-top: 14px;
-        border-top: 1px solid #2f3549;
-        color: #9aa5ce;
-        font-size: 13px;
-      }
-      #lf-demo footer a { color: #7aa2f7; text-decoration: none; }
-      #lf-demo footer a:hover { text-decoration: underline; }
+<DemoShell
+  lang="zh"
+  path="demo/"
+  zhPath="demo/"
+  title="内嵌引擎 demo · 灵泛引擎"
+  description="在文档站里直接运行灵泛引擎：story DSL → 组装 → 引擎 → 叙事覆盖层，源码与预览实时互切。"
+  t={{
+    skip: '跳到正文',
+    navLabel: '页面导航',
+    docsHome: '文档首页',
+    themeLabel: '切换主题',
+    dark: '深色',
+    light: '浅色',
+    langLabel: '切换语言',
+    menuLabel: '菜单',
+    menu: [
+      { href: `${base}introduction/`, label: '快速上手' },
+      { href: `${base}guides/dialogue/`, label: '对话指南' },
+      { href: `${base}reference/ops/`, label: '指令参考' },
+    ],
+  }}
+>
+  <DemoSkin />
+  <main id="lf-demo" class="lf-page">
+    <h1>内嵌引擎 demo<span class="lf-chip">真引擎 · 本页运行</span></h1>
+    <p class="lf-lede">
+      这一页把灵泛引擎本体（组装器 + StoryEngine + 叙事覆盖层）直接嵌进了文档站：
+      预览态跑的就是 <code>assembleProject → StoryEngine → createNarrativeOverlay</code> 这条真实链路；
+      源码态可以改 story DSL 或 JSON，手动应用后引擎整体重建。
+    </p>
 
-      /* —— 叙事覆盖层最小皮肤（骨架类名由装配器给出；宿主可换自己的样式）—— */
-      .lf-dialogue {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-end;
-        padding: 0 24px 64px;
-      }
-      .lf-dialogue .lf-speaker { margin: 0 0 6px; font-weight: 600; font-size: 14px; color: #e6ecff; }
-      .lf-dialogue .lf-text {
-        margin: 0;
-        padding: 14px 18px;
-        border-radius: 12px;
-        background: rgba(16, 19, 28, 0.9);
-        border: 1px solid #2f3549;
-        font-size: 16px;
-        line-height: 1.7;
-        min-height: 1.7em;
-        color: #c8d3f5;
-      }
-      .lf-dialogue .lf-hint { align-self: flex-end; margin-top: 6px; color: #7aa2f7; font-size: 13px; }
-      .lf-choices {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        gap: 10px;
-      }
-      .lf-choices .lf-prompt { margin: 0 0 6px; font-size: 15px; color: #e6ecff; }
-      .lf-choices .lf-choice-row { display: flex; flex-direction: column; gap: 10px; }
-      .lf-choices button {
-        min-width: 240px;
-        padding: 10px 18px;
-        border-radius: 10px;
-        border: 1px solid #3b4261;
-        background: rgba(26, 27, 38, 0.94);
-        color: #c8d3f5;
-        font: inherit;
-        font-size: 15px;
-        cursor: pointer;
-      }
-      .lf-choices button:hover { border-color: #7aa2f7; background: rgba(41, 46, 66, 0.96); }
-      .lf-choices input {
-        width: 280px;
-        padding: 10px 14px;
-        border-radius: 10px;
-        border: 1px solid #3b4261;
-        background: rgba(16, 19, 28, 0.94);
-        color: #e6ecff;
-        font: inherit;
-        font-size: 15px;
-      }
-      .lf-choices input:focus { outline: none; border-color: #7aa2f7; }
-      .lf-notifications {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 8px;
-        padding: 14px;
-      }
-      .lf-notifications > div {
-        padding: 8px 14px;
-        border-radius: 999px;
-        background: rgba(26, 27, 38, 0.94);
-        border: 1px solid #3b4261;
-        font-size: 13px;
-        color: #c8d3f5;
-      }
-      .lf-notifications .tpl-notify-warning { border-color: #e0af68; color: #e0af68; }
-      .lf-notifications .tpl-notify-error { border-color: #f7768e; color: #f7768e; }
-    </style>
-  </head>
-  <body>
-    <main id="lf-demo">
-      <h1>内嵌引擎 demo<span class="lf-chip">真引擎 · 本页运行</span></h1>
-      <p class="lf-lede">
-        这一页把灵泛引擎本体（组装器 + StoryEngine + 叙事覆盖层）直接嵌进了文档站：
-        预览态跑的就是 <code>assembleProject → StoryEngine → createNarrativeOverlay</code> 这条真实链路；
-        源码态可以改 story DSL 或 JSON，手动应用后引擎整体重建。
-      </p>
+    <div class="lf-row">
+      <span class="lf-row-label">内置故事：</span>
+      <button class="lf-btn" id="lf-story-greeting" type="button" aria-pressed="false">迎宾与变量</button>
+      <button class="lf-btn" id="lf-story-crossroads" type="button" aria-pressed="false">岔路与菜单</button>
+      <button class="lf-btn" id="lf-story-tour" type="button" aria-pressed="false">三列速览</button>
+    </div>
+    <div class="lf-row">
+      <span class="lf-row-label">视图：</span>
+      <button class="lf-btn" id="lf-mode-preview" type="button" aria-pressed="true">预览</button>
+      <button class="lf-btn" id="lf-mode-source" type="button" aria-pressed="false">源码</button>
+    </div>
 
-      <div class="lf-row">
-        <span class="lf-row-label">内置故事：</span>
-        <button class="lf-btn" id="lf-story-greeting" type="button" aria-pressed="false">迎宾与变量</button>
-        <button class="lf-btn" id="lf-story-crossroads" type="button" aria-pressed="false">岔路与菜单</button>
-        <button class="lf-btn" id="lf-story-tour" type="button" aria-pressed="false">三列速览</button>
-      </div>
-      <div class="lf-row">
-        <span class="lf-row-label">视图：</span>
-        <button class="lf-btn" id="lf-mode-preview" type="button" aria-pressed="true">预览</button>
-        <button class="lf-btn" id="lf-mode-source" type="button" aria-pressed="false">源码</button>
-      </div>
+    <div id="lf-demo-stage">
+      <div id="lf-demo-preview" tabindex="0" aria-label="叙事预览区。点击或按空格推进对话。"></div>
+      <div id="lf-demo-source" hidden>
+        <div class="lf-row" role="group" aria-label="源码视图切换">
+          <button class="lf-btn" id="lf-tab-story" type="button" aria-pressed="true">story DSL</button>
+          <button class="lf-btn" id="lf-tab-json" type="button" aria-pressed="false">JSON</button>
+          <button class="lf-btn" id="lf-tab-ts" type="button" aria-pressed="false">TS</button>
+        </div>
 
-      <div id="lf-demo-stage">
-        <div id="lf-demo-preview" tabindex="0" aria-label="叙事预览区。点击或按空格推进对话。"></div>
-        <div id="lf-demo-source" hidden>
-          <div class="lf-row" role="group" aria-label="源码视图切换">
-            <button class="lf-btn" id="lf-tab-story" type="button" aria-pressed="true">story DSL</button>
-            <button class="lf-btn" id="lf-tab-json" type="button" aria-pressed="false">JSON</button>
-            <button class="lf-btn" id="lf-tab-ts" type="button" aria-pressed="false">TS</button>
+        <div class="lf-pane" id="lf-pane-story">
+          <div class="lf-pane-head">
+            <button class="lf-btn" id="lf-regen-story" type="button">⟳ 重新生成</button>
+            <span id="lf-dirty-story" class="lf-dirty" hidden>未应用改动</span>
+            <span style="flex: 1"></span>
+            <button class="lf-btn" id="lf-apply-story" type="button" disabled>✓ 应用</button>
           </div>
+          <ul class="lf-errors" id="lf-err-story"></ul>
+          <textarea id="lf-text-story" spellcheck="false" aria-label="story DSL 编辑区"></textarea>
+        </div>
 
-          <div class="lf-pane" id="lf-pane-story">
-            <div class="lf-pane-head">
-              <button class="lf-btn" id="lf-regen-story" type="button">⟳ 重新生成</button>
-              <span id="lf-dirty-story" class="lf-dirty" hidden>未应用改动</span>
-              <span style="flex: 1"></span>
-              <button class="lf-btn" id="lf-apply-story" type="button" disabled>✓ 应用</button>
-            </div>
-            <ul class="lf-errors" id="lf-err-story"></ul>
-            <textarea id="lf-text-story" spellcheck="false" aria-label="story DSL 编辑区"></textarea>
+        <div class="lf-pane" id="lf-pane-json" hidden>
+          <div class="lf-pane-head">
+            <button class="lf-btn" id="lf-regen-json" type="button">⟳ 重新生成</button>
+            <span id="lf-dirty-json" class="lf-dirty" hidden>未应用改动</span>
+            <span style="flex: 1"></span>
+            <button class="lf-btn" id="lf-apply-json" type="button" disabled>✓ 应用</button>
           </div>
+          <ul class="lf-errors" id="lf-err-json"></ul>
+          <textarea id="lf-text-json" spellcheck="false" aria-label="故事 JSON 编辑区"></textarea>
+        </div>
 
-          <div class="lf-pane" id="lf-pane-json" hidden>
-            <div class="lf-pane-head">
-              <button class="lf-btn" id="lf-regen-json" type="button">⟳ 重新生成</button>
-              <span id="lf-dirty-json" class="lf-dirty" hidden>未应用改动</span>
-              <span style="flex: 1"></span>
-              <button class="lf-btn" id="lf-apply-json" type="button" disabled>✓ 应用</button>
-            </div>
-            <ul class="lf-errors" id="lf-err-json"></ul>
-            <textarea id="lf-text-json" spellcheck="false" aria-label="故事 JSON 编辑区"></textarea>
+        <div class="lf-pane" id="lf-pane-ts" hidden>
+          <div class="lf-pane-head">
+            <span class="lf-readonly">查看形态 · 不可编辑</span>
           </div>
-
-          <div class="lf-pane" id="lf-pane-ts" hidden>
-            <div class="lf-pane-head">
-              <span class="lf-readonly">查看形态 · 不可编辑</span>
-            </div>
-            <textarea id="lf-text-ts" readonly spellcheck="false" aria-label="故事 TS 形态（只读）"></textarea>
-          </div>
+          <textarea id="lf-text-ts" readonly spellcheck="false" aria-label="故事 TS 形态（只读）"></textarea>
         </div>
       </div>
+    </div>
 
-      <p id="lf-status" role="status"></p>
-      <p class="lf-lede" style="margin-top: 0">
-        操作提示：点击预览区获得焦点后按任意键推进对话；遇到菜单/输入用鼠标点选。
-        源码态的「应用」会走完整重组装——解析失败只会列出问题，当前运行不受影响。
-      </p>
+    <p id="lf-status" role="status"></p>
+    <p class="lf-lede" style="margin-top: 0">
+      操作提示：点击预览区获得焦点后按任意键推进对话；遇到菜单/输入用鼠标点选。
+      源码态的「应用」会走完整重组装——解析失败只会列出问题，当前运行不受影响。
+    </p>
 
-      <footer>
-        <a href={`${base}/`}>文档首页</a> · <a href={`${base}introduction/`}>返回文档</a>
-        · 本页为站内演示，不进导航侧栏。
-      </footer>
-    </main>
+    <footer>
+      <a href={base}>文档首页</a> · <a href={`${base}introduction/`}>返回文档</a>
+      · 本页为站内演示，不进导航侧栏。
+    </footer>
+  </main>
 
-    <script>
-      // 引导壳（懒加载唯一入口）：引擎与 UI 只从这里进异步 chunk。
-      import("../demo/app")
-        .then((mod) => {
-          mod.initDemo();
-        })
-        .catch((error: unknown) => {
-          console.error(error);
-          const status = document.getElementById("lf-status");
-          if (status !== null) status.textContent = `demo 模块加载失败：${String(error)}`;
-        });
-    </script>
-  </body>
-</html>
+  <script>
+    // 引导壳（懒加载唯一入口）：引擎与 UI 只从这里进异步 chunk。
+    import("../demo/app")
+      .then((mod) => {
+        mod.initDemo();
+      })
+      .catch((error: unknown) => {
+        console.error(error);
+        const status = document.getElementById("lf-status");
+        if (status !== null) status.textContent = `demo 模块加载失败：${String(error)}`;
+      });
+  </script>
+</DemoShell>

@@ -11,12 +11,7 @@
 
 /** 具体宿主系统（`unknown` = 无壳浏览器形态等拿不到编译期平台的场景） */
 export type HostOs =
-  | "windows"
-  | "macos"
-  | "linux"
-  | "android"
-  | "ios"
-  | "unknown";
+  "windows" | "macos" | "linux" | "android" | "ios" | "unknown";
 
 /** 宿主形态：desktop = 桌面/浏览器（有窗口、无方向语义）；mobile = 触屏整窗应用 */
 export type HostForm = "desktop" | "mobile";
@@ -46,4 +41,3 @@ export const HOST_OS_VALUES: readonly HostOs[] = [
   "ios",
   "unknown",
 ];
-

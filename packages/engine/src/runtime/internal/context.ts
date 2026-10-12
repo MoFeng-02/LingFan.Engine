@@ -64,11 +64,7 @@ export interface OpContext {
   /** 推进 iterate 型循环到下一轮（含作用域重建） */
   beginLoopIteration(frame: Frame, loop: LoopState): boolean;
   /** 压入 iterate 型循环帧（for / foreach 共用） */
-  pushIterateLoop(
-    frame: Frame,
-    cmd: StoryCommand,
-    items: ExprValue[],
-  ): boolean;
+  pushIterateLoop(frame: Frame, cmd: StoryCommand, items: ExprValue[]): boolean;
   /** 按列 id 取列定义 */
   columnById(id: string): StoryColumn | undefined;
   /** 当前列帧（自栈顶向下第一个列帧） */
@@ -92,7 +88,9 @@ export interface OpContext {
   /** 读变量：未定义即抛 ExpressionError */
   readVariable(key: string): ExprValue;
   /** 名称解析（作用域链 → 全局键 → 点路径下钻） */
-  resolveName: (name: string) => { found: true; value: unknown } | { found: false };
+  resolveName: (
+    name: string,
+  ) => { found: true; value: unknown } | { found: false };
   /** 确定性随机 [0,1) */
   draw(): number;
   /** 随机数状态（进快照，重放序列必然一致） */
@@ -153,10 +151,11 @@ export interface OpContext {
   inputStore: string | null;
   /** 清掉等待定时器 */
   clearTimer(): void;
-  /** 中断所有外部接管（小游戏 / 玩法系统），UI 据此卸载 */
+  /** 中断所有外部接管（小游戏 / 玩法系统 / 扩展 op 等待），UI 据此卸载 */
   abortExternalTakeovers(): void;
   abortInteraction(): void;
   abortMinigame(): void;
+  abortExtensionOp(): void;
   interactionSeq: number;
   interactionController: AbortController | null;
   pendingInteraction: {
@@ -171,6 +170,14 @@ export interface OpContext {
     onSuccess?: string;
     onFail?: string;
     reward: { key: string; value: unknown }[];
+  } | null;
+  extensionWaitSeq: number;
+  extensionController: AbortController | null;
+  pendingExtensionOp: {
+    op: string;
+    extensionId: string;
+    onSuccess?: string;
+    onFail?: string;
   } | null;
 
   // —— 媒体与动画序号 ——
@@ -190,7 +197,9 @@ export interface OpContext {
   /** 按目标选择器找元素 */
   findElements(target: string): ElementInstance[];
   /** 递归映射元素树 */
-  mapElements(mapper: (el: ElementInstance) => ElementInstance): ElementInstance[];
+  mapElements(
+    mapper: (el: ElementInstance) => ElementInstance,
+  ): ElementInstance[];
 
   // —— i18n ——
 

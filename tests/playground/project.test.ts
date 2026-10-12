@@ -35,10 +35,7 @@ const STORY_MODULES = {
 };
 
 function logicalPath(globKey: string): string {
-  return globKey.replace(
-    "../../apps/playground/Resources/",
-    "",
-  );
+  return globKey.replace("../../apps/playground/Resources/", "");
 }
 
 const FILES: Record<string, string> = Object.fromEntries(
@@ -100,9 +97,7 @@ describe("示例工程防腐", () => {
     expect(block, "未在 main.ts 中找到 STORIES 清单").toBeDefined();
     const declared = [...String(block).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
     expect(declared.length).toBeGreaterThan(0); // 防提取失效空跑
-    expect([...declared].sort()).toEqual(
-      Object.keys(FILES).sort(),
-    );
+    expect([...declared].sort()).toEqual(Object.keys(FILES).sort());
   });
 
   it("文本投影（projectText）对示例工程不抛错：编辑器文本模式打开真实工程不崩", () => {

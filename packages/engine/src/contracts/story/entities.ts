@@ -7,7 +7,14 @@
 import type { ProjectShellConfig } from "../shell";
 import type { ElementNode } from "../element";
 
-/** 命令：已知 op 的负载由解析器/执行器窄化校验，未知字段/未知 op fail-closed */
+/**
+ * 命令：已知 op 的负载由解析器/执行器窄化校验，未知字段/未知 op fail-closed。
+ *
+ * 开放索引签名 = 契约的「只增不改」形态：新增可选字段（如 `call` 的
+ * `into` 结果绑定名、`return` 的 `value` 返回值）登记在各 op 的校验面
+ * （`data/format/validate`）与 editor schema（`CommandOf` 负载类型），
+ * 接口本身不收窄。
+ */
 export interface StoryCommand {
   op: string;
   [field: string]: unknown;

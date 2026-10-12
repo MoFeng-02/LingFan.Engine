@@ -43,7 +43,10 @@ const emit = defineEmits<{
   /** 跳到某语言的某张译文表 */
   (e: "open", path: string): void;
   /** 生成骨架（宿主落盘；本组件不写文件） */
-  (e: "generate", request: { lang: string; layout: SkeletonLayoutChoice }): void;
+  (
+    e: "generate",
+    request: { lang: string; layout: SkeletonLayoutChoice },
+  ): void;
 }>();
 
 const dialog = useDialog();
@@ -60,7 +63,9 @@ function firstPathOf(lang: string): string | undefined {
 const overview = computed(() =>
   workbenchOverview(
     props.sources,
-    Object.fromEntries(props.langs.map((l) => [l.lang, [...l.files.values()].flat()])),
+    Object.fromEntries(
+      props.langs.map((l) => [l.lang, [...l.files.values()].flat()]),
+    ),
   ),
 );
 
@@ -85,7 +90,8 @@ async function onGenerate(): Promise<void> {
   if (props.langs.some((l) => l.lang === lang)) {
     const ok = await dialog.askConfirm({
       title: `语言「${lang}」已存在`,
-      message: "仍要生成骨架吗？已有译文会被保留（增量模式），但可能覆盖同名文件。",
+      message:
+        "仍要生成骨架吗？已有译文会被保留（增量模式），但可能覆盖同名文件。",
       danger: true,
     });
     if (!ok) return;
@@ -111,13 +117,19 @@ function open(lang: string): void {
     <!-- 空语言：不是"没有数据"而是"还没建语言" ⇒ 给主动作 -->
     <div v-if="overview.coverages.length === 0" class="wb-empty">
       <p class="wb-empty-title">尚未建立任何语言</p>
-      <p class="wb-empty-hint">在下方填写语言码，生成译文表骨架后即可开始翻译。</p>
+      <p class="wb-empty-hint">
+        在下方填写语言码，生成译文表骨架后即可开始翻译。
+      </p>
     </div>
 
     <ul v-else class="wb-langs">
       <li v-for="c in overview.coverages" :key="c.lang" class="wb-lang">
         <div class="wb-lang-row">
-          <button class="wb-lang-name" :title="`打开 ${c.lang} 的译文表`" @click="open(c.lang)">
+          <button
+            class="wb-lang-name"
+            :title="`打开 ${c.lang} 的译文表`"
+            @click="open(c.lang)"
+          >
             {{ c.lang }}
           </button>
           <span
@@ -127,7 +139,9 @@ function open(lang: string): void {
           >
             {{ coverageWeightedPercentOf(c) }}
           </span>
-          <span class="wb-state">{{ coverageLabelOf(coverageStateOf(c)) }}</span>
+          <span class="wb-state">{{
+            coverageLabelOf(coverageStateOf(c))
+          }}</span>
           <span class="wb-count">{{ c.translated }}/{{ c.total }}</span>
           <button
             v-if="c.missing.length > 0"
@@ -138,10 +152,19 @@ function open(lang: string): void {
             {{ expanded === c.lang ? "收起" : "缺译" }}
           </button>
         </div>
-        <ul v-if="expanded === c.lang && c.missing.length > 0" class="wb-missing">
+        <ul
+          v-if="expanded === c.lang && c.missing.length > 0"
+          class="wb-missing"
+        >
           <li v-for="k in c.missing" :key="k" class="wb-missing-item">
             <span class="wb-key">{{ k }}</span>
-            <button class="mini" title="打开该语言的译文表" @click="open(c.lang)">去译</button>
+            <button
+              class="mini"
+              title="打开该语言的译文表"
+              @click="open(c.lang)"
+            >
+              去译
+            </button>
           </li>
         </ul>
         <p v-if="c.unused.length > 0" class="wb-unused">
@@ -151,7 +174,8 @@ function open(lang: string): void {
     </ul>
 
     <p v-if="overview.unusedAll.length > 0" class="wb-unused-all">
-      全部语言合计多译 {{ overview.unusedAll.length }} 条 —— 与诊断面板的「未使用的译文键」同源。
+      全部语言合计多译 {{ overview.unusedAll.length }} 条 ——
+      与诊断面板的「未使用的译文键」同源。
     </p>
 
     <!-- 骨架生成 -->

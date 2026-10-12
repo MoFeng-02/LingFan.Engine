@@ -59,7 +59,10 @@ export class Workspace {
   private active: DocumentPath | undefined;
   private readonly listeners = new Set<DocumentsListener>();
 
-  constructor(seeds: readonly DocumentSeed[] = [], private readonly capacity = 50) {
+  constructor(
+    seeds: readonly DocumentSeed[] = [],
+    private readonly capacity = 50,
+  ) {
     for (const seed of seeds) this.open(seed.path, seed.kind, seed.story);
   }
 
@@ -114,7 +117,11 @@ export class Workspace {
       this.docs.delete(evictable.path);
       if (this.active === evictable.path) this.active = undefined;
     }
-    const doc: EditorDocument = { path, kind, session: new EditorSession(story) };
+    const doc: EditorDocument = {
+      path,
+      kind,
+      session: new EditorSession(story),
+    };
     this.docs.set(path, doc);
     this.active = path;
     this.notify();

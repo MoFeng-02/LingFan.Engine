@@ -12,7 +12,10 @@ import { GenerateContext } from "../context";
  * 失败表现：字段无法投影（缺字符串、字典字段缺失等）时抛 `TextFormatError`，不是静默跳过——
  * 由上层按命令粒度捕获后降级为 issue，使整棵树的其余部分照常输出。
  */
-export function generateDialogCommand(cmd: StoryCommand, c: GenerateContext): void {
+export function generateDialogCommand(
+  cmd: StoryCommand,
+  c: GenerateContext,
+): void {
   const { pad, out } = c;
   switch (cmd.op) {
     case "say": {

@@ -24,7 +24,8 @@ export function checkFreeIdentifiers(
       ts.isClassDeclaration(node) ||
       ts.isMethodDeclaration(node)
     ) {
-      if (node.name !== undefined && ts.isIdentifier(node.name)) allowed.add(node.name.text);
+      if (node.name !== undefined && ts.isIdentifier(node.name))
+        allowed.add(node.name.text);
     }
     if (ts.isIdentifier(node)) {
       const parent = node.parent;
@@ -60,7 +61,8 @@ export function adjustSpecifier(
   specifier: string,
   fromDir: string,
 ): string | null {
-  if (!specifier.startsWith("./") && !specifier.startsWith("../")) return specifier;
+  if (!specifier.startsWith("./") && !specifier.startsWith("../"))
+    return specifier;
   const segments: string[] = [];
   for (const part of `${fromDir}/${specifier}`.split("/")) {
     if (part === "" || part === ".") continue;
@@ -113,7 +115,10 @@ export function collectFileImports(
       }
       if (adjusted !== raw.text) {
         const rawQuoted = text.slice(raw.getStart(sf), raw.getEnd());
-        adjustedText = adjustedText.replace(rawQuoted, JSON.stringify(adjusted));
+        adjustedText = adjustedText.replace(
+          rawQuoted,
+          JSON.stringify(adjusted),
+        );
       }
     }
     statements.push({ adjustedText, bindings });

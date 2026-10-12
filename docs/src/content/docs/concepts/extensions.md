@@ -19,7 +19,11 @@ export default {
         const key = String(cmd.key ?? "");
         const delta = Number(cmd.delta ?? 0);
         if (key === "" || !Number.isFinite(delta)) {
-          return { ok: false, code: "affinity-invalid", message: "affinity_add 需要 key 与 delta" };
+          return {
+            ok: false,
+            code: "affinity-invalid",
+            message: "affinity_add 需要 key 与 delta",
+          };
         }
         const current = Number(ctx.get(`value.${key}`) ?? 0);
         ctx.set(`value.${key}`, current + delta);
@@ -32,11 +36,11 @@ export default {
 
 ## 三个字段
 
-| 字段 | 作用 |
-|---|---|
-| `id` | 稳定标识。小写字母开头，小写字母/数字/`_`/`-`，最长 32 字符 |
-| `stateVersion` | 状态结构版本，正整数。跟代码版本不是一回事 |
-| `ops` | 提供的自定义 op 列表，可选 |
+| 字段           | 作用                                                        |
+| -------------- | ----------------------------------------------------------- |
+| `id`           | 稳定标识。小写字母开头，小写字母/数字/`_`/`-`，最长 32 字符 |
+| `stateVersion` | 状态结构版本，正整数。跟代码版本不是一回事                  |
+| `ops`          | 提供的自定义 op 列表，可选                                  |
 
 `id` 会写进存档——存档记着「这份档用了哪些扩展、各是什么状态版本」。
 
@@ -44,12 +48,12 @@ export default {
 
 `ops` 里每个定义：
 
-| 字段 | 作用 |
-|---|---|
-| `op` | 故事里写的命令名 |
+| 字段             | 作用                                                          |
+| ---------------- | ------------------------------------------------------------- |
+| `op`             | 故事里写的命令名                                              |
 | `exec(cmd, ctx)` | 执行体，返回 `{ ok: true }` 或 `{ ok: false, code, message }` |
-| `project` | 可选，文本写法的投影，见下 |
-| `schema` | 可选，给编辑器用的表单声明。引擎不解释 |
+| `project`        | 可选，文本写法的投影，见下                                    |
+| `schema`         | 可选，给编辑器用的表单声明。引擎不解释                        |
 
 ## 登记与装载
 
@@ -69,7 +73,10 @@ export default {
 ```ts
 import { loadDeclaredExtensions } from "@lingfan/engine";
 
-const extensions = await loadDeclaredExtensions(manifest.extensions, (specifier) => import(specifier));
+const extensions = await loadDeclaredExtensions(
+  manifest.extensions,
+  (specifier) => import(specifier),
+);
 const engine = new StoryEngine(story, { savePort, extensions });
 ```
 
@@ -89,14 +96,14 @@ const engine = new StoryEngine(story, { savePort, extensions });
 
 引擎构造时校验扩展，出问题直接抛错，故事跑不起来：
 
-| 情况 | 报什么 |
-|---|---|
-| `id` 不合法 | `扩展 id 不合法：Affinity（须匹配 /^[a-z][a-z0-9_-]{0,31}$/）` |
-| 同一个 `id` 注册两次 | `扩展 id 重复注册：affinity` |
-| `stateVersion` 不是正整数 | `扩展 affinity 的 stateVersion 不合法：0（须为正整数）` |
-| op 名跟内建撞了 | `扩展 affinity 的 op「say」与内建 op 冲突（内建不可覆盖）` |
-| op 名跟别的扩展撞了 | `扩展 affinity 的 op「draw」与其他扩展重复` |
-| 没写 `exec` | `扩展 affinity 的 op「draw」缺少 exec` |
+| 情况                      | 报什么                                                         |
+| ------------------------- | -------------------------------------------------------------- |
+| `id` 不合法               | `扩展 id 不合法：Affinity（须匹配 /^[a-z][a-z0-9_-]{0,31}$/）` |
+| 同一个 `id` 注册两次      | `扩展 id 重复注册：affinity`                                   |
+| `stateVersion` 不是正整数 | `扩展 affinity 的 stateVersion 不合法：0（须为正整数）`        |
+| op 名跟内建撞了           | `扩展 affinity 的 op「say」与内建 op 冲突（内建不可覆盖）`     |
+| op 名跟别的扩展撞了       | `扩展 affinity 的 op「draw」与其他扩展重复`                    |
+| 没写 `exec`               | `扩展 affinity 的 op「draw」缺少 exec`                         |
 
 内建永远赢。你想覆盖 `say` 的行为，改不了。
 
@@ -171,22 +178,20 @@ JSON 形态直接写：
 
 ```json
 {
-  "extensions": [
-    { "id": "affinity", "stateVersion": 1 }
-  ]
+  "extensions": [{ "id": "affinity", "stateVersion": 1 }]
 }
 ```
 
 读档时引擎逐个核对：
 
-| 情况 | 结果 |
-|---|---|
-| 扩展没注册 | 整档拒绝：`存档依赖的扩展未注册：「affinity」。请安装并启用该扩展后再读档` |
-| 档的状态版本比扩展旧，扩展有 `migrate` | 调用 `migrate` 迁移，成功后提示「扩展「affinity」状态已从 v1 迁移到 v2」 |
-| 档的状态版本比扩展旧，`migrate` 返回 `null` | 整档拒绝：`扩展「affinity」无法从状态版本 v1 迁移到 v2，存档被拒绝` |
-| 档的状态版本比扩展旧，扩展没有 `migrate` | 整档拒绝：`存档依赖扩展「affinity」的状态版本 v1，当前注册版本为 v2（存档过新或缺少迁移路径），存档被拒绝` |
-| 档的状态版本比扩展新 | 同上，拒绝 |
-| 扩展的 `restore` 返回 `false` | 整档拒绝：`扩展「affinity」读档恢复失败（restore 返回 false），存档被拒绝` |
+| 情况                                        | 结果                                                                                                       |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 扩展没注册                                  | 整档拒绝：`存档依赖的扩展未注册：「affinity」。请安装并启用该扩展后再读档`                                 |
+| 档的状态版本比扩展旧，扩展有 `migrate`      | 调用 `migrate` 迁移，成功后提示「扩展「affinity」状态已从 v1 迁移到 v2」                                   |
+| 档的状态版本比扩展旧，`migrate` 返回 `null` | 整档拒绝：`扩展「affinity」无法从状态版本 v1 迁移到 v2，存档被拒绝`                                        |
+| 档的状态版本比扩展旧，扩展没有 `migrate`    | 整档拒绝：`存档依赖扩展「affinity」的状态版本 v1，当前注册版本为 v2（存档过新或缺少迁移路径），存档被拒绝` |
+| 档的状态版本比扩展新                        | 同上，拒绝                                                                                                 |
+| 扩展的 `restore` 返回 `false`               | 整档拒绝：`扩展「affinity」读档恢复失败（restore 返回 false），存档被拒绝`                                 |
 
 没用到扩展的存档不带这段，装了扩展的引擎照样能读——不会误判。
 

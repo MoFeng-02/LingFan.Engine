@@ -11,10 +11,12 @@ function collectStyleSheets(): {
   loaded: number;
   links: { href: string; loaded: boolean }[];
 } {
-  const links = [...document.querySelectorAll('link[rel="stylesheet"]')].map((node) => {
-    const link = node as HTMLLinkElement;
-    return { href: link.href.slice(-70), loaded: link.sheet !== null };
-  });
+  const links = [...document.querySelectorAll('link[rel="stylesheet"]')].map(
+    (node) => {
+      const link = node as HTMLLinkElement;
+      return { href: link.href.slice(-70), loaded: link.sheet !== null };
+    },
+  );
   return {
     count: document.styleSheets.length,
     loaded: links.filter((l) => l.loaded).length,
@@ -54,12 +56,20 @@ export function snapshot(phase: string): void {
       .map(({ el, cs }) => {
         const rect = el.getBoundingClientRect();
         return {
-          key: el.id || String(el.className).slice(0, 30) || el.tagName.toLowerCase(),
+          key:
+            el.id ||
+            String(el.className).slice(0, 30) ||
+            el.tagName.toLowerCase(),
           z: cs.zIndex,
           pos: cs.position,
           // 背景色：舞台层到底「什么都没画」还是「画了透明的东西」，只能看这个
           bg: cs.backgroundColor,
-          rect: [Math.round(rect.x), Math.round(rect.y), Math.round(rect.width), Math.round(rect.height)],
+          rect: [
+            Math.round(rect.x),
+            Math.round(rect.y),
+            Math.round(rect.width),
+            Math.round(rect.height),
+          ],
           vis: cs.visibility,
           op: cs.opacity,
         };
@@ -69,7 +79,10 @@ export function snapshot(phase: string): void {
     const sheets = collectStyleSheets();
     const win: [number, number] = [window.innerWidth, window.innerHeight];
     const visual: [number, number] | null = window.visualViewport
-      ? [Math.round(window.visualViewport.width), Math.round(window.visualViewport.height)]
+      ? [
+          Math.round(window.visualViewport.width),
+          Math.round(window.visualViewport.height),
+        ]
       : null;
     const appRect: [number, number] | null = appBox
       ? [Math.round(appBox.width), Math.round(appBox.height)]

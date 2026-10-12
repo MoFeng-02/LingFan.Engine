@@ -121,29 +121,38 @@ export function func(
  * 参数个数对不上报错停机。
  * @param target 子过程名或目标列名。
  * @param args 实参列表（字面量或 `"{expr}"` 表达式串，按位绑定）。
+ * @param into 结果绑定名：被调过程 {@link ret} 带值返回时，把返回值
+ *   声明为调用方作用域里的这个局部变量；过程正常跑完没有 ret 带值时绑定为
+ *   `null`（与表达式内建的缺失语义同族）。不带 `into` 时返回值被静默丢弃。
  * @returns `call` 故事命令。
  * @example
  * call("greet", ["阿岚"]);
+ * call("greet", ["阿岚"], "greeting");
  */
 export function call(
   target: string,
   args?: readonly ScriptValue[],
+  into?: string,
 ): CommandOf<"call"> {
   return {
     op: "call",
     target,
     ...(args === undefined ? {} : { args: [...args] }),
+    ...(into === undefined ? {} : { into }),
   };
 }
 
 /**
  * 从子过程返回到调用点。在子过程（func 体）之外使用报错停机。
+ * @param value 可选返回值（字面量或 `"{expr}"` 表达式串）：带 `into`
+ *   的调用点会把它绑定成局部变量，其余调用点丢弃。
  * @returns `return` 故事命令。
  * @example
  * func("early", [], [when(cond`hp <= 0`, [ret()]), say("继续")]);
+ * func("level", ["exp"], [ret(`Math.floor(exp / 100)`)]);
  */
-export function ret(): CommandOf<"return"> {
-  return { op: "return" };
+export function ret(value?: ScriptValue): CommandOf<"return"> {
+  return { op: "return", ...(value === undefined ? {} : { value }) };
 }
 
 // —— 条件分支（双入口）——

@@ -43,7 +43,8 @@ const ORDER_NEEDLES = [
   "engine.back()",
   "engine.forward()",
   'keyMatches("advance"',
-  'interactions.set("walk"',
+  // walk 工厂的注册调用（prettier 可把实参折行，锚调用名而非完整调用）
+  "interactions.set(",
   'payload.kind === "interaction.mount"',
   'inputScope.set("world")',
   'inputScope.set("dialogue")',
@@ -106,7 +107,16 @@ describe("域值收窄与状态：非法值不猜、同值不重通知", () => {
   it("只认三个声明值", () => {
     expect(INPUT_SCOPES).toEqual(["dialogue", "world", "ui"]);
     for (const ok of INPUT_SCOPES) expect(isInputScope(ok)).toBe(true);
-    for (const bad of ["", "DIALOGUE", "World", "game", null, undefined, 1, {}]) {
+    for (const bad of [
+      "",
+      "DIALOGUE",
+      "World",
+      "game",
+      null,
+      undefined,
+      1,
+      {},
+    ]) {
       expect(isInputScope(bad)).toBe(false);
     }
   });
@@ -138,7 +148,13 @@ describe("域值收窄与状态：非法值不猜、同值不重通知", () => {
 
 describe("选择器契约：四类关键项在场（防选择器被改窄而静默失效）", () => {
   it("含原生输入控件与 UI 容器标记", () => {
-    for (const token of ["input", "textarea", "select", "contenteditable", "data-ui-zone"]) {
+    for (const token of [
+      "input",
+      "textarea",
+      "select",
+      "contenteditable",
+      "data-ui-zone",
+    ]) {
       expect(GAME_INPUT_BLOCKED_SELECTOR).toContain(token);
     }
   });
@@ -189,8 +205,10 @@ describe("组合根接线：滚轮与键盘都先过判据，再谈游戏动作"
 
 describe("UI 容器标记：工具条与三个面板都覆盖（新增面板需同步打标）", () => {
   it("工具条、历史/设置/槽位面板均带 data-ui-zone", () => {
-    expect(appSource).toContain('class="toolbar" data-ui-zone');
-    expect(appSource).toContain('class="history-panel saves-panel" data-ui-zone');
+    expect(appSource).toMatch(/class="toolbar"\s+data-ui-zone/);
+    expect(appSource).toMatch(
+      /class="history-panel saves-panel"\s+data-ui-zone/,
+    );
     const marks = appSource.match(/data-ui-zone/g) ?? [];
     expect(marks.length).toBeGreaterThanOrEqual(4); // toolbar + 历史 + 设置 + 槽位
   });
@@ -207,7 +225,8 @@ describe("共享宿主类名随接管卸载移除（回归：残留类会让已�
 
   it("两个类都在收尾处被移除（加了几次就摘几次）", () => {
     const adds = appVueText.match(/host\.classList\.add\("([a-z-]+)"\)/g) ?? [];
-    const removes = appVueText.match(/host\.classList\.remove\("([a-z-]+)"\)/g) ?? [];
+    const removes =
+      appVueText.match(/host\.classList\.remove\("([a-z-]+)"\)/g) ?? [];
     expect(removes.length).toBeGreaterThanOrEqual(adds.length);
     for (const add of adds) {
       const cls = /"([a-z-]+)"/.exec(add)![1];
@@ -217,8 +236,11 @@ describe("共享宿主类名随接管卸载移除（回归：残留类会让已�
 
   it("walk 的类移除以宿主收口为唯一处（不在工厂内分两处写）", () => {
     // 工厂内只 add 不 remove：移除归宿主 onAbort（覆盖「抵达」与「中断」两条路径）
-    const factoryAt = appVueText.indexOf('interactions.set("walk"');
-    const hostAbortAt = appVueText.indexOf('payload.kind === "interaction.mount"');
+    // 锚调用名（interactions.set(）：prettier 可把实参 "walk" 折到下一行
+    const factoryAt = appVueText.indexOf("interactions.set(");
+    const hostAbortAt = appVueText.indexOf(
+      'payload.kind === "interaction.mount"',
+    );
     expect(factoryAt).toBeGreaterThan(-1);
     // 两条判据同在 App.vue 且有序；切片非空 = 判据之间确有工厂体（防拼接面假绿）
     expect(hostAbortAt).toBeGreaterThan(factoryAt);

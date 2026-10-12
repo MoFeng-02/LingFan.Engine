@@ -33,14 +33,26 @@ const TOKEN_BYTES = 16;
 /** 单次请求体上限（外部打开只发路径，不发内容 ⇒ 极小） */
 const MAX_BODY = 8 * 1024;
 
-function json(res: { writeHead: (code: number, headers: Record<string, string>) => void; end: (body: string) => void }, code: number, body: unknown): void {
+function json(
+  res: {
+    writeHead: (code: number, headers: Record<string, string>) => void;
+    end: (body: string) => void;
+  },
+  code: number,
+  body: unknown,
+): void {
   const text = JSON.stringify(body);
-  res.writeHead(code, { "content-type": "application/json; charset=utf-8", "content-length": Buffer.byteLength(text).toString() });
+  res.writeHead(code, {
+    "content-type": "application/json; charset=utf-8",
+    "content-length": Buffer.byteLength(text).toString(),
+  });
   res.end(text);
 }
 
 /** 收集请求体（带上限，超限即拒） */
-function readBody(req: { on: (e: string, cb: (chunk?: unknown) => void) => void }): Promise<string> {
+function readBody(req: {
+  on: (e: string, cb: (chunk?: unknown) => void) => void;
+}): Promise<string> {
   return new Promise((resolvePromise) => {
     let size = 0;
     let text = "";
@@ -71,7 +83,9 @@ const EDITORS: readonly { cmd: string; args: (file: string) => string[] }[] = [
 /** 监听端口：开发期固定（Vite 代理要指向它）；`0` = 内核分配（生产期用） */
 const PORT = Number(process.env.LFEN_EDITOR_HOST_PORT ?? 14250);
 
-export async function startHost(root: string): Promise<{ server: Server; capabilities: HostCapabilities }> {
+export async function startHost(
+  root: string,
+): Promise<{ server: Server; capabilities: HostCapabilities }> {
   const token = tokenHex(randomBytes(TOKEN_BYTES));
   // 监视源根（dev 工具；失败不阻断服务启动 ⇒ 降级为「无热重载」）
   const watcher = startWatcher(root);
@@ -95,7 +109,8 @@ export async function startHost(root: string): Promise<{ server: Server; capabil
     server.listen(PORT, "127.0.0.1", done);
   });
   const address = server.address();
-  const port = typeof address === "object" && address !== null ? address.port : 0;
+  const port =
+    typeof address === "object" && address !== null ? address.port : 0;
   return {
     server,
     /** 释放监视句柄（进程退出前调；`persistent:false` 时不调也能退） */
@@ -127,7 +142,10 @@ interface HostCtx {
 
 async function handle(
   req: { url?: string; method?: string },
-  res: { writeHead: (code: number, headers: Record<string, string>) => void; end: (body: string) => void },
+  res: {
+    writeHead: (code: number, headers: Record<string, string>) => void;
+    end: (body: string) => void;
+  },
   ctx: HostCtx,
 ): Promise<void> {
   const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -169,7 +187,11 @@ async function handle(
   }
   if (action === "watch") {
     // 只回**变更计数**（单调整数单调递增）：前端轮询对比即可 ⇒ 不必引入 SSE/WebSocket
-    json(res, 200, { revision: ctx.watcher.revision, watching: ctx.watcher.watching, root: ctx.root });
+    json(res, 200, {
+      revision: ctx.watcher.revision,
+      watching: ctx.watcher.watching,
+      root: ctx.root,
+    });
     return;
   }
   json(res, 404, { error: "not found" });
@@ -226,7 +248,10 @@ function startWatcher(root: string): Watcher {
         const relative = relativePathOf(root, join(dir, String(filename)));
         // 该路径本身是**已被单独监视的目录** ⇒ 来自父监视器的重复上报，忽略
         if (watchedDirs.has(relative)) return;
-        const verdict = shouldReloadOn(relative, event === "rename" ? "rename" : "change");
+        const verdict = shouldReloadOn(
+          relative,
+          event === "rename" ? "rename" : "change",
+        );
         if (!verdict.reload) return;
         bump();
       });
@@ -298,7 +323,8 @@ function packBinCandidates(): string[] {
     // 仓库内默认 target（无 CARGO_TARGET_DIR 时的情形）
     resolve(import.meta.dirname ?? ".", "../../playground/src-tauri/target"),
     // 本机开发环境：cargo 的共享 target 目录
-    ...(process.env.CARGO_TARGET_DIR === undefined || process.env.CARGO_TARGET_DIR === ""
+    ...(process.env.CARGO_TARGET_DIR === undefined ||
+    process.env.CARGO_TARGET_DIR === ""
       ? []
       : [resolve(process.env.CARGO_TARGET_DIR)]),
   ];
@@ -347,7 +373,8 @@ async function runPack(args: readonly string[]): Promise<PackResult> {
   return (
     last ?? {
       ok: false,
-      reason: "找不到 lfenpack：请 cargo build --bin lfenpack，或设 LFEN_PACK_BIN 指向可执行文件",
+      reason:
+        "找不到 lfenpack：请 cargo build --bin lfenpack，或设 LFEN_PACK_BIN 指向可执行文件",
     }
   );
 }
@@ -388,7 +415,12 @@ function runPackOnce(
           exitCode: code ?? -1,
           stdout: stdout.slice(-4000),
           stderr: stderr.slice(-4000),
-          ...(code === 0 ? {} : { reason: stderr.trim() || stdout.trim() || `退出码 ${String(code)}` }),
+          ...(code === 0
+            ? {}
+            : {
+                reason:
+                  stderr.trim() || stdout.trim() || `退出码 ${String(code)}`,
+              }),
         },
       });
     });
@@ -408,11 +440,13 @@ function listFiles(root: string): string[] {
       return;
     }
     for (const name of entries.sort()) {
-      if (name.startsWith(".") || name === "node_modules" || name === "target") continue;
+      if (name.startsWith(".") || name === "node_modules" || name === "target")
+        continue;
       const relative = prefix === "" ? name : `${prefix}/${name}`;
       const absolute = join(dir, name);
       try {
-        if (statSync(absolute).isDirectory()) walk(absolute, relative, depth + 1);
+        if (statSync(absolute).isDirectory())
+          walk(absolute, relative, depth + 1);
         else out.push(relative);
       } catch {
         // 读不到（权限/竞态）就跳过，不让整次枚举失败
@@ -424,7 +458,10 @@ function listFiles(root: string): string[] {
 }
 
 /** 外部打开：白名单判据 + realpath 复核 + 只 spawn 已知编辑器 */
-async function openExternal(body: string, root: string): Promise<{ ok: boolean; reason?: string }> {
+async function openExternal(
+  body: string,
+  root: string,
+): Promise<{ ok: boolean; reason?: string }> {
   let relative = "";
   try {
     const parsed: unknown = JSON.parse(body);
@@ -437,7 +474,8 @@ async function openExternal(body: string, root: string): Promise<{ ok: boolean; 
   }
   const verdict = canOpenExternal(relative);
   if (!verdict.ok) return { ok: false, reason: verdict.reason };
-  if (!isInsideRoot(verdict.relative)) return { ok: false, reason: "路径不在工程根内" };
+  if (!isInsideRoot(verdict.relative))
+    return { ok: false, reason: "路径不在工程根内" };
   // 字符串判据**不等于**防符号链接 ⇒ 解析后复核真实路径仍在根内
   const absolute = resolve(root, verdict.relative);
   const realRoot = resolve(root);
@@ -455,6 +493,9 @@ async function openExternal(body: string, root: string): Promise<{ ok: boolean; 
     child.unref();
     return { ok: true };
   } catch (error: unknown) {
-    return { ok: false, reason: `启动 ${editor.cmd} 失败：${error instanceof Error ? error.message : String(error)}` };
+    return {
+      ok: false,
+      reason: `启动 ${editor.cmd} 失败：${error instanceof Error ? error.message : String(error)}`,
+    };
   }
 }

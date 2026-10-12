@@ -13,9 +13,10 @@ export * from "./contracts";
  *
  * 三条「单一事实源」在这里成面，宿主与静态消费者一律从这里取，禁止各自复制：
  * - 壳配置解析（方向默认 / 层 z 表 / 存档壳）：契约与解析同在引擎；
- * - 等待声明表（`WAITING_OPS` / `waitingStateOfOp` / `waitSpecOfOp`）：哪个 op 建立等待点
- *   （= 检查点边界）的唯一判定依据，编辑器步骤视图等静态消费者据此切分，与运行时的一致性
- *   由行为互锁测试守护；
+ * - 等待声明表（`WAITING_OPS` / `waitingStateOfOp` / `waitSpecOfOp` / `collectWaitSpecs`）：
+ *   哪个 op 建立等待点（= 检查点边界）的唯一判定依据，编辑器步骤视图等静态消费者据此切分，
+ *   与运行时的一致性由行为互锁测试守护（扩展 op 的等待声明走 `collectWaitSpecs` 合并面，
+ *   内建表本体不解释扩展）；
  * - 写入契约守卫（`jsonUnsafeReason` / `findJsonValueError`）：宿主、扩展与测试模板写入前断言共用。
  *
  * 表达式求值（`evaluateExpression` / `interpolateText` / `ExpressionError` / `NameResolver`）
@@ -28,6 +29,7 @@ export {
   BUILTIN_OP_NAMES,
   buildOpRegistry,
   collectTextProjections,
+  collectWaitSpecs,
   createStateReader,
   DEFAULT_LAYER_Z,
   DEFAULT_SAVES_CONFIG,
@@ -64,6 +66,7 @@ export {
   type NameResolver,
   type SavesConfig,
   type SavesThumbnailConfig,
+  type WaitSpec,
 } from "./runtime";
 /**
  * 数据层：故事文件解析（JSON v1 / `.story` 混存）、工程组装与写回、文本投影（双向）、

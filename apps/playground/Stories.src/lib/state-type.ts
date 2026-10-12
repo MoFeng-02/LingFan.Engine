@@ -39,7 +39,10 @@ type InferLeaf<L> = L extends "number"
         : never;
 
 /** 单个 schema 值 → TS 类型：descriptor 优先，其次 shorthand 宽类型，嵌套对象递归。 */
-type InferValue<V> = V extends { readonly type: unknown; readonly default: unknown }
+type InferValue<V> = V extends {
+  readonly type: unknown;
+  readonly default: unknown;
+}
   ? InferTypeRef<V["type"]>
   : V extends string
     ? string
@@ -52,4 +55,6 @@ type InferValue<V> = V extends { readonly type: unknown; readonly default: unkno
           : unknown;
 
 /** schema 以 as const 声明（字面量/descriptor 判别需要），但 state 运行期可写——推导全程剥 readonly。 */
-export type InferStateSchema<T> = { -readonly [K in keyof T]: InferValue<T[K]> };
+export type InferStateSchema<T> = {
+  -readonly [K in keyof T]: InferValue<T[K]>;
+};

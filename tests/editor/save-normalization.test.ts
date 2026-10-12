@@ -51,7 +51,9 @@ describe("describeNormalization（save-normalization-notice）", () => {
 
   it("空 finding → 空文案（界面据此不渲染确认区）", () => {
     expect(
-      describeNormalization(detectWriteNormalization(["Stories/a.json"], ["a"])),
+      describeNormalization(
+        detectWriteNormalization(["Stories/a.json"], ["a"]),
+      ),
     ).toEqual([]);
   });
 });

@@ -301,7 +301,9 @@ export const COLUMN_GROUPING_KEY_PREFIX = "lingfan-editor-colgroups:";
  * 分组视图的读写：**任何存储失败都不抛**——读失败 = 空视图（退回平铺），
  * 写失败 = 仅本次会话有效（隐私模式 / 配额满）。编辑器永不因视图偏好而不可用。
  */
-export function createColumnGroupingStore(storage: KeyValueStorage | undefined): {
+export function createColumnGroupingStore(
+  storage: KeyValueStorage | undefined,
+): {
   load(storyId: string): ColumnGroupingView;
   save(storyId: string, view: ColumnGroupingView): void;
 } {

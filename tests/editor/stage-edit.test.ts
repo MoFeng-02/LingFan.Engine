@@ -25,11 +25,7 @@ import {
   validateStory,
   type FieldDescriptor,
 } from "@lingfan/editor";
-import {
-  ELEMENT_ATTRIBUTES,
-  ELEMENT_TYPES,
-  type Story,
-} from "@lingfan/engine";
+import { ELEMENT_ATTRIBUTES, ELEMENT_TYPES, type Story } from "@lingfan/engine";
 import { sampleStory } from "../../apps/editor/src/sample";
 import fieldRowSource from "../../apps/editor/src/components/FieldRow.vue?raw";
 
@@ -313,10 +309,9 @@ describe("字段值落树", () => {
     // 每个实际出现的 kind 都必须在 FieldRow 的 kind 分支里被提到
     // （模板里单/双引号混用，故按「任意引号包裹的字面量」匹配）
     for (const kind of kinds) {
-      expect(
-        fieldRowSource,
-        `FieldRow 未处理 kind: ${kind}`,
-      ).toMatch(new RegExp(`['"]${kind}['"]`));
+      expect(fieldRowSource, `FieldRow 未处理 kind: ${kind}`).toMatch(
+        new RegExp(`['"]${kind}['"]`),
+      );
     }
   });
 });

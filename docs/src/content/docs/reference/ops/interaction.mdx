@@ -3,7 +3,7 @@ title: 交互与小游戏指令
 description: menu、input、minigame、interaction 的签名、参数与常见错误。四条都建立等待点，解除权都不在引擎手里。
 ---
 
-import OpCard from '../../../../components/OpCard.astro';
+import OpCard from "../../../../components/OpCard.astro";
 
 这四条都建立等待点，而且**解除权都在引擎外面**——玩家点选项、玩家敲字、宿主回填结果。引擎写下等待态就停下，等到有人调命令面才继续。
 
@@ -25,11 +25,11 @@ menu "接下来去哪里？"
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `prompt` | string | 可选。菜单提示 |
-| `options` | array | 必填，至少一项。每项 `{ text, target }` |
-| `z` | number | 可选。本次菜单的实例 z（choices 层） |
+| 字段      | 类型   | 说明                                    |
+| --------- | ------ | --------------------------------------- |
+| `prompt`  | string | 可选。菜单提示                          |
+| `options` | array  | 必填，至少一项。每项 `{ text, target }` |
+| `z`       | number | 可选。本次菜单的实例 z（choices 层）    |
 
 **最小示例**
 
@@ -72,11 +72,11 @@ input "密码" store="code" z=20
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `prompt` | string | 必填。输入提示 |
-| `store` | string | 必填。变量名 |
-| `z` | number | 可选。实例 z（choices 层） |
+| 字段     | 类型   | 说明                       |
+| -------- | ------ | -------------------------- |
+| `prompt` | string | 必填。输入提示             |
+| `store`  | string | 必填。变量名               |
+| `z`      | number | 可选。实例 z（choices 层） |
 
 **最小示例**
 
@@ -95,7 +95,7 @@ label ask_name:
 
 **没有选项式输入**。写 `options` 报「.options 选项式输入暂未实现（fail-closed）」，解析层直接拒。三选一请用 `menu`。
 
-解除靠宿主调 `engine.input("阿岚")`。不在输入等待时调用报 `input-invalid`「input 仅在输入等待中有效（当前 __waiting=dialog）」；等待态在但 `store` 丢了报 `input-state-corrupt`「输入等待缺少 store 目标」——后者属于引擎内部不一致，见到就该报障。
+解除靠宿主调 `engine.input("阿岚")`。不在输入等待时调用报 `input-invalid`「input 仅在输入等待中有效（当前 \_\_waiting=dialog）」；等待态在但 `store` 丢了报 `input-state-corrupt`「输入等待缺少 store 目标」——后者属于引擎内部不一致，见到就该报障。
 
 空串是合法的输入值。玩家什么都不填直接确认，写进去的就是 `""`。
 :::
@@ -115,14 +115,14 @@ minigame "fishing" config {difficulty: 2} reward {fish: 1} on_success "caught"
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `game` | string | 必填。小游戏标识 |
-| `config` | object | 可选。原样透传宿主 |
-| `on_success` | string | 可选。成功跳转的目标列 |
-| `on_fail` | string | 可选。失败跳转的目标列 |
-| `reward` | array | 可选。`{key, value}` 键值数组 |
-| `z` | number | 可选。实例 z（minigame 层） |
+| 字段         | 类型   | 说明                          |
+| ------------ | ------ | ----------------------------- |
+| `game`       | string | 必填。小游戏标识              |
+| `config`     | object | 可选。原样透传宿主            |
+| `on_success` | string | 可选。成功跳转的目标列        |
+| `on_fail`    | string | 可选。失败跳转的目标列        |
+| `reward`     | array  | 可选。`{key, value}` 键值数组 |
+| `z`          | number | 可选。实例 z（minigame 层）   |
 
 **最小示例**
 
@@ -166,13 +166,13 @@ label fishing_spot:
 
 **参数**
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `system` | string | 必填。系统标识，写法同 `game` |
-| `config` | object | 可选。原样透传宿主 |
-| `on_success` | string | 可选。目标列 |
-| `on_fail` | string | 可选。目标列 |
-| `z` | number | 可选。实例 z（minigame 层） |
+| 字段         | 类型   | 说明                          |
+| ------------ | ------ | ----------------------------- |
+| `system`     | string | 必填。系统标识，写法同 `game` |
+| `config`     | object | 可选。原样透传宿主            |
+| `on_success` | string | 可选。目标列                  |
+| `on_fail`    | string | 可选。目标列                  |
+| `z`          | number | 可选。实例 z（minigame 层）   |
 
 **最小示例**
 
@@ -212,11 +212,11 @@ label fishing_spot:
 
 **回填的命令面**：
 
-| 等待 | 回填方式 |
-| --- | --- |
-| `menu` | `engine.choose(目标列)` |
-| `input` | `engine.input(值)` |
-| `minigame` | `engine.resolveMinigame(result)` |
+| 等待          | 回填方式                                    |
+| ------------- | ------------------------------------------- |
+| `menu`        | `engine.choose(目标列)`                     |
+| `input`       | `engine.input(值)`                          |
+| `minigame`    | `engine.resolveMinigame(result)`            |
 | `interaction` | `engine.resolveInteraction(system, result)` |
 
 在错误的等待态调用一律 fail-closed，报各自的 `*-invalid`，不写入、不推进。

@@ -54,13 +54,13 @@ describe("Workspace · 多文档会话", () => {
     // 保存 a：钉住基线 ⇒ a 干净，b 仍脏
     docA.session.markSaved();
     expect(ws.dirtyPaths).toEqual(["Stories/b.json"]);
-    expect(ws.get("Stories/a.json")!.session.story.columns[0].commands).toEqual([
-      { op: "say", text: "甲改" },
-    ]);
+    expect(ws.get("Stories/a.json")!.session.story.columns[0].commands).toEqual(
+      [{ op: "say", text: "甲改" }],
+    );
     // 关键：b 的内容没被 a 的保存牵连
-    expect(ws.get("Stories/b.json")!.session.story.columns[0].commands).toEqual([
-      { op: "say", text: "乙改" },
-    ]);
+    expect(ws.get("Stories/b.json")!.session.story.columns[0].commands).toEqual(
+      [{ op: "say", text: "乙改" }],
+    );
   });
 
   it("拟态旅程：撤销历史各自独立（一个标签里撤销不会动另一个）", () => {
@@ -81,7 +81,11 @@ describe("Workspace · 多文档会话", () => {
     const ws = new Workspace();
     const first = ws.open("Stories/a.json", "story", storyOf("a", "甲"));
     first.session.commit("改", storyOf("a", "甲改"));
-    const again = ws.open("Stories/a.json", "story", storyOf("a", "另一个旧副本"));
+    const again = ws.open(
+      "Stories/a.json",
+      "story",
+      storyOf("a", "另一个旧副本"),
+    );
     expect(again).toBe(first);
     expect(ws.documents).toHaveLength(1);
     // 未保存的改动没被"重新打开"冲掉
@@ -131,9 +135,9 @@ describe("Workspace · 多文档会话", () => {
     // 两个都脏 ⇒ 再开必须拒绝
     ws.get("Stories/b.json")!.session.commit("改", storyOf("b", "乙改"));
     ws.get("Stories/c.json")!.session.commit("改", storyOf("c", "丙改"));
-    expect(() => ws.open("Stories/d.json", "story", storyOf("d", "丁"))).toThrow(
-      /上限 2/,
-    );
+    expect(() =>
+      ws.open("Stories/d.json", "story", storyOf("d", "丁")),
+    ).toThrow(/上限 2/);
     expect(ws.documents).toHaveLength(2);
   });
 
@@ -199,7 +203,9 @@ describe("Workspace · 结构刷新（replaceClean）", () => {
     const doc = ws.open("Stories/a.json", "story", storyOf("a", "甲"));
     const ok = ws.replaceClean("Stories/a.json", storyOf("a", "甲-重切"));
     expect(ok).toBe(true);
-    expect(doc.session.story.columns[0].commands).toEqual([{ op: "say", text: "甲-重切" }]);
+    expect(doc.session.story.columns[0].commands).toEqual([
+      { op: "say", text: "甲-重切" },
+    ]);
     expect(doc.session.dirty).toBe(false);
     // 关键：结构刷新不是用户编辑 ⇒ 撤销栈必须仍为空
     expect(doc.session.canUndo).toBe(false);
@@ -212,16 +218,22 @@ describe("Workspace · 结构刷新（replaceClean）", () => {
     doc.session.commit("改", storyOf("a", "甲改"));
     const ok = ws.replaceClean("Stories/a.json", storyOf("a", "被覆盖"));
     expect(ok).toBe(false);
-    expect(doc.session.story.columns[0].commands).toEqual([{ op: "say", text: "甲改" }]);
+    expect(doc.session.story.columns[0].commands).toEqual([
+      { op: "say", text: "甲改" },
+    ]);
     expect(doc.session.dirty).toBe(true);
     // 仍可撤销回原处
     doc.session.undo();
-    expect(doc.session.story.columns[0].commands).toEqual([{ op: "say", text: "甲" }]);
+    expect(doc.session.story.columns[0].commands).toEqual([
+      { op: "say", text: "甲" },
+    ]);
   });
 
   it("未打开的路径：拒绝（不静默新建）", () => {
     const ws = new Workspace();
-    expect(ws.replaceClean("Stories/nope.json", storyOf("a", "甲"))).toBe(false);
+    expect(ws.replaceClean("Stories/nope.json", storyOf("a", "甲"))).toBe(
+      false,
+    );
     expect(ws.documents).toEqual([]);
   });
 
@@ -231,10 +243,14 @@ describe("Workspace · 结构刷新（replaceClean）", () => {
     const b = ws.open("Stories/b.json", "story", storyOf("b", "乙"));
     b.session.commit("改乙", storyOf("b", "乙改"));
     // a 干净 ⇒ 可刷新；b 脏 ⇒ 跳过（其改动保住）
-    expect(ws.replaceClean("Stories/a.json", storyOf("a", "甲-重切"))).toBe(true);
-    expect(ws.replaceClean("Stories/b.json", storyOf("b", "乙-重切"))).toBe(false);
-    expect(ws.get("Stories/b.json")!.session.story.columns[0].commands).toEqual([
-      { op: "say", text: "乙改" },
-    ]);
+    expect(ws.replaceClean("Stories/a.json", storyOf("a", "甲-重切"))).toBe(
+      true,
+    );
+    expect(ws.replaceClean("Stories/b.json", storyOf("b", "乙-重切"))).toBe(
+      false,
+    );
+    expect(ws.get("Stories/b.json")!.session.story.columns[0].commands).toEqual(
+      [{ op: "say", text: "乙改" }],
+    );
   });
 });

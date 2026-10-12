@@ -17,7 +17,9 @@ const LAST_PROJECT_KEY = "last";
  * 存储里取回的值未必仍是目录句柄（版本迁移 / 外部写入 / 平台不支持句柄持久化），
  * 用结构校验挡住：形状不符即当没存过。这是**唯一**的句柄形状校验点。
  */
-function isDirectoryHandleLike(value: unknown): value is FileSystemDirectoryHandle {
+function isDirectoryHandleLike(
+  value: unknown,
+): value is FileSystemDirectoryHandle {
   return (
     typeof value === "object" &&
     value !== null &&

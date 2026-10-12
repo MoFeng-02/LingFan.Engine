@@ -98,7 +98,10 @@ function makeMarkedSave(stateVersion = 1): {
   expect(data).not.toBeNull();
   off();
   engine.dispose();
-  return { data: data as SaveDataV1, raw: structuredClone(data) as unknown as Record<string, unknown> };
+  return {
+    data: data as SaveDataV1,
+    raw: structuredClone(data) as unknown as Record<string, unknown>,
+  };
 }
 
 /** 普通旅程存档（无扩展依赖标记）：gold = 10、历史 1 项、停在「二」 */
@@ -110,7 +113,10 @@ function makePlainSave(): { data: SaveDataV1; raw: Record<string, unknown> } {
   expect(data).not.toBeNull();
   off();
   engine.dispose();
-  return { data: data as SaveDataV1, raw: structuredClone(data) as unknown as Record<string, unknown> };
+  return {
+    data: data as SaveDataV1,
+    raw: structuredClone(data) as unknown as Record<string, unknown>,
+  };
 }
 
 describe("存档扩展依赖标记", () => {
@@ -149,7 +155,9 @@ describe("存档扩展依赖标记", () => {
     expect(
       revived.engine.importSave(JSON.parse(JSON.stringify(data)) as SaveDataV1),
     ).toBe(false);
-    expect(revived.errors.some((e) => e.code === "extension-missing")).toBe(true);
+    expect(revived.errors.some((e) => e.code === "extension-missing")).toBe(
+      true,
+    );
     expect(revived.engine.get("ext.demo.runs")).toBeUndefined(); // 状态原样
     expect(revived.engine.historyView().length).toBe(historyBefore);
     expect(revived.engine.get("__current_dialog_text")).toBe("一"); // 等待点原样：拒绝不损伤会话
@@ -162,7 +170,9 @@ describe("存档扩展依赖标记", () => {
     raw.extensions = [{ id: "demo", stateVersion: 2 }]; // 档 v2 vs 引擎 v1（无迁移路径）
     const revived = makeEngine([demoExtension()]);
     expect(revived.engine.importSave(raw as unknown as SaveDataV1)).toBe(false);
-    expect(revived.errors.some((e) => e.code === "extension-version")).toBe(true);
+    expect(revived.errors.some((e) => e.code === "extension-version")).toBe(
+      true,
+    );
     revived.off();
     revived.engine.dispose();
   });
@@ -185,12 +195,14 @@ describe("存档扩展依赖标记", () => {
       {},
     );
     expect(
-      upgraded.engine.importSave(JSON.parse(JSON.stringify(data)) as SaveDataV1),
+      upgraded.engine.importSave(
+        JSON.parse(JSON.stringify(data)) as SaveDataV1,
+      ),
     ).toBe(true);
     expect(upgraded.engine.get("ext.demo.runs")).toBe(10); // 迁移后的值落回前缀命名空间
-    expect(upgraded.notices.some((t) => t.includes("demo") && t.includes("v2"))).toBe(
-      true,
-    );
+    expect(
+      upgraded.notices.some((t) => t.includes("demo") && t.includes("v2")),
+    ).toBe(true);
     upgraded.off();
     upgraded.engine.dispose();
   });
@@ -198,17 +210,20 @@ describe("存档扩展依赖标记", () => {
   it("migrate 返回 null / 抛出 → extension-version 整档拒绝（状态原样）", () => {
     const { raw } = makeMarkedSave(1);
     raw.extensions = [{ id: "demo", stateVersion: 1 }];
-    const nullMigrate = makeEngine([
-      demoExtension({ migrate: () => null }, 2),
-    ]);
-    expect(nullMigrate.engine.importSave(structuredClone(raw) as unknown as SaveDataV1)).toBe(false);
-    expect(nullMigrate.errors.some((e) => e.code === "extension-version")).toBe(true);
+    const nullMigrate = makeEngine([demoExtension({ migrate: () => null }, 2)]);
+    expect(
+      nullMigrate.engine.importSave(
+        structuredClone(raw) as unknown as SaveDataV1,
+      ),
+    ).toBe(false);
+    expect(nullMigrate.errors.some((e) => e.code === "extension-version")).toBe(
+      true,
+    );
     nullMigrate.off();
     nullMigrate.engine.dispose();
     const throwMigrate = makeEngine([
       demoExtension(
         {
-           
           migrate: () => {
             throw new Error("扩展迁移炸了");
           },
@@ -216,8 +231,14 @@ describe("存档扩展依赖标记", () => {
         2,
       ),
     ]);
-    expect(throwMigrate.engine.importSave(structuredClone(raw) as unknown as SaveDataV1)).toBe(false);
-    expect(throwMigrate.errors.some((e) => e.code === "extension-version")).toBe(true);
+    expect(
+      throwMigrate.engine.importSave(
+        structuredClone(raw) as unknown as SaveDataV1,
+      ),
+    ).toBe(false);
+    expect(
+      throwMigrate.errors.some((e) => e.code === "extension-version"),
+    ).toBe(true);
     throwMigrate.off();
     throwMigrate.engine.dispose();
   });
@@ -238,7 +259,9 @@ describe("存档扩展依赖标记", () => {
         revived.engine.importSave(payload as unknown as SaveDataV1),
         `坏载荷 #${String(i)}`,
       ).toBe(false);
-      expect(revived.errors.at(-1)?.code, `坏载荷 #${String(i)}`).toBe("save-format");
+      expect(revived.errors.at(-1)?.code, `坏载荷 #${String(i)}`).toBe(
+        "save-format",
+      );
       revived.off();
       revived.engine.dispose();
     }
@@ -250,21 +273,28 @@ describe("存档扩展依赖标记", () => {
     const refused = makeEngine([demoExtension({ restore: () => false })]);
     refused.engine.start();
     const historyBefore = refused.engine.historyView().length;
-    expect(refused.engine.importSave(structuredClone(raw) as unknown as SaveDataV1)).toBe(false);
-    expect(refused.errors.some((e) => e.code === "extension-restore")).toBe(true);
+    expect(
+      refused.engine.importSave(structuredClone(raw) as unknown as SaveDataV1),
+    ).toBe(false);
+    expect(refused.errors.some((e) => e.code === "extension-restore")).toBe(
+      true,
+    );
     expect(refused.engine.historyView().length).toBe(historyBefore); // 状态原样
     refused.off();
     refused.engine.dispose();
     const thrown = makeEngine([
       demoExtension({
-         
         restore: () => {
           throw new Error("restore 炸了");
         },
       }),
     ]);
-    expect(thrown.engine.importSave(structuredClone(raw) as unknown as SaveDataV1)).toBe(false);
-    expect(thrown.errors.some((e) => e.code === "extension-restore")).toBe(true);
+    expect(
+      thrown.engine.importSave(structuredClone(raw) as unknown as SaveDataV1),
+    ).toBe(false);
+    expect(thrown.errors.some((e) => e.code === "extension-restore")).toBe(
+      true,
+    );
     thrown.off();
     thrown.engine.dispose();
   });
@@ -272,7 +302,9 @@ describe("存档扩展依赖标记", () => {
   it("读档后依赖标记随档继承（再存档不丢依赖）", () => {
     const { data } = makeMarkedSave();
     const revived = makeEngine([demoExtension()]);
-    expect(revived.engine.importSave(JSON.parse(JSON.stringify(data)) as SaveDataV1)).toBe(true);
+    expect(
+      revived.engine.importSave(JSON.parse(JSON.stringify(data)) as SaveDataV1),
+    ).toBe(true);
     const resaved = revived.engine.exportSave();
     expect(resaved?.extensions).toEqual([{ id: "demo", stateVersion: 1 }]);
     revived.off();
@@ -283,10 +315,15 @@ describe("存档扩展依赖标记", () => {
 describe("存档向后兼容", () => {
   it("a) 缺 cursor 的旧档 → 回默认最近检查点且回溯可用，不得 NaN；空历史落 -1（无检查点语义）", () => {
     const { data } = makePlainSave(); // history 1 项、cursor 0
-    const noCursor = JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
+    const noCursor = JSON.parse(JSON.stringify(data)) as Record<
+      string,
+      unknown
+    >;
     delete noCursor.cursor;
     const revived = makeEngine([], {}, PLAIN_JOURNEY);
-    expect(revived.engine.importSave(noCursor as unknown as SaveDataV1)).toBe(true);
+    expect(revived.engine.importSave(noCursor as unknown as SaveDataV1)).toBe(
+      true,
+    );
     revived.engine.rollbackTo(0); // 回溯可用（cursor 回默认最近检查点，非 NaN）
     expect(revived.engine.get("gold")).toBeUndefined(); // 回到检查点 0（set 之前）
     revived.off();
@@ -298,10 +335,15 @@ describe("存档向后兼容", () => {
     expect(empty?.history).toHaveLength(0);
     freshOff();
     fresh.dispose();
-    const emptyNoCursor = JSON.parse(JSON.stringify(empty)) as Record<string, unknown>;
+    const emptyNoCursor = JSON.parse(JSON.stringify(empty)) as Record<
+      string,
+      unknown
+    >;
     delete emptyNoCursor.cursor;
     const revivedEmpty = makeEngine([], {}, PLAIN_JOURNEY);
-    expect(revivedEmpty.engine.importSave(emptyNoCursor as unknown as SaveDataV1)).toBe(true);
+    expect(
+      revivedEmpty.engine.importSave(emptyNoCursor as unknown as SaveDataV1),
+    ).toBe(true);
     revivedEmpty.off();
     revivedEmpty.engine.dispose();
   });
@@ -318,11 +360,15 @@ describe("存档向后兼容", () => {
 
   it("b) 缺 history[].state / rngState → save-format（而非恢复期 TypeError）", () => {
     const { raw } = makePlainSave();
-    const history = structuredClone(raw.history) as Array<Record<string, unknown>>;
+    const history = structuredClone(raw.history) as Array<
+      Record<string, unknown>
+    >;
     delete (history[0] as Record<string, unknown>).state;
     const noState = { ...structuredClone(raw), history };
     const revived = makeEngine([], {}, PLAIN_JOURNEY);
-    expect(revived.engine.importSave(noState as unknown as SaveDataV1)).toBe(false);
+    expect(revived.engine.importSave(noState as unknown as SaveDataV1)).toBe(
+      false,
+    );
     expect(revived.errors.at(-1)?.code).toBe("save-format");
     revived.off();
     revived.engine.dispose();
@@ -332,7 +378,9 @@ describe("存档向后兼容", () => {
       history: [{ ...history[0], state: [], rngState: "x" }],
     };
     const revived2 = makeEngine([], {}, PLAIN_JOURNEY);
-    expect(revived2.engine.importSave(badRng as unknown as SaveDataV1)).toBe(false);
+    expect(revived2.engine.importSave(badRng as unknown as SaveDataV1)).toBe(
+      false,
+    );
     expect(revived2.errors.at(-1)?.code).toBe("save-format");
     revived2.off();
     revived2.engine.dispose();
@@ -342,14 +390,18 @@ describe("存档向后兼容", () => {
     const { raw } = makePlainSave();
     const nanRng = { ...structuredClone(raw), rngState: Number.NaN };
     const revived = makeEngine([], {}, PLAIN_JOURNEY);
-    expect(revived.engine.importSave(nanRng as unknown as SaveDataV1)).toBe(false);
+    expect(revived.engine.importSave(nanRng as unknown as SaveDataV1)).toBe(
+      false,
+    );
     expect(revived.errors.at(-1)?.code).toBe("save-format");
     revived.off();
     revived.engine.dispose();
     const nanIndex = structuredClone(raw) as Record<string, unknown>;
     (nanIndex.coord as Record<string, unknown>).index = Number.NaN;
     const revived2 = makeEngine([], {}, PLAIN_JOURNEY);
-    expect(revived2.engine.importSave(nanIndex as unknown as SaveDataV1)).toBe(false);
+    expect(revived2.engine.importSave(nanIndex as unknown as SaveDataV1)).toBe(
+      false,
+    );
     expect(revived2.errors.at(-1)?.code).toBe("save-format");
     revived2.off();
     revived2.engine.dispose();
@@ -361,7 +413,9 @@ describe("存档向后兼容", () => {
     delete minimal.title; // 可选字段缺席（旧档形态）
     delete minimal.screenshot;
     const revived = makeEngine([], {}, PLAIN_JOURNEY);
-    expect(revived.engine.importSave(minimal as unknown as SaveDataV1)).toBe(true);
+    expect(revived.engine.importSave(minimal as unknown as SaveDataV1)).toBe(
+      true,
+    );
     revived.off();
     revived.engine.dispose();
     const futuristic = {
@@ -369,7 +423,9 @@ describe("存档向后兼容", () => {
       futureField: { whatever: true }, // 未来版本新增字段：旧引擎忽略不拒
     };
     const revived2 = makeEngine([], {}, PLAIN_JOURNEY);
-    expect(revived2.engine.importSave(futuristic as unknown as SaveDataV1)).toBe(true);
+    expect(
+      revived2.engine.importSave(futuristic as unknown as SaveDataV1),
+    ).toBe(true);
     revived2.off();
     revived2.engine.dispose();
   });
@@ -378,7 +434,9 @@ describe("存档向后兼容", () => {
     const { raw } = makePlainSave();
     const v2 = { ...structuredClone(raw), formatVersion: 2 };
     const strict = makeEngine([], {}, PLAIN_JOURNEY);
-    expect(strict.engine.importSave(structuredClone(v2) as unknown as SaveDataV1)).toBe(false);
+    expect(
+      strict.engine.importSave(structuredClone(v2) as unknown as SaveDataV1),
+    ).toBe(false);
     const strictMsg = strict.errors.at(-1)?.message ?? "";
     expect(strictMsg).toContain("v2");
     expect(strictMsg).toContain("migrateSave"); // 文案可操作：给出迁移路径
@@ -395,22 +453,27 @@ describe("存档向后兼容", () => {
       },
       PLAIN_JOURNEY,
     );
-    expect(migrating.engine.importSave(structuredClone(v2) as unknown as SaveDataV1)).toBe(true);
-    expect(migrating.notices.some((t) => t.includes("v2") && t.includes("v1"))).toBe(true);
+    expect(
+      migrating.engine.importSave(structuredClone(v2) as unknown as SaveDataV1),
+    ).toBe(true);
+    expect(
+      migrating.notices.some((t) => t.includes("v2") && t.includes("v1")),
+    ).toBe(true);
     migrating.off();
     migrating.engine.dispose();
 
     const throwing = makeEngine(
       [],
       {
-         
         migrateSave: () => {
           throw new Error("钩子炸了");
         },
       },
       PLAIN_JOURNEY,
     );
-    expect(throwing.engine.importSave(structuredClone(v2) as unknown as SaveDataV1)).toBe(false);
+    expect(
+      throwing.engine.importSave(structuredClone(v2) as unknown as SaveDataV1),
+    ).toBe(false);
     expect(throwing.errors.at(-1)?.code).toBe("save-format"); // 可操作拒绝而非异常外泄
     throwing.off();
     throwing.engine.dispose();

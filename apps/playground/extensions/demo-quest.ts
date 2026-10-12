@@ -7,6 +7,11 @@
  * 状态进 SSOT ⇒ 随快照/存档/回溯随行。执行不抛（fail-closed 返回失败结果，与引擎同一约束）。
  * 编辑器未注册 schema ⇒ 编辑器按 unknown-op 口径报（与引擎一致，不假红）。
  *
+ * op `quest_gate` = 会等待的扩展 op（扩展等待能力的演示 op，`wait: true` 声明位）：
+ * exec 同步纯返回等待请求 `{ok:"wait", config}` ⇒ 引擎建立等待点、出站 `extension.mount`，
+ * 宿主（App.vue）展示关闭式覆盖层，「确认」→ `resolveExtensionOp` 解除继续走列。
+ * 未声明 `wait: true` 却返回等待结果 ⇒ fail-closed：`custom-op-wait-undeclared` 停机。
+ *
  * id 取 `demoquest`（无连字符）：**插值 `{ext.<id>.<key>}` 的名字段不含连字符**——
  * 带连字符的 id 写得出状态却插不进台词，任务进度要在画面上看到就得用它。
  */
@@ -29,6 +34,28 @@ const extension: OpExtension = {
         }
         ctx.set("step", step);
         return { ok: true };
+      },
+    },
+    {
+      op: "quest_gate",
+      wait: true,
+      exec: (cmd, ctx) => {
+        // 展示负载由宿主解释（覆盖层标题/详情）；state 一并带出当前任务进度
+        const title = cmd.title;
+        if (typeof title !== "string" || title === "") {
+          return {
+            ok: false,
+            code: "quest-gate-bad-title",
+            message: "quest_gate 需要 title 为非空字符串",
+          };
+        }
+        return {
+          ok: "wait",
+          config: {
+            title,
+            detail: `当前进度：${String(ctx.get("step") ?? "未接取")}`,
+          },
+        };
       },
     },
   ],

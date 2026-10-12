@@ -1,7 +1,11 @@
 import { join } from "node:path";
 import ts from "typescript";
 import { walkFiles } from "../shared";
-import { CONFIG_FILE, loadStoryConfig, type StorySourceConfig } from "../config";
+import {
+  CONFIG_FILE,
+  loadStoryConfig,
+  type StorySourceConfig,
+} from "../config";
 import { StoryBuildError } from "../shared";
 
 /**
@@ -57,14 +61,17 @@ export async function discoverSources(
   // —— E07：覆盖外 default 导出（含转发形态；纯模块无 default 不受影响；
   // 根级 config.ts 自身的 default 是布局声明，豁免）——
   const uncoveredDefaults = probe.filter(
-    (rel) => rel !== CONFIG_FILE && !isCovered(rel) && classifyDefault(tree.get(rel)!) !== "none",
+    (rel) =>
+      rel !== CONFIG_FILE &&
+      !isCovered(rel) &&
+      classifyDefault(tree.get(rel)!) !== "none",
   );
   if (uncoveredDefaults.length > 0) {
     throw new StoryBuildError(
       [
         "以下文件含 default 导出但未被 folders 覆盖——Stories.src 全量管理构建产物，未登记的故事会在构建时被当作陈旧产物删除：",
         ...uncoveredDefaults.map((rel) => `- ${sourcesDirName}/${rel}`),
-        "请把所在目录加入 config.ts 的 folders（或使用 \"*\" 兜底）。",
+        '请把所在目录加入 config.ts 的 folders（或使用 "*" 兜底）。',
       ].join("\n"),
     );
   }
@@ -118,14 +125,18 @@ function fileNameOf(rel: string): string {
 }
 
 /** 编译域目录集：显式 folders ∪（含 "*" 时全树含 .ts 的目录），始终排除生成物目录前缀。 */
-function collectCoveredDirs(config: StorySourceConfig, tree: ReadonlyMap<string, string>): Set<string> {
+function collectCoveredDirs(
+  config: StorySourceConfig,
+  tree: ReadonlyMap<string, string>,
+): Set<string> {
   const dirs = new Set<string>();
   for (const folder of config.folders) {
     if (folder !== "*") dirs.add(folder);
   }
   if (config.folders.includes("*")) {
     for (const rel of tree.keys()) {
-      if (!rel.endsWith(".ts") || rel.startsWith("gen/") || rel === CONFIG_FILE) continue;
+      if (!rel.endsWith(".ts") || rel.startsWith("gen/") || rel === CONFIG_FILE)
+        continue;
       const dir = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
       if (dir !== "" && !dir.startsWith("gen/")) dirs.add(dir);
     }
@@ -143,7 +154,12 @@ type DefaultVerdict = "story" | "none" | "bad";
  * 具名 function 声明 / 具名转发 → "story"；匿名、类、表达式 → "bad"（E05）；无 default → "none"。
  */
 function classifyDefault(text: string): DefaultVerdict {
-  const source = ts.createSourceFile("source.ts", text, ts.ScriptTarget.Latest, true);
+  const source = ts.createSourceFile(
+    "source.ts",
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+  );
   let verdict: DefaultVerdict = "none";
   for (const statement of source.statements) {
     if (ts.isFunctionDeclaration(statement) && hasDefaultModifier(statement)) {
@@ -151,14 +167,18 @@ function classifyDefault(text: string): DefaultVerdict {
     }
     if (ts.isExportAssignment(statement)) {
       if (statement.isExportEquals) return "bad";
-      verdict = isNamedFunctionDeclaration(statement.expression) ? "story" : "bad";
+      verdict = isNamedFunctionDeclaration(statement.expression)
+        ? "story"
+        : "bad";
       continue;
     }
     if (!ts.isExportDeclaration(statement)) continue;
     const clause = statement.exportClause;
     if (clause === undefined || !ts.isNamedExports(clause)) continue;
     const forwardsDefault = clause.elements.some(
-      (element) => element.name.text === "default" || element.propertyName?.text === "default",
+      (element) =>
+        element.name.text === "default" ||
+        element.propertyName?.text === "default",
     );
     if (forwardsDefault) return "story";
   }
@@ -166,7 +186,9 @@ function classifyDefault(text: string): DefaultVerdict {
 }
 
 function hasDefaultModifier(node: ts.FunctionDeclaration): boolean {
-  return (node.modifiers ?? []).some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword);
+  return (node.modifiers ?? []).some(
+    (modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword,
+  );
 }
 
 function isNamedFunctionDeclaration(node: ts.Expression): boolean {

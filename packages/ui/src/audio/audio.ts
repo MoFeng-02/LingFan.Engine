@@ -249,7 +249,9 @@ export function createAudioRenderer(
    * 已解析 URL 缓存（逻辑资源 → URL）：常驻曲目复用解析结果，会话结束统一 release。
    * 不做引用计数/中途回收——VN 的资源集合有界，改用 LRU + refcount 的前提是长会话大量换曲。
    */
-  const urls = createResourceUrlCache((resource) => resources.resolve(resource));
+  const urls = createResourceUrlCache((resource) =>
+    resources.resolve(resource),
+  );
   /** 每通道动作代际：异步解析落地时若已被更新动作/停止取代，丢弃该次播放（防错播） */
   const generations = new Map<AudioChannel, number>();
 

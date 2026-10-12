@@ -61,7 +61,10 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
     }
   }
   if (data.cursor !== undefined && !Number.isFinite(data.cursor)) {
-    ctx.fail("save-format", "存档 cursor 类型错误（须为有限数字；缺失可回默认值）");
+    ctx.fail(
+      "save-format",
+      "存档 cursor 类型错误（须为有限数字；缺失可回默认值）",
+    );
     return false;
   }
   // 扩展依赖校验（fail-closed 整档预校验；migrate 在进入恢复流程前完成）

@@ -10,19 +10,33 @@ import { firstColumnIdOfSourcePath } from "@lingfan/editor";
 import type { Story } from "@lingfan/engine";
 
 const col = (id: string, sourcePath?: string) =>
-  ({ id, kind: "flow", commands: [], ...(sourcePath === undefined ? {} : { sourcePath }) }) as never;
+  ({
+    id,
+    kind: "flow",
+    commands: [],
+    ...(sourcePath === undefined ? {} : { sourcePath }),
+  }) as never;
 
 const tree = {
   formatVersion: 1,
   id: "demo",
   entry: "a",
-  columns: [col("a", "Stories/chapter1/chapter1.story"), col("b", "Stories/chapter1/chapter1.story"), col("c", "Stories/chapter2/chapter2.story"), col("d")],
+  columns: [
+    col("a", "Stories/chapter1/chapter1.story"),
+    col("b", "Stories/chapter1/chapter1.story"),
+    col("c", "Stories/chapter2/chapter2.story"),
+    col("d"),
+  ],
 } as unknown as Story;
 
 describe("firstColumnIdOfSourcePath · 反查判据", () => {
   it(".story 文件 ⇒ 该文件**列序第一**的列（多列同文件，确定性）", () => {
-    expect(firstColumnIdOfSourcePath(tree, "Stories/chapter1/chapter1.story")).toBe("a");
-    expect(firstColumnIdOfSourcePath(tree, "Stories/chapter2/chapter2.story")).toBe("c");
+    expect(
+      firstColumnIdOfSourcePath(tree, "Stories/chapter1/chapter1.story"),
+    ).toBe("a");
+    expect(
+      firstColumnIdOfSourcePath(tree, "Stories/chapter2/chapter2.story"),
+    ).toBe("c");
   });
 
   it("无 sourcePath 的列**不参与**（默认路径文件由 columnIdOfDocument 先行命中）", () => {
@@ -31,6 +45,8 @@ describe("firstColumnIdOfSourcePath · 反查判据", () => {
   });
 
   it("未命中 ⇒ undefined（调用方给可操作提示，不静默、不猜）", () => {
-    expect(firstColumnIdOfSourcePath(tree, "Stories/不存在.story")).toBeUndefined();
+    expect(
+      firstColumnIdOfSourcePath(tree, "Stories/不存在.story"),
+    ).toBeUndefined();
   });
 });

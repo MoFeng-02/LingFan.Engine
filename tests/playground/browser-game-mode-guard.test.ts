@@ -16,7 +16,9 @@ import {
 
 describe("判据真值表（fail-closed：只有 dev 与显式开关放行）", () => {
   it("dev 放行（开发模式便利）", () => {
-    expect(browserPlayAllowed({ dev: true, browserGame: undefined })).toBe(true);
+    expect(browserPlayAllowed({ dev: true, browserGame: undefined })).toBe(
+      true,
+    );
     expect(browserPlayAllowed({ dev: true, browserGame: "0" })).toBe(true);
   });
 

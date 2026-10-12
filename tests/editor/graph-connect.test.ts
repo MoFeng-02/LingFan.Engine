@@ -167,10 +167,9 @@ describe("拟态作者旅程：拉线 → 一步回滚 → 投影往返等价", 
     expect(connectBranchViaApi(session, "square", "start", "回起点")).toBe(
       true,
     );
-    const menu = getAtPointer(
-      session.story,
-      "/columns/2/commands/1",
-    ) as { options?: unknown[] };
+    const menu = getAtPointer(session.story, "/columns/2/commands/1") as {
+      options?: unknown[];
+    };
     expect(menu.options).toEqual([
       { text: "回酒馆", target: "tavern" },
       { text: "回起点", target: "start" },
@@ -222,7 +221,9 @@ describe("源码互锁", () => {
 
   it("宿主：connectBranch 走 session.apply 单提交，语义标签可读", () => {
     expect(appSource).toContain("connectBranch(");
-    expect(appSource).toMatch(/session\.apply\(`连分支 \$\{fromColumnId\} → \$\{toColumnId\}`/);
+    expect(appSource).toMatch(
+      /session\.apply\(`连分支 \$\{fromColumnId\} → \$\{toColumnId\}`/,
+    );
   });
 });
 

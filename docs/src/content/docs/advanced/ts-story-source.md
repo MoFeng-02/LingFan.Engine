@@ -78,19 +78,19 @@ export function farewell(who: string): void {
 
 这是整个模式的机制：**构建期把你的 TS 语句静态转译成 op 序列，运行期交给引擎执行**。TS 代码本身从不运行——除了下面说的模块层常量。
 
-| 你写的 TS | 编译成 |
-|---|---|
-| `say(…)` / `menu(…)` / `guard(…)` | 同名 op，形状与词汇层一致 |
+| 你写的 TS                              | 编译成                                         |
+| -------------------------------------- | ---------------------------------------------- |
+| `say(…)` / `menu(…)` / `guard(…)`      | 同名 op，形状与词汇层一致                      |
 | `if (c) {…} else if (c2) {…} else {…}` | `if` op 带 `cond` / `then` / `elif[]` / `else` |
-| `while (c) {…}` | `while` op |
-| `for (let i = 0; i < n; i++)` | `let` + `while`，循环体尾自动推进 |
-| `for (const v of state.items)` | `for` op |
-| `switch (e) { case v: … }` | `switch` op，case 值限字面量 |
-| `break` / `continue` | `break` / `continue` op，绑定最近的循环 |
-| `function f(a, b) {…}` + 调用 | `func` op 前置到列头 + `call` op |
-| `let x = e` | `let` op，运行期局部变量 |
-| `state.gold = 10` / `state.gold += 5` | `set` op，复合赋值保留 `+=` 语义 |
-| `` `你有 ${state.gold} 金币` `` | 字符串 `你有 {gold} 金币` |
+| `while (c) {…}`                        | `while` op                                     |
+| `for (let i = 0; i < n; i++)`          | `let` + `while`，循环体尾自动推进              |
+| `for (const v of state.items)`         | `for` op                                       |
+| `switch (e) { case v: … }`             | `switch` op，case 值限字面量                   |
+| `break` / `continue`                   | `break` / `continue` op，绑定最近的循环        |
+| `function f(a, b) {…}` + 调用          | `func` op 前置到列头 + `call` op               |
+| `let x = e`                            | `let` op，运行期局部变量                       |
+| `state.gold = 10` / `state.gold += 5`  | `set` op，复合赋值保留 `+=` 语义               |
+| `` `你有 ${state.gold} 金币` ``        | 字符串 `你有 {gold} 金币`                      |
 
 自定义函数不会内联展开，而是编译成一个真子程序：函数定义发 `func` op 前置到列的命令序列头部，每个调用点发 `call` op。递归因此可用。
 
@@ -100,7 +100,7 @@ function greet(who: string): void {
 }
 
 export default function start(): void {
-  greet("旅人");   // → call greet，运行期真跳一次
+  greet("旅人"); // → call greet，运行期真跳一次
 }
 ```
 
@@ -110,18 +110,18 @@ export default function start(): void {
 
 `@lingfan/editor` 的词函数有三种取法，都成立：
 
-| 你写的 TS | 取到什么 |
-|---|---|
-| `import { say, menu } from "@lingfan/editor";` | 词函数本身，直接调用 |
-| `import { script } from "@lingfan/editor";`，之后 `script.say(…)` | 词汇层命名空间 |
-| `import * as ct from "@lingfan/editor";`，之后 `ct.say(…)` | 整套命名空间 |
+| 你写的 TS                                                         | 取到什么             |
+| ----------------------------------------------------------------- | -------------------- |
+| `import { say, menu } from "@lingfan/editor";`                    | 词函数本身，直接调用 |
+| `import { script } from "@lingfan/editor";`，之后 `script.say(…)` | 词汇层命名空间       |
+| `import * as ct from "@lingfan/editor";`，之后 `ct.say(…)`        | 整套命名空间         |
 
 改短名用 `as`：`import { say as 说 }`、`import { script as ct }` 都可以，命名空间起别名之后里面的词函数跟着别名走。
 
 下面四种写法在构建期报错。报错原文照抄，各例只差导入那几行：
 
 ```ts
-import script from "@lingfan/editor";   // ← 默认导入
+import script from "@lingfan/editor"; // ← 默认导入
 
 export default function start(): void {
   script.say("默认导入。");
@@ -135,7 +135,7 @@ export default function start(): void {
 ```
 
 ```ts
-import * as v from "../lib/vocabulary";   // ← 相对模块的命名空间
+import * as v from "../lib/vocabulary"; // ← 相对模块的命名空间
 
 export default function start(): void {
   v.say("相对模块命名空间。");
@@ -149,7 +149,7 @@ export default function start(): void {
 ```
 
 ```ts
-import { say, notAWord } from "@lingfan/editor";   // ← 词汇层里没有 notAWord
+import { say, notAWord } from "@lingfan/editor"; // ← 词汇层里没有 notAWord
 
 export default function start(): void {
   say("不存在的词。");
@@ -162,7 +162,7 @@ export default function start(): void {
 ```
 
 ```ts
-import "@lingfan/editor";   // ← 副作用导入
+import "@lingfan/editor"; // ← 副作用导入
 import { say } from "@lingfan/editor";
 
 export default function start(): void {
@@ -194,7 +194,17 @@ staticFor(3, (i) => [say(`第 ${i + 1} 组。`)]);
 - `const f = () => {}`——自定义函数只认 `function` 声明
 - 函数体内 `return v`（带值）——引擎的 `call` 没有返回值通道，写 `return v` 会在构建期被拦下，而不是运行期静默丢弃
 
-条件表达式、`let` 的值、实参这些位置能写什么，由引擎的表达式文法决定，不是 TS 的子集。字面量、`state.a.b` 路径、局部变量名、运算符组合都可以；函数调用表达式、可选链、`new`、方法调用、`typeof`、解构、展开一律构建期报错。
+条件表达式、`let` 的值、实参这些位置能写什么，由引擎的表达式文法决定，不是 TS 的子集。字面量、`state.a.b` 路径、局部变量名、运算符组合、内建函数调用（`random`/`min`/`max`/`abs`/`clamp`/`arrayGet`/`dictGet`/`optGet`/`len`）都可以；`new`、方法调用、`typeof`、解构、展开，以及内建之外的函数调用一律构建期报错。
+
+可选链与下标访问是例外里的例外：`state.player?.nick` 会被脱糖成引擎的 `optGet("player.nick")`（路径缺失得到 null，`state.` 前缀在产物里剥离），`state.bag[0]` 脱糖成 `arrayGet("bag", 0)`，`state.cfg["speed"]` 脱糖成 `dictGet("cfg", "speed")`，`len(state.bag)` 取长度。四者只在值位置可用——`for...of` 集合、赋值目标仍只认真实存在的路径；路径型内建也接受不了变量当路径（路径须在构建期定型）。缺失值配 `??` 兜底：
+
+```ts
+let nick = state.player?.nick ?? "无名";
+say(`称呼：${nick}`);
+state.last = state.bag[0] ?? 0;
+say(`件数：${len(state.bag)}`);
+say(`缺席：${state.cfg["ghost"] ?? "无"}`);
+```
 
 ## npm 依赖
 
@@ -208,7 +218,7 @@ staticFor(3, (i) => [say(`第 ${i + 1} 组。`)]);
 import { 天气表 } from "some-data-pkg";
 import { 城市 } from "another-pkg";
 
-const 默认城 = 天气表[城市.北京];   // 求值链上的其他 const 也允许
+const 默认城 = 天气表[城市.北京]; // 求值链上的其他 const 也允许
 ```
 
 这种写法会在构建期真的执行一次，把结果内联进 JSON 产物。包代码本身不进产物，只留求值后的值。所以结果必须 JSON 可序列化——标量、数组、纯对象。函数值、类实例、`Symbol`、循环引用都会报错。
@@ -249,7 +259,7 @@ import { version } from "typescript";
 export const v = version;
 
 function describe(): void {
-  say(version);   // ← 报错
+  say(version); // ← 报错
 }
 ```
 
@@ -273,11 +283,12 @@ function describe(): void {
 ```ts
 import { 默认端点 } from "some-config-pkg";
 
-const 端点 = 默认端点;   // ✅ 模块层，编译期内联成字符串
+const 端点 = 默认端点; // ✅ 模块层，编译期内联成字符串
 
 export default function start(): void {
-  extOp("http.get", { url: 端点, saveTo: "player.apiData" });   // 运行期由引擎执行
-  if (state.player.apiData.status === 200) {                    // ✅ 引擎运行期分支
+  extOp("http.get", { url: 端点, saveTo: "player.apiData" }); // 运行期由引擎执行
+  if (state.player.apiData.status === 200) {
+    // ✅ 引擎运行期分支
     say("请求成功。");
   }
 }

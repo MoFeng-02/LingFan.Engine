@@ -6,7 +6,12 @@
  */
 
 import { ref, type ComputedRef, type Ref } from "vue";
-import { slotIds, type SavePort, type SavesConfig, type StoryEngine } from "@lingfan/engine";
+import {
+  slotIds,
+  type SavePort,
+  type SavesConfig,
+  type StoryEngine,
+} from "@lingfan/engine";
 import type { DialogueTemplateView } from "@lingfan/ui";
 import {
   captureSaveThumbnail,

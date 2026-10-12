@@ -15,7 +15,10 @@ export interface ElementRenderContext {
   /** 元素实例（id/type/name/props/z/children） */
   element: ElementInstance;
   /** 递归渲染子元素（容器渲染器把 children 渲染进给定容器） */
-  renderChildren: (container: HTMLElement, children: readonly ElementInstance[]) => void;
+  renderChildren: (
+    container: HTMLElement,
+    children: readonly ElementInstance[],
+  ) => void;
   /** 交互激活（判定通过后由渲染器调用；具体 nav/ops/cmd 语义归宿主） */
   activate?: (element: ElementInstance) => void;
   /**

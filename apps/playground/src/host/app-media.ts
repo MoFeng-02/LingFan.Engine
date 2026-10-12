@@ -69,16 +69,26 @@ export function createAppMedia(options: AppMediaOptions): AppMedia {
     videoRenderer: null,
     reportAudioError,
     createRenderer(): AudioRenderer {
-      return createAudioRenderer(getEngine(), media.audioPort, props.resourcePort, {
-        onError: reportAudioError,
-        preferences: props.preferences, // 通道有效音量合成 + 偏好变化即时重规划
-      });
+      return createAudioRenderer(
+        getEngine(),
+        media.audioPort,
+        props.resourcePort,
+        {
+          onError: reportAudioError,
+          preferences: props.preferences, // 通道有效音量合成 + 偏好变化即时重规划
+        },
+      );
     },
     createVideo(): VideoRenderer {
-      return createVideoRenderer(getEngine(), media.videoPort, props.resourcePort, {
-        onError: reportAudioError,
-        onVideoFinished: () => getEngine().videoFinished(), // 组合根职责：播完 → 引擎命令
-      });
+      return createVideoRenderer(
+        getEngine(),
+        media.videoPort,
+        props.resourcePort,
+        {
+          onError: reportAudioError,
+          onVideoFinished: () => getEngine().videoFinished(), // 组合根职责：播完 → 引擎命令
+        },
+      );
     },
   };
   return media;

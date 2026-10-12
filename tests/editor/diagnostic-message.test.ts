@@ -8,7 +8,10 @@
  * 不改 `Diagnostic.message` 的形状（契约不动）—— 拆的是渲染分层。
  */
 import { describe, expect, it } from "vitest";
-import { diagnosticBrief, splitDiagnosticMessage } from "../../packages/editor/src/diagnostics/message";
+import {
+  diagnosticBrief,
+  splitDiagnosticMessage,
+} from "../../packages/editor/src/diagnostics/message";
 
 describe("文案分层：主句只说状态", () => {
   it("**回归**：unused-translation 的长说明被切走（实测占 3/4 篇幅）", () => {

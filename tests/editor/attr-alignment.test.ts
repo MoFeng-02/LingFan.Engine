@@ -90,7 +90,14 @@ describe("元素属性三面对齐互锁", () => {
     const outside = [...consumed].filter((a) => !ELEMENT_ATTRIBUTES.has(a));
     expect(outside, `契约外被读取：${outside.join(", ")}`).toEqual([]);
     // 抽取器自检：三种形态各抽到至少一个已知键（防正则退化成空集 = 假绿）
-    for (const known of ["x", "zindex", "text", "source", "colspan", "disabled"]) {
+    for (const known of [
+      "x",
+      "zindex",
+      "text",
+      "source",
+      "colspan",
+      "disabled",
+    ]) {
       expect(consumed.has(known), `抽取器漏读 ${known}`).toBe(true);
     }
   });
@@ -103,10 +110,13 @@ describe("元素属性三面对齐互锁", () => {
     const missing = [...UNIMPLEMENTED_ELEMENT_ATTRS].filter(
       (a) => !candidates.has(a),
     );
-    expect(extra, "已声明、无消费者、却不在止血清单里（写了会静默无效）").toEqual(
+    expect(
+      extra,
+      "已声明、无消费者、却不在止血清单里（写了会静默无效）",
+    ).toEqual([]);
+    expect(missing, "止血清单里有键已有消费者（应实现并回滚表单下架）").toEqual(
       [],
     );
-    expect(missing, "止血清单里有键已有消费者（应实现并回滚表单下架）").toEqual([]);
   });
 
   it("未实现清单 ⊆ 契约（清单不许写契约里不存在的键）", () => {

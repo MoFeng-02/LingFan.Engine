@@ -36,7 +36,10 @@ export interface OpenedProject {
   /** 保存回磁盘：组合根绑定的闭包，已含原始清单、打开基线与 writer。缺省 = 只读取径，宿主须禁用保存 */
   save?: (story: Story) => Promise<ProjectWriteReport>;
   /** 保存单个列文件：只落该列，不产删除、不改清单。不能走 `save`——那是整工程序列化器，喂单列树会删掉其余列文件 */
-  saveColumn?: (columnId: string, columnStory: Story) => Promise<ProjectWriteReport>;
+  saveColumn?: (
+    columnId: string,
+    columnStory: Story,
+  ) => Promise<ProjectWriteReport>;
   /** 保存前规范化检测：返回保存将触发的动作，无发现返回 `undefined`；会话内首次成功保存后恒为 `undefined`。缺省 = 只读取径 */
   inspectSave?: (story: Story) => WriteNormalizationFinding | undefined;
   /** 最近一次写回的落盘回执（列 id → 实际路径；未保存过 ⇒ `null`），供新建列得知自己落在哪个文件。缺省 = 宿主不提供 */

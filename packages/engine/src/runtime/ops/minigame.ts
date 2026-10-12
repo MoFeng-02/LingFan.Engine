@@ -65,10 +65,7 @@ export function execMinigame(
   }
   for (const field of ["on_success", "on_fail"] as const) {
     const target = cmd[field];
-    if (
-      target !== undefined &&
-      (typeof target !== "string" || target === "")
-    ) {
+    if (target !== undefined && (typeof target !== "string" || target === "")) {
       ctx.fail(
         "minigame-invalid",
         `minigame.${field} 必须为非空字符串（目标列）`,
@@ -179,10 +176,7 @@ export function resolveMinigame(
     result.score !== undefined &&
     (typeof result.score !== "number" || !Number.isFinite(result.score))
   ) {
-    ctx.fail(
-      "minigame-result-invalid",
-      "resolveMinigame.score 必须为有限数字",
-    );
+    ctx.fail("minigame-result-invalid", "resolveMinigame.score 必须为有限数字");
     return false;
   }
   const pending = ctx.pendingMinigame;
@@ -203,7 +197,13 @@ export function resolveMinigame(
     }
     for (const [key, value] of Object.entries(result.state)) {
       if (
-        !writeExternal(ctx, gameScopedKey(pending.game, key), value, true, pending.game)
+        !writeExternal(
+          ctx,
+          gameScopedKey(pending.game, key),
+          value,
+          true,
+          pending.game,
+        )
       ) {
         return false;
       }

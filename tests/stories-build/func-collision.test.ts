@@ -79,8 +79,12 @@ function readCommands(root: string, rel: string): Command[] {
   return story.commands;
 }
 
-function funcs(commands: readonly Command[]): Array<{ name: string; body: Command[] }> {
-  return commands.filter((c) => c.op === "func").map((c) => ({ name: c.name ?? "", body: c.body ?? [] }));
+function funcs(
+  commands: readonly Command[],
+): Array<{ name: string; body: Command[] }> {
+  return commands
+    .filter((c) => c.op === "func")
+    .map((c) => ({ name: c.name ?? "", body: c.body ?? [] }));
 }
 
 /** func body 里的首条 say 文本——用来区分「这个同名函数到底是哪个文件里的那个」。 */
@@ -118,9 +122,13 @@ export default function start(): void {
     });
 
     // 互锁点：诊断必须点出两个源文件（丢一段定位就说明键控里少了 file 段）。
-    await expect(buildStories(root)).rejects.toThrow(/同列存在同名 func `helper`：ch1\/beta\.ts:\d+:\d+ 与 ch1\/alpha\.ts:\d+:\d+/);
+    await expect(buildStories(root)).rejects.toThrow(
+      /同列存在同名 func `helper`：ch1\/beta\.ts:\d+:\d+ 与 ch1\/alpha\.ts:\d+:\d+/,
+    );
     // fail-closed：报错即不产该列产物，不留半成品让运行期踩到串味的函数。
-    expect(() => readFileSync(join(root, "Resources/Stories/ch1/start.json"), "utf8")).toThrow();
+    expect(() =>
+      readFileSync(join(root, "Resources/Stories/ch1/start.json"), "utf8"),
+    ).toThrow();
   });
 
   it("两个文件各自的嵌套私有函数同名 ⇒ 同样报双文件定位（ownerChain 参与键控）", async () => {
@@ -151,7 +159,9 @@ export default function start(): void {
       "Resources/project.json": MANIFEST,
     });
 
-    await expect(buildStories(root)).rejects.toThrow(/同列存在同名 func `helper`：ch1\/beta\.ts:\d+:\d+ 与 ch1\/alpha\.ts:\d+:\d+/);
+    await expect(buildStories(root)).rejects.toThrow(
+      /同列存在同名 func `helper`：ch1\/beta\.ts:\d+:\d+ 与 ch1\/alpha\.ts:\d+:\d+/,
+    );
   });
 
   it("同文件内的同名嵌套函数 ⇒ 同一诊断（定位落在同一文件两处，仍须各有行列）", async () => {
@@ -180,7 +190,9 @@ export default function start(): void {
       "Resources/project.json": MANIFEST,
     });
 
-    await expect(buildStories(root)).rejects.toThrow(/同列存在同名 func `helper`：ch1\/alpha\.ts:\d+:\d+ 与 ch1\/alpha\.ts:\d+:\d+/);
+    await expect(buildStories(root)).rejects.toThrow(
+      /同列存在同名 func `helper`：ch1\/alpha\.ts:\d+:\d+ 与 ch1\/alpha\.ts:\d+:\d+/,
+    );
   });
 
   it("别名直连导入同名函数 ⇒ 与两跳同一条 fail-closed 闸门（不再静默留悬空 call）", async () => {
@@ -211,8 +223,12 @@ export default function start(): void {
       "Resources/project.json": MANIFEST,
     });
 
-    await expect(buildStories(root)).rejects.toThrow(/同列存在同名 func `helper`：ch1\/beta\.ts:\d+:\d+ 与 ch1\/alpha\.ts:\d+:\d+/);
-    expect(() => readFileSync(join(root, "Resources/Stories/ch1/start.json"), "utf8")).toThrow();
+    await expect(buildStories(root)).rejects.toThrow(
+      /同列存在同名 func `helper`：ch1\/beta\.ts:\d+:\d+ 与 ch1\/alpha\.ts:\d+:\d+/,
+    );
+    expect(() =>
+      readFileSync(join(root, "Resources/Stories/ch1/start.json"), "utf8"),
+    ).toThrow();
   });
 
   it("别名直连但只拉进一个函数 ⇒ 正常产出，func.name 与 call.target 都是声明名", async () => {
@@ -241,6 +257,8 @@ export default function start(): void {
     expect(compiled.map((f) => f.name)).toEqual(["helper"]);
     expect(firstSay(compiled[0]!.body)).toBe("alpha 体");
     // call.target 必须是声明名 helper，而不是调用点的局部别名 h。
-    expect(commands.filter((c) => c.op === "call").map((c) => c.target)).toEqual(["helper"]);
+    expect(
+      commands.filter((c) => c.op === "call").map((c) => c.target),
+    ).toEqual(["helper"]);
   });
 });

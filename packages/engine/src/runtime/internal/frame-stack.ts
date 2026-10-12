@@ -4,7 +4,12 @@
  *
  * 只在运行层内部使用，不进包出口。
  */
-import { SYS, isReplayableColumn, type StoryCommand, type StoryColumn } from "../../contracts";
+import {
+  SYS,
+  isReplayableColumn,
+  type StoryCommand,
+  type StoryColumn,
+} from "../../contracts";
 import { loadElements } from "../../data";
 import type { ExprValue } from "../expr";
 import { Scope } from "../scope";
@@ -16,7 +21,10 @@ import type { OpContext } from "./context";
 const LOOP_LIMIT = 10000;
 
 /** 按 id 取列定义；未命中返回 undefined，调用方决定是否 fail-closed */
-export function columnById(ctx: OpContext, id: string): StoryColumn | undefined {
+export function columnById(
+  ctx: OpContext,
+  id: string,
+): StoryColumn | undefined {
   return ctx.story.columns.find((c) => c.id === id);
 }
 
@@ -24,10 +32,7 @@ export function columnById(ctx: OpContext, id: string): StoryColumn | undefined 
 export function enterColumn(ctx: OpContext, columnId: string): boolean {
   const column = ctx.columnById(columnId);
   if (column === undefined) {
-    ctx.fail(
-      "unknown-column",
-      `目标列不存在：${columnId}`,
-    );
+    ctx.fail("unknown-column", `目标列不存在：${columnId}`);
     return false;
   }
   // 场景类型分流：
@@ -51,7 +56,10 @@ export function enterColumn(ctx: OpContext, columnId: string): boolean {
   // 返回 game 列 ⇒ **清掉**菜单记账（已经回到游戏里）。
   // **只在真的有记账时才写**：空串是缺省值，无条件写会给每次进列都多一次
   // `ValueChanged`（「键序列精确匹配」测试会正确地撞红）。
-  if (isReplayableColumn(column) && parseMenuReturn(ctx.get(SYS.menuReturn)) !== null) {
+  if (
+    isReplayableColumn(column) &&
+    parseMenuReturn(ctx.get(SYS.menuReturn)) !== null
+  ) {
     ctx.setSystem(SYS.menuReturn, "");
   }
   // 空间层：scene 列的元素是**声明式装载**（不进命令流），entry 才是进入后
@@ -75,7 +83,12 @@ export function enterColumn(ctx: OpContext, columnId: string): boolean {
 }
 
 /** for 与 foreach 同构：物化数组后压入循环帧逐元素推进；循环变量是块级局部 */
-export function pushIterateLoop(ctx: OpContext, frame: Frame, cmd: StoryCommand, items: ExprValue[]): boolean {
+export function pushIterateLoop(
+  ctx: OpContext,
+  frame: Frame,
+  cmd: StoryCommand,
+  items: ExprValue[],
+): boolean {
   frame.index += 1;
   if (items.length === 0) return true;
   const loop: LoopState = {
@@ -96,7 +109,11 @@ export function pushIterateLoop(ctx: OpContext, frame: Frame, cmd: StoryCommand,
 }
 
 /** 开始一轮迭代：每轮新块作用域，声明循环变量，游标归零；超上限 fail-closed */
-export function beginLoopIteration(ctx: OpContext, frame: Frame, loop: LoopState): boolean {
+export function beginLoopIteration(
+  ctx: OpContext,
+  frame: Frame,
+  loop: LoopState,
+): boolean {
   if (loop.iterations >= LOOP_LIMIT) {
     ctx.fail(
       "loop-limit",

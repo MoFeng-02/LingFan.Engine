@@ -1,6 +1,16 @@
 import { isPlainObject } from "../../shared";
-import { isOrientationMode, type DegradedOpen, type Story, type StoryColumn } from "../../contracts";
-import { isSingleColumnFile, parseStory, parseStoryFile, StoryFormatError } from "../format";
+import {
+  isOrientationMode,
+  type DegradedOpen,
+  type Story,
+  type StoryColumn,
+} from "../../contracts";
+import {
+  isSingleColumnFile,
+  parseStory,
+  parseStoryFile,
+  StoryFormatError,
+} from "../format";
 import { ProjectAssemblyError } from "./error";
 import { byPath, isDotPath, MANIFEST_FILE, STORIES_DIR } from "./naming";
 
@@ -25,7 +35,9 @@ export function synthesizeDegradedManifest(
   storyTexts: ReadonlyMap<string, string>,
 ): { manifest: Record<string, unknown>; degraded: DegradedOpen } {
   const ids: string[] = [];
-  for (const path of [...storyTexts.keys()].filter((p) => !isDotPath(p)).sort(byPath)) {
+  for (const path of [...storyTexts.keys()]
+    .filter((p) => !isDotPath(p))
+    .sort(byPath)) {
     try {
       const story = parseStoryFile(storyTexts.get(path) ?? "", path);
       for (const column of story.columns) ids.push(column.id);
@@ -162,9 +174,7 @@ export function assembleProject(
     for (const column of story.columns) {
       const prev = owner.get(column.id);
       if (prev !== undefined) {
-        issues.push(
-          `${path}: columnId 重复：${column.id}（与 ${prev} 冲突）`,
-        );
+        issues.push(`${path}: columnId 重复：${column.id}（与 ${prev} 冲突）`);
         continue;
       }
       owner.set(column.id, path);
@@ -176,7 +186,9 @@ export function assembleProject(
       // 而「保存后重开一致」是最核心的不变量之一。
       // 换言之：`sourcePath` 表达的是**例外**（作者把列放在别处），不是常态。
       const defaultPath = `${STORIES_DIR}/${column.id}.json`;
-      columns.push(path === defaultPath ? column : { ...column, sourcePath: path });
+      columns.push(
+        path === defaultPath ? column : { ...column, sourcePath: path },
+      );
     }
     Object.assign(defines, story.defines ?? {});
   }

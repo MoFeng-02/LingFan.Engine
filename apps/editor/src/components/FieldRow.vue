@@ -129,14 +129,14 @@ interface BodyRow {
 const bodyRows = computed<BodyRow[]>(() => {
   if (!isBody.value || !Array.isArray(props.value)) return [];
   return props.value.map((cmd, i): BodyRow => {
-      const record = cmd as Record<string, unknown>;
-      return {
-        pointer: `${props.pointer}/${i}`,
-        label: describeNodeLabel(record), // 与时间线同源（命令按 op、元素按类型）
-        summary: bodySummary(record),
-        cmd: record,
-      };
-    });
+    const record = cmd as Record<string, unknown>;
+    return {
+      pointer: `${props.pointer}/${i}`,
+      label: describeNodeLabel(record), // 与时间线同源（命令按 op、元素按类型）
+      summary: bodySummary(record),
+      cmd: record,
+    };
+  });
 });
 function bodySummary(cmd: Record<string, unknown>): string {
   const text = cmd.text ?? cmd.prompt ?? cmd.target ?? cmd.key ?? cmd.game;
@@ -240,7 +240,13 @@ function moveBody(pointer: string, delta: number): void {
       <div v-for="(_, i) in items" :key="i" class="item-card">
         <div class="item-head">
           <span>项 {{ i }}</span>
-          <button class="mini danger" aria-label="删除该项" @click="removeItem(i)">✕</button>
+          <button
+            class="mini danger"
+            aria-label="删除该项"
+            @click="removeItem(i)"
+          >
+            ✕
+          </button>
         </div>
         <FieldRow
           v-for="sub in itemProperties"

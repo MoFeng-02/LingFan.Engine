@@ -11,7 +11,10 @@ import type { ProjectFilesPort, SavePort } from "@lingfan/engine";
 
 /** 最小 WS 契约（浏览器 WebSocket 结构性满足；测试替身按此实现） */
 export interface WsSocketLike {
-  addEventListener(type: string, listener: (ev: { data?: unknown }) => void): void;
+  addEventListener(
+    type: string,
+    listener: (ev: { data?: unknown }) => void,
+  ): void;
   send(data: string): void;
   close(): void;
 }

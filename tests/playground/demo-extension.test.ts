@@ -70,7 +70,8 @@ describe("演示扩展防腐（demo-quest × 真引擎）", () => {
     const engine = new StoryEngine(questStory(), {});
     // onEvent 交付统一信封 {v, kind:'event', payload}——错误在内层 payload
     engine.onEvent((event) => {
-      if (event.payload.kind === "engine.error") errors.push(event.payload.code);
+      if (event.payload.kind === "engine.error")
+        errors.push(event.payload.code);
     });
     engine.start();
     expect(errors).toContain("unknown-op");

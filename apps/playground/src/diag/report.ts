@@ -8,7 +8,10 @@
 /** `window.__TAURI_INTERNALS__` 的最小形状：诊断只依赖 invoke，不 import Tauri API。 */
 interface DiagWindow {
   __TAURI_INTERNALS__?: {
-    invoke: (command: string, args?: Record<string, unknown>) => Promise<unknown>;
+    invoke: (
+      command: string,
+      args?: Record<string, unknown>,
+    ) => Promise<unknown>;
   };
 }
 

@@ -36,6 +36,9 @@ export function validateFlowCommand(
       if (cmd.args !== undefined && !Array.isArray(cmd.args)) {
         issues.push(`${at}.args 必须为数组`);
       }
+      if (cmd.into !== undefined) {
+        requireNonEmptyString(cmd.into, `${at}.into`, issues); // 结果绑定名（ret 带值回写）
+      }
       break;
     case "return":
       break; // value 可选

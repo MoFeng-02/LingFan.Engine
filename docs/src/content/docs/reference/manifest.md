@@ -21,17 +21,17 @@ description: 清单字段逐条说明：formatVersion、id、entry、lang、shel
 
 ## 字段
 
-| 字段 | 类型 | 必填 | 缺省 |
-| --- | --- | --- | --- |
-| `formatVersion` | `1` | 是 | 无 |
-| `id` | string | 是 | 无 |
-| `entry` | string | 是 | 无 |
-| `name` | string | 否 | `id` |
-| `lang` | string | 否 | `zh-CN` |
-| `defines` | object | 否 | 空 |
-| `shell` | object | 否 | 见下 |
-| `extensions` | string[] | 否 | 无扩展 |
-| `resourceEncryption` | boolean | 否 | `false` |
+| 字段                 | 类型     | 必填 | 缺省    |
+| -------------------- | -------- | ---- | ------- |
+| `formatVersion`      | `1`      | 是   | 无      |
+| `id`                 | string   | 是   | 无      |
+| `entry`              | string   | 是   | 无      |
+| `name`               | string   | 否   | `id`    |
+| `lang`               | string   | 否   | `zh-CN` |
+| `defines`            | object   | 否   | 空      |
+| `shell`              | object   | 否   | 见下    |
+| `extensions`         | string[] | 否   | 无扩展  |
+| `resourceEncryption` | boolean  | 否   | `false` |
 
 ### formatVersion
 
@@ -75,7 +75,15 @@ description: 清单字段逐条说明：formatVersion、id、entry、lang、shel
 {
   "shell": {
     "layers": { "dialogue": 999, "toolbar": 1400 },
-    "saves": { "slots": 6, "thumbnail": { "width": 320, "height": 180, "quality": 0.7, "showText": true } },
+    "saves": {
+      "slots": 6,
+      "thumbnail": {
+        "width": 320,
+        "height": 180,
+        "quality": 0.7,
+        "showText": true
+      }
+    },
     "orientation": "auto"
   }
 }
@@ -85,17 +93,17 @@ description: 清单字段逐条说明：formatVersion、id、entry、lang、shel
 
 九个渲染层的 z 序覆盖。层名和缺省值：
 
-| 层 | 缺省 z | 放什么 |
-| --- | --- | --- |
-| `stage` | 0 | 背景与舞台元素 |
-| `video` | 100 | 视频层。盖住舞台，不盖对话 |
-| `dialogue` | 999 | 对话框 |
-| `choices` | 1100 | `menu` / `input` 的选项层 |
-| `minigame` | 1200 | 小游戏与玩法系统 |
-| `notifications` | 1300 | `notify` 的浮层 |
-| `toolbar` | 1400 | 常驻工具条 |
-| `history` | 1500 | 历史面板 |
-| `prefs` | 1500 | 设置面板 |
+| 层              | 缺省 z | 放什么                     |
+| --------------- | ------ | -------------------------- |
+| `stage`         | 0      | 背景与舞台元素             |
+| `video`         | 100    | 视频层。盖住舞台，不盖对话 |
+| `dialogue`      | 999    | 对话框                     |
+| `choices`       | 1100   | `menu` / `input` 的选项层  |
+| `minigame`      | 1200   | 小游戏与玩法系统           |
+| `notifications` | 1300   | `notify` 的浮层            |
+| `toolbar`       | 1400   | 常驻工具条                 |
+| `history`       | 1500   | 历史面板                   |
+| `prefs`         | 1500   | 设置面板                   |
 
 缺省值之间留了 100 的间隔，方便插层。`history` 和 `prefs` 同值——它们不会同时开。
 
@@ -108,7 +116,12 @@ description: 清单字段逐条说明：formatVersion、id、entry、lang、shel
   "shell": {
     "saves": {
       "slots": 6,
-      "thumbnail": { "width": 320, "height": 180, "quality": 0.7, "showText": true }
+      "thumbnail": {
+        "width": 320,
+        "height": 180,
+        "quality": 0.7,
+        "showText": true
+      }
     }
   }
 }

@@ -10,7 +10,14 @@ import { tokenizeLines, splitTokens, unquote } from "./lexer";
 import { quoteForText, generateValue } from "./literals";
 import { TextFormatError } from "./error";
 import { recordTextProjectionWarnings } from "./warnings";
-import type { Story, StoryColumn, StoryCommand, ElementNode, CustomOpProjections, TextProjection } from "../../contracts";
+import type {
+  Story,
+  StoryColumn,
+  StoryCommand,
+  ElementNode,
+  CustomOpProjections,
+  TextProjection,
+} from "../../contracts";
 
 /** 文本 → Story（缩进块、注释、全 op 文法；失败整次拒绝并带行列定位）。
  * `projections`（可选）= 扩展自定义 op 的行投影表；缺省 = 现行为逐字节不变。 */
@@ -19,7 +26,13 @@ export function parseTextStory(
   sourceName = "story",
   projections?: CustomOpProjections,
 ): Story {
-  const state: ParseState = { lines: [], issues: [], warnings: [], sourceName, projections };
+  const state: ParseState = {
+    lines: [],
+    issues: [],
+    warnings: [],
+    sourceName,
+    projections,
+  };
   state.lines = tokenizeLines(source, sourceName, state.issues);
   const columns: StoryColumn[] = [];
   const defines: Record<string, unknown> = {};
@@ -70,7 +83,10 @@ export function parseTextStory(
         const eq = token.indexOf("=");
         const key = eq > 0 ? token.slice(0, eq) : "";
         const value = eq > 0 ? unquote(token.slice(eq + 1)) : "";
-        if (key === "type" && (value === "game" || value === "menu" || value === "ui")) {
+        if (
+          key === "type" &&
+          (value === "game" || value === "menu" || value === "ui")
+        ) {
           sceneType = value;
           continue;
         }
@@ -98,7 +114,9 @@ export function parseTextStory(
         id: name,
         kind: "scene",
         // 仅在**非缺省**时写（`game` 是常态，写进去会让文件噪声变大）
-        ...(sceneType !== undefined && sceneType !== "game" ? { type: sceneType } : {}),
+        ...(sceneType !== undefined && sceneType !== "game"
+          ? { type: sceneType }
+          : {}),
         elements: body.elements,
         entry: body.commands,
       });
@@ -187,8 +205,10 @@ export function projectText(
     }
     out.push(`label ${column.id}:`);
     for (const cmd of column.commands ?? []) {
-      tolerant(`op "${cmd.op}"（${column.id}）`, issues, () =>
-        generateCommand(cmd, "  ", out, projections), // 列体 2 空格缩进（规范形）
+      tolerant(
+        `op "${cmd.op}"（${column.id}）`,
+        issues,
+        () => generateCommand(cmd, "  ", out, projections), // 列体 2 空格缩进（规范形）
       );
     }
   }
@@ -200,11 +220,7 @@ export function projectText(
  * `TextFormatError` = 已知的不可投影性（原文上报）；其余异常附上 op 定位后同样降级
  * （半成品命令不得拖垮整棵树；严格路径 `generateText` 仍以 issues 非空整次拒绝，fail-closed 不放松）。
  */
-function tolerant(
-  label: string,
-  issues: string[],
-  run: () => void,
-): void {
+function tolerant(label: string, issues: string[], run: () => void): void {
   try {
     run();
   } catch (error: unknown) {

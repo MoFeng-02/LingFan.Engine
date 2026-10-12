@@ -42,7 +42,11 @@ export interface Notices {
   /** 通用投递：显式给时长与语气 */
   push(text: string, tone: NotifyTone, durationMs: number): void;
   /** 引擎 `notify` 事件：语气由 `notifyType` 归一，时长缺省走通知档 */
-  notify(text: string, notifyType: unknown, durationMs: number | undefined): void;
+  notify(
+    text: string,
+    notifyType: unknown,
+    durationMs: number | undefined,
+  ): void;
   /** 操作反馈：语气缺省 info，时长缺省走反馈档 */
   toast(text: string, durationMs?: number, tone?: NotifyTone): void;
   /** 存档完成 */
@@ -61,7 +65,8 @@ export interface Notices {
 export function createNotices(options: NoticeOptions = {}): Notices {
   const notifyDurationMs = options.notifyDurationMs ?? DEFAULT_NOTIFY_MS;
   const toastDurationMs = options.toastDurationMs ?? DEFAULT_VUE_TOAST_MS;
-  const loadToastDurationMs = options.loadToastDurationMs ?? DEFAULT_LOAD_TOAST_MS;
+  const loadToastDurationMs =
+    options.loadToastDurationMs ?? DEFAULT_LOAD_TOAST_MS;
   const rollbackNoticeDurationMs =
     options.rollbackNoticeDurationMs ?? DEFAULT_ROLLBACK_NOTICE_MS;
 
@@ -79,10 +84,18 @@ export function createNotices(options: NoticeOptions = {}): Notices {
   return {
     items,
     push,
-    notify(text: string, notifyType: unknown, durationMs: number | undefined): void {
+    notify(
+      text: string,
+      notifyType: unknown,
+      durationMs: number | undefined,
+    ): void {
       push(text, toNotifyTone(notifyType), durationMs ?? notifyDurationMs);
     },
-    toast(text: string, durationMs: number = toastDurationMs, tone: NotifyTone = "info"): void {
+    toast(
+      text: string,
+      durationMs: number = toastDurationMs,
+      tone: NotifyTone = "info",
+    ): void {
       push(text, tone, durationMs);
     },
     saved(slot: string): void {

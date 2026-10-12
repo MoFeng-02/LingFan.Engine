@@ -73,7 +73,9 @@ export interface AppEngineLife {
 }
 
 /** 装配引擎生命周期：构造引擎接线订阅，重启整体重建并复位各单元格 */
-export function createAppEngineLife(options: AppEngineLifeOptions): AppEngineLife {
+export function createAppEngineLife(
+  options: AppEngineLifeOptions,
+): AppEngineLife {
   const {
     props,
     getEngine,
@@ -90,9 +92,24 @@ export function createAppEngineLife(options: AppEngineLifeOptions): AppEngineLif
     handleEvent,
   } = options;
   const {
-    speaker, text, shownText, canAdvance, inMenu, inWait, inInput, inVideo,
-    inMinigame, menuPrompt, inputPrompt, inputValue, rawTexts, rawTargets,
-    dialogTemplateName, nvlMode, nvlBuffer, elements,
+    speaker,
+    text,
+    shownText,
+    canAdvance,
+    inMenu,
+    inWait,
+    inInput,
+    inVideo,
+    inMinigame,
+    menuPrompt,
+    inputPrompt,
+    inputValue,
+    rawTexts,
+    rawTargets,
+    dialogTemplateName,
+    nvlMode,
+    nvlBuffer,
+    elements,
   } = narrative;
   let offState: (() => void) | undefined;
   let offEvent: (() => void) | undefined;

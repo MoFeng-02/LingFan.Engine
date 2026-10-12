@@ -19,7 +19,9 @@
     "types": ["vite/client"],
     "paths": {
       "@lingfan/stories-build": ["./packages/stories-build/src/index.ts"],
-      "@lingfan/stories-build/cell": ["./packages/stories-build/src/cell/index.ts"]
+      "@lingfan/stories-build/cell": [
+        "./packages/stories-build/src/cell/index.ts"
+      ]
     },
 
     /* Linting */

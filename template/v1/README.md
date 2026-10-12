@@ -9,21 +9,21 @@
 
 ### 覆盖范围 / 有意不做（边界表）
 
-| 能力 | 模板 | 说明 |
-|---|---|---|
-| 对话层（打字机 + 内联标记） | 是 | `{p}/{w}` 停顿、样式标记零宽由 `@lingfan/ui` 提供 |
-| 等待态出口：`menu` / `input` / `wait` / `video` | 是 | 缺任何一个，含该命令的故事都会**永久停滞** |
-| 等待态：`minigame` | 是（可见 fail-closed） | 模板不接注册表 → 显示「未注册」并说明接入方式，**不伪造完成** |
-| 舞台元素层（36 类型 + 交互 + 12 个表现 op） | 是 | 含 `animate`/`transition`/`shake` 的帧驱动（不驱动会让动画队列只增不减） |
-| 层级（z 序，`shell.layers`） | 是 | 各层 z 由 `resolveLayerZ` 解析后内联写入 |
-| 存档（`shell.saves.slots` 槽位数） | 是 | 存/读为命令面；缩略图**不做**（见下行） |
-| 存档缩略图（`shell.saves.thumbnail`） | 否 | 合成卡见 `apps/playground`；不传 `screenshot` 即为无缩略图存档 |
-| 历史面板与回溯 UI | 否 | 引擎已具备（`historyView`/`rollbackTo`/`back`/`forward`），UI 见 playground |
-| 玩家偏好（音量/文字速度面板） | 否 | 未接 = 音量为 op 值、打字机取故事级 `text_typewriter` |
-| I18N 供给（`Lang/{lang}/` 覆盖） | 否 | 未接 `i18nPort` = 原文直出（引擎契约缺省语义） |
-| 对话框模板注册（`say template=`） | 否 | 未接 = 内建默认骨架 |
-| 屏幕方向锁定（`shell.orientation`） | 不适用 | **纯 Web 形态没有方向 API**；该配置只在 Tauri 壳（playground）生效 |
-| 资源加密 / 热重载 / 宿主信息 | 不适用 | 都是 Tauri 壳能力，见 playground 的组合根 |
+| 能力                                            | 模板                   | 说明                                                                        |
+| ----------------------------------------------- | ---------------------- | --------------------------------------------------------------------------- |
+| 对话层（打字机 + 内联标记）                     | 是                     | `{p}/{w}` 停顿、样式标记零宽由 `@lingfan/ui` 提供                           |
+| 等待态出口：`menu` / `input` / `wait` / `video` | 是                     | 缺任何一个，含该命令的故事都会**永久停滞**                                  |
+| 等待态：`minigame`                              | 是（可见 fail-closed） | 模板不接注册表 → 显示「未注册」并说明接入方式，**不伪造完成**               |
+| 舞台元素层（36 类型 + 交互 + 12 个表现 op）     | 是                     | 含 `animate`/`transition`/`shake` 的帧驱动（不驱动会让动画队列只增不减）    |
+| 层级（z 序，`shell.layers`）                    | 是                     | 各层 z 由 `resolveLayerZ` 解析后内联写入                                    |
+| 存档（`shell.saves.slots` 槽位数）              | 是                     | 存/读为命令面；缩略图**不做**（见下行）                                     |
+| 存档缩略图（`shell.saves.thumbnail`）           | 否                     | 合成卡见 `apps/playground`；不传 `screenshot` 即为无缩略图存档              |
+| 历史面板与回溯 UI                               | 否                     | 引擎已具备（`historyView`/`rollbackTo`/`back`/`forward`），UI 见 playground |
+| 玩家偏好（音量/文字速度面板）                   | 否                     | 未接 = 音量为 op 值、打字机取故事级 `text_typewriter`                       |
+| I18N 供给（`Lang/{lang}/` 覆盖）                | 否                     | 未接 `i18nPort` = 原文直出（引擎契约缺省语义）                              |
+| 对话框模板注册（`say template=`）               | 否                     | 未接 = 内建默认骨架                                                         |
+| 屏幕方向锁定（`shell.orientation`）             | 不适用                 | **纯 Web 形态没有方向 API**；该配置只在 Tauri 壳（playground）生效          |
+| 资源加密 / 热重载 / 宿主信息                    | 不适用                 | 都是 Tauri 壳能力，见 playground 的组合根                                   |
 
 > 「否」行均指**模板宿主未接**，不代表引擎没有该能力——引擎能力面以 `apps/playground` 为准
 > （历史面板 / 玩家偏好 / I18N / 对话框模板在引擎侧均已具备，仅模板未接线）。

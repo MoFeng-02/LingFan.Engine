@@ -41,7 +41,13 @@ function walkDescriptor(
   }
   if (desc.item !== undefined && Array.isArray(value)) {
     value.forEach((element, index) => {
-      walkDescriptor(desc.item!, element, `${pointer}/${index}`, visit, surface);
+      walkDescriptor(
+        desc.item!,
+        element,
+        `${pointer}/${index}`,
+        visit,
+        surface,
+      );
     });
   }
 }

@@ -187,13 +187,13 @@ async function boot(): Promise<void> {
   });
   // I18N 装配：Tauri 形态走 Rust overlay 供给（按需加载）；浏览器形态暂无
   // 静态根供给（未注入 = 原文直出，引擎契约缺省语义）
-  const i18nPort: I18nPort | undefined =
-    useNative ? createTauriI18nPort() : undefined;
+  const i18nPort: I18nPort | undefined = useNative
+    ? createTauriI18nPort()
+    : undefined;
   // 玩家偏好（与存档分离）：boot 时载入上次退出状态，滑块改动防抖落盘
-  const preferencesPort: PreferencesPort =
-    useNative
-      ? createTauriPreferencesPort()
-      : createWebStoragePreferencesPort();
+  const preferencesPort: PreferencesPort = useNative
+    ? createTauriPreferencesPort()
+    : createWebStoragePreferencesPort();
   const preferences = new PlayerPreferences(preferencesPort);
   await preferences.hydrate();
 
@@ -201,10 +201,9 @@ async function boot(): Promise<void> {
   // 壳端口。**落壳归组合根**（组件不碰平台桥接）：启动即应用一次（早于内容绘制，
   // 尽量规避首帧先竖后横），此后订阅偏好变化实时应用。未生效（平台忽略/无壳形态）
   // 只记诊断，不视作错误（apply 的「尽力而为」契约）。去重状态在 `./boot` 的策略闭包内。
-  const orientationPort: OrientationPort =
-    useNative
-      ? createTauriOrientationPort()
-      : createNoopOrientationPort();
+  const orientationPort: OrientationPort = useNative
+    ? createTauriOrientationPort()
+    : createNoopOrientationPort();
   const applyOrientation = createOrientationPolicy({
     orientationPort,
     preference: () => preferences.orientation,

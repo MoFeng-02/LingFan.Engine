@@ -6,7 +6,11 @@ import { unquote, splitTokens, type SourceLine } from "../lexer";
 import { parseValueLiteral } from "../literals";
 import { ELEMENT_OP_CONFLICTS, parseElementLine } from "./element";
 import { parseSimpleStatement } from "./statement";
-import { isElementType, type ElementNode, type StoryCommand } from "../../../contracts";
+import {
+  isElementType,
+  type ElementNode,
+  type StoryCommand,
+} from "../../../contracts";
 import type { ParseState } from "./state";
 
 /** 带块体的语句在 parseCommands 内联处理；此处仅单行语句分发 */
@@ -83,7 +87,10 @@ export function parseCommands(
         const node = parseElementLine(splitTokens(source), at, state.issues);
         if (node !== null) {
           // 嵌套：紧随其后更深缩进的行归 children（容器专有；子层只允许元素行）
-          if (i + 1 < state.lines.length && state.lines[i + 1]!.indent > indent) {
+          if (
+            i + 1 < state.lines.length &&
+            state.lines[i + 1]!.indent > indent
+          ) {
             const childIndent = state.lines[i + 1]!.indent;
             const child = parseCommands(state, i + 1, childIndent, true);
             if (child.commands.length > 0) {
@@ -137,11 +144,7 @@ export function customFromText(
 ): StoryCommand | null {
   try {
     const raw = fromText(text);
-    if (
-      raw !== null &&
-      typeof raw === "object" &&
-      typeof raw.op === "string"
-    ) {
+    if (raw !== null && typeof raw === "object" && typeof raw.op === "string") {
       return raw;
     }
   } catch (error: unknown) {
@@ -250,7 +253,11 @@ export function parseBlockStatement(
       menuZ = Number(menuZMatch[1]);
       menuRest = menuRest.slice(0, menuZMatch.index).trim();
     }
-    const cmd: StoryCommand = { op: "menu", prompt: unquote(menuRest), options };
+    const cmd: StoryCommand = {
+      op: "menu",
+      prompt: unquote(menuRest),
+      options,
+    };
     if (menuZ !== undefined) cmd.z = menuZ;
     let i = start + 1;
     for (;;) {

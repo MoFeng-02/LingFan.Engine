@@ -43,9 +43,7 @@ const visibleElementGroups = computed(() =>
   groups.value
     .map((entry) => ({
       ...entry,
-      types: entry.types.filter((type) =>
-        matches(type, elementLabel(type)),
-      ),
+      types: entry.types.filter((type) => matches(type, elementLabel(type))),
     }))
     .filter((entry) => entry.types.length > 0),
 );
@@ -86,7 +84,8 @@ function onDragStart(
 <template>
   <div class="palette">
     <p class="palette-hint">
-      元素可拖到舞台画布创建（落点即 x/y）；命令在时间线里选中容器后点「插入」。元素
+      元素可拖到舞台画布创建（落点即
+      x/y）；命令在时间线里选中容器后点「插入」。元素
       {{ elementCount }} 类型 / 命令 {{ opCount }} 个。
     </p>
     <input
@@ -98,7 +97,11 @@ function onDragStart(
 
     <section class="palette-section">
       <h3>元素</h3>
-      <div v-for="entry in visibleElementGroups" :key="entry.group" class="group">
+      <div
+        v-for="entry in visibleElementGroups"
+        :key="entry.group"
+        class="group"
+      >
         <button
           class="group-head"
           :aria-expanded="!isCollapsed(entry.group)"
@@ -117,11 +120,15 @@ function onDragStart(
             :title="`${elementLabel(type)}（${type}）${
               ELEMENT_CONTAINER_TYPES.has(type) ? ' · 容器，可容纳子元素' : ''
             }`"
-            @dragstart="onDragStart($event, 'element', type, elementLabel(type))"
+            @dragstart="
+              onDragStart($event, 'element', type, elementLabel(type))
+            "
           >
             <span class="ilabel">{{ elementLabel(type) }}</span>
             <span class="itype">{{ type }}</span>
-            <span v-if="ELEMENT_CONTAINER_TYPES.has(type)" class="badge">容器</span>
+            <span v-if="ELEMENT_CONTAINER_TYPES.has(type)" class="badge"
+              >容器</span
+            >
           </li>
         </ul>
       </div>
@@ -155,7 +162,10 @@ function onDragStart(
       </div>
     </section>
 
-    <p v-if="visibleElementGroups.length === 0 && visibleOpGroups.length === 0" class="empty">
+    <p
+      v-if="visibleElementGroups.length === 0 && visibleOpGroups.length === 0"
+      class="empty"
+    >
       没有匹配「{{ query }}」的类型或命令。
     </p>
   </div>

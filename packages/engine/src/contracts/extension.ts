@@ -37,8 +37,33 @@ export interface ExtensionContext {
   readonly story: Readonly<Story>;
 }
 
-/** 扩展 op 执行结果：ok = 推进到下一命令；失败 = `engine.error(code, message)` + 停在当前命令（状态原样） */
-export type ExecOutcome = { readonly ok: true } | { readonly ok: false; readonly code: string; readonly message: string };
+/**
+ * 扩展 op 执行结果（三态）：
+ * ok = 推进到下一命令；失败 = `engine.error(code, message)` + 停在当前命令（状态原样）；
+ * wait = 请求挂起等待——引擎接管建立等待点（检查点/auto_save/出站 mount 事件都由引擎做，
+ * exec 保持同步、不发请求），解除走 `StoryEngine.resolveExtensionOp`。
+ */
+export type ExecOutcome =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly code: string; readonly message: string }
+  | {
+      /** 第三态判别值：请求挂起（须先声明 `OpDefinition.wait: true`，未声明 = fail-closed `custom-op-wait-undeclared`） */
+      readonly ok: "wait";
+      /** 挂起期间随 `extension.mount` 出站的负载（原样转交，不进 SSOT）；缺省 = `{}` */
+      readonly config?: Readonly<Record<string, unknown>>;
+      /** 解除成功（outcome = success）后进入的列坐标；缺省 = 原地顺延 */
+      readonly on_success?: string;
+      /** 解除失败（outcome = fail）后进入的列坐标；缺省 = 原地顺延 */
+      readonly on_fail?: string;
+    };
+
+/** 扩展等待解除结果（`resolveExtensionOp` 载体；与玩法系统解除结果同构——无 score） */
+export interface ExtensionOpResult {
+  /** 成功/失败 → 决定分流目标（on_success / on_fail；均缺省 = 原地顺延） */
+  readonly outcome: "success" | "fail";
+  /** 回填到 `game.<extensionId>.<key>` 命名空间的键值（逐键写，与玩法系统回填同一口径） */
+  readonly state?: Record<string, unknown>;
+}
 
 /**
  * 自定义 op 文本投影：
@@ -77,7 +102,16 @@ export interface OpDefinition {
    * 执行体：**不得抛**（fail-closed 返回失败结果，同引擎 op 约束——抛出视同扩展违约，
    * 由引擎兜底转 `custom-op-threw`）；副作用只经 `ctx.set`（进 SSOT）。
    */
-  readonly exec: (cmd: Readonly<Record<string, unknown>>, ctx: ExtensionContext) => ExecOutcome;
+  readonly exec: (
+    cmd: Readonly<Record<string, unknown>>,
+    ctx: ExtensionContext,
+  ) => ExecOutcome;
+  /**
+   * 可选：声明本 op 会请求等待。**静态假边界**——声明了不等待 = 合法（声明只驱动静态面
+   * `collectWaitSpecs` 与编辑器提示）；反过来未声明而执行返回 wait = 运行期 fail-closed
+   * （`custom-op-wait-undeclared`，状态原样）——该判据只能运行期给，声明位只增不改。
+   */
+  readonly wait?: true;
   /** 可选：文本投影——缺省 = 文本形态整次拒绝（见 OpTextProjection 注） */
   readonly project?: OpTextProjection;
   /** 可选：编辑器声明——缺省 = 编辑器按 unknown-op 口径报（与引擎一致，不假红） */

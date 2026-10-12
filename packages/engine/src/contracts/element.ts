@@ -205,42 +205,43 @@ export const ELEMENT_ATTRIBUTES: ReadonlySet<string> = new Set([
  * 分类型属性：供编辑器表单按类型提示，
  * 校验仍走 `ELEMENT_ATTRIBUTES` 并集（宽松归属判定）。
  */
-export const ELEMENT_SPECIFIC_ATTRS: Readonly<Record<string, readonly string[]>> =
-  {
-    text: ["size"],
-    dialog: ["size"],
-    narrator: ["size"],
-    speaker: ["size"],
-    grid: ["columns", "rows"],
-    panel: ["direction", "spacing"],
-    vbox: ["direction", "spacing"],
-    hbox: ["direction", "spacing"],
-    frame: ["direction", "spacing"],
-    window: ["direction", "spacing"],
-    dialogbox: ["direction", "spacing"],
-    choicebox: ["direction", "spacing"],
-    infobox: ["direction", "spacing"],
-    overlay: ["direction", "spacing"],
-    popup: ["direction", "spacing"],
-    stack: ["direction", "spacing"],
-    stackpanel: ["direction", "spacing"],
-    image: ["stretch"],
-    imagebutton: [
-      "stretch",
-      "hover_source",
-      "selected_source",
-      "disabled_source",
-    ],
-    portrait: ["stretch"],
-    slider: ["min", "max", "orientation"],
-    progressbar: ["min", "max"],
-    bar: ["min", "max"],
-    vbar: ["min", "max"],
-    checkbox: ["checked"],
-    scroll: ["scroll_h", "scroll_v"],
-    scrollviewer: ["scroll_h", "scroll_v"],
-    viewport: ["scroll_h", "scroll_v"],
-  };
+export const ELEMENT_SPECIFIC_ATTRS: Readonly<
+  Record<string, readonly string[]>
+> = {
+  text: ["size"],
+  dialog: ["size"],
+  narrator: ["size"],
+  speaker: ["size"],
+  grid: ["columns", "rows"],
+  panel: ["direction", "spacing"],
+  vbox: ["direction", "spacing"],
+  hbox: ["direction", "spacing"],
+  frame: ["direction", "spacing"],
+  window: ["direction", "spacing"],
+  dialogbox: ["direction", "spacing"],
+  choicebox: ["direction", "spacing"],
+  infobox: ["direction", "spacing"],
+  overlay: ["direction", "spacing"],
+  popup: ["direction", "spacing"],
+  stack: ["direction", "spacing"],
+  stackpanel: ["direction", "spacing"],
+  image: ["stretch"],
+  imagebutton: [
+    "stretch",
+    "hover_source",
+    "selected_source",
+    "disabled_source",
+  ],
+  portrait: ["stretch"],
+  slider: ["min", "max", "orientation"],
+  progressbar: ["min", "max"],
+  bar: ["min", "max"],
+  vbar: ["min", "max"],
+  checkbox: ["checked"],
+  scroll: ["scroll_h", "scroll_v"],
+  scrollviewer: ["scroll_h", "scroll_v"],
+  viewport: ["scroll_h", "scroll_v"],
+};
 
 /**
  * 舞台元素声明节点（scene 列 `elements[]` 的元素）。

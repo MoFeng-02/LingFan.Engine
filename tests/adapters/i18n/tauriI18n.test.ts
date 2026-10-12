@@ -49,7 +49,8 @@ describe("createTauriI18nPort（invoke 契约替身）", () => {
   });
 
   it("listLanguages 透传 list_i18n_languages 命令", async () => {
-    const calls: Array<{ command: string; args?: Record<string, unknown> }> = [];
+    const calls: Array<{ command: string; args?: Record<string, unknown> }> =
+      [];
     const invoke: TauriInvoke = async (command) => {
       calls.push({ command });
       return ["zh-CN", "en-US"] as never;

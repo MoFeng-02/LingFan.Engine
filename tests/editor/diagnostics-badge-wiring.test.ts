@@ -36,10 +36,12 @@ describe("诊断徽章 · 接线互锁", () => {
   it("**普查与筛选分离**：summary 吃全量 diagnostics，groups 吃筛选子集", () => {
     const src = code(panelSource);
     // summary 的实参是**原始 props.diagnostics**（未经 filter）
-    expect(src).toMatch(/summarizeDiagnostics\(groupDiagnostics\(props\.diagnostics\)\)/);
-    // groups 的实参经过 filterDiagnosticsBySeverity
     expect(src).toMatch(
-      /groupDiagnostics\(filterDiagnosticsBySeverity\(props\.diagnostics,\s*severityFilter\.value\)\)/,
+      /summarizeDiagnostics\(groupDiagnostics\(props\.diagnostics\)\)/,
+    );
+    // groups 的实参经过 filterDiagnosticsBySeverity（\s* 容忍 prettier 折行）
+    expect(src).toMatch(
+      /groupDiagnostics\(\s*filterDiagnosticsBySeverity\(props\.diagnostics,\s*severityFilter\.value\)\s*,?\s*\)/,
     );
   });
 });

@@ -12,6 +12,8 @@
  * 关键在最后那个 `!Array.isArray`：数组也是 `typeof === "object"`，
  * 少了它就会让数组通过「记录」校验，下游会拿下标当字段名继续走。
  */
-export function isPlainObject(value: unknown): value is Record<string, unknown> {
+export function isPlainObject(
+  value: unknown,
+): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

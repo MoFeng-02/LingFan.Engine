@@ -21,7 +21,11 @@ export function createMounts(
   layerZ: LayerZTable,
 ): NarrativeMounts {
   const root = el(container, "lf-overlay", 0);
-  const stage = el(root, "lf-stage", resolveInstanceZ("stage", undefined, layerZ));
+  const stage = el(
+    root,
+    "lf-stage",
+    resolveInstanceZ("stage", undefined, layerZ),
+  );
   const elementLayer = el(stage, "lf-element-layer", 0);
   const transition = el(
     root,

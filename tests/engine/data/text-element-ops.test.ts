@@ -187,9 +187,11 @@ describe("边界", () => {
 
   it("show 的 x 支持 CSS 百分比串；animate_block 单属性合法", () => {
     const back = parseTextStory(
-      ['label a:', '  show "a.png" x=50%', '  animate_block "t" opacity=0'].join(
-        "\n",
-      ),
+      [
+        "label a:",
+        '  show "a.png" x=50%',
+        '  animate_block "t" opacity=0',
+      ].join("\n"),
       "b.story",
     );
     expect(back.columns[0]?.commands).toEqual([
@@ -309,9 +311,7 @@ describe("同名冲突类型的显式 element 前缀", () => {
         {
           id: "s",
           kind: "scene",
-          elements: [
-            { type: "panel", children: [{ type: "window", x: 5 }] },
-          ],
+          elements: [{ type: "panel", children: [{ type: "window", x: 5 }] }],
         },
       ],
     });

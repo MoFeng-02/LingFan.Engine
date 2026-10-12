@@ -21,8 +21,14 @@ import { describe, expect, it } from "vitest";
  * 尤其容易丢可访问名（内容不进无障碍名计算，须宿主显式 `aria-label`）。
  */
 const HOSTS = [
-  { label: "editor", dir: "E:/Project/MyProject/LingFan/LingFan.Engine/apps/editor/src" },
-  { label: "playground", dir: "E:/Project/MyProject/LingFan/LingFan.Engine/apps/playground/src" },
+  {
+    label: "editor",
+    dir: "E:/Project/MyProject/LingFan/LingFan.Engine/apps/editor/src",
+  },
+  {
+    label: "playground",
+    dir: "E:/Project/MyProject/LingFan/LingFan.Engine/apps/playground/src",
+  },
 ];
 
 /** 递归列出 .vue 文件（宿主组件 + App.vue） */
@@ -58,7 +64,9 @@ describe("纯图标按钮 ·必须有可访问名", () => {
     // 匹配 <button …>…</button> 与 <button … /> 两形态
     for (const m of text.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)) {
       const attrs = m[1];
-      const inner = stripComments(m[2]).replace(/<[^>]+>/g, "").trim();
+      const inner = stripComments(m[2])
+        .replace(/<[^>]+>/g, "")
+        .trim();
       // `v-html` 内容不进无障碍名计算：inner 为空但绑定 v-html 时同样需要显式可访问名
       const isVHtml = /v-html\s*=/.test(attrs);
       if (!isIconOnly(inner) && !isVHtml) continue; // 有静态文字 ⇒ 不必加 aria-label
@@ -76,7 +84,7 @@ describe("纯图标按钮 ·必须有可访问名", () => {
     expect(
       violations,
       `这些纯图标按钮缺 aria-label：\n${violations.join("\n")}\n\n` +
-        "⇒ 修法：加 :aria-label=\"<人话描述>\"（title 只能当 tooltip，**不进无障碍树**）",
+        '⇒ 修法：加 :aria-label="<人话描述>"（title 只能当 tooltip，**不进无障碍树**）',
     ).toEqual([]);
   });
 
@@ -86,7 +94,9 @@ describe("纯图标按钮 ·必须有可访问名", () => {
       const t = stripComments(readFileSync(file, "utf8"));
       return n + [...t.matchAll(/<button\b/g)].length;
     }, 0);
-    expect(total, "两宿主按钮数合计不应为 0（否则守卫没在扫）").toBeGreaterThan(30);
+    expect(total, "两宿主按钮数合计不应为 0（否则守卫没在扫）").toBeGreaterThan(
+      30,
+    );
   });
 
   it("两个参考宿主都在扫描面内（防扫描面退化）", () => {

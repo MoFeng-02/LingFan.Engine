@@ -6,8 +6,9 @@
  */
 
 import type { z } from "zod";
-import type { OpExtension } from "@lingfan/engine";
+import type { OpExtension, WaitSpec } from "@lingfan/engine";
 import type { OpMeta } from "../contracts";
+import { WAITING_OPS, collectWaitSpecs } from "@lingfan/engine";
 import { OP_META } from "./catalog";
 import { OP_GROUP_ORDER } from "./elementPalette";
 import { OP_SCHEMAS } from "./opSchemas";
@@ -16,9 +17,14 @@ import { OP_SCHEMAS } from "./opSchemas";
 export interface OpSurface {
   readonly schemas: Readonly<Record<string, z.ZodType>>;
   readonly meta: readonly OpMeta[];
+  /** op → 等待规格合并面（裁定⑦）：内建表 + wait:true 的扩展 op（collectWaitSpecs 产物） */
+  readonly waiting?: ReadonlyMap<string, WaitSpec>;
 }
 
-export const BUILTIN_OP_SURFACE: OpSurface = { schemas: OP_SCHEMAS, meta: OP_META };
+export const BUILTIN_OP_SURFACE: OpSurface = {
+  schemas: OP_SCHEMAS,
+  meta: OP_META,
+};
 
 /** 合并扩展负载 schema（`OpEditorSchema.schema` 以 unknown 载体声明，编辑器窄化为 zod） */
 export function mergeOpSchemas(
@@ -65,7 +71,9 @@ export function mergeOpMeta(
   return [...base, ...additions];
 }
 
-/** 组合根入口：内建面 + 扩展 → 合并面（缺省扩展 = 内建面原样） */
+/** 组合根入口：内建面 + 扩展 → 合并面（缺省扩展 = 内建面原样）。
+ * 等待声明表一并并入（裁定⑦）：内建表打底，wait:true 的扩展 op 覆盖同名（引擎注册期已查重，实为追加）——
+ * SSOT 仍是引擎的 `WAITING_OPS` + `collectWaitSpecs`，编辑器只透传不复制。 */
 export function mergeOpSurface(
   extensions: readonly OpExtension[],
   base: OpSurface = BUILTIN_OP_SURFACE,
@@ -73,5 +81,15 @@ export function mergeOpSurface(
   return {
     schemas: mergeOpSchemas(base.schemas, extensions),
     meta: mergeOpMeta(base.meta, extensions),
+    waiting: mergeOpWaiting(base.waiting, extensions),
   };
+}
+
+/** 合并扩展等待声明（裁定⑦）：内建表 `WAITING_OPS` 打底（base 缺省时），collectWaitSpecs 的扩展条目并入。
+ * 消费方（steps.ts 边界判定）读合并面——未合并时回退内建口径。 */
+function mergeOpWaiting(
+  base: ReadonlyMap<string, WaitSpec> | undefined,
+  extensions: readonly OpExtension[],
+): ReadonlyMap<string, WaitSpec> {
+  return collectWaitSpecs(extensions, base ?? WAITING_OPS);
 }

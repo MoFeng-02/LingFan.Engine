@@ -4,6 +4,8 @@
  * **步骤语义归引擎**：哪个 op 建立等待一律取自引擎的等待声明表
  * （`waitingStateOfOp` / `waitSpecOfOp`），本模块**不含任何逐 op 判定**——它只做结构切分：
  * 「一条命令是否构成边界」= 该命令自身或其可触达体内存在等待点。
+ * 等待声明读 `StepOptions.surface` 的合并面（`OpSurface.waiting`，裁定⑦——含 wait:true 的
+ * 扩展 op）；未合并/无条目回退内建表口径，内建行为不变。
  *
  * 块体与调用（两条规则都直接派生自引擎的检查点坐标语义 `checkpointCoord`：
  * 块帧内的等待点，坐标回退到**块进入命令**，故边界落在块命令本身）：
@@ -20,6 +22,7 @@ import type {
   Story,
   StoryColumn,
   WaitingState,
+  WaitSpec,
 } from "@lingfan/engine";
 import { waitSpecOfOp, waitingStateOfOp } from "@lingfan/engine";
 import { getAtPointer } from "../editing";
@@ -176,7 +179,11 @@ function collectForks(
     }
     if (op === "jump") {
       if (typeof cmd.target === "string" && cmd.target !== "") {
-        forks.push({ kind: "jump", target: cmd.target, pointer: `${pointer}/target` });
+        forks.push({
+          kind: "jump",
+          target: cmd.target,
+          pointer: `${pointer}/target`,
+        });
       }
       continue;
     }
@@ -229,7 +236,10 @@ export function columnSteps(
   let pendingForks: StepFork[] = [];
   const rootPointer = `/columns/${columnIndex}/${field}`;
 
-  const close = (kind: StoryStep["kind"], spec: { state: WaitingState; hard: boolean; forks: StepFork[] }): void => {
+  const close = (
+    kind: StoryStep["kind"],
+    spec: { state: WaitingState; hard: boolean; forks: StepFork[] },
+  ): void => {
     if (open.length === 0) return;
     steps.push({
       columnId,
@@ -252,12 +262,29 @@ export function columnSteps(
     const reachable: { cmd: Record<string, unknown>; pointer: string }[] = [];
     collectReachable(cmd, pointer, ctx, reachable, new Set());
     pendingForks.push(...collectForks(reachable));
-    // 边界 = 可触达集合里存在等待点（自身或块体/被调函数体）
+    // 边界 = 可触达集合里存在等待点（自身或块体/被调函数体）。
+    // 等待声明读合并面（裁定⑦）：`ctx.surface.waiting` 先查（含 wait:true 的扩展 op），
+    // 未合并/无条目回退内建表口径 `waitingStateOfOp`——内建行为不变，扩展等待点被切分。
+    const waitingSpecOf = (
+      cmd: Record<string, unknown>,
+    ): { state: WaitingState | "none"; spec?: WaitSpec } => {
+      const op = opOf(cmd);
+      const merged = ctx.surface.waiting;
+      if (op !== undefined && merged !== undefined) {
+        const spec = merged.get(op);
+        if (spec !== undefined) return { state: spec.state, spec };
+      }
+      return { state: waitingStateOfOp(op) };
+    };
     const boundary = reachable.find(
-      (item) => waitingStateOfOp(opOf(item.cmd)) !== "none",
+      (item) => waitingSpecOf(item.cmd).state !== "none",
     );
     if (boundary !== undefined) {
-      const spec = waitSpecOfOp(opOf(boundary.cmd));
+      const boundaryOp = opOf(boundary.cmd);
+      const spec =
+        (boundaryOp !== undefined
+          ? ctx.surface.waiting?.get(boundaryOp)
+          : undefined) ?? waitSpecOfOp(boundaryOp);
       close("wait", {
         state: spec?.state ?? "wait",
         hard: spec?.hard === true,

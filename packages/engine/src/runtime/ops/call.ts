@@ -59,9 +59,16 @@ export function execFunc(ctx: OpContext, cmd: StoryCommand): boolean {
   return true;
 }
 
+/** 从命令上摘 into 绑定名（非空字符串才认；编译器经 schema 校验，这里只做信任边界内的窄化） */
+function intoOf(cmd: StoryCommand): string | undefined {
+  const into = cmd.into;
+  return typeof into === "string" && into !== "" ? into : undefined;
+}
+
 /**
  * call：按名查表 → 实参求值按位绑定 → 函数帧（体 = 独立块作用域）。
- * 未注册/参数个数不符 fail-closed。
+ * 未注册/参数个数不符 fail-closed。`into` 指定结果绑定名：随被调帧携带，
+ * return 与函数体自然跑完两条路都据此把返回值声明进调用方作用域。
  */
 export function execCall(
   ctx: OpContext,
@@ -69,6 +76,7 @@ export function execCall(
   cmd: StoryCommand,
 ): boolean {
   const name = cmd.target as string;
+  const into = intoOf(cmd);
   const fn = ctx.functions.get(name);
   if (fn === undefined) {
     // 列（label）目标：`call` 的文档语义是「调用子过程（func 或 label），
@@ -104,6 +112,7 @@ export function execCall(
       index: 0,
       scope,
       func: true,
+      into,
     });
     return true;
   }
@@ -127,6 +136,7 @@ export function execCall(
       index: 0,
       scope,
       func: true,
+      into,
     });
     return true;
   } catch (e) {
@@ -138,11 +148,35 @@ export function execCall(
   }
 }
 
-/** return：弹出函数帧及其内部块帧，回到调用方；函数外 return fail-closed */
-export function execReturn(ctx: OpContext): boolean {
+/**
+ * return：求返回值（可选）→ 弹出函数帧及其内部块帧 → 回到调用方；
+ * 函数外 return fail-closed。求值先于弹帧：表达式失败时停机在 return 上，
+ * 引擎状态保持原样。带值返回写入调用方帧的 result 槽；被调帧带 into 名时
+ * 把返回值声明成调用方作用域的局部变量（裸 ret / 无值返回绑 null，与
+ * 函数体自然跑完的语义一致）。
+ */
+export function execReturn(ctx: OpContext, cmd?: StoryCommand): boolean {
   for (let i = ctx.frames.length - 1; i >= 0; i -= 1) {
     if (ctx.frames[i]!.func === true) {
+      let value: unknown = null;
+      if (cmd !== undefined && cmd.value !== undefined) {
+        try {
+          value = ctx.evalValue(cmd.value);
+        } catch (e) {
+          if (e instanceof ExpressionError) {
+            ctx.fail(e.code, e.message);
+            return false;
+          }
+          throw e;
+        }
+      }
+      const into = ctx.frames[i]!.into;
       ctx.frames.length = i; // 移除函数帧及其内部剩余帧
+      const caller = ctx.frames[ctx.frames.length - 1];
+      if (caller !== undefined) {
+        caller.result = value;
+        if (into !== undefined) caller.scope.declare(into, value);
+      }
       return true;
     }
   }

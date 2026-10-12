@@ -47,12 +47,12 @@ minigames.register("coin_flip", async (host, ctx) => {
 
 工厂签名是 `(host, ctx) => Promise<MinigameResult>`：
 
-| 参数 | 是什么 |
-|---|---|
-| `host` | 宿主提供的挂载容器。契约只说「有个能挂的东西」，具体类型由宿主自己收窄 |
-| `ctx.config` | 命令里的 `config`，原样 |
-| `ctx.signal` | 中止句柄，见下 |
-| `ctx.seq` | 本次挂载的单调序号，用来区分重放 |
+| 参数         | 是什么                                                                 |
+| ------------ | ---------------------------------------------------------------------- |
+| `host`       | 宿主提供的挂载容器。契约只说「有个能挂的东西」，具体类型由宿主自己收窄 |
+| `ctx.config` | 命令里的 `config`，原样                                                |
+| `ctx.signal` | 中止句柄，见下                                                         |
+| `ctx.seq`    | 本次挂载的单调序号，用来区分重放                                       |
 
 返回值：
 
@@ -74,11 +74,11 @@ engine.resolveMinigame({ outcome: "success", state: { best: 12 } });
 
 结果不合法会整次拒绝，挂起状态保留，改对可以再回传一次：
 
-| 错误码 | 什么时候 |
-|---|---|
+| 错误码                     | 什么时候                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------- |
 | `minigame-resolve-invalid` | 当前不在小游戏等待中：`resolveMinigame 仅在小游戏等待中有效（当前 __waiting=dialog）` |
-| `minigame-result-invalid` | `outcome` 不是 `success`/`fail`，`score` 不是有限数字，`state` 不是对象 |
-| `minigame-state-corrupt` | 等待态在但没有挂起记录 |
+| `minigame-result-invalid`  | `outcome` 不是 `success`/`fail`，`score` 不是有限数字，`state` 不是对象               |
+| `minigame-state-corrupt`   | 等待态在但没有挂起记录                                                                |
 
 `state` 里有一个键写不进去，整批都不写。
 
@@ -124,9 +124,9 @@ engine.resolveInteraction("battle", { outcome: "success", state: { hp: 30 } });
 宿主在玩法系统里改状态走 `engine.gameState`：
 
 ```ts
-engine.gameState.set("hp", 30);              // 进事件流，界面能响应
-engine.gameState.setSilent("cursorX", 120);  // 不进事件流
-engine.gameState.setScoped("battle", "hp", 30);  // 落 game.battle.hp
+engine.gameState.set("hp", 30); // 进事件流，界面能响应
+engine.gameState.setSilent("cursorX", 120); // 不进事件流
+engine.gameState.setScoped("battle", "hp", 30); // 落 game.battle.hp
 engine.gameState.setScopedSilent("battle", "cursorX", 120);
 ```
 
@@ -158,7 +158,7 @@ label missed:
 minigames.register("fishing", async (host, ctx) => {
   const difficulty = Number(ctx.config.difficulty ?? 1);
   const won = await runFishingMinigame(host, difficulty, ctx.signal);
-  if (ctx.signal.aborted) return { outcome: "fail" };  // 被回溯打断，结果不会被接收
+  if (ctx.signal.aborted) return { outcome: "fail" }; // 被回溯打断，结果不会被接收
   return { outcome: won ? "success" : "fail", state: { attempts: 1 } };
 });
 ```

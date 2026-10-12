@@ -7,7 +7,17 @@
 //
 // 纯函数（resolveProtocolBase / rewriteHtml）被 tests/playground/prepare-dist.test.ts 直接测试；
 // 本文件主流程只做文件编排。
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -74,7 +84,9 @@ function main() {
   cpSync(join(root, "splashscreen.html"), join(dist, "splashscreen.html"));
 
   if (process.env.LFEN_ENCRYPTED_BUILD !== "1") {
-    console.log("[prepare-dist] 直通模式（LFEN_ENCRYPTED_BUILD≠1）：仅同步 splashscreen.html");
+    console.log(
+      "[prepare-dist] 直通模式（LFEN_ENCRYPTED_BUILD≠1）：仅同步 splashscreen.html",
+    );
     process.exit(0);
   }
 
@@ -82,7 +94,10 @@ function main() {
   if (!existsSync(indexPath)) fail("dist/index.html 不存在");
   const base = resolveProtocolBase(process.platform, process.env);
   const { html, assets } = rewriteHtml(readFileSync(indexPath, "utf8"), base);
-  if (assets.length === 0) fail("index.html 无本地产物引用可改写——产物形态与预期不符（单包产物必须内联全部 chunk）");
+  if (assets.length === 0)
+    fail(
+      "index.html 无本地产物引用可改写——产物形态与预期不符（单包产物必须内联全部 chunk）",
+    );
   writeFileSync(indexPath, html);
 
   // assets 移出 frontendDist（明文 js/css 不得进 Tauri 嵌入面）；**保持 assets/ 子层**——
@@ -103,7 +118,10 @@ function main() {
   }
 
   const leftovers = walkJsCss(dist);
-  if (leftovers.length > 0) fail(`frontendDist 内残留明文产物（拒绝嵌入）：\n  ${leftovers.join("\n  ")}`);
+  if (leftovers.length > 0)
+    fail(
+      `frontendDist 内残留明文产物（拒绝嵌入）：\n  ${leftovers.join("\n  ")}`,
+    );
 
   console.log(
     `[prepare-dist] 加密准备完成：改写 ${assets.length} 个引用 → ${base}/v2/…；产物移至 dist-enc/（lfenpack --dist 输入）`,

@@ -22,9 +22,7 @@ function fakeHandle(name: string): FileSystemDirectoryHandle {
 }
 
 /** 最小 IndexedDB 替身：事件模型 + 内存 Map（跨 open 共享，够 createLastProjectStore 的面） */
-function makeMemoryIdbFactory(options?: {
-  failOpen?: boolean;
-}): IDBFactory {
+function makeMemoryIdbFactory(options?: { failOpen?: boolean }): IDBFactory {
   const maps = new Map<string, Map<string, unknown>>(); // store 名 → 数据（跨 open 共享）
   class FakeRequest {
     result: unknown = undefined;
@@ -139,7 +137,9 @@ describe("createLastProjectStore（句柄持久化）", () => {
   });
 
   it("open 失败（onerror）→ 静默降级：load undefined、save 不抛", async () => {
-    const store = createLastProjectStore(makeMemoryIdbFactory({ failOpen: true }));
+    const store = createLastProjectStore(
+      makeMemoryIdbFactory({ failOpen: true }),
+    );
     await expect(store.load()).resolves.toBeUndefined();
     await expect(store.save(fakeHandle("x"))).resolves.toBeUndefined();
   });
@@ -148,7 +148,10 @@ describe("createLastProjectStore（句柄持久化）", () => {
     const store: LastProjectHandleStore = createLastProjectStore(
       makeMemoryIdbFactory(),
     );
-    await store.save({ kind: "file", name: "bogus" } as unknown as FileSystemDirectoryHandle);
+    await store.save({
+      kind: "file",
+      name: "bogus",
+    } as unknown as FileSystemDirectoryHandle);
     await expect(store.load()).resolves.toBeUndefined();
   });
 });
@@ -167,7 +170,9 @@ describe("源码互锁：组合根装配与宿主按钮在位", () => {
     //   本断言守的是「一键重开入口存在 + 有句柄才渲染」，**不是**那句长文案。
     expect(appSource).toContain("一键重开上次工程");
     expect(appSource).toContain("reopenLastProject");
-    expect(appSource).toContain('v-if="props.lastProject?.value !== undefined"');
+    expect(appSource).toContain(
+      'v-if="props.lastProject?.value !== undefined"',
+    );
     expect(appSource).toContain("重新打开失败：");
   });
 });
