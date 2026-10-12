@@ -262,13 +262,17 @@ export default defineConfig({
 					],
 				},
 				{
-					// P1「进阶」页尚未编写，先保留 IA 位置并显式标注，
-					// 避免出现指向不存在页面的死链。
 					label: '进阶',
 					translations: { en: 'Advanced' },
 					collapsed: true,
-					badge: '整理中',
-					items: [],
+					items: [
+						{
+							label: 'TS 创作模式',
+							translations: { en: 'TypeScript Authoring' },
+							link: '/advanced/ts-story-source/',
+							badge: '实现中',
+						},
+					],
 				},
 			],
 		}),

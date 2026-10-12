@@ -8,8 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "build:prepare": "node scripts/prepare-dist.mjs",
-    "stories:build": "tsx scripts/stories-build.ts",
-    "stories:watch": "tsx watch scripts/stories-build.ts",
+    "stories:build": "tsx ../../packages/stories-build/src/cli/cli.ts .",
+    "stories:watch": "tsx watch ../../packages/stories-build/src/cli/cli.ts .",
     "stories-typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "tauri": "tauri"
@@ -18,6 +18,7 @@
     "@lingfan/adapters": "workspace:*",
     "@lingfan/editor": "workspace:*",
     "@lingfan/engine": "workspace:*",
+    "@lingfan/stories-build": "workspace:*",
     "@lingfan/ui": "workspace:*",
     "@tauri-apps/api": "^2.12.1",
     "vue": "^3.5.13"

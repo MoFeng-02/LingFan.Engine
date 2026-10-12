@@ -1,0 +1,22 @@
+{
+  "name": "@lingfan/stories-build",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Stories 创作链编译包：把 Stories.src 的多目录原生 TS 源编译成 Resources/Stories/** + project.json，并产出 cell 注册生成物",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./cell": "./src/cell/index.ts",
+    "./cli": "./src/cli/cli.ts"
+  },
+  "files": [
+    "src",
+    "!src/**/*.test.ts"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@lingfan/editor": "workspace:*",
+    "@lingfan/engine": "workspace:*",
+    "esbuild": "^0.28.2"
+  }
+}

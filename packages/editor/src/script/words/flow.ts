@@ -11,7 +11,7 @@
  */
 import type { StoryCommand } from "@lingfan/engine";
 import type { CommandOf, ScriptValue } from "../../schema";
-import type { CellHandle, KnownGuardName } from "./cells";
+import type { CellHandle, KnownColumnName, KnownGuardName } from "./cells";
 
 export type Stmt = StoryCommand;
 
@@ -69,12 +69,12 @@ export function random(
 
 /**
  * 立即跳进 `target` 列继续（列名即标签，同一故事文件内跳转）。
- * @param target 目标列名。
+ * @param target 目标列名（`stories.gen.d.ts` 存在时收窄为工程内列名字面量联合）。
  * @returns `jump` 故事命令。
  * @example
  * when(cond`gold >= 10`, [jump("shop")]);
  */
-export function jump(target: string): CommandOf<"jump"> {
+export function jump(target: KnownColumnName): CommandOf<"jump"> {
   return { op: "jump", target };
 }
 
@@ -87,7 +87,10 @@ export function jump(target: string): CommandOf<"jump"> {
  * @example
  * navigate("ep2_gate", "ep2");
  */
-export function navigate(path: string, scene?: string): CommandOf<"navigate"> {
+export function navigate(
+  path: KnownColumnName,
+  scene?: KnownColumnName,
+): CommandOf<"navigate"> {
   return { op: "navigate", path, ...(scene === undefined ? {} : { scene }) };
 }
 

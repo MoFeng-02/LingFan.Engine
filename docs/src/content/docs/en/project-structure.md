@@ -66,8 +66,8 @@ Beyond those four there are a few optional fields you will rarely touch:
 
 Story files. Both forms can sit side by side:
 
-- `.story` text files — use these when writing by hand.
-- `.json` JSON v1 — use these for tool-generated, machine-read content.
+- `.json` JSON v1 — what `.story` compiles to, and what TypeScript authoring compiles to. It is the only form the engine and the editor read.
+- `.story` text files — the handwritten DSL, compiled to `.json` by a tool.
 
 Put them anywhere inside `Stories/`, in whatever subdirectories you like. Column ids are unique across the whole project. File names are unrelated to column ids; collisions are decided by column id.
 
@@ -82,6 +82,8 @@ How a new file gets into the story list depends on the host form:
 - **Desktop shell**: recursively collects every story file under `Resources/Stories/` — drop one in and it is picked up, no registration needed; subdirectories double as chapter grouping.
 
 The engine side is the same for both forms: the assembler only processes files under `Stories/` and skips every other path. A file that never made the list (a missed registration in the Web form) has no columns at all, so jumping to one of them fails to load with "target column does not exist".
+
+A project authored in TypeScript writes its output here, with paths mirroring the source files under `Stories.src/`. Such a project manages its column set wholesale at build time: a column the source no longer declares is deleted from the output directory. The editor treats that output as read-only, so change columns in the source. The test is whether the project root has `Stories.src/config.ts` — the files currently sitting in `Stories/` are irrelevant. See [TypeScript Authoring](/en/advanced/ts-story-source/).
 
 ## Audio/ Images/ Video/
 

@@ -11,9 +11,12 @@ node_modules
 dist
 dist-ssr
 dist-enc
-tests/playground/.tmp-build
 *.local
 target
+
+# 测试夹具的临时工作区：测试跑完即删（残留时是未跟踪垃圾），不入版本库
+# 覆盖三个测试文件各自的 BASE：build-pipeline(.tmp-build) / func-collision(.tmp-collide) / typegen(.tmp-typegen)
+**/.tmp-*/
 
 # 运行期产物：存档由 Rust 安全层落盘，不进版本库
 **/Resources/Saves/
@@ -47,3 +50,6 @@ apps/playground/src-tauri/gen/android/app/src/main/assets/Resources/
 /apps/playground/src-tauri/.tauri/
 /.trae
 /.agent-teams
+
+# 测试运行产物：json reporter 的落盘目录（谁跑谁生成，不入版本库）
+/.vitest

@@ -20,6 +20,7 @@
   "devDependencies": {
     "@lingfan/adapters": "workspace:*",
     "@lingfan/engine": "workspace:*",
+    "@lingfan/stories-build": "workspace:*",
     "@lingfan/ui": "workspace:*",
     "@types/node": "^26.6.3",
     "@vue/eslint-config-typescript": "^14.9.0",

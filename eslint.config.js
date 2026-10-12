@@ -50,7 +50,9 @@ export default defineConfigWithVueTs(
       "**/node_modules/**",
       // 测试夹具的临时工作区：测试跑完即删，但**测试与 lint 并发时**可能正在被删
       // ⇒ eslint 扫到半途消失的文件会报 ENOENT 直接崩（非代码问题）。
-      "**/.tmp-build/**",
+      // 三个测试文件各有自己的 BASE：build-pipeline(.tmp-build) / func-collision(.tmp-collide)
+      // / typegen(.tmp-typegen)——按前缀一并忽略，新增夹具目录不必再改这里。
+      "**/.tmp-*/**",
       // 私有文档（验收脚本 / 临时探针）：不入版本库，其中 .cjs 探针
       // 按 CommonJS 写(require)，与仓库 TS 源的模块规范不同
       "**/私有文档/**",
@@ -234,7 +236,11 @@ export default defineConfigWithVueTs(
     // node:fs 等（不在 WebView 运行，不受「WebView 无 Node」守卫；编辑器/引擎/Rust 零感知）
     files: [
       "apps/playground/scripts/**/*.{ts,mjs}",
-      "tests/playground/stories-build.test.ts",
+      // 创作链编译包（@lingfan/stories-build）：同上，Node 侧创作期工具，
+      // 且它是 `apps/playground/scripts` 原管线的搬移归宿——例外随代码一起搬家
+      "packages/stories-build/**/*.{ts,mjs}",
+      // 创作链编译域的测试整域豁免（读文件、跑 CLI 的用例都在这儿）
+      "tests/stories-build/**/*.ts",
       // 编辑器的**本地服务宿主**（仅回环 HTTP + 外部打开）——
       // Node 侧运行，浏览器端代码零感知（前端只做能力探测，不假设它在）
       "apps/editor/server/**/*.ts",

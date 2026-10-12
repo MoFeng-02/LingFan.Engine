@@ -31,6 +31,33 @@ export type KnownGuardName = keyof GuardNameRegistry extends never
   : keyof GuardNameRegistry & string;
 
 /**
+ * 列名注册表（类型扩充点）：构建期生成的 `Stories.src/gen/stories.gen.d.ts`
+ * 往本接口塞进工程内每个列 id 的字面量键 ⇒ `jump("…")` 与 `option("…", "…")`
+ * 的目标列名获得补全、写错即红。空表退化为普通 string。
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- 类型扩充点：只有接口可被生成物 declare module 合并（type 别名不能），空体是有意形态
+export interface ColumnNameRegistry {}
+
+/** 已声明列名（有声明 = 字面量联合；空 = string） */
+export type KnownColumnName = keyof ColumnNameRegistry extends never
+  ? string
+  : keyof ColumnNameRegistry & string;
+
+/**
+ * 插值键注册表（类型扩充点）：生成物塞进工程内所有能当 `{…}` 键的名字——
+ * state schema 展平键、defineVars 登记变量、产物 op 流里的声明名，
+ * 以及扩展命名空间前缀（生成物写成 `ext.<id>.${string}` 的字面量类型）。
+ * 空表退化为普通 string；富文本行内标记由词汇层的模板串类型单独豁免。
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- 类型扩充点：只有接口可被生成物 declare module 合并（type 别名不能），空体是有意形态
+export interface InterpolationKeyRegistry {}
+
+/** 已声明插值键（有声明 = 字面量联合；空 = string） */
+export type KnownInterpolationKey = keyof InterpolationKeyRegistry extends never
+  ? string
+  : keyof InterpolationKeyRegistry & string;
+
+/**
  * 声明一个守卫实现槽位：构建期扫描收集 `impl` 生成注册物，故事数据里
  * 只留名字（{@link guard} 的 fn 字段）。运行期是纯声明——不执行 impl。
  * 返回的句柄可直接传给 {@link guard}，名字只写一次。
