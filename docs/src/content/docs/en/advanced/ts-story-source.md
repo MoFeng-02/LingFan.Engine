@@ -106,15 +106,18 @@ Sharing a function across files needs `export` + `import`. A module-level functi
 
 ### How to import the vocabulary
 
-There are three ways to get a vocabulary function out of `@lingfan/editor`, and all three work:
+There are four ways to get a vocabulary function out of `@lingfan/editor`, and all four work:
 
 | What you write                                                   | What you get                         |
 | ---------------------------------------------------------------- | ------------------------------------ |
 | `import { say, menu } from "@lingfan/editor";`                   | the function itself, called directly |
 | `import { script } from "@lingfan/editor";` then `script.say(…)` | the vocabulary namespace             |
 | `import * as ct from "@lingfan/editor";` then `ct.say(…)`        | the whole namespace                  |
+| no import at all — just `script.say(…)`                          | import-free ambient call             |
 
 Rename with `as`: `import { say as greet }` and `import { script as ct }` both work, and the vocabulary functions follow the alias of the namespace.
+
+The import-free call is backed by a generated ambient declaration: `Stories.src/gen/script.gen.d.ts` carries one `declare const script` pointing at the vocabulary namespace — a pure compile-time type face, no runtime object is injected. Declarations of the same name inside a module (functions, imports) shadow it per normal TypeScript rules, and explicit imports and renames are unaffected. A misspelled word still fails at build time, and the message points to both the `script.` namespace and the named imports.
 
 The four forms below are build-time errors. The error text is quoted verbatim; the examples differ only in the import lines.
 
@@ -318,7 +321,11 @@ Concretely, what you may run into while writing:
 
 - The vocabulary layer's exports are source-generated: `vocabulary.g.ts` is produced by the generate-vocabulary CLI from the words/ sources, with fail-closed consistency checks. When the engine gains an op, one generation run syncs it — no hand-written export layer.
 - Which command names `extOp` can call depends on what the engine has registered — this authoring mode adds no ops of its own.
-- The `state` declaration lives in `Stories.src/config.ts` (the `define` accumulation form, evaluated at build time and flattened into flat defines); `export declare const state` is a types-only, zero-runtime shim provided by the `@lingfan/stories-build` package exports. It never enters the output and exists to give the IDE jumps and checks; precise type-face generation for the define form is still on the way, bridged by a wide index signature.
+- The `state` declaration lives in `Stories.src`: `config.ts` or the top level of any module (outside function bodies) may call `define` to accumulate; everything is evaluated at build time into one merge tree and flattened into flat defines — duplicate keys across files fail with every location reported at once. `defineVars` (interpolation key registration) stays exclusive to `config.ts`. The build also turns the merge tree into a precise type face at `Stories.src/gen/state.gen.d.ts` (enums via `import type` references, descriptors typed slot by slot), and a project-side bridge file (e.g. `Stories.src/lib/state-root.d.ts`) does `import type { StoryState }` plus a `declare global` to attach the state root — IDE jumps and checks on `state.…` see exact types instead of a wide index signature. The wide shim from the `@lingfan/stories-build` package exports remains only as the default fallback for projects not wired to the bridge.
+- State value domain: `null` is a legal empty value for state slots (`type: "number", default: null` works, and runtime `set` may write null; `undefined` is what destroys a key), and expressions with `??` fallbacks consume null directly. The descriptor `type` slot also accepts unions: `type: ["number", Sex, null]` declares "number, enum Sex, or empty" — the build emits the exact union type (`number | Sex | null`, enums still via `import type`), `default` must fall inside at least one member's domain, and unknown members fail with every offender reported at once; Form A gets the same static inference with an `as const` tuple.
+- Interpolation keys pick up declared names automatically: `let n = 0`, `local("k", …)` in a story body, and declarations that take a function's return value like `const r = someFunc()` — the engine declares the return binding as a local, so `{r}` is a legal interpolation and the build registers these names into the interpolation registry without hand-listing them in `defineVars`; names shared with state/define keys dedupe silently.
+- Font name registry: dropping a font file into `Resources/Fonts/` registers it; the font name is the file name without its extension (`楷体.ttf` → `楷体`). The story layer only writes the name string — the `{font=楷体}` inline tag or the say `font` parameter; static references fail at build time (unregistered names error with a location), while interpolated dynamic names fall back to the default font at runtime with a host-side diagnostic. The reference host injects `@font-face` for `Resources/Fonts` automatically — no hand-written styles needed. The build also emits `Stories.src/gen/font.gen.d.ts` (write `font["楷体"]` to take a name declaratively; a typo fails type checking immediately). Sentence fonts resolve in four tiers: the say `font` parameter > the character's `font` > the column font (`const columnFont = "楷体";` at a story file's top level) > the project default (a host CSS variable — `--lf-story-font` on the reference host).
+- Saves follow story upgrades: `config.ts` may export a `version` (positive integer) declaring the story version — it is written into every save; on load, if the current story declares a version and it differs from the save's, the engine hands the save state to the `migrateState` hook provided at engine construction (success emits a notice, unmigratable saves are rejected wholesale), and a story without a version skips reconciliation entirely — old and new saves both load as-is. Also: keys destroyed by `undef` in the global layer are recorded in the save as tombstones, so the load-time padding (new define defaults) never revives them; and minigames that wrote state back get their registered `stateVersion` checked and migrated on load (same semantics as extension dependency marks).
 
 ## Next
 

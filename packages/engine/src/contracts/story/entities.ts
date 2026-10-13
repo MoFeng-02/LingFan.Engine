@@ -59,6 +59,13 @@ export interface StoryColumn {
    * - **不序列化进故事文件本身**（它是编辑期元数据，见 `columnFileText` 的剥离）。
    */
   sourcePath?: string;
+  /**
+   * **列级字体**（纯展示元数据）：本列对话正文的默认字体名（字体名 = 资源根
+   * `Fonts/` 下文件名去扩展名；编译期注册表 fail-closed）。
+   * 分辨链中最宽的一档：行内 `{font=}` / say 行参 / 角色字体都覆盖它；
+   * 不设端口、不进存档——只是每列的排版事实。
+   */
+  font?: string;
   /** scene 专有：舞台元素声明（类型与属性全集 fail-closed）。
    *  进入列时由引擎装载为 `SYS.elements`（声明式空间层，不走命令流） */
   elements?: ElementNode[];
@@ -77,6 +84,11 @@ export interface Story {
   columns: StoryColumn[];
   /** 顶层结构化定义：无条件 Set，后加载覆盖先加载 */
   defines?: Record<string, unknown>;
+  /**
+   * 故事版本（config.ts 作者声明的 `export const version`，缺省 1）：
+   * 进存档 `storyVersion`；升级时经宿主 `migrateState` 钩子迁移旧档。
+   */
+  version?: number;
   /** 信封语言声明（多版本列文件 `{id}_{lang}` 的文件内声明；缺省 = 默认语言） */
   lang?: string;
   /**
@@ -114,6 +126,8 @@ export interface ProjectManifest {
   extensions?: string[];
   /** 工程级 defines：无条件 Set，先于故事文件应用（后加载覆盖） */
   defines?: Record<string, unknown>;
+  /** 故事版本（作者声明，正整数；TS 源链经托管键更新落盘；缺省 = 1） */
+  version?: number;
 }
 
 /** overlay 译文文件：overlay 根内相对路径（`/` 分隔；`main.json` = 全局兜底，最先合并）

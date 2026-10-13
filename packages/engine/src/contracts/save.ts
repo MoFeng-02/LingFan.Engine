@@ -1,6 +1,9 @@
 /**
  * 存档编排契约（TS 侧）：安全（加密/AAD/高水位）在 Rust 层。
  * TS 只编排载荷与槽位；跨端（Desktop/Mobile）实现同一 SavePort。
+ *
+ * 演进纪律（写死）：载荷字段**只增不改**；破坏性变更必须升 `formatVersion`
+ * 并同时提供 `migrateSave` 迁移路径——旧档读不了 = 引擎违约。
  */
 import type { ColumnCoordinate, StoryCommand } from "./story";
 
@@ -25,6 +28,25 @@ export interface SaveDataV1 {
    * 缺 id / 版本不可达且无 migrate → 整档拒绝（`extension-missing` / `extension-version`）。
    */
   extensions?: { id: string; stateVersion: number }[];
+  /**
+   * 生成本档时的故事版本（config.ts 作者声明的 `version`，缺省 1）。
+   * 读档时与当前故事**声明**的 `version` 比对（当前故事未声明则不对账，
+   * 存量档直读）：不一致且宿主提供了 `migrateState` 钩子 → 迁移；
+   * 无钩子 → 整档拒绝（`save-story-version`）。旧档无此字段 = 按 0 处理。
+   */
+  storyVersion?: number;
+  /**
+   * 墓碑：本档执行过 `undef` 且删除落在全局层的状态键（帧层 undef 不记）。
+   * 读档垫底（story.defines 默认值补齐）据此跳过这些键——「作者主动销毁」与
+   * 「旧档缺键」两种缺失必须区分，否则 undef 后读档默认值会复活。
+   */
+  deleted?: string[];
+  /**
+   * 玩法系统依赖标记：本档实际回填过状态的玩法系统（`resolveMinigame` 登记落盘）。
+   * 语义与 `extensions` 同构：缺玩法系统注册 → `minigame-missing` 拒绝；
+   * 版本不可达且无 migrate → `minigame-version` 拒绝。未用到玩法系统的存档不带本字段。
+   */
+  minigames?: { id: string; stateVersion: number }[];
   history: Array<{
     coord: ColumnCoordinate;
     state: [string, unknown][];

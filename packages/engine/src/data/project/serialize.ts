@@ -18,7 +18,7 @@ function stableJson(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
-/** 单列原子文件文本：字段序固定（formatVersion, id, kind, commands|elements, entry?） */
+/** 单列原子文件文本：字段序固定（formatVersion, id, kind, type?, font?, commands|elements, entry?） */
 function columnFileText(column: StoryColumn): string {
   const ordered: Record<string, unknown> = {
     formatVersion: 1,
@@ -30,6 +30,8 @@ function columnFileText(column: StoryColumn): string {
   // 缺省 game 不写（保持文件干净），非缺省才写。
   if (column.type !== undefined && column.type !== "game")
     ordered.type = column.type;
+  // 列级字体（纯展示元数据）必须写回：漏了会让保存悄悄抹掉列排版（不可逆）。
+  if (column.font !== undefined) ordered.font = column.font;
   if (column.kind === "flow") {
     ordered.commands = column.commands ?? [];
   } else {
@@ -60,6 +62,9 @@ function manifestText(story: Story, manifest: Record<string, unknown>): string {
       out[key] = story.entry;
     } else if (key === "defines") {
       if (hasDefines) out[key] = defines;
+    } else if (key === "version") {
+      // 故事版本（作者声明）：只写声明过的（缺席不写——缺省 1 语义，往返幂等不新增键）
+      if (story.version !== undefined) out[key] = story.version;
     } else {
       out[key] = value;
     }

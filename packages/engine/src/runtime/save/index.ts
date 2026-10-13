@@ -11,3 +11,4 @@ export {
   restoreSaveExtensions,
   tryMigrateSave,
 } from "./extensions";
+export { resolveSaveMinigames } from "./minigames";

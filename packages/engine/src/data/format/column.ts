@@ -125,6 +125,17 @@ export function parseColumn(
   }
   const type = raw.type as SceneType | undefined;
   const kind = raw.kind as "scene" | "flow";
+  // 列级字体：可选元数据，非空字符串才收（注册表校验在构建期/渲染层闸门，解析只管形状）
+  let font: string | undefined;
+  if (raw.font !== undefined) {
+    if (typeof raw.font !== "string" || raw.font === "") {
+      issues.push(
+        `${at}.font 必须为非空字符串（字体名 = Resources/Fonts 文件名去扩展名）`,
+      );
+      return null;
+    }
+    font = raw.font;
+  }
   if (kind === "flow") {
     if (!Array.isArray(raw.commands)) {
       issues.push(`${at}（flow）必须有 commands 数组`);
@@ -169,6 +180,7 @@ export function parseColumn(
     id: raw.id,
     kind,
     type,
+    font,
     // `sourcePath` **刻意不解析**：它是编辑期记账（由组装器从实际文件路径回填），
     // 故事文件里不该有这个键——写进去也无效（防止自指：文件描述自己的位置）。
     elements: raw.elements as ElementNode[] | undefined,

@@ -171,6 +171,10 @@ export function createStateReader(source: StateSource): StateReader {
       return textOf(get(SYS.currentDialogColor));
     },
 
+    dialogFont(): string {
+      return textOf(get(SYS.dialogFont));
+    },
+
     dialogTemplate(): string | null {
       const value = get(SYS.dialogTemplate);
       return typeof value === "string" ? value : null;

@@ -3,7 +3,10 @@
  * 框架无关的可测纯逻辑。具体宿主（Vue/React/原生 DOM）只消费这些入口，换框架不影响核心。
  */
 export {
+  configureStoryFonts,
   renderInlineMarkup,
+  sanitizeFont,
+  type StoryFontGate,
   Typewriter,
   renderDialogueLine,
   type DialogueLineInput,

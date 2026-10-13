@@ -13,12 +13,11 @@ export const folders = ["chapter1", "chapter2", "chapter3", "chapter4"];
 
 export const start = "start.ts";
 
+// vars 只登记 state 树未覆盖的插值键：define 的键自动进 InterpolationKeyRegistry
+// （四源合并去重，类型由初始值/描述符推断），无需重复登记。
 export const vars = defineVars({
-  "player.gold": "num",
-  "player.name": "str",
   n: "num",
   m: "num",
-  dice: "num",
   "journal.flag": "num",
 });
 

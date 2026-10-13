@@ -6,9 +6,11 @@ import type { OpContext } from "../internal";
 
 /**
  * set/define 负载值（表达式一律 {} 包裹，字符串原样即字面量）：
+ * - null → 状态槽合法空值直通（StateValue 值域；表达式层的 null 由 `{null}` 产生）
  * - "{expr}" → 表达式求值；number/boolean（JSON 原生）→ 字面量；其余字符串 → 字符串字面量
  */
 export function evalValue(ctx: OpContext, raw: unknown): ExprValue {
+  if (raw === null) return null;
   if (typeof raw === "number" || typeof raw === "boolean") return raw;
   if (typeof raw !== "string") {
     throw new ExpressionError("type-error", `不支持的值类型：${typeof raw}`);

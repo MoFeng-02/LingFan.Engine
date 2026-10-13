@@ -50,6 +50,9 @@
       #text {
         line-height: 1.7;
         white-space: pre-wrap;
+        /* 项目默认字体档：theme-fonts setProperty(--lf-story-font) 装配；未声明时
+           变量无效，属性落到继承值（等价不设），逐句声明的字体以内联样式覆盖 */
+        font-family: var(--lf-story-font);
       }
       #hint {
         text-align: right;

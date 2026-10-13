@@ -28,6 +28,8 @@ export interface SharedCtx {
   funcs: FuncRegistry;
   /** 状态根名（发现自 `export declare const <根名>: StoryState`；无声明回退 "state"） */
   readonly stateRoot: string;
+  /** 字体名注册表（Resources/Fonts 文件名去扩展名；构建期字体引用检查的对照源） */
+  readonly fontNames: ReadonlySet<string>;
 }
 
 export interface BodyCtx {
@@ -117,6 +119,7 @@ export function createSharedCtx(
   diags: DiagBag,
   funcs: FuncRegistry,
   stateRoot: string,
+  fontNames: ReadonlySet<string> = new Set(),
 ): SharedCtx {
-  return { mod, file: mod.rel, diags, funcs, stateRoot };
+  return { mod, file: mod.rel, diags, funcs, stateRoot, fontNames };
 }

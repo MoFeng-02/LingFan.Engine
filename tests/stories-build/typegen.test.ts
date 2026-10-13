@@ -489,3 +489,59 @@ describe("类型面生成器 · 边界条件", () => {
     expect(existsSync(join(root, TYPEGEN_REL))).toBe(true);
   });
 });
+
+describe("let/const 声明名进插值键注册表（键 only）", () => {
+  it("语句级 let 名与 const 降糖的 into 名都进注册表", async () => {
+    // 两个声明形态分走两条 op 通路：let 语句降糖成 op let 的 key；
+    // `const r = double(3)` 降糖成 op call 的 into（引擎无条件把 into 声明成
+    // 调用方局部变量，`{r}` 是合法插值）。漏收任何一个都会让 IDE 误判红。
+    const root = makeProject("decl-names", {
+      "Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "Stories.src/lib/vocabulary.ts": WORDS_LIB,
+      "Stories.src/ch1/start.ts": [
+        `import { say } from "../lib/vocabulary";`,
+        ``,
+        `export function double(v: number): number {`,
+        `  return v * 2;`,
+        `}`,
+        ``,
+        `export default function start(): void {`,
+        `  let n = 0;`,
+        `  const r = double(3);`,
+        `  say("n={n} r={r}");`,
+        `}`,
+        ``,
+      ].join("\n"),
+      "Resources/project.json": MANIFEST,
+    });
+    await buildStories(root);
+    const keys = registryKeys(readTypegen(root), "InterpolationKeyRegistry");
+    expect(keys).toContain('"n": 1;');
+    expect(keys).toContain('"r": 1;');
+  });
+
+  it("声明名与 define 键同名：去重不报——注册表是键存在性域，遮蔽语义归运行期作用域链", async () => {
+    const root = makeProject("decl-dedupe", {
+      "Stories.src/config.ts": [
+        `export const folders = ["ch1"];`,
+        `export const start = "start.ts";`,
+        `define("n", 1);`,
+        ``,
+      ].join("\n"),
+      "Stories.src/lib/vocabulary.ts": WORDS_LIB,
+      "Stories.src/ch1/start.ts": [
+        `import { say } from "../lib/vocabulary";`,
+        ``,
+        `export default function start(): void {`,
+        `  let n = 0;`,
+        `  say("n={n}");`,
+        `}`,
+        ``,
+      ].join("\n"),
+      "Resources/project.json": MANIFEST,
+    });
+    await buildStories(root);
+    const keys = registryKeys(readTypegen(root), "InterpolationKeyRegistry");
+    expect(keys.filter((key) => key === '"n": 1;')).toHaveLength(1);
+  });
+});

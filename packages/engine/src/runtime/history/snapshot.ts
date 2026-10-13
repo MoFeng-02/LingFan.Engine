@@ -44,6 +44,7 @@ export function takeSnapshot(
       frames: ctx.frames.map(cloneFrame),
       coord: { ...ctx.coord },
       functions: [...ctx.functions.entries()],
+      deleted: [...ctx.deleted],
     },
   };
 }
@@ -55,6 +56,8 @@ export function restore(ctx: OpContext, cp: Checkpoint): void {
   ctx.frames = cp.snapshot.frames.map(cloneFrame);
   ctx.coord = { ...cp.snapshot.coord };
   ctx.functions = new Map(cp.snapshot.functions);
+  ctx.deleted.clear();
+  for (const key of cp.snapshot.deleted) ctx.deleted.add(key);
   ctx.pendingSay = null;
   // 回溯清挂起的 wait 定时器：重放若落在另一 wait 上，旧定时器不得提前双触发
   ctx.clearTimer();

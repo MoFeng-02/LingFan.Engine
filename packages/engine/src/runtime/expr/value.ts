@@ -13,8 +13,9 @@ export interface ExprDict {
 /**
  * 表达式运行期的值域：标量（number/boolean/string）、null 或数组/字典复合值。
  * 复合值只由 array/dict 系列 op 产出；文本插值遇到复合值直接报错，不做隐式字符串化。
- * null 只由 arrayGet/dictGet/optGet/len 四个路径型内建的「路径缺失」分支产出，
- * 供 `??` 兜底；其余运算符遇到 null 一律 type-error（fail-closed）。
+ * null 有两个来源：路径型内建（arrayGet/dictGet/optGet/len）的「路径缺失」分支，
+ * 与状态槽携带的空值（StateValue 值域、`{null}` 字面量 / set null 负载直通）——
+ * 都供 `??` 兜底；其余运算符遇到 null 一律 type-error（fail-closed）。
  */
 export type ExprValue =
   number | boolean | string | null | ExprValue[] | ExprDict;

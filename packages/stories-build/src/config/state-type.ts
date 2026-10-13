@@ -8,14 +8,17 @@
  * - shorthand 字面量（100 / "other" / true）→ 宽类型，嵌套字面量对象递归展开；
  * - descriptor { type: X; default: D } → 类型只由 X 决定：保留字 "number"|"string"|"boolean"
  *   映射原生类型；X 为枚举对象 → 成员值联合（X[keyof X]）；X 为单元素数组 [Leaf] →
- *   InferLeaf<Leaf>[]；其余兜底 unknown；
+ *   InferLeaf<Leaf>[]；X 为多元素数组（as const 元组）→ 成员槽位并集
+ *   （InferUnionMember：保留字/null/嵌套并集/[leaf]/枚举对象）；其余兜底 unknown；
  * - 嵌套对象递归展开。
  */
 
 type Primitive = string | number | boolean;
 
-/** descriptor 的 type 槽位 → TS 类型。 */
-type InferTypeRef<X> = X extends "number"
+/** descriptor 的 type 槽位 → TS 类型；多元素数组（as const 元组）先行判为并集。 */
+type InferTypeRef<X> = X extends readonly [unknown, unknown, ...unknown[]]
+  ? InferUnionMember<X[number]>
+  : X extends "number"
   ? number
   : X extends "string"
     ? string
@@ -28,6 +31,26 @@ type InferTypeRef<X> = X extends "number"
         : X[keyof X] extends Primitive
           ? X[keyof X]
           : unknown;
+
+/**
+ * 并集成员 → TS 类型（分布条件类型：对成员联合逐成员求值）。
+ * 顺序即优先级：保留字 → null → 多元素元组（嵌套并集递归）→ 单元素数组 → 枚举对象。
+ */
+type InferUnionMember<M> = M extends "number"
+  ? number
+  : M extends "string"
+    ? string
+    : M extends "boolean"
+      ? boolean
+      : M extends null
+        ? null
+        : M extends readonly [unknown, unknown, ...unknown[]]
+          ? InferUnionMember<M[number]>
+          : M extends readonly (infer Leaf)[]
+            ? InferLeaf<Leaf>[]
+            : M[keyof M] extends Primitive
+              ? M[keyof M]
+              : unknown;
 
 /** 数组 descriptor 的元素类型 → TS 类型。 */
 type InferLeaf<L> = L extends "number"

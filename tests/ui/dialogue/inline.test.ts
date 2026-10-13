@@ -1,6 +1,14 @@
-/** 内联标记渲染测试（UI 层职责：核心层透传 → UI 上屏） */
-import { describe, expect, it } from "vitest";
-import { renderInlineMarkup } from "@lingfan/ui";
+/**
+ * 内联标记渲染测试（UI 层职责：核心层透传 → UI 上屏）。
+ * 字体名注册表接入后，用例间必须复位（configureStoryFonts(undefined)）——
+ * 注册表是模块级单元格，泄漏会污染同文件的其他用例。
+ */
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { configureStoryFonts, renderInlineMarkup } from "@lingfan/ui";
+
+afterEach(() => {
+  configureStoryFonts(undefined);
+});
 
 describe("renderInlineMarkup", () => {
   it("b/i/u 样式化与嵌套", () => {
@@ -52,5 +60,23 @@ describe("renderInlineMarkup", () => {
 
   it("无标记文本原样转义输出", () => {
     expect(renderInlineMarkup("纯文本。")).toBe("纯文本。");
+  });
+
+  it("未接入注册表时 {font=} 保持字符集白名单行为（纯展示不校验）", () => {
+    configureStoryFonts(undefined);
+    expect(renderInlineMarkup("{font=任意名}字{/font}")).toBe(
+      "<span style=\"font-family:'任意名'\">字</span>",
+    );
+  });
+
+  it("接入注册表：注册名上字体 span，未注册名回退默认字体并回调诊断", () => {
+    const onUnregistered = vi.fn();
+    configureStoryFonts({ names: new Set(["楷体"]), onUnregistered });
+    expect(renderInlineMarkup("{font=楷体}字{/font}")).toBe(
+      "<span style=\"font-family:'楷体'\">字</span>",
+    );
+    expect(renderInlineMarkup("{font=宋体}字")).toBe("字"); // 无 span，文本保留
+    expect(onUnregistered).toHaveBeenCalledTimes(1);
+    expect(onUnregistered).toHaveBeenCalledWith("宋体");
   });
 });

@@ -40,3 +40,25 @@ export type MinigameFactory = (
   host: unknown,
   ctx: MinigameContext,
 ) => Promise<MinigameResult>;
+
+/**
+ * 玩法系统注册元数据（宿主经 `EngineOptions.minigames` 注入，与 `OpExtension`
+ * 声明制同构；工厂注册表仍归 UI 层——引擎只持有这份数据面）。
+ * 读档时按档内 `minigames` 依赖标记校验注册与版本（缺注册 = `minigame-missing`，
+ * 版本不可达且无 migrate = `minigame-version`），保证玩法系统状态不静默串版本。
+ */
+export interface MinigameRegistration {
+  /** 玩法系统 id（与 minigame 命令的 `game` 同域，注册期按 `GAME_SYSTEM_ID_PATTERN` 校验） */
+  readonly gameId: string;
+  /** 状态 schema 版本（≠ 代码版本）：存档校验的是它，代码升级不等于状态升级 */
+  readonly stateVersion: number;
+  /**
+   * 可选：状态迁移（stateVersion 升级路径）。`state` = 本系统命名空间内的键值
+   * （**不含** `game.<gameId>.` 前缀），返回同构对象（引擎负责重新落前缀）。
+   * **不抛**；返回 null = 无法迁移 → 整档拒绝（`minigame-version`，状态原样）。
+   */
+  readonly migrate?: (
+    fromStateVersion: number,
+    state: Readonly<Record<string, unknown>>,
+  ) => Record<string, unknown> | null;
+}

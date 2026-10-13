@@ -118,6 +118,9 @@ export function execUndef(
     ctx.fail("unknown-variable", `undef：未定义变量 ${key}`);
     return false;
   }
+  // 墓碑只在删除实际落在全局层时记账（帧层 let/local 的 undef 不进档——
+  // 档内 deleted 是读档垫底的挡板，帧层销毁语义不属于存档面）
+  if (!inScope && inGlobal) ctx.deleted.add(key);
   ctx.emit(key, undefined, frame.columnId === null ? "block" : "column");
   return true;
 }

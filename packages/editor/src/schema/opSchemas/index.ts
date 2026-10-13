@@ -11,5 +11,6 @@ export type {
   CommandOf,
   ScriptCommand,
   ScriptValue,
+  StateScriptValue,
 } from "./types";
 export { validateCommand } from "./validate";

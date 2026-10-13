@@ -130,8 +130,11 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
     const report = await buildStories(root);
     expect(report.columns).toBe(3);
     expect(report.storyId).toBe("start");
-    // 差量计数：3 个故事产物新增 + 类型面生成物 + 清单更新（tsSource 标记）
+    // 差量计数：3 个故事产物新增 + 四份类型面生成物 + 清单更新（tsSource 标记）
     expect([...report.added].sort()).toEqual([
+      "Stories.src/gen/font.gen.d.ts",
+      "Stories.src/gen/script.gen.d.ts",
+      "Stories.src/gen/state.gen.d.ts",
       "Stories.src/gen/stories.gen.d.ts",
       "Stories/common/start.json",
       "Stories/common/tavern.json",
@@ -270,6 +273,9 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
     expect(report.columns).toBe(2);
     expect(report.storyId).toBe("start");
     expect([...report.added].sort()).toEqual([
+      "Stories.src/gen/font.gen.d.ts",
+      "Stories.src/gen/script.gen.d.ts",
+      "Stories.src/gen/state.gen.d.ts",
       "Stories.src/gen/stories.gen.d.ts",
       "Stories/chapter1/act1/scene1/start.json",
       "Stories/chapter1/act1/scene2/deep/deeper/tavern.json",
@@ -321,6 +327,9 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
     const report = await buildStories(root);
     expect(report.columns).toBe(1);
     expect([...report.added].sort()).toEqual([
+      "Stories.src/gen/font.gen.d.ts",
+      "Stories.src/gen/script.gen.d.ts",
+      "Stories.src/gen/state.gen.d.ts",
       "Stories.src/gen/stories.gen.d.ts",
       "Stories/chapter1/act1/scene1/start.json",
     ]);

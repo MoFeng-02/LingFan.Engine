@@ -20,6 +20,11 @@ export interface EngineSnapshot {
   coord: ColumnCoordinate;
   /** 函数注册表随快照恢复——回溯到 func 之前的检查点重放时必须可重新注册 */
   functions: [string, { params: string[]; body: StoryCommand[] }][];
+  /**
+   * 全局层 undef 墓碑随快照——回滚到 undef 之前的检查点时，
+   * 删除记录同步回退（读档垫底只看档内 deleted，但快照一致性要求随行）。
+   */
+  deleted: string[];
 }
 
 /** 检查点 = 坐标 + 快照；重放 = 恢复快照后从该命令重新解释执行到同一等待点 */

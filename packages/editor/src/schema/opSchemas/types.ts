@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { OP_SCHEMA_MAP } from "./map";
-import { Value } from "./fragments";
+import { Value, StateValue } from "./fragments";
 
 // ====== 类型派生（与 schema 同源 ⇒ 字段面零漂移）======
 
@@ -37,3 +37,6 @@ export type ScriptCommand = CommandOf<ScriptOpName>;
 
 /** op 负载标量值（字面量 / `{expr}` 表达式串 / `+=` 复合赋值串——与 zod `Value` 同源） */
 export type ScriptValue = z.infer<typeof Value>;
+
+/** 状态类 op 负载值（共享 Value + null——与 zod `StateValue` 同源） */
+export type StateScriptValue = z.infer<typeof StateValue>;

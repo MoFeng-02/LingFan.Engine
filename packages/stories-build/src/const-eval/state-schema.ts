@@ -11,7 +11,9 @@
  * - 嵌套对象递归拼接点路径（源形态只有嵌套一种，点路径键 fail-closed）；descriptor
  *   { type, default } 取 default；
  * - descriptor type ∈ "number"|"string"|"boolean" | 枚举对象（值全为 string|number）|
- *   单元素数组 [leaf]，default 与 type 做一致性校验；
+ *   单元素数组 [leaf]，default 与 type 做一致性校验；多元素数组 = 成员槽位并集
+ *   （成员：保留字标量/枚举对象/null/[leaf]/嵌套并集；default 须落在至少一个成员
+ *   值域内，未知成员 fail-closed 一次报全部）；
  * - 形态非法 fail-closed（一次报全部）；值形态无法保留源位置，诊断统一挂
  *   `config.ts:1:1`，以键路径上下文定位。
  */
@@ -140,8 +142,11 @@ function validateDescriptor(
     return ok;
   }
   if (Array.isArray(type)) {
+    if (type.length >= 2) return validateUnion(type, def, path, errors);
     if (type.length !== 1) {
-      errors.push(`${path}：数组 descriptor 的 type 必须是单元素 [leaf]`);
+      errors.push(
+        `${path}：数组 descriptor 的 type 不能为空数组（单元素 [leaf] 或多元素并集）`,
+      );
       return false;
     }
     if (!Array.isArray(def)) {
@@ -184,6 +189,68 @@ function leafMatches(leaf: unknown, value: unknown): boolean {
     (typeof value === "string" || typeof value === "number") &&
     enumValues.includes(value)
   );
+}
+
+/**
+ * 并集成员槽位校验（type 为多元素数组）：逐成员按文法归类，未知成员
+ * fail-closed 一次报全部；default 落在至少一个成员值域内即合法。
+ */
+function validateUnion(
+  members: readonly unknown[],
+  def: unknown,
+  path: string,
+  errors: string[],
+): boolean {
+  let unknownCount = 0;
+  members.forEach((member, index) => {
+    if (isKnownUnionMember(member)) return;
+    errors.push(
+      `${path}：并集第 ${index + 1} 个成员无法识别（只允许 "number"/"string"/"boolean"、枚举对象、null 与 [leaf]）`,
+    );
+    unknownCount += 1;
+  });
+  if (unknownCount > 0) return false;
+  if (members.some((member) => unionMatches(member, def))) return true;
+  errors.push(`${path}：descriptor default 不在并集值域内`);
+  return false;
+}
+
+/** 并集成员文法判定：null / 保留字标量 / 枚举对象 / [leaf] / 嵌套并集（递归）。 */
+function isKnownUnionMember(member: unknown): boolean {
+  if (member === null) return true;
+  if (typeof member === "string") return PRIMITIVE_TYPES.has(member);
+  if (Array.isArray(member)) {
+    if (member.length === 1) return isValidLeaf(member[0]);
+    return member.every(isKnownUnionMember);
+  }
+  return asEnumValues(member) !== undefined;
+}
+
+/** default 是否落在单个并集成员的值域内（与 isKnownUnionMember 同构逐分支匹配）。 */
+function unionMatches(member: unknown, value: unknown): boolean {
+  if (member === null) return value === null;
+  if (typeof member === "string" && PRIMITIVE_TYPES.has(member))
+    return leafMatches(member, value);
+  if (Array.isArray(member)) {
+    if (member.length === 1)
+      return (
+        Array.isArray(value) &&
+        value.every((element) => leafMatches(member[0], element))
+      );
+    return member.some((nested) => unionMatches(nested, value));
+  }
+  const enumValues = asEnumValues(member);
+  return (
+    enumValues !== undefined &&
+    (typeof value === "string" || typeof value === "number") &&
+    enumValues.includes(value)
+  );
+}
+
+/** leaf 槽位是否合法（保留字标量或枚举对象）——并集数组成员复用。 */
+function isValidLeaf(leaf: unknown): boolean {
+  if (typeof leaf === "string" && PRIMITIVE_TYPES.has(leaf)) return true;
+  return asEnumValues(leaf) !== undefined;
 }
 
 /** 枚举对象判定：非空普通对象且值全为 string|number（descriptor 不落此形——type 槽位专用）。 */

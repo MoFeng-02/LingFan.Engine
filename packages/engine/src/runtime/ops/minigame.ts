@@ -185,7 +185,8 @@ export function resolveMinigame(
     return false;
   }
   // 结果附带的状态：落本局命名空间（小游戏不必自己拼前缀，也不该裸写全局）；
-  // 任一键写失败即整体拒绝——挂起态保留，修正后可再次回填
+  // 任一键写失败即整体拒绝——挂起态保留，修正后可再次回填。
+  // 实际回填过状态的玩法系统才记依赖（防假阳性，与扩展 op 执行登记同口径）
   if (result.state !== undefined) {
     if (
       typeof result.state !== "object" ||
@@ -208,6 +209,7 @@ export function resolveMinigame(
         return false;
       }
     }
+    ctx.usedMinigames.add(pending.game);
   }
   ctx.pendingMinigame = null;
   ctx.minigameController = null; // 正常完成：不 abort（UI 已自行收尾）

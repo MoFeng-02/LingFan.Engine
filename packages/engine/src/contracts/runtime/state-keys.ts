@@ -18,6 +18,13 @@ export const SYS = {
    * UI 侧读法：`当前值 || character.color`（覆盖优先）。
    */
   currentDialogColor: "__current_dialog_color",
+  /**
+   * **本句对话字体的解析结果**（say 行参 / 角色字体 / 列级字体三级取最具体者）。
+   * 口径与 `currentDialogColor` 同构：每句都写、**空串 = 无声明**——宿主回落到
+   * 项目默认字体（根 CSS 变量 `--lf-story-font`）或浏览器回退。动态名与未注册名
+   * 由渲染层字体闸门兜底（回退 + 诊断）。
+   */
+  dialogFont: "__dialog_font",
   /** 对话框模板名（null = 全局默认） */
   dialogTemplate: "__dialog_template",
   currentSceneColumn: "__current_scene_column",

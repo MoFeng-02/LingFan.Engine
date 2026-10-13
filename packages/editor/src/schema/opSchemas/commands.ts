@@ -11,6 +11,7 @@ import {
   InstanceZ,
   NonEmpty,
   SlotName,
+  StateValue,
   Value,
 } from "./fragments";
 
@@ -31,6 +32,12 @@ const saySchema = z.strictObject({
       message: "必须为十六进制颜色（如 #FFD700 / #888 / #FFD700CC）",
     })
     .optional(),
+  /**
+   * 本句字体（字体名 = Resources/Fonts 文件名去扩展名）。
+   * 名字是否在注册表内不在此校验（schema 看不见资源目录）——构建期 fail-closed +
+   * 运行期渲染闸门回退负责，这里只收非空字符串。
+   */
+  font: NonEmpty.optional(),
   clickable: z.boolean().optional(),
   noskip: z.boolean().optional(),
   instant: z.boolean().optional(),
@@ -161,30 +168,30 @@ const switchSchema = z.strictObject({
 
 const emptySchema = z.strictObject({});
 
-const assignSchema = z.strictObject({ key: NonEmpty, value: Value });
+const assignSchema = z.strictObject({ key: NonEmpty, value: StateValue });
 
 const undefSchema = z.strictObject({ key: NonEmpty });
 
 const arraySchema = z.strictObject({
   key: NonEmpty,
-  items: z.array(Value),
+  items: z.array(StateValue),
   once: z.boolean().optional(),
 });
 
-const arrayPushSchema = z.strictObject({ key: NonEmpty, value: Value });
+const arrayPushSchema = z.strictObject({ key: NonEmpty, value: StateValue });
 
 const arrayPopSchema = z.strictObject({ key: NonEmpty });
 
 const dictSchema = z.strictObject({
   key: NonEmpty,
-  value: z.record(z.string(), Value),
+  value: z.record(z.string(), StateValue),
   once: z.boolean().optional(),
 });
 
 const dictSetSchema = z.strictObject({
   key: NonEmpty,
   field: NonEmpty,
-  value: Value,
+  value: StateValue,
 });
 
 const saveSchema = z.strictObject({

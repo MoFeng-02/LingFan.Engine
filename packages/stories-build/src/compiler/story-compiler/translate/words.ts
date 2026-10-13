@@ -4,6 +4,7 @@ import { foldConst } from "../graph";
 import { WORDS, diag, lookupBinding, lookupScope } from "./shared";
 import type { BodyCtx, Scope } from "./shared";
 import { lowerValue, loweredToScriptValue } from "./expr";
+import { checkFontReferences } from "./font-check";
 
 const STATIC_FOR_MAX = 100000;
 
@@ -94,7 +95,12 @@ export function callWord(
 ): StoryCommand | undefined {
   const word = WORDS[name];
   if (word === undefined) {
-    diag(ctx, node, `词汇层不存在词 \`${name}\``);
+    // 未知词的第一现场（ambient 直呼也汇到这里），文案单点指路两条调用形态。
+    diag(
+      ctx,
+      node,
+      `词汇层不存在词 \`${name}\`——词函数经 \`script.\` 命名空间或具名导入调用，请核对词名`,
+    );
     return undefined;
   }
   try {
@@ -103,6 +109,8 @@ export function callWord(
       diag(ctx, node, `词 \`${name}\` 未返回命令对象`);
       return undefined;
     }
+    // 字体引用检查单点：所有词命令都经此处产出（jump/值位置词调用同走），静态可达面全覆盖
+    checkFontReferences(ctx, node, product);
     return product;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -283,8 +291,13 @@ export function emitCallCommand(
 }
 
 /**
- * 取调用表达式的**词名**——具名标识符与 `script.` 属性访问两种形态在这里归一，
- * 免得下面的特判（jump / staticFor / cell）、实参求值与值位置通道各写两遍、漏掉一边。
+ * 取调用表达式的**词名**——具名标识符、`script.` 属性访问与免导入 ambient 直呼
+ * 三种形态在这里归一，免得下面的特判（jump / staticFor / cell）、实参求值与值位置
+ * 通道各写三遍、漏掉一边。
+ *
+ * ambient 直呼（作者不写 `import { script }` 也用 `script.bgm(...)`，类型来自
+ * gen/script.gen.d.ts 的全局声明）只在接收者恰为标识符 `script`、且绑定表与函数
+ * 作用域都没有同名遮蔽时兜底——模块层自有同名声明按 TS 遮蔽语义优先，不在此解析。
  *
  * 返回 undefined 表示这个 callee 不是词调用（普通函数、`obj.method()` 等），该走别的分支。
  */
@@ -303,8 +316,16 @@ function wordCalleeName(
     ts.isPropertyAccessExpression(callee) &&
     ts.isIdentifier(callee.expression)
   ) {
-    const target = lookupBinding(ctx, callee.expression.text);
+    const receiver = callee.expression.text;
+    const target = lookupBinding(ctx, receiver);
     if (target?.kind === "namespace") return callee.name.text;
+    if (
+      receiver === "script" &&
+      target === undefined &&
+      lookupScope(ctx, receiver) === undefined
+    ) {
+      return callee.name.text;
+    }
   }
   return undefined;
 }

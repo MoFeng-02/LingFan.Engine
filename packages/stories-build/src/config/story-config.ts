@@ -8,11 +8,14 @@ import { StoryBuildError } from "../shared";
  * 求值产物由 const-eval/config-eval 喂入）。
  * - `folders`：故事/模块源目录（相对 `Stories.src/`，递归扫描；`"*"` = 未显式列出的
  *   目录全部自动纳入，排除生成物目录）；
- * - `start`：入口**故事文件名**——跨全部目录按文件名匹配，全局恰一（0 或 ≥2 fail-closed）。
+ * - `start`：入口**故事文件名**——跨全部目录按文件名匹配，全局恰一（0 或 ≥2 fail-closed）；
+ * - `version`：可选故事版本（正整数，缺省 1）——进存档 `storyVersion`，
+ *   升级时经宿主 `migrateState` 钩子迁移旧档。
  */
 export interface StorySourceConfig {
   readonly folders: readonly string[];
   readonly start: string;
+  readonly version?: number;
 }
 
 /** 布局声明文件名（根级唯一根 .ts；其余 .ts 一律住 folders 声明的目录里） */
@@ -86,6 +89,20 @@ export function parseStart(value: unknown, sourcesDirName: string): string {
   if (!value.endsWith(".ts")) {
     throw new StoryBuildError(
       `${sourcesDirName}/${CONFIG_FILE}: start "${value}" 须含 .ts 扩展名（如 "main.ts"）`,
+    );
+  }
+  return value;
+}
+
+/** version 校验：正整数（存档 storyVersion 语义，读档迁移对账）；缺省 = 1（不写导出即缺省）。 */
+export function parseVersion(
+  value: unknown,
+  sourcesDirName: string,
+): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+    throw new StoryBuildError(
+      `${sourcesDirName}/${CONFIG_FILE}: version 须为正整数（进存档 storyVersion；缺省 = 1），得到 ${describe(value)}`,
     );
   }
   return value;

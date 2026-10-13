@@ -2,7 +2,13 @@ import * as ts from "typescript";
 import { walkFiles } from "../../../shared";
 import type { StorySourceConfig } from "../../../config/story-config";
 import type { CompilerConstValues } from "../../compiler-contract";
-import { DiagBag, ROOT_TS_FILES_ALLOWED, GEN_PREFIX, toPosix } from "./core";
+import {
+  DiagBag,
+  ROOT_TS_FILES_ALLOWED,
+  GEN_PREFIX,
+  COLUMN_FONT_DECL,
+  toPosix,
+} from "./core";
 import type { Graph, ModuleRecord } from "./core";
 import { scanModule, discoverStateRoot } from "./module-scan";
 import { scanConstStatement, assertNpmNamesConstOnly } from "./bindings";
@@ -79,6 +85,7 @@ export function buildGraph(
       consts: [],
       npmNames: new Set(),
       evaluated: constValues?.[rel],
+      columnFont: null,
     });
   }
 
@@ -88,6 +95,7 @@ export function buildGraph(
   for (const record of records.values()) {
     for (const stmt of record.consts) scanConstStatement(stmt, record, diags);
   }
+  collectColumnFonts(records, diags);
   for (const record of records.values())
     resolveImports(record, records, diags, false);
   for (const record of records.values()) assertNpmNamesConstOnly(record, diags);
@@ -115,6 +123,54 @@ export function buildGraph(
 
   const stateRoot = discoverStateRoot(records, diags);
   return { files, records, config, configSf, coveredStories, stateRoot };
+}
+
+/**
+ * 列级字体声明拾取：`export const columnFont = "<名>"`。
+ * 值走既有 const 绑定通道（字面量 / 常量运算 / 其他 const / 编译期求值内联同源），
+ * 这里只做归属与形状判定；字体名是否在注册表内由汇编段对照 fontNames 报（注册表
+ * 在会话上，图谱层不可见）。
+ */
+function collectColumnFonts(
+  records: ReadonlyMap<string, ModuleRecord>,
+  diags: DiagBag,
+): void {
+  for (const record of records.values()) {
+    const binding = record.exports.get(COLUMN_FONT_DECL);
+    if (binding === undefined) continue;
+    const stmt = record.consts.find((s) => {
+      const decl = s.declarationList.declarations[0];
+      return (
+        decl !== undefined &&
+        ts.isIdentifier(decl.name) &&
+        decl.name.text === COLUMN_FONT_DECL
+      );
+    });
+    const node = stmt ?? record.sf;
+    if (record.story === null) {
+      diags.add(
+        record.rel,
+        record.sf,
+        node,
+        "columnFont 只能声明在故事文件（default 导出列）的模块顶层",
+      );
+      continue;
+    }
+    if (
+      binding.kind !== "const" ||
+      typeof binding.value !== "string" ||
+      binding.value === ""
+    ) {
+      diags.add(
+        record.rel,
+        record.sf,
+        node,
+        "columnFont 必须折叠为非空字符串字面量（字体名 = Resources/Fonts 文件名去扩展名）",
+      );
+      continue;
+    }
+    record.columnFont = { value: binding.value, node };
+  }
 }
 
 export function resolveStart(graph: Graph, diags: DiagBag): string | undefined {

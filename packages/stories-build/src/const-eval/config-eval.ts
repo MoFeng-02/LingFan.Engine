@@ -1,9 +1,10 @@
 /**
  * config.ts 求值（编排层唯一的 config 读取通道）：
- * `Stories.src/config.ts` 以 named exports 声明四件事——folders/start（布局，必需）、
- * vars/state（变量键域与状态初始树，可缺省），再叠加形态 B 的 define() 累积。
- * 本段用 evalConstModule 单次求值把四导出与 define 调用一并取出：
- * - 布局字段复用 parseFolders/parseStart 校验（fail-closed 带定位）；
+ * `Stories.src/config.ts` 以 named exports 声明五件事——folders/start（布局，必需）、
+ * vars/state（变量键域与状态初始树，可缺省）、version（故事版本，可缺省），
+ * 再叠加形态 B 的 define() 累积。
+ * 本段用 evalConstModule 单次求值把导出与 define 调用一并取出：
+ * - 布局字段复用 parseFolders/parseStart/parseVersion 校验（fail-closed 带定位）；
  * - define 调用经 mergeDefineCalls 合并为纯嵌套树（同键二次定义/形状冲突一次报全部）；
  * - state 导出与 define 调用互斥（形态 A/B 二选一，皆缺省合法）。
  */
@@ -14,6 +15,7 @@ import {
   assertSingleRootScript,
   parseFolders,
   parseStart,
+  parseVersion,
   type StorySourceConfig,
 } from "../config/story-config";
 import { StoryBuildError } from "../shared";
@@ -69,6 +71,7 @@ export async function evalConfigModule(
     requireExport(values, "start", sourcesDirName),
     sourcesDirName,
   );
+  const version = parseVersion(values.version, sourcesDirName);
 
   const vars = readVarsKeySet(values, sourcesDirName);
   const hasState = "state" in values;
@@ -96,7 +99,7 @@ export async function evalConfigModule(
     );
   }
 
-  return { config: { folders, start }, vars, state, defineTree: merged.tree };
+  return { config: { folders, start, version }, vars, state, defineTree: merged.tree };
 }
 
 /** 布局必需导出（folders/start）；缺省 = fail-closed 并说明契约。 */

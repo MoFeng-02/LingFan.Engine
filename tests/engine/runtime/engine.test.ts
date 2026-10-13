@@ -87,6 +87,7 @@ describe("最小闭环主链路", () => {
       // 说话人颜色覆盖（每句必写：缺省空串 ⇒ 上一句的覆盖不残留）
       SYS.currentDialogColor,
       SYS.dialogTemplate, // 模板三级优先级解析结果（无 template 无角色 → null）
+      SYS.dialogFont, // 字体分辨链解析结果（无 font 无角色无列 → 空串）
       SYS.currentDialogText,
       SYS.dialogClickable,
       SYS.dialogNoskip,
@@ -102,6 +103,7 @@ describe("最小闭环主链路", () => {
       // 说话人颜色覆盖（每句必写：缺省空串 ⇒ 上一句的覆盖不残留）
       SYS.currentDialogColor,
       SYS.dialogTemplate,
+      SYS.dialogFont,
       SYS.currentDialogText,
       SYS.dialogClickable,
       SYS.dialogNoskip,
@@ -117,6 +119,7 @@ describe("最小闭环主链路", () => {
       // 说话人颜色覆盖（每句必写：缺省空串 ⇒ 上一句的覆盖不残留）
       SYS.currentDialogColor,
       SYS.dialogTemplate,
+      SYS.dialogFont,
       SYS.currentDialogText,
       SYS.dialogClickable,
       SYS.dialogNoskip,
@@ -140,11 +143,14 @@ describe("最小闭环主链路", () => {
     expect(changes[4]?.key).toBe(SYS.currentDialogColor);
     expect(changes[4]?.value).toBe("");
     expect(changes[5]?.value).toBeNull(); // 无 template 无角色 → null（全局默认）
-    expect(changes[6]?.value).toBe("第一句");
+    expect(changes[6]?.key).toBe(SYS.dialogFont);
+    expect(changes[6]?.value).toBe(""); // 无 font 无角色无列 → 空串
+    expect(changes[7]?.value).toBe("第一句");
     // say 2 无 speaker → 清空，不残留上一句
-    expect(changes[15]?.key).toBe(SYS.currentDialogSpeaker);
-    expect(changes[15]?.value).toBe("");
-    expect(changes[18]?.value).toBe("第二句");
+    expect(changes[16]?.key).toBe(SYS.currentDialogSpeaker);
+    expect(changes[16]?.value).toBe("");
+    expect(changes[19]?.key).toBe(SYS.dialogFont); // say 2 的字体键（无声明 → 空串）
+    expect(changes[20]?.value).toBe("第二句");
     // 末次 advance 后回到 none
     expect(changes[changes.length - 1]).toEqual({
       key: SYS.waiting,

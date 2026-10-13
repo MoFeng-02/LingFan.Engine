@@ -61,3 +61,11 @@ export {
   type CompilerDiagnostic,
   type StoriesCompiler,
 } from "./compiler";
+/** 字体名注册表（Resources/Fonts 扫描；宿主 Vite 插件与构建期检查同源消费） */
+export {
+  FONTS_DIR_NAME,
+  FONT_EXTENSIONS,
+  fontNameSet,
+  scanFontRegistry,
+  type FontEntry,
+} from "./fonts";
