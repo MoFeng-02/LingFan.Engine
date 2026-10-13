@@ -40,8 +40,9 @@ const coerce = (raw: string): unknown =>
   coerceFieldValue(props.field.kind, raw);
 
 /**
- * 标量文本控件的显示值：字符串原样；**数字/布尔转字面量**——
- * 否则既有数字值（如 `set value: 10`）在输入框里显示为空，看着像丢字段。
+ * 标量文本控件的显示值：字符串原样；**数字/布尔/null 转字面量**——
+ * 否则既有数字值（如 `set value: 10`）在输入框里显示为空，看着像丢字段；
+ * null 状态槽空值同理显示为 `null`（再输入 `null` 可经 coerce 还原）。
  */
 const scalarText = computed(() => {
   const value = props.value;
@@ -49,6 +50,7 @@ const scalarText = computed(() => {
   if (typeof value === "number" || typeof value === "boolean") {
     return String(value);
   }
+  if (value === null) return "null";
   return "";
 });
 

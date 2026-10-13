@@ -1,6 +1,8 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import vue from "@vitejs/plugin-vue";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
+import { scanFontRegistry } from "@lingfan/stories-build";
 const host = process.env.TAURI_DEV_HOST;
 
 // 浏览器游戏模式开关（构建期，正向显式）：只有置 1 才允许外部浏览器游玩本产物。
@@ -8,9 +10,29 @@ const host = process.env.TAURI_DEV_HOST;
 // `vite dev` 恒放行（开发模式便利，也是「浏览器复用宿主能力」场景的前提）。
 const isBrowserGame = process.env.VITE_LFEN_BROWSER_GAME === "1";
 
+// 字体清单虚拟模块：与 stories:build 共用同一注册表实现（@lingfan/stories-build
+// 的 scanFontRegistry，文件名去扩展名 = 字体名），宿主据清单注入 @font-face 并装配
+// 渲染层注册表。字体是纯展示资产，引擎侧不设端口。
+function storyFontsVirtual(): Plugin {
+  const moduleId = "virtual:story-fonts";
+  const fontsDir = fileURLToPath(new URL("./Resources/Fonts", import.meta.url));
+  return {
+    name: "story-fonts",
+    resolveId(id) {
+      return id === moduleId ? `\0${moduleId}` : undefined;
+    },
+    load(id) {
+      if (id !== `\0${moduleId}`) return undefined;
+      return `export const storyFonts = ${JSON.stringify(
+        scanFontRegistry(fontsDir),
+      )};`;
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
-  plugins: [vue()],
+  plugins: [vue(), storyFontsVirtual()],
 
   // 应用资源根 = 本示例工程的 Resources/（**不是**引擎资产）：
   // 故事里的逻辑路径相对资源根（`Audio/x.mp3`、`Images/y.png`、`Video/z.mp4`），

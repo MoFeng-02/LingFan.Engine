@@ -88,6 +88,27 @@ describe("assembleProject", () => {
     expect(issues.join("\n")).toContain("start.json");
   });
 
+  it("列级 font 校验：非字符串/空串 fail-closed（带文件定位）；合法名随列组装", () => {
+    const filesWith = (font: unknown): Map<string, unknown> =>
+      new Map([
+        [
+          "Stories/a.json",
+          {
+            formatVersion: 1,
+            columns: [{ id: "a", kind: "flow", font, commands: [] }],
+          },
+        ],
+      ]);
+    expect(
+      issuesOf(() => assembleProject({ ...manifest, entry: "a" }, filesWith(42))).join("\n"),
+    ).toContain(".font 必须为非空字符串");
+    expect(
+      issuesOf(() => assembleProject({ ...manifest, entry: "a" }, filesWith(""))).join("\n"),
+    ).toContain("a.json");
+    const ok = assembleProject({ ...manifest, entry: "a" }, filesWith("楷体"));
+    expect(ok.columns[0]?.font).toBe("楷体");
+  });
+
   it("文件名与列 id **解耦**：语义化文件名合法", () => {
     // 真实工程形态：`Stories/chapter1/chapter1.story` 装列 `chapter1_start`
     // —— 文件名是「章节名」，列 id 是「场景名」，本就是两回事。

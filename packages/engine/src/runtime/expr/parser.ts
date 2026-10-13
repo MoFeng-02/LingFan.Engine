@@ -294,7 +294,7 @@ export class Parser {
   }
 
   /**
-   * 基本项：数字、字符串、true/false、内建函数调用、成员路径、括号分组。
+   * 基本项：数字、字符串、true/false/null、内建函数调用、成员路径、括号分组。
    * 成员路径按 ident('.'ident)* 收成整条点路径，是全局键还是字典下钻由 resolver 决定；
    * 变量未定义时抛 unknown-variable（不回落成 undefined）。
    */
@@ -315,6 +315,10 @@ export class Parser {
         this.pos += 1;
         const v = t.text === "true";
         return () => v;
+      }
+      if (t.text === "null") {
+        this.pos += 1;
+        return () => null;
       }
       const name = t.text;
       this.pos += 1;

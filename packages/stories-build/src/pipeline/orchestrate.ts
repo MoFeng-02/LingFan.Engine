@@ -13,11 +13,29 @@ import {
 import { emitArtifacts } from "../emit";
 import { StoryBuildError } from "../shared";
 import { loadExtensions } from "../compiler";
-import { readManifest } from "../config";
+import { readManifest, CONFIG_FILE } from "../config";
 import { drainBuildWarnings, type BuildReport } from "../emit";
-import { evalConfigModule, runStateSchemaPass } from "../const-eval";
+import {
+  collectModuleDefines,
+  evalConfigModule,
+  mergeDefineCallsInto,
+  runStateSchemaPass,
+  type LocatedDefineCall,
+} from "../const-eval";
 import { discoverSources } from "../discovery";
-import { collectDeclaredNames, renderTypegen } from "../typegen";
+import {
+  FONTS_DIR_NAME,
+  fontNameSet,
+  scanFontRegistry,
+} from "../fonts";
+import {
+  collectDeclaredNames,
+  collectEnumTypeSlotsForBuild,
+  renderFontTypegen,
+  renderScriptTypegen,
+  renderStateTypegen,
+  renderTypegen,
+} from "../typegen";
 import { walkFiles } from "../shared";
 
 /** 构建产物的目录名与生成物文件名（默认值 = 参考宿主的现状目录名） */
@@ -46,16 +64,24 @@ export interface StoryBuildOptions {
 const GENERATED_FILE = "fun_register.g.ts";
 /** 类型面生成物文件名（列名与插值键的字面量收窄面，供 IDE 与 typecheck 用） */
 const TYPEGEN_FILE = "stories.gen.d.ts";
+/** state 类型面生成物文件名（StoryState 精确类型，形态 B 的 ambient 桥引它） */
+const STATE_TYPEGEN_FILE = "state.gen.d.ts";
+/** script 命名空间 ambient 声明文件名（免导入直呼的类型面，内容恒定） */
+const SCRIPT_TYPEGEN_FILE = "script.gen.d.ts";
+/** font 字面量类型面文件名（字体名注册表的键=值收窄面，内容随注册表） */
+const FONT_TYPEGEN_FILE = "font.gen.d.ts";
 
 /**
  * 编译 `root/Stories.src/` 下的 TS 源 → `root/Resources/`（纯编排，fs 全在参数 root 之下；
  * 测试用临时工程根直测，CLI 主守卫传真实根）。
  *
- * 十三段串行：config.ts 单次求值（named exports 四导出 folders/start/vars/state +
+ * 十四段串行：config.ts 单次求值（named exports 四导出 folders/start/vars/state +
  * 形态 B define 累积，读取/校验统一在此）→ 源发现（folders 多目录 + start 全局恰一）
  * → cell 扫描 → 编译期求值（§十二：node_modules 值导入的模块整体求值，导出常量喂给
- * 编译器内联）与 state 降维（C12：config.state/define 合并树走同一降维文法扁平化为
- * defines）→ story-compiler 编译（诊断非空 fail-closed）→ parseStory 校验兜底 →
+ * 编译器内联）→ 模块层构建期 define 收集汇入（顶层 define 语句与 config 树同源合并，
+ * 互斥/冲突 fail-closed）与 state 降维（C12：config.state/define 合并树走同一降维文法
+ * 扁平化为 defines）→ 字体名注册表扫描（Resources/Fonts 文件名去扩展名，编译期字体
+ * 引用检查对照源）→ story-compiler 编译（诊断非空 fail-closed）→ parseStory 校验兜底 →
  * 列归一与 sourcePath 回填（源文件路径 = 产物路径）→ 工程合并（id/entry 取 start 故事，
  * defines 冲突 fail-closed）→ 清单读取 → 扩展装载 → op/守卫闸门 → 编译与往返自检
  * → 差量写盘 → 生成物与警告收集。交错的顺序本身即契约（前置段的失败文案要先于
@@ -81,8 +107,10 @@ export async function buildStories(
   // —— 源发现：config 布局声明 → folders 多目录递归 → start 全局恰一 ——
   const discovery = await discoverSources(root, sourcesDirName, evaluated.config);
 
-  // —— cell 声明扫描（构建期 AST 扫描）：源树（排除生成物目录，仅 .ts；机制不动）——
-  const cellScan = scanCellSources(walkFiles(sourcesDir), generatedDirName);
+  // —— cell 声明扫描（构建期 AST 扫描）：源树（排除生成物目录，仅 .ts；机制不动）。
+  // 源树同时是模块层 define 收集与枚举槽位回收的输入（只读复用，不重扫）——
+  const sourceTree = walkFiles(sourcesDir);
+  const cellScan = scanCellSources(sourceTree, generatedDirName);
 
   // —— 编译期求值（§十二）：含 node_modules 值导入的文件整体求值，导出常量值喂给
   // 编译器内联；求值诊断与 E13 确定性闸门 fail-closed，一次报全部 ——
@@ -93,6 +121,35 @@ export async function buildStories(
     sourcesDirName,
   );
 
+  // —— 模块层构建期 define 收集与汇入：源模块顶层 define 语句（函数体外）AST 折叠，
+  // 与 config 的 define 树汇入同一棵合并树（形态 B 的 define 域放宽）。形态 A
+  // （state 导出）与模块层 define 互斥；跨文件同键/形状冲突 fail-closed 一次报
+  // 全部（落点带 源文件:行:列）——
+  const moduleDefineCalls = collectModuleDefines({
+    sourcesDir,
+    files: sourceTree,
+    generatedDirName,
+  });
+  if (evaluated.state !== undefined && moduleDefineCalls.length > 0) {
+    throw new StoryBuildError(
+      [
+        `${sourcesDirName}/${CONFIG_FILE}: 形态 A（state 导出）与模块层构建期 define 互斥——形态 A/B 二选一：`,
+        ...moduleDefineCalls.map((call) => `- ${call.origin}${defineLabel(call)}`),
+      ].join("\n"),
+    );
+  }
+  const moduleDefineConflicts = mergeDefineCallsInto(
+    evaluated.defineTree,
+    moduleDefineCalls,
+  );
+  if (moduleDefineConflicts.length > 0) {
+    throw new StoryBuildError(
+      `模块层构建期 define 冲突（${moduleDefineConflicts.length} 条）：\n${moduleDefineConflicts
+        .map((conflict) => `- ${conflict}`)
+        .join("\n")}`,
+    );
+  }
+
   // —— state 降维（C12）：config.state（形态 A）与 define 合并树（形态 B，二选一）
   // 走同一降维文法扁平化为 defines；文法诊断 fail-closed，皆缺省 = 空 schema 贡献 ——
   const schemaDefines = runStateSchemaPass(
@@ -100,6 +157,12 @@ export async function buildStories(
     evaluated.defineTree,
     sourcesDirName,
   );
+
+  // —— 字体名注册表：Resources/Fonts 下的字体文件名去扩展名（目录缺失/为空 = 空注册表，
+  // 引用字体名的工程 fail-closed，未引用的零打扰）；喂给编译器做 {font=} 标签与角色
+  // 字体的构建期检查，宿主侧由 Vite 扫描同目录注入 @font-face ——
+  const fontEntries = scanFontRegistry(join(resourcesDir, FONTS_DIR_NAME));
+  const fontNames = fontNameSet(fontEntries);
 
   // —— story-compiler：故事/模块清单一次性编译（诊断非空 = fail-closed，一次报全部）——
   const compiler = options.compiler ?? (await loadDefaultCompiler());
@@ -110,6 +173,7 @@ export async function buildStories(
     stories: discovery.stories,
     modules: discovery.modules,
     constValues,
+    fontNames,
   });
   if (compiled.diags.length > 0) {
     throw new StoryBuildError(
@@ -145,6 +209,8 @@ export async function buildStories(
   const merged = startGroup.story;
   merged.columns = [...bySource.values()].flatMap((group) => group.columns);
   merged.defines = mergeDefines(bySource, sourcesDirName, schemaDefines);
+  // 故事版本（作者声明，缺省不写）：进存档 storyVersion；托管键更新把声明写进 project.json
+  merged.version = evaluated.config.version;
 
   // —— 工程清单：先有 project.json（defines/shell 是工程事实，不归 TS 源管）——
   // 标记键 `tsSource`（非托管键，serializeProject 原位保留）：编辑器据此对
@@ -187,6 +253,27 @@ export async function buildStories(
     extensionPrefixes: ids,
   });
 
+  // —— state 类型面生成物（形态 B gen 类型面）：树取求值段结果（形态 A state 树 /
+  // 形态 B define 合并树——模块层 define 已在前置段汇入同一棵树）；枚举 type 槽位
+  // 从 config.ts 与各模块源文按点路径回收（esbuild 求值丢标识符，AST 侧补回收）。
+  // 渲染恒产出：空树退化为 Record<string, never>，ambient 桥永远有类型可引 ——
+  const stateTypegenContent = renderStateTypegen({
+    tree: evaluated.state ?? evaluated.defineTree,
+    enumSlots: collectEnumTypeSlotsForBuild({
+      configSource: sourceTree.get(CONFIG_FILE) ?? "",
+      moduleFiles: moduleSlotFiles(sourceTree, moduleDefineCalls),
+    }),
+    generatedDir: generatedDirName,
+  });
+
+  // —— script 命名空间 ambient 声明（免导入直呼）：内容恒定、与工程状态无关，
+  // 纯编译期类型面零运行时注入；显式 import / 解构按 TS 遮蔽语义优先 ——
+  const scriptTypegenContent = renderScriptTypegen();
+
+  // —— font 字面量类型面：键 = 值 = 注册表字体名（引号键保非标识符名）；
+  // 空注册表恒产出封闭空对象，未注册名在 TS 面不可见（改拼即 TS2551）——
+  const fontTypegenContent = renderFontTypegen(fontEntries);
+
   // —— 差量写盘 + 生成物（逻辑路径，相对资源根）——
   const { added, updated, removed } = emitArtifacts({
     root,
@@ -198,6 +285,18 @@ export async function buildStories(
     typegen: {
       rel: `${sourcesDirName}/${generatedDirName}/${TYPEGEN_FILE}`,
       content: typegenContent,
+    },
+    stateGen: {
+      rel: `${sourcesDirName}/${generatedDirName}/${STATE_TYPEGEN_FILE}`,
+      content: stateTypegenContent,
+    },
+    scriptGen: {
+      rel: `${sourcesDirName}/${generatedDirName}/${SCRIPT_TYPEGEN_FILE}`,
+      content: scriptTypegenContent,
+    },
+    fontGen: {
+      rel: `${sourcesDirName}/${generatedDirName}/${FONT_TYPEGEN_FILE}`,
+      content: fontTypegenContent,
     },
   });
 
@@ -216,6 +315,24 @@ export async function buildStories(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** 互斥文案里的一条调用签名（path 形带键名；spec 形统一签名） */
+function defineLabel(call: LocatedDefineCall): string {
+  return call.call.kind === "path" ? `define("${call.call.path}")` : "define({…})";
+}
+
+/** 枚举槽位回收的模块源文（按调用落点去重排序；树里缺文本的文件跳过） */
+function moduleSlotFiles(
+  sourceTree: ReadonlyMap<string, string>,
+  calls: readonly { rel: string }[],
+): Map<string, string> {
+  const files = new Map<string, string>();
+  for (const rel of [...new Set(calls.map((call) => call.rel))].sort()) {
+    const text = sourceTree.get(rel);
+    if (text !== undefined) files.set(rel, text);
+  }
+  return files;
 }
 
 /**

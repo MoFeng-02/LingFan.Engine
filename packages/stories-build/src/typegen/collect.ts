@@ -18,6 +18,9 @@ const DECL_NAME_FIELDS: Readonly<Record<string, string>> = {
   array_pop: "key",
   dict: "key",
   dict_set: "key",
+  // 结果绑定名：语句级 `const r = f(1)` 降糖成 call op 后唯一携带声明名的字段——
+  // 引擎把 into 无条件声明成调用方局部变量（无带值 return 时绑 null）。
+  call: "into",
   for: "var",
   foreach: "var",
   random: "var",
@@ -48,7 +51,8 @@ function readDeclaredName(op: unknown): string | undefined {
 /**
  * 递归收集一段命令流里的声明名：
  * 控制流（if/while/for/switch/when）把名字藏在 body/then/else/cases 里，
- * `func` 自带 body、`call` 带 args，都要照走；`minigame.reward[].key` 是奖励发到哪个变量。
+ * `func` 自带 body、`call` 带 args 与 into 绑定名，都要照走；
+ * `minigame.reward[].key` 是奖励发到哪个变量。
  */
 function collectFromCommands(
   commands: readonly unknown[],

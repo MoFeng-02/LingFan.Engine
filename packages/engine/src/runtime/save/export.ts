@@ -70,6 +70,8 @@ export function exportSave(ctx: OpContext): SaveDataV1 | null {
   return {
     formatVersion: 1,
     storyId: ctx.story.id,
+    // 故事版本随档（读档侧按它判定 migrateState 迁移路径；缺省 1）
+    storyVersion: ctx.story.version ?? 1,
     coord,
     state: [...ctx.state.entries()],
     rngState: ctx.rngState,
@@ -80,12 +82,23 @@ export function exportSave(ctx: OpContext): SaveDataV1 | null {
       state: cp.snapshot.state,
       rngState: cp.snapshot.rngState,
     })),
+    // 全局层 undef 墓碑（帧层 undef 不记；未用到 = 字段缺席，读档垫底据此挡默认值复活）
+    ...(ctx.deleted.size > 0 ? { deleted: [...ctx.deleted] } : {}),
     // 本档实际执行过的扩展（未用到 = 字段缺席，缺扩展也能读——防假阳性）
     ...(ctx.usedExtensions.size > 0
       ? {
           extensions: [...ctx.usedExtensions].flatMap((id) => {
             const ext = ctx.extensionById.get(id);
             return ext ? [{ id, stateVersion: ext.stateVersion }] : [];
+          }),
+        }
+      : {}),
+    // 本档实际回填过状态的玩法系统（未用到 = 字段缺席，防假阳性；语义与扩展同构）
+    ...(ctx.usedMinigames.size > 0
+      ? {
+          minigames: [...ctx.usedMinigames].flatMap((id) => {
+            const meta = ctx.minigameById.get(id);
+            return meta ? [{ id, stateVersion: meta.stateVersion }] : [];
           }),
         }
       : {}),

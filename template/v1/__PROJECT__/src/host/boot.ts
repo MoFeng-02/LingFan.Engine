@@ -45,6 +45,7 @@ import { createHostEffects } from "./effects";
 import { wireEngine } from "./engine-wiring";
 import { startHostFrameLoop } from "./frame-loop";
 import { wireInput } from "./input-map";
+import { installStoryFonts } from "./theme-fonts";
 
 /**
  * 装配输入：节点句柄表、资源根内的清单与故事表，以及两项可配置节律。
@@ -69,6 +70,10 @@ export interface HostBootOptions {
  */
 export async function bootHost(options: HostBootOptions): Promise<void> {
   const { dom } = options;
+
+  // 字体装配（纯展示，boot 一次性）：@font-face 注入 + 项目默认字体主题面，
+  // 先于一切视图建立——首个对话帧渲染时 CSS 变量已就位
+  installStoryFonts();
 
   // —— 工程文件：清单与故事同走 ProjectFilesPort（组装归引擎纯函数，宿主不预解析）——
   const filesPort = createFetchProjectFilesPort({

@@ -152,6 +152,9 @@ export function scanModule(record: ModuleRecord, diags: DiagBag): void {
       record.consts.push(stmt);
       continue;
     }
+    if (ts.isExpressionStatement(stmt) && isBuildDefineStatement(stmt)) {
+      continue; // 构建期 define 语句：由模块层收集器求值合并，图谱层不展开
+    }
     if (
       ts.isInterfaceDeclaration(stmt) ||
       ts.isTypeAliasDeclaration(stmt) ||
@@ -164,9 +167,18 @@ export function scanModule(record: ModuleRecord, diags: DiagBag): void {
       rel,
       sf,
       stmt,
-      "模块层不支持此语句：只允许 const/函数/enum/导入/类型声明与 default 导出",
+      "模块层不支持此语句：只允许 const/函数/enum/导入/类型声明/default 导出与构建期 define",
     );
   }
+}
+
+/** 顶层 `define(…)` 表达式语句（构建期合并树词；参数合法性由收集器判定） */
+function isBuildDefineStatement(stmt: ts.ExpressionStatement): boolean {
+  return (
+    ts.isCallExpression(stmt.expression) &&
+    ts.isIdentifier(stmt.expression.expression) &&
+    stmt.expression.expression.text === "define"
+  );
 }
 
 const STATE_ROOT_ANNOTATION = "StoryState";
@@ -195,7 +207,7 @@ function collectStateAliases(sf: ts.SourceFile): Map<string, string> {
 
 function resolvesToStateAnnotation(
   name: string,
-  aliases: Map<string, string>,
+  aliases: ReadonlyMap<string, string>,
 ): boolean {
   let cur = name;
   for (let hop = 0; hop <= MAX_ALIAS_HOPS; hop += 1) {
@@ -207,6 +219,33 @@ function resolvesToStateAnnotation(
   return false;
 }
 
+/** 单声明的状态根判形：恰一声明、标识符名、标识符 TypeReference 注解且解析到 StoryState */
+function stateRootDeclaration(
+  stmt: ts.VariableStatement,
+  aliases: ReadonlyMap<string, string>,
+): { name: string; decl: ts.VariableDeclaration } | undefined {
+  if (stmt.declarationList.declarations.length !== 1) return undefined;
+  const decl = stmt.declarationList.declarations[0];
+  if (!ts.isIdentifier(decl.name) || decl.type === undefined) return undefined;
+  const annotation =
+    ts.isTypeReferenceNode(decl.type) && ts.isIdentifier(decl.type.typeName)
+      ? decl.type.typeName.text
+      : undefined;
+  if (
+    annotation === undefined ||
+    !resolvesToStateAnnotation(annotation, aliases)
+  ) {
+    return undefined;
+  }
+  return { name: decl.name.text, decl };
+}
+
+/**
+ * 状态根候选扫描：两种拼写都算声明——
+ * 1. 顶层 `export declare const <根名>: StoryState`（直接形态）；
+ * 2. ambient 全局增补块 `declare global { var <根名>: StoryState }`（桥文件形态：
+ *    根名不进模块作用域，只挂全局，供运行期裸名访问；块内无需 export/declare 修饰）。
+ */
 function scanStateRootCandidates(
   rel: string,
   sf: ts.SourceFile,
@@ -220,27 +259,31 @@ function scanStateRootCandidates(
       continue;
     if (!modifiers.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword))
       continue;
-    if (stmt.declarationList.declarations.length !== 1) continue;
-    const decl = stmt.declarationList.declarations[0];
-    if (!ts.isIdentifier(decl.name) || decl.type === undefined) continue;
-    const annotation =
-      ts.isTypeReferenceNode(decl.type) && ts.isIdentifier(decl.type.typeName)
-        ? decl.type.typeName.text
-        : undefined;
-    if (
-      annotation === undefined ||
-      !resolvesToStateAnnotation(annotation, aliases)
-    )
-      continue;
-    candidates.push({ rel, sf, node: decl, name: decl.name.text });
+    const found = stateRootDeclaration(stmt, aliases);
+    if (found === undefined) continue;
+    candidates.push({ rel, sf, node: found.decl, name: found.name });
+  }
+  for (const stmt of sf.statements) {
+    // declare global 的名字节点是普通 Identifier（"global"），用 GlobalAugmentation
+    // 旗标判别增补块（实测 TS 6.0 AST：name.kind 仍为 Identifier）。
+    if (!ts.isModuleDeclaration(stmt)) continue;
+    if ((stmt.flags & ts.NodeFlags.GlobalAugmentation) === 0) continue;
+    if (stmt.body === undefined || !ts.isModuleBlock(stmt.body)) continue;
+    for (const inner of stmt.body.statements) {
+      if (!ts.isVariableStatement(inner)) continue;
+      const found = stateRootDeclaration(inner, aliases);
+      if (found === undefined) continue;
+      candidates.push({ rel, sf, node: found.decl, name: found.name });
+    }
   }
   return candidates;
 }
 
 /**
- * 状态根名发现（SSOT）：全树唯一的 `export declare const <根名>: StoryState`（注解可为
- * 本文件 type 别名链）决定源侧状态前缀，转译剥根按该名进行。无声明回退
- * DEFAULT_STATE_ROOT；根名与词函数冲突、或多个异名声明并存 → fail-closed 诊断（定位声明处）。
+ * 状态根名发现（SSOT）：全树唯一的 `export declare const <根名>: StoryState`（或 ambient
+ * 桥 `declare global { var <根名>: StoryState }`，注解均可是本文件 type 别名链）决定源侧
+ * 状态前缀，转译剥根按该名进行。无声明回退 DEFAULT_STATE_ROOT；根名与词函数冲突、或多个
+ * 异名声明并存 → fail-closed 诊断（定位声明处）。
  */
 export function discoverStateRoot(
   records: ReadonlyMap<string, ModuleRecord>,
@@ -265,7 +308,7 @@ export function discoverStateRoot(
         candidate.rel,
         candidate.sf,
         candidate.node,
-        `状态根声明不唯一（${names}）：只允许一个 \`export declare const <根名>: ${STATE_ROOT_ANNOTATION}\``,
+        `状态根声明不唯一（${names}）：只允许一个 \`export declare const <根名>: ${STATE_ROOT_ANNOTATION}\`（ambient 桥为 \`var <根名>: ${STATE_ROOT_ANNOTATION}\`）`,
       );
     }
     return DEFAULT_STATE_ROOT;

@@ -14,9 +14,11 @@
 import {
   EXTENSION_ID_PATTERN,
   EXT_KEY_PREFIX,
+  GAME_SYSTEM_ID_PATTERN,
   type CustomOpProjections,
   type ExecOutcome,
   type ExtensionContext,
+  type MinigameRegistration,
   type OpDefinition,
   type OpExtension,
   type OpTextProjection,
@@ -163,6 +165,41 @@ export function buildOpRegistry(
     }
   }
   return registry;
+}
+
+/**
+ * 构建玩法系统声明索引（引擎构造期调用一次，与扩展注册同口径 fail-fast）：
+ * gameId 形态（`GAME_SYSTEM_ID_PATTERN`）、stateVersion 正整数、重复注册任一非法 →
+ * 抛错带定位——组合根装配错误不等到读档存档依赖校验才暴露。
+ */
+export function buildMinigameRegistry(
+  minigames: readonly MinigameRegistration[],
+): ReadonlyMap<string, MinigameRegistration> {
+  const byId = new Map<string, MinigameRegistration>();
+  for (const meta of minigames) {
+    if (
+      typeof meta.gameId !== "string" ||
+      !GAME_SYSTEM_ID_PATTERN.test(meta.gameId)
+    ) {
+      throw new Error(
+        `玩法系统 id 不合法：${String(meta.gameId)}（须匹配 ${String(GAME_SYSTEM_ID_PATTERN)}）`,
+      );
+    }
+    if (
+      typeof meta.stateVersion !== "number" ||
+      !Number.isInteger(meta.stateVersion) ||
+      meta.stateVersion < 1
+    ) {
+      throw new Error(
+        `玩法系统「${meta.gameId}」stateVersion 必须为正整数，收到 ${String(meta.stateVersion)}`,
+      );
+    }
+    if (byId.has(meta.gameId)) {
+      throw new Error(`玩法系统「${meta.gameId}」重复注册`);
+    }
+    byId.set(meta.gameId, meta);
+  }
+  return byId;
 }
 
 /** 构造扩展执行上下文（门卫：get/set 物理强制 `ext.<id>.` 前缀；story 只读） */

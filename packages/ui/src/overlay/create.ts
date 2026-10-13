@@ -110,6 +110,7 @@ export function createNarrativeOverlay(
     renderDialogue({
       speaker: s.speaker,
       speakerColor: s.speakerColor,
+      dialogFont: s.dialogFont,
       canAdvance: s.canAdvance,
       dialogHidden: s.dialogHidden,
       waiting: s.waiting,

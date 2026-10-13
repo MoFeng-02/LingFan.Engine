@@ -20,6 +20,8 @@ const SAY_KNOWN_FIELDS = new Set([
   "speaker",
   // 说话人颜色覆盖（覆盖整句/说话人；与行内标记 `{color=…}` 是两件事）
   "color",
+  // 本句字体（分辨链里比角色/列级更具体的一档；注册表校验在构建期，运行期由渲染层闸门兜底）
+  "font",
   "clickable",
   "noskip",
   "instant",
@@ -79,6 +81,18 @@ export function execSay(ctx: OpContext, frame: Frame, cmd: StoryCommand): void {
     );
     return;
   }
+  // `say font` 校验：形状收口（非空字符串）。字体名是否在注册表内属构建期/渲染层闸门职责，
+  // 引擎只保证「写进 SYS 的总是字符串」。
+  if (
+    cmd.font !== undefined &&
+    (typeof cmd.font !== "string" || cmd.font === "")
+  ) {
+    ctx.fail(
+      "say-invalid-font",
+      `say.font 必须为非空字符串（字体名 = Resources/Fonts 文件名去扩展名），收到 ${JSON.stringify(cmd.font)}`,
+    );
+    return;
+  }
   // 先 Translate 后插值（overlay 键可含 {var} 占位符）+ {var:00} 格式化（仅文本命令）；
   // 行内标记 {b}{p} 原样透传；失败保留原文 + error
   // speaker 与 text 同语义插值——动态说话人（如 func 实参）经此获得真实名字；
@@ -115,6 +129,17 @@ export function execSay(ctx: OpContext, frame: Frame, cmd: StoryCommand): void {
     SYS.dialogTemplate,
     typeof cmd.template === "string" ? cmd.template : (characterScreen ?? null),
   );
+  // 字体分辨链（最具体优先）：say 行参 > 角色字体（角色定义记录的上次字体）> 列级字体。
+  // 每句都写、无声明写空串（与 currentDialogColor 同口径）⇒ 换列后上一列字体不残留；
+  // 更具体的行内 {font=} 标记在渲染层生效，项目默认字体由宿主 CSS 变量承接。
+  const column = frame.columnId === null ? undefined : ctx.columnById(frame.columnId);
+  const resolvedFont =
+    typeof cmd.font === "string"
+      ? cmd.font
+      : (ctx.characters.get(speakerText)?.font ??
+        column?.font ??
+        "");
+  ctx.setSystem(SYS.dialogFont, resolvedFont);
   ctx.setSystem(SYS.currentDialogText, text);
   ctx.setSystem(SYS.dialogClickable, cmd.clickable === true);
   ctx.setSystem(SYS.dialogNoskip, cmd.noskip === true);
@@ -161,6 +186,7 @@ export function execMenu(
   ctx.setSystem(SYS.currentDialogText, "");
   ctx.setSystem(SYS.currentDialogSpeaker, "");
   ctx.setSystem(SYS.currentDialogColor, ""); // 同清：避免上一句的颜色覆盖残留
+  ctx.setSystem(SYS.dialogFont, ""); // 字体同清：换列/菜单后上一句字体不残留
   // prompt/选项文案先 Translate（目标列名不翻译——menuTargets 原样）
   ctx.setSystem(
     SYS.menuPrompt,

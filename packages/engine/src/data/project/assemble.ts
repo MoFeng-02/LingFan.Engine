@@ -92,6 +92,15 @@ export function assembleProject(
   if (manifest.lang !== undefined && typeof manifest.lang !== "string") {
     issues.push("project.json: lang 必须为字符串");
   }
+  // 故事版本（作者声明）：正整数；缺席 = 1（读侧 ?? 1 口径，组装器不补默认）
+  if (
+    manifest.version !== undefined &&
+    (typeof manifest.version !== "number" ||
+      !Number.isInteger(manifest.version) ||
+      manifest.version < 1)
+  ) {
+    issues.push("project.json: version 必须为正整数（缺省 = 1）");
+  }
   // 扩展声明（声明制）：须为非空字符串数组；缺席/为空 = 无扩展
   if (manifest.extensions !== undefined) {
     const declared: unknown = manifest.extensions;
@@ -206,6 +215,10 @@ export function assembleProject(
     entry,
     columns,
     defines,
+    // 故事版本透传（进存档 storyVersion；缺席不补——读侧 `?? 1` 口径，保证往返幂等）
+    ...(manifest.version !== undefined
+      ? { version: manifest.version as number }
+      : {}),
     // 扩展声明透传（宿主组合根经 `loadDeclaredExtensions` 装载后注入引擎/编辑器）
     ...(manifest.extensions !== undefined
       ? { extensions: manifest.extensions as string[] }

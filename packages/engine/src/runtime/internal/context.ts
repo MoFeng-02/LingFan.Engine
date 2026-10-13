@@ -23,6 +23,7 @@ import type {
   ElementInstance,
   EventListener,
   GuardFn,
+  MinigameRegistration,
   OpExtension,
   OutboundPayload,
   SaveDataV1,
@@ -130,6 +131,22 @@ export interface OpContext {
   readonly usedExtensions: Set<string>;
   readonly extensionById: ReadonlyMap<string, OpExtension>;
   readonly migrateSaveHook: ((data: unknown) => SaveDataV1 | null) | undefined;
+  /**
+   * 全局层删除墓碑：`undef` 仅在作用域链未命中、删除实际落在全局层时记账。
+   * 随快照/存档/回溯随行；读档垫底据此跳过「作者主动销毁」的键（防默认值复活）。
+   */
+  readonly deleted: Set<string>;
+  /** 本档实际回填过状态的玩法系统（resolveMinigame 登记；exportSave 落盘依赖标记） */
+  readonly usedMinigames: Set<string>;
+  /** 玩法系统注册索引（gameId → 声明：存档依赖校验 / migrate 用） */
+  readonly minigameById: ReadonlyMap<string, MinigameRegistration>;
+  /** 故事级状态迁移钩子（宿主注入；缺省 = storyVersion 不一致直接可操作拒绝） */
+  readonly migrateStateHook?:
+    | ((
+        state: Record<string, unknown>,
+        from: { storyVersion: number },
+      ) => Record<string, unknown> | null)
+    | undefined;
   /** 存档写盘（经 SavePort） */
   exportSave(): SaveDataV1 | null;
   /** 读档：校验 → 迁移 → 恢复 → 重放 */
@@ -140,6 +157,11 @@ export interface OpContext {
   tryMigrateSave(data: SaveDataV1): SaveDataV1 | null;
   /** 校验存档声明的扩展依赖是否齐备 */
   resolveSaveExtensions(data: SaveDataV1): [string, unknown][] | null;
+  /** 校验存档声明的玩法系统依赖并迁移其命名空间状态 */
+  resolveSaveMinigames(
+    entries: [string, unknown][],
+    marks: SaveDataV1["minigames"],
+  ): [string, unknown][] | null;
   /** 让已装配的扩展恢复其存档状态 */
   restoreSaveExtensions(marks: SaveDataV1["extensions"]): boolean;
 

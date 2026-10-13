@@ -8,7 +8,8 @@
  *   - 形态 A（state 导出）与形态 B（define 调用）二选一，混用报错，皆缺省合法；
  *   - define 累积：点路径与对象实参混用，求值毕合并为纯嵌套树，同键二次定义/形状
  *     冲突一次报全部（不后写覆盖）；点路径空段拒；对象字面量点键留给降维段守卫；
- *   - state/define 合并树与形态 A 走同一降维文法（descriptor/enum/数组 descriptor）。
+ *   - state/define 合并树与形态 A 走同一降维文法（descriptor/enum/数组 descriptor/
+ *     type 槽并集——多元素数组成员槽位，null 为成员之一）。
  *
  * 五类覆盖（agent.md §6 测试纪律）：①拟态用户（四导出全链/枚举相对导入求值）
  * ②故意错误（互斥/冲突/空段/点键/值文法）③不变量（define 合并树只经降维进 defines）
@@ -220,6 +221,72 @@ describe("config.ts 契约 · 形态互斥与缺省（fail-closed / 边界）", 
   });
 });
 
+describe("config.ts 契约 · type 槽并集文法（成员槽位取并集，null 入值域）", () => {
+  const SEX_LIB = `export enum Sex {\n  Male = "male",\n  Female = "female",\n}\n`;
+
+  it("多元素数组 type 槽位 = 并集：default 落在成员值域内即合法（null 空值初值）", async () => {
+    const root = makeProject("union-legal", {
+      "Stories.src/lib/sex.ts": SEX_LIB,
+      "Stories.src/config.ts":
+        config(["ch1"]) +
+        `import { Sex } from "./lib/sex";\n` +
+        `define("hp", { type: ["number", Sex, null], default: null });\n` +
+        `define("mood", { type: ["string", Sex], default: Sex.Female });\n` +
+        `define("tags", { type: [["number", "string"]], default: [] });\n` +
+        `define("team", { type: [Sex], default: [] });\n`,
+      "Stories.src/ch1/start.ts": START_STORY,
+      "Resources/project.json": MANIFEST,
+    });
+    await buildStories(root);
+    expect(readDefines(root)).toMatchObject({
+      hp: null,
+      mood: "female",
+      tags: [],
+    });
+  });
+
+  it("形态 A 同文法：as const 元组并集 + null default 走同一降维", async () => {
+    const root = makeProject("union-form-a", {
+      "Stories.src/lib/sex.ts": SEX_LIB,
+      "Stories.src/config.ts":
+        config(["ch1"]) +
+        `import { Sex } from "./lib/sex";\n` +
+        `export const state = {\n  medal: { type: ["string", Sex, null] as const, default: null },\n} as const;\n`,
+      "Stories.src/ch1/start.ts": START_STORY,
+      "Resources/project.json": MANIFEST,
+    });
+    await buildStories(root);
+    expect(readDefines(root)).toMatchObject({ medal: null });
+  });
+
+  it("default 不在任何成员值域内 ⇒ fail-closed", async () => {
+    const root = makeProject("union-bad-default", {
+      "Stories.src/config.ts":
+        config(["ch1"]) +
+        `define("hp", { type: ["number", "string"], default: true });\n`,
+      "Stories.src/ch1/start.ts": START_STORY,
+      "Resources/project.json": MANIFEST,
+    });
+    await expect(buildStories(root)).rejects.toThrow(
+      /descriptor default 不在并集值域内/,
+    );
+  });
+
+  it("未知并集成员 ⇒ 一次报全部（fail-closed）", async () => {
+    const root = makeProject("union-bad-member", {
+      "Stories.src/config.ts":
+        config(["ch1"]) +
+        `define("hp", { type: ["number", true, { a: "x", b: null }, null], default: null });\n`,
+      "Stories.src/ch1/start.ts": START_STORY,
+      "Resources/project.json": MANIFEST,
+    });
+    await expect(buildStories(root)).rejects.toThrow(/并集第 2 个成员无法识别/);
+    await expect(buildStories(root)).rejects.toThrow(/并集第 3 个成员无法识别/);
+    // 第 4 个成员是合法 null，不在报错之列。
+    await expect(buildStories(root)).rejects.not.toThrow(/并集第 4 个成员/);
+  });
+});
+
 describe("config.ts 契约 · 回归锚定", () => {
   it("state 降维诊断挂在 config.ts 定位（STATE_SCHEMA_REL 硬编码已退役）", async () => {
     // 裸数组拒（降维文法）+ 定位锚定：诊断文件必须是 config.ts，而不是旧 lib/state.ts。
@@ -234,6 +301,9 @@ describe("config.ts 契约 · 回归锚定", () => {
     await expect(buildStories(root)).rejects.not.toThrow(/lib\/state\.ts/);
     // fail-closed：不产类型面文件。
     expect(existsSync(join(root, "Stories.src/gen/stories.gen.d.ts"))).toBe(
+      false,
+    );
+    expect(existsSync(join(root, "Stories.src/gen/state.gen.d.ts"))).toBe(
       false,
     );
   });

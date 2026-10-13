@@ -1,8 +1,9 @@
 /**
  * Script 词汇层 · **变量域**（set / define / let / local / undef / array / dict）。
- * value 参数 = 引擎 Value（字面量 / `{expr}` 表达式串 / `+=` 复合赋值串——口径同 JSON v1）。
+ * value 参数 = 引擎 StateValue（字面量 / null / `{expr}` 表达式串 / `+=` 复合赋值串——
+ * 口径同 JSON v1；状态槽允许 null 空值，销毁走 undef）。
  */
-import type { CommandOf, ScriptValue } from "../../schema";
+import type { CommandOf, StateScriptValue } from "../../schema";
 
 /**
  * 把值写进状态变量：沿作用域链找到 `key` 已声明的层写入；
@@ -13,14 +14,15 @@ import type { CommandOf, ScriptValue } from "../../schema";
  *   （只对数字有意义；除以 0 直接报错停机）。
  *
  * @param key 变量名（之后用 `{key}` 插值显示）。
- * @param value 字面量或 `"{expr}"` 表达式串。
+ * @param value 字面量（含 null 空值）或 `"{expr}"` 表达式串。
  * @returns `set` 故事命令。
  * @example
  * set("gold", 100);
+ * set("medal", null);           // 状态槽空值占位
  * set("gold", "{gold + 50}");   // 表达式在运行期求值
  * set("gold", "+= 10");
  */
-export function set(key: string, value: ScriptValue): CommandOf<"set"> {
+export function set(key: string, value: StateScriptValue): CommandOf<"set"> {
   return { op: "set", key, value };
 }
 
@@ -33,7 +35,7 @@ export function set(key: string, value: ScriptValue): CommandOf<"set"> {
  * @example
  * define("visitedInn", false);
  */
-export function define(key: string, value: ScriptValue): CommandOf<"define"> {
+export function define(key: string, value: StateScriptValue): CommandOf<"define"> {
   return { op: "define", key, value };
 }
 
@@ -46,7 +48,7 @@ export function define(key: string, value: ScriptValue): CommandOf<"define"> {
  * @example
  * letVar("i", 0);
  */
-export function letVar(key: string, value: ScriptValue): CommandOf<"let"> {
+export function letVar(key: string, value: StateScriptValue): CommandOf<"let"> {
   return { op: "let", key, value };
 }
 
@@ -58,7 +60,7 @@ export function letVar(key: string, value: ScriptValue): CommandOf<"let"> {
  * @example
  * localVar("tmp", "{gold * 2}");
  */
-export function localVar(key: string, value: ScriptValue): CommandOf<"local"> {
+export function localVar(key: string, value: StateScriptValue): CommandOf<"local"> {
   return { op: "local", key, value };
 }
 
@@ -84,7 +86,7 @@ export function undef(key: string): CommandOf<"undef"> {
  */
 export function newArray(
   key: string,
-  items: readonly ScriptValue[],
+  items: readonly StateScriptValue[],
   opts?: { once?: boolean },
 ): CommandOf<"array"> {
   return { op: "array", key, items: [...items], ...opts };
@@ -101,7 +103,7 @@ export function newArray(
  */
 export function arrayPush(
   key: string,
-  value: ScriptValue,
+  value: StateScriptValue,
 ): CommandOf<"array_push"> {
   return { op: "array_push", key, value };
 }
@@ -128,7 +130,7 @@ export function arrayPop(key: string): CommandOf<"array_pop"> {
  */
 export function dict(
   key: string,
-  record: Record<string, ScriptValue>,
+  record: Record<string, StateScriptValue>,
   opts?: { once?: boolean },
 ): CommandOf<"dict"> {
   return { op: "dict", key, value: { ...record }, ...opts };
@@ -147,7 +149,7 @@ export function dict(
 export function dictSet(
   key: string,
   field: string,
-  value: ScriptValue,
+  value: StateScriptValue,
 ): CommandOf<"dict_set"> {
   return { op: "dict_set", key, field, value };
 }

@@ -6,6 +6,7 @@
  * 增量 diff 会引入第二份骨架知识；打字帧重渲的代价由模板输出的纯字符串派生兜住）。
  */
 import { builtinBubbleTemplate } from "../dialogue/templates";
+import { sanitizeFont } from "../dialogue/inline";
 import type { DialogueTemplateRegistry } from "../dialogue/templates";
 import type { NarrativeMounts } from "./types";
 
@@ -13,6 +14,8 @@ import type { NarrativeMounts } from "./types";
 export interface DialogueRenderInput {
   speaker: string;
   speakerColor: string;
+  /** 本句对话字体（空串 = 无声明；正文回落宿主 CSS 变量或浏览器默认） */
+  dialogFont: string;
   canAdvance: boolean;
   dialogHidden: boolean;
   waiting: string;
@@ -68,6 +71,12 @@ export function createDialogueView(
     const body = doc.createElement("p");
     body.className = "lf-text";
     body.innerHTML = built.bodyHtml;
+    // 整句字体（引擎分辨链结果）直落正文元素；空串不动——宿主 CSS 变量
+    // （--lf-story-font）与浏览器回退在样式层承接。非法字符集名不上（同 {font=} 白名单）。
+    if (input.dialogFont !== "") {
+      const font = sanitizeFont(input.dialogFont);
+      if (font !== null) body.style.fontFamily = `'${font}'`;
+    }
     dialogue.appendChild(body);
     if (built.hintHtml !== "") {
       const hint = doc.createElement("span");

@@ -55,6 +55,8 @@ export interface StateReader {
   dialogText(): string;
   /** 说话人颜色覆盖值（**空串 = 无覆盖**，界面回落角色定义色） */
   dialogColor(): string;
+  /** 本句对话字体（**空串 = 无声明**，界面回落项目默认字体或浏览器回退） */
+  dialogFont(): string;
   /** 对话框模板名（**`null` = 全局默认**） */
   dialogTemplate(): string | null;
   /** 对话框是否隐藏（`window hide`） */

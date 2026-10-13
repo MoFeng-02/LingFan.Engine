@@ -5,6 +5,8 @@
  * - 控制符：{p}/{w} 段内停顿、{fast}——打字机阶段接管，当前渲染为空
  * - 裸 {color}{font}{size} 按闭合处理
  * - 未知 {…}（含用户字面量）按原文渲染；HTML 全量转义防注入
+ * - {font=名} 受字体名注册表约束（configureStoryFonts 宿主装配）：未注册名回退默认字体
+ *   并回调诊断；未接入时保持字符集白名单的纯展示行为
  */
 
 /** HTML 特殊字符全量转义（`&` `<` `>` `"` `'`），防注入 */
@@ -27,8 +29,8 @@ function sanitizeSize(v: string): string | null {
   return /^\d+(\.\d+)?$/.test(v) ? `${v}px` : null;
 }
 
-/** font 值：字母数字/空格/中文/逗号（防引号逃逸与分号注入） */
-function sanitizeFont(v: string): string | null {
+/** font 值：字母数字/空格/中文/逗号（防引号逃逸与分号注入）；导出供宿主整句字体落 DOM 前同口径过筛 */
+export function sanitizeFont(v: string): string | null {
   return /^[\w\u4e00-\u9fa5 ,]+$/.test(v) ? v : null;
 }
 
@@ -44,6 +46,24 @@ const CLOSERS = new Set([
   "font",
   "size",
 ]);
+
+/** 字体名注册表接入点：宿主装配（合法名集合来自 Resources/Fonts）；undefined = 未接入 */
+let fontGate: StoryFontGate | undefined;
+
+export interface StoryFontGate {
+  /** 合法字体名集合（文件名去扩展名；构建期检查用同一集合） */
+  readonly names: ReadonlySet<string>;
+  /** 未注册名回调（宿主接诊断输出；名字已按字符集白名单过筛，此处只报未注册） */
+  readonly onUnregistered?: (name: string) => void;
+}
+
+/**
+ * 装配/清除字体名注册表。未接入时 `{font=…}` 保持字符集白名单的旧行为（纯展示不校验）；
+ * 接入后未注册名不上字体 span，文本照常渲染（回退默认字体），并回调 onUnregistered。
+ */
+export function configureStoryFonts(gate: StoryFontGate | undefined): void {
+  fontGate = gate;
+}
 
 /** 渲染内联标记为安全 HTML（配 v-html 使用；所有文本内容均转义） */
 export function renderInlineMarkup(text: string): string {
@@ -92,6 +112,12 @@ export function renderInlineMarkup(text: string): string {
     if (content.startsWith("font=")) {
       const font = sanitizeFont(content.slice(5).trim());
       if (font !== null) {
+        // 注册表已接入时未注册名回退：不上字体 span，文本照常渲染（动态拼接名
+        // 无法静态检查，运行期档是它的唯一守门——编译期 fail-closed 只覆盖静态引用）
+        if (fontGate !== undefined && !fontGate.names.has(font)) {
+          fontGate.onUnregistered?.(font);
+          continue;
+        }
         stack.push("</span>");
         html += `<span style="font-family:'${font}'">`;
       }

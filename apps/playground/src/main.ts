@@ -61,6 +61,7 @@ import {
   renderBrowserBlocked,
 } from "./boot";
 import { browserPlayAllowed } from "./browserGuard";
+import { installStoryFonts } from "./host/app-fonts";
 
 // 渲染诊断探针：`VITE_LFEN_DIAG=1` 构建时启用（iOS CI 白屏取证）；默认构建
 // 动态 import 被 tree-shake，产物零增重。独立于 boot——白屏时 boot 可能挂，探针必须无条件跑。
@@ -225,6 +226,9 @@ async function boot(): Promise<void> {
   const applyFullscreen = (): void => fullscreenPolicy.apply();
   void fullscreenApplier.apply(fullscreenPolicy.initial); // 启动即恢复上次状态
   preferences.onChange(applyFullscreen);
+
+  // 字体展示资产：@font-face 注入 + 渲染层注册表（纯展示，boot 一次性装配）
+  installStoryFonts();
 
   const app = createApp(App, {
     story,

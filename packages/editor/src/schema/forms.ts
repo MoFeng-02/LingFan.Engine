@@ -187,6 +187,7 @@ export function coerceFieldValue(kind: FieldKind, raw: string): unknown {
     case "value":
       if (raw === "true") return true;
       if (raw === "false") return false;
+      if (raw === "null") return null; // 状态槽空值字面量（StateValue 值域）
       if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw);
       return raw;
     default:

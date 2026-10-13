@@ -8,10 +8,11 @@
 import type { LayerId } from "@lingfan/engine";
 import {
   renderDialogueLine,
+  sanitizeFont,
   type ChoiceTemplateView,
   type DialogueTemplateView,
 } from "@lingfan/ui";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import type { MenuOption } from "../host";
 
 /** 累积层容器：宿主接线读它做「新行贴底滚动」 */
@@ -22,7 +23,7 @@ defineExpose({ nvlBody });
 /** 输入框的即时值：唯一事实源在宿主的叙事状态，写入经 `v-model` 回抛 */
 const inputValue = defineModel<string>("inputValue", { required: true });
 
-defineProps<{
+const props = defineProps<{
   /** 层最终 z（实例覆盖 → 工程默认 → 内建） */
   zOf: (layer: LayerId) => number;
   /** 选择层是否在场 */
@@ -57,11 +58,16 @@ defineProps<{
   shownText: string;
   /** 说话人配色（空串 = 用样式默认值） */
   speakerColor: string;
+  /** 本句对话字体（空串 = 无声明，正文回落 --lf-story-font） */
+  dialogFont: string;
   /** 当前是否可推进 */
   canAdvance: boolean;
   /** 等待态（显示省略号指示器） */
   inWait: boolean;
 }>();
+
+/** 过筛后的本句字体（空 = 不上内联样式，正文吃 CSS 变量回退；白名单同 {font=}） */
+const storyFont = computed(() => sanitizeFont(props.dialogFont));
 
 /** 事件出口：choose = 选项目标上抛；submit-input = 输入提交上抛。 */
 const emit = defineEmits<{
@@ -164,7 +170,11 @@ const submitInput = (): void => emit("submit-input");
         :style="speakerColor ? { color: speakerColor } : {}"
         v-html="dialogView.speakerHtml"
       ></p>
-      <p class="text" v-html="dialogView.bodyHtml"></p>
+      <p
+        class="text"
+        :style="storyFont ? { fontFamily: `'${storyFont}'` } : undefined"
+        v-html="dialogView.bodyHtml"
+      ></p>
       <span
         v-if="canAdvance && dialogView.hintHtml"
         class="advance-hint"
@@ -222,6 +232,9 @@ const submitInput = (): void => emit("submit-input");
 .text {
   margin: 0;
   white-space: pre-wrap;
+  /* 项目默认字体档：宿主 setProperty(--lf-story-font) 装配；未声明时变量无效，
+     属性落到继承值（等价不设），逐句声明的字体以内联样式覆盖在这里之上 */
+  font-family: var(--lf-story-font);
 }
 
 .advance-hint {

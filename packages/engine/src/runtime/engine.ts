@@ -4,123 +4,46 @@
  * 框架无关：只写状态与事件，渲染归 UI 层。
  */
 import type {
-  AnimationSpec,
-  CharacterDef,
-  ColumnCoordinate,
-  ElementInstance,
-  EngineOptions,
-  EventListener,
-  GuardFn,
-  I18nPort,
-  MinigameResult,
-  OpExtension,
-  OutboundPayload,
-  SaveDataV1,
-  SaveMode,
-  SavePort,
-  StateListener,
-  Story,
-  StoryColumn,
-  StoryCommand,
-  SaveOptions,
+  AnimationSpec, CharacterDef, ColumnCoordinate, ElementInstance, EngineOptions,
+  EventListener, GuardFn, I18nPort, MinigameRegistration, MinigameResult,
+  OpExtension, OutboundPayload, SaveDataV1, SaveMode, SavePort, StateListener,
+  Story, StoryColumn, StoryCommand, SaveOptions,
 } from "../contracts";
 import {
-  gameScopedKey,
-  type ExtensionOpResult,
-  type GameStateWriter,
-  type InteractionResult,
+  gameScopedKey, type ExtensionOpResult, type GameStateWriter, type InteractionResult,
 } from "../contracts";
-import { buildOpRegistry } from "./opRegistry";
+import { buildMinigameRegistry, buildOpRegistry } from "./opRegistry";
 import type { RegisteredOp } from "./opRegistry";
 import { runDispatch } from "./dispatch";
 import {
-  abortExtensionOp,
-  abortInteraction,
-  abortMinigame,
-  resolveExtensionOp,
-  resolveInteraction,
-  resolveMinigame,
-  runElementOps,
+  abortExtensionOp, abortInteraction, abortMinigame, resolveExtensionOp,
+  resolveInteraction, resolveMinigame, runElementOps,
 } from "./ops";
 import {
-  emitChange,
-  emitErrorEvent,
-  evalValue,
-  publishEvent,
-  readVariable,
-  rejectBadInstanceZ,
-  resolveName,
-  setGlobal,
-  setInstanceZ,
-  setSilentKey,
-  setSystem,
-  writeExternal,
+  emitChange, emitErrorEvent, evalValue, publishEvent, readVariable,
+  rejectBadInstanceZ, resolveName, setGlobal, setInstanceZ, setSilentKey,
+  setSystem, writeExternal,
 } from "./state";
 import {
-  autoSaveAtCheckpoint,
-  back,
-  checkpointCoord,
-  columnFrame,
-  columnFrameAt,
-  commitCheckpoint,
-  flushPendingCheckpoint,
-  forward,
-  historyCursor,
-  historyLength,
-  historyView,
-  isCurrentColumnReplayable,
-  lastReplayableCursor,
-  restore,
-  rollbackTo,
-  takeSnapshot,
+  autoSaveAtCheckpoint, back, checkpointCoord, columnFrame, columnFrameAt,
+  commitCheckpoint, flushPendingCheckpoint, forward, historyCursor,
+  historyLength, historyView, isCurrentColumnReplayable, lastReplayableCursor,
+  restore, rollbackTo, takeSnapshot,
 } from "./history";
 import {
-  exportSave,
-  importSave,
-  resolveSaveExtensions,
-  restoreSaveExtensions,
-  tryMigrateSave,
+  exportSave, importSave, resolveSaveExtensions, resolveSaveMinigames,
+  restoreSaveExtensions, tryMigrateSave,
 } from "./save";
 import { type ExprValue } from "./expr";
 import { translate, translateElements } from "./i18n";
 import {
-  abortExternalTakeovers,
-  advance,
-  animationFinished,
-  animations,
-  beginLoopIteration,
-  choose,
-  clearTimer,
-  columnById,
-  dispose,
-  draw,
-  elements,
-  enterColumn,
-  evalCond,
-  findElements,
-  getCharacter,
-  getCharacters,
-  input,
-  interpolate,
-  load,
-  mapElements,
-  navigate,
-  nearestLoopIndex,
-  onEvent,
-  onStateChanged,
-  pushIterateLoop,
-  reloadStory,
-  reportMediaPosition,
-  save,
-  setLanguage,
-  shakeFinished,
-  start,
-  transitionFinished,
-  videoFinished,
-  type Checkpoint,
-  type Frame,
-  type LoopState,
-  type OpContext,
+  abortExternalTakeovers, advance, animationFinished, animations,
+  beginLoopIteration, choose, clearTimer, columnById, dispose, draw, elements,
+  enterColumn, evalCond, findElements, getCharacter, getCharacters, input,
+  interpolate, load, mapElements, navigate, nearestLoopIndex, onEvent,
+  onStateChanged, pushIterateLoop, reloadStory, reportMediaPosition, save,
+  setLanguage, shakeFinished, start, transitionFinished, videoFinished,
+  type Checkpoint, type Frame, type LoopState, type OpContext,
 } from "./internal";
 import type { NameResolver } from "./resolver";
 
@@ -246,6 +169,19 @@ export class StoryEngine {
   private readonly extensionById: ReadonlyMap<string, OpExtension>;
   /** 本档实际执行过的扩展（op 执行时登记；exportSave 落盘依赖标记；读档继承档内标记） */
   private readonly usedExtensions = new Set<string>();
+  /** 本档实际回填过状态的玩法系统（resolveMinigame 登记；exportSave 落盘；读档继承档内标记） */
+  private readonly usedMinigames = new Set<string>();
+  /** 全局层删除墓碑（execUndef 记账；随快照/存档/回溯随行；读档垫底的挡板） */
+  private readonly deleted = new Set<string>();
+  /** 玩法系统声明索引（gameId → 声明：存档依赖校验 / migrate 用） */
+  private readonly minigameById: ReadonlyMap<string, MinigameRegistration>;
+  /** 故事级状态迁移钩子（宿主注入；缺省 = storyVersion 不一致可操作拒绝） */
+  private readonly migrateStateHook?:
+    | ((
+        state: Record<string, unknown>,
+        from: { storyVersion: number },
+      ) => Record<string, unknown> | null)
+    | undefined;
   /** 存档版本迁移钩子（宿主注入；缺省 = 非 v1 档可操作拒绝） */
   private readonly migrateSaveHook?: (data: unknown) => SaveDataV1 | null;
   /** 运行期守卫注册表（组合根注入；缺省 = guard op 一律 guard-unknown fail-closed） */
@@ -270,97 +206,43 @@ export class StoryEngine {
   private buildOpContext(): OpContext {
     void [
       // 守卫表、扩展注册表与循环帧压栈
-      this.guards,
-      this.extensionOps,
-      this.pushIterateLoop,
-      this.nearestLoopIndex,
+      this.guards, this.extensionOps, this.pushIterateLoop, this.nearestLoopIndex,
       // 表达式求值与状态写入
-      this.readVariable,
-      this.evalValue,
-      this.evalCond,
-      this.setSilentKey,
-      this.emit,
+      this.readVariable, this.evalValue, this.evalCond,
+      this.setSilentKey, this.emit,
       // 媒体、动画与等待序号
-      this.mediaSeq,
-      this.animationSeq,
-      this.transitionSeq,
-      this.shakeSeq,
-      this.minigameSeq,
-      this.interactionSeq,
-      this.extensionWaitSeq,
+      this.mediaSeq, this.animationSeq, this.transitionSeq, this.shakeSeq,
+      this.minigameSeq, this.interactionSeq, this.extensionWaitSeq,
       // 实例 z 校验与落账
-      this.rejectBadInstanceZ,
-      this.setInstanceZ,
+      this.rejectBadInstanceZ, this.setInstanceZ,
       // 检查点与历史回溯
-      this.checkpointCoord,
-      this.takeSnapshot,
-      this.restore,
-      this.autoSaveAtCheckpoint,
-      this.historyLimit,
-      this.history,
-      this.cursor,
-      this.liveCheckpointed,
-      this.lastReplayableCursor,
-      this.isCurrentColumnReplayable,
-      this.columnFrame,
-      this.columnFrameAt,
+      this.checkpointCoord, this.takeSnapshot, this.restore,
+      this.autoSaveAtCheckpoint, this.historyLimit, this.history, this.cursor,
+      this.liveCheckpointed, this.lastReplayableCursor,
+      this.isCurrentColumnReplayable, this.columnFrame, this.columnFrameAt,
       // 存档编排
-      this.pendingSave,
-      this.overlay,
-      this.extensionById,
-      this.migrateSaveHook,
-      this.tryMigrateSave,
-      this.resolveSaveExtensions,
-      this.restoreSaveExtensions,
+      this.pendingSave, this.overlay, this.extensionById, this.migrateSaveHook,
+      this.tryMigrateSave, this.resolveSaveExtensions,
+      this.resolveSaveMinigames, this.restoreSaveExtensions,
       // 外部玩法系统的状态写入面
-      this.gameState,
-      this.pendingMinigame,
-      this.minigameController,
-      this.pendingInteraction,
-      this.interactionController,
-      this.pendingExtensionOp,
-      this.extensionController,
-      this.functions,
-      this.usedExtensions,
+      this.gameState, this.pendingMinigame, this.minigameController,
+      this.pendingInteraction, this.interactionController,
+      this.pendingExtensionOp, this.extensionController, this.functions,
+      this.usedExtensions, this.usedMinigames, this.deleted, this.minigameById,
+      this.migrateStateHook,
       // 文本国际化
       this.translate,
       // 会话、帧栈、等待、媒体与舞台机制（只经 ctx 被迁出的自由函数读写）
-      this.story,
-      this.coord,
-      this.frames,
-      this.stateListeners,
-      this.eventListeners,
-      this.started,
-      this.pendingTimer,
-      this.waitSkipable,
-      this.characters,
-      this.inputStore,
-      this.rollbackActive,
-      this.pendingSay,
-      this.rngState,
-      this.videoSeq,
-      this.savePort,
-      this.saveMode,
-      this.i18nPort,
-      this.clearTimer,
-      this.abortExternalTakeovers,
-      this.abortInteraction,
-      this.abortMinigame,
-      this.abortExtensionOp,
-      this.setGlobal,
-      this.setSystem,
-      this.emitEvent,
-      this.fail,
-      this.translateElements,
-      this.columnById,
-      this.enterColumn,
-      this.run,
-      this.beginLoopIteration,
-      this.mapElements,
-      this.commitCheckpoint,
-      this.flushPendingCheckpoint,
-      this.draw,
-      this.resolveName,
+      this.story, this.coord, this.frames, this.stateListeners,
+      this.eventListeners, this.started, this.pendingTimer, this.waitSkipable,
+      this.characters, this.inputStore, this.rollbackActive, this.pendingSay,
+      this.rngState, this.videoSeq, this.savePort, this.saveMode,
+      this.i18nPort, this.clearTimer, this.abortExternalTakeovers,
+      this.abortInteraction, this.abortMinigame, this.abortExtensionOp,
+      this.setGlobal, this.setSystem, this.emitEvent, this.fail,
+      this.translateElements, this.columnById, this.enterColumn, this.run,
+      this.beginLoopIteration, this.mapElements, this.commitCheckpoint,
+      this.flushPendingCheckpoint, this.draw, this.resolveName,
     ];
     return this as unknown as OpContext;
   }
@@ -383,6 +265,9 @@ export class StoryEngine {
     this.extensionOps = buildOpRegistry(extensions);
     this.extensionById = new Map(extensions.map((e) => [e.id, e]));
     this.migrateSaveHook = options?.migrateSave;
+    // 玩法系统注册（构造期校验装配，fail-fast，与扩展注册同口径；校验细节见 buildMinigameRegistry）
+    this.minigameById = buildMinigameRegistry(options?.minigames ?? []);
+    this.migrateStateHook = options?.migrateState;
     this.guards = options?.guards ?? {};
     this.ctx = this.buildOpContext();
   }
@@ -666,6 +551,13 @@ export class StoryEngine {
   /** 内部转发 → ./save：按档内标记恢复扩展状态 */
   private restoreSaveExtensions(marks: SaveDataV1["extensions"]): boolean {
     return restoreSaveExtensions(this.ctx, marks);
+  }
+  /** 内部转发 → ./save/minigames：校验档内玩法系统依赖并迁移其命名空间状态 */
+  private resolveSaveMinigames(
+    entries: [string, unknown][],
+    marks: SaveDataV1["minigames"],
+  ): [string, unknown][] | null {
+    return resolveSaveMinigames(this.ctx, entries, marks);
   }
   /** 内部转发 → ./history：按坐标拍一份检查点快照 */
   private takeSnapshot(coord: ColumnCoordinate): Checkpoint {

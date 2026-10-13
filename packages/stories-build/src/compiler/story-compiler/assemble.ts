@@ -22,6 +22,8 @@ interface CompiledFunction {
 
 export interface AssembleSession {
   cache: Map<string, CompiledFunction>;
+  /** 字体名注册表（编排层自 Resources/Fonts 扫描；构建期字体引用检查对照源） */
+  fontNames: ReadonlySet<string>;
 }
 
 export interface CompiledStory {
@@ -30,8 +32,10 @@ export interface CompiledStory {
   story: Story;
 }
 
-export function createAssembleSession(): AssembleSession {
-  return { cache: new Map() };
+export function createAssembleSession(
+  fontNames: ReadonlySet<string> = new Set(),
+): AssembleSession {
+  return { cache: new Map(), fontNames };
 }
 
 function nodePos(
@@ -145,6 +149,7 @@ function compileFunction(
     diags,
     funcs: registry,
     stateRoot: graph.stateRoot,
+    fontNames: session.fontNames,
   };
   const ctx = createBodyCtx(shared, { inFunction: true, parentScopes });
   const params = readParams(ctx, decl);
@@ -229,6 +234,22 @@ export function compileStoryFile(
   const sf = mod.sf;
   const columnId = storyDecl.name;
 
+  // —— 列级字体：声明值对照字体名注册表（fail-closed，与词引用同一文案口径）——
+  let columnFont: string | undefined;
+  if (mod.columnFont !== null) {
+    const { value, node } = mod.columnFont;
+    if (session.fontNames.has(value)) {
+      columnFont = value;
+    } else {
+      diags.add(
+        rel,
+        sf,
+        node,
+        `未注册的字体名 "${value}"——Resources/Fonts 里没有对应字体文件（字体名 = 文件名去扩展名）`,
+      );
+    }
+  }
+
   const registry: FuncRegistry = { refs: new Map(), names: new Map() };
   const shared = {
     mod,
@@ -236,6 +257,7 @@ export function compileStoryFile(
     diags,
     funcs: registry,
     stateRoot: graph.stateRoot,
+    fontNames: session.fontNames,
   };
   const ctx = createBodyCtx(shared, { inFunction: false });
   const { fns: nestedDecls, rest } = partitionFunctions(
@@ -337,7 +359,14 @@ export function compileStoryFile(
     formatVersion: 1,
     id: columnId,
     entry: columnId,
-    columns: [{ id: columnId, kind: "flow", commands }],
+    columns: [
+      {
+        id: columnId,
+        kind: "flow",
+        ...(columnFont !== undefined ? { font: columnFont } : {}),
+        commands,
+      },
+    ],
   };
   return { columnId, sourceRelPath: rel, story };
 }

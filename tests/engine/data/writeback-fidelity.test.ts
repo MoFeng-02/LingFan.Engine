@@ -11,6 +11,7 @@
  * ③ **零删除**（原文件不是「陈旧」）
  * ④ `type` 必须写回（漏了 ⇒ 菜单场景下次打开变成 game，**不可逆**）
  * ⑤ `sourcePath` 只表达**例外**（非默认路径才显式写）——保证「保存后重开」深等
+ * ⑥ `font` 必须写回（漏了 ⇒ 保存悄悄抹掉列排版，**不可逆**）——未声明列不写（保持干净）
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -75,6 +76,57 @@ describe("写回保真 · **不拍平**", () => {
     expect(files.get("Stories/chapter1/chapter1.story")).not.toContain(
       '"type"',
     );
+  });
+
+  it("`font` 写回（漏了 ⇒ 保存悄悄抹掉列排版，且不可逆）", () => {
+    const files = new Map([
+      [
+        "Stories/a.json",
+        JSON.stringify({
+          formatVersion: 1,
+          columns: [{ id: "a", kind: "flow", font: "楷体", commands: [] }],
+        }),
+      ],
+    ]);
+    const loaded = assembleProject(MANIFEST_A, files);
+    const { files: product } = serializeProject(loaded, MANIFEST_A);
+    const text = product.get("Stories/a.json") ?? "";
+    expect(text).toContain('"font"');
+    expect(text).toContain("楷体");
+    // 未声明字体的列 ⇒ 不写（保持文件干净）
+    const plain = new Map([
+      [
+        "Stories/a.json",
+        JSON.stringify({
+          formatVersion: 1,
+          columns: [{ id: "a", kind: "flow", commands: [] }],
+        }),
+      ],
+    ]);
+    const plainProduct = serializeProject(
+      assembleProject(MANIFEST_A, plain),
+      MANIFEST_A,
+    ).files;
+    expect(plainProduct.get("Stories/a.json")).not.toContain('"font"');
+  });
+
+  it("`font` 往返一致（保存后重开，列字体仍在）", () => {
+    const files = new Map([
+      [
+        "Stories/a.json",
+        JSON.stringify({
+          formatVersion: 1,
+          columns: [{ id: "a", kind: "flow", font: "楷体", commands: [] }],
+        }),
+      ],
+    ]);
+    const first = assembleProject(MANIFEST_A, files);
+    const product = serializeProject(first, MANIFEST_A);
+    const storyFiles = new Map(
+      [...product.files].filter(([p]) => p !== MANIFEST_FILE),
+    );
+    const reopened = assembleProject(MANIFEST_A, storyFiles);
+    expect(reopened.columns[0]?.font).toBe("楷体");
   });
 
   it("`sourcePath` **不进文件内容**（编辑期元数据，写进去会自指）", () => {

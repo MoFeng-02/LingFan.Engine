@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 import type { OpExtension, SaveDataV1 } from "@lingfan/engine";
 import { BUILTIN_OP_NAMES, StoryEngine, SYS } from "@lingfan/engine";
 import dispatchSource from "../../../packages/engine/src/runtime/dispatch.ts?raw";
+import { buildMinigameRegistry } from "../../../packages/engine/src/runtime/opRegistry";
 
 function extension(overrides: Partial<OpExtension> = {}): OpExtension {
   return {
@@ -327,5 +328,38 @@ describe("拟态旅程：扩展状态随存档与回溯", () => {
     expect(engine.get("ext.demo.runs")).toBeUndefined();
     off();
     engine.dispose();
+  });
+});
+
+describe("玩法系统注册表（buildMinigameRegistry）：构造期 fail-fast", () => {
+  const story = { formatVersion: 1, id: "t", entry: "a", columns: [] } as never;
+
+  it("gameId 形态非法 → 抛错（直查与引擎构造期装配同路同文）", () => {
+    const bad = [{ gameId: "Bad Id", stateVersion: 1 }];
+    expect(() => buildMinigameRegistry(bad)).toThrow(/id 不合法/);
+    expect(() => new StoryEngine(story, { minigames: bad })).toThrow(
+      /id 不合法/,
+    );
+  });
+
+  it("stateVersion 非正整数 → 抛错（直查与引擎构造期装配同路同文）", () => {
+    const bad = [{ gameId: "puzzle", stateVersion: 0 }];
+    expect(() => buildMinigameRegistry(bad)).toThrow(
+      /stateVersion 必须为正整数，收到 0/,
+    );
+    expect(() => new StoryEngine(story, { minigames: bad })).toThrow(
+      /stateVersion 必须为正整数，收到 0/,
+    );
+  });
+
+  it("同 gameId 重复注册 → 抛错（直查与引擎构造期装配同路同文）", () => {
+    const bad = [
+      { gameId: "puzzle", stateVersion: 1 },
+      { gameId: "puzzle", stateVersion: 2 },
+    ];
+    expect(() => buildMinigameRegistry(bad)).toThrow(/重复注册/);
+    expect(() => new StoryEngine(story, { minigames: bad })).toThrow(
+      /重复注册/,
+    );
   });
 });

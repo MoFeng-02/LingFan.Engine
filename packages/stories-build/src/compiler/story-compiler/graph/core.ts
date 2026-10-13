@@ -63,6 +63,8 @@ export interface ModuleRecord {
   npmNames: Set<string>;
   /** 编译期求值喂入（§十二）：导出名 → JSON 可序列化值；未被求值的文件 = undefined */
   evaluated?: Readonly<Record<string, unknown>>;
+  /** 列级字体声明（`export const columnFont = "<名>"`；仅故事文件合法，null = 未声明） */
+  columnFont: { value: string; node: ts.Node } | null;
 }
 
 export interface StoryConfig {
@@ -82,6 +84,9 @@ export interface Graph {
 
 export const ROOT_TS_FILES_ALLOWED = new Set(["config.ts"]);
 export const GEN_PREFIX = "gen/";
+
+/** 列级字体声明的保留导出名（`export const columnFont = "<名>"`，仅故事文件顶层） */
+export const COLUMN_FONT_DECL = "columnFont";
 
 export const WORD_NAMES: ReadonlySet<string> = new Set(
   Object.keys(script).filter(

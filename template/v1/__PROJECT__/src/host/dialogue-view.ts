@@ -23,6 +23,7 @@ import {
   isTypingEnabled,
   renderInlineMarkup,
   resolveTypingCps,
+  sanitizeFont,
   type TypingSetting,
 } from "@lingfan/ui";
 import type { StageDom } from "./stage-dom";
@@ -116,6 +117,17 @@ export function createDialogueView(options: DialogueViewOptions): DialogueView {
     }
   }
 
+  /**
+   * 本句字体落 DOM（随每句正文调用）：引擎分辨链结果（SYS.dialogFont）过字符集
+   * 白名单后上正文元素；空或非法名回落 CSS 变量（--lf-story-font，项目默认字体档）。
+   */
+  function applySentenceFont(): void {
+    const raw = engine.get(SYS.dialogFont);
+    const font = typeof raw === "string" ? sanitizeFont(raw) : null;
+    if (font !== null) dom.text.style.fontFamily = `'${font}'`;
+    else dom.text.style.removeProperty("font-family");
+  }
+
   /** 等待态 UI：**每个等待态都必须有可推进出口**（否则故事停滞） */
   function renderChoices(): void {
     dom.choices.replaceChildren();
@@ -201,6 +213,7 @@ export function createDialogueView(options: DialogueViewOptions): DialogueView {
       // 故事级打字机设置（`text_typewriter` 命令）；enabled=false = 整句即时
       const cps = resolveTypingCps(setting, defaultCps);
       typewriter = isTypingEnabled(setting) ? new Typewriter(text, cps) : null;
+      applySentenceFont();
       if (typewriter === null) {
         shown = text;
         dom.text.innerHTML = renderInlineMarkup(text);

@@ -29,13 +29,15 @@ export function compileStories(input: {
   readonly modules: readonly string[];
   /** 编译期求值喂入（§十二）；缺省 = 无被求值文件（行为不变） */
   readonly constValues?: CompilerConstValues;
+  /** 字体名注册表（Resources/Fonts 文件名去扩展名）；缺省 = 空注册表，引用字体名即 fail-closed */
+  readonly fontNames?: ReadonlySet<string>;
 }): CompileStoriesResult {
   const diags = new DiagBag();
   const graph = buildGraph(input.sourcesDir, diags, input.config, input.constValues);
   if (graph === null) return { stories: [], diags: diags.list() };
   const entry = resolveStart(graph, diags);
 
-  const session = createAssembleSession();
+  const session = createAssembleSession(input.fontNames);
   const stories: CompiledStory[] = [];
   for (const rel of graph.coveredStories) {
     const compiled = compileStoryFile(session, graph, diags, rel);

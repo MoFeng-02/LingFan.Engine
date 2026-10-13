@@ -108,15 +108,18 @@ export default function start(): void {
 
 ### 从词汇层取词函数的写法
 
-`@lingfan/editor` 的词函数有三种取法，都成立：
+`@lingfan/editor` 的词函数有四种取法，都成立：
 
 | 你写的 TS                                                         | 取到什么             |
 | ----------------------------------------------------------------- | -------------------- |
 | `import { say, menu } from "@lingfan/editor";`                    | 词函数本身，直接调用 |
 | `import { script } from "@lingfan/editor";`，之后 `script.say(…)` | 词汇层命名空间       |
 | `import * as ct from "@lingfan/editor";`，之后 `ct.say(…)`        | 整套命名空间         |
+| 不写 import，直接 `script.say(…)`                                 | 免导入直呼（ambient） |
 
 改短名用 `as`：`import { say as 说 }`、`import { script as ct }` 都可以，命名空间起别名之后里面的词函数跟着别名走。
+
+免导入直呼是构建生成的 ambient 声明：`Stories.src/gen/script.gen.d.ts` 里一条 `declare const script` 指向词汇层命名空间，纯编译期类型面、零运行时注入。模块里自有同名声明（函数、导入）按 TS 遮蔽语义优先于它，显式导入与重命名不受影响；写错词名仍在构建期报错，文案会指路 `script.` 命名空间与具名导入两条正路。
 
 下面四种写法在构建期报错。报错原文照抄，各例只差导入那几行：
 
@@ -320,7 +323,11 @@ TS 创作模式在实现中，还没有对外发布。构建 CLI、语句转译�
 
 - 词汇层出口由源生成：`vocabulary.g.ts` 由 generate-vocabulary CLI 从 words/ 源自动生成，并带 fail-closed 登记一致性校验。引擎加了新 op，跑一次生成即同步，无需手写。
 - `extOp` 能调用哪些命令名，取决于引擎侧注册了哪些——这套创作模式本身不新增 op。
-- `state` 的声明住进 `Stories.src/config.ts`（`define` 累积，构建期求值后降维为扁平 defines）；`export declare const state` 是纯类型、零运行时的垫片，由 `@lingfan/stories-build` 包出口提供。它不进产物，只给 IDE 做跳转和检查；形态 B 的精确类型面生成还在路上，当前以宽索引签名过渡。
+- `state` 的声明住进 `Stories.src`：`config.ts` 或任意模块的顶层（函数体之外）都可以调 `define` 累积，构建期求值后汇入同一棵树降维为扁平 defines——跨文件同键定义会一次报出全部位置；`defineVars`（插值键登记）仍只在 `config.ts`。构建同时把合并树生成成精确类型面 `Stories.src/gen/state.gen.d.ts`（枚举走 `import type` 引用，descriptor 按槽位取类型），工程侧桥文件（如 `Stories.src/lib/state-root.d.ts`）`import type { StoryState }` 后 `declare global` 挂上状态根——IDE 里的 `state.…` 跳转和检查都是精确类型，不再依赖宽索引签名。`@lingfan/stories-build` 包出口仍提供宽类型垫片，仅供未接桥的工程作缺省回退。
+- 状态值域：`null` 是状态槽的合法空值（`type: "number", default: null` 或运行期 `set` 写入都行；`undefined` 才等于销毁键），需要 `??` 兜底的表达式可以直接吃 null。descriptor 的 `type` 槽还支持并集：`type: ["number", Sex, null]` 声明「数字或枚举 Sex 或空」，构建按成员生成精确类型（`number | Sex | null`，枚举仍走 `import type`），`default` 必须落在至少一个成员的值域内，未知成员一次报全部；形态 A 用 `as const` 元组获得同样的静态推导。
+- 插值键注册表自动收声明名：故事体里的 `let n = 0`、`local("k", …)`，以及 `const r = someFunc()` 这类取函数返回值的声明——引擎会把返回值绑定名声明成局部变量，`{r}` 因此是合法插值，构建会把这些名字自动登记进插值键注册表，无需再手填 `defineVars`；与 state/define 键同名时按键去重，不报错。
+- 字体名注册表：把字体文件放进 `Resources/Fonts/` 即完成注册，字体名 = 文件名去扩展名（`楷体.ttf` → `楷体`）。故事层只写字体名字符串——`{font=楷体}` 行内标签或 say 的 `font` 参数；构建期对静态引用 fail-closed（未注册名直接报错并给位置），插值拼出来的动态名字在运行期回退默认字体并由宿主输出诊断。参考宿主会自动为 `Resources/Fonts` 的字体注入 `@font-face`，无需手写样式。构建还会生成 `Stories.src/gen/font.gen.d.ts`（`font["楷体"]` 声明式取名，拼错字在类型检查即红）。整句字体按四级解析：say 行参 `font` > 角色字体（`character` 的 `font`）> 列级字体（故事文件顶层 `const columnFont = "楷体";`）> 项目默认（宿主 CSS 变量，参考宿主即 `--lf-story-font`）。
+- 存档随故事升级：`config.ts` 可以导出 `version`（正整数）声明故事版本——写档时随档落盘；读档时若当前故事声明了 version 且与档内不一致，引擎把存档状态交给构造引擎时提供的 `migrateState` 钩子迁移（成功发通知、无法迁移整档拒绝），当前故事没声明 version 则不做对账、新旧档都直读。另外：故事里 `undef` 销毁过的全局键会以墓碑形式记进存档，读档垫底（新增 define 默认值补齐）不会让它们复活；小游戏若回填过状态，读档会按注册的 `stateVersion` 校验并迁移（与扩展依赖标记同一套语义）。
 
 ## 下一步
 

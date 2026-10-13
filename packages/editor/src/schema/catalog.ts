@@ -90,6 +90,8 @@ export const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   "say.speaker": { label: "说话人", kind: "text" },
   // 说话人颜色**覆盖**（本句有效，优先于 character 定义的颜色）；十六进制
   "say.color": { label: "说话人颜色（本句）", kind: "text" },
+  // 本句字体覆盖（字体名 = Resources/Fonts 文件名去扩展名；优先于角色/列级字体）
+  "say.font": { label: "本句字体", kind: "string" },
   "say.clickable": { label: "点击后继续", kind: "boolean" },
   "say.noskip": { label: "禁止跳过", kind: "boolean" },
   "say.instant": { label: "瞬间显示", kind: "boolean" },

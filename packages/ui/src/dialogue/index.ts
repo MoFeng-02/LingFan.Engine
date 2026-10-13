@@ -2,7 +2,12 @@
  * 对话渲染域出口：内联标记 + 打字机二段式 +
  * **统一文字渲染接缝**（textView——打字机/NVL/历史/模板共用的唯一管线）。
  */
-export { renderInlineMarkup } from "./inline";
+export {
+  configureStoryFonts,
+  renderInlineMarkup,
+  sanitizeFont,
+  type StoryFontGate,
+} from "./inline";
 export { Typewriter, tokenizeStream } from "./typewriter";
 export {
   renderDialogueLine,

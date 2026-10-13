@@ -5,6 +5,7 @@
  * 且本身不依赖引擎实现，故与其它契约同住契约层；引擎实现只按契约读取它们。
  */
 import type { OpExtension } from "./extension";
+import type { MinigameRegistration } from "./minigame";
 import type { SaveDataV1, SaveMode, SavePort } from "./save";
 import type { I18nPort } from "./story";
 
@@ -28,6 +29,22 @@ export interface EngineOptions {
    * 缺省 = 非 v1 档直接可操作拒绝。
    */
   migrateSave?: (data: unknown) => SaveDataV1 | null;
+  /**
+   * 故事级状态迁移钩子（读档链调用序 = 结构校验后、扩展校验前）：档内 `storyVersion`
+   * 与当前故事 `version` 不一致时以此迁移全局状态（`state` = 全量键值，**含** `game.`/
+   * `ext.` 前缀键，作者按需透传）。**不抛**（抛出视同无法迁移）；返回 null = 无法迁移
+   * ⇒ 整档拒绝（`save-migrate-failed`）。缺省 = 版本不一致直接可操作拒绝
+   * （`save-story-version`）。
+   */
+  migrateState?: (
+    state: Record<string, unknown>,
+    from: { storyVersion: number },
+  ) => Record<string, unknown> | null;
+  /**
+   * 玩法系统注册元数据（构造期校验装配，fail-fast；与 `extensions` 声明制同构）。
+   * 缺省 = 档内声明了玩法系统依赖即 `minigame-missing` 拒绝。
+   */
+  minigames?: readonly MinigameRegistration[];
   /**
    * 运行期守卫注册表（组合根注入，信任域 = 组合根；缺省 = guard op 一律 guard-unknown）。
    *

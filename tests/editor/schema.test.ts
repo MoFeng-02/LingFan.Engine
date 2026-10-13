@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import type { z } from "zod";
 import type { Story, StoryColumn, StoryCommand } from "@lingfan/engine";
 import {
+  coerceFieldValue,
   describeForm,
   extractExpressionRefs,
   listOps,
@@ -414,23 +415,30 @@ describe("编辑期 fail-closed", () => {
     expect(validateCommand({ text: "x" })[0]?.code).toBe("invalid-structure");
   });
 
-  it("evalValue 标量面：对象/数组/null 进 value 字段 = 拒绝（执行期 type-error 的编辑期镜像）", () => {
+  it("状态槽 null 合法（StateValue=Value|null）；对象/数组与叙事共享字段仍拒绝（执行期 type-error 的编辑期镜像）", () => {
+    // 状态类 op（set/define/let/local/array/dict 族）：null 是合法空值
+    expect(validateCommand({ op: "set", key: "a", value: null })).toEqual([]);
+    expect(validateCommand({ op: "define", key: "a", value: null })).toEqual(
+      [],
+    );
+    expect(
+      validateCommand({ op: "array", key: "a", items: [1, null, "x"] }),
+    ).toEqual([]);
+    expect(
+      validateCommand({ op: "dict", key: "a", value: { ok: 1, empty: null } }),
+    ).toEqual([]);
+    // 结构性非法不变：对象元素/数组元素仍在状态值域之外
     expect(
       validateCommand({ op: "set", key: "a", value: { nested: 1 } })[0]?.code,
     ).toBe("invalid-value");
-    expect(validateCommand({ op: "set", key: "a", value: null })[0]?.code).toBe(
-      "invalid-value",
-    );
     expect(
       validateCommand({ op: "array", key: "a", items: [{ o: 1 }] })[0]?.code,
     ).toBe("invalid-value");
-    expect(
-      validateCommand({ op: "call", target: "f", args: [[]] })[0]?.code,
-    ).toBe("invalid-value");
-    expect(
-      validateCommand({ op: "dict", key: "a", value: { ok: 1, bad: [1] } })[0]
-        ?.code,
-    ).toBe("invalid-value");
+    // 共享 Value 字段不放宽：叙事/调用/返回值不收 null（诊断码按字段管线归一，只判拒绝）
+    expect(validateCommand({ op: "say", text: null }).length).toBe(1);
+    expect(validateCommand({ op: "call", target: "f", args: [null] }).length).toBe(1);
+    // return 的 value 走 optional Value：null 在联合外被拒（诊断码按字段管线归一）
+    expect(validateCommand({ op: "return", value: null }).length).toBe(1);
     expect(validateCommand({ op: "set", key: "a", value: "{1+1}" })).toEqual(
       [],
     );
@@ -570,6 +578,14 @@ describe("表单描述符派生（schema 驱动表单）", () => {
     expect(descriptor?.fields.find((field) => field.key === "var")?.kind).toBe(
       "identifier",
     );
+  });
+
+  it("value 字段 coerce：字面 null 串入状态槽（其余 kind 不受影响）", () => {
+    expect(coerceFieldValue("value", "null")).toBeNull();
+    expect(coerceFieldValue("value", "true")).toBe(true);
+    expect(coerceFieldValue("value", "3.5")).toBe(3.5);
+    expect(coerceFieldValue("value", "文字")).toBe("文字");
+    expect(coerceFieldValue("text", "null")).toBe("null");
   });
 });
 

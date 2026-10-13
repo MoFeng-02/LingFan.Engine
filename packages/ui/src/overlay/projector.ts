@@ -35,6 +35,8 @@ export type ChangeEffect =
 export interface RenderState {
   speaker: string;
   speakerColor: string;
+  /** 本句对话字体（引擎分辨链解析结果；空串 = 无声明，宿主回落项目默认/浏览器回退） */
+  dialogFont: string;
   text: string;
   canAdvance: boolean;
   waiting: string;
@@ -94,6 +96,7 @@ export function createProjector(deps: {
   const state: RenderState = {
     speaker: "",
     speakerColor: "",
+    dialogFont: "",
     text: "",
     canAdvance: false,
     waiting: "none",
@@ -156,6 +159,10 @@ export function createProjector(deps: {
       refreshSpeakerColor();
       return { kind: "render", targets: ["dialogue"] };
     }
+    if (key === SYS.dialogFont) {
+      state.dialogFont = reader.dialogFont();
+      return { kind: "render", targets: ["dialogue"] };
+    }
     if (key === SYS.currentDialogText) {
       state.text = reader.dialogText();
       resetTypewriter();
@@ -203,6 +210,7 @@ export function createProjector(deps: {
   function sync(): readonly RenderTarget[] {
     state.speaker = reader.dialogSpeaker();
     refreshSpeakerColor();
+    state.dialogFont = reader.dialogFont();
     state.text = reader.dialogText();
     const waitState = reader.waiting();
     state.waiting = waitState === "" ? "none" : waitState;

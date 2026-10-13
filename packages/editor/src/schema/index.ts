@@ -32,6 +32,7 @@ export {
   type CommandOf,
   type ScriptCommand,
   type ScriptValue,
+  type StateScriptValue,
 } from "./opSchemas";
 export {
   BUILTIN_OP_SURFACE,

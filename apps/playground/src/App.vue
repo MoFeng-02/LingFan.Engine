@@ -96,7 +96,7 @@ const { inMenu, inWait, inInput, inVideo, inMinigame, inInteraction, inExtension
 const { dialogHidden, nvlMode, menuOptions, inputPrompt, inputValue } =
   narrative;
 /** 对话文本视效字段：打字机可见文本、说话人配色与推进许可 */
-const { shownText, speakerColor, canAdvance } = narrative;
+const { shownText, speakerColor, dialogFont, canAdvance } = narrative;
 
 // —— 语言选择：可用语言 = Lang/ 目录扫描（供给侧 API）；切换 = setLanguage 按需载入 ——
 /** 语言能力：当前语言、可用语言清单与切换动作（切换按需载入语言包） */
@@ -557,6 +557,7 @@ onUnmounted(() => {
       :nvl-typing-line="nvlTypingLine"
       :shown-text="shownText"
       :speaker-color="speakerColor"
+      :dialog-font="dialogFont"
       :can-advance="canAdvance"
       :in-wait="inWait"
       @choose="choose"

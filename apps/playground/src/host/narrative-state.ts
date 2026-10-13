@@ -109,6 +109,8 @@ export interface NarrativeState {
   readonly menuOptions: ComputedRef<MenuOption[]>;
   /** 当前对话模板名（null = 全局默认回退） */
   readonly dialogTemplateName: Ref<string | null>;
+  /** 本句对话字体（引擎分辨链结果；空串 = 无声明，回落项目默认） */
+  readonly dialogFont: Ref<string>;
   /** NVL 模式（`"none"` = 关闭） */
   readonly nvlMode: Ref<string>;
   /** NVL 缓冲行 */
@@ -146,6 +148,7 @@ export function createNarrativeState(
   const rawTexts = ref<string[]>([]);
   const rawTargets = ref<string[]>([]);
   const dialogTemplateName = ref<string | null>("");
+  const dialogFont = ref("");
   const nvlMode = ref("none");
   const nvlBuffer = ref<string[]>([]);
   const elements = ref<ElementInstance[]>([]);
@@ -229,7 +232,7 @@ export function createNarrativeState(
         elements.value = value as ElementInstance[];
         return;
       case "none":
-        // 四个键不在共享键表内：两个提示行、配色覆盖、对话模板名
+        // 表外键：两个提示行、配色覆盖、对话模板名、对话字体
         if (key === SYS.menuPrompt && typeof value === "string") {
           menuPrompt.value = value;
         } else if (key === SYS.inputPrompt && typeof value === "string") {
@@ -238,6 +241,8 @@ export function createNarrativeState(
           refreshSpeakerColor();
         } else if (key === SYS.dialogTemplate) {
           dialogTemplateName.value = typeof value === "string" ? value : null;
+        } else if (key === SYS.dialogFont && typeof value === "string") {
+          dialogFont.value = value;
         }
         return;
     }
@@ -264,6 +269,7 @@ export function createNarrativeState(
     rawTargets,
     menuOptions,
     dialogTemplateName,
+    dialogFont,
     nvlMode,
     nvlBuffer,
     elements,
@@ -301,6 +307,8 @@ export function createNarrativeState(
       elements.value = Array.isArray(els) ? (els as ElementInstance[]) : [];
       const dt = read(SYS.dialogTemplate);
       dialogTemplateName.value = typeof dt === "string" ? dt : null;
+      const df = read(SYS.dialogFont);
+      dialogFont.value = typeof df === "string" ? df : "";
       // 实例级 z：逐层覆盖；本次读数里没有的层回落到工程层默认
       const zNext: Partial<Record<string, number>> = {};
       for (const [layer, zKey] of Object.entries(INSTANCE_Z_KEYS)) {
