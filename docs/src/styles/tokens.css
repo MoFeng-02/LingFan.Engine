@@ -6,7 +6,7 @@
 
    暗色即缺省：只写 :root 与 :root[data-theme='light']，
    不自造 [data-theme='dark']（Starlight 通过 html[data-theme] 切换，缺省即暗色）。
-   对比度按 WCAG 2.x 相对亮度公式实算，括号内为实测比值。 */
+   对比度按 WCAG 2.x 相对亮度公式实算，括号内为测得比值。 */
 
 :root {
   /* ① 原始调色板 · 夜幕（暗色基准） */

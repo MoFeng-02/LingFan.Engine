@@ -2,7 +2,7 @@
  * 语法与求值：递归下降解析，求值闭包（短路要求右支惰性）。
  *
  * 优先级链：?: → || → && → ==/!= → 比较 → + - → * / % → 一元 → 成员。
- * 硬红线：比较运算符非链式。
+ * 硬性约束：比较运算符不可链式。
  */
 import type { NameResolver } from "../resolver";
 import { callBuiltin } from "./builtins";
@@ -155,7 +155,7 @@ export class Parser {
     return left;
   }
 
-  /** 相等级：至多一个 ==/!=；同级再遇 ==/!= = 非链式红线 */
+  /** 相等级：至多一个 ==/!=；同级再遇 ==/!= 即违反非链式约束 */
   private equality(): Thunk {
     const left = this.comparison();
     let op: "==" | "!=" | null = null;
@@ -174,7 +174,7 @@ export class Parser {
     return () => !this.equals(left(), right());
   }
 
-  /** 比较级：至多一个比较符；同级再遇比较符 = 非链式红线 */
+  /** 比较级：至多一个比较符；同级再遇比较符即违反非链式约束 */
   private comparison(): Thunk {
     const left = this.additive();
     let op: string | null = null;

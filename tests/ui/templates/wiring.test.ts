@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 import previewHost from "../../../apps/editor/src/components/PreviewHost.vue?raw";
 
 /**
- * playground 宿主扫描面：App.vue 拆分后，接线字样散在宿主与其面板组件里，
+ * playground 宿主扫描面：接线字样散在宿主与其面板组件里，
  * 扫描面随之放大为宿主源码全量拼接（只增不减）。本文件的断言均与顺序无关；
  * 保序类契约仍锚单文件，见 tests/ui/input/scope.test.ts。
  */

@@ -2,7 +2,7 @@
 //! 运行时字符串——编译期失配不可见，TS 契约替身与 Rust 纯函数各测一半时会缺整条链。
 //! 本模块读 TS 适配器源（`packages/adapters/src/**`）与本 crate 注册面
 //! （lib.rs / 命令签名 / serde 负载），把两半缝成整链：
-//! 1. TS invoke 的每个命令必须已注册（防调了未注册命令——运行时才炸的真缺陷）
+//! 1. TS invoke 的每个命令必须已注册（防调了未注册命令——运行时才暴露的真缺陷）
 //! 2. 注册清单每个命令必须真有 `pub fn` 定义（防注册面漂移）
 //! 3. 有参命令：TS invoke args 键（camelCase）必须覆盖 Rust 签名参数（snake_case；
 //!    Tauri 2 自动转换，参数名含下划线时两侧书写即分叉——互锁点）
@@ -10,7 +10,7 @@
 //!    save_count/slot/timestamp/mode 曾是无测试的隐性契约）
 //! 5. Android JNI 字符串契约：方法名 / 方法签名 / `ActivityInfo` 常量 / 三态字面量——
 //!    JNI 调用编译期完全不校验，方法名拼错要到运行期才暴露；本测试兼守「自维护 Kotlin
-//!    插件不得回流」（该插件已退役：原先 Rust 契约 + Kotlin 实现成对演进，两侧失配无编译期信号）
+//!    插件不得回流」（该插件已退役；其 Rust 契约与 Kotlin 实现成对演进，两侧失配无编译期信号）
 //! 6. iOS Swift 自注册插件字符串契约（C 入口符号 / 命令名 / 参数键 / 模式字面量）——
 //!    Swift 在本机（Windows）不可编译，源断言是当前唯一能自动检查它的手段
 //!
@@ -220,7 +220,7 @@ mod tests {
 
     #[test]
     fn ts_invoke_commands_are_registered() {
-        // TS 调了未注册命令 = 运行时才炸的真缺陷
+        // TS 调了未注册命令 = 运行时才暴露的真缺陷
         let ts_texts: Vec<String> = adapters_ts_sources().into_iter().map(|(_, t)| t).collect();
         let lib_text = lib_rs_text();
         let (used, unregistered) = unregistered_ts_commands(&ts_texts, &lib_text);
@@ -383,7 +383,7 @@ const y = await invoke("real_cmd", { foo: 1 });"#;
     ///
     /// 为什么仍需测试：JNI 调用是**纯字符串契约**（类方法名 `setRequestedOrientation`、
     /// 签名 `(I)V`、`ActivityInfo` 常量），编译期完全不校验——方法名拼错要到运行期才暴露。
-    /// 这些字面量在桌面门禁下也只能靠源断言（Android cfg 分支桌面编译不到）。
+    /// 这些字面量在桌面测试运行下也只能靠源断言（Android cfg 分支桌面编译不到）。
     #[test]
     fn android_jni_string_contracts_match_platform_api() {
         let shell_rs = rust_source("shell.rs");

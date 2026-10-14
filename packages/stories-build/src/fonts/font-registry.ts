@@ -1,7 +1,7 @@
 /**
  * 字体名注册表：扫描 Resources/Fonts 下的字体文件，以「文件名去扩展名」为合法字体名。
  *
- * 字体名只在本包内流转（stories:build 构建期检查 + 宿主 @font-face 注入），不含运行时状态，
+ * 字体名只在 stories-build 构建链内流转（构建期检查 + 宿主 @font-face 注入），不含运行时状态，
  * 因此引擎侧不设端口。目录缺失 = 空注册表（未引用字体名的工程零打扰；引用了即 fail-closed）。
  */
 import { existsSync, readdirSync } from "node:fs";

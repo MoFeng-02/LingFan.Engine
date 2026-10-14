@@ -47,7 +47,7 @@ export function conflictMessage(paths: readonly string[]): string {
  *
  * 判定只看路径形态（本函数与 `serializeProject`/`diffProjectFiles` 同属布局知识族）：
  * 打开时存在、标准布局里没有的文件即规范化对象——`Stories/<列id>.story` 是「转换」，
- * 其余（多列文件 / 文件名与列 id 不一致 / 不再被引用的遗留）是「移除」。
+ * 其余（多列文件 / 文件名与列 id 不一致 / 不再被引用的存量文件）是「移除」。
  *
  * - 输入恒不修改；`Stories/` 之外的路径不在写回白名单内，一律忽略；
  * - 不安全列 id（`isSafeFileNameSegment` 拒绝）构不出标准布局键——该列对应的磁盘文件

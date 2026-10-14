@@ -1,5 +1,5 @@
 /**
- * 扩展 op 等待 · 编辑器静态面（E3）验收门：ext-op-wait-steps。
+ * 扩展 op 等待 · 编辑器静态面测试：ext-op-wait-steps。
  *
  * 语义对齐引擎等待声明表（SSOT = `WAITING_OPS` + `collectWaitSpecs` 合并面）：
  * `wait: true` 的扩展 op 经 `mergeOpSurface` 进编辑器 `OpSurface.waiting`，
@@ -32,7 +32,7 @@ const waitExt: OpExtension = {
   ],
 };
 
-/** 合并面（判定⑦）：内建表 + wait:true 扩展 op；SSOT 在引擎，编辑器只透传 */
+/** 合并面：内建表 + wait:true 扩展 op；SSOT 在引擎，编辑器只透传 */
 const surfaceWithExt: OpSurface = mergeOpSurface([waitExt]);
 
 /** 造故事（走真实解析器；扩展 op 名对解析器是普通命令名） */

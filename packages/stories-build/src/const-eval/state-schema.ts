@@ -1,5 +1,5 @@
 /**
- * state 降维段（C12，编排层）：把状态初始声明递归降维成扁平点路径 defines
+ * state 降维段（编排层）：把状态初始声明递归降维成扁平点路径 defines
  * （引擎初始化通道，session 无条件 Set，零引擎改动），经 mergeDefines 并入工程 defines。
  *
  * 输入双形态（二选一，由 config 求值段保证互斥；皆缺省 = 无 schema 贡献）：

@@ -4,7 +4,7 @@
  * 测试要点：
  * - **互锁**（面板覆盖 36 类型且与契约不越界、不缺项）：
  *   分组表按组序拍平 **逐项等于** `ELEMENT_TYPES`（含顺序）；op 分组覆盖 `listOps()` 全集
- * - **回归**：容器组 ∪ 滚动组 === `ELEMENT_CONTAINER_TYPES`（面板 badge 语义所依据的事实）
+ * - **回归**：容器组与滚动组的合并 === `ELEMENT_CONTAINER_TYPES`（面板 badge 语义所依据的事实）
  * - **单一事实源**：op 分组标签不再散落在视图里（源码互锁）
  * - **边界**：中文标签覆盖全集、无重复归属、空组不存在
  */
@@ -21,7 +21,7 @@ import {
 } from "@lingfan/editor";
 import componentPaletteSource from "../../apps/editor/src/components/ComponentPalette.vue?raw";
 import storyTimelineSource from "../../apps/editor/src/components/StoryTimeline.vue?raw";
-import appSource from "../../apps/editor/src/App.vue?raw";
+import sidebarSource from "../../apps/editor/src/components/SidebarPane.vue?raw";
 
 const flatElementTypes = ELEMENT_TYPE_GROUPS.flatMap((group) => [
   ...group.types,
@@ -61,7 +61,7 @@ describe("互锁：元素分组表 ↔ ELEMENT_TYPES 契约", () => {
   });
 });
 
-describe("回归：容器组 ∪ 滚动组 = 支持 children 的契约集合", () => {
+describe("回归：容器组与滚动组的并集 = 支持 children 的契约集合", () => {
   it("分组划分与 ELEMENT_CONTAINER_TYPES 恰好人手相扣", () => {
     const layout = ELEMENT_TYPE_GROUPS.find((g) => g.group === "container");
     const scroll = ELEMENT_TYPE_GROUPS.find((g) => g.group === "scroll");
@@ -129,15 +129,16 @@ describe("源码互锁：分组清单只在纯逻辑模块，视图不另立一�
 
   it("左栏 tab 用容器 div 承接 v-show（多根组件上挂运行时指令会静默失效）", () => {
     // 回归：`ColumnList` 是多根模板，直接给它 v-show → Vue 只报 console warning，
-    // 面板实际不隐藏。CDP 首轮实测逮到（App.vue 现改为 div.left-pane-body 承接）。
-    expect(appSource).toContain(
-      `<div v-show="leftTab === 'columns'" class="left-pane-body">`,
+    // 面板实际不隐藏；侧栏用 div.left-pane-body 承接 v-show，本断言守该接线。
+    // 左栏模板位于 SidebarPane（props 形态）。
+    expect(sidebarSource).toContain(
+      `<div v-show="props.leftTab === 'columns'" class="left-pane-body">`,
     );
-    expect(appSource).toContain(
-      `<div v-show="leftTab === 'palette'" class="left-pane-body">`,
+    expect(sidebarSource).toContain(
+      `<div v-show="props.leftTab === 'palette'" class="left-pane-body">`,
     );
-    expect(appSource).not.toMatch(/<ColumnList[^>]*v-show/);
-    expect(appSource).not.toMatch(/<ComponentPalette[^>]*v-show/);
+    expect(sidebarSource).not.toMatch(/<ColumnList[^>]*v-show/);
+    expect(sidebarSource).not.toMatch(/<ComponentPalette[^>]*v-show/);
   });
 });
 

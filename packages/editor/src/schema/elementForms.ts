@@ -56,7 +56,7 @@ const ELEMENT_LABELS: Readonly<Record<string, string>> = {
 };
 
 /**
- * 已声明但**当前无渲染语义**的属性（止血清单：先保留解析、补实现按需）。
+ * 已声明但**当前无渲染语义**的属性（未实现属性清单：先保留解析、补实现按需）。
  *
  * 判定依据（代码事实）：这些键只在 `contracts/element.ts` 的 `ELEMENT_ATTRIBUTES` 里声明，
  * `packages/ui` **零消费**（`elementStyle` / `renderers` 都不读）——写进故事**不生效也不报错**。
@@ -72,7 +72,7 @@ export const UNIMPLEMENTED_ELEMENT_ATTRS: ReadonlySet<string> = new Set([
   "valign",
   "xalign",
   "yalign",
-  // 例外（文档终验判定口径）：order 不是死属性——引擎装载期在用（z 兜底：
+  // 例外：order 不是死属性——引擎装载期在用（z 兜底：
   // packages/engine/src/data/element.ts:157、runtime/internal/frame-stack.ts:62 消费）。
   // 保留本条仅为维持现状行为（编辑器表单不下发 + unimplemented-element-attr warning +
   // 互锁白名单 attr-alignment.test.ts），即「编辑器表单不暴露但引擎装载在用」。
@@ -81,9 +81,9 @@ export const UNIMPLEMENTED_ELEMENT_ATTRS: ReadonlySet<string> = new Set([
   "yoffset",
   "xanchor",
   "yanchor",
-  // 第 9 个（互锁建立时反向逮出）：`image`/`imagebutton`/`portrait` 有表单
-  // （「拉伸方式」）但 `packages/ui` 零消费——人工盘点时按已知 8 键 grep，
-  // 没从契约全集反推差集，漏了它。互锁测试从此守着这个洞。
+  // 互锁建立时反向逮出的一条：`image`/`imagebutton`/`portrait` 有表单
+  // （「拉伸方式」）但 `packages/ui` 零消费——这类差集须从契约全集反推
+  // 才能逮出，互锁测试从此守着这个洞。
   "stretch",
 ]);
 

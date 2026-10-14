@@ -14,7 +14,7 @@
  * 一张 manifest 面。
  *
  * 每条断言都先自检扫描面非空、并拿合成字面量验证正则不恒真不恒假——「glob 写错 ⇒
- * 空扫描 ⇒ 绿」是本仓已吃过一次的假绿形态。
+ * 空扫描 ⇒ 绿」是已知假绿形态。
  */
 import { describe, expect, it } from "vitest";
 
@@ -181,7 +181,7 @@ describe("创作链编译包 · 边界与结构不变式", () => {
     );
     expect(PACKAGE_MANIFEST.exports?.["."]).toBe("./src/index.ts");
     // authoring.d.ts 是创作面随包垫片（state/jump declare + define/defineVars 全局内建），
-    // t2 config 化后模板工程从这里接线；.d.ts 落点同受「出口都在包内真实存在」校验。
+    // config 化后模板工程从这里接线；.d.ts 落点同受「出口都在包内真实存在」校验。
     expect(PACKAGE_MANIFEST.exports?.["./authoring"]).toBe(
       "./src/authoring.d.ts",
     );
@@ -192,7 +192,7 @@ describe("创作链编译包 · 边界与结构不变式", () => {
 
     // 每条出口的落点都得在包内真实存在（键对值错同样是坏）。glob 键形如
     // `../../packages/stories-build/src/cli/cli.ts`，故把 exports 的 `./src/…` 换算成
-    // `/src/…` 做后缀比对——只去掉开头的点，别再加前缀，否则会得到 `/src/src/…`。
+    // `/src/…` 做后缀比对——只去掉开头的点；再加前缀会得到 `/src/src/…`。
     const exportTargets = Object.values(PACKAGE_MANIFEST.exports ?? {});
     expect(exportTargets.length).toBe(EXPECTED_EXPORTS.length);
     for (const target of exportTargets) {
@@ -212,7 +212,7 @@ describe("创作链编译包 · 边界与结构不变式", () => {
   });
 
   it("目录索引导入是包内一等形态（不写 ../cell/index.ts），相对导入保持无扩展名", () => {
-    // 无扩展名的相对导入是本仓 house style（tsx 与 vite 都按 TS 解析）；带 .ts 一律算失配。
+    // 无扩展名的相对导入是包内 house style（tsx 与 vite 都按 TS 解析）；带 .ts 一律算失配。
     expect(/from "\.{1,2}\/[^"]+\.ts"/.test('from "./cell/index.ts";')).toBe(
       true,
     );

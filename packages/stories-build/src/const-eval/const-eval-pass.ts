@@ -1,8 +1,8 @@
 /**
- * 编译期求值接入段（对应章节，编排层）：扫描源清单，把含 node_modules 值导入的文件
+ * 编译期求值接入段（编排层）：扫描源清单，把含 node_modules 值导入的文件
  * 整体交给 const-eval 求值，产出「文件 → 导出名 → JSON 值」喂给 story-compiler 内联。
  *
- * 触发判据（C10 边界）：静态 import 的模块说明符非相对路径、非 @lingfan/editor、
+ * 触发判据（npm 值导入边界）：静态 import 的模块说明符非相对路径、非 @lingfan/editor、
  * 非 @lingfan/engine，且存在值绑定（default / 命名空间 / 任一非 type 具名绑定）。
  * `import type` 整句编译期擦除，不触发求值；副作用导入同样不触发（图谱层自有
  * fail-closed 诊断）。
@@ -45,7 +45,7 @@ function findNpmValueImports(rel: string, text: string): NpmValueImport[] {
     if (spec.startsWith(".") || RESERVED_SPECS.has(spec)) continue;
     const clause = stmt.importClause;
     if (clause === undefined) continue; // 副作用导入：不触发求值（图谱层自有诊断）
-    if (clause.isTypeOnly) continue; // import type：编译期擦除（C10 不限）
+    if (clause.isTypeOnly) continue; // import type：编译期擦除，不在 npm 值导入约束内
     const hasValueBinding =
       clause.name !== undefined ||
       (clause.namedBindings !== undefined &&
@@ -82,7 +82,7 @@ export async function runConstEvalPass(
     if (storySet.has(rel)) {
       for (const hit of hits) {
         failures.push(
-          `- ${sourcesDirName}/${rel}:${hit.line}:${hit.col} 故事文件不支持 node_modules 值导入 \`${hit.spec}\`——npm 值请收敛为纯模块的导出 const（编译期求值仅作用于纯模块），再经相对导入使用（对应章节/C10）`,
+          `- ${sourcesDirName}/${rel}:${hit.line}:${hit.col} 故事文件不支持 node_modules 值导入 \`${hit.spec}\`——npm 值请收敛为纯模块的导出 const（编译期求值仅作用于纯模块），再经相对导入使用（编译期求值引用域规则）`,
         );
       }
       continue;

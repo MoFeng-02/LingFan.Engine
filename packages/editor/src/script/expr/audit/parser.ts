@@ -159,7 +159,7 @@ export class ExpressionAuditor {
     return left;
   }
 
-  /** 相等级：至多一个 ==/!=（引擎非链式红线）；仅同类型标量相等 */
+  /** 相等级：至多一个 ==/!=（引擎不支持链式比较）；仅同类型标量相等 */
   private equality(): OperandKind {
     const left = this.comparison();
     let op: "==" | "!=" | null = null;
@@ -177,7 +177,7 @@ export class ExpressionAuditor {
     return "bool";
   }
 
-  /** 比较级：至多一个比较符（引擎非链式红线）；只支持 number */
+  /** 比较级：至多一个比较符（引擎不支持链式比较）；只支持 number */
   private comparison(): OperandKind {
     const left = this.additive();
     let op: string | null = null;

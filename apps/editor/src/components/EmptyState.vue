@@ -6,7 +6,7 @@
  * 文案与主动作由 `emptyStateOf` 统一给（可测），本组件只负责呈现与回抛动作。
  */
 import { computed } from "vue";
-import { emptyStateOf, type EmptyAction } from "../viewState";
+import { emptyStateOf, type EmptyAction } from "../domain";
 
 const props = defineProps<{
   /** 空的原因（决定文案与主动作） */

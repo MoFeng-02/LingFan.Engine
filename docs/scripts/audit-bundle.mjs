@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * audit-bundle.mjs · 性能与产物体积检查（界面规范 · D 组）
+ * audit-bundle.mjs · 性能与产物体积检查（D 组）
  * ---------------------------------------------------------------------------
  * 判定项：
  *   D1  Lighthouse 移动端 Performance ≥ 95（3 次取中位）
@@ -12,9 +12,9 @@
  *   D7  内联脚本与基线一致（无自定义阻塞脚本注入）
  *
  * 度量基线：production 产物 docs/dist。
- *   - Lighthouse 报告目录：--lh=<dir>，默认 E:/Temp/Windows/lf-audit/reports
- *   - 裸 Starlight 基线工程：--baseline=<dir>，默认 E:/Temp/Windows/lf-baseline
- *     基线工程不存在时，回落到脚本内记录的实测快照（见 BASELINE_SNAPSHOT），
+ *   - Lighthouse 报告目录：--lh=<dir>（默认值见 LH_DIR 常量）
+ *   - 裸 Starlight 基线工程：--baseline=<dir>（默认值见 BASELINE_DIR 常量）
+ *     基线工程不存在时，回落到脚本内记录的快照（见 BASELINE_SNAPSHOT），
  *     并在证据里标明「快照」而非「本次构建」。
  *
  * 用法：
@@ -41,11 +41,11 @@ const FIRST_SCREEN_DELTA_MAX = 10 * 1024;
 const PAGE_TOTAL_DELTA_MAX = 20 * 1024;
 const CSS_SOURCE_MAX = 30 * 1024;
 
-/** 裸 Starlight 0.42.6 + Astro 7.3.8 最小工程的实测快照（gzip 字节） */
+/** 裸 Starlight 0.42.6 + Astro 7.3.8 最小工程的记录快照（gzip 字节） */
 const BASELINE_SNAPSHOT = {
   home: { js: 2693, css: 12376, inline: 3415 },
   content: { js: 3118, css: 12376, inline: 4909 },
-  note: "lf-baseline 最小工程（docsLoader+docsSchema，含 1 个代码块）实测",
+  note: "裸 Starlight 最小对照工程（docsLoader+docsSchema，含 1 个代码块）测得",
 };
 
 const results = [];
@@ -126,7 +126,7 @@ const content = assetsOf(contentFile, DIST);
       "D",
       `Lighthouse 移动端 Performance ≥ ${PERF_MIN}（3 次取中位）`,
       "拦截",
-      `未找到 3 份报告（目录 ${LH_DIR}）。本轮须以 production 产物为基线手动复测：\n      node <lighthouse>/cli/index.js http://127.0.0.1:<port>/LingFan.Engine/ --form-factor=mobile --screenEmulation.mobile=true --only-categories=performance,accessibility --output=json --output-path=<dir>/home-N.json\n    未实测时本项在报告中标「未验证」。`,
+      `未找到 3 份报告（目录 ${LH_DIR}）。须以 production 产物为基线手动复测：\n      node <lighthouse>/cli/index.js http://127.0.0.1:<port>/LingFan.Engine/ --form-factor=mobile --screenEmulation.mobile=true --only-categories=performance,accessibility --output=json --output-path=<dir>/home-N.json\n    未复测时本项在报告中标「未验证」。`,
     );
     manual(
       "D2-1",

@@ -1,5 +1,5 @@
 /**
- * 扩展 op 等待能力（E1 契约 + E2 运行时）验收门。
+ * 扩展 op 等待能力（契约 + 运行时）测试。
  *
  * 语义对齐 `interaction`（不新造等待语义）：声明 `wait: true` 的扩展 op 返回
  * `{ok:"wait"}` 即请求挂起，引擎建立等待点（写等待态 → 挂起记录 → 检查点 →
@@ -160,7 +160,7 @@ describe("扩展 op 等待 · 声明位", () => {
 });
 
 describe("扩展 op 等待 · 互锁", () => {
-  it("op-registry-builtin-parity：分发 case 全集 = 内建清单；等待表 ⊆ 内建；内建 switch 切片逐字节等价", () => {
+  it("op-registry-builtin-parity：分发 case 全集 = 内建清单；等待表是内建清单的子集；内建 switch 切片逐字节等价", () => {
     const start = dispatchSource.indexOf("switch (cmd.op) {");
     const end = dispatchSource.indexOf("default:", start);
     expect(start).toBeGreaterThan(0);
@@ -173,8 +173,8 @@ describe("扩展 op 等待 · 互锁", () => {
     for (const op of WAITING_OPS.keys())
       expect(BUILTIN_OP_NAMES.has(op)).toBe(true);
     // 扩展查找前置 + 三态落点只动了前缀；switch 体逐字节钉死（改一字节即红）
-    // P3 call into 结果通道：case return 透传 cmd（execReturn 求值带值 return）
-    // ——哈希随之重算钉扎（2026-10-12，t11 契约内变更）
+    // call into 结果通道：case return 透传 cmd（execReturn 求值带值 return）
+    // ——指纹随之更新
     expect(fnv1a(slice)).toBe(3032215097);
     // 中断入口三路齐备：小游戏 / 玩法系统 / 扩展 op（少一路 = 回溯后旧接管还在跑）
     const takeover = waitingSource.slice(
@@ -417,8 +417,8 @@ describe("扩展 op 等待 · 状态归属", () => {
 });
 
 describe("扩展 op 等待 · 元素动作白名单", () => {
-  it("判定⑥：interaction/extension 等待期 runElementOps 可用（接管画面也是被暂停的叙事）", () => {
-    // interaction 等待期（既存缺陷补漏）：元素动作可用
+  it("interaction/extension 等待期 runElementOps 可用（接管画面也是被暂停的叙事）", () => {
+    // interaction 等待期：元素动作可用
     const sys = makeEngine([{ op: "interaction", system: "walk" }]);
     expect(sys.engine.get(SYS.waiting)).toBe("interaction");
     expect(

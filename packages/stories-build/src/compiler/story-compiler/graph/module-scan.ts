@@ -4,7 +4,7 @@ import { DEFAULT_STATE_ROOT, WORD_NAMES } from "./core";
 import type { Binding, DiagBag, ModuleRecord } from "./core";
 
 /**
- * node_modules 值导入的本地名登记（C10/对应章节）：扫描期即收集（scanConstStatement
+ * node_modules 值导入的本地名登记：扫描期即收集（scanConstStatement
  * 先于第二遍导入解析运行，const 初始化链的专用提示在登记时就要可用）。是否放行
  * 该导入由 resolveImports 依求值喂入决定；`import type` 与纯类型元素不登记。
  */
@@ -265,7 +265,7 @@ function scanStateRootCandidates(
   }
   for (const stmt of sf.statements) {
     // declare global 的名字节点是普通 Identifier（"global"），用 GlobalAugmentation
-    // 旗标判别增补块（实测 TS 6.0 AST：name.kind 仍为 Identifier）。
+    // 旗标判别增补块（TS 6.0 AST：name.kind 仍为 Identifier）。
     if (!ts.isModuleDeclaration(stmt)) continue;
     if ((stmt.flags & ts.NodeFlags.GlobalAugmentation) === 0) continue;
     if (stmt.body === undefined || !ts.isModuleBlock(stmt.body)) continue;

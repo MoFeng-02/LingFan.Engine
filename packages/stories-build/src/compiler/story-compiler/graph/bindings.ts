@@ -149,7 +149,7 @@ export function scanConstStatement(
       return;
     }
   }
-  // —— 编译期求值喂入（对应章节）：导出名命中求值结果 ⇒ 直接绑定标量常量，跳过静态
+  // —— 编译期求值喂入：导出名命中求值结果 ⇒ 直接绑定标量常量，跳过静态
   // 折叠。结构语义分支（cell/defineVars/词解构/namespace）优先于此：同一份代码无论
   // 是否经求值，结构绑定的解释保持一致 —— 求值只接管「常量值」这一条通道。
   const evaluated = record.evaluated?.[name];
@@ -159,7 +159,7 @@ export function scanConstStatement(
         rel,
         sf,
         init,
-        `编译期求值导出 \`${name}\` 不是标量（string|number|boolean|null）——对象/数组等复合值不可作为常量绑定内联（对应章节）`,
+        `编译期求值导出 \`${name}\` 不是标量（string|number|boolean|null）——对象/数组等复合值不可作为常量绑定内联（编译期求值规则）`,
       );
       return;
     }
@@ -173,7 +173,7 @@ export function scanConstStatement(
         rel,
         sf,
         init,
-        "模块层 const 引用了 node_modules 值导入——仅导出的 const 可经编译期求值内联（请把 npm 值收敛为导出 const，对应章节）",
+        "模块层 const 引用了 node_modules 值导入——仅导出的 const 可经编译期求值内联（请把 npm 值收敛为导出 const，见编译期求值规则）",
       );
       return;
     }
@@ -246,7 +246,7 @@ function referencesNpmName(
 }
 
 /**
- * C10（对应章节）：node_modules 值导入的引用域仅限模块层 const 初始化链。
+ * node_modules 值导入的引用域仅限模块层 const 初始化链。
  * 豁免：导入声明本身、模块层 const/let/var 语句（初始化链语境；非 const 由
  * scanConstStatement 自报）、enum（scanEnum 自校验）与类型位置（与 import type
  * 同语义）。其余引用（含函数体/default 导出体）一律报错。仅对被求值文件生效：
@@ -271,7 +271,7 @@ export function assertNpmNamesConstOnly(
         rel,
         sf,
         node,
-        `node_modules 值导入 \`${node.text}\` 仅限模块层 const 初始化链（对应章节/C10）：函数体与其他语句不得引用`,
+        `node_modules 值导入 \`${node.text}\` 仅限模块层 const 初始化链（编译期求值引用域规则）：函数体与其他语句不得引用`,
       );
       return;
     }

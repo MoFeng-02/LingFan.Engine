@@ -1,5 +1,5 @@
 /**
- * 列级字体声明（columnFont）契约测试（界面规范「字体资产链」）。
+ * 列级字体声明（columnFont）契约测试。
  *
  * 契约口径：故事文件模块顶层 `export const columnFont = "<字体名>"` 声明本列排版字体；
  * 值走既有 const 折叠通道（字面量/常量运算同源），构建期对照字体名注册表 fail-closed

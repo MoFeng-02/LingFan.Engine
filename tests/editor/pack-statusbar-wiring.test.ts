@@ -9,6 +9,8 @@
  */
 import { describe, expect, it } from "vitest";
 import appSource from "../../apps/editor/src/App.vue?raw";
+import bridgeSource from "../../apps/editor/src/app/useHostBridge.ts?raw";
+import rightPaneSource from "../../apps/editor/src/components/RightPane.vue?raw";
 import statusBarSource from "../../apps/editor/src/components/StatusBar.vue?raw";
 import packPanelSource from "../../apps/editor/src/components/PackPanel.vue?raw";
 
@@ -37,19 +39,23 @@ describe("打包入口置于状态栏 · 接线互锁", () => {
     expect(src).toContain(':packing="packing"');
     expect(src).toContain(":pack-active=\"rightTab === 'pack'\"");
     expect(src).toContain('@toggle-pack="togglePackPane"');
-    // toggle 语义：已在打包页 ⇒ 回诊断（不是单向开关）
-    expect(src).toContain('rightTab.value === "pack" ? "diagnostics" : "pack"');
+    // toggle 语义：已在打包页 ⇒ 回诊断（不是单向开关）；实现位于 useHostBridge
+    expect(code(bridgeSource)).toContain(
+      'rightTab.value === "pack" ? "diagnostics" : "pack"',
+    );
   });
 
   it("打包中记账在 **send 包装处**（面板切走状态栏仍可见）", () => {
-    const src = code(appSource);
+    // sendPackRequest 实现位于 useHostBridge
+    const src = code(bridgeSource);
     expect(src).toContain("packing.value = true");
     expect(src).toMatch(/finally\s*{\s*packing\.value = false/);
   });
 
   it("PackPanel **本体保留**（打包页内容不因入口迁移而丢失）", () => {
-    const src = code(appSource);
-    expect(src).toMatch(/v-show="rightTab === 'pack'"/);
+    // 打包页容器位于 RightPane（props 形态）
+    const src = code(rightPaneSource);
+    expect(src).toMatch(/v-show="props\.rightTab === 'pack'"/);
     expect(code(packPanelSource)).toContain("开始打包");
   });
 });

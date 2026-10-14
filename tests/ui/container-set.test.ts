@@ -84,7 +84,7 @@ describe("容器判据 · 源级互锁（结构合法性 vs 默认 flex 排布�
     expect(new Set(members)).toEqual(new Set(NON_FLEX_CONTAINERS));
   });
 
-  it("差集 ⊆ 契约容器集合（不许写契约里不存在的类型）", () => {
+  it("差集都在契约容器集合内（不许写契约里不存在的类型）", () => {
     const outside = NON_FLEX_CONTAINERS.filter(
       (t) => !ELEMENT_CONTAINER_TYPES.has(t),
     );

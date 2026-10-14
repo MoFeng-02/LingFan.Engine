@@ -4,7 +4,7 @@
  * **步骤语义归引擎**：哪个 op 建立等待一律取自引擎的等待声明表
  * （`waitingStateOfOp` / `waitSpecOfOp`），本模块**不含任何逐 op 判定**——它只做结构切分：
  * 「一条命令是否构成边界」= 该命令自身或其可触达体内存在等待点。
- * 等待声明读 `StepOptions.surface` 的合并面（`OpSurface.waiting`，判定⑦——含 wait:true 的
+ * 等待声明读 `StepOptions.surface` 的合并面（`OpSurface.waiting`——含 wait:true 的
  * 扩展 op）；未合并/无条目回退内建表口径，内建行为不变。
  *
  * 块体与调用（两条规则都直接派生自引擎的检查点坐标语义 `checkpointCoord`：
@@ -263,7 +263,7 @@ export function columnSteps(
     collectReachable(cmd, pointer, ctx, reachable, new Set());
     pendingForks.push(...collectForks(reachable));
     // 边界 = 可触达集合里存在等待点（自身或块体/被调函数体）。
-    // 等待声明读合并面（判定⑦）：`ctx.surface.waiting` 先查（含 wait:true 的扩展 op），
+    // 等待声明读合并面：`ctx.surface.waiting` 先查（含 wait:true 的扩展 op），
     // 未合并/无条目回退内建表口径 `waitingStateOfOp`——内建行为不变，扩展等待点被切分。
     const waitingSpecOf = (
       cmd: Record<string, unknown>,

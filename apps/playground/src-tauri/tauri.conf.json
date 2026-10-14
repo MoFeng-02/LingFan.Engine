@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.langfeng.lingfanengine",
   "build": {
-    "beforeDevCommand": "pnpm dev --mode tauri",
+    "beforeDevCommand": "pnpm stories:build && pnpm dev --mode tauri",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "pnpm build --mode tauri && pnpm build:prepare",
     "frontendDist": "../dist"

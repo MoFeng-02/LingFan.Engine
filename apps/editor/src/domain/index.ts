@@ -6,7 +6,15 @@
  * 悄悄错掉（一个比较写反就整类资源消失），集中在此才可单测。
  *
  * 依赖方向：可用 `contracts` 与 `shared`；不得依赖 `ui` / `app` / `infra`。
- *
- * 当前是骨架：实现仍平铺在 `src/` 根，搬迁在后续阶段进行。
  */
-export {};
+export * from "./addColumnIntent";
+export * from "./columnWrite";
+export * from "./dialog";
+export * from "./dispatch";
+export * from "./nodeGraphModel";
+export * from "./pointerIntent";
+export * from "./resourceTree";
+export * from "./search";
+export * from "./snapGuides";
+export * from "./viewState";
+export * from "./workspace";

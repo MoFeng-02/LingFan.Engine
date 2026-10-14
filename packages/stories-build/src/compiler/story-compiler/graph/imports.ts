@@ -106,7 +106,7 @@ export function resolveImports(
         );
         continue;
       }
-      // 对应章节/C10：经编译期求值的文件允许 node_modules 值导入——值经求值结果内联，
+      // 经编译期求值的文件允许 node_modules 值导入——值经求值结果内联，
       // 引用域仅限模块层 const 初始化链（buildGraph 末尾 assertNpmNamesConstOnly 兜底）。
       continue;
     }

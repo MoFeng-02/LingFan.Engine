@@ -225,7 +225,7 @@ describe("存档扩展依赖标记", () => {
       demoExtension(
         {
           migrate: () => {
-            throw new Error("扩展迁移炸了");
+            throw new Error("扩展迁移抛错");
           },
         },
         2,
@@ -285,7 +285,7 @@ describe("存档扩展依赖标记", () => {
     const thrown = makeEngine([
       demoExtension({
         restore: () => {
-          throw new Error("restore 炸了");
+          throw new Error("restore 抛错");
         },
       }),
     ]);
@@ -466,7 +466,7 @@ describe("存档向后兼容", () => {
       [],
       {
         migrateSave: () => {
-          throw new Error("钩子炸了");
+          throw new Error("钩子抛错");
         },
       },
       PLAIN_JOURNEY,

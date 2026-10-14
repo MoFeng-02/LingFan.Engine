@@ -7,16 +7,16 @@
 # 一次性启用（仅首次）：仓库 Settings → Pages → Build and deployment → Source 选
 # 「GitHub Actions」。没启用前 deploy 步会直接报错，属预期。
 #
-# 三条实测依据（勿随意改动）：
+# 三条稳定依据（勿随意改动）：
 # 1. 安装必须在 docs/ 内独立进行：docs 不在根 pnpm-workspace.yaml 的 packages 清单里，
-#    自带 pnpm-lock.yaml。pnpm 检测到 cwd 有自己的锁文件即按独立项目处理（本地实测
-#    350 包 1.5s 正常走完），不会爬到根 workspace 去装无关的 packages/apps。
+#    自带 pnpm-lock.yaml。pnpm 检测到 cwd 有自己的锁文件即按独立项目处理（约 350 包、
+#    1.5s 安装走完），不会爬到根 workspace 去装无关的 packages/apps。
 # 2. 不需要构建脚本批准面（allowBuilds）：根 workspace 的 ERR_PNPM_IGNORED_BUILDS
-#    教训来自 playground 的 esbuild——docs 依赖树里根本没有 esbuild，sharp 0.35 也没有
+#    该报错出自 playground 的 esbuild——docs 依赖树里没有 esbuild，sharp 0.35 也没有
 #    install 脚本（只剩 build/test 等开发脚本，pnpm 不执行）。全新安装零待批准项。
 # 3. cache-dependency-path 必须显式指 docs/pnpm-lock.yaml：默认会拿仓库根的
 #    pnpm-lock.yaml 做缓存键，而 docs 的依赖不在根锁文件里——docs 依赖变更时缓存
-#    永远不失效，等于缓存了个寂寞。
+#    永远不失效，缓存等于没有生效。
 
 name: Deploy Docs
 
@@ -26,7 +26,7 @@ on:
     branches: [main]
     paths:
       - "docs/**"
-      # 工作流自身变更也要触发，否则改完推上去毫无反应（ios-verify 同款教训）
+      # 工作流自身变更也要触发，否则改完推上去毫无反应（原因与 ios-verify.yml 中相同）
       - ".github/workflows/deploy-docs.yml"
 
 # Pages 部署需要写 pages 与 OIDC token；contents 保持只读最小面

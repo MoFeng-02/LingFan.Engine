@@ -3,7 +3,7 @@
  *
  * 类型与属性全集：
  * - 36 类型全集（文本 / 交互 / 图像 / 容器 / 滚动 / 进度 / 间隔七组）
- * - 属性全集 = 通用属性表 ∪ 元素特定属性
+ * - 属性全集 = 通用属性表与元素特定属性的合并
  *
  * 未知类型 / 未知属性一律 fail-closed——「写了也不渲染」的静默容忍是缺陷，不是特性。
  *
@@ -105,7 +105,7 @@ export const ELEMENT_STRUCTURAL_FIELDS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * 属性全集 = 通用属性表 ∪ 元素特定属性（并集即校验白名单）。
+ * 属性全集 = 通用属性表与元素特定属性的合并（合并结果即校验白名单）。
  * 分组注释保留来源信息（编辑器表单按 `ELEMENT_SPECIFIC_ATTRS` 分类型提示）。
  */
 export const ELEMENT_ATTRIBUTES: ReadonlySet<string> = new Set([

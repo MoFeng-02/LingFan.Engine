@@ -13,6 +13,7 @@
  */
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -23,11 +24,11 @@ import { describe, expect, it } from "vitest";
 const HOSTS = [
   {
     label: "editor",
-    dir: "E:/Project/MyProject/LingFan/LingFan.Engine/apps/editor/src",
+    dir: fileURLToPath(new URL("../../apps/editor/src", import.meta.url)),
   },
   {
     label: "playground",
-    dir: "E:/Project/MyProject/LingFan/LingFan.Engine/apps/playground/src",
+    dir: fileURLToPath(new URL("../../apps/playground/src", import.meta.url)),
   },
 ];
 

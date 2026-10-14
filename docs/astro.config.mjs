@@ -17,7 +17,7 @@ const base = "/LingFan.Engine";
  *
  * 侧栏说明：条目默认使用 `link`（纯 URL）而不是 `slug`。Starlight 对 `slug`
  * 做存在性校验，指向尚未创建的页面会直接让构建失败；`link` 不校验，
- * 断链由 docs/scripts/audit-ia.mjs 在内容齐全后统一检查。
+ * 断链由 docs/scripts/audit-ia.mjs 做全站检查。
  * 例外：『加密与平台供给』的页面已存在（concepts/encryption.md），该条目
  * 使用 `slug`，存在性与 locale 解析交给 Starlight 构建期校验。
  *

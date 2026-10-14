@@ -3,7 +3,7 @@
  *
  * 站点部署在 GitHub Pages 项目站，线上根路径不是 `/` 而是 `/LingFan.Engine/`。
  * Astro 只给「自己生成的」链接补 base（侧栏、导航、favicon、sitemap），
- * **手写在 .astro 里的路径不会被改写**，所以这里统一完成。
+ * **手写在 .astro 里的路径不会被改写**，所以路径改写统一经由本文件。
  *
  * Markdown 正文里的链接不走本文件，由 src/plugins/hast-base-links.mjs 在
  * 构建期处理——两条路径共用 astro.config.mjs 里的同一个 base 值。

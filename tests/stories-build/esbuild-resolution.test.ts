@@ -14,8 +14,8 @@
  * 同进程调用会被同一层解析补丁救活，永远复现不了这个缺陷（假绿）。子进程用
  * `process.execPath`，拿到的就是当前 node 本体。
  *
- * 另外两条是「清单与文案也得读实物」：依赖声明读真 package.json（本仓已吃过一次
- * 只测合成字面量、实物却缺项的假绿），排障文案读真源码（消费者唯一线索，陈旧即误导）。
+ * 另外两条是「清单与文案也得读实物」：依赖声明读真 package.json（防「
+ * 只测合成字面量、实物却缺项」的假绿），排障文案读真源码（消费者唯一线索，陈旧即误导）。
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -65,7 +65,7 @@ const PROBE = [
 
 /**
  * 跑探针。**必须把 NODE_PATH 摘掉**：vitest 会把自己的 node_modules 链塞进这个变量
- * 传给孩子进程，而 `require.resolve` 的全局路径回退会去那里找——实测同一个
+ * 传给孩子进程，而 `require.resolve` 的全局路径回退会去那里找——同一个
  * `docs/const-eval.ts` 锚点，带 NODE_PATH 时能解析到 esbuild、摘掉后 FAILED。
  * 不摘，这条测试就永远绿：它测到的是 vitest 的环境，不是包自身的可解析性。
  */

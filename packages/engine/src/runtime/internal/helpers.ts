@@ -50,7 +50,7 @@ export function sameCoord(a: ColumnCoordinate, b: ColumnCoordinate): boolean {
  * 解析 `__menu_return` 记账（进入 menu/ui 前记下的游戏点）。
  *
  * **fail-closed**：形状不符 ⇒ 返回 `null`（= 没有可返回的游戏进度 ⇒ 拒绝存档）。
- * 宁可拒绝也不能存出一个指向非法坐标的档（读档会炸在重放里）。
+ * 宁可拒绝也不能存出一个指向非法坐标的档（读档会在重放中失败）。
  */
 export function parseMenuReturn(
   raw: unknown,

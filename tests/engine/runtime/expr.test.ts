@@ -56,7 +56,7 @@ describe("算术与优先级", () => {
   });
 });
 
-describe("比较与相等（非链式红线）", () => {
+describe("比较与相等（不可链式）", () => {
   it("1<2 / 2>=2 / 3!=4 / 1==1", () => {
     expect(evalExpr("1<2")).toBe(true);
     expect(evalExpr("2>=2")).toBe(true);

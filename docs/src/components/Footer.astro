@@ -4,14 +4,14 @@
  *
  * 三段：
  *   ① 品牌段 —— 文字标识 + 一句话定位（对外站点的自我说明）
- *   ② 导航段 —— 三组静态链接（按界面规范 的顶级分组组织）
+ *   ② 导航段 —— 三组静态链接（按顶级分组组织）
  *   ③ 元信息段 —— 保留 Starlight 的 EditLink / LastUpdated / Pagination，
  *      并在其下追加版权行
  *
- * 契约要点（改这个文件前务必读）：
+ * 改动要点（改这个文件前务必读）：
  *   · EditLink / LastUpdated / Pagination **必须从 `virtual:starlight/components/*`
  *     导入**，不能从 `@astrojs/starlight/components` 导入（后者不导出它们）。
- *   · 本项目暂未开启 editLink / lastUpdated，因此前两者当前渲染为空；
+ *   · 本站暂未开启 editLink / lastUpdated，因此前两者当前渲染为空；
  *     保留导入是为了将来开启配置时页脚自动生效，不是死代码。
  *   · Pagination 是页内上下页导航，必须在 <footer> 内、且在版权行之前。
  *   · columns 里的 href 写根绝对路径即可，渲染时统一经 withLocale() 补

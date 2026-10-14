@@ -5,7 +5,7 @@
  * （编辑器视图 / 步数统计 / 未来的章节切分）无从得知「哪些命令会停下来等玩家」。
  * 把这条事实声明化后，静态侧只消费本表，**不在外部另立一套判定**。
  *
- * 语义边界（务必与运行时一致，由 `tests/engine/runtime/waiting-ops.test.ts` 行为互锁）：
+ * 语义边界（与运行时一致，由 `tests/engine/runtime/waiting-ops.test.ts` 行为互锁）：
  * - **建立等待** = 命令执行后故事停在该处等玩家/定时器/外部信号，并在该处提交检查点。
  * - **不建立等待**（并入其后最近的等待点、或作流程转移）：`video` 系列（非阻塞播放，故事继续）、
  *   `jump` / `navigate` / `load`（控制转移，检查点由落点自身建立）、以及全部状态与表现类命令。
@@ -63,7 +63,7 @@ export function waitSpecOfOp(op: unknown): WaitSpec | undefined {
  * 未声明的扩展 op 不产生等待规格。**内建表 `WAITING_OPS` 一行不动**——本函数是
  * 唯一的扩展合并面，静态消费者（编辑器等待提示/步数统计）应消费它而非自行扫扩展；
  * 扩展 op 名与内建/跨扩展重名在注册期已被查重拒绝，合并无覆盖冲突。
- * `base` 供合并面透传（编辑器 `OpSurface.waiting` 以既有合并面打底再并入，判定⑦）；
+ * `base` 供合并面透传（编辑器 `OpSurface.waiting` 以既有合并面打底再并入）；
  * 缺省 = 内建表。
  */
 export function collectWaitSpecs(

@@ -42,7 +42,7 @@ export {
   type AppEvents,
   type AppEventsOptions,
 } from "./app-events";
-/** 历史聚合：快照筛选、NVL 块化与回溯完成 */
+/** 历史聚合：快照筛选、NVL 块化与回溯收尾 */
 export {
   createAppHistory,
   type AppHistory,

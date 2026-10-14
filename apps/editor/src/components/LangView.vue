@@ -21,7 +21,7 @@ import {
   setTranslationValue,
   type TranslationRow,
 } from "@lingfan/editor";
-import { useDialog } from "../dialogInjection";
+import { useDialog } from "../app";
 
 const props = defineProps<{
   /** 逻辑路径（标题与保存用） */

@@ -1,12 +1,12 @@
 /**
- * 嵌套函数作用域：编译期把外层声明只读下传给内层函数体（用户实测回归）。
+ * 嵌套函数作用域：编译期把外层声明只读下传给内层函数体（回归）。
  *
  * 运行期 `call` 本就以「调用者当前作用域的子层」压帧，内层读外层变量沿动态链查得到；
- * 此前编译器却给每个嵌套函数一条空作用域链，凡内层引用外层参数/局部一律误报
+ * 缺陷形态：编译器给每个嵌套函数一条空作用域链，凡内层引用外层参数/局部一律误报
  * 「未知标识符」。修复后：函数声明提升（嵌套名先登记，再翻译列体/函数体），嵌套函数
  * 体继承外层作用域链（参数、let、嵌套名只读下传）。
  *
- * 配套边界纪律：赋值目标解析先看本层，命中外层条目的写入在构建期拦截——运行期
+ * 配套边界约定：赋值目标解析先看本层，命中外层条目的写入在构建期拦截——运行期
  * letVar 只声明进当前函数帧（外层变量原样不动），放行只会造成静默假写入。
  *
  * 断言锚点落在产物字节与真实引擎旅程（StoryEngine 起帧推进）上，走真实默认编译器。
@@ -44,7 +44,7 @@ const MANIFEST = `{
   "shell": { "orientation": "auto" }
 }`;
 
-/** 词汇层绑定：故事文件内直接解构（与 build-pipeline.test.ts 的 WORDS 同款）。 */
+/** 词汇层绑定：故事文件内直接解构（与 build-pipeline.test.ts 的 WORDS 同一形态）。 */
 const WORDS = `import { script } from "@lingfan/editor";
 const { say } = script;
 
@@ -117,7 +117,7 @@ export default function start(): void {
   "Resources/project.json": MANIFEST,
 };
 
-describe("嵌套函数作用域下传（用户实测回归）", () => {
+describe("嵌套函数作用域下传（回归）", () => {
   it("拟态旅程：内层读外层参数 → 产物 func/call 形态正确，引擎念出外层实参", async () => {
     const root = makeProject("probe", PROBE_FILES);
     const report = await buildStories(root);

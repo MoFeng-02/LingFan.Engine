@@ -1,6 +1,6 @@
 /**
- * 源侧创作垫片（随包 .d.ts）——原 `Stories.src/lib/compile-time.ts` 垫片的包化迁移
- * （界面规范 对应章节⑤）。三组声明，各管一件事：
+ * 源侧创作垫片（随包 .d.ts）
+ * 三组声明，各管一件事：
  *
  * - `state`：编译器保留根，按名匹配（assign/expr 的 stateRoot），不产生绑定。
  *   此处给宽索引签名（StateRoot），保证未接 gen 类型面的工程 tsc 通过；精确类型面
@@ -8,7 +8,7 @@
  *   `import type { StoryState } from …/gen/state.gen` 后按名挂根（形态 A 亦可用
  *   `InferStateSchema<typeof state>` 静态推导）。宽 StateRoot 仅为该桥缺省前的回退。
  * - `jump`：真身通道 = `@lingfan/editor` 词汇层词（词表出口 + emitWordCommand 特判
- *   → emitJump）；本声明只为 IDE/类型检查兜底，不改变运行时通道。
+ *   → emitJump）；本声明只为 IDE/类型检查补齐，不改变运行时通道。
  * - `define` / `defineVars`：config.ts 构建期内建（求值环境注入，无运行时实体）；
  *   全局声明供 config.ts 书写与 tsc 通过。
  */

@@ -9,9 +9,15 @@
  *
  * 这个改动横跨三处调用点，任何一处回退都会让「预开所有列」回来：
  * ① `applyOpened`（打开工程）② `selectColumn`（选列）③ `redistributeDocuments`（增删列）
+ *
+ * 断言指向实现所在的文件：打开工程域在 `app/useProjectOpen.ts`、
+ * 多文档工作区在 `app/useProjectFiles.ts`、编辑 API 在 `app/editorApi.ts`。
+ * 「找什么」不变，只改「去哪个文件找」。
  */
 import { describe, expect, it } from "vitest";
-import appSource from "../../apps/editor/src/App.vue?raw";
+import openSource from "../../apps/editor/src/app/useProjectOpen.ts?raw";
+import filesSource from "../../apps/editor/src/app/useProjectFiles.ts?raw";
+import apiSource from "../../apps/editor/src/app/editorApi.ts?raw";
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
 const code = (source: string): string =>
@@ -19,7 +25,7 @@ const code = (source: string): string =>
 
 describe("文档按需打开 · 接线互锁（防「预开所有列」回流）", () => {
   it("打开工程**只开入口列**（不再遍历所有列开文档）", () => {
-    const src = code(appSource);
+    const src = code(openSource);
     expect(src).toContain("openColumnDocument(tree.entry)");
     // 反面：不得再有「遍历所有列 ⇒ workspace.open」的批量预开
     expect(src).not.toMatch(
@@ -29,28 +35,28 @@ describe("文档按需打开 · 接线互锁（防「预开所有列」回流）
 
   it("选列**按需打开**（点到未开的列必须先建会话）", () => {
     // 否则 `selectedColumnId` 会指向一个没有文档的列 ⇒ 时间线/属性面板拿不到内容
-    expect(code(appSource)).toContain("openColumnDocument(id)");
+    expect(code(apiSource)).toContain("openColumnDocument(id)");
   });
 
   it("增删列**不补满**未打开的文档（否则一次新增列铺满标签）", () => {
-    expect(code(appSource)).toMatch(/if \(doc === undefined\) continue;/);
+    expect(code(filesSource)).toMatch(/if \(doc === undefined\) continue;/);
   });
 
   it("新增列后**先建会话再切**（新列从没被打开过）", () => {
-    const src = code(appSource);
+    const src = code(apiSource);
     expect(src).toContain("openColumnDocument(result.id)");
   });
 
   it("切片口径仍是**单列**（整树塞进每个标签 = 跨标签覆盖）", () => {
     // 每个文档只持自己那一列 + 整树作为上下文（`entry` 指向自己）
-    const src = code(appSource);
+    const src = code(filesSource);
     expect(src).toContain("columns: [column]");
     expect(src).toContain("entry: id");
   });
 
   it("**入口列始终有文档**（打开工程后至少一个标签，不留空态）", () => {
     // `applyOpened` 必须先开 entry，再把它设为活动文档
-    const src = code(appSource);
+    const src = code(openSource);
     const open = src.indexOf("openColumnDocument(tree.entry)");
     const activate = src.indexOf(
       "workspace.activate(storyDocumentPath(tree.entry))",

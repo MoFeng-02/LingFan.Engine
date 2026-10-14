@@ -1,6 +1,6 @@
 /**
- * InferStateSchema（C12）：把 config.state 数据声明推导为强类型（TS 原生推导，运行期零开销）。
- * 从 `Stories.src/lib/state-type.ts` 迁入包出口（界面规范 对应章节⑤）：形态 A 的 StoryState
+ * InferStateSchema：把 config.state 数据声明推导为强类型（TS 原生推导，运行期零开销）。
+ * 形态 A 的 StoryState
  * 类型面 = `InferStateSchema<typeof state>`，由消费工程按需引用，不再依赖 lib 约定。
  *
  * schema 值文法（与编排层 state-schema.ts 的降维一一对应；源形态统一纯嵌套对象，

@@ -389,8 +389,8 @@ export function emitCommand(
   if (word !== undefined) {
     return emitWordCommand(ctx, call, word);
   }
-  // 属性访问但接收者不是词汇层命名空间（`obj.method()` 之类）：这条文案比末尾的兜底更能
-  // 指路，故单独保留——原来的实现把它挂在这个分支上，重构时别顺手丢掉。
+  // 属性访问但接收者不是词汇层命名空间（`obj.method()` 之类）：这条文案比末尾的通用文案更能
+  // 指路，故单独保留，避免重构时遗漏。
   if (
     ts.isPropertyAccessExpression(callee) &&
     ts.isIdentifier(callee.expression)

@@ -2,13 +2,35 @@
  * 四区骨架的**源级接线互锁**（防回流）。
  *
  * 为何用读源码断言而不全靠交互：骨架的关键性质是「**某能力必须接在某处**」
- * （资源树必须吃诊断供给、状态栏必须接脏计数、活动栏必须驱动侧栏模式）。
+ * （资源树必须吃诊断供给、状态栏必须接脏计数、左栏 tab 必须驱动侧栏模式）。
  * 这些性质在界面上表现为「看起来对」，但一旦被拆掉，交互测试可能仍绿。
+ *
+ * 断言指向实现所在的文件：
+ * App.vue 现为组合根（装配 + provide），业务域在 `app/`、纯判据在 `domain/`、
+ * 平台取径在 `infra/`、全局样式在 `styles/`。本文件逐条核对的「找什么」不变，
+ * 只改「去哪个文件找」。
  */
 import { describe, expect, it } from "vitest";
+// 本文件已列入 eslint.config.js「node-side-tooling」白名单（测试期工具，
+// 不进浏览器产物；.css 的 ?raw 在 vitest css:false 下被 stub 成空串 ⇒ readFileSync）
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import appSource from "../../apps/editor/src/App.vue?raw";
-import treeSource from "../../apps/editor/src/resourceTree.ts?raw";
-import layoutSource from "../../apps/editor/src/layout.ts?raw";
+import treeSource from "../../apps/editor/src/domain/resourceTree.ts?raw";
+import layoutSource from "../../apps/editor/src/infra/layout.ts?raw";
+import filesSource from "../../apps/editor/src/app/useProjectFiles.ts?raw";
+import searchSource from "../../apps/editor/src/app/useSearchCorpus.ts?raw";
+import bridgeSource from "../../apps/editor/src/app/useHostBridge.ts?raw";
+import openSource from "../../apps/editor/src/app/useProjectOpen.ts?raw";
+import sidebarSource from "../../apps/editor/src/components/SidebarPane.vue?raw";
+import rightPaneSource from "../../apps/editor/src/components/RightPane.vue?raw";
+import centerSource from "../../apps/editor/src/components/CenterStage.vue?raw";
+import toolbarSource from "../../apps/editor/src/components/TopToolbar.vue?raw";
+// .css 的 `?raw` 导入在 vitest（css:false）下被 stub 成空串 ⇒ readFileSync 直读
+const workspaceCss = readFileSync(
+  join(process.cwd(), "apps/editor/src/styles/app-workspace.css"),
+  "utf8",
+);
 import splitterSource from "../../apps/editor/src/components/PaneSplitter.vue?raw";
 import treeViewSource from "../../apps/editor/src/components/ResourceTreeView.vue?raw";
 import statusSource from "../../apps/editor/src/components/StatusBar.vue?raw";
@@ -34,17 +56,17 @@ describe("四区骨架 · 接线互锁", () => {
   });
 
   it("两处分栏条都接了 resize 回调（拖拽真的能改宽度）", () => {
-    const src = code(appSource);
-    expect(src).toContain('side="left"');
-    expect(src).toContain('side="right"');
-    expect(src).toContain('@resize="setLeftWidth"');
-    expect(src).toContain('@resize="setRightWidth"');
+    // 分栏条实例位于两块面板组件；@resize 仍由组合根接回宽度 setter
+    expect(code(sidebarSource)).toContain('side="left"');
+    expect(code(rightPaneSource)).toContain('side="right"');
+    expect(code(appSource)).toContain('@resize="setLeftWidth"');
+    expect(code(appSource)).toContain('@resize="setRightWidth"');
   });
 
   it("侧栏宽度由内联样式驱动（不写死在 CSS 里）", () => {
     expect(code(appSource)).toContain("layout.leftWidth");
-    // CSS 里不得再有写死的侧栏宽度
-    expect(code(appSource)).not.toMatch(
+    // 「不写死」的守卫位于两个全局样式文件
+    expect(code(workspaceCss)).not.toMatch(
       /\.columns-pane\s*\{[^}]*width:\s*\d+px/,
     );
   });
@@ -53,10 +75,11 @@ describe("四区骨架 · 接线互锁", () => {
     // 活动栏已删（与左栏 tab 重复）⇒「活动栏驱动侧栏模式」这半边不再存在；
     // 但**它守的不变量仍在** —— 资源/搜索/最近三个内页必须喂**同一个** resourceNodes，
     // 否则会逼出三份数据源（第二份定义）。
-    const feeds = code(appSource).match(/:nodes="resourceNodes"/g) ?? [];
+    const feeds = code(sidebarSource).match(/:nodes="props\.resourceNodes"/g) ?? [];
     expect(feeds.length).toBe(3);
     // 且不再有第二个驱动侧栏模式的入口
     expect(code(appSource)).not.toContain("setSidebarMode");
+    expect(code(sidebarSource)).not.toContain("setSidebarMode");
   });
 
   it("状态栏接宿主能力与脏计数（工程级事实，不复制别处已有信息）", () => {
@@ -82,15 +105,17 @@ describe("四区骨架 · 接线互锁", () => {
 
   it("内页切换器有 tablist 语义与选中态（a11y）", () => {
     // **活动栏已删**（其三项与左栏 tab 重复），同一职责现由**左栏 tab** 承担
-    //   ⇒ 本断言在 App.vue 的左栏 tab 条上验。
-    const src = code(appSource);
-    const leftTabs = src.slice(src.indexOf('class="tab-strip left-tabs"'));
+    //   ⇒ 本断言在 SidebarPane 的左栏 tab 条上验；顶栏视图切换在 TopToolbar。
+    const sidebar = code(sidebarSource);
+    const leftTabs = sidebar.slice(sidebar.indexOf('class="tab-strip left-tabs"'));
     expect(leftTabs.slice(0, 400)).toContain('class="tab-strip left-tabs"');
-    // 顶栏的视图切换（步1）补齐了 tab 语义
-    expect(src).toContain('role="tablist"');
-    expect(src).toContain("aria-selected");
+    // 顶栏的视图切换补齐了 tab 语义
+    expect(code(toolbarSource)).toContain('role="tablist"');
+    expect(code(toolbarSource)).toContain("aria-selected");
+    expect(sidebar).toContain("aria-selected");
     // 活动栏组件已随之删除
-    expect(src).not.toContain("ActivityBar");
+    expect(code(appSource)).not.toContain("ActivityBar");
+    expect(sidebar).not.toContain("ActivityBar");
   });
 
   it("资源树对 Saves 只读且明示（不隐藏、明示只读）", () => {
@@ -104,7 +129,7 @@ describe("四区骨架 · 接线互锁", () => {
 
 describe("回归 · 脏标记必须同时点亮工具栏与标签栏", () => {
   it("会话订阅回调里同时投影 `dirty` 与 `documentDirty`", () => {
-    const src = code(appSource);
+    const src = code(filesSource);
     // bindActive 的订阅体 = 唯一会在「编辑动作」后触发的地方
     const sub = src.slice(
       src.indexOf("unsubscribeSession = doc.session.subscribe"),
@@ -117,9 +142,11 @@ describe("回归 · 脏标记必须同时点亮工具栏与标签栏", () => {
   });
 
   it("bindActive 绑定完成时也投影一次（切标签即刷新该标签的脏态）", () => {
-    const src = code(appSource);
+    const src = code(filesSource);
     const fn = src.slice(src.indexOf("function bindActive"));
-    const tail = fn.slice(0, fn.indexOf("let unsubscribeSession"));
+    // 声明 `let unsubscribeSession` 现位于文件头部（组合根拆分时的机械迁移），
+    // 原窗口边界改用 bindActive 之后的下一个函数，覆盖面与原先一致
+    const tail = fn.slice(0, fn.indexOf("function attachSession"));
     const occurrences = (
       tail.match(/documentDirty\.value = new Set\(workspace\.dirtyPaths\)/g) ??
       []
@@ -129,7 +156,7 @@ describe("回归 · 脏标记必须同时点亮工具栏与标签栏", () => {
   });
 
   it("工具栏与标签栏读的是**同一**事实源（`session.dirty` / `workspace.dirtyPaths`）", () => {
-    const src = code(appSource);
+    const src = code(filesSource);
     expect(src).toContain("dirty.value = doc.session.dirty");
     expect(src).toContain(
       "documentDirty.value = new Set(workspace.dirtyPaths)",
@@ -161,14 +188,14 @@ describe("TDZ 守卫 · 声明顺序", () => {
   };
 
   it("documentDirty / documentPaths / documentKinds 声明在 bindActive 之前", () => {
-    const src = code(appSource);
+    const src = code(filesSource);
     for (const name of ["documentDirty", "documentPaths", "documentKinds"]) {
       expect(declaredBefore(name, "function bindActive", src)).toBe(true);
     }
   });
 
   it("documentDirty 声明在 attachSession 首次调用之前（setup 中途会执行）", () => {
-    const src = code(appSource);
+    const src = code(filesSource);
     expect(declaredBefore("documentDirty", "attachSession(session)", src)).toBe(
       true,
     );
@@ -182,11 +209,13 @@ describe("TDZ 守卫 · 声明顺序", () => {
   });
 
   it("layout / searchCorpus 声明在用它们的 computed 之前", () => {
-    const src = code(appSource);
-    expect(declaredBefore("layout", "setLeftWidth", src)).toBe(true);
-    expect(declaredBefore("searchCorpus", "const searchReport", src)).toBe(
+    expect(declaredBefore("layout", "setLeftWidth", code(appSource))).toBe(
       true,
     );
+    // 搜索语料域位于 useSearchCorpus，声明序守卫亦然
+    expect(
+      declaredBefore("searchCorpus", "const searchReport", code(searchSource)),
+    ).toBe(true);
   });
 });
 
@@ -215,7 +244,7 @@ describe("回归 · 原生对话框清零 + 五态接线", () => {
       ["FieldRow", fieldRowSource],
     ] as const) {
       const src = code(raw);
-      // 三处同款：不再有 hover-only 的 display:none
+      // 三处一致：不再有 hover-only 的 display:none
       expect(src, `${name} 仍有 hover-only 行内操作`).not.toMatch(
         /\.(ops|row-ops)\s*\{[^}]*display:\s*none/,
       );
@@ -229,17 +258,16 @@ describe("回归 · 原生对话框清零 + 五态接线", () => {
   });
 
   it("首屏空态：未打开工程时显示空态", () => {
-    const src = code(appSource);
-    expect(src).toContain('reason="no-project"');
-    expect(src).toContain("onEmptyAction");
+    // 空态模板位于 CenterStage；动作接线仍在组合根
+    expect(code(centerSource)).toContain('reason="no-project"');
+    expect(code(appSource)).toContain("onEmptyAction");
     // 主动作走真实取径
-    expect(src).toContain("openProject()");
+    expect(code(appSource)).toContain("openProject()");
   });
 
   it("读取失败在中心区如实展示（不再静默成空白）", () => {
-    const src = code(appSource);
-    expect(src).toContain("readError");
-    expect(src).toMatch(/v-else-if="readError"/);
+    expect(code(appSource)).toContain("readError");
+    expect(code(centerSource)).toMatch(/v-else-if="props\.readError"/);
   });
 
   it("对话框端口经 provide/inject 下发（组件零 props 下钻）", () => {
@@ -261,7 +289,7 @@ describe("回归 · 原生对话框清零 + 五态接线", () => {
  */
 describe("回归 · 切标签同步选中列", () => {
   it("`selectDocument` 里同步 `selectedColumnId` 到该文档的列", () => {
-    const src = code(appSource);
+    const src = code(filesSource);
     const start = src.indexOf("function selectDocument(path: string): void {");
     expect(start).toBeGreaterThan(-1);
     const body = src.slice(start, src.indexOf("\n}", start));
@@ -270,7 +298,7 @@ describe("回归 · 切标签同步选中列", () => {
   });
 
   it("同时清掉跨文档残留的命令选中态（指针会指向不存在的行）", () => {
-    const src = code(appSource);
+    const src = code(filesSource);
     const start = src.indexOf("function selectDocument(path: string): void {");
     const body = src.slice(start, src.indexOf("\n}", start));
     expect(body).toMatch(/selectedPointer\.value\s*=\s*null/);
@@ -283,7 +311,7 @@ describe("回归 · 切标签同步选中列", () => {
   });
 
   it("非故事文档（译文表/清单）切标签**不动** `selectedColumnId`", () => {
-    const src = code(appSource);
+    const src = code(filesSource);
     const start = src.indexOf("function selectDocument(path: string): void {");
     const body = src.slice(start, src.indexOf("\n}", start));
     // 判据必须走 `columnIdOfDocument`（非故事路径返回 undefined ⇒ 整段跳过）
@@ -294,10 +322,11 @@ describe("回归 · 切标签同步选中列", () => {
 /**
  * 热重载接线守卫（TDZ 高发点，成因是声明顺序）。
  * 判据：任何在 setup 体内被**提前执行**的代码，都不能引用声明在它之后的东西。
+ * 宿主桥域（探测 / 轮询 / 打包转发）位于 `app/useHostBridge.ts`，本组断言对应该实现。
  */
 describe("热重载 · 接线与顺序", () => {
   it("热重载三条声明在探测 IIFE **之前**（否则 TDZ 白屏）", () => {
-    const src = appSource;
+    const src = bridgeSource;
     // 必须按**声明语句**定位，不能 `indexOf(名字)`：注释里也出现这个名字，
     //    首次命中会是注释 ⇒ 守卫变绿、实际有 TDZ（**假守卫**）。
     const probe = src.indexOf("const host = await detectLocalHost()");
@@ -314,26 +343,29 @@ describe("热重载 · 接线与顺序", () => {
   });
 
   it("探测命中且开关开着 ⇒ 起轮询", () => {
-    expect(appSource).toContain("pollWatch(host");
+    expect(bridgeSource).toContain("pollWatch(host");
     // 结构改成 if/else-if（探测失败走横幅，不再是 else 兜底）
-    expect(appSource).toContain(
+    expect(bridgeSource).toContain(
       "if (host === undefined) hostHint.value = true;",
     );
-    expect(appSource).toContain(
+    expect(bridgeSource).toContain(
       "if (hotReloadEnabled.value) startHotReload(host);",
     );
   });
 
   it("**脏文档时不自动重载**（静默重载会丢作者改动）", () => {
-    expect(appSource).toContain("workspace.dirtyCount > 0");
-    expect(appSource).toContain("未自动重载");
+    // 判据本体在桥域内执行；「判据接在 workspace.dirtyCount 上」由组合根的
+    // 依赖注入保证——两处分别锁定，拆开任何一半守卫都会掉
+    expect(bridgeSource).toContain("dirtyCount() > 0");
+    expect(code(appSource)).toContain("workspace.dirtyCount");
+    expect(bridgeSource).toContain("未自动重载");
     // 重载走既有「重开工程」通道，不另造第二条
-    expect(appSource).toContain("entry.reopen()");
+    expect(code(openSource)).toContain("entry.reopen()");
   });
 
   it("页面卸载停轮询（定时器不泄漏）", () => {
-    expect(appSource).toContain("onBeforeUnmount");
-    expect(appSource).toMatch(
+    expect(bridgeSource).toContain("onBeforeUnmount");
+    expect(bridgeSource).toMatch(
       /onBeforeUnmount\(\(\) => \{[\s\S]*?stopHotReload\?\.\(\)/,
     );
   });
@@ -349,16 +381,16 @@ describe("热重载 · 接线与顺序", () => {
  */
 describe("宿主未启动提示 · 非阻塞", () => {
   it("用**横幅**（`hostHint` 状态）而非 `dialog.notify`", () => {
-    expect(appSource).toContain(
+    expect(bridgeSource).toContain(
       "if (host === undefined) hostHint.value = true;",
     );
     // 窗口只取**探测 IIFE 内部**（前面几百字符里有骨架生成等无关的 dialog.notify）
-    const fnAt = appSource.indexOf("const host = await detectLocalHost();");
+    const fnAt = bridgeSource.indexOf("const host = await detectLocalHost();");
     expect(fnAt).toBeGreaterThan(-1);
     // 窗口到**本 IIFE 结束**为止：用 `slice` + `indexOf` 会取到**全文件后面**
     //   （`indexOf` 找的是首次出现，可能在很后面）⇒ 混进别的 `dialog.notify`。
     //   这里直接按行数截 700 字符，够短且明确。
-    const body = appSource.slice(fnAt, fnAt + 700);
+    const body = bridgeSource.slice(fnAt, fnAt + 700);
     expect(body).toContain("hostHint.value = true");
     expect(body).toContain("hostHint.value = true");
     // 必须**去注释**再判：说明文字里也写着「用 `dialog.notify`」，
@@ -370,22 +402,23 @@ describe("宿主未启动提示 · 非阻塞", () => {
   });
 
   it("横幅 `pointer-events: none`，**只有关闭按钮**可点", () => {
-    const rule = appSource.match(/\.host-hint\s*\{[^}]*\}/)?.[0] ?? "";
+    // 本守卫位于全局样式 app-workspace.css
+    const rule = workspaceCss.match(/\.host-hint\s*\{[^}]*\}/)?.[0] ?? "";
     expect(rule).toContain("pointer-events: none");
-    const btn = appSource.match(/\.host-hint-x\s*\{[^}]*\}/)?.[0] ?? "";
+    const btn = workspaceCss.match(/\.host-hint-x\s*\{[^}]*\}/)?.[0] ?? "";
     expect(btn).toContain("pointer-events: auto");
   });
 
   it("横幅可关闭（`@click` 把 `hostHint` 置回 false）", () => {
-    expect(appSource).toContain('class="host-hint-x"');
-    expect(appSource).toContain('@click="hostHint = false"');
+    expect(code(appSource)).toContain('class="host-hint-x"');
+    expect(code(appSource)).toContain('@click="hostHint = false"');
   });
 
   it("横幅文案给出**可执行**的启用命令（不是空话）", () => {
     // 编排脚本是"两个进程绑在一起"的保证；文案必须指向它
-    expect(appSource).toContain("pnpm editor:dev");
+    expect(code(appSource)).toContain("pnpm editor:dev");
     // 说清**哪些能力不可用**（降级不等于全废）
-    expect(appSource).toContain("不可用");
+    expect(code(appSource)).toContain("不可用");
   });
 });
 
@@ -399,20 +432,23 @@ describe("宿主未启动提示 · 非阻塞", () => {
  */
 describe("能力探测 · 触发时机", () => {
   it("探测在 `onMounted` 内（不是 setup 顶层的裸 IIFE）", () => {
-    expect(appSource).toMatch(
+    expect(bridgeSource).toMatch(
       /onMounted\(\(\) => \{\s*void \(async \(\) => \{[\s\S]*?detectLocalHost\(\)/,
     );
     // 顶层裸 IIFE 的形态（`void (async` 紧跟在 computed 之后、无 onMounted 包裹）不再允许
     expect(appSource).not.toMatch(
       /\nvoid \(async \(\) => \{\n\s*\/\/ 能力探测/,
     );
+    expect(bridgeSource).not.toMatch(
+      /\nvoid \(async \(\) => \{\n\s*\/\/ 能力探测/,
+    );
   });
 
   it("探测命中 ⇒ 起热重载；未命中 ⇒ 显示**非阻塞横幅**", () => {
-    expect(appSource).toContain(
+    expect(bridgeSource).toContain(
       "if (host === undefined) hostHint.value = true;",
     );
-    expect(appSource).toContain(
+    expect(bridgeSource).toContain(
       "if (hotReloadEnabled.value) startHotReload(host);",
     );
   });

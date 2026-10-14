@@ -15,6 +15,9 @@ import {
 } from "@lingfan/adapters";
 import appSource from "../../../apps/editor/src/App.vue?raw";
 import mainSource from "../../../apps/editor/src/main.ts?raw";
+// 顶栏按钮本体在 TopToolbar.vue、失败文案在 useProjectOpen.ts（App 只留接线）
+import toolbarSource from "../../../apps/editor/src/components/TopToolbar.vue?raw";
+import openSource from "../../../apps/editor/src/app/useProjectOpen.ts?raw";
 
 /** 目录句柄替身（组合根只读 name + 传引用；IDB 存取不深究内部） */
 function fakeHandle(name: string): FileSystemDirectoryHandle {
@@ -168,11 +171,11 @@ describe("源码互锁：组合根装配与宿主按钮在位", () => {
     // 按钮**文案**从「重新打开上次工程」改为 `↺` 图标
     //   （顶栏瘦身；完整说明移到 `title`，这是 tooltip 的正确用法）。
     //   本断言守的是「一键重开入口存在 + 有句柄才渲染」，**不是**那句长文案。
-    expect(appSource).toContain("一键重开上次工程");
+    //   断言指向装配处：App 留接线、按钮在 TopToolbar、文案在 useProjectOpen。
     expect(appSource).toContain("reopenLastProject");
-    expect(appSource).toContain(
-      'v-if="props.lastProject?.value !== undefined"',
-    );
-    expect(appSource).toContain("重新打开失败：");
+    expect(appSource).toContain('@reopen-last="reopenLastProject"');
+    expect(toolbarSource).toContain("一键重开上次工程");
+    expect(toolbarSource).toContain('v-if="lastProject?.value !== undefined"');
+    expect(openSource).toContain("重新打开失败：");
   });
 });

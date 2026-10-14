@@ -3,7 +3,7 @@
  * - op → SavePort 编排；非等待命令立即继续
  * - 自动存档：等待画面建立触发；解除/重放不触发；开关系统键读档复位
  * - op load 异步传送回档内等待点
- * - 删档不动防回档基准（Rust 侧 delete_save 同款语义）
+ * - 删档不动防回档基准（与 Rust 侧 delete_save 语义一致）
  * - fail-closed：无 SavePort / 槽名非法 / enabled 非布尔 → engine.error，状态原样
  * - 命令面 save/load 完成信号 save.done/load.done：成功才发、
  *   守卫与校验失败不发；故事 save op 的等待点落档不发——信号归属命令面）

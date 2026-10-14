@@ -140,7 +140,7 @@ describe("目录取径·FSA 句柄", () => {
     expect(await source.paths()).not.toContain("README.md");
   });
 
-  it("没有清单且 Stories/ 全是坏档 → 仍 fail-closed（没内容可打开时降级是撒谎；「缺清单即拒」已被降级取代）", async () => {
+  it("没有清单且 Stories/ 全是坏档 → 仍 fail-closed（没内容可打开时降级是撒谎）", async () => {
     // createHandleFileSource 只做资源根定位（惰性装载）——读取失败发生在 loadProject
     const source = await createHandleFileSource(
       dirHandle("Desktop", { Stories: { "a.json": "{}" } }),
@@ -310,7 +310,7 @@ describe("目录取径·目录 input 文件快照", () => {
     ).rejects.toThrow("发现多个 project.json");
   });
 
-  it("无清单但有 Stories/ ⇒ **降级打开**：合成清单 + 显式回执（原 fail-closed 行为已被降级取代）", async () => {
+  it("无清单但有 Stories/ ⇒ **降级打开**：合成清单 + 显式回执", async () => {
     const source = await createFileListFileSource([
       fileAt("x/Stories/alpha.json", START),
     ]);

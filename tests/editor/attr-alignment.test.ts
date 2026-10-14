@@ -1,20 +1,20 @@
 /**
  * 元素属性三面对齐互锁：**契约声明面 ↔ 编辑器表单面 ↔ 运行期消费面**。
  *
- * （8+1 个元素属性写了不生效且不报错）之所以能长期潜伏，是因为没有任何测试同时看
- * 这三面：新增 op 时要同步的 5 处声明与 `bridge_check.rs` 的跨语言互锁都只覆盖
+ * 失真属性「写了不生效且不报错」之所以能长期潜伏，是因为没有任何测试同时看
+ * 这三面：新增 op 时要同步的多处声明与 `bridge_check.rs` 的跨语言互锁都只覆盖
  * 「声明 ↔ schema」，不覆盖「**是否有消费者**」。本测试从 `packages/ui/src/element/**`
  * **源码**提取真实读取的属性名（`props.x` / `pick(props, "a", "b")` / 解构），与
  * `ELEMENT_ATTRIBUTES` 求差集，并断言：
  *
- * ① 消费面 ⊆ 声明面（渲染器读了契约外的键 = 契约漂移，红）；
+ * ① 消费面属于声明面的子集（渲染器读了契约外的键 = 契约漂移，红）；
  * ② 「声明 − 消费 − 白名单」必须与 `UNIMPLEMENTED_ELEMENT_ATTRS` **精确相等**——
- *    未实现清单就是差集的唯一合法去处，多一个少一个都红（止血清单不许漂移）；
+ *    未实现清单就是差集的唯一合法去处，多一个少一个都红（未实现清单不许漂移）；
  * ③ 机制自证：往声明面里塞一个假属性，同一个差集函数必须把它标出来（
  *    「故意加假属性 → 测试必须红」的等价形态——真改契约会被 ①/② 抓住）。
  *
- * 互锁建立时反向逮出**第 9 个**失真属性 `stretch`（`image`/`imagebutton`/`portrait`
- * 有表单但零消费）：人工盘点按已知 8 键 grep、没从契约全集反推差集——
+ * 互锁建立时反向逮出失真属性 `stretch`（`image`/`imagebutton`/`portrait`
+ * 有表单但零消费）：这类差集须从契约全集反推才能逮出——
  * 这正是本互锁存在的意义。
  *
  * 锚定三面对齐：声明面（契约）、消费面（渲染）、表单面（编辑器）。
@@ -85,7 +85,7 @@ function unimplementedCandidates(declared: ReadonlySet<string>): Set<string> {
 }
 
 describe("元素属性三面对齐互锁", () => {
-  it("消费面 ⊆ 契约声明面（渲染器不读契约外的键）", () => {
+  it("消费面是契约声明面的子集（渲染器不读契约外的键）", () => {
     const consumed = consumedAttributes(SOURCES);
     const outside = [...consumed].filter((a) => !ELEMENT_ATTRIBUTES.has(a));
     expect(outside, `契约外被读取：${outside.join(", ")}`).toEqual([]);
@@ -112,14 +112,15 @@ describe("元素属性三面对齐互锁", () => {
     );
     expect(
       extra,
-      "已声明、无消费者、却不在止血清单里（写了会静默无效）",
+      "已声明、无消费者、却不在未实现属性清单里（写了会静默无效）",
     ).toEqual([]);
-    expect(missing, "止血清单里有键已有消费者（应实现并回滚表单下架）").toEqual(
-      [],
-    );
+    expect(
+      missing,
+      "未实现属性清单里有键已有消费者（应实现并回滚表单下架）",
+    ).toEqual([]);
   });
 
-  it("未实现清单 ⊆ 契约（清单不许写契约里不存在的键）", () => {
+  it("未实现清单是契约的子集（清单不许写契约里不存在的键）", () => {
     const outside = [...UNIMPLEMENTED_ELEMENT_ATTRS].filter(
       (a) => !ELEMENT_ATTRIBUTES.has(a),
     );

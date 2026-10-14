@@ -2,7 +2,7 @@
  * 设计 token —— **唯一真源**（single source of truth）。
  *
  * 约束：
- * ① **token 唯一源**管的是「**我们自己**别双写」——组件里只准出现 `var(--lf-*)`，
+ * ① **token 唯一源**管的是「**色值不双写**」——组件里只准出现 `var(--lf-*)`，
  *    不准再写裸色值/裸字号；② **额外排除**会注入全局 reset/preflight 的方案
  *    （`@unocss/preset-wind*` 默认带 preflight ⇒ **不采用**）。
  *

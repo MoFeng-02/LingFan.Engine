@@ -8,7 +8,7 @@ import type { MinigameFactory } from "@lingfan/engine";
 
 /**
  * 小游戏 id → 工厂的查表。`get` 未命中即 `undefined`，调用方必须显式上报
- * ——玩法系统没注册时不能假装玩完了，否则叙事会带着假的完成结果往下走。
+ * ——玩法系统未注册时不得上报完成结果，否则叙事会带着假的完成结果往下走。
  */
 export interface MinigameRegistry {
   /** 注册/覆盖更新（同 gameId 再注册 = 替换，开发热替换语义） */

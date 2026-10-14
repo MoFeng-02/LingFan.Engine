@@ -60,7 +60,7 @@ export function detectEncryptedProject(
 
 /**
  * 无壳形态的**可操作**拒绝文案：说清「是什么 / 为什么读不了 / 现在怎么办」。
- * 桌面壳形态落地后，本函数仅用于无壳形态（有壳走解密供给，不再抛）。
+ * 桌面壳形态接入后，本函数仅用于无壳形态（有壳走解密供给，不再抛）。
  */
 export function encryptedProjectMessage(
   root: string,

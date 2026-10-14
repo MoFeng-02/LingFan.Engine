@@ -230,7 +230,7 @@ const 默认城 = 天气表[城市.北京]; // 求值链上的其他 const 也�
 
 ```text
 模块层 const 引用了 node_modules 值导入——仅导出的 const 可经编译期求值内联
-（请把 npm 值收敛为导出 const，对应章节）
+（请把 npm 值收敛为导出 const）
 ```
 
 求值结果还不许依赖不确定源：`Date.now()`、`new Date()`、`Math.random()`、crypto 随机、文件/网络/进程 IO。构建器会把同一个常量在隔离环境求值两次比对结果，两次不一致就报错——这条是硬闸门，不是文案建议。
@@ -250,10 +250,10 @@ export default function start(): void {
 
 ```text
 编译期求值失败（1 条）：
-- Stories.src/ch1/start.ts:1:1 故事文件不支持 node_modules 值导入 `axios`——npm 值请收敛为纯模块的导出 const（编译期求值仅作用于纯模块），再经相对导入使用（对应章节/C10）
+- Stories.src/ch1/start.ts:1:1 故事文件不支持 node_modules 值导入 `axios`——npm 值请收敛为纯模块的导出 const（编译期求值仅作用于纯模块），再经相对导入使用（编译期求值引用域规则）
 ```
 
-「函数体里引用 npm 值」那条 C10 报错要换个位置才看得到：把 npm 导入放进纯模块，再在同一个模块的函数体里引用它。
+「函数体里引用 npm 值」那条编译期求值报错要换个位置才看得到：把 npm 导入放进纯模块，再在同一个模块的函数体里引用它。
 
 ```ts
 // Stories.src/lib/endpoint.ts
@@ -268,7 +268,7 @@ function describe(): void {
 
 ```text
 故事编译失败（1 条）：
-- lib/endpoint.ts:6:7 node_modules 值导入 `version` 仅限模块层 const 初始化链（对应章节/C10）：函数体与其他语句不得引用
+- lib/endpoint.ts:6:7 node_modules 值导入 `version` 仅限模块层 const 初始化链（编译期求值引用域规则）：函数体与其他语句不得引用
 ```
 
 它由 `packages/stories-build/src/compiler/story-compiler/graph/bindings.ts:221` 发出，前提是这个模块被编译期求值过、且这个包在工程里能解析。
@@ -286,12 +286,12 @@ function describe(): void {
 ```ts
 import { 默认端点 } from "some-config-pkg";
 
-const 端点 = 默认端点; // ✅ 模块层，编译期内联成字符串
+const 端点 = 默认端点; // 模块层，编译期内联成字符串
 
 export default function start(): void {
   extOp("http.get", { url: 端点, saveTo: "player.apiData" }); // 运行期由引擎执行
   if (state.player.apiData.status === 200) {
-    // ✅ 引擎运行期分支
+    // 引擎运行期分支
     say("请求成功。");
   }
 }

@@ -7,6 +7,7 @@
  *
  * 依赖方向：不依赖本应用其他层，可被任何层依赖。
  *
- * 当前是骨架：本目录尚无实现，待有跨层复用的工具时落此。
+ * 当前内容：`localStorage`（本机存储安全取径）、`sample`（演示工程数据夹具，供开发与测试取用）。
  */
-export {};
+export * from "./localStorage";
+export * from "./sample";

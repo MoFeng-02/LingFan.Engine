@@ -2,7 +2,7 @@
  * call into 结果通道测试：ret 带值 / 函数体自然跑完绑 null / 覆盖式声明 /
  * 嵌套与递归 / 回溯-前进-存读档三态一致 / 混沌随机游走不变量。
  *
- * 确定性红线：同种子同序列重放结果一致；回溯到 call 前后，into 绑定的结果一致
+ * 确定性硬性约束：同种子同序列重放结果一致；回溯到 call 前后，into 绑定的结果一致
  * （result 槽与 into 名随帧快照保存，存档/读档不丢）。
  */
 import { describe, expect, it } from "vitest";
@@ -231,7 +231,7 @@ describe("call into：返回值绑定（拟态旅程）", () => {
   });
 });
 
-describe("call into：确定性红线（回溯 / 前进 / 存读档三态一致）", () => {
+describe("call into：确定性硬性约束（回溯 / 前进 / 存读档三态一致）", () => {
   function story(): object[] {
     return [
       {

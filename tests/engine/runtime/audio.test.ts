@@ -148,7 +148,7 @@ describe("四音频通道", () => {
       { op: "say", text: "x" },
     ]);
     engine.start();
-    // 触发是离散事件：同一资源两次执行必须各出一次状态变更（seq 递增，不被值相同吞掉）
+    // 触发是离散事件：同一资源两次执行必须各出一次状态变更（seq 递增，不被值相同忽略）
     const seValues = changes
       .filter((c) => c.key === SYS.audioSe)
       .map((c) => c.value as AudioChannelState);
@@ -357,7 +357,7 @@ describe("显式重播 restart（同曲默认无缝续播）", () => {
     expect(state?.kind === "play" ? state.seq : undefined).toBeGreaterThan(0);
   });
 
-  it("同曲连续两次 restart 得到不同序号（两次独立重播，不被值相同吞掉）", () => {
+  it("同曲连续两次 restart 得到不同序号（两次独立重播，不被值相同忽略）", () => {
     const { engine, changes } = makeEngine([
       { op: "bgm", resource: "a.mp3", restart: true },
       { op: "say", text: "一" },

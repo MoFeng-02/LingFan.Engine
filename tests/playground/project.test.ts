@@ -92,7 +92,7 @@ describe("示例工程防腐", () => {
 
   it("main.ts 的浏览器故事清单 ↔ 磁盘文件（回归：新增故事文件必须同步）", () => {
     // 浏览器形态按显式清单取文件（Tauri 形态走 Rust 目录枚举）——
-    // 漏登记会让该列在浏览器形态不存在，跳转报 unknown-column（实测缺陷）
+    // 漏登记会让该列在浏览器形态不存在，跳转报 unknown-column（回归覆盖的历史缺陷）
     const block = /const STORIES = \[([^\]]*)\]/.exec(mainSource)?.[1];
     expect(block, "未在 main.ts 中找到 STORIES 清单").toBeDefined();
     const declared = [...String(block).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
@@ -130,7 +130,7 @@ describe("示例工程防腐", () => {
     const referenced = new Set<string>();
     for (const text of Object.values(FILES)) {
       // 章节形态 = **一文件多列** ⇒ 必须扫全部列（含 scene 列的 entry），
-      //    旧「columns[0]」口径在多列文件下漏采
+      //    columns[0] 单列取法在多列文件下漏采
       const parsed = parseStoryFile(text, "story");
       for (const column of parsed.columns) {
         collectResources(column.commands ?? [], referenced);

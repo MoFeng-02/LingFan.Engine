@@ -17,7 +17,7 @@ import { OP_SCHEMAS } from "./opSchemas";
 export interface OpSurface {
   readonly schemas: Readonly<Record<string, z.ZodType>>;
   readonly meta: readonly OpMeta[];
-  /** op → 等待规格合并面（判定⑦）：内建表 + wait:true 的扩展 op（collectWaitSpecs 产物） */
+  /** op → 等待规格合并面：内建表 + wait:true 的扩展 op（collectWaitSpecs 产物） */
   readonly waiting?: ReadonlyMap<string, WaitSpec>;
 }
 
@@ -72,7 +72,7 @@ export function mergeOpMeta(
 }
 
 /** 组合根入口：内建面 + 扩展 → 合并面（缺省扩展 = 内建面原样）。
- * 等待声明表一并并入（判定⑦）：内建表打底，wait:true 的扩展 op 覆盖同名（引擎注册期已查重，实为追加）——
+ * 等待声明表一并并入：内建表打底，wait:true 的扩展 op 覆盖同名（引擎注册期已查重，实为追加）——
  * SSOT 仍是引擎的 `WAITING_OPS` + `collectWaitSpecs`，编辑器只透传不复制。 */
 export function mergeOpSurface(
   extensions: readonly OpExtension[],
@@ -85,7 +85,7 @@ export function mergeOpSurface(
   };
 }
 
-/** 合并扩展等待声明（判定⑦）：内建表 `WAITING_OPS` 打底（base 缺省时），collectWaitSpecs 的扩展条目并入。
+/** 合并扩展等待声明：内建表 `WAITING_OPS` 打底（base 缺省时），collectWaitSpecs 的扩展条目并入。
  * 消费方（steps.ts 边界判定）读合并面——未合并时回退内建口径。 */
 function mergeOpWaiting(
   base: ReadonlyMap<string, WaitSpec> | undefined,

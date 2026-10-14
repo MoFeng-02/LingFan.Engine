@@ -3,7 +3,7 @@
  * 各族的判定与文案都在 statement/ 下的族文件里，这里只负责路由。
  *
  * 注意：本文件与同名的 `statement/` 目录并存——模块解析**文件优先**，
- * 故 `./statement` 恒指本文件；请勿在 `statement/` 下加 `index.ts`。
+ * 故 `./statement` 恒指本文件；在 `statement/` 下新增 `index.ts` 会使 `./statement` 解析到目录——保持该目录无 `index.ts`。
  */
 import { parseDialogStatement } from "./statement/dialog";
 import { parseFlowStatement } from "./statement/flow";

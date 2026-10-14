@@ -22,7 +22,7 @@ export interface AppElementLayerOptions {
   props: {
     resourcePort: ResourcePort;
   };
-  /** 元素 `cmd` 业务命令注册表（未注册 fail-closed，不静默吞掉） */
+  /** 元素 `cmd` 业务命令注册表（未注册 fail-closed，不静默丢弃） */
   commands: ReturnType<typeof createCommandRegistry>;
   /** 错误横幅内容（元素装配失败的 fail-closed 上报都落这里） */
   error: Ref<string>;

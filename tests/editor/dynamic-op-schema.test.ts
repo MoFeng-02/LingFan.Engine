@@ -7,8 +7,8 @@
  * - **注册后表单可用 + 不假红**：合并面上 describeForm 出表单、validateCommand/validateStory
  *   零诊断；**未注册口径不变**——内建面上同命令仍 unknown-op（与引擎一致）
  * - **装配期 fail-fast**：归组不在八组内 = 扩展声明违约 → mergeOpMeta 抛错带定位
- * - **互锁扩展**：「引擎 op 面 ⊆ 编辑器 op 面」——动态注册的 op 也纳入（buildOpRegistry 键集合
- *   ⊆ 合并 schema 键集合）；内建 BUILTIN_OP_NAMES ⊆ OP_SCHEMAS 键集合
+ * - **互锁扩展**：「引擎 op 面属于编辑器 op 面的子集」——动态注册的 op 也纳入（buildOpRegistry
+ *   键集合属于合并 schema 键集合的子集）；内建 BUILTIN_OP_NAMES 属于 OP_SCHEMAS 键集合的子集
  */
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -130,7 +130,7 @@ describe("编辑器 schema 动态注册", () => {
     expect(() => mergeOpSurface([badExt])).toThrow(/归组不合法/);
   });
 
-  it("互锁：引擎 op 面（内建 + 动态注册）⊆ 编辑器 op 面", () => {
+  it("互锁：引擎 op 面（内建 + 动态注册）是编辑器 op 面的子集", () => {
     // 内建半边：BUILTIN_OP_NAMES 全部在编辑器 schema 面（既有 schema.test.ts 另以 format 子域
     // 源码提取做更强互锁；此处以注册表口径补动态维度）
     for (const op of BUILTIN_OP_NAMES) {

@@ -77,9 +77,9 @@ const FONT_TYPEGEN_FILE = "font.gen.d.ts";
  *
  * 十四段串行：config.ts 单次求值（named exports 四导出 folders/start/vars/state +
  * 形态 B define 累积，读取/校验统一在此）→ 源发现（folders 多目录 + start 全局恰一）
- * → cell 扫描 → 编译期求值（对应章节：node_modules 值导入的模块整体求值，导出常量喂给
+ * → cell 扫描 → 编译期求值（node_modules 值导入的模块整体求值，导出常量喂给
  * 编译器内联）→ 模块层构建期 define 收集汇入（顶层 define 语句与 config 树同源合并，
- * 互斥/冲突 fail-closed）与 state 降维（C12：config.state/define 合并树走同一降维文法
+ * 互斥/冲突 fail-closed）与 state 降维（config.state/define 合并树走同一降维文法
  * 扁平化为 defines）→ 字体名注册表扫描（Resources/Fonts 文件名去扩展名，编译期字体
  * 引用检查对照源）→ story-compiler 编译（诊断非空 fail-closed）→ parseStory 校验兜底 →
  * 列归一与 sourcePath 回填（源文件路径 = 产物路径）→ 工程合并（id/entry 取 start 故事，
@@ -112,8 +112,8 @@ export async function buildStories(
   const sourceTree = walkFiles(sourcesDir);
   const cellScan = scanCellSources(sourceTree, generatedDirName);
 
-  // —— 编译期求值（对应章节）：含 node_modules 值导入的文件整体求值，导出常量值喂给
-  // 编译器内联；求值诊断与 E13 确定性闸门 fail-closed，一次报全部 ——
+  // —— 编译期求值：含 node_modules 值导入的文件整体求值，导出常量值喂给
+  // 编译器内联；求值诊断与双求值确定性闸门 fail-closed，一次报全部 ——
   const constValues = await runConstEvalPass(
     sourcesDir,
     discovery.stories,
@@ -150,7 +150,7 @@ export async function buildStories(
     );
   }
 
-  // —— state 降维（C12）：config.state（形态 A）与 define 合并树（形态 B，二选一）
+  // —— state 降维：config.state（形态 A）与 define 合并树（形态 B，二选一）
   // 走同一降维文法扁平化为 defines；文法诊断 fail-closed，皆缺省 = 空 schema 贡献 ——
   const schemaDefines = runStateSchemaPass(
     evaluated.state,
@@ -186,7 +186,7 @@ export async function buildStories(
   }
 
   // —— 列归一：产物路径 = 源文件路径（`Stories/<相对源路径去扩展名>.json`；
-  // 文件名与列 id 解耦）。parseStory 不在链上（界面规范 对应章节③）：编译器静态产出 Story
+  // 文件名与列 id 解耦）。parseStory 不在链上：编译器静态产出 Story
   // 同形，形状契约由防御读取 + serialize/assemble 既有校验兜底。——
   const bySource = new Map<string, { story: Story; columns: StoryColumn[] }>();
   for (const entry of compiled.stories) {
@@ -244,7 +244,7 @@ export async function buildStories(
   // 列 id 取编译产物、state 键取 schemaDefines、变量键取 config.vars 导出的键集
   // （config.ts 求值通道；图谱层的 defineVars 扫描已退役为守卫），声明名从列的
   // 命令流里收（let/for/input 这类运行期变量名只存在于产物里），
-  // 扩展 id 取第 早期阶段 段的装载结果（装载在写盘之前，数据现成）。
+  // 扩展 id 取扩展装载段的装载结果（装载在写盘之前，数据现成）。
   const typegenContent = renderTypegen({
     columns: merged.columns.map((column) => column.id),
     schemaKeys: Object.keys(schemaDefines),
@@ -376,7 +376,7 @@ function readCompiledEntry(
 
 /**
  * 跨来源的 defines 合并：同键同值收敛，同键异值 = 冲突 fail-closed（一次报全部）。
- * 来源 = config 状态（C12，config 先行：形态 A state 或形态 B define 合并树）+ 各故事文件；
+ * 来源 = config 状态（config 先行：形态 A state 或形态 B define 合并树）+ 各故事文件；
  * config 与故事同键异值同样冲突。
  */
 function mergeDefines(

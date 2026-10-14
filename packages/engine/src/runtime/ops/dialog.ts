@@ -81,7 +81,7 @@ export function execSay(ctx: OpContext, frame: Frame, cmd: StoryCommand): void {
     );
     return;
   }
-  // `say font` 校验：形状完成（非空字符串）。字体名是否在注册表内属构建期/渲染层闸门职责，
+  // `say font` 校验：形状校验（非空字符串）。字体名是否在注册表内属构建期/渲染层闸门职责，
   // 引擎只保证「写进 SYS 的总是字符串」。
   if (
     cmd.font !== undefined &&

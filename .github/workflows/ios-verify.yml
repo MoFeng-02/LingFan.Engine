@@ -3,7 +3,7 @@
 # 为什么需要它：iOS 只能在 macOS + Xcode 上编译，本机是 Windows——本工作流是 iOS 侧
 # 唯一的编译/运行验证途径（Swift 插件、Rust ios 分支、Info.plist 声明、端到端冒烟）。
 #
-# 三条关键约束（实测/社区一致，勿随意改动）：
+# 三条关键约束（勿随意改动）：
 # 1. 必须用 `cargo tauri`（cargo-binstall 安装的 tauri-cli）——`ios init` 生成的 Xcode 工程
 #    会把 `cargo tauri ios xcode-script` 烘进构建阶段；用 npm 版 CLI 初始化会写入无法解析的调用。
 # 2. `xcodegen` 不在 runner 镜像内，需 brew 安装（cocoapods 自带）。
@@ -22,7 +22,7 @@ on:
       - "packages/**"
       - ".github/workflows/ios-verify.yml"
       # 依赖与工作区配置同样决定构建能否成立：漏了它们会「推上去毫无反应」
-      # （pnpm 12 的构建脚本批准就写在 pnpm-workspace.yaml，曾因此白推一次）
+      # （pnpm 12 的构建脚本批准就写在 pnpm-workspace.yaml，曾因此多耗一轮流水线）
       - "pnpm-workspace.yaml"
       - "pnpm-lock.yaml"
       - "package.json"
@@ -42,7 +42,7 @@ jobs:
       # beforeBuildCommand（`pnpm build --mode tauri && pnpm build:prepare`），**再跑一次前端构建
       # 并覆盖上一步的 dist**，而嵌进二进制（Rust 编译期 `frontendDist`）的正是这一次的产物。
       # 只在预构建步加 flag 会被这一轮洗掉 ⇒ 探针（`src/diag.ts`，`VITE_LFEN_DIAG === "1"` 门控）
-      # 被 tree-shake，`[lfen-diag]` 一行都不会出现——实测 run #40 正是如此（build log 里
+      # 被 tree-shake，`[lfen-diag]` 一行都不会出现——历史运行 run #40 正是如此（build log 里
       # `dist/assets` 只有一个 index chunk，没有 diag chunk）。
       VITE_LFEN_DIAG: "1"
     steps:
@@ -100,7 +100,7 @@ jobs:
           tool: cargo-binstall
 
       # 注意：crate 名是 `tauri-cli`（二进制才是 cargo-tauri）——按 cargo-tauri 查会找不到 crate。
-      # 带 GITHUB_TOKEN 让 binstall 直接命中 release 预编译资产；无 token 时限流会回退源码编译（实测约 11 分钟）。
+      # 带 GITHUB_TOKEN 让 binstall 直接命中 release 预编译资产；无 token 时限流会回退源码编译（约 11 分钟）。
       - name: 安装 tauri-cli
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -155,13 +155,13 @@ jobs:
         working-directory: apps/playground
         run: |
           set +e
-          # 【已证伪的假设·留档】曾疑 release/debug 运行时差异：debug 与 release 的差异在本项目骗过我们一次
-          # （「过场前 7 秒黑屏」最终证明是 debug 构建假象，release 实测仅 1 帧）。
-          # 本轮换 release 的目的：判定 iOS 白屏是否也属这一类——debug-only 的 ws_dev 开发通道
+          # 【已证伪的假设·留档】曾疑 release/debug 运行时差异：debug 与 release 的差异出现过一次误判
+          # （「过场前 7 秒黑屏」最终证明是 debug 构建假象，release 下仅捕获 1 帧）。
+          # 改用 release 的目的：判定 iOS 白屏是否也属这一类——debug-only 的 ws_dev 开发通道
           # （#[cfg(debug_assertions)]，监听 127.0.0.1:1421）在 release 里整段不存在。
           # 前端探针不受影响（它由 VITE_LFEN_DIAG 控制，作业级环境变量已带上）。
-          # ⚠️ 该子命令**没有** `--release` 参数——release 即默认，`--debug` 才是 opt-in
-          # （加 `--release` 会直接 `unexpected argument` 退出，实测踩过）。
+          # 该子命令**没有** `--release` 参数——release 即默认，`--debug` 才是 opt-in
+          # （加 `--release` 会直接 `unexpected argument` 退出）。
           #
           # 【已证伪的假设·留档】曾用 --config 把主窗口覆写为 `visible: true`（仅 CI 注入，不进仓库）。
           # 依据是源码级线索 + 一条已知缺陷：
@@ -171,8 +171,8 @@ jobs:
           # WKWebView 就会永远处于 hidden：**页面 JS/DOM 全正常、却一个像素都不画**，
           # 与 Apple 论坛 741088 记录的现象逐条一致（DOM 完好、inspector 能看到元素轮廓、
           # 设备上内容不渲染）。
-          # **档位回 debug**：取证设施（Rust 启动心跳、启动面包屑）都是 `#[cfg(debug_assertions)]`，
-          # release 下整段消失。档位与白屏无关——已实测 release 与 debug 的近白占比同为 0.9858。
+          # **档位回 debug**：诊断设施（Rust 启动心跳、启动面包屑）都是 `#[cfg(debug_assertions)]`，
+          # release 下整段消失。档位与白屏无关——已测得 release 与 debug 的近白占比同为 0.9858。
           # **`--config visible:true` 实验已撤**：同样无效（仍 0.9858），三轮结构性假设全部证伪。
           cargo tauri ios build --debug --target aarch64-sim x86_64 > /tmp/ios-build.log 2>&1
           status=$?
@@ -187,7 +187,7 @@ jobs:
           fi
           exit "$status"
 
-      - name: 产物结构自述（白屏类问题验尸用；notice annotation 匿名可读）
+      - name: 产物结构自述（白屏类问题诊断用；notice annotation 匿名可读）
         working-directory: apps/playground/src-tauri
         run: |
           set +e
@@ -217,7 +217,7 @@ jobs:
           if-no-files-found: error
           path: apps/playground/src-tauri/gen/apple/build/**/*.app
 
-      - name: 模拟器冒烟（安装 → 启动 → 截图 → 先取证再断言）
+      - name: 模拟器冒烟（安装 → 启动 → 截图 → 校验）
         working-directory: apps/playground/src-tauri
         run: |
           set +e
@@ -235,16 +235,16 @@ jobs:
           xcrun simctl install "$udid" "$app" || { echo "::error::安装失败"; exit 1; }
 
           # **先让显示器持续刷新**：CI 模拟器是 headless 的（不开 Simulator.app），页面可能拿不到
-          # 动画帧。实测：rAF 只跑 3 帧、>0 的 setTimeout 25 秒一次不响、引擎的 BGM 淡入停在
+          # 动画帧。rAF 只跑 3 帧、>0 的 setTimeout 25 秒一次不响、引擎的 BGM 淡入停在
           # 0.146（淡入由 rAF 驱动）、m2+ 再无 DOM 变动，而 WebContent CPU 仅 0.3%（空闲、非卡死）
           # ——即「页面活着但没有任何帧与定时器节拍」，引擎的 rAF 渲染循环因此停摆。
           # 录屏会强制显示管线持续工作：**若 UI 因此出现，白屏即归因于「无帧环境」而非产品缺陷**；
-          # 顺带把整段过程录下来（比单张截图证据强得多）。
+          # 同时把整段过程录下来作为补充证据。
           xcrun simctl io "$udid" recordVideo --codec=h264 --force /tmp/ios-smoke.mp4 \
             > /tmp/ios-rec.log 2>&1 &
           rec_pid=$!
           echo "rec_pid=$rec_pid"
-          # 启动：**不用 `--console-pty`** —— 它的 pty 输出落到重定向文件是块缓冲的，实测连续两轮
+          # 启动：**不用 `--console-pty`** —— 它的 pty 输出落到重定向文件是块缓冲的，连续两轮
           # 30 秒内一字不落（0 字节），等于把 launch 变成黑盒（拿不到 pid、也拿不到 launch 失败原因）。
           # 改回普通 launch：成功即刻打印 pid、失败打印错误文本。app 的 stderr 证据改由下面
           # 的 oslog（--info --debug）+ 崩溃报告承担。
@@ -252,7 +252,7 @@ jobs:
           echo "launch_exit=$?" >> /tmp/ios-launch.log
           sleep 30
 
-          # 存活检查带重试（simctl launch 与进程注册偶有竞态；实测同代码有 1 次误判）
+          # 存活检查带重试（simctl launch 与进程注册偶有竞态；同代码曾出现 1 次误判）
           alive=no
           for _ in 1 2 3; do
             xcrun simctl spawn "$udid" launchctl list 2>/dev/null | grep -qi "com.langfeng.lingfanengine" && { alive=yes; break; }
@@ -273,10 +273,10 @@ jobs:
           wait "$rec_pid" 2>/dev/null || true
           ls -la /tmp/ios-smoke.mp4 2>/dev/null || true
 
-          # **先取证再断言**：无论存活与否都把诊断回传（否则崩溃日志会随失败一起丢掉）
-          # 画面是否「什么都没画」：逐像素算近白占比（实测两轮白屏 = 98.60% / 98.59%，
-          # 主屏 = 509KB 量级，差距显著）。**只报警不失败**——「有内容」的基线还没拿到
-          # （iOS 白屏尚未修好），此时设硬门会制造假红；基线到手后再升级为断言。
+          # **先校验再断言**：无论存活与否都把诊断回传（否则崩溃日志会随失败一起丢掉）
+          # 画面是否「什么都没画」：逐像素算近白占比（两轮白屏 = 98.60% / 98.59%，
+          # 主屏 = 509KB 量级，差距显著）。**只报警不失败**——「画面有内容」的测量基线还没建立
+          # （iOS 白屏尚未修好），此时设硬性阈值会误报失败；基线建立后再升级为断言。
           sips -s format bmp /tmp/ios-smoke.png --out /tmp/ios-smoke.bmp >/dev/null 2>&1 || true
           python3 - <<'PY' > /tmp/ios-white.txt 2>&1 || echo "near_white_ratio=unknown" > /tmp/ios-white.txt
           import struct
@@ -291,7 +291,7 @@ jobs:
           PY
           cat /tmp/ios-white.txt
           if grep -qE "near_white_ratio=0\.9[5-9]|near_white_ratio=1\.0000" /tmp/ios-white.txt; then
-            echo "::warning title=iOS 疑似白屏::$(cat /tmp/ios-white.txt)——近白占比过高，画面可能什么都没画（判据：白屏实测 98.6%）"
+            echo "::warning title=iOS 疑似白屏::$(cat /tmp/ios-white.txt)——近白占比过高，画面可能什么都没画（判据：白屏占比 98.6%）"
           fi
 
           {
@@ -322,10 +322,10 @@ jobs:
 
       - name: 上传冒烟证据
         if: always()
-        # 白屏验尸的主要证据（oslog / 冒烟诊断 / 产物结构）此前只经 `::notice` 回传；实测
-        # notice annotation 在该仓库未落地（run 与 job 均 completed 后 annotations 仍为空数组），
-        # 而无凭据环境下 Workflow 日志不可下载 ⇒ 必须随产物带走，否则诊断链断在这里。
-        # ⚠️ 注释放这里、不放 `path: |` 块内——块标量里的 `#` 是**字面文本**，会被当成 glob 条目。
+        # 白屏诊断的主要证据（oslog / 冒烟诊断 / 产物结构）此前仅经 `::notice` 回传，但
+        # notice annotation 在该仓库未接入（run 与 job 均 completed 后 annotations 仍为空数组），
+        # 而无凭据环境下 Workflow 日志不可下载 ⇒ 必须随产物保存，否则诊断链断在这里。
+        # 注释放这里、不放 `path: |` 块内——块标量里的 `#` 是**字面文本**，会被当成 glob 条目。
         uses: actions/upload-artifact@v4
         with:
           name: ios-smoke-evidence

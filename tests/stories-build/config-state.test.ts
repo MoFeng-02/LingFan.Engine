@@ -1,7 +1,7 @@
 /**
  * config.ts 契约测试（config 化换道后的声明通道）。
  *
- * 契约口径（界面规范：项目记录 对应章节/对应章节）：
+ * 契约口径：
  * `Stories.src/config.ts` 以 named exports 单次求值声明四导出——folders/start（布局，必需）、
  * vars/state（可缺省），并叠加形态 B 的 define() 累积：
  *   - 布局字段复用 parseFolders/parseStart 校验（fail-closed）；
@@ -11,11 +11,11 @@
  *   - state/define 合并树与形态 A 走同一降维文法（descriptor/enum/数组 descriptor/
  *     type 槽并集——多元素数组成员槽位，null 为成员之一）。
  *
- * 五类覆盖（内部规约 对应章节 测试纪律）：①拟态用户（四导出全链/枚举相对导入求值）
+ * 五类覆盖（测试分层约定）：①拟态用户（四导出全链/枚举相对导入求值）
  * ②故意错误（互斥/冲突/空段/点键/值文法）③不变量（define 合并树只经降维进 defines）
- * ④边界（皆缺省）⑤回归锚定（defines 逐键落 project.json）。
+ * ④边界（皆缺省）⑤回归（defines 逐键落 project.json）。
  *
- * 白盒为零：全部走公共入口 buildStories（内部规约 公共 API 走 @lingfan/*）。
+ * 白盒为零：全部走公共入口 buildStories，公共 API 走 @lingfan/*。
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -155,7 +155,7 @@ describe("config.ts 契约 · 形态 B（define 累积）", () => {
     await expect(buildStories(root)).rejects.toThrow(/点路径含空段/);
   });
 
-  it("对象字面量点键不拦在合并层 ⇒ 降维段 dotKeyError 统一守卫（对应章节.3/对应章节.6）", async () => {
+  it("对象字面量点键不拦在合并层 ⇒ 降维段 dotKeyError 统一守卫", async () => {
     const root = makeProject("define-dotted-key", {
       "Stories.src/config.ts": config(["ch1"]) + `define({ "a.b": 1 });\n`,
       "Stories.src/ch1/start.ts": START_STORY,
@@ -287,7 +287,7 @@ describe("config.ts 契约 · type 槽并集文法（成员槽位取并集，nul
   });
 });
 
-describe("config.ts 契约 · 回归锚定", () => {
+describe("config.ts 契约 · 回归", () => {
   it("state 降维诊断挂在 config.ts 定位（STATE_SCHEMA_REL 硬编码已退役）", async () => {
     // 裸数组拒（降维文法）+ 定位锚定：诊断文件必须是 config.ts，而不是旧 lib/state.ts。
     const root = makeProject("diag-location", {

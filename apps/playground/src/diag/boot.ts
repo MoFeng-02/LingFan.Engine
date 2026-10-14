@@ -7,13 +7,13 @@ import { snapshot } from "./probe";
 import { report } from "./report";
 
 /** 启动探针：初帧采一次 + **rAF 帧计数**当钟采样（f1/f60/f300/f600）+ 挂载后前 5 次 DOM 变动采样。
- *  **不用 `setTimeout` 计时**——iOS 上它的延迟回调会被压住（2s/10s/20s 一处不响）。 */
+ *  **不用 `setTimeout` 计时**——iOS 上它的延迟回调可能被压住。 */
 export function startDiag(): void {
   report({ phase: "probe-start", ua: navigator.userAgent.slice(0, 80) });
   snapshot("t0"); // 初帧（Vue 挂载前，`#app` 必空——该 verdict 已标 initial、不参与归因）
-  // **计时器改成 rAF 帧计数**：iOS 上 `setTimeout(>0)` 全被压住（2s/10s/20s 一处不响），
-  // 而 rAF 正常触发（raf:1/2/3 已实证）。用帧数当钟，既绕开节流，也顺带证明页面在合成。
-  // 帧步长按 60fps 估：60≈1s、300≈5s、600≈10s（覆盖 iOS CI 的 25s 存活窗口前段）。
+  // **计时器改成 rAF 帧计数**：iOS 上 `setTimeout(>0)` 可能被压住，而 rAF 正常触发。
+  // 用帧数当钟，既绕开节流，也同时证明页面在合成。
+  // 帧步长按 60fps 估：60≈1s、300≈5s、600≈10s。
   const at = new Map<number, string>([
     [1, "f1"],
     [60, "f60"],

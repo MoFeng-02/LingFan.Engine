@@ -2,9 +2,9 @@
 import { computed, inject, ref } from "vue";
 import type { Story, StoryColumn } from "@lingfan/engine";
 import { layoutColumns, sceneTypeBadgeOf } from "@lingfan/editor";
-import { decideAddColumn } from "../addColumnIntent";
+import { decideAddColumn } from "../domain";
 import { COLUMN_GROUPING_API_KEY, EDITOR_API_KEY } from "../contracts";
-import { useDialog } from "../dialogInjection";
+import { useDialog } from "../app";
 
 /**
  * 列侧栏 + 列分组归类（UI 侧元数据）。

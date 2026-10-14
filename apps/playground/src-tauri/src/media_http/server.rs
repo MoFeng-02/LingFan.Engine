@@ -65,7 +65,7 @@ fn start(app: &tauri::AppHandle) -> Option<ServerInfo> {
                 let app = app.clone();
                 let token = serve_token.clone();
                 std::thread::spawn(move || {
-                    // 上下文按连接解析（资源根/DEK 与协议 handler 同源，无第二份真源）
+                    // 上下文按连接解析（资源根/DEK 与协议 handler 同源，不另持一份事实来源）
                     let Some(ctx) = MediaCtx::resolve(&app) else {
                         return;
                     };

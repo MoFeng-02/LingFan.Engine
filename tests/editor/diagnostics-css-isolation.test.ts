@@ -4,7 +4,7 @@
  * 症状：新写的诊断分组用了通用类名 `.group-head`，而 `ColumnList` /
  * `ComponentPalette` / `StageEditor` **早就在用同一个类名** ⇒ 探针按类名选择器
  * 点组头时点到的是**别的面板的组头**（「组头数」与预期不符，点开的是
- * 舞台的元素），一度被误判成「折叠功能坏了」。
+ * 舞台的元素）。
  *
  * 根因不是逻辑，是**CSS 类名没有组件作用域**（scoped style 只作用于本组件模板，
  * 但**类名字符串本身**在 DOM 里是全局可见的，跨组件同名字段会互相干扰）。
@@ -14,10 +14,12 @@
  */
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const COMPONENTS =
-  "E:/Project/MyProject/LingFan/LingFan.Engine/apps/editor/src/components";
+const COMPONENTS = fileURLToPath(
+  new URL("../../apps/editor/src/components", import.meta.url),
+);
 
 /**
  * 组件模板里出现的静态 class 名。
@@ -69,7 +71,7 @@ describe("诊断面板 · 类名隔离", () => {
 
   it("组头类名带 `diag-` 前缀且**全仓唯一**", () => {
     const own = classesOf("DiagnosticsPanel.vue");
-    // 组头是本面板的核心交互目标（曾与 3 个组件撞名）
+    // 组头是本面板的核心交互目标（类名全局撞名即误伤，故必须带 diag- 前缀）
     const heads = [...own].filter((c) => c.includes("head"));
     expect(heads.length).toBeGreaterThan(0);
     for (const h of heads) expect(h.startsWith("diag-")).toBe(true);

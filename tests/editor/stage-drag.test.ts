@@ -11,7 +11,7 @@
  * - 跨边界互锁 ⇒ `editorApi` 契约面（`select` 不得再切视图；`reveal` 必须在两处需求点）
  */
 import { describe, expect, it } from "vitest";
-import appSource from "../../apps/editor/src/App.vue?raw";
+import apiSource from "../../apps/editor/src/app/editorApi.ts?raw";
 import stageEditorSource from "../../apps/editor/src/components/StageEditor.vue?raw";
 import diagnosticsSource from "../../apps/editor/src/components/DiagnosticsPanel.vue?raw";
 import stepLayoutSource from "../../apps/editor/src/components/StepLayout.vue?raw";
@@ -24,30 +24,31 @@ const code = (s: string): string =>
 
 describe("舞台拖拽回归 · select 不得再切视图", () => {
   it("`select()` 只做选中，**不含** `centerView` 赋值（修法 a）", () => {
-    const src = code(appSource);
+    // api 对象实现在 app/editorApi.ts（断言只换证据源，行为不变）
+    const src = code(apiSource);
     // 取 select 的函数体（到下一个同缩进方法为止）
     const start = src.indexOf("select(pointer: string | null): void {");
     expect(start).toBeGreaterThan(-1);
-    // 找它的结束：下一个 "\n  }," 之前的区间
-    const end = src.indexOf("\n  },", start);
+    // 找它的结束：下一个 "\n    },"（editorApi 内方法为 4 空格缩进）之前的区间
+    const end = src.indexOf("\n    },", start);
     const body = src.slice(start, end);
     expect(body).not.toContain("centerView");
     expect(body).not.toContain("scrollIntoView");
   });
 
   it("`reveal()` 独立存在且承担「切视图 + 滚动」", () => {
-    const src = code(appSource);
+    const src = code(apiSource);
     const start = src.indexOf("reveal(pointer: string): void {");
     expect(start).toBeGreaterThan(-1);
-    const body = src.slice(start, src.indexOf("\n  },", start));
+    const body = src.slice(start, src.indexOf("\n    },", start));
     expect(body).toContain('centerView.value = "timeline"');
     expect(body).toContain("scrollIntoView");
   });
 
   it("`reveal` 先选中再切视图（顺序不能反，否则滚动时无选中行可锚）", () => {
-    const src = code(appSource);
+    const src = code(apiSource);
     const start = src.indexOf("reveal(pointer: string): void {");
-    const body = src.slice(start, src.indexOf("\n  },", start));
+    const body = src.slice(start, src.indexOf("\n    },", start));
     expect(body.indexOf("api.select(")).toBeLessThan(
       body.indexOf("centerView.value"),
     );

@@ -300,8 +300,7 @@ const offEvent = engine.onEvent((event) => {
       tone: toNotifyTone(payload.notifyType),
     });
     window.clearTimeout(toastTimer);
-    // 提示驻留（提常量）：沿袭现状 2600ms，零行为变化；与 playground 的 3000
-    // 是否统一另议
+    // 提示驻留 2600ms（playground 为 3000ms，两侧未统一）
     const NOTIFY_TOAST_DURATION_MS = 2600;
     toastTimer = window.setTimeout(() => {
       toasts.value = toasts.value.filter((t) => t.id !== id);

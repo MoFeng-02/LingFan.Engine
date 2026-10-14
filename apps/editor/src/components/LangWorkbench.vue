@@ -22,7 +22,7 @@ import {
   workbenchOverview,
   type SkeletonLayoutChoice,
 } from "@lingfan/editor";
-import { useDialog } from "../dialogInjection";
+import { useDialog } from "../app";
 
 /** 一个语言的聚合态（宿主供给，不在本组件解析文件） */
 export interface LangSummary {

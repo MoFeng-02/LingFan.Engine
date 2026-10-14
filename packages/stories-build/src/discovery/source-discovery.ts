@@ -6,14 +6,14 @@ import { StoryBuildError } from "../shared";
 
 /**
  * 源发现 v2（多目录形态）：
- * - 编译域 = folders 显式目录递归 ∪（含 "*" 时全部含故事目录），始终排除生成物目录；
- * - 探测域 = Stories.src 递归全集（同样排除生成物）——覆盖外发现 default 导出 = E07
+ * - 编译域 = folders 显式目录递归（含 "*" 时扩展为全部含故事目录），始终排除生成物目录；
+ * - 探测域 = Stories.src 递归全集（同样排除生成物）——覆盖外发现 default 导出按覆盖规则拒绝
  *   fail-closed（Stories.src 是全量管理：未登记的新章节文件不进编译域，其旧产物会被
  *   当作陈旧产物删除，必须在发现期拦住）；
  * - 故事 = default 具名 function 声明（列 id = 函数名，编译器侧解析）；default 存在但
- *   匿名 / 表达式形态 = E05 fail-closed；仅具名导出 = 纯模块（无列，import 可达即可，
+ *   匿名 / 表达式形态 fail-closed；仅具名导出 = 纯模块（无列，import 可达即可，
  *   不要求在 folders 内）；
- * - config.start = 入口故事文件名（含 .ts），跨探测域精确匹配，全局恰一（E04）。
+ * - config.start = 入口故事文件名（含 .ts），跨探测域精确匹配，全局恰一。
  */
 export interface DiscoveredSources {
   /** 故事文件（相对 `Stories.src/`，posix 排序）——default 具名 function 声明的 .ts */
@@ -54,7 +54,7 @@ export async function discoverSources(
     return false;
   };
 
-  // —— E07：覆盖外 default 导出（含转发形态；纯模块无 default 不受影响；
+  // —— 覆盖外 default 导出（含转发形态；纯模块无 default 不受影响；
   // 根级 config.ts 自身的 default 是布局声明，豁免）——
   const uncoveredDefaults = probe.filter(
     (rel) =>
@@ -120,7 +120,7 @@ function fileNameOf(rel: string): string {
   return rel.slice(rel.lastIndexOf("/") + 1);
 }
 
-/** 编译域目录集：显式 folders ∪（含 "*" 时全树含 .ts 的目录），始终排除生成物目录前缀。 */
+/** 编译域目录集：显式 folders（含 "*" 时扩展为全树含 .ts 的目录），始终排除生成物目录前缀。 */
 function collectCoveredDirs(
   config: StorySourceConfig,
   tree: ReadonlyMap<string, string>,
@@ -147,7 +147,7 @@ type DefaultVerdict = "story" | "none" | "bad";
  * - `export default function main() {}` = 直接 FunctionDeclaration 节点（default 修饰符）；
  * - `export default …`（表达式 / 匿名函数）= ExportAssignment 包装；
  * - `export { main as default }` = 具名转发（编译器侧解析函数名）。
- * 具名 function 声明 / 具名转发 → "story"；匿名、类、表达式 → "bad"（E05）；无 default → "none"。
+ * 具名 function 声明 / 具名转发 → "story"；匿名、类、表达式 → "bad"（不可作故事入口）；无 default → "none"。
  */
 function classifyDefault(text: string): DefaultVerdict {
   const source = ts.createSourceFile(

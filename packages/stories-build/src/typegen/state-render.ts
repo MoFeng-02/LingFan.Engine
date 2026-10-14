@@ -1,5 +1,5 @@
 /**
- * StoryState 类型面渲染器（形态 B gen 类型面，界面规范 对应章节类型面分流）。
+ * StoryState 类型面渲染器（形态 B gen 类型面）。
  *
  * 输入 = config 求值合并树（形态 A state 树 / 形态 B define 树，与降维段同一棵）+
  * AST 侧回收的枚举 type 槽位（collectEnumTypeSlotsForBuild）。输出 =

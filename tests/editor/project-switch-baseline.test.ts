@@ -8,9 +8,12 @@
  *
  * 守卫两条：① `applyOpened` 必须在 `openColumnDocument` **之前**关闭全部
  * 既有文档；② 旧的「按路径过滤保留」写法不得回流。
+ *
+ * applyOpened / unbindProject 在 `app/useProjectOpen.ts`，
+ * 断言随之重新指向（找的内容不变，换找的位置）。
  */
 import { describe, expect, it } from "vitest";
-import appSource from "../../apps/editor/src/App.vue?raw";
+import openSource from "../../apps/editor/src/app/useProjectOpen.ts?raw";
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
 const code = (source: string): string =>
@@ -18,7 +21,7 @@ const code = (source: string): string =>
 
 /** `applyOpened` 函数体切片（起于函数声明，止于下一个顶层函数） */
 function applyOpenedBlock(): string {
-  const src = code(appSource);
+  const src = code(openSource);
   const start = src.indexOf("function applyOpened");
   const end = src.indexOf("function unbindProject", start);
   expect(start).toBeGreaterThan(-1);
