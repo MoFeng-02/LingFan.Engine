@@ -16,7 +16,7 @@ import type {
   InteractionContext,
   InteractionResult,
 } from "@lingfan/engine";
-import { abortSignalOf } from "./abort-signal";
+import { abortSignalOf } from "../engine/abort-signal";
 
 /** 故事未在 `config.target` 里给终点时的演示默认值（像素） */
 export const DEFAULT_WALK_TARGET_PX = 120;

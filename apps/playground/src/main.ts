@@ -61,7 +61,7 @@ import {
   renderBrowserBlocked,
 } from "./boot";
 import { browserPlayAllowed } from "./browserGuard";
-import { installStoryFonts } from "./host/app-fonts";
+import { installStoryFonts } from "./host/assets/app-fonts";
 
 // 渲染诊断探针：`VITE_LFEN_DIAG=1` 构建时启用（白屏诊断用）；默认构建
 // 动态 import 被 tree-shake，产物零增重。独立于 boot——白屏时 boot 可能挂，探针必须无条件跑。

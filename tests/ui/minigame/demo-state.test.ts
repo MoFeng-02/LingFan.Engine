@@ -13,7 +13,7 @@ import type {
 } from "@lingfan/engine";
 import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
 import { createMinigameRegistry } from "@lingfan/ui";
-import { createClick3Demo } from "../../../apps/playground/src/host/minigame-demo";
+import { createClick3Demo } from "../../../apps/playground/src/host/demos/minigame-demo";
 
 interface Harness {
   engine: StoryEngine;
