@@ -16,8 +16,10 @@ import {
   type StoryEngine,
 } from "@lingfan/engine";
 import { Typewriter } from "@lingfan/ui";
+import { createNarrativeState } from "@lingfan/shell";
 import { createLayerZController } from "./layer-z";
-import { createNarrativeState, type NarrativeState } from "./narrative-state";
+import { vueCells } from "./vue-cells";
+import type { NarrativeState } from "./narrative-state";
 
 /** 打字机的宿主级共享句柄：当前句的读取与整体置空（重启时用） */
 export interface TypewriterHandle {
@@ -52,8 +54,10 @@ export function createAppNarrative(options: AppNarrativeOptions): AppNarrative {
   const { getEngine, layerZ, applyVideoZ, preferences } = options;
   let typewriter: Typewriter | null = null;
   // —— 视图状态：状态键 → 视图意图 → 响应式字段 ——
-  // 解读规则来自共享的叙事状态域；这里只注入宿主侧事实（层级键、角色配色、打字机重建）
+  // 解读规则来自共享的 shell 叙事状态域；这里只注入宿主侧事实（层级键、角色配色、打字机重建）
+  // Vue 响应式单元经 vueCells 注入：ref/computed 结构上就是 Cell，零包装直传
   const narrative = createNarrativeState({
+    cells: vueCells,
     resolveLayer: (key) => instanceZLayer(key),
     // 本宿主不提供故事级打字机设置：字速一律取玩家偏好
     readTypingSetting: () => undefined,
@@ -86,7 +90,8 @@ export function createAppNarrative(options: AppNarrativeOptions): AppNarrative {
     return zController.zOf(layer);
   }
   return {
-    narrative,
+    // 注入的单元就是 Vue ref/computed（vue-cells.ts），模板解包与类型检查按 Vue 语义命名
+    narrative: narrative as unknown as NarrativeState,
     zOf,
     typewriter: {
       get: () => typewriter,

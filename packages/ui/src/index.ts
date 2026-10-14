@@ -109,12 +109,12 @@ export {
   type NarrativeOverlayView,
 } from "./overlay";
 export {
+  DEFAULT_ACTION_TOAST_MS,
   DEFAULT_LOAD_TOAST_MS,
   DEFAULT_NOTIFY_MS,
   DEFAULT_ROLLBACK_NOTICE_MS,
   DEFAULT_TEXT_CPS,
   DEFAULT_TOAST_MS,
-  DEFAULT_VUE_TOAST_MS,
   createFrameLoop,
   createLayerView,
   createStateView,

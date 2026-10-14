@@ -4,6 +4,8 @@
  * 面板只负责「呈现槽位」：写读与校验由引擎命令面承担（`engine.save` /
  * `engine.load`），此处读取存档端口仅为取标题与缩略图；读取失败按空槽呈现，
  * 真实读档失败由引擎 fail-closed 上报。
+ *
+ * 本模块平台无关：不触碰任何框架、DOM 或宿主全局。
  */
 import type { SaveDataV1, SavePort } from "@lingfan/engine";
 
@@ -32,6 +34,8 @@ export interface SlotPanelOptions {
   savePort: SavePort;
   /** 本工程的槽位 id 序列（顺序即呈现顺序） */
   slotIds: readonly string[];
+  /** 槽位显示名：把槽位 id 变成面板上给玩家看的一行字；缺省 = 去掉 `slot_` 前缀后加「槽位 」 */
+  labelFor?(id: string): string;
 }
 
 /**
@@ -60,6 +64,7 @@ export function parseSlotMeta(raw: string): {
 export async function loadSlotViews(
   options: SlotPanelOptions,
 ): Promise<SlotView[]> {
+  const labelFor = options.labelFor ?? defaultSlotLabel;
   const summaries = await options.savePort.list().catch(() => []);
   const byId = new Map(summaries.map((s) => [s.slot, s]));
   const views: SlotView[] = [];
@@ -71,7 +76,7 @@ export async function loadSlotViews(
     }
     views.push({
       id,
-      label: id.replace("slot_", "槽位 "),
+      label: labelFor(id),
       empty: summary === undefined,
       timestamp: summary?.timestamp,
       title: meta.title,
@@ -79,4 +84,9 @@ export async function loadSlotViews(
     });
   }
   return views;
+}
+
+/** 槽位显示名的缺省规则：`slot_1` → `槽位 1`（宿主可用 labelFor 覆盖） */
+function defaultSlotLabel(id: string): string {
+  return id.startsWith("slot_") ? `槽位 ${id.slice(5)}` : id;
 }

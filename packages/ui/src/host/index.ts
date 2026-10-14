@@ -7,12 +7,12 @@
  * 需要碰 DOM 的地方一律以接口形式把动作注入进来。
  */
 export {
+  DEFAULT_ACTION_TOAST_MS,
   DEFAULT_LOAD_TOAST_MS,
   DEFAULT_NOTIFY_MS,
   DEFAULT_ROLLBACK_NOTICE_MS,
   DEFAULT_TEXT_CPS,
   DEFAULT_TOAST_MS,
-  DEFAULT_VUE_TOAST_MS,
 } from "./duration";
 export {
   createVisualEffects,

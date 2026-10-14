@@ -19,7 +19,11 @@ import {
   collectStageMedia,
   stripHtml,
 } from "../shell";
-import { loadSlotViews, type SlotPanelMode, type SlotView } from "./slot-panel";
+import {
+  loadSlotViews,
+  type SlotPanelMode,
+  type SlotView,
+} from "@lingfan/shell";
 
 /** 装配入参：存档端口与壳配置、对话框视图、舞台根与引擎句柄 */
 export interface AppSlotsOptions {

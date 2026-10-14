@@ -6,10 +6,14 @@
  * 「每条分支做什么」；打字机与输入值都是宿主级共享状态，经注入句柄读写。
  */
 
-import { type Ref } from "vue";
+import { type Ref, ref } from "vue";
 import type { StoryEngine } from "@lingfan/engine";
-import { createNarrativeEvents, type NarrativeEvents } from "./narrative-event";
-import { createNotices, type Notices } from "./notices";
+import {
+  createNarrativeEvents,
+  createNotices,
+  type NarrativeEvents,
+  type Notice,
+} from "@lingfan/shell";
 import type { AppMedia } from "./app-media";
 import type { NarrativeState } from "./narrative-state";
 import type { TypewriterHandle } from "./app-narrative";
@@ -30,8 +34,8 @@ export interface AppEventsOptions {
 
 /** 事件与输入出口能力：提示条、事件落点、状态同步与舞台输入转发 */
 export interface AppEvents {
-  /** 提示条列表（模板 v-for 读它） */
-  notifications: Notices["items"];
+  /** 提示条列表（模板 v-for 读它；Vue ref，模板自动解包） */
+  notifications: Ref<Notice[]>;
   /** 叙事事件落点（handleEvent 的各分支经它生效） */
   narrativeEvents: NarrativeEvents;
   /** 引擎状态变化 → 叙事视图状态（bindEngine 的 state 订阅回调） */
@@ -50,8 +54,8 @@ export interface AppEvents {
 export function createAppEvents(options: AppEventsOptions): AppEvents {
   const { narrative, media, error, getEngine, typewriter } = options;
   const { canAdvance, inWait, inVideo, inputValue, shownText } = narrative;
-  /** 提示条出口：驻留与摘除归共享的宿主层，这里只把列表交给模板 */
-  const notices = createNotices();
+  /** 提示条出口：驻留与摘除归共享的宿主层，这里把响应式列表落点交给它 */
+  const notices = createNotices({ items: ref<Notice[]>([]) });
   /** 提示条列表（模板 v-for 读它） */
   const notifications = notices.items;
   /** 回放或读档后，渲染状态与引擎对齐（回溯/读档重写了对话与 NVL 系统键） */
@@ -63,7 +67,7 @@ export function createAppEvents(options: AppEventsOptions): AppEvents {
   }
   /**
    * 事件落点：提示条、读档诊断与错误横幅。
-   * 每条分支做什么归 `narrative-event.ts`；分流顺序（哪个分支在前）留在 App.vue。
+   * 每条分支做什么归 @lingfan/shell 的事件域；分流顺序（哪个分支在前）留在 App.vue。
    */
   const narrativeEvents = createNarrativeEvents({
     notices,
@@ -101,7 +105,8 @@ export function createAppEvents(options: AppEventsOptions): AppEvents {
     inputValue.value = "";
   }
   return {
-    notifications,
+    // 提示条列表就是本地 ref（传给 shell 时作 Cell，暴露给模板时作 Ref）——同一对象两个命名
+    notifications: notifications as Ref<Notice[]>,
     narrativeEvents,
     handleState,
     syncFromEngine,
