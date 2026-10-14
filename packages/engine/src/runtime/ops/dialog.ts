@@ -233,7 +233,7 @@ export function execWait(
   ctx.liveCheckpointed = true;
   ctx.autoSaveAtCheckpoint(); // wait 等待画面建立 = auto_save 消费点
   frame.index += 1;
-  ctx.pendingTimer = setTimeout(
+  ctx.pendingTimer = ctx.timerPort.set(
     () => {
       ctx.pendingTimer = null;
       ctx.waitSkipable = false;

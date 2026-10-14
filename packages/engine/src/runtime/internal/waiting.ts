@@ -34,7 +34,7 @@ export function input(ctx: OpContext, value: string): void {
 /** 清掉挂起的等待定时器（导航、销毁、读档与回溯前调用，避免旧计时器醒来改状态） */
 export function clearTimer(ctx: OpContext): void {
   if (ctx.pendingTimer !== null) {
-    clearTimeout(ctx.pendingTimer);
+    ctx.timerPort.clear(ctx.pendingTimer);
     ctx.pendingTimer = null;
   }
 }

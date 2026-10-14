@@ -33,6 +33,8 @@ import type {
   Story,
   StoryColumn,
   StoryCommand,
+  TimerHandle,
+  TimerPort,
 } from "../../contracts/index.ts";
 import type { ExprValue } from "../expr/index.ts";
 import type { RegisteredOp } from "../opRegistry.ts";
@@ -127,6 +129,8 @@ export interface OpContext {
   // —— 存档编排 ——
 
   savePort: SavePort | undefined;
+  /** 定时器端口（wait/pause 的延迟回调与解除；构造期从 EngineOptions 装配，缺省 hostTimer） */
+  timerPort: TimerPort;
   saveMode: SaveMode;
   readonly usedExtensions: Set<string>;
   readonly extensionById: ReadonlyMap<string, OpExtension>;
@@ -169,7 +173,7 @@ export interface OpContext {
 
   started: boolean;
   waitSkipable: boolean;
-  pendingTimer: ReturnType<typeof setTimeout> | null;
+  pendingTimer: TimerHandle | null;
   inputStore: string | null;
   /** 清掉等待定时器 */
   clearTimer(): void;

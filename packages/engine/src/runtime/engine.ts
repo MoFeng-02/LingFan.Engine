@@ -7,10 +7,11 @@ import type {
   AnimationSpec, CharacterDef, ColumnCoordinate, ElementInstance, EngineOptions,
   EventListener, GuardFn, I18nPort, MinigameRegistration, MinigameResult,
   OpExtension, OutboundPayload, SaveDataV1, SaveMode, SavePort, StateListener,
-  Story, StoryColumn, StoryCommand, SaveOptions,
+  Story, StoryColumn, StoryCommand, SaveOptions, TimerHandle, TimerPort,
 } from "../contracts/index.ts";
 import {
-  gameScopedKey, type ExtensionOpResult, type GameStateWriter, type InteractionResult,
+  gameScopedKey, hostTimer, type ExtensionOpResult, type GameStateWriter,
+  type InteractionResult,
 } from "../contracts/index.ts";
 import { buildMinigameRegistry, buildOpRegistry } from "./opRegistry.ts";
 import type { RegisteredOp } from "./opRegistry.ts";
@@ -83,7 +84,9 @@ export class StoryEngine {
   /** 是否已 `start()`；未开始时推进类命令一律无效果（防重复入场） */
   private started = false;
   /** 等待型命令的定时器句柄；换列、回溯、读档、热重载、销毁时必须清掉，否则会推进已失效的等待 */
-  private pendingTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingTimer: TimerHandle | null = null;
+  /** 定时器端口（wait/pause 的延迟回调来源；缺省 hostTimer = 宿主全局定时器） */
+  private readonly timerPort: TimerPort;
   /** 当前等待能否被 `advance()` 解除（wait 的 skipable 且非 hard/pause）；只在引擎内部作为推进判据 */
   private waitSkipable = false;
   /** 角色定义注册表（character op 注册，say speaker 匹配自动套样式） */
@@ -235,6 +238,7 @@ export class StoryEngine {
       // 会话、帧栈、等待、媒体与舞台机制（只经 ctx 被迁出的自由函数读写）
       this.story, this.coord, this.frames, this.stateListeners,
       this.eventListeners, this.started, this.pendingTimer, this.waitSkipable,
+      this.timerPort,
       this.characters, this.inputStore, this.rollbackActive, this.pendingSay,
       this.rngState, this.videoSeq, this.savePort, this.saveMode,
       this.i18nPort, this.clearTimer, this.abortExternalTakeovers,
@@ -261,6 +265,7 @@ export class StoryEngine {
     this.savePort = options?.savePort;
     this.saveMode = options?.saveMode ?? "machine-bound";
     this.i18nPort = options?.i18nPort;
+    this.timerPort = options?.timerPort ?? hostTimer;
     const extensions = options?.extensions ?? [];
     this.extensionOps = buildOpRegistry(extensions);
     this.extensionById = new Map(extensions.map((e) => [e.id, e]));
