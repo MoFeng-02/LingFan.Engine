@@ -205,7 +205,7 @@ export function save(
     .write(slot, JSON.stringify(payload), ctx.saveMode)
     .then(() => ctx.emitEvent({ kind: "save.done", slot })) // 完成信号：UI 据此提示
     .catch((e: unknown) => {
-      ctx.fail("save-write-failed", `槽位 ${slot} 写档失败：${String(e)}`);
+      ctx.fail("save-write-failed", ctx.texts.saveWriteFailed(slot, String(e)));
     });
   return true;
 }
@@ -235,7 +235,7 @@ export function load(ctx: OpContext, slot: string): boolean {
       if (ctx.importSave(data)) ctx.emitEvent({ kind: "load.done", slot });
     })
     .catch((e: unknown) => {
-      ctx.fail("load-failed", `槽位 ${slot} 读取或解析失败：${String(e)}`);
+      ctx.fail("load-failed", ctx.texts.loadReadFailed(slot, String(e)));
     });
   return true;
 }
@@ -264,10 +264,7 @@ export async function setLanguage(ctx: OpContext, lang: string): Promise<void> {
   try {
     files = await ctx.i18nPort.loadOverlayFiles(lang);
   } catch (e: unknown) {
-    ctx.fail(
-      "i18n-overlay-failed",
-      `载入 ${lang} 译文 overlay 失败（保持原语言）：${String(e)}`,
-    );
+    ctx.fail("i18n-overlay-failed", ctx.texts.i18nLoadFailed(lang, String(e)));
     return;
   }
   ctx.overlay = mergeOverlayFiles(files); // 整表重建 = 清缓存再载入

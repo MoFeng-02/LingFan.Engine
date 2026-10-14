@@ -9,6 +9,7 @@ import type { MinigameRegistration } from "./minigame.ts";
 import type { SaveDataV1, SaveMode, SavePort } from "./save.ts";
 import type { I18nPort } from "./story/index.ts";
 import type { TimerPort } from "./runtime/timer.ts";
+import type { EngineTexts } from "./messages.ts";
 
 /** 引擎构造选项（全部可选；缺省即内建行为） */
 export interface EngineOptions {
@@ -28,6 +29,12 @@ export interface EngineOptions {
    * （原生编译目标）注入自己的实现即可。
    */
   timerPort?: TimerPort;
+  /**
+   * 用户可见文案表的部分覆盖（缺省 = `defaultEngineTexts`，即引擎的既有文案）。
+   * 按方法合并：只传你关心的方法，其余沿用缺省——宿主据此本地化玩家
+   * 可见消息（存读档失败、存档被拒等）而无须改引擎源码。
+   */
+  texts?: Partial<EngineTexts>;
   /** 自定义 op 扩展（构造期注册校验，fail-fast；缺省 = 无扩展，unknown-op 口径不变） */
   extensions?: readonly OpExtension[];
   /**

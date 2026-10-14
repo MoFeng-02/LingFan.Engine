@@ -5,6 +5,12 @@
  * 否则「谁能写」会出现两个口径。
  */
 import { normalizeResourceId } from "../../resourcePort";
+import { defaultResourceTexts, type ResourceTexts } from "../../texts";
+
+/** 合并宿主覆盖项（文案取自资源文案表；缺省实现即现文案，不传 texts 行为不变） */
+function resolveTexts(texts?: Partial<ResourceTexts>): ResourceTexts {
+  return { ...defaultResourceTexts, ...texts };
+}
 
 /**
  * 申请写权限：`queryPermission` 已 granted 直接放行；否则 `requestPermission`。
@@ -14,6 +20,7 @@ import { normalizeResourceId } from "../../resourcePort";
  */
 export async function ensureWriteAccess(
   root: FileSystemDirectoryHandle,
+  texts?: Partial<ResourceTexts>,
 ): Promise<void> {
   const dir = asWritableDir(root);
   if (dir.queryPermission !== undefined) {
@@ -23,7 +30,7 @@ export async function ensureWriteAccess(
   if (dir.requestPermission !== undefined) {
     const state = await dir.requestPermission({ mode: "readwrite" });
     if (state === "granted") return;
-    throw new Error(WRITE_PERMISSION_HINT);
+    throw new Error(resolveTexts(texts).writePermissionDenied());
   }
 }
 
@@ -50,10 +57,6 @@ export async function ensureReadAccess(
   if (dir.requestPermission === undefined) return true;
   return (await dir.requestPermission({ mode: "read" })) === "granted";
 }
-
-/** 未获写权限时的统一可操作文案（requestPermission 被拒 / createWritable 抛 NotAllowedError 同一句） */
-const WRITE_PERMISSION_HINT =
-  "未获得写入权限：请重新点击「打开工程」选择该目录，并在浏览器询问时选择「允许编辑」";
 
 /** 可写文件句柄（lib.dom 版本不一：只声明本模块用到的这一面） */
 export interface WritableFileHost {
@@ -95,10 +98,13 @@ export function asWritableFile(handle: FileSystemFileHandle): WritableFileHost {
   return handle as unknown as WritableFileHost;
 }
 
-/** 写权限被拒的两种表现归一（用户可见文案不分叉） */
-export function normalizeWriteError(error: unknown): unknown {
+/** 写权限被拒的两种表现归一（用户可见文案不分叉，文案取自资源文案表） */
+export function normalizeWriteError(
+  error: unknown,
+  texts?: Partial<ResourceTexts>,
+): unknown {
   if (error instanceof DOMException && error.name === "NotAllowedError") {
-    return new Error(WRITE_PERMISSION_HINT);
+    return new Error(resolveTexts(texts).writePermissionDenied());
   }
   return error;
 }

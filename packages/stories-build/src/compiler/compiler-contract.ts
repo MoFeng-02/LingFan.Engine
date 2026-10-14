@@ -1,4 +1,5 @@
 import { StoryBuildError } from "../shared/index.ts";
+import type { StoriesBuildTexts } from "../shared/index.ts";
 import type { StorySourceConfig } from "../config/story-config.ts";
 
 /**
@@ -51,6 +52,8 @@ export interface StoriesCompiler {
     readonly constValues?: CompilerConstValues;
     /** 字体名注册表（Resources/Fonts 文件名去扩展名）；缺省 = 空注册表，引用字体名即 fail-closed */
     readonly fontNames?: ReadonlySet<string>;
+    /** 文案注入（Partial）；缺省 = 内建缺省文案（即构建层的既有文案） */
+    readonly texts?: Partial<StoriesBuildTexts>;
   }): CompiledStories | Promise<CompiledStories>;
 }
 

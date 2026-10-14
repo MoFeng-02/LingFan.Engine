@@ -1,6 +1,10 @@
 import { isSafeFileNameSegment, type Story } from "@lingfan/engine";
 import type { StorySourceConfig } from "../config/story-config.ts";
 import {
+  defaultStoriesBuildTexts,
+  type StoriesBuildTexts,
+} from "../shared/index.ts";
+import {
   DiagBag,
   buildGraph,
   resolveStart,
@@ -31,19 +35,31 @@ export function compileStories(input: {
   readonly constValues?: CompilerConstValues;
   /** 字体名注册表（Resources/Fonts 文件名去扩展名）；缺省 = 空注册表，引用字体名即 fail-closed */
   readonly fontNames?: ReadonlySet<string>;
+  /** 文案注入（Partial）；缺省 = 内建缺省文案（即构建层的既有文案） */
+  readonly texts?: Partial<StoriesBuildTexts>;
 }): CompileStoriesResult {
+  const texts: StoriesBuildTexts = {
+    ...defaultStoriesBuildTexts,
+    ...input.texts,
+  };
   const diags = new DiagBag();
-  const graph = buildGraph(input.sourcesDir, diags, input.config, input.constValues);
+  const graph = buildGraph(
+    input.sourcesDir,
+    diags,
+    input.config,
+    input.constValues,
+    texts,
+  );
   if (graph === null) return { stories: [], diags: diags.list() };
   const entry = resolveStart(graph, diags);
 
-  const session = createAssembleSession(input.fontNames);
+  const session = createAssembleSession(input.fontNames, texts);
   const stories: CompiledStory[] = [];
   for (const rel of graph.coveredStories) {
     const compiled = compileStoryFile(session, graph, diags, rel);
     if (compiled !== undefined) stories.push(compiled);
   }
-  checkColumnIds(graph, diags, stories);
+  checkColumnIds(graph, diags, stories, texts);
 
   const list = diags.list();
   if (list.length > 0) return { stories: [], diags: list };
@@ -58,6 +74,7 @@ function checkColumnIds(
   graph: Graph,
   diags: DiagBag,
   stories: readonly CompiledStory[],
+  texts: StoriesBuildTexts,
 ): void {
   const seen = new Map<string, string>();
   for (const item of stories) {
@@ -74,7 +91,7 @@ function checkColumnIds(
         record.rel,
         record.sf,
         storyName,
-        `列 id \`${item.columnId}\` 为空或含不安全字符（E06）`,
+        texts.columnIdUnsafe(item.columnId),
       );
       continue;
     }
@@ -85,7 +102,7 @@ function checkColumnIds(
         record.rel,
         record.sf,
         storyName,
-        `列 id \`${item.columnId}\` 与 ${prev} 重复（大小写不敏感，E06）`,
+        texts.columnIdDuplicate(item.columnId, prev),
       );
       continue;
     }

@@ -141,7 +141,7 @@ export function autoSaveAtCheckpoint(ctx: OpContext): void {
       .catch((e: unknown) => {
         ctx.fail(
           "save-write-failed",
-          `槽位 ${pending.slot} 写档失败：${String(e)}`,
+          ctx.texts.saveWriteFailed(pending.slot, String(e)),
         );
       });
     return; // pending 消费即本画面已写，不叠加 auto 写
@@ -152,7 +152,7 @@ export function autoSaveAtCheckpoint(ctx: OpContext): void {
   void ctx.savePort
     .write("auto", JSON.stringify(data), ctx.saveMode)
     .catch((e: unknown) => {
-      ctx.fail("save-write-failed", `自动存档写入失败：${String(e)}`);
+      ctx.fail("save-write-failed", ctx.texts.autoSaveWriteFailed(String(e)));
     });
 }
 

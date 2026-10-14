@@ -5,7 +5,7 @@
  * 设计约定（分组只看 type、任意深度、0 层平铺退化）见出口文件头注。
  */
 
-import { isReplayableColumn, type StoryColumn } from "@lingfan/engine";
+import { isReplayableColumn, STORIES_DIR, type StoryColumn } from "@lingfan/engine";
 import type {
   ChapterDir,
   ChapterGroup,
@@ -14,8 +14,8 @@ import type {
   ChapterNode,
 } from "./index.ts";
 
-/** 故事文件的容器根（剥掉它，剩下的目录链才是「作者的章节编排」） */
-const STORIES_ROOT = "Stories/";
+/** 故事文件的容器根（剥掉它，剩下的目录链才是「作者的章节编排」；由引擎 SSOT 常量派生） */
+const STORIES_ROOT = `${STORIES_DIR}/`;
 
 /** 剥掉 `Stories/` 前缀（**容器根不算章节**——否则 `Stories/start.json` 的章节名会变成「Stories」） */
 function insideStories(path: string): string {

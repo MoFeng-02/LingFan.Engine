@@ -9,6 +9,9 @@
  * 走同一解密供给后与明文同口径参与（供给侧职责见 adapters `loadDiagnosticSupply`）。
  */
 
+import type { EditorTexts } from "../contracts/index.ts";
+import { resolveEditorTexts } from "../contracts/index.ts";
+
 export interface TranslationReconcileReport {
   /** 每语言缺译键（稳定排序；语言无缺译时为空数组——「齐」也是显式状态） */
   missingByLang: ReadonlyMap<string, readonly string[]>;
@@ -42,23 +45,26 @@ export function reconcileTranslations(
   return { missingByLang, unused: [...unused].sort() };
 }
 
-/** 可读报告（编辑器面板一节 / CLI stdout 共用）；逐语言缺译 + 多译两节 */
+/** 可读报告（编辑器面板一节 / CLI stdout 共用）；逐语言缺译 + 多译两节。
+ * `texts`（可选）= 集中文案表注入（缺省 defaultEditorTexts）。 */
 export function formatTranslationReport(
   report: TranslationReconcileReport,
+  texts: Partial<EditorTexts> = {},
 ): string {
+  const t = resolveEditorTexts(texts);
   const lines: string[] = [];
   for (const [lang, missing] of [...report.missingByLang.entries()].sort()) {
     if (missing.length === 0) {
-      lines.push(`[${lang}] 缺译 0 条（覆盖完整）`);
+      lines.push(t.missingZero(lang));
       continue;
     }
-    lines.push(`[${lang}] 缺译 ${missing.length} 条（运行期回退原文）：`);
+    lines.push(t.missingCount(lang, missing.length));
     for (const key of missing) lines.push(`  - ${key}`);
   }
   if (report.unused.length === 0) {
-    lines.push("多译 0 条（无冗余译文键）");
+    lines.push(t.unusedZero());
   } else {
-    lines.push(`多译 ${report.unused.length} 条（未使用 = 冗余）：`);
+    lines.push(t.unusedCount(report.unused.length));
     for (const key of report.unused) lines.push(`  - ${key}`);
   }
   return lines.join("\n");

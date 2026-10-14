@@ -14,6 +14,8 @@
  * 译文——运行期「命中即用」语义），绝不覆盖。
  */
 
+import type { EditorTexts } from "../contracts/index.ts";
+import { resolveEditorTexts } from "../contracts/index.ts";
 import { isSafeFileNameSegment } from "@lingfan/engine";
 
 /** 占位策略：original = 原文占位（未翻译时画面可读，翻译工作表语义）；empty = 空串（运行期命中即隐句） */
@@ -31,6 +33,9 @@ export interface OverlaySkeletonFile {
   content: string;
 }
 
+/** overlay 根目录名（与运行期 Lang/ 供给面同源；单一出处供路径模板与测试共用） */
+export const LANG_DIR = "Lang";
+
 export interface SkeletonOptions {
   lang: string;
   layout: SkeletonLayout;
@@ -43,6 +48,8 @@ export interface SkeletonOptions {
   /** 增量模式：该语言已存在的 overlay（路径 → 条目）；命中的键保留原值 */
   existing?: ReadonlyMap<string, Record<string, string>>;
   placeholder?: SkeletonPlaceholder;
+  /** 集中文案表注入（缺省 defaultEditorTexts） */
+  texts?: Partial<EditorTexts>;
 }
 
 /**
@@ -59,8 +66,9 @@ export function planOverlaySkeleton(
     existing,
     placeholder = "original",
   } = options;
+  const t: EditorTexts = resolveEditorTexts(options.texts);
   if (typeof lang !== "string" || !isSafeFileNameSegment(lang)) {
-    throw new Error(`语言码不合法：${String(lang)}（须为单段安全文件名）`);
+    throw new Error(t.invalidLangCode(String(lang)));
   }
   const build = (
     path: string,
@@ -82,7 +90,9 @@ export function planOverlaySkeleton(
       for (const key of keys) union.add(key);
     }
     const path =
-      layout === "single" ? `Lang/${lang}.json` : `Lang/${lang}/main.json`;
+      layout === "single"
+        ? `${LANG_DIR}/${lang}.json`
+        : `${LANG_DIR}/${lang}/main.json`;
     return [build(path, [...union])];
   }
   // per-story：镜像 `Stories/` 的递归目录——
@@ -94,11 +104,9 @@ export function planOverlaySkeleton(
       storyPath === "" ||
       segments.some((segment) => !isSafeFileNameSegment(segment))
     ) {
-      throw new Error(
-        `故事路径不合法：${storyPath}（须为相对 Stories/ 的段级安全路径，如 chapter1/tavern）`,
-      );
+      throw new Error(t.invalidStoryPath(storyPath));
     }
-    files.push(build(`Lang/${lang}/${storyPath}.json`, keys));
+    files.push(build(`${LANG_DIR}/${lang}/${storyPath}.json`, keys));
   }
   return files;
 }

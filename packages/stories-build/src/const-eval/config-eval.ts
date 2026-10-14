@@ -18,7 +18,11 @@ import {
   parseVersion,
   type StorySourceConfig,
 } from "../config/story-config.ts";
-import { StoryBuildError } from "../shared/index.ts";
+import {
+  defaultStoriesBuildTexts,
+  StoryBuildError,
+  type StoriesBuildTexts,
+} from "../shared/index.ts";
 import { evalConstModule } from "./const-eval.ts";
 import { formatConstDiagFile } from "./const-eval-pass.ts";
 import { mergeDefineCalls } from "./define-merge.ts";
@@ -38,19 +42,17 @@ export interface ConfigEvalOutcome {
 export async function evalConfigModule(
   root: string,
   sourcesDirName: string,
+  texts: StoriesBuildTexts = defaultStoriesBuildTexts,
+  timeoutMs?: number,
 ): Promise<ConfigEvalOutcome> {
   const sourcesDir = join(root, sourcesDirName);
   const configPath = join(sourcesDir, CONFIG_FILE);
   if (!existsSync(configPath)) {
-    throw new StoryBuildError(
-      `${sourcesDirName}/${CONFIG_FILE} 不存在——多目录 TS 源工程需要布局声明` +
-        `（export const folders/start/vars/state）：folders 声明源目录（可含 "*" 全量兜底），` +
-        `start 声明入口故事文件名`,
-    );
+    throw new StoryBuildError(texts.configMissing(sourcesDirName, CONFIG_FILE));
   }
   assertSingleRootScript(sourcesDir, sourcesDirName);
 
-  const result = await evalConstModule(configPath);
+  const result = await evalConstModule(configPath, timeoutMs);
   if ("diags" in result) {
     throw new StoryBuildError(
       `${sourcesDirName}/${CONFIG_FILE} 求值失败（${result.diags.length} 条）：\n${result.diags

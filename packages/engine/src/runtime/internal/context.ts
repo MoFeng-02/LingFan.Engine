@@ -16,6 +16,7 @@
  * 本接口只在运行层内部流转，不进包出口。
  */
 import type {
+  EngineTexts,
   I18nPort,
   AnimationSpec,
   CharacterDef,
@@ -131,6 +132,8 @@ export interface OpContext {
   savePort: SavePort | undefined;
   /** 定时器端口（wait/pause 的延迟回调与解除；构造期从 EngineOptions 装配，缺省 hostTimer） */
   timerPort: TimerPort;
+  /** 用户可见文案表（构造期从 EngineOptions 装配；缺省 defaultEngineTexts） */
+  texts: EngineTexts;
   saveMode: SaveMode;
   readonly usedExtensions: Set<string>;
   readonly extensionById: ReadonlyMap<string, OpExtension>;

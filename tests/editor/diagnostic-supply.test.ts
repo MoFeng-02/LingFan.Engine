@@ -78,7 +78,7 @@ function projectTree(parts: {
 /** 组合根同构链：文件表 → 组装故事 + 诊断供给侧 */
 async function openProject(
   tree: Tree,
-): Promise<{ story: Story; supply: Required<AnalyzeOptions> }> {
+): Promise<{ story: Story; supply: Omit<Required<AnalyzeOptions>, "texts"> }> {
   const source = await createFileListFileSource(filesUnder("Resources", tree));
   const story = await loadProject(createSourceProjectFilesPort(source));
   return { story, supply: await loadDiagnosticSupply(source) };

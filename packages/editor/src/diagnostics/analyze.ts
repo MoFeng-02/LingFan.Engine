@@ -4,8 +4,8 @@
  */
 import type { Story } from "@lingfan/engine";
 import { ELEMENT_OPS_BLOCKED } from "@lingfan/engine";
-import type { AnalyzeOptions, Diagnostic } from "../contracts/index.ts";
-import { escapePointerToken } from "../contracts/index.ts";
+import type { AnalyzeOptions, Diagnostic, EditorTexts } from "../contracts/index.ts";
+import { escapePointerToken, resolveEditorTexts } from "../contracts/index.ts";
 import { UNIMPLEMENTED_ELEMENT_ATTRS } from "../schema/index.ts";
 import { walkStoryElements } from "../schema/index.ts";
 import { validateStory } from "../schema/index.ts";
@@ -15,11 +15,13 @@ import { indexStory } from "./symbols.ts";
 /**
  * 编辑期诊断集（结构校验 + 语义诊断，一律带 JSON Pointer）。
  * resourceFiles / overlayKeys 缺省时对应诊断族跳过（供给侧数据未接入不误报）。
+ * `texts`（可选）= 集中文案表注入（缺省 defaultEditorTexts）。
  */
 export function analyzeStory(
   story: Story,
   options: AnalyzeOptions = {},
 ): Diagnostic[] {
+  const texts: EditorTexts = resolveEditorTexts(options.texts);
   const out: Diagnostic[] = validateStory(story);
   const index = indexStory(story);
 
@@ -27,7 +29,7 @@ export function analyzeStory(
     out.push({
       code: "duplicate-column",
       severity: "error",
-      message: `columnId 重复：${duplicate.id}（columnId 全局唯一）`,
+      message: texts.duplicateColumn(duplicate.id),
       pointer: duplicate.pointer,
     });
   }
@@ -39,7 +41,7 @@ export function analyzeStory(
     out.push({
       code: "missing-entry",
       severity: "error",
-      message: `入口列 ${index.entry} 不存在`,
+      message: texts.missingEntryColumn(index.entry),
       pointer: "/entry",
     });
   }
@@ -62,10 +64,10 @@ export function analyzeStory(
         severity: "error",
         message:
           target.kind === "column"
-            ? `跳转目标列不存在：${target.target}`
+            ? texts.missingJumpTargetColumn(target.target)
             : target.kind === "function"
-              ? `调用未注册的函数：${target.target}`
-              : `调用目标不存在：${target.target}（既不是 func 也不是列）`,
+              ? texts.unknownFunction(target.target)
+              : texts.missingCallTarget(target.target),
         pointer: target.pointer,
       });
     }
@@ -78,8 +80,8 @@ export function analyzeStory(
       severity: ref.kind === "expression" ? "error" : "warning",
       message:
         ref.kind === "expression"
-          ? `未定义变量：${ref.name}（表达式里使用，求值会失败并**停机**——请先用 set/define 定义它）`
-          : `未定义变量：${ref.name}（插值失败将按原文保留——若它应是变量请先定义，若只是普通文字请去掉花括号）`,
+          ? texts.undefinedVariableExpression(ref.name)
+          : texts.undefinedVariableInterpolation(ref.name),
       pointer: ref.pointer,
     });
   }
@@ -91,7 +93,7 @@ export function analyzeStory(
           // 提醒级：素材"先写引用后补"是正常工作流，
           // error 会拦保存门禁；运行期缺资源由运行时自己 fail-closed 兜底。
           severity: "warning",
-          message: `资源路径不存在：${resource.path}`,
+          message: texts.missingResource(resource.path),
           pointer: resource.pointer,
         });
       }
@@ -103,7 +105,7 @@ export function analyzeStory(
         out.push({
           code: "unused-translation",
           severity: "warning",
-          message: `未使用的译文键：${key}（say / menu / input / notify 四个翻译面均未命中原文——该键运行期不会生效；若这段文字只用于元素文本或宿主界面，本条可忽略）`,
+          message: texts.unusedTranslationKey(key),
           pointer: "",
         });
       }
@@ -118,7 +120,7 @@ export function analyzeStory(
           out.push({
             code: "missing-translation",
             severity: "warning",
-            message: `原文未有任何译文：${original}（所有语言的 overlay 均未命中——运行期回退原文；专有名词等有意保留原文的可忽略）`,
+            message: texts.missingTranslationOriginal(original),
             pointer: "",
           });
         }
@@ -134,7 +136,7 @@ export function analyzeStory(
       out.push({
         code: "unimplemented-element-attr",
         severity: "warning",
-        message: `元素属性 ${attr} 已声明但当前无渲染语义（写入不生效）`,
+        message: texts.unimplementedElementAttr(attr),
         pointer: `${pointer}/${escapePointerToken(attr)}`,
       });
     }
@@ -149,7 +151,7 @@ export function analyzeStory(
         out.push({
           code: "element-ops-blocked-op",
           severity: "error",
-          message: `元素动作序列里的 ${op} 不可用（等待/位置/存档类会打断当前叙事流）；跳列请用 nav 属性`,
+          message: texts.elementOpsBlockedOp(op),
           pointer: `${pointer}/ops/${i}`,
         });
       });

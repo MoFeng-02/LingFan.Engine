@@ -4,37 +4,46 @@
  */
 import type { SavePort, SlotSummary } from "@lingfan/engine";
 
-/** 高水位计数键：本侧自管，`list` 时跳过它 */
-const HW_KEY = "lf3-demo:highwater";
-/** 槽位键前缀：拼键与 `list` 过滤共用，免得混入页面上的其它键 */
-const PREFIX = "lf3-demo:";
-
-/** 槽位名 → localStorage 键：加 `lf3-demo:` 前缀，免得与页面上其它键撞名 */
-function slotKey(slot: string): string {
-  return `${PREFIX}${slot}`;
+/** 存储键命名空间（键名前缀）：宿主可按部署页面的键位规划覆盖，缺省沿用演示值 */
+export interface WebStorageSaveOptions {
+  /** 高水位计数键（`list` 时跳过它）；缺省 "lf3-demo:highwater" */
+  highWaterKey?: string;
+  /** 槽位键前缀（拼键与 `list` 过滤共用）；缺省 "lf3-demo:" */
+  keyPrefix?: string;
 }
+
+/** 存储键命名空间的缺省值：沿用演示工程的既有键位 */
+const DEFAULT_HIGH_WATER_KEY = "lf3-demo:highwater";
+const DEFAULT_KEY_PREFIX = "lf3-demo:";
 
 /**
  * 造一个存档端口（浏览器演示兜底）：数据明文存 localStorage，同一台浏览器就是同一个档位空间。
- * 高水位计数由本侧自管，因此读旧档同样会被拒；`list` 只认 `lf3-demo:` 前缀且跳过高水位键。
+ * 高水位计数由本侧自管，因此读旧档同样会被拒；`list` 只认 `keyPrefix` 前缀且跳过高水位键。
  * 它不是安全边界，正式形态用原生端口。
+ * @param options 存储键命名空间；缺省沿用演示值（`lf3-demo:`），已有存档数据换前缀后读不到——迁移由宿主自管
  */
-export function createWebStorageSavePort(): SavePort {
+export function createWebStorageSavePort(
+  options?: WebStorageSaveOptions,
+): SavePort {
+  const highWaterKey = options?.highWaterKey ?? DEFAULT_HIGH_WATER_KEY;
+  const prefix = options?.keyPrefix ?? DEFAULT_KEY_PREFIX;
+  /** 槽位名 → localStorage 键：加命名空间前缀，免得与页面上其它键撞名 */
+  const slotKey = (slot: string): string => `${prefix}${slot}`;
   return {
     async write(slot, payload, mode): Promise<void> {
-      const highWater = Number(localStorage.getItem(HW_KEY) ?? "0");
+      const highWater = Number(localStorage.getItem(highWaterKey) ?? "0");
       const saveCount = highWater + 1;
       localStorage.setItem(
         slotKey(slot),
         JSON.stringify({ payload, saveCount, timestamp: Date.now(), mode }),
       );
-      localStorage.setItem(HW_KEY, String(saveCount));
+      localStorage.setItem(highWaterKey, String(saveCount));
     },
     async read(slot): Promise<string> {
       const raw = localStorage.getItem(slotKey(slot));
       if (raw === null) throw new Error(`槽位不存在：${slot}`);
       const record = JSON.parse(raw) as { payload: string; saveCount: number };
-      const highWater = Number(localStorage.getItem(HW_KEY) ?? "0");
+      const highWater = Number(localStorage.getItem(highWaterKey) ?? "0");
       if (record.saveCount < highWater)
         throw new Error("回档尝试被拒绝（演示高水位）");
       return record.payload;
@@ -46,7 +55,7 @@ export function createWebStorageSavePort(): SavePort {
       const out: SlotSummary[] = [];
       for (let i = 0; i < localStorage.length; i += 1) {
         const key = localStorage.key(i);
-        if (key === null || !key.startsWith(PREFIX) || key === HW_KEY) {
+        if (key === null || !key.startsWith(prefix) || key === highWaterKey) {
           continue;
         }
         const record = JSON.parse(localStorage.getItem(key) ?? "{}") as {
@@ -54,7 +63,7 @@ export function createWebStorageSavePort(): SavePort {
           timestamp?: number;
         };
         out.push({
-          slot: key.slice(PREFIX.length),
+          slot: key.slice(prefix.length),
           saveCount: record.saveCount ?? 0,
           timestamp: record.timestamp ?? 0,
           mode: "demo",

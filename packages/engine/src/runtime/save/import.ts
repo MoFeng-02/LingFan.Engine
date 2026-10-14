@@ -85,7 +85,7 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
       if (hook === undefined) {
         ctx.fail(
           "save-story-version",
-          `存档故事版本 v${saveVersion} 与当前故事 v${currentVersion} 不一致，且未配置 migrateState 钩子。请在构造引擎时提供 migrateState 完成状态迁移`,
+          ctx.texts.saveStoryVersionMismatch(saveVersion, currentVersion),
         );
         return false;
       }
@@ -100,14 +100,14 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
       if (migrated === null) {
         ctx.fail(
           "save-migrate-failed",
-          `migrateState 钩子无法把存档从故事版本 v${saveVersion} 迁移到 v${currentVersion}，存档被拒绝`,
+          ctx.texts.saveMigrateFailed(saveVersion, currentVersion),
         );
         return false;
       }
       data = { ...data, state: Object.entries(migrated) };
       ctx.emitEvent({
         kind: "load.notice",
-        text: `存档状态已从故事版本 v${saveVersion} 迁移到 v${currentVersion}（migrateState）`,
+        text: ctx.texts.saveMigrated(saveVersion, currentVersion),
       });
     }
   }

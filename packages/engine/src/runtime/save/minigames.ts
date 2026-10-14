@@ -36,10 +36,7 @@ export function resolveSaveMinigames(
     }
     const meta = ctx.minigameById.get(mark.id);
     if (meta === undefined) {
-      ctx.fail(
-        "minigame-missing",
-        `存档依赖的玩法系统未注册：「${mark.id}」。请注册该玩法系统后再读档`,
-      );
+      ctx.fail("minigame-missing", ctx.texts.minigameMissing(mark.id));
       return null;
     }
     if (meta.stateVersion === mark.stateVersion) continue;
@@ -59,7 +56,7 @@ export function resolveSaveMinigames(
       if (migrated === null) {
         ctx.fail(
           "minigame-version",
-          `玩法系统「${mark.id}」无法从状态版本 v${mark.stateVersion} 迁移到 v${meta.stateVersion}，存档被拒绝`,
+          ctx.texts.minigameMigrateFailed(mark.id, mark.stateVersion, meta.stateVersion),
         );
         return null;
       }
@@ -71,13 +68,13 @@ export function resolveSaveMinigames(
       ];
       ctx.emitEvent({
         kind: "load.notice",
-        text: `玩法系统「${mark.id}」状态已从 v${mark.stateVersion} 迁移到 v${meta.stateVersion}`,
+        text: ctx.texts.minigameMigrated(mark.id, mark.stateVersion, meta.stateVersion),
       });
       continue;
     }
     ctx.fail(
       "minigame-version",
-      `存档依赖玩法系统「${mark.id}」的状态版本 v${mark.stateVersion}，当前注册版本为 v${meta.stateVersion}（存档过新或缺少迁移路径），存档被拒绝`,
+      ctx.texts.minigameVersionDependency(mark.id, mark.stateVersion, meta.stateVersion),
     );
     return null;
   }

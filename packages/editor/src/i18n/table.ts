@@ -14,6 +14,9 @@
  *    绝不「静默忽略」或「静默覆盖」（覆盖 = 丢译文）。
  */
 
+import type { EditorTexts } from "../contracts/index.ts";
+import { resolveEditorTexts } from "../contracts/index.ts";
+
 /** 译文表的一行（`value` 原样保留，仅 `text` 供输入框显示） */
 export interface TranslationRow {
   readonly key: string;
@@ -57,16 +60,21 @@ function displayTextOf(value: unknown): string {
  *
  * **不接受数组根**（译文表契约是「键 → 译文」的平面对象）；数组根会被
  * `Array.isArray` 拦住并报错。
+ * `texts`（可选）= 集中文案表注入（缺省 defaultEditorTexts）。
  */
-export function parseTranslationTable(source: string): TableParse {
+export function parseTranslationTable(
+  source: string,
+  texts: Partial<EditorTexts> = {},
+): TableParse {
+  const t = resolveEditorTexts(texts);
   let value: unknown;
   try {
     value = JSON.parse(source);
   } catch (e) {
-    return { ok: false, error: `不是合法 JSON：${String(e)}` };
+    return { ok: false, error: t.invalidJson(String(e)) };
   }
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return { ok: false, error: "译文表根节点必须是对象（键 → 译文）" };
+    return { ok: false, error: t.tableRootMustBeObject() };
   }
   const rows = Object.entries(value as Record<string, unknown>).map(
     ([key, v]) => ({
@@ -94,10 +102,10 @@ export type TableEdit =
   | { readonly ok: false; readonly error: string };
 
 /** 空键判据（空白串、首尾空白、含控制字符一律拒绝——键要能当 JSON 键与运行期查表） */
-function keyProblem(key: string): string | undefined {
-  if (key === "") return "键不能为空";
-  if (key !== key.trim()) return "键的首尾不能有空白";
-  if (/[\u0000-\u001f]/.test(key)) return "键不能含控制字符";
+function keyProblem(key: string, t: EditorTexts): string | undefined {
+  if (key === "") return t.keyEmpty();
+  if (key !== key.trim()) return t.keySurroundingWhitespace();
+  if (/[\u0000-\u001f]/.test(key)) return t.keyControlChars();
   return undefined;
 }
 
@@ -106,15 +114,18 @@ function keyProblem(key: string): string | undefined {
  *
  /** **重复键显式拒绝**（不覆盖）：译文表里一个键只能有一条，静默覆盖 = 丢译文。
  * 新行的值恒为 `""`（未翻译）——`text` 与 `value` 同步，避免「显示空、写出 undefined」。
+ * `texts`（可选）= 集中文案表注入（缺省 defaultEditorTexts）。
  */
 export function addTranslationRow(
   rows: readonly TranslationRow[],
   key: string,
+  texts: Partial<EditorTexts> = {},
 ): TableEdit {
-  const problem = keyProblem(key);
+  const t = resolveEditorTexts(texts);
+  const problem = keyProblem(key, t);
   if (problem !== undefined) return { ok: false, error: problem };
   if (rows.some((r) => r.key === key)) {
-    return { ok: false, error: `键「${key}」已存在` };
+    return { ok: false, error: t.keyAlreadyExists(key) };
   }
   return {
     ok: true,
@@ -126,9 +137,11 @@ export function addTranslationRow(
 export function removeTranslationRow(
   rows: readonly TranslationRow[],
   key: string,
+  texts: Partial<EditorTexts> = {},
 ): TableEdit {
+  const t = resolveEditorTexts(texts);
   if (!rows.some((r) => r.key === key)) {
-    return { ok: false, error: `键「${key}」不在表中` };
+    return { ok: false, error: t.keyNotInTable(key) };
   }
   return { ok: true, rows: rows.filter((r) => r.key !== key) };
 }
@@ -138,15 +151,17 @@ export function renameTranslationRow(
   rows: readonly TranslationRow[],
   from: string,
   to: string,
+  texts: Partial<EditorTexts> = {},
 ): TableEdit {
+  const t = resolveEditorTexts(texts);
   if (!rows.some((r) => r.key === from)) {
-    return { ok: false, error: `键「${from}」不在表中` };
+    return { ok: false, error: t.keyNotInTable(from) };
   }
-  const problem = keyProblem(to);
+  const problem = keyProblem(to, t);
   if (problem !== undefined) return { ok: false, error: problem };
   if (from === to) return { ok: true, rows };
   if (rows.some((r) => r.key === to)) {
-    return { ok: false, error: `键「${to}」已存在，不能合并两行` };
+    return { ok: false, error: t.renameConflict(to) };
   }
   return {
     ok: true,
@@ -161,14 +176,17 @@ export function renameTranslationRow(
  * 时按该类型写回——否则「译文其实想写数字」会被引号包成字符串。但**普通文本一律按字符串**
  *（译者打的 `123` 若原值是字符串，语义是文本 `123`；类型跟随**原值**，不跟随输入形态）。
  * 原值非字符串时按 JSON 解析输入，失败则回落字符串（不吞错：解析失败仍写字符串原文）。
+ * `texts`（可选）= 集中文案表注入（缺省 defaultEditorTexts）。
  */
 export function setTranslationValue(
   rows: readonly TranslationRow[],
   key: string,
   text: string,
+  texts: Partial<EditorTexts> = {},
 ): TableEdit {
+  const t = resolveEditorTexts(texts);
   if (!rows.some((r) => r.key === key)) {
-    return { ok: false, error: `键「${key}」不在表中` };
+    return { ok: false, error: t.keyNotInTable(key) };
   }
   return {
     ok: true,

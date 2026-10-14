@@ -15,10 +15,8 @@ import {
   type ProjectFileSource,
   type ProjectFilesPort,
 } from "@lingfan/engine";
-import {
-  detectEncryptedProject,
-  encryptedProjectMessage,
-} from "../encryptedProject";
+import { detectEncryptedProject } from "../encryptedProject";
+import { defaultResourceTexts, type ResourceTexts } from "../texts";
 
 /** 一次装载的结果：清单对象、逻辑路径 → 故事原文，以及「缺清单」时的降级回执 */
 interface LoadedProject {
@@ -32,12 +30,16 @@ interface LoadedProject {
  * 没有 `Stories/` 就没有可打开的内容，照旧拒绝；缺清单是唯一可降级的情形，
  * 合成最小清单并把降级事实一起返回。清单存在但不是合法 JSON 属结构损坏，照旧抛错。
  */
-async function readProject(source: ProjectFileSource): Promise<LoadedProject> {
+async function readProject(
+  source: ProjectFileSource,
+  texts?: Partial<ResourceTexts>,
+): Promise<LoadedProject> {
+  const t: ResourceTexts = { ...defaultResourceTexts, ...texts };
   const paths = await source.paths();
   // 加密形态前置识别（唯一判定点）：读取任何文件之前拒绝
   const encrypted = detectEncryptedProject(paths);
   if (encrypted.encrypted) {
-    throw new Error(encryptedProjectMessage(source.name, encrypted));
+    throw new Error(t.encryptedProject(source.name, encrypted));
   }
   const hasManifest = paths.includes(MANIFEST_FILE);
   const storyPaths = paths.filter((path) => path.startsWith(`${STORIES_DIR}/`));
@@ -45,8 +47,8 @@ async function readProject(source: ProjectFileSource): Promise<LoadedProject> {
     // 只降级「缺清单」这一种：连 Stories/ 都没有 = 没有可打开的内容，照旧 fail-closed
     throw new Error(
       hasManifest
-        ? `资源根（${source.name}）缺少 ${STORIES_DIR}/ 目录`
-        : `资源根（${source.name}）缺少 ${MANIFEST_FILE} 且没有 ${STORIES_DIR}/ 目录：没有可打开的内容`,
+        ? t.missingStoriesDir(source.name)
+        : t.missingManifestAndStories(source.name),
     );
   }
   const stories = new Map<string, string>();
@@ -78,10 +80,11 @@ async function readProject(source: ProjectFileSource): Promise<LoadedProject> {
  */
 export function createSourceProjectFilesPort(
   source: ProjectFileSource,
+  texts?: Partial<ResourceTexts>,
 ): ProjectFilesPort {
   let loaded: Promise<LoadedProject> | null = null;
   const load = (): Promise<LoadedProject> => {
-    loaded ??= readProject(source);
+    loaded ??= readProject(source, texts);
     return loaded;
   };
   return {

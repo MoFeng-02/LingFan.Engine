@@ -1,6 +1,11 @@
 import { join } from "node:path";
 import { STORIES_DIR, type Story, type StoryColumn } from "@lingfan/engine";
 import { TS_SOURCE_MANIFEST_KEY } from "@lingfan/editor";
+import {
+  defaultStoriesBuildTexts,
+  StoryBuildError,
+  type StoriesBuildTexts,
+} from "../shared/index.ts";
 import { assertKnownGuards, assertKnownOps } from "./gates.ts";
 import { scanCellSources } from "../compiler/index.ts";
 import { runConstEvalPass } from "../const-eval/index.ts";
@@ -11,7 +16,6 @@ import {
   type StoriesCompiler,
 } from "../compiler/index.ts";
 import { emitArtifacts } from "../emit/index.ts";
-import { StoryBuildError } from "../shared/index.ts";
 import { loadExtensions } from "../compiler/index.ts";
 import { readManifest, CONFIG_FILE } from "../config/index.ts";
 import { drainBuildWarnings, type BuildReport } from "../emit/index.ts";
@@ -37,6 +41,7 @@ import {
   renderTypegen,
 } from "../typegen/index.ts";
 import { walkFiles } from "../shared/index.ts";
+import { DEFAULT_EVAL_TIMEOUT_MS } from "../const-eval/const-eval.ts";
 
 /** 构建产物的目录名与生成物文件名（默认值 = 参考宿主的现状目录名） */
 export const DEFAULT_SOURCES_DIR = "Stories.src";
@@ -58,6 +63,10 @@ export interface StoryBuildOptions {
   readonly generatedDir?: string;
   /** 编译器注入（过渡期/测试用）；缺省 = 装载 `compiler` 域的默认实现 */
   readonly compiler?: StoriesCompiler;
+  /** 文案注入（Partial）；缺省 = 内建缺省文案（即构建层的既有文案） */
+  readonly texts?: Partial<StoriesBuildTexts>;
+  /** 编译期求值单轮时限（毫秒；缺省 30_000，只影响求值超时判定与超时文案） */
+  readonly evalTimeoutMs?: number;
 }
 
 /** 生成物文件名（唯一一份；报告里的逻辑路径由它和源/生成物目录名拼出） */
@@ -94,6 +103,12 @@ export async function buildStories(
   const sourcesDirName = options.sourcesDir ?? DEFAULT_SOURCES_DIR;
   const resourcesDirName = options.resourcesDir ?? DEFAULT_RESOURCES_DIR;
   const generatedDirName = options.generatedDir ?? DEFAULT_GENERATED_DIR;
+  // 文案与求值时限：入口处一次性合并/取缺省，下游各段只收完整对象/数值（纯透传）
+  const texts: StoriesBuildTexts = {
+    ...defaultStoriesBuildTexts,
+    ...options.texts,
+  };
+  const evalTimeoutMs = options.evalTimeoutMs ?? DEFAULT_EVAL_TIMEOUT_MS;
 
   const sourcesDir = join(root, sourcesDirName);
   const resourcesDir = join(root, resourcesDirName);
@@ -102,10 +117,10 @@ export async function buildStories(
   // —— config.ts 单次求值：named exports 四导出（folders/start/vars/state）+ 形态 B
   // define 累积一并取出；布局校验（parseFolders/parseStart）、define 合并冲突与
   // 形态 A/B 互斥全部 fail-closed（读取统一走本通道，图谱层不再解析 config）——
-  const evaluated = await evalConfigModule(root, sourcesDirName);
+  const evaluated = await evalConfigModule(root, sourcesDirName, texts, evalTimeoutMs);
 
   // —— 源发现：config 布局声明 → folders 多目录递归 → start 全局恰一 ——
-  const discovery = await discoverSources(root, sourcesDirName, evaluated.config);
+  const discovery = await discoverSources(root, sourcesDirName, evaluated.config, texts);
 
   // —— cell 声明扫描（构建期 AST 扫描）：源树（排除生成物目录，仅 .ts；机制不动）。
   // 源树同时是模块层 define 收集与枚举槽位回收的输入（只读复用，不重扫）——
@@ -119,6 +134,8 @@ export async function buildStories(
     discovery.stories,
     discovery.modules,
     sourcesDirName,
+    texts,
+    evalTimeoutMs,
   );
 
   // —— 模块层构建期 define 收集与汇入：源模块顶层 define 语句（函数体外）AST 折叠，
@@ -174,6 +191,7 @@ export async function buildStories(
     modules: discovery.modules,
     constValues,
     fontNames,
+    texts,
   });
   if (compiled.diags.length > 0) {
     throw new StoryBuildError(
@@ -227,6 +245,7 @@ export async function buildStories(
   const gateOptions = {
     resourcesDir: resourcesDirName,
     sourcesDir: sourcesDirName,
+    texts,
   };
   // —— op 闸门与守卫名闸门（两条 fail-early 判定，各自带定位一次报全部）——
   assertKnownOps(merged, opNames, gateOptions);

@@ -3,7 +3,11 @@
  * 端口实现只从这里导出（模块单一公共入口，原子化）。
  * 默认集为纯 Web/WebView 实现；原生实现（Tauri Desktop/Mobile）由组合根按构建模式装配。
  */
-export { createTauriSavePort, createWebStorageSavePort } from "./save";
+export {
+  createTauriSavePort,
+  createWebStorageSavePort,
+  type WebStorageSaveOptions,
+} from "./save";
 export {
   createWebAudioPort,
   type WebAudioPortOptions,
@@ -37,7 +41,9 @@ export {
   pickProjectDirectory,
   supportsDirectoryPicker,
   type BlobUrlOptions,
+  type ResourceTexts,
 } from "./resources";
+export { defaultResourceTexts } from "./resources";
 // 供给面契约定义在引擎里（编辑器与适配器共用同一份）：此处转发只为兼容既有取用点
 export type {
   DiagnosticSupply,

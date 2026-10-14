@@ -1,11 +1,17 @@
 import { BUILTIN_OP_NAMES, MANIFEST_FILE, type Story } from "@lingfan/engine";
 import { walkStoryCommands } from "@lingfan/editor";
-import { StoryBuildError } from "../shared/index.ts";
+import {
+  defaultStoriesBuildTexts,
+  StoryBuildError,
+  type StoriesBuildTexts,
+} from "../shared/index.ts";
 
 /** 闸门判定的可配置项：文案里出现的目录名（缺省 = 现状；只影响文案，不影响判定） */
 export interface GateOptions {
   readonly resourcesDir: string;
   readonly sourcesDir: string;
+  /** 文案注入（Partial）；缺省 = 内建缺省文案（即构建层的既有文案） */
+  readonly texts?: Partial<StoriesBuildTexts>;
 }
 
 /** 指针 → 「列 "id" /columns/N/...」：指针里的列下标映射回列 id，越界则原样返回 */
@@ -44,6 +50,10 @@ export function assertKnownOps(
     unknownOps.set(op, hits);
   });
   if (unknownOps.size === 0) return;
+  const texts: StoriesBuildTexts = {
+    ...defaultStoriesBuildTexts,
+    ...options.texts,
+  };
   const at = columnLabeler(story);
   const detail = [...unknownOps.entries()]
     .map(([op, pointers]) => {
@@ -53,8 +63,7 @@ export function assertKnownOps(
     })
     .join("\n");
   throw new StoryBuildError(
-    `故事使用了既非内建、也未被清单 extensions 声明扩展提供的 op（运行期必 unknown-op，构建期拦截）：\n${detail}\n` +
-      `→ 在 ${options.resourcesDir}/${MANIFEST_FILE} 的 extensions 声明提供该 op 的扩展模块，或改用内建 op`,
+    texts.unknownOpsGate(detail, options.resourcesDir, MANIFEST_FILE),
   );
 }
 
@@ -77,11 +86,18 @@ export function assertKnownGuards(
     unknownGuards.set(fn, hits);
   });
   if (unknownGuards.size === 0) return;
+  const texts: StoriesBuildTexts = {
+    ...defaultStoriesBuildTexts,
+    ...options.texts,
+  };
   const detail = [...unknownGuards.entries()]
     .map(([fn, pointers]) => `  - guard "${fn}" —— ${pointers.join("、")}`)
     .join("\n");
   throw new StoryBuildError(
-    `故事使用了未在源内 cell(...) 声明的守卫（运行期必 guard-unknown，构建期拦截）：\n${detail}\n` +
-      `→ 在 ${options.sourcesDir} 源里用 cell("${[...unknownGuards.keys()][0]}", impl) 声明实现，或改用已声明的守卫`,
+    texts.unknownGuardsGate(
+      detail,
+      options.sourcesDir,
+      [...unknownGuards.keys()][0],
+    ),
   );
 }

@@ -21,7 +21,11 @@ import { join } from "node:path";
 import * as ts from "typescript";
 import { evalConstModule } from "./const-eval.ts";
 import type { CompilerConstValues } from "../compiler/index.ts";
-import { StoryBuildError } from "../shared/index.ts";
+import {
+  defaultStoriesBuildTexts,
+  StoryBuildError,
+  type StoriesBuildTexts,
+} from "../shared/index.ts";
 
 /** 词汇层两包不触发求值：editor 是词汇出口（图谱层按词/命名空间绑定），engine 不参与创作导入。 */
 const RESERVED_SPECS: ReadonlySet<string> = new Set([
@@ -65,6 +69,8 @@ export async function runConstEvalPass(
   storyFiles: readonly string[],
   moduleFiles: readonly string[],
   sourcesDirName: string,
+  texts: StoriesBuildTexts = defaultStoriesBuildTexts,
+  timeoutMs?: number,
 ): Promise<CompilerConstValues> {
   const storySet = new Set(storyFiles);
   const failures: string[] = [];
@@ -82,12 +88,18 @@ export async function runConstEvalPass(
     if (storySet.has(rel)) {
       for (const hit of hits) {
         failures.push(
-          `- ${sourcesDirName}/${rel}:${hit.line}:${hit.col} 故事文件不支持 node_modules 值导入 \`${hit.spec}\`——npm 值请收敛为纯模块的导出 const（编译期求值仅作用于纯模块），再经相对导入使用（编译期求值引用域规则）`,
+          texts.storyNpmValueImport(
+            rel,
+            hit.line,
+            hit.col,
+            hit.spec,
+            sourcesDirName,
+          ),
         );
       }
       continue;
     }
-    const result = await evalConstModule(join(sourcesDir, rel));
+    const result = await evalConstModule(join(sourcesDir, rel), timeoutMs);
     if ("diags" in result) {
       failures.push(
         ...result.diags.map(

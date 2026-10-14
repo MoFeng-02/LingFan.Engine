@@ -12,6 +12,7 @@ export * from "./element.ts";
 export * from "./extension.ts";
 export * from "./game.ts";
 export * from "./guard.ts";
+export * from "./messages.ts";
 export * from "./text.ts";
 export * from "./project.ts";
 

@@ -2,6 +2,8 @@
  * 诊断契约：编辑期诊断统一形态，pointer = RFC 6901 JSON Pointer（指向 Story 树）。
  */
 
+import type { EditorTexts } from "./texts.ts";
+
 export type DiagnosticSeverity = "error" | "warning";
 
 export interface Diagnostic {
@@ -55,4 +57,6 @@ export interface AnalyzeOptions {
   resourceFiles?: ReadonlySet<string>;
   /** overlay 译文键集合（Lang/{lang} 合并后）→ 未使用翻译键诊断（翻译缺口检查器） */
   overlayKeys?: ReadonlySet<string>;
+  /** 集中文案表注入（缺省 defaultEditorTexts，即编辑器的既有文案） */
+  texts?: Partial<EditorTexts>;
 }

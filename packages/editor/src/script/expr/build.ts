@@ -14,6 +14,14 @@ import {
   type VarKind,
 } from "./registry.ts";
 import { ExpressionAuditor, type AuditToken, type OperandKind } from "./audit/index.ts";
+import { defaultEditorTexts } from "../../contracts/index.ts";
+
+/**
+ * expr 标签函数的文案取缺省表（例外登记）：模板标签函数无法携带可选参数注入，
+ * 这四条是构建期开发者诊断（缺省不可变直引，无模块级 setter）。
+ * varKeyOf / ExpressionAuditor 的文案仍走调用点注入。
+ */
+const texts = defaultEditorTexts;
 
 /**
  * 表达式标签：`expr\`${vars.player.gold} >= 25\` ⇒ "{player.gold >= 25}"`。
@@ -42,7 +50,7 @@ export function expr(
 ): string {
   const registry = currentRegistry;
   if (registry === null) {
-    throw new Error("expr 需要先 defineVars（变量注册是表达式句柄的前提）");
+    throw new Error(texts.exprRequiresDefineVars());
   }
   const tokens: AuditToken[] = [];
   const pending: Array<{ rule: ExpressionWarning["rule"]; message: string }> =
@@ -122,7 +130,7 @@ export function expr(
     part: unknown,
   ): { text: string; kind: OperandKind; label: string } => {
     if (isVarHandle(part)) {
-      const key = varKeyOf(part, registry);
+      const key = varKeyOf(part, registry, texts);
       return { text: key, kind: part.kind, label: `变量 ${key}` };
     }
     if (typeof part === "number" || typeof part === "boolean") {
@@ -140,7 +148,7 @@ export function expr(
       };
     }
     throw new Error(
-      `expr 不支持的插值类型：${typeof part}——若是变量句柄，请确认已在 defineVars 注册`,
+      texts.unsupportedInterpolationType(typeof part),
     );
   };
 
@@ -154,8 +162,7 @@ export function expr(
       // 校验零侵入：警告照记，但文本照旧并入产物（与既有行为逐字节一致）
       pending.push({
         rule: "interpolation-inside-string",
-        message:
-          "插值落在字符串字面量内部（引号未闭合）——插值文本会被并进字面量，不会成为表达式操作数",
+        message: texts.interpolationInsideString(),
       });
       out += appendPart(part).text;
       return;
@@ -170,14 +177,14 @@ export function expr(
     // 字面量到表达式末尾都没闭合：引擎将 parse-error——类型核查无意义，只报这一条
     pending.push({
       rule: "unclosed-string-literal",
-      message: "表达式存在未闭合的字符串字面量（引擎将 parse-error）",
+      message: texts.unclosedStringLiteral(),
     });
     warningSink.push(
       ...pending.map((item) => ({ expression: finalize(), ...item })),
     );
     return finalize();
   }
-  new ExpressionAuditor(tokens, pending).audit();
+  new ExpressionAuditor(tokens, pending, texts).audit();
   for (const item of pending) {
     warningSink.push({ expression: finalize(), ...item });
   }

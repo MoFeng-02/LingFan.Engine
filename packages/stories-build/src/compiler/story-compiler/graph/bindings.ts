@@ -2,11 +2,16 @@ import * as ts from "typescript";
 import { foldConst } from "./fold.ts";
 import { WORD_NAMES } from "./core.ts";
 import type { Binding, ConstValue, ModuleRecord, DiagBag } from "./core.ts";
+import {
+  defaultStoriesBuildTexts,
+  type StoriesBuildTexts,
+} from "../../../shared/index.ts";
 
 export function scanConstStatement(
   stmt: ts.VariableStatement,
   record: ModuleRecord,
   diags: DiagBag,
+  texts: StoriesBuildTexts = defaultStoriesBuildTexts,
 ): void {
   const { sf, rel } = record;
   const declared =
@@ -169,12 +174,7 @@ export function scanConstStatement(
   const value = foldConst(init, sf, diags, rel, (n) => record.bindings.get(n));
   if (value === undefined) {
     if (referencesNpmName(init, record.npmNames)) {
-      diags.add(
-        rel,
-        sf,
-        init,
-        "模块层 const 引用了 node_modules 值导入——仅导出的 const 可经编译期求值内联（请把 npm 值收敛为导出 const，见编译期求值规则）",
-      );
+      diags.add(rel, sf, init, texts.constNpmReference());
       return;
     }
     diags.add(
@@ -255,6 +255,7 @@ function referencesNpmName(
 export function assertNpmNamesConstOnly(
   record: ModuleRecord,
   diags: DiagBag,
+  texts: StoriesBuildTexts = defaultStoriesBuildTexts,
 ): void {
   if (record.npmNames.size === 0 || record.evaluated === undefined) return;
   const { sf, rel } = record;
@@ -267,12 +268,7 @@ export function assertNpmNamesConstOnly(
       return;
     if (ts.isTypeNode(node)) return;
     if (ts.isIdentifier(node) && record.npmNames.has(node.text)) {
-      diags.add(
-        rel,
-        sf,
-        node,
-        `node_modules 值导入 \`${node.text}\` 仅限模块层 const 初始化链（编译期求值引用域规则）：函数体与其他语句不得引用`,
-      );
+      diags.add(rel, sf, node, texts.npmNameConstOnly(node.text));
       return;
     }
     ts.forEachChild(node, visit);

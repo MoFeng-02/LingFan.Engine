@@ -3,8 +3,8 @@
  * 未知字段 / 缺必填 / 类型错），供 `validateStory` 与属性面板实时校验共用。
  */
 import { z } from "zod";
-import type { Diagnostic } from "../../contracts/index.ts";
-import { escapePointerToken } from "../../contracts/index.ts";
+import type { Diagnostic, EditorTexts } from "../../contracts/index.ts";
+import { escapePointerToken, resolveEditorTexts } from "../../contracts/index.ts";
 import { OP_SCHEMAS } from "./map.ts";
 
 /**
@@ -32,8 +32,14 @@ const STOP_OP_BY_RESOURCE_OWNER: Readonly<Record<string, string>> = {
  *
  * **兜底保留原文**：没覆盖的 code 返回 `issue.message`——
  * 宁可英文也不静默丢信息（不吞信息）。
+ *
+ * 文案经 EditorTexts 表（本模块是唯一 zod→中文翻译点；表方法由本函数调用）。
  */
-function localizeZodIssue(op: string, issue: z.core.$ZodIssue): string {
+function localizeZodIssue(
+  op: string,
+  issue: z.core.$ZodIssue,
+  texts: EditorTexts,
+): string {
   const field = issue.path.map(String).join(".");
   const at = field === "" ? "" : `${field} `;
   switch (issue.code) {
@@ -42,24 +48,26 @@ function localizeZodIssue(op: string, issue: z.core.$ZodIssue): string {
       if (field === "resource" || field.endsWith(".resource")) {
         const stopOp = STOP_OP_BY_RESOURCE_OWNER[op];
         return stopOp === undefined
-          ? "资源路径不能为空"
-          : `资源路径不能为空（要**停止**该通道请用 \`${stopOp}\`）`;
+          ? texts.resourcePathEmpty()
+          : texts.resourcePathEmptyStop(stopOp);
       }
       return typeof min === "number" && min > 0
-        ? `${at}不能小于 ${min}`
-        : `${at}值太小`;
+        ? texts.valueTooSmall(at, min)
+        : texts.valueTooSmallBare(at);
     }
     case "too_big": {
       const max = (issue as { maximum?: number }).maximum;
-      return typeof max === "number" ? `${at}不能大于 ${max}` : `${at}值太大`;
+      return typeof max === "number"
+        ? texts.valueTooBig(at, max)
+        : texts.valueTooBigBare(at);
     }
     case "invalid_type": {
       const expected = (issue as { expected?: unknown }).expected;
-      return `${at}类型不对${typeof expected === "string" ? `（需要 ${expected}）` : ""}`;
+      return texts.invalidType(at, typeof expected === "string" ? expected : "");
     }
     case "invalid_format": {
       const format = (issue as { format?: unknown }).format;
-      return `${at}格式不对${typeof format === "string" ? `（要求 ${format}）` : ""}`;
+      return texts.invalidFormat(at, typeof format === "string" ? format : "");
     }
     default:
       return issue.message;
@@ -70,6 +78,7 @@ function issueToDiagnostic(
   issue: z.core.$ZodIssue,
   basePointer: string,
   op: string,
+  texts: EditorTexts,
 ): Diagnostic {
   const segments = issue.path.map((seg) => escapePointerToken(String(seg)));
   const pointer =
@@ -82,7 +91,7 @@ function issueToDiagnostic(
     return {
       code: "unknown-field",
       severity: "error",
-      message: `${op} 未知负载字段：${keys}（编辑期 fail-closed）`,
+      message: texts.unknownPayloadFields(op, keys),
       pointer,
       op,
     };
@@ -95,7 +104,10 @@ function issueToDiagnostic(
     return {
       code: "missing-required",
       severity: "error",
-      message: `${op}${issue.path.length > 0 ? `.${issue.path.join(".")}` : ""} 必填`,
+      message: texts.missingRequired(
+        op,
+        issue.path.length > 0 ? issue.path.join(".") : "",
+      ),
       pointer,
       op,
     };
@@ -103,7 +115,11 @@ function issueToDiagnostic(
   return {
     code: "invalid-value",
     severity: "error",
-    message: `${op}${issue.path.length > 0 ? `.${issue.path.join(".")}` : ""}：${localizeZodIssue(op, issue)}`,
+    message: texts.invalidValue(
+      op,
+      issue.path.length > 0 ? issue.path.join(".") : "",
+      localizeZodIssue(op, issue, texts),
+    ),
     pointer,
     op,
   };
@@ -113,19 +129,22 @@ function issueToDiagnostic(
  * 编辑期单命令 fail-closed 校验（结构层）：未知 op / 未知字段 / 缺必填 / 类型错。
  * pointer = 命令对象自身在 Story 树上的 JSON Pointer。
  * `schemas`（可选）= op 负载 schema 面（缺省内建 OP_SCHEMAS；扩展注册后传合并集）。
+ * `texts`（可选）= 集中文案表注入（缺省 defaultEditorTexts）。
  * 编辑期 fail-closed 校验的测试见 validation.test。
  */
 export function validateCommand(
   cmd: unknown,
   pointer = "",
   schemas: Readonly<Record<string, z.ZodType>> = OP_SCHEMAS,
+  texts: Partial<EditorTexts> = {},
 ): Diagnostic[] {
+  const t = resolveEditorTexts(texts);
   if (typeof cmd !== "object" || cmd === null || Array.isArray(cmd)) {
     return [
       {
         code: "invalid-structure",
         severity: "error",
-        message: "命令必须为对象",
+        message: t.commandMustBeObject(),
         pointer,
       },
     ];
@@ -136,7 +155,7 @@ export function validateCommand(
       {
         code: "invalid-structure",
         severity: "error",
-        message: "命令必须为含非空 op 字符串的命令对象",
+        message: t.commandMustHaveOp(),
         pointer,
       },
     ];
@@ -147,7 +166,7 @@ export function validateCommand(
       {
         code: "unknown-op",
         severity: "error",
-        message: `未知或未实现的命令：${op}`,
+        message: t.unknownCommand(op),
         pointer,
         op,
       },
@@ -160,6 +179,6 @@ export function validateCommand(
   const result = schema.safeParse(payload);
   if (result.success) return [];
   return result.error.issues.map((issue) =>
-    issueToDiagnostic(issue, pointer, op),
+    issueToDiagnostic(issue, pointer, op, t),
   );
 }

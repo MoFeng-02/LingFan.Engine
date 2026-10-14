@@ -97,11 +97,7 @@ export function execCall(
       return false;
     }
     if (column.kind !== "flow") {
-      ctx.fail(
-        "call-invalid-target",
-        `call 只能调用流程列（flow）；${name} 是场景列（scene）——` +
-          `空间层切换请用 navigate/jump`,
-      );
+      ctx.fail("call-invalid-target", ctx.texts.callSceneColumn(name));
       return false;
     }
     frame.index += 1;

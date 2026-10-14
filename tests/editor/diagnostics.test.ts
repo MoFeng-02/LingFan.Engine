@@ -298,3 +298,57 @@ describe("诊断集（analyzeStory）", () => {
     ).toHaveLength(1);
   });
 });
+
+describe("texts 注入（集中文案表）", () => {
+  it("自定义 texts 覆盖诊断文案，缺省不传 = 原文案", () => {
+    const story = baseStory([
+      { op: "bgm", resource: "Audio/missing.mp3" },
+      { op: "if", cond: "{ghost > 1}", then: [{ op: "say", text: "x" }] },
+    ]);
+    const defaults = analyzeStory(story, {
+      resourceFiles: new Set(["Audio/other.mp3"]),
+    });
+    const missingDefault = defaults.find(
+      (d) => d.code === "missing-resource",
+    )?.message;
+    const varDefault = defaults.find(
+      (d) => d.code === "undefined-variable",
+    )?.message;
+    expect(missingDefault).toContain("资源路径不存在：Audio/missing.mp3");
+    expect(varDefault).toContain("未定义变量：ghost");
+
+    const custom = analyzeStory(story, {
+      resourceFiles: new Set(["Audio/other.mp3"]),
+      texts: {
+        missingResource: (path) => `测试缺资源[${path}]`,
+        undefinedVariableExpression: (name) => `测试未定义变量${name}`,
+      },
+    });
+    expect(
+      custom.find((d) => d.code === "missing-resource")?.message,
+    ).toBe("测试缺资源[Audio/missing.mp3]");
+    expect(
+      custom.find((d) => d.code === "undefined-variable")?.message,
+    ).toBe("测试未定义变量ghost");
+    // 未注入的方法回落缺省表（Partial 合并语义）
+    const other = custom.find((d) => d.code === "missing-target");
+    expect(other?.message ?? "").not.toContain("测试");
+  });
+
+  it("texts 逐方法注入：重复列文案可定制", () => {
+    const story: Story = {
+      formatVersion: 1,
+      id: "d",
+      entry: "a",
+      columns: [flowColumn("a", []), flowColumn("a", [])],
+    };
+    const diagnostics = analyzeStory(story, {
+      texts: {
+        duplicateColumn: (id) => `重复列【${id}】`,
+      },
+    });
+    expect(diagnostics.find((d) => d.code === "duplicate-column")?.message).toBe(
+      "重复列【a】",
+    );
+  });
+});

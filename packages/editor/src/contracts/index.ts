@@ -18,3 +18,5 @@ export type {
   StoryListener,
   UndoEntry,
 } from "./editing.ts";
+export type { EditorTexts } from "./texts.ts";
+export { defaultEditorTexts, resolveEditorTexts } from "./texts.ts";

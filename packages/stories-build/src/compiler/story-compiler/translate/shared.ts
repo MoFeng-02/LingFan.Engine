@@ -1,6 +1,7 @@
 import * as ts from "typescript";
 import type { StoryCommand } from "@lingfan/engine";
 import { script } from "@lingfan/editor";
+import { defaultStoriesBuildTexts, type StoriesBuildTexts } from "../../../shared/index.ts";
 import type { Binding, DiagBag, ModuleRecord } from "../graph.ts";
 
 export const WORDS = script as unknown as Record<
@@ -30,6 +31,8 @@ export interface SharedCtx {
   readonly stateRoot: string;
   /** 字体名注册表（Resources/Fonts 文件名去扩展名；构建期字体引用检查的对照源） */
   readonly fontNames: ReadonlySet<string>;
+  /** 集中文案表（编译入口注入；已含缺省合并，诊断文案只从这里取） */
+  readonly texts: StoriesBuildTexts;
 }
 
 export interface BodyCtx {
@@ -120,6 +123,7 @@ export function createSharedCtx(
   funcs: FuncRegistry,
   stateRoot: string,
   fontNames: ReadonlySet<string> = new Set(),
+  texts: StoriesBuildTexts = defaultStoriesBuildTexts,
 ): SharedCtx {
-  return { mod, file: mod.rel, diags, funcs, stateRoot, fontNames };
+  return { mod, file: mod.rel, diags, funcs, stateRoot, fontNames, texts };
 }
