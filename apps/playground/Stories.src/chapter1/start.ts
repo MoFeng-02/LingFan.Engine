@@ -15,10 +15,40 @@ function greet(who: string): void {
 }
 
 export default function start(): void {
+  character("灵泛", { name: "灵泛", color: "#7aa2f7" });
   bgm("Audio/crickets_night01.mp3", { volume: 0.4, fade: 1200 });
   state.player.gold += 20;
   state.player.sex = Sex.Male;
-  character("灵泛", { name: "灵泛", color: "#7aa2f7" });
+
+  say("准备数值测试")
+  let a = 100;
+  say('{a} 我是值');
+  a *= 2;
+  say('{a} 我是乘值');
+  a /= 2;
+  say('{a} 我是除值');
+  a += 2;
+  say('{a} 我是加值');
+  a -= 2;
+  say('{a} 我是减值');
+  a = 103;
+  a %= 2;
+  say('{a} 我是取余值');
+  let c = 100;
+  let b = 200;
+  say('{c} 我是 c');
+  say('{b} 我是 b');
+  c = c * b;
+  say('{c} 我是 c * b');
+  c = c / b;
+  say('{c} 我是 c / b');
+  a = 66;
+  c = c * a * b;
+  say('{c} 我是 c * a * b');
+  c = c / a / b;
+  say('{c} 我是 c / a / b');
+  say("数值测试结束")
+
   say("你有 {player.gold:000} 枚金币（插值 + 补零格式化）。", "灵泛");
   say(
     "富文本：{b}加粗{/b}、{i}斜体{/i}、{u}下划线{/u}、{color=#FFD700}金色{/color}、{color=#9ece6a}{size=22}大字{/size}{/color}。",
@@ -39,7 +69,7 @@ export default function start(): void {
   say("第三段。");
   nvl("exit");
   say("NVL 退出，回到普通对话。");
-  cutscene("Video/m1.mp4", { volume: 0.8, skipable: false, z: 1450 });
+  cutscene("Video/m1.mp4", { volume: 0.8, skipable: true, z: 1450 });
   say("过场结束——播完或点击跳过都会继续。");
   guard(checkGold);
   menu("接下来去哪里？", [

@@ -18,6 +18,12 @@
       ]
     },
     {
+      "op": "character",
+      "key": "灵泛",
+      "name": "灵泛",
+      "color": "#7aa2f7"
+    },
+    {
       "op": "bgm",
       "resource": "Audio/crickets_night01.mp3",
       "volume": 0.4,
@@ -34,10 +40,130 @@
       "value": "male"
     },
     {
-      "op": "character",
-      "key": "灵泛",
-      "name": "灵泛",
-      "color": "#7aa2f7"
+      "op": "say",
+      "text": "准备数值测试"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": 100
+    },
+    {
+      "op": "say",
+      "text": "{a} 我是值"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": "*= {2}"
+    },
+    {
+      "op": "say",
+      "text": "{a} 我是乘值"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": "/= {2}"
+    },
+    {
+      "op": "say",
+      "text": "{a} 我是除值"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": "+= {2}"
+    },
+    {
+      "op": "say",
+      "text": "{a} 我是加值"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": "-= {2}"
+    },
+    {
+      "op": "say",
+      "text": "{a} 我是减值"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": 103
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": "%= {2}"
+    },
+    {
+      "op": "say",
+      "text": "{a} 我是取余值"
+    },
+    {
+      "op": "let",
+      "key": "c",
+      "value": 100
+    },
+    {
+      "op": "let",
+      "key": "b",
+      "value": 200
+    },
+    {
+      "op": "say",
+      "text": "{c} 我是 c"
+    },
+    {
+      "op": "say",
+      "text": "{b} 我是 b"
+    },
+    {
+      "op": "let",
+      "key": "c",
+      "value": "{c * b}"
+    },
+    {
+      "op": "say",
+      "text": "{c} 我是 c * b"
+    },
+    {
+      "op": "let",
+      "key": "c",
+      "value": "{c / b}"
+    },
+    {
+      "op": "say",
+      "text": "{c} 我是 c / b"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": 66
+    },
+    {
+      "op": "let",
+      "key": "c",
+      "value": "{c * a * b}"
+    },
+    {
+      "op": "say",
+      "text": "{c} 我是 c * a * b"
+    },
+    {
+      "op": "let",
+      "key": "c",
+      "value": "{c / a / b}"
+    },
+    {
+      "op": "say",
+      "text": "{c} 我是 c / a / b"
+    },
+    {
+      "op": "say",
+      "text": "数值测试结束"
     },
     {
       "op": "say",
@@ -119,7 +245,7 @@
       "op": "cutscene",
       "resource": "Video/m1.mp4",
       "volume": 0.8,
-      "skipable": false,
+      "skipable": true,
       "z": 1450
     },
     {

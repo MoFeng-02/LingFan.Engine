@@ -11,7 +11,7 @@ const { menu, option } = script;
 
 export function stationsMenu(): void {
   menu("下一道？", [
-    option("变量盛宴", "tour_vars"),
+    option("变量盛宴1", "tour_vars"),
     option("流程厨房", "tour_flow"),
     option("存档试吃", "tour_save"),
     option("声光餐车", "tour_av"),

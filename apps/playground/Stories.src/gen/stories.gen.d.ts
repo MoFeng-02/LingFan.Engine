@@ -19,7 +19,10 @@ declare module "@lingfan/editor" {
     "ts_power": 1;
   }
   interface InterpolationKeyRegistry {
+    "a": 1;
+    "b": 1;
     "bag": 1;
+    "c": 1;
     "click3": 1;
     "dice": 1;
     "gear": 1;
