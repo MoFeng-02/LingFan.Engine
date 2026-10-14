@@ -8,8 +8,10 @@
  *
  * 需要刷新渲染/媒体的分支把动作以具名回调注入，免得本模块反向依赖组合根手里的
  * 渲染器与视图状态。
+ *
+ * 本模块平台无关：不触碰任何框架、DOM 或宿主全局。
  */
-import type { Notices } from "./notices";
+import type { Notices } from "../notices";
 
 /** 叙事事件落点需要的外部事实与出口 */
 export interface NarrativeEventOptions {
@@ -23,6 +25,8 @@ export interface NarrativeEventOptions {
   syncMedia(): void;
   /** 错误横幅写入 */
   reportError(message: string): void;
+  /** 错误横幅文案：把引擎错误码与消息拼成一句话；缺省 = `code: message` */
+  formatError?(code: string, message: string): string;
 }
 
 /** 叙事事件落点 */
@@ -51,6 +55,7 @@ export interface NarrativeEvents {
 export function createNarrativeEvents(
   options: NarrativeEventOptions,
 ): NarrativeEvents {
+  const formatError = options.formatError ?? defaultFormatError;
   /** 读档 / 回溯共用的收尾：清错误 → 视图与媒体对齐 → 提示 */
   function realign(): void {
     options.clearError();
@@ -81,7 +86,12 @@ export function createNarrativeEvents(
       options.notices.loadNotice(text);
     },
     failed(code: string, message: string): void {
-      options.reportError(`${code}: ${message}`);
+      options.reportError(formatError(code, message));
     },
   };
+}
+
+/** 错误横幅的缺省拼法：`code: message`（宿主可用 formatError 覆盖） */
+function defaultFormatError(code: string, message: string): string {
+  return `${code}: ${message}`;
 }

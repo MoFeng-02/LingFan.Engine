@@ -16,7 +16,7 @@ export const DEFAULT_TOAST_MS = 2600;
 export const DEFAULT_NOTIFY_MS = 3000;
 
 /** 操作反馈轻提示默认驻留时长（毫秒）：存/读按钮等即时反馈 */
-export const DEFAULT_VUE_TOAST_MS = 1500;
+export const DEFAULT_ACTION_TOAST_MS = 1500;
 
 /** 读档完成提示默认驻留时长（毫秒）：文案含状态说明，比即时反馈多留一档 */
 export const DEFAULT_LOAD_TOAST_MS = 2500;

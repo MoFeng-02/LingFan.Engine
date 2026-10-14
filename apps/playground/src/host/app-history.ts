@@ -10,7 +10,7 @@ import {
   filterHistoryEntries,
   type HistoryBlock,
   type HistoryEntry,
-} from "./history-panel";
+} from "@lingfan/shell";
 
 /** 装配入参：引擎句柄取用与回放后的渲染同步 */
 export interface AppHistoryOptions {

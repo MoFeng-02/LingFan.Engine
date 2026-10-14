@@ -18,6 +18,7 @@
     "@lingfan/adapters": "workspace:*",
     "@lingfan/editor": "workspace:*",
     "@lingfan/engine": "workspace:*",
+    "@lingfan/shell": "workspace:*",
     "@lingfan/stories-build": "workspace:*",
     "@lingfan/ui": "workspace:*",
     "@tauri-apps/api": "^2.12.1",

@@ -17,6 +17,7 @@
        与 Node 原生 ESM 对同一说明符取同一套决议，包源码不经构建即可原生加载 */
     "types": ["vite/client"],
     "paths": {
+      "@lingfan/shell": ["./packages/shell/src/index.ts"],
       "@lingfan/stories-build": ["./packages/stories-build/src/index.ts"],
       "@lingfan/stories-build/cell": [
         "./packages/stories-build/src/cell/index.ts"

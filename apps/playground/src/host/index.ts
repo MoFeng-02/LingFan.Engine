@@ -83,13 +83,13 @@ export {
 export { createHostEffects, type HostEffectsOptions } from "./effects";
 /** 帧循环接线：rAF 帧源 + 每帧顺序 */
 export { startHostFrameLoop, type HostFrameLoopOptions } from "./frame-loop";
-/** 历史面板：条目过滤与 NVL 块聚合 */
+/** 历史面板：条目过滤与 NVL 块聚合（逻辑在 @lingfan/shell 面板域） */
 export {
   buildHistoryBlocks,
   filterHistoryEntries,
   type HistoryBlock,
   type HistoryEntry,
-} from "./history-panel";
+} from "@lingfan/shell";
 /** 演示玩法系统「极简 WASD 行走」 */
 export {
   createInteractionWalk,
@@ -117,26 +117,24 @@ export {
   DEFAULT_CLICK3_TARGET,
   type Click3DemoOptions,
 } from "./minigame-demo";
-/** 叙事事件落点：提示条、读档诊断与错误横幅 */
+/** 叙事事件落点：提示条、读档诊断与错误横幅（逻辑在 @lingfan/shell 事件域） */
 export {
   createNarrativeEvents,
+  type MenuOption,
   type NarrativeEventOptions,
   type NarrativeEvents,
-} from "./narrative-event";
-/** 叙事视图状态：状态键 → 视图意图 → 响应式字段 */
-export {
-  createNarrativeState,
-  type MenuOption,
-  type NarrativeState,
-  type NarrativeStateOptions,
-} from "./narrative-state";
-/** 提示条：驻留时长与摘除 */
+} from "@lingfan/shell";
+/** 叙事视图状态（Vue 类型面）：状态键 → 视图意图 → 响应式字段 */
+export type { NarrativeState } from "./narrative-state";
+/** Vue 响应式单元适配：ref/computed 即 Cell */
+export { vueCells } from "./vue-cells";
+/** 提示条：驻留时长与摘除（逻辑在 @lingfan/shell 提示条域） */
 export {
   createNotices,
   type Notice,
   type NoticeOptions,
   type Notices,
-} from "./notices";
+} from "@lingfan/shell";
 /** 偏好面板：音量、静音、字速、方向、全屏 */
 export {
   createPreferencesPanel,
@@ -144,11 +142,11 @@ export {
   type PreferencesPanel,
   type PreferencesPanelOptions,
 } from "./preferences-panel";
-/** 槽位面板：清单与逐槽快照 → 可渲染视图 */
+/** 槽位面板：清单与逐槽快照 → 可渲染视图（逻辑在 @lingfan/shell 面板域） */
 export {
   loadSlotViews,
   parseSlotMeta,
   type SlotPanelMode,
   type SlotPanelOptions,
   type SlotView,
-} from "./slot-panel";
+} from "@lingfan/shell";
