@@ -13,9 +13,8 @@
     "skipLibCheck": true,
 
     /* 类型边界：workspace 包经 exports 指向 TS 源码（source-exports，零构建步骤）；
-       仓库内只用无扩展名相对导入，模块后缀求解让 tsc 与 tsx 取同一套决议
-       （否则 tsc 找不到 "../cell" 这类目录索引） */
-    "moduleSuffixes": [".ts", ""],
+       仓库内相对导入一律完整指定（.ts 后缀或 /index.ts 目录索引）——tsc、tsx、vite
+       与 Node 原生 ESM 对同一说明符取同一套决议，包源码不经构建即可原生加载 */
     "types": ["vite/client"],
     "paths": {
       "@lingfan/stories-build": ["./packages/stories-build/src/index.ts"],

@@ -207,24 +207,36 @@ describe("创作链编译包 · 边界与结构不变式", () => {
         PACKAGE_KEYS.find((key) => key.endsWith("/src/cli/cli.ts")) ?? ""
       ];
     expect(typeof cliSource).toBe("string");
-    expect(cliSource).toMatch(/from "\.\.\/index"/);
-    expect(cliSource).not.toMatch(/from "\.\.\/pipeline"/);
+    expect(cliSource).toMatch(/from "\.\.\/index\.ts"/);
+    expect(cliSource).not.toMatch(/from "\.\.\/pipeline/);
   });
 
-  it("目录索引导入是包内一等形态（不写 ../cell/index.ts），相对导入保持无扩展名", () => {
-    // 无扩展名的相对导入是包内 house style（tsx 与 vite 都按 TS 解析）；带 .ts 一律算失配。
-    expect(/from "\.{1,2}\/[^"]+\.ts"/.test('from "./cell/index.ts";')).toBe(
-      true,
-    );
-    expect(/from "\.{1,2}\/[^"]+\.ts"/.test('from "../cell";')).toBe(false);
+  it("相对导入全部完整指定（.ts 后缀或 /index.ts 目录索引）：包源码须可被原生 ESM 加载", () => {
+    // 包源码由 Node（type stripping）/tsx 直接跑 TypeScript，原生 ESM 解析不做任何
+    // 补全猜测——无扩展名说明符直接 ERR_MODULE_NOT_FOUND。完整指定 = 包内 house
+    // style，与 tsc（bundler + allowImportingTsExtensions）、tsx、vite、Node 四方同决议。
+    //
+    // 正样本自检：说明符级正则必须命中裸目录形态（违规样本）、放过完整指定形态。
+    const RELATIVE_SPEC =
+      /(?:from|import)\s*\(?\s*"(\.{1,2}\/[^"]+)"/g;
+    expect([...'"../cell";'.matchAll(RELATIVE_SPEC)].length).toBe(0); // 无 from/import 前缀不算
+    expect(
+      [...'from "../cell";'.matchAll(RELATIVE_SPEC)].map((m) => m[1]),
+    ).toEqual(["../cell"]);
+    expect(
+      [...'from "./symbol.ts";'.matchAll(RELATIVE_SPEC)].map((m) => m[1]),
+    ).toEqual(["./symbol.ts"]);
 
-    const extensioned = PACKAGE_KEYS.filter((key) =>
-      /from "\.{1,2}\/[^"]+\.ts"/.test(PACKAGE_SOURCE_FILES[key]),
-    );
-    expect(extensioned).toEqual([]);
-    // 反向自检：包内确实存在相对导入（否则上面的空集是空扫描换来的）。
+    const underspecified: string[] = [];
+    for (const key of PACKAGE_KEYS) {
+      for (const m of PACKAGE_SOURCE_FILES[key].matchAll(RELATIVE_SPEC)) {
+        if (!m[1].endsWith(".ts")) underspecified.push(`${key}: ${m[1]}`);
+      }
+    }
+    expect(underspecified).toEqual([]);
+    // 反向自检：包内确实存在相对导入（否则空集是空扫描换来的假绿）。
     const relativeImporters = PACKAGE_KEYS.filter((key) =>
-      /from "\.{1,2}\/[^"]+"/.test(PACKAGE_SOURCE_FILES[key]),
+      /(?:from|import)\s*\(?\s*"\.{1,2}\/[^"]+"/.test(PACKAGE_SOURCE_FILES[key]),
     );
     expect(relativeImporters.length).toBeGreaterThanOrEqual(20);
   });

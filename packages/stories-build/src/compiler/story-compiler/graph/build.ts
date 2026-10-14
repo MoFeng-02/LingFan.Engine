@@ -1,18 +1,18 @@
 import * as ts from "typescript";
-import { walkFiles } from "../../../shared";
-import type { StorySourceConfig } from "../../../config/story-config";
-import type { CompilerConstValues } from "../../compiler-contract";
+import { walkFiles } from "../../../shared/index.ts";
+import type { StorySourceConfig } from "../../../config/story-config.ts";
+import type { CompilerConstValues } from "../../compiler-contract.ts";
 import {
   DiagBag,
   ROOT_TS_FILES_ALLOWED,
   GEN_PREFIX,
   COLUMN_FONT_DECL,
   toPosix,
-} from "./core";
-import type { Graph, ModuleRecord } from "./core";
-import { scanModule, discoverStateRoot } from "./module-scan";
-import { scanConstStatement, assertNpmNamesConstOnly } from "./bindings";
-import { resolveImports } from "./imports";
+} from "./core.ts";
+import type { Graph, ModuleRecord } from "./core.ts";
+import { scanModule, discoverStateRoot } from "./module-scan.ts";
+import { scanConstStatement, assertNpmNamesConstOnly } from "./bindings.ts";
+import { resolveImports } from "./imports.ts";
 
 /**
  * 图谱构建：布局声明（config 求值产物）为必填入参——本层不再解析 config.ts

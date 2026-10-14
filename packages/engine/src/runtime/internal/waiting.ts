@@ -4,8 +4,8 @@
  *
  * 只在运行层内部使用，不进包出口。
  */
-import { SYS } from "../../contracts";
-import type { OpContext } from "./context";
+import { SYS } from "../../contracts/index.ts";
+import type { OpContext } from "./context.ts";
 
 /**
  * 输入回填：输入等待的唯一解除入口，把玩家输入写进 `store` 指定的状态键后继续执行。

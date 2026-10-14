@@ -1,9 +1,9 @@
 /** present 族的读向解析。 */
-import { parseElementAttrValue } from "../element";
-import { parseDictLiteral, extractKeyedDictLiteral } from "../../literals";
-import { unquote, splitTokens } from "../../lexer";
-import { StoryCommand } from "../../../../contracts";
-import { StatementContext } from "../state";
+import { parseElementAttrValue } from "../element.ts";
+import { parseDictLiteral, extractKeyedDictLiteral } from "../../literals.ts";
+import { unquote, splitTokens } from "../../lexer.ts";
+import type { StoryCommand } from "../../../../contracts/index.ts";
+import type { StatementContext } from "../state.ts";
 
 /**
  * 解析本族的 op 行（`show` `hide` `background` `bg_switch` `zindex` `style` `window` `animate` `animate_block` `transition` `shake` `text_typewriter`）。

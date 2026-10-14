@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import ts from "typescript";
-import { walkFiles } from "../shared";
-import { CONFIG_FILE, type StorySourceConfig } from "../config";
-import { StoryBuildError } from "../shared";
+import { walkFiles } from "../shared/index.ts";
+import { CONFIG_FILE, type StorySourceConfig } from "../config/index.ts";
+import { StoryBuildError } from "../shared/index.ts";
 
 /**
  * 源发现 v2（多目录形态）：

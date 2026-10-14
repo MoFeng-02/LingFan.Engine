@@ -15,15 +15,15 @@ export {
   type DefineCall,
   type DefineBad,
   type JsonValue,
-} from "./const-eval";
-export { formatConstDiagFile, runConstEvalPass } from "./const-eval-pass";
-export { evalConstExpr, type ConstExprContext, type ConstExprResult } from "./const-expr";
-export { collectModuleDefines, type LocatedDefineCall } from "./module-define";
-export { evalConfigModule, type ConfigEvalOutcome } from "./config-eval";
+} from "./const-eval.ts";
+export { formatConstDiagFile, runConstEvalPass } from "./const-eval-pass.ts";
+export { evalConstExpr, type ConstExprContext, type ConstExprResult } from "./const-expr.ts";
+export { collectModuleDefines, type LocatedDefineCall } from "./module-define.ts";
+export { evalConfigModule, type ConfigEvalOutcome } from "./config-eval.ts";
 export {
   mergeDefineCalls,
   mergeDefineCallsInto,
   type DefineMergeResult,
   type OriginatedDefineCall,
-} from "./define-merge";
-export { runStateSchemaPass } from "./state-schema";
+} from "./define-merge.ts";
+export { runStateSchemaPass } from "./state-schema.ts";

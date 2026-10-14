@@ -25,7 +25,7 @@ export {
   chapterLabelOf,
   chapterSummaryText,
   sceneTypeBadgeOf,
-} from "./build";
+} from "./build.ts";
 
 /** 章节树分组：剧情（可回溯）/ 界面（不参与历史与存档） */
 export type ChapterGroup = "story" | "ui";

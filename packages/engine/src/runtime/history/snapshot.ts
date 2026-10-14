@@ -1,14 +1,14 @@
 /**
  * 检查点快照的建立、恢复与落档。
  */
-import { SYS, type ColumnCoordinate, type SaveDataV1 } from "../../contracts";
+import { SYS, type ColumnCoordinate, type SaveDataV1 } from "../../contracts/index.ts";
 import {
   cloneFrame,
   sameCoord,
   type Checkpoint,
   type Frame,
   type OpContext,
-} from "../internal";
+} from "../internal/index.ts";
 
 /**
  * 检查点/存档坐标恒指「能重放重建本等待点」的列内顶层位置。

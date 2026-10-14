@@ -18,15 +18,15 @@ export type {
   StoryListener,
   SymbolIndex,
   UndoEntry,
-} from "./contracts";
-export { escapePointerToken, joinPointer } from "./contracts";
+} from "./contracts/index.ts";
+export { escapePointerToken, joinPointer } from "./contracts/index.ts";
 
 export {
   coerceFieldValue,
   describeForm,
   describeNodeLabel,
   listOps,
-} from "./schema";
+} from "./schema/index.ts";
 export {
   describeElement,
   elementLabel,
@@ -34,7 +34,7 @@ export {
   specificAttrsOf,
   UNIMPLEMENTED_ELEMENT_ATTRS,
   type ElementFormDescriptor,
-} from "./schema";
+} from "./schema/index.ts";
 export {
   ELEMENT_TYPE_GROUPS,
   listOpGroups,
@@ -42,15 +42,15 @@ export {
   OP_GROUP_ORDER,
   type ElementTypeGroup,
   type OpGroupEntries,
-} from "./schema";
-export { draggedPosition, parseNumericPosition } from "./element";
+} from "./schema/index.ts";
+export { draggedPosition, parseNumericPosition } from "./element/index.ts";
 export {
   createElementDraft,
   planElementDrop,
   type DropContainerHit,
   type ElementDropPlan,
-} from "./element";
-export { OP_SCHEMAS, validateCommand } from "./schema";
+} from "./element/index.ts";
+export { OP_SCHEMAS, validateCommand } from "./schema/index.ts";
 /**
  * 内建 op 判别联合（op 决定字段）+ 单 op 命令类型 + 标量值口径——
  * 全部派生自 op schema 单一事实源；词汇层 builder 返回与裸写命令注解共用。
@@ -60,24 +60,24 @@ export type {
   ScriptCommand,
   ScriptOpName,
   ScriptValue,
-} from "./schema";
+} from "./schema/index.ts";
 /** 词汇层构建期轻类型校验警告（expr/cond 组装时按引擎类型规则产出；drain 取走） */
-export type { ExpressionWarning } from "./script";
+export type { ExpressionWarning } from "./script/index.ts";
 export {
   BUILTIN_OP_SURFACE,
   mergeOpMeta,
   mergeOpSchemas,
   mergeOpSurface,
   type OpSurface,
-} from "./schema";
-export { validateStory } from "./schema";
+} from "./schema/index.ts";
+export { validateStory } from "./schema/index.ts";
 export {
   walkCommandBodies,
   walkStoryCommands,
   walkStoryElements,
-} from "./schema";
+} from "./schema/index.ts";
 
-export { analyzeStory, extractExpressionRefs, indexStory } from "./diagnostics";
+export { analyzeStory, extractExpressionRefs, indexStory } from "./diagnostics/index.ts";
 export {
   diagnosticCodeLabel,
   diagnosticSummaryText,
@@ -87,12 +87,12 @@ export {
   type DiagnosticGroup,
   type DiagnosticSummary,
   type SeverityFilter,
-} from "./diagnostics";
+} from "./diagnostics/index.ts";
 export {
   diagnosticBrief,
   splitDiagnosticMessage,
   type DiagnosticMessageParts,
-} from "./diagnostics";
+} from "./diagnostics/index.ts";
 export {
   buildChapterIndex,
   chapterDirOf,
@@ -105,7 +105,7 @@ export {
   type ChapterIndex,
   type ChapterInput,
   type ChapterNode,
-} from "./chapters";
+} from "./chapters/index.ts";
 
 export {
   addTranslationRow,
@@ -141,7 +141,7 @@ export {
   type TranslationReconcileReport,
   type TranslationRow,
   type WorkbenchOverview,
-} from "./i18n";
+} from "./i18n/index.ts";
 
 export {
   describeSelection,
@@ -154,7 +154,7 @@ export {
   type SelectionDescription,
   type SelectionKind,
   type SelectionNodeKind,
-} from "./editing";
+} from "./editing/index.ts";
 export {
   addColumn,
   columnContainers,
@@ -167,15 +167,15 @@ export {
   renameColumn,
   suggestColumnId,
   updateCommandField,
-} from "./editing";
-export { EditorSession } from "./editing";
+} from "./editing/index.ts";
+export { EditorSession } from "./editing/index.ts";
 export {
   branchPointerToCommand,
   isBranchTarget,
   planBranchInsertion,
   type BranchColumnLike,
   type BranchPlan,
-} from "./editing";
+} from "./editing/index.ts";
 export {
   addGroup,
   assignColumn,
@@ -190,26 +190,26 @@ export {
   renameGroup,
   serializeGroupingView,
   toggleCollapsed,
-} from "./editing";
+} from "./editing/index.ts";
 export type {
   ColumnGroup,
   ColumnGroupingView,
   GroupedLayout,
   KeyValueStorage,
-} from "./editing";
+} from "./editing/index.ts";
 export {
   describeNormalization,
   NORMALIZATION_NOTICE_PREF_KEY,
   readSkipNormalizationNotice,
   writeSkipNormalizationNotice,
-} from "./editing";
+} from "./editing/index.ts";
 export {
   TS_SOURCE_MANIFEST_KEY,
   TS_SOURCE_READONLY_HINT,
   assertTsSourceWritable,
   isTsSourceProject,
   tsSourceWriteBlockers,
-} from "./editing";
+} from "./editing/index.ts";
 /**
  * 步骤布局：列内切分为「步骤」（等待态边界）+ 列间分支边。
  * 边界判据取自引擎的等待声明表（`@lingfan/engine` 的 `waitingStateOfOp`），本模块不做逐 op 判定。
@@ -223,14 +223,14 @@ export {
   type StepLayout,
   type StepOptions,
   type StoryStep,
-} from "./layout";
+} from "./layout/index.ts";
 
 /**
  * Script 词汇层：构建期作者词汇——builder 全部产出 StoryCommand
  * 数据（与 JSON 同族）。**命名空间导出**：词汇是子语言，`script` 隔离避免常用词
  * （set/define/say）与既有出口冲突；作者 `const { say, menu, when } = script` 解构即用。
  */
-export * as script from "./script";
+export * as script from "./script/index.ts";
 
 /**
  * 字符串域类型扩充点：词汇层声明的空注册表接口必须经**包根**再导出一次，
@@ -242,4 +242,4 @@ export {
   type ColumnNameRegistry,
   type GuardNameRegistry,
   type InterpolationKeyRegistry,
-} from "./script";
+} from "./script/index.ts";

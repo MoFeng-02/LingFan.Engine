@@ -1,5 +1,5 @@
-import { byPath, STORIES_DIR, isSafeFileNameSegment } from "./naming";
-import type { FileStamp, WriteNormalizationFinding } from "../../contracts";
+import { byPath, STORIES_DIR, isSafeFileNameSegment } from "./naming.ts";
+import type { FileStamp, WriteNormalizationFinding } from "../../contracts/index.ts";
 
 /**
  * 写回的保存前检测：覆盖冲突与规范化提示。

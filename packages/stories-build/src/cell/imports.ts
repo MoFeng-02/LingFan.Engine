@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import type { CellIssue, FileImports } from "./types";
+import type { CellIssue, FileImports } from "./types.ts";
 
 /**
  * 字面量内自由标识符校验：全部 Identifier 必须 ∈（参数、内部声明、导入绑定与全局白名单的并集），

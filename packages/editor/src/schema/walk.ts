@@ -4,11 +4,11 @@
  * switch.cases[].body/default、func.body）。校验与符号索引共用同一遍历，指针一致。
  */
 
-import type { FieldDescriptor } from "../contracts";
-import { escapePointerToken } from "../contracts";
-import { isPlainObject } from "../shared";
-import { describeForm } from "./forms";
-import { BUILTIN_OP_SURFACE, type OpSurface } from "./surface";
+import type { FieldDescriptor } from "../contracts/index.ts";
+import { escapePointerToken } from "../contracts/index.ts";
+import { isPlainObject } from "../shared/index.ts";
+import { describeForm } from "./forms.ts";
+import { BUILTIN_OP_SURFACE, type OpSurface } from "./surface.ts";
 
 export type CommandVisitor = (
   cmd: Record<string, unknown>,

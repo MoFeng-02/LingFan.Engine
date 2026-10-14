@@ -1,5 +1,5 @@
-import { scanCells, type CellScan } from "../cell";
-import { StoryBuildError } from "../shared";
+import { scanCells, type CellScan } from "../cell/index.ts";
+import { StoryBuildError } from "../shared/index.ts";
 
 /**
  * cell 声明扫描（构建期 AST 扫描）：`Stories.src` 树（排除生成物目录，仅 `.ts`）。

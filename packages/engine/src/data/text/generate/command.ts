@@ -5,18 +5,18 @@
  * 注意：本文件与同名的 `command/` 目录并存——模块解析**文件优先**，
  * 故 `./command` 恒指本文件；在 `command/` 下新增 `index.ts` 会使 `./command` 解析到目录——保持该目录无 `index.ts`。
  */
-import { generateDialogCommand } from "./command/dialog";
-import { generateFlowCommand } from "./command/flow";
-import { generateVariablesCommand } from "./command/variables";
-import { generateCollectionsCommand } from "./command/collections";
-import { generateSaveCommand } from "./command/save";
-import { generateMediaCommand } from "./command/media";
-import { generateBlocksCommand } from "./command/blocks";
-import { generatePresentCommand } from "./command/present";
-import { tryProjectToText } from "./body";
-import { TextFormatError } from "../error";
-import type { CustomOpProjections, StoryCommand } from "../../../contracts";
-import type { GenerateContext } from "./context";
+import { generateDialogCommand } from "./command/dialog.ts";
+import { generateFlowCommand } from "./command/flow.ts";
+import { generateVariablesCommand } from "./command/variables.ts";
+import { generateCollectionsCommand } from "./command/collections.ts";
+import { generateSaveCommand } from "./command/save.ts";
+import { generateMediaCommand } from "./command/media.ts";
+import { generateBlocksCommand } from "./command/blocks.ts";
+import { generatePresentCommand } from "./command/present.ts";
+import { tryProjectToText } from "./body.ts";
+import { TextFormatError } from "../error.ts";
+import type { CustomOpProjections, StoryCommand } from "../../../contracts/index.ts";
+import type { GenerateContext } from "./context.ts";
 
 /**
  * 单条命令的写向入口：把命令对象投影成一行文本并追加到输出缓冲。

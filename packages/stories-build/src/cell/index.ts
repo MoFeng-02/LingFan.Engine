@@ -15,19 +15,19 @@
  */
 
 /** cell 声明提取失败（带 `origin` 定位：`相对路径:行`）——由调用方决定是否中断构建 */
-export { CellExtractError } from "./errors";
+export { CellExtractError } from "./errors.ts";
 /** 单文件扫描：`cell(...)` 三类实现形态判定与逐条 fail-closed 文案 */
-export { rootIdentifier, scanFile } from "./scan-file";
+export { rootIdentifier, scanFile } from "./scan-file.ts";
 /** 全树扫描：去重、指纹冲突、导入搬运 */
-export { scanCells } from "./scan-cells";
+export { scanCells } from "./scan-cells.ts";
 /** 生成物渲染（文本逐字节确定） */
-export { renderFunRegister } from "./render-register";
+export { renderFunRegister } from "./render-register.ts";
 /** 标准全局白名单（16 项），供调用方比对或拼接自己的白名单 */
-export { DEFAULT_GLOBAL_WHITELIST } from "./whitelist";
+export { DEFAULT_GLOBAL_WHITELIST } from "./whitelist.ts";
 /** 提取产出、问题与可配置项的形状 */
 export type {
   CellIssue,
   CellScan,
   FileImports,
   ScanCellsOptions,
-} from "./types";
+} from "./types.ts";

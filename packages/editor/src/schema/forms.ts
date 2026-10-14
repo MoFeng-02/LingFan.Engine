@@ -9,10 +9,10 @@ import type {
   FieldKind,
   OpFormDescriptor,
   OpMeta,
-} from "../contracts";
-import { FIELD_META } from "./catalog";
-import { elementLabel } from "./elementForms";
-import { BUILTIN_OP_SURFACE, type OpSurface } from "./surface";
+} from "../contracts/index.ts";
+import { FIELD_META } from "./catalog.ts";
+import { elementLabel } from "./elementForms.ts";
+import { BUILTIN_OP_SURFACE, type OpSurface } from "./surface.ts";
 
 interface Unwrapped {
   inner: z.ZodType;

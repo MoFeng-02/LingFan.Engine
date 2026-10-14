@@ -5,7 +5,7 @@ import {
   type SerializedProject,
   type Story,
 } from "@lingfan/engine";
-import { StoryBuildError } from "../shared";
+import { StoryBuildError } from "../shared/index.ts";
 
 /**
  * 编译：`serializeProject` = 编辑器写回同一条布局规则

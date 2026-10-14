@@ -4,8 +4,8 @@
  *
  * 只在运行层内部使用，不进包出口。
  */
-import { evaluateExpression, ExpressionError } from "../expr";
-import type { OpContext } from "./context";
+import { evaluateExpression, ExpressionError } from "../expr/index.ts";
+import type { OpContext } from "./context.ts";
 
 /**
  * 条件求值：`{...}` 包裹按约定剥离，结果必须是 boolean。

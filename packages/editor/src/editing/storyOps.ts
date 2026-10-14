@@ -13,7 +13,7 @@ import {
   moveAtPointer,
   removeAtPointer,
   setAtPointer,
-} from "./pointers";
+} from "./pointers.ts";
 
 /** 列的命令容器：flow → commands；scene → elements + entry */
 export function columnContainers(column: unknown): {

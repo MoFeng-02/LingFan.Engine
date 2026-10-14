@@ -9,8 +9,8 @@ import type {
   OutboundEvent,
   OutboundPayload,
   ValueChanged,
-} from "../../contracts";
-import type { OpContext } from "../internal";
+} from "../../contracts/index.ts";
+import type { OpContext } from "../internal/index.ts";
 
 /** 状态变更广播 */
 export function emitChange(

@@ -1,8 +1,8 @@
 /**
  * 存档导入。
  */
-import { SYS, type ColumnCoordinate, type SaveDataV1 } from "../../contracts";
-import type { OpContext } from "../internal";
+import { SYS, type ColumnCoordinate, type SaveDataV1 } from "../../contracts/index.ts";
+import type { OpContext } from "../internal/index.ts";
 
 /**
  * 读档——恢复全局态与历史，从存档坐标重放重建等待点。

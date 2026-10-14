@@ -14,7 +14,7 @@
  * define 带 `文件:行:列` 落点汇入；冲突文案区分单位置（仅本次来源）与两处位置
  * （既有来源 与 本次来源），全部路径的来源表随插入增量登记。
  */
-import type { DefineCall } from "./const-eval";
+import type { DefineCall } from "./const-eval.ts";
 
 export interface DefineMergeResult {
   /** 合并后的纯嵌套树（只含 define 贡献；无调用 = 空对象） */

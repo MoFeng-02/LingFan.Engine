@@ -11,7 +11,7 @@ export {
   SCRIPT_COVERAGE,
   VOCABULARY_OPS,
   type VocabularyOp,
-} from "./vocabulary.g";
+} from "./vocabulary.g.ts";
 
 // —— 类型（裸写命令的强类型形态：op 判别联合，与 OP_SCHEMA_MAP / validateCommand 同源）——
 // 裸对象 `const cmd: ScriptCommand = { op: "say", text, z }` ⇒ op 决定字段、未知字段编译期红；
@@ -21,7 +21,7 @@ export type {
   ScriptCommand,
   ScriptOpName,
   ScriptValue,
-} from "../schema";
+} from "../schema/index.ts";
 
 // —— 表达式句柄 ——
 export {
@@ -33,11 +33,11 @@ export {
   type VarHandle,
   type VarTree,
   type ExpressionWarning,
-} from "./expr";
+} from "./expr/index.ts";
 
 // —— 编译期构造（仅 Stories.src 源内可用，运行期不提供实现）——
-export { staticFor } from "./words";
-export type { StoryFn } from "./words";
+export { staticFor } from "./words/index.ts";
+export type { StoryFn } from "./words/index.ts";
 
 // —— 具名实现槽位（build-time 声明词）——
 export {
@@ -49,17 +49,17 @@ export {
   type KnownColumnName,
   type KnownGuardName,
   type KnownInterpolationKey,
-} from "./words";
+} from "./words/index.ts";
 
 // —— 叙事 ——
-export { say, option, menu, input, notify, nvl, character } from "./words";
+export { say, option, menu, input, notify, nvl, character } from "./words/index.ts";
 export type {
   MenuOption,
   SayOptions,
   NotifyOptions,
   NvlMode,
   CharacterOptions,
-} from "./words";
+} from "./words/index.ts";
 
 // —— 流程 ——
 export {
@@ -82,7 +82,7 @@ export {
   continueLoop,
   assert,
   guard,
-} from "./words";
+} from "./words/index.ts";
 
 // —— 变量 ——
 export {
@@ -96,10 +96,10 @@ export {
   arrayPop,
   dict,
   dictSet,
-} from "./words";
+} from "./words/index.ts";
 
 // —— 存档 / 音频 / 视频 / 小游戏 ——
-export { save, load, autoSave, saveDelete } from "./words";
+export { save, load, autoSave, saveDelete } from "./words/index.ts";
 export {
   bgm,
   stopBgm,
@@ -108,13 +108,13 @@ export {
   stopAmbient,
   voice,
   stopVoice,
-} from "./words";
+} from "./words/index.ts";
 export type {
   PlayOptions,
   BgmOptions,
   StopOptions,
   VoiceOptions,
-} from "./words";
+} from "./words/index.ts";
 export {
   video,
   cutscene,
@@ -123,15 +123,15 @@ export {
   resumeVideo,
   stopVideo,
   videoSkipable,
-} from "./words";
-export type { VideoOptions, CutsceneOptions } from "./words";
-export { minigame, reward } from "./words";
-export type { MinigameOptions } from "./words";
-export { interaction } from "./words";
-export type { InteractionOptions } from "./words";
+} from "./words/index.ts";
+export type { VideoOptions, CutsceneOptions } from "./words/index.ts";
+export { minigame, reward } from "./words/index.ts";
+export type { MinigameOptions } from "./words/index.ts";
+export { interaction } from "./words/index.ts";
+export type { InteractionOptions } from "./words/index.ts";
 
 // —— 扩展 ——
-export { extOp } from "./words";
+export { extOp } from "./words/index.ts";
 
 // —— 元素 ——
 export {
@@ -147,7 +147,7 @@ export {
   transition,
   shake,
   textTypewriter,
-} from "./words";
+} from "./words/index.ts";
 export type {
   ShowOptions,
   AnimateOptions,
@@ -155,7 +155,7 @@ export type {
   ShakeOptions,
   TypewriterOptions,
   DialogWindowMode,
-} from "./words";
+} from "./words/index.ts";
 
 // —— 复合词 ——
 export {
@@ -164,5 +164,5 @@ export {
   textElement,
   imageElement,
   sceneType,
-} from "./words";
-export type { ElementOptions } from "./words";
+} from "./words/index.ts";
+export type { ElementOptions } from "./words/index.ts";

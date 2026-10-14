@@ -1,21 +1,21 @@
 import * as ts from "typescript";
 import type { StoryCommand } from "@lingfan/engine";
-import { diag, isAssignmentOperator } from "./shared";
-import type { BodyCtx } from "./shared";
-import { emitCommand, callWord } from "./words";
-import { lowerValue, loweredToScriptValue } from "./expr";
+import { diag, isAssignmentOperator } from "./shared.ts";
+import type { BodyCtx } from "./shared.ts";
+import { emitCommand, callWord } from "./words.ts";
+import { lowerValue, loweredToScriptValue } from "./expr.ts";
 import {
   translateVariableStatement,
   emitAssignment,
   translateIncrement,
-} from "./assign";
+} from "./assign.ts";
 import {
   translateIf,
   translateWhile,
   translateFor,
   translateForOf,
   translateSwitch,
-} from "./control-flow";
+} from "./control-flow.ts";
 
 export function translateStatement(
   ctx: BodyCtx,

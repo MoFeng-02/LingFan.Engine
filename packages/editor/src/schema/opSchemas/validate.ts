@@ -3,9 +3,9 @@
  * 未知字段 / 缺必填 / 类型错），供 `validateStory` 与属性面板实时校验共用。
  */
 import { z } from "zod";
-import type { Diagnostic } from "../../contracts";
-import { escapePointerToken } from "../../contracts";
-import { OP_SCHEMAS } from "./map";
+import type { Diagnostic } from "../../contracts/index.ts";
+import { escapePointerToken } from "../../contracts/index.ts";
+import { OP_SCHEMAS } from "./map.ts";
 
 /**
  * **「resource 为空」时该用哪个停止命令**。

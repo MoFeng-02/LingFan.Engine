@@ -6,14 +6,14 @@
  * 运行层内部各模块之间仍按需直接引用（`./resolver` 属内部零件，不经此出口；
  * `./scope` 供 `tests/engine/runtime/scope.test.ts` 的白盒用例经域出口取用）。
  */
-export { StoryEngine } from "./engine";
-export type { EngineOptions, GuardContext, GuardFn } from "./engine";
-export { isValidSayColor } from "./ops";
-export { resolveHost } from "./host";
-export { mergeOverlayFiles } from "./i18n";
-export { PlayerPreferences } from "./preferences";
-export { createStateReader } from "./state";
-export { Scope } from "./scope";
+export { StoryEngine } from "./engine.ts";
+export type { EngineOptions, GuardContext, GuardFn } from "./engine.ts";
+export { isValidSayColor } from "./ops/index.ts";
+export { resolveHost } from "./host.ts";
+export { mergeOverlayFiles } from "./i18n/index.ts";
+export { PlayerPreferences } from "./preferences.ts";
+export { createStateReader } from "./state/index.ts";
+export { Scope } from "./scope.ts";
 export {
   DEFAULT_LAYER_Z,
   DEFAULT_SAVES_CONFIG,
@@ -26,34 +26,34 @@ export {
   resolveOrientationMode,
   resolveSavesConfig,
   slotIds,
-} from "./shell";
+} from "./shell.ts";
 export type {
   LayerId,
   LayerZOverrides,
   LayerZTable,
   SavesConfig,
   SavesThumbnailConfig,
-} from "./shell";
-export { findJsonValueError, jsonUnsafeReason } from "./stateContract";
+} from "./shell.ts";
+export { findJsonValueError, jsonUnsafeReason } from "./stateContract.ts";
 export {
   BUILTIN_OP_NAMES,
   buildOpRegistry,
   collectTextProjections,
-} from "./opRegistry";
+} from "./opRegistry.ts";
 export {
   collectWaitSpecs,
   waitSpecOfOp,
   WAITING_OPS,
   waitingStateOfOp,
   type WaitSpec,
-} from "./waitingOps";
+} from "./waitingOps.ts";
 export {
   loadDeclaredExtensions,
   type ExtensionModuleLoader,
-} from "./extensionLoader";
+} from "./extensionLoader.ts";
 export {
   evaluateExpression,
   ExpressionError,
   interpolateText,
   type NameResolver,
-} from "./expr";
+} from "./expr/index.ts";

@@ -1,6 +1,6 @@
 /** `say` 行的读向解析：位置参数取文本，其余按 key=value 收敛到命令字段。 */
-import { unquote } from "../lexer";
-import type { StoryCommand } from "../../../contracts";
+import { unquote } from "../lexer.ts";
+import type { StoryCommand } from "../../../contracts/index.ts";
 
 /** `say` 行的无值开关全集：出现即置 `true`，未知词按参数解析规则处理 */
 export const SAY_FLAGS = new Set(["clickable", "okey", "noskip", "instant"]);

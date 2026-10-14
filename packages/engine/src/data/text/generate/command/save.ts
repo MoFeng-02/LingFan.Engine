@@ -1,7 +1,7 @@
 /** save 族的文本投影。 */
-import { quoteForText } from "../../literals";
-import { StoryCommand } from "../../../../contracts";
-import { GenerateContext } from "../context";
+import { quoteForText } from "../../literals.ts";
+import type { StoryCommand } from "../../../../contracts/index.ts";
+import type { GenerateContext } from "../context.ts";
 
 /**
  * 投影本族的 op 行（`save` `load` `auto_save` `save_delete`）。

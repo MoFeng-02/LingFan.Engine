@@ -10,8 +10,8 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { OP_SCHEMAS } from "../schema";
-import { renderVocabulary, selectWordSources } from "./vocabulary-gen";
+import { OP_SCHEMAS } from "../schema/index.ts";
+import { renderVocabulary, selectWordSources } from "./vocabulary-gen.ts";
 
 function rebuild(): void {
   const dir = path.dirname(fileURLToPath(import.meta.url));

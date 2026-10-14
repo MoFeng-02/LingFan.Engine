@@ -1,6 +1,6 @@
 /** 块体命令的缩进体投影，以及自定义 op 行投影的兜底调用。 */
-import { generateCommand } from "./command";
-import type { CustomOpProjections, StoryCommand } from "../../../contracts";
+import { generateCommand } from "./command.ts";
+import type { CustomOpProjections, StoryCommand } from "../../../contracts/index.ts";
 
 /** 自定义 op 行投影兜底（不抛约束的引擎半边）：抛出/空行 = null → 上层整次拒绝 */
 export function tryProjectToText(

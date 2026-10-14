@@ -1,8 +1,8 @@
 /** blocks 族的文本投影。 */
-import { generateBody } from "../body";
-import { quoteForText, generateValue, instanceZText } from "../../literals";
-import { StoryCommand } from "../../../../contracts";
-import { GenerateContext } from "../context";
+import { generateBody } from "../body.ts";
+import { quoteForText, generateValue, instanceZText } from "../../literals.ts";
+import type { StoryCommand } from "../../../../contracts/index.ts";
+import type { GenerateContext } from "../context.ts";
 
 /**
  * 投影本族的 op 行（`if` `while` `for` `foreach` `switch` `menu` `func`）。

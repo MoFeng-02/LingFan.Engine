@@ -1,7 +1,7 @@
 import * as ts from "typescript";
-import { scanEnum } from "./fold";
-import { DEFAULT_STATE_ROOT, WORD_NAMES } from "./core";
-import type { Binding, DiagBag, ModuleRecord } from "./core";
+import { scanEnum } from "./fold.ts";
+import { DEFAULT_STATE_ROOT, WORD_NAMES } from "./core.ts";
+import type { Binding, DiagBag, ModuleRecord } from "./core.ts";
 
 /**
  * node_modules 值导入的本地名登记：扫描期即收集（scanConstStatement

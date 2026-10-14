@@ -4,5 +4,5 @@
  * 装配层只从这里取，不引子模块内部文件。
  */
 
-export { ExpressionAuditor } from "./parser";
-export { type AuditToken, type OperandKind } from "./token";
+export { ExpressionAuditor } from "./parser.ts";
+export { type AuditToken, type OperandKind } from "./token.ts";

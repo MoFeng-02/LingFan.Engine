@@ -33,10 +33,10 @@ import type {
   Story,
   StoryColumn,
   StoryCommand,
-} from "../../contracts";
-import type { ExprValue } from "../expr";
-import type { RegisteredOp } from "../opRegistry";
-import type { Checkpoint, Frame, LoopState } from "./frame";
+} from "../../contracts/index.ts";
+import type { ExprValue } from "../expr/index.ts";
+import type { RegisteredOp } from "../opRegistry.ts";
+import type { Checkpoint, Frame, LoopState } from "./frame.ts";
 
 /**
  * 命令处理器与执行器私有面之间的通道：处理器只读这里列出的成员，

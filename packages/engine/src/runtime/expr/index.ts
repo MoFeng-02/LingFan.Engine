@@ -9,7 +9,7 @@ export {
   type ExprDict,
   type ExpressionErrorCode,
   type ExprValue,
-} from "./value";
-export { evaluateExpression } from "./evaluate";
-export { interpolateText, type TextInterpolation } from "./interpolate";
-export type { NameResolver } from "../resolver";
+} from "./value.ts";
+export { evaluateExpression } from "./evaluate.ts";
+export { interpolateText, type TextInterpolation } from "./interpolate.ts";
+export type { NameResolver } from "../resolver.ts";

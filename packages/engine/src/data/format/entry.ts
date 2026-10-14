@@ -2,12 +2,12 @@
  * 故事文件解析入口：JSON 形态按内容识别（多列 / 单列原子 / 文本投影）。
  * 任何结构不符 = 整次拒绝（StoryFormatError，issues 带来源定位）。
  */
-import { baseName } from "./naming";
-import { isSingleColumnFile, parseColumn } from "./column";
-import { StoryFormatError } from "./error";
-import { isPlainObject } from "../../shared";
-import { parseTextStory } from "../text";
-import type { Story, StoryColumn } from "../../contracts";
+import { baseName } from "./naming.ts";
+import { isSingleColumnFile, parseColumn } from "./column.ts";
+import { StoryFormatError } from "./error.ts";
+import { isPlainObject } from "../../shared/index.ts";
+import { parseTextStory } from "../text/index.ts";
+import type { Story, StoryColumn } from "../../contracts/index.ts";
 
 /**
  * 解析单个故事文件（多列或单列形态，按内容识别）。

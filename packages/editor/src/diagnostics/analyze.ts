@@ -4,13 +4,13 @@
  */
 import type { Story } from "@lingfan/engine";
 import { ELEMENT_OPS_BLOCKED } from "@lingfan/engine";
-import type { AnalyzeOptions, Diagnostic } from "../contracts";
-import { escapePointerToken } from "../contracts";
-import { UNIMPLEMENTED_ELEMENT_ATTRS } from "../schema";
-import { walkStoryElements } from "../schema";
-import { validateStory } from "../schema";
-import { isPlainObject } from "../shared";
-import { indexStory } from "./symbols";
+import type { AnalyzeOptions, Diagnostic } from "../contracts/index.ts";
+import { escapePointerToken } from "../contracts/index.ts";
+import { UNIMPLEMENTED_ELEMENT_ATTRS } from "../schema/index.ts";
+import { walkStoryElements } from "../schema/index.ts";
+import { validateStory } from "../schema/index.ts";
+import { isPlainObject } from "../shared/index.ts";
+import { indexStory } from "./symbols.ts";
 
 /**
  * 编辑期诊断集（结构校验 + 语义诊断，一律带 JSON Pointer）。

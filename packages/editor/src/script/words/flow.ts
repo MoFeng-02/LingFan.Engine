@@ -10,8 +10,8 @@
  * 块体内建 op 与扩展 op（extOp）混排是合法创作形态，闭合联合会把扩展挡在块体外。
  */
 import type { StoryCommand } from "@lingfan/engine";
-import type { CommandOf, ScriptValue } from "../../schema";
-import type { CellHandle, KnownColumnName, KnownGuardName } from "./cells";
+import type { CommandOf, ScriptValue } from "../../schema/index.ts";
+import type { CellHandle, KnownColumnName, KnownGuardName } from "./cells.ts";
 
 export type Stmt = StoryCommand;
 

@@ -5,7 +5,7 @@
  * 演进约束（固定）：载荷字段**只增不改**；破坏性变更必须升 `formatVersion`
  * 并同时提供 `migrateSave` 迁移路径——旧档读不了 = 引擎违约。
  */
-import type { ColumnCoordinate, StoryCommand } from "./story";
+import type { ColumnCoordinate, StoryCommand } from "./story/index.ts";
 
 /** 存档载荷 v1（块/列级作用域不进档——读档后按坐标确定性重放重建） */
 export interface SaveDataV1 {

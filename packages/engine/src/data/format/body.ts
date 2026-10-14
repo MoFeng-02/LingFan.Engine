@@ -1,5 +1,5 @@
 /** 块体校验：必填缺失即报（if 无 then → 报错），成员递归校验 */
-import { validateCommand } from "./validate";
+import { validateCommand } from "./validate.ts";
 
 /**
  * 校验块字段（`if` 的 `then`、`while` 的 `body` 等）并逐条递归校验其中命令。

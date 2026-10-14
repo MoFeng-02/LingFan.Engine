@@ -11,8 +11,8 @@
  * `ExtensionContext.set/get` **物理强制**该前缀（门卫式约束——扩展代码写不出前缀外的键）。
  */
 
-import { SHORT_ID_PATTERN } from "./identifiers";
-import type { Story, StoryCommand } from "./story";
+import { SHORT_ID_PATTERN } from "./identifiers.ts";
+import type { Story, StoryCommand } from "./story/index.ts";
 
 /** 扩展写入的键命名空间前缀（`ext.<extensionId>.`） */
 export const EXT_KEY_PREFIX = "ext.";

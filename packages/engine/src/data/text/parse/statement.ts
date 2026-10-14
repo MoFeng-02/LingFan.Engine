@@ -5,16 +5,16 @@
  * 注意：本文件与同名的 `statement/` 目录并存——模块解析**文件优先**，
  * 故 `./statement` 恒指本文件；在 `statement/` 下新增 `index.ts` 会使 `./statement` 解析到目录——保持该目录无 `index.ts`。
  */
-import { parseDialogStatement } from "./statement/dialog";
-import { parseFlowStatement } from "./statement/flow";
-import { parseVariablesStatement } from "./statement/variables";
-import { parseCollectionsStatement } from "./statement/collections";
-import { parseSaveStatement } from "./statement/save";
-import { parseMediaStatement } from "./statement/media";
-import { parsePresentStatement } from "./statement/present";
-import { unquote } from "../lexer";
-import type { StoryCommand } from "../../../contracts";
-import type { StatementContext } from "./state";
+import { parseDialogStatement } from "./statement/dialog.ts";
+import { parseFlowStatement } from "./statement/flow.ts";
+import { parseVariablesStatement } from "./statement/variables.ts";
+import { parseCollectionsStatement } from "./statement/collections.ts";
+import { parseSaveStatement } from "./statement/save.ts";
+import { parseMediaStatement } from "./statement/media.ts";
+import { parsePresentStatement } from "./statement/present.ts";
+import { unquote } from "../lexer.ts";
+import type { StoryCommand } from "../../../contracts/index.ts";
+import type { StatementContext } from "./state.ts";
 
 /**
  * 单条命令行语句的读向入口：把一行已切词的语句解析成命令对象。

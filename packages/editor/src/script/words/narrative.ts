@@ -4,8 +4,8 @@
  * 返回类型 = `CommandOf<op>`（派生自 OP_SCHEMA_MAP，与 validateCommand 同源）——
  * builder 形状漂移（漏字段 / 错字段）编译期报红，不再只靠互锁测试兜底。
  */
-import type { CommandOf } from "../../schema";
-import type { KnownColumnName, KnownInterpolationKey } from "./cells";
+import type { CommandOf } from "../../schema/index.ts";
+import type { KnownColumnName, KnownInterpolationKey } from "./cells.ts";
 
 // —— `{key}` 插值键的编译期校验（纯类型层，零运行期成本）——
 //

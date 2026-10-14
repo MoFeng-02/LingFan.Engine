@@ -6,11 +6,11 @@ import {
   lookupScope,
   lookupOwnScope,
   declareLocal,
-} from "./shared";
-import type { BodyCtx } from "./shared";
-import { statePath } from "./expr-core";
-import { lowerValue, loweredToScriptValue } from "./expr";
-import { callWord, emitCallCommand, resolveFunctionCallee } from "./words";
+} from "./shared.ts";
+import type { BodyCtx } from "./shared.ts";
+import { statePath } from "./expr-core.ts";
+import { lowerValue, loweredToScriptValue } from "./expr.ts";
+import { callWord, emitCallCommand, resolveFunctionCallee } from "./words.ts";
 
 function assignmentTarget(
   ctx: BodyCtx,

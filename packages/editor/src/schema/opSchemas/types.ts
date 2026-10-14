@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { OP_SCHEMA_MAP } from "./map";
-import { Value, StateValue } from "./fragments";
+import { OP_SCHEMA_MAP } from "./map.ts";
+import { Value, StateValue } from "./fragments.ts";
 
 // ====== 类型派生（与 schema 同源 ⇒ 字段面零漂移）======
 

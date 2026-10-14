@@ -13,10 +13,10 @@ export {
   type CompilerConstValues,
   type CompilerDiagnostic,
   type StoriesCompiler,
-} from "./compiler-contract";
+} from "./compiler-contract.ts";
 export {
   loadExtensions,
   readDeclaredExtensions,
   defaultExtensionLoader,
-} from "./extension-load";
-export { scanCellSources } from "./cell-scan";
+} from "./extension-load.ts";
+export { scanCellSources } from "./cell-scan.ts";

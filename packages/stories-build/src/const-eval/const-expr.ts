@@ -13,7 +13,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 import * as ts from "typescript";
-import type { JsonValue } from "./const-eval";
+import type { JsonValue } from "./const-eval.ts";
 
 /** 一个枚举的成员值表（声明序；值 = 字符串或数字） */
 type EnumTable = ReadonlyMap<string, string | number>;

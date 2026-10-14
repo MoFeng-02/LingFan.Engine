@@ -8,7 +8,7 @@
  *
  * 产出的 `FieldDescriptor` 与 op 表单同构 → 舞台编辑可直接复用 `FieldRow`。
  */
-import type { FieldDescriptor, FieldKind } from "../contracts";
+import type { FieldDescriptor, FieldKind } from "../contracts/index.ts";
 import {
   ELEMENT_ATTRIBUTES,
   ELEMENT_SPECIFIC_ATTRS,

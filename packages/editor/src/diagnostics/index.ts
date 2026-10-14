@@ -9,10 +9,10 @@
  * 实现分布：表达式引用抽取在 ./refs，符号索引在 ./symbols，分析入口在 ./analyze
  * ——本文件只做转发，不承载实现。
  */
-export { extractExpressionRefs } from "./refs";
-export { indexStory } from "./symbols";
-export { analyzeStory } from "./analyze";
-export type { AnalyzeOptions } from "../contracts";
+export { extractExpressionRefs } from "./refs.ts";
+export { indexStory } from "./symbols.ts";
+export { analyzeStory } from "./analyze.ts";
+export type { AnalyzeOptions } from "../contracts/index.ts";
 
 /**
  * 诊断集的分组与摘要（可按严重度筛选），以及消息文本的拆分与一句话简述。
@@ -27,9 +27,9 @@ export {
   type DiagnosticGroup,
   type DiagnosticSummary,
   type SeverityFilter,
-} from "./grouping";
+} from "./grouping.ts";
 export {
   diagnosticBrief,
   splitDiagnosticMessage,
   type DiagnosticMessageParts,
-} from "./message";
+} from "./message.ts";

@@ -5,14 +5,14 @@
  * 未实现的 op 在族分片里没有 case，等于直接放行（结构从简）——
  * 这是有意的：执行器对未实现 op fail-closed，编辑期 schema 负责字段面。
  */
-import { isPlainObject } from "../../shared";
-import { validateDialogCommand } from "./validate/dialog";
-import { validateFlowCommand } from "./validate/flow";
-import { validateVariablesCommand } from "./validate/variables";
-import { validateCollectionsCommand } from "./validate/collections";
-import { validateSaveCommand } from "./validate/save";
-import { validatePresentCommand } from "./validate/present";
-import { validateBlocksCommand } from "./validate/blocks";
+import { isPlainObject } from "../../shared/index.ts";
+import { validateDialogCommand } from "./validate/dialog.ts";
+import { validateFlowCommand } from "./validate/flow.ts";
+import { validateVariablesCommand } from "./validate/variables.ts";
+import { validateCollectionsCommand } from "./validate/collections.ts";
+import { validateSaveCommand } from "./validate/save.ts";
+import { validatePresentCommand } from "./validate/present.ts";
+import { validateBlocksCommand } from "./validate/blocks.ts";
 
 /**
  * 校验单条命令的负载结构，把问题记进 `issues`。

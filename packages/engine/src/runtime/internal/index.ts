@@ -2,7 +2,7 @@
  * 运行层内部结构：执行帧、检查点、命令处理器看到的状态面，以及门面与解释执行共用的零件。
  * 只在运行层内部使用，不进包出口。
  */
-export type { Checkpoint, EngineSnapshot, Frame, LoopState } from "./frame";
+export type { Checkpoint, EngineSnapshot, Frame, LoopState } from "./frame.ts";
 export {
   cloneFrame,
   GuardFailure,
@@ -10,14 +10,14 @@ export {
   sameCoord,
   snapshotText,
   validSlot,
-} from "./helpers";
+} from "./helpers.ts";
 export {
   beginLoopIteration,
   columnById,
   enterColumn,
   nearestLoopIndex,
   pushIterateLoop,
-} from "./frame-stack";
+} from "./frame-stack.ts";
 export {
   advance,
   choose,
@@ -30,8 +30,8 @@ export {
   save,
   setLanguage,
   start,
-} from "./session";
-export { abortExternalTakeovers, clearTimer, input } from "./waiting";
+} from "./session.ts";
+export { abortExternalTakeovers, clearTimer, input } from "./waiting.ts";
 export {
   animationFinished,
   animations,
@@ -39,7 +39,7 @@ export {
   shakeFinished,
   transitionFinished,
   videoFinished,
-} from "./media";
+} from "./media.ts";
 export {
   elements,
   findElements,
@@ -47,6 +47,6 @@ export {
   getCharacters,
   interpolate,
   mapElements,
-} from "./stage";
-export { draw, evalCond } from "./expression";
-export type { OpContext } from "./context";
+} from "./stage.ts";
+export { draw, evalCond } from "./expression.ts";
+export type { OpContext } from "./context.ts";

@@ -1,9 +1,9 @@
 /**
  * 存档导出。
  */
-import { SYS, type ColumnCoordinate, type SaveDataV1 } from "../../contracts";
-import { parseMenuReturn, type OpContext } from "../internal";
-import { findJsonValueError } from "../stateContract";
+import { SYS, type ColumnCoordinate, type SaveDataV1 } from "../../contracts/index.ts";
+import { parseMenuReturn, type OpContext } from "../internal/index.ts";
+import { findJsonValueError } from "../stateContract.ts";
 
 /**
  * 导出存档载荷。必须在等待点调用（列尾/未启动 fail-closed 拒绝）。

@@ -4,10 +4,10 @@
  *
  * 只在运行层内部使用，不进包出口。
  */
-import { SYS, type CharacterDef, type ElementInstance } from "../../contracts";
-import { findElements as findElementsIn } from "../../data";
-import { interpolateText } from "../expr";
-import type { OpContext } from "./context";
+import { SYS, type CharacterDef, type ElementInstance } from "../../contracts/index.ts";
+import { findElements as findElementsIn } from "../../data/index.ts";
+import { interpolateText } from "../expr/index.ts";
+import type { OpContext } from "./context.ts";
 
 /** 当前舞台元素（只读；所有元素写入都经 `SYS.elements`，随快照、存档与回溯） */
 export function elements(ctx: OpContext): ElementInstance[] {

@@ -9,8 +9,8 @@ import {
   type AnimationSpec,
   type ElementInstance,
   type StoryCommand,
-} from "../../../contracts";
-import type { OpContext } from "../../internal";
+} from "../../../contracts/index.ts";
+import type { OpContext } from "../../internal/index.ts";
 
 /** `animate_block` 可承载的属性（与既有实现的属性集一致） */
 const ANIMATE_BLOCK_PROPS: readonly string[] = [

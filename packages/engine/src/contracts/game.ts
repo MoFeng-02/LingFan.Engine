@@ -16,8 +16,8 @@
  *
  * 由调用方按**自身频率**选择，引擎不猜（猜错要么丢 UI 响应，要么事件风暴）。
  */
-import { SHORT_ID_PATTERN } from "./identifiers";
-import type { AbortHandle } from "./runtime";
+import { SHORT_ID_PATTERN } from "./identifiers.ts";
+import type { AbortHandle } from "./runtime/index.ts";
 
 /**
  * 外部玩法系统标识的合法形态：小写字母开头，小写字母/数字/`_`/`-`，1..32。

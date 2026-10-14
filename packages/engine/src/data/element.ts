@@ -16,8 +16,8 @@ import {
   isElementType,
   type ElementInstance,
   type ElementNode,
-} from "../contracts";
-import { isPlainObject } from "../shared";
+} from "../contracts/index.ts";
+import { isPlainObject } from "../shared/index.ts";
 
 /** 可选标识字段校验（缺省合法；存在则必须为非空字符串） */
 function validateOptionalName(

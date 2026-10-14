@@ -1,8 +1,8 @@
 /** dialog 族的读向解析。 */
-import { parseSay } from "../say";
-import { unquote } from "../../lexer";
-import { StoryCommand } from "../../../../contracts";
-import { StatementContext } from "../state";
+import { parseSay } from "../say.ts";
+import { unquote } from "../../lexer.ts";
+import type { StoryCommand } from "../../../../contracts/index.ts";
+import type { StatementContext } from "../state.ts";
 
 /**
  * 解析本族的 op 行（`say` `assert` `guard` `notify` `wait` `pause` `input` `nvl`）。

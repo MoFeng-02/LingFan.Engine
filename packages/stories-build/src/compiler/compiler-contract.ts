@@ -1,5 +1,5 @@
-import { StoryBuildError } from "../shared";
-import type { StorySourceConfig } from "../config/story-config";
+import { StoryBuildError } from "../shared/index.ts";
+import type { StorySourceConfig } from "../config/story-config.ts";
 
 /**
  * story-compiler 契约（编译器下游的唯一对接面）：

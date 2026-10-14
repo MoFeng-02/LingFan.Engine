@@ -9,9 +9,9 @@ import {
   SYS,
   type ElementInstance,
   type StoryCommand,
-} from "../../../contracts";
-import { removeElements } from "../../../data";
-import type { OpContext } from "../../internal";
+} from "../../../contracts/index.ts";
+import { removeElements } from "../../../data/index.ts";
+import type { OpContext } from "../../internal/index.ts";
 
 /**
  * 元素增删 op 已知负载字段（未知字段 fail-closed）。

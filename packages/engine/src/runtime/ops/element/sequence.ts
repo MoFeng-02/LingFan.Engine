@@ -14,10 +14,10 @@
  *
  * 返回是否全部执行成功（false = 已出站 engine.error，状态已回滚）。
  */
-import { ELEMENT_OPS_BLOCKED, SYS } from "../../../contracts";
-import type { EventListener, StoryCommand } from "../../../contracts";
-import type { OpContext } from "../../internal";
-import { Scope } from "../../scope";
+import { ELEMENT_OPS_BLOCKED, SYS } from "../../../contracts/index.ts";
+import type { EventListener, StoryCommand } from "../../../contracts/index.ts";
+import type { OpContext } from "../../internal/index.ts";
+import { Scope } from "../../scope.ts";
 
 /**
  * 执行一次点击动作：按序跑完 ops，成功返回 true；

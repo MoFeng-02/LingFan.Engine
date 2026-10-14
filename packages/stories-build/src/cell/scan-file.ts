@@ -1,6 +1,6 @@
 import * as ts from "typescript";
-import { checkFreeIdentifiers, collectFileImports, lineOf } from "./imports";
-import type { CellIssue, FileImports } from "./types";
+import { checkFreeIdentifiers, collectFileImports, lineOf } from "./imports.ts";
+import type { CellIssue, FileImports } from "./types.ts";
 
 /** 沿成员/下标链下钻取最左标识符名（`cc.getInfo` → "cc"） */
 export function rootIdentifier(node: ts.Node): string | undefined {

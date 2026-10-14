@@ -3,8 +3,8 @@
  * 独立持久化（系统配置语义）。载荷为纯数据（v1 起版本化），信任边界在
  * PlayerPreferences.hydrate（逐字段校验降级），端口只做搬运。
  */
-import type { AudioChannel } from "./media";
-import type { OrientationMode } from "./shell";
+import type { AudioChannel } from "./media/index.ts";
+import type { OrientationMode } from "./shell.ts";
 
 /**
  * 玩家偏好载荷（四通道音量 + 全局静音 + 文字速度 + 屏幕方向 + 键位覆盖 + 全屏；契约只增，可选字段向后兼容）。

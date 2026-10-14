@@ -8,9 +8,9 @@
  * 负载值统一经表达式求值（`{...}` 包裹的走表达式，其余按字面量），求值失败当场停机，
  * 不猜一个默认值继续跑。
  */
-import type { StoryCommand } from "../../contracts";
-import { ExpressionError, type ExprValue } from "../expr";
-import type { Frame, OpContext } from "../internal";
+import type { StoryCommand } from "../../contracts/index.ts";
+import { ExpressionError, type ExprValue } from "../expr/index.ts";
+import type { Frame, OpContext } from "../internal/index.ts";
 
 /** set 复合赋值前缀（value 支持 {expr} 与 += 等复合赋值） */
 const COMPOUND_PREFIX = /^\s*(\+=|-=|\*=|\/=|%=)\s*([\s\S]+)$/;

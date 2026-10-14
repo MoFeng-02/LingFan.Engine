@@ -5,9 +5,9 @@
  * 槽位名校验、菜单返回点解析、快照取值。放在一处以免各模块各写一份。
  * 只在运行层内部使用，不进包出口。
  */
-import type { ColumnCoordinate } from "../../contracts";
-import { Scope } from "../scope";
-import type { Checkpoint, Frame } from "./frame";
+import type { ColumnCoordinate } from "../../contracts/index.ts";
+import { Scope } from "../scope.ts";
+import type { Checkpoint, Frame } from "./frame.ts";
 
 /** 守卫拦截的内部标记（守卫回调抛出它 ⇒ 执行器捕获后转成 engine.error） */
 export class GuardFailure extends Error {}

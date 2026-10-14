@@ -12,8 +12,8 @@ import {
   warningSink,
   type ExpressionWarning,
   type VarKind,
-} from "./registry";
-import { ExpressionAuditor, type AuditToken, type OperandKind } from "./audit";
+} from "./registry.ts";
+import { ExpressionAuditor, type AuditToken, type OperandKind } from "./audit/index.ts";
 
 /**
  * 表达式标签：`expr\`${vars.player.gold} >= 25\` ⇒ "{player.gold >= 25}"`。

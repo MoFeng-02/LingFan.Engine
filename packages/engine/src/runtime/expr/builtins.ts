@@ -5,8 +5,8 @@
  * arrayGet/dictGet/optGet/len 走注入的 resolve 读路径数据，路径缺失一律返回 null
  * （配合 `??` 兜底），路径存在但形态不符仍 fail-closed；未知函数 fail-closed。
  */
-import { ExpressionError, type ExprValue } from "./value";
-import type { NameResolver } from "../resolver";
+import { ExpressionError, type ExprValue } from "./value.ts";
+import type { NameResolver } from "../resolver.ts";
 
 /** 内建函数全集：random/min/max/abs/clamp（算术）+ arrayGet/dictGet/optGet/len（路径读取） */
 export function callBuiltin(

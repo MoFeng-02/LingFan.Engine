@@ -6,16 +6,16 @@
  * 不改判定、不改文案的分片搬运是安全的；一旦有人把这里的 kind/type 判据另写一份，
  * 两条路径迟早会对同一个文件给出不同结论。
  */
-import { isPlainObject } from "../../shared";
+import { isPlainObject } from "../../shared/index.ts";
 import {
   isSceneType,
   type ElementNode,
   type SceneType,
   type StoryColumn,
   type StoryCommand,
-} from "../../contracts";
-import { validateElement } from "../element";
-import { validateCommand } from "./validate";
+} from "../../contracts/index.ts";
+import { validateElement } from "../element.ts";
+import { validateCommand } from "./validate.ts";
 
 /** 单列原子文件形态判定（顶层即列对象：id + kind，无 columns[]） */
 export function isSingleColumnFile(json: unknown): boolean {

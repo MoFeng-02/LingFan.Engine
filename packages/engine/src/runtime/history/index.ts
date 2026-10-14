@@ -11,7 +11,7 @@ export {
   flushPendingCheckpoint,
   restore,
   takeSnapshot,
-} from "./snapshot";
+} from "./snapshot.ts";
 export {
   back,
   columnFrame,
@@ -23,4 +23,4 @@ export {
   isCurrentColumnReplayable,
   lastReplayableCursor,
   rollbackTo,
-} from "./rollback";
+} from "./rollback.ts";

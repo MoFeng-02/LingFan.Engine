@@ -9,8 +9,8 @@
  * 编译期放行，由渲染层注册表回退 + 诊断兜底（两档语义）。
  */
 import * as ts from "typescript";
-import type { BodyCtx } from "./shared";
-import { diag } from "./shared";
+import type { BodyCtx } from "./shared.ts";
+import { diag } from "./shared.ts";
 
 /** 降糖形态的插值段：`{…}` 包裹（模板插值与标识符实参都落成这个形态） */
 const INTERP_SEGMENT = /\{[^{}]*\}/;

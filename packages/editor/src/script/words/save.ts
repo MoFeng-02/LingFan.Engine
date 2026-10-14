@@ -1,7 +1,7 @@
 /**
  * Script 词汇层 · **存档域**（save / load / auto_save / save_delete）。
  */
-import type { CommandOf } from "../../schema";
+import type { CommandOf } from "../../schema/index.ts";
 
 /**
  * 声明一个存档点：把「存进槽位 `slot`」记下来，等到**下一个玩家所见

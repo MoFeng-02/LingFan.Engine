@@ -1,13 +1,13 @@
-import { isPlainObject } from "../../shared";
-import { ProjectSerializationError } from "./error";
+import { isPlainObject } from "../../shared/index.ts";
+import { ProjectSerializationError } from "./error.ts";
 import {
   byPath,
   MANIFEST_FILE,
   STORIES_DIR,
   isSafeFileNameSegment,
-} from "./naming";
-import { columnShapeDefect } from "../format/column";
-import type { SerializedProject, Story, StoryColumn } from "../../contracts";
+} from "./naming.ts";
+import { columnShapeDefect } from "../format/column.ts";
+import type { SerializedProject, Story, StoryColumn } from "../../contracts/index.ts";
 
 /**
  * 工程写回：Story → 多文件工程（组装的逆过程）。

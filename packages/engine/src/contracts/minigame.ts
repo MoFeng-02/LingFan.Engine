@@ -6,7 +6,7 @@
  * 宿主决定——契约层只用语言核心类型表达，因此容器是 `unknown`，中止是可轮询的
  * 句柄（见 [`AbortHandle`]）。
  */
-import type { AbortHandle, MinigameMountPayload } from "./runtime";
+import type { AbortHandle, MinigameMountPayload } from "./runtime/index.ts";
 
 export type { MinigameMountPayload };
 

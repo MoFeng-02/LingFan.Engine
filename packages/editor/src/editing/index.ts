@@ -21,14 +21,14 @@ export {
   type ColumnGroupingView,
   type GroupedLayout,
   type KeyValueStorage,
-} from "./columnGrouping";
+} from "./columnGrouping.ts";
 export {
   isBranchTarget,
   planBranchInsertion,
   branchPointerToCommand,
   type BranchPlan,
   type BranchColumnLike,
-} from "./graphConnect";
+} from "./graphConnect.ts";
 export {
   buildPointer,
   parsePointer,
@@ -42,21 +42,21 @@ export {
   type SelectionKind,
   type SelectionNodeKind,
   type SelectionDescription,
-} from "./pointers";
+} from "./pointers.ts";
 export {
   NORMALIZATION_NOTICE_PREF_KEY,
   readSkipNormalizationNotice,
   writeSkipNormalizationNotice,
   describeNormalization,
-} from "./saveNormalization";
+} from "./saveNormalization.ts";
 export {
   TS_SOURCE_MANIFEST_KEY,
   TS_SOURCE_READONLY_HINT,
   assertTsSourceWritable,
   isTsSourceProject,
   tsSourceWriteBlockers,
-} from "./tsSourceGuard";
-export { EditorSession } from "./session";
+} from "./tsSourceGuard.ts";
+export { EditorSession } from "./session.ts";
 export {
   columnContainers,
   containerPointer,
@@ -69,4 +69,4 @@ export {
   removeCommand,
   updateCommandField,
   moveCommand,
-} from "./storyOps";
+} from "./storyOps.ts";

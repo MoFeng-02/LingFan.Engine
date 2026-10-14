@@ -1,7 +1,7 @@
 /** media 族的读向解析。 */
-import { unquote } from "../../lexer";
-import { StoryCommand } from "../../../../contracts";
-import { StatementContext } from "../state";
+import { unquote } from "../../lexer.ts";
+import type { StoryCommand } from "../../../../contracts/index.ts";
+import type { StatementContext } from "../state.ts";
 
 /**
  * 解析本族的 op 行（`bgm` `se` `ambient` `voice` `stop_bgm` `stop_ambient` `stop_voice` `video` `cutscene` `seek_video` `pause_video` `resume_video` `stop_video` `video_skipable`）。

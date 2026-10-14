@@ -55,7 +55,7 @@ import {
   transitionSchema,
   shakeSchema,
   textTypewriterSchema,
-} from "./commands";
+} from "./commands.ts";
 
 /** op → 负载 schema（不含 op 键本身）；字面量键形态 = `ScriptCommand` 判别联合的派生源。
  * 新增 op = 加条目 = 表单 / 校验 / 类型三面自动出现（单一事实源，零重复定义） */

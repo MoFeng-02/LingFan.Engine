@@ -4,11 +4,11 @@
  * 执行器与运行层内部模块从这里取存档成员；子层各文件之间仍按需直接引用。
  * 这里只做转发，不放任何实现。
  */
-export { exportSave } from "./export";
-export { importSave } from "./import";
+export { exportSave } from "./export.ts";
+export { importSave } from "./import.ts";
 export {
   resolveSaveExtensions,
   restoreSaveExtensions,
   tryMigrateSave,
-} from "./extensions";
-export { resolveSaveMinigames } from "./minigames";
+} from "./extensions.ts";
+export { resolveSaveMinigames } from "./minigames.ts";

@@ -2,8 +2,8 @@
  * present 族的命令负载结构校验（validateCommand 的族分片）。
  * 只判本族 op 的必填与类型，未知字段不在此拒绝（编辑期 schema 负责）。
  */
-import { requireNonEmptyString } from "../guards";
-import { isPlainObject } from "../../../shared";
+import { requireNonEmptyString } from "../guards.ts";
+import { isPlainObject } from "../../../shared/index.ts";
 
 /**
  * 校验本族 op 的负载（12 个 op：`show` `hide` `background` `bg_switch` `zindex` `style` `window` `animate` `animate_block` `transition` `shake` `text_typewriter`）。

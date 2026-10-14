@@ -20,8 +20,8 @@ import {
   type StateReader,
   type StateSource,
   type VideoCommand,
-} from "../../contracts";
-import { INSTANCE_Z_KEYS } from "../shell";
+} from "../../contracts/index.ts";
+import { INSTANCE_Z_KEYS } from "../shell.ts";
 
 /** 音频通道 ↔ 状态键（通道口径与 `AudioPort` 一致；键名归契约层的 `SYS`） */
 const AUDIO_CHANNEL_KEY: Record<AudioChannel, string> = {

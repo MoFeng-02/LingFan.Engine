@@ -5,7 +5,7 @@
  * 判类器的实现文件便只需一条导入。
  */
 
-import type { ExpressionWarning, VarKind } from "../registry";
+import type { ExpressionWarning, VarKind } from "../registry.ts";
 
 export type { ExpressionWarning, VarKind };
 

@@ -4,9 +4,9 @@ import {
   generateValue,
   generateDictLiteral,
   instanceZText,
-} from "../../literals";
-import { StoryCommand, CharacterDef } from "../../../../contracts";
-import { GenerateContext } from "../context";
+} from "../../literals.ts";
+import type { StoryCommand, CharacterDef } from "../../../../contracts/index.ts";
+import type { GenerateContext } from "../context.ts";
 
 /**
  * 投影本族的 op 行（`jump` `navigate` `call` `return` `break` `continue` `minigame` `character`）。

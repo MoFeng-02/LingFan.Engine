@@ -23,7 +23,7 @@ import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { Worker } from "node:worker_threads";
-import type { CompilerDiagnostic } from "../compiler";
+import type { CompilerDiagnostic } from "../compiler/index.ts";
 
 /** JSON 可序列化值（求值产物的唯一合法形态）。 */
 export type JsonValue =

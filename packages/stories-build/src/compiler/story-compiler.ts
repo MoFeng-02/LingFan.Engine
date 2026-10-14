@@ -1,18 +1,18 @@
 import { isSafeFileNameSegment, type Story } from "@lingfan/engine";
-import type { StorySourceConfig } from "../config/story-config";
+import type { StorySourceConfig } from "../config/story-config.ts";
 import {
   DiagBag,
   buildGraph,
   resolveStart,
   type CompileDiag,
   type Graph,
-} from "./story-compiler/graph";
+} from "./story-compiler/graph.ts";
 import {
   compileStoryFile,
   createAssembleSession,
   type CompiledStory,
-} from "./story-compiler/assemble";
-import type { CompilerConstValues } from "./compiler-contract";
+} from "./story-compiler/assemble.ts";
+import type { CompilerConstValues } from "./compiler-contract.ts";
 
 export interface CompileStoriesResult {
   stories: Array<{ columnId: string; sourceRelPath: string; story: Story }>;

@@ -1,18 +1,18 @@
-import { isPlainObject } from "../../shared";
+import { isPlainObject } from "../../shared/index.ts";
 import {
   isOrientationMode,
   type DegradedOpen,
   type Story,
   type StoryColumn,
-} from "../../contracts";
+} from "../../contracts/index.ts";
 import {
   isSingleColumnFile,
   parseStory,
   parseStoryFile,
   StoryFormatError,
-} from "../format";
-import { ProjectAssemblyError } from "./error";
-import { byPath, isDotPath, MANIFEST_FILE, STORIES_DIR } from "./naming";
+} from "../format/index.ts";
+import { ProjectAssemblyError } from "./error.ts";
+import { byPath, isDotPath, MANIFEST_FILE, STORIES_DIR } from "./naming.ts";
 
 /**
  * 工程组装：project.json + Stories/** → Story。

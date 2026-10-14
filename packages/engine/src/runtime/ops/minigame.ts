@@ -12,10 +12,10 @@ import {
   type OutboundEvent,
   type OutboundPayload,
   type StoryCommand,
-} from "../../contracts";
-import { ExpressionError } from "../expr";
-import type { Frame, OpContext } from "../internal";
-import { writeExternal } from "../state";
+} from "../../contracts/index.ts";
+import { ExpressionError } from "../expr/index.ts";
+import type { Frame, OpContext } from "../internal/index.ts";
+import { writeExternal } from "../state/index.ts";
 
 /** minigame 已知负载字段（未知字段 fail-closed） */
 const MINIGAME_FIELDS = new Set([

@@ -2,7 +2,7 @@
  * 出站事件契约：引擎向外发的事件信封，以及信封里能装的各类负载。
  * 事件流只承载离散变化（帧级键除外），宿主据此更新界面。
  */
-import type { ColumnCoordinate } from "../story";
+import type { ColumnCoordinate } from "../story/index.ts";
 
 /** ValueChanged：外部观察唯一接缝（旁路读改违反单一接缝约束） */
 export interface ValueChanged {

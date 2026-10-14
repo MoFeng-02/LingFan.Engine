@@ -3,8 +3,8 @@
  * 未命中路径 fail-closed 返回 null——编辑器映射器只做纯函数。
  */
 
-import { describeForm } from "../schema";
-import { BUILTIN_OP_SURFACE, type OpSurface } from "../schema";
+import { describeForm } from "../schema/index.ts";
+import { BUILTIN_OP_SURFACE, type OpSurface } from "../schema/index.ts";
 
 type PathSegment = string | number;
 

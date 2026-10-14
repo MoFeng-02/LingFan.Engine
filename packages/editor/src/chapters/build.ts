@@ -12,7 +12,7 @@ import type {
   ChapterIndex,
   ChapterInput,
   ChapterNode,
-} from "./index";
+} from "./index.ts";
 
 /** 故事文件的容器根（剥掉它，剩下的目录链才是「作者的章节编排」） */
 const STORIES_ROOT = "Stories/";

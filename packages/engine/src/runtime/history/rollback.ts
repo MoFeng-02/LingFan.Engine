@@ -5,10 +5,10 @@ import {
   SYS,
   isReplayableColumn,
   type ColumnCoordinate,
-} from "../../contracts";
-import { snapshotText, type Frame, type OpContext } from "../internal";
-import { Scope } from "../scope";
-import { restore } from "./snapshot";
+} from "../../contracts/index.ts";
+import { snapshotText, type Frame, type OpContext } from "../internal/index.ts";
+import { Scope } from "../scope.ts";
+import { restore } from "./snapshot.ts";
 
 /**
  * 找到「最后一个可回溯坐标」的历史游标（菜单态存档时用）。

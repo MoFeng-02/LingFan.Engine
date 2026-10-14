@@ -7,8 +7,8 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { STORIES_DIR, type SerializedProject } from "@lingfan/engine";
-import { renderFunRegister, type CellScan } from "../cell";
-import { walkFiles } from "../shared";
+import { renderFunRegister, type CellScan } from "../cell/index.ts";
+import { walkFiles } from "../shared/index.ts";
 
 /** 写盘所需的位置与内容（全部由编排层算好，本模块只做差量判定与落盘） */
 export interface EmitOptions {

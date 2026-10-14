@@ -5,7 +5,7 @@ export {
   parseStory,
   parseStoryFile,
   StoryFormatError,
-} from "./format";
+} from "./format/index.ts";
 export {
   assembleProject,
   conflictMessage,
@@ -24,14 +24,14 @@ export {
   type ProjectFileDiff,
   type SerializedProject,
   type WriteNormalizationFinding,
-} from "./project";
+} from "./project/index.ts";
 export {
   findElements,
   loadElements,
   removeElements,
   validateElement,
   validateElementNode,
-} from "./element";
+} from "./element.ts";
 export {
   drainTextProjectionWarnings,
   generateText,
@@ -39,4 +39,4 @@ export {
   projectText,
   TextFormatError,
   type TextProjection,
-} from "./text";
+} from "./text/index.ts";

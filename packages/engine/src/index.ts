@@ -6,7 +6,7 @@
  * `data/index.ts`（故事文件解析·工程组装·文本投影·元素装载）。
  * 包出口不逐个深入实现文件；域内零件（`runtime/scope`、`runtime/resolver` 等）不经这里暴露。
  */
-export * from "./contracts";
+export * from "./contracts/index.ts";
 /**
  * 运行层：执行器与运行期支撑 —— 宿主信息解析、文本国际化、玩家偏好、壳配置解析、写入契约守卫、
  * op 注册表、等待声明表、声明制扩展装载、表达式求值。
@@ -67,7 +67,7 @@ export {
   type SavesConfig,
   type SavesThumbnailConfig,
   type WaitSpec,
-} from "./runtime";
+} from "./runtime/index.ts";
 /**
  * 数据层：故事文件解析（JSON v1 / `.story` 混存）、工程组装与写回、文本投影（双向）、
  * 元素形状校验与装载。两条「单一事实源」在这里成面：
@@ -113,4 +113,4 @@ export {
   type SerializedProject,
   type TextProjection,
   type WriteNormalizationFinding,
-} from "./data";
+} from "./data/index.ts";

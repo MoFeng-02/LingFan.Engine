@@ -2,10 +2,10 @@
  * blocks 族的命令负载结构校验（validateCommand 的族分片）。
  * 只判本族 op 的必填与类型，未知字段不在此拒绝（编辑期 schema 负责）。
  */
-import { requireNonEmptyString } from "../guards";
-import { validateInstanceZ } from "../column";
-import { validateBody } from "../body";
-import { isPlainObject } from "../../../shared";
+import { requireNonEmptyString } from "../guards.ts";
+import { validateInstanceZ } from "../column.ts";
+import { validateBody } from "../body.ts";
+import { isPlainObject } from "../../../shared/index.ts";
 
 /**
  * 校验本族 op 的负载（7 个 op：`if` `menu` `while` `for` `foreach` `switch` `func`）。

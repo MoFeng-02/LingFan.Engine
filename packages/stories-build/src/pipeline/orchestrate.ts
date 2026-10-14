@@ -1,33 +1,33 @@
 import { join } from "node:path";
 import { STORIES_DIR, type Story, type StoryColumn } from "@lingfan/engine";
 import { TS_SOURCE_MANIFEST_KEY } from "@lingfan/editor";
-import { assertKnownGuards, assertKnownOps } from "./gates";
-import { scanCellSources } from "../compiler";
-import { runConstEvalPass } from "../const-eval";
-import { assertRoundTrip, compileStory } from "../emit";
+import { assertKnownGuards, assertKnownOps } from "./gates.ts";
+import { scanCellSources } from "../compiler/index.ts";
+import { runConstEvalPass } from "../const-eval/index.ts";
+import { assertRoundTrip, compileStory } from "../emit/index.ts";
 import {
   loadDefaultCompiler,
   type CompiledStoryEntry,
   type StoriesCompiler,
-} from "../compiler";
-import { emitArtifacts } from "../emit";
-import { StoryBuildError } from "../shared";
-import { loadExtensions } from "../compiler";
-import { readManifest, CONFIG_FILE } from "../config";
-import { drainBuildWarnings, type BuildReport } from "../emit";
+} from "../compiler/index.ts";
+import { emitArtifacts } from "../emit/index.ts";
+import { StoryBuildError } from "../shared/index.ts";
+import { loadExtensions } from "../compiler/index.ts";
+import { readManifest, CONFIG_FILE } from "../config/index.ts";
+import { drainBuildWarnings, type BuildReport } from "../emit/index.ts";
 import {
   collectModuleDefines,
   evalConfigModule,
   mergeDefineCallsInto,
   runStateSchemaPass,
   type LocatedDefineCall,
-} from "../const-eval";
-import { discoverSources } from "../discovery";
+} from "../const-eval/index.ts";
+import { discoverSources } from "../discovery/index.ts";
 import {
   FONTS_DIR_NAME,
   fontNameSet,
   scanFontRegistry,
-} from "../fonts";
+} from "../fonts/index.ts";
 import {
   collectDeclaredNames,
   collectEnumTypeSlotsForBuild,
@@ -35,8 +35,8 @@ import {
   renderScriptTypegen,
   renderStateTypegen,
   renderTypegen,
-} from "../typegen";
-import { walkFiles } from "../shared";
+} from "../typegen/index.ts";
+import { walkFiles } from "../shared/index.ts";
 
 /** 构建产物的目录名与生成物文件名（默认值 = 参考宿主的现状目录名） */
 export const DEFAULT_SOURCES_DIR = "Stories.src";

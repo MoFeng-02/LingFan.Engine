@@ -1,6 +1,6 @@
 /** save 族的读向解析。 */
-import { StoryCommand } from "../../../../contracts";
-import { StatementContext } from "../state";
+import type { StoryCommand } from "../../../../contracts/index.ts";
+import type { StatementContext } from "../state.ts";
 
 /**
  * 解析本族的 op 行（`save` `load` `auto_save` `save_delete`）。

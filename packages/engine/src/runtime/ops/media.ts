@@ -12,9 +12,9 @@ import {
   type OutboundPayload,
   type StoryCommand,
   type VideoCommand,
-} from "../../contracts";
-import { interpolateText } from "../expr";
-import type { Frame, OpContext } from "../internal";
+} from "../../contracts/index.ts";
+import { interpolateText } from "../expr/index.ts";
+import type { Frame, OpContext } from "../internal/index.ts";
 
 /** 音频 op 已知负载字段（未知字段 fail-closed） */
 const AUDIO_FIELDS: Record<string, ReadonlySet<string>> = {

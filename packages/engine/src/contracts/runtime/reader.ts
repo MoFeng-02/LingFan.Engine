@@ -14,9 +14,9 @@
  * **读口只读**：它不改状态、不驱动帧，也不替代通用读口 `StoryEngine.get`
  * （后者仍供引擎内部与「按任意键取值」的场景使用）。
  */
-import type { ElementInstance } from "../element";
-import type { AudioChannel, AudioChannelState, VideoCommand } from "../media";
-import type { LayerZOverrides } from "../shell";
+import type { ElementInstance } from "../element.ts";
+import type { AudioChannel, AudioChannelState, VideoCommand } from "../media/index.ts";
+import type { LayerZOverrides } from "../shell.ts";
 
 /**
  * 取值来源：任何能按键读状态的对象都满足。

@@ -1,6 +1,6 @@
 import { existsSync, readdirSync } from "node:fs";
 import { isSafeFileNameSegment } from "@lingfan/engine";
-import { StoryBuildError } from "../shared";
+import { StoryBuildError } from "../shared/index.ts";
 
 /**
  * 源工程布局声明（`Stories.src/config.ts`，根级唯一根文件）：

@@ -18,9 +18,9 @@
  */
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { DEFAULT_SOURCES_DIR, StoryBuildError, buildStories } from "../index";
+import { DEFAULT_SOURCES_DIR, StoryBuildError, buildStories } from "../index.ts";
 
-export { StoryBuildError, buildStories, type BuildReport } from "../index";
+export { StoryBuildError, buildStories, type BuildReport } from "../index.ts";
 
 // —— 主模块守卫：仅直接执行时跑真实工程（tests 直测 buildStories 纯编排）——
 // 可选位置参数 = 工程根（默认 = 工作目录，可由 DSH_STORIES_ROOT 覆盖）
