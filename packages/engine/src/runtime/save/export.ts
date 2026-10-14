@@ -24,7 +24,7 @@ export function exportSave(ctx: OpContext): SaveDataV1 | null {
     columnFrame === undefined ||
     columnFrame.columnId === null
   ) {
-    ctx.fail("save-invalid", "当前不在等待点，无法存档");
+    ctx.fail("save-invalid", ctx.texts.saveNotAtWaitPoint());
     return null;
   }
   // 序列化边界深校验（「存档时」半边）：写入时契约 + 写时复制
@@ -33,10 +33,7 @@ export function exportSave(ctx: OpContext): SaveDataV1 | null {
   for (const [key, value] of ctx.state) {
     const unsafe = findJsonValueError(value, key);
     if (unsafe !== null) {
-      ctx.fail(
-        "value-not-serializable",
-        `状态含不可序列化值，存档被拒绝：${unsafe}（请检查是否有原地修改已写入的值；应整值替换）`,
-      );
+      ctx.fail("value-not-serializable", ctx.texts.saveUnsafeValue(unsafe));
       return null;
     }
   }

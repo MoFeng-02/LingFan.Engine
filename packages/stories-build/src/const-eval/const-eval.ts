@@ -50,15 +50,19 @@ export interface DefineBad {
   readonly reason: string;
 }
 
-/** 单轮求值超时（模块顶层死循环不应拖死构建）。 */
-const EVAL_TIMEOUT_MS = 30_000;
+/** 单轮求值超时缺省值（毫秒；模块顶层死循环不应拖死构建）。 */
+export const DEFAULT_EVAL_TIMEOUT_MS = 30_000;
 
 /**
  * 求值入口：`entry` = Stories.src 内源文件绝对路径。
+ * `timeoutMs` = 单轮求值时限（缺省 30_000；编排入口 evalTimeoutMs 逐层透传至此）。
  * 返回该模块全部导出常量的 JSON 可序列化值；任何不可序列化导出、打包失败、
  * 顶层执行抛错、求值超时或两次求值不一致，都返回诊断集（fail-closed）。
  */
-export async function evalConstModule(entry: string): Promise<ConstEvalResult> {
+export async function evalConstModule(
+  entry: string,
+  timeoutMs: number = DEFAULT_EVAL_TIMEOUT_MS,
+): Promise<ConstEvalResult> {
   const absEntry = path.resolve(entry);
   const esbuildPath = resolveEsbuildPath();
   if (esbuildPath === null) {
@@ -77,7 +81,7 @@ export async function evalConstModule(entry: string): Promise<ConstEvalResult> {
   }
 
   const evaluateRound = (): Promise<ConstEvalResult> =>
-    evaluateOnce(absEntry, esbuildPath);
+    evaluateOnce(absEntry, esbuildPath, timeoutMs);
 
   const first = await evaluateRound();
   if ("diags" in first) return first;
@@ -152,11 +156,13 @@ type WorkerOutcome =
 async function evaluateOnce(
   absEntry: string,
   esbuildPath: string,
+  timeoutMs: number,
 ): Promise<ConstEvalResult> {
   const outcome = await runWorkerRound({
     entry: absEntry,
     esbuildPath,
     workDir: path.dirname(absEntry),
+    timeoutMs,
   });
 
   switch (outcome.kind) {
@@ -210,7 +216,7 @@ async function evaluateOnce(
             file: absEntry,
             line: 1,
             col: 1,
-            message: `编译期求值超时（>${EVAL_TIMEOUT_MS}ms）——模块顶层代码未在时限内完成求值`,
+            message: `编译期求值超时（>${timeoutMs}ms）——模块顶层代码未在时限内完成求值`,
           },
         ],
       };
@@ -221,6 +227,7 @@ function runWorkerRound(data: {
   entry: string;
   esbuildPath: string;
   workDir: string;
+  timeoutMs: number;
 }): Promise<WorkerOutcome> {
   return new Promise((resolve) => {
     const worker = new Worker(WORKER_SOURCE, { eval: true, workerData: data });
@@ -232,10 +239,7 @@ function runWorkerRound(data: {
       void worker.terminate();
       resolve(outcome);
     };
-    const timer = setTimeout(
-      () => finish({ kind: "timeout" }),
-      EVAL_TIMEOUT_MS,
-    );
+    const timer = setTimeout(() => finish({ kind: "timeout" }), data.timeoutMs);
     worker.on("message", (message: { kind?: unknown }) => {
       if (
         message !== null &&

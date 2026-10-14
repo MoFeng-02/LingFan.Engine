@@ -18,6 +18,12 @@ export interface ChoicesRenderInput {
   inputPrompt: string;
 }
 
+/** 选择层文案（宿主可覆盖；缺省实现即内建文案） */
+export interface ChoicesTexts {
+  /** 输入提交按钮的显示文本 */
+  inputSubmit: string;
+}
+
 /**
  * 选择层的装配输入。`choose` / `submitInput` 是回核心的两条出口——视图不认识引擎，
  * 只把「点了哪一项」「输了什么字」原样交出去。`templates` 不传即用内建模板。
@@ -26,11 +32,16 @@ export interface ChoicesViewDeps {
   container: HTMLElement;
   mounts: NarrativeMounts;
   templates?: ChoiceTemplateRegistry;
+  /** 文案覆盖（不传 = 内建缺省） */
+  texts?: Partial<ChoicesTexts>;
   /** 选择选项（交核心 `choose(列 id)`） */
   choose: (target: string) => void;
   /** 提交输入（交核心 `input`） */
   submitInput: (value: string) => void;
 }
+
+/** 内建文案：不传 texts 时的缺省值 */
+const DEFAULT_CHOICES_TEXTS: ChoicesTexts = { inputSubmit: "确定" };
 
 /**
  * 造一个选择层渲染函数：调用它即用当帧的渲染态整体重渲挂载点。
@@ -42,6 +53,7 @@ export interface ChoicesViewDeps {
 export function createChoicesView(
   deps: ChoicesViewDeps,
 ): (input: ChoicesRenderInput) => void {
+  const texts: ChoicesTexts = { ...DEFAULT_CHOICES_TEXTS, ...deps.texts };
   return (input) => {
     const doc = deps.container.ownerDocument;
     const choices = deps.mounts.choices;
@@ -65,7 +77,7 @@ export function createChoicesView(
       );
       const submit = clickable(doc.createElement("button"));
       submit.type = "submit";
-      submit.textContent = "确定";
+      submit.textContent = texts.inputSubmit;
       form.addEventListener("submit", (e) => {
         e.preventDefault();
         deps.submitInput(field.value.trim());

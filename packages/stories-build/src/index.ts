@@ -31,6 +31,11 @@
 
 /** 构建失败（fail-closed）。消息即 CLI 打印的失败原因，逐字稳定——不要在别处重写措辞 */
 export { StoryBuildError } from "./shared/index.ts";
+/** 集中文案表（StoryBuildOptions.texts / compileStories input.texts 的注入类型与缺省值） */
+export {
+  defaultStoriesBuildTexts,
+  type StoriesBuildTexts,
+} from "./shared/index.ts";
 /** 一次构建的结果与词汇层警告的取口 */
 export { drainBuildWarnings, type BuildReport } from "./emit/index.ts";
 /** 目录布局的默认值与可配置项 */

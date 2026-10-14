@@ -11,6 +11,8 @@ import {
   type OperandKind,
   type VarKind,
 } from "./token.ts";
+import type { EditorTexts } from "../../../contracts/index.ts";
+import { resolveEditorTexts } from "../../../contracts/index.ts";
 
 /**
  * 递归下降判类器——**优先级链与引擎逐层一致**：`?: → || → && → ==/!= → 比较 →
@@ -30,6 +32,7 @@ export class ExpressionAuditor {
     rule: ExpressionWarning["rule"];
     message: string;
   }>;
+  private readonly texts: EditorTexts;
 
   constructor(
     tokens: readonly AuditToken[],
@@ -37,9 +40,11 @@ export class ExpressionAuditor {
       rule: ExpressionWarning["rule"];
       message: string;
     }>,
+    texts: Partial<EditorTexts> = {},
   ) {
     this.tokens = tokens;
     this.pending = pending;
+    this.texts = resolveEditorTexts(texts);
   }
 
   /** 入口：整体解析一次；任何结构不理解 / 残留 token ⇒ 全部放弃（零误报） */
@@ -77,7 +82,7 @@ export class ExpressionAuditor {
   }
 
   private describe(operand: { kind: OperandKind; label: string }): string {
-    return `${operand.kind === "unknown" ? "未知类型" : operand.kind}「${operand.label}」`;
+    return `${operand.kind === "unknown" ? this.texts.unknownOperandKind() : operand.kind}「${operand.label}」`;
   }
 
   /** 单侧核对：已知操作数必须为 want，否则记警告并返回 true（违规）。note 追加引擎语义注记 */
@@ -93,7 +98,13 @@ export class ExpressionAuditor {
     if (operand.kind === want) return false;
     this.pending.push({
       rule,
-      message: `'${op}' ${side}操作数必须为 ${want}——${this.describe(operand)}（引擎 type-error${note}）`,
+      message: this.texts.operandKindMismatch(
+        op,
+        side,
+        want,
+        this.describe(operand),
+        note,
+      ),
     });
     return true;
   }
@@ -110,7 +121,9 @@ export class ExpressionAuditor {
     if (condKind !== "unknown" && condKind !== "bool") {
       this.pending.push({
         rule: "ternary-cond-non-bool",
-        message: `三元 '?' 条件必须为 boolean（引擎 type-error）——条件${this.describe({ kind: condKind, label: "条件表达式" })}`,
+        message: this.texts.ternaryCondNotBool(
+          this.describe({ kind: condKind, label: "条件表达式" }),
+        ),
       });
       violated = true;
     }
@@ -179,7 +192,7 @@ export class ExpressionAuditor {
     if (left !== "unknown" && right !== "unknown" && left !== right) {
       this.pending.push({
         rule: "equality-kind-mismatch",
-        message: `'${op}' 不支持跨类型比较（${left} vs ${right}）——引擎仅同类型标量相等`,
+        message: this.texts.crossTypeComparison(op, left, right),
       });
       return "unknown";
     }

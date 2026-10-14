@@ -261,7 +261,7 @@ export function execNotify(ctx: OpContext, cmd: StoryCommand): void {
     ctx.draw,
   );
   for (const e of errors)
-    ctx.fail(e.code, `插值失败（保留原文）：${e.message}`);
+    ctx.fail(e.code, ctx.texts.interpolationFallback(e.message));
   ctx.setInstanceZ(SYS.notificationsZ, cmd.z); // 本条通知的实例 z（notifications 层）
   const payload: OutboundPayload = {
     kind: "notify",

@@ -51,7 +51,7 @@ export function interpolate(ctx: OpContext, source: string): string {
   if (typeof source !== "string" || source === "") return "";
   const { text, errors } = interpolateText(source, ctx.resolveName, ctx.draw);
   for (const e of errors)
-    ctx.fail(e.code, `插值失败（保留原文）：${e.message}`);
+    ctx.fail(e.code, ctx.texts.interpolationFallback(e.message));
   return text;
 }
 

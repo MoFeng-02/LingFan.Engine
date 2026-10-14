@@ -5,7 +5,11 @@
  * 资源根 = 逻辑路径的相对基准，与 fetch / Tauri 两种供给实现的键完全一致。
  */
 import { MANIFEST_FILE, STORIES_DIR } from "@lingfan/engine";
+import { defaultResourceTexts, type ResourceTexts } from "../texts";
 import { dirOf, segmentDepth, tryDirectoryHandle, tryFileHandle } from "./walk";
+
+/** 工程惯例的资源根子目录名（清单不在所选层时下探该层；Rust 侧布局同名） */
+export const RESOURCES_DIR = "Resources";
 
 /**
  * 资源根定位（FSA）：所选目录含清单即资源根；否则下探一层 `Resources/`
@@ -14,11 +18,13 @@ import { dirOf, segmentDepth, tryDirectoryHandle, tryFileHandle } from "./walk";
  */
 export async function locateResourceRootHandle(
   picked: FileSystemDirectoryHandle,
+  texts?: Partial<ResourceTexts>,
 ): Promise<{ root: FileSystemDirectoryHandle; name: string }> {
+  const t = { ...defaultResourceTexts, ...texts };
   if ((await tryFileHandle(picked, MANIFEST_FILE)) !== undefined) {
     return { root: picked, name: picked.name };
   }
-  const resources = await tryDirectoryHandle(picked, "Resources");
+  const resources = await tryDirectoryHandle(picked, RESOURCES_DIR);
   if (
     resources !== undefined &&
     (await tryFileHandle(resources, MANIFEST_FILE)) !== undefined
@@ -35,9 +41,7 @@ export async function locateResourceRootHandle(
   ) {
     return { root: resources, name: resources.name };
   }
-  throw new Error(
-    `所选目录（${picked.name}）内未找到 ${MANIFEST_FILE} 或 ${STORIES_DIR}/：请选择工程资源根（含 ${MANIFEST_FILE} 或 ${STORIES_DIR}/ 的目录）`,
-  );
+  throw new Error(t.rootLocateHandleMissing(picked.name));
 }
 
 /**
@@ -46,12 +50,16 @@ export async function locateResourceRootHandle(
  * 降级：无清单时以 `Stories/` 目录定位资源根（读取时会合成清单并显式回执）；
  * 连 Stories/ 都没有才 fail-closed。
  */
-export function locateResourceRootFromPaths(paths: readonly string[]): {
+export function locateResourceRootFromPaths(
+  paths: readonly string[],
+  texts?: Partial<ResourceTexts>,
+): {
   /** 资源根前缀（`""` 或 `Resources/`） */
   root: string;
   /** 清单逻辑路径（资源根相对；**缺清单时是期望位置**，存在与否由读取侧判定） */
   manifest: string;
 } {
+  const t = { ...defaultResourceTexts, ...texts };
   const candidates = paths.filter(
     (path) => path === MANIFEST_FILE || path.endsWith(`/${MANIFEST_FILE}`),
   );
@@ -68,7 +76,7 @@ export function locateResourceRootFromPaths(paths: readonly string[]): {
     );
     if (ambiguous.length > 0) {
       throw new Error(
-        `发现多个 ${MANIFEST_FILE}（${first}、${ambiguous[0] ?? ""}）：请直接选择工程资源根目录`,
+        t.rootLocateMultipleManifests(first, ambiguous[0] ?? ""),
       );
     }
     return { root: dirOf(first), manifest: MANIFEST_FILE };
@@ -84,13 +92,13 @@ export function locateResourceRootFromPaths(paths: readonly string[]): {
     }
   }
   if (storyRoots.size === 0) {
-    throw new Error(
-      `所选目录内未找到 ${MANIFEST_FILE} 或 ${STORIES_DIR}/：请选择工程资源根（含 ${MANIFEST_FILE} 或 ${STORIES_DIR}/ 的目录）`,
-    );
+    throw new Error(t.rootLocatePathsMissing());
   }
   if (storyRoots.size > 1) {
     throw new Error(
-      `发现多个 ${STORIES_DIR}/ 目录（${[...storyRoots].map((r) => `${r || "根层"}${STORIES_DIR}`).join("、")}）：请直接选择工程资源根目录`,
+      t.rootLocateMultipleStoryRoots(
+        [...storyRoots].map((r) => `${r || "根层"}${STORIES_DIR}`).join("、"),
+      ),
     );
   }
   return { root: [...storyRoots][0] ?? "", manifest: MANIFEST_FILE };

@@ -110,7 +110,7 @@ export function execSay(ctx: OpContext, frame: Frame, cmd: StoryCommand): void {
     ctx.draw,
   );
   for (const e of [...errors, ...speakerErrors])
-    ctx.fail(e.code, `插值失败（保留原文）：${e.message}`);
+    ctx.fail(e.code, ctx.texts.interpolationFallback(e.message));
 
   // 竞态防护：进入等待前清上一句残留的完成标记（防双击/快速点击跳句）
   ctx.setSystem(SYS.dialogComplete, false);

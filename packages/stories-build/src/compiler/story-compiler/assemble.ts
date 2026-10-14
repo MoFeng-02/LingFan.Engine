@@ -1,5 +1,9 @@
 import * as ts from "typescript";
 import type { Story, StoryCommand } from "@lingfan/engine";
+import {
+  defaultStoriesBuildTexts,
+  type StoriesBuildTexts,
+} from "../../shared/index.ts";
 import type { DiagBag, Graph } from "./graph.ts";
 import {
   createBodyCtx,
@@ -24,6 +28,8 @@ export interface AssembleSession {
   cache: Map<string, CompiledFunction>;
   /** 字体名注册表（编排层自 Resources/Fonts 扫描；构建期字体引用检查对照源） */
   fontNames: ReadonlySet<string>;
+  /** 集中文案表（编译入口注入，已含缺省合并；诊断文案只从这里取） */
+  texts: StoriesBuildTexts;
 }
 
 export interface CompiledStory {
@@ -34,8 +40,9 @@ export interface CompiledStory {
 
 export function createAssembleSession(
   fontNames: ReadonlySet<string> = new Set(),
+  texts: StoriesBuildTexts = defaultStoriesBuildTexts,
 ): AssembleSession {
-  return { cache: new Map(), fontNames };
+  return { cache: new Map(), fontNames, texts };
 }
 
 function nodePos(
@@ -150,6 +157,7 @@ function compileFunction(
     funcs: registry,
     stateRoot: graph.stateRoot,
     fontNames: session.fontNames,
+    texts: session.texts,
   };
   const ctx = createBodyCtx(shared, { inFunction: true, parentScopes });
   const params = readParams(ctx, decl);
@@ -258,6 +266,7 @@ export function compileStoryFile(
     funcs: registry,
     stateRoot: graph.stateRoot,
     fontNames: session.fontNames,
+    texts: session.texts,
   };
   const ctx = createBodyCtx(shared, { inFunction: false });
   const { fns: nestedDecls, rest } = partitionFunctions(

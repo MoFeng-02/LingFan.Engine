@@ -1,6 +1,10 @@
 import { join } from "node:path";
 import ts from "typescript";
-import { walkFiles } from "../shared/index.ts";
+import {
+  defaultStoriesBuildTexts,
+  walkFiles,
+  type StoriesBuildTexts,
+} from "../shared/index.ts";
 import { CONFIG_FILE, type StorySourceConfig } from "../config/index.ts";
 import { StoryBuildError } from "../shared/index.ts";
 
@@ -30,6 +34,7 @@ export async function discoverSources(
   root: string,
   sourcesDirName: string,
   config: StorySourceConfig,
+  texts: StoriesBuildTexts = defaultStoriesBuildTexts,
 ): Promise<DiscoveredSources> {
   const tree = walkFiles(join(root, sourcesDirName));
   const dirs = collectCoveredDirs(config, tree);
@@ -64,11 +69,7 @@ export async function discoverSources(
   );
   if (uncoveredDefaults.length > 0) {
     throw new StoryBuildError(
-      [
-        "以下文件含 default 导出但未被 folders 覆盖——Stories.src 全量管理构建产物，未登记的故事会在构建时被当作陈旧产物删除：",
-        ...uncoveredDefaults.map((rel) => `- ${sourcesDirName}/${rel}`),
-        '请把所在目录加入 config.ts 的 folders（或使用 "*" 兜底）。',
-      ].join("\n"),
+      texts.uncoveredDefaults(uncoveredDefaults, sourcesDirName),
     );
   }
 

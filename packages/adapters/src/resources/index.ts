@@ -2,7 +2,14 @@
  * 资源与工程供给域出口：ResourcePort + ProjectFilesPort 的
  * Web/WebView、Tauri 与**目录取径**（编辑器：FSA 句柄 / 目录 input 快照）实现。
  */
-export { createStaticResourcePort, normalizeResourceId } from "./resourcePort";
+export {
+  createStaticResourcePort,
+  normalizeResourceId,
+} from "./resourcePort";
+export {
+  defaultResourceTexts,
+  type ResourceTexts,
+} from "./texts";
 export {
   createFileListFileSource,
   createHandleFileSource,

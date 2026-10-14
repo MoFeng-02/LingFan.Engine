@@ -7,7 +7,8 @@
 
 import type { z } from "zod";
 import type { OpExtension, WaitSpec } from "@lingfan/engine";
-import type { OpMeta } from "../contracts/index.ts";
+import type { EditorTexts, OpMeta } from "../contracts/index.ts";
+import { resolveEditorTexts } from "../contracts/index.ts";
 import { WAITING_OPS, collectWaitSpecs } from "@lingfan/engine";
 import { OP_META } from "./catalog.ts";
 import { OP_GROUP_ORDER } from "./elementPalette.ts";
@@ -44,11 +45,14 @@ export function mergeOpSchemas(
 
 /** 合并扩展 op 元数据（标签/归组；追加保序——面板分组渲染按 OP_GROUP_ORDER 归位）。
  * 归组非法（不在 OP_GROUP_ORDER 八组内）= 扩展声明违约 → **装配期 fail-fast 抛错**（带定位），
- * 与引擎注册期校验同精神——静默丢弃会让扩展 op 从面板消失（不诚实）。 */
+ * 与引擎注册期校验同精神——静默丢弃会让扩展 op 从面板消失（不诚实）。
+ * texts（可选）= 集中文案表注入（缺省 defaultEditorTexts；装配期错误无外部调用链，走缺省）。 */
 export function mergeOpMeta(
   base: readonly OpMeta[],
   extensions: readonly OpExtension[],
+  texts: Partial<EditorTexts> = {},
 ): OpMeta[] {
+  const t = resolveEditorTexts(texts);
   const additions: OpMeta[] = [];
   for (const extension of extensions) {
     for (const definition of extension.ops ?? []) {
@@ -56,9 +60,12 @@ export function mergeOpMeta(
       if (declared === undefined) continue;
       if (!OP_GROUP_ORDER.includes(declared.group as never)) {
         throw new Error(
-          `扩展「${extension.id}」的 op「${definition.op}」归组不合法：${String(
-            declared.group,
-          )}（须为 ${OP_GROUP_ORDER.join(" / ")} 之一）`,
+          t.invalidOpGroup(
+            extension.id,
+            definition.op,
+            String(declared.group),
+            OP_GROUP_ORDER.join(" / "),
+          ),
         );
       }
       additions.push({

@@ -115,10 +115,7 @@ export function beginLoopIteration(
   loop: LoopState,
 ): boolean {
   if (loop.iterations >= LOOP_LIMIT) {
-    ctx.fail(
-      "loop-limit",
-      `循环迭代超过 ${LOOP_LIMIT} 次上限，已中断（防死循环安全网）`,
-    );
+    ctx.fail("loop-limit", ctx.texts.loopLimitExceeded(LOOP_LIMIT));
     return false;
   }
   frame.scope = loop.parentScope.enterChild();

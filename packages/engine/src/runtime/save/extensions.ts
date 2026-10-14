@@ -22,7 +22,7 @@ export function tryMigrateSave(
       if (migrated?.formatVersion === 1) {
         ctx.emitEvent({
           kind: "load.notice",
-          text: `存档已从 v${String(fromVersion)} 迁移到 v1（migrateSave）`,
+          text: ctx.texts.saveFormatMigrated(String(fromVersion)),
         });
         return migrated;
       }
@@ -32,7 +32,7 @@ export function tryMigrateSave(
   }
   ctx.fail(
     "save-format",
-    `存档格式版本不支持：档为 v${String(fromVersion)}，引擎为 v1。请用创建该存档的引擎版本打开，或在构造引擎时提供 migrateSave 钩子完成版本迁移`,
+    ctx.texts.saveFormatVersionUnsupported(String(fromVersion)),
   );
   return null;
 }
@@ -68,10 +68,7 @@ export function resolveSaveExtensions(
     }
     const ext = ctx.extensionById.get(mark.id);
     if (ext === undefined) {
-      ctx.fail(
-        "extension-missing",
-        `存档依赖的扩展未注册：「${mark.id}」。请安装并启用该扩展后再读档`,
-      );
+      ctx.fail("extension-missing", ctx.texts.extensionMissing(mark.id));
       return null;
     }
     if (ext.stateVersion === mark.stateVersion) continue;
@@ -91,7 +88,7 @@ export function resolveSaveExtensions(
       if (migrated === null) {
         ctx.fail(
           "extension-version",
-          `扩展「${mark.id}」无法从状态版本 v${mark.stateVersion} 迁移到 v${ext.stateVersion}，存档被拒绝`,
+          ctx.texts.extensionMigrateFailed(mark.id, mark.stateVersion, ext.stateVersion),
         );
         return null;
       }
@@ -103,13 +100,13 @@ export function resolveSaveExtensions(
       ];
       ctx.emitEvent({
         kind: "load.notice",
-        text: `扩展「${mark.id}」状态已从 v${mark.stateVersion} 迁移到 v${ext.stateVersion}`,
+        text: ctx.texts.extensionMigrated(mark.id, mark.stateVersion, ext.stateVersion),
       });
       continue;
     }
     ctx.fail(
       "extension-version",
-      `存档依赖扩展「${mark.id}」的状态版本 v${mark.stateVersion}，当前注册版本为 v${ext.stateVersion}（存档过新或缺少迁移路径），存档被拒绝`,
+      ctx.texts.extensionVersionDependency(mark.id, mark.stateVersion, ext.stateVersion),
     );
     return null;
   }
@@ -141,10 +138,7 @@ export function restoreSaveExtensions(
       ok = false; // 扩展违约（不抛约束）→ 不可恢复
     }
     if (!ok) {
-      ctx.fail(
-        "extension-restore",
-        `扩展「${mark.id}」读档恢复失败（restore 返回 false），存档被拒绝`,
-      );
+      ctx.fail("extension-restore", ctx.texts.extensionRestoreFailed(mark.id));
       return false;
     }
   }

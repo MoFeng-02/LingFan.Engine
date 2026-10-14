@@ -1,5 +1,10 @@
 import { byPath, STORIES_DIR, isSafeFileNameSegment } from "./naming.ts";
-import type { FileStamp, WriteNormalizationFinding } from "../../contracts/index.ts";
+import {
+  defaultEngineTexts,
+  type EngineTexts,
+  type FileStamp,
+  type WriteNormalizationFinding,
+} from "../../contracts/index.ts";
 
 /**
  * 写回的保存前检测：覆盖冲突与规范化提示。
@@ -32,13 +37,13 @@ export function detectWriteConflicts(
 }
 
 /** 冲突的可操作文案（前 3 条路径 + 总数；指引两条出路） */
-export function conflictMessage(paths: readonly string[]): string {
+export function conflictMessage(
+  paths: readonly string[],
+  texts: EngineTexts = defaultEngineTexts,
+): string {
   const head = paths.slice(0, 3).join("、");
   const more = paths.length > 3 ? ` 等 ${paths.length} 个文件` : "";
-  return (
-    `磁盘已被外部修改（${head}${more}）：现在保存将覆盖这些改动。` +
-    `请先重新打开工程确认，或放弃本次保存。`
-  );
+  return texts.saveConflict(head, more);
 }
 
 /**

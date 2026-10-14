@@ -8,6 +8,9 @@
  * 注册表与警告池是模块态，一次导入 = 一个故事源。
  */
 
+import type { EditorTexts } from "../../contracts/index.ts";
+import { resolveEditorTexts } from "../../contracts/index.ts";
+
 /** 变量种类（注册时声明；构建期轻校验的判类依据） */
 export type VarKind = "num" | "str" | "bool";
 
@@ -75,19 +78,18 @@ export interface ExpressionWarning {
 function makeTree(
   prefix: string,
   handles: ReadonlyMap<string, VarHandle>,
+  texts: EditorTexts,
 ): VarTree {
   return new Proxy({} as VarTree, {
     get(_target, prop): VarTree | VarHandle {
       if (typeof prop !== "string" || prop === "then") {
-        throw new Error(
-          `变量句柄路径非法：${String(prop)}（前缀 ${prefix || "(根)"}）`,
-        );
+        throw new Error(texts.invalidVarHandlePath(String(prop), prefix || "(根)"));
       }
       const key = prefix === "" ? prop : `${prefix}.${prop}`;
       const handle = handles.get(key);
       if (handle !== undefined) return handle;
       // 未注册路径：继续给子树 Proxy（链式展开），expr 求值时校验终值
-      return makeTree(key, handles);
+      return makeTree(key, handles, texts);
     },
   });
 }
@@ -102,23 +104,27 @@ function makeTree(
  * cond`${vars.player.gold} >= 25` // ⇒ "{player.gold >= 25}"
  * ```
  */
-export function defineVars(spec: Record<string, VarKind>): VarTree {
+export function defineVars(
+  spec: Record<string, VarKind>,
+  texts: Partial<EditorTexts> = {},
+): VarTree {
+  const t = resolveEditorTexts(texts);
   currentRegistry = new Map(Object.entries(spec));
   const handles = new Map<string, VarHandle>(
     Object.entries(spec).map(([key, kind]) => [key, { kind, key }]),
   );
-  return makeTree("", handles);
+  return makeTree("", handles, t);
 }
 
 /** 句柄对应的注册键（expr 内部用；未注册 ⇒ 抛错——拼写错误在构建期就红） */
 export function varKeyOf(
   handle: VarHandle,
   registry: ReadonlyMap<string, VarKind>,
+  texts: Partial<EditorTexts> = {},
 ): string {
+  const t = resolveEditorTexts(texts);
   if (!registry.has(handle.key)) {
-    throw new Error(
-      `未注册的变量：${handle.key}——请在 defineVars 清单中声明后再引用`,
-    );
+    throw new Error(t.unregisteredVariable(handle.key));
   }
   return handle.key;
 }

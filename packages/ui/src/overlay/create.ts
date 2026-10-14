@@ -87,6 +87,7 @@ export function createNarrativeOverlay(
     container,
     mounts,
     templates: options.choiceTemplates,
+    texts: options.choiceTexts,
     choose: (target) => engine.choose(target),
     submitInput: (value) => engine.input(value),
   });

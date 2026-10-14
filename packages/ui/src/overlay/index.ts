@@ -5,3 +5,4 @@ export type {
   NarrativeOverlayOptions,
   NarrativeOverlayView,
 } from "./types";
+export type { ChoicesTexts } from "./choices-view";

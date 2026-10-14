@@ -8,6 +8,8 @@
  */
 import type { ProjectFileSource } from "@lingfan/engine";
 import { normalizeResourceId } from "../resourcePort";
+import type { ResourceTexts } from "../texts";
+import { RESOURCES_DIR } from "./root-locate";
 import {
   locateResourceRootHandle,
   locateResourceRootFromPaths,
@@ -25,8 +27,9 @@ import {
  */
 export async function createHandleFileSource(
   picked: FileSystemDirectoryHandle,
+  texts?: Partial<ResourceTexts>,
 ): Promise<ProjectFileSource> {
-  const { root, name } = await locateResourceRootHandle(picked);
+  const { root, name } = await locateResourceRootHandle(picked, texts);
   let listing: Promise<readonly string[]> | null = null;
   const list = (): Promise<readonly string[]> => {
     listing ??= (async () => {
@@ -72,6 +75,7 @@ function relativePathOf(file: File): string {
 /** 目录 input 取径：路径剥资源根前缀，文件按逻辑路径查表 */
 export async function createFileListFileSource(
   files: readonly File[],
+  texts?: Partial<ResourceTexts>,
 ): Promise<ProjectFileSource> {
   const entries = new Map<string, File>();
   for (const file of files) {
@@ -81,9 +85,9 @@ export async function createFileListFileSource(
     if (isDotName(last)) continue;
     entries.set(path, file);
   }
-  const { root } = locateResourceRootFromPaths([...entries.keys()]);
+  const { root } = locateResourceRootFromPaths([...entries.keys()], texts);
   const rootSegments = root === "" ? [] : root.replace(/\/$/, "").split("/");
-  const rootName = rootSegments[rootSegments.length - 1] ?? "Resources";
+  const rootName = rootSegments[rootSegments.length - 1] ?? RESOURCES_DIR;
   const relative = new Map<string, File>();
   const all = [...entries.entries()];
   for (const [path, file] of all) {

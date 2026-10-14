@@ -29,8 +29,14 @@ type PrefsListener = (data: PlayerPrefsData) => void;
 /** 音量通道全集（bgm / se / ambient / voice） */
 const CHANNELS: readonly AudioChannel[] = ["bgm", "se", "ambient", "voice"];
 
-/** 持久化防抖静默窗：滑块拖动连发 set 合并为一次落盘 */
+/** 持久化防抖静默窗缺省值：滑块拖动连发 set 合并为一次落盘 */
 const PERSIST_DEBOUNCE_MS = 300;
+
+/** 偏好防抖注入口：宿主可按平台调整落盘静默窗（毫秒） */
+export interface PreferencesOptions {
+  /** 持久化防抖静默窗（毫秒）；缺省 300 */
+  persistDebounceMs?: number;
+}
 
 /** 单键名上限（KeyboardEvent.key 字面量，含命名键如 Enter/ArrowLeft） */
 const KEY_NAME_MAX = 32;
@@ -125,13 +131,18 @@ export class PlayerPreferences {
   /** 定时器端口（防抖延迟回调来源；缺省 hostTimer = 宿主全局定时器） */
   private readonly timer: TimerPort;
 
+  /** 防抖静默窗（毫秒）；缺省 300 */
+  private readonly persistDebounceMs: number;
+
   /**
    * @param port 持久化端口；缺省 = 纯内存模式（不落盘，hydrate/dispose 均为空操作）
    * @param timer 定时器端口；缺省 = 宿主全局定时器（行为与直接 setTimeout 一致）
+   * @param options 防抖注入口；缺省 = 300ms 静默窗
    */
-  constructor(port?: PreferencesPort, timer?: TimerPort) {
+  constructor(port?: PreferencesPort, timer?: TimerPort, options?: PreferencesOptions) {
     this.port = port;
     this.timer = timer ?? hostTimer;
+    this.persistDebounceMs = options?.persistDebounceMs ?? PERSIST_DEBOUNCE_MS;
     this.data = sanitize(undefined);
   }
 
@@ -332,6 +343,6 @@ export class PlayerPreferences {
     this.pendingSave = this.timer.set(() => {
       this.pendingSave = null;
       void this.port?.save(this.snapshot()).catch(() => {});
-    }, PERSIST_DEBOUNCE_MS);
+    }, this.persistDebounceMs);
   }
 }

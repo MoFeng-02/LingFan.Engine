@@ -103,6 +103,7 @@ export {
 } from "./input";
 export {
   createNarrativeOverlay,
+  type ChoicesTexts,
   type NarrativeMounts,
   type NarrativeOverlay,
   type NarrativeOverlayOptions,

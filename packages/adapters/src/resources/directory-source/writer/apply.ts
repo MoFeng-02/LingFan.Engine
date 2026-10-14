@@ -9,15 +9,8 @@
  * 每次 `apply` 在落盘前重新采集比对——外部改动/删除 → 抛可操作冲突错误（零写入）；
  * 写回成功后快照整体换新（自己的保存永不自报）。读指纹只需 read 权限（打开时已获）。
  */
-import {
-  conflictMessage,
-  detectWriteConflicts,
-  diffProjectFiles,
-  MANIFEST_FILE,
-  STORIES_DIR,
-  type ProjectWriteReport,
-  type ProjectWriterPort,
-} from "@lingfan/engine";
+import { conflictMessage, detectWriteConflicts, diffProjectFiles, MANIFEST_FILE, STORIES_DIR, type ProjectWriteReport, type ProjectWriterPort } from "@lingfan/engine";
+import type { ResourceTexts } from "../../texts";
 import { locateResourceRootHandle } from "../root-locate";
 import {
   asWritableDir,
@@ -36,8 +29,9 @@ import { collectFileStamps } from "./stamps";
 export async function createHandleProjectWriter(
   picked: FileSystemDirectoryHandle,
   previous: ReadonlyMap<string, string>,
+  texts?: Partial<ResourceTexts>,
 ): Promise<ProjectWriterPort> {
-  const { root } = await locateResourceRootHandle(picked);
+  const { root } = await locateResourceRootHandle(picked, texts);
   let baseline = new Map(previous);
   let stamps = await collectFileStamps(root, [...baseline.keys()]);
   return {
@@ -49,7 +43,7 @@ export async function createHandleProjectWriter(
       const written: string[] = [];
       const deleted: string[] = [];
       try {
-        await ensureWriteAccess(root); // 手势窗口：保持为第一个 await
+        await ensureWriteAccess(root, texts); // 手势窗口：保持为第一个 await
         // 冲突检测：任何落盘之前重采指纹比对（读只需 read 权限，不弹权限）
         const current = await collectFileStamps(root, [...stamps.keys()]);
         const conflicts = detectWriteConflicts(stamps, current);
@@ -78,7 +72,7 @@ export async function createHandleProjectWriter(
           deleted.push(path);
         }
       } catch (error: unknown) {
-        throw normalizeWriteError(error);
+        throw normalizeWriteError(error, texts);
       }
       baseline = new Map(files); // 成功才更新基线 → 二次保存不重复写
       stamps = await collectFileStamps(root, [...baseline.keys()]); // 快照换新：自己的保存不自报

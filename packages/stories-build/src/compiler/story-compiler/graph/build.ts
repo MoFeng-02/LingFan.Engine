@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { walkFiles } from "../../../shared/index.ts";
+import { walkFiles, type StoriesBuildTexts } from "../../../shared/index.ts";
 import type { StorySourceConfig } from "../../../config/story-config.ts";
 import type { CompilerConstValues } from "../../compiler-contract.ts";
 import {
@@ -23,6 +23,7 @@ export function buildGraph(
   diags: DiagBag,
   config: StorySourceConfig,
   constValues?: CompilerConstValues,
+  texts?: StoriesBuildTexts,
 ): Graph | null {
   const files = new Map<string, string>();
   for (const [rel, text] of walkFiles(sourcesDir)) {
@@ -93,12 +94,14 @@ export function buildGraph(
   for (const record of records.values())
     resolveImports(record, records, diags, true);
   for (const record of records.values()) {
-    for (const stmt of record.consts) scanConstStatement(stmt, record, diags);
+    for (const stmt of record.consts)
+      scanConstStatement(stmt, record, diags, texts);
   }
   collectColumnFonts(records, diags);
   for (const record of records.values())
     resolveImports(record, records, diags, false);
-  for (const record of records.values()) assertNpmNamesConstOnly(record, diags);
+  for (const record of records.values())
+    assertNpmNamesConstOnly(record, diags, texts);
 
   const wildcard = config.folders.includes("*");
   const explicit = config.folders.filter((f) => f !== "*");

@@ -60,7 +60,7 @@ export function translateStatement(
   if (ts.isSwitchStatement(stmt)) return translateSwitch(ctx, stmt);
   if (ts.isReturnStatement(stmt)) {
     if (!ctx.inFunction) {
-      diag(ctx, stmt, "列体顶层不能 return（E10）：return 只能在函数体内");
+      diag(ctx, stmt, ctx.shared.texts.topLevelReturn());
       return [];
     }
     if (stmt.expression !== undefined) {
@@ -80,7 +80,7 @@ export function translateStatement(
       return [];
     }
     if (ctx.breakables.length === 0) {
-      diag(ctx, stmt, "break 在循环/switch 之外（E10）");
+      diag(ctx, stmt, ctx.shared.texts.breakOutsideLoop());
       return [];
     }
     if (ctx.breakables[ctx.breakables.length - 1] === "switch") {
@@ -100,7 +100,7 @@ export function translateStatement(
         return op === undefined ? [] : [op];
       }
     }
-    diag(ctx, stmt, "continue 在循环之外（E10）");
+    diag(ctx, stmt, ctx.shared.texts.continueOutsideLoop());
     return [];
   }
   if (ts.isFunctionDeclaration(stmt)) {

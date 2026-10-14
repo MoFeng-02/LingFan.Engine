@@ -10,6 +10,7 @@ import type {
   StoryEngine,
 } from "@lingfan/engine";
 import type { ChoiceTemplateRegistry } from "../choices/templates";
+import type { ChoicesTexts } from "./choices-view";
 import type { DialogueTemplateRegistry } from "../dialogue/templates";
 import type { ElementRegistry } from "../element/registry";
 import type { NotifyTemplateRegistry } from "../notify/templates";
@@ -77,6 +78,8 @@ export interface NarrativeOverlayOptions {
   dialogueTemplates?: DialogueTemplateRegistry;
   /** 选择模板注册表（不传 = 内建） */
   choiceTemplates?: ChoiceTemplateRegistry;
+  /** 选择层文案覆盖（输入提交按钮等；不传 = 内建缺省） */
+  choiceTexts?: Partial<ChoicesTexts>;
   /** 通知模板注册表（不传 = 内建） */
   notifyTemplates?: NotifyTemplateRegistry;
   /** 元素渲染器注册表（不传 = 内建全集） */
