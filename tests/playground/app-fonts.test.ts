@@ -1,5 +1,5 @@
 /**
- * 宿主项目默认字体判定（apps/playground/src/host/app-fonts 的 defaultFontIssue）两端判别：
+ * 宿主项目默认字体判定（apps/playground/src/host/assets/app-fonts 的 defaultFontIssue）两端判别：
  * 项目未声明（undefined）= 不应用；字体名在注册表 = 通过；未注册 = 判定失败并携带
  * 面向作者的消息。开发态抛错 / 生产态告警回退的环境分派留在 applyDefaultFont（依赖
  * import.meta.env 与 DOM），本文件只锚判定本身——判定是两态语义的单点。
@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("virtual:story-fonts", () => ({ storyFonts: [] }));
 
-import { defaultFontIssue } from "../../apps/playground/src/host/app-fonts";
+import { defaultFontIssue } from "../../apps/playground/src/host/assets/app-fonts";
 
 describe("宿主项目默认字体判定（defaultFontIssue）", () => {
   it("未声明（undefined）= 不应用，直接通过", () => {

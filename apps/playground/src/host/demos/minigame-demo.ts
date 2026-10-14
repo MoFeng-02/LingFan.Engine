@@ -10,7 +10,7 @@
  */
 
 import type { MinigameFactory } from "@lingfan/engine";
-import { abortSignalOf } from "./abort-signal";
+import { abortSignalOf } from "../engine/abort-signal";
 
 /** 故事未在 `config.target` 里给点击数时的演示默认值 */
 export const DEFAULT_CLICK3_TARGET = 3;

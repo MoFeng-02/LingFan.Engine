@@ -17,7 +17,7 @@ import {
   createPreferencesPanel,
   type PreferencesPanel,
 } from "./preferences-panel";
-import type { TypewriterHandle } from "./app-narrative";
+import type { TypewriterHandle } from "../narrative/app-narrative";
 
 /** 装配入参：玩家偏好与打字机句柄（字速即时生效落点） */
 export interface AppPrefsOptions {

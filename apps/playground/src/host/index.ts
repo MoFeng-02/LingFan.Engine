@@ -1,152 +1,27 @@
 /**
- * 浏览器参考宿主的宿主层出口（唯一出口）：把叙事视图、事件落点、帧驱动、元素层、
- * 层 z、面板装配与演示工厂收在一处，`App.vue` 只从这里取。
+ * 浏览器参考宿主的宿主层出口（唯一出口）：只转发组合根与面板真正从这里取的符号。
  *
- * 本目录的叶子各自负责一件事，彼此不互相依赖组合根：需要引擎、端口或 DOM 句柄的地方
- * 一律以具名注入（函数或接口）取得，于是每个叶子都能单独读、单独测，换宿主时只需换接线。
- * 组合根本身（`main.ts`）不属于这里——那是装配顺序的归属地。
+ * 装配叶子按职责分七个域：engine 是引擎生命周期与事件装配；narrative 是叙事
+ * 视图与语言模板；stage 是舞台呈现（元素层/媒体/帧驱动）；panels 是偏好与
+ * 存读档面板；assets 是字体与多语言；demos 是演示玩法；mount 是引擎让出控制权
+ * 的三类挂载分支。装配叶子彼此不互相依赖组合根：需要引擎、端口或 DOM 句柄的
+ * 地方一律以具名注入（函数或接口）取得，于是每个叶子都能单独读、单独测，换
+ * 宿主时只需换接线。组合根本身（`main.ts`）不属于这里——那是装配顺序的归属地。
+ * 叶子之间的协作走深引，不经本文件中转（保持出口面 = 消费面，零转发冗余）。
  */
 
-/** 中止句柄收窄：契约层只用语言核心类型，宿主侧要的是 `AbortSignal` */
-export { abortSignalOf } from "./abort-signal";
-/** —— 宿主装配层：App.vue 组合根把下列装配接到一起（视图/媒体/面板各一域）—— */
-/** 叙事视图状态与层 z：状态投影、z 镜像与打字机共享句柄 */
-export {
-  createAppNarrative,
-  type AppNarrative,
-  type AppNarrativeOptions,
-  type TypewriterHandle,
-} from "./app-narrative";
-/** 语言选择：可用语言扫描与按需载入切换 */
-export { createAppLang, type AppLang, type AppLangOptions } from "./app-lang";
-/** 模板注册制与视图投影：对话框/选择层/通知层注册表与视图合成 */
-export {
-  createAppTemplates,
-  type AppTemplates,
-  type AppTemplatesOptions,
-} from "./app-templates";
-/** 音视频渲染：端口与渲染器的可变单元格（重启经单元格重建） */
-export {
-  createAppMedia,
-  type AppMedia,
-  type AppMediaOptions,
-} from "./app-media";
-/** 舞台元素层：元素表渲染与挂载后渲染监听 */
-export {
-  createAppElementLayer,
-  type AppElementLayerOptions,
-} from "./app-element-layer";
-/** 事件落点与舞台命令：提示条、叙事事件、舞台点击与选项/输入转发 */
-export {
-  createAppEvents,
-  type AppEvents,
-  type AppEventsOptions,
-} from "./app-events";
-/** 历史聚合：快照筛选、NVL 块化与回溯收尾 */
-export {
-  createAppHistory,
-  type AppHistory,
-  type AppHistoryOptions,
-} from "./app-history";
-/** 引擎生命周期：构造、订阅接线、整体重建与订阅解除 */
-export {
-  createAppEngineLife,
-  type AppEngineLife,
-  type AppEngineLifeOptions,
-} from "./app-engine";
-/** 帧驱动表现与 rAF 帧循环 */
-export {
-  createAppFrame,
-  type AppFrame,
-  type AppFrameOptions,
-} from "./app-frame";
-/** 玩家偏好与键位映射装配 */
-export {
-  createAppPrefs,
-  type AppPrefs,
-  type AppPrefsOptions,
-} from "./app-prefs";
-/** 槽位面板：存/读共用面板的打开与点选 */
-export {
-  createAppSlots,
-  type AppSlots,
-  type AppSlotsOptions,
-} from "./app-slots";
-/** 舞台元素层：元素表渲染与动作分流 */
-export {
-  createElementLayer,
-  type ElementEnginePort,
-  type ElementLayer,
-  type ElementLayerOptions,
-} from "./elements";
-/** 帧驱动表现：元素动画 / 全屏转场 / 屏幕震动（补齐节点存在性与转场清理） */
-export { createHostEffects, type HostEffectsOptions } from "./effects";
-/** 帧循环接线：rAF 帧源 + 每帧顺序 */
-export { startHostFrameLoop, type HostFrameLoopOptions } from "./frame-loop";
-/** 历史面板：条目过滤与 NVL 块聚合（逻辑在 @lingfan/shell 面板域） */
-export {
-  buildHistoryBlocks,
-  filterHistoryEntries,
-  type HistoryBlock,
-  type HistoryEntry,
-} from "@lingfan/shell";
-/** 演示玩法系统「极简 WASD 行走」 */
-export {
-  createInteractionWalk,
-  DEFAULT_WALK_SPEED_PX_PER_SEC,
-  DEFAULT_WALK_TARGET_PX,
-  type InteractionWalkOptions,
-  type WalkContext,
-  type WalkFactory,
-} from "./interaction-walk";
-/** 键位面板：按键匹配、捕获与显示 */
-export {
-  createKeybindingPanel,
-  type KeybindingPanel,
-  type KeybindingPanelOptions,
-} from "./keybinding-panel";
-/** 层 z：实例覆盖 → 工程层默认 → 内建三级链 */
-export {
-  createLayerZController,
-  type LayerZController,
-  type LayerZControllerOptions,
-} from "./layer-z";
-/** 演示小游戏工厂「点够指定次数」 */
-export {
-  createClick3Demo,
-  DEFAULT_CLICK3_TARGET,
-  type Click3DemoOptions,
-} from "./minigame-demo";
-/** 叙事事件落点：提示条、读档诊断与错误横幅（逻辑在 @lingfan/shell 事件域） */
-export {
-  createNarrativeEvents,
-  type MenuOption,
-  type NarrativeEventOptions,
-  type NarrativeEvents,
-} from "@lingfan/shell";
-/** 叙事视图状态（Vue 类型面）：状态键 → 视图意图 → 响应式字段 */
-export type { NarrativeState } from "./narrative-state";
-/** Vue 响应式单元适配：ref/computed 即 Cell */
-export { vueCells } from "./vue-cells";
-/** 提示条：驻留时长与摘除（逻辑在 @lingfan/shell 提示条域） */
-export {
-  createNotices,
-  type Notice,
-  type NoticeOptions,
-  type Notices,
-} from "@lingfan/shell";
-/** 偏好面板：音量、静音、字速、方向、全屏 */
-export {
-  createPreferencesPanel,
-  PREF_CHANNELS,
-  type PreferencesPanel,
-  type PreferencesPanelOptions,
-} from "./preferences-panel";
-/** 槽位面板：清单与逐槽快照 → 可渲染视图（逻辑在 @lingfan/shell 面板域） */
-export {
-  loadSlotViews,
-  parseSlotMeta,
-  type SlotPanelMode,
-  type SlotPanelOptions,
-  type SlotView,
-} from "@lingfan/shell";
+/** —— 装配工厂（App.vue 组合根消费）—— */
+export { createAppNarrative } from "./narrative/app-narrative";
+export { createAppLang } from "./assets/app-lang";
+export { createAppTemplates } from "./narrative/app-templates";
+export { createAppMedia } from "./stage/app-media";
+export { createAppElementLayer } from "./stage/app-element-layer";
+export { createAppEvents } from "./engine/app-events";
+export { createAppHistory } from "./panels/app-history";
+export { createAppEngineLife } from "./engine/app-engine";
+export { createAppFrame } from "./stage/app-frame";
+export { createAppPrefs } from "./panels/app-prefs";
+export { createAppSlots } from "./panels/app-slots";
+
+/** —— 面板类型（App/*.vue 消费）—— */
+export type { HistoryBlock, MenuOption, SlotPanelMode, SlotView } from "@lingfan/shell";

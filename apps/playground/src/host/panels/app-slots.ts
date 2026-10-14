@@ -18,7 +18,7 @@ import {
   captureStageComposite,
   collectStageMedia,
   stripHtml,
-} from "../shell";
+} from "../../stage-capture";
 import {
   loadSlotViews,
   type SlotPanelMode,

@@ -20,10 +20,10 @@ import {
   type Story,
   type VideoPort,
 } from "@lingfan/engine";
-import { guards as engineGuards } from "../stories";
-import type { AppMedia } from "./app-media";
-import type { NarrativeState } from "./narrative-state";
-import type { TypewriterHandle } from "./app-narrative";
+import { guards as engineGuards } from "../../stories";
+import type { AppMedia } from "../stage/app-media";
+import type { NarrativeState } from "../narrative/narrative-state";
+import type { TypewriterHandle } from "../narrative/app-narrative";
 
 /** 装配入参：宿主属性、装配层句柄与重启时需复位的各单元格 */
 export interface AppEngineLifeOptions {

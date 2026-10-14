@@ -5,5 +5,7 @@
  */
 export { default as DemoHost } from "./DemoHost.vue";
 export { default as DialoguePanel } from "./DialoguePanel.vue";
+export { default as ExtensionOverlayCard } from "./ExtensionOverlayCard.vue";
+export { default as NotificationLayer } from "./NotificationLayer.vue";
 export { default as SettingsPanels } from "./SettingsPanels.vue";
 export { default as ToolbarPanel } from "./ToolbarPanel.vue";

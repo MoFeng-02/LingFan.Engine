@@ -18,8 +18,8 @@ import {
 } from "@lingfan/ui";
 
 /**
- * 宿主扫描面：宿主接线散在宿主与其面板组件——
- * 存在性/计数类断言扫拼接面（只增不减）；**保序断言锚 App.vue 自身文本**
+ * 宿主扫描面：宿主接线散在宿主与挂载域（host/mount/）——
+ * 存在性/计数类断言扫拼接面（只增不减）；**保序断言锚各自文件自身文本**
  * （序契约是「同文件」契约，拼接会把不同文件间的序关系稀释成假阳性）。
  */
 const playgroundSources = import.meta.glob(
@@ -27,13 +27,19 @@ const playgroundSources = import.meta.glob(
   { eager: true, query: "?raw", import: "default" },
 ) as Record<string, string>;
 const appSource = Object.values(playgroundSources).join("\n");
-const appVueKey = Object.keys(playgroundSources).find((key) =>
-  key.endsWith("/App.vue"),
-);
-if (appVueKey === undefined) {
-  throw new Error("扫描面缺 App.vue：glob 模式与目录结构失配");
+/** 按文件名尾段取单文件文本（保序断言的锚面：序关系只在同文件内成立） */
+function sourceOf(suffix: string): string {
+  const key = Object.keys(playgroundSources).find((key) =>
+    key.endsWith(suffix),
+  );
+  if (key === undefined) {
+    throw new Error(`扫描面缺 ${suffix}：glob 模式与目录结构失配`);
+  }
+  return playgroundSources[key] ?? "";
 }
-const appVueText = playgroundSources[appVueKey] ?? "";
+const appVueText = sourceOf("/App.vue");
+const mountInteractionText = sourceOf("/host/mount/interaction.ts");
+const mountRegistriesText = sourceOf("/host/mount/registries.ts");
 
 /** 保序契约的 needle 全集：每一个都必须命中在 App.vue 自身文本内 */
 const ORDER_NEEDLES = [
@@ -43,11 +49,9 @@ const ORDER_NEEDLES = [
   "engine.back()",
   "engine.forward()",
   'keyMatches("advance"',
-  // walk 工厂的注册调用（prettier 可把实参折行，锚调用名而非完整调用）
-  "interactions.set(",
+  // 挂载域接线（分流链与分支体跨两文件：存在性在此全集确认，序断言见挂载 describe）
   'payload.kind === "interaction.mount"',
-  'inputScope.set("world")',
-  'inputScope.set("dialogue")',
+  "handleInteractionMount(",
 ];
 
 /** 最小替身：模拟 Element.closest 的命中语义，并记录收到的选择器 */
@@ -185,21 +189,24 @@ describe("组合根接线：滚轮与键盘都先过判据，再谈游戏动作"
   });
 
   it("外部接管期间声明玩法域，两条结束路径都交还叙事域", () => {
-    // 接管建立时切域
-    const mountAt = appVueText.indexOf('payload.kind === "interaction.mount"');
-    const toWorldAt = appVueText.indexOf('inputScope.set("world")', mountAt);
+    // 分支体在挂载域文件（App.vue 分流链只负责转发）；序断言锚该文件自身文本
+    const mountAt = mountInteractionText.indexOf("export function handleInteractionMount");
+    const toWorldAt = mountInteractionText.indexOf('inputScope.set("world")', mountAt);
     expect(mountAt).toBeGreaterThan(-1);
     expect(toWorldAt).toBeGreaterThan(mountAt);
     // 结束（回填 / 中断共用收尾）切回对话域
-    const backAt = appVueText.indexOf('inputScope.set("dialogue")', toWorldAt);
+    const backAt = mountInteractionText.indexOf(
+      'inputScope.set("dialogue")',
+      toWorldAt,
+    );
     expect(backAt).toBeGreaterThan(toWorldAt);
   });
 
   it("判据只写一份：宿主不再自持输入域实现", () => {
     // 域判据与状态归 @lingfan/ui（换宿主复用同一份），宿主只消费
-    expect(appVueText).toMatch(/createInputScopeState/);
-    expect(appVueText).not.toMatch(/GAME_INPUT_BLOCKED_SELECTOR\s*=/);
-    expect(appVueText).not.toMatch(/function isGameInputTarget/);
+    expect(appSource).toMatch(/createInputScopeState/);
+    expect(appSource).not.toMatch(/GAME_INPUT_BLOCKED_SELECTOR\s*=/);
+    expect(appSource).not.toMatch(/function isGameInputTarget/);
   });
 });
 
@@ -217,16 +224,19 @@ describe("UI 容器标记：工具条与三个面板都覆盖（新增面板需�
 describe("共享宿主类名随接管卸载移除（回归：残留类会让已结束的接管仍被算作进行中）", () => {
   // 真缺陷：接管工厂在**共享宿主元素**上加演示类，收尾只清 innerHTML 没摘类
   // ⇒ 残留类跟到下一次接管，症状是「已结束的接管仍被算作进行中」。
-  // 类名移除集中在两条结束路径的唯一处理点（宿主 onAbort / abort 监听）里。
-  it("两个演示工厂都在共享宿主上加类", () => {
-    expect(appVueText).toMatch(/host\.classList\.add\("walk-demo"\)/);
-    expect(appVueText).toMatch(/host\.classList\.add\("minigame-demo"\)/);
+  // 类名移除集中在两条结束路径的唯一处理点（挂载分支的 abort 监听）里。
+  it("两个演示工厂都在共享宿主上加类（注册表装配面）", () => {
+    expect(mountRegistriesText).toMatch(/host\.classList\.add\("walk-demo"\)/);
+    expect(mountRegistriesText).toMatch(
+      /host\.classList\.add\("minigame-demo"\)/,
+    );
   });
 
   it("两个类都在收尾处被移除（加了几次就摘几次）", () => {
-    const adds = appVueText.match(/host\.classList\.add\("([a-z-]+)"\)/g) ?? [];
+    const adds =
+      appSource.match(/host\.classList\.add\("([a-z-]+)"\)/g) ?? [];
     const removes =
-      appVueText.match(/host\.classList\.remove\("([a-z-]+)"\)/g) ?? [];
+      appSource.match(/host\.classList\.remove\("([a-z-]+)"\)/g) ?? [];
     expect(removes.length).toBeGreaterThanOrEqual(adds.length);
     for (const add of adds) {
       const cls = /"([a-z-]+)"/.exec(add)![1];
@@ -234,20 +244,12 @@ describe("共享宿主类名随接管卸载移除（回归：残留类会让已�
     }
   });
 
-  it("walk 的类移除集中在宿主一处（不在工厂内分两处写）", () => {
-    // 工厂内只 add 不 remove：移除归宿主 onAbort（覆盖「抵达」与「中断」两条路径）
-    // 锚调用名（interactions.set(）：prettier 可把实参 "walk" 折到下一行
-    const factoryAt = appVueText.indexOf("interactions.set(");
-    const hostAbortAt = appVueText.indexOf(
-      'payload.kind === "interaction.mount"',
-    );
-    expect(factoryAt).toBeGreaterThan(-1);
-    // 两条判据同在 App.vue 且有序；切片非空 = 判据之间确有工厂体（防拼接面假绿）
-    expect(hostAbortAt).toBeGreaterThan(factoryAt);
-    const factoryBody = appVueText.slice(factoryAt, hostAbortAt);
-    expect(factoryBody.length).toBeGreaterThan(0);
-    expect(factoryBody).not.toMatch(/classList\.remove\("walk-demo"\)/);
-    const after = appVueText.slice(hostAbortAt);
-    expect(after).toMatch(/classList\.remove\("walk-demo"\)/);
+  it("walk 的类移除集中在挂载分支一处（不在工厂内分两处写）", () => {
+    // 工厂（interaction-walk.ts）内只 add 不 remove：移除归挂载分支 onAbort
+    // （覆盖「抵达」与「中断」两条路径）
+    const walkFactory = sourceOf("/host/demos/interaction-walk.ts");
+    expect(walkFactory).not.toMatch(/classList\.remove\("walk-demo"\)/);
+    // 收尾移除在挂载分支文件内（序：abort 收尾处）
+    expect(mountInteractionText).toMatch(/classList\.remove\("walk-demo"\)/);
   });
 });
