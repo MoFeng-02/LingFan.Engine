@@ -29,9 +29,7 @@ export function execAssign(
   const key = cmd.key as string;
   try {
     const compound =
-      op === "set" && typeof cmd.value === "string"
-        ? COMPOUND_PREFIX.exec(cmd.value)
-        : null;
+      typeof cmd.value === "string" ? COMPOUND_PREFIX.exec(cmd.value) : null;
     let value: ExprValue;
     if (compound) {
       const sym = compound[1]!;
@@ -55,6 +53,17 @@ export function execAssign(
       } else {
         ctx.setGlobal(key, value);
       }
+    } else if (compound) {
+      // let/local 的复合赋值语义 = 对已声明变量写回声明层（n += 1 编译产物即此形态）；
+      // 沿链找不到声明 = 对未声明变量自增，fail-closed（与 readVariable 的报错一致）
+      const scope = ctx.frames[ctx.frames.length - 1]?.scope;
+      if (scope === undefined || !scope.assignExisting(key, value)) {
+        throw new ExpressionError(
+          "unknown-variable",
+          `复合赋值的目标变量未声明：${key}`,
+        );
+      }
+      ctx.emit(key, value, frame.columnId === null ? "block" : "column");
     } else {
       frame.scope.declare(key, value);
       ctx.emit(key, value, frame.columnId === null ? "block" : "column");

@@ -13,7 +13,7 @@
           "prompt": "下一道？",
           "options": [
             {
-              "text": "变量盛宴",
+              "text": "变量盛宴1",
               "target": "tour_vars"
             },
             {

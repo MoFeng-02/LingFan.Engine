@@ -334,6 +334,46 @@ describe("变量与作用域", () => {
     dispose();
   });
 
+  it("let 复合赋值 +=：写回已声明的块级变量（n += 1 编译产物形态）", () => {
+    const { engine, dispose } = makeEngine([
+      { op: "let", key: "n", value: 0 },
+      { op: "let", key: "n", value: "+= {1}" },
+      { op: "let", key: "n", value: "+= {2}" },
+      { op: "say", text: "{n}" },
+    ]);
+    engine.start();
+    expect(engine.get(SYS.currentDialogText)).toBe("3");
+    dispose();
+  });
+
+  it("local 复合赋值 +=：累加本层变量并可写回外层 let 声明", () => {
+    const { engine, dispose } = makeEngine([
+      { op: "local", key: "n", value: 0 },
+      { op: "local", key: "n", value: "+= {1}" },
+      { op: "local", key: "n", value: "+= {2}" },
+      { op: "say", text: "{n}" },
+      { op: "let", key: "m", value: 0 },
+      { op: "local", key: "m", value: "+= {5}" },
+      { op: "say", text: "{m}" },
+    ]);
+    engine.start();
+    expect(engine.get(SYS.currentDialogText)).toBe("3");
+    engine.advance(); // 离开第一个 say，m 段才开跑
+    expect(engine.get(SYS.currentDialogText)).toBe("5");
+    dispose();
+  });
+
+  it("let 复合赋值对未声明变量 fail-closed", () => {
+    const { engine, errors, dispose } = makeEngine([
+      { op: "let", key: "ghost", value: "+= {1}" },
+      { op: "say", text: "不可达" },
+    ]);
+    engine.start();
+    expect(engine.get(SYS.currentDialogText)).toBeUndefined();
+    expect(hasError(errors, "unknown-variable")).toBe(true);
+    dispose();
+  });
+
   it("define = 全局 once：已存在不覆盖", () => {
     const { engine, dispose } = makeEngine(
       [
