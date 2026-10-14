@@ -3,7 +3,7 @@
 //!
 //! 目标：外部浏览器（Vite 页面）复用宿主能力——**读工程 / 存档 / 平台信息**
 //! 三类最小暴露面（白名单 = Tauri 命令面的子集，同一命令函数、同一负载形状；
-//! 白名单 ⊆ `generate_handler!` 注册面，这一结构关系由本模块测试断言）。
+//! 白名单属于 `generate_handler!` 注册面的子集，这一结构关系由本模块测试断言）。
 //!
 //! 协议（JSON 文本帧）：请求 `{"id":1,"cmd":"project_files","args":{}}` →
 //! 响应 `{"id":1,"ok":true,"data":...}` / `{"id":1,"ok":false,"error":"..."}`。
@@ -234,7 +234,7 @@ mod tests {
         }
     }
 
-    // —— WS 白名单 ⊆ Tauri 注册面（同一契约的结构证明）——
+    // —— WS 白名单属于 Tauri 注册面的子集（同一契约的结构证明）——
 
     #[test]
     fn ws_whitelist_subset_of_tauri_registry() {

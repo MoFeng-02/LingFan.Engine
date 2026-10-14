@@ -1,6 +1,6 @@
 /**
  * op schema 单一事实源测试：
- * - 引擎 op 面 ⊆ 编辑器 schema（读 format 子域源提取，防「引擎有、编辑器漏」）
+ * - 引擎 op 面属于编辑器 schema 的子集（读 format 子域源提取，防「引擎有、编辑器漏」）
  * - 全 op canonical 样本「引擎 parseStory 与编辑器 schema 双接受」跨包互锁
  * - 必填字段删除「两侧同拒」（format 子域深校验）
  * - 未知字段 / 未知 op / 类型错 fail-closed（编辑期）
@@ -333,7 +333,7 @@ const ENGINE_OPS = [
 ];
 
 describe("op 全集 canonical 语料：引擎解析与编辑器 schema 双接受（跨包互锁）", () => {
-  it("引擎 op 集 ⊆ 编辑器 op 集（防漏 op：引擎能跑的故事编辑器必须能编）", () => {
+  it("引擎 op 集是编辑器 op 集的子集（防漏 op：引擎能跑的故事编辑器必须能编）", () => {
     expect(ENGINE_OPS.length).toBeGreaterThan(40); // 防提取失效空跑
     const missing = ENGINE_OPS.filter((op) => OP_SCHEMAS[op] === undefined);
     expect(missing).toEqual([]);

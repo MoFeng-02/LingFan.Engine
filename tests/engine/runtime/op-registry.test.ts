@@ -210,7 +210,7 @@ describe("扩展 op 执行：状态进 SSOT + 前缀门卫", () => {
         {
           op: "demo_throw",
           exec: () => {
-            throw new Error("扩展炸了");
+            throw new Error("扩展抛错");
           },
         },
       ],

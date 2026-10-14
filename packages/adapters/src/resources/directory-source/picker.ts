@@ -3,7 +3,7 @@
  * 不可用时宿主应走目录 input 的只读文件快照兜底。
  */
 
-/** 目录选择器（`showDirectoryPicker` 尚未进 lib.dom：只声明我们用到的这一面） */
+/** 目录选择器（`showDirectoryPicker` 尚未进 lib.dom：只声明本模块用到的这一面） */
 interface DirectoryPickerHost {
   showDirectoryPicker?: (options?: {
     id?: string;

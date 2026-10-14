@@ -39,7 +39,7 @@ const MANIFEST = `{
   "shell": { "orientation": "auto" }
 }`;
 
-/** 词汇层绑定：故事文件内直接解构（与 build-pipeline.test.ts 的 WORDS 同款）。 */
+/** 词汇层绑定：故事文件内直接解构（与 build-pipeline.test.ts 的 WORDS 同一形态）。 */
 const WORDS = `import { script } from "@lingfan/editor";
 const { say } = script;
 

@@ -57,7 +57,7 @@ describe("ScriptCommand · 编译期断言（vue-tsc 把关）", () => {
   });
 
   it("Options 派生自 schema 的能力面锚定", () => {
-    // character.textColor：schema 既有、旧手写 Options 缺失的能力缺口（本批派生修复）
+    // character.textColor：schema 既有、旧手写 Options 缺失的能力缺口（由此派生修复）
     const char: script.CharacterOptions = { textColor: "#ff0000" };
     expect(char.textColor).toBe("#ff0000");
     // @ts-expect-error notify type 保持作者侧窄联合（schema 为 string）

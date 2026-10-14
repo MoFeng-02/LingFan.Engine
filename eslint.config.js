@@ -53,11 +53,11 @@ export default defineConfigWithVueTs(
       // 三个测试文件各有自己的 BASE：build-pipeline(.tmp-build) / func-collision(.tmp-collide)
       // / typegen(.tmp-typegen)——按前缀一并忽略，新增夹具目录不必再改这里。
       "**/.tmp-*/**",
-      // 私有文档（验收脚本 / 临时探针）：不入版本库，其中 .cjs 探针
+      // 本地工作区目录（脚本 / 临时探针）：不入版本库，其中 .cjs 探针
       // 按 CommonJS 写(require)，与仓库 TS 源的模块规范不同
       "**/私有文档/**",
-      // 取证探针目录（.vitest/）：会话级临时验证脚本，git-ignored、非仓库源码，
-      // 探针为一次性证据常带意写快风格——免检（同私有文档性质）
+      // 会话级探针目录（.vitest/）：临时验证脚本，git-ignored、非仓库源码，
+      // 探针为一次性验证文件，常带即写即弃的风格——免检（同上：非仓库源码）
       "**/.vitest/**",
       // docs 站的 Astro 生成物（content.d.ts / types.d.ts）：astro build/sync 产物，
       // 风格由生成器负责，不入版本库——免检
@@ -271,6 +271,11 @@ export default defineConfigWithVueTs(
       // token 守卫需要**读编辑器源码**做机械核对（扫裸色值/裸字号）
       // —— 属测试期工具，不进浏览器产物
       "tests/editor/token-guard.test.ts",
+      // 骨架接线守卫需要**读编辑器源码与全局样式**做机械核对（接线锚点/横幅样式）
+      // —— 属测试期工具，不进浏览器产物；
+      // 其读的 styles/app-workspace.css 的 `?raw` 导入在 vitest（css:false）下
+      // 被 stub 成空串 ⇒ 只能 readFileSync
+      "tests/editor/skeleton-wiring.test.ts",
       // 诊断面板类名隔离守卫：同理**读全部组件模板**做跨组件撞名核对
       // （撞名会让选择器/探针指向别的面板，症状是「功能坏了」的误判）
       "tests/editor/diagnostics-css-isolation.test.ts",

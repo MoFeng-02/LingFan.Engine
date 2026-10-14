@@ -105,7 +105,7 @@ function sanitize(raw: unknown): PlayerPrefsData {
 
 /**
  * 玩家偏好状态机（纯 TS，可测）：只读访问器供 UI/渲染层取用。
- * 除启动期 hydrate 直接写入真值再广播（不落盘）外，所有写入都收口到 update（换真值 → 广播快照 → 防抖落盘）；
+ * 除启动期 hydrate 直接写入真值再广播（不落盘）外，所有写入都经由 update（换真值 → 广播快照 → 防抖落盘）；
  * 故事读档/回溯不经过这里，所以玩家设置在整局里保持稳定。
  */
 export class PlayerPreferences {
@@ -306,14 +306,14 @@ export class PlayerPreferences {
 
   /**
    * 把同一份快照依次推给所有订阅者（同一引用，订阅者不应依赖它随后的变化）。
-   * 某个订阅者抛错会中断本次通知并向上冒泡，故监听器应当自己吞掉可预期的异常。
+   * 某个订阅者抛错会中断本次通知并向上冒泡，故监听器应当自行捕获可预期的异常。
    */
   private emit(): void {
     const snap = this.snapshot();
     for (const listener of this.listeners) listener(snap);
   }
 
-  /** 防抖落盘：静默窗内的连续写入只落最后一次；无端口时跳过；落盘失败被吞掉 */
+  /** 防抖落盘：静默窗内的连续写入只落最后一次；无端口时跳过；落盘失败被忽略 */
   private scheduleSave(): void {
     if (this.port === undefined) return;
     if (this.pendingSave !== null) clearTimeout(this.pendingSave);

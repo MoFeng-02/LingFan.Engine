@@ -1,21 +1,24 @@
 <script setup lang="ts">
-import {
-  computed,
-  inject,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-} from "vue";
+import { computed, inject, ref } from "vue";
 import type { Story } from "@lingfan/engine";
 import { EDITOR_API_KEY } from "../contracts";
-import { useDialog } from "../dialogInjection";
+import { useDialog, useGraphViewport } from "../app";
 import {
   branchPointerToCommand,
-  indexStory,
   isBranchTarget,
   planBranchInsertion,
 } from "@lingfan/editor";
+import {
+  buildGraphModel,
+  connectPathOf,
+  edgePathOf,
+  hitNodeAt,
+  NODE_H,
+  NODE_W,
+  svgExtentOf,
+  type GraphEdge,
+  type GraphNode,
+} from "../domain";
 
 /**
  * 节点图：列 = 节点，jump/menu/navigate 的列目标 = 边。
@@ -27,6 +30,7 @@ import {
  * fail-closed 提示。点击边 = 选中对应命令
  * （改在属性面板，删走时间线既有入口）。
  * 舞台编辑随元素系统另立增量。
+ * 图模型与视口交互分别抽至 `domain/nodeGraphModel` 与 `app/useGraphViewport`。
  */
 const props = defineProps<{ story: Story; selectedId: string }>();
 
@@ -34,155 +38,24 @@ const api = inject(EDITOR_API_KEY)!;
 /** 应用内对话框（替代原生 alert/prompt） */
 const dialog = useDialog();
 
-const NODE_W = 156;
-const NODE_H = 46;
-const GAP_X = 80;
-const GAP_Y = 28;
-const ZOOM_MIN = 0.4;
-const ZOOM_MAX = 2.5;
-
 const selectedColumnId = computed(() => props.selectedId);
 
-interface GraphNode {
-  id: string;
-  x: number;
-  y: number;
-  isEntry: boolean;
-  kind: "flow" | "scene";
-}
-interface GraphEdge {
-  from: string;
-  to: string;
-  kind: "jump" | "menu" | "navigate";
-  key: string;
-}
-
-const positions = ref<Map<string, { x: number; y: number }>>(new Map());
-const zoom = ref(1);
 const scrollEl = ref<HTMLDivElement | null>(null);
-const dragging = ref<{ id: string; dx: number; dy: number } | null>(null);
-const panState = ref<{ x: number; y: number; sl: number; st: number } | null>(
-  null,
-);
 const svgRoot = ref<SVGSVGElement | null>(null);
+const viewport = useGraphViewport(() => props.story.id, scrollEl, svgRoot);
+const {
+  positions,
+  zoom,
+  panState,
+  toLogical,
+  startDrag,
+  startPan,
+  zoomIn,
+  zoomOut,
+  zoomReset,
+} = viewport;
 
-const storageKey = computed(() => `lingfan-editor-nodepos:${props.story.id}`);
-
-onMounted(() => {
-  try {
-    const raw = localStorage.getItem(storageKey.value);
-    if (raw !== null) {
-      const saved = JSON.parse(raw) as Record<string, unknown>;
-      if (typeof saved.zoom === "number") {
-        zoom.value = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, saved.zoom));
-      }
-      const nodes = (saved.nodes ?? saved) as Record<
-        string,
-        { x: number; y: number }
-      >;
-      for (const [id, pos] of Object.entries(nodes)) {
-        if (
-          pos !== null &&
-          typeof pos === "object" &&
-          typeof pos.x === "number"
-        ) {
-          positions.value.set(id, pos);
-        }
-      }
-    }
-  } catch {
-    /* 布局缓存损坏 = 忽略，退回自动布局 */
-  }
-  scrollEl.value?.addEventListener("wheel", onWheel, { passive: false });
-});
-
-onBeforeUnmount(() => {
-  scrollEl.value?.removeEventListener("wheel", onWheel);
-});
-
-function persist(): void {
-  try {
-    const data: Record<string, unknown> = { zoom: zoom.value, nodes: {} };
-    for (const [id, pos] of positions.value) {
-      (data.nodes as Record<string, { x: number; y: number }>)[id] = pos;
-    }
-    localStorage.setItem(storageKey.value, JSON.stringify(data));
-  } catch {
-    /* 存储不可用（隐私模式）= 布局仅本次会话有效 */
-  }
-}
-
-const graph = computed(() => {
-  const index = indexStory(props.story);
-  const ids = props.story.columns.map((c) => c.id);
-  const idSet = new Set(ids);
-  // 邻接（仅存在的列目标；call→function 不进列图）
-  const adjacency = new Map<string, Set<string>>();
-  for (const id of ids) adjacency.set(id, new Set());
-  const edges: GraphEdge[] = [];
-  for (const target of index.targets) {
-    if (target.kind !== "column") continue;
-    const fromMatch = /\/columns\/(\d+)/.exec(target.pointer);
-    if (fromMatch === null) continue;
-    const from = props.story.columns[Number(fromMatch[1])]?.id;
-    if (from === undefined || !idSet.has(target.target)) continue;
-    const kind: GraphEdge["kind"] = target.pointer.includes("/options/")
-      ? "menu"
-      : target.pointer.endsWith("/target")
-        ? "jump"
-        : "navigate";
-    edges.push({ from, to: target.target, kind, key: `${target.pointer}` });
-    adjacency.get(from)?.add(target.target);
-  }
-  // BFS 分层（环安全）
-  const layerOf = new Map<string, number>();
-  const queue: string[] = [];
-  const root = idSet.has(props.story.entry) ? props.story.entry : ids[0];
-  if (root !== undefined) {
-    layerOf.set(root, 0);
-    queue.push(root);
-  }
-  for (let head = 0; head < queue.length; head += 1) {
-    const current = queue[head]!;
-    for (const next of adjacency.get(current) ?? []) {
-      if (!layerOf.has(next)) {
-        layerOf.set(next, layerOf.get(current)! + 1);
-        queue.push(next);
-      }
-    }
-  }
-  const fallbackLayer = Math.max(0, ...layerOf.values()) + 1;
-  for (const id of ids) {
-    if (!layerOf.has(id)) layerOf.set(id, fallbackLayer);
-  }
-  // 层内纵向排布 + 已拖拽位置优先
-  const perLayer = new Map<number, string[]>();
-  for (const id of ids) {
-    const layer = layerOf.get(id)!;
-    const bucket = perLayer.get(layer) ?? [];
-    bucket.push(id);
-    perLayer.set(layer, bucket);
-  }
-  const nodes: GraphNode[] = [];
-  for (const [layer, bucket] of [...perLayer.entries()].sort(
-    (a, b) => a[0] - b[0],
-  )) {
-    bucket.forEach((id, i) => {
-      const dragged = positions.value.get(id);
-      nodes.push({
-        id,
-        x: dragged?.x ?? layer * (NODE_W + GAP_X) + 24,
-        y: dragged?.y ?? i * (NODE_H + GAP_Y) + 24,
-        isEntry: id === props.story.entry,
-        kind:
-          props.story.columns.find((c) => c.id === id)?.kind === "flow"
-            ? "flow"
-            : "scene",
-      });
-    });
-  }
-  return { nodes, edges };
-});
+const graph = computed(() => buildGraphModel(props.story, positions.value));
 
 const nodeById = computed(() => {
   const map = new Map<string, GraphNode>();
@@ -190,151 +63,14 @@ const nodeById = computed(() => {
   return map;
 });
 
-const svgSize = computed(() => {
-  let w = 400;
-  let h = 240;
-  for (const node of graph.value.nodes) {
-    w = Math.max(w, node.x + NODE_W + 40);
-    h = Math.max(h, node.y + NODE_H + 40);
-  }
-  return { w, h };
-});
+const svgSize = computed(() => svgExtentOf(graph.value.nodes));
 
 function edgePath(edge: GraphEdge): string {
-  const from = nodeById.value.get(edge.from);
-  const to = nodeById.value.get(edge.to);
-  if (from === undefined || to === undefined) return "";
-  const x1 = from.x + NODE_W;
-  const y1 = from.y + NODE_H / 2;
-  const x2 = to.x;
-  const y2 = to.y + NODE_H / 2;
-  const bend = Math.max(40, Math.abs(x2 - x1) / 2);
-  return `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`;
+  return edgePathOf(edge, nodeById.value);
 }
 
 function edgeClass(kind: GraphEdge["kind"]): string {
   return `edge-${kind}`;
-}
-
-/* —— 视图操作：节点拖拽 / 背景平移 / 缩放 —— */
-
-/** 屏幕坐标 → 画布逻辑坐标（含缩放换算） */
-function toLogical(clientX: number, clientY: number): { x: number; y: number } {
-  const rect = svgRoot.value?.getBoundingClientRect();
-  const z = zoom.value;
-  if (rect === undefined) return { x: 0, y: 0 };
-  return { x: (clientX - rect.left) / z, y: (clientY - rect.top) / z };
-}
-
-function startDrag(node: GraphNode, event: PointerEvent): void {
-  const cursor = toLogical(event.clientX, event.clientY);
-  dragging.value = {
-    id: node.id,
-    dx: cursor.x - node.x,
-    dy: cursor.y - node.y,
-  };
-  window.addEventListener("pointermove", onDragMove);
-  window.addEventListener("pointerup", endDrag, { once: true });
-}
-
-function onDragMove(event: PointerEvent): void {
-  const drag = dragging.value;
-  if (drag === null) return;
-  const cursor = toLogical(event.clientX, event.clientY);
-  positions.value.set(drag.id, {
-    x: Math.max(4, cursor.x - drag.dx),
-    y: Math.max(4, cursor.y - drag.dy),
-  });
-}
-
-function endDrag(): void {
-  dragging.value = null;
-  window.removeEventListener("pointermove", onDragMove);
-  persist();
-}
-
-/** 背景拖拽 = 平移视口（调整容器滚动位；节点 pointerdown 已 stop 冒泡） */
-function startPan(event: PointerEvent): void {
-  const el = scrollEl.value;
-  if (el === null) return;
-  panState.value = {
-    x: event.clientX,
-    y: event.clientY,
-    sl: el.scrollLeft,
-    st: el.scrollTop,
-  };
-  window.addEventListener("pointermove", onPanMove);
-  window.addEventListener("pointerup", endPan, { once: true });
-}
-
-function onPanMove(event: PointerEvent): void {
-  const pan = panState.value;
-  const el = scrollEl.value;
-  if (pan === null || el === null) return;
-  el.scrollLeft = pan.sl - (event.clientX - pan.x);
-  el.scrollTop = pan.st - (event.clientY - pan.y);
-}
-
-function endPan(): void {
-  panState.value = null;
-  window.removeEventListener("pointermove", onPanMove);
-}
-
-/** Ctrl+滚轮缩放（视口中心稳定）；普通滚轮 = 原生滚动 */
-function onWheel(event: WheelEvent): void {
-  if (!event.ctrlKey) return;
-  event.preventDefault();
-  const el = scrollEl.value;
-  if (el === null) return;
-  setZoom(
-    zoom.value * (event.deltaY < 0 ? 1.1 : 0.9),
-    el.scrollLeft + el.clientWidth / 2,
-    el.scrollTop + el.clientHeight / 2,
-  );
-}
-
-function setZoom(next: number, anchorX: number, anchorY: number): void {
-  const el = scrollEl.value;
-  if (el === null) return;
-  const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
-  if (clamped === zoom.value) return;
-  const ratio = clamped / zoom.value;
-  zoom.value = clamped;
-  void nextTick(() => {
-    el.scrollLeft = anchorX * ratio - el.clientWidth / 2;
-    el.scrollTop = anchorY * ratio - el.clientHeight / 2;
-    persist();
-  });
-}
-
-function zoomIn(): void {
-  const el = scrollEl.value;
-  if (el === null) return;
-  setZoom(
-    zoom.value * 1.2,
-    el.scrollLeft + el.clientWidth / 2,
-    el.scrollTop + el.clientHeight / 2,
-  );
-}
-
-function zoomOut(): void {
-  const el = scrollEl.value;
-  if (el === null) return;
-  setZoom(
-    zoom.value / 1.2,
-    el.scrollLeft + el.clientWidth / 2,
-    el.scrollTop + el.clientHeight / 2,
-  );
-}
-
-function zoomReset(): void {
-  const el = scrollEl.value;
-  if (el === null) return;
-  setZoom(
-    1,
-    el.scrollLeft + el.clientWidth / 2,
-    el.scrollTop + el.clientHeight / 2,
-  );
 }
 
 function selectNode(id: string): void {
@@ -349,22 +85,6 @@ const connecting = ref<{
   x: number;
   y: number;
 } | null>(null);
-
-/** 落点命中：逻辑坐标落在哪个节点矩形内（不含源节点） */
-function hitNode(
-  x: number,
-  y: number,
-  excludeId: string,
-): GraphNode | undefined {
-  return graph.value.nodes.find(
-    (node) =>
-      node.id !== excludeId &&
-      x >= node.x &&
-      x <= node.x + NODE_W &&
-      y >= node.y &&
-      y <= node.y + NODE_H,
-  );
-}
 
 function startConnect(node: GraphNode, event: PointerEvent): void {
   const cursor = toLogical(event.clientX, event.clientY);
@@ -386,7 +106,12 @@ async function endConnect(event: PointerEvent): Promise<void> {
   window.removeEventListener("pointermove", onConnectMove);
   if (current === null) return;
   const cursor = toLogical(event.clientX, event.clientY);
-  const target = hitNode(cursor.x, cursor.y, current.fromId);
+  const target = hitNodeAt(
+    graph.value.nodes,
+    cursor.x,
+    cursor.y,
+    current.fromId,
+  );
   if (target === undefined) return; // 松手在空白处 = 放弃拉线
   const source = props.story.columns.find((c) => c.id === current.fromId);
   const targetColumn = props.story.columns.find((c) => c.id === target.id);
@@ -437,10 +162,7 @@ function connectPath(): string {
   if (current === null) return "";
   const from = nodeById.value.get(current.fromId);
   if (from === undefined) return "";
-  const x1 = from.x + NODE_W;
-  const y1 = from.y + NODE_H / 2;
-  const bend = Math.max(40, Math.abs(current.x - x1) / 2);
-  return `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${current.x - bend} ${current.y}, ${current.x} ${current.y}`;
+  return connectPathOf(from, { x: current.x, y: current.y });
 }
 
 /** 点击边 = 选中对应命令（jump 命令 / menu 命令；改在属性面板，删走时间线） */

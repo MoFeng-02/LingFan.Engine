@@ -7,9 +7,17 @@
  * ③ 点 `.story` 文件无反应（文档路径与磁盘路径不同族）；
  * ④ 文档标签无任何关闭途径。
  * 本守卫锁「修复真的接在正确的位置」——判据绿 ≠ 能力可用。
+ *
+ * 断言指向实现所在的文件：资源预览域在 `app/useResourcePreview.ts`、
+ * 多文档工作区在 `app/useProjectFiles.ts`、文档标签条在 `components/DocTabs.vue`。
+ * 「找什么」不变，只改「去哪个文件找」。
  */
 import { describe, expect, it } from "vitest";
 import appSource from "../../apps/editor/src/App.vue?raw";
+import previewSource from "../../apps/editor/src/app/useResourcePreview.ts?raw";
+import filesSource from "../../apps/editor/src/app/useProjectFiles.ts?raw";
+import docTabsSource from "../../apps/editor/src/components/DocTabs.vue?raw";
+import sidebarSource from "../../apps/editor/src/components/SidebarPane.vue?raw";
 import stageSource from "../../apps/editor/src/components/StageEditor.vue?raw";
 import treeSource from "../../apps/editor/src/components/ResourceTreeView.vue?raw";
 
@@ -55,25 +63,30 @@ describe("资源树折叠与定位 · 接线互锁", () => {
   });
 
   it("App 传给资源树的定位路径是**磁盘事实**（sourcePath 优先；合成路径对 .story 永不命中）", () => {
+    // 组合根把 focus 路径传给 SidebarPane，侧栏内部再绑给 ResourceTreeView
     const src = code(appSource);
-    expect(src).toContain(':active-path="resourceFocusPath"');
+    expect(src).toContain(':resource-focus-path="resourceFocusPath"');
+    const sidebar = code(sidebarSource);
+    expect(sidebar).toContain(':active-path="props.resourceFocusPath"');
     expect(src).toContain("column.sourcePath");
   });
 
   it("定位路径吃**响应式投影** activeDocumentPath（workspace 非响应式——computed 读它永不重算）", () => {
-    const src = code(appSource);
+    // 投影 ref 位于 useProjectFiles；定位 computed 仍在组合根
+    const src = code(filesSource);
     expect(src).toContain(
       "const activeDocumentPath = ref<string | undefined>(workspace.activePath)",
     );
     // 反面：computed 里直接读 workspace.activePath = 挂载初值卡死
-    const computed = src.slice(src.indexOf("const resourceFocusPath"));
+    const app = code(appSource);
+    const computed = app.slice(app.indexOf("const resourceFocusPath"));
     expect(computed.slice(0, 700)).not.toContain("workspace.activePath");
   });
 });
 
 describe("`.story` 文件打开 · 接线互锁", () => {
   it("openResource 的 story 分支带 **sourcePath 反查兜底**（后缀门只认 .json）", () => {
-    const src = code(appSource);
+    const src = code(previewSource);
     expect(src).toContain("firstColumnIdOfSourcePath(");
     // 反面：静默 return（点了没反应）⇒ 未命中必须给可操作提示
     expect(src).toContain("该故事文件没有可打开的场景");
@@ -81,26 +94,29 @@ describe("`.story` 文件打开 · 接线互锁", () => {
 
   it("文档身份恒 = storyDocumentPath(columnId)（**不是磁盘文件路径**——身份不变量）", () => {
     // 回归：用 .story 文件路径开档 ⇒ 标签名错 + redistribute 身份失配
-    const src = code(appSource);
+    const src = code(previewSource);
     const branch = src.slice(
       src.indexOf("const docPath = storyDocumentPath(columnId)"),
     );
-    expect(branch.slice(0, 500)).toContain('workspace.open(docPath, "story"');
+    // 700 字符覆盖同一分支体内的 open 调用
+    expect(branch.slice(0, 700)).toContain('workspace.open(docPath, "story"');
     expect(branch).toContain("selectDocument(docPath)");
   });
 });
 
 describe("文档标签关闭 · 接线互锁", () => {
   it("标签有 **✕ 与中键**两条关闭途径，脏文档先确认", () => {
-    const src = code(appSource);
-    expect(src).toContain('class="doc-tab-close"');
-    expect(src).toContain("@auxclick.middle.prevent=");
-    expect(src).toContain("workspace.canClose(path)");
-    expect(src).toContain("askConfirm");
+    // 标签条模板位于 DocTabs；关闭守卫逻辑在 useProjectFiles
+    const tabs = code(docTabsSource);
+    expect(tabs).toContain('class="doc-tab-close"');
+    expect(tabs).toContain("@auxclick.middle.prevent=");
+    const files = code(filesSource);
+    expect(files).toContain("workspace.canClose(path)");
+    expect(files).toContain("askConfirm");
   });
 
   it("关闭后同步选中列（停在**被关列** ⇒ 时间线空白的同类问题）", () => {
-    const src = code(appSource);
+    const src = code(filesSource);
     const block = src.slice(src.indexOf("async function closeDocument"));
     expect(block.slice(0, 900)).toContain(
       "selectDocument(workspace.activePath)",

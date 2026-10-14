@@ -4,7 +4,7 @@
 //  **放置**：本文件是仓库内暂存副本——首次在 macOS 上执行 `pnpm tauri ios init` 生成
 //  `src-tauri/gen/apple/` 之后，复制到 `src-tauri/gen/apple/Sources/<app.name>/` 即可
 //  （XcodeGen 的 `sources: - path: Sources` 自动纳入编译，无需改 project.yml）。
-//  **状态：未经编译验证**（需 macOS + Xcode；API 签名依据 Tauri 2.11 源码
+//  （需 macOS + Xcode 编译验证；API 签名依据 Tauri 2.11 源码
 //  `tauri::ios_plugin_binding!` → `swift!(fn init_plugin_x() -> *const c_void)` 与官方 iOS 插件文档）。
 //
 //  平台语义（与 Android 的「持续锁定」不同）：

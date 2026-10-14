@@ -7,7 +7,6 @@
  * 条件判断。
  *
  * 依赖方向：可用 `contracts` / `domain` / `shared`；不得依赖 `ui` / `app`。
- *
- * 当前是骨架：实现仍平铺在 `src/` 根，搬迁在后续阶段进行。
  */
-export {};
+export * from "./layout";
+export * from "./localHost";

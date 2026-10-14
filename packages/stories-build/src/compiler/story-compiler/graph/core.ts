@@ -59,9 +59,9 @@ export interface ModuleRecord {
   exports: Map<string, Binding>;
   imports: ts.ImportDeclaration[];
   consts: ts.VariableStatement[];
-  /** node_modules 值导入的本地名登记（C10；扫描期即收集，是否放行由求值喂入决定） */
+  /** node_modules 值导入的本地名登记（扫描期即收集，是否放行由求值喂入决定） */
   npmNames: Set<string>;
-  /** 编译期求值喂入（§十二）：导出名 → JSON 可序列化值；未被求值的文件 = undefined */
+  /** 编译期求值喂入：导出名 → JSON 可序列化值；未被求值的文件 = undefined */
   evaluated?: Readonly<Record<string, unknown>>;
   /** 列级字体声明（`export const columnFont = "<名>"`；仅故事文件合法，null = 未声明） */
   columnFont: { value: string; node: ts.Node } | null;

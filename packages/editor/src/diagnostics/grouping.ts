@@ -151,7 +151,7 @@ export function diagnosticSummaryText(summary: DiagnosticSummary): string {
  *
  * 为什么进纯函数：徽章「可点筛选」的语义只有一条——按 severity 等值过滤、
  * **不重排不改写**（排序仍归 `groupDiagnostics`）。放这里组件就没有机会
- * 在筛选时顺手夹带别的规则（比如把全局诊断滤掉），两处口径永不漂移。
+ * 在筛选时夹带别的规则（比如把全局诊断滤掉），两处口径永不漂移。
  */
 export type SeverityFilter = "error" | "warning" | null;
 

@@ -64,7 +64,7 @@ function engineSource(): string {
 
 describe("StoryEngine 门面：源级互锁", () => {
   it("检测器自检：实现体声明必被命中，调用语句不算", () => {
-    // 历史形态（曾写在门面里的私有方法）必须命中——否则下面的「计数为 0」毫无意义
+    // 自检样本（实现体形态的私有方法）必须命中——否则下面的「计数为 0」毫无意义
     expect(
       execImplementationBodies(
         "  private execSay(frame: Frame, cmd: StoryCommand): void {\n",

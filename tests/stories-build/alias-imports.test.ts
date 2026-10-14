@@ -1,5 +1,5 @@
 /**
- * 验收项 D · 别名导入与命名空间形态等价性（t11 族 A / 族 B）。
+ * 别名导入与命名空间形态等价性（族 A / 族 B）。
  *
  * 为什么单独立一个文件：这组缺陷的共同形态是**同一个东西换个写法就坏掉**——
  * `helper()` 与 `helper as ah` 后调 `ah()` 应当等价、`say()` 与 `script.say()` 应当等价。
@@ -369,9 +369,9 @@ export default function start(): void {
     await expect(buildStories(root)).rejects.not.toThrow(/实参形态非法/);
   });
 
-  it("不变量：两条设计意图文案在修复后仍逐字存在（改错位不得顺手改文案）", () => {
+  it("不变量：两条设计意图文案在修复后仍逐字存在（改错位不得擅自改文案）", () => {
     // 用 import.meta.glob 取实物源码文本：路径按本文件位置相对书写，不拼 BASE
-    // （BASE 是 fixture 目录，拼出来会指到别处——上一版就是这么读错文件的）。
+    // （BASE 是 fixture 目录，拼出来会指到别处）。
     const sources = import.meta.glob(
       "../../packages/stories-build/src/compiler/story-compiler/graph/imports.ts",
       { eager: true, query: "?raw", import: "default" },
@@ -384,11 +384,11 @@ export default function start(): void {
       "纯模块 ${targetRel} 没有 default 导出——跨故事引用请导入故事文件",
     );
     expect(importsSrc).toContain("命名空间导入仅支持词汇层 script");
-    // 这两条是设计意图（用户选 A 的裁定），不是可选措辞：改错位时不得顺手删改。
+    // 这两条是设计意图定案，不是可选措辞：改错位时不得删改。
   });
 });
 
-describe("族 C 回归锚定：非别名路径产物不受影响", () => {
+describe("族 C 回归：非别名路径产物不受影响", () => {
   it("不变量：裸名导入 / 同文件私有函数 / script.say 三条路径产物正确", async () => {
     const root = makeProject("regression", {
       "Stories.src/config.ts": config(["ch1"], "start.ts"),

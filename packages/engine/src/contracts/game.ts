@@ -10,7 +10,7 @@
  *    因此自动随快照 / 存档 / 回溯随行（回溯到进入城镇前，人物坐标一并回退）。
  * 3. **fail-closed**——写入违规（键保留 / 值不可序列化）一律拒绝 + 诊断，状态原样。
  *
- * 频率二分（沿用引擎既有裁定，见 `reportMediaPosition`）：
+ * 频率二分（与 `reportMediaPosition` 同一策略）：
  * - **高频**（每帧坐标、朝向）→ [`GameStateWriter.setSilent`]：静默写，不进事件流（防事件风暴）
  * - **低频**（拾取物品、完成任务、切换场景）→ [`GameStateWriter.set`]：进事件流（UI 需响应）
  *

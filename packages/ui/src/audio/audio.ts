@@ -215,7 +215,7 @@ export interface AudioRenderer {
 }
 
 /**
- * 宿主侧回调：解析失败的诊断出口；不传则该失败被静默吞掉。
+ * 宿主侧回调：解析失败的诊断出口；不传则该失败被静默忽略。
  * `preferences` 是唯一的可选注入——不传即无偏好，音量按引擎状态算。
  */
 export interface AudioRendererOptions {

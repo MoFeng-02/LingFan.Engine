@@ -29,7 +29,7 @@ export interface CompiledStories {
 }
 
 /**
- * 编译期求值喂入（§十二）：文件相对 `Stories.src/` 的 posix 路径 → 导出名 →
+ * 编译期求值喂入：文件相对 `Stories.src/` 的 posix 路径 → 导出名 →
  * 求值出的 JSON 可序列化值。由编排层求值段（const-eval-pass）填充；缺省 =
  * 没有被求值的文件，编译器行为与未接入求值时逐字一致。
  */
@@ -47,7 +47,7 @@ export interface StoriesCompiler {
     readonly stories: readonly string[];
     /** 模块文件清单（相对 `Stories.src/`，posix；被 import 的支撑 .ts） */
     readonly modules: readonly string[];
-    /** 编译期求值喂入（§十二）；缺省 = 无被求值文件（行为不变） */
+    /** 编译期求值喂入；缺省 = 无被求值文件（行为不变） */
     readonly constValues?: CompilerConstValues;
     /** 字体名注册表（Resources/Fonts 文件名去扩展名）；缺省 = 空注册表，引用字体名即 fail-closed */
     readonly fontNames?: ReadonlySet<string>;
@@ -57,7 +57,7 @@ export interface StoriesCompiler {
 /**
  * 默认编译器装载：`./story-compiler.ts`（本域内的编译器实现；文件缺席 = fail-closed 带指引）。
  *
- * 这里写死带扩展名的相对路径，不走 bundler 式的无扩展名解析：本仓源码由 tsx/Node 直接跑
+ * 这里写死带扩展名的相对路径，不走 bundler 式的无扩展名解析：包内源码由 tsx/Node 直接跑
  * TypeScript，Node 的 ESM 解析不补 `.ts`，无扩展名会解析失败。
  */
 export async function loadDefaultCompiler(): Promise<StoriesCompiler> {

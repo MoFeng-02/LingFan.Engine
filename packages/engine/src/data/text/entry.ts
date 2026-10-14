@@ -165,7 +165,7 @@ export function parseTextStory(
 
 /**
  * 文本投影的结果形状定义在契约层（`contracts/text.ts`），此处按原路径转出，
- * 既有消费方无需改动即可继续从本模块取；收口时统一改走包出口。
+ * 既有消费方无需改动即可继续从本模块取。
  */
 export type { TextProjection } from "../../contracts";
 

@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import appSource from "../../apps/editor/src/App.vue?raw";
+import openSource from "../../apps/editor/src/app/useProjectOpen.ts?raw";
 import mainSource from "../../apps/editor/src/main.ts?raw";
 import statusBarSource from "../../apps/editor/src/components/StatusBar.vue?raw";
 
@@ -19,7 +20,7 @@ describe("降级打开 · 接线互锁", () => {
     expect(src).toContain("degraded,");
   });
 
-  it("降级工程的**打开基线不含清单**（读不存在的 project.json 会在打开时炸）", () => {
+  it("降级工程的打开基线不含清单（读不存在的 project.json 会在打开时报错）", () => {
     const src = code(mainSource);
     // 条件装配：degraded === undefined 才读清单原文
     expect(src).toContain("degraded === undefined");
@@ -27,10 +28,12 @@ describe("降级打开 · 接线互锁", () => {
   });
 
   it("App 状态贯通：applyOpened 记账、unbindProject 作废、StatusBar 接收", () => {
-    const src = code(appSource);
-    expect(src).toContain("degradedOpen.value = opened.degraded");
-    expect(src).toContain("degradedOpen.value = undefined");
-    expect(src).toContain(':degraded="degradedOpen"');
+    // applyOpened / unbindProject 位于 useProjectOpen（ports 取用器形态）
+    const open = code(openSource);
+    expect(open).toContain("ports.degradedOpen.value = opened.degraded");
+    expect(open).toContain("ports.degradedOpen.value = undefined");
+    // 组合根接线形态：ports 取用器直传
+    expect(code(appSource)).toContain(':degraded="ports.degradedOpen.value"');
   });
 
   it("状态栏显示「降级打开」且**详情可读**（role=status + title=reason）", () => {

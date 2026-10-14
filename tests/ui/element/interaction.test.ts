@@ -85,7 +85,7 @@ describe("resolveElementAction（点击优先级）", () => {
     expect(resolveElementAction({ ops: [{ op: "" }] })).toEqual({
       kind: "none",
     });
-    // 畸形 ops + 合法 cmd = 走 cmd（畸形不吞掉合法声明）
+    // 畸形 ops + 合法 cmd = 走 cmd（畸形声明不覆盖合法 cmd）
     expect(resolveElementAction({ ops: [], cmd: "x" })).toEqual({
       kind: "cmd",
       name: "x",

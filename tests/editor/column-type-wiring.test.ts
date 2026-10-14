@@ -1,15 +1,18 @@
 /**
- * 场景类型（#7）**接线互锁**：判据有了、组件写了，**没接线就是白做**
+ * 场景类型**接线互锁**：判据有了、组件写了，**没接线就是白做**
  * （判据绿 ≠ 能力可用）。
  *
- * 锁五条线：ColumnList 徽标与类型选择 · App.vue 透传 · DialogHost choice 渲染 ·
+ * 锁五条线：ColumnList 徽标与类型选择 · EditorApi 透传 · DialogHost choice 渲染 ·
  * dialog 判据集中 · ChapterTree 精确徽标。
+ *
+ * api 对象在 `app/editorApi.ts`、dialog 判据在 `domain/dialog.ts`，
+ * 断言随之重新指向（找的内容不变，换找的位置）。
  */
 import { describe, expect, it } from "vitest";
-import appSource from "../../apps/editor/src/App.vue?raw";
+import apiSource from "../../apps/editor/src/app/editorApi.ts?raw";
 import columnListSource from "../../apps/editor/src/components/ColumnList.vue?raw";
 import dialogHostSource from "../../apps/editor/src/components/DialogHost.vue?raw";
-import dialogSource from "../../apps/editor/src/dialog.ts?raw";
+import dialogSource from "../../apps/editor/src/domain/dialog.ts?raw";
 import chapterTreeSource from "../../apps/editor/src/components/ChapterTree.vue?raw";
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
@@ -32,8 +35,8 @@ describe("场景类型 · 接线互锁", () => {
     expect(src).toContain("if (type === null) return;");
   });
 
-  it("App.vue api.addColumn **签名与两处分支都透传 type**", () => {
-    const src = code(appSource);
+  it("EditorApi 的 addColumn **签名与两处分支都透传 type**", () => {
+    const src = code(apiSource);
     expect(src).toContain('type?: "game" | "menu" | "ui"');
     expect(src).toContain("addColumn(s, { kind, hint, type })");
     expect(src).toContain("addColumn(tree, { kind, hint, type })");

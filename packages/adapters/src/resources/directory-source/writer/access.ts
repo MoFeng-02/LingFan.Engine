@@ -55,7 +55,7 @@ export async function ensureReadAccess(
 const WRITE_PERMISSION_HINT =
   "未获得写入权限：请重新点击「打开工程」选择该目录，并在浏览器询问时选择「允许编辑」";
 
-/** 可写文件句柄（lib.dom 版本不一：只声明我们用到的这一面） */
+/** 可写文件句柄（lib.dom 版本不一：只声明本模块用到的这一面） */
 export interface WritableFileHost {
   createWritable(options?: { keepExistingData?: boolean }): Promise<{
     write(data: string): Promise<void>;

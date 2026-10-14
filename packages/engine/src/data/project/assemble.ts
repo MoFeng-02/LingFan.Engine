@@ -137,7 +137,7 @@ export function assembleProject(
 
   for (const path of [...files.keys()].sort(byPath)) {
     // **只处理 `Stories/` 下的文件**。
-    //组装器**假定**调用方只喂故事文件，若喂了全量资源根就会炸：
+    //组装器**假定**调用方只喂故事文件，若喂了全量资源根就会组装失败：
     // `Lang/en-US/main.json`（译文表）等全被当故事解析
     // ⇒ 「formatVersion 必须为 1」让**整个工程组装失败**。
     // 判据：非 `Stories/` 一律跳过（它们由各自的视图/工具消费，不进故事列集）。

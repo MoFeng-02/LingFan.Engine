@@ -39,7 +39,7 @@ import columnListSource from "../../apps/editor/src/components/ColumnList.vue?ra
 
 const manifest = { formatVersion: 1, id: "demo", entry: "start" };
 
-/** 内存 Storage 契约替身（与 webStoragePreferences.test.ts 同款形态） */
+/** 内存 Storage 契约替身（与 webStoragePreferences.test.ts 相同形态） */
 class MemoryStorage implements KeyValueStorage {
   readonly map = new Map<string, string>();
   getItem(key: string): string | null {
@@ -506,7 +506,7 @@ describe("源码互锁：视图偏好不得进会话 / 故事树", () => {
     expect(COLUMN_GROUPING_KEY_PREFIX).toBe("lingfan-editor-colgroups:");
   });
 
-  it("分组视图随 story.id 归位（不照抄「仅 onMounted 读一次」的旧写法）", () => {
+  it("分组视图随 story.id 归位（不在 onMounted 里只读一次）", () => {
     expect(appSource).toMatch(/watch\(\s*\(\)\s*=>\s*story\.value\.id/u);
     expect(appSource).toContain("groupingStore.load");
   });

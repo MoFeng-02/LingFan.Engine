@@ -6,6 +6,6 @@
  *
  * 依赖方向：可用 `contracts` / `domain` / `shared`；不得依赖 `infra` / `app`。
  *
- * 当前是骨架：组件仍在 `src/components/` 平铺，搬迁在后续阶段进行。
+ * 组件位于 `src/components/`；本入口不导出成员，只声明层归属。
  */
 export {};

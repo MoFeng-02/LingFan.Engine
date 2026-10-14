@@ -1,8 +1,8 @@
 /**
  * 诊断面板 · 分组与折叠判据测试（**边界条件** + **不变量** + **回归**）。
  *
- * 重点覆盖「同质诊断淹没异质诊断」这个真问题：实测演示工程 33 条诊断里
- * 31 条是 `unused-translation`，把 2 条真错误埋掉了 —— 分组判据必须保证
+ * 重点覆盖「同质诊断淹没异质诊断」这个真问题：真实工程里同质诊断
+ * （如整屏 `unused-translation`）会淹没少量真错误 —— 分组判据必须保证
  * ① 错误组永远在最上 ② 同严重度按条数降序 ③ 折叠**不藏错误**。
  */
 import { describe, expect, it } from "vitest";
@@ -189,7 +189,7 @@ describe("汇总（**不逐条罗列**——那正是淹没的来源）", () => 
   });
 });
 
-describe("严重度筛选 filterDiagnosticsBySeverity（#9 徽章判据）", () => {
+describe("严重度筛选 filterDiagnosticsBySeverity（徽章判据）", () => {
   const list: Diagnostic[] = [
     d("missing-target", "error", "/a"),
     d("unused-translation", "warning", ""),

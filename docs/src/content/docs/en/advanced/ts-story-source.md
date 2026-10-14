@@ -228,7 +228,7 @@ The chain may reference other module `const`s and npm imports, but it **must con
 
 ```text
 模块层 const 引用了 node_modules 值导入——仅导出的 const 可经编译期求值内联
-（请把 npm 值收敛为导出 const，§十二）
+（请把 npm 值收敛为导出 const）
 ```
 
 Evaluation may not depend on a non-deterministic source either: `Date.now()`, `new Date()`, `Math.random()`, crypto randomness, or file/network/process IO. The builder evaluates the same constant twice in isolated environments and compares the results; a mismatch is an error. That gate is enforced, not advisory.
@@ -248,10 +248,10 @@ This case reports exactly one error — an npm value imported by a story file is
 
 ```text
 编译期求值失败（1 条）：
-- Stories.src/ch1/start.ts:1:1 故事文件不支持 node_modules 值导入 `axios`——npm 值请收敛为纯模块的导出 const（编译期求值仅作用于纯模块），再经相对导入使用（§十二/C10）
+- Stories.src/ch1/start.ts:1:1 故事文件不支持 node_modules 值导入 `axios`——npm 值请收敛为纯模块的导出 const（编译期求值仅作用于纯模块），再经相对导入使用（编译期求值引用域规则）
 ```
 
-The C10 error about "referencing an npm value inside a function body" needs a different setup to appear: put the npm import in a pure module and reference it inside a function body of that same module.
+The compile-time evaluation error about "referencing an npm value inside a function body" needs a different setup to appear: put the npm import in a pure module and reference it inside a function body of that same module.
 
 ```ts
 // Stories.src/lib/endpoint.ts
@@ -266,7 +266,7 @@ function describe(): void {
 
 ```text
 故事编译失败（1 条）：
-- lib/endpoint.ts:6:7 node_modules 值导入 `version` 仅限模块层 const 初始化链（§十二/C10）：函数体与其他语句不得引用
+- lib/endpoint.ts:6:7 node_modules 值导入 `version` 仅限模块层 const 初始化链（编译期求值引用域规则）：函数体与其他语句不得引用
 ```
 
 That one comes from `packages/stories-build/src/compiler/story-compiler/graph/bindings.ts:221`, and only if the module was evaluated at build time and the package resolves inside the project.
@@ -284,12 +284,12 @@ Keep the npm value at module level as pure data, and leave the runtime behaviour
 ```ts
 import { defaultEndpoint } from "some-config-pkg";
 
-const endpoint = defaultEndpoint; // ✅ module level, inlined as a string at build time
+const endpoint = defaultEndpoint; // module level, inlined as a string at build time
 
 export default function start(): void {
   extOp("http.get", { url: endpoint, saveTo: "player.apiData" }); // the engine runs this
   if (state.player.apiData.status === 200) {
-    // ✅ a runtime branch
+    // a runtime branch
     say("Request succeeded.");
   }
 }

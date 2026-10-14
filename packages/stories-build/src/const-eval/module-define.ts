@@ -3,7 +3,7 @@
  * define(...) 表达式语句，产出带落点定位的调用清单，与 config.ts 的 define
  * 求值通道汇入同一棵合并树（汇入在 pipeline：mergeDefineCallsInto）。
  *
- * 收集口径（设计稿 §二 define 域放宽定案）：
+ * 收集规则（define 域放宽）：
  * - 只收顶层表达式语句的 define 调用（函数体内的 define 是运行期词，语义
  *   define-once 归编译器/运行期管，此处刻意不碰）；
  * - config.ts 走自己的求值通道，根级文件的结构违规与生成物目录由既有诊断负责，

@@ -1,7 +1,7 @@
 /**
  * state 类型面生成（形态 B gen 类型面）契约测试。
  *
- * 契约口径（设计稿 §二类型面分流 / §五生成四处 / §九 ambient 桥）：
+ * 契约口径（类型面分流 / 生成四处 / ambient 桥）：
  * buildStories 恒产出 `Stories.src/gen/state.gen.d.ts`：从 config 求值合并树
  * （形态 A state 导出 / 形态 B define 累积，二选一）渲染精确 `StoryState`——
  * descriptor 的 type 槽位按形状取精确类型（原生标量 / 单元素数组 leaf /
@@ -10,11 +10,11 @@
  * 配对），回收不到则回退成员值内联联合；键与枚举成员排序去重，同输入逐字节同
  * 输出；差量写盘与 stories.gen.d.ts 同一规则（新增/更新分开计，内容不变不写）。
  *
- * 五类覆盖（agent.md §6 测试纪律）：①拟态用户（形态 B 全形状/形态 A/自定义根名 ambient 桥）
+ * 五类覆盖（测试分层约定）：①拟态用户（形态 B 全形状/形态 A/自定义根名 ambient 桥）
  * ②故意错误（不可识别 descriptor type fail-closed 且不落盘）③不变量（二进制稳定/差量）
- * ④边界（空树 Record<string, never>）⑤回归锚定（import 改写与联合回退的逐字节契约）。
+ * ④边界（空树 Record<string, never>）⑤回归（import 改写与联合回退的逐字节契约）。
  *
- * 白盒为零：全部走公共入口 buildStories（agent.md:107 公共 API 走 @lingfan/*）。
+ * 白盒为零：全部走公共入口 buildStories，公共 API 走 @lingfan/*。
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

@@ -16,9 +16,9 @@ import {
 import { elementSource } from "@lingfan/ui";
 import EmptyState from "./EmptyState.vue";
 import { EDITOR_API_KEY } from "../contracts";
-import type { EmptyAction } from "../viewState";
-import { interactionIntent, shouldSuppressClick } from "../pointerIntent";
-import { snapGuides, type SnapCandidate, type SnapResult } from "../snapGuides";
+import type { EmptyAction } from "../domain";
+import { interactionIntent, shouldSuppressClick } from "../domain";
+import { snapGuides, type SnapCandidate, type SnapResult } from "../domain";
 import FieldRow from "./FieldRow.vue";
 
 /**
@@ -428,7 +428,7 @@ function onDrop(event: DragEvent): void {
           }}</span>
           <span v-if="element.id" class="id">#{{ element.id }}</span>
         </div>
-        <!-- 对齐参考线（步4）：拖拽中显示，pointer-events:none 不吃点击 -->
+        <!-- 对齐参考线：拖拽中显示，pointer-events:none 不吃点击 -->
         <div
           v-if="guides.vx !== null"
           class="guide guide-v"
@@ -475,7 +475,7 @@ function onDrop(event: DragEvent): void {
   overflow: auto;
   border: 1px solid var(--lf-border-default);
   border-radius: var(--lf-radius-md);
-  /* 步4：点阵网格 —— 给"空间"一个参照，否则元素定位纯靠手拖、没有尺度感。
+  /* 点阵网格 —— 给"空间"一个参照，否则元素定位纯靠手拖、没有尺度感。
      用 radial-gradient 画点（不引依赖）；透明度压到 0.07 以免抢元素注意力。 */
   background-color: var(--lf-info-surface);
   background-image: radial-gradient(

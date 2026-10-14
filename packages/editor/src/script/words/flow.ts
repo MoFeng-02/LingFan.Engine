@@ -231,7 +231,7 @@ export function whenChain(cond: string, thenBody: readonly Stmt[]): IfChain {
 
 /**
  * 运行期 while 循环：每轮重新求值 `cond`，为真就执行一轮 `body`
- * （体在新块作用域里执行）。条件必须产出布尔值。注意别写出永真条件。
+ * （体在新块作用域里执行）。条件必须产出布尔值；永真条件会让循环无法退出。
  * @param cond 每轮重判的条件表达式（须为布尔）。
  * @param body 每轮执行的一组命令。
  * @returns `while` 故事命令。

@@ -1,6 +1,6 @@
 ---
 /**
- * OpCard.astro · 单条 op 指令卡（设计稿 §3.4 P0）
+ * OpCard.astro · 单条 op 指令卡
  *
  * 纯静态渲染、零客户端 JS。正文走默认 slot，Markdown 直接写在标签内
  * （参数表 / 最小 JSON 示例由内容页作者放进 slot，不做 props 化）。
@@ -17,13 +17,13 @@
  *   `scroll-margin-block-start` 让跳转目标落在吸顶导航之下。
  *
  * ── 两个刻意的取舍 ────────────────────────────────────────────────────
- * 1. op 名**不是**标题元素。设计稿 §3.4 把它定义为「mono 徽标」，而域页里
- *    一张卡就是一条 op —— 若用 h3，页面的 h1→h3 会形成标题跳级（§6 E 组
- *    拦截级），且这取决于 T4 各域页的标题结构，本组件不该替它下判断。
+ * 1. op 名**不是**标题元素。视觉上它是「mono 徽标」，而域页里
+ *    一张卡就是一条 op —— 若用 h3，页面的 h1→h3 会形成标题跳级（axe 标题
+ *    层级检查的拦截级），且这取决于各域页的标题结构，本组件不该替它下判断。
  *    页首索引已承担导航职责。
  * 2. **不加** `not-content`。slot 里的 Markdown（参数表 / JSON 示例）需要
  *    继续吃到 Starlight 与 markdown.css 的正文样式；加了 not-content 会让
- *    它们退化成裸 DOM。卡片自身的间距改由 .lf-op__* 显式声明（我们的
+ *    它们退化成裸 DOM。卡片自身的间距改由 .lf-op__* 显式声明（仓库的
  *    customCss 未分层，天然胜过 @layer starlight.content，无需 !important）。
  */
 import { Badge } from '@astrojs/starlight/components';

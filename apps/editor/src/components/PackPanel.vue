@@ -11,7 +11,7 @@
  */
 import { computed, ref } from "vue";
 import type { PackRequest, PackResult } from "../contracts";
-import { useDialog } from "../dialogInjection";
+import { useDialog } from "../app";
 
 const props = defineProps<{
   /** 是否有本地宿主（无 = 不可打包，如实告知） */

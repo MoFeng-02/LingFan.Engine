@@ -24,7 +24,7 @@ import {
 /**
  * 层级与存档壳的契约类型定义在契约层（`contracts/shell.ts`），
  * 此处按原路径转出，既有消费方无需改动即可继续从本模块取；
- * 收口时统一改走包出口。
+ * 后续并入包出口时统一改走包出口。
  */
 export { DEFAULT_LAYER_Z, DEFAULT_SAVES_CONFIG, LAYER_IDS } from "../contracts";
 export type {

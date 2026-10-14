@@ -2,7 +2,7 @@
  * 存档编排契约（TS 侧）：安全（加密/AAD/高水位）在 Rust 层。
  * TS 只编排载荷与槽位；跨端（Desktop/Mobile）实现同一 SavePort。
  *
- * 演进纪律（写死）：载荷字段**只增不改**；破坏性变更必须升 `formatVersion`
+ * 演进约束（固定）：载荷字段**只增不改**；破坏性变更必须升 `formatVersion`
  * 并同时提供 `migrateSave` 迁移路径——旧档读不了 = 引擎违约。
  */
 import type { ColumnCoordinate, StoryCommand } from "./story";

@@ -27,7 +27,7 @@ pub(crate) fn is_media_ext(logical: &str) -> bool {
 }
 
 /// 回环供给命中判定（Android ∧ 加密 ∧ 音视频）：纯函数，`is_android` 由调用方以 `cfg!` 传入
-/// ——使两条分支都能在桌面单测覆盖，不依赖目标平台（`cfg` 掉的分支桌面门禁验不到）。
+/// ——使两条分支都能在桌面单测覆盖，不依赖目标平台（`cfg` 掉的分支桌面测试覆盖不到）。
 pub(crate) fn loopback_eligible(is_android: bool, logical: &str) -> bool {
     is_android && is_media_ext(logical)
 }

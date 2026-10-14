@@ -32,7 +32,7 @@ export interface AppHistory {
   rollbackToEntry: (index: number) => void;
 }
 
-/** 装配历史聚合：快照筛选、NVL 块化与回溯收口 */
+/** 装配历史聚合：快照筛选、NVL 块化与回溯收尾 */
 export function createAppHistory(options: AppHistoryOptions): AppHistory {
   const { getEngine, syncFromEngine } = options;
   const showHistory = ref(false);

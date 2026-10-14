@@ -273,7 +273,7 @@ export default function start(): void {
     expect(valued!.body).toContainEqual({ op: "return", value: "{-1}" });
   });
 
-  it("列体顶层 return ⇒ E10 报错且不产该列（fail-closed）", async () => {
+  it("列体顶层 return ⇒ 报错且不产该列（fail-closed）", async () => {
     const root = makeProject("top-return", {
       "Stories.src/config.ts": config(["ch1"]),
       "Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {

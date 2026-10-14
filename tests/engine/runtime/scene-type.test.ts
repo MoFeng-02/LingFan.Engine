@@ -39,7 +39,7 @@ const ENGINE_SOURCES = import.meta.glob(
   },
 ) as Record<string, string>;
 
-/** 契约层下沉出来的 7 个判定函数 */
+/** 契约层提供的 7 个判定函数 */
 const GUARD_FUNCTIONS = [
   "isElementType",
   "gameScopedKey",

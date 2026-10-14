@@ -120,7 +120,7 @@
 }
 
 /* 4. 代码块外壳（Expressive Code）：astro.config 显式指定 themes 后 EC 不再套用
-   --sl-* 配色（沿用 tokyo-night / min-light 自带配色，见设计稿 §3.5⑤），
+   --sl-* 配色（沿用 tokyo-night / min-light 自带配色），
    这里只统一圆角与投影。投影走 --sl-shadow-md 以便打印被置 none。 */
 :root {
   --ec-brdRad: var(--lf-radius-md);

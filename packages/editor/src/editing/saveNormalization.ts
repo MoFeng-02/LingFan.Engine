@@ -4,7 +4,7 @@
  *
  * 分层：**检测**归引擎（`detectWriteNormalization`，与 `serializeProject` 同一布局
  * 知识族）；本模块只管编辑器视图侧的两件事——偏好是**本机视图偏好**（边界：
- * 不入故事 JSON、任何存储失败全静默，与列分组同款降级），文案负责把 finding
+ * 不入故事 JSON、任何存储失败全静默，与列分组相同降级策略），文案负责把 finding
  * 翻成与真实写回行为一一对应的行。
  */
 import type { WriteNormalizationFinding } from "@lingfan/engine";

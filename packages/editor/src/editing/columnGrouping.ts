@@ -286,7 +286,7 @@ export function toggleCollapsed(
 }
 
 /**
- * 存储端口（与 `createWebStoragePreferencesPort` 同款「注入式替身」形态）：
+ * 存储端口（与 `createWebStoragePreferencesPort` 相同的「注入式替身」形态）：
  * `localStorage` 由宿主取一次传入，本模块不碰平台 API，测试传内存替身即可。
  */
 export interface KeyValueStorage {

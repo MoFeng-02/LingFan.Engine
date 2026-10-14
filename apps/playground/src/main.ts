@@ -63,7 +63,7 @@ import {
 import { browserPlayAllowed } from "./browserGuard";
 import { installStoryFonts } from "./host/app-fonts";
 
-// 渲染诊断探针：`VITE_LFEN_DIAG=1` 构建时启用（iOS CI 白屏取证）；默认构建
+// 渲染诊断探针：`VITE_LFEN_DIAG=1` 构建时启用（白屏诊断用）；默认构建
 // 动态 import 被 tree-shake，产物零增重。独立于 boot——白屏时 boot 可能挂，探针必须无条件跑。
 if (import.meta.env.VITE_LFEN_DIAG === "1") {
   void import("./diag").then((module) => module.startDiag());
@@ -91,7 +91,7 @@ const STORIES = [
   "Stories/chapter4/tour.json",
 ];
 
-/** 入口引导：判定运行形态（构建期 mode + 运行期探测）→ 门禁 → 建引擎 → 挂载 UI；分层口径见函数内注释。 */
+/** 入口引导：判定运行形态（构建期 mode + 运行期探测）→ 守卫 → 建引擎 → 挂载 UI；分层口径见函数内注释。 */
 async function boot(): Promise<void> {
   // —— 平台装配（构建期 + 运行期双层）——
   // 构建层：mode `tauri` 编译 Tauri 形态产物（含 invoke 路径）；纯浏览器构建编译 Web 形态。
@@ -101,7 +101,7 @@ async function boot(): Promise<void> {
   const isTauriWindow = detectTauriWindow();
   const useNative = import.meta.env.MODE === "tauri" && isTauriWindow;
   // 浏览器游戏模式守卫：无壳 + 非开发模式 + 未显式声明浏览器游戏模式 ⇒ 拒绝（不外泄）。
-  // 交付形态只应是 Tauri 壳；Web 供给面（静态根 + 明文资源）不得随交付物一同存在。
+  // 交付形态只应是 Tauri 壳；Web 供给面（静态根 + 明文资源）不得随构建产物一同存在。
   if (!useNative && !browserPlayAllowed()) {
     renderBrowserBlocked();
     return;

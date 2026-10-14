@@ -1,25 +1,25 @@
 /**
- * 验收项 A · 跨文件同名私有函数：碰撞路径互锁（用户点名必交）。
+ * 跨文件同名私有函数：碰撞路径互锁。
  *
  * 为什么单独立一个文件：这条路径的失败形态是**产物静默串味**——两文件各自定义同名私有
  * 函数、又被同一列拉到一起时，产物里的 `func` 命名与 `call.target` 是否仍各指其源。
- * E12 只拦「同列同名导入」，拦不住「同列里经两跳把两个同名函数拉进 closure」。
+ * 这条闸门只拦「同列同名导入」，拦不住「同列里经两跳把两个同名函数拉进 closure」。
  *
- * 本文件锁的是**当前真实行为**，不是设计意图。实测结论有三条，都被下面的用例钉住：
+ * 本文件锁的是**当前真实行为**，不是设计意图。行为结论有三条，都被下面的用例钉住：
  *   ① 经 closure 的两跳路径（导入 `outerA`/`outerB`，各自体内调本地 `helper`）被
  *      `registerName` 判为同列同名 ⇒ **fail-closed 报错**，不产该列产物。
  *      这是 fail-closed 一侧，不是静默串味。
- *   ② 别名直连导入（`import { helper as other } from "./beta"`）**曾经**绕过 closure：
+ *   ② 别名直连导入（`import { helper as other } from "./beta"`）不报错却绕过 closure：
  *      不报错，但产物里留下 `call.target = "other"` 而**没有对应的 `func op`** ——
  *      函数体从未被编译进来（真正静默坏掉的一侧）。
- *   ③ t11 修掉族 A 后，②归入①：refs 键与 `call.target` 都改用**声明名**，两个不同源的
+ *   ③ 别名路径并入同列同名闸门后，②归入①：refs 键与 `call.target` 都改用**声明名**，两个不同源的
  *      同名函数于是同样撞上同列同名闸门，报同一族文案并 fail-closed。②不再静默，
  *      而是提前到构建期报错。单个别名（只拉进一个函数）照常产出，见最后一条用例。
  *
  * 互锁形态：断言点全落在**产物字节**上（`func` op 的 name/body、`call` op 的 target），
  * 且走真实编译器（不是合成缝）——只有这样「键控里少一段」这类改动才会真的转红。
  *
- * 变异注入自证（本轮实测，实验后已还原）：把 `story-compiler/assemble.ts` 的
+ * 变异注入自证：把 `story-compiler/assemble.ts` 的
  * `key = \`${file}#${[...ownerChain, name].join("#")}\`` 临时改成丢掉 file 段，
  * 第 ①② 两条用例的产物断言转红；还原后逐字节一致。
  *
@@ -57,7 +57,7 @@ const MANIFEST = `{
   "shell": { "orientation": "auto" }
 }`;
 
-/** 词汇层绑定：故事文件内直接解构（与 build-pipeline.test.ts 的 WORDS 同款）。 */
+/** 词汇层绑定：故事文件内直接解构（与 build-pipeline.test.ts 的 WORDS 同一形态）。 */
 const WORDS = `import { script } from "@lingfan/editor";
 const { say } = script;
 
@@ -93,7 +93,7 @@ function firstSay(funcBody: readonly Command[]): string {
   return say?.text ?? "";
 }
 
-describe("验收项 A · 跨文件同名私有函数：碰撞路径互锁", () => {
+describe("跨文件同名私有函数：碰撞路径互锁", () => {
   it("两文件各自定义同名私有函数、经两跳进同一列 ⇒ 报双文件定位并 fail-closed", async () => {
     // start 导入 alpha 的 helper（裸名）与 beta 的 wrapper（其体内调本地 helper）：
     // closure 里两条 CompiledFunction 同名不同源，registerName 必须报出**两个文件**的位置。
@@ -196,9 +196,9 @@ export default function start(): void {
   });
 
   it("别名直连导入同名函数 ⇒ 与两跳同一条 fail-closed 闸门（不再静默留悬空 call）", async () => {
-    // 这里原先锚定的是**缺陷实况**：`import { helper as other } from "./beta"` 产
+    // 本用例锚定缺陷修复（原缺陷实况）：`import { helper as other } from "./beta"` 产
     // `call{target:"other"}`，而 beta 的 helper 体从未进 closure ⇒ 产物里留一条查无 func
-    // 的悬空 call，运行期才炸。t11 把别名路径的 refs 键与 call.target 改回**声明名**后，
+    // 的悬空 call，运行期才报错。别名路径的 refs 键与 call.target 已改回**声明名**，
     // 两个不同源的 helper 都要求发射 `func name="helper"`，于是撞上 registerName 的同列
     // 同名闸门——与两跳路径（上一条用例）报的是同一族文案、同样 fail-closed。
     // 断言锚点仍在**产物字节**上：报错即不产该列文件。

@@ -5,12 +5,12 @@
  * 组件里只准出现 `var(--lf-*)`，不准再写裸色值 / 裸字号。
  * 这类漂移会随迭代累积：新组件很容易带回一个裸色值 `#xxxxxx`。
  * ⇒ 必须有机械化守卫，否则约束会在几轮迭代后失效。
+ *
+ * App.vue 的全局样式在 `styles/app-shell.css`（组合根只留装配），
+ * 交互态守卫位于 `styles/app-shell.css`；同时把 `.css` 纳入裸值巡检（原守卫面 = App.vue 全局段，不能变窄）。
  */
 import { describe, expect, it } from "vitest";
-import appSource0 from "../../apps/editor/src/App.vue?raw";
 
-/** 顶栏/基类样式都在 App.vue 的全局段 */
-const appText0 = appSource0;
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -21,7 +21,7 @@ function readSources(root: string): { file: string; text: string }[] {
     for (const name of readdirSync(dir)) {
       const p = join(dir, name);
       if (statSync(p).isDirectory()) out.push(...walk(p));
-      else if (/\.(vue|ts)$/.test(p))
+      else if (/\.(vue|ts|css)$/.test(p))
         out.push({ file: p, text: readFileSync(p, "utf8") });
     }
     return out;
@@ -30,6 +30,8 @@ function readSources(root: string): { file: string; text: string }[] {
 }
 
 const EDITOR_SRC = join(process.cwd(), "apps/editor/src");
+// .css 的 `?raw` 导入在 vitest（css:false）下会被 stub 成空串 ⇒ 用 readFileSync 直读
+const shellSource = readFileSync(join(EDITOR_SRC, "styles", "app-shell.css"), "utf8");
 const TOKEN_FILE = "tokens.css";
 const sources = readSources(EDITOR_SRC);
 const components = sources.filter((s) => !s.file.endsWith(TOKEN_FILE));
@@ -108,7 +110,7 @@ describe("token 唯一源 · 防回流守卫", () => {
   });
 
   it("对比度：弱提示色已提亮到 AA 以上", () => {
-    // 原 #565f89 在 #101014 上仅 2.9:1 ⇒ 提到 #7b83a8（4.9:1）
+    // #7b83a8 在 #101014 上满足 AA（≥4.5:1），#565f89 不满足——故弱提示色取前者
     expect(tokensText).toContain("--lf-text-hint: #7b83a8");
     expect(tokensText).not.toContain("--lf-text-hint: #565f89");
   });
@@ -119,26 +121,26 @@ describe("token 唯一源 · 防回流守卫", () => {
 });
 
 /**
- * 三项视觉债的**源级守卫**——只做了实现、没锁防回流时容易再犯。
+ * 三项视觉已知缺口的**源级守卫**——只做了实现、没锁防回流时容易再犯。
+ * 守卫对象 = `styles/app-shell.css`（原 App.vue 全局样式段的现居所）。
  */
 describe("交互态与布局守卫", () => {
   it("③ 全局有 `button:hover` / `:active` / `:focus-visible`（基类不能零 hover）", () => {
-    // 读 App.vue 的全局样式（非 scoped）⇒ 从源码断言，不依赖运行时
-    const appText = appText0;
-    expect(appText).toMatch(/button:hover:not\(:disabled\)/);
-    expect(appText).toMatch(/button:active:not\(:disabled\)/);
+    // 读全局样式文件 ⇒ 从源码断言，不依赖运行时
+    expect(shellSource).toMatch(/button:hover:not\(:disabled\)/);
+    expect(shellSource).toMatch(/button:active:not\(:disabled\)/);
     // 焦点用 :focus-visible（鼠标点击不冒焦点环）
-    expect(appText).toContain(":focus-visible");
-    expect(appText).toContain("outline: 2px solid var(--lf-accent)");
+    expect(shellSource).toContain(":focus-visible");
+    expect(shellSource).toContain("outline: 2px solid var(--lf-accent)");
   });
 
   it("④ 顶栏允许换行且按钮不折半（掉行的两个成因都堵住）", () => {
-    expect(appText0).toMatch(/\.toolbar\s*\{[^}]*flex-wrap:\s*wrap/);
+    expect(shellSource).toMatch(/\.toolbar\s*\{[^}]*flex-wrap:\s*wrap/);
     // button 基类必须 white-space: nowrap（否则中文按钮文案被拆两行）
-    expect(appText0).toMatch(/^button\s*\{[^}]*white-space:\s*nowrap/m);
-    // 长路径必须可收缩 + 省略号（它是最占宽项）
-    expect(appText0).toMatch(
-      /\.project-root\s*\{[^}]*max-width[^}]*text-overflow:\s*ellipsis/,
+    expect(shellSource).toMatch(/^button\s*\{[^}]*white-space:\s*nowrap/m);
+    // 长路径必须可收缩 + 省略号（它是最占宽项；路径行 = .project-chip-path）
+    expect(shellSource).toMatch(
+      /\.project-chip-path\s*\{[^}]*max-width[^}]*text-overflow:\s*ellipsis/,
     );
   });
 
@@ -159,11 +161,11 @@ describe("交互态与布局守卫", () => {
 });
 
 /**
- * hover 可见性守卫 —— 一条**只能靠实测发现**的债：
+ * hover 可见性守卫：
  * `button:hover` 的底色曾用 `--lf-surface-selected`（#24283b），
  * 而 button 基类底色是 `--lf-border-subtle`（**同为 #24283b**）
  * ⇒ hover 规则"存在"、`:hover` 也真的匹配，但**背景看起来毫无反应**（只变了边框）。
- * 源级断言查不出"同值"这件事 ⇒ 必须同时断言「两色不等」+ 实测。
+ * 源级断言查不出"同值"这件事 ⇒ 必须同时断言「两色不等」。
  */
 describe("hover 可见性", () => {
   it("hover 底色 token ≠ button 基类底色 token", () => {
@@ -185,7 +187,7 @@ describe("hover 可见性", () => {
 
   it("hover 规则用的是那个专用 token", () => {
     const hoverRule =
-      appText0.match(/button:hover:not\(:disabled\)\s*\{[^}]*\}/)?.[0] ?? "";
+      shellSource.match(/button:hover:not\(:disabled\)\s*\{[^}]*\}/)?.[0] ?? "";
     expect(hoverRule).toContain("var(--lf-surface-hover-strong)");
     expect(hoverRule).not.toContain("var(--lf-surface-selected)");
   });

@@ -20,10 +20,10 @@ import {
   setAtPointer,
   UNIMPLEMENTED_ELEMENT_ATTRS,
 } from "@lingfan/editor";
-import appSource from "../../apps/editor/src/App.vue?raw";
+import apiSource from "../../apps/editor/src/app/editorApi.ts?raw";
 import stageEditorSource from "../../apps/editor/src/components/StageEditor.vue?raw";
-// 空态口径表**源码**（提示文案集中于此，组件不各写一份）
-import viewStateSource from "../../apps/editor/src/viewState.ts?raw";
+// 空态口径表**源码**（提示文案集中于此，组件不各写一份；定义在 domain/）
+import viewStateSource from "../../apps/editor/src/domain/viewState.ts?raw";
 
 function sceneColumn(id: string, elements: unknown[]): StoryColumn {
   return { id, kind: "scene", elements } as StoryColumn;
@@ -73,7 +73,7 @@ describe("createElementDraft：最小草稿面", () => {
     expect(createElementDraft("panel", 0, Number.POSITIVE_INFINITY)).toBeNull();
   });
 
-  it("草稿绝不含失真属性（止血清单）：键面 ⊆ {type,x,y}", () => {
+  it("草稿绝不含失真属性（未实现属性清单）：键面是 {type,x,y} 的子集", () => {
     for (const type of ["text", "panel", "image", "button", "bar"]) {
       const draft = createElementDraft(type, 10, 20);
       expect(draft).not.toBeNull();
@@ -202,16 +202,17 @@ describe("源码互锁：fail-closed 分支与单提交真实在位", () => {
     expect(stageEditorSource).not.toMatch(/\bsession\b/);
     expect(stageEditorSource).not.toContain("insertAtPointer");
     // 画布空态提示引导作者用面板拖入
-    // UI 审阅后空态改走 `EmptyState` ⇒ **文案搬到了口径表**（`viewState.ts`），
+    // 空态走 `EmptyState`，**文案在口径表**（`viewState.ts`），
     //    组件只写 `reason="no-elements"`。本断言守的是**这条引导意图**，故指向口径表。
     expect(stageEditorSource).toContain('reason="no-elements"');
     expect(viewStateSource).toContain("从左侧「组件」面板拖入");
   });
 
   it("宿主 insertElement 走 session.apply（一次拖入 = 一个 undo 单元），标签带元素类型", () => {
-    expect(appSource).toContain("insertElement(");
-    expect(appSource).toMatch(
-      /session\.apply\(`拖入元素 \$\{elementLabel\(type\)\}`/,
+    // api 对象实现位于 app/editorApi.ts（session 以取用器注入 ⇒ session().apply）
+    expect(apiSource).toContain("insertElement(");
+    expect(apiSource).toMatch(
+      /session\(\)\.apply\(`拖入元素 \$\{elementLabel\(type\)\}`/,
     );
   });
 });

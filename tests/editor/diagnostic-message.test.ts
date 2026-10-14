@@ -1,9 +1,8 @@
 /**
  * 诊断文案分层测试（**边界条件** + **回归**）。
  *
- * 核心：把「状态」与「怎么处置」拆开。实测原message 在 320px 窄栏里
- * 每条竖排 5~6 行（`avgItemH=120px`）—— 因为括号里的说明（往往写着
- * 「本条可忽略」）占了主句 3/4 篇幅。
+ * 核心：把「状态」与「怎么处置」拆开。括号里的说明（往往写着
+ * 「本条可忽略」）会占主句大半篇幅，窄栏里一条消息要竖排很多行。
  *
  * 不改 `Diagnostic.message` 的形状（契约不动）—— 拆的是渲染分层。
  */
@@ -14,7 +13,7 @@ import {
 } from "../../packages/editor/src/diagnostics/message";
 
 describe("文案分层：主句只说状态", () => {
-  it("**回归**：unused-translation 的长说明被切走（实测占 3/4 篇幅）", () => {
+  it("回归：unused-translation 的长说明被切走（只保留状态主句）", () => {
     const message =
       "未使用的译文键：🤝 第三章 · 相遇（say / menu / input / notify 四个翻译面均未命中原文——该键运行期不会生效；若这段文字只用于元素文本或宿主界面，本条可忽略）";
     const parts = splitDiagnosticMessage(message);

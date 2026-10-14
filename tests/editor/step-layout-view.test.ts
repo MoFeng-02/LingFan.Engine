@@ -7,6 +7,8 @@
  */
 import { describe, expect, it } from "vitest";
 import appSource from "../../apps/editor/src/App.vue?raw";
+import centerSource from "../../apps/editor/src/components/CenterStage.vue?raw";
+import toolbarSource from "../../apps/editor/src/components/TopToolbar.vue?raw";
 import stepLayoutSource from "../../apps/editor/src/components/StepLayout.vue?raw";
 import editorApiContractSource from "../../apps/editor/src/contracts/editor.ts?raw";
 import stepsSource from "../../packages/editor/src/layout/steps.ts?raw";
@@ -21,31 +23,32 @@ describe("视图接线：centerView 四态 + 步骤分支", () => {
   });
 
   it("工具栏有「步骤」入口（点击切到 step）", () => {
-    expect(appSource).toContain("@click=\"centerView = 'step'\"");
+    // 顶栏在 TopToolbar（子组件经 emit 上抛）
+    expect(toolbarSource).toContain("@click=\"emit('update:centerView', 'step')\"");
   });
 
   it("中心区按 centerView 渲染 StepLayout", () => {
-    expect(appSource).toContain("v-else-if=\"centerView === 'step'\"");
-    expect(appSource).toContain("<StepLayout");
+    // 中心区装配位于 CenterStage（props 形态）
+    expect(centerSource).toContain("v-else-if=\"props.centerView === 'step'\"");
+    expect(centerSource).toContain("<StepLayout");
   });
 
-  it("防回退：NodeGraph 分支必须是 v-else-if（裸 v-else 会把步骤视图吃掉）", () => {
-    expect(appSource).toContain("v-else-if=\"centerView === 'graph'\"");
-    expect(appSource).not.toMatch(/<NodeGraph\s+v-else[\s>]/);
+  it("防回退：NodeGraph 分支必须是 v-else-if（裸 v-else 会让步骤视图失效）", () => {
+    expect(centerSource).toContain("v-else-if=\"props.centerView === 'graph'\"");
+    expect(centerSource).not.toMatch(/<NodeGraph\s+v-else[\s>]/);
   });
 
   it("四个中心视图全被 v-if / v-else-if 链覆盖（无「掉到空」的分支）", () => {
     for (const view of ["timeline", "stage", "graph", "step"]) {
-      expect(appSource).toContain(`centerView === '${view}'`);
+      expect(centerSource).toContain(`centerView === '${view}'`);
     }
   });
 });
 
-describe("点击步骤 → 定位时间线（验收③，零新增管道）", () => {
+describe("点击步骤 → 定位时间线（零新增管道）", () => {
   it("StepLayout 注入既有 editorApi 并调用 `api.reveal`（定位职责已显式化）", () => {
     expect(stepLayoutSource).toContain("inject(EDITOR_API_KEY)");
-    // 拆职责前靠 `select()` 的切视图副作用顺带实现定位；
-    //    现已显式化为 `reveal()` = 选中 + 切时间线 + 滚动到行。
+    // 定位由显式 `reveal()` 职责实现 = 选中 + 切时间线 + 滚动到行；
     //    本断言守的是「点步骤能定位到时间线」这个**意图**，不是"必须调 select"这个字面。
     expect(stepLayoutSource).toContain("api.reveal(step.endPointer)");
     // 契约面必须声明 reveal（注入键的类型即取自这份契约）

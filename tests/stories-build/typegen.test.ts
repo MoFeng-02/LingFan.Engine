@@ -1,20 +1,20 @@
 /**
  * 类型面生成器（stories.gen.d.ts）测试。
  *
- * 契约口径（设计稿：私有文档/设计稿/2026-10-11-Stories源新创作模式-设计稿.md §12.5）：
+ * 契约口径：
  * 编译链生成 `Stories.src/gen/stories.gen.d.ts`，把字符串域收窄为字面量联合类型——
  * 列名（jump / navigate / option 的 target）、插值键（`{...}`）、扩展命名空间前缀。
  * 生成物落 `Stories.src/gen/`，被 `apps/playground/tsconfig.json` 的 `include` 覆盖，
  * 根工程看不见（分层，不是遗漏）。
  *
- * 五类覆盖（agent.md §6 测试纪律）：
+ * 五类覆盖（测试分层约定）：
  *   ① 拟态用户：真实工程形态（词汇表 + 多列 + config.vars/state + 扩展）走完整管线
  *   ② 故意错误：fail-closed 且诊断可定位（config.vars 形态非法、图谱 defineVars 守卫、列 id 非法）
  *   ③ 不变量：同输入逐字节同输出、排序去重、幂等
  *   ④ 边界条件：空列集 / 极大列集 / 超长列名 / 特殊字符键
- *   ⑤ 回归锚定：config.vars 键只在插值里用时必须进注册表（用户实测缺陷的换道版）
+ *   ⑤ 回归：config.vars 键只在插值里用时必须进注册表（config 化前为 defineVars 清单）
  *
- * 白盒访问内部渲染器走相对深引（agent.md:107：公共 API 走 @lingfan/*，内部走相对深引）。
+ * 白盒访问内部渲染器走相对深引：公共 API 走 @lingfan/*，内部走相对深引。
  */
 import {
   existsSync,
@@ -92,7 +92,7 @@ export const { say, option, menu, cell, guard, extOp, staticFor, jump } = script
 
 const MANIFEST = manifest();
 
-/** 扩展模块范式（与 build-pipeline.test.ts 的 EXT_DEMO 同款：default 导出 OpExtension）。 */
+/** 扩展模块范式（与 build-pipeline.test.ts 的 EXT_DEMO 同一形态：default 导出 OpExtension）。 */
 const EXT_DEMO = `import type { OpExtension } from "@lingfan/engine";
 
 const extension: OpExtension = {
@@ -126,7 +126,7 @@ async function buildDefaultProject(
 describe("类型面生成器 · 拟态用户（真实工程形态走完整管线）", () => {
   it("列名、插值三源与扩展模式都进注册表（列 id 取自编译产物、键各自保真）", async () => {
     // 扩展 op 必须在清单里声明（gates 的 assertKnownOps），所以本用例自带 EXT_DEMO 与
-    // 声明它的清单——顺带让「扩展模式行」与「三源字面量键」在同一份生成物里并存，验证混排合法。
+    // 声明它的清单——同时让「扩展模式行」与「三源字面量键」在同一份生成物里并存，验证混排合法。
     const root = makeProject("mimic", {
       "Stories.src/config.ts":
         config(["lib", "ch1"]) +
@@ -182,9 +182,9 @@ export default function start(): void {
     );
   });
 
-  it("config.vars 键即使只在插值里用、不进任何 op 流，也必须进注册表（回归锚定：用户实测缺陷的换道版）", async () => {
-    // 用户实测回归（原缺陷）：变量键曾经恒不出现（数据源走的是编译期求值，而真实工程的
-    // defineVars 住在相对导入的词汇表里，永不触发求值），导致合法插值被判红。
+  it("config.vars 键即使只在插值里用、不进任何 op 流，也必须进注册表（回归）", async () => {
+    // 回归锚点（缺陷形态）：变量键不进注册表导致合法插值判红（数据源走的是编译期求值，而真实工程的
+    // defineVars 住在相对导入的词汇表里，永不触发求值）。config 化后键域来自 config.ts 单次求值，与故事是否 import 无关。
     //
     // 换道后键域来自 config.ts 单次求值——config 恒被读取、与故事是否 import 无关；
     // 本用例故事文件**刻意不 import** 任何变量清单模块，锚定的正是这一点。
@@ -265,7 +265,7 @@ export const vars = defineVars({ "player.hp": "num" });
     expect(() => readTypegen(root)).toThrow();
   });
 
-  it("列 id 非法（含不安全字符）⇒ 拒绝构建（E06），不产类型面文件", async () => {
+  it("列 id 非法（含不安全字符）⇒ 拒绝构建，不产类型面文件", async () => {
     const root = makeProject("bad-column", {
       "Stories.src/config.ts": config(["ch1"], "start.ts"),
       "Stories.src/ch1/start.ts": `export default function start(): void {

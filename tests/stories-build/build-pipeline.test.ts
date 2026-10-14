@@ -1,7 +1,7 @@
 /**
  * Stories.src 构建管线 v2（静态转译编译器）契约测试。
  *
- * 契约口径（设计稿：私有文档/设计稿/2026-10-11-Stories源新创作模式-设计稿.md）：
+ * 契约口径：
  * - 源侧只有 TS：Stories.src/config.ts 布局声明（folders/start）；各目录故事源以
  *   default 导出的具名 function 声明（一个故事 = 一个列 id）。
  * - 编译期静态转译：TS → 命令 JSON；故事源绝不加载执行（本文件也不 import 故事源）。
@@ -11,7 +11,7 @@
  * - sourcePath 由源相对路径派生（Stories/<相对目录>/<名>.json），不再可声明。
  * - project.json：tsSource 标记、entry/defines 托管；其余键原值保真。
  *
- * 8 类行为 → 测试映射（任务书口径）：
+ * 8 类行为 → 测试映射：
  *   ① report 计数（added/updated）……「多目录 folders：首跑 added…」「源文本变化 ⇒ 仅该列 updated」
  *   ② 幂等二跑零差量 ……………………「幂等：二跑零差量」「cell 全链路 … 幂等零差量」
  *   ③ 陈旧产物清理 …………………………「陈旧产物清理…」「cell 全部移除 ⇒ 陈旧 gen 删除」
@@ -21,7 +21,7 @@
  *   ⑦ 跨文件 defines 同键异值 …………「defines 工程级收敛与冲突」describe
  *   ⑧ "*" 兜底 ………………………………「"*" 兜底：覆盖全部子目录」
  *
- * 边界：管线真 bug 不得在本文件内改 packages/stories-build/src/**，记录 finding 回报。
+ * 边界：管线真 bug 不得在本文件内改 packages/stories-build/src/**（走正常修复流程）。
  * fixture 全部自建在 tests/stories-build/.tmp-build/ 下（vite fs.allow 白名单内）。
  */
 import {
@@ -76,7 +76,7 @@ const MANIFEST_EXT = `{
   "shell": { "orientation": "auto" }
 }`;
 
-/** 词汇层绑定（graph 词绑定形态之一：script 命名空间解构；真实工程同款）。 */
+/** 词汇层绑定（graph 词绑定形态之一：script 命名空间解构；与真实工程一致）。 */
 const WORDS = `import { script } from "@lingfan/editor";
 const { say, option, menu, guard, cell, extOp } = script;
 
@@ -340,7 +340,7 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
     ).toBe(true);
   });
 
-  it("故意错误：start 文件名落在不同嵌套子目录 ⇒ E04 全局恰一（带两处定位）", async () => {
+  it("故意错误：start 文件名落在不同嵌套子目录 ⇒ 入口故事必须全局恰一（带两处定位）", async () => {
     const root = makeProject("nested-dup-start", {
       "Stories.src/config.ts": config(["chapter1", "chapter2"]),
       ...deep("chapter1/act1/scene1", "start", 'say("A");'),
@@ -354,7 +354,7 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
     expect(existsSync(join(root, "Resources/Stories"))).toBe(false);
   });
 
-  it("故意错误：深层覆盖外的 default ⇒ E07 拦截（覆盖判定穿透到任意深度）", async () => {
+  it("故意错误：深层覆盖外的 default ⇒ 覆盖外拦截（覆盖判定穿透到任意深度）", async () => {
     const root = makeProject("nested-e07", {
       "Stories.src/config.ts": config(["chapter1"]),
       ...deep("chapter1/a/b/c", "start", 'say("开场");'),
@@ -369,7 +369,7 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
 
   it("故意错误：只声明子目录 ⇒ 同树未声明分支同样 fail-closed（前缀覆盖不越界）", async () => {
     // 反向锚：确认「覆盖」是精确前缀而非「同棵树就算」——act2 与 act1 是兄弟，
-    // 声明 chapter1/act1 不得顺带放行 chapter1/act2。
+    // 声明 chapter1/act1 不得一并放行 chapter1/act2。
     const root = makeProject("nested-sibling-out", {
       "Stories.src/config.ts": config(["chapter1/act1"]),
       ...deep("chapter1/act2/scene1", "start", 'say("开场");'),
@@ -407,7 +407,7 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
 });
 
 describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦截）", () => {
-  it("E02 缺 config.ts ⇒ 布局声明指引（folders/start）", async () => {
+  it("缺 config.ts ⇒ 布局声明指引（folders/start）", async () => {
     const root = makeProject("e02", {
       "Stories.src/common/start.ts": SYNTHETIC_STORY,
       "Resources/project.json": MANIFEST,
@@ -417,7 +417,7 @@ describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦�
     );
   });
 
-  it("E03 根级多个 .ts ⇒ 根级唯一根文件是 config.ts", async () => {
+  it("根级多个 .ts ⇒ 根级唯一根文件是 config.ts", async () => {
     const root = makeProject("e03", {
       "Stories.src/config.ts": config(["common"]),
       "Stories.src/extra.ts": `export const extra = 1;\n`,
@@ -429,7 +429,7 @@ describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦�
     );
   });
 
-  it("E04 start 零命中 ⇒ 带候选清单（按 basename 排序）", async () => {
+  it("start 零命中 ⇒ 带候选清单（按 basename 排序）", async () => {
     const root = makeProject("e04-miss", {
       "Stories.src/config.ts": config(["common"], "main.ts"),
       "Stories.src/common/start.ts": SYNTHETIC_STORY,
@@ -441,7 +441,7 @@ describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦�
     );
   });
 
-  it("E04 start 双命中 ⇒ 入口故事必须全局恰一（带两处定位）", async () => {
+  it("start 双命中 ⇒ 入口故事必须全局恰一（带两处定位）", async () => {
     const root = makeProject("e04-dup", {
       "Stories.src/config.ts": config(["common", "other"]),
       "Stories.src/common/start.ts": SYNTHETIC_STORY,
@@ -453,7 +453,7 @@ describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦�
     );
   });
 
-  it("E04 start 命中文件无 default 导出 ⇒ 形态要求提示", async () => {
+  it("start 命中文件无 default 导出 ⇒ 形态要求提示", async () => {
     const root = makeProject("e04-nonstory", {
       "Stories.src/config.ts": config(["common"], "helpers.ts"),
       "Stories.src/common/helpers.ts": `export const helper = 1;\n`,
@@ -464,7 +464,7 @@ describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦�
     );
   });
 
-  it("E05 匿名 default ⇒ 无法确定列 id", async () => {
+  it("匿名 default ⇒ 无法确定列 id", async () => {
     const root = makeProject("e05", {
       "Stories.src/config.ts": config(["common"], "main.ts"),
       "Stories.src/common/main.ts": `export default function (): void {}\n`,
@@ -495,7 +495,7 @@ describe("stories:build v2 · defines 工程级收敛与冲突（注入编译器
     "Stories.src/common/tavern.ts": `export default function tavern(): void {}\n`,
   });
 
-  it("⑦跨文件同键异值 ⇒ fail-closed（先于清单读取，冲突即拦截）", async () => {
+  it("跨文件同键异值 ⇒ fail-closed（先于清单读取，冲突即拦截）", async () => {
     const root = makeProject("defines-conflict", {
       ...emptyStories(),
       // 刻意不放 manifest：钉住 mergeDefines 先于 readManifest 的契约次序
@@ -716,7 +716,7 @@ export default extension;
   });
 });
 
-describe("stories:build v2 · cell 函数注册构建期提取（C10）", () => {
+describe("stories:build v2 · cell 函数注册构建期提取", () => {
   const CELL_STORY = `import { script } from "@lingfan/editor";
 import { helperGuard } from "./tools";
 const { cell, guard, say } = script;
@@ -870,7 +870,7 @@ export default function start(): void {
     expect(() => genOf(root)).toThrow();
   });
 
-  it("回归：playground 真源 gen 生成物 ⇄ 重提取逐字节一致（防手改漂移）", () => {
+  it("回归：playground 工程 gen 生成物 ⇄ 重提取逐字节一致（防手改漂移）", () => {
     // 真实工程 = Stories.src 源里 cell 槽位是守卫实现的唯一住所——
     // 改了 cell 不跑 stories:build（或手改生成物）⇒ 本测试红，漂移在 CI 拦下
     const realRoot = fileURLToPath(

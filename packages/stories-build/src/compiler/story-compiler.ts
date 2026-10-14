@@ -27,7 +27,7 @@ export function compileStories(input: {
   readonly config: StorySourceConfig;
   readonly stories: readonly string[];
   readonly modules: readonly string[];
-  /** 编译期求值喂入（§十二）；缺省 = 无被求值文件（行为不变） */
+  /** 编译期求值喂入；缺省 = 无被求值文件（行为不变） */
   readonly constValues?: CompilerConstValues;
   /** 字体名注册表（Resources/Fonts 文件名去扩展名）；缺省 = 空注册表，引用字体名即 fail-closed */
   readonly fontNames?: ReadonlySet<string>;

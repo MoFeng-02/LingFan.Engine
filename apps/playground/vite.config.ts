@@ -2,7 +2,11 @@ import { defineConfig, type Plugin } from "vite";
 import vue from "@vitejs/plugin-vue";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { scanFontRegistry } from "@lingfan/stories-build";
+// 深相对导入（而非包名）：vite.config 由 Node 原生 ESM 加载，而包 exports 指向的
+// src/index.ts 全包用 bundler 方言（无扩展名/目录导入），原生解析直接报
+// ERR_UNSUPPORTED_DIR_IMPORT。font-registry 是零内部依赖的叶子（只用 node:fs），
+// 单独引入即绕开整包解析；仅本配置文件消费，不进运行期产物。
+import { scanFontRegistry } from "../../packages/stories-build/src/fonts/font-registry.ts";
 const host = process.env.TAURI_DEV_HOST;
 
 // 浏览器游戏模式开关（构建期，正向显式）：只有置 1 才允许外部浏览器游玩本产物。

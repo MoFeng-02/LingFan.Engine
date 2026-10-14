@@ -107,11 +107,11 @@ const { currentLang, availableLangs, changeLang } = createAppLang({
 
 /** 错误横幅内容（元素、小游戏、事件分支的 fail-closed 上报都落这里） */
 const error = ref("");
-// 命令注册制：元素 `cmd` 的业务命令由宿主注册（未注册 fail-closed，不静默吞掉）
+// 命令注册制：元素 `cmd` 的业务命令由宿主注册（未注册 fail-closed，不静默丢弃）
 /** 舞台命令注册表：元素 cmd 属性的业务命令在此注册；未注册命令 fail-closed */
 const commands = createCommandRegistry();
 
-// —— 扩展 op 等待覆盖层（extension.mount 出站的宿主接管面，裁定⑧）——
+// —— 扩展 op 等待覆盖层（extension.mount 出站的宿主接管面）——
 /** 当前扩展等待的展示态（null = 无扩展等待）；解除权在宿主——覆盖层「确认」触发 resolve */
 interface ExtensionOverlay {
   op: string;
@@ -229,7 +229,7 @@ const {
   typewriter,
 });
 
-// —— 历史聚合（快照筛选 + NVL 块化 + 回溯收口）——
+// —— 历史聚合（快照筛选 + NVL 块化 + 回溯收尾）——
 /** 历史面板能力：快照聚合视图、面板开关与按坐标回溯 */
 const { showHistory, historyBlocks, toggleHistory, rollbackToEntry } =
   createAppHistory({
@@ -262,7 +262,7 @@ function handleEvent({
     const onAbort = (): void => {
       abortSignal.removeEventListener("abort", onAbort);
       host.innerHTML = "";
-      // 工厂在共享宿主上加的演示类必须随收尾移除（本处是两条结束路径的唯一收口，
+      // 工厂在共享宿主上加的演示类必须随收尾移除（本处是两条结束路径的唯一汇合点，
       // 故只写一次；写在工厂内会漏掉「正常完成」那条路）
       host.classList.remove("minigame-demo");
       inMinigame.value = false;
@@ -307,7 +307,7 @@ function handleEvent({
       abortSignal.removeEventListener("abort", onAbort);
       host.innerHTML = "";
       inInteraction.value = false;
-      // 工厂在共享宿主上加的演示类必须随收尾移除。本处是**两条结束路径的唯一收口**
+      // 工厂在共享宿主上加的演示类必须随收尾移除。本处是**两条结束路径的唯一汇合点**
       // （回填成功与中断都经此），故只写一次——分两处写必然漏一条，
       // 症状是残留类让「已结束的接管」在下次仍被算作进行中。
       host.classList.remove("walk-demo");
@@ -463,7 +463,7 @@ const { slotPanel, slotViews, openSlotPanel, chooseSlot } = createAppSlots({
 });
 
 // 命令注册制示例：元素 `cmd="history"` / `cmd="prefs"` / `cmd="restart"` 由此分发
-// （未注册的 cmd 由 activateElement fail-closed 上报，不静默吞掉）
+// （未注册的 cmd 由 activateElement fail-closed 上报，不静默丢弃）
 commands.register("history", () => toggleHistory());
 commands.register("prefs", () => {
   showPrefs.value = !showPrefs.value;

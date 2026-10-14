@@ -72,12 +72,12 @@ export function validateElementNode(
     if (ELEMENT_STRUCTURAL_FIELDS.has(key)) continue;
     if (!ELEMENT_ATTRIBUTES.has(key)) {
       issues.push(
-        `${at}.${key} 不是合法元素属性（属性全集 = 通用属性 ∪ 元素特定属性，未知 fail-closed）`,
+        `${at}.${key} 不是合法元素属性（属性全集 = 通用属性与元素特定属性的合并，未知 fail-closed）`,
       );
     }
   }
   // `ops`（点击动作序列）形态校验：非空数组、每项为对象且 `op` 非空字符串。
-  // 解析期拒绝 = 编辑器/CLI 立刻可见（运行时才炸的负载不进包）；
+  // 解析期拒绝 = 编辑器/CLI 立刻可见（运行时才失败的负载不进包）；
   // 具体 op 是否可执行归执行期（等待/位置类 op 由 runElementOps 拒绝，规则只写一处）。
   if (node.ops !== undefined) {
     const ops = node.ops;

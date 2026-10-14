@@ -1,0 +1,393 @@
+/*
+ * 编辑器外壳样式（自 App.vue 抽出；全局生效，非 scoped）。
+ * 仅承载外壳级基类与顶栏/横幅族样式；工作区布局与面板样式在 `app-workspace.css`
+ * （两文件按原顺序在 App.vue 引入，维持原两段 <style> 的级联顺序）。
+ * 组件内部样式仍在各自 .vue 的 scoped 块。
+ */
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--lf-surface-base);
+  color: var(--lf-text-primary);
+  font-size: var(--lf-font-lg);
+}
+button {
+  background: var(--lf-border-subtle);
+  color: var(--lf-text-primary);
+  border: 1px solid var(--lf-border-strong);
+  border-radius: var(--lf-radius-md);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: var(--lf-font-md);
+  /* 标签不折行：中文按钮文案被拆到两行会撑高工具栏 */
+  white-space: nowrap;
+  transition:
+    background var(--lf-transition-fast),
+    border-color var(--lf-transition-fast),
+    color var(--lf-transition-fast);
+}
+/* 交互态：**全局零 `button:hover`** 时，只有各组件自订的 class 级 hover ⇒
+   顶栏/标签栏等裸 button 完全没有反馈。统一在基类补齐，组件级仍可覆盖。 */
+button:hover:not(:disabled) {
+  /* 底色用 `--lf-surface-hover-strong`（≠ 基类底色）：若用 `--lf-surface-selected`
+     而它与 button 基类的 `--lf-border-subtle` **同值 #24283b** ⇒ hover 只改到边框，
+     背景看起来毫无反应（撞色）。 */
+  background: var(--lf-surface-hover-strong);
+  border-color: var(--lf-border-focus);
+}
+button:active:not(:disabled) {
+  background: var(--lf-surface-active);
+  border-color: var(--lf-accent);
+}
+/* 焦点态用 `:focus-visible`（鼠标点击不亮、键盘 Tab 才亮 —— 避免"点了也冒一圈"的噪声） */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--lf-accent);
+  outline-offset: 1px;
+  border-color: var(--lf-accent);
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+input,
+select,
+textarea {
+  background: var(--lf-surface-overlay);
+  color: var(--lf-text-primary);
+  border: 1px solid var(--lf-border-strong);
+  border-radius: var(--lf-radius-sm);
+  padding: 3px 6px;
+  font-size: var(--lf-font-md);
+  transition: border-color var(--lf-transition-fast);
+}
+input:hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) {
+  border-color: var(--lf-border-focus);
+}
+.editor-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+/* ——— 顶栏（瘦身）——— */
+.toolbar {
+  display: grid;
+  /* 三段式骨架：工程标识 | 视图切换（真居中）| 动作。
+     用 grid 而非 flex+spacer：flex 的"居中"其实是"两侧等宽"的假居中，
+     左侧内容变多时视图切换就会偏 —— grid 三段才能真居中。 */
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  min-height: 40px;
+  background: var(--lf-surface-overlay);
+  border-bottom: 1px solid var(--lf-border-subtle);
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.tb-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.tb-right {
+  justify-content: flex-end;
+}
+.brand {
+  font-size: var(--lf-font-md);
+  font-weight: 500;
+  color: var(--lf-accent);
+  letter-spacing: 0.04em;
+}
+/* 工程标识 chip：名称 + 路径两行，主次分明 */
+.project-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  min-width: 0;
+  max-width: 30ch;
+  padding: 2px 8px;
+  line-height: 1.25;
+  background: transparent;
+  border-color: transparent;
+}
+.project-chip:hover:not(:disabled) {
+  background: var(--lf-surface-hover-strong);
+  border-color: var(--lf-border-subtle);
+}
+.project-chip-name {
+  font-size: var(--lf-font-md);
+  color: var(--lf-text-primary);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-chip-path {
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl; /* 路径尾部更有信息量 ⇒ 从左截断 */
+  text-align: left;
+}
+.icon-button {
+  padding: 2px 8px;
+  font-size: var(--lf-font-lg);
+  line-height: 1.2;
+  color: var(--lf-text-secondary);
+  background: transparent;
+  border-color: transparent;
+}
+.icon-button:hover:not(:disabled) {
+  color: var(--lf-text-primary);
+  background: var(--lf-surface-hover-strong);
+  border-color: var(--lf-border-subtle);
+}
+
+/* 视图切换：Material 风格 —— 活动项用**填充 chip**（非描边），组内聚拢 */
+.view-switch {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--lf-surface-sunken);
+  border: 1px solid var(--lf-border-subtle);
+  border-radius: var(--lf-radius-lg);
+}
+.view-switch button {
+  padding: 3px 12px;
+  font-size: var(--lf-font-md);
+  color: var(--lf-text-secondary);
+  background: transparent;
+  border-color: transparent;
+  border-radius: var(--lf-radius-md);
+}
+.view-switch button:hover:not(.active) {
+  color: var(--lf-text-primary);
+  background: var(--lf-surface-hover);
+}
+.view-switch button.active {
+  color: var(--lf-text-primary);
+  background: var(--lf-surface-selected);
+  border-color: var(--lf-border-focus);
+}
+
+/* 动作溢出菜单 */
+.menu-anchor {
+  position: relative;
+}
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 4px;
+  background: var(--lf-surface-overlay);
+  border: 1px solid var(--lf-border-focus);
+  border-radius: var(--lf-radius-lg);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+}
+.menu-title {
+  margin: 4px 8px 2px;
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
+}
+.menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--lf-border-subtle);
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  font-size: var(--lf-font-md);
+  text-align: left;
+  color: var(--lf-text-primary);
+  background: transparent;
+  border-color: transparent;
+  border-radius: var(--lf-radius-sm);
+}
+.menu-item:hover:not(:disabled) {
+  background: var(--lf-surface-hover-strong);
+  border-color: transparent;
+}
+.menu-item kbd {
+  margin-left: auto;
+  padding: 0 4px;
+  font-family: var(--lf-font-mono);
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
+  background: var(--lf-surface-sunken);
+  border-radius: var(--lf-radius-sm);
+}
+.menu-hint {
+  margin-left: auto;
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
+}
+/* 按钮三档语义（Material：filled 主 / tonal 次 / danger 危险）
+   —— 关键：**主按钮在同屏内应当唯一**，否则视觉焦点散掉。 */
+.btn-filled {
+  color: var(--lf-text-inverse);
+  background: var(--lf-accent);
+  border-color: var(--lf-accent);
+}
+.btn-filled:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--lf-accent) 86%, white);
+  border-color: color-mix(in srgb, var(--lf-accent) 86%, white);
+}
+.btn-tonal {
+  color: var(--lf-text-secondary);
+  background: var(--lf-surface-hover);
+  border-color: transparent;
+}
+.btn-tonal:hover:not(:disabled) {
+  color: var(--lf-text-primary);
+  background: var(--lf-surface-hover-strong);
+}
+.btn-danger {
+  color: var(--lf-danger);
+  background: transparent;
+  border-color: color-mix(in srgb, var(--lf-danger) 40%, transparent);
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--lf-danger-surface);
+}
+/* 「预览」= 同屏主动作 ⇒ filled（底色由 `.btn-filled` 给）。
+   此处**不再设 background** —— 同特异性的 `.preview-button` 若也设背景会
+   覆盖 `.btn-filled`（靠后者胜出），主按钮就没有实底色了。 */
+.preview-button {
+  color: var(--lf-text-inverse);
+  border-color: var(--lf-accent);
+}
+.brand {
+  color: var(--lf-accent);
+}
+.story-id {
+  color: var(--lf-text-hint);
+}
+.open-button {
+  color: var(--lf-accent);
+  border-color: color-mix(in srgb, var(--lf-accent) 40%, transparent);
+}
+.project-root {
+  color: var(--lf-text-hint);
+  font-size: var(--lf-font-sm);
+  /* 长路径是顶栏最占宽的一项 ⇒ 允许收缩 + 省略号，完整值在 title 里。
+     不这么做：一条长路径会把右侧所有按钮整体挤到第二行。 */
+  min-width: 0;
+  max-width: 34ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 目录 input 兜底取径：不进布局，但必须在 DOM 里（脚本可触发） */
+.fallback-input {
+  display: none;
+}
+.open-error,
+.save-error,
+.save-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 12px;
+}
+.open-error,
+.save-error {
+  color: var(--lf-danger);
+  border-bottom: 1px solid color-mix(in srgb, var(--lf-danger) 27%, transparent);
+  background: var(--lf-danger-tint);
+}
+.save-notice {
+  color: var(--lf-success);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--lf-success) 27%, transparent);
+  background: var(--lf-success-tint);
+}
+.save-normalization {
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--lf-warning) 27%, transparent);
+  background: var(--lf-warning-tint);
+  color: var(--lf-warning);
+  padding: 8px 12px;
+  font-size: var(--lf-font-md);
+}
+.save-normalization ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.save-normalization .normalization-note {
+  margin: 4px 0;
+  color: var(--lf-text-hint);
+}
+.save-normalization .normalization-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.save-button {
+  color: var(--lf-success);
+  border-color: color-mix(in srgb, var(--lf-success) 40%, transparent);
+}
+.dirty-dot {
+  color: var(--lf-warning);
+  font-size: var(--lf-font-sm);
+}
+.undo-hint {
+  color: var(--lf-text-hint);
+  font-size: var(--lf-font-sm);
+}
+.spacer {
+  flex: 1;
+}
+.diag-badge.has-error {
+  color: var(--lf-danger);
+  border-color: color-mix(in srgb, var(--lf-danger) 53%, transparent);
+}
+.view-switch button.active {
+  color: var(--lf-accent);
+  border-color: var(--lf-accent);
+}
+.preview-button {
+  color: var(--lf-success);
+  border-color: color-mix(in srgb, var(--lf-success) 40%, transparent);
+}
+.file-button {
+  background: var(--lf-border-subtle);
+  border: 1px solid var(--lf-border-strong);
+  border-radius: var(--lf-radius-md);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: var(--lf-font-md);
+}
+.file-button input {
+  display: none;
+}
+.workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+  gap: 8px;
+}

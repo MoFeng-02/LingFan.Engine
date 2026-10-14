@@ -1,5 +1,5 @@
 /**
- * 模块层构建期 define 契约测试（设计稿 §二 define 域放宽）。
+ * 模块层构建期 define 契约测试。
  *
  * 契约口径：config.ts + Stories.src 任意 .ts 模块顶层（函数体外）的 define 调用
  * 汇入同一棵合并树（defines/state.gen.d.ts/插值键同源）；跨文件同键与形状冲突

@@ -4,7 +4,7 @@
  * `const-eval` 起 worker 隔离求值（并注入 define/defineVars 构建期内建），
  * `const-eval-pass` 按模块筛出待求值的导出喂进去，`config-eval` 用同一通道
  * 单次求值 config.ts 四导出（folders/start/vars/state + define 累积），
- * `const-expr`/`module-define` 用 AST 折叠模块层构建期 define（设计稿 §二
+ * `const-expr`/`module-define` 用 AST 折叠模块层构建期 define（
  * define 域），`define-merge` 把各源汇入同一棵合并树，`state-schema` 把形态
  * A/B 的状态树走同一降维文法扁平化为 defines——各段是同一件事的分步，
  * 分开就只剩互相调用的碎片。

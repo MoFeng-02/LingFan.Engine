@@ -101,7 +101,7 @@ export interface NarrativeOverlayOptions {
  * 装配出的覆盖层实例：一面是宿主可读的挂载点（`mounts`），一面是交给宿主的动作。
  *
  * 引擎的推进权仍在宿主手里——`advance` / `choose` / `submitInput` 是宿主根据
- * 自己的输入路由决定要不要调的，覆盖层不替宿主拍板。
+ * 自己的输入路由决定要不要调的，覆盖层不代宿主决定。
  */
 export interface NarrativeOverlay {
   /** 挂载点（宿主可进一步定制，如往 stage 内插自己的背景） */
@@ -115,7 +115,7 @@ export interface NarrativeOverlay {
   /**
    * 输入是否归叙事层消费（**只判事件目标**：控件/面板内不吃）。
    * 模式层面的让位（外部玩法系统接管）由宿主按自己的域状态决定——
-   * 那是宿主游戏的路由权，覆盖层不替它拍板。
+   * 那是宿主游戏的路由权，覆盖层不代宿主决定。
    */
   shouldConsumeInput(event: Event): boolean;
   /** 推进（二段式已处理：打字中先瞬间完成） */

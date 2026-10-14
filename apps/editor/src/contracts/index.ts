@@ -20,3 +20,9 @@ export {
   type PackResult,
   type WatchStatus,
 } from "./host";
+export {
+  type LastProjectEntry,
+  type MediaPortFactories,
+  type OpenedProject,
+  type ProjectOpener,
+} from "./ports";

@@ -10,8 +10,8 @@
  */
 import { computed, nextTick, ref, watch } from "vue";
 import type { KeyValueStorage } from "@lingfan/editor";
-import type { ResourceNode } from "../resourceTree";
-import { createCollapsedDirsStore, flattenResources } from "../resourceTree";
+import type { ResourceNode } from "../domain";
+import { createCollapsedDirsStore, flattenResources } from "../domain";
 
 const props = defineProps<{
   /** 树节点（已分组排序）；空数组 = 未打开工程 */

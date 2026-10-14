@@ -59,7 +59,7 @@ export function assertKnownOps(
 }
 
 /**
- * 守卫名闸门（cell 范式的闭合校验）：故事 `guard.fn` ⊆ cell 注册表键集。
+ * 守卫名闸门（cell 范式的闭合校验）：故事 `guard.fn` 必须都在 cell 注册表键集内。
  * fail-closed 带命令指针定位（编辑器不校验守卫名——构建期兜住）。
  */
 export function assertKnownGuards(

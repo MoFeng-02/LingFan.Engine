@@ -1,5 +1,5 @@
 /**
- * 真实工程回归锚点：apps/playground（本仓唯一全功能真实工程）整链构建 vs 入库产物。
+ * 真实工程回归锚点：apps/playground（唯一全功能真实工程）整链构建 vs 入库产物。
  *
  * 锚定口径：
  * - 真实工程全链构建（源发现 → 编译 → 往返自检 → 差量写盘）必须零差量——入库的
@@ -8,7 +8,7 @@
  * - 判别性落点：`journal.flag` 只在变量清单（config.vars，换道前是 defineVars 清单）
  *   出现（state/let/插值均无此键），
  *   它进注册表的唯一通道是编排层的 defineKeys 源——该源被撤时本锚点必红
- *   （最小工程上的同款判别见 typegen.test.ts）。
+ *   （最小工程上的同一判别见 typegen.test.ts）。
  * - state 类型面（state.gen.d.ts）与 stories.gen.d.ts 同口径锚定：入库字节与当轮计算
  *   产物逐字节一致，且形状必须仍锚在「从 config define 树生成的精确类型」上——
  *   枚举走 import type 引用（`Sex`），不回退内联联合；类型面退化为宽 any 时本锚点红。
@@ -22,15 +22,15 @@
  * - script ambient 探针：错键 `script.bgmX` 被 ambient 类型面拒绝、正确键 `script.bgm`
  *   放行——证明声明面精确到词函数（松散 any 声明两者皆绿）。
  * - font.gen 新鲜度：字体文件落盘 → 键=值入类型面；删文件重构建 → 恢复封闭空类型
- *   （注册表跟随构建，不是一次性快照）。font ambient 探针同款两态：错键
+ *   （注册表跟随构建，不是一次性快照）。font ambient 探针同样两态：错键
  *   `font.缺省字体` 拒、注册名 `font.楷体` 过（两例都自置桩字体夹具，finally 全清，
  *   入库态保持空注册表）。
  * - 手改生成物的修复路径也锚定：作者误改 gen 文件后，构建必须重写回正确字节——
  *   同时证明逐字节一致不是「构建没算」的空转绿。
  *
- * t2→t3 过渡守卫：config 化换道（t2）之后、Stories.src 迁移（t3）落地之前，真实工程
+ * config 化过渡守卫：config 化之后、Stories.src 迁移完成之前，真实工程
  * 仍是旧 config 契约，构建必然以「缺少 folders 导出」fail-closed——两例此时 skip（确定性
- * 契约错误，不是环境竞态）；t3 落地后错误消失、守卫自动失效，届时可删除 isConfigContractTransition。
+ * 契约错误，不是环境竞态）；Stories.src 迁移完成后错误消失、守卫自动失效，届时可删除 isConfigContractTransition。
  *
  * 写盘机制细节（差量判定、陈旧清理、report 计数）由 build-pipeline.test.ts 在最小工程
  * 覆盖；本文件不重复，只锚真实工程的整链终态。测试对工程根的写入仅限故障恢复路径：
@@ -97,7 +97,7 @@ const FONT_PROBE_POSITIVE = [
   "",
 ].join("\n");
 
-/** t2→t3 过渡守卫：旧 config 契约的确定性失败（缺 folders 导出 / 文件缺失）。t3 落地后可删。 */
+/** config 化过渡守卫：旧 config 契约的确定性失败（缺 folders 导出 / 文件缺失）。Stories.src 迁移完成后可删。 */
 function isConfigContractTransition(error: unknown): boolean {
   return (
     error instanceof Error &&

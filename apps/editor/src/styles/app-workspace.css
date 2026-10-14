@@ -1,0 +1,264 @@
+/*
+ * 工作区样式（自 App.vue 两段全局 <style> 抽出的后半；全局生效，非 scoped）。
+ * 承载工作区布局、文档标签、侧栏 tab、搜索结果与宿主横幅样式。
+ * 前半（全局基类与顶栏族）在 `app-shell.css`；两文件按原顺序在 App.vue 引入。
+ */
+/* 主体行：侧栏 + 分栏条 + 中心 + 分栏条 + 右栏 */
+.workspace-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+}
+/* 侧栏 / 右栏宽度由 JS 内联（可拖 + 可持久化）⇒ 这里只给收缩与溢出口径 */
+.columns-pane,
+.right-pane {
+  flex: 0 0 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.center-pane {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.side-search {
+  margin: 0 8px 6px;
+  width: calc(100% - 16px);
+  font-size: var(--lf-font-md);
+}
+/* 标签页：横跨三栏（列 1/-1），自身不参与三栏宽度分配 */
+.doc-tabs {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  overflow-x: auto;
+  min-height: 30px;
+}
+.doc-tab {
+  /* 标签 = 无框 + 下划线（Material/浏览器式）：弱化标签框、强化当前在哪 */
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--lf-text-secondary);
+  cursor: pointer; /* div[role=tab] 不带 button 的默认手型，显式给 */
+  user-select: none;
+}
+.doc-tab:hover:not(.active) {
+  background: var(--lf-surface-hover);
+  color: var(--lf-text-primary);
+  border-bottom-color: var(--lf-border-subtle);
+}
+.doc-tab.active {
+  background: transparent;
+  color: var(--lf-text-primary);
+  /* 活动态 = **下划线**（而非整块底色）：弱化标签框、强化"当前在哪" */
+  border-bottom-color: var(--lf-accent);
+}
+/* 新建入口：与标签同高但弱化（它是"动作"不是"内容"） */
+.doc-tab-add {
+  flex: none;
+  padding: 5px 10px;
+  font-size: var(--lf-font-lg);
+  line-height: 1;
+  color: var(--lf-text-hint);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+}
+.doc-tab-add:hover {
+  color: var(--lf-text-primary);
+  background: var(--lf-surface-hover);
+  border-bottom-color: var(--lf-border-subtle);
+}
+.doc-tab-name {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: var(--lf-font-md);
+}
+/* 关闭按钮：常显低强调（hover-only 对触屏等于不存在），hover 才转 danger */
+.doc-tab-close {
+  padding: 0 3px;
+  font-size: var(--lf-font-sm);
+  line-height: 16px;
+  color: var(--lf-text-hint);
+  background: transparent;
+  border: none;
+  border-radius: var(--lf-radius-sm);
+}
+.doc-tab-close:hover {
+  color: var(--lf-danger);
+  background: var(--lf-danger-surface, var(--lf-surface-hover));
+}
+.pane {
+  /* 描边弱化：Material 靠**填充差**表达层级，不是每块都描边。
+     描边保留但取最弱档（--lf-border-subtle），让相邻面板靠底色差区分。 */
+  background: var(--lf-surface-raised);
+  border: 1px solid var(--lf-border-subtle);
+  border-radius: var(--lf-radius-md);
+  padding: 10px;
+  overflow: auto;
+  min-height: 0;
+}
+.columns-pane h2,
+.pane h2 {
+  margin: 0 0 8px;
+  font-size: var(--lf-font-md);
+  color: var(--lf-text-hint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.center-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.right-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* 诊断条目含长资源逻辑路径（如 `unused-translation` 指向 Stories 下的深层键）——
+     无换行点时会把 320px 的栏撑成整行宽、逐字竖排。强制任意处可断。 */
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+/* 属性面板在右栏的**功能前提**：右栏 `overflow:hidden` 会把长表单（say 全字段）裁掉
+   ⇒ 面板接管剩余高度并自滚。 */
+.right-pane :deep(.property-panel) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.tab-strip {
+  display: flex;
+  gap: 4px;
+}
+.tab-strip button.active {
+  border-color: var(--lf-accent);
+  color: var(--lf-accent);
+}
+/* 左栏 tab（列 / 组件）：紧凑一行，下方内容各自滚动 */
+.left-tabs {
+  margin-bottom: 8px;
+}
+.left-tabs button {
+  flex: 1;
+}
+/* 面板顶部**常驻**口径说明（与 tab 的 `title` 互补：那个要悬停才见）
+   不给背景色/边框：它只是**一行小字**，不该抢内容的视觉焦点 */
+.left-pane-note {
+  margin: 0 0 6px;
+  padding: 0 10px;
+  font-size: var(--lf-font-xs);
+  color: var(--lf-text-hint);
+}
+/* 内容搜索结果列表（侧栏内，与资源树同底色但用左边框区分） */
+.hits {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  border-left: 2px solid var(--lf-border-subtle);
+}
+.hit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  padding: 3px 8px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+.hit:hover {
+  background: var(--lf-surface-hover);
+}
+.hit-path {
+  font-size: var(--lf-font-xs);
+  color: var(--lf-accent);
+  font-family: Consolas, monospace;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.hit-line {
+  color: var(--lf-text-hint);
+}
+.hit-text {
+  font-size: var(--lf-font-sm);
+  color: var(--lf-text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.hits-more,
+.hits-none {
+  margin: 0 0 6px;
+  padding: 2px 8px;
+  font-size: var(--lf-font-sm);
+  color: var(--lf-text-hint);
+  font-style: italic;
+}
+.hits-more {
+  color: var(--lf-warning);
+}
+/* 「宿主未启动」横幅：绝对不能挡交互（`pointer-events:none`），只挡自身那一条 */
+.host-hint {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(680px, calc(100% - 24px));
+  padding: 4px 8px 4px 10px;
+  font-size: var(--lf-font-sm);
+  color: var(--lf-text-secondary);
+  background: var(--lf-surface-overlay);
+  border: 1px solid var(--lf-border-strong);
+  border-radius: var(--lf-radius-md);
+  pointer-events: none; /* 关键：横幅本身不吃点击 */
+}
+.host-hint-text {
+  overflow-wrap: anywhere;
+}
+.host-hint code {
+  padding: 0 4px;
+  font-family: var(--lf-font-mono);
+  color: var(--lf-accent);
+}
+.host-hint-x {
+  flex: none;
+  padding: 0 4px;
+  line-height: 1.2;
+  pointer-events: auto; /* 只让关闭按钮可点 */
+}
+
+.center-error {
+  padding: 16px;
+  font-size: var(--lf-font-md);
+  line-height: 1.6;
+  color: var(--lf-danger);
+  overflow-wrap: anywhere;
+}
+.center-loading {
+  padding: 16px;
+  font-size: var(--lf-font-md);
+  color: var(--lf-text-hint);
+  font-style: italic;
+}

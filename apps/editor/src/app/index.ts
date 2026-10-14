@@ -7,7 +7,16 @@
  *
  * 依赖方向：可用 `contracts` / `domain` / `infra` / `ui` / `shared`；
  * 其他层不得反过来依赖它。
- *
- * 当前是骨架：实现仍平铺在 `src/` 根，搬迁在后续阶段进行。
  */
-export {};
+export * from "./dialogInjection";
+export * from "./editorApi";
+export * from "./leftTabs";
+export * from "./useEditorSave";
+export * from "./useGraphViewport";
+export * from "./useHostBridge";
+export * from "./useI18nWorkbench";
+export * from "./useProjectFiles";
+export * from "./useProjectOpen";
+export * from "./useProjectPorts";
+export * from "./useResourcePreview";
+export * from "./useSearchCorpus";

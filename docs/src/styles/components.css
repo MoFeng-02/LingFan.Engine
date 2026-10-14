@@ -30,7 +30,7 @@
   block-size: var(--lf-logo-size);
   border-radius: var(--lf-logo-radius);
   object-fit: cover;
-  /* 品牌泛光：只在 logo 与 hero 出现（设计稿 §3.1） */
+  /* 品牌泛光：只在 logo 与 hero 出现 */
   box-shadow:
     0 0 0 1px var(--lf-glow-border),
     0 0 12px var(--lf-glow-halo);
@@ -350,7 +350,7 @@
   }
 }
 
-/* 4. 卡片 hover 泛光（设计稿 §3.5⑨）
+/* 4. 卡片 hover 泛光
    :where() 把特异性压到 0，只重指向 Starlight 自己暴露的 --sl-card-border
    变量并追加它未设的 box-shadow，不覆盖内部类规则；不做 translateY。 */
 :where(.sl-markdown-content .card) {
@@ -373,7 +373,7 @@
   }
 }
 
-/* 5. op 指令卡 OpCard.astro（设计稿 §3.4 P0）
+/* 5. op 指令卡 OpCard.astro
    锚点 id `op-<name>` 挂在 <article> 上（生成规则见组件文件头）。
    刻意不加 not-content：slot 里的参数表 / JSON 示例要继续吃正文样式。 */
 .lf-op {
@@ -442,7 +442,7 @@
   margin-block-end: 0;
 }
 
-/* 6. 版本徽标 VersionBadge.astro（设计稿 §3.4 P0） */
+/* 6. 版本徽标 VersionBadge.astro */
 .lf-version {
   display: inline-flex;
   align-items: baseline;

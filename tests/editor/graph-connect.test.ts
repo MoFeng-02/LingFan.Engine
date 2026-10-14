@@ -21,7 +21,8 @@ import {
   planBranchInsertion,
   removeColumn,
 } from "@lingfan/editor";
-import appSource from "../../apps/editor/src/App.vue?raw";
+import apiSource from "../../apps/editor/src/app/editorApi.ts?raw";
+import centerSource from "../../apps/editor/src/components/CenterStage.vue?raw";
 import nodeGraphSource from "../../apps/editor/src/components/NodeGraph.vue?raw";
 
 function flowColumn(id: string, commands: StoryCommand[]): StoryColumn {
@@ -220,9 +221,10 @@ describe("源码互锁", () => {
   });
 
   it("宿主：connectBranch 走 session.apply 单提交，语义标签可读", () => {
-    expect(appSource).toContain("connectBranch(");
-    expect(appSource).toMatch(
-      /session\.apply\(`连分支 \$\{fromColumnId\} → \$\{toColumnId\}`/,
+    // api 对象实现位于 app/editorApi.ts（session 以取用器注入 ⇒ session().apply）
+    expect(apiSource).toContain("connectBranch(");
+    expect(apiSource).toMatch(
+      /session\(\)\.apply\(`连分支 \$\{fromColumnId\} → \$\{toColumnId\}`/,
     );
   });
 });
@@ -232,6 +234,7 @@ describe("回归：节点图布局缓存随工程切换归位", () => {
     // 病灶：storageKey 是 computed 却只在 onMounted 读一次，停在节点图切工程时
     // 旧 positions 留在内存，松手即写进新 story.id 的键（列 id 重名则串位）。
     // 修法 = 挂载 key 绑 story.id ⇒ 换工程整组件重置（同型风险 ColumnList 已用 watch 规避）。
-    expect(appSource).toMatch(/<NodeGraph[^>]*:key="story\.id"/);
+    // 中心区装配位于 CenterStage（props 形态）
+    expect(centerSource).toMatch(/<NodeGraph[^>]*:key="props\.story\.id"/);
   });
 });

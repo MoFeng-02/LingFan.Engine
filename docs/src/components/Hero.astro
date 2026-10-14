@@ -6,10 +6,10 @@
  * 灯位 → 光锥 → 地面光斑 → 竹简三道横纹（叙事载体的意象），
  * 全部颜色经 CSS 令牌注入（见 src/styles/components.css），SVG 内不写字面量。
  *
- * 契约要点（改这个文件前务必读）：
+ * 改动要点（改这个文件前务必读）：
  *   · <h1> 必须带 id="_top" 与 data-page-title —— Starlight 的跳转链接、
  *     TOC 与「页内标题」检测都依赖它们（上游 PAGE_TITLE_ID 常量值就是 _top）。
- *   · 不使用 hero.image：设计稿 §3.3 明确 logo 资产为浅色底插画，
+ *   · 不使用 hero.image：logo 资产为浅色底插画，
  *     直出深色站点会变白方块。若要换成插画，改本组件的 .lf-hero__stage 节点。
  *   · hero.actions 的 link 走 withBase()：frontmatter 不经 Markdown 管线，
  *     构建期插件补不到，必须在这里补部署基路径。

@@ -2,7 +2,7 @@ import * as ts from "typescript";
 import type { CellIssue, FileImports } from "./types";
 
 /**
- * 字面量内自由标识符校验：全部 Identifier 必须 ∈（参数 ∪ 内部声明 ∪ 导入绑定 ∪ 全局白名单），
+ * 字面量内自由标识符校验：全部 Identifier 必须 ∈（参数、内部声明、导入绑定与全局白名单的并集），
  * 属性位置（`ctx.get` 的 `get`）不算自由标识符。flat 集（不做作用域链——影子同名属
  * 已注记的伪接受边界，v1 不为它上作用域机）。
  */

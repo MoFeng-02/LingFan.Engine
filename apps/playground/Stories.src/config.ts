@@ -1,9 +1,9 @@
 /**
- * Stories.src 唯一声明点（config 化，设计稿 §二）：
+ * Stories.src 唯一声明点（config 化）：
  * named exports 四导出——folders/start 必需，vars/state 可缺省。
  * - folders/start：构建布局（列清单与开场列）；
  * - vars：插值键声明（defineVars 清单，进 InterpolationKeyRegistry）；
- * - state：形态 B（define 累积）示范——构建期求值后降维为 defines（全平铺存储，§二裁定）。
+ * - state：形态 B（define 累积）示范——构建期求值后降维为 defines（全平铺存储）。
  *
  * 本文件是构建期被求值的唯一根文件（根级唯一，相对导入仅限作者常量，如 Sex 枚举）。
  */

@@ -268,7 +268,7 @@ describe("实例级 z：文本投影往返", () => {
     expect(parseTextStory(text, "t")).toEqual(story);
   });
 
-  it("别名 z-index= 解析等价（需求里就是这么写的）；无 z 时文本不含 z=", () => {
+  it("别名 z-index= 解析等价；无 z 时文本不含 z=", () => {
     const withAlias = parseTextStory('label a:\n  say "一" z-index=20\n', "t");
     expect(withAlias.columns[0]).toMatchObject({
       commands: [{ op: "say", text: "一", z: 20 }],

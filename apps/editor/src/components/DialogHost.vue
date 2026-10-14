@@ -13,7 +13,7 @@ import {
   parseTextAnswer,
   type DialogAnswer,
   type DialogRequest,
-} from "../dialog";
+} from "../domain";
 
 const props = defineProps<{ request: DialogRequest | undefined }>();
 const emit = defineEmits<{

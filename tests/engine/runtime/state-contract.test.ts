@@ -9,7 +9,7 @@
  * - **序列化边界**（`exportSave`）：全量深校验兜「写后原地改」——写时复制挡不住作者拿到引用后
  *   原地改值（作者行为，序列化边界兜底 + 契约条款 + 断言工具；快照期**不做**硬门禁）。
  *
- * 拒绝语义 = `engine.error` + **状态原样**（与 `instance-z-invalid` 同款 fail-closed）。
+ * 拒绝语义 = `engine.error` + **状态原样**（与 `instance-z-invalid` 相同的 fail-closed）。
  *
  * 回归（防误伤）：**保留键 = 精确键名，不是 `__` 前缀一刀切**——作者自用
  * `__teleport_target`（非 SYS 键）必须继续合法（`engine.test.ts:227` 既有用法）。
@@ -107,7 +107,7 @@ describe("state-value-contract：写入值必须 JSON 安全", () => {
     h.dispose();
   });
 
-  it("循环引用在写入点被拒（带定位 + 状态原样），不拖到写档才炸", () => {
+  it("循环引用在写入点被拒（带定位 + 状态原样），不拖到写档才抛错", () => {
     const cfg: Record<string, unknown> = { name: "a" };
     cfg.self = cfg; // 自引用
     const h = makeEngine(

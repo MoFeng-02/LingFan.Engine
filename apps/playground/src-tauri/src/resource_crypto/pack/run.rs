@@ -10,7 +10,7 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
-/// 打包路径关系防护（**数据安全红线**）：输出根与工程根**相同或存在嵌套关系**一律拒绝。
+/// 打包路径关系防护（**数据安全硬性防护**）：输出根与工程根**相同或存在嵌套关系**一律拒绝。
 /// - output == input：`lfenpack --force` 清空输出 = 删光源工程（自毁）；
 /// - output 在 input 内：打包产物嵌进源工程（源污染 + 二次打包吸收风险）；
 /// - input 在 output 内：清空 output 会连带毁掉源工程。
@@ -76,7 +76,7 @@ pub fn pack_project_with_dist(
     output: &Path,
     dist: Option<&Path>,
 ) -> Result<PackReport, ResourceCryptoError> {
-    // 路径关系防护最前置（先于非空检查——语义优先级：自毁/污染红线 > 覆盖确认）
+    // 路径关系防护最前置（先于非空检查——语义优先级：自毁/污染防护 > 覆盖确认）
     ensure_pack_paths_distinct(input, output)?;
     if output.exists() {
         let non_empty = fs::read_dir(output)

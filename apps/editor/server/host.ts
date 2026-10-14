@@ -159,7 +159,7 @@ async function handle(
   // 形态：/__editor_host__/{token}/{action}
   // **动作段必须挂在 `__editor_host__` 前缀之下**（不是裸 `/{token}/…`）：
   //   开发期前端走 Vite 同源代理，而代理只配了 `/__editor_host__` 这一个前缀 ⇒
-  //   裸路径会被 Vite 自己吃掉（502/404，打不到宿主）。
+  //   裸路径由 Vite 自己响应（返回 502/404，不会到达宿主）。
   const prefix = segments[0];
   if (prefix !== "__editor_host__" || segments.length < 3) {
     json(res, 404, { error: "not found" });

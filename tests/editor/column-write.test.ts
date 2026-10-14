@@ -1,6 +1,6 @@
 /**
  * 单文档写回的期望集组装：多文档面防丢数据的守门人。
- * 核心红线：**只改一个文件时，其他文件必须逐字节不动**。
+ * 核心不变量：**只改一个文件时，其他文件必须逐字节不动**。
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -111,7 +111,7 @@ describe("assembleColumnWrite（单文档写回 → 整工程期望集）", () =
     expect(diff.deletes).toEqual([]);
   });
 
-  it("显式删除（列被删）才进删除集：不在产物里的列**不会**被顺手删", () => {
+  it("显式删除（列被删）才进删除集：不在产物里的列不会被一并删除", () => {
     // 产物里没有 start，但没声明删除 ⇒ start 必须保住
     const wanted = assembleColumnWrite(baseline(), {
       files: editedTavern("酒馆改"),

@@ -3,7 +3,7 @@
  * 这些值经系统键或命令面进出，不是端口。
  */
 
-/** 等待状态（`__waiting` 取值全集；闭集增员不折员——扩展 op 等待态不折入 "interaction"，见规约 10 §八） */
+/** 等待状态（`__waiting` 取值全集；闭集增员不折员——扩展 op 等待态不折入 "interaction"） */
 export type WaitingState =
   | "none"
   | "dialog"

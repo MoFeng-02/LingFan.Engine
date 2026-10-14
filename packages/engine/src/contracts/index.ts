@@ -15,5 +15,5 @@ export * from "./guard";
 export * from "./text";
 export * from "./project";
 
-// 判定函数实现已下沉到 shared：此处转发，保持既有导入路径可用。
+// 判定函数实现位于 shared：此处转发，保持既有导入路径可用。
 export * from "../shared";

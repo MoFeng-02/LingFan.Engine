@@ -15,7 +15,7 @@ import {
   type ResourceNode,
 } from "../../apps/editor/src/resourceTree";
 
-/** 真实工程（playground Resources）的文件集 —— 形状同磁盘实测 */
+/** 真实工程（playground Resources）的文件集 —— 与磁盘实际文件形状一致 */
 const realPaths = [
   "Audio/chest_drawer_open.mp3",
   "Audio/crickets_night01.mp3",
@@ -72,7 +72,7 @@ describe("kindOfPath · 资源种类按后缀判", () => {
 });
 
 describe("isReadOnlyPath · 只读约定", () => {
-  it("本批可编辑的只有 .story / manifest / lang", () => {
+  it("可编辑的只有 .story / manifest / lang", () => {
     expect(isReadOnlyPath("Stories/a.json")).toBe(false);
     expect(isReadOnlyPath("project.json")).toBe(false);
     expect(isReadOnlyPath("Lang/en/main.json")).toBe(false);
@@ -158,7 +158,7 @@ describe("flattenResources · 遍历", () => {
 });
 
 /**
- * 目录收展持久化（T7）：折叠集按工程存本机。
+ * 目录收展持久化：折叠集按工程存本机。
  * 按契约 Mock（内存 KeyValueStorage 替身），覆盖拟态往返 / 故意错误 / 边界三面。
  */
 describe("createCollapsedDirsStore · 收展持久化", () => {

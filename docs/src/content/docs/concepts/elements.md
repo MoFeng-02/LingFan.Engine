@@ -67,7 +67,7 @@ scene stage_demo
 未知属性也一样：
 
 ```text
-.text.x 不是合法元素属性（属性全集 = 通用属性 ∪ 元素特定属性，未知 fail-closed）
+.text.x 不是合法元素属性（属性全集 = 通用属性与元素特定属性的合并，未知 fail-closed）
 ```
 
 属性表覆盖位置（`x` `y` `margin`）、尺寸（`width` `height` `minWidth` `maxWidth`）、外观（`opacity` `rotation` `scale` `cornerRadius` `borderThickness`）、布局（`spacing` `direction` `columns` `rows` `col` `row` `colspan`）、对齐（`align` `halign`）等。`class` 和 `style` 两个属性把剩下的交给 CSS。

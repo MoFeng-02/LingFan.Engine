@@ -16,7 +16,7 @@ export function defaultExtensionLoader(root: string): ExtensionModuleLoader {
 }
 
 /**
- * 相对说明符 → 可导入的 file URL：Node 的 ESM 解析不给 .ts 补扩展名（本仓源码直接跑 TS），
+ * 相对说明符 → 可导入的 file URL：Node 的 ESM 解析不给 .ts 补扩展名（包内源码直接跑 TS），
  * 而清单里的相对说明符沿用 bundler 习惯（`./ext/foo`）。这里先按原样试，文件不存在再补 `.ts`，
  * 让两种写法都能落盘——加载失败仍是 fail-closed，只是不再因写法差异误报。
  */

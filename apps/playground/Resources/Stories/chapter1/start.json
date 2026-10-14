@@ -12,7 +12,7 @@
       "body": [
         {
           "op": "say",
-          "text": "{who}，欢迎来到灵泛！",
+          "text": "{who}，欢迎来到灵泛！12",
           "speaker": "{who}"
         }
       ]

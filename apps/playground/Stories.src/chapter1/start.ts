@@ -11,7 +11,7 @@ import { Sex, 地点 } from "../lib/enums";
 
 /** 列体嵌套函数：编译期前置到列头 func 命令，调用点发射 call（运行期真子程序）。 */
 function greet(who: string): void {
-  say(`${who}，欢迎来到灵泛！`, who);
+  say(`${who}，欢迎来到灵泛！12`, who);
 }
 
 export default function start(): void {

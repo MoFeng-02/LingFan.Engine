@@ -1,5 +1,5 @@
 /**
- * 编辑器包结构不变式互锁测试：包按「契约层 / 域出口 / 实现叶子」拆分后，三条
+ * 编辑器包结构不变式互锁测试：包按「契约层 / 域出口 / 实现叶子」分层，三条
  * 结构约定目前没有测试守着，下一次改动可能无声地破坏它们。这里沿用
  * tests/engine/runtime/scene-type.test.ts 的手法，用打包器的 ?raw 读取把源码
  * 当文本断言（前端不碰文件系统）：
@@ -22,7 +22,7 @@ const SOURCE_KEYS = Object.keys(EDITOR_SOURCES);
 // 跨域深引判据（与包内既有扫描口径一致）：`from "../<域>/<文件>"` 与
 // `from "../../<域>/<文件>"` 都算跨域深引，与深度无关；`from "../<域>"` 指向
 // 目标域出口的导入是合规形态，不计数。两种深度必须同时覆盖，否则会漏计
-// script/words/ 下 9 处深度 2 的深引而假绿。shared 遵循同一「出口 + 实现叶」
+// script/words/ 下深度 2 的深引而假绿。shared 遵循同一「出口 + 实现叶」
 // 约定，但不在本判据的域清单里（沿用注册口径）。
 const DEEP_IMPORT_PATTERN =
   /from "\.\.\/(\.\.\/)?(chapters|contracts|diagnostics|editing|element|i18n|layout|schema|script)\//;
@@ -93,7 +93,7 @@ describe("编辑器包结构不变式", () => {
       /\/src\/(script\/expr|schema\/opSchemas)\.ts$/.test(key),
     );
     expect(revivals).toEqual([]);
-    // 正样本自检：拆分后的目录出口必须存在（否则空扫描也会恒真）。
+    // 正样本自检：目录出口必须存在（否则空扫描也会恒真）。
     expect(
       SOURCE_KEYS.some((key) => /\/src\/script\/expr\/index\.ts$/.test(key)),
     ).toBe(true);

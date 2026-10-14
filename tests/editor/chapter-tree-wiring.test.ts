@@ -7,9 +7,14 @@
  *
  * 本守卫锁的是**「某能力必须接在某处」**这一类性质（与同类源级接线守卫同风格）：
  * 这些性质在界面上表现为「看起来对」，但一旦被拆掉，判据测试**依然全绿**。
+ *
+ * 左栏模板在 `components/SidebarPane.vue`、tab 定义在 `app/leftTabs.ts`，
+ * 断言随之重新指向（找的内容不变，换找的位置）。
  */
 import { describe, expect, it } from "vitest";
 import appSource from "../../apps/editor/src/App.vue?raw";
+import leftTabsSource from "../../apps/editor/src/app/leftTabs.ts?raw";
+import sidebarSource from "../../apps/editor/src/components/SidebarPane.vue?raw";
 import chapterTreeSource from "../../apps/editor/src/components/ChapterTree.vue?raw";
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
@@ -17,31 +22,29 @@ const code = (source: string): string =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
 describe("章节树 · 接线互锁（防「判据绿但没接上」）", () => {
-  it("App.vue **import 并渲染** ChapterTree（能力真的接进了主界面）", () => {
-    const src = code(appSource);
-    expect(src).toContain(
-      'import ChapterTree from "./components/ChapterTree.vue"',
-    );
+  it("侧栏**import 并渲染** ChapterTree（能力真的接进了主界面）", () => {
+    const src = code(sidebarSource);
+    expect(src).toContain('import ChapterTree from "./ChapterTree.vue"');
     // 必须用**词边界**：`toContain("<ChapterTree")` 会被 `ChapterTreeDX` 前缀匹配骗过
-    //    （自证时实测：把标签改名成 `ChapterTreeDX` 守卫仍绿）⇒ 守卫形同虚设。
+    //    ⇒ 守卫形同虚设。
     expect(src).toMatch(/<ChapterTree\s/);
   });
 
   it("章节内页有**自己的 tab 位**（`leftTab === 'chapters'` 落到单根元素上）", () => {
-    const src = code(appSource);
+    const src = code(sidebarSource);
     // v-show 必须落在单根元素（组件可能是多根模板 ⇒ 直接给它 v-show 会失效）
     expect(src).toContain("leftTab === 'chapters'");
-    // tab 定义与渲染两侧都有（只加一侧 = 用户点不到）
-    expect(src).toContain('id: "chapters"');
+    // tab 定义与渲染两侧都有（只加一侧 = 用户点不到）；tab 表在 app/leftTabs.ts
+    expect(code(leftTabsSource)).toContain('id: "chapters"');
   });
 
   it("**与「列」并存，不互相取代**（判据明令：两者语义不同）", () => {
     // 设计意图（`ChapterTree.vue` 头部）：手动分组是作者显式编排，章节树是路径推导的客观结构
-    const src = code(appSource);
+    const src = code(sidebarSource);
     expect(src).toMatch(/<ColumnList\s/);
     expect(src).toMatch(/<ChapterTree\s/);
-    expect(src).toContain('id: "columns"');
-    expect(src).toContain('id: "chapters"');
+    expect(code(leftTabsSource)).toContain('id: "columns"');
+    expect(code(leftTabsSource)).toContain('id: "chapters"');
   });
 
   it("路径面经 provide 注入（章节 = 路径目录，没有它章节树退化为平铺）", () => {

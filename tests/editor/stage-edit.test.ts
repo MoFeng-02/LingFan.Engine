@@ -2,7 +2,7 @@
  * 舞台编辑测试（元素表单描述符 + 拖拽坐标）。
  *
  * 测试要点五类齐备：
- * - 互锁：表单字段面 ↔ 引擎元素契约（ELEMENT_ATTRIBUTES ∪ {id,name}）
+ * - 互锁：表单字段面 ↔ 引擎元素契约（ELEMENT_ATTRIBUTES 与 {id,name} 的合并）
  * - 回归：36 类型全覆盖、字段顺序确定性
  * - 故意错误：未知类型 fail-closed
  * - 边界：字符串坐标（百分比）不参与像素拖拽
@@ -42,7 +42,7 @@ describe("元素表单描述符", () => {
     expect(listElementTypes()).toHaveLength(36);
   });
 
-  it("字段面互锁：全部落在 ELEMENT_ATTRIBUTES ∪ {id,name} 内，且一律可选", () => {
+  it("字段面互锁：全部落在 ELEMENT_ATTRIBUTES 与 {id,name} 的并集内，且一律可选", () => {
     const allowed = new Set<string>([...ELEMENT_ATTRIBUTES, "id", "name"]);
     for (const type of ELEMENT_TYPES) {
       for (const field of describeElement(type)?.fields ?? []) {

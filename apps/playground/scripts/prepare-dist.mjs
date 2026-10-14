@@ -24,8 +24,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 /**
  * 平台 → lfstream 协议基座（与 Rust `protocol_base` 同口径：wry 行为，
  * Windows/Android 映射 http 虚拟 host，macOS/iOS/Linux 原生 scheme）。
- * TAURI_ENV_* 未注入 beforeBuildCommand（实测）：Android 构建下 undefined
- * → 默认 http 形态恰好正确；iOS 构建需显式传 LFEN_PROTOCOL_BASE（已知缺口，iOS 未通）。
+ * TAURI_ENV_* 未注入 beforeBuildCommand：Android 构建下 undefined
+ * → 默认 http 形态恰好正确；iOS 构建需显式传 LFEN_PROTOCOL_BASE。
  */
 export function resolveProtocolBase(platform, env) {
   if (env.LFEN_PROTOCOL_BASE) return env.LFEN_PROTOCOL_BASE;
@@ -38,7 +38,7 @@ export function resolveProtocolBase(platform, env) {
  * 提取 html 里的本地产物引用（`/assets/...` 或 `./assets/...`）并改写为
  * `{base}/v2/dist%2F…`（encodeURIComponent 与 Rust 侧 utf8_percent_encode
  * 在 vite 产物名字符集 [A-Za-z0-9_.-] 上输出一致）。只改写构建产物内的
- * 相对引用（改写纪律：只碰构建产物内相对引用），动态拼接 URL 一概不碰。
+ * 相对引用，动态拼接 URL 一概不碰。
  */
 export function rewriteHtml(html, base) {
   const assets = [];
@@ -102,14 +102,14 @@ function main() {
 
   // assets 移出 frontendDist（明文 js/css 不得进 Tauri 嵌入面）；**保持 assets/ 子层**——
   // 改写 URL 的逻辑路径 = dist/assets/…，lfenpack --dist 收录路径必须与之逐一对应
-  // （真窗冒烟实测逮住：rename 吃掉子层会让包内路径与协议 URL 错位 → 404）。
+  // （若 rename 移除 assets 子层，包内路径会与协议 URL 错位 → 404）。
   rmSync(distEnc, { recursive: true, force: true });
   if (existsSync(join(dist, "assets"))) {
     mkdirSync(distEnc, { recursive: true });
     renameSync(join(dist, "assets"), join(distEnc, "assets"));
   } else fail("dist/assets 不存在——vite 产物形态与预期不符");
 
-  // publicDir 拷贝清除（真窗冒烟实测逮住）：vite `publicDir: "Resources"` 会把明文资源
+  // publicDir 拷贝清除：vite `publicDir: "Resources"` 会把明文资源
   // 整体镜像进 dist——加密形态下运行时资源走 lfenpack 产物，该镜像嵌入 exe = 泄密面。
   // dist 最终只允许剩入口 html + splash（明文例外全集）。
   for (const name of readdirSync(dist)) {

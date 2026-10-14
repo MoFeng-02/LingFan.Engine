@@ -80,7 +80,7 @@ export function declareLocal(
   ctx.scopes[ctx.scopes.length - 1].set(name, entry);
 }
 
-// —— 表达式下沉（引擎文法唯一来源 runtime/expr）——
+// —— 表达式内联（引擎文法唯一来源 runtime/expr）——
 
 export function isAssignmentOperator(text: string): boolean {
   return ["=", "+=", "-=", "*=", "/=", "%="].includes(text);

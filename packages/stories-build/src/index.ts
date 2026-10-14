@@ -3,7 +3,7 @@
  * `Resources/Stories/**` + `project.json`，并维护 cell 生成物。
  *
  * 布局声明 `Stories.src/config.ts`（根级唯一根文件，named exports 单次求值）：
- * `folders` 声明源目录（可含 `"*"` 全量兜底）、`start` 声明入口故事文件名（跨目录全局
+ * `folders` 声明源目录（可含 `"*"` 通配全部目录）、`start` 声明入口故事文件名（跨目录全局
  * 恰一）；`vars`（键集对象）登记插值变量键、`state`（形态 A）/`define(...)`（形态 B）
  * 声明 state 初始值，两者可缺省但互斥。
  * 源发现按「default 导出存在」区分故事/模块文件；产物路径 = 源文件路径

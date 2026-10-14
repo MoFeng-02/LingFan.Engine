@@ -60,8 +60,7 @@ export function runElementOps(
   // 未等待时 `SYS.waiting` 通常为 "none"，但脚本跑完/从未建立等待时可能是 undefined
   // ⇒ 用「是否为已知等待态」正向判定，不假设键一定存在。
   // `interaction`（外部玩法系统接管）与 `extension`（扩展 op 等待）同为引擎等待态：
-  // 前者是裁定⑥补漏（既存缺陷——接管画面同样是被暂停的叙事，元素动作应可用），
-  // 后者与扩展等待面同期纳入。
+  // 接管画面同样是被暂停的叙事，元素动作在其等待画面同样可用。
   const waiting = ctx.get(SYS.waiting);
   if (
     waiting !== "dialog" &&
