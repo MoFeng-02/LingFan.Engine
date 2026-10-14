@@ -5,12 +5,12 @@
  * 块体字段（then/body/…）按 z.unknown() 数组承载——嵌套命令的校验与指针定位由
  * validateStory 沿表单描述符递归（嵌套命令才拿得到逐条 unknown-op 诊断）。
  */
-export { OP_SCHEMAS } from "./map";
+export { OP_SCHEMAS } from "./map.ts";
 export type {
   ScriptOpName,
   CommandOf,
   ScriptCommand,
   ScriptValue,
   StateScriptValue,
-} from "./types";
-export { validateCommand } from "./validate";
+} from "./types.ts";
+export { validateCommand } from "./validate.ts";

@@ -12,9 +12,9 @@ import {
   type OutboundEvent,
   type OutboundPayload,
   type StoryCommand,
-} from "../../contracts";
-import type { Frame, OpContext } from "../internal";
-import { writeExternal } from "../state";
+} from "../../contracts/index.ts";
+import type { Frame, OpContext } from "../internal/index.ts";
+import { writeExternal } from "../state/index.ts";
 
 /** interaction 已知负载字段（未知字段 fail-closed） */
 const INTERACTION_FIELDS = new Set([

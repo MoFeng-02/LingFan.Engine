@@ -1,8 +1,8 @@
 /**
  * 实例级 z 的校验与写入。
  */
-import type { StoryCommand } from "../../contracts";
-import type { OpContext } from "../internal";
+import type { StoryCommand } from "../../contracts/index.ts";
+import type { OpContext } from "../internal/index.ts";
 
 /**
  * 实例级 z 的**执行期防御**（解析期 `data/format/` 已拒；这里是纵深防御）：

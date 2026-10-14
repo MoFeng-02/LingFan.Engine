@@ -11,5 +11,5 @@ export {
   parseFolders,
   parseStart,
   type StorySourceConfig,
-} from "./story-config";
-export { readManifest } from "./manifest-read";
+} from "./story-config.ts";
+export { readManifest } from "./manifest-read.ts";

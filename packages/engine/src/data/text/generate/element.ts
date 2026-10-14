@@ -1,7 +1,7 @@
 /** 元素节点的文本投影（scene 列的空间层）。 */
-import { ELEMENT_OP_CONFLICTS } from "../parse/element";
-import { quoteForText } from "../literals";
-import type { ElementNode } from "../../../contracts";
+import { ELEMENT_OP_CONFLICTS } from "../parse/element.ts";
+import { quoteForText } from "../literals.ts";
+import type { ElementNode } from "../../../contracts/index.ts";
 
 /** 元素属性值 → 文本（布尔/数字裸串；含空白的字符串加引号，保证往返等价） */
 export function elementValueText(value: unknown): string {

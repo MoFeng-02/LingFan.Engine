@@ -1,7 +1,7 @@
 import * as ts from "typescript";
 import type { StoryCommand } from "@lingfan/engine";
 import { script } from "@lingfan/editor";
-import type { Binding, DiagBag, ModuleRecord } from "../graph";
+import type { Binding, DiagBag, ModuleRecord } from "../graph.ts";
 
 export const WORDS = script as unknown as Record<
   string,

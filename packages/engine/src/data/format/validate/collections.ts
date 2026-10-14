@@ -2,8 +2,8 @@
  * collections 族的命令负载结构校验（validateCommand 的族分片）。
  * 只判本族 op 的必填与类型，未知字段不在此拒绝（编辑期 schema 负责）。
  */
-import { requireNonEmptyString } from "../guards";
-import { isPlainObject } from "../../../shared";
+import { requireNonEmptyString } from "../guards.ts";
+import { isPlainObject } from "../../../shared/index.ts";
 
 /**
  * 校验本族 op 的负载（6 个 op：`array` `array_push` `array_pop` `dict` `dict_set` `random`）。

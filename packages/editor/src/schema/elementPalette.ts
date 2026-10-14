@@ -9,9 +9,9 @@
  *    避免两份中文标签表漂移。
  */
 
-import type { OpGroup } from "../contracts";
-import { listOps } from "./forms";
-import { BUILTIN_OP_SURFACE, type OpSurface } from "./surface";
+import type { OpGroup } from "../contracts/index.ts";
+import { listOps } from "./forms.ts";
+import { BUILTIN_OP_SURFACE, type OpSurface } from "./surface.ts";
 
 /** 元素类型分组（顺序即 `ELEMENT_TYPES` 顺序；标签供面板展示） */
 export interface ElementTypeGroup {

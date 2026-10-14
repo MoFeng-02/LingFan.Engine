@@ -21,10 +21,10 @@ import {
   type OutboundEvent,
   type OutboundPayload,
   type StoryCommand,
-} from "../../contracts";
-import type { Frame, OpContext } from "../internal";
-import { writeExternal } from "../state";
-import { runRegisteredOp, type RegisteredOp } from "../opRegistry";
+} from "../../contracts/index.ts";
+import type { Frame, OpContext } from "../internal/index.ts";
+import { writeExternal } from "../state/index.ts";
+import { runRegisteredOp, type RegisteredOp } from "../opRegistry.ts";
 
 /**
  * 执行一条扩展 op。

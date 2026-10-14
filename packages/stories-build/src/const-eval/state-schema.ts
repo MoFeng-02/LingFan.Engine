@@ -17,8 +17,8 @@
  * - 形态非法 fail-closed（一次报全部）；值形态无法保留源位置，诊断统一挂
  *   `config.ts:1:1`，以键路径上下文定位。
  */
-import { CONFIG_FILE } from "../config/story-config";
-import { StoryBuildError } from "../shared";
+import { CONFIG_FILE } from "../config/story-config.ts";
+import { StoryBuildError } from "../shared/index.ts";
 
 const PRIMITIVE_TYPES: ReadonlySet<string> = new Set([
   "number",

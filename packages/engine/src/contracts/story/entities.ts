@@ -4,8 +4,8 @@
  *
  * 供给端口（语言文件从哪来）见同目录 `ports.ts`。
  */
-import type { ProjectShellConfig } from "../shell";
-import type { ElementNode } from "../element";
+import type { ProjectShellConfig } from "../shell.ts";
+import type { ElementNode } from "../element.ts";
 
 /**
  * 命令：已知 op 的负载由解析器/执行器窄化校验，未知字段/未知 op fail-closed。

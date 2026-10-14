@@ -15,13 +15,13 @@
  * fail-closed：一次报全部，格式与其余管线诊断同构（`- 源文件:行:列 原因`）。
  */
 import * as ts from "typescript";
-import { CONFIG_FILE } from "../config";
-import { StoryBuildError } from "../shared";
-import type { DefineCall, JsonValue } from "./const-eval";
+import { CONFIG_FILE } from "../config/index.ts";
+import { StoryBuildError } from "../shared/index.ts";
+import type { DefineCall, JsonValue } from "./const-eval.ts";
 import {
   type ConstExprContext,
   evalConstExpr,
-} from "./const-expr";
+} from "./const-expr.ts";
 
 /** 一条模块层 define 调用：求值产物 + 落点（跨文件冲突诊断要带两处位置） */
 export interface LocatedDefineCall {

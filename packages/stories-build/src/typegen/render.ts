@@ -8,7 +8,7 @@
  * 空集合也照常产出两个空接口：文件在、结构在，但派生类型退化为 `string`——
  * 不拿空注册表把作者的正常写法判红。
  */
-import type { TypegenInput } from "./types";
+import type { TypegenInput } from "./types.ts";
 
 /** 生成物首行：与 gen/fun_register.g.ts 同一惯例，提醒手改会被覆盖 */
 const HEADER =

@@ -3,7 +3,7 @@
  * 输入 = Tauri CLI 注入的 `TAURI_ENV_PLATFORM`（windows/macos/linux/android/ios，
  * 大小写不敏感）；无法识别/缺省 → `unknown·desktop`（显式未知，不猜）。
  */
-import { hostFormOf, type HostInfo, type HostOs } from "../contracts";
+import { hostFormOf, type HostInfo, type HostOs } from "../contracts/index.ts";
 
 /** Tauri 编译期平台 → HostOs（键全部小写，匹配前先归一化） */
 const PLATFORM_BY_RAW: Record<string, Exclude<HostOs, "unknown">> = {

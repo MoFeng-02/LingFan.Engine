@@ -5,9 +5,9 @@
  * 子过程帧（func 注册、call 调用），要么把子过程帧弹回去（return）。
  * 它们自己不建立等待画面，检查点由落点自身的等待命令建立。
  */
-import { SYS, type StoryCommand } from "../../contracts";
-import { ExpressionError } from "../expr";
-import type { Frame, OpContext } from "../internal";
+import { SYS, type StoryCommand } from "../../contracts/index.ts";
+import { ExpressionError } from "../expr/index.ts";
+import type { Frame, OpContext } from "../internal/index.ts";
 
 /**
  * navigate op：跨列导航。目标列 = scene ?? path（scene 优先），

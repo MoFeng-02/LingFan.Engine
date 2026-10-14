@@ -2,14 +2,14 @@
  * 文本创作模式的公共入口：文本 → Story、Story → 文本，以及容错投影。
  * 三个入口的失败口径统一为 `TextFormatError`（整次拒绝，带行列定位）。
  */
-import { baseName } from "../format";
-import { parseCommands, parseSimpleStatement, type ParseState } from "./parse";
-import { generateCommand } from "./generate/command";
-import { generateElement } from "./generate/element";
-import { tokenizeLines, splitTokens, unquote } from "./lexer";
-import { quoteForText, generateValue } from "./literals";
-import { TextFormatError } from "./error";
-import { recordTextProjectionWarnings } from "./warnings";
+import { baseName } from "../format/index.ts";
+import { parseCommands, parseSimpleStatement, type ParseState } from "./parse/index.ts";
+import { generateCommand } from "./generate/command.ts";
+import { generateElement } from "./generate/element.ts";
+import { tokenizeLines, splitTokens, unquote } from "./lexer.ts";
+import { quoteForText, generateValue } from "./literals.ts";
+import { TextFormatError } from "./error.ts";
+import { recordTextProjectionWarnings } from "./warnings.ts";
 import type {
   Story,
   StoryColumn,
@@ -17,7 +17,7 @@ import type {
   ElementNode,
   CustomOpProjections,
   TextProjection,
-} from "../../contracts";
+} from "../../contracts/index.ts";
 
 /** 文本 → Story（缩进块、注释、全 op 文法；失败整次拒绝并带行列定位）。
  * `projections`（可选）= 扩展自定义 op 的行投影表；缺省 = 现行为逐字节不变。 */
@@ -167,7 +167,7 @@ export function parseTextStory(
  * 文本投影的结果形状定义在契约层（`contracts/text.ts`），此处按原路径转出，
  * 既有消费方无需改动即可继续从本模块取。
  */
-export type { TextProjection } from "../../contracts";
+export type { TextProjection } from "../../contracts/index.ts";
 
 /**
  * 把一个故事对象投影成文本，**不抛异常**：单条不可投影的命令只记一条 issue。

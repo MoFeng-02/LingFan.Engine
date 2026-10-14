@@ -2,7 +2,7 @@
  * Script 词汇层 · **视频域**（video / cutscene / seek / pause / resume / stop / skipable）。
  * Options 派生自 schema（零漂移）；返回类型 = `CommandOf<op>` 判别联合成员。
  */
-import type { CommandOf } from "../../schema";
+import type { CommandOf } from "../../schema/index.ts";
 
 /** video / cutscene 共用的可选项：volume 音量、loop 循环、z 视频层层级 */
 export type VideoOptions = Omit<CommandOf<"video">, "op" | "resource">;

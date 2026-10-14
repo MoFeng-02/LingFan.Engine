@@ -1,8 +1,8 @@
 /**
  * 存档的玩法系统依赖标记：校验与状态迁移（与 extensions 同构的声明制通道）。
  */
-import { gameScopedKey, type SaveDataV1 } from "../../contracts";
-import type { OpContext } from "../internal";
+import { gameScopedKey, type SaveDataV1 } from "../../contracts/index.ts";
+import type { OpContext } from "../internal/index.ts";
 
 /**
  * 读档玩法系统依赖校验 + 状态迁移（fail-closed 整档预校验——任何不符在进入恢复流程前拒绝）。

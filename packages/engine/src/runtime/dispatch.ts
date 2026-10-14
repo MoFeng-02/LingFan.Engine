@@ -47,8 +47,8 @@ import {
   execWait,
   execWhile,
   execWindow,
-} from "./ops";
-import type { OpContext } from "./internal";
+} from "./ops/index.ts";
+import type { OpContext } from "./internal/index.ts";
 
 /**
  * 命令分发主循环：不断从最内层帧取命令执行，直到所有帧结束。

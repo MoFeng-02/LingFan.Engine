@@ -17,11 +17,11 @@ import {
   parseStart,
   parseVersion,
   type StorySourceConfig,
-} from "../config/story-config";
-import { StoryBuildError } from "../shared";
-import { evalConstModule } from "./const-eval";
-import { formatConstDiagFile } from "./const-eval-pass";
-import { mergeDefineCalls } from "./define-merge";
+} from "../config/story-config.ts";
+import { StoryBuildError } from "../shared/index.ts";
+import { evalConstModule } from "./const-eval.ts";
+import { formatConstDiagFile } from "./const-eval-pass.ts";
+import { mergeDefineCalls } from "./define-merge.ts";
 
 /** config.ts 单次求值的产物（编排层的 config 消费形态）。 */
 export interface ConfigEvalOutcome {

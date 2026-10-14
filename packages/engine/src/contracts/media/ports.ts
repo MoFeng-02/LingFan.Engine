@@ -3,7 +3,7 @@
  * 入参为**已解析 URL**——资源寻址归 ResourcePort，媒体可能是加密资源。
  * 数据形态（通道状态、视频命令）见同目录 `entities.ts`。
  */
-import type { AudioChannel, AudioPlayOptions } from "./entities";
+import type { AudioChannel, AudioPlayOptions } from "./entities.ts";
 
 /**
  * 音频端口：实现 = infra 适配器（WebView 解码，Desktop/Mobile 同契约）。

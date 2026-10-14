@@ -5,21 +5,21 @@
  * （互锁：抽取与诊断同表、骨架往返、覆盖率报告）。
  */
 
-export { TRANSLATE_SURFACES, valuesAtPath } from "./surfaces";
-export { extractStoryKeys } from "./extract";
-export { columnStoryKey } from "./storyKeys";
+export { TRANSLATE_SURFACES, valuesAtPath } from "./surfaces.ts";
+export { extractStoryKeys } from "./extract.ts";
+export { columnStoryKey } from "./storyKeys.ts";
 export {
   planOverlaySkeleton,
   type OverlaySkeletonFile,
   type SkeletonLayout,
   type SkeletonOptions,
   type SkeletonPlaceholder,
-} from "./skeleton";
+} from "./skeleton.ts";
 export {
   formatTranslationReport,
   reconcileTranslations,
   type TranslationReconcileReport,
-} from "./reconcile";
+} from "./reconcile.ts";
 export {
   coverageLabelOf,
   coveragePercentOf,
@@ -32,7 +32,7 @@ export {
   type LangCoverage,
   type SkeletonLayoutChoice,
   type WorkbenchOverview,
-} from "./coverage";
+} from "./coverage.ts";
 export {
   addTranslationRow,
   isTableDirty,
@@ -44,4 +44,4 @@ export {
   type TableEdit,
   type TableParse,
   type TranslationRow,
-} from "./table";
+} from "./table.ts";

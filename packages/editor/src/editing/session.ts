@@ -6,7 +6,7 @@
  */
 
 import type { Story } from "@lingfan/engine";
-import type { StoryListener, UndoEntry } from "../contracts";
+import type { StoryListener, UndoEntry } from "../contracts/index.ts";
 
 const DEFAULT_UNDO_CAPACITY = 100;
 

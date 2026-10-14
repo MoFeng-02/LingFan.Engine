@@ -1,9 +1,9 @@
 /**
  * 存档的扩展依赖标记：迁移、校验与恢复。
  */
-import { EXT_KEY_PREFIX, type SaveDataV1 } from "../../contracts";
-import type { OpContext } from "../internal";
-import { buildExtensionContext } from "../opRegistry";
+import { EXT_KEY_PREFIX, type SaveDataV1 } from "../../contracts/index.ts";
+import type { OpContext } from "../internal/index.ts";
+import { buildExtensionContext } from "../opRegistry.ts";
 
 /**
  * `formatVersion` 非 1 的档——优先经宿主 migrateSave 钩子迁移（成功发 `load.notice`）；

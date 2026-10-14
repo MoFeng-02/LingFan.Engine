@@ -9,9 +9,9 @@ import {
   type AudioChannelState,
   type CharacterDef,
   type StoryCommand,
-} from "../../contracts";
-import { interpolateText } from "../expr";
-import type { Frame, OpContext } from "../internal";
+} from "../../contracts/index.ts";
+import { interpolateText } from "../expr/index.ts";
+import type { Frame, OpContext } from "../internal/index.ts";
 
 /** say 的已知负载字段；未知字段 fail-closed */
 const SAY_KNOWN_FIELDS = new Set([

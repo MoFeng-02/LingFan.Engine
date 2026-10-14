@@ -1,6 +1,6 @@
-import { isPlainObject } from "../../shared";
-import { byPath, STORIES_DIR } from "./naming";
-import type { ProjectFileDiff } from "../../contracts";
+import { isPlainObject } from "../../shared/index.ts";
+import { byPath, STORIES_DIR } from "./naming.ts";
+import type { ProjectFileDiff } from "../../contracts/index.ts";
 
 /**
  * 工程写回的差量：本次要写哪些文件，以及相对上次要删哪些。

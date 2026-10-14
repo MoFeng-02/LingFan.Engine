@@ -16,7 +16,7 @@
  * 块体（if/while/switch/func 体）内的等待点：其检查点坐标按 `checkpointCoord` 的块帧回退语义
  * 落在**块进入命令**上——故静态切分时「块体内含等待 ⇒ 该块命令本身即边界」，无需逐 op 特判。
  */
-import type { OpExtension, WaitingState } from "../contracts";
+import type { OpExtension, WaitingState } from "../contracts/index.ts";
 
 /** 单个 op 的等待规格：等待态 + 是否硬等待（`pause` = 不可跳过） */
 export interface WaitSpec {

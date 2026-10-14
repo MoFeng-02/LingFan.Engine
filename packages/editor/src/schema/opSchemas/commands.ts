@@ -13,7 +13,7 @@ import {
   SlotName,
   StateValue,
   Value,
-} from "./fragments";
+} from "./fragments.ts";
 
 const saySchema = z.strictObject({
   text: NonEmpty,

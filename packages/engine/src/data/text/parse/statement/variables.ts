@@ -1,8 +1,8 @@
 /** variables 族的读向解析。 */
-import { parseValueLiteral } from "../../literals";
-import { unquote } from "../../lexer";
-import { StoryCommand } from "../../../../contracts";
-import { StatementContext } from "../state";
+import { parseValueLiteral } from "../../literals.ts";
+import { unquote } from "../../lexer.ts";
+import type { StoryCommand } from "../../../../contracts/index.ts";
+import type { StatementContext } from "../state.ts";
 
 /**
  * 解析本族的 op 行（`set` `define` `let` `local` `undef`）。

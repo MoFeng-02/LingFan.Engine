@@ -36,12 +36,12 @@ export type ExpressionErrorCode =
  * name 固定为 "ExpressionError"，便于跨模块按字符串识别。
  */
 export class ExpressionError extends Error {
+  readonly code: ExpressionErrorCode;
+
   /** @param code 稳定错误分类；@param message 面向作者的说明 */
-  constructor(
-    readonly code: ExpressionErrorCode,
-    message: string,
-  ) {
+  constructor(code: ExpressionErrorCode, message: string) {
     super(message);
+    this.code = code;
     this.name = "ExpressionError";
   }
 }

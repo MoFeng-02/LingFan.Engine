@@ -1,6 +1,6 @@
 /** 读向解析的共享状态与分发上下文：行表、错误/警告两级通道、源名与扩展投影表。 */
-import type { SourceLine } from "../lexer";
-import type { CustomOpProjections } from "../../../contracts";
+import type { SourceLine } from "../lexer.ts";
+import type { CustomOpProjections } from "../../../contracts/index.ts";
 
 /**
  * 一次读向解析的共享状态：整文件的定位信息、两级问题通道与扩展投影表。

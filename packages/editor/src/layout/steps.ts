@@ -25,11 +25,11 @@ import type {
   WaitSpec,
 } from "@lingfan/engine";
 import { waitSpecOfOp, waitingStateOfOp } from "@lingfan/engine";
-import { getAtPointer } from "../editing";
-import { indexStory } from "../diagnostics";
-import { BUILTIN_OP_SURFACE, type OpSurface } from "../schema";
-import { walkCommandBodies } from "../schema";
-import { isPlainObject } from "../shared";
+import { getAtPointer } from "../editing/index.ts";
+import { indexStory } from "../diagnostics/index.ts";
+import { BUILTIN_OP_SURFACE, type OpSurface } from "../schema/index.ts";
+import { walkCommandBodies } from "../schema/index.ts";
+import { isPlainObject } from "../shared/index.ts";
 
 /** 步骤出边（分叉来源）：菜单选项 / 跳转 / 导航 */
 export interface StepFork {

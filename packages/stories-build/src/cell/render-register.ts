@@ -1,4 +1,4 @@
-import type { CellScan } from "./types";
+import type { CellScan } from "./types.ts";
 
 /** 生成物渲染（逐字节确定：同扫描同文本；入库文件，手改会被覆盖） */
 export function renderFunRegister(scan: CellScan): string {

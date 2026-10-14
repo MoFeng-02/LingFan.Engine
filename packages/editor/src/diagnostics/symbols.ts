@@ -3,17 +3,17 @@
  * 收进一张 SymbolIndex（单次遍历）。消费方是分析器（./analyze）与编辑器功能。
  */
 import type { Story } from "@lingfan/engine";
-import type { FieldDescriptor, SymbolIndex } from "../contracts";
-import { joinPointer } from "../contracts";
-import { TRANSLATE_SURFACES, valuesAtPath } from "../i18n";
-import { walkStoryCommands, walkStoryElements } from "../schema";
-import { isPlainObject } from "../shared";
+import type { FieldDescriptor, SymbolIndex } from "../contracts/index.ts";
+import { joinPointer } from "../contracts/index.ts";
+import { TRANSLATE_SURFACES, valuesAtPath } from "../i18n/index.ts";
+import { walkStoryCommands, walkStoryElements } from "../schema/index.ts";
+import { isPlainObject } from "../shared/index.ts";
 import {
   extractExpressionRefs,
   exprSourceInExpressionField,
   exprSourceInValueField,
   exprSourcesInText,
-} from "./refs";
+} from "./refs.ts";
 
 /** 变量定义字段（op → 相对字段路径）；键 = 符号索引 definedKeys 的来源 */
 const VAR_DEF_FIELDS: Readonly<Record<string, readonly string[]>> = {

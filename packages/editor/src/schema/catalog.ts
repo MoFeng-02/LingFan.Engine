@@ -5,7 +5,7 @@
  * 字段语义以执行器为权威（packages/engine/src/runtime/ops/）。
  */
 
-import type { FieldKind, OpMeta } from "../contracts";
+import type { FieldKind, OpMeta } from "../contracts/index.ts";
 
 export const OP_META: readonly OpMeta[] = [
   { op: "say", label: "对话", group: "narrative" },

@@ -3,7 +3,7 @@
  * value 参数 = 引擎 StateValue（字面量 / null / `{expr}` 表达式串 / `+=` 复合赋值串——
  * 口径同 JSON v1；状态槽允许 null 空值，销毁走 undef）。
  */
-import type { CommandOf, StateScriptValue } from "../../schema";
+import type { CommandOf, StateScriptValue } from "../../schema/index.ts";
 
 /**
  * 把值写进状态变量：沿作用域链找到 `key` 已声明的层写入；

@@ -4,7 +4,7 @@
  * Options 派生自 schema（零漂移）；voice 例外——autoStop 是作者侧驼峰词，
  * builder 负责映射到 op 的 auto_stop 字段。
  */
-import type { CommandOf } from "../../schema";
+import type { CommandOf } from "../../schema/index.ts";
 
 /** bgm / ambient 共用的可选项：volume 音量、loop 循环、fade 渐入毫秒、restart 重播 */
 export type BgmOptions = Omit<CommandOf<"bgm">, "op" | "resource">;

@@ -7,7 +7,7 @@ import type {
   DegradedOpen,
   ProjectFileHandle,
   ProjectWriteReport,
-} from "./entities";
+} from "./entities.ts";
 
 /**
  * 资源端口：逻辑路径按**应用资源根**解析（不依赖进程工作目录），

@@ -1,6 +1,6 @@
 import * as ts from "typescript";
 import type { Story, StoryCommand } from "@lingfan/engine";
-import type { DiagBag, Graph } from "./graph";
+import type { DiagBag, Graph } from "./graph.ts";
 import {
   createBodyCtx,
   makeFuncOp,
@@ -8,7 +8,7 @@ import {
   type FuncRegistry,
   type Scope,
   type ScopeEntry,
-} from "./translate";
+} from "./translate.ts";
 
 interface CompiledFunction {
   key: string;

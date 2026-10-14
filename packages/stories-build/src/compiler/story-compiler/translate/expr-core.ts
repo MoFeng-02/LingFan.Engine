@@ -1,7 +1,7 @@
 import * as ts from "typescript";
 import { evaluateExpression } from "@lingfan/engine";
-import { diag, lookupBinding, lookupScope } from "./shared";
-import type { BodyCtx } from "./shared";
+import { diag, lookupBinding, lookupScope } from "./shared.ts";
+import type { BodyCtx } from "./shared.ts";
 
 const BUILTIN_EXPR_FNS = new Set([
   "random",

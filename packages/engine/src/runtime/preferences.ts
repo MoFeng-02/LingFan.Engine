@@ -12,13 +12,13 @@ import type {
   PlayerKeymap,
   PlayerPrefsData,
   PreferencesPort,
-} from "../contracts";
+} from "../contracts/index.ts";
 import {
   DEFAULT_PLAYER_PREFS,
   KEYMAP_ACTIONS,
   isOrientationMode,
-} from "../contracts";
-import { clamp01 } from "../shared";
+} from "../contracts/index.ts";
+import { clamp01 } from "../shared/index.ts";
 
 /** 偏好变更回调；收到的是快照副本，调用方改写它不会穿透到内部状态 */
 type PrefsListener = (data: PlayerPrefsData) => void;
@@ -116,10 +116,14 @@ export class PlayerPreferences {
   /** 防抖计时器句柄，非 null 表示还有一次落盘待补发 */
   private pendingSave: ReturnType<typeof setTimeout> | null = null;
 
+  /** 持久化端口；缺省 = 纯内存模式（不落盘，hydrate/dispose 均为空操作） */
+  private readonly port?: PreferencesPort;
+
   /**
    * @param port 持久化端口；缺省 = 纯内存模式（不落盘，hydrate/dispose 均为空操作）
    */
-  constructor(private readonly port?: PreferencesPort) {
+  constructor(port?: PreferencesPort) {
+    this.port = port;
     this.data = sanitize(undefined);
   }
 

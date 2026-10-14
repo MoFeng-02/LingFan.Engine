@@ -1,7 +1,7 @@
 import * as ts from "typescript";
-import { foldConst } from "./fold";
-import { WORD_NAMES } from "./core";
-import type { Binding, ConstValue, ModuleRecord, DiagBag } from "./core";
+import { foldConst } from "./fold.ts";
+import { WORD_NAMES } from "./core.ts";
+import type { Binding, ConstValue, ModuleRecord, DiagBag } from "./core.ts";
 
 export function scanConstStatement(
   stmt: ts.VariableStatement,

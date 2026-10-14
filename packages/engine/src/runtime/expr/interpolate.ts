@@ -3,9 +3,9 @@
  *
  * 行内富文本标记原样透传给渲染层；插值失败保留原文片段并收集错误。
  */
-import type { NameResolver } from "../resolver";
-import { evaluateExpression } from "./evaluate";
-import { ExpressionError, type ExprValue } from "./value";
+import type { NameResolver } from "../resolver.ts";
+import { evaluateExpression } from "./evaluate.ts";
+import { ExpressionError, type ExprValue } from "./value.ts";
 
 /** 行内富文本标记（单一真相源）：这些 {…} 原样透传给渲染层 */
 const INLINE_SHORT_TAGS = new Set([

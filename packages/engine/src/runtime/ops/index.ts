@@ -8,7 +8,7 @@ export {
   abortExtensionOp,
   execExtensionOp,
   resolveExtensionOp,
-} from "./extension";
+} from "./extension.ts";
 export {
   execCharacter,
   execMenu,
@@ -16,8 +16,8 @@ export {
   execSay,
   execWait,
   isValidSayColor,
-} from "./dialog";
-export { execCall, execFunc, execNavigate, execReturn } from "./call";
+} from "./dialog.ts";
+export { execCall, execFunc, execNavigate, execReturn } from "./call.ts";
 export {
   execAssert,
   execFor,
@@ -26,7 +26,7 @@ export {
   execIf,
   execSwitch,
   execWhile,
-} from "./flow";
+} from "./flow.ts";
 export {
   execArray,
   execArrayPop,
@@ -37,8 +37,8 @@ export {
   execDictSet,
   execRandom,
   execUndef,
-} from "./variables";
-export { execAudio, execNotify, execVideo } from "./media";
+} from "./variables.ts";
+export { execAudio, execNotify, execVideo } from "./media.ts";
 export {
   execAnimate,
   execElementVisual,
@@ -46,17 +46,17 @@ export {
   execTextTypewriter,
   execWindow,
   runElementOps,
-} from "./element";
+} from "./element/index.ts";
 export {
   execAutoSaveOp,
   execLoadOp,
   execSaveDeleteOp,
   execSaveOp,
-} from "./save";
+} from "./save.ts";
 export {
   abortInteraction,
   execInput,
   execInteraction,
   resolveInteraction,
-} from "./interaction";
-export { abortMinigame, execMinigame, resolveMinigame } from "./minigame";
+} from "./interaction.ts";
+export { abortMinigame, execMinigame, resolveMinigame } from "./minigame.ts";

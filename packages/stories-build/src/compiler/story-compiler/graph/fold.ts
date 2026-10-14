@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import type { Binding, ConstValue, DiagBag } from "./core";
+import type { Binding, ConstValue, DiagBag } from "./core.ts";
 
 function foldNumeric(
   op: string,

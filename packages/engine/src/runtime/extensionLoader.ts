@@ -9,7 +9,7 @@
  * 全量冲突/重名/内建冲突校验归引擎构造期 `buildOpRegistry`（本处只验「是不是一个声明」）。
  */
 
-import { EXTENSION_ID_PATTERN, type OpExtension } from "../contracts";
+import { EXTENSION_ID_PATTERN, type OpExtension } from "../contracts/index.ts";
 
 /** 宿主注入的模块装载器（如 `(s) => import(s)` / vite `import.meta.glob` 取得的 loader） */
 export type ExtensionModuleLoader = (specifier: string) => Promise<unknown>;

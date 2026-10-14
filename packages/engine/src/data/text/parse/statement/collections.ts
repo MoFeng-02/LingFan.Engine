@@ -3,10 +3,10 @@ import {
   parseValueLiteral,
   parseArrayLiteral,
   parseDictLiteral,
-} from "../../literals";
-import { unquote } from "../../lexer";
-import { StoryCommand } from "../../../../contracts";
-import { StatementContext } from "../state";
+} from "../../literals.ts";
+import { unquote } from "../../lexer.ts";
+import type { StoryCommand } from "../../../../contracts/index.ts";
+import type { StatementContext } from "../state.ts";
 
 /**
  * 解析本族的 op 行（`array_push` `array_pop` `array` `dict` `dict_set` `random`）。

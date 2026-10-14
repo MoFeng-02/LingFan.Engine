@@ -4,10 +4,10 @@
  * 这些形状被跨包消费（编辑器扩展出口、UI 覆盖层、宿主组合根、生成的故事代码），
  * 且本身不依赖引擎实现，故与其它契约同住契约层；引擎实现只按契约读取它们。
  */
-import type { OpExtension } from "./extension";
-import type { MinigameRegistration } from "./minigame";
-import type { SaveDataV1, SaveMode, SavePort } from "./save";
-import type { I18nPort } from "./story";
+import type { OpExtension } from "./extension.ts";
+import type { MinigameRegistration } from "./minigame.ts";
+import type { SaveDataV1, SaveMode, SavePort } from "./save.ts";
+import type { I18nPort } from "./story/index.ts";
 
 /** 引擎构造选项（全部可选；缺省即内建行为） */
 export interface EngineOptions {

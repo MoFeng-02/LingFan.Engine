@@ -3,7 +3,7 @@
  *
  * 字符串里的已知转义按映射还原，未知转义保留两字符原样（Windows 路径兼容）。
  */
-import { ExpressionError } from "./value";
+import { ExpressionError } from "./value.ts";
 
 /** 一个词法标记：kind 判类型，text 是原文切片，数值/字符串另在 value 上存解析结果 */
 export interface Token {

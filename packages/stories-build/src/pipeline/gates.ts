@@ -1,6 +1,6 @@
 import { BUILTIN_OP_NAMES, MANIFEST_FILE, type Story } from "@lingfan/engine";
 import { walkStoryCommands } from "@lingfan/editor";
-import { StoryBuildError } from "../shared";
+import { StoryBuildError } from "../shared/index.ts";
 
 /** 闸门判定的可配置项：文案里出现的目录名（缺省 = 现状；只影响文案，不影响判定） */
 export interface GateOptions {

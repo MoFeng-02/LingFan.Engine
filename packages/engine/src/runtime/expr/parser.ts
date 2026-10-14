@@ -4,10 +4,10 @@
  * 优先级链：?: → || → && → ==/!= → 比较 → + - → * / % → 一元 → 成员。
  * 硬性约束：比较运算符不可链式。
  */
-import type { NameResolver } from "../resolver";
-import { callBuiltin } from "./builtins";
-import { ExpressionError, exprEquals, type ExprValue } from "./value";
-import type { Token } from "./lexer";
+import type { NameResolver } from "../resolver.ts";
+import { callBuiltin } from "./builtins.ts";
+import { ExpressionError, exprEquals, type ExprValue } from "./value.ts";
+import type { Token } from "./lexer.ts";
 
 /** 求值闭包：解析期只搭结构，真正取值推迟到闭包被调用时（短路要求右支惰性） */
 type Thunk = () => ExprValue;
@@ -26,16 +26,24 @@ export class Parser {
   /** 当前标记游标；越界时由 peek 钳到末尾的 eof，不会真越界 */
   private pos = 0;
 
+  private readonly tokens: Token[];
+  private readonly resolve: NameResolver;
+  private readonly rng: () => number;
+
   /**
    * @param tokens 词法器产出的标记序列（约定以 eof 结尾）
    * @param resolve 名称解析器：点路径是全局键还是字典下钻由它决定
    * @param rng 内建随机函数的随机源；注入以便测试复现
    */
   constructor(
-    private readonly tokens: Token[],
-    private readonly resolve: NameResolver,
-    private readonly rng: () => number = Math.random,
-  ) {}
+    tokens: Token[],
+    resolve: NameResolver,
+    rng: () => number = Math.random,
+  ) {
+    this.tokens = tokens;
+    this.resolve = resolve;
+    this.rng = rng;
+  }
 
   /** 预读当前标记；游标已在末尾时返回最后的 eof（永不越界，也不前进） */
   private peek(): Token {

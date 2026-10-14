@@ -16,7 +16,7 @@
  *   逐字节同输出。
  */
 import { posix } from "node:path";
-import type { EnumTypeSlot } from "./state-enum-ast";
+import type { EnumTypeSlot } from "./state-enum-ast.ts";
 
 export interface StateTypegenInput {
   /** config 求值合并树（形态 A state / 形态 B defineTree，与降维段同一棵） */

@@ -2,16 +2,16 @@
  * 带块体的语句：缩进体收集与块体分发。
  * `collectBody` 只按缩进切范围，具体语法由各族分支决定。
  */
-import { unquote, splitTokens, type SourceLine } from "../lexer";
-import { parseValueLiteral } from "../literals";
-import { ELEMENT_OP_CONFLICTS, parseElementLine } from "./element";
-import { parseSimpleStatement } from "./statement";
+import { unquote, splitTokens, type SourceLine } from "../lexer.ts";
+import { parseValueLiteral } from "../literals.ts";
+import { ELEMENT_OP_CONFLICTS, parseElementLine } from "./element.ts";
+import { parseSimpleStatement } from "./statement.ts";
 import {
   isElementType,
   type ElementNode,
   type StoryCommand,
-} from "../../../contracts";
-import type { ParseState } from "./state";
+} from "../../../contracts/index.ts";
+import type { ParseState } from "./state.ts";
 
 /** 带块体的语句在 parseCommands 内联处理；此处仅单行语句分发 */
 export function isBlockOp(op: string): boolean {

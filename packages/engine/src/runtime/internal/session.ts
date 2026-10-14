@@ -15,10 +15,10 @@ import {
   type StateListener,
   type Story,
   type VideoCommand,
-} from "../../contracts";
-import { mergeOverlayFiles } from "../i18n";
-import { validSlot } from "./helpers";
-import type { OpContext } from "./context";
+} from "../../contracts/index.ts";
+import { mergeOverlayFiles } from "../i18n/index.ts";
+import { validSlot } from "./helpers.ts";
+import type { OpContext } from "./context.ts";
 
 /**
  * 启动故事：置启动标志、初始化两个恒有定义的系统键、把顶层 defines 无条件写进全局层，

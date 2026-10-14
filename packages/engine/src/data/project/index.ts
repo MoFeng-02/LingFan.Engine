@@ -11,14 +11,14 @@ export type {
   ProjectFileDiff,
   SerializedProject,
   WriteNormalizationFinding,
-} from "../../contracts";
-export { ProjectAssemblyError, ProjectSerializationError } from "./error";
-export { isSafeFileNameSegment, MANIFEST_FILE, STORIES_DIR } from "./naming";
-export { assembleProject, synthesizeDegradedManifest } from "./assemble";
-export { serializeColumnDocument, serializeProject } from "./serialize";
-export { diffProjectFiles } from "./diff";
+} from "../../contracts/index.ts";
+export { ProjectAssemblyError, ProjectSerializationError } from "./error.ts";
+export { isSafeFileNameSegment, MANIFEST_FILE, STORIES_DIR } from "./naming.ts";
+export { assembleProject, synthesizeDegradedManifest } from "./assemble.ts";
+export { serializeColumnDocument, serializeProject } from "./serialize.ts";
+export { diffProjectFiles } from "./diff.ts";
 export {
   conflictMessage,
   detectWriteConflicts,
   detectWriteNormalization,
-} from "./conflict";
+} from "./conflict.ts";

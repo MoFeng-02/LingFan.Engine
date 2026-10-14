@@ -1,8 +1,8 @@
 /** present 族的文本投影。 */
-import { elementValueText } from "../element";
-import { quoteForText, generateDictLiteral } from "../../literals";
-import { StoryCommand } from "../../../../contracts";
-import { GenerateContext } from "../context";
+import { elementValueText } from "../element.ts";
+import { quoteForText, generateDictLiteral } from "../../literals.ts";
+import type { StoryCommand } from "../../../../contracts/index.ts";
+import type { GenerateContext } from "../context.ts";
 
 /**
  * 投影本族的 op 行（`show` `hide` `background` `bg_switch` `zindex` `style` `window` `animate` `animate_block` `transition` `shake` `text_typewriter`）。

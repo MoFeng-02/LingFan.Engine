@@ -4,6 +4,6 @@ export type {
   Scope,
   FuncRegistry,
   SharedCtx,
-} from "./translate/shared";
-export { createBodyCtx, makeFuncOp, createSharedCtx } from "./translate/shared";
-export { translateStatements } from "./translate/statements";
+} from "./translate/shared.ts";
+export { createBodyCtx, makeFuncOp, createSharedCtx } from "./translate/shared.ts";
+export { translateStatements } from "./translate/statements.ts";

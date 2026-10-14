@@ -2,9 +2,9 @@
  * 字面量与文本投影原语：值的解析（字面量 → 值）与值的投影（值 → 文本）。
  * 两个方向成对放在一起，改一处即为往返等价性的唯一入口。
  */
-import { unquote, escapeForText } from "./lexer";
-import { TextFormatError } from "./error";
-import type { StoryCommand } from "../../contracts";
+import { unquote, escapeForText } from "./lexer.ts";
+import { TextFormatError } from "./error.ts";
+import type { StoryCommand } from "../../contracts/index.ts";
 
 /** set/define 类的值：原样透传（{expr} 复合赋值等由执行器窄化） */
 export function parseValueLiteral(raw: string): unknown {

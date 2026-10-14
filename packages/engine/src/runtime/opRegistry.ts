@@ -23,7 +23,7 @@ import {
   type OpExtension,
   type OpTextProjection,
   type Story,
-} from "../contracts";
+} from "../contracts/index.ts";
 
 /** 单个已注册 op：扩展身份（存档依赖标记用）+ 运行期定义 */
 export interface RegisteredOp {

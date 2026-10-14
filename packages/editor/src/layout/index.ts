@@ -11,4 +11,4 @@ export {
   type StepEdge,
   type StepLayout,
   type StepOptions,
-} from "./steps";
+} from "./steps.ts";

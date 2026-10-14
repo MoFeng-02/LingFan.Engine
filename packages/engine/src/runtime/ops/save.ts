@@ -4,8 +4,8 @@
  * 这一族只做**声明与校验**：槽位与端口在命令执行期即时判定并 fail-closed，
  * 真正的写盘、读档与删档由存档编排端口接手，命令自身不等画面建立。
  */
-import { SYS, type StoryCommand } from "../../contracts";
-import { validSlot, type Frame, type OpContext } from "../internal";
+import { SYS, type StoryCommand } from "../../contracts/index.ts";
+import { validSlot, type Frame, type OpContext } from "../internal/index.ts";
 
 /** 存档类 op 已知负载字段（未知字段 fail-closed） */
 const SAVE_FIELDS: Record<string, ReadonlySet<string>> = {

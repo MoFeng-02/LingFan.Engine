@@ -4,7 +4,7 @@
  * main.json 最先载入作为全局兜底，其余文件按供给顺序逐条覆盖（后加载覆盖先加载）。
  * 内部组织方式自由：扁平、子文件夹分类、单一大文件均可。
  */
-import type { I18nOverlayFile } from "../../contracts";
+import type { I18nOverlayFile } from "../../contracts/index.ts";
 
 /** 合并 overlay 文件为译文表：main.json 兜底 + 其余按序覆盖（确定性，供给顺序即覆盖序） */
 export function mergeOverlayFiles(

@@ -8,9 +8,9 @@
  */
 
 import type { Story } from "@lingfan/engine";
-import { walkStoryCommands, walkStoryElements } from "../schema";
-import { isPlainObject } from "../shared";
-import { TRANSLATE_SURFACES, valuesAtPath } from "./surfaces";
+import { walkStoryCommands, walkStoryElements } from "../schema/index.ts";
+import { isPlainObject } from "../shared/index.ts";
+import { TRANSLATE_SURFACES, valuesAtPath } from "./surfaces.ts";
 
 /**
  * 从故事抽取可翻译原文键集合（= 运行期会查 overlay 表的全部字符串，插值前原文）。

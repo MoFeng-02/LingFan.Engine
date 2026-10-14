@@ -30,29 +30,29 @@
  */
 
 /** 构建失败（fail-closed）。消息即 CLI 打印的失败原因，逐字稳定——不要在别处重写措辞 */
-export { StoryBuildError } from "./shared";
+export { StoryBuildError } from "./shared/index.ts";
 /** 一次构建的结果与词汇层警告的取口 */
-export { drainBuildWarnings, type BuildReport } from "./emit";
+export { drainBuildWarnings, type BuildReport } from "./emit/index.ts";
 /** 目录布局的默认值与可配置项 */
 export {
   DEFAULT_GENERATED_DIR,
   DEFAULT_RESOURCES_DIR,
   DEFAULT_SOURCES_DIR,
   type StoryBuildOptions,
-} from "./pipeline";
+} from "./pipeline/index.ts";
 /** 十二段串行编排（流水线主入口） */
-export { buildStories } from "./pipeline";
+export { buildStories } from "./pipeline/index.ts";
 /** 编译期求值域（config.ts 单次求值 + define 内建 + 形态 A/B 状态降维） */
 export {
   evalConfigModule,
   type ConfigEvalOutcome,
-} from "./const-eval";
+} from "./const-eval/index.ts";
 /** 布局声明与 config.ts 契约类型 */
-export { CONFIG_FILE, type StorySourceConfig } from "./config";
+export { CONFIG_FILE, type StorySourceConfig } from "./config/index.ts";
 /** 创作垫片类型（@lingfan/stories-build/authoring 随包 .d.ts 的主出口同源） */
-export type { InferStateSchema } from "./config/state-type";
+export type { InferStateSchema } from "./config/state-type.ts";
 /** 源发现 v2（folders 多目录 + start 全局恰一） */
-export { discoverSources, type DiscoveredSources } from "./discovery";
+export { discoverSources, type DiscoveredSources } from "./discovery/index.ts";
 /** 编译器契约（story-compiler 对接面） */
 export {
   loadDefaultCompiler,
@@ -60,7 +60,7 @@ export {
   type CompiledStoryEntry,
   type CompilerDiagnostic,
   type StoriesCompiler,
-} from "./compiler";
+} from "./compiler/index.ts";
 /** 字体名注册表（Resources/Fonts 扫描；宿主 Vite 插件与构建期检查同源消费） */
 export {
   FONTS_DIR_NAME,
@@ -68,4 +68,4 @@ export {
   fontNameSet,
   scanFontRegistry,
   type FontEntry,
-} from "./fonts";
+} from "./fonts/index.ts";

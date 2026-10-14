@@ -1,8 +1,8 @@
 /**
  * 表达式求值与名称解析。
  */
-import { ExpressionError, evaluateExpression, type ExprValue } from "../expr";
-import type { OpContext } from "../internal";
+import { ExpressionError, evaluateExpression, type ExprValue } from "../expr/index.ts";
+import type { OpContext } from "../internal/index.ts";
 
 /**
  * set/define 负载值（表达式一律 {} 包裹，字符串原样即字面量）：

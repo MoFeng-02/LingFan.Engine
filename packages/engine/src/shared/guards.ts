@@ -8,10 +8,10 @@
  * 判定只回答「形状对不对」，不抛错也不兜底；判不过就由调用方 fail-closed
  * （拒绝整个载荷，而不是猜一个默认值）。
  */
-import { ELEMENT_TYPES, type ElementType } from "../contracts/element";
-import { HOST_OS_VALUES, type HostForm, type HostOs } from "../contracts/host";
-import type { OrientationMode } from "../contracts/shell";
-import type { SceneType, StoryColumn } from "../contracts/story";
+import { ELEMENT_TYPES, type ElementType } from "../contracts/element.ts";
+import { HOST_OS_VALUES, type HostForm, type HostOs } from "../contracts/host.ts";
+import type { OrientationMode } from "../contracts/shell.ts";
+import type { SceneType, StoryColumn } from "../contracts/story/index.ts";
 
 /** 是否是 36 个舞台元素类型之一 */
 export function isElementType(value: unknown): value is ElementType {

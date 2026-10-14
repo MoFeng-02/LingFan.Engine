@@ -10,7 +10,7 @@ import {
   type ExpressionWarning,
   type OperandKind,
   type VarKind,
-} from "./token";
+} from "./token.ts";
 
 /**
  * 递归下降判类器——**优先级链与引擎逐层一致**：`?: → || → && → ==/!= → 比较 →
@@ -25,13 +25,22 @@ import {
 export class ExpressionAuditor {
   private pos = 0;
 
+  private readonly tokens: readonly AuditToken[];
+  private readonly pending: Array<{
+    rule: ExpressionWarning["rule"];
+    message: string;
+  }>;
+
   constructor(
-    private readonly tokens: readonly AuditToken[],
-    private readonly pending: Array<{
+    tokens: readonly AuditToken[],
+    pending: Array<{
       rule: ExpressionWarning["rule"];
       message: string;
     }>,
-  ) {}
+  ) {
+    this.tokens = tokens;
+    this.pending = pending;
+  }
 
   /** 入口：整体解析一次；任何结构不理解 / 残留 token ⇒ 全部放弃（零误报） */
   audit(): void {

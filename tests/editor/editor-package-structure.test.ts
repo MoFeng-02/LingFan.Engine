@@ -4,7 +4,9 @@
  * tests/engine/runtime/scene-type.test.ts 的手法，用打包器的 ?raw 读取把源码
  * 当文本断言（前端不碰文件系统）：
  * 1. 契约层只放类型：contracts/** 内不得出现 export function / export class；
- * 2. 包内无跨域深引：from "../<域>/<文件>" 形态为 0（指向域出口的 from "../<域>" 合规）；
+ * 2. 包内无跨域深引：from "../<域>/<文件>" 形态为 0；指向域出口的导入合规且不计数，
+ *    合规形态 = from "../<域>" 或其完整指定写法 from "../<域>/index.ts"（包源码须
+ *    可被原生 ESM 解析，域出口同样带 /index.ts 后缀）；
  * 3. 被拆掉的旧扁平文件不得复活：同名 .ts 会优先于目录被解析，残留 = 拆分失效。
  * 每条断言先自检扫描面非空并验证正则可命中已知样本，防止「glob 写错 ⇒ 空扫描 ⇒ 恒真」。
  */
@@ -20,12 +22,13 @@ const EDITOR_SOURCES = import.meta.glob("../../packages/editor/src/**/*.ts", {
 const SOURCE_KEYS = Object.keys(EDITOR_SOURCES);
 
 // 跨域深引判据（与包内既有扫描口径一致）：`from "../<域>/<文件>"` 与
-// `from "../../<域>/<文件>"` 都算跨域深引，与深度无关；`from "../<域>"` 指向
-// 目标域出口的导入是合规形态，不计数。两种深度必须同时覆盖，否则会漏计
-// script/words/ 下深度 2 的深引而假绿。shared 遵循同一「出口 + 实现叶」
-// 约定，但不在本判据的域清单里（沿用注册口径）。
+// `from "../../<域>/<文件>"` 都算跨域深引，与深度无关；指向域出口的导入合规，
+// 覆盖裸出口 `from "../<域>"` 与完整指定出口 `from "../<域>/index.ts"`（负向先行
+// 断言排除 index.ts——域出口必须完整指定，这是全仓导入规则，不是深引豁免）。
+// 两种深度必须同时覆盖，否则会漏计 script/words/ 下深度 2 的深引而假绿。shared
+// 遵循同一「出口 + 实现叶」约定，但不在本判据的域清单里（沿用注册口径）。
 const DEEP_IMPORT_PATTERN =
-  /from "\.\.\/(\.\.\/)?(chapters|contracts|diagnostics|editing|element|i18n|layout|schema|script)\//;
+  /from "\.\.\/(\.\.\/)?(chapters|contracts|diagnostics|editing|element|i18n|layout|schema|script)\/(?!index\.ts)/;
 
 // 契约层只放类型的判据：export function / export class（含 async / 无前缀形态），
 // export type / export const / export interface 不受限。
@@ -73,13 +76,17 @@ describe("编辑器包结构不变式", () => {
 
   it("包内无跨域深引：两种深度都算，域出口合规不计数", () => {
     expect(SOURCE_KEYS.length).toBeGreaterThanOrEqual(60);
-    // 正/负样本自检：正则必须命中两种深度的深引、放过出口形态。
+    // 正/负样本自检：正则必须命中两种深度的深引、放过两种形态的域出口。
     expect(DEEP_IMPORT_PATTERN.test('from "../schema/opSchemas";')).toBe(true);
     expect(DEEP_IMPORT_PATTERN.test('from "../../schema/opSchemas";')).toBe(
       true,
     );
     expect(DEEP_IMPORT_PATTERN.test('from "../schema";')).toBe(false);
     expect(DEEP_IMPORT_PATTERN.test('from "../../i18n";')).toBe(false);
+    expect(DEEP_IMPORT_PATTERN.test('from "../schema/index.ts";')).toBe(false);
+    expect(DEEP_IMPORT_PATTERN.test('from "../../i18n/index.ts";')).toBe(
+      false,
+    );
 
     const offenders = SOURCE_KEYS.filter((key) => key.includes("/src/")).filter(
       (key) => DEEP_IMPORT_PATTERN.test(EDITOR_SOURCES[key]),

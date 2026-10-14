@@ -5,9 +5,9 @@
  * 检查点是回溯与存档的最小单位：坐标（列 + 列内位置）加一份完整快照。
  * 这些结构只在运行层内部流转，不进包出口。
  */
-import type { ColumnCoordinate, StoryCommand } from "../../contracts";
-import type { ExprValue } from "../expr";
-import type { Scope } from "../scope";
+import type { ColumnCoordinate, StoryCommand } from "../../contracts/index.ts";
+import type { ExprValue } from "../expr/index.ts";
+import type { Scope } from "../scope.ts";
 
 /**
  * 快照：状态 + 随机数状态 + 帧栈 + 函数表。

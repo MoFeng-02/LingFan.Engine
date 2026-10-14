@@ -1,6 +1,6 @@
-import { scanFile } from "./scan-file";
-import type { CellIssue, CellScan, ScanCellsOptions } from "./types";
-import { DEFAULT_GLOBAL_WHITELIST } from "./whitelist";
+import { scanFile } from "./scan-file.ts";
+import type { CellIssue, CellScan, ScanCellsOptions } from "./types.ts";
+import { DEFAULT_GLOBAL_WHITELIST } from "./whitelist.ts";
 
 /**
  * 全树扫描 + 聚合去重/冲突（输入 = 相对路径 → 文本；不含 gen/，由调用方过滤）。

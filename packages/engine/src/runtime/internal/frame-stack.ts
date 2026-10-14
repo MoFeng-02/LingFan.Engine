@@ -9,13 +9,13 @@ import {
   isReplayableColumn,
   type StoryCommand,
   type StoryColumn,
-} from "../../contracts";
-import { loadElements } from "../../data";
-import type { ExprValue } from "../expr";
-import { Scope } from "../scope";
-import { parseMenuReturn } from "./helpers";
-import type { Frame, LoopState } from "./frame";
-import type { OpContext } from "./context";
+} from "../../contracts/index.ts";
+import { loadElements } from "../../data/index.ts";
+import type { ExprValue } from "../expr/index.ts";
+import { Scope } from "../scope.ts";
+import { parseMenuReturn } from "./helpers.ts";
+import type { Frame, LoopState } from "./frame.ts";
+import type { OpContext } from "./context.ts";
 
 /** 防死循环安全网：单个循环帧的迭代上限（fail-closed） */
 const LOOP_LIMIT = 10000;

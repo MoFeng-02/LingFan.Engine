@@ -13,5 +13,5 @@ export {
   type VarHandle,
   type VarKind,
   type VarTree,
-} from "./registry";
-export { cond, expr } from "./build";
+} from "./registry.ts";
+export { cond, expr } from "./build.ts";

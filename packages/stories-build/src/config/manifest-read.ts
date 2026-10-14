@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { MANIFEST_FILE } from "@lingfan/engine";
-import { StoryBuildError } from "../shared";
+import { StoryBuildError } from "../shared/index.ts";
 
 /**
  * 读取工程清单（`<root>/<resourcesDir>/project.json`）。

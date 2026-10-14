@@ -7,8 +7,13 @@ export class Scope {
   /** 本层变量表；名字只在声明层可见，子层同名写入落哪一层由 assignExisting 决定 */
   private readonly vars = new Map<string, unknown>();
 
+  /** 父层（链根为 null）；构造私有，只能经 root/enterChild 建链 */
+  private readonly parent: Scope | null;
+
   /** @param parent 父层（链根传 null）；构造私有，只能经 root/enterChild 建链 */
-  private constructor(private readonly parent: Scope | null) {}
+  private constructor(parent: Scope | null) {
+    this.parent = parent;
+  }
 
   /** 新作用域链的根（执行器中即「列级」层） */
   static root(): Scope {

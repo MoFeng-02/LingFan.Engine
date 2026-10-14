@@ -2,7 +2,7 @@
  * 故事格式的供给端口：语言文件从哪来（按需加载）。
  * 数据形态（故事、清单、译文文件）见同目录 `entities.ts`。
  */
-import type { I18nOverlayFile } from "./entities";
+import type { I18nOverlayFile } from "./entities.ts";
 
 /**
  * I18N overlay 供给端口（按需加载；组合根经 EngineOptions 注入；缺省 = 原文直出）。

@@ -19,9 +19,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as ts from "typescript";
-import { evalConstModule } from "./const-eval";
-import type { CompilerConstValues } from "../compiler";
-import { StoryBuildError } from "../shared";
+import { evalConstModule } from "./const-eval.ts";
+import type { CompilerConstValues } from "../compiler/index.ts";
+import { StoryBuildError } from "../shared/index.ts";
 
 /** 词汇层两包不触发求值：editor 是词汇出口（图谱层按词/命名空间绑定），engine 不参与创作导入。 */
 const RESERVED_SPECS: ReadonlySet<string> = new Set([

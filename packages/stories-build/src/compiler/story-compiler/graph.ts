@@ -6,7 +6,7 @@ export type {
   ModuleRecord,
   StoryConfig,
   Graph,
-} from "./graph/core";
-export { DiagBag, toPosix } from "./graph/core";
-export { foldConst } from "./graph/fold";
-export { buildGraph, resolveStart } from "./graph/build";
+} from "./graph/core.ts";
+export { DiagBag, toPosix } from "./graph/core.ts";
+export { foldConst } from "./graph/fold.ts";
+export { buildGraph, resolveStart } from "./graph/build.ts";

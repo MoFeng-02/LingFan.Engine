@@ -3,9 +3,9 @@ import {
   quoteForText,
   generateValue,
   generateDictLiteral,
-} from "../../literals";
-import { StoryCommand } from "../../../../contracts";
-import { GenerateContext } from "../context";
+} from "../../literals.ts";
+import type { StoryCommand } from "../../../../contracts/index.ts";
+import type { GenerateContext } from "../context.ts";
 
 /**
  * 投影本族的 op 行（`array` `array_push` `array_pop` `dict` `dict_set` `random`）。

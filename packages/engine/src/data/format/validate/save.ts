@@ -2,7 +2,7 @@
  * save 族的命令负载结构校验（validateCommand 的族分片）。
  * 只判本族 op 的必填与类型，未知字段不在此拒绝（编辑期 schema 负责）。
  */
-import { requireNonEmptyString } from "../guards";
+import { requireNonEmptyString } from "../guards.ts";
 
 /**
  * 校验本族 op 的负载（4 个 op：`save` `load` `save_delete` `auto_save`）。

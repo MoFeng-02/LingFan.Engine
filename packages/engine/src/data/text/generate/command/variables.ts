@@ -1,7 +1,7 @@
 /** variables 族的文本投影。 */
-import { quoteForText, generateValue } from "../../literals";
-import { StoryCommand } from "../../../../contracts";
-import { GenerateContext } from "../context";
+import { quoteForText, generateValue } from "../../literals.ts";
+import type { StoryCommand } from "../../../../contracts/index.ts";
+import type { GenerateContext } from "../context.ts";
 
 /**
  * 投影本族的 op 行（`set` `define` `let` `local` `undef`）。

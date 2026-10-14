@@ -8,20 +8,20 @@
  * 循环用「循环帧」表达：帧上挂一个循环描述，帧耗尽时由解释循环重判条件或推进下一轮，
  * 于是 while/for/foreach 三种写法共享同一套推进逻辑。
  */
-import type { GuardContext, StoryCommand } from "../../contracts";
+import type { GuardContext, StoryCommand } from "../../contracts/index.ts";
 import {
   ExpressionError,
   evaluateExpression,
   exprEquals,
   type ExprValue,
-} from "../expr";
+} from "../expr/index.ts";
 import {
   GuardFailure,
   type Frame,
   type LoopState,
   type OpContext,
-} from "../internal";
-import { findJsonValueError } from "../stateContract";
+} from "../internal/index.ts";
+import { findJsonValueError } from "../stateContract.ts";
 
 /** if/elif/else：条件执行期求值；分支体 = 块帧 + 块级作用域 */
 export function execIf(

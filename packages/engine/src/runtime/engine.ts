@@ -8,34 +8,34 @@ import type {
   EventListener, GuardFn, I18nPort, MinigameRegistration, MinigameResult,
   OpExtension, OutboundPayload, SaveDataV1, SaveMode, SavePort, StateListener,
   Story, StoryColumn, StoryCommand, SaveOptions,
-} from "../contracts";
+} from "../contracts/index.ts";
 import {
   gameScopedKey, type ExtensionOpResult, type GameStateWriter, type InteractionResult,
-} from "../contracts";
-import { buildMinigameRegistry, buildOpRegistry } from "./opRegistry";
-import type { RegisteredOp } from "./opRegistry";
-import { runDispatch } from "./dispatch";
+} from "../contracts/index.ts";
+import { buildMinigameRegistry, buildOpRegistry } from "./opRegistry.ts";
+import type { RegisteredOp } from "./opRegistry.ts";
+import { runDispatch } from "./dispatch.ts";
 import {
   abortExtensionOp, abortInteraction, abortMinigame, resolveExtensionOp,
   resolveInteraction, resolveMinigame, runElementOps,
-} from "./ops";
+} from "./ops/index.ts";
 import {
   emitChange, emitErrorEvent, evalValue, publishEvent, readVariable,
   rejectBadInstanceZ, resolveName, setGlobal, setInstanceZ, setSilentKey,
   setSystem, writeExternal,
-} from "./state";
+} from "./state/index.ts";
 import {
   autoSaveAtCheckpoint, back, checkpointCoord, columnFrame, columnFrameAt,
   commitCheckpoint, flushPendingCheckpoint, forward, historyCursor,
   historyLength, historyView, isCurrentColumnReplayable, lastReplayableCursor,
   restore, rollbackTo, takeSnapshot,
-} from "./history";
+} from "./history/index.ts";
 import {
   exportSave, importSave, resolveSaveExtensions, resolveSaveMinigames,
   restoreSaveExtensions, tryMigrateSave,
-} from "./save";
-import { type ExprValue } from "./expr";
-import { translate, translateElements } from "./i18n";
+} from "./save/index.ts";
+import { type ExprValue } from "./expr/index.ts";
+import { translate, translateElements } from "./i18n/index.ts";
 import {
   abortExternalTakeovers, advance, animationFinished, animations,
   beginLoopIteration, choose, clearTimer, columnById, dispose, draw, elements,
@@ -44,14 +44,14 @@ import {
   onStateChanged, pushIterateLoop, reloadStory, reportMediaPosition, save,
   setLanguage, shakeFinished, start, transitionFinished, videoFinished,
   type Checkpoint, type Frame, type LoopState, type OpContext,
-} from "./internal";
-import type { NameResolver } from "./resolver";
+} from "./internal/index.ts";
+import type { NameResolver } from "./resolver.ts";
 
 /**
  * 装配契约（构造选项与守卫）定义在契约层，此处按原路径转出，
  * 既有消费方无需改动即可继续从本模块取；后续并入包出口时统一改走包出口。
  */
-export type { EngineOptions, GuardContext, GuardFn } from "../contracts";
+export type { EngineOptions, GuardContext, GuardFn } from "../contracts/index.ts";
 
 /**
  * 叙事引擎的公开门面与状态容器。

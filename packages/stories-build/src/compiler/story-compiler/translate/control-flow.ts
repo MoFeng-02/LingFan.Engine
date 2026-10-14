@@ -1,18 +1,18 @@
 import * as ts from "typescript";
 import type { StoryCommand } from "@lingfan/engine";
-import { foldConst } from "../graph";
+import { foldConst } from "../graph.ts";
 import {
   diag,
   lookupBinding,
   lookupScope,
   isAssignmentOperator,
-} from "./shared";
-import type { BodyCtx, Scope } from "./shared";
-import { statePath } from "./expr-core";
-import { lowerCond, lowerValue, loweredToScriptValue } from "./expr";
-import { callWord } from "./words";
-import { emitAssignment, translateIncrement } from "./assign";
-import { translateStatement, translateStatements } from "./statements";
+} from "./shared.ts";
+import type { BodyCtx, Scope } from "./shared.ts";
+import { statePath } from "./expr-core.ts";
+import { lowerCond, lowerValue, loweredToScriptValue } from "./expr.ts";
+import { callWord } from "./words.ts";
+import { emitAssignment, translateIncrement } from "./assign.ts";
+import { translateStatement, translateStatements } from "./statements.ts";
 
 function isUnlabeledBreak(stmt: ts.Statement): boolean {
   return ts.isBreakStatement(stmt) && stmt.label === undefined;

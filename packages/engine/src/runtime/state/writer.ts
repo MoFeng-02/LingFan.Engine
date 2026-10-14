@@ -1,9 +1,9 @@
 /**
  * 全局层、系统层与外部玩法状态的写入通道。
  */
-import { GAME_SYSTEM_ID_PATTERN, RESERVED_STATE_KEYS } from "../../contracts";
-import type { OpContext } from "../internal";
-import { findJsonValueError } from "../stateContract";
+import { GAME_SYSTEM_ID_PATTERN, RESERVED_STATE_KEYS } from "../../contracts/index.ts";
+import type { OpContext } from "../internal/index.ts";
+import { findJsonValueError } from "../stateContract.ts";
 
 /**
  * 全局层写入（作者 `set`/`define` / 小游戏奖励 / 数组族 op 的唯一汇聚点）。

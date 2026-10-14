@@ -5,13 +5,13 @@
  */
 
 import { z } from "zod";
-import type { Diagnostic } from "../contracts";
-import { escapePointerToken } from "../contracts";
+import type { Diagnostic } from "../contracts/index.ts";
+import { escapePointerToken } from "../contracts/index.ts";
 import type { OpExtension } from "@lingfan/engine";
 import { validateElementNode } from "@lingfan/engine";
-import { validateCommand } from "./opSchemas";
-import { mergeOpSurface } from "./surface";
-import { walkStoryCommands, walkStoryElements } from "./walk";
+import { validateCommand } from "./opSchemas/index.ts";
+import { mergeOpSurface } from "./surface.ts";
+import { walkStoryCommands, walkStoryElements } from "./walk.ts";
 
 const NonEmpty = z.string().min(1);
 

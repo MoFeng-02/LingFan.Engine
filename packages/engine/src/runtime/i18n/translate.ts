@@ -1,8 +1,8 @@
 /**
  * 文本与元素实例的本地化。
  */
-import type { ElementInstance } from "../../contracts";
-import type { OpContext } from "../internal";
+import type { ElementInstance } from "../../contracts/index.ts";
+import type { OpContext } from "../internal/index.ts";
 
 /**
  * Translate：命中即用译文（含空串译文），未命中/
