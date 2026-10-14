@@ -8,6 +8,7 @@ import type { OpExtension } from "./extension.ts";
 import type { MinigameRegistration } from "./minigame.ts";
 import type { SaveDataV1, SaveMode, SavePort } from "./save.ts";
 import type { I18nPort } from "./story/index.ts";
+import type { TimerPort } from "./runtime/timer.ts";
 
 /** 引擎构造选项（全部可选；缺省即内建行为） */
 export interface EngineOptions {
@@ -21,6 +22,12 @@ export interface EngineOptions {
   saveMode?: SaveMode;
   /** 译文供给端口（setLanguage 按需加载译文；缺省 = 原文直出） */
   i18nPort?: I18nPort;
+  /**
+   * 定时器端口（wait/pause 定时解除与偏好防抖的延迟回调来源；缺省 = 内建
+   * `hostTimer`，行为与直接调用宿主 `setTimeout` 一致）。无 JS 运行时的宿主
+   * （原生编译目标）注入自己的实现即可。
+   */
+  timerPort?: TimerPort;
   /** 自定义 op 扩展（构造期注册校验，fail-fast；缺省 = 无扩展，unknown-op 口径不变） */
   extensions?: readonly OpExtension[];
   /**

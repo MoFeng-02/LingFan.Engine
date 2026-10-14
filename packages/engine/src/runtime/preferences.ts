@@ -12,10 +12,13 @@ import type {
   PlayerKeymap,
   PlayerPrefsData,
   PreferencesPort,
+  TimerHandle,
+  TimerPort,
 } from "../contracts/index.ts";
 import {
   DEFAULT_PLAYER_PREFS,
   KEYMAP_ACTIONS,
+  hostTimer,
   isOrientationMode,
 } from "../contracts/index.ts";
 import { clamp01 } from "../shared/index.ts";
@@ -114,16 +117,21 @@ export class PlayerPreferences {
   /** 变更订阅者；Set 保证同一监听器重复注册也只收到一次回调 */
   private readonly listeners = new Set<PrefsListener>();
   /** 防抖计时器句柄，非 null 表示还有一次落盘待补发 */
-  private pendingSave: ReturnType<typeof setTimeout> | null = null;
+  private pendingSave: TimerHandle | null = null;
 
   /** 持久化端口；缺省 = 纯内存模式（不落盘，hydrate/dispose 均为空操作） */
   private readonly port?: PreferencesPort;
 
+  /** 定时器端口（防抖延迟回调来源；缺省 hostTimer = 宿主全局定时器） */
+  private readonly timer: TimerPort;
+
   /**
    * @param port 持久化端口；缺省 = 纯内存模式（不落盘，hydrate/dispose 均为空操作）
+   * @param timer 定时器端口；缺省 = 宿主全局定时器（行为与直接 setTimeout 一致）
    */
-  constructor(port?: PreferencesPort) {
+  constructor(port?: PreferencesPort, timer?: TimerPort) {
     this.port = port;
+    this.timer = timer ?? hostTimer;
     this.data = sanitize(undefined);
   }
 
@@ -296,7 +304,7 @@ export class PlayerPreferences {
   /** 会话收尾：补发未落盘的末次修改（防抖尾结算） */
   dispose(): void {
     if (this.pendingSave === null || this.port === undefined) return;
-    clearTimeout(this.pendingSave);
+    this.timer.clear(this.pendingSave);
     this.pendingSave = null;
     void this.port.save(this.snapshot()).catch(() => {}); // 持久化失败不影响运行时
   }
@@ -320,8 +328,8 @@ export class PlayerPreferences {
   /** 防抖落盘：静默窗内的连续写入只落最后一次；无端口时跳过；落盘失败被忽略 */
   private scheduleSave(): void {
     if (this.port === undefined) return;
-    if (this.pendingSave !== null) clearTimeout(this.pendingSave);
-    this.pendingSave = setTimeout(() => {
+    if (this.pendingSave !== null) this.timer.clear(this.pendingSave);
+    this.pendingSave = this.timer.set(() => {
       this.pendingSave = null;
       void this.port?.save(this.snapshot()).catch(() => {});
     }, PERSIST_DEBOUNCE_MS);
