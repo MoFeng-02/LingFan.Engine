@@ -2,8 +2,8 @@
  * 槽位面板的数据装配：把存档端口的清单与逐槽快照整理成可直接渲染的视图。
  *
  * 面板只负责「呈现槽位」：写读与校验由引擎命令面承担（`engine.save` /
- * `engine.load`），此处读取存档端口仅为取标题与缩略图；读取失败按空槽呈现，
- * 真实读档失败由引擎 fail-closed 上报。
+ * `engine.load`），此处读取存档端口仅为取标题与缩略图；个别槽读取失败只丢这两项，
+ * 不影响整张面板装出来，真实读档失败由引擎 fail-closed 上报。
  *
  * 本模块平台无关：不触碰任何框架、DOM 或宿主全局。
  */
@@ -16,9 +16,9 @@ export type SlotPanelMode = "save" | "load";
 export interface SlotView {
   /** 槽位 id（引擎命令参数） */
   id: string;
-  /** 槽位显示名 */
+  /** 槽位显示名（与提示条文案同源，见 {@link defaultSlotLabel}） */
   label: string;
-  /** 无存档（点选后仍走引擎命令面） */
+  /** 无存档（存档模式仍可点选=覆盖写入；读档模式不可点选，见 {@link canChooseSlot}） */
   empty: boolean;
   /** 存档时间戳（无存档时不呈现） */
   timestamp?: number;
@@ -72,7 +72,9 @@ export async function loadSlotViews(
     const summary = byId.get(id);
     let meta: { title?: string; screenshot?: string } = {};
     if (summary !== undefined) {
-      meta = parseSlotMeta(await options.savePort.read(id));
+      // 这次读只用来取标题与缩略图，端口拒读（旧档高水位、安全策略、记录损坏）不该
+      // 让整张面板装不出来：那种槽位照列，只是没有标题与缩略图。
+      meta = await options.savePort.read(id).then(parseSlotMeta, () => ({}));
     }
     views.push({
       id,
@@ -86,7 +88,28 @@ export async function loadSlotViews(
   return views;
 }
 
-/** 槽位显示名的缺省规则：`slot_1` → `槽位 1`（宿主可用 labelFor 覆盖） */
-function defaultSlotLabel(id: string): string {
+/**
+ * 槽位显示名的缺省规则：`slot_1` → `槽位 1`，其余 id 原样透传。
+ *
+ * 导出是为了让槽位名的规则全仓只有一处：面板的 `labelFor` 与提示条的
+ * `labelFor` 都缺省到它（宿主自定义命名时应把同一个函数传给两处），
+ * 否则面板写「槽位 1」、提示条写 `slot_1`，同一次操作在两处叫法不同。
+ */
+export function defaultSlotLabel(id: string): string {
   return id.startsWith("slot_") ? `槽位 ${id.slice(5)}` : id;
+}
+
+/**
+ * 槽位是否可点选。
+ *
+ * 读档模式下的空槽点下去必然失败（引擎读不到存档即 fail-closed），玩家只会收到
+ * 一条报错；所以空槽在读档模式置灰，在存档模式下可点——那是一次覆盖写入。
+ * `mode` 为 null（面板未打开）时一律不可点。
+ */
+export function canChooseSlot(
+  view: SlotView,
+  mode: SlotPanelMode | null,
+): boolean {
+  if (mode === "save") return true;
+  return mode === "load" && !view.empty;
 }

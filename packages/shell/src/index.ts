@@ -25,6 +25,8 @@ export {
 /** 面板数据：历史聚合与槽位视图 */
 export {
   buildHistoryBlocks,
+  canChooseSlot,
+  defaultSlotLabel,
   filterHistoryEntries,
   loadSlotViews,
   parseSlotMeta,

@@ -15,6 +15,7 @@ import {
   type PlayerPrefsData,
 } from "@lingfan/engine";
 import { renderDialogueLine } from "@lingfan/ui";
+import { canChooseSlot } from "@lingfan/shell";
 import type { HistoryBlock, SlotPanelMode, SlotView } from "../host";
 
 defineProps<{
@@ -220,10 +221,13 @@ const emit = defineEmits<{
         :key="v.id"
         type="button"
         class="slot-cell"
+        :disabled="!canChooseSlot(v, slotPanel)"
+        :title="v.empty && slotPanel === 'load' ? '空槽位' : undefined"
         @click.stop="emit('choose-slot', v)"
       >
         <img v-if="v.screenshot" :src="v.screenshot" alt="" />
-        <span v-else class="slot-empty">空</span>
+        <!-- 占位块有两义：没有存档，或有存档但取不到缩略图（端口拒读旧档等） -->
+        <span v-else class="slot-empty">{{ v.empty ? "空" : "无预览" }}</span>
         <span class="slot-label">{{ v.label }}</span>
         <span v-if="v.title" class="slot-title">{{ v.title }}</span>
         <span v-if="v.timestamp" class="slot-time">{{
@@ -261,8 +265,14 @@ const emit = defineEmits<{
   cursor: pointer;
 }
 
-.slot-cell:hover {
+.slot-cell:not(:disabled):hover {
   border-color: #7aa2f7;
+}
+
+/* 读档模式下的空槽：点下去只会换来一条读档失败，故置灰不可点 */
+.slot-cell:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .slot-cell img {
