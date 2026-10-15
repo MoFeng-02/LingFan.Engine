@@ -7,7 +7,7 @@ import { validateInstanceZ } from "../column.ts";
 import { isPlainObject } from "../../../shared/index.ts";
 
 /**
- * 校验本族 op 的负载（7 个 op：`jump` `navigate` `break` `continue` `call` `return` `minigame`）。
+ * 校验本族 op 的负载（9 个 op：`jump` `navigate` `break` `continue` `call` `return` `minigame` `character` `uncharacter`）。
  *
  * 入参由分发骨架给出：`cmd` 已收窄为非空 op 的对象，`at` 是报错定位前缀，`issues` 是收集器。
  * 无返回值，问题通过 `issues` 交付；不匹配的 op 直接落到函数末尾，等于放行（结构从简）。
@@ -42,6 +42,12 @@ export function validateFlowCommand(
       break;
     case "return":
       break; // value 可选
+    case "character":
+      requireNonEmptyString(cmd.key, `${at}.key`, issues);
+      break;
+    case "uncharacter":
+      requireNonEmptyString(cmd.key, `${at}.key`, issues);
+      break;
     case "minigame": {
       requireNonEmptyString(cmd.game, `${at}.game`, issues);
       validateInstanceZ(cmd, at, issues); // minigame 的实例 z（minigame 层）

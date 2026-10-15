@@ -31,7 +31,7 @@ export function checkpointCoord(
   return { ...ctx.coord };
 }
 
-/** 快照捕获：状态 + rngState + 帧栈 + 函数表（Scope 深拷贝，回溯恢复后互不串扰） */
+/** 快照捕获：状态 + rngState + 帧栈 + 函数表 + 角色表（Scope 深拷贝，回溯恢复后互不串扰） */
 export function takeSnapshot(
   ctx: OpContext,
   coord: ColumnCoordinate,
@@ -45,6 +45,7 @@ export function takeSnapshot(
       coord: { ...ctx.coord },
       functions: [...ctx.functions.entries()],
       deleted: [...ctx.deleted],
+      characters: [...ctx.characters.entries()],
     },
   };
 }
@@ -58,6 +59,9 @@ export function restore(ctx: OpContext, cp: Checkpoint): void {
   ctx.functions = new Map(cp.snapshot.functions);
   ctx.deleted.clear();
   for (const key of cp.snapshot.deleted) ctx.deleted.add(key);
+  // 角色表整体回到快照时刻：注销/覆盖注册随回溯回滚（写时复制仅承诺 state；
+  // 角色表可能存外部可变引用，重建后整体重灌避免残留）
+  ctx.characters = new Map(cp.snapshot.characters);
   ctx.pendingSay = null;
   // 回溯清挂起的 wait 定时器：重放若落在另一 wait 上，旧定时器不得提前双触发
   ctx.clearTimer();

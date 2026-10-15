@@ -1,11 +1,11 @@
 ---
 title: 对话与叙事指令
-description: say、nvl、character、notify、wait、pause 的签名、参数与常见错误。六条里 say、wait、pause 建立等待点，notify、nvl、character 不停。
+description: say、nvl、character、uncharacter、notify、wait、pause 的签名、参数与常见错误。七条里 say、wait、pause 建立等待点，notify、nvl、character、uncharacter 不停。
 ---
 
 import OpCard from "../../../../components/OpCard.astro";
 
-`say` 把一句话送上屏并停下来，`nvl` 换成全屏累积，`character` 给说话人配色，`notify` 弹一条浮层就走，`wait` 和 `pause` 拖时间。六条里建立等待点的是 `say`、`wait`、`pause`，`notify`、`nvl`、`character` 执行完就往下走。
+`say` 把一句话送上屏并停下来，`nvl` 换成全屏累积，`character` 给说话人配色，`uncharacter` 注销角色，`notify` 弹一条浮层就走，`wait` 和 `pause` 拖时间。七条里建立等待点的是 `say`、`wait`、`pause`，`notify`、`nvl`、`character`、`uncharacter` 执行完就往下走。
 
 ## 指令
 
@@ -120,6 +120,43 @@ say "我先走了。" speaker="阿澈"
 角色表不进快照也不进存档，所以回溯不会把说话人配色退回去。它是全局声明，写得越早越省事。
 
 `color` 的优先级是 `say color=` > `character color` > 空串。两头都不写，这一句就没有颜色。
+:::
+
+</OpCard>
+
+### uncharacter
+
+<OpCard name="uncharacter" summary="注销一个说话人，之后的 say 不再套它的配色，也不停。" rollback="full" since="0.1.0">
+
+**签名**
+
+```text
+uncharacter "key"
+```
+
+**参数**
+
+| 字段  | 类型   | 说明                                       |
+| ----- | ------ | ------------------------------------------ |
+| `key` | string | 必填。要注销的角色键，跟 `character` 对应 |
+
+**最小示例**
+
+```text
+character "阿澈" color="#7aa2f7"
+say "我先走了。" speaker="阿澈"
+uncharacter "阿澈"
+say "（这句没有说话人配色了。）" speaker="阿澈"
+```
+
+**常见错误**
+
+:::caution
+注销一个没登记过的键不报错——引擎发一条 `character.missing` 知情事件继续往下走，宿主可以监听它做提示，故事本身不断。
+
+注销随回溯回滚：回溯到注销之前的等待点，角色会回来。它登记的角色一样不进存档——存档只记状态，不记角色表。
+
+注销之后再 `say speaker=` 同一个键，就查不到角色了，这句按没有说话人渲染。
 :::
 
 </OpCard>

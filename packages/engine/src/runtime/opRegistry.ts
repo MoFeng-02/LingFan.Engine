@@ -71,6 +71,7 @@ export const BUILTIN_OP_NAMES: ReadonlySet<string> = new Set([
   "random",
   "nvl",
   "character",
+  "uncharacter",
   "bgm",
   "se",
   "ambient",

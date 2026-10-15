@@ -80,6 +80,8 @@ const characterSchema = z.strictObject({
   screen: NonEmpty.optional(),
 });
 
+const uncharacterSchema = z.strictObject({ key: NonEmpty });
+
 const waitSchema = z.strictObject({
   seconds: z.number(),
   skipable: z.boolean().optional(),
@@ -319,6 +321,7 @@ export {
   notifySchema,
   nvlSchema,
   characterSchema,
+  uncharacterSchema,
   waitSchema,
   pauseSchema,
   randomSchema,

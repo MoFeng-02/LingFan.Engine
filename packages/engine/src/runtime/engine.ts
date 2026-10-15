@@ -92,8 +92,8 @@ export class StoryEngine {
   private readonly texts: EngineTexts;
   /** 当前等待能否被 `advance()` 解除（wait 的 skipable 且非 hard/pause）；只在引擎内部作为推进判据 */
   private waitSkipable = false;
-  /** 角色定义注册表（character op 注册，say speaker 匹配自动套样式） */
-  private readonly characters = new Map<string, CharacterDef>();
+  /** 角色定义注册表（character 注册 / uncharacter 注销；随快照恢复） */
+  private characters = new Map<string, CharacterDef>();
   /** 函数注册表（func 执行期注册，call 按名查表；随快照恢复） */
   private functions = new Map<
     string,

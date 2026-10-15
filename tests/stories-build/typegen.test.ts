@@ -260,7 +260,7 @@ export const vars = defineVars({ "player.hp": "num" });
     });
 
     await expect(buildStories(root)).rejects.toThrow(
-      /vars 导出须为键集对象/,
+      /vars 须为键集对象/,
     );
     expect(() => readTypegen(root)).toThrow();
   });

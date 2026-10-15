@@ -1,9 +1,9 @@
 ---
 title: op 指令总览
-description: 65 个内建指令按 9 个域分组，每域一页。等待点只有 8 个，内建指令不能被自定义 op 覆盖。
+description: 66 个内建指令按 9 个域分组，每域一页。等待点只有 8 个，内建指令不能被自定义 op 覆盖。
 ---
 
-内建指令 65 个，按用途分成 9 个域，每个域一页。这一页是入口：按名字找到指令，点进去看签名、参数和坑。
+内建指令 66 个，按用途分成 9 个域，每个域一页。这一页是入口：按名字找到指令，点进去看签名、参数和坑。
 
 ## 两种写法
 
@@ -37,7 +37,7 @@ say "夜里十一点，雨还没停。" speaker="阿澈"
 | `minigame`    | `minigame`    | 宿主回填结果                        |
 | `interaction` | `interaction` | 宿主回填结果                        |
 
-其余 57 条都不停，执行完就往下走。最容易记错的是 `video`——它开始播放就继续，要「播完再走」得用 `cutscene`。
+其余 58 条都不停，执行完就往下走。最容易记错的是 `video`——它开始播放就继续，要「播完再走」得用 `cutscene`。
 
 等待点同时是检查点坐标。回退落回上一个等待点，读档也落在等待点上，所以等待点也就是存档点。
 
@@ -45,7 +45,7 @@ say "夜里十一点，雨还没停。" speaker="阿澈"
 
 | 域                                          | 指令                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [对话与叙事](/reference/ops/dialogue/)      | [`say`](/reference/ops/dialogue/#op-say) · [`nvl`](/reference/ops/dialogue/#op-nvl) · [`character`](/reference/ops/dialogue/#op-character) · [`notify`](/reference/ops/dialogue/#op-notify) · [`wait`](/reference/ops/dialogue/#op-wait) · [`pause`](/reference/ops/dialogue/#op-pause)                                                                                                                                                                                                                                                                                                                           |
+| [对话与叙事](/reference/ops/dialogue/)      | [`say`](/reference/ops/dialogue/#op-say) · [`nvl`](/reference/ops/dialogue/#op-nvl) · [`character`](/reference/ops/dialogue/#op-character) · [`uncharacter`](/reference/ops/dialogue/#op-uncharacter) · [`notify`](/reference/ops/dialogue/#op-notify) · [`wait`](/reference/ops/dialogue/#op-wait) · [`pause`](/reference/ops/dialogue/#op-pause)                                                                                                                                                                                                                                                                                                                             |
 | [流程与跳转](/reference/ops/flow/)          | [`jump`](/reference/ops/flow/#op-jump) · [`navigate`](/reference/ops/flow/#op-navigate) · [`func`](/reference/ops/flow/#op-func) · [`call`](/reference/ops/flow/#op-call) · [`return`](/reference/ops/flow/#op-return)                                                                                                                                                                                                                                                                                                                                                                                            |
 | [条件与循环](/reference/ops/conditions/)    | [`if`](/reference/ops/conditions/#op-if) · [`while`](/reference/ops/conditions/#op-while) · [`for`](/reference/ops/conditions/#op-for) · [`foreach`](/reference/ops/conditions/#op-foreach) · [`switch`](/reference/ops/conditions/#op-switch) · [`break`](/reference/ops/conditions/#op-break) · [`continue`](/reference/ops/conditions/#op-continue) · [`assert`](/reference/ops/conditions/#op-assert) · [`guard`](/reference/ops/conditions/#op-guard)                                                                                                                                                        |
 | [数据与表达式](/reference/ops/data/)        | [`set`](/reference/ops/data/#op-set) · [`let`](/reference/ops/data/#op-let) · [`local`](/reference/ops/data/#op-local) · [`define`](/reference/ops/data/#op-define) · [`undef`](/reference/ops/data/#op-undef) · [`array`](/reference/ops/data/#op-array) · [`array_push`](/reference/ops/data/#op-array_push) · [`array_pop`](/reference/ops/data/#op-array_pop) · [`dict`](/reference/ops/data/#op-dict) · [`dict_set`](/reference/ops/data/#op-dict_set) · [`random`](/reference/ops/data/#op-random)                                                                                                          |

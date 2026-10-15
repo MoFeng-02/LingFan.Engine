@@ -127,6 +127,7 @@ const CANONICAL: Record<string, Record<string, unknown>> = {
     textColor: "#ffffff",
     screen: "center",
   },
+  uncharacter: { op: "uncharacter", key: "lingfan" },
   wait: { op: "wait", seconds: 1.5, skipable: true },
   pause: { op: "pause", seconds: 2 },
   random: { op: "random", seed: 42, range: [1, 6], var: "roll" },
