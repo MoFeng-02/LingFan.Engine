@@ -277,3 +277,15 @@ export function execCharacter(ctx: OpContext, cmd: StoryCommand): void {
   if (typeof cmd.screen === "string") def.screen = cmd.screen;
   ctx.characters.set(key, def);
 }
+
+/**
+ * uncharacter：注销角色（注册表 delete；随快照/回溯自然回滚）。
+ * 键不存在不构成故障：发 character.missing 知情事件后继续推进，
+ * 停机与否由创作者在事件侧自行决定（引擎不越权替其裁决）。
+ */
+export function execUncharacter(ctx: OpContext, cmd: StoryCommand): void {
+  const key = cmd.key as string;
+  if (!ctx.characters.delete(key)) {
+    ctx.emitEvent({ kind: "character.missing", key });
+  }
+}

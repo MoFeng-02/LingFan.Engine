@@ -5,7 +5,11 @@
  * 检查点是回溯与存档的最小单位：坐标（列 + 列内位置）加一份完整快照。
  * 这些结构只在运行层内部流转，不进包出口。
  */
-import type { ColumnCoordinate, StoryCommand } from "../../contracts/index.ts";
+import type {
+  CharacterDef,
+  ColumnCoordinate,
+  StoryCommand,
+} from "../../contracts/index.ts";
 import type { ExprValue } from "../expr/index.ts";
 import type { Scope } from "../scope.ts";
 
@@ -25,6 +29,8 @@ export interface EngineSnapshot {
    * 删除记录同步回退（读档垫底只看档内 deleted，但快照一致性要求随行）。
    */
   deleted: string[];
+  /** 角色注册表随快照恢复——character 注册 / uncharacter 注销随回溯回滚 */
+  characters: [string, CharacterDef][];
 }
 
 /** 检查点 = 坐标 + 快照；重放 = 恢复快照后从该命令重新解释执行到同一等待点 */

@@ -2,17 +2,20 @@
  * config.ts 契约测试（config 化换道后的声明通道）。
  *
  * 契约口径：
- * `Stories.src/config.ts` 以 named exports 单次求值声明四导出——folders/start（布局，必需）、
- * vars/state（可缺省），并叠加形态 B 的 define() 累积：
+ * `Stories.src/config.ts` 两种声明形态等价，单次求值一并取出，双形态混用 fail-closed：
+ *   - default 对象（推荐）：export default { folders, start, version?, vars?, state? }
+ *     —— 强类型单出口（StoriesConfig 全局类型补全）；
+ *   - named exports：export const folders/start/version/vars/state（兼容既有工程）。
+ * 并叠加形态 B 的 define() 累积（与两种 config 形态正交）：
  *   - 布局字段复用 parseFolders/parseStart 校验（fail-closed）；
- *   - 形态 A（state 导出）与形态 B（define 调用）二选一，混用报错，皆缺省合法；
+ *   - 形态 A（state 声明）与形态 B（define 调用）二选一，混用报错，皆缺省合法；
  *   - define 累积：点路径与对象实参混用，求值毕合并为纯嵌套树，同键二次定义/形状
  *     冲突一次报全部（不后写覆盖）；点路径空段拒；对象字面量点键留给降维段守卫；
  *   - state/define 合并树与形态 A 走同一降维文法（descriptor/enum/数组 descriptor/
  *     type 槽并集——多元素数组成员槽位，null 为成员之一）。
  *
- * 五类覆盖（测试分层约定）：①拟态用户（四导出全链/枚举相对导入求值）
- * ②故意错误（互斥/冲突/空段/点键/值文法）③不变量（define 合并树只经降维进 defines）
+ * 五类覆盖（测试分层约定）：①拟态用户（四导出全链/default 形态全链/枚举相对导入求值）
+ * ②故意错误（混用/互斥/冲突/空段/点键/值文法）③不变量（define 合并树只经降维进 defines）
  * ④边界（皆缺省）⑤回归（defines 逐键落 project.json）。
  *
  * 白盒为零：全部走公共入口 buildStories，公共 API 走 @lingfan/*。
@@ -207,7 +210,7 @@ describe("config.ts 契约 · 形态互斥与缺省（fail-closed / 边界）", 
     });
     await expect(buildStories(root)).rejects.toThrow(/缺少 folders 导出/);
     await expect(buildStories(root)).rejects.toThrow(
-      /folders\/start 必需，vars\/state 可缺省/,
+      /default 对象或 folders\/start named exports 二选一/,
     );
   });
 
@@ -217,7 +220,81 @@ describe("config.ts 契约 · 形态互斥与缺省（fail-closed / 边界）", 
       "Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
-    await expect(buildStories(root)).rejects.toThrow(/state 导出须为键集对象/);
+    await expect(buildStories(root)).rejects.toThrow(/state 须为键集对象/);
+  });
+});
+
+describe("config.ts 契约 · default 对象形态（强类型单出口）", () => {
+  it("default 全链：folders/start/vars/state 与 named exports 等值落 defines 与插值注册表", async () => {
+    const root = makeProject("default-form", {
+      "Stories.src/config.ts":
+        `export default {\n` +
+        `  folders: ["ch1"],\n` +
+        `  start: "start.ts",\n` +
+        `  vars: defineVars({ "bag.size": "num" }),\n` +
+        `  state: { player: { gold: 100 } } as const,\n` +
+        `} satisfies StoriesConfig;\n`,
+      "Stories.src/ch1/start.ts": story(
+        "start",
+        `  state.player.gold += 20;\n  say("金币 {player.gold}，背包 {bag.size}");\n`,
+      ),
+      "Resources/project.json": MANIFEST,
+    });
+    const report = await buildStories(root);
+    expect(report.columns).toBe(1);
+    expect(readDefines(root)).toMatchObject({ "player.gold": 100 });
+    expect(readTypegen(root)).toContain('"bag.size": 1;');
+  });
+
+  it("default + define() 累积正交：形态 B 与 default 对象并存", async () => {
+    const root = makeProject("default-with-define", {
+      "Stories.src/config.ts":
+        `export default {\n` +
+        `  folders: ["ch1"],\n` +
+        `  start: "start.ts",\n` +
+        `};\n` +
+        `define("player.gold", 100);\n`,
+      "Stories.src/ch1/start.ts": START_STORY,
+      "Resources/project.json": MANIFEST,
+    });
+    const report = await buildStories(root);
+    expect(report.columns).toBe(1);
+    expect(readDefines(root)).toMatchObject({ "player.gold": 100 });
+  });
+
+  it("default 缺 folders ⇒ fail-closed 并说明契约", async () => {
+    const root = makeProject("default-missing-folders", {
+      "Stories.src/config.ts": `export default { start: "start.ts" };\n`,
+      "Stories.src/ch1/start.ts": START_STORY,
+      "Resources/project.json": MANIFEST,
+    });
+    await expect(buildStories(root)).rejects.toThrow(
+      /default 配置缺少 folders 字段/,
+    );
+  });
+
+  it("default 不是对象 ⇒ fail-closed", async () => {
+    const root = makeProject("default-not-object", {
+      "Stories.src/config.ts": `export default "main.ts";\n`,
+      "Stories.src/ch1/start.ts": START_STORY,
+      "Resources/project.json": MANIFEST,
+    });
+    await expect(buildStories(root)).rejects.toThrow(
+      /default 导出须为配置对象/,
+    );
+  });
+
+  it("default 与 named exports 混用 ⇒ fail-closed（二选一）", async () => {
+    const root = makeProject("mixed-forms", {
+      "Stories.src/config.ts":
+        `export default { folders: ["ch1"], start: "start.ts" };\n` +
+        `export const vars = defineVars({ extra: "num" });\n`,
+      "Stories.src/ch1/start.ts": START_STORY,
+      "Resources/project.json": MANIFEST,
+    });
+    await expect(buildStories(root)).rejects.toThrow(
+      /default 对象与 named exports（folders\/start\/version\/vars\/state）混用/,
+    );
   });
 });
 

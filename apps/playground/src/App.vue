@@ -241,6 +241,9 @@ function handleEvent({
   } else if (payload.kind === "load.notice") {
     // 读档诊断（非致命，宿主应知情）：演示宿主以通知条展示
     narrativeEvents.loadNotice(payload.text);
+  } else if (payload.kind === "character.missing") {
+    // 注销知情（非致命）：演示宿主以通知条提示，故事继续推进
+    narrativeEvents.notify(`角色 ${payload.key} 未注册，跳过注销`, "warning", undefined);
   } else {
     narrativeEvents.failed(payload.code, payload.message);
   }

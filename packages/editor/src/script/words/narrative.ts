@@ -234,3 +234,17 @@ export function character(
 ): CommandOf<"character"> {
   return { op: "character", key, ...opts };
 }
+
+/**
+ * 注销一名角色：之后以该 `key` 作说话人的 say 不再套角色样式。
+ * 键不存在时发 `character.missing` 知情事件（故事继续，不停机）——
+ * 创作者可在宿主的事件回调里自行处置（记日志/提示等）。
+ * 注销会随回溯自然回滚（回到注册后的检查点即恢复角色）。
+ * @param key 角色键（与 character 的 key 同一面）。
+ * @returns `uncharacter` 故事命令。
+ * @example
+ * uncharacter("向导");
+ */
+export function uncharacter(key: string): CommandOf<"uncharacter"> {
+  return { op: "uncharacter", key };
+}

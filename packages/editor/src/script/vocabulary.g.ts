@@ -68,6 +68,7 @@ export const VOCABULARY_OPS = [
   "switch",
   "text_typewriter",
   "transition",
+  "uncharacter",
   "undef",
   "video",
   "video_skipable",
@@ -136,6 +137,7 @@ export const SCRIPT_COVERAGE: Readonly<Record<string, string>> = {
   notify: "notify",
   nvl: "nvl",
   character: "character",
+  uncharacter: "uncharacter",
   // —— save.ts ——
   save: "save",
   load: "load",

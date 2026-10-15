@@ -1,4 +1,4 @@
-import { isSafeFileNameSegment, type Story } from "@lingfan/engine";
+import { isSafeFileNameSegment, type CharacterDef, type Story } from "@lingfan/engine";
 import type { StorySourceConfig } from "../config/story-config.ts";
 import {
   defaultStoriesBuildTexts,
@@ -35,6 +35,8 @@ export function compileStories(input: {
   readonly constValues?: CompilerConstValues;
   /** 字体名注册表（Resources/Fonts 文件名去扩展名）；缺省 = 空注册表，引用字体名即 fail-closed */
   readonly fontNames?: ReadonlySet<string>;
+  /** 全工程角色表（编排层模块层声明收集产物）；缺省 = 空表，无前置角色命令 */
+  readonly characters?: ReadonlyMap<string, CharacterDef>;
   /** 文案注入（Partial）；缺省 = 内建缺省文案（即构建层的既有文案） */
   readonly texts?: Partial<StoriesBuildTexts>;
 }): CompileStoriesResult {
@@ -53,7 +55,11 @@ export function compileStories(input: {
   if (graph === null) return { stories: [], diags: diags.list() };
   const entry = resolveStart(graph, diags);
 
-  const session = createAssembleSession(input.fontNames, texts);
+  const session = createAssembleSession(
+    input.fontNames,
+    texts,
+    input.characters,
+  );
   const stories: CompiledStory[] = [];
   for (const rel of graph.coveredStories) {
     const compiled = compileStoryFile(session, graph, diags, rel);

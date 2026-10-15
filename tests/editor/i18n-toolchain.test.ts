@@ -51,7 +51,7 @@ function fixtureStory(): ReturnType<typeof parseStory> {
         id: "start",
         kind: "flow",
         commands: [
-          { op: "character", id: "hero", screen: "冒险者" },
+          { op: "character", key: "hero", screen: "冒险者" },
           { op: "notify", text: "获得道具" },
           { op: "say", text: "你好", speaker: "少女" },
           {

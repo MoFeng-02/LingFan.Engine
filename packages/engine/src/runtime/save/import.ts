@@ -141,6 +141,7 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
     state: ctx.state,
     rngState: ctx.rngState,
     functions: ctx.functions,
+    characters: ctx.characters,
     history: ctx.history,
     cursor: ctx.cursor,
     frames: ctx.frames,
@@ -152,6 +153,9 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
   ctx.state = new Map(data.state); // 垫底后的全量状态（扩展恢复 + 玩法系统 + defines 补齐）
   ctx.rngState = data.rngState;
   ctx.functions = new Map(data.functions);
+  // 角色表重置为构造期初值（模块层声明「进场即有」）：档不携带角色表，
+  // 读档 = 会话重开，列内运行期覆盖不随档继承（与快照回溯面不同，档格式 v1 无此字段）
+  ctx.characters = new Map();
   ctx.history = data.history.map((h) => ({
     coord: { ...h.coord },
     snapshot: {
@@ -162,6 +166,9 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
       functions: data.functions,
       // 墓碑随检查点回溯：回滚到 undef 之前的检查点时删除记录同步回退
       deleted: [...tombstones],
+      // 档内检查点不携带角色表（档格式 v1 无此字段）：回溯到档前检查点时
+      // 角色表回到读档重置后的构造期初值
+      characters: [],
     },
   }));
   // cursor 缺失回默认 = 最近检查点（空历史落 -1，与「无检查点」初始语义一致）
@@ -179,6 +186,7 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
     ctx.state = backup.state;
     ctx.rngState = backup.rngState;
     ctx.functions = backup.functions;
+    ctx.characters = backup.characters;
     ctx.history = backup.history;
     ctx.cursor = backup.cursor;
     ctx.frames = backup.frames;

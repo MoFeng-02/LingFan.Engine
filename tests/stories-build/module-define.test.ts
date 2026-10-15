@@ -161,7 +161,7 @@ describe("模块层构建期 define · fail-closed", () => {
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
-      /模块层不支持此语句：只允许 const\/函数\/enum\/导入\/类型声明\/default 导出与构建期 define/,
+      /模块层不支持此语句：只允许 const\/函数\/enum\/导入\/类型声明\/default 导出、构建期 define 与构建期角色声明/,
     );
     expect(existsSync(join(root, "Stories.src/gen/state.gen.d.ts"))).toBe(false);
   });

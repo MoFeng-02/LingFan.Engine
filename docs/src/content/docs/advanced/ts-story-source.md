@@ -25,15 +25,17 @@ description: 在工程平级放 Stories.src/，用原生 TypeScript 写故事，
 
 ## config.ts
 
-`Stories.src/config.ts` 是这个目录根级唯一允许的 `.ts`，声明哪些目录参与构建、哪个文件是入口：
+`Stories.src/config.ts` 是这个目录根级唯一允许的 `.ts`，声明哪些目录参与构建、哪个文件是入口。推荐用 default 对象形态——单一强类型出口，配合 `satisfies StoriesConfig` 获得字段补全与拼写检查（`StoriesConfig` 是全局类型，来自 `@lingfan/stories-build` 的创作垫片，无需 import）：
 
 ```ts
 // apps/playground/Stories.src/config.ts
 export default {
   folders: ["chapter1", "chapter2", "chapter3", "chapter4"],
   start: "start.ts",
-};
+} satisfies StoriesConfig;
 ```
+
+兼容 named exports 形态（`export const folders = [...]; export const start = "..."`），与 default 对象等价；同一文件里两种形态混用会报错——契约来源必须唯一。default 对象除 `folders` / `start` 外还可带 `version` / `vars` / `state` 字段（语义与同名导出一致，见后文）。`folders` / `start` 缺失、键名拼错都会在构建期报错——求值器只读认识的名字，写错的键不会静默生效，default 形态还有 `satisfies` 在 IDE 里提前标红。
 
 `folders` 是目录名数组，相对 `Stories.src/`，每个目录递归扫描。写 `"*"` 表示「凡含故事的目录自动纳入」——省掉每加一章就回来改配置：
 
@@ -41,7 +43,7 @@ export default {
 export default {
   folders: ["common", "*"],
   start: "main.ts",
-};
+} satisfies StoriesConfig;
 ```
 
 `folders` 为空且不含 `"*"` 会在构建期报错，不会静默编译出零列。
@@ -326,8 +328,9 @@ TS 创作模式在实现中，还没有对外发布。构建 CLI、语句转译�
 - `state` 的声明住进 `Stories.src`：`config.ts` 或任意模块的顶层（函数体之外）都可以调 `define` 累积，构建期求值后汇入同一棵树降维为扁平 defines——跨文件同键定义会一次报出全部位置；`defineVars`（插值键登记）仍只在 `config.ts`。构建同时把合并树生成成精确类型面 `Stories.src/gen/state.gen.d.ts`（枚举走 `import type` 引用，descriptor 按槽位取类型），工程侧桥文件（如 `Stories.src/lib/state-root.d.ts`）`import type { StoryState }` 后 `declare global` 挂上状态根——IDE 里的 `state.…` 跳转和检查都是精确类型，不再依赖宽索引签名。`@lingfan/stories-build` 包出口仍提供宽类型垫片，仅供未接桥的工程作缺省回退。
 - 状态值域：`null` 是状态槽的合法空值（`type: "number", default: null` 或运行期 `set` 写入都行；`undefined` 才等于销毁键），需要 `??` 兜底的表达式可以直接吃 null。descriptor 的 `type` 槽还支持并集：`type: ["number", Sex, null]` 声明「数字或枚举 Sex 或空」，构建按成员生成精确类型（`number | Sex | null`，枚举仍走 `import type`），`default` 必须落在至少一个成员的值域内，未知成员一次报全部；形态 A 用 `as const` 元组获得同样的静态推导。
 - 插值键注册表自动收声明名：故事体里的 `let n = 0`、`local("k", …)`，以及 `const r = someFunc()` 这类取函数返回值的声明——引擎会把返回值绑定名声明成局部变量，`{r}` 因此是合法插值，构建会把这些名字自动登记进插值键注册表，无需再手填 `defineVars`；与 state/define 键同名时按键去重，不报错。
+- 模块层角色声明：`config.ts` 或任意模块的顶层（函数体之外）可以调 `character(key, spec)` 声明角色，构建期求值后前置到每一列的命令头部（按 key 字典序，先于列体任何命令）——写作时不必在每个故事文件里重复登记。六字段 `name` / `color` / `size` / `font` / `textColor` / `screen` 走构建期常量求值，未知字段、非字符串值、key 非字符串字面量都 fail-closed；跨文件同名不同义一次报两处声明位置，全等声明幂等不报。列内 `character` 词调用仍可用，运行期覆盖模块层声明（同键整条替换，与 JSON 形态同一规则）。模块层调用经免导入直呼（`script.gen.d.ts` 指向词汇层命名空间，`character` 词本就在列）有完整类型提示；模块里自有同名声明按 TS 遮蔽语义优先，构建期会拒绝本地遮蔽 `character` 标识符的模块（避免把构建期声明误当运行期词）。注销用运行期词 `uncharacter(key)`（词汇层导出，函数体内调用）：注销后 `say` 不再套该角色样式，键不存在发 `character.missing` 知情事件不停机，随回溯回滚。
 - 字体名注册表：把字体文件放进 `Resources/Fonts/` 即完成注册，字体名 = 文件名去扩展名（`楷体.ttf` → `楷体`）。故事层只写字体名字符串——`{font=楷体}` 行内标签或 say 的 `font` 参数；构建期对静态引用 fail-closed（未注册名直接报错并给位置），插值拼出来的动态名字在运行期回退默认字体并由宿主输出诊断。参考宿主会自动为 `Resources/Fonts` 的字体注入 `@font-face`，无需手写样式。构建还会生成 `Stories.src/gen/font.gen.d.ts`（`font["楷体"]` 声明式取名，拼错字在类型检查即红）。整句字体按四级解析：say 行参 `font` > 角色字体（`character` 的 `font`）> 列级字体（故事文件顶层 `const columnFont = "楷体";`）> 项目默认（宿主 CSS 变量，参考宿主即 `--lf-story-font`）。
-- 存档随故事升级：`config.ts` 可以导出 `version`（正整数）声明故事版本——写档时随档落盘；读档时若当前故事声明了 version 且与档内不一致，引擎把存档状态交给构造引擎时提供的 `migrateState` 钩子迁移（成功发通知、无法迁移整档拒绝），当前故事没声明 version 则不做对账、新旧档都直读。另外：故事里 `undef` 销毁过的全局键会以墓碑形式记进存档，读档垫底（新增 define 默认值补齐）不会让它们复活；小游戏若回填过状态，读档会按注册的 `stateVersion` 校验并迁移（与扩展依赖标记同一套语义）。
+- 存档随故事升级：`config.ts` 可以声明 `version`（正整数，default 对象字段或 named export）——写档时随档落盘；读档时若当前故事声明了 version 且与档内不一致，引擎把存档状态交给构造引擎时提供的 `migrateState` 钩子迁移（成功发通知、无法迁移整档拒绝），当前故事没声明 version 则不做对账、新旧档都直读。另外：故事里 `undef` 销毁过的全局键会以墓碑形式记进存档，读档垫底（新增 define 默认值补齐）不会让它们复活；小游戏若回填过状态，读档会按注册的 `stateVersion` 校验并迁移（与扩展依赖标记同一套语义）。
 
 ## 下一步
 

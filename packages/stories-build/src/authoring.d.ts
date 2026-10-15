@@ -11,6 +11,8 @@
  *   → emitJump）；本声明只为 IDE/类型检查补齐，不改变运行时通道。
  * - `define` / `defineVars`：config.ts 构建期内建（求值环境注入，无运行时实体）；
  *   全局声明供 config.ts 书写与 tsc 通过。
+ * - `StoriesConfig`：config.ts default 对象形态的类型（declare global，零 import 全局可用）；
+ *   `satisfies StoriesConfig` 给 default 导出强校验与 IDE 键名补全。
  */
 import type { StoryCommand } from "@lingfan/engine";
 
@@ -32,4 +34,18 @@ declare global {
   function define(spec: Record<string, unknown>): void;
   /** 变量键声明：返回实参本身（键 = 插值键注册表的 defineKeys 域贡献）。 */
   function defineVars<T extends Record<string, string>>(spec: T): T;
+  
+  /** config.ts default 对象的键契约（folders/start 必需；version/vars/state 可缺省）。 */
+  interface StoriesConfig {
+    /** 嗯，这个是你故事的目录，我让它支持你可以这样一个扫递归，也支持多目录，看你自己需要 */
+    readonly folders: readonly string[];
+    /** 这个是你需要启动的故事，注意它对应的是你 `export default function 我是故事名称` 的这个我是故事名称，哦，这个名字你自己取 */
+    readonly start: string;
+    /** 顾名思义版本 */
+    readonly version?: number;
+    /** 这个是你需要注册的变量键，注意它对应的是你 `defineVars` 的这个 defineVars，你也可以defineVars */
+    readonly vars?: Record<string, string>;
+    /** 这个是你需要注册的状态，注意它对应的是你 `state` 的这个 state，你也可以define，都可以的 */
+    readonly state?: Record<string, unknown>;
+  }
 }

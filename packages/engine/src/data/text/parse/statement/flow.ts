@@ -9,7 +9,7 @@ import type { StoryCommand } from "../../../../contracts/index.ts";
 import type { StatementContext } from "../state.ts";
 
 /**
- * 解析本族的 op 行（`jump` `navigate` `call` `return` `break` `continue` `minigame` `character` `scene`）。
+ * 解析本族的 op 行（`jump` `navigate` `call` `return` `break` `continue` `minigame` `character` `uncharacter` `scene`）。
  *
  * 入参是分发骨架建好的 `StatementContext`（已切好的词表、定位前缀、issue 出口与警告通道）。
  * 只处理本族的 op，不匹配时落到末尾 `return null`，由骨架决定后续。
@@ -100,6 +100,12 @@ export function parseFlowStatement(c: StatementContext): StoryCommand | null {
         }
       }
       return cmd;
+    }
+    case "uncharacter": {
+      // `uncharacter "key"`：注销角色；实参文法与 variables 族的 `undef "key"` 相同
+      const key = quoted(0);
+      if (key === "") return fail("uncharacter 需要 key");
+      return { op: "uncharacter", key } satisfies StoryCommand;
     }
     case "scene": {
       // **列内 `scene "目标"` = 跳转**。

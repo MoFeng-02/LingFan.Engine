@@ -174,8 +174,8 @@ describe("扩展 op 等待 · 互锁", () => {
       expect(BUILTIN_OP_NAMES.has(op)).toBe(true);
     // 扩展查找前置 + 三态落点只动了前缀；switch 体逐字节钉死（改一字节即红）
     // call into 结果通道：case return 透传 cmd（execReturn 求值带值 return）
-    // ——指纹随之更新
-    expect(fnv1a(slice)).toBe(3032215097);
+    // uncharacter：character 后新增注销分支 ——指纹随之更新
+    expect(fnv1a(slice)).toBe(553782210);
     // 中断入口三路齐备：小游戏 / 玩法系统 / 扩展 op（少一路 = 回溯后旧接管还在跑）
     const takeover = waitingSource.slice(
       waitingSource.indexOf("export function abortExternalTakeovers"),

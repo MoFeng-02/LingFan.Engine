@@ -14,6 +14,7 @@ export {
   execMenu,
   execNvl,
   execSay,
+  execUncharacter,
   execWait,
   isValidSayColor,
 } from "./dialog.ts";

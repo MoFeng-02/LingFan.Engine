@@ -152,6 +152,7 @@ describe("分类完备账：内建 op 全集必须被显式划分为等待 / 非
     "random",
     "nvl",
     "character",
+    "uncharacter",
     "bgm",
     "se",
     "ambient",

@@ -86,5 +86,8 @@ export function generateFlowCommand(
       out.push(line);
       return;
     }
+    case "uncharacter":
+      out.push(`${pad}uncharacter ${quoteForText(cmd.key as string)}`);
+      return;
   }
 }

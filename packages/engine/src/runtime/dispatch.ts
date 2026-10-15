@@ -43,6 +43,7 @@ import {
   execSwitch,
   execTextTypewriter,
   execUndef,
+  execUncharacter,
   execVideo,
   execWait,
   execWhile,
@@ -239,6 +240,10 @@ export function runDispatch(ctx: OpContext): void {
         continue;
       case "character":
         execCharacter(ctx, cmd);
+        frame.index += 1;
+        continue;
+      case "uncharacter":
+        execUncharacter(ctx, cmd);
         frame.index += 1;
         continue;
       case "bgm":

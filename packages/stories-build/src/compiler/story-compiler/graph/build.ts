@@ -10,7 +10,8 @@ import {
   toPosix,
 } from "./core.ts";
 import type { Graph, ModuleRecord } from "./core.ts";
-import { scanModule, discoverStateRoot } from "./module-scan.ts";
+import { scanModule } from "./module-scan.ts";
+import { discoverStateRoot } from "./state-root.ts";
 import { scanConstStatement, assertNpmNamesConstOnly } from "./bindings.ts";
 import { resolveImports } from "./imports.ts";
 

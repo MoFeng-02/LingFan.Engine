@@ -256,8 +256,8 @@ export interface OpContext {
 
   // —— 其它 ——
 
-  /** 角色定义注册表 */
-  readonly characters: Map<string, CharacterDef>;
+  /** 角色定义注册表（character 注册 / uncharacter 注销；随快照恢复） */
+  characters: Map<string, CharacterDef>;
   /** 函数注册表（func 执行期注册，call 按名查表；随快照恢复） */
   functions: Map<string, { params: string[]; body: StoryCommand[] }>;
   /** 校验命令里的实例 z 值合法（非法即 fail 并返回 false） */

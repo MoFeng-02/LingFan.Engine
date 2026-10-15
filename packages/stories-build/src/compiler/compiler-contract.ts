@@ -52,6 +52,11 @@ export interface StoriesCompiler {
     readonly constValues?: CompilerConstValues;
     /** 字体名注册表（Resources/Fonts 文件名去扩展名）；缺省 = 空注册表，引用字体名即 fail-closed */
     readonly fontNames?: ReadonlySet<string>;
+    /** 全工程角色表（编排层模块层声明收集产物）；缺省 = 空表，无前置角色命令 */
+    readonly characters?: ReadonlyMap<
+      string,
+      import("@lingfan/engine").CharacterDef
+    >;
     /** 文案注入（Partial）；缺省 = 内建缺省文案（即构建层的既有文案） */
     readonly texts?: Partial<StoriesBuildTexts>;
   }): CompiledStories | Promise<CompiledStories>;

@@ -52,7 +52,7 @@ export {
 } from "./words/index.ts";
 
 // —— 叙事 ——
-export { say, option, menu, input, notify, nvl, character } from "./words/index.ts";
+export { say, option, menu, input, notify, nvl, character, uncharacter } from "./words/index.ts";
 export type {
   MenuOption,
   SayOptions,

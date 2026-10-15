@@ -37,7 +37,7 @@ say "你迟到了。" speaker="阿澈"
 
 `character` 支持 `name` / `color` / `size` / `font` / `textColor` / `screen` 六个字段，只写你要改的。**同名的第二次 `character` 是整条替换，不是合并**——第一次写了 `color`，第二次只写 `name`，颜色就没了。
 
-`character` 的 `key` 是查表用的名字，`say speaker` 用同一个字符串才命中。
+`character` 的 `key` 是查表用的名字，`say speaker` 用同一个字符串才命中。要中途注销角色用 `uncharacter "阿澈"`——之后的 `say` 不再套它的配色，键不存在只发一条知情事件不停机，注销随回溯回滚。
 
 ## 颜色
 
@@ -183,5 +183,5 @@ scene stage:
 ## 下一步
 
 - [菜单、输入与通知](/guides/menu-input/)——等待点剩下的三条。
-- [op 指令参考 · 对话与叙事](/reference/ops/dialogue/)——`say` / `nvl` / `character` / `notify` / `wait` / `pause` 的完整参数表。
+- [op 指令参考 · 对话与叙事](/reference/ops/dialogue/)——`say` / `nvl` / `character` / `uncharacter` / `notify` / `wait` / `pause` 的完整参数表。
 - [状态与变量](/concepts/state/)——插值里那些变量是怎么存的。

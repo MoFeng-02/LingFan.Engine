@@ -67,6 +67,7 @@ export function parseSimpleStatement(
     case "continue":
     case "minigame":
     case "character":
+    case "uncharacter":
     case "scene":
       return parseFlowStatement(ctx);
     case "set":

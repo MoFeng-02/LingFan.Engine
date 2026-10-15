@@ -20,6 +20,7 @@ import { loadExtensions } from "../compiler/index.ts";
 import { readManifest, CONFIG_FILE } from "../config/index.ts";
 import { drainBuildWarnings, type BuildReport } from "../emit/index.ts";
 import {
+  collectModuleCharacters,
   collectModuleDefines,
   evalConfigModule,
   mergeDefineCallsInto,
@@ -167,6 +168,14 @@ export async function buildStories(
     );
   }
 
+  // —— 模块层构建期角色声明收集：源模块顶层 character 语句折叠成全工程角色表
+  // （同名不同义 fail-closed，全等幂等），喂给编译器前置进每个故事 start 列头 ——
+  const moduleCharacters = collectModuleCharacters({
+    sourcesDir,
+    files: sourceTree,
+    generatedDirName,
+  });
+
   // —— state 降维：config.state（形态 A）与 define 合并树（形态 B，二选一）
   // 走同一降维文法扁平化为 defines；文法诊断 fail-closed，皆缺省 = 空 schema 贡献 ——
   const schemaDefines = runStateSchemaPass(
@@ -191,6 +200,7 @@ export async function buildStories(
     modules: discovery.modules,
     constValues,
     fontNames,
+    characters: moduleCharacters,
     texts,
   });
   if (compiled.diags.length > 0) {

@@ -121,6 +121,16 @@ export interface LoadNoticePayload {
 }
 
 /**
+ * 注销知情事件（非致命）：uncharacter 对未注册键发出，故事继续推进。
+ * 创作者/宿主据此自行处置（记日志、提示或主动停机）。
+ */
+export interface CharacterMissingPayload {
+  kind: "character.missing";
+  /** 被注销但未注册的角色键 */
+  key: string;
+}
+
+/**
  * 出站负载的全集：核心层向外发事件时，`payload` 只可能是这里列出的成员之一。
  *
  * 宿主按各自的 `kind` 判别式分支处理；新增一种出站事件 = 在此联合加一个成员，
@@ -133,6 +143,7 @@ export type OutboundPayload =
   | SaveDonePayload
   | LoadDonePayload
   | LoadNoticePayload
+  | CharacterMissingPayload
   | MinigameMountPayload
   | InteractionMountPayload
   | ExtensionMountPayload;

@@ -3,8 +3,9 @@
  *
  * 为什么需要：config 求值走 esbuild 打包，标识符在求值产物里消失——`type: Sex` 到了
  * 合并树里只剩枚举对象本身，渲染层无从知道它来自哪个模块，也就生成不出
- * `import type { Sex } from …`。本段用 TS AST 重读源文，把 define(...) 调用与形态 A
- * `export const state` 初始化器里、descriptor 形对象的 `type` 槽位按点路径回收
+ * `import type { Sex } from …`。本段用 TS AST 重读源文，把 define(...) 调用、形态 A
+ * `export const state` 初始化器与 default 对象（export default { … } satisfies）的
+ * state 字段里、descriptor 形对象的 `type` 槽位按点路径回收
  * （esbuild 求值语义保证：同名调用/同形初始化器 = 合并树里的同一条数据），并解析
  * 该标识符的 import 来源。
  *
@@ -74,6 +75,7 @@ export function collectEnumTypeSlotsForBuild(
   const aliases = collectLocalAliases(configSf);
   ts.forEachChild(configSf, (node) => scanDefineSlots(node, imports, aliases, slots));
   collectStateSlots(configSf, imports, aliases, slots);
+  collectDefaultConfigSlots(configSf, imports, aliases, slots);
   for (const [rel, source] of input.moduleFiles) {
     const sf = ts.createSourceFile(rel, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     const moduleImports = collectImportBindings(sf, (spec) => resolveSourceFor(rel, spec));
@@ -112,6 +114,30 @@ function collectStateSlots(
           aliases,
           slots,
         );
+      }
+    }
+  }
+}
+
+/** default 对象形态：export default { … } satisfies … —— state 字段内递归回收槽位 */
+function collectDefaultConfigSlots(
+  sf: ts.SourceFile,
+  imports: ReadonlyMap<string, EnumTypeSlot>,
+  aliases: ReadonlyMap<string, string>,
+  slots: Map<string, EnumTypeSlot[]>,
+): void {
+  for (const stmt of sf.statements) {
+    if (!ts.isExportAssignment(stmt)) continue;
+    const expr = ts.isSatisfiesExpression(stmt.expression)
+      ? stmt.expression.expression
+      : stmt.expression;
+    const obj = unwrapExpr(expr);
+    if (!ts.isObjectLiteralExpression(obj)) continue;
+    for (const prop of obj.properties) {
+      if (!ts.isPropertyAssignment(prop)) continue;
+      if (!ts.isIdentifier(prop.name) && !ts.isStringLiteral(prop.name)) continue;
+      if (prop.name.text === "state") {
+        collectFromValue(prop.initializer, "", imports, aliases, slots);
       }
     }
   }
