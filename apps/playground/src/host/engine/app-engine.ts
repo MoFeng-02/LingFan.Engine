@@ -21,6 +21,7 @@ import {
   type VideoPort,
 } from "@lingfan/engine";
 import { guards as engineGuards } from "../../stories";
+import { playgroundEngineTexts } from "./engine-texts";
 import type { AppMedia } from "../stage/app-media";
 import type { NarrativeState } from "../narrative/narrative-state";
 import type { TypewriterHandle } from "../narrative/app-narrative";
@@ -131,6 +132,7 @@ export function createAppEngineLife(
         savePort: props.savePort,
         guards: engineGuards,
         extensions: props.extensions,
+        texts: playgroundEngineTexts,
       }),
     );
     bindEngine(getEngine());
@@ -162,6 +164,7 @@ export function createAppEngineLife(
         savePort: props.savePort,
         guards: engineGuards,
         extensions: props.extensions,
+        texts: playgroundEngineTexts,
       }),
     );
     bindEngine(getEngine());
