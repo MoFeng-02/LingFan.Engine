@@ -1,9 +1,8 @@
 /**
  * 叙事事件落点：收尾顺序与错误横幅的生命周期。
  *
- * 回归锚定（用户实测回归）：读档失败在底部留下红字横幅后，再成功存一次档，红字
- * 仍然挂着（此前只有读档与回溯会清它）——横幅报的是「上一次操作的结果」，这一次
- * 既然成功，上一次的失败就已经过期。写档不动画面，故只清错误，不对齐视图与媒体。
+ * 用户实测回归：写档成功也要清掉错误横幅——横幅报的是「上一次操作的结果」，这一次
+ * 既然成功，上一次的失败就已经过期。写档不动画面，只清错误，不刷新视图与媒体。
  *
  * 本文件只锚分流落点自身，事件怎么分流（哪个 `kind` 走哪条）留在组合根。
  */
@@ -52,7 +51,7 @@ function createHarness(overrides: Partial<NarrativeEventOptions> = {}): {
 }
 
 describe("叙事事件落点", () => {
-  it("用户实测回归：写档成功清掉上一次失败留下的红字", () => {
+  it("用户实测回归：写档成功清掉上一次失败留下的错误横幅", () => {
     const { events, calls, errors } = createHarness();
     events.failed("load-failed", "槽位 2 读取或解析失败");
     expect(errors).toEqual(["load-failed: 槽位 2 读取或解析失败"]);
@@ -62,14 +61,14 @@ describe("叙事事件落点", () => {
     expect(calls).toEqual(["clearError", "saved:slot_3"]);
   });
 
-  it("写档不动画面：只清错误，不对齐视图与媒体", () => {
+  it("写档不动画面：只清错误，不刷新视图与媒体", () => {
     const { events, calls } = createHarness();
     events.saved("slot_1");
     expect(calls).not.toContain("syncFromEngine");
     expect(calls).not.toContain("syncMedia");
   });
 
-  it("读档收尾顺序：清错误 → 对齐视图 → 对齐媒体 → 提示", () => {
+  it("读档收尾顺序：清错误 → 刷新视图 → 刷新媒体 → 提示", () => {
     const { events, calls } = createHarness();
     events.loaded("slot_1");
     expect(calls).toEqual([

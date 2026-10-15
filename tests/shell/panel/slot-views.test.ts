@@ -1,10 +1,8 @@
 /**
  * 槽位面板的数据装配：显示名来源、空槽判定、读取容错与点选门槛。
  *
- * 回归锚定（用户实测回归）：用户在演示宿主里存完档再点读档，判断「没反应」。
- * 一是面板显示名与提示条文案分叉，二是读档模式下空槽照样可点（点下去只换来一条
- * 读档失败横幅），三是端口拒读个别槽位时整张面板列不出槽位——最后这条才是「没反应」
- * 的正身：面板照旧打开，槽位却一个都没有。三条都在这里锁住。
+ * 用户实测回归：面板必须列全所有槽位——端口拒读个别槽位只丢该槽的标题与缩略图，
+ * 不能连槽位一起丢；槽位显示名与提示条文案取同一个规则；读档模式下空槽不可点选。
  */
 import type { SavePort, SlotSummary } from "@lingfan/engine";
 import { describe, expect, it } from "vitest";
@@ -121,7 +119,7 @@ describe("槽位视图装配", () => {
     expect(views.map((v) => v.id)).toEqual(["slot_1", "slot_2", "slot_3"]);
   });
 
-  it("清单整体读不到按全空槽呈现（面板不因此炸掉）", async () => {
+  it("清单整体读不到按全空槽呈现（面板不因此抛错）", async () => {
     const savePort: SavePort = {
       ...fakeSavePort({ slot_1: "{}" }),
       async list(): Promise<SlotSummary[]> {
@@ -144,14 +142,13 @@ describe("槽位视图装配", () => {
   });
 
   it("用户实测回归：个别槽读取被端口拒绝时，整张面板照样列出全部槽位", async () => {
-    // 端口可以拒读某些槽（演示端高水位拒旧档、宿主安全策略）；这种拒绝一旦冒泡出
-    // loadSlotViews，宿主拿到的就是被拒的 Promise——面板照旧打开，槽位却一个都不列，
-    // 玩家看到的就是「点了存再点读档没反应」。
+    // 端口可以拒读某些槽（示例：存档策略拒绝旧档、宿主安全策略）。这种拒绝一旦冒泡出
+    // loadSlotViews，宿主拿到的是被拒的 Promise，整张面板连槽位都列不出来。
     const base = fakeSavePort({ slot_1: "{}", slot_2: "{}" });
     const savePort: SavePort = {
       ...base,
       async read(slot: string): Promise<string> {
-        if (slot === "slot_1") throw new Error("回档尝试被拒绝（演示高水位）");
+        if (slot === "slot_1") throw new Error("该槽位不可读");
         return base.read(slot);
       },
     };
