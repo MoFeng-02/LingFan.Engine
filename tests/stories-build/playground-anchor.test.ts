@@ -39,6 +39,9 @@
  * 并行加固：本文件是全仓唯一对真实工程工作区做「读-改-写」的测试，vitest 跨文件
  * 并行下与其他读工程产物的用例存在 I/O 竞态窗口（偶发一败、单跑/复跑恒绿）——
  * 两例 retry 1 吸收环境性竞态；真回归两次必红，不会被吞。（文件内两例本就串行执行）
+ * 三个 tsc 探针各自 spawnSync 拉起一次 tsc --noEmit，满仓并行下单次耗时可远超全仓
+ * 缺省的 testTimeout（vitest.config.ts）：它们显式抬到 60s——时限先到会把绿例判红并
+ * 触发重试，真回归本就会红，放宽时限不动判定力。
  */
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -215,7 +218,7 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
     }
   });
 
-  it("tsc 负例探针：state 上的错误类型被 stories-typecheck 拒绝（精确类型面非宽垫片）", { retry: 1 }, async () => {
+  it("tsc 负例探针：state 上的错误类型被 stories-typecheck 拒绝（精确类型面非宽垫片）", { retry: 1, timeout: 60000 }, async () => {
     const probePath = join(PLAYGROUND_ROOT, PROBE_REL);
     const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.json");
     const tscBin = fileURLToPath(
@@ -235,7 +238,7 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
     }
   });
 
-  it("script ambient 探针：错键 script.bgmX 被 tsc 拒绝，正确键 script.bgm 放行", { retry: 1 }, async () => {
+  it("script ambient 探针：错键 script.bgmX 被 tsc 拒绝，正确键 script.bgm 放行", { retry: 1, timeout: 60000 }, async () => {
     const probePath = join(PLAYGROUND_ROOT, SCRIPT_PROBE_REL);
     const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.json");
     const tscBin = fileURLToPath(
@@ -262,7 +265,7 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
     }
   });
 
-  it("font ambient 探针：未注册名 font.缺省字体 被 tsc 拒绝，注册名 font.楷体 放行", { retry: 1 }, async (ctx) => {
+  it("font ambient 探针：未注册名 font.缺省字体 被 tsc 拒绝，注册名 font.楷体 放行", { retry: 1, timeout: 60000 }, async (ctx) => {
     const probePath = join(PLAYGROUND_ROOT, FONT_PROBE_REL);
     const fontFile = join(PLAYGROUND_ROOT, "Resources/Fonts/楷体.ttf");
     const fontGenPath = join(PLAYGROUND_ROOT, FONT_GEN_REL);
