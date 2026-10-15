@@ -7,6 +7,9 @@
  * 计时器到点即把对应条目从列表里摘掉，所以 `items` 里只留仍在驻留的提示；
  * 模板按 `id` 做 key，摘除时不会误伤同文案的另一条。
  *
+ * 存/读文案里的槽位名与槽位面板同一个来源（`labelFor`，缺省到面板的显示名规则）：
+ * 面板上写「槽位 1」，提示条也必须写「槽位 1」，不能退回槽位 id。
+ *
  * 本模块平台无关：状态放在调用方传入的 Cell 里，定时器走注入的 TimerPort，
  * 不直接触碰任何框架或宿主全局。
  */
@@ -20,16 +23,25 @@ import {
   type NotifyTone,
 } from "@lingfan/ui";
 import type { Cell } from "../cell";
+import { defaultSlotLabel } from "../panel/slots";
 
-/** 提示文案缺省模板：宿主可用文案选项逐句覆盖（本地化/改写均走这里） */
-const DEFAULT_TEXTS = {
-  /** 存档完成 */
-  saved: (slot: string): string => `已保存到 ${slot}`,
-  /** 读档完成（含状态说明） */
-  loaded: (slot: string): string => `已读取 ${slot}（回到存档时刻）`,
-  /** 回溯完成 */
-  rollbackDone: (): string => "已回溯",
-} as const;
+/**
+ * 提示文案缺省模板：宿主可用文案选项逐句覆盖（本地化/改写均走这里）。
+ *
+ * 槽位名一律经 `labelFor` 渲染，缺省与槽位面板同源（`defaultSlotLabel`）——
+ * 玩家在面板上点的是「槽位 1」，提示条就不该说 `slot_1`。
+ */
+function defaultTexts(labelFor: (id: string) => string): Required<NoticeTexts> {
+  return {
+    /** 存档完成 */
+    saved: (slot: string): string => `已保存到 ${labelFor(slot)}`,
+    /** 读档完成（含状态说明） */
+    loaded: (slot: string): string =>
+      `已读取 ${labelFor(slot)}（回到存档时刻）`,
+    /** 回溯完成 */
+    rollbackDone: (): string => "已回溯",
+  };
+}
 
 /** 可覆盖的提示文案（逐句可选；未给的句子用缺省模板） */
 export interface NoticeTexts {
@@ -62,6 +74,12 @@ export interface NoticeOptions {
   loadToastDurationMs?: number;
   /** 「已回溯」轻提示的驻留 */
   rollbackNoticeDurationMs?: number;
+  /**
+   * 槽位显示名：把提示条里的槽位 id 变成玩家看得懂的称呼。
+   * 缺省 = 槽位面板同款规则（`defaultSlotLabel`）；宿主自定义命名时，
+   * 应与 `SlotPanelOptions.labelFor` 传同一个函数，否则两处叫法又会分叉。
+   */
+  labelFor?(id: string): string;
   /** 可覆盖的提示文案（本地化/改写入口）；缺省 = 内置中文缺省模板 */
   texts?: NoticeTexts;
 }
@@ -102,7 +120,10 @@ export function createNotices(options: NoticeOptions = {}): Notices {
     options.loadToastDurationMs ?? DEFAULT_LOAD_TOAST_MS;
   const rollbackNoticeDurationMs =
     options.rollbackNoticeDurationMs ?? DEFAULT_ROLLBACK_NOTICE_MS;
-  const texts: Required<NoticeTexts> = { ...DEFAULT_TEXTS, ...options.texts };
+  const texts: Required<NoticeTexts> = {
+    ...defaultTexts(options.labelFor ?? defaultSlotLabel),
+    ...options.texts,
+  };
   const timer: TimerPort = options.timer ?? hostTimer;
 
   let seq = 0;
