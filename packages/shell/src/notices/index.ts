@@ -76,8 +76,8 @@ export interface NoticeOptions {
   rollbackNoticeDurationMs?: number;
   /**
    * 槽位显示名：把提示条里的槽位 id 变成玩家看得懂的称呼。
-   * 缺省 = 槽位面板同款规则（`defaultSlotLabel`）；宿主自定义命名时，
-   * 应与 `SlotPanelOptions.labelFor` 传同一个函数，否则两处叫法又会分叉。
+   * 缺省 = 槽位面板的显示名规则（`defaultSlotLabel`）；宿主自定义命名时，
+   * 应与 `SlotPanelOptions.labelFor` 传同一个函数，好让两处叫法一致。
    */
   labelFor?(id: string): string;
   /** 可覆盖的提示文案（本地化/改写入口）；缺省 = 内置中文缺省模板 */
