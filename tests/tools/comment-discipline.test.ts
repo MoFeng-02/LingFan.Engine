@@ -1,10 +1,18 @@
 /**
- * 注释纪律互锁（§9，源级扫描，不跑构建）：禁止「分组计数」式注释——形如
- * `// 文本（4）`、`// 进度族 5`。
+ * 注释纪律互锁（§9，源级扫描，不跑构建）：禁止把「会随时间失效的信息」写进源码注释。
  *
- * 为什么需要这条：这类注释里的数字必须随分组增删手工同步，漏改一行就变成错信息；
- * §9 的「准确、清洁、有效」三条硬标准明确禁止把会随时间失效的数字写进源码注释。
- * 分组名本身可以留（读者需要知道分了哪几族），数字不留。
+ * 禁止面（§9 只允许写「是什么 / 为什么 / 怎么用 / 注意事项」）：
+ * - 分组计数：「// 文本（4）」这类数字必须随分组增删手工同步，漏改一行就成错信息；
+ * - 任务编号与批次：「T07-01」「E-09」「批次」属于任务台账，不是模块知识；
+ * - 进度用词：「待办」「已修」「里程碑」等进度状态会随推进失效；
+ * - 台账用词：「台账」「整改」「审计报告」「任务表」是过程文档的词，不该进源码；
+ * - 临时实测数字：「eff」「有效行」「超软」「硬限」是整改时的量尺，不是接口语义；
+ * - 待办标记：「TODO / FIXME / XXX / HACK」应落在任务台账；
+ * - 表情符号。
+ *
+ * 语义例外：「本轮」在 watch / 迭代器里指「本次构建 / 本次循环」，是领域词，不在禁止面。
+ * 判据只看注释（行注释 + 块注释，含代码后的尾随注释），且跳过引号内的伪注释，
+ * 避免把 URL、模板串、选择器里的词当成注释。
  */
 import { describe, expect, it } from "vitest";
 
@@ -18,39 +26,102 @@ const SRC = import.meta.glob(
   { query: "?raw", import: "default", eager: true },
 ) as Record<string, string>;
 
-/** 命中「分组计数」注释的行（判据本体，便于自证） */
-function countedComments(source: string): string[] {
-  return source
-    .split(/\r?\n/)
-    .map((line, index) => ({ text: line.trim(), no: index + 1 }))
-    .filter(({ text }) => /^\/\/.*(?:（\d+）|族\s+\d+)\s*$/.test(text))
-    .map(({ text, no }) => `${no}: ${text}`);
+/** 禁止面：[标签, 匹配注释文本的正则] */
+const BANNED: Array<[string, RegExp]> = [
+  ["分组计数", /^(?:\/\/|\*)\s*.*(?:（\d+）|族\s+\d+)\s*$/],
+  [
+    "任务编号",
+    /(?:^|[^A-Za-z0-9])(?:[TRDEC]\d{2}-\d{2}|[TRDEC]-\d{2})(?![0-9])/,
+  ],
+  ["批次/进度词", /批次|待办|已修|未修|未开工|里程碑/],
+  ["台账用词", /台账|整改|审计报告|任务表/],
+  ["临时实测数字", /\beff\b|有效行|超软|硬限/],
+  ["待办标记", /\b(?:TODO|FIXME|XXX|HACK)\b/],
+  ["表情符号", /\p{Emoji_Presentation}/u],
+];
+
+/** 抽出注释行文本（带行号）；字符串字面量里的伪注释不算 */
+function commentLines(source: string): Array<{ no: number; text: string }> {
+  const out: Array<{ no: number; text: string }> = [];
+  let inBlock = false;
+  source.split(/\r?\n/).forEach((line, index) => {
+    const no = index + 1;
+    if (inBlock) {
+      out.push({ no, text: line });
+      if (line.includes("*/")) inBlock = false;
+      return;
+    }
+    const trimmed = line.trim();
+    if (trimmed.startsWith("/*")) {
+      out.push({ no, text: line });
+      if (!trimmed.includes("*/")) inBlock = true;
+      return;
+    }
+    if (trimmed.startsWith("//")) {
+      out.push({ no, text: trimmed });
+      return;
+    }
+    const slash = line.indexOf("//");
+    if (slash !== -1 && !/["'`]/.test(line.slice(0, slash))) {
+      out.push({ no, text: line.slice(slash) });
+    }
+  });
+  return out;
 }
 
-describe("注释纪律（§9 分组计数注释）", () => {
+/** 命中禁止面的注释（判据本体，便于自证） */
+function violations(source: string): string[] {
+  return commentLines(source)
+    .map(({ no, text }) => {
+      const hit = BANNED.find(([, pattern]) => pattern.test(text));
+      return hit === undefined ? null : `${no} [${hit[0]}] ${text.trim()}`;
+    })
+    .filter((item): item is string => item !== null);
+}
+
+describe("注释纪律（§9）", () => {
   it("扫描面自检：命中源码文件（glob 失配时立刻失败）", () => {
     expect(Object.keys(SRC).length).toBeGreaterThanOrEqual(100);
   });
 
-  it("判据自证：计数注释判红，纯分组名判绿", () => {
-    expect(countedComments("// 文本（4）")).toEqual(["1: // 文本（4）"]);
-    expect(countedComments("// 进度族 5")).toEqual(["1: // 进度族 5"]);
-    expect(countedComments("// 文本\n// 进度 / 滑块 / 选择")).toEqual([]);
+  it("判据自证：各类禁止面判红，语义例外与正常注释判绿", () => {
+    expect(violations("// 文本（4）")).toEqual(["1 [分组计数] // 文本（4）"]);
+    expect(violations("// 进度族 5")).toEqual(["1 [分组计数] // 进度族 5"]);
+    expect(violations("// 见 T07-01 决定")).toEqual([
+      "1 [任务编号] // 见 T07-01 决定",
+    ]);
+    expect(violations("// 本批次产物")).toEqual([
+      "1 [批次/进度词] // 本批次产物",
+    ]);
+    expect(violations("// 见任务台账")).toEqual(["1 [台账用词] // 见任务台账"]);
+    expect(violations("// eff 296")).toEqual(["1 [临时实测数字] // eff 296"]);
+    expect(violations("// TODO 补测试")).toEqual([
+      "1 [待办标记] // TODO 补测试",
+    ]);
+    expect(violations("// 完成 ✅")).toEqual(["1 [表情符号] // 完成 ✅"]);
+    for (const clean of [
+      "// 文本\n// 进度 / 滑块 / 选择",
+      "// 本轮产物差量（相对上一轮落盘状态）",
+      "const url = 'https://example.com/a#b'; // 宿主地址（↔ 端口注入）",
+      "// 效果（effect）与效率",
+      "// 见 §3.2 出口转发",
+    ]) {
+      expect(violations(clean), clean).toEqual([]);
+    }
   });
 
-  it("全仓无分组计数注释", () => {
+  it("全仓注释无禁止面命中", () => {
     const offenders = Object.entries(SRC)
       .map(([key, source]) => {
-        const hits = countedComments(source);
+        const hits = violations(source);
         return hits.length === 0
           ? null
-          : `${key.replace(/^(\.\.\/)+/, "")} —— 行 ${hits
-              .map((hit) => hit.split(":")[0])
-              .join(",")}`;
+          : `${key.replace(/^(\.\.\/)+/, "")} —— ${hits.join(" | ")}`;
       })
       .filter((item): item is string => item !== null);
-    expect(offenders, "分组计数注释的数字会失效：去掉计数，只留分组名").toEqual(
-      [],
-    );
+    expect(
+      offenders,
+      "注释只写「是什么 / 为什么 / 怎么用 / 注意」：编号、进度、台账词、实测数字、待办标记与表情都不进源码",
+    ).toEqual([]);
   });
 });
