@@ -51,6 +51,8 @@ scene stage_demo
 | 层级 z 序（`shell.layers`）                     | 已接                                   |
 | 存档槽位（`shell.saves.slots`）                 | 已接                                   |
 
+游玩界面的文字默认**不可选中**（`body` 上 `user-select: none`）：拖动、连点、双击都不该在台词或按钮上留下选中段。要提供复制能力，给那个部件加 `data-lf-selectable` 放行——输入框已经放行，否则 `input` op 没法选词改写。
+
 ## 模板没接什么
 
 这张表里的「没接」都是**模板宿主没写**，不是引擎没有。升级路线见 `apps/playground`——它同时是模板的第一个实例。

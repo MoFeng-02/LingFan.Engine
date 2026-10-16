@@ -19,6 +19,7 @@
 | 存档（`shell.saves.slots` 槽位数）              | 是                     | 存/读为命令面；缩略图**不做**（见下行）                                         |
 | 存档缩略图（`shell.saves.thumbnail`）           | 否                     | 合成卡见 `apps/playground`；不传 `screenshot` 即为无缩略图存档                  |
 | 舞台适配（`shell.stage`）                       | 否                     | 模板按固定视口布局；要接就取 `resolveStageConfig` 结果再算 `computeStageLayout` |
+| 游玩界面禁选文本                                | 是                     | `body` 上 `user-select: none`；要提供复制就给部件加 `data-lf-selectable`        |
 | 历史面板与回溯 UI                               | 否                     | 引擎已具备（`historyView`/`rollbackTo`/`back`/`forward`），UI 见 playground     |
 | 玩家偏好（音量/文字速度面板）                   | 否                     | 未接 = 音量为 op 值、打字机取故事级 `text_typewriter`                           |
 | I18N 供给（`Lang/{lang}/` 覆盖）                | 否                     | 未接 `i18nPort` = 原文直出（引擎契约缺省语义）                                  |
