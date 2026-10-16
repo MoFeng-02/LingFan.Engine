@@ -83,8 +83,17 @@ const STALE_SPECIFIER_PATTERN =
 const HOST_GUESS_PATTERN =
   /new URL\(\s*"\.\.(?:\/\.\.)*"\s*,\s*import\.meta\.url\s*\)/;
 
-/** 出口面必须是这几条，多一条少一条都算契约变更（改这里要同时改 package.json） */
-const EXPECTED_EXPORTS = [".", "./authoring", "./cell", "./cli"];
+/** 出口面必须是这几条，多一条少一条都算契约变更（改这里要同时改 package.json）。
+ *  `./watch` = 增量监听入口（watchStories），`./watch-cli` = 常驻 CLI 主守卫入口
+ *  （playground 的 stories:watch 经此接线）。 */
+const EXPECTED_EXPORTS = [
+  ".",
+  "./authoring",
+  "./cell",
+  "./cli",
+  "./watch",
+  "./watch-cli",
+];
 
 describe("创作链编译包 · 边界与结构不变式", () => {
   it("扫描面自检：三张 glob 都非空且命中已知文件（防空扫描假绿）", () => {
