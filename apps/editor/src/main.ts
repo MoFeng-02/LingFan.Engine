@@ -57,8 +57,13 @@ import {
 import "./styles/tokens.css";
 import App from "./App.vue";
 import { assembleColumnWrite } from "./domain";
+import { createBrowserStorage, downloadJsonFile } from "./infra";
 import { sampleStory } from "./shared";
-import type { LastProjectEntry, OpenedProject, ProjectOpener } from "./contracts";
+import type {
+  LastProjectEntry,
+  OpenedProject,
+  ProjectOpener,
+} from "./contracts";
 
 /** 视频层 z（层级契约）：打开工程后按清单 `shell.layers` 解析，未打开 = 内建默认 */
 let layerZ: LayerZTable = DEFAULT_LAYER_Z;
@@ -259,4 +264,7 @@ createApp(App, {
     createWebAudioPort({ onError }),
   createVideoPort: (onError: (message: string) => void): VideoPort =>
     createWebVideoPort({ onError, zIndex: layerZ.video }),
+  // 本机偏好存储（布局 / 分组 / 节点图位置 / 「不再提示」）与导出下载
+  storage: createBrowserStorage(),
+  downloadFile: downloadJsonFile,
 }).mount("#app");

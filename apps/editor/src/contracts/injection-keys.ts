@@ -9,12 +9,21 @@
  * 注意：这些键只在本应用内使用，不属于引擎或适配器的对外契约。
  */
 import type { InjectionKey, Ref } from "vue";
-import type { ColumnGroupingView } from "@lingfan/editor";
+import type { ColumnGroupingView, KeyValueStorage } from "@lingfan/editor";
 import type { EditorApiPort } from "./editor";
 
 /** 编辑操作面（见 `./editor`） */
 export const EDITOR_API_KEY: InjectionKey<EditorApiPort> =
   Symbol("lingfan-editor-api");
+
+/**
+ * 本机键值存储（视图偏好的持久化取径）。
+ *
+ * 由组合根注入——浏览器实现取 `window.localStorage`，桌面形态可换配置文件。
+ * 站点数据被禁时值为 `undefined`：调用方按「本会话无持久化」降级，不报错。
+ */
+export const KEY_VALUE_STORAGE_KEY: InjectionKey<KeyValueStorage | undefined> =
+  Symbol("lingfan-editor-key-value-storage");
 
 /**
  * 列 id → 来源文件路径。

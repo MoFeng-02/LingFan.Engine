@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, inject, ref } from "vue";
+import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
 import type { Story } from "@lingfan/engine";
-import { EDITOR_API_KEY } from "../contracts";
+import { EDITOR_API_KEY, KEY_VALUE_STORAGE_KEY } from "../contracts";
 import { useDialog, useGraphViewport } from "../app";
+import type { GraphViewportHost } from "../app";
 import {
   branchPointerToCommand,
   isBranchTarget,
@@ -22,7 +23,7 @@ import {
 
 /**
  * 节点图：列 = 节点，jump/menu/navigate 的列目标 = 边。
- * 视图操作：节点拖拽（位置按故事记忆入 localStorage）+ 背景拖拽平移 +
+ * 视图操作：节点拖拽（位置按故事记忆存本机）+ 背景拖拽平移 +
  * Ctrl+滚轮/按钮缩放（视口中心稳定）；缩放不入故事 JSON——编辑器只读写故事树。
  * **连线建分支**：从 flow 节点右缘连接点拉线到另一 flow 节点 → 落库为
  * `jump`（源列无 menu）或 menu 选项（源列最后一个 menu，文本 prompt 可改）；
@@ -42,18 +43,77 @@ const selectedColumnId = computed(() => props.selectedId);
 
 const scrollEl = ref<HTMLDivElement | null>(null);
 const svgRoot = ref<SVGSVGElement | null>(null);
-const viewport = useGraphViewport(() => props.story.id, scrollEl, svgRoot);
-const {
-  positions,
-  zoom,
-  panState,
-  toLogical,
-  startDrag,
-  startPan,
-  zoomIn,
-  zoomOut,
-  zoomReset,
-} = viewport;
+
+/** 视口几何取径：元素量测与滚动读写在视图层，换算在 `useGraphViewport` */
+const viewportHost: GraphViewportHost = {
+  canvasOrigin: () => {
+    const rect = svgRoot.value?.getBoundingClientRect();
+    return rect === undefined ? undefined : { left: rect.left, top: rect.top };
+  },
+  scroll: () => {
+    const el = scrollEl.value;
+    if (el === null) return undefined;
+    return {
+      left: el.scrollLeft,
+      top: el.scrollTop,
+      width: el.clientWidth,
+      height: el.clientHeight,
+    };
+  },
+  scrollTo: (left, top) => {
+    const el = scrollEl.value;
+    if (el === null) return;
+    el.scrollLeft = left;
+    el.scrollTop = top;
+  },
+};
+
+const storage = inject(KEY_VALUE_STORAGE_KEY);
+const viewport = useGraphViewport(
+  () => props.story.id,
+  viewportHost,
+  () => storage,
+);
+const { positions, zoom, panState, toLogical, zoomIn, zoomOut, zoomReset } =
+  viewport;
+
+/* —— 视口交互：按下起步，移动/抬起挂 window（指针拖出画布仍跟手） —— */
+
+function onNodePointerDown(
+  node: { id: string; x: number; y: number },
+  event: PointerEvent,
+): void {
+  viewport.startDrag(node, event);
+  window.addEventListener("pointermove", viewport.onDragMove);
+  window.addEventListener("pointerup", endNodeDrag, { once: true });
+}
+
+function endNodeDrag(): void {
+  window.removeEventListener("pointermove", viewport.onDragMove);
+  viewport.endDrag();
+}
+
+function onBackgroundPointerDown(event: PointerEvent): void {
+  viewport.startPan(event);
+  window.addEventListener("pointermove", viewport.onPanMove);
+  window.addEventListener("pointerup", endBackgroundPan, { once: true });
+}
+
+function endBackgroundPan(): void {
+  window.removeEventListener("pointermove", viewport.onPanMove);
+  viewport.endPan();
+}
+
+/* Ctrl+滚轮缩放需阻止页面缩放 ⇒ 只能以 passive:false 挂容器 */
+onMounted(() => {
+  scrollEl.value?.addEventListener("wheel", viewport.onWheel, {
+    passive: false,
+  });
+});
+
+onBeforeUnmount(() => {
+  scrollEl.value?.removeEventListener("wheel", viewport.onWheel);
+});
 
 const graph = computed(() => buildGraphModel(props.story, positions.value));
 
@@ -186,7 +246,7 @@ export default { name: "StoryNodeGraph" };
       ref="scrollEl"
       class="graph-scroll"
       :class="{ panning: panState !== null }"
-      @pointerdown="startPan"
+      @pointerdown="onBackgroundPointerDown"
     >
       <div
         class="graph-outer"
@@ -226,7 +286,7 @@ export default { name: "StoryNodeGraph" };
               width: `${NODE_W}px`,
               height: `${NODE_H}px`,
             }"
-            @pointerdown.stop.prevent="startDrag(node, $event)"
+            @pointerdown.stop.prevent="onNodePointerDown(node, $event)"
             @click="selectNode(node.id)"
           >
             <span v-if="node.isEntry" class="entry-dot" title="入口列"></span>

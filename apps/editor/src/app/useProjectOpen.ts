@@ -1,7 +1,11 @@
 import type { Ref } from "vue";
 import { DEFAULT_LAYER_Z } from "@lingfan/engine";
 import type { Story } from "@lingfan/engine";
-import { storyDocumentPath, type EditorDocument, type Workspace } from "../domain";
+import {
+  storyDocumentPath,
+  type EditorDocument,
+  type Workspace,
+} from "../domain";
 import type {
   LastProjectEntry,
   OpenedProject,
@@ -15,8 +19,12 @@ export interface ProjectOpenDeps {
   opener: ProjectOpener;
   /** 上次工程一键重开入口（IDB 异步就绪后填充；无 = 按钮不渲染） */
   lastProject?: Ref<LastProjectEntry | undefined>;
-  /** 无 FSA 浏览器的目录选择 input（模板 ref，由组合根传入） */
-  fallbackInput: Ref<HTMLInputElement | null>;
+  /**
+   * 无 FSA 浏览器（Firefox/Safari）的兜底取径：打开目录选择器。
+   *
+   * 打开选择器是 DOM 行为 ⇒ 由视图层提供（组合根拿模板 ref 实现），本层只发请求。
+   */
+  requestFallbackPicker: () => void;
   ports: ProjectPorts;
   diagnosticSupply: Ref<DiagnosticSupply | undefined>;
   projectTree: Ref<Story | undefined>;
@@ -40,7 +48,7 @@ export function useProjectOpen(deps: ProjectOpenDeps) {
   const {
     opener,
     lastProject,
-    fallbackInput,
+    requestFallbackPicker,
     ports,
     diagnosticSupply,
     projectTree,
@@ -61,7 +69,7 @@ export function useProjectOpen(deps: ProjectOpenDeps) {
   async function openProject(): Promise<void> {
     openError.value = "";
     if (!opener.supportsPicker) {
-      fallbackInput.value?.click(); // 无 FSA（Firefox/Safari）→ 目录 input 兜底
+      requestFallbackPicker(); // 无 FSA（Firefox/Safari）→ 目录 input 兜底（视图层打开）
       return;
     }
     try {
@@ -83,10 +91,11 @@ export function useProjectOpen(deps: ProjectOpenDeps) {
     }
   }
 
-  async function onFallbackFiles(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const files = Array.from(input.files ?? []);
-    input.value = ""; // 允许重复选同一目录
+  /**
+   * 目录 input 的快照取径：视图层已把 `FileList` 取成数组并清空 input 值，
+   * 本层只收文件快照（元素读取属 DOM 行为，留在视图层）。
+   */
+  async function openFromFiles(files: readonly File[]): Promise<void> {
     if (files.length === 0) return;
     openError.value = "";
     try {
@@ -182,7 +191,7 @@ export function useProjectOpen(deps: ProjectOpenDeps) {
   return {
     openProject,
     reopenLastProject,
-    onFallbackFiles,
+    openFromFiles,
     applyOpened,
     unbindProject,
     reloadFromDisk,

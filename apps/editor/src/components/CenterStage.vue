@@ -27,6 +27,8 @@ const props = defineProps<{
   readError: string;
   /** 故事四视图当前面（时间线/舞台/节点图/步骤；切换入口在顶栏） */
   centerView: CenterView;
+  /** 「揭示」序号：变化即要求时间线把选中行滚入视口（由 `reveal` 自增） */
+  revealTick: number;
   story: Story;
   selectedColumnId: string;
   selectedPointer: string | null;
@@ -57,7 +59,9 @@ const emit = defineEmits<{
 
   <!-- 非故事资源：按分派表走专用视图（译文表 / 清单 / 媒体 / 只读） -->
   <LangView
-    v-else-if="props.activeSpec.view === 'lang' && props.activeSource !== undefined"
+    v-else-if="
+      props.activeSpec.view === 'lang' && props.activeSource !== undefined
+    "
     :key="props.activePath"
     :path="props.activePath"
     :source="props.activeSource"
@@ -97,6 +101,7 @@ const emit = defineEmits<{
       :story="props.story"
       :column-id="props.selectedColumnId"
       :selected-pointer="props.selectedPointer"
+      :reveal-tick="props.revealTick"
     />
   </template>
   <StageEditor

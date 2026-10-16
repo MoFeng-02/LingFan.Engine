@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, ref } from "vue";
+import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
 import type { Story } from "@lingfan/engine";
 import {
   createElementDraft,
@@ -15,9 +15,32 @@ const props = defineProps<{
   story: Story;
   columnId: string;
   selectedPointer: string | null;
+  /** 「揭示」序号：变化即要求把选中行滚入视口（诊断面板/步骤图点选后自增） */
+  revealTick: number;
 }>();
 
 const api = inject(EDITOR_API_KEY)!;
+
+/** 时间线根节点：选中行滚动只在本视图内完成，宿主不查文档 */
+const timelineEl = ref<HTMLElement | null>(null);
+
+/**
+ * 把选中行滚到视口中央。
+ *
+ * 挂载时也对齐一次：从舞台/节点图切回时间线，选中行同样应该看得见
+ * （揭示信号可能在本视图挂载前就已发出）。无选中行时为空操作。
+ */
+function scrollSelectedIntoView(): void {
+  timelineEl.value
+    ?.querySelector<HTMLElement>("li.selected")
+    ?.scrollIntoView({ block: "center" });
+}
+
+watch(
+  () => props.revealTick,
+  () => void nextTick(scrollSelectedIntoView),
+);
+onMounted(() => void nextTick(scrollSelectedIntoView));
 
 /** op 分组与中文标签 = `@lingfan/editor` 单一事实源（与组件面板共用，勿在此另列清单） */
 const opGroups = listOpGroups();
@@ -96,7 +119,7 @@ function summary(cmd: Record<string, unknown>): string {
 </script>
 
 <template>
-  <div class="timeline">
+  <div ref="timelineEl" class="timeline">
     <div
       v-for="container in containers"
       :key="container.field"

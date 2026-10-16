@@ -8,10 +8,10 @@
  * 状态完备：空（未打开工程）/ 无匹配（搜索）/ 加载中 各有明确文案，
  * **不用空白或 spinner 代替解释**。
  */
-import { computed, nextTick, ref, watch } from "vue";
-import type { KeyValueStorage } from "@lingfan/editor";
+import { computed, inject, nextTick, ref, watch } from "vue";
 import type { ResourceNode } from "../domain";
 import { createCollapsedDirsStore, flattenResources } from "../domain";
+import { KEY_VALUE_STORAGE_KEY } from "../contracts";
 
 const props = defineProps<{
   /** 树节点（已分组排序）；空数组 = 未打开工程 */
@@ -36,15 +36,9 @@ const emit = defineEmits<{
  */
 const collapsed = ref<ReadonlySet<string>>(new Set());
 
-/** 浏览器可能禁站点数据（取 `localStorage` 本身即抛）——失败即无持久化，不影响可用性 */
-function safeLocalStorage(): KeyValueStorage | undefined {
-  try {
-    return window.localStorage;
-  } catch {
-    return undefined;
-  }
-}
-const collapsedStore = createCollapsedDirsStore(safeLocalStorage());
+/** 本机存储由组合根注入（站点数据被禁 = `undefined` ⇒ 折叠态仅本次会话有效） */
+const storage = inject(KEY_VALUE_STORAGE_KEY, undefined);
+const collapsedStore = createCollapsedDirsStore(storage);
 
 /** 换工程随身份归位（阻止组件视图态跨工程残留） */
 watch(

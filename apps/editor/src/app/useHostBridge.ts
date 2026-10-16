@@ -4,6 +4,7 @@ import {
   detectLocalHost,
   fetchWatchStatus,
   pollWatch,
+  postPackRequest,
   type LocalHostEndpoint,
 } from "../infra";
 import type { PackRequest, PackResult } from "../contracts";
@@ -112,30 +113,15 @@ export function useHostBridge(deps: HostBridgeDeps) {
    * ——长任务的存在感不随面板显隐丢失。
    */
   const packing = ref(false);
-  async function sendPackRequest(
-    request: PackRequest,
-  ): Promise<PackResult> {
+  async function sendPackRequest(request: PackRequest): Promise<PackResult> {
     const host = localHost.value;
     if (host === undefined || host.token === "") {
       return { ok: false, reason: "本地宿主未就绪（缺少访问令牌）" };
     }
     packing.value = true;
     try {
-      const res = await fetch(
-        `${host.baseUrl}/__editor_host__/${host.token}/pack`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(request),
-        },
-      );
-      if (!res.ok) return { ok: false, reason: `宿主返回 ${String(res.status)}` };
-      return (await res.json()) as PackResult;
-    } catch (error: unknown) {
-      return {
-        ok: false,
-        reason: `无法联系本地宿主：${error instanceof Error ? error.message : String(error)}`,
-      };
+      // 失败已由 `postPackRequest` 折成 `{ ok: false, reason }`（宿主未启动是正常降级）
+      return await postPackRequest(host, request);
     } finally {
       packing.value = false;
     }
