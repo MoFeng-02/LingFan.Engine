@@ -8,7 +8,7 @@ import {
   isAssignmentOperator,
 } from "../shared.ts";
 import type { BodyCtx, Scope } from "../shared.ts";
-import { statePath } from "../expr/expr-core.ts";
+import { statePath } from "../expr/state-path.ts";
 import { lowerCond, lowerValue, loweredToScriptValue } from "../expr/expr.ts";
 import { callWord } from "../expr/words.ts";
 import { emitAssignment, translateIncrement } from "../expr/assign.ts";

@@ -1,12 +1,10 @@
 import * as ts from "typescript";
 import { diag, lookupBinding, lookupScope } from "../shared.ts";
 import type { BodyCtx } from "../shared.ts";
-import {
-  probeExpression,
-  lowerExpr,
-  statePath,
-  quoteEngineString,
-} from "./expr-core.ts";
+import { probeExpression } from "./probe.ts";
+import { lowerExpr } from "./lower/index.ts";
+import { statePath } from "./state-path.ts";
+import { quoteEngineString } from "./engine-text.ts";
 
 export type Lowered =
   | { kind: "lit"; value: string | number | boolean }
