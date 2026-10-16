@@ -2,7 +2,7 @@ import * as ts from "typescript";
 import type { StoryCommand } from "@lingfan/engine";
 import { diag, isAssignmentOperator } from "../shared.ts";
 import type { BodyCtx } from "../shared.ts";
-import { emitCommand, callWord } from "../expr/words.ts";
+import { emitCommand, callWord } from "../expr/words/index.ts";
 import { lowerValue, loweredToScriptValue } from "../expr/expr.ts";
 import {
   translateVariableStatement,

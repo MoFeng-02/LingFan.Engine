@@ -3,7 +3,7 @@ import type { StoryCommand } from "@lingfan/engine";
 import { diag, lookupScope } from "../../shared.ts";
 import type { BodyCtx } from "../../shared.ts";
 import { statePath } from "../../expr/state-path.ts";
-import { callWord } from "../../expr/words.ts";
+import { callWord } from "../../expr/words/index.ts";
 import { translateBlockBody } from "../control-flow.ts";
 import type { StatementDispatch } from "../control-flow.ts";
 
