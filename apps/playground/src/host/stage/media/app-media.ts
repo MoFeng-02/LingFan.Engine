@@ -29,12 +29,17 @@ export interface AppMediaOptions {
     resourcePort: ResourcePort;
     preferences: PlayerPreferences;
     createAudioPort: (onError: (message: string) => void) => AudioPort;
-    createVideoPort: (onError: (message: string) => void) => VideoPort;
+    createVideoPort: (
+      onError: (message: string) => void,
+      readContainer?: () => HTMLElement | null,
+    ) => VideoPort;
   };
   /** 引擎句柄取用（渲染器挂接与视频完成回传；重启重建后指向新实例） */
   getEngine: () => StoryEngine;
   /** 错误横幅内容（媒体装配失败的 fail-closed 上报都落这里） */
   error: Ref<string>;
+  /** 视频层的呈现容器（舞台根就传它：视频层随舞台缩放；缺省 = 铺满视口） */
+  readVideoContainer?: () => HTMLElement | null;
 }
 
 /** 媒体单元格：端口与渲染器句柄、错误上报（字段可变，重启时整体改写） */
@@ -57,14 +62,14 @@ export interface AppMedia {
 
 /** 装配媒体单元格：按宿主属性建端口对，渲染器经工厂按需构造 */
 export function createAppMedia(options: AppMediaOptions): AppMedia {
-  const { props, getEngine, error } = options;
+  const { props, getEngine, error, readVideoContainer } = options;
   // —— 音频/视频：端口由组合根注入（装配只见契约）；渲染器做状态差量 ——
   function reportAudioError(message: string): void {
     error.value = message;
   }
   const media: AppMedia = {
     audioPort: props.createAudioPort(reportAudioError),
-    videoPort: props.createVideoPort(reportAudioError),
+    videoPort: props.createVideoPort(reportAudioError, readVideoContainer),
     audioRenderer: null,
     videoRenderer: null,
     reportAudioError,

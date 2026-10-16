@@ -26,7 +26,8 @@ export interface HostEffectsOptions {
   readElementHost(): HTMLElement | null;
   /** 全屏转场遮罩；返回 null 表示本帧没有可写遮罩 */
   readOverlay(): HTMLElement | null;
-  /** 舞台根：震动偏移写它的 transform；返回 null 表示震动整段跳过 */
+  /** 震动落点：偏移写它的 transform；返回 null 表示震动整段跳过。
+      必须是内容层容器——舞台根那层的 transform 归适配装配，写上去会把整场缩放抹掉。 */
   readStage(): HTMLElement | null;
 }
 

@@ -21,6 +21,7 @@ export { createAppHistory } from "./panels/wiring/app-history";
 export { createAppEngineLife } from "./engine/app-engine";
 export { createAppFrame } from "./stage/frame/app-frame";
 export { browserFrameSource } from "./stage/frame/frame-loop";
+export { createAppStageFit } from "./stage/fit/app-stage-fit";
 export { createAppPrefs } from "./panels/wiring/app-prefs";
 export { createAppSlots } from "./panels/wiring/app-slots";
 

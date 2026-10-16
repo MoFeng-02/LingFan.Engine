@@ -239,10 +239,12 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-/** 设置面板样式：存档槽格网与各设置分区的控件外观、布局与交互态。 */
+/** 设置面板样式：存档槽格网与各设置分区的控件外观、布局与交互态。
+    尺寸按舞台基准（1280 × 720）折算：舞台子树内不用视口单位——那些先按真实窗口解析，
+    再被舞台缩放一次，等于随窗口二次变化；百分比相对舞台根解析，随基准走。 */
 
 .saves-panel {
-  width: min(92vw, 560px);
+  width: min(92%, 560px);
 }
 
 .slot-grid {
@@ -298,8 +300,8 @@ const emit = defineEmits<{
   position: fixed;
   top: calc(60px + env(safe-area-inset-top));
   left: calc(16px + env(safe-area-inset-left));
-  width: min(80vw, 360px);
-  max-height: 60vh;
+  width: min(80%, 360px);
+  max-height: 432px; /* 60vh @ 720 基准 */
   overflow-y: auto;
   border: 1px solid #4448;
   border-radius: 12px;
