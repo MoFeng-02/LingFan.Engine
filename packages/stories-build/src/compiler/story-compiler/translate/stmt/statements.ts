@@ -9,14 +9,14 @@ import {
   emitAssignment,
   translateIncrement,
 } from "../expr/assign.ts";
+import type { StatementDispatch } from "./control-flow.ts";
 import {
   translateIf,
   translateWhile,
   translateFor,
   translateForOf,
   translateSwitch,
-  type StatementDispatch,
-} from "./control-flow.ts";
+} from "./control/index.ts";
 
 /** 语句递归入口：本文件即分发器，自引用注入给控制流族（见 `StatementDispatch`） */
 const DISPATCH: StatementDispatch = {
