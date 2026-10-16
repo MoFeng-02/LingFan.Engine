@@ -530,6 +530,18 @@ body,
   margin: 0;
   height: 100%;
   overflow: hidden;
+  /* 文本框选：游玩界面的文字（台词、按钮、面板标签）只作展示，拖动或连点不该留下选中段。
+     要提供复制能力时，给那个部件加 data-lf-selectable 放行，不在宿主外面破例。 */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 放行名单：输入框要能选词改写；带 data-lf-selectable 的部件由给出复制操作的宿主自行标记 */
+input,
+textarea,
+[data-lf-selectable] {
+  user-select: text;
+  -webkit-user-select: text;
 }
 </style>
 
