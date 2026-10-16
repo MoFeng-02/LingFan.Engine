@@ -1,18 +1,22 @@
 /**
  * 故事章节树 · 判据与装配实现（可测，无 IO / 无 Vue）。
  *
- * 域出口 `./index.ts` 只保留类型声明与转发；实现集中在本文件。
+ * 域出口 `./index.ts` 只做转发（类型见 `./types.ts`）；实现集中在本文件。
  * 设计约定（分组只看 type、任意深度、0 层平铺退化）见出口文件头注。
  */
 
-import { isReplayableColumn, STORIES_DIR, type StoryColumn } from "@lingfan/engine";
+import {
+  isReplayableColumn,
+  STORIES_DIR,
+  type StoryColumn,
+} from "@lingfan/engine";
 import type {
   ChapterDir,
   ChapterGroup,
   ChapterIndex,
   ChapterInput,
   ChapterNode,
-} from "./index.ts";
+} from "./types.ts";
 
 /** 故事文件的容器根（剥掉它，剩下的目录链才是「作者的章节编排」；由引擎 SSOT 常量派生） */
 const STORIES_ROOT = `${STORIES_DIR}/`;

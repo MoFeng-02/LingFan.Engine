@@ -10,6 +10,7 @@
  */
 
 import type { OpGroup } from "../contracts/index.ts";
+import { OP_GROUP_LABELS, OP_GROUP_ORDER } from "./catalog.ts";
 import { listOps } from "./forms.ts";
 import { BUILTIN_OP_SURFACE, type OpSurface } from "./surface.ts";
 
@@ -73,30 +74,6 @@ export const ELEMENT_TYPE_GROUPS: readonly ElementTypeGroup[] = [
   },
   { group: "spacing", label: "间隔", types: ["separator", "spacer"] },
 ];
-
-/** op 分组顺序（与时间线插入菜单一致） */
-export const OP_GROUP_ORDER: readonly OpGroup[] = [
-  "narrative",
-  "presentation",
-  "flow",
-  "variables",
-  "save",
-  "audio",
-  "video",
-  "minigame",
-];
-
-/** op 分组中文标签（单一事实源） */
-export const OP_GROUP_LABELS: Readonly<Record<OpGroup, string>> = {
-  narrative: "叙事",
-  presentation: "表现",
-  flow: "流程",
-  variables: "变量",
-  save: "存档",
-  audio: "音频",
-  video: "视频",
-  minigame: "小游戏",
-};
 
 export interface OpGroupEntries {
   group: OpGroup;

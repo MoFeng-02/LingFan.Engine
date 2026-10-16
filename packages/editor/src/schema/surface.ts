@@ -10,8 +10,7 @@ import type { OpExtension, WaitSpec } from "@lingfan/engine";
 import type { EditorTexts, OpMeta } from "../contracts/index.ts";
 import { resolveEditorTexts } from "../contracts/index.ts";
 import { WAITING_OPS, collectWaitSpecs } from "@lingfan/engine";
-import { OP_META } from "./catalog.ts";
-import { OP_GROUP_ORDER } from "./elementPalette.ts";
+import { OP_GROUP_ORDER, OP_META } from "./catalog.ts";
 import { OP_SCHEMAS } from "./opSchemas/index.ts";
 
 /** op 校验/呈现面：内建 = 常量本体；扩展注册后 = 合并集（消费方唯一读取口径） */

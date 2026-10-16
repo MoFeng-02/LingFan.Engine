@@ -22,7 +22,9 @@ import {
   workbenchOverview,
   type SkeletonLayoutChoice,
 } from "@lingfan/editor";
-import { useDialog } from "../app";
+// 取自具体模块而非聚合出口 `../app`：`app/index.ts` 经 `useI18nWorkbench` 反向
+// 依赖本组件（取 `LangSummary` 类型），从聚合出口取件会形成 import 环（§3.5）。
+import { useDialog } from "../app/dialogInjection";
 
 /** 一个语言的聚合态（宿主供给，不在本组件解析文件） */
 export interface LangSummary {
