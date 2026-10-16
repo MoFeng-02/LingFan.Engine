@@ -37,8 +37,7 @@ export interface ConstExprContext {
 }
 
 export type ConstExprResult =
-  | { ok: true; value: JsonValue }
-  | { ok: false; reason: string };
+  { ok: true; value: JsonValue } | { ok: false; reason: string };
 
 /** 折叠一个表达式为 JSON 可序列化常量；任何非常量形态都返回可读原因 */
 export function evalConstExpr(
@@ -46,15 +45,21 @@ export function evalConstExpr(
   ctx: ConstExprContext,
 ): ConstExprResult {
   const unwrapped = unwrapExpr(expr);
-  if (ts.isStringLiteral(unwrapped) || ts.isNoSubstitutionTemplateLiteral(unwrapped)) {
+  if (
+    ts.isStringLiteral(unwrapped) ||
+    ts.isNoSubstitutionTemplateLiteral(unwrapped)
+  ) {
     return { ok: true, value: unwrapped.text };
   }
   if (ts.isNumericLiteral(unwrapped)) {
     return { ok: true, value: Number(unwrapped.text) };
   }
-  if (unwrapped.kind === ts.SyntaxKind.TrueKeyword) return { ok: true, value: true };
-  if (unwrapped.kind === ts.SyntaxKind.FalseKeyword) return { ok: true, value: false };
-  if (unwrapped.kind === ts.SyntaxKind.NullKeyword) return { ok: true, value: null };
+  if (unwrapped.kind === ts.SyntaxKind.TrueKeyword)
+    return { ok: true, value: true };
+  if (unwrapped.kind === ts.SyntaxKind.FalseKeyword)
+    return { ok: true, value: false };
+  if (unwrapped.kind === ts.SyntaxKind.NullKeyword)
+    return { ok: true, value: null };
   if (ts.isPrefixUnaryExpression(unwrapped)) {
     return evalPrefixUnary(unwrapped);
   }
@@ -71,7 +76,11 @@ export function evalConstExpr(
     ts.isPropertyAccessExpression(unwrapped) &&
     ts.isIdentifier(unwrapped.expression)
   ) {
-    return resolveEnumMember(unwrapped.expression.text, unwrapped.name.text, ctx);
+    return resolveEnumMember(
+      unwrapped.expression.text,
+      unwrapped.name.text,
+      ctx,
+    );
   }
   if (
     ts.isElementAccessExpression(unwrapped) &&
@@ -85,11 +94,15 @@ export function evalConstExpr(
     );
   }
   if (ts.isTemplateExpression(unwrapped)) {
-    return { ok: false, reason: "模板串不支持插值——构建期 define 值请用字符串字面量" };
+    return {
+      ok: false,
+      reason: "模板串不支持插值——构建期 define 值请用字符串字面量",
+    };
   }
   return {
     ok: false,
-    reason: "值必须是可序列化常量：字符串/数字/布尔/null、数组或对象字面量、枚举成员引用",
+    reason:
+      "值必须是可序列化常量：字符串/数字/布尔/null、数组或对象字面量、枚举成员引用",
   };
 }
 
@@ -105,10 +118,11 @@ function unwrapExpr(expr: ts.Expression): ts.Expression {
   return expr;
 }
 
-function evalPrefixUnary(
-  expr: ts.PrefixUnaryExpression,
-): ConstExprResult {
-  if (expr.operator !== ts.SyntaxKind.MinusToken && expr.operator !== ts.SyntaxKind.PlusToken) {
+function evalPrefixUnary(expr: ts.PrefixUnaryExpression): ConstExprResult {
+  if (
+    expr.operator !== ts.SyntaxKind.MinusToken &&
+    expr.operator !== ts.SyntaxKind.PlusToken
+  ) {
     return { ok: false, reason: "一元运算符不支持构建期折叠（只支持正负号）" };
   }
   const inner = unwrapExpr(expr.operand);
@@ -116,7 +130,10 @@ function evalPrefixUnary(
     return { ok: false, reason: "正负号只能作用于数字字面量" };
   }
   const value = Number(inner.text);
-  return { ok: true, value: expr.operator === ts.SyntaxKind.MinusToken ? -value : value };
+  return {
+    ok: true,
+    value: expr.operator === ts.SyntaxKind.MinusToken ? -value : value,
+  };
 }
 
 function evalArray(
@@ -154,7 +171,10 @@ function evalObject(
       continue;
     }
     if (ts.isShorthandPropertyAssignment(prop)) {
-      return { ok: false, reason: "对象字面量不支持简写属性——请写显式的 键: 值" };
+      return {
+        ok: false,
+        reason: "对象字面量不支持简写属性——请写显式的 键: 值",
+      };
     }
     if (ts.isSpreadAssignment(prop)) {
       return { ok: false, reason: "对象字面量不支持展开属性" };
@@ -231,25 +251,37 @@ function loadImportedEnum(
   }
   const fileRel = resolveEnumFileRel(imported.specifier, ctx);
   if (fileRel === undefined) {
-    return { ok: false, reason: `无法解析枚举导入 "${imported.specifier}"（源目录内找不到对应文件）` };
+    return {
+      ok: false,
+      reason: `无法解析枚举导入 "${imported.specifier}"（源目录内找不到对应文件）`,
+    };
   }
   const cachedFile = ctx.enumFiles.get(fileRel);
   if (cachedFile !== undefined) {
     const cached = cachedFile.get(imported.exportedName);
     if (cached !== undefined) return { ok: true, value: cached };
-    return { ok: false, reason: `"${fileRel}" 中没有名为 "${imported.exportedName}" 的枚举` };
+    return {
+      ok: false,
+      reason: `"${fileRel}" 中没有名为 "${imported.exportedName}" 的枚举`,
+    };
   }
   const parsed = parseEnumFile(fileRel, ctx);
   ctx.enumFiles.set(fileRel, parsed);
   const table = parsed.get(imported.exportedName);
   if (table === undefined) {
-    return { ok: false, reason: `"${fileRel}" 中没有名为 "${imported.exportedName}" 的枚举` };
+    return {
+      ok: false,
+      reason: `"${fileRel}" 中没有名为 "${imported.exportedName}" 的枚举`,
+    };
   }
   return { ok: true, value: table };
 }
 
 /** import 说明符 → 源根内 posix 路径（相对当前模块目录归一；补 .ts / index.ts） */
-function resolveEnumFileRel(specifier: string, ctx: ConstExprContext): string | undefined {
+function resolveEnumFileRel(
+  specifier: string,
+  ctx: ConstExprContext,
+): string | undefined {
   const base = posix.normalize(posix.join(posix.dirname(ctx.rel), specifier));
   const candidates = base.endsWith(".ts")
     ? [base]

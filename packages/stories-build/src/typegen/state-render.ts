@@ -143,7 +143,9 @@ function renderUnionSlot(
     }
     if (Array.isArray(member)) {
       if (member.length === 1) {
-        push(`${parenthesizeUnion(renderTypeSlot(member[0], path, slots, used))}[]`);
+        push(
+          `${parenthesizeUnion(renderTypeSlot(member[0], path, slots, used))}[]`,
+        );
         return;
       }
       push(renderUnionSlot(member, path, slots, used, false));

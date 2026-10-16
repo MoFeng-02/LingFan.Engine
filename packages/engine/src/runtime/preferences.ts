@@ -139,7 +139,11 @@ export class PlayerPreferences {
    * @param timer 定时器端口；缺省 = 宿主全局定时器（行为与直接 setTimeout 一致）
    * @param options 防抖注入口；缺省 = 300ms 静默窗
    */
-  constructor(port?: PreferencesPort, timer?: TimerPort, options?: PreferencesOptions) {
+  constructor(
+    port?: PreferencesPort,
+    timer?: TimerPort,
+    options?: PreferencesOptions,
+  ) {
     this.port = port;
     this.timer = timer ?? hostTimer;
     this.persistDebounceMs = options?.persistDebounceMs ?? PERSIST_DEBOUNCE_MS;

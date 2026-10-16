@@ -43,7 +43,9 @@ function storyOf(columns: object[]): Story {
 /** 顶层命令指针序列（时间线行口径：flow→commands） */
 function topLevelPointers(story: Story, columnIndex: number): string[] {
   const column = story.columns[columnIndex]!;
-  return (column.commands ?? []).map((_, i) => `/columns/${columnIndex}/commands/${i}`);
+  return (column.commands ?? []).map(
+    (_, i) => `/columns/${columnIndex}/commands/${i}`,
+  );
 }
 
 const say = (text: string): object => ({ op: "say", text });
@@ -73,9 +75,15 @@ describe("列内切分：扩展等待点是边界（合并面决定，回退时�
 
   it("合并面下：扩展等待自成一个 waiting=extension 步，成员划分不重不漏", () => {
     const steps = columnSteps(story, 0, { surface: surfaceWithExt });
-    expect(steps.map((s) => s.waiting)).toEqual(["dialog", "extension", "dialog"]);
+    expect(steps.map((s) => s.waiting)).toEqual([
+      "dialog",
+      "extension",
+      "dialog",
+    ]);
     expect(steps.every((s) => s.kind === "wait")).toBe(true);
-    expect(steps.flatMap((s) => s.commands)).toEqual(topLevelPointers(story, 0));
+    expect(steps.flatMap((s) => s.commands)).toEqual(
+      topLevelPointers(story, 0),
+    );
     expect(steps[1]!.commands).toEqual(["/columns/0/commands/1"]);
   });
 
@@ -88,12 +96,18 @@ describe("列内切分：扩展等待点是边界（合并面决定，回退时�
       "/columns/0/commands/1",
       "/columns/0/commands/2",
     ]);
-    expect(steps.flatMap((s) => s.commands)).toEqual(topLevelPointers(story, 0));
+    expect(steps.flatMap((s) => s.commands)).toEqual(
+      topLevelPointers(story, 0),
+    );
   });
 
   it("hard 标记：扩展 WaitSpec 未声明 hard ⇒ false（与 pause 的 hard:true 对照）", () => {
     const story = storyOf([
-      { id: "start", kind: "flow", commands: [{ op: "demo_gate" }, { op: "pause", seconds: 1 }] },
+      {
+        id: "start",
+        kind: "flow",
+        commands: [{ op: "demo_gate" }, { op: "pause", seconds: 1 }],
+      },
     ]);
     const steps = columnSteps(story, 0, { surface: surfaceWithExt });
     expect(steps.map((s) => [s.waiting, s.hard])).toEqual([

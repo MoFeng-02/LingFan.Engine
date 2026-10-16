@@ -85,58 +85,60 @@ const ENFORCED_ANCHORS = [
  */
 const hasSpecSources = Object.keys(SPEC_SOURCES).length > 0;
 
-describe.skipIf(!hasSpecSources)("规约↔测试互锁：锚点声明 ↔ tests/ 落地", () => {
-  it("扫描面非空（规约 ≥ 10 文件、测试 ≥ 100 文件，防 glob 失配假绿）", () => {
-    expect(Object.keys(SPEC_SOURCES).length).toBeGreaterThanOrEqual(10);
-    expect(Object.keys(TEST_SOURCES).length).toBeGreaterThanOrEqual(100);
-  });
-
-  it("声明行能抽出锚点 ID（数量级自证：唯一 ID ≥ 100）", () => {
-    const { ids } = declaredAnchorIds();
-    expect(ids.length).toBeGreaterThanOrEqual(100);
-    expect(new Set(ids).size).toBeGreaterThanOrEqual(100);
-  });
-
-  it("判据自证：白名单 ID 注入假语料后能被找回（防落地判据失配）", () => {
-    const probe = ENFORCED_ANCHORS[0] ?? "";
-    const corpus = Object.values(TEST_SOURCES).join("\n");
-    expect(corpus.includes(probe)).toBe(
-      landedAnchorIds([probe]).has(probe),
-    );
-  });
-
-  it("白名单内：声明 ↔ 落地双向精确相等（缺失即红，写法漂移也红）", () => {
-    const { ids } = declaredAnchorIds();
-    const landed = landedAnchorIds(ids);
-    const diff = twoWayDiff({
-      declared: ENFORCED_ANCHORS,
-      landed: [...landed].filter((id) =>
-        (ENFORCED_ANCHORS as readonly string[]).includes(id),
-      ),
-      declaredLabel: "白名单锚点",
-      landedLabel: "测试落地",
+describe.skipIf(!hasSpecSources)(
+  "规约↔测试互锁：锚点声明 ↔ tests/ 落地",
+  () => {
+    it("扫描面非空（规约 ≥ 10 文件、测试 ≥ 100 文件，防 glob 失配假绿）", () => {
+      expect(Object.keys(SPEC_SOURCES).length).toBeGreaterThanOrEqual(10);
+      expect(Object.keys(TEST_SOURCES).length).toBeGreaterThanOrEqual(100);
     });
-    expect(diff.declaredButMissing, `声明未落地：${diff.declaredButMissing.join("、")}`).toEqual(
-      [],
-    );
-  });
 
-  it("报告（不阻塞）：白名单外声明未落地的锚点清单——渐进收紧的待办面", () => {
-    const { ids } = declaredAnchorIds();
-    const landed = landedAnchorIds(ids);
-    const diff = twoWayDiff({
-      declared: ids,
-      landed: [...landed],
-      declaredLabel: "规约锚点",
-      landedLabel: "测试落地",
+    it("声明行能抽出锚点 ID（数量级自证：唯一 ID ≥ 100）", () => {
+      const { ids } = declaredAnchorIds();
+      expect(ids.length).toBeGreaterThanOrEqual(100);
+      expect(new Set(ids).size).toBeGreaterThanOrEqual(100);
     });
-    const pending = diff.declaredButMissing.filter(
-      (id) => !(ENFORCED_ANCHORS as readonly string[]).includes(id),
-    );
-    // 只留痕不断言：让未覆盖面在测试输出里可见，禁止它静默膨胀后无人知晓
-    console.info(
-      `[锚点互锁] 已落地 ${landed.size} / 唯一声明 ${new Set(ids).size}；白名单外待落地 ${pending.length} 条`,
-    );
-    expect(Array.isArray(pending)).toBe(true);
-  });
-});
+
+    it("判据自证：白名单 ID 注入假语料后能被找回（防落地判据失配）", () => {
+      const probe = ENFORCED_ANCHORS[0] ?? "";
+      const corpus = Object.values(TEST_SOURCES).join("\n");
+      expect(corpus.includes(probe)).toBe(landedAnchorIds([probe]).has(probe));
+    });
+
+    it("白名单内：声明 ↔ 落地双向精确相等（缺失即红，写法漂移也红）", () => {
+      const { ids } = declaredAnchorIds();
+      const landed = landedAnchorIds(ids);
+      const diff = twoWayDiff({
+        declared: ENFORCED_ANCHORS,
+        landed: [...landed].filter((id) =>
+          (ENFORCED_ANCHORS as readonly string[]).includes(id),
+        ),
+        declaredLabel: "白名单锚点",
+        landedLabel: "测试落地",
+      });
+      expect(
+        diff.declaredButMissing,
+        `声明未落地：${diff.declaredButMissing.join("、")}`,
+      ).toEqual([]);
+    });
+
+    it("报告（不阻塞）：白名单外声明未落地的锚点清单——渐进收紧的待办面", () => {
+      const { ids } = declaredAnchorIds();
+      const landed = landedAnchorIds(ids);
+      const diff = twoWayDiff({
+        declared: ids,
+        landed: [...landed],
+        declaredLabel: "规约锚点",
+        landedLabel: "测试落地",
+      });
+      const pending = diff.declaredButMissing.filter(
+        (id) => !(ENFORCED_ANCHORS as readonly string[]).includes(id),
+      );
+      // 只留痕不断言：让未覆盖面在测试输出里可见，禁止它静默膨胀后无人知晓
+      console.info(
+        `[锚点互锁] 已落地 ${landed.size} / 唯一声明 ${new Set(ids).size}；白名单外待落地 ${pending.length} 条`,
+      );
+      expect(Array.isArray(pending)).toBe(true);
+    });
+  },
+);

@@ -56,25 +56,38 @@ export function resolveSaveMinigames(
       if (migrated === null) {
         ctx.fail(
           "minigame-version",
-          ctx.texts.minigameMigrateFailed(mark.id, mark.stateVersion, meta.stateVersion),
+          ctx.texts.minigameMigrateFailed(
+            mark.id,
+            mark.stateVersion,
+            meta.stateVersion,
+          ),
         );
         return null;
       }
       staged = [
         ...staged.filter(([key]) => !key.startsWith(prefix)),
         ...Object.entries(migrated).map(
-          ([key, value]) => [gameScopedKey(mark.id, key), value] as [string, unknown],
+          ([key, value]) =>
+            [gameScopedKey(mark.id, key), value] as [string, unknown],
         ),
       ];
       ctx.emitEvent({
         kind: "load.notice",
-        text: ctx.texts.minigameMigrated(mark.id, mark.stateVersion, meta.stateVersion),
+        text: ctx.texts.minigameMigrated(
+          mark.id,
+          mark.stateVersion,
+          meta.stateVersion,
+        ),
       });
       continue;
     }
     ctx.fail(
       "minigame-version",
-      ctx.texts.minigameVersionDependency(mark.id, mark.stateVersion, meta.stateVersion),
+      ctx.texts.minigameVersionDependency(
+        mark.id,
+        mark.stateVersion,
+        meta.stateVersion,
+      ),
     );
     return null;
   }

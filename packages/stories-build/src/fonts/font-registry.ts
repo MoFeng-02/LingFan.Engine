@@ -45,6 +45,8 @@ export function scanFontRegistry(fontsDir: string): readonly FontEntry[] {
 }
 
 /** 字体名集合视图（供编译器 fail-closed 检查使用） */
-export function fontNameSet(entries: readonly FontEntry[]): ReadonlySet<string> {
+export function fontNameSet(
+  entries: readonly FontEntry[],
+): ReadonlySet<string> {
   return new Set(entries.map((entry) => entry.name));
 }

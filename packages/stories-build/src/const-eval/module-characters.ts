@@ -24,10 +24,7 @@ import * as ts from "typescript";
 import { CONFIG_FILE } from "../config/index.ts";
 import { StoryBuildError } from "../shared/index.ts";
 import type { CharacterDef } from "@lingfan/engine";
-import {
-  type ConstExprContext,
-  evalConstExpr,
-} from "./const-expr.ts";
+import { type ConstExprContext, evalConstExpr } from "./const-expr.ts";
 
 /** 一条模块层角色声明：求值产物 + 声明位置（跨文件冲突诊断要带两处位置） */
 export interface LocatedCharacterDecl {
@@ -71,7 +68,8 @@ export function collectModuleCharacters(
     if (!rel.includes("/")) continue; // 根级结构违规由图谱层既有诊断负责
     if (rel.startsWith(`${input.generatedDirName}/`)) continue;
     const text = input.files.get(rel);
-    if (text !== undefined) collectFromFile(input.sourcesDir, rel, text, decls, diags);
+    if (text !== undefined)
+      collectFromFile(input.sourcesDir, rel, text, decls, diags);
   }
   // 冲突判定：同名角色定义不等 = fail-closed；全等 = 幂等
   const table: CharacterTable = new Map();
@@ -135,7 +133,11 @@ function collectCall(
   diags: string[],
 ): void {
   const [first, second] = call.arguments;
-  if (first === undefined || second === undefined || call.arguments.length > 2) {
+  if (
+    first === undefined ||
+    second === undefined ||
+    call.arguments.length > 2
+  ) {
     diags.push(`${origin}character 调用接受 2 个实参：(key, 样式对象)`);
     return;
   }
@@ -150,7 +152,9 @@ function collectCall(
     return;
   }
   if (!isRecord(spec.value)) {
-    diags.push(`${origin}character("${keyExpr.text}")：第二参必须是普通对象字面量`);
+    diags.push(
+      `${origin}character("${keyExpr.text}")：第二参必须是普通对象字面量`,
+    );
     return;
   }
   const def: CharacterDef = { key: keyExpr.text };
@@ -162,7 +166,9 @@ function collectCall(
       return;
     }
     if (typeof raw !== "string") {
-      diags.push(`${origin}character("${keyExpr.text}")：字段 ${field} 必须是字符串`);
+      diags.push(
+        `${origin}character("${keyExpr.text}")：字段 ${field} 必须是字符串`,
+      );
       return;
     }
     def[field as keyof CharacterDef] = raw;
@@ -193,11 +199,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function formatOrigin(
-  rel: string,
-  sf: ts.SourceFile,
-  node: ts.Node,
-): string {
+function formatOrigin(rel: string, sf: ts.SourceFile, node: ts.Node): string {
   const pos = sf.getLineAndCharacterOfPosition(node.getStart(sf));
   return `${rel}:${pos.line + 1}:${pos.character + 1} `;
 }
@@ -206,7 +208,10 @@ function formatOrigin(
 function collectImportBindings(
   sf: ts.SourceFile,
 ): Map<string, { specifier: string; exportedName: string }> {
-  const imports = new Map<string, { specifier: string; exportedName: string }>();
+  const imports = new Map<
+    string,
+    { specifier: string; exportedName: string }
+  >();
   for (const stmt of sf.statements) {
     if (!ts.isImportDeclaration(stmt)) continue;
     if (!ts.isStringLiteral(stmt.moduleSpecifier)) continue;
@@ -216,7 +221,10 @@ function collectImportBindings(
     if (clause.name !== undefined) {
       imports.set(clause.name.text, { specifier, exportedName: "default" });
     }
-    if (clause.namedBindings !== undefined && ts.isNamedImports(clause.namedBindings)) {
+    if (
+      clause.namedBindings !== undefined &&
+      ts.isNamedImports(clause.namedBindings)
+    ) {
       for (const el of clause.namedBindings.elements) {
         imports.set(el.name.text, {
           specifier,
@@ -229,7 +237,9 @@ function collectImportBindings(
 }
 
 /** 本文件 enum 声明的成员表（折叠规则与跨文件枚举一致；不可折叠成员不登记） */
-function collectLocalEnums(sf: ts.SourceFile): Map<string, ReadonlyMap<string, string | number>> {
+function collectLocalEnums(
+  sf: ts.SourceFile,
+): Map<string, ReadonlyMap<string, string | number>> {
   const enums = new Map<string, ReadonlyMap<string, string | number>>();
   for (const stmt of sf.statements) {
     if (!ts.isEnumDeclaration(stmt)) continue;
@@ -299,7 +309,8 @@ function collectTopLevelBindingNames(sf: ts.SourceFile): Set<string> {
         if (ts.isNamespaceImport(clause.namedBindings)) {
           names.add(clause.namedBindings.name.text);
         } else if (ts.isNamedImports(clause.namedBindings)) {
-          for (const el of clause.namedBindings.elements) names.add(el.name.text);
+          for (const el of clause.namedBindings.elements)
+            names.add(el.name.text);
         }
       }
       continue;
@@ -321,14 +332,20 @@ function collectTopLevelBindingNames(sf: ts.SourceFile): Set<string> {
 }
 
 /** 绑定名递归收集：标识符直取，对象/数组解构展开元素（缺省名、重命名取属性名侧） */
-function collectBindingNames(pattern: ts.BindingName, names: Set<string>): void {
+function collectBindingNames(
+  pattern: ts.BindingName,
+  names: Set<string>,
+): void {
   if (ts.isIdentifier(pattern)) {
     names.add(pattern.text);
     return;
   }
   for (const element of pattern.elements) {
     if (ts.isOmittedExpression(element)) continue;
-    if (element.propertyName !== undefined && ts.isIdentifier(element.propertyName)) {
+    if (
+      element.propertyName !== undefined &&
+      ts.isIdentifier(element.propertyName)
+    ) {
       names.add(element.propertyName.text);
     }
     collectBindingNames(element.name, names);

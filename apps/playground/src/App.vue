@@ -92,8 +92,15 @@ const { narrative, zOf, typewriter } = createAppNarrative({
   },
 });
 /** 叙事视图状态：模板直接读这些字段，组件不再自持字段 */
-const { inMenu, inWait, inInput, inVideo, inMinigame, inInteraction, inExtension } =
-  narrative;
+const {
+  inMenu,
+  inWait,
+  inInput,
+  inVideo,
+  inMinigame,
+  inInteraction,
+  inExtension,
+} = narrative;
 /** 对话层显隐与内容字段：面板开关、NVL 模式、菜单选项、输入提示与输入值 */
 const { dialogHidden, nvlMode, menuOptions, inputPrompt, inputValue } =
   narrative;
@@ -243,7 +250,11 @@ function handleEvent({
     narrativeEvents.loadNotice(payload.text);
   } else if (payload.kind === "character.missing") {
     // 注销知情（非致命）：演示宿主以通知条提示，故事继续推进
-    narrativeEvents.notify(`角色 ${payload.key} 未注册，跳过注销`, "warning", undefined);
+    narrativeEvents.notify(
+      `角色 ${payload.key} 未注册，跳过注销`,
+      "warning",
+      undefined,
+    );
   } else {
     narrativeEvents.failed(payload.code, payload.message);
   }

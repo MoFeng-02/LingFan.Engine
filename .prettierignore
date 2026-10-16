@@ -5,9 +5,19 @@ target
 
 # 构建生成物（stories:build 幂等产出——格式由生成器负责，人工排版会被覆盖）
 apps/playground/Stories.src/gen/
+# 同上：创作链编译产物（Resources/Stories/** + project.json，由 stories:build 差量写盘）
+apps/playground/Resources/
+# 平台与框架生成物（Tauri / Astro 自动生成，人工排版会被覆盖）
+apps/playground/src-tauri/gen/
+docs/.astro/
 
 # 本机私有文档与规则（不随仓库分发，格式保持人工排版）
 私有文档
 .rules.md
 .rules.ai.md
 agent.md
+
+# 编辑器范围搁置（2026-10-16 用户裁定「app 下的 editor 暂时不用管」）：暂不重排其源码。
+# 解除搁置时删除本段并跑 `pnpm format`（模块 10 台账列有当时的漂移清单）。
+apps/editor/src/
+packages/editor/src/

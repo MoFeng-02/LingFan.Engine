@@ -1,7 +1,11 @@
 /**
  * 表达式求值与名称解析。
  */
-import { ExpressionError, evaluateExpression, type ExprValue } from "../expr/index.ts";
+import {
+  ExpressionError,
+  evaluateExpression,
+  type ExprValue,
+} from "../expr/index.ts";
 import type { OpContext } from "../internal/index.ts";
 
 /**

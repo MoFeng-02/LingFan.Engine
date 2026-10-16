@@ -177,9 +177,5 @@ function readVarsKeySet(
 }
 
 function describe(value: unknown): string {
-  return value === null
-    ? "null"
-    : Array.isArray(value)
-      ? "数组"
-      : typeof value;
+  return value === null ? "null" : Array.isArray(value) ? "数组" : typeof value;
 }

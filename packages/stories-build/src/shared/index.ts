@@ -8,7 +8,4 @@
  */
 export { StoryBuildError } from "./errors.ts";
 export { walkFiles } from "./walk-files.ts";
-export {
-  defaultStoriesBuildTexts,
-  type StoriesBuildTexts,
-} from "./texts.ts";
+export { defaultStoriesBuildTexts, type StoriesBuildTexts } from "./texts.ts";

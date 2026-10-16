@@ -9,7 +9,11 @@
  * （拒绝整个载荷，而不是猜一个默认值）。
  */
 import { ELEMENT_TYPES, type ElementType } from "../contracts/element.ts";
-import { HOST_OS_VALUES, type HostForm, type HostOs } from "../contracts/host.ts";
+import {
+  HOST_OS_VALUES,
+  type HostForm,
+  type HostOs,
+} from "../contracts/host.ts";
 import type { OrientationMode } from "../contracts/shell.ts";
 import type { SceneType, StoryColumn } from "../contracts/story/index.ts";
 

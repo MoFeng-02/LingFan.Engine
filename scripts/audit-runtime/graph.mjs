@@ -81,9 +81,15 @@ export function extractSpecifiers(text) {
 
 function packageDirOf(spec, repoRoot) {
   const segments = spec.split("/");
-  const packageName = spec.startsWith("@") ? segments.slice(0, 2).join("/") : segments[0];
+  const packageName = spec.startsWith("@")
+    ? segments.slice(0, 2).join("/")
+    : segments[0];
   const subpath = spec.slice(packageName.length);
-  return { packageName, subpath, dir: join(repoRoot, "packages", packageName.replace("@lingfan/", "")) };
+  return {
+    packageName,
+    subpath,
+    dir: join(repoRoot, "packages", packageName.replace("@lingfan/", "")),
+  };
 }
 
 function exportsTarget(exportsField, subpath) {
@@ -122,10 +128,13 @@ function firstExisting(candidates) {
  */
 export function resolveImport(spec, importerFile, repoRoot) {
   const verdict = classifySpecifier(spec);
-  if (verdict.kind !== "relative" && verdict.kind !== "workspace") return verdict;
+  if (verdict.kind !== "relative" && verdict.kind !== "workspace")
+    return verdict;
 
   if (verdict.kind === "relative") {
-    const file = firstExisting(fileCandidates(resolve(dirname(importerFile), spec)));
+    const file = firstExisting(
+      fileCandidates(resolve(dirname(importerFile), spec)),
+    );
     return file === null
       ? { kind: "unresolved", reason: `相对导入解析失败：${spec}` }
       : { kind: "relative", file };
@@ -164,9 +173,17 @@ export function walkGraph(entrySpecs, repoRoot) {
   const queue = [];
 
   for (const entrySpec of entrySpecs) {
-    const resolved = resolveImport(entrySpec, join(repoRoot, "package.json"), repoRoot);
+    const resolved = resolveImport(
+      entrySpec,
+      join(repoRoot, "package.json"),
+      repoRoot,
+    );
     if (resolved.file === undefined) {
-      unresolved.push({ file: entrySpec, line: 0, reason: resolved.reason ?? `入口解析失败：${entrySpec}` });
+      unresolved.push({
+        file: entrySpec,
+        line: 0,
+        reason: resolved.reason ?? `入口解析失败：${entrySpec}`,
+      });
       continue;
     }
     queue.push(resolved.file);
@@ -190,7 +207,11 @@ export function walkGraph(entrySpecs, repoRoot) {
       }
     }
     for (const hit of scanProcessUsage(stripComments(text))) {
-      violations.push({ file, line: hit.line, reason: `Node 运行期全局 process.${hit.text.replace(/^process\s*\.\s*/, "")}` });
+      violations.push({
+        file,
+        line: hit.line,
+        reason: `Node 运行期全局 process.${hit.text.replace(/^process\s*\.\s*/, "")}`,
+      });
     }
   }
 

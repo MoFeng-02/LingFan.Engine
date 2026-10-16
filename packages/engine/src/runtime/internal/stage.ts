@@ -4,7 +4,11 @@
  *
  * 只在运行层内部使用，不进包出口。
  */
-import { SYS, type CharacterDef, type ElementInstance } from "../../contracts/index.ts";
+import {
+  SYS,
+  type CharacterDef,
+  type ElementInstance,
+} from "../../contracts/index.ts";
 import { findElements as findElementsIn } from "../../data/index.ts";
 import { interpolateText } from "../expr/index.ts";
 import type { OpContext } from "./context.ts";

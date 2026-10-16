@@ -84,9 +84,7 @@ export function affectedStories(
       queue.push(importer);
     }
   }
-  return [...affected]
-    .filter((rel) => storyOf.has(rel))
-    .sort();
+  return [...affected].filter((rel) => storyOf.has(rel)).sort();
 }
 
 /** `watchStories` 的可配置项：在 `StoryBuildOptions` 之上只加监听节奏两旋钮。 */
@@ -216,10 +214,7 @@ function readSourceTexts(
   return texts;
 }
 
-function firstRoundLine(report: {
-  storyId: string;
-  columns: number;
-}): string {
+function firstRoundLine(report: { storyId: string; columns: number }): string {
   return `首轮构建完成：story "${report.storyId}"（${report.columns} 列），监听中——保存即重编译。`;
 }
 
@@ -228,7 +223,8 @@ function roundLine(
   affected: readonly string[],
 ): string {
   const parts: string[] = [];
-  const total = report.added.length + report.updated.length + report.removed.length;
+  const total =
+    report.added.length + report.updated.length + report.removed.length;
   if (total === 0) {
     parts.push("产物零差量");
   } else {

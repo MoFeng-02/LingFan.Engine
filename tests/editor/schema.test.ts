@@ -437,7 +437,9 @@ describe("编辑期 fail-closed", () => {
     ).toBe("invalid-value");
     // 共享 Value 字段不放宽：叙事/调用/返回值不收 null（诊断码按字段管线归一，只判拒绝）
     expect(validateCommand({ op: "say", text: null }).length).toBe(1);
-    expect(validateCommand({ op: "call", target: "f", args: [null] }).length).toBe(1);
+    expect(
+      validateCommand({ op: "call", target: "f", args: [null] }).length,
+    ).toBe(1);
     // return 的 value 走 optional Value：null 在联合外被拒（诊断码按字段管线归一）
     expect(validateCommand({ op: "return", value: null }).length).toBe(1);
     expect(validateCommand({ op: "set", key: "a", value: "{1+1}" })).toEqual(

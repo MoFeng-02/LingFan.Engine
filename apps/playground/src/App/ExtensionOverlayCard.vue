@@ -32,7 +32,11 @@ const emit = defineEmits<{
         {{ props.overlay.detail }}
       </p>
       <p class="extension-hint">回溯 / 读档 / 导航会中断这次等待</p>
-      <button type="button" class="extension-close" @click.stop="emit('confirm')">
+      <button
+        type="button"
+        class="extension-close"
+        @click.stop="emit('confirm')"
+      >
         确认
       </button>
     </div>

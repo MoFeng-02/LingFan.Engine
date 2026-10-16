@@ -324,12 +324,12 @@ describe("texts 注入（集中文案表）", () => {
         undefinedVariableExpression: (name) => `测试未定义变量${name}`,
       },
     });
-    expect(
-      custom.find((d) => d.code === "missing-resource")?.message,
-    ).toBe("测试缺资源[Audio/missing.mp3]");
-    expect(
-      custom.find((d) => d.code === "undefined-variable")?.message,
-    ).toBe("测试未定义变量ghost");
+    expect(custom.find((d) => d.code === "missing-resource")?.message).toBe(
+      "测试缺资源[Audio/missing.mp3]",
+    );
+    expect(custom.find((d) => d.code === "undefined-variable")?.message).toBe(
+      "测试未定义变量ghost",
+    );
     // 未注入的方法回落缺省表（Partial 合并语义）
     const other = custom.find((d) => d.code === "missing-target");
     expect(other?.message ?? "").not.toContain("测试");
@@ -347,8 +347,8 @@ describe("texts 注入（集中文案表）", () => {
         duplicateColumn: (id) => `重复列【${id}】`,
       },
     });
-    expect(diagnostics.find((d) => d.code === "duplicate-column")?.message).toBe(
-      "重复列【a】",
-    );
+    expect(
+      diagnostics.find((d) => d.code === "duplicate-column")?.message,
+    ).toBe("重复列【a】");
   });
 });

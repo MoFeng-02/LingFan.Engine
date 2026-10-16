@@ -15,7 +15,11 @@
  * （后者仍供引擎内部与「按任意键取值」的场景使用）。
  */
 import type { ElementInstance } from "../element.ts";
-import type { AudioChannel, AudioChannelState, VideoCommand } from "../media/index.ts";
+import type {
+  AudioChannel,
+  AudioChannelState,
+  VideoCommand,
+} from "../media/index.ts";
 import type { LayerZOverrides } from "../shell.ts";
 
 /**

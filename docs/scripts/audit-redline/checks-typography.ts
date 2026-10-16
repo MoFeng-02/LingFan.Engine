@@ -4,7 +4,18 @@
 
 import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
-import { DOCS, STYLE_DIR, blankComments, cssFiles, fail, pages, pass, read, rel, walk } from "./shared.ts";
+import {
+  DOCS,
+  STYLE_DIR,
+  blankComments,
+  cssFiles,
+  fail,
+  pages,
+  pass,
+  read,
+  rel,
+  walk,
+} from "./shared.ts";
 
 // --- H4-* 十条版式手法应用
 {

@@ -135,6 +135,8 @@ describe("列级字体 · 构建期", () => {
     });
     const report = await buildStories(root);
     expect(report.columns).toBe(1);
-    expect(readFileSync(join(root, STORY_JSON), "utf8")).not.toContain('"font"');
+    expect(readFileSync(join(root, STORY_JSON), "utf8")).not.toContain(
+      '"font"',
+    );
   });
 });

@@ -250,17 +250,21 @@ describe("唯一判定点：不得出现第二份「.enc 形态」判定", () =>
     // 文案经资源文案表委托 encryptedProjectMessage（defaultResourceTexts.encryptedProject），
     // 供给层本身只调判定函数；关键不变量 = 不得出现第二份判定，且缺省文案仍出自该模块。
     expect(directorySourceSource).toContain("detectEncryptedProject(paths)");
-    expect(defaultResourceTexts.encryptedProject("R", {
-      encrypted: true,
-      encryptedStories: ["Stories/a.json.enc"],
-      evidence: ["Stories/a.json.enc"],
-      count: 1,
-    })).toBe(encryptedProjectMessage("R", {
-      encrypted: true,
-      encryptedStories: ["Stories/a.json.enc"],
-      evidence: ["Stories/a.json.enc"],
-      count: 1,
-    }));
+    expect(
+      defaultResourceTexts.encryptedProject("R", {
+        encrypted: true,
+        encryptedStories: ["Stories/a.json.enc"],
+        evidence: ["Stories/a.json.enc"],
+        count: 1,
+      }),
+    ).toBe(
+      encryptedProjectMessage("R", {
+        encrypted: true,
+        encryptedStories: ["Stories/a.json.enc"],
+        evidence: ["Stories/a.json.enc"],
+        count: 1,
+      }),
+    );
     // 不得在故事循环里逐路径 endsWith(".enc") 抛错 —— 必须已移除
     expect(directorySourceSource).not.toContain('path.endsWith(".enc")');
   });

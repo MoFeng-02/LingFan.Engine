@@ -10,7 +10,14 @@
  * 夹具范式与 build-pipeline.test.ts 同源（.tmp-watch/ 下自建临时工程、真实默认
  * 编译器）；监听触发走真实 fs.watch，轮次行经注入的 log 收集断言。
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -92,7 +99,10 @@ function snapshotArtifacts(root: string): Map<string, Uint8Array> {
       if (entry.isDirectory()) {
         visit(join(dir, entry.name), `${rel}/`);
       } else {
-        snap.set(`Resources/Stories/${rel}`, readFileSync(join(dir, entry.name)));
+        snap.set(
+          `Resources/Stories/${rel}`,
+          readFileSync(join(dir, entry.name)),
+        );
       }
     }
   };
@@ -232,10 +242,7 @@ export function greet(): void {
     expect(lines.some((line) => line.includes("首轮构建失败"))).toBe(true);
 
     // 补上 config 后，防抖轮重试成功
-    writeFileSync(
-      join(root, "Stories.src/config.ts"),
-      config(["ch1"]),
-    );
+    writeFileSync(join(root, "Stories.src/config.ts"), config(["ch1"]));
     const deadline = Date.now() + 10_000;
     for (;;) {
       if (lines.some((line) => line.startsWith("监听轮完成"))) break;

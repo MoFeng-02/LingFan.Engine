@@ -84,9 +84,7 @@ describe("编辑器包结构不变式", () => {
     expect(DEEP_IMPORT_PATTERN.test('from "../schema";')).toBe(false);
     expect(DEEP_IMPORT_PATTERN.test('from "../../i18n";')).toBe(false);
     expect(DEEP_IMPORT_PATTERN.test('from "../schema/index.ts";')).toBe(false);
-    expect(DEEP_IMPORT_PATTERN.test('from "../../i18n/index.ts";')).toBe(
-      false,
-    );
+    expect(DEEP_IMPORT_PATTERN.test('from "../../i18n/index.ts";')).toBe(false);
 
     const offenders = SOURCE_KEYS.filter((key) => key.includes("/src/")).filter(
       (key) => DEEP_IMPORT_PATTERN.test(EDITOR_SOURCES[key]),

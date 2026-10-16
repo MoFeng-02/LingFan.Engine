@@ -101,10 +101,14 @@ describe("assembleProject", () => {
         ],
       ]);
     expect(
-      issuesOf(() => assembleProject({ ...manifest, entry: "a" }, filesWith(42))).join("\n"),
+      issuesOf(() =>
+        assembleProject({ ...manifest, entry: "a" }, filesWith(42)),
+      ).join("\n"),
     ).toContain(".font 必须为非空字符串");
     expect(
-      issuesOf(() => assembleProject({ ...manifest, entry: "a" }, filesWith(""))).join("\n"),
+      issuesOf(() =>
+        assembleProject({ ...manifest, entry: "a" }, filesWith("")),
+      ).join("\n"),
     ).toContain("a.json");
     const ok = assembleProject({ ...manifest, entry: "a" }, filesWith("楷体"));
     expect(ok.columns[0]?.font).toBe("楷体");

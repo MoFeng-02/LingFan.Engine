@@ -16,7 +16,9 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildStories } from "@lingfan/stories-build";
 
-const BASE = fileURLToPath(new URL("./.tmp-module-characters/", import.meta.url));
+const BASE = fileURLToPath(
+  new URL("./.tmp-module-characters/", import.meta.url),
+);
 
 afterEach(() => {
   rmSync(BASE, { recursive: true, force: true });
@@ -89,7 +91,8 @@ describe("模块层构建期角色 · 收集与前置", () => {
     const root = makeProject("multi-sorted", {
       "Stories.src/config.ts": config(["ch1"]),
       "Stories.src/ch1/roles.ts":
-        `character("乙", { name: "乙名" });\n` + `character("甲", { name: "甲名" });\n`,
+        `character("乙", { name: "乙名" });\n` +
+        `character("甲", { name: "甲名" });\n`,
       [START]: story(
         "start",
         `  character("甲", { color: "#ABCDEF" });\n  say("覆盖后。", "甲");\n`,
@@ -98,10 +101,19 @@ describe("模块层构建期角色 · 收集与前置", () => {
     });
     await buildStories(root);
     const commands = readCommands(root, "ch1/start.json");
-    expect(commands.map((c) => c.op)).toEqual(["character", "character", "character", "say"]);
+    expect(commands.map((c) => c.op)).toEqual([
+      "character",
+      "character",
+      "character",
+      "say",
+    ]);
     expect(commands[0]).toMatchObject({ key: "甲", name: "甲名" });
     expect(commands[1]).toMatchObject({ key: "乙", name: "乙名" });
-    expect(commands[2]).toMatchObject({ op: "character", key: "甲", color: "#ABCDEF" });
+    expect(commands[2]).toMatchObject({
+      op: "character",
+      key: "甲",
+      color: "#ABCDEF",
+    });
   });
 
   it("全等声明幂等：两处一致不报冲突", async () => {
@@ -149,7 +161,9 @@ describe("模块层构建期角色 · fail-closed", () => {
       [START]: story("start", `  say("ok");\n`),
       "Resources/project.json": MANIFEST,
     });
-    await expect(buildStories(root)).rejects.toThrow(/首参必须是非空字符串字面量 key/);
+    await expect(buildStories(root)).rejects.toThrow(
+      /首参必须是非空字符串字面量 key/,
+    );
   });
 
   it("遮蔽（本地声明 character 标识符）拒绝", async () => {
@@ -183,6 +197,8 @@ describe("模块层构建期角色 · 运行期边界", () => {
     });
     await buildStories(root);
     const commands = readCommands(root, "ch1/start.json");
-    expect(commands.some((c) => c.op === "character" && c.key === "幽灵")).toBe(false);
+    expect(commands.some((c) => c.op === "character" && c.key === "幽灵")).toBe(
+      false,
+    );
   });
 });

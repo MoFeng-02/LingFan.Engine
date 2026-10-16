@@ -19,7 +19,8 @@ const HEADER = [
 /** 渲染 font.gen.d.ts 全文；空注册表 = 封闭空对象（键访问改拼必报 TS2551） */
 export function renderFontTypegen(entries: readonly FontEntry[]): string {
   const lines = entries.map(
-    (entry) => `  readonly ${JSON.stringify(entry.name)}: ${JSON.stringify(entry.name)};`,
+    (entry) =>
+      `  readonly ${JSON.stringify(entry.name)}: ${JSON.stringify(entry.name)};`,
   );
   const declaration =
     lines.length === 0

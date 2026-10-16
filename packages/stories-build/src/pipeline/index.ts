@@ -11,4 +11,8 @@ export {
   DEFAULT_SOURCES_DIR,
   type StoryBuildOptions,
 } from "./orchestrate.ts";
-export { assertKnownGuards, assertKnownOps, type GateOptions } from "./gates.ts";
+export {
+  assertKnownGuards,
+  assertKnownOps,
+  type GateOptions,
+} from "./gates.ts";

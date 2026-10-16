@@ -108,7 +108,9 @@ function unitSuffix(ctx: MergeContext | undefined): string {
 function pairSuffix(path: string, ctx: MergeContext | undefined): string {
   if (ctx === undefined) return "";
   const existing = ctx.origins.get(path);
-  return existing === undefined ? `（${ctx.origin}）` : `——${existing} 与 ${ctx.origin}`;
+  return existing === undefined
+    ? `（${ctx.origin}）`
+    : `——${existing} 与 ${ctx.origin}`;
 }
 
 /** 把 `value` 按段序列插入树：中途遇叶子 = 叶↔分支冲突；终点同键 = 二次定义冲突。 */

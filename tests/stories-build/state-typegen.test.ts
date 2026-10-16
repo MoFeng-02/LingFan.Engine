@@ -16,7 +16,13 @@
  *
  * 白盒为零：全部走公共入口 buildStories，公共 API 走 @lingfan/*。
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -165,8 +171,18 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
         `define("hp", { type: ["number", Sex, null, Lv], default: null });\n`,
     );
     expect(slots.get("hp")).toEqual([
-      { localName: "Sex", importedName: "Sex", source: "./lib/sex", memberIndex: 1 },
-      { localName: "Lv", importedName: "Lv", source: "./lib/level", memberIndex: 3 },
+      {
+        localName: "Sex",
+        importedName: "Sex",
+        source: "./lib/sex",
+        memberIndex: 1,
+      },
+      {
+        localName: "Lv",
+        importedName: "Lv",
+        source: "./lib/level",
+        memberIndex: 3,
+      },
     ]);
   });
 
@@ -277,9 +293,13 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
       "Stories.src/ch1/start.ts": story("start", `  say("hello");\n`),
       "Resources/project.json": MANIFEST,
     });
-    await expect(buildStories(root)).rejects.toThrow(/无法识别的 descriptor type/);
+    await expect(buildStories(root)).rejects.toThrow(
+      /无法识别的 descriptor type/,
+    );
     expect(existsSync(join(root, STATE_GEN_REL))).toBe(false);
-    expect(existsSync(join(root, "Stories.src/gen/stories.gen.d.ts"))).toBe(false);
+    expect(existsSync(join(root, "Stories.src/gen/stories.gen.d.ts"))).toBe(
+      false,
+    );
   });
 });
 

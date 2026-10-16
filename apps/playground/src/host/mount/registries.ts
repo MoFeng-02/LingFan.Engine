@@ -13,7 +13,10 @@ import {
   type MinigameRegistry,
 } from "@lingfan/ui";
 import { createClick3Demo } from "../demos/minigame-demo";
-import { createInteractionWalk, type WalkFactory } from "../demos/interaction-walk";
+import {
+  createInteractionWalk,
+  type WalkFactory,
+} from "../demos/interaction-walk";
 
 /** 挂载注册表与输入域（挂载解析与键位路由共用） */
 export interface MountRegistries {

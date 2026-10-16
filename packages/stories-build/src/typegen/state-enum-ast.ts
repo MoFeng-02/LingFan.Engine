@@ -73,12 +73,22 @@ export function collectEnumTypeSlotsForBuild(
   );
   const imports = collectImportBindings(configSf);
   const aliases = collectLocalAliases(configSf);
-  ts.forEachChild(configSf, (node) => scanDefineSlots(node, imports, aliases, slots));
+  ts.forEachChild(configSf, (node) =>
+    scanDefineSlots(node, imports, aliases, slots),
+  );
   collectStateSlots(configSf, imports, aliases, slots);
   collectDefaultConfigSlots(configSf, imports, aliases, slots);
   for (const [rel, source] of input.moduleFiles) {
-    const sf = ts.createSourceFile(rel, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    const moduleImports = collectImportBindings(sf, (spec) => resolveSourceFor(rel, spec));
+    const sf = ts.createSourceFile(
+      rel,
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const moduleImports = collectImportBindings(sf, (spec) =>
+      resolveSourceFor(rel, spec),
+    );
     const moduleAliases = collectLocalAliases(sf);
     for (const stmt of sf.statements) {
       if (!ts.isExpressionStatement(stmt)) continue; // 只收顶层 define 语句
@@ -107,13 +117,7 @@ function collectStateSlots(
         initializer !== undefined &&
         ts.isObjectLiteralExpression(unwrapExpr(initializer))
       ) {
-        collectFromValue(
-          unwrapExpr(initializer),
-          "",
-          imports,
-          aliases,
-          slots,
-        );
+        collectFromValue(unwrapExpr(initializer), "", imports, aliases, slots);
       }
     }
   }
@@ -135,7 +139,8 @@ function collectDefaultConfigSlots(
     if (!ts.isObjectLiteralExpression(obj)) continue;
     for (const prop of obj.properties) {
       if (!ts.isPropertyAssignment(prop)) continue;
-      if (!ts.isIdentifier(prop.name) && !ts.isStringLiteral(prop.name)) continue;
+      if (!ts.isIdentifier(prop.name) && !ts.isStringLiteral(prop.name))
+        continue;
       if (prop.name.text === "state") {
         collectFromValue(prop.initializer, "", imports, aliases, slots);
       }
@@ -160,7 +165,13 @@ function scanDefineSlots(
       const [first, second] = current.arguments;
       if (second !== undefined && ts.isStringLiteral(first)) {
         // define("a.b", value)：value 从该点路径起折叠
-        collectFromValue(unwrapExpr(second), first.text, imports, aliases, slots);
+        collectFromValue(
+          unwrapExpr(second),
+          first.text,
+          imports,
+          aliases,
+          slots,
+        );
       } else if (ts.isObjectLiteralExpression(unwrapExpr(first))) {
         // define({ a: { b: … } })：从根起递归折叠
         collectFromValue(unwrapExpr(first), "", imports, aliases, slots);
@@ -261,7 +272,8 @@ function recordTypeSlot(
       const expr = unwrapExpr(element);
       if (!ts.isIdentifier(expr)) return;
       const slot = resolveTypeRef(expr.text, imports, aliases);
-      if (slot !== undefined) addSlot(path, { ...slot, memberIndex: index }, slots);
+      if (slot !== undefined)
+        addSlot(path, { ...slot, memberIndex: index }, slots);
     });
   }
 }
@@ -277,7 +289,8 @@ function addSlot(
     slots.set(path, [slot]);
     return;
   }
-  if (list.some((existing) => existing.memberIndex === slot.memberIndex)) return;
+  if (list.some((existing) => existing.memberIndex === slot.memberIndex))
+    return;
   list.push(slot);
 }
 

@@ -56,7 +56,11 @@ function collectFontRefs(
     for (const [key, item] of Object.entries(value)) {
       // 角色字体字段的静态源（say 行参 font）：裸字符串名直接对照注册表；
       // 插值降糖形态（{…} 包裹）= 动态值，编译期放行
-      if (key === "font" && typeof item === "string" && !INTERP_SEGMENT.test(item)) {
+      if (
+        key === "font" &&
+        typeof item === "string" &&
+        !INTERP_SEGMENT.test(item)
+      ) {
         noteName(item, registry, bad);
       }
       collectFontRefs(item, registry, bad);

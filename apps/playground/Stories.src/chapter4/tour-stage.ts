@@ -3,7 +3,16 @@
  */
 import { script } from "@lingfan/editor";
 
-const { animateBlock, background, dialogWindow, hide, notify, say, show, textTypewriter } = script;
+const {
+  animateBlock,
+  background,
+  dialogWindow,
+  hide,
+  notify,
+  say,
+  show,
+  textTypewriter,
+} = script;
 
 import { stationsMenu } from "../lib/stations";
 

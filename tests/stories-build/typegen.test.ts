@@ -189,7 +189,8 @@ export default function start(): void {
     // 换道后键域来自 config.ts 单次求值——config 恒被读取、与故事是否 import 无关；
     // 本用例故事文件**刻意不 import** 任何变量清单模块，锚定的正是这一点。
     const root = await buildDefaultProject("definevars-only-interp", {
-      "Stories.src/config.ts": config(["lib", "ch1"]) +
+      "Stories.src/config.ts":
+        config(["lib", "ch1"]) +
         `export const vars = defineVars({ "player.hp": "num", mana: "num" });\n`,
       "Stories.src/ch1/start.ts": `import { say } from "../lib/vocabulary";
 
@@ -250,8 +251,8 @@ export const vars = defineVars({ "player.hp": "num" });
 
   it("config.vars 导出不是键集对象 ⇒ 拒绝构建（vars 键域不可知）", async () => {
     const root = makeProject("bad-vars-shape", {
-      "Stories.src/config.ts": config(["lib", "ch1"]) +
-        `export const vars = ["bag.size", "hp"];\n`,
+      "Stories.src/config.ts":
+        config(["lib", "ch1"]) + `export const vars = ["bag.size", "hp"];\n`,
       "Stories.src/lib/vocabulary.ts": WORDS_LIB,
       "Stories.src/ch1/start.ts": `export default function start(): void {
 }
@@ -259,9 +260,7 @@ export const vars = defineVars({ "player.hp": "num" });
       "Resources/project.json": MANIFEST,
     });
 
-    await expect(buildStories(root)).rejects.toThrow(
-      /vars 须为键集对象/,
-    );
+    await expect(buildStories(root)).rejects.toThrow(/vars 须为键集对象/);
     expect(() => readTypegen(root)).toThrow();
   });
 

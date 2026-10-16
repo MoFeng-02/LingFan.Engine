@@ -1,7 +1,11 @@
 /**
  * 存档导出。
  */
-import { SYS, type ColumnCoordinate, type SaveDataV1 } from "../../contracts/index.ts";
+import {
+  SYS,
+  type ColumnCoordinate,
+  type SaveDataV1,
+} from "../../contracts/index.ts";
 import { parseMenuReturn, type OpContext } from "../internal/index.ts";
 import { findJsonValueError } from "../stateContract.ts";
 

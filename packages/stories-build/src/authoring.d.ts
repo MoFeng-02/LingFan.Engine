@@ -34,7 +34,7 @@ declare global {
   function define(spec: Record<string, unknown>): void;
   /** 变量键声明：返回实参本身（键 = 插值键注册表的 defineKeys 域贡献）。 */
   function defineVars<T extends Record<string, string>>(spec: T): T;
-  
+
   /** config.ts default 对象的键契约（folders/start 必需；version/vars/state 可缺省）。 */
   interface StoriesConfig {
     /** 嗯，这个是你故事的目录，我让它支持你可以这样一个扫递归，也支持多目录，看你自己需要 */

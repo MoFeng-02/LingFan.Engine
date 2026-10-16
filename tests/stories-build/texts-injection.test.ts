@@ -77,7 +77,9 @@ describe("stories-build 文案表注入（texts）与 evalTimeoutMs", () => {
 
   it("②注入哨兵：自定义 topLevelReturn ⇒ 构建失败信息取注入值（缺省串不再出现）", async () => {
     const SENTINEL = "顶层 return 哨兵文案（注入生效）";
-    const texts: Partial<StoriesBuildTexts> = { topLevelReturn: () => SENTINEL };
+    const texts: Partial<StoriesBuildTexts> = {
+      topLevelReturn: () => SENTINEL,
+    };
     const root = makeProject("texts-inject-e10", {
       "Stories.src/config.ts": config(["ch1"]),
       "Stories.src/ch1/start.ts": TOP_RETURN_STORY,
@@ -91,7 +93,8 @@ describe("stories-build 文案表注入（texts）与 evalTimeoutMs", () => {
 
   it("③注入哨兵：E06 列 id 大小写重复 ⇒ columnIdDuplicate 取注入值（插值参数照传）", async () => {
     const texts: Partial<StoriesBuildTexts> = {
-      columnIdDuplicate: (id, prev) => `列 id 冲突哨兵（E06）: ${id} vs ${prev}`,
+      columnIdDuplicate: (id, prev) =>
+        `列 id 冲突哨兵（E06）: ${id} vs ${prev}`,
     };
     const root = makeProject("texts-inject-e06", {
       "Stories.src/config.ts": config(["ch1"]),

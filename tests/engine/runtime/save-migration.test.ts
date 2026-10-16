@@ -56,7 +56,14 @@ interface HarnessOptions {
     state: Record<string, unknown>,
     from: { storyVersion: number },
   ) => Record<string, unknown> | null;
-  minigames?: readonly { gameId: string; stateVersion: number; migrate?: (fromStateVersion: number, state: Readonly<Record<string, unknown>>) => Record<string, unknown> | null }[];
+  minigames?: readonly {
+    gameId: string;
+    stateVersion: number;
+    migrate?: (
+      fromStateVersion: number,
+      state: Readonly<Record<string, unknown>>,
+    ) => Record<string, unknown> | null;
+  }[];
 }
 
 interface Harness {
@@ -68,10 +75,7 @@ interface Harness {
   dispose: () => void;
 }
 
-function makeHarness(
-  columns: object[],
-  opts: HarnessOptions = {},
-): Harness {
+function makeHarness(columns: object[], opts: HarnessOptions = {}): Harness {
   const port = new MemorySavePort();
   const base = parseStory({
     formatVersion: 1,
@@ -142,14 +146,22 @@ function legacySave(overrides: Record<string, unknown> = {}): string {
 describe("墓碑与垫底", () => {
   it("undef 全局键：墓碑进档，读档垫底被挡（默认值不复活）", async () => {
     const h = makeHarness(
-      [column("a", [{ op: "undef", key: "hp" }, { op: "save", slot: "s1" }, say("x")])],
+      [
+        column("a", [
+          { op: "undef", key: "hp" },
+          { op: "save", slot: "s1" },
+          say("x"),
+        ]),
+      ],
       { defines: { gold: 10, hp: 1 } },
     );
     h.engine.start();
     h.engine.advance();
     await vi.waitFor(() => expect(h.port.writes.length).toBe(1));
     expect(h.port.writes[0]!.data.deleted).toEqual(["hp"]);
-    const h2 = makeHarness([column("a", [say("x")])], { defines: { gold: 10, hp: 1 } });
+    const h2 = makeHarness([column("a", [say("x")])], {
+      defines: { gold: 10, hp: 1 },
+    });
     h2.port.seed("s1", JSON.stringify(h.port.writes[0]!.data));
     expect(loadSlot(h2, "s1")).toBe(true);
     return vi
@@ -165,14 +177,14 @@ describe("墓碑与垫底", () => {
   });
 
   it("undef 仅 let/local（帧层）：不记墓碑", async () => {
-    const h = makeHarness(
-      [column("a", [
+    const h = makeHarness([
+      column("a", [
         { op: "let", key: "hp", value: 5 },
         { op: "undef", key: "hp" },
         { op: "save", slot: "s1" },
         say("x"),
-      ])],
-    );
+      ]),
+    ]);
     h.engine.start();
     h.engine.advance();
     await vi.waitFor(() => expect(h.port.writes.length).toBe(1));
@@ -182,7 +194,14 @@ describe("墓碑与垫底", () => {
 
   it("垫底：升级新增 define 默认值，旧档当前态与历史回溯都补齐", async () => {
     const h = makeHarness(
-      [column("a", [{ op: "set", key: "gold", value: 99 }, say("A"), { op: "save", slot: "s1" }, say("B")])],
+      [
+        column("a", [
+          { op: "set", key: "gold", value: 99 },
+          say("A"),
+          { op: "save", slot: "s1" },
+          say("B"),
+        ]),
+      ],
       { defines: { gold: 10 } },
     );
     h.engine.start();
@@ -211,7 +230,15 @@ describe("墓碑与垫底", () => {
 
   it("墓碑随快照回溯：回滚到 undef 前检查点，删除记录同步回退", async () => {
     const h = makeHarness(
-      [column("a", [say("A"), { op: "undef", key: "hp" }, say("B"), { op: "save", slot: "s1" }, say("C")])],
+      [
+        column("a", [
+          say("A"),
+          { op: "undef", key: "hp" },
+          say("B"),
+          { op: "save", slot: "s1" },
+          say("C"),
+        ]),
+      ],
       { defines: { hp: 1 } },
     );
     h.engine.start();
@@ -239,10 +266,12 @@ describe("storyVersion 与 migrateState", () => {
     const h = makeHarness([column("a", [say("x")])], { defines: { gold: 10 } });
     h.port.seed("s1", legacySave({ state: [["gold", 5]] }));
     expect(loadSlot(h, "s1")).toBe(true);
-    return vi.waitFor(() => {
-      expect(h.engine.get("gold")).toBe(5);
-      expect(h.kinds).toContain("load.done");
-    }).finally(() => h.dispose());
+    return vi
+      .waitFor(() => {
+        expect(h.engine.get("gold")).toBe(5);
+        expect(h.kinds).toContain("load.done");
+      })
+      .finally(() => h.dispose());
   });
 
   it("声明 version 的故事：同版本档直读，storyVersion 随档恒写", async () => {
@@ -264,56 +293,63 @@ describe("storyVersion 与 migrateState", () => {
     const h = makeHarness([column("a", [say("x")])], { version: 2 });
     h.port.seed("s1", legacySave());
     expect(loadSlot(h, "s1")).toBe(true); // kick 接受，拒绝在异步侧
-    return vi.waitFor(() => {
-      expect(h.errors).toContain("save-story-version");
-      expect(h.kinds).not.toContain("load.done");
-    }).finally(() => h.dispose());
+    return vi
+      .waitFor(() => {
+        expect(h.errors).toContain("save-story-version");
+        expect(h.kinds).not.toContain("load.done");
+      })
+      .finally(() => h.dispose());
   });
 
   it("旧档 + 声明 version + 钩子 → 迁移后读入（含垫底与 notice）", () => {
-    const h = makeHarness(
-      [column("a", [say("x")])],
-      {
-        version: 2,
-        defines: { hp: 1, luck: 2 },
-        migrateState: (state, from) =>
-          from.storyVersion === 0 ? { hp: state.mp } : null,
-      },
-    );
+    const h = makeHarness([column("a", [say("x")])], {
+      version: 2,
+      defines: { hp: 1, luck: 2 },
+      migrateState: (state, from) =>
+        from.storyVersion === 0 ? { hp: state.mp } : null,
+    });
     h.port.seed("s1", legacySave({ state: [["mp", 7]] }));
     expect(loadSlot(h, "s1")).toBe(true);
-    return vi.waitFor(() => {
-      expect(h.engine.get("hp")).toBe(7); // 钩子改名
-      expect(h.engine.get("luck")).toBe(2); // 垫底
-      expect(h.notices.some((t) => t.includes("v0") && t.includes("v2"))).toBe(true);
-    }).finally(() => h.dispose());
+    return vi
+      .waitFor(() => {
+        expect(h.engine.get("hp")).toBe(7); // 钩子改名
+        expect(h.engine.get("luck")).toBe(2); // 垫底
+        expect(
+          h.notices.some((t) => t.includes("v0") && t.includes("v2")),
+        ).toBe(true);
+      })
+      .finally(() => h.dispose());
   });
 
   it("钩子抛错或返回 null → save-migrate-failed；畸形 storyVersion → save-format", () => {
-    const boom = makeHarness(
-      [column("a", [say("x")])],
-      { version: 2, migrateState: () => { throw new Error("boom"); } },
-    );
+    const boom = makeHarness([column("a", [say("x")])], {
+      version: 2,
+      migrateState: () => {
+        throw new Error("boom");
+      },
+    });
     boom.port.seed("s1", legacySave());
     expect(loadSlot(boom, "s1")).toBe(true);
-    const nulled = makeHarness(
-      [column("a", [say("x")])],
-      { version: 2, migrateState: () => null },
-    );
+    const nulled = makeHarness([column("a", [say("x")])], {
+      version: 2,
+      migrateState: () => null,
+    });
     nulled.port.seed("s1", legacySave());
     expect(loadSlot(nulled, "s1")).toBe(true);
     const malformed = makeHarness([column("a", [say("x")])], { version: 2 });
     malformed.port.seed("s1", legacySave({ storyVersion: 0 }));
     expect(loadSlot(malformed, "s1")).toBe(true);
-    return vi.waitFor(() => {
-      expect(boom.errors).toContain("save-migrate-failed");
-      expect(nulled.errors).toContain("save-migrate-failed");
-      expect(malformed.errors).toContain("save-format");
-    }).finally(() => {
-      boom.dispose();
-      nulled.dispose();
-      malformed.dispose();
-    });
+    return vi
+      .waitFor(() => {
+        expect(boom.errors).toContain("save-migrate-failed");
+        expect(nulled.errors).toContain("save-migrate-failed");
+        expect(malformed.errors).toContain("save-format");
+      })
+      .finally(() => {
+        boom.dispose();
+        nulled.dispose();
+        malformed.dispose();
+      });
   });
 });
 
@@ -324,11 +360,15 @@ describe("玩法系统版本化", () => {
       { minigames: [{ gameId: "puzzle", stateVersion: 2 }] },
     );
     h.engine.start();
-    expect(h.engine.resolveMinigame({ outcome: "success", state: { score: 5 } })).toBe(true);
+    expect(
+      h.engine.resolveMinigame({ outcome: "success", state: { score: 5 } }),
+    ).toBe(true);
     h.engine.save("s1");
     await vi.waitFor(() => expect(h.port.writes.length).toBe(1));
     expect(h.engine.get("game.puzzle.score")).toBe(5);
-    expect(h.port.writes[0]!.data.minigames).toEqual([{ id: "puzzle", stateVersion: 2 }]);
+    expect(h.port.writes[0]!.data.minigames).toEqual([
+      { id: "puzzle", stateVersion: 2 },
+    ]);
     h.dispose();
   });
 
@@ -341,62 +381,66 @@ describe("玩法系统版本化", () => {
     const missing = makeHarness([column("a", [say("x")])]);
     missing.port.seed("s1", payloadWith(2));
     expect(loadSlot(missing, "s1")).toBe(true);
-    const migrated = makeHarness(
-      [column("a", [say("x")])],
-      {
-        minigames: [{
+    const migrated = makeHarness([column("a", [say("x")])], {
+      minigames: [
+        {
           gameId: "puzzle",
           stateVersion: 2,
           migrate: (_from, state) => ({ score: (state.score as number) + 1 }),
-        }],
-      },
-    );
+        },
+      ],
+    });
     migrated.port.seed("s1", payloadWith(1));
     expect(loadSlot(migrated, "s1")).toBe(true);
-    const ahead = makeHarness(
-      [column("a", [say("x")])],
-      { minigames: [{ gameId: "puzzle", stateVersion: 2 }] },
-    );
+    const ahead = makeHarness([column("a", [say("x")])], {
+      minigames: [{ gameId: "puzzle", stateVersion: 2 }],
+    });
     ahead.port.seed("s1", payloadWith(3));
     expect(loadSlot(ahead, "s1")).toBe(true);
     const unused = makeHarness([column("a", [say("x")])]);
     unused.port.seed("s1", legacySave({ state: [["gold", 1]] }));
     expect(loadSlot(unused, "s1")).toBe(true);
-    return vi.waitFor(() => {
-      expect(missing.errors).toContain("minigame-missing");
-      expect(ahead.errors).toContain("minigame-version");
-      expect(migrated.notices.some((t) => t.includes("puzzle"))).toBe(true);
-      expect(unused.kinds).toContain("load.done");
-    }).finally(() => {
-      missing.dispose();
-      migrated.dispose();
-      ahead.dispose();
-      unused.dispose();
-    });
+    return vi
+      .waitFor(() => {
+        expect(missing.errors).toContain("minigame-missing");
+        expect(ahead.errors).toContain("minigame-version");
+        expect(migrated.notices.some((t) => t.includes("puzzle"))).toBe(true);
+        expect(unused.kinds).toContain("load.done");
+      })
+      .finally(() => {
+        missing.dispose();
+        migrated.dispose();
+        ahead.dispose();
+        unused.dispose();
+      });
   });
 
   it("迁移后的玩法系统状态落命名空间；game.* 键不从 defines 垫底", () => {
-    const h = makeHarness(
-      [column("a", [say("x")])],
-      {
-        defines: { "game.x": 1, gold: 5 },
-        minigames: [{
+    const h = makeHarness([column("a", [say("x")])], {
+      defines: { "game.x": 1, gold: 5 },
+      minigames: [
+        {
           gameId: "puzzle",
           stateVersion: 2,
           migrate: () => ({ score: 99 }),
-        }],
-      },
+        },
+      ],
+    });
+    h.port.seed(
+      "s1",
+      legacySave({
+        state: [["game.puzzle.old", 1]],
+        minigames: [{ id: "puzzle", stateVersion: 1 }],
+      }),
     );
-    h.port.seed("s1", legacySave({
-      state: [["game.puzzle.old", 1]],
-      minigames: [{ id: "puzzle", stateVersion: 1 }],
-    }));
     expect(loadSlot(h, "s1")).toBe(true);
-    return vi.waitFor(() => {
-      expect(h.engine.get("game.puzzle.score")).toBe(99); // 迁移重落前缀
-      expect(h.engine.get("game.puzzle.old")).toBeUndefined(); // 旧键随迁移清出
-      expect(h.engine.get("gold")).toBe(5); // defines 垫底
-      expect(h.engine.get("game.x")).toBeUndefined(); // game.* 不垫底
-    }).finally(() => h.dispose());
+    return vi
+      .waitFor(() => {
+        expect(h.engine.get("game.puzzle.score")).toBe(99); // 迁移重落前缀
+        expect(h.engine.get("game.puzzle.old")).toBeUndefined(); // 旧键随迁移清出
+        expect(h.engine.get("gold")).toBe(5); // defines 垫底
+        expect(h.engine.get("game.x")).toBeUndefined(); // game.* 不垫底
+      })
+      .finally(() => h.dispose());
   });
 });

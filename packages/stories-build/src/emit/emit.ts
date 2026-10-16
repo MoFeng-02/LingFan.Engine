@@ -95,10 +95,34 @@ export function emitArtifacts(options: EmitOptions): {
   // 类型面生成物（stories.gen.d.ts / state.gen.d.ts / script.gen.d.ts / font.gen.d.ts）：恒产出的差量落盘。语义与守卫注册表
   // 相反——空集合也写文件、结构在（注册表退化为 string / 状态面退化为 Record<string, never> / script 声明恒定 /
   // font 面退化为 Record<never, never>），不拿空集合把作者的正常写法判红（见 typegen/render.ts 与 typegen/state-render.ts）。
-  writeConstantArtifact(join(root, typegen.rel), typegen.rel, typegen.content, added, updated);
-  writeConstantArtifact(join(root, stateGen.rel), stateGen.rel, stateGen.content, added, updated);
-  writeConstantArtifact(join(root, scriptGen.rel), scriptGen.rel, scriptGen.content, added, updated);
-  writeConstantArtifact(join(root, fontGen.rel), fontGen.rel, fontGen.content, added, updated);
+  writeConstantArtifact(
+    join(root, typegen.rel),
+    typegen.rel,
+    typegen.content,
+    added,
+    updated,
+  );
+  writeConstantArtifact(
+    join(root, stateGen.rel),
+    stateGen.rel,
+    stateGen.content,
+    added,
+    updated,
+  );
+  writeConstantArtifact(
+    join(root, scriptGen.rel),
+    scriptGen.rel,
+    scriptGen.content,
+    added,
+    updated,
+  );
+  writeConstantArtifact(
+    join(root, fontGen.rel),
+    fontGen.rel,
+    fontGen.content,
+    added,
+    updated,
+  );
   return { added, updated, removed };
 }
 

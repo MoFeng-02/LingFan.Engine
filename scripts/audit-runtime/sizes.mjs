@@ -14,8 +14,12 @@ const VIRTUAL_ENTRY = "\0audit-runtime-virtual-entry";
  * 「主包到底装不装得下」需要的保守口径。
  */
 function aggregateSource(specs) {
-  const lines = specs.map((spec, index) => `import * as ns${index} from ${JSON.stringify(spec)};`);
-  lines.push(`globalThis.__auditBundle = [${specs.map((_, index) => `ns${index}`).join(", ")}];`);
+  const lines = specs.map(
+    (spec, index) => `import * as ns${index} from ${JSON.stringify(spec)};`,
+  );
+  lines.push(
+    `globalThis.__auditBundle = [${specs.map((_, index) => `ns${index}`).join(", ")}];`,
+  );
   return lines.join("\n");
 }
 
@@ -25,7 +29,9 @@ function virtualEntryPlugin(repoRoot, source) {
     resolveId(id) {
       if (id === VIRTUAL_ENTRY) return VIRTUAL_ENTRY;
       if (!id.startsWith("@lingfan/")) return null;
-      return resolveImport(id, join(repoRoot, "package.json"), repoRoot).file ?? null;
+      return (
+        resolveImport(id, join(repoRoot, "package.json"), repoRoot).file ?? null
+      );
     },
     load(id) {
       return id === VIRTUAL_ENTRY ? source : null;
@@ -46,7 +52,11 @@ async function bundleOnce({ repoRoot, source }) {
       reportCompressedSize: false,
       rollupOptions: {
         input: VIRTUAL_ENTRY,
-        output: { format: "es", entryFileNames: "bundle.js", codeSplitting: false },
+        output: {
+          format: "es",
+          entryFileNames: "bundle.js",
+          codeSplitting: false,
+        },
       },
     },
   });
@@ -71,10 +81,20 @@ async function bundleOnce({ repoRoot, source }) {
 export async function measureSizes({ repoRoot, entrySpecs }) {
   const rows = [];
   for (const spec of entrySpecs) {
-    const measured = await bundleOnce({ repoRoot, source: aggregateSource([spec]) });
+    const measured = await bundleOnce({
+      repoRoot,
+      source: aggregateSource([spec]),
+    });
     rows.push({ label: spec, ...measured, note: "公开面全量（上界）" });
   }
-  const combined = await bundleOnce({ repoRoot, source: aggregateSource(entrySpecs) });
-  rows.push({ label: `合并（${entrySpecs.length} 包）`, ...combined, note: "共享代码已去重" });
+  const combined = await bundleOnce({
+    repoRoot,
+    source: aggregateSource(entrySpecs),
+  });
+  rows.push({
+    label: `合并（${entrySpecs.length} 包）`,
+    ...combined,
+    note: "共享代码已去重",
+  });
   return rows;
 }
