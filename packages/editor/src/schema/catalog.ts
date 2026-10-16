@@ -1,11 +1,41 @@
 /**
- * op 目录：op 标签/分组 + 字段呈现语义（label/kind）。
+ * op 目录：op 标签/分组（含分组顺序与中文标签，单一事实源）+ 字段呈现语义（label/kind）。
  * 字段的类型/必填/可选值/默认值以 opSchemas（Zod）为唯一事实源——本文件只承载
  * 呈现与诊断语义元数据，字段名集合与 schema 由互锁测试锁定（schema.test.ts）。
  * 字段语义以执行器为权威（packages/engine/src/runtime/ops/）。
  */
 
-import type { FieldKind, OpMeta } from "../contracts/index.ts";
+import type { FieldKind, OpGroup, OpMeta } from "../contracts/index.ts";
+
+/**
+ * op 分组顺序（与时间线插入菜单一致）。
+ *
+ * 放在本数据叶子里而非 `elementPalette`：`surface`（扩展 op 归组校验）与
+ * `elementPalette`（分组渲染）都要它，而 `elementPalette` 又依赖 `surface` 的合并面
+ * ⇒ 留在派生模块会形成 import 环（对应章节）。
+ */
+export const OP_GROUP_ORDER: readonly OpGroup[] = [
+  "narrative",
+  "presentation",
+  "flow",
+  "variables",
+  "save",
+  "audio",
+  "video",
+  "minigame",
+];
+
+/** op 分组中文标签（单一事实源） */
+export const OP_GROUP_LABELS: Readonly<Record<OpGroup, string>> = {
+  narrative: "叙事",
+  presentation: "表现",
+  flow: "流程",
+  variables: "变量",
+  save: "存档",
+  audio: "音频",
+  video: "视频",
+  minigame: "小游戏",
+};
 
 export const OP_META: readonly OpMeta[] = [
   { op: "say", label: "对话", group: "narrative" },
