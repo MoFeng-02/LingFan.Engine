@@ -416,11 +416,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- 舞台外框：铺满视口不滚动，舞台在其内按设计基准等比缩放居中（留边即画面外的底色） -->
-  <div ref="stageViewportEl" class="stage-viewport">
-    <!-- 全屏转场遮罩：屏幕级效果（含留边在内恒在最上），透明度由帧驱动写入 -->
-    <div ref="transitionEl" class="transition-overlay" aria-hidden="true"></div>
-    <main ref="stageEl" class="stage" @click="onStageClick" @wheel="onWheel">
+  <!-- 舞台外框：铺满视口不滚动，舞台与 UI 两层都挂在它下面；叙事的点击与滚轮也以这层为落点 -->
+  <div
+    ref="stageViewportEl"
+    class="stage-viewport"
+    @click="onStageClick"
+    @wheel="onWheel"
+  >
+    <!-- 舞台（作者坐标系，基准像素）：只住元素层与扩展覆盖层——宽高与适配变换由适配装配写入 -->
+    <main ref="stageEl" class="stage">
       <!-- 舞台内容层：舞台根的适配变换之外的另一层变换——震动偏移写这里，两层各写各的 -->
       <div ref="stageShakeEl" class="stage-shake">
         <!-- 舞台元素层：声明式空间层（z 由 shell.layers.stage 决定，默认 0 = 位于 video 之下） -->
@@ -429,23 +433,6 @@ onUnmounted(() => {
           class="element-layer"
           :style="{ zIndex: layerZ.stage }"
         ></div>
-        <!-- 固定工具条：单条 flex 行（布局由构造保证不重叠；safe-area 适配移动端） -->
-        <ToolbarPanel
-          :layer-z="layerZ"
-          :available-langs="availableLangs"
-          :current-lang="currentLang"
-          @restart="restart"
-          @open-slot-panel="openSlotPanel"
-          @toggle-history="toggleHistory"
-          @toggle-prefs="showPrefs = !showPrefs"
-          @change-lang="changeLang"
-        />
-        <!-- RenderTargets.overlay（notify toast）：列表状态与皮肤类经 NotificationLayer 落地 -->
-        <NotificationLayer
-          :notices="notifications"
-          :notify-view-of="notifyViewOf"
-          :z-of="zOf"
-        />
         <!-- 扩展 op 等待覆盖层：extension.mount 展示，「确认」即 resolveExtensionOp 解除（解除权在宿主） -->
         <ExtensionOverlayCard
           v-if="extensionOverlay !== null"
@@ -453,62 +440,84 @@ onUnmounted(() => {
           :z-of="zOf"
           @confirm="resolveExtension"
         />
-        <!-- 叙事层四层（选择 / 输入 / 玩法挂载 / 对话）共用一个面板骨架 -->
-        <DialoguePanel
-          ref="dialoguePanelRef"
-          v-model:input-value="inputValue"
-          :z-of="zOf"
-          :in-menu="inMenu"
-          :choice-view="choiceView"
-          :menu-options="menuOptions"
-          :in-input="inInput"
-          :input-prompt="inputPrompt"
-          :in-minigame="inMinigame"
-          :in-interaction="inInteraction"
-          :in-extension="inExtension"
-          :in-video="inVideo"
-          :dialog-hidden="dialogHidden"
-          :dialog-view="dialogView"
-          :nvl-mode="nvlMode"
-          :nvl-past-lines="nvlPastLines"
-          :nvl-typing-line="nvlTypingLine"
-          :shown-text="shownText"
-          :speaker-color="speakerColor"
-          :dialog-font="dialogFont"
-          :can-advance="canAdvance"
-          :in-wait="inWait"
-          @choose="choose"
-          @submit-input="submitInput"
-        >
-          <!-- 外部系统挂载点（小游戏与玩法系统共用同一容器） -->
-          <DemoHost ref="demoHostRef" />
-        </DialoguePanel>
-        <!-- 面板群：历史 / 偏好 / 槽位三张卡片共用一个面板族 -->
-        <SettingsPanels
-          :layer-z="layerZ"
-          :show-history="showHistory"
-          :history-blocks="historyBlocks"
-          :show-prefs="showPrefs"
-          :prefs-view="prefsView"
-          :pref-channels="PREF_CHANNELS"
-          :capture-action="captureAction"
-          :display-keys="displayKeys"
-          :slot-panel="slotPanel"
-          :slot-views="slotViews"
-          :host="host"
-          @rollback-to-entry="rollbackToEntry"
-          @set-pref-volume="setPrefVolume"
-          @set-pref-muted="setPrefMuted"
-          @set-pref-text-speed="setPrefTextSpeed"
-          @set-pref-orientation="setPrefOrientation"
-          @set-pref-fullscreen="setPrefFullscreen"
-          @start-capture="startCapture"
-          @reset-keybinding="resetKeybinding"
-          @choose-slot="chooseSlot"
-        />
-        <p v-if="error" class="error">{{ error }}</p>
       </div>
     </main>
+    <!-- UI 层（窗口坐标系）：工具栏、通知、叙事面板与面板族——不随舞台缩放，随窗口自适应 -->
+    <div class="shell-ui">
+      <!-- 固定工具条：单条 flex 行（布局由构造保证不重叠；safe-area 适配移动端） -->
+      <ToolbarPanel
+        :layer-z="layerZ"
+        :available-langs="availableLangs"
+        :current-lang="currentLang"
+        @restart="restart"
+        @open-slot-panel="openSlotPanel"
+        @toggle-history="toggleHistory"
+        @toggle-prefs="showPrefs = !showPrefs"
+        @change-lang="changeLang"
+      />
+      <!-- RenderTargets.overlay（notify toast）：列表状态与皮肤类经 NotificationLayer 落地 -->
+      <NotificationLayer
+        :notices="notifications"
+        :notify-view-of="notifyViewOf"
+        :z-of="zOf"
+      />
+      <!-- 叙事层四层（选择 / 输入 / 玩法挂载 / 对话）共用一个面板骨架 -->
+      <DialoguePanel
+        ref="dialoguePanelRef"
+        v-model:input-value="inputValue"
+        :z-of="zOf"
+        :in-menu="inMenu"
+        :choice-view="choiceView"
+        :menu-options="menuOptions"
+        :in-input="inInput"
+        :input-prompt="inputPrompt"
+        :in-minigame="inMinigame"
+        :in-interaction="inInteraction"
+        :in-extension="inExtension"
+        :in-video="inVideo"
+        :dialog-hidden="dialogHidden"
+        :dialog-view="dialogView"
+        :nvl-mode="nvlMode"
+        :nvl-past-lines="nvlPastLines"
+        :nvl-typing-line="nvlTypingLine"
+        :shown-text="shownText"
+        :speaker-color="speakerColor"
+        :dialog-font="dialogFont"
+        :can-advance="canAdvance"
+        :in-wait="inWait"
+        @choose="choose"
+        @submit-input="submitInput"
+      >
+        <!-- 外部系统挂载点（小游戏与玩法系统共用同一容器） -->
+        <DemoHost ref="demoHostRef" />
+      </DialoguePanel>
+      <!-- 面板群：历史 / 偏好 / 槽位三张卡片共用一个面板族 -->
+      <SettingsPanels
+        :layer-z="layerZ"
+        :show-history="showHistory"
+        :history-blocks="historyBlocks"
+        :show-prefs="showPrefs"
+        :prefs-view="prefsView"
+        :pref-channels="PREF_CHANNELS"
+        :capture-action="captureAction"
+        :display-keys="displayKeys"
+        :slot-panel="slotPanel"
+        :slot-views="slotViews"
+        :host="host"
+        @rollback-to-entry="rollbackToEntry"
+        @set-pref-volume="setPrefVolume"
+        @set-pref-muted="setPrefMuted"
+        @set-pref-text-speed="setPrefTextSpeed"
+        @set-pref-orientation="setPrefOrientation"
+        @set-pref-fullscreen="setPrefFullscreen"
+        @start-capture="startCapture"
+        @reset-keybinding="resetKeybinding"
+        @choose-slot="chooseSlot"
+      />
+      <p v-if="error" class="error">{{ error }}</p>
+    </div>
+    <!-- 全屏转场遮罩：屏幕级效果（含留边在内恒在最上），透明度由帧驱动写入 -->
+    <div ref="transitionEl" class="transition-overlay" aria-hidden="true"></div>
   </div>
 </template>
 
@@ -527,7 +536,7 @@ body,
 <style scoped>
 /** 舞台骨架样式：外框、舞台根、元素层、转场遮罩与错误横幅（面板与通知/扩展层的样式随各自组件） */
 
-/* 舞台外框：铺满视口、不滚动；舞台内容按基准缩放后在其中居中，留边露出这里的底色 */
+/* 舞台外框：铺满视口、不滚动；舞台与 UI 两层都挂在这里。舞台等比缩放后的留边露出这里的底色 */
 .stage-viewport {
   position: fixed;
   inset: 0;
@@ -536,7 +545,7 @@ body,
 }
 
 /* 舞台根：作者坐标系（基准像素，1280 × 720）——宽高与适配变换由适配装配按外框写入，
-   这里只定摆放与外观。基准确认尺寸落在样式表之外，换基准不必改样式。 */
+   这里只定摆放与外观。只有元素层与扩展覆盖层住在这一层，UI 在隔壁的窗口坐标系里。 */
 .stage {
   position: absolute;
   top: 0;
@@ -550,15 +559,11 @@ body,
   font-size: 17px;
 }
 
-/* 舞台内容层：面板栈与元素层的实际摆放都在这层里，尺寸即舞台根的内容盒。
+/* 舞台内容层：元素层的摆放盒（内边距即元素层的可用边界，元素坐标以此为原点）。
    震动偏移写它的 transform——舞台根那层归适配变换，两层各写各的、互不覆盖。 */
 .stage-shake {
   position: relative;
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 12px;
   width: 100%;
   height: 100%;
   padding: 22px 40px;
@@ -568,6 +573,21 @@ body,
 .element-layer {
   position: absolute;
   inset: 0;
+  pointer-events: none;
+}
+
+/* UI 层（窗口坐标系）：工具栏、通知、叙事面板与面板族都在这层里，不随舞台缩放而随窗口自适应。
+   容器不吃指针事件（点击与滚轮要落到舞台与外框上），需要交互的部件各自恢复 pointer-events。 */
+.shell-ui {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: clamp(8px, 1.6vh, 16px);
+  box-sizing: border-box;
+  padding: clamp(10px, 2.2vh, 22px) clamp(12px, 3vw, 40px);
+  font-size: 17px;
   pointer-events: none;
 }
 
@@ -587,5 +607,6 @@ body,
   width: min(100%, 960px);
   color: #f7768e;
   font-size: 0.75em;
+  pointer-events: auto;
 }
 </style>

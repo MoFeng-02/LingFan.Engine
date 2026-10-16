@@ -196,22 +196,21 @@ const submitInput = (): void => emit("submit-input");
 
 .dialogue {
   position: relative;
-  position: relative;
   width: min(100%, 960px);
   margin: 0 auto;
-  /* 尺寸按舞台基准（1280 × 720）折算：舞台子树内不用视口单位——那些先按真实窗口解析，
-     再被舞台缩放一次，等于随窗口二次变化，与「按基准像素书写」的口径冲突 */
-  min-height: 130px;
-  padding: 14px 24px;
+  /* UI 层（窗口坐标系）：尺寸按窗口折算随窗口自适应，不再被舞台缩放二次放大 */
+  min-height: clamp(104px, 18vh, 150px);
+  padding: clamp(10px, 1.6vh, 16px) clamp(16px, 2.4vw, 28px);
   border: 1px solid #4444;
   border-radius: 12px;
   background: #1e1e2ecc;
   box-sizing: border-box;
+  pointer-events: auto;
 }
 
 /* NVL 累积层形态：对话容器抬升为阅读区（累积文本自上而下滚动） */
 .dialogue.nvl-mode {
-  min-height: 331px; /* 46vh @ 720 基准 */
+  min-height: clamp(200px, 46vh, 420px);
   display: flex;
   flex-direction: column;
 }
@@ -268,7 +267,7 @@ const submitInput = (): void => emit("submit-input");
 }
 
 .choices button {
-  padding: 12px 30px;
+  padding: clamp(8px, 1.2vh, 12px) clamp(16px, 2.4vw, 30px);
   border: 1px solid #7aa2f766;
   border-radius: 10px;
   background: #1e1e2ecc;

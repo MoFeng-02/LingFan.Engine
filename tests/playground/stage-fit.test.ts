@@ -2,9 +2,10 @@
  * 舞台适配装配：读数（外框）→ 计算（`@lingfan/shell`）→ 落笔（舞台根样式）。
  *
  * 舞台原是「作者像素 = 屏幕像素」，窗口一变内容尺寸不变；装配把基准宽高与变换写进舞台根，
- * 同一份作者坐标于是在任意窗口下等比呈现。这里钉住四件事：基准来自配置而不是样式表、
- * 变换顺序是「先平移再缩放」、窗口变化后能就地重算、舞台子树内不许出现视口单位
- * （视口单位先按真实窗口解析、再被舞台缩放一次，等于随窗口二次变化）。
+ * 同一份作者坐标于是在任意窗口下等比呈现。这里钉住五件事：基准来自配置而不是样式表、
+ * 变换顺序是「先平移再缩放」、窗口变化后能就地重算、两层坐标系各归各的
+ * （舞台层随舞台缩放，故不许出现视口单位；UI 层随窗口自适应，故必须用视口相对尺寸）、
+ * UI 层组件确实住在舞台根之外。
  *
  * 读数只走注入的 `readFrame`：装配本身不碰窗口全局，小程序宿主换掉读数来源即可复用。
  * 宿主侧的监听注册与注销成对写在本组件里，源级断言防止只留一半。
@@ -18,8 +19,26 @@ import mainSource from "../../apps/playground/src/main.ts?raw";
 import manifestSource from "../../apps/playground/Resources/project.json?raw";
 import { createAppStageFit } from "../../apps/playground/src/host/stage/fit";
 
-/** 舞台子树组件（都在舞台根内，故都不该出现视口单位） */
+/** 舞台层组件（住在舞台根内，随舞台缩放 ⇒ 不许出现视口单位） */
 const STAGE_COMPONENTS = import.meta.glob(
+  "../../apps/playground/src/App/ExtensionOverlayCard.vue",
+  { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
+
+/** UI 层组件（住在窗口坐标系里，随窗口自适应 ⇒ 必须至少有一处视口相对尺寸） */
+const SHELL_UI_COMPONENTS = import.meta.glob(
+  "../../apps/playground/src/App/{ToolbarPanel,NotificationLayer,DialoguePanel,SettingsPanels}.vue",
+  { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
+
+/** UI 层里的挂载容器：本身不定尺寸，归 UI 层但不参与「必须响应式」这条 */
+const SHELL_UI_CONTAINERS = import.meta.glob(
+  "../../apps/playground/src/App/DemoHost.vue",
+  { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
+
+/** 组件目录全集：上面三组必须盖全，新增组件不能悄悄漏检 */
+const ALL_APP_COMPONENTS = import.meta.glob(
   "../../apps/playground/src/App/*.vue",
   { eager: true, query: "?raw", import: "default" },
 ) as Record<string, string>;
@@ -183,15 +202,78 @@ describe("舞台适配装配", () => {
     expect(shakeBlock).toContain("padding: 22px 40px");
   });
 
-  it("舞台子树内不出现视口单位（缩放会与之叠加成二次自适应）", () => {
-    const keys = Object.keys(STAGE_COMPONENTS);
-    expect(keys.length).toBeGreaterThanOrEqual(6);
-    for (const [key, source] of Object.entries(STAGE_COMPONENTS)) {
+  it("舞台层组件不出现视口单位（缩放会与之叠加成二次自适应）", () => {
+    const entries = Object.entries(STAGE_COMPONENTS);
+    expect(entries.map(([key]) => key.split("/").pop())).toEqual([
+      "ExtensionOverlayCard.vue",
+    ]);
+    for (const [key, source] of entries) {
       // 只看生效的声明：注释里提到旧值（「46vh @ 720 基准」这类换算记账）不算违规
       const declarations = source.replace(/\/\*[\s\S]*?\*\//g, "");
       expect(declarations, `${key} 用了视口单位`).not.toMatch(
         /[0-9]+\.?[0-9]*(vw|vh|vmin|vmax)\b|clamp\(/,
       );
     }
+  });
+
+  it("UI 层组件按窗口折算尺寸：随窗口自适应，不随舞台缩放", () => {
+    const entries = Object.entries(SHELL_UI_COMPONENTS);
+    expect(entries.map(([key]) => key.split("/").pop()).sort()).toEqual([
+      "DialoguePanel.vue",
+      "NotificationLayer.vue",
+      "SettingsPanels.vue",
+      "ToolbarPanel.vue",
+    ]);
+    for (const [key, source] of entries) {
+      const declarations = source.replace(/\/\*[\s\S]*?\*\//g, "");
+      expect(declarations, `${key} 没有随窗口折算的尺寸`).toMatch(
+        /[0-9]+\.?[0-9]*(vw|vh)\b/,
+      );
+    }
+    // 会接事件的部件各自恢复指针事件（UI 层容器是 none，点击要穿到舞台与外框）
+    for (const name of ["ToolbarPanel", "DialoguePanel", "SettingsPanels"]) {
+      const source = entries.find(([key]) => key.endsWith(`${name}.vue`))?.[1];
+      expect(source, `${name} 缺 pointer-events: auto`).toContain(
+        "pointer-events: auto",
+      );
+    }
+    // 提示条不可交互：容器保持穿透
+    const notify = entries.find(([key]) =>
+      key.endsWith("NotificationLayer.vue"),
+    )?.[1];
+    expect(notify).not.toContain("pointer-events: auto");
+  });
+
+  it("两层分组盖全组件目录：新增组件不能悄悄漏检", () => {
+    const classified = [
+      ...Object.keys(STAGE_COMPONENTS),
+      ...Object.keys(SHELL_UI_COMPONENTS),
+      ...Object.keys(SHELL_UI_CONTAINERS),
+    ].sort();
+    expect(classified).toEqual(Object.keys(ALL_APP_COMPONENTS).sort());
+  });
+
+  it("UI 层是舞台根的兄弟：UI 不在缩放里，扩展覆盖层仍在舞台里", () => {
+    const mainClose = appSource.indexOf("</main>");
+    const uiLayer = appSource.indexOf('class="shell-ui"');
+    expect(mainClose).toBeGreaterThan(-1);
+    expect(uiLayer).toBeGreaterThan(mainClose);
+    for (const tag of [
+      "<ToolbarPanel",
+      "<NotificationLayer",
+      "<DialoguePanel",
+      "<SettingsPanels",
+    ]) {
+      expect(appSource.indexOf(tag), `${tag} 应住在 UI 层`).toBeGreaterThan(
+        uiLayer,
+      );
+    }
+    expect(appSource.indexOf("<ExtensionOverlayCard")).toBeLessThan(mainClose);
+    // UI 层容器铺满窗口但不吃指针事件：点击与滚轮要落到舞台与外框上
+    const uiBlock = appSource.slice(uiLayer, appSource.indexOf(".error {"));
+    expect(uiBlock).toContain("position: fixed");
+    expect(uiBlock).toContain("inset: 0");
+    expect(uiBlock).toContain("display: flex");
+    expect(uiBlock).toContain("pointer-events: none");
   });
 });

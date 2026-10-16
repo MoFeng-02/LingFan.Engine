@@ -99,11 +99,13 @@ const emit = defineEmits<{
 
 .toolbar {
   position: fixed;
-  top: calc(16px + env(safe-area-inset-top));
-  left: calc(16px + env(safe-area-inset-left));
+  /* UI 层（窗口坐标系）：贴窗口左上角，随窗口收放留边，safe-area 适配移动端 */
+  top: calc(clamp(10px, 1.6vh, 18px) + env(safe-area-inset-top));
+  left: calc(clamp(12px, 2.4vw, 22px) + env(safe-area-inset-left));
   display: flex;
   gap: 8px;
   align-items: stretch;
+  pointer-events: auto;
 }
 
 .restart {

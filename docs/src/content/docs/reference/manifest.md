@@ -160,7 +160,7 @@ description: 清单字段逐条说明：formatVersion、capabilityVersion、id�
 
 #### shell.stage
 
-舞台适配：作者按设计基准像素写坐标，宿主把整场等比缩放套进窗口。
+舞台适配：作者按设计基准像素写坐标，宿主把**舞台**（故事画面：元素层与扩展覆盖层）等比缩放套进窗口；宿主的 UI（工具栏、对话面板这些）留在窗口坐标系里按窗口自适应，不跟着缩放。
 
 ```json
 {
@@ -213,6 +213,8 @@ const stage = resolveStageConfig(manifest); // 内建缺省 × 工程覆盖
 ```
 
 拿到之后交给舞台计算件算变换：`@lingfan/shell` 的 `computeStageLayout(视口, stage)` 给出缩放与偏移，`stageTransform(layout)` 给出 CSS `transform` 串。宿主只负责量视口、套样式、听 `resize`——计算里不读平台全局，所以桌面壳、浏览器与小程序共用同一份口径。
+
+套用时要分层：`transform` 只写在舞台根上，UI 挂在舞台之外的兄弟节点里（窗口坐标系）。把 UI 放进舞台根，窗口一变 UI 会被缩放同步放大一遍——等于跟着窗口二次变化。
 
 `project.json shell.stage` 不是所有宿主都必须实现：脚手架自带的宿主是固定视口布局，还没接这一层（见[模板能力边界](/reference/template-boundaries/)）。桌面壳（`apps/playground`）已接。
 
