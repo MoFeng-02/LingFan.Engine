@@ -38,7 +38,7 @@ export const DEFAULT_STAGE_WIDTH = DEFAULT_STAGE_CONFIG.width;
 /** 缺省基准高 */
 export const DEFAULT_STAGE_HEIGHT = DEFAULT_STAGE_CONFIG.height;
 
-/** 基准尺寸预设（横竖屏各两档，覆盖常见发布形态） */
+/** 基准尺寸预设（横竖屏各四档：720p / 1080p / 2K / 4K，覆盖常见发布形态） */
 export const STAGE_BASELINES: readonly StageBaseline[] = [
   {
     id: "landscape-1280x720",
@@ -53,6 +53,18 @@ export const STAGE_BASELINES: readonly StageBaseline[] = [
     height: 1080,
   },
   {
+    id: "landscape-2560x1440",
+    label: "横屏 2K 2560 × 1440",
+    width: 2560,
+    height: 1440,
+  },
+  {
+    id: "landscape-3840x2160",
+    label: "横屏 4K 3840 × 2160",
+    width: 3840,
+    height: 2160,
+  },
+  {
     id: "portrait-750x1334",
     label: "竖屏 750 × 1334",
     width: 750,
@@ -63,6 +75,18 @@ export const STAGE_BASELINES: readonly StageBaseline[] = [
     label: "竖屏 1080 × 1920",
     width: 1080,
     height: 1920,
+  },
+  {
+    id: "portrait-1440x2560",
+    label: "竖屏 2K 1440 × 2560",
+    width: 1440,
+    height: 2560,
+  },
+  {
+    id: "portrait-2160x3840",
+    label: "竖屏 4K 2160 × 3840",
+    width: 2160,
+    height: 3840,
   },
 ];
 
