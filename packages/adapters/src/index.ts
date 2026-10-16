@@ -93,3 +93,21 @@ export {
   readTauriPlatform,
   type HostPortOptions,
 } from "./host";
+// 微信小程序适配器族：宿主 `apps/wechat` 经此取件
+export {
+  createWechatAudioPort,
+  createWechatFrameSource,
+  createWechatPreferencesPort,
+  createWechatResourcePort,
+  createWechatSavePort,
+  createWechatVideoPort,
+  wechatStorageFace,
+  type WechatAudioContextLike,
+  type WechatCanvasFrameLike,
+  type WechatFileSystemLike,
+  type WechatFrameSource,
+  type WechatResourceOptions,
+  type WechatStorageLike,
+  type WechatVideoOptions,
+  type WechatVideoSurfaceLike,
+} from "./wechat";
