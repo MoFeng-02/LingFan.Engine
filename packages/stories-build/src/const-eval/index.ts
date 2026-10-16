@@ -12,6 +12,7 @@
  */
 export {
   evalConstModule,
+  DEFAULT_EVAL_TIMEOUT_MS,
   type ConstEvalResult,
   type DefineCall,
   type DefineBad,

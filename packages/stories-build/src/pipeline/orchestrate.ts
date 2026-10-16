@@ -42,7 +42,7 @@ import {
   renderTypegen,
 } from "../typegen/index.ts";
 import { walkFiles } from "../shared/index.ts";
-import { DEFAULT_EVAL_TIMEOUT_MS } from "../const-eval/const-eval.ts";
+import { DEFAULT_EVAL_TIMEOUT_MS } from "../const-eval/index.ts";
 
 /** 构建产物的目录名与生成物文件名（默认值 = 参考宿主的现状目录名） */
 export const DEFAULT_SOURCES_DIR = "Stories.src";
