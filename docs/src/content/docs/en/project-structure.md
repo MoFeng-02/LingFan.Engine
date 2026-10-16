@@ -57,6 +57,7 @@ Beyond those four there are a few optional fields you will rarely touch:
 | `shell.layers`          | Z-order overrides for the nine layers, e.g. `{"dialogue": 999}`.                                                  |
 | `shell.saves.slots`     | Save slot count, 1 to 32, 6 by default.                                                                           |
 | `shell.saves.thumbnail` | Thumbnail dimensions and quality.                                                                                 |
+| `shell.stage`           | Stage design baseline and fit policy, e.g. `{"width":1280,"height":720,"fit":"contain"}`.                         |
 | `shell.orientation`     | `auto` / `portrait` / `landscape`. A plain web host has no orientation API, so only the desktop shell acts on it. |
 | `extensions`            | List of host module specifiers, e.g. `["ext/demo.ts"]`.                                                           |
 | `defines`               | Global initial values. A definition of the same name in a story file overrides it.                                |

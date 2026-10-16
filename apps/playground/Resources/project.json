@@ -7,7 +7,12 @@
     "./extensions/demo-quest.ts"
   ],
   "shell": {
-    "orientation": "auto"
+    "orientation": "auto",
+    "stage": {
+      "width": 1280,
+      "height": 720,
+      "fit": "contain"
+    }
   },
   "tsSource": true,
   "defines": {

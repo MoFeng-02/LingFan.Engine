@@ -57,6 +57,7 @@ my-story/
 | `shell.layers`          | 九个层的 z 序覆盖，如 `{"dialogue": 999}`。                                  |
 | `shell.saves.slots`     | 存档槽位数，1 到 32，缺省 6。                                                |
 | `shell.saves.thumbnail` | 缩略图尺寸与质量。                                                           |
+| `shell.stage`           | 舞台设计基准与适配策略（`{"width":1280,"height":720,"fit":"contain"}`）。    |
 | `shell.orientation`     | `auto` / `portrait` / `landscape`。纯 Web 宿主没有方向 API，只有桌面壳生效。 |
 | `extensions`            | 宿主模块说明符列表，如 `["ext/demo.ts"]`。                                   |
 | `defines`               | 全局初始值。故事文件里的同名定义会覆盖它。                                   |

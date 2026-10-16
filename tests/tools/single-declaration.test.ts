@@ -74,6 +74,9 @@ const SINGLE: Record<string, string> = {
   LayerZController: "packages/ui/src/overlay/layer-z.ts",
   // 视图状态域
   NarrativeState: "packages/shell/src/state/types.ts",
+  // 舞台适配：配置契约在引擎（与 shell.saves 同层，宿主一律取解析结果），算出来的布局在壳
+  StageConfig: "packages/engine/src/contracts/shell.ts",
+  StageLayout: "packages/shell/src/stage/types.ts",
   // 编辑器作者面：命令参数名与运行期状态名分开
   NvlCommandMode: "packages/editor/src/script/words/narrative.ts",
   MenuOptionSpec: "packages/editor/src/script/words/narrative.ts",

@@ -1,6 +1,6 @@
 ---
 title: 工程清单 project.json
-description: 清单字段逐条说明：formatVersion、capabilityVersion、id、entry、lang、shell.layers、shell.saves、shell.orientation、extensions、defines、resourceEncryption。
+description: 清单字段逐条说明：formatVersion、capabilityVersion、id、entry、lang、shell.layers、shell.saves、shell.stage、shell.orientation、extensions、defines、resourceEncryption。
 ---
 
 `Resources/project.json` 是工程的唯一清单。引擎启动时读它，校验不过整个工程打不开。
@@ -89,7 +89,7 @@ description: 清单字段逐条说明：formatVersion、capabilityVersion、id�
 
 ### shell
 
-壳配置。三个子键：
+壳配置。四个子键：
 
 ```json
 {
@@ -103,6 +103,11 @@ description: 清单字段逐条说明：formatVersion、capabilityVersion、id�
         "quality": 0.7,
         "showText": true
       }
+    },
+    "stage": {
+      "width": 1280,
+      "height": 720,
+      "fit": "contain"
     },
     "orientation": "auto"
   }
@@ -152,6 +157,53 @@ description: 清单字段逐条说明：formatVersion、capabilityVersion、id�
 `thumbnail` 四项：`width` 80–1280（缺省 320），`height` 45–720（缺省 180），`quality` 0–1（缺省 0.7），`showText` 布尔（缺省 `true`）。逐项校验，非法的那一项单独忽略，不影响其他项。
 
 这些值是**给宿主看的**，引擎自己不用缩略图——它只管把槽位数报出去。缩略图由宿主截屏合成。
+
+#### shell.stage
+
+舞台适配：作者按设计基准像素写坐标，宿主把整场等比缩放套进窗口。
+
+```json
+{
+  "shell": {
+    "stage": {
+      "width": 1280,
+      "height": 720,
+      "fit": "contain"
+    }
+  }
+}
+```
+
+`width` / `height` 是**设计基准**（作者坐标系的宽高）：面板、元素、字号都照这个坐标系写，换基准就等于整场换坐标系，样式表不用动。取值 160–16384（宽）与 90–16384（高），缺省 1280 × 720。
+
+`fit` 四选一：
+
+| 值        | 行为                                       |
+| --------- | ------------------------------------------ |
+| `contain` | 等比缩放到完整显示，多出的方向留边（缺省） |
+| `cover`   | 等比缩放到铺满，超出的部分裁切             |
+| `fill`    | 两轴各自拉满（允许变形）                   |
+| `none`    | 不缩放，1 倍原样                           |
+
+需要更细的控制时可以再给这几个（都可省）：
+
+- `scaleBy`：`min` / `max` / `width` / `height` / `fill`，或一个正数倍率（0.05–64）。给了就覆盖 `fit` 展开出来的缩放策略。
+- `alignX` / `alignY`：`start` / `center` / `end`，留边时往哪边靠，缺省居中。
+- `minScale` / `maxScale`：缩放的上下限，各取 0.05–64。两条**同时**声明且 `minScale > maxScale` 时两条一起忽略——只留一条会得到一个必然夹死或永不生效的区间，不如当作没写。
+
+逐项校验，非法的那一项**单独忽略回默认**，不影响其他项（和 `shell.saves` 同一口径）。这些值只影响宿主表现：不进引擎状态、快照与存档。
+
+宿主侧读法只有一条路——引擎解析后取结果，不要自己读清单：
+
+```ts
+import { resolveStageConfig } from "@lingfan/engine";
+
+const stage = resolveStageConfig(manifest); // 内建缺省 × 工程覆盖
+```
+
+拿到之后交给舞台计算件算变换：`@lingfan/shell` 的 `computeStageLayout(视口, stage)` 给出缩放与偏移，`stageTransform(layout)` 给出 CSS `transform` 串。宿主只负责量视口、套样式、听 `resize`——计算里不读平台全局，所以桌面壳、浏览器与小程序共用同一份口径。
+
+`project.json shell.stage` 不是所有宿主都必须实现：脚手架自带的宿主是固定视口布局，还没接这一层（见[模板能力边界](/reference/template-boundaries/)）。桌面壳（`apps/playground`）已接。
 
 #### shell.orientation
 

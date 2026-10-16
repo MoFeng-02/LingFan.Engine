@@ -12,6 +12,7 @@
 import {
   DEFAULT_LAYER_Z,
   DEFAULT_SAVES_CONFIG,
+  DEFAULT_STAGE_CONFIG,
   isOrientationMode,
   LAYER_IDS,
   SYS,
@@ -19,6 +20,10 @@ import {
   type LayerZTable,
   type OrientationMode,
   type SavesConfig,
+  type StageAlign,
+  type StageConfig,
+  type StageFit,
+  type StageScalePolicy,
 } from "../contracts/index.ts";
 
 /**
@@ -29,6 +34,7 @@ import {
 export {
   DEFAULT_LAYER_Z,
   DEFAULT_SAVES_CONFIG,
+  DEFAULT_STAGE_CONFIG,
   LAYER_IDS,
 } from "../contracts/index.ts";
 export type {
@@ -37,6 +43,10 @@ export type {
   LayerZTable,
   SavesConfig,
   SavesThumbnailConfig,
+  StageAlign,
+  StageConfig,
+  StageFit,
+  StageScalePolicy,
 } from "../contracts/index.ts";
 
 /* ============================ 层级（z 序）============================ */
@@ -160,6 +170,116 @@ export function resolveSavesConfig(manifest: unknown): SavesConfig {
     if (typeof t.showText === "boolean")
       resolved.thumbnail.showText = t.showText;
   }
+  return resolved;
+}
+
+/* ============================ 舞台适配配置 ============================ */
+
+/** 取 [min,max] 闭区间内的有限数（尺寸/倍率允许小数）；越界或非有限一律 null */
+function finiteInRange(
+  value: unknown,
+  min: number,
+  max: number,
+): number | null {
+  return typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= min &&
+    value <= max
+    ? value
+    : null;
+}
+
+/** 内置策略名（与 `@lingfan/shell` 预设表的键一致） */
+const STAGE_FITS: readonly StageFit[] = ["contain", "cover", "fill", "none"];
+/** 显式缩放策略名（数字倍率另走有限数校验） */
+const STAGE_SCALE_POLICIES: readonly StageScalePolicy[] = [
+  "min",
+  "max",
+  "width",
+  "height",
+  "fill",
+];
+/** 对齐锚点 */
+const STAGE_ALIGNS: readonly StageAlign[] = ["start", "center", "end"];
+
+function isStageFit(value: unknown): value is StageFit {
+  return STAGE_FITS.includes(value as StageFit);
+}
+
+function isStageAlign(value: unknown): value is StageAlign {
+  return STAGE_ALIGNS.includes(value as StageAlign);
+}
+
+/** 倍率类参数（`scaleBy` 数字 / `minScale` / `maxScale`）的可接受区间 */
+const STAGE_SCALE_MIN = 0.05;
+const STAGE_SCALE_MAX = 64;
+/** 基准尺寸的可接受区间：能摆下一个面板、又不至于大到无意义的坐标系 */
+const STAGE_WIDTH_RANGE = { min: 160, max: 16384 } as const;
+const STAGE_HEIGHT_RANGE = { min: 90, max: 16384 } as const;
+
+/** 缩放策略：名字或有限正倍率（倍率范围同 minScale/maxScale）；其余一律 null */
+function stageScalePolicy(value: unknown): StageScalePolicy | null {
+  if (STAGE_SCALE_POLICIES.includes(value as StageScalePolicy)) {
+    return value as StageScalePolicy;
+  }
+  return finiteInRange(value, STAGE_SCALE_MIN, STAGE_SCALE_MAX);
+}
+
+/**
+ * 解析舞台适配配置：内建默认 × 工程覆盖（`shell.stage`，逐键合并；非法值忽略）。
+ *
+ * 与 `resolveSavesConfig` 同一口径（清单入参 `unknown`、不猜不抛），另有两条舞台专有规则：
+ * - 基准宽高与倍率必须落在可接受区间内（坐标系大小直接决定整场缩放，越界值比缺省更坏）；
+ * - `minScale > maxScale` 时**两条一起弃用**（保留默认的「不夹取」）——只留一条会得到
+ *   一个必然夹死或永不生效的区间，不如当作没声明。
+ */
+export function resolveStageConfig(
+  manifest: unknown,
+  defaults: StageConfig = DEFAULT_STAGE_CONFIG,
+): StageConfig {
+  // 契约字段是 readonly（给消费方的约束），解析期要逐键落值，故先摊成可写视图
+  const resolved: { -readonly [K in keyof StageConfig]: StageConfig[K] } = {
+    ...defaults,
+  };
+  if (manifest === null || typeof manifest !== "object") return resolved;
+  const shell = (manifest as { shell?: unknown }).shell;
+  if (shell === null || typeof shell !== "object") return resolved;
+  const raw = (shell as { stage?: unknown }).stage;
+  if (raw === null || typeof raw !== "object") return resolved;
+  const stage = raw as Record<string, unknown>;
+
+  const width = finiteInRange(
+    stage.width,
+    STAGE_WIDTH_RANGE.min,
+    STAGE_WIDTH_RANGE.max,
+  );
+  if (width !== null) resolved.width = width;
+  const height = finiteInRange(
+    stage.height,
+    STAGE_HEIGHT_RANGE.min,
+    STAGE_HEIGHT_RANGE.max,
+  );
+  if (height !== null) resolved.height = height;
+  if (isStageFit(stage.fit)) resolved.fit = stage.fit;
+  const scaleBy = stageScalePolicy(stage.scaleBy);
+  if (scaleBy !== null) resolved.scaleBy = scaleBy;
+  if (isStageAlign(stage.alignX)) resolved.alignX = stage.alignX;
+  if (isStageAlign(stage.alignY)) resolved.alignY = stage.alignY;
+  const minScale = finiteInRange(
+    stage.minScale,
+    STAGE_SCALE_MIN,
+    STAGE_SCALE_MAX,
+  );
+  const maxScale = finiteInRange(
+    stage.maxScale,
+    STAGE_SCALE_MIN,
+    STAGE_SCALE_MAX,
+  );
+  if (minScale !== null && maxScale !== null && minScale > maxScale) {
+    return resolved;
+  }
+  if (minScale !== null) resolved.minScale = minScale;
+  if (maxScale !== null) resolved.maxScale = maxScale;
   return resolved;
 }
 

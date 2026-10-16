@@ -10,19 +10,23 @@
  * 宿主侧的监听注册与注销成对写在本组件里，源级断言防止只留一半。
  */
 import { describe, expect, it } from "vitest";
+import { DEFAULT_STAGE_CONFIG } from "@lingfan/engine";
 import appSource from "../../apps/playground/src/App.vue?raw";
 import fitSource from "../../apps/playground/src/host/stage/fit/app-stage-fit.ts?raw";
 import frameSource from "../../apps/playground/src/host/stage/frame/app-frame.ts?raw";
-import {
-  createAppStageFit,
-  PLAYGROUND_STAGE_CONFIG,
-  PLAYGROUND_STAGE_HEIGHT,
-  PLAYGROUND_STAGE_WIDTH,
-} from "../../apps/playground/src/host/stage/fit";
+import mainSource from "../../apps/playground/src/main.ts?raw";
+import manifestSource from "../../apps/playground/Resources/project.json?raw";
+import { createAppStageFit } from "../../apps/playground/src/host/stage/fit";
 
 /** 舞台子树组件（都在舞台根内，故都不该出现视口单位） */
 const STAGE_COMPONENTS = import.meta.glob(
   "../../apps/playground/src/App/*.vue",
+  { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
+
+/** 舞台适配装配目录（用于钉住「工程取值不留本地副本」） */
+const FIT_MODULES = import.meta.glob(
+  "../../apps/playground/src/host/stage/fit/*.ts",
   { eager: true, query: "?raw", import: "default" },
 ) as Record<string, string>;
 
@@ -45,8 +49,8 @@ describe("舞台适配装配", () => {
     });
     const layout = fit.apply();
     expect(layout?.scaleX).toBeCloseTo(1.25, 6);
-    expect(root.style.width).toBe(`${PLAYGROUND_STAGE_WIDTH}px`);
-    expect(root.style.height).toBe(`${PLAYGROUND_STAGE_HEIGHT}px`);
+    expect(root.style.width).toBe(`${DEFAULT_STAGE_CONFIG.width}px`);
+    expect(root.style.height).toBe(`${DEFAULT_STAGE_CONFIG.height}px`);
     expect(root.style.transform).toBe("translate(0px, 0px) scale(1.25, 1.25)");
     // 先平移再缩放 ⇒ 原点必须左上角；写成中心原点会把偏移量也缩放一遍
     expect(root.style.transformOrigin).toBe("0 0");
@@ -94,7 +98,7 @@ describe("舞台适配装配", () => {
     frame = { width: 800, height: 900 };
     const layout = fit.apply();
     expect(layout?.scaleX).toBeCloseTo(0.625, 6);
-    expect(root.style.width).toBe(`${PLAYGROUND_STAGE_WIDTH}px`);
+    expect(root.style.width).toBe(`${DEFAULT_STAGE_CONFIG.width}px`);
     expect(root.style.transform).toBe(
       "translate(0px, 225px) scale(0.625, 0.625)",
     );
@@ -108,12 +112,38 @@ describe("舞台适配装配", () => {
     expect(fit.apply()).toBeNull();
   });
 
-  it("缺省配置＝本工程基准：1280 × 720 完整显示", () => {
-    expect(PLAYGROUND_STAGE_CONFIG.width).toBe(1280);
-    expect(PLAYGROUND_STAGE_CONFIG.height).toBe(720);
-    expect(PLAYGROUND_STAGE_CONFIG.fit).toBe("contain");
-    expect(PLAYGROUND_STAGE_WIDTH).toBe(PLAYGROUND_STAGE_CONFIG.width);
-    expect(PLAYGROUND_STAGE_HEIGHT).toBe(PLAYGROUND_STAGE_CONFIG.height);
+  it("缺省配置＝引擎内建基准：1280 × 720 完整显示", () => {
+    expect(DEFAULT_STAGE_CONFIG.width).toBe(1280);
+    expect(DEFAULT_STAGE_CONFIG.height).toBe(720);
+    expect(DEFAULT_STAGE_CONFIG.fit).toBe("contain");
+    expect(fitSource).toContain("options.config ?? DEFAULT_STAGE_CONFIG");
+  });
+
+  it("工程取值只声明在清单里：本工程 shell.stage 与内建基准一致", () => {
+    const stage = (
+      JSON.parse(manifestSource) as {
+        shell?: { stage?: { width?: number; height?: number; fit?: string } };
+      }
+    ).shell?.stage;
+    expect(stage).toEqual({
+      width: DEFAULT_STAGE_CONFIG.width,
+      height: DEFAULT_STAGE_CONFIG.height,
+      fit: DEFAULT_STAGE_CONFIG.fit,
+    });
+    // 复合根解析后经 props 注入装配：工程取值不在宿主源码里留第二份
+    expect(mainSource).toContain("resolveStageConfig(manifest)");
+    expect(appSource).toContain("config: props.stage");
+    for (const [key, source] of Object.entries(FIT_MODULES)) {
+      expect(source, `${key} 又写了一份工程取值`).not.toMatch(
+        /PLAYGROUND_STAGE|stage-config/,
+      );
+    }
+    // 原本的本地取值模块已删除：装配目录里只剩出口与装配两个文件
+    expect(
+      Object.keys(FIT_MODULES)
+        .sort()
+        .map((key) => key.split("/").pop()),
+    ).toEqual(["app-stage-fit.ts", "index.ts"]);
   });
 
   it("源级：装配不读窗口与文档，读数只经 readFrame 注入", () => {

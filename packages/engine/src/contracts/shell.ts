@@ -112,3 +112,51 @@ export const DEFAULT_SAVES_CONFIG: SavesConfig = {
   slots: 6,
   thumbnail: { width: 320, height: 180, quality: 0.7, showText: true },
 };
+
+/* ============================ 舞台适配配置 ============================ */
+
+/**
+ * 缩放策略：`min` 短边铺满、`max` 长边铺满、`width` 与 `height` 单轴对齐、
+ * `fill` 两轴各自拉满（允许变形）、数字为固定倍率。
+ */
+export type StageScalePolicy =
+  "min" | "max" | "width" | "height" | "fill" | number;
+
+/** 留边方向上的对齐锚点 */
+export type StageAlign = "start" | "center" | "end";
+
+/** 内置适配策略名（展开成缩放策略 + 对齐锚点，见 `@lingfan/shell` 的预设表） */
+export type StageFit = "contain" | "cover" | "fill" | "none";
+
+/**
+ * 舞台适配配置（`project.json` 的 `shell.stage`；解析见 `runtime/shell.ts`）。
+ *
+ * 作者按设计基准像素书写元素与控件坐标，宿主把整场等比缩放套进窗口——**只影响宿主表现**，
+ * 不进引擎状态、快照与存档（与方向偏好同属壳配置口径）。计算件在 `@lingfan/shell`，
+ * 契约与解析在引擎：宿主一律取解析结果，不各自读清单、不各自定缺省。
+ */
+export interface StageConfig {
+  /** 设计基准宽（作者坐标系的宽） */
+  readonly width: number;
+  /** 设计基准高（作者坐标系的高） */
+  readonly height: number;
+  /** 预设策略，缺省 `contain` */
+  readonly fit?: StageFit;
+  /** 显式缩放策略，给了就覆盖预设 */
+  readonly scaleBy?: StageScalePolicy;
+  /** 横向留边对齐，缺省跟随预设 */
+  readonly alignX?: StageAlign;
+  /** 纵向留边对齐，缺省跟随预设 */
+  readonly alignY?: StageAlign;
+  /** 缩放下限（极小屏可读性兜底） */
+  readonly minScale?: number;
+  /** 缩放上限（大屏封顶） */
+  readonly maxScale?: number;
+}
+
+/** 内建默认舞台配置（工程未声明或声明非法时使用）：横屏 16:9，与视频、缩略图同比例 */
+export const DEFAULT_STAGE_CONFIG: StageConfig = {
+  width: 1280,
+  height: 720,
+  fit: "contain",
+};

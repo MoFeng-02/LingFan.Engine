@@ -11,11 +11,6 @@ export type { AppElementLayerOptions } from "./elements/index.ts";
 export { createAppElementLayer } from "./elements/index.ts";
 export type { AppStageFit, AppStageFitOptions } from "./fit/index.ts";
 export { createAppStageFit } from "./fit/index.ts";
-export {
-  PLAYGROUND_STAGE_CONFIG,
-  PLAYGROUND_STAGE_HEIGHT,
-  PLAYGROUND_STAGE_WIDTH,
-} from "./fit/index.ts";
 export type { AppFrame, AppFrameOptions } from "./frame/index.ts";
 export { createAppFrame } from "./frame/index.ts";
 export { browserFrameSource } from "./frame/index.ts";

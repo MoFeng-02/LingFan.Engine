@@ -19,6 +19,7 @@ import {
   type ResourcePort,
   type SavePort,
   type SavesConfig,
+  type StageConfig,
   type Story,
   type VideoPort,
 } from "@lingfan/engine";
@@ -66,6 +67,8 @@ const props = defineProps<{
   layerZ: LayerZTable;
   /** 存档壳配置：槽位数与缩略图参数（project.json shell.saves 可覆盖） */
   saves: SavesConfig;
+  /** 舞台适配配置：设计基准像素与适配策略（project.json shell.stage 可覆盖） */
+  stage: StageConfig;
   savePort: SavePort;
   resourcePort: ResourcePort;
   /** I18N overlay 供给（可选：浏览器形态未装配 = 原文直出） */
@@ -312,13 +315,15 @@ const { frameLoop } = createAppFrame({
 });
 
 // —— 舞台适配（作者按基准像素写坐标，整场等比缩放套进外框）——
-/** 舞台适配：读数取外框容器的布局尺寸（不是舞台自身的 clientWidth——那已被变换放大过） */
+/** 舞台适配：配置来自组合根（`project.json shell.stage` 解析结果），读数取外框容器的布局尺寸
+ *（不是舞台自身的 clientWidth——那已被变换放大过） */
 const stageFit = createAppStageFit({
   readFrame: () => ({
     width: stageViewportEl.value?.clientWidth ?? 0,
     height: stageViewportEl.value?.clientHeight ?? 0,
   }),
   readStageRoot: () => stageEl.value,
+  config: props.stage,
 });
 /** 外框尺寸变化（窗口缩放、旋转、软键盘收起）后重算一次：读数即时取，不依赖事件载荷 */
 function applyStageFit(): void {
