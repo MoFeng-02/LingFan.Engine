@@ -7,6 +7,7 @@
  */
 
 import type { AbortHandle, ExtensionMountPayload } from "@lingfan/engine";
+import { abortSignalOf } from "../engine/abort-signal";
 
 /** 当前扩展等待的展示态（null = 无扩展等待）；解除权在宿主——覆盖层「确认」触发 resolve */
 export interface ExtensionOverlay {
@@ -42,7 +43,7 @@ export function createExtensionMountHandler(
   const handler = (payload: ExtensionMountPayload): void => {
     // 中断（回溯/导航/读档/热重载/销毁）以 abort 收尾——订阅先行，重放的新挂载顶掉旧订阅。
     extensionAbort?.();
-    const abortSignal = abortSignalOfImpl(payload.signal);
+    const abortSignal = abortSignalOf(payload.signal);
     const onAbort = (): void => {
       abortSignal.removeEventListener("abort", onAbort);
       extensionAbort = null;
@@ -69,9 +70,4 @@ export function createExtensionMountHandler(
     extensionAbort = null;
   };
   return handler;
-}
-
-/** 契约中止句柄收窄回本宿主的实现（订阅事件需要具体的中止类型） */
-function abortSignalOfImpl(handle: AbortHandle): AbortSignal {
-  return handle as AbortSignal;
 }

@@ -6,4 +6,5 @@
  */
 
 export * from "./history.ts";
+export * from "./slotTexts.ts";
 export * from "./slots.ts";

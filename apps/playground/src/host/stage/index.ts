@@ -11,6 +11,7 @@ export type { AppElementLayerOptions } from "./elements/index.ts";
 export { createAppElementLayer } from "./elements/index.ts";
 export type { AppFrame, AppFrameOptions } from "./frame/index.ts";
 export { createAppFrame } from "./frame/index.ts";
+export { browserFrameSource } from "./frame/index.ts";
 export type { HostFrameLoopOptions } from "./frame/index.ts";
 export { startHostFrameLoop } from "./frame/index.ts";
 export type { AppMedia, AppMediaOptions } from "./media/index.ts";
