@@ -2,7 +2,7 @@ import * as ts from "typescript";
 import type { StoryCommand } from "@lingfan/engine";
 import type { BodyCtx } from "../../shared.ts";
 import { lowerCond } from "../../expr/expr.ts";
-import { callWord } from "../../expr/words.ts";
+import { callWord } from "../../expr/words/index.ts";
 import { translateBlockBody } from "../control-flow.ts";
 import type { StatementDispatch } from "../control-flow.ts";
 

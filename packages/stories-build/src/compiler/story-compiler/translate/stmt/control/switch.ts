@@ -4,7 +4,7 @@ import { foldConst } from "../../../graph.ts";
 import { diag, lookupBinding } from "../../shared.ts";
 import type { BodyCtx } from "../../shared.ts";
 import { lowerCond } from "../../expr/expr.ts";
-import { callWord } from "../../expr/words.ts";
+import { callWord } from "../../expr/words/index.ts";
 import type { StatementDispatch } from "../control-flow.ts";
 
 function isUnlabeledBreak(stmt: ts.Statement): boolean {

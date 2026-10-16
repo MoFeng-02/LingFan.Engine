@@ -3,7 +3,7 @@
  *
  * 轴 = 值层四件——条件与取值降级（`expr.ts`）、表达式降级与路径归约
  * （`lower/` + `state-path.ts` + `probe.ts` + `engine-text.ts`）、
- * 词表调用与命令发射（`words.ts`）、赋值与自增（`assign.ts`）。
+ * 词表调用与命令发射（`words/`）、赋值与自增（`assign.ts`）。
  */
 export {
   emitAssignment,
@@ -22,4 +22,4 @@ export {
   emitCallCommand,
   emitCommand,
   resolveFunctionCallee,
-} from "./words.ts";
+} from "./words/index.ts";

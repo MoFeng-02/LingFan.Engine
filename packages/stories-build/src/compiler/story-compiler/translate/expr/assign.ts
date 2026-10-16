@@ -10,7 +10,11 @@ import {
 import type { BodyCtx } from "../shared.ts";
 import { statePath } from "./state-path.ts";
 import { lowerValue, loweredToScriptValue } from "./expr.ts";
-import { callWord, emitCallCommand, resolveFunctionCallee } from "./words.ts";
+import {
+  callWord,
+  emitCallCommand,
+  resolveFunctionCallee,
+} from "./words/index.ts";
 
 function assignmentTarget(
   ctx: BodyCtx,
