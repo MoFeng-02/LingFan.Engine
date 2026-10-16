@@ -1,3 +1,5 @@
-// assemble.ts —— 纯转发出口（原单文件实现拆分至 assemble/ 子目录，导入路径零改动）
-export type { AssembleSession, CompiledStory } from "./assemble/session.ts";
-export { createAssembleSession, compileStoryFile } from "./assemble/session.ts";
+/**
+ * 装配族的对上游出口（本文件与 `assemble/` 目录同族，导出面与目录出口一致）。
+ */
+export { compileStoryFile, createAssembleSession } from "./assemble/index.ts";
+export type { AssembleSession, CompiledStory } from "./assemble/index.ts";

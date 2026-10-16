@@ -373,7 +373,7 @@ export default function start(): void {
     // 用 import.meta.glob 取实物源码文本：路径按本文件位置相对书写，不拼 BASE
     // （BASE 是 fixture 目录，拼出来会指到别处）。
     const sources = import.meta.glob(
-      "../../packages/stories-build/src/compiler/story-compiler/graph/imports.ts",
+      "../../packages/stories-build/src/compiler/story-compiler/graph/scan/imports.ts",
       { eager: true, query: "?raw", import: "default" },
     ) as Record<string, string>;
     const keys = Object.keys(sources);

@@ -1,14 +1,14 @@
 import * as ts from "typescript";
 import type { StoryCommand } from "@lingfan/engine";
-import { diag, isAssignmentOperator } from "./shared.ts";
-import type { BodyCtx } from "./shared.ts";
-import { emitCommand, callWord } from "./words.ts";
-import { lowerValue, loweredToScriptValue } from "./expr.ts";
+import { diag, isAssignmentOperator } from "../shared.ts";
+import type { BodyCtx } from "../shared.ts";
+import { emitCommand, callWord } from "../expr/words.ts";
+import { lowerValue, loweredToScriptValue } from "../expr/expr.ts";
 import {
   translateVariableStatement,
   emitAssignment,
   translateIncrement,
-} from "./assign.ts";
+} from "../expr/assign.ts";
 import {
   translateIf,
   translateWhile,

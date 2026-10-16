@@ -2,16 +2,18 @@
  * 单命令行语句的分发骨架：建上下文、按 op 族转交、兜底报「暂不支持」。
  * 各族的判定与文案都在 statement/ 下的族文件里，这里只负责路由。
  *
- * 注意：本文件与同名的 `statement/` 目录并存——模块解析**文件优先**，
- * 故 `./statement` 恒指本文件；在 `statement/` 下新增 `index.ts` 会使 `./statement` 解析到目录——保持该目录无 `index.ts`。
+ * 注意：本文件与同名的 `statement/` 目录并存——本仓 import 一律带显式 `.ts` 后缀，
+ * `./statement.ts` 与 `./statement/index.ts` 不会撞车；族目录的出口是 `statement/index.ts`。
  */
-import { parseDialogStatement } from "./statement/dialog.ts";
-import { parseFlowStatement } from "./statement/flow.ts";
-import { parseVariablesStatement } from "./statement/variables.ts";
-import { parseCollectionsStatement } from "./statement/collections.ts";
-import { parseSaveStatement } from "./statement/save.ts";
-import { parseMediaStatement } from "./statement/media.ts";
-import { parsePresentStatement } from "./statement/present.ts";
+import {
+  parseCollectionsStatement,
+  parseDialogStatement,
+  parseFlowStatement,
+  parseMediaStatement,
+  parsePresentStatement,
+  parseSaveStatement,
+  parseVariablesStatement,
+} from "./statement/index.ts";
 import { unquote } from "../lexer.ts";
 import type { StoryCommand } from "../../../contracts/index.ts";
 import type { StatementContext } from "./state.ts";

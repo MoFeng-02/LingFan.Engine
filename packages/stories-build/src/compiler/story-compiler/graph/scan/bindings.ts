@@ -1,11 +1,11 @@
 import * as ts from "typescript";
-import { foldConst } from "./fold.ts";
-import { WORD_NAMES } from "./core.ts";
-import type { Binding, ConstValue, ModuleRecord, DiagBag } from "./core.ts";
+import { foldConst } from "../fold.ts";
+import { WORD_NAMES } from "../core.ts";
+import type { Binding, ConstValue, ModuleRecord, DiagBag } from "../core.ts";
 import {
   defaultStoriesBuildTexts,
   type StoriesBuildTexts,
-} from "../../../shared/index.ts";
+} from "../../../../shared/index.ts";
 
 export function scanConstStatement(
   stmt: ts.VariableStatement,

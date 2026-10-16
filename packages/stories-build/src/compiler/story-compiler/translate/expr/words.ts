@@ -1,10 +1,10 @@
 import * as ts from "typescript";
 import type { StoryCommand } from "@lingfan/engine";
-import { foldConst } from "../graph.ts";
-import { WORDS, diag, lookupBinding, lookupScope } from "./shared.ts";
-import type { BodyCtx, Scope } from "./shared.ts";
+import { foldConst } from "../../graph.ts";
+import { WORDS, diag, lookupBinding, lookupScope } from "../shared.ts";
+import type { BodyCtx, Scope } from "../shared.ts";
 import { lowerValue, loweredToScriptValue } from "./expr.ts";
-import { checkFontReferences } from "./font-check.ts";
+import { checkFontReferences } from "../font-check.ts";
 
 const STATIC_FOR_MAX = 100000;
 

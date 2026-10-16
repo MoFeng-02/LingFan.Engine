@@ -1,6 +1,6 @@
 import * as ts from "typescript";
-import { WORD_NAMES, GEN_PREFIX, toPosix } from "./core.ts";
-import type { ModuleRecord, DiagBag } from "./core.ts";
+import { WORD_NAMES, GEN_PREFIX, toPosix } from "../core.ts";
+import type { ModuleRecord, DiagBag } from "../core.ts";
 
 function resolveModuleFile(rel: string, spec: string): string | null {
   const dirParts = toPosix(rel).split("/").slice(0, -1);
