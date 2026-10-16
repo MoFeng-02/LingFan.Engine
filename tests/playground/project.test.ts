@@ -110,7 +110,9 @@ describe("示例工程防腐", () => {
         import: "default",
       }) as Record<string, string>
     )["../../apps/playground/src/stories/stories-table.ts"];
-    const block = /const STORIES[^=]*= \[([^\]]*)\]/.exec(tableSource ?? "")?.[1];
+    const block = /const STORIES[^=]*= \[([^\]]*)\]/.exec(
+      tableSource ?? "",
+    )?.[1];
     expect(block, "未在 stories-table.ts 中找到 STORIES 清单").toBeDefined();
     const declared = [...String(block).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
     expect(declared.length).toBeGreaterThan(0); // 防提取失效空跑

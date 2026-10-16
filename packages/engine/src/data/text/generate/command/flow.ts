@@ -5,7 +5,10 @@ import {
   generateDictLiteral,
   instanceZText,
 } from "../../literals.ts";
-import type { StoryCommand, CharacterDef } from "../../../../contracts/index.ts";
+import type {
+  StoryCommand,
+  CharacterDef,
+} from "../../../../contracts/index.ts";
 import type { GenerateContext } from "../context.ts";
 
 /**

@@ -2,7 +2,15 @@
  * audit-ia · A5 内部断链（全站）
  */
 import { readFileSync } from "node:fs";
-import { BASE, fail, htmlLinks, idsOf, pass, pages, resolveLink } from "./shared.ts";
+import {
+  BASE,
+  fail,
+  htmlLinks,
+  idsOf,
+  pass,
+  pages,
+  resolveLink,
+} from "./shared.ts";
 
 const broken = [];
 const fragBroken = [];

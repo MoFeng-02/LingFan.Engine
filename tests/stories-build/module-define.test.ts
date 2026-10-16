@@ -11,7 +11,13 @@
  * 全部走公共入口 buildStories（白盒为零）；defines 以产物 project.json 为证，
  * 类型面以 state.gen.d.ts 逐字节/包含断言为证。
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -93,8 +99,7 @@ describe("模块层构建期 define · 收集与合并", () => {
   it("spec 对象实参在模块层同样合法：单参 define 折叠为子树", async () => {
     const root = makeProject("spec-form", {
       "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/state.ts":
-        `define({ one: 1, nested: { deep: "v" } });\n`,
+      "Stories.src/ch1/state.ts": `define({ one: 1, nested: { deep: "v" } });\n`,
       [START]: story("start", `  say("hello");\n`),
       "Resources/project.json": MANIFEST,
     });
@@ -136,7 +141,9 @@ describe("模块层构建期 define · fail-closed", () => {
     await expect(buildStories(root)).rejects.toThrow(
       /模块层构建期 define 冲突（2 条）[\s\S]*defines\["player.gold"\]：同键二次定义[\s\S]*config\.ts 与 ch1\/a\.ts:1:1[\s\S]*config\.ts 与 ch1\/b\.ts:1:1/,
     );
-    expect(existsSync(join(root, "Stories.src/gen/state.gen.d.ts"))).toBe(false);
+    expect(existsSync(join(root, "Stories.src/gen/state.gen.d.ts"))).toBe(
+      false,
+    );
   });
 
   it("形态 A（state 导出）与模块层 define 互斥：报互斥文案与模块落点", async () => {
@@ -163,7 +170,9 @@ describe("模块层构建期 define · fail-closed", () => {
     await expect(buildStories(root)).rejects.toThrow(
       /模块层不支持此语句：只允许 const\/函数\/enum\/导入\/类型声明\/default 导出、构建期 define 与构建期角色声明/,
     );
-    expect(existsSync(join(root, "Stories.src/gen/state.gen.d.ts"))).toBe(false);
+    expect(existsSync(join(root, "Stories.src/gen/state.gen.d.ts"))).toBe(
+      false,
+    );
   });
 
   it("值域收窄：函数体等不可序列化值 fail-closed 且不落任何生成物", async () => {
@@ -176,8 +185,12 @@ describe("模块层构建期 define · fail-closed", () => {
     await expect(buildStories(root)).rejects.toThrow(
       /模块层构建期 define 收集失败（1 条）[\s\S]*ch1\/state\.ts:1:1 define\("a\.b"\)：值必须是可序列化常量/,
     );
-    expect(existsSync(join(root, "Stories.src/gen/state.gen.d.ts"))).toBe(false);
-    expect(existsSync(join(root, "Stories.src/gen/stories.gen.d.ts"))).toBe(false);
+    expect(existsSync(join(root, "Stories.src/gen/state.gen.d.ts"))).toBe(
+      false,
+    );
+    expect(existsSync(join(root, "Stories.src/gen/stories.gen.d.ts"))).toBe(
+      false,
+    );
   });
 
   it("path 形首参必须是字符串字面量", async () => {
@@ -208,8 +221,7 @@ describe("模块层构建期 define · 运行期边界", () => {
     const root = makeProject("runtime-define", {
       "Stories.src/config.ts":
         config(["ch1"]) + `define("player.gold", 100);\n`,
-      "Stories.src/ch1/state.ts":
-        `export function seed(): void {\n  define("ghost.key", 1);\n}\n`,
+      "Stories.src/ch1/state.ts": `export function seed(): void {\n  define("ghost.key", 1);\n}\n`,
       [START]: story("start", `  say("金币 {player.gold}");\n`),
       "Resources/project.json": MANIFEST,
     });

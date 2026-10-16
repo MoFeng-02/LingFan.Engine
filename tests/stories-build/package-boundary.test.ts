@@ -226,8 +226,7 @@ describe("创作链编译包 · 边界与结构不变式", () => {
     // style，与 tsc（bundler + allowImportingTsExtensions）、tsx、vite、Node 四方同决议。
     //
     // 正样本自检：说明符级正则必须命中裸目录形态（违规样本）、放过完整指定形态。
-    const RELATIVE_SPEC =
-      /(?:from|import)\s*\(?\s*"(\.{1,2}\/[^"]+)"/g;
+    const RELATIVE_SPEC = /(?:from|import)\s*\(?\s*"(\.{1,2}\/[^"]+)"/g;
     expect([...'"../cell";'.matchAll(RELATIVE_SPEC)].length).toBe(0); // 无 from/import 前缀不算
     expect(
       [...'from "../cell";'.matchAll(RELATIVE_SPEC)].map((m) => m[1]),
@@ -245,7 +244,9 @@ describe("创作链编译包 · 边界与结构不变式", () => {
     expect(underspecified).toEqual([]);
     // 反向自检：包内确实存在相对导入（否则空集是空扫描换来的假绿）。
     const relativeImporters = PACKAGE_KEYS.filter((key) =>
-      /(?:from|import)\s*\(?\s*"\.{1,2}\/[^"]+"/.test(PACKAGE_SOURCE_FILES[key]),
+      /(?:from|import)\s*\(?\s*"\.{1,2}\/[^"]+"/.test(
+        PACKAGE_SOURCE_FILES[key],
+      ),
     );
     expect(relativeImporters.length).toBeGreaterThanOrEqual(20);
   });

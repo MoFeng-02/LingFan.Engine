@@ -111,12 +111,15 @@ describe("字体名注册表 · 构建期 fail-closed", () => {
 
   it("动态值编译期放行：插值降糖形态（{…} 包裹）不对照注册表", async () => {
     const root = makeProject("dynamic-pass", {
-      "Stories.src/config.ts": config(["ch1"]) + `define("player.skin", "楷体");\n`,
-      [START]:
-        story("start", [
+      "Stories.src/config.ts":
+        config(["ch1"]) + `define("player.skin", "楷体");\n`,
+      [START]: story(
+        "start",
+        [
           `  say("你好", { font: state.player.skin });`,
           `  say(\`你好 {font=\${state.player.skin}}欢迎\`);`,
-        ].join("\n")),
+        ].join("\n"),
+      ),
       "Resources/project.json": MANIFEST,
     });
     const report = await buildStories(root);

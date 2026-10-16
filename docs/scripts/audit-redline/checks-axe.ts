@@ -4,7 +4,13 @@
 
 import { existsSync } from "node:fs";
 import { PREVIEW, fail, manual, pass, results } from "./shared.ts";
-import { SAMPLE, axePath, browser, browserReady, browserWhy } from "./checks-browser.ts";
+import {
+  SAMPLE,
+  axePath,
+  browser,
+  browserReady,
+  browserWhy,
+} from "./checks-browser.ts";
 
 let axeReport = null;
 if (browserReady && existsSync(axePath)) {

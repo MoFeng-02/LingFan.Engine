@@ -118,10 +118,20 @@ export async function buildStories(
   // —— config.ts 单次求值：named exports 四导出（folders/start/vars/state）+ 形态 B
   // define 累积一并取出；布局校验（parseFolders/parseStart）、define 合并冲突与
   // 形态 A/B 互斥全部 fail-closed（读取统一走本通道，图谱层不再解析 config）——
-  const evaluated = await evalConfigModule(root, sourcesDirName, texts, evalTimeoutMs);
+  const evaluated = await evalConfigModule(
+    root,
+    sourcesDirName,
+    texts,
+    evalTimeoutMs,
+  );
 
   // —— 源发现：config 布局声明 → folders 多目录递归 → start 全局恰一 ——
-  const discovery = await discoverSources(root, sourcesDirName, evaluated.config, texts);
+  const discovery = await discoverSources(
+    root,
+    sourcesDirName,
+    evaluated.config,
+    texts,
+  );
 
   // —— cell 声明扫描（构建期 AST 扫描）：源树（排除生成物目录，仅 .ts；机制不动）。
   // 源树同时是模块层 define 收集与枚举槽位回收的输入（只读复用，不重扫）——
@@ -152,7 +162,9 @@ export async function buildStories(
     throw new StoryBuildError(
       [
         `${sourcesDirName}/${CONFIG_FILE}: 形态 A（state 导出）与模块层构建期 define 互斥——形态 A/B 二选一：`,
-        ...moduleDefineCalls.map((call) => `- ${call.origin}${defineLabel(call)}`),
+        ...moduleDefineCalls.map(
+          (call) => `- ${call.origin}${defineLabel(call)}`,
+        ),
       ].join("\n"),
     );
   }
@@ -348,7 +360,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** 互斥文案里的一条调用签名（path 形带键名；spec 形统一签名） */
 function defineLabel(call: LocatedDefineCall): string {
-  return call.call.kind === "path" ? `define("${call.call.path}")` : "define({…})";
+  return call.call.kind === "path"
+    ? `define("${call.call.path}")`
+    : "define({…})";
 }
 
 /** 枚举槽位回收的模块源文（按调用落点去重排序；树里缺文本的文件跳过） */

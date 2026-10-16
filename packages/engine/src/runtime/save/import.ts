@@ -1,7 +1,11 @@
 /**
  * 存档导入。
  */
-import { SYS, type ColumnCoordinate, type SaveDataV1 } from "../../contracts/index.ts";
+import {
+  SYS,
+  type ColumnCoordinate,
+  type SaveDataV1,
+} from "../../contracts/index.ts";
 import type { OpContext } from "../internal/index.ts";
 
 /**
@@ -73,7 +77,10 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
   if (data.storyVersion !== undefined) {
     const declared = data.storyVersion;
     if (!Number.isInteger(declared) || declared < 1) {
-      ctx.fail("save-format", "存档 storyVersion 不合法（须为正整数；旧档缺省该字段）");
+      ctx.fail(
+        "save-format",
+        "存档 storyVersion 不合法（须为正整数；旧档缺省该字段）",
+      );
       return false;
     }
   }
@@ -132,7 +139,10 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
   data = {
     ...data,
     state: [...minigameStaged, ...padFor(minigameStaged)],
-    history: data.history.map((h) => ({ ...h, state: [...h.state, ...padFor(h.state)] })),
+    history: data.history.map((h) => ({
+      ...h,
+      state: [...h.state, ...padFor(h.state)],
+    })),
   };
   ctx.clearTimer();
   ctx.abortExternalTakeovers(); // 读档打断外部接管：abort 挂载信号（重放重新挂载）

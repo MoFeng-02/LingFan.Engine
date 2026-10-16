@@ -36,7 +36,11 @@ export function classifySpecifier(spec) {
   }
   if (spec.startsWith(".")) return { kind: "relative" };
   if (spec.startsWith("@lingfan/")) return { kind: "workspace" };
-  if (/\.(png|jpe?g|gif|webp|svg|ico|mp3|ogg|wav|m4a|flac|mp4|webm|json|css)$/.test(spec)) {
+  if (
+    /\.(png|jpe?g|gif|webp|svg|ico|mp3|ogg|wav|m4a|flac|mp4|webm|json|css)$/.test(
+      spec,
+    )
+  ) {
     return { kind: "asset" };
   }
   return { kind: "external", name: spec };

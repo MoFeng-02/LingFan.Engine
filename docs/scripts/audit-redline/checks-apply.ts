@@ -4,7 +4,18 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { BASELINE_DIST, DIST, DOCS, SITE_NAME, SITE_NAME_EN, fail, manual, pages, pass, read } from "./shared.ts";
+import {
+  BASELINE_DIST,
+  DIST,
+  DOCS,
+  SITE_NAME,
+  SITE_NAME_EN,
+  fail,
+  manual,
+  pages,
+  pass,
+  read,
+} from "./shared.ts";
 
 // --- H2-2 品牌标识应用
 {

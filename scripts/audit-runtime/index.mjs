@@ -24,7 +24,12 @@ export const RUN_TIME_ROOTS = [
  * 体积实测对象：小程序侧真正可能进主包的四个包。适配器不在其中——它是宿主按平台挑的，
  * 各平台取不同子面（小程序只取小程序适配器），拿整个包计主包没有意义。
  */
-export const SIZE_ENTRIES = ["@lingfan/engine", "@lingfan/ui", "@lingfan/editor", "@lingfan/shell"];
+export const SIZE_ENTRIES = [
+  "@lingfan/engine",
+  "@lingfan/ui",
+  "@lingfan/editor",
+  "@lingfan/shell",
+];
 
 /**
  * 构建期工具**必须**留在图外：它们在 Node 里跑，用 node:fs 是本职，不是违规。
@@ -55,7 +60,12 @@ export async function runAudit({ sizes = true } = {}) {
   const sizeRows = sizes
     ? await measureSizes({ repoRoot, entrySpecs: SIZE_ENTRIES })
     : [];
-  return { graph, buildTimeInGraph, sizeRows, rootCount: RUN_TIME_ROOTS.length };
+  return {
+    graph,
+    buildTimeInGraph,
+    sizeRows,
+    rootCount: RUN_TIME_ROOTS.length,
+  };
 }
 
 function collectFailures({ graph, buildTimeInGraph, sizeRows }) {
@@ -81,7 +91,9 @@ function printReport(result) {
   console.log(
     `  可达图：${graph.files.size} 个源文件，入口 ${result.rootCount} 个（${RUN_TIME_ROOTS.join("、")}）`,
   );
-  console.log(`  第三方外依赖（不遍历，${graph.externals.size} 个）：${[...graph.externals].sort().join("、") || "无"}`);
+  console.log(
+    `  第三方外依赖（不遍历，${graph.externals.size} 个）：${[...graph.externals].sort().join("、") || "无"}`,
+  );
   console.log(
     `  构建期工具在范围外：${buildTimeInGraph.length === 0 ? "是" : `否（误入图：${buildTimeInGraph.join("、")}）`}`,
   );
@@ -104,7 +116,9 @@ function printReport(result) {
   }
 
   if (sizeRows.length > 0) {
-    console.log("\n  产物体积（minified / gzip，小程序主包上限约 2 MB = 2048 KB）：");
+    console.log(
+      "\n  产物体积（minified / gzip，小程序主包上限约 2 MB = 2048 KB）：",
+    );
     const width = Math.max(...sizeRows.map((row) => row.label.length));
     for (const row of sizeRows) {
       console.log(
@@ -124,7 +138,8 @@ export function renderReport(result) {
 }
 
 const isMain =
-  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+  process.argv[1] !== undefined &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isMain) {
   const argv = process.argv.slice(2);

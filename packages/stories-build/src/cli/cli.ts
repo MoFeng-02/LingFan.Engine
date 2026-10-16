@@ -18,7 +18,11 @@
  */
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { DEFAULT_SOURCES_DIR, StoryBuildError, buildStories } from "../index.ts";
+import {
+  DEFAULT_SOURCES_DIR,
+  StoryBuildError,
+  buildStories,
+} from "../index.ts";
 
 export { StoryBuildError, buildStories, type BuildReport } from "../index.ts";
 

@@ -2,7 +2,6 @@
  * 共享配置、判定框架、产物扫描与 CSS 解析工具
  */
 
-
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
@@ -15,7 +14,8 @@ export const PREVIEW =
   process.env.LF_PREVIEW ?? "http://127.0.0.1:4322/LingFan.Engine";
 export const BASELINE_DIST =
   process.env.LF_BASELINE_DIST ?? "E:/Temp/Windows/lf-baseline/dist";
-export const LF_AUDIT_HOME = process.env.LF_AUDIT_HOME ?? "E:/Temp/Windows/lf-audit";
+export const LF_AUDIT_HOME =
+  process.env.LF_AUDIT_HOME ?? "E:/Temp/Windows/lf-audit";
 export const CHROME_CANDIDATES = [
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
@@ -24,8 +24,15 @@ export const CHROME_CANDIDATES = [
 
 // ---------------------------------------------------------------- 判定框架
 export const results = [];
-export const check = (id, group, name, severity, status, detail, evidence = "") =>
-  results.push({ id, group, name, severity, status, detail, evidence });
+export const check = (
+  id,
+  group,
+  name,
+  severity,
+  status,
+  detail,
+  evidence = "",
+) => results.push({ id, group, name, severity, status, detail, evidence });
 export const pass = (id, g, n, s, d, e) => check(id, g, n, s, "PASS", d, e);
 export const fail = (id, g, n, s, d, e) => check(id, g, n, s, "FAIL", d, e);
 export const manual = (id, g, n, s, d) => check(id, g, n, s, "MANUAL", d, "");
@@ -181,7 +188,8 @@ export const hexOf = (v) => {
   if (h.length !== 6) return null;
   return "#" + h.toLowerCase();
 };
-export const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+export const rgb = (hex) =>
+  [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 export const lum = (hex) => {
   const [r, g, b] = rgb(hex).map((c) => {
     const s = c / 255;

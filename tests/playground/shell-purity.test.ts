@@ -117,10 +117,9 @@ describe("shell 包宿主纯度（源级扫描）", () => {
 
   it("无框架 import：响应式由宿主以 Cell 注入，包内不得绑定框架", () => {
     for (const [key, raw] of files) {
-      expect(
-        raw,
-        `出现框架 import：${key}`,
-      ).not.toMatch(/(from|import)\s*\(?\s*["'](vue|react|solid-js)["']/);
+      expect(raw, `出现框架 import：${key}`).not.toMatch(
+        /(from|import)\s*\(?\s*["'](vue|react|solid-js)["']/,
+      );
     }
   });
 });

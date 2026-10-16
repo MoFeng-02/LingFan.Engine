@@ -19,18 +19,18 @@ type Primitive = string | number | boolean;
 type InferTypeRef<X> = X extends readonly [unknown, unknown, ...unknown[]]
   ? InferUnionMember<X[number]>
   : X extends "number"
-  ? number
-  : X extends "string"
-    ? string
-    : X extends "boolean"
-      ? boolean
-      : X extends readonly unknown[]
-        ? X extends readonly (infer Leaf)[]
-          ? InferLeaf<Leaf>[]
-          : never
-        : X[keyof X] extends Primitive
-          ? X[keyof X]
-          : unknown;
+    ? number
+    : X extends "string"
+      ? string
+      : X extends "boolean"
+        ? boolean
+        : X extends readonly unknown[]
+          ? X extends readonly (infer Leaf)[]
+            ? InferLeaf<Leaf>[]
+            : never
+          : X[keyof X] extends Primitive
+            ? X[keyof X]
+            : unknown;
 
 /**
  * 并集成员 → TS 类型（分布条件类型：对成员联合逐成员求值）。

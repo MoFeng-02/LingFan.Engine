@@ -20,7 +20,13 @@
  *
  * 白盒为零：全部走公共入口 buildStories，公共 API 走 @lingfan/*。
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -70,10 +76,7 @@ function readDefines(root: string): Record<string, unknown> {
 }
 
 function readTypegen(root: string): string {
-  return readFileSync(
-    join(root, "Stories.src/gen/stories.gen.d.ts"),
-    "utf8",
-  );
+  return readFileSync(join(root, "Stories.src/gen/stories.gen.d.ts"), "utf8");
 }
 
 describe("config.ts 契约 · 四导出求值（拟态用户）", () => {
@@ -216,7 +219,8 @@ describe("config.ts 契约 · 形态互斥与缺省（fail-closed / 边界）", 
 
   it("state 导出不是键集对象 ⇒ fail-closed（形态 A 值文法）", async () => {
     const root = makeProject("bad-state-shape", {
-      "Stories.src/config.ts": config(["ch1"]) + `export const state = [1, 2];\n`,
+      "Stories.src/config.ts":
+        config(["ch1"]) + `export const state = [1, 2];\n`,
       "Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });

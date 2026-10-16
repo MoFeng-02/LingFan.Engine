@@ -4,7 +4,22 @@
 
 import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
-import { DOCS, REPO, SITE_NAME, SITE_NAME_EN, cssFiles, fail, isBinary, jsonFiles, manual, pages, pass, read, rel, walk } from "./shared.ts";
+import {
+  DOCS,
+  REPO,
+  SITE_NAME,
+  SITE_NAME_EN,
+  cssFiles,
+  fail,
+  isBinary,
+  jsonFiles,
+  manual,
+  pages,
+  pass,
+  read,
+  rel,
+  walk,
+} from "./shared.ts";
 
 // ================================================================ 内容合规
 const LEECH_PATTERNS = [

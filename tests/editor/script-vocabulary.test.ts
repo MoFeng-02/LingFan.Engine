@@ -66,7 +66,10 @@ describe("词汇层声明 · 生成物新鲜度（与重建 CLI 同一纯函数�
     }));
     const rendered = renderVocabulary(Object.keys(OP_SCHEMA_MAP), sources);
     const committed = readFileSync(
-      new URL("../../packages/editor/src/script/vocabulary.g.ts", import.meta.url),
+      new URL(
+        "../../packages/editor/src/script/vocabulary.g.ts",
+        import.meta.url,
+      ),
       "utf8",
     );
     expect(rendered).toBe(committed);

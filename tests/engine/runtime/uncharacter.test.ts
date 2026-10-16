@@ -38,9 +38,9 @@ describe("uncharacter：注销", () => {
     const events = eventsOf(engine);
     try {
       engine.start();
-      expect(
-        events.filter((e) => e.payload.kind === "engine.error"),
-      ).toEqual([]);
+      expect(events.filter((e) => e.payload.kind === "engine.error")).toEqual(
+        [],
+      );
       // 第一句后角色带 screen；注销后同 speaker 的第二个 say 不再命中样式
       const afterUncharacter = events.filter(
         (e) => e.payload.kind === "notify" || e.payload.kind === "engine.error",
@@ -66,9 +66,9 @@ describe("uncharacter：注销", () => {
       );
       expect(missing).toHaveLength(1);
       expect(missing[0]!.payload.key).toBe("鬼影");
-      expect(
-        events.filter((e) => e.payload.kind === "engine.error"),
-      ).toEqual([]); // 不走 engine.error——非故障
+      expect(events.filter((e) => e.payload.kind === "engine.error")).toEqual(
+        [],
+      ); // 不走 engine.error——非故障
       expect(engine.get(SYS.waiting)).toBe("dialog"); // 推进到下一句
     } finally {
       engine.dispose();
@@ -94,9 +94,9 @@ describe("uncharacter：注销", () => {
       // 回放重跑到第二幕：注销重新执行——角色表回滚到注销前检查点的样子
       // 回放推进后注销生效前的画面 = 角色仍在
       expect(engine.getCharacters().map((c) => c.key)).toContain("灵泛");
-      expect(
-        events.filter((e) => e.payload.kind === "engine.error"),
-      ).toEqual([]);
+      expect(events.filter((e) => e.payload.kind === "engine.error")).toEqual(
+        [],
+      );
     } finally {
       engine.dispose();
     }

@@ -33,7 +33,11 @@ function makeHarness(
   };
 }
 
-function column(id: string, commands: object[], extra: Record<string, unknown> = {}): object {
+function column(
+  id: string,
+  commands: object[],
+  extra: Record<string, unknown> = {},
+): object {
   return { id, kind: "flow", ...extra, commands };
 }
 

@@ -16,15 +16,15 @@ const { walkGraph, extractSpecifiers, stripComments } = await import(
 const { classifySpecifier, scanProcessUsage } = await import(
   /* @vite-ignore */ new URL("specifiers.mjs", auditDir).href
 );
-const { runAudit, auditFailures, RUN_TIME_ROOTS, BUILD_TIME_ONLY } = await import(
-  /* @vite-ignore */ new URL("index.mjs", auditDir).href
-);
+const { runAudit, auditFailures, RUN_TIME_ROOTS, BUILD_TIME_ONLY } =
+  await import(/* @vite-ignore */ new URL("index.mjs", auditDir).href);
 
 const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 const fixtures: string[] = [];
 
 afterEach(() => {
-  for (const root of fixtures.splice(0)) rmSync(root, { recursive: true, force: true });
+  for (const root of fixtures.splice(0))
+    rmSync(root, { recursive: true, force: true });
 });
 
 /** 最小假仓库：只为可达图准备 package.json 与源文件，不依赖真实工作区 */
@@ -39,8 +39,15 @@ function makeRepo(files: Record<string, string>): string {
   return root;
 }
 
-function workspacePackage(name: string, exports: Record<string, string> = { ".": "./src/index.ts" }) {
-  return JSON.stringify({ name, version: "0.0.0", type: "module", exports }, null, 2);
+function workspacePackage(
+  name: string,
+  exports: Record<string, string> = { ".": "./src/index.ts" },
+) {
+  return JSON.stringify(
+    { name, version: "0.0.0", type: "module", exports },
+    null,
+    2,
+  );
 }
 
 describe("说明符分类", () => {
@@ -68,12 +75,16 @@ describe("说明符分类", () => {
       "*/",
       'import { z } from "zod";',
     ].join("\n");
-    expect(extractSpecifiers(text).map((item: { spec: string }) => item.spec)).toEqual(["zod"]);
+    expect(
+      extractSpecifiers(text).map((item: { spec: string }) => item.spec),
+    ).toEqual(["zod"]);
     expect(scanProcessUsage(stripComments(text))).toEqual([]);
   });
 
   it("process 成员用法给出准确行号", () => {
-    const hits = scanProcessUsage('const a = 1;\nconst env = process.env.MODE ?? "";\n');
+    const hits = scanProcessUsage(
+      'const a = 1;\nconst env = process.env.MODE ?? "";\n',
+    );
     expect(hits).toEqual([{ line: 2, text: "process.env" }]);
   });
 });
@@ -83,11 +94,14 @@ describe("可达图", () => {
     const root = makeRepo({
       "packages/rt/package.json": workspacePackage("@lingfan/rt"),
       "packages/rt/src/index.ts": 'export { helper } from "./helper.ts";\n',
-      "packages/rt/src/helper.ts": 'export { deep } from "./deep/index.ts";\nexport const helper = 1;\n',
+      "packages/rt/src/helper.ts":
+        'export { deep } from "./deep/index.ts";\nexport const helper = 1;\n',
       "packages/rt/src/deep/index.ts": "export const deep = 2;\n",
     });
     const graph = walkGraph(["@lingfan/rt"], root);
-    const relOnly = [...graph.files].map((file: string) => relative(root, file).split("\\").join("/")).sort();
+    const relOnly = [...graph.files]
+      .map((file: string) => relative(root, file).split("\\").join("/"))
+      .sort();
     expect(relOnly).toEqual([
       "packages/rt/src/deep/index.ts",
       "packages/rt/src/helper.ts",
@@ -101,14 +115,19 @@ describe("可达图", () => {
     const root = makeRepo({
       "packages/bad/package.json": workspacePackage("@lingfan/bad"),
       "packages/bad/src/index.ts": 'export { ok } from "./inner.ts";\n',
-      "packages/bad/src/inner.ts": 'import { readFileSync } from "node:fs";\nexport const ok = readFileSync;\n',
+      "packages/bad/src/inner.ts":
+        'import { readFileSync } from "node:fs";\nexport const ok = readFileSync;\n',
     });
     const graph = walkGraph(["@lingfan/bad"], root);
     expect(graph.violations).toHaveLength(1);
     expect(graph.violations[0].reason).toContain("node:fs");
-    expect(relFromRepo(root, graph.violations[0].file)).toBe("packages/bad/src/inner.ts");
+    expect(relFromRepo(root, graph.violations[0].file)).toBe(
+      "packages/bad/src/inner.ts",
+    );
     expect(graph.violations[0].line).toBe(1);
-    expect(auditFailures({ graph, buildTimeInGraph: [], sizeRows: [] })).toHaveLength(1);
+    expect(
+      auditFailures({ graph, buildTimeInGraph: [], sizeRows: [] }),
+    ).toHaveLength(1);
   });
 
   it("运行期包出现 process 用法也变红", () => {
@@ -126,13 +145,14 @@ describe("可达图", () => {
       "packages/rt/package.json": workspacePackage("@lingfan/rt"),
       "packages/rt/src/index.ts": "export const rt = 1;\n",
       "packages/tool/package.json": workspacePackage("@lingfan/tool"),
-      "packages/tool/src/index.ts": 'import { writeFileSync } from "node:fs";\nexport const tool = writeFileSync;\n',
+      "packages/tool/src/index.ts":
+        'import { writeFileSync } from "node:fs";\nexport const tool = writeFileSync;\n',
     });
     const graph = walkGraph(["@lingfan/rt"], root);
     expect(graph.violations).toEqual([]);
-    expect([...graph.files].map((file: string) => relFromRepo(root, file))).toEqual([
-      "packages/rt/src/index.ts",
-    ]);
+    expect(
+      [...graph.files].map((file: string) => relFromRepo(root, file)),
+    ).toEqual(["packages/rt/src/index.ts"]);
   });
 
   it("解析失败的导入按失败处理，不静默放行", () => {
@@ -155,10 +175,16 @@ describe("真实仓库", () => {
     expect(auditFailures(result)).toEqual([]);
     expect(result.rootCount).toBe(RUN_TIME_ROOTS.length);
     expect(result.graph.files.size).toBeGreaterThan(250);
-    expect([...result.graph.files].map((file: string) => relFromRepo(repoRoot, file))).toContain(
-      "packages/engine/src/index.ts",
-    );
-    expect([...result.graph.externals].sort()).toEqual(["@tauri-apps/api/core", "@tauri-apps/api/event", "zod"]);
+    expect(
+      [...result.graph.files].map((file: string) =>
+        relFromRepo(repoRoot, file),
+      ),
+    ).toContain("packages/engine/src/index.ts");
+    expect([...result.graph.externals].sort()).toEqual([
+      "@tauri-apps/api/core",
+      "@tauri-apps/api/event",
+      "zod",
+    ]);
     for (const item of BUILD_TIME_ONLY) {
       expect([...result.graph.externals]).not.toContain(item);
     }

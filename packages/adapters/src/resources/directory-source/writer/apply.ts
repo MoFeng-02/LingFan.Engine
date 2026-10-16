@@ -9,7 +9,15 @@
  * 每次 `apply` 在落盘前重新采集比对——外部改动/删除 → 抛可操作冲突错误（零写入）；
  * 写回成功后快照整体换新（自己的保存永不自报）。读指纹只需 read 权限（打开时已获）。
  */
-import { conflictMessage, detectWriteConflicts, diffProjectFiles, MANIFEST_FILE, STORIES_DIR, type ProjectWriteReport, type ProjectWriterPort } from "@lingfan/engine";
+import {
+  conflictMessage,
+  detectWriteConflicts,
+  diffProjectFiles,
+  MANIFEST_FILE,
+  STORIES_DIR,
+  type ProjectWriteReport,
+  type ProjectWriterPort,
+} from "@lingfan/engine";
 import type { ResourceTexts } from "../../texts";
 import { locateResourceRootHandle } from "../root-locate";
 import {

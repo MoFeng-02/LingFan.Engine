@@ -82,6 +82,8 @@ describe("expectTwoWayEqual（断言版）", () => {
         declaredLabel: "规约锚点",
         landedLabel: "测试落地",
       }),
-    ).toThrowError(/规约锚点有而测试落地没有.*missing-one[\s\S]*测试落地有而规约锚点没有.*extra-one/);
+    ).toThrowError(
+      /规约锚点有而测试落地没有.*missing-one[\s\S]*测试落地有而规约锚点没有.*extra-one/,
+    );
   });
 });

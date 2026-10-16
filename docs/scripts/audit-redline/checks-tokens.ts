@@ -3,7 +3,23 @@
  */
 
 import { join, relative } from "node:path";
-import { DOCS, STYLE_DIR, baseCss, contrast, darkVars, fail, getVar, hexOf, lightVars, pass, read, rel, resolveVar, results, walk } from "./shared.ts";
+import {
+  DOCS,
+  STYLE_DIR,
+  baseCss,
+  contrast,
+  darkVars,
+  fail,
+  getVar,
+  hexOf,
+  lightVars,
+  pass,
+  read,
+  rel,
+  resolveVar,
+  results,
+  walk,
+} from "./shared.ts";
 
 // --- C1-1 亮暗两套令牌齐备
 {

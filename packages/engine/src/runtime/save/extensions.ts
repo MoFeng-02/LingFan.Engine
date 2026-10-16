@@ -88,7 +88,11 @@ export function resolveSaveExtensions(
       if (migrated === null) {
         ctx.fail(
           "extension-version",
-          ctx.texts.extensionMigrateFailed(mark.id, mark.stateVersion, ext.stateVersion),
+          ctx.texts.extensionMigrateFailed(
+            mark.id,
+            mark.stateVersion,
+            ext.stateVersion,
+          ),
         );
         return null;
       }
@@ -100,13 +104,21 @@ export function resolveSaveExtensions(
       ];
       ctx.emitEvent({
         kind: "load.notice",
-        text: ctx.texts.extensionMigrated(mark.id, mark.stateVersion, ext.stateVersion),
+        text: ctx.texts.extensionMigrated(
+          mark.id,
+          mark.stateVersion,
+          ext.stateVersion,
+        ),
       });
       continue;
     }
     ctx.fail(
       "extension-version",
-      ctx.texts.extensionVersionDependency(mark.id, mark.stateVersion, ext.stateVersion),
+      ctx.texts.extensionVersionDependency(
+        mark.id,
+        mark.stateVersion,
+        ext.stateVersion,
+      ),
     );
     return null;
   }

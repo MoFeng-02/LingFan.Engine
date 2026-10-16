@@ -7,7 +7,12 @@
  * - 未兜底插值保留原文 + type-error；存档快照 round-trip 保留 null
  */
 import { describe, expect, it, vi } from "vitest";
-import type { OutboundEvent, SaveDataV1, SaveMode, ValueChanged } from "@lingfan/engine";
+import type {
+  OutboundEvent,
+  SaveDataV1,
+  SaveMode,
+  ValueChanged,
+} from "@lingfan/engine";
 import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
 
 interface WriteCall {
@@ -35,7 +40,9 @@ class MemorySavePort {
     this.slots.delete(slot);
   }
 
-  async list(): Promise<{ slot: string; saveCount: number; timestamp: number; mode: SaveMode }[]> {
+  async list(): Promise<
+    { slot: string; saveCount: number; timestamp: number; mode: SaveMode }[]
+  > {
     return [...this.slots.keys()].map((slot) => ({
       slot,
       saveCount: 1,

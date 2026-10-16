@@ -75,9 +75,7 @@ export function locateResourceRootFromPaths(
         dirOf(path) !== dirOf(first),
     );
     if (ambiguous.length > 0) {
-      throw new Error(
-        t.rootLocateMultipleManifests(first, ambiguous[0] ?? ""),
-      );
+      throw new Error(t.rootLocateMultipleManifests(first, ambiguous[0] ?? ""));
     }
     return { root: dirOf(first), manifest: MANIFEST_FILE };
   }

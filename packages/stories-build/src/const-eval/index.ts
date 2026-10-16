@@ -19,8 +19,15 @@ export {
   type JsonValue,
 } from "./const-eval.ts";
 export { formatConstDiagFile, runConstEvalPass } from "./const-eval-pass.ts";
-export { evalConstExpr, type ConstExprContext, type ConstExprResult } from "./const-expr.ts";
-export { collectModuleDefines, type LocatedDefineCall } from "./module-define.ts";
+export {
+  evalConstExpr,
+  type ConstExprContext,
+  type ConstExprResult,
+} from "./const-expr.ts";
+export {
+  collectModuleDefines,
+  type LocatedDefineCall,
+} from "./module-define.ts";
 export {
   collectModuleCharacters,
   type CharacterTable,

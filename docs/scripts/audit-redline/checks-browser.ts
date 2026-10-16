@@ -5,7 +5,14 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { createRequire } from "node:module";
-import { CHROME_CANDIDATES, LF_AUDIT_HOME, PREVIEW, fail, manual, pass } from "./shared.ts";
+import {
+  CHROME_CANDIDATES,
+  LF_AUDIT_HOME,
+  PREVIEW,
+  fail,
+  manual,
+  pass,
+} from "./shared.ts";
 import { DEFAULT_HEXES } from "./checks-brand.ts";
 
 // --- H1-2 品牌标识 / 首页差异：浏览器检查（与 H1-1 的静态裁决互为佐证）
@@ -14,7 +21,12 @@ const PUPPETEER_CANDIDATES = [
   join(LF_AUDIT_HOME, "package.json"),
 ].filter(Boolean);
 const chromePath = CHROME_CANDIDATES.find((p) => existsSync(p));
-export const axePath = join(LF_AUDIT_HOME, "node_modules", "axe-core", "axe.min.js");
+export const axePath = join(
+  LF_AUDIT_HOME,
+  "node_modules",
+  "axe-core",
+  "axe.min.js",
+);
 export let live = false;
 try {
   const r = await fetch(PREVIEW + "/", { signal: AbortSignal.timeout(4000) });

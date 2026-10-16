@@ -38,7 +38,8 @@ export function runStateSchemaPass(
   const origin = { line: 1, col: 1 };
   const errors: string[] = [];
   const defines: Record<string, unknown> = {};
-  if (stateTree !== undefined) flattenRoot(stateTree, defines, errors, origin, "state");
+  if (stateTree !== undefined)
+    flattenRoot(stateTree, defines, errors, origin, "state");
   flattenRoot(defineTree, defines, errors, origin, "define");
   if (errors.length > 0) {
     throw new StoryBuildError(

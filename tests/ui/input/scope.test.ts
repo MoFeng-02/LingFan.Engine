@@ -190,8 +190,13 @@ describe("组合根接线：滚轮与键盘都先过判据，再谈游戏动作"
 
   it("外部接管期间声明玩法域，两条结束路径都交还叙事域", () => {
     // 分支体在挂载域文件（App.vue 分流链只负责转发）；序断言锚该文件自身文本
-    const mountAt = mountInteractionText.indexOf("export function handleInteractionMount");
-    const toWorldAt = mountInteractionText.indexOf('inputScope.set("world")', mountAt);
+    const mountAt = mountInteractionText.indexOf(
+      "export function handleInteractionMount",
+    );
+    const toWorldAt = mountInteractionText.indexOf(
+      'inputScope.set("world")',
+      mountAt,
+    );
     expect(mountAt).toBeGreaterThan(-1);
     expect(toWorldAt).toBeGreaterThan(mountAt);
     // 结束（回填 / 中断共用收尾）切回对话域
@@ -233,8 +238,7 @@ describe("共享宿主类名随接管卸载移除（回归：残留类会让已�
   });
 
   it("两个类都在收尾处被移除（加了几次就摘几次）", () => {
-    const adds =
-      appSource.match(/host\.classList\.add\("([a-z-]+)"\)/g) ?? [];
+    const adds = appSource.match(/host\.classList\.add\("([a-z-]+)"\)/g) ?? [];
     const removes =
       appSource.match(/host\.classList\.remove\("([a-z-]+)"\)/g) ?? [];
     expect(removes.length).toBeGreaterThanOrEqual(adds.length);

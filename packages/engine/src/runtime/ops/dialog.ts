@@ -132,13 +132,12 @@ export function execSay(ctx: OpContext, frame: Frame, cmd: StoryCommand): void {
   // 字体分辨链（最具体优先）：say 行参 > 角色字体（角色定义记录的上次字体）> 列级字体。
   // 每句都写、无声明写空串（与 currentDialogColor 同口径）⇒ 换列后上一列字体不残留；
   // 更具体的行内 {font=} 标记在渲染层生效，项目默认字体由宿主 CSS 变量承接。
-  const column = frame.columnId === null ? undefined : ctx.columnById(frame.columnId);
+  const column =
+    frame.columnId === null ? undefined : ctx.columnById(frame.columnId);
   const resolvedFont =
     typeof cmd.font === "string"
       ? cmd.font
-      : (ctx.characters.get(speakerText)?.font ??
-        column?.font ??
-        "");
+      : (ctx.characters.get(speakerText)?.font ?? column?.font ?? "");
   ctx.setSystem(SYS.dialogFont, resolvedFont);
   ctx.setSystem(SYS.currentDialogText, text);
   ctx.setSystem(SYS.dialogClickable, cmd.clickable === true);

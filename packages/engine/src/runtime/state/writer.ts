@@ -1,7 +1,10 @@
 /**
  * 全局层、系统层与外部玩法状态的写入通道。
  */
-import { GAME_SYSTEM_ID_PATTERN, RESERVED_STATE_KEYS } from "../../contracts/index.ts";
+import {
+  GAME_SYSTEM_ID_PATTERN,
+  RESERVED_STATE_KEYS,
+} from "../../contracts/index.ts";
 import type { OpContext } from "../internal/index.ts";
 import { findJsonValueError } from "../stateContract.ts";
 

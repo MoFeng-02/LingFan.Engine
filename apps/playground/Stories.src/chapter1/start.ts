@@ -4,7 +4,20 @@
  */
 import { script } from "@lingfan/editor";
 
-const { bgm, character, cutscene, guard, input, menu, notify, nvl, option, say, se, wait } = script;
+const {
+  bgm,
+  character,
+  cutscene,
+  guard,
+  input,
+  menu,
+  notify,
+  nvl,
+  option,
+  say,
+  se,
+  wait,
+} = script;
 
 import { checkGold } from "../lib/guards";
 import { Sex, 地点 } from "../lib/enums";
@@ -20,35 +33,35 @@ export default function start(): void {
   state.player.gold += 20;
   state.player.sex = Sex.Male;
 
-  say("准备数值测试")
+  say("准备数值测试");
   let a = 100;
-  say('{a} 我是值');
+  say("{a} 我是值");
   a *= 2;
-  say('{a} 我是乘值');
+  say("{a} 我是乘值");
   a /= 2;
-  say('{a} 我是除值');
+  say("{a} 我是除值");
   a += 2;
-  say('{a} 我是加值');
+  say("{a} 我是加值");
   a -= 2;
-  say('{a} 我是减值');
+  say("{a} 我是减值");
   a = 103;
   a %= 2;
-  say('{a} 我是取余值');
+  say("{a} 我是取余值");
   let c = 100;
   const b = 200;
-  say('{c} 我是 c');
-  say('{b} 我是 b');
+  say("{c} 我是 c");
+  say("{b} 我是 b");
   c = c * b;
-  say('{c} 我是 c * b');
+  say("{c} 我是 c * b");
   c = c / b;
-  say('{c} 我是 c / b');
+  say("{c} 我是 c / b");
   a = 66;
   c = c * a * b;
-  say('{c} 我是 c * a * b');
+  say("{c} 我是 c * a * b");
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 这次写入由下一行 say 的 {c} 插值读取，插值在故事编译期求值，TypeScript 看不到该读取
   c = c / a / b;
-  say('{c} 我是 c / a / b');
-  say("数值测试结束")
+  say("{c} 我是 c / a / b");
+  say("数值测试结束");
 
   say("你有 {player.gold:000} 枚金币（插值 + 补零格式化）。", "灵泛");
   say(

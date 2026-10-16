@@ -51,11 +51,7 @@ export interface DomOverlaySurface extends OverlaySurface {
 }
 
 /** 建一个铺满父容器的层（层自身不吃事件） */
-function layer(
-  parent: HTMLElement,
-  className: string,
-  z: number,
-): HTMLElement {
+function layer(parent: HTMLElement, className: string, z: number): HTMLElement {
   const node = parent.ownerDocument.createElement("div");
   node.className = className;
   node.style.position = "absolute";
@@ -81,9 +77,7 @@ function clickable<T extends HTMLElement>(node: T): T {
  * 首次 `request` 用建端口时读到的窗口，其后每次重读——沿用原覆盖层「启动读一次、
  * 之后每帧重读」的语义（宿主换文档时仍取当帧的窗口）。
  */
-function createWindowFrameSource(
-  container: HTMLElement,
-): FrameSource {
+function createWindowFrameSource(container: HTMLElement): FrameSource {
   const first = container.ownerDocument.defaultView;
   let started = false;
   return {
@@ -254,7 +248,9 @@ export function createDomOverlaySurface(
         // innerHTML 内容不进无障碍名计算（等价于 v-html）：显式给可访问名
         button.setAttribute("aria-label", option.label);
         // 点击交核心 choose（目标是列 id，不是显示文本）
-        button.addEventListener("click", () => surface.onChoose?.(option.target));
+        button.addEventListener("click", () =>
+          surface.onChoose?.(option.target),
+        );
         row.appendChild(button);
       }
       choices.appendChild(row);

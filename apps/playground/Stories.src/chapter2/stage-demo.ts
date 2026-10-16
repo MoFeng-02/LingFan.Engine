@@ -4,7 +4,8 @@
  */
 import { script } from "@lingfan/editor";
 
-const { animate, bgSwitch, hide, say, setZ, show, shake, style, transition } = script;
+const { animate, bgSwitch, hide, say, setZ, show, shake, style, transition } =
+  script;
 
 export default function stage_demo(): void {
   say("这里是元素舞台——人物、特效与转场全部由命令 op 承载。", "灵泛");

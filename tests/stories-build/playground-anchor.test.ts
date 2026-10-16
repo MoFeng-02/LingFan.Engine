@@ -110,200 +110,232 @@ function isConfigContractTransition(error: unknown): boolean {
 }
 
 describe("真实工程回归锚点（apps/playground 整链）", () => {
-  it("全链构建零差量：入库类型面产物与当轮计算产物逐字节一致", { retry: 1 }, async (ctx) => {
-    const typegenPath = join(PLAYGROUND_ROOT, TYPEGEN_REL);
-    const stateGenPath = join(PLAYGROUND_ROOT, STATE_GEN_REL);
-    const scriptGenPath = join(PLAYGROUND_ROOT, SCRIPT_GEN_REL);
-    const fontGenPath = join(PLAYGROUND_ROOT, FONT_GEN_REL);
-    const committed = readFileSync(typegenPath, "utf8");
-    const committedState = readFileSync(stateGenPath, "utf8");
-    const committedScript = readFileSync(scriptGenPath, "utf8");
-    const committedFont = readFileSync(fontGenPath, "utf8");
-    try {
-      let report;
+  it(
+    "全链构建零差量：入库类型面产物与当轮计算产物逐字节一致",
+    { retry: 1 },
+    async (ctx) => {
+      const typegenPath = join(PLAYGROUND_ROOT, TYPEGEN_REL);
+      const stateGenPath = join(PLAYGROUND_ROOT, STATE_GEN_REL);
+      const scriptGenPath = join(PLAYGROUND_ROOT, SCRIPT_GEN_REL);
+      const fontGenPath = join(PLAYGROUND_ROOT, FONT_GEN_REL);
+      const committed = readFileSync(typegenPath, "utf8");
+      const committedState = readFileSync(stateGenPath, "utf8");
+      const committedScript = readFileSync(scriptGenPath, "utf8");
+      const committedFont = readFileSync(fontGenPath, "utf8");
       try {
-        report = await buildStories(PLAYGROUND_ROOT);
-      } catch (error) {
-        if (isConfigContractTransition(error)) ctx.skip();
-        throw error;
+        let report;
+        try {
+          report = await buildStories(PLAYGROUND_ROOT);
+        } catch (error) {
+          if (isConfigContractTransition(error)) ctx.skip();
+          throw error;
+        }
+        expect(report.added).toEqual([]);
+        expect(report.updated).toEqual([]);
+        expect(report.removed).toEqual([]);
+        // 工程形状随锚点显式维护：列数变化必须伴随 gen 产物重建（列名注册表随之变化）
+        expect(report.columns).toBe(14);
+        expect(readFileSync(typegenPath, "utf8")).toBe(committed);
+        expect(readFileSync(stateGenPath, "utf8")).toBe(committedState);
+        expect(readFileSync(scriptGenPath, "utf8")).toBe(committedScript);
+        expect(readFileSync(fontGenPath, "utf8")).toBe(committedFont);
+        // state 类型面形状锚：精确到枚举引用（Sex 走 import type），不得退化为宽 any
+        expect(committedState).toContain("export type StoryState = {");
+        expect(committedState).toContain(
+          'import type { Sex } from "../lib/enums";',
+        );
+        expect(committedState).toContain('"sex": Sex;');
+        // 插值键注册表的 let 声明名形状锚：ticket 只经 let 词调用声明（无 vars/state 同名双源），
+        // 它在注册表里即证明源级声明名通道在真实工程也通。
+        expect(committed).toContain('"ticket": 1;');
+        // script ambient 声明形状锚：单条 declare 指向 editor 根出口的 script 命名空间
+        expect(committedScript).toContain(
+          'declare const script: typeof import("@lingfan/editor").script;',
+        );
+        // 字体类型面形状锚：工程未放字体文件 = 封闭空类型（非宽 Record<string, string>，
+        // 退化会放弃拼错保护）；键 = 值 = 注册表字体名的契约由下方新鲜度用例与 font 探针覆盖
+        expect(committedFont).toContain(
+          "declare const font: Record<never, never>;",
+        );
+      } finally {
+        if (readFileSync(typegenPath, "utf8") !== committed) {
+          writeFileSync(typegenPath, committed);
+        }
+        if (readFileSync(stateGenPath, "utf8") !== committedState) {
+          writeFileSync(stateGenPath, committedState);
+        }
+        if (readFileSync(scriptGenPath, "utf8") !== committedScript) {
+          writeFileSync(scriptGenPath, committedScript);
+        }
+        if (readFileSync(fontGenPath, "utf8") !== committedFont) {
+          writeFileSync(fontGenPath, committedFont);
+        }
       }
-      expect(report.added).toEqual([]);
-      expect(report.updated).toEqual([]);
-      expect(report.removed).toEqual([]);
-      // 工程形状随锚点显式维护：列数变化必须伴随 gen 产物重建（列名注册表随之变化）
-      expect(report.columns).toBe(14);
-      expect(readFileSync(typegenPath, "utf8")).toBe(committed);
-      expect(readFileSync(stateGenPath, "utf8")).toBe(committedState);
-      expect(readFileSync(scriptGenPath, "utf8")).toBe(committedScript);
-      expect(readFileSync(fontGenPath, "utf8")).toBe(committedFont);
-      // state 类型面形状锚：精确到枚举引用（Sex 走 import type），不得退化为宽 any
-      expect(committedState).toContain("export type StoryState = {");
-      expect(committedState).toContain('import type { Sex } from "../lib/enums";');
-      expect(committedState).toContain('"sex": Sex;');
-      // 插值键注册表的 let 声明名形状锚：ticket 只经 let 词调用声明（无 vars/state 同名双源），
-      // 它在注册表里即证明源级声明名通道在真实工程也通。
-      expect(committed).toContain('"ticket": 1;');
-      // script ambient 声明形状锚：单条 declare 指向 editor 根出口的 script 命名空间
-      expect(committedScript).toContain(
-        'declare const script: typeof import("@lingfan/editor").script;',
+    },
+  );
+
+  it(
+    "手改生成物：构建重写回入库字节（修复路径证明锚点非空转）",
+    { retry: 1 },
+    async (ctx) => {
+      const typegenPath = join(PLAYGROUND_ROOT, TYPEGEN_REL);
+      const committed = readFileSync(typegenPath, "utf8");
+      try {
+        writeFileSync(typegenPath, `${committed}\n/* 手改的冗余行 */\n`);
+        let report;
+        try {
+          report = await buildStories(PLAYGROUND_ROOT);
+        } catch (error) {
+          if (isConfigContractTransition(error)) ctx.skip();
+          throw error;
+        }
+        expect(report.updated).toContain(TYPEGEN_REL);
+        expect(readFileSync(typegenPath, "utf8")).toBe(committed);
+      } finally {
+        if (readFileSync(typegenPath, "utf8") !== committed) {
+          writeFileSync(typegenPath, committed);
+        }
+      }
+    },
+  );
+
+  it(
+    "font.gen 新鲜度：字体文件落盘→键=值入类型面，删文件重构建→恢复封闭空类型",
+    { retry: 1 },
+    async (ctx) => {
+      const fontGenPath = join(PLAYGROUND_ROOT, FONT_GEN_REL);
+      const fontFile = join(PLAYGROUND_ROOT, "Resources/Fonts/楷体.ttf");
+      const committedFont = readFileSync(fontGenPath, "utf8");
+      try {
+        // 桩字体文件：注册表只认文件名（去扩展名），内容不参与扫描——真实字体二进制不入仓
+        writeFileSync(fontFile, "");
+        let report;
+        try {
+          report = await buildStories(PLAYGROUND_ROOT);
+        } catch (error) {
+          if (isConfigContractTransition(error)) ctx.skip();
+          throw error;
+        }
+        expect(report.updated).toContain(FONT_GEN_REL);
+        expect(readFileSync(fontGenPath, "utf8")).toContain(
+          'readonly "楷体": "楷体";',
+        );
+
+        rmSync(fontFile, { force: true });
+        report = await buildStories(PLAYGROUND_ROOT);
+        expect(report.updated).toContain(FONT_GEN_REL);
+        expect(readFileSync(fontGenPath, "utf8")).toBe(committedFont);
+      } finally {
+        rmSync(fontFile, { force: true });
+        if (readFileSync(fontGenPath, "utf8") !== committedFont) {
+          writeFileSync(fontGenPath, committedFont);
+        }
+      }
+    },
+  );
+
+  it(
+    "tsc 负例探针：state 上的错误类型被 stories-typecheck 拒绝（精确类型面非宽垫片）",
+    { retry: 1, timeout: 60000 },
+    async () => {
+      const probePath = join(PLAYGROUND_ROOT, PROBE_REL);
+      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.json");
+      const tscBin = fileURLToPath(
+        new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
       );
-      // 字体类型面形状锚：工程未放字体文件 = 封闭空类型（非宽 Record<string, string>，
-      // 退化会放弃拼错保护）；键 = 值 = 注册表字体名的契约由下方新鲜度用例与 font 探针覆盖
-      expect(committedFont).toContain("declare const font: Record<never, never>;");
-    } finally {
-      if (readFileSync(typegenPath, "utf8") !== committed) {
-        writeFileSync(typegenPath, committed);
-      }
-      if (readFileSync(stateGenPath, "utf8") !== committedState) {
-        writeFileSync(stateGenPath, committedState);
-      }
-      if (readFileSync(scriptGenPath, "utf8") !== committedScript) {
-        writeFileSync(scriptGenPath, committedScript);
-      }
-      if (readFileSync(fontGenPath, "utf8") !== committedFont) {
-        writeFileSync(fontGenPath, committedFont);
-      }
-    }
-  });
-
-  it("手改生成物：构建重写回入库字节（修复路径证明锚点非空转）", { retry: 1 }, async (ctx) => {
-    const typegenPath = join(PLAYGROUND_ROOT, TYPEGEN_REL);
-    const committed = readFileSync(typegenPath, "utf8");
-    try {
-      writeFileSync(typegenPath, `${committed}\n/* 手改的冗余行 */\n`);
-      let report;
+      writeFileSync(probePath, PROBE_SOURCE);
       try {
-        report = await buildStories(PLAYGROUND_ROOT);
-      } catch (error) {
-        if (isConfigContractTransition(error)) ctx.skip();
-        throw error;
+        const run = spawnSync(
+          process.execPath,
+          [tscBin, "--noEmit", "-p", tsconfigPath],
+          {
+            encoding: "utf8",
+          },
+        );
+        // 探针把 player.gold（number）写成 string：精确类型面下 tsc 必须非零退出并指到探针文件
+        expect(run.error).toBeUndefined();
+        expect(run.status).not.toBe(0);
+        expect(run.stdout ?? "").toContain("typecheck-probe.ts");
+      } finally {
+        rmSync(probePath, { force: true });
       }
-      expect(report.updated).toContain(TYPEGEN_REL);
-      expect(readFileSync(typegenPath, "utf8")).toBe(committed);
-    } finally {
-      if (readFileSync(typegenPath, "utf8") !== committed) {
-        writeFileSync(typegenPath, committed);
-      }
-    }
-  });
+    },
+  );
 
-  it("font.gen 新鲜度：字体文件落盘→键=值入类型面，删文件重构建→恢复封闭空类型", { retry: 1 }, async (ctx) => {
-    const fontGenPath = join(PLAYGROUND_ROOT, FONT_GEN_REL);
-    const fontFile = join(PLAYGROUND_ROOT, "Resources/Fonts/楷体.ttf");
-    const committedFont = readFileSync(fontGenPath, "utf8");
-    try {
-      // 桩字体文件：注册表只认文件名（去扩展名），内容不参与扫描——真实字体二进制不入仓
-      writeFileSync(fontFile, "");
-      let report;
-      try {
-        report = await buildStories(PLAYGROUND_ROOT);
-      } catch (error) {
-        if (isConfigContractTransition(error)) ctx.skip();
-        throw error;
-      }
-      expect(report.updated).toContain(FONT_GEN_REL);
-      expect(readFileSync(fontGenPath, "utf8")).toContain(
-        'readonly "楷体": "楷体";',
+  it(
+    "script ambient 探针：错键 script.bgmX 被 tsc 拒绝，正确键 script.bgm 放行",
+    { retry: 1, timeout: 60000 },
+    async () => {
+      const probePath = join(PLAYGROUND_ROOT, SCRIPT_PROBE_REL);
+      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.json");
+      const tscBin = fileURLToPath(
+        new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
       );
-
-      rmSync(fontFile, { force: true });
-      report = await buildStories(PLAYGROUND_ROOT);
-      expect(report.updated).toContain(FONT_GEN_REL);
-      expect(readFileSync(fontGenPath, "utf8")).toBe(committedFont);
-    } finally {
-      rmSync(fontFile, { force: true });
-      if (readFileSync(fontGenPath, "utf8") !== committedFont) {
-        writeFileSync(fontGenPath, committedFont);
-      }
-    }
-  });
-
-  it("tsc 负例探针：state 上的错误类型被 stories-typecheck 拒绝（精确类型面非宽垫片）", { retry: 1, timeout: 60000 }, async () => {
-    const probePath = join(PLAYGROUND_ROOT, PROBE_REL);
-    const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.json");
-    const tscBin = fileURLToPath(
-      new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
-    );
-    writeFileSync(probePath, PROBE_SOURCE);
-    try {
-      const run = spawnSync(process.execPath, [tscBin, "--noEmit", "-p", tsconfigPath], {
-        encoding: "utf8",
-      });
-      // 探针把 player.gold（number）写成 string：精确类型面下 tsc 必须非零退出并指到探针文件
-      expect(run.error).toBeUndefined();
-      expect(run.status).not.toBe(0);
-      expect(run.stdout ?? "").toContain("typecheck-probe.ts");
-    } finally {
-      rmSync(probePath, { force: true });
-    }
-  });
-
-  it("script ambient 探针：错键 script.bgmX 被 tsc 拒绝，正确键 script.bgm 放行", { retry: 1, timeout: 60000 }, async () => {
-    const probePath = join(PLAYGROUND_ROOT, SCRIPT_PROBE_REL);
-    const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.json");
-    const tscBin = fileURLToPath(
-      new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
-    );
-    const runTsc = () =>
-      spawnSync(process.execPath, [tscBin, "--noEmit", "-p", tsconfigPath], {
-        encoding: "utf8",
-      });
-    try {
-      writeFileSync(probePath, SCRIPT_PROBE_NEGATIVE);
-      const bad = runTsc();
-      // ambient 声明精确到词函数：错键必须非零退出并指到探针文件（松散 any 声明则两态皆绿）
-      expect(bad.error).toBeUndefined();
-      expect(bad.status).not.toBe(0);
-      expect(bad.stdout ?? "").toContain("script-probe.ts");
-
-      writeFileSync(probePath, SCRIPT_PROBE_POSITIVE);
-      const good = runTsc();
-      expect(good.error).toBeUndefined();
-      expect(good.status).toBe(0);
-    } finally {
-      rmSync(probePath, { force: true });
-    }
-  });
-
-  it("font ambient 探针：未注册名 font.缺省字体 被 tsc 拒绝，注册名 font.楷体 放行", { retry: 1, timeout: 60000 }, async (ctx) => {
-    const probePath = join(PLAYGROUND_ROOT, FONT_PROBE_REL);
-    const fontFile = join(PLAYGROUND_ROOT, "Resources/Fonts/楷体.ttf");
-    const fontGenPath = join(PLAYGROUND_ROOT, FONT_GEN_REL);
-    const committedFont = readFileSync(fontGenPath, "utf8");
-    const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.json");
-    const tscBin = fileURLToPath(
-      new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
-    );
-    const runTsc = () =>
-      spawnSync(process.execPath, [tscBin, "--noEmit", "-p", tsconfigPath], {
-        encoding: "utf8",
-      });
-    try {
-      // 探针需要非空注册表：落桩字体并重建类型面（finally 恢复封闭空类型）
-      writeFileSync(fontFile, "");
+      const runTsc = () =>
+        spawnSync(process.execPath, [tscBin, "--noEmit", "-p", tsconfigPath], {
+          encoding: "utf8",
+        });
       try {
-        await buildStories(PLAYGROUND_ROOT);
-      } catch (error) {
-        if (isConfigContractTransition(error)) ctx.skip();
-        throw error;
-      }
-      writeFileSync(probePath, FONT_PROBE_NEGATIVE);
-      const bad = runTsc();
-      // ambient 声明精确到注册表：错键必须非零退出并指到探针文件（宽 Record<string, string> 则两态皆绿）
-      expect(bad.error).toBeUndefined();
-      expect(bad.status).not.toBe(0);
-      expect(bad.stdout ?? "").toContain("font-probe.ts");
+        writeFileSync(probePath, SCRIPT_PROBE_NEGATIVE);
+        const bad = runTsc();
+        // ambient 声明精确到词函数：错键必须非零退出并指到探针文件（松散 any 声明则两态皆绿）
+        expect(bad.error).toBeUndefined();
+        expect(bad.status).not.toBe(0);
+        expect(bad.stdout ?? "").toContain("script-probe.ts");
 
-      writeFileSync(probePath, FONT_PROBE_POSITIVE);
-      const good = runTsc();
-      expect(good.error).toBeUndefined();
-      expect(good.status).toBe(0);
-    } finally {
-      rmSync(probePath, { force: true });
-      rmSync(fontFile, { force: true });
-      if (readFileSync(fontGenPath, "utf8") !== committedFont) {
-        writeFileSync(fontGenPath, committedFont);
+        writeFileSync(probePath, SCRIPT_PROBE_POSITIVE);
+        const good = runTsc();
+        expect(good.error).toBeUndefined();
+        expect(good.status).toBe(0);
+      } finally {
+        rmSync(probePath, { force: true });
       }
-    }
-  });
+    },
+  );
+
+  it(
+    "font ambient 探针：未注册名 font.缺省字体 被 tsc 拒绝，注册名 font.楷体 放行",
+    { retry: 1, timeout: 60000 },
+    async (ctx) => {
+      const probePath = join(PLAYGROUND_ROOT, FONT_PROBE_REL);
+      const fontFile = join(PLAYGROUND_ROOT, "Resources/Fonts/楷体.ttf");
+      const fontGenPath = join(PLAYGROUND_ROOT, FONT_GEN_REL);
+      const committedFont = readFileSync(fontGenPath, "utf8");
+      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.json");
+      const tscBin = fileURLToPath(
+        new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
+      );
+      const runTsc = () =>
+        spawnSync(process.execPath, [tscBin, "--noEmit", "-p", tsconfigPath], {
+          encoding: "utf8",
+        });
+      try {
+        // 探针需要非空注册表：落桩字体并重建类型面（finally 恢复封闭空类型）
+        writeFileSync(fontFile, "");
+        try {
+          await buildStories(PLAYGROUND_ROOT);
+        } catch (error) {
+          if (isConfigContractTransition(error)) ctx.skip();
+          throw error;
+        }
+        writeFileSync(probePath, FONT_PROBE_NEGATIVE);
+        const bad = runTsc();
+        // ambient 声明精确到注册表：错键必须非零退出并指到探针文件（宽 Record<string, string> 则两态皆绿）
+        expect(bad.error).toBeUndefined();
+        expect(bad.status).not.toBe(0);
+        expect(bad.stdout ?? "").toContain("font-probe.ts");
+
+        writeFileSync(probePath, FONT_PROBE_POSITIVE);
+        const good = runTsc();
+        expect(good.error).toBeUndefined();
+        expect(good.status).toBe(0);
+      } finally {
+        rmSync(probePath, { force: true });
+        rmSync(fontFile, { force: true });
+        if (readFileSync(fontGenPath, "utf8") !== committedFont) {
+          writeFileSync(fontGenPath, committedFont);
+        }
+      }
+    },
+  );
 });

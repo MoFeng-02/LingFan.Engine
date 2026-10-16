@@ -4,7 +4,11 @@
  *
  * 只在运行层内部使用，不进包出口。
  */
-import { SYS, type AnimationSpec, type VideoCommand } from "../../contracts/index.ts";
+import {
+  SYS,
+  type AnimationSpec,
+  type VideoCommand,
+} from "../../contracts/index.ts";
 import type { OpContext } from "./context.ts";
 
 /** 帧驱动消费侧接缝：界面每帧读取，或播毕后回调。 */

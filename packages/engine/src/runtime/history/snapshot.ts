@@ -1,7 +1,11 @@
 /**
  * 检查点快照的建立、恢复与落档。
  */
-import { SYS, type ColumnCoordinate, type SaveDataV1 } from "../../contracts/index.ts";
+import {
+  SYS,
+  type ColumnCoordinate,
+  type SaveDataV1,
+} from "../../contracts/index.ts";
 import {
   cloneFrame,
   sameCoord,
