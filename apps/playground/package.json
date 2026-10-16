@@ -9,7 +9,7 @@
     "build": "vite build",
     "build:prepare": "node scripts/prepare-dist.mjs",
     "stories:build": "tsx ../../packages/stories-build/src/cli/cli.ts .",
-    "stories:watch": "tsx watch ../../packages/stories-build/src/cli/cli.ts .",
+    "stories:watch": "tsx ../../packages/stories-build/src/cli/watch-cli.ts .",
     "stories-typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "tauri": "tauri"

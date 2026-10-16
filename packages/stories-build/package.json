@@ -8,7 +8,9 @@
     ".": "./src/index.ts",
     "./authoring": "./src/authoring.d.ts",
     "./cell": "./src/cell/index.ts",
-    "./cli": "./src/cli/cli.ts"
+    "./cli": "./src/cli/cli.ts",
+    "./watch": "./src/pipeline/watch.ts",
+    "./watch-cli": "./src/cli/watch-cli.ts"
   },
   "files": [
     "src",
