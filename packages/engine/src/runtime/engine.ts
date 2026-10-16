@@ -4,204 +4,93 @@
  * 框架无关：只写状态与事件，渲染归 UI 层。
  */
 import type {
-  AnimationSpec, CharacterDef, ColumnCoordinate, ElementInstance, EngineOptions,
-  EngineTexts, EventListener, GuardFn, I18nPort, MinigameRegistration,
-  MinigameResult, OpExtension, OutboundPayload, SaveDataV1, SaveMode, SavePort,
-  StateListener, Story, StoryColumn, StoryCommand, SaveOptions, TimerHandle,
-  TimerPort,
+  AnimationSpec,
+  CharacterDef,
+  ColumnCoordinate,
+  ElementInstance,
+  EngineOptions,
+  EventListener,
+  MinigameResult,
+  SaveDataV1,
+  StateListener,
+  Story,
+  SaveOptions,
 } from "../contracts/index.ts";
 import {
-  defaultEngineTexts, gameScopedKey, hostTimer, type ExtensionOpResult,
-  type GameStateWriter, type InteractionResult,
+  gameScopedKey,
+  type ExtensionOpResult,
+  type GameStateWriter,
+  type InteractionResult,
 } from "../contracts/index.ts";
-import { buildMinigameRegistry, buildOpRegistry } from "./opRegistry.ts";
-import type { RegisteredOp } from "./opRegistry.ts";
-import { runDispatch } from "./dispatch.ts";
 import {
-  abortExtensionOp, abortInteraction, abortMinigame, resolveExtensionOp,
-  resolveInteraction, resolveMinigame, runElementOps,
+  resolveExtensionOp,
+  resolveInteraction,
+  resolveMinigame,
+  runElementOps,
 } from "./ops/index.ts";
 import {
-  emitChange, emitErrorEvent, evalValue, publishEvent, readVariable,
-  rejectBadInstanceZ, resolveName, setGlobal, setInstanceZ, setSilentKey,
-  setSystem, writeExternal,
-} from "./state/index.ts";
-import {
-  autoSaveAtCheckpoint, back, checkpointCoord, columnFrame, columnFrameAt,
-  commitCheckpoint, flushPendingCheckpoint, forward, historyCursor,
-  historyLength, historyView, isCurrentColumnReplayable, lastReplayableCursor,
-  restore, rollbackTo, takeSnapshot,
+  back,
+  forward,
+  historyCursor,
+  historyLength,
+  historyView,
+  rollbackTo,
 } from "./history/index.ts";
+import { exportSave, importSave } from "./save/index.ts";
 import {
-  exportSave, importSave, resolveSaveExtensions, resolveSaveMinigames,
-  restoreSaveExtensions, tryMigrateSave,
-} from "./save/index.ts";
-import { type ExprValue } from "./expr/index.ts";
-import { translate, translateElements } from "./i18n/index.ts";
-import {
-  abortExternalTakeovers, advance, animationFinished, animations,
-  beginLoopIteration, choose, clearTimer, columnById, dispose, draw, elements,
-  enterColumn, evalCond, findElements, getCharacter, getCharacters, input,
-  interpolate, load, mapElements, navigate, nearestLoopIndex, onEvent,
-  onStateChanged, pushIterateLoop, reloadStory, reportMediaPosition, save,
-  setLanguage, shakeFinished, start, transitionFinished, videoFinished,
-  type Checkpoint, type Frame, type LoopState, type OpContext,
+  advance,
+  animationFinished,
+  animations,
+  choose,
+  dispose,
+  elements,
+  findElements,
+  getCharacter,
+  getCharacters,
+  input,
+  interpolate,
+  load,
+  navigate,
+  onEvent,
+  onStateChanged,
+  reloadStory,
+  reportMediaPosition,
+  save,
+  setLanguage,
+  shakeFinished,
+  start,
+  transitionFinished,
+  videoFinished,
+  type OpContext,
 } from "./internal/index.ts";
-import type { NameResolver } from "./resolver.ts";
+import { EngineForwarders } from "./engine/index.ts";
 
 /**
  * 装配契约（构造选项与守卫）定义在契约层，此处按原路径转出，
  * 既有消费方无需改动即可继续从本模块取；后续并入包出口时统一改走包出口。
  */
-export type { EngineOptions, GuardContext, GuardFn } from "../contracts/index.ts";
+export type {
+  EngineOptions,
+  GuardContext,
+  GuardFn,
+} from "../contracts/index.ts";
 
 /**
- * 叙事引擎的公开门面与状态容器。
+ * 叙事引擎的公开门面与命令面。
  *
- * 职责边界：本类只保留「状态字段 + 一次性装配 + 对外薄转发」；命令解释、状态写入、
- * 历史回溯、存档编排、国际化各自实现在 `./internal`、`./state`、`./history`、`./save`、
- * `./ops`、`./i18n`，命令分发主循环在 `./dispatch`。这些自由函数统一拿 `OpContext`（即本类经
- * {@link StoryEngine.buildOpContext} 断言出来的私有面视图）读写下面的字段。
- * 因此：**改行为去目标模块改，改字段含义看本类**。
+ * 职责边界：状态字段与构造期装配在 `EngineCore`（`./engine/state.ts`），私有面转发器在
+ * `EngineForwarders`（`./engine/forwarders.ts`）；本类只保留「命令面 + `ctx` 通道 + 对外薄转发」。
+ * 命令解释、状态写入、历史回溯、存档编排、国际化各自实现在 `./internal`、`./state`、`./history`、
+ * `./save`、`./ops`、`./i18n`，命令分发主循环在 `./dispatch`。这些自由函数统一拿 `OpContext`
+ * （即本类经 {@link StoryEngine.buildOpContext} 断言出来的私有面视图）读写基类上的状态与转发器。
+ * 因此：**改行为去目标模块改，改字段含义看 `./engine/state.ts`，改转发面看 `./engine/forwarders.ts`**。
  *
  * 推进模型：`start()` 进入口列，`advance()` / `choose()` 推进到下一个玩家可见状态；
  * 等待型命令挂起后由宿主回调解除（`animationFinished()` / `input()` /
  * `resolveMinigame()` 等）。本类不持有 DOM，全部产出经 `onStateChanged()` 与
  * `onEvent()` 两条观察接缝送出；销毁走 `dispose()`。
  */
-export class StoryEngine {
-  /** 故事定义；`reloadStory()` 会原子替换它，所以推进时每次现取字段，不要缓存引用 */
-  private story: Story;
-  /** SSOT：系统键 + 全局用户键（块/列级变量在 Scope 树，不进此 Map）；值写时复制 → 快照浅拷贝安全 */
-  private state = new Map<string, unknown>();
-  /** 当前执行坐标（列 id + 列内命令下标）；帧栈与历史检查点都以它为坐标 */
-  private coord: ColumnCoordinate = { columnId: "", index: 0 };
-  /** 帧栈：每层是一个正在展开的块/列执行上下文，栈顶即当前推进位置 */
-  private frames: Frame[] = [];
-  /** 状态变化订阅者（ValueChanged）；写入时同步回调，单个订阅者抛错会向外冒 */
-  private readonly stateListeners = new Set<StateListener>();
-  /** 对外事件订阅者（进度与错误同走本集合）；与状态订阅同模块但各自独立广播 */
-  private readonly eventListeners = new Set<EventListener>();
-  /** 是否已 `start()`；未开始时推进类命令一律无效果（防重复入场） */
-  private started = false;
-  /** 等待型命令的定时器句柄；换列、回溯、读档、热重载、销毁时必须清掉，否则会推进已失效的等待 */
-  private pendingTimer: TimerHandle | null = null;
-  /** 定时器端口（wait/pause 的延迟回调来源；缺省 hostTimer = 宿主全局定时器） */
-  private readonly timerPort: TimerPort;
-  /** 用户可见文案表（缺省 defaultEngineTexts；宿主经 EngineOptions.texts 部分覆盖） */
-  private readonly texts: EngineTexts;
-  /** 当前等待能否被 `advance()` 解除（wait 的 skipable 且非 hard/pause）；只在引擎内部作为推进判据 */
-  private waitSkipable = false;
-  /** 角色定义注册表（character 注册 / uncharacter 注销；随快照恢复） */
-  private characters = new Map<string, CharacterDef>();
-  /** 函数注册表（func 执行期注册，call 按名查表；随快照恢复） */
-  private functions = new Map<
-    string,
-    { params: string[]; body: StoryCommand[] }
-  >();
-  /** input 命令挂起时的写入目标键名（值由提交方写到该键）；解除等待时清空，null = 当前没有挂起的 input */
-  private inputStore: string | null = null;
-  // —— 回溯与历史 ——
-  /** 历史检查点上限（构造期定死）；超出后从最旧端丢弃，所以可回溯深度有限 */
-  private readonly historyLimit: number;
-  /** 已归档的检查点序列，下标 0 最旧；与 `cursor` 配合表达「看到第几个」 */
-  private history: Checkpoint[] = [];
-  /** 光标 = 当前时间线上最后归档的检查点（回溯后落后于 length-1；rollforward 用） */
-  private cursor = -1;
-  /** live 消歧：当前 live 画面是否已入档（menu/wait/input 展示中=true；say 上屏=false） */
-  private liveCheckpointed = false;
-  /** 重放期标记（__rollback_active 键镜像） */
-  private rollbackActive = false;
-  /** say 上屏时捕获的待提交检查点（等待解除后才入档） */
-  private pendingSay: Checkpoint | null = null;
-  /** 确定性随机状态（mulberry32），进快照 */
-  private rngState: number;
-  /** se 触发序号：单调递增且不进快照——重放/读档后仍能区分「再次触发」 */
-  private mediaSeq = 0;
-  /** 视频命令序号：单调递增且不进快照（渲染器按 seq 执行/去重） */
-  private videoSeq = 0;
-  /** 元素动画序号：单调递增且不进快照（连续动画与重放后的同命令可分辨） */
-  private animationSeq = 0;
-  /** 转场启动序号：单调递增且不进快照（UI 据此判定「新的一次」） */
-  private transitionSeq = 0;
-  /** 震动启动序号：与 transitionSeq 同构（每次 shake 命令递增，宿主据此判定「新的一次」） */
-  private shakeSeq = 0;
-  /** 小游戏挂载序号：单调递增且不进快照（重放重新挂载与旧挂载可分辨） */
-  private minigameSeq = 0;
-  /** 挂起的小游戏等待：注册 game 标识、分流目标与已求值奖励（resolveMinigame 消费；中断即清除） */
-  private pendingMinigame: {
-    game: string;
-    onSuccess?: string;
-    onFail?: string;
-    reward: { key: string; value: unknown }[];
-  } | null = null;
-  /** 当前挂载的中断信号源：回溯/读档/导航/销毁时 abort（UI 据此卸载） */
-  private minigameController: AbortController | null = null;
-  /** 外部玩法系统挂载序号（与 minigameSeq 同构：单调、不进快照） */
-  private interactionSeq = 0;
-  /** 挂起的玩法系统接管：系统标识 + 分流目标（resolveInteraction 消费；中断即清除） */
-  private pendingInteraction: {
-    system: string;
-    onSuccess?: string;
-    onFail?: string;
-  } | null = null;
-  /** 当前玩法系统挂载的中断信号源（回溯/读档/导航/销毁时 abort） */
-  private interactionController: AbortController | null = null;
-  /** 扩展 op 等待挂载序号（与 interactionSeq 同构：单调、不进快照） */
-  private extensionWaitSeq = 0;
-  /** 挂起的扩展 op 等待：op 标识 + 扩展 id + 分流目标（resolveExtensionOp 消费；中断即清除） */
-  private pendingExtensionOp: {
-    op: string;
-    extensionId: string;
-    onSuccess?: string;
-    onFail?: string;
-  } | null = null;
-  /** 当前扩展挂载的中断信号源（回溯/读档/导航/销毁时 abort） */
-  private extensionController: AbortController | null = null;
-
-  /** 存档编排端口与模式（组合根注入；缺省 = 存档类 op/命令面 fail-closed） */
-  private savePort: SavePort | undefined;
-  /** 存档模式：决定存档可否跨设备读取，也决定 DEK 封装方式（本机绑定 = 用 OS 凭据封存；可携带 = 明文随档）；构造期注入，运行期不变 */
-  private saveMode: SaveMode;
-  /** save op 的一次性存档声明：载荷在下一玩家所见等待画面落档（coord = 等待点） */
-  private pendingSave: { slot: string; title?: string } | null = null;
-  /** I18N 端口与当前语言译文表（null = 原文直出；切换 = 整表重建并清缓存） */
-  private i18nPort: I18nPort | undefined;
-  /** 当前语言译文表（原文 → 译文）；由 `setLanguage()` 整表重建 */
-  private overlay: Map<string, string> | null = null;
-  /** 扩展 op 注册表（构造期校验装配；查找序 = 内建 → 扩展 → unknown-op） */
-  private readonly extensionOps: Map<string, RegisteredOp>;
-  /** 扩展声明索引（id → 声明：存档依赖校验 / migrate / restore 用） */
-  private readonly extensionById: ReadonlyMap<string, OpExtension>;
-  /** 本档实际执行过的扩展（op 执行时登记；exportSave 落盘依赖标记；读档继承档内标记） */
-  private readonly usedExtensions = new Set<string>();
-  /** 本档实际回填过状态的玩法系统（resolveMinigame 登记；exportSave 落盘；读档继承档内标记） */
-  private readonly usedMinigames = new Set<string>();
-  /** 全局层删除墓碑（execUndef 记账；随快照/存档/回溯随行；读档垫底的挡板） */
-  private readonly deleted = new Set<string>();
-  /** 玩法系统声明索引（gameId → 声明：存档依赖校验 / migrate 用） */
-  private readonly minigameById: ReadonlyMap<string, MinigameRegistration>;
-  /** 故事级状态迁移钩子（宿主注入；缺省 = storyVersion 不一致可操作拒绝） */
-  private readonly migrateStateHook?:
-    | ((
-        state: Record<string, unknown>,
-        from: { storyVersion: number },
-      ) => Record<string, unknown> | null)
-    | undefined;
-  /** 存档版本迁移钩子（宿主注入；缺省 = 非 v1 档可操作拒绝） */
-  private readonly migrateSaveHook?: (data: unknown) => SaveDataV1 | null;
-  /** 运行期守卫注册表（组合根注入；缺省 = guard op 一律 guard-unknown fail-closed） */
-  private readonly guards: Readonly<Record<string, GuardFn>>;
-
-  /**
-   * 命令处理器与执行器私有面之间的唯一通道。
-   *
-   * 处理器迁出为自由函数后统一收这个对象；全仓仅此一处把 `this` 转成它。
-   * 转换必须写成双重断言（私有成员无法直接满足接口），编译器不会核对
-   * 接口声明与执行器实际成员是否一一对应——增删本接口成员时要两边同时看。
-   */
-  private readonly ctx: OpContext;
-
+export class StoryEngine extends EngineForwarders {
   /**
    * 建立命令处理器与执行器私有面之间的通道。
    *
@@ -212,72 +101,118 @@ export class StoryEngine {
   private buildOpContext(): OpContext {
     void [
       // 守卫表、扩展注册表与循环帧压栈
-      this.guards, this.extensionOps, this.pushIterateLoop, this.nearestLoopIndex,
+      this.guards,
+      this.extensionOps,
+      this.pushIterateLoop,
+      this.nearestLoopIndex,
       // 表达式求值与状态写入
-      this.readVariable, this.evalValue, this.evalCond,
-      this.setSilentKey, this.emit,
+      this.readVariable,
+      this.evalValue,
+      this.evalCond,
+      this.setSilentKey,
+      this.emit,
       // 媒体、动画与等待序号
-      this.mediaSeq, this.animationSeq, this.transitionSeq, this.shakeSeq,
-      this.minigameSeq, this.interactionSeq, this.extensionWaitSeq,
+      this.mediaSeq,
+      this.animationSeq,
+      this.transitionSeq,
+      this.shakeSeq,
+      this.minigameSeq,
+      this.interactionSeq,
+      this.extensionWaitSeq,
       // 实例 z 校验与落账
-      this.rejectBadInstanceZ, this.setInstanceZ,
+      this.rejectBadInstanceZ,
+      this.setInstanceZ,
       // 检查点与历史回溯
-      this.checkpointCoord, this.takeSnapshot, this.restore,
-      this.autoSaveAtCheckpoint, this.historyLimit, this.history, this.cursor,
-      this.liveCheckpointed, this.lastReplayableCursor,
-      this.isCurrentColumnReplayable, this.columnFrame, this.columnFrameAt,
+      this.checkpointCoord,
+      this.takeSnapshot,
+      this.restore,
+      this.autoSaveAtCheckpoint,
+      this.historyLimit,
+      this.history,
+      this.cursor,
+      this.liveCheckpointed,
+      this.lastReplayableCursor,
+      this.isCurrentColumnReplayable,
+      this.columnFrame,
+      this.columnFrameAt,
       // 存档编排
-      this.pendingSave, this.overlay, this.extensionById, this.migrateSaveHook,
-      this.tryMigrateSave, this.resolveSaveExtensions,
-      this.resolveSaveMinigames, this.restoreSaveExtensions,
+      this.pendingSave,
+      this.overlay,
+      this.extensionById,
+      this.migrateSaveHook,
+      this.tryMigrateSave,
+      this.resolveSaveExtensions,
+      this.resolveSaveMinigames,
+      this.restoreSaveExtensions,
       // 外部玩法系统的状态写入面
-      this.gameState, this.pendingMinigame, this.minigameController,
-      this.pendingInteraction, this.interactionController,
-      this.pendingExtensionOp, this.extensionController, this.functions,
-      this.usedExtensions, this.usedMinigames, this.deleted, this.minigameById,
+      this.gameState,
+      this.pendingMinigame,
+      this.minigameController,
+      this.pendingInteraction,
+      this.interactionController,
+      this.pendingExtensionOp,
+      this.extensionController,
+      this.functions,
+      this.usedExtensions,
+      this.usedMinigames,
+      this.deleted,
+      this.minigameById,
       this.migrateStateHook,
       // 文本国际化
       this.translate,
       // 会话、帧栈、等待、媒体与舞台机制（只经 ctx 被迁出的自由函数读写）
-      this.story, this.coord, this.frames, this.stateListeners,
-      this.eventListeners, this.started, this.pendingTimer, this.waitSkipable,
-      this.timerPort, this.texts,
-      this.characters, this.inputStore, this.rollbackActive, this.pendingSay,
-      this.rngState, this.videoSeq, this.savePort, this.saveMode,
-      this.i18nPort, this.clearTimer, this.abortExternalTakeovers,
-      this.abortInteraction, this.abortMinigame, this.abortExtensionOp,
-      this.setGlobal, this.setSystem, this.emitEvent, this.fail,
-      this.translateElements, this.columnById, this.enterColumn, this.run,
-      this.beginLoopIteration, this.mapElements, this.commitCheckpoint,
-      this.flushPendingCheckpoint, this.draw, this.resolveName,
+      this.story,
+      this.coord,
+      this.frames,
+      this.stateListeners,
+      this.eventListeners,
+      this.started,
+      this.pendingTimer,
+      this.waitSkipable,
+      this.timerPort,
+      this.texts,
+      this.characters,
+      this.inputStore,
+      this.rollbackActive,
+      this.pendingSay,
+      this.rngState,
+      this.videoSeq,
+      this.savePort,
+      this.saveMode,
+      this.i18nPort,
+      this.clearTimer,
+      this.abortExternalTakeovers,
+      this.abortInteraction,
+      this.abortMinigame,
+      this.abortExtensionOp,
+      this.setGlobal,
+      this.setSystem,
+      this.emitEvent,
+      this.fail,
+      this.translateElements,
+      this.columnById,
+      this.enterColumn,
+      this.run,
+      this.beginLoopIteration,
+      this.mapElements,
+      this.commitCheckpoint,
+      this.flushPendingCheckpoint,
+      this.draw,
+      this.resolveName,
     ];
     return this as unknown as OpContext;
   }
 
   /**
-   * 装配引擎：登记故事定义、各端口与扩展，并建好 `ctx` 私有面通道。
+   * 装配引擎：`super()` 登记故事定义、各端口与扩展（选项语义见 `EngineCore` 构造器），
+   * 随后建好 `ctx` 私有面通道。
    *
    * 选项全部可省：缺省时历史上限 200、随机种子取当前时间、存档模式 `machine-bound`，
    * 且没有存档 / 国际化 / 守卫 / 扩展。缺端口不影响推进，只让对应命令面 fail-closed
    * （例如没有存档端口时 `save()` 固定返回 false）。
    */
   constructor(story: Story, options?: EngineOptions) {
-    this.story = story;
-    this.historyLimit = options?.historyLimit ?? 200;
-    this.rngState = (options?.rngSeed ?? Date.now()) | 0;
-    this.savePort = options?.savePort;
-    this.saveMode = options?.saveMode ?? "machine-bound";
-    this.i18nPort = options?.i18nPort;
-    this.timerPort = options?.timerPort ?? hostTimer;
-    this.texts = { ...defaultEngineTexts, ...options?.texts };
-    const extensions = options?.extensions ?? [];
-    this.extensionOps = buildOpRegistry(extensions);
-    this.extensionById = new Map(extensions.map((e) => [e.id, e]));
-    this.migrateSaveHook = options?.migrateSave;
-    // 玩法系统注册（构造期校验装配，fail-fast，与扩展注册同口径；校验细节见 buildMinigameRegistry）
-    this.minigameById = buildMinigameRegistry(options?.minigames ?? []);
-    this.migrateStateHook = options?.migrateState;
-    this.guards = options?.guards ?? {};
+    super(story, options);
     this.ctx = this.buildOpContext();
   }
 
@@ -352,10 +287,6 @@ export class StoryEngine {
   resolveMinigame(result: MinigameResult): boolean {
     return resolveMinigame(this.ctx, result);
   }
-  /** 内部转发 → ./internal：清掉挂起等待的定时器 */
-  private clearTimer(): void {
-    clearTimer(this.ctx);
-  }
   /** 上报外部玩法系统的接管结果，按挂起接管声明的分流目标继续 */
   resolveInteraction(system: string, result: InteractionResult): boolean {
     return resolveInteraction(this.ctx, system, result);
@@ -363,34 +294,6 @@ export class StoryEngine {
   /** 上报扩展 op 的等待结果，按挂起等待声明的分流目标继续；op 不符/无挂起时返回 false */
   resolveExtensionOp(op: string, result: ExtensionOpResult): boolean {
     return resolveExtensionOp(this.ctx, op, result);
-  }
-  /** 内部转发 → ./internal：中断所有外部接管（导航、销毁、读档、回溯、热重载时用） */
-  private abortExternalTakeovers(): void {
-    abortExternalTakeovers(this.ctx);
-  }
-  /** 内部转发 → ./internal：中断当前玩法系统接管并清除挂起状态 */
-  private abortInteraction(): void {
-    abortInteraction(this.ctx);
-  }
-  /** 内部转发 → ./internal：中断当前小游戏挂载并清除挂起状态 */
-  private abortMinigame(): void {
-    abortMinigame(this.ctx);
-  }
-  /** 内部转发 → ./internal：中断当前扩展 op 等待并清除挂起状态 */
-  private abortExtensionOp(): void {
-    abortExtensionOp(this.ctx);
-  }
-  /** 内部转发 → ./state：写全局用户键（系统键见 setSystem） */
-  private setGlobal(key: string, value: unknown): void {
-    setGlobal(this.ctx, key, value);
-  }
-  /** 内部转发 → ./state：写系统键（引擎自用，与用户键分开以便存档区分） */
-  private setSystem(key: string, value: unknown): void {
-    setSystem(this.ctx, key, value);
-  }
-  /** 内部转发 → ./state：静默写入（不触发观察事件），返回是否真的写入 */
-  private setSilentKey(key: string, value: unknown): boolean {
-    return setSilentKey(this.ctx, key, value);
   }
   /** 外部玩法系统的状态写入面：作用域化键与「是否触发观察事件」的四种组合 */
   readonly gameState: GameStateWriter = {
@@ -404,93 +307,6 @@ export class StoryEngine {
       this.writeExternal(gameScopedKey(systemId, key), value, false, systemId),
     get: (key: string): unknown => this.state.get(key),
   };
-
-  /**
-   * 外部写入的公共实现：键校验（保留键 + 命名空间合法性）→ 值契约 → 落 SSOT。
-   * `emitChange = false` 走静默通道（帧级高频写）。
-   */
-  private writeExternal(
-    key: string,
-    value: unknown,
-    emitChange: boolean,
-    systemId?: string,
-  ): boolean {
-    return writeExternal(this.ctx, key, value, emitChange, systemId);
-  }
-  /** 内部转发 → ./state：实例 z 合法性检查（上层据此拒绝非法命令） */
-  private rejectBadInstanceZ(cmd: StoryCommand): boolean {
-    return rejectBadInstanceZ(this.ctx, cmd);
-  }
-  /** 内部转发 → ./state：写入实例 z 字段 */
-  private setInstanceZ(key: string, raw: unknown): void {
-    setInstanceZ(this.ctx, key, raw);
-  }
-  /** 内部转发 → ./state：把一次状态写入镜像成 ValueChanged */
-  private emit(key: string, value: unknown, scope: string): void {
-    emitChange(this.ctx, key, value, scope);
-  }
-  /** 内部转发 → ./state：发布对外事件 */
-  private emitEvent(payload: OutboundPayload): void {
-    publishEvent(this.ctx, payload);
-  }
-  /** 内部转发 → ./state：发错误事件（诊断码 + 可读消息） */
-  private fail(code: string, message: string): void {
-    emitErrorEvent(this.ctx, code, message);
-  }
-  /** 内部转发 → ./i18n：翻译单条文本（未载入译文表时原样返回） */
-  private translate(original: string): string {
-    return translate(this.ctx, original);
-  }
-  /** 内部转发 → ./i18n：批量翻译元素实例上的可见文本 */
-  private translateElements(
-    instances: readonly ElementInstance[],
-  ): ElementInstance[] {
-    return translateElements(this.ctx, instances);
-  }
-  /** 内部转发 → ./internal：按 id 取列定义 */
-  private columnById(id: string): StoryColumn | undefined {
-    return columnById(this.ctx, id);
-  }
-  /** 内部转发 → ./history：最近一个可重放检查点的光标（没有则为 null） */
-  private lastReplayableCursor(): number | null {
-    return lastReplayableCursor(this.ctx);
-  }
-  /** 内部转发 → ./history：当前列是否可重放（回溯与自动存档的判据之一） */
-  private isCurrentColumnReplayable(): boolean {
-    return isCurrentColumnReplayable(this.ctx);
-  }
-  /** 内部转发 → ./internal：进入指定列；返回是否进入成功 */
-  private enterColumn(columnId: string): boolean {
-    return enterColumn(this.ctx, columnId);
-  }
-  /** 内部转发 → ./dispatch：命令分发主循环（op 分发逻辑的唯一所有者） */
-  private run(): void {
-    runDispatch(this.ctx);
-  }
-  /** 内部转发 → ./history：等待帧对应的检查点坐标 */
-  private checkpointCoord(waitingFrame: Frame): ColumnCoordinate {
-    return checkpointCoord(this.ctx, waitingFrame);
-  }
-  /** 内部转发 → ./internal：压入一层循环帧；返回循环是否正常建立（空数组视为无迭代仍返回 true） */
-  private pushIterateLoop(
-    frame: Frame,
-    cmd: StoryCommand,
-    items: ExprValue[],
-  ): boolean {
-    return pushIterateLoop(this.ctx, frame, cmd, items);
-  }
-  /** 内部转发 → ./internal：开始一轮循环迭代；返回是否成功开始（超迭代上限 fail-closed 返回 false） */
-  private beginLoopIteration(frame: Frame, loop: LoopState): boolean {
-    return beginLoopIteration(this.ctx, frame, loop);
-  }
-  /** 内部转发 → ./internal：定位当前最近的循环帧下标（loop 中断用） */
-  private nearestLoopIndex(): number {
-    return nearestLoopIndex(this.ctx);
-  }
-  /** 内部转发 → ./internal：条件表达式求值；null = 求值失败（已发诊断） */
-  private evalCond(src: unknown): boolean | null {
-    return evalCond(this.ctx, src);
-  }
   /** 查角色定义（character op 注册；say 的 speaker 按它套样式） */
   getCharacter(key: string): CharacterDef | undefined {
     return getCharacter(this.ctx, key);
@@ -498,12 +314,6 @@ export class StoryEngine {
   /** 全部已注册的角色定义 */
   getCharacters(): CharacterDef[] {
     return getCharacters(this.ctx);
-  }
-  /** 内部转发 → ./internal：整体改写舞台的元素实例列表 */
-  private mapElements(
-    mapper: (el: ElementInstance) => ElementInstance,
-  ): ElementInstance[] {
-    return mapElements(this.ctx, mapper);
   }
   /** 当前待播的元素动画清单（宿主按 seq 驱动并回报 animationFinished） */
   animations(): AnimationSpec[] {
@@ -533,14 +343,6 @@ export class StoryEngine {
   input(value: string): void {
     input(this.ctx, value);
   }
-  /** 内部转发 → ./internal：当前列的执行帧 */
-  private columnFrame(): Frame | undefined {
-    return columnFrame(this.ctx);
-  }
-  /** 内部转发 → ./internal：按坐标取执行帧（回溯重建用） */
-  private columnFrameAt(coord: ColumnCoordinate): Frame {
-    return columnFrameAt(this.ctx, coord);
-  }
   /** 导出当前进度为存档数据（不落盘，写到哪由宿主决定）；不在等待点、菜单场景缺少回退坐标、载荷不可序列化时返回 null 并发诊断 */
   exportSave(): SaveDataV1 | null {
     return exportSave(this.ctx);
@@ -548,45 +350,6 @@ export class StoryEngine {
   /** 从存档数据恢复进度；旧版本先走迁移钩子，迁移不了返回 false */
   importSave(data: SaveDataV1): boolean {
     return importSave(this.ctx, data);
-  }
-  /** 内部转发 → ./save：旧版本存档迁移；未注入迁移钩子时拒绝 */
-  private tryMigrateSave(data: SaveDataV1): SaveDataV1 | null {
-    return tryMigrateSave(this.ctx, data);
-  }
-  /** 内部转发 → ./save：校对本档所需扩展是否齐备；无标记时原样返回状态，标记非法/扩展缺失/版本迁移失败返回 null（已发 engine.error） */
-  private resolveSaveExtensions(data: SaveDataV1): [string, unknown][] | null {
-    return resolveSaveExtensions(this.ctx, data);
-  }
-  /** 内部转发 → ./save：按档内标记恢复扩展状态 */
-  private restoreSaveExtensions(marks: SaveDataV1["extensions"]): boolean {
-    return restoreSaveExtensions(this.ctx, marks);
-  }
-  /** 内部转发 → ./save/minigames：校验档内玩法系统依赖并迁移其命名空间状态 */
-  private resolveSaveMinigames(
-    entries: [string, unknown][],
-    marks: SaveDataV1["minigames"],
-  ): [string, unknown][] | null {
-    return resolveSaveMinigames(this.ctx, entries, marks);
-  }
-  /** 内部转发 → ./history：按坐标拍一份检查点快照 */
-  private takeSnapshot(coord: ColumnCoordinate): Checkpoint {
-    return takeSnapshot(this.ctx, coord);
-  }
-  /** 内部转发 → ./history：从检查点恢复状态 */
-  private restore(cp: Checkpoint): void {
-    restore(this.ctx, cp);
-  }
-  /** 内部转发 → ./history：把检查点归档进历史（未回溯且超出上限时从最旧端丢弃） */
-  private commitCheckpoint(cp: Checkpoint): void {
-    commitCheckpoint(this.ctx, cp);
-  }
-  /** 内部转发 → ./history：检查点处的自动存档 */
-  private autoSaveAtCheckpoint(): void {
-    autoSaveAtCheckpoint(this.ctx);
-  }
-  /** 内部转发 → ./history：提交挂起的检查点（等玩家看过的画面解除等待后才入档） */
-  private flushPendingCheckpoint(): void {
-    flushPendingCheckpoint(this.ctx);
   }
   /** 回溯到历史检查点：给下标表示第几个，给坐标表示取该坐标之前最近的检查点（非精确定位；找不到即报错） */
   rollbackTo(target: number | ColumnCoordinate): void {
@@ -623,21 +386,4 @@ export class StoryEngine {
   }> {
     return historyView(this.ctx);
   }
-  /** 内部转发 → ./internal：取一个确定性随机数 [0,1)（mulberry32，状态进快照，重放序列一致） */
-  private draw(): number {
-    return draw(this.ctx);
-  }
-  /** 内部转发 → ./state：表达式求值（Value 口径） */
-  private evalValue(raw: unknown): ExprValue {
-    return evalValue(this.ctx, raw);
-  }
-  /** 内部转发 → ./state：读取变量（作用域链 → 全局） */
-  private readVariable(key: string): ExprValue {
-    return readVariable(this.ctx, key);
-  }
-  /** 名字解析端口：表达式与插值靠它取值，求值器因此不必接触本类内部 */
-  private resolveName: NameResolver = (
-    name: string,
-  ): { found: true; value: unknown } | { found: false } =>
-    resolveName(this.ctx, name);
 }
