@@ -35,7 +35,7 @@ import {
   type KeyValueStorage,
 } from "@lingfan/editor";
 import appSource from "../../apps/editor/src/App.vue?raw";
-import columnListSource from "../../apps/editor/src/components/ColumnList.vue?raw";
+import columnListSource from "../../apps/editor/src/components/panels/ColumnList.vue?raw";
 
 const manifest = { formatVersion: 1, id: "demo", entry: "start" };
 

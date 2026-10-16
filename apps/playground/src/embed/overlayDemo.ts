@@ -23,7 +23,7 @@ import {
 } from "@lingfan/ui";
 // 默认故事清单与守卫都从故事侧出口取：生成物路径与清单形态只在那一个目录里出现，
 // 覆盖层演示与组合根共用同一份（换生成器输出名或调整默认清单时只改一处）。
-import { STORIES, guards } from "./stories";
+import { STORIES, guards } from "../stories";
 
 /** 工程清单文件名：与适配器 fetch 端口约定一致（Tauri 形态走 Rust 枚举，不经此）。 */
 const MANIFEST = "project.json";

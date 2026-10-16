@@ -22,8 +22,8 @@ import {
   removeColumn,
 } from "@lingfan/editor";
 import apiSource from "../../apps/editor/src/app/editorApi.ts?raw";
-import centerSource from "../../apps/editor/src/components/CenterStage.vue?raw";
-import nodeGraphSource from "../../apps/editor/src/components/NodeGraph.vue?raw";
+import centerSource from "../../apps/editor/src/components/panes/CenterStage.vue?raw";
+import nodeGraphSource from "../../apps/editor/src/components/stage/NodeGraph.vue?raw";
 
 function flowColumn(id: string, commands: StoryCommand[]): StoryColumn {
   return { id, kind: "flow", commands };

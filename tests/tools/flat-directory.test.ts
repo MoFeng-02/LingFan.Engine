@@ -13,10 +13,7 @@ const SOURCES = import.meta.glob(
 );
 
 /** 待完成白名单：目录 → 待办项（完成后逐项删除，清空即本判据达标） */
-const PENDING: Record<string, string> = {
-  "apps/editor/src": "组合根与领域/工作台模块混列（05-13）",
-  "apps/editor/src/components": "按面板域的视图混列（05-14）",
-};
+const PENDING: Record<string, string> = {};
 
 const IGNORED_SEGMENTS = new Set(["node_modules", "dist", "gen"]);
 

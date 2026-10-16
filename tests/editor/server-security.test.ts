@@ -16,7 +16,7 @@ import {
   shouldReloadOn,
   tokenMatches,
 } from "../../apps/editor/server/security";
-import { detectLocalHost } from "../../apps/editor/src/localHost";
+import { detectLocalHost } from "../../apps/editor/src/infra/localHost";
 import hostServerSource from "../../apps/editor/server/host.ts?raw";
 import hostContractSource from "../../apps/editor/src/contracts/host.ts?raw";
 

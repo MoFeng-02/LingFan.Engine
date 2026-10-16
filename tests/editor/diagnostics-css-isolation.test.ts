@@ -13,13 +13,31 @@
  * 且**不得与其他组件的类名重名**。
  */
 import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const COMPONENTS = fileURLToPath(
   new URL("../../apps/editor/src/components", import.meta.url),
 );
+
+/** 诊断面板自身（按栏分组后位于 `panels/`；扫描面则是**整个组件树**） */
+const PANEL = "panels/DiagnosticsPanel.vue";
+
+/**
+ * 递归收集组件树里的全部 `.vue`。
+ *
+ * **必须递归**：组件按栏分组后目录不再平铺，`readdirSync` 平扫只会拿到 0 个
+ * `.vue` —— 那时「不与其他组件重名」会因为**扫描面为空**而恒真（判据绿但守卫失效）。
+ */
+function vueFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return vueFiles(full);
+    if (!entry.name.endsWith(".vue")) return [];
+    return [relative(COMPONENTS, full).replace(/\\/g, "/")];
+  });
+}
 
 /**
  * 组件模板里出现的静态 class 名。
@@ -45,23 +63,32 @@ function classesOf(file: string): Set<string> {
   return out;
 }
 
-const componentFiles = readdirSync(COMPONENTS).filter((f) =>
-  f.endsWith(".vue"),
-);
+const componentFiles = vueFiles(COMPONENTS);
+
+/** 组件树规模下限——扫描面塌成空集时，下面的「不重名」会恒真（守卫失效） */
+const MIN_COMPONENT_FILES = 30;
 
 describe("诊断面板 · 类名隔离", () => {
+  it("扫描面覆盖分组后的整个组件树（平扫会漏掉 4 个分组）", () => {
+    expect(componentFiles.length).toBeGreaterThanOrEqual(MIN_COMPONENT_FILES);
+    expect(componentFiles).toContain(PANEL);
+    expect(
+      componentFiles.filter((f) => f.includes("/")).length,
+    ).toBeGreaterThan(0);
+  });
+
   it("诊断面板的类名**全部带 `diag-` 前缀**", () => {
-    const own = classesOf("DiagnosticsPanel.vue");
+    const own = classesOf(PANEL);
     expect(own.size).toBeGreaterThan(0);
     const bare: string[] = [...own].filter((c) => !c.startsWith("diag-"));
     expect(bare, `这些类名缺 diag- 前缀：${bare.join("、")}`).toEqual([]);
   });
 
   it("**诊断面板类名不与其他组件重名**（撞名会让选择器/探针指向别的面板）", () => {
-    const own = classesOf("DiagnosticsPanel.vue");
+    const own = classesOf(PANEL);
     const clashes: string[] = [];
     for (const file of componentFiles) {
-      if (file === "DiagnosticsPanel.vue") continue;
+      if (file === PANEL) continue;
       for (const c of classesOf(file)) {
         if (own.has(c)) clashes.push(`${file}: ${c}`);
       }
@@ -70,7 +97,7 @@ describe("诊断面板 · 类名隔离", () => {
   });
 
   it("组头类名带 `diag-` 前缀且**全仓唯一**", () => {
-    const own = classesOf("DiagnosticsPanel.vue");
+    const own = classesOf(PANEL);
     // 组头是本面板的核心交互目标（类名全局撞名即误伤，故必须带 diag- 前缀）
     const heads = [...own].filter((c) => c.includes("head"));
     expect(heads.length).toBeGreaterThan(0);

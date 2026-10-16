@@ -6,7 +6,7 @@
  * ——两者若吃同一份，筛选时计数会缩水 ⇒ 徽章数字跳变 = 仪表盘失真。
  */
 import { describe, expect, it } from "vitest";
-import panelSource from "../../apps/editor/src/components/DiagnosticsPanel.vue?raw";
+import panelSource from "../../apps/editor/src/components/panels/DiagnosticsPanel.vue?raw";
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
 const code = (source: string): string =>

@@ -10,10 +10,10 @@
  */
 import { describe, expect, it } from "vitest";
 import apiSource from "../../apps/editor/src/app/editorApi.ts?raw";
-import columnListSource from "../../apps/editor/src/components/ColumnList.vue?raw";
-import dialogHostSource from "../../apps/editor/src/components/DialogHost.vue?raw";
+import columnListSource from "../../apps/editor/src/components/panels/ColumnList.vue?raw";
+import dialogHostSource from "../../apps/editor/src/components/shell/DialogHost.vue?raw";
 import dialogSource from "../../apps/editor/src/domain/dialog.ts?raw";
-import chapterTreeSource from "../../apps/editor/src/components/ChapterTree.vue?raw";
+import chapterTreeSource from "../../apps/editor/src/components/sidebar/ChapterTree.vue?raw";
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
 const code = (source: string): string =>

@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { parseStory } from "@lingfan/engine";
 import { addColumn, suggestColumnId } from "@lingfan/editor";
-import columnListSource from "../../apps/editor/src/components/ColumnList.vue?raw";
+import columnListSource from "../../apps/editor/src/components/panels/ColumnList.vue?raw";
 
 function storyWith(...ids: string[]): ReturnType<typeof parseStory> {
   return parseStory({

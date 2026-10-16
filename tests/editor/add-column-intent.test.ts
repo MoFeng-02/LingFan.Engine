@@ -18,7 +18,7 @@
 import { describe, expect, it } from "vitest";
 import { parseStory } from "@lingfan/engine";
 import { addColumn } from "@lingfan/editor";
-import { decideAddColumn } from "../../apps/editor/src/addColumnIntent";
+import { decideAddColumn } from "../../apps/editor/src/domain/addColumnIntent";
 
 describe("真值表：取消 / 留空 / 有值 三态互不相同", () => {
   it("取消（null）→ 不执行", () => {

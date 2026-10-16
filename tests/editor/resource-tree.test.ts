@@ -13,7 +13,7 @@ import {
   kindOfPath,
   RESOURCE_TREE_COLLAPSED_KEY_PREFIX,
   type ResourceNode,
-} from "../../apps/editor/src/resourceTree";
+} from "../../apps/editor/src/domain/resourceTree";
 
 /** 真实工程（playground Resources）的文件集 —— 与磁盘实际文件形状一致 */
 const realPaths = [

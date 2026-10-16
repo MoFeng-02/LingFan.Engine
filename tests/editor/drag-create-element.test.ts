@@ -21,7 +21,7 @@ import {
   UNIMPLEMENTED_ELEMENT_ATTRS,
 } from "@lingfan/editor";
 import apiSource from "../../apps/editor/src/app/editorApi.ts?raw";
-import stageEditorSource from "../../apps/editor/src/components/StageEditor.vue?raw";
+import stageEditorSource from "../../apps/editor/src/components/stage/StageEditor.vue?raw";
 // 空态口径表**源码**（提示文案集中于此，组件不各写一份；定义在 domain/）
 import viewStateSource from "../../apps/editor/src/domain/viewState.ts?raw";
 

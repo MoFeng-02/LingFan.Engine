@@ -26,8 +26,8 @@ import {
   type FieldDescriptor,
 } from "@lingfan/editor";
 import { ELEMENT_ATTRIBUTES, ELEMENT_TYPES, type Story } from "@lingfan/engine";
-import { sampleStory } from "../../apps/editor/src/sample";
-import fieldRowSource from "../../apps/editor/src/components/FieldRow.vue?raw";
+import { sampleStory } from "../../apps/editor/src/shared/sample";
+import fieldRowSource from "../../apps/editor/src/components/stage/FieldRow.vue?raw";
 
 describe("元素表单描述符", () => {
   it("36 类型全覆盖；未知类型 fail-closed（故意错误）", () => {

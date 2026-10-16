@@ -49,16 +49,20 @@ import {
   type OpenedProject,
   type ProjectOpener,
 } from "./contracts";
-import PreviewHost from "./components/PreviewHost.vue";
-import DialogHost from "./components/DialogHost.vue";
-import StatusBar from "./components/StatusBar.vue";
-import TopToolbar from "./components/TopToolbar.vue";
-import DocTabs from "./components/DocTabs.vue";
-import ProjectBanners from "./components/ProjectBanners.vue";
-import SidebarPane from "./components/SidebarPane.vue";
-import RightPane from "./components/RightPane.vue";
-import CenterStage from "./components/CenterStage.vue";
-import type { RightTab } from "./components/RightPane.vue";
+import { PreviewHost } from "./components/stage";
+import {
+  DialogHost,
+  ProjectBanners,
+  StatusBar,
+  TopToolbar,
+} from "./components/shell";
+import { DocTabs } from "./components/sidebar";
+import {
+  CenterStage,
+  RightPane,
+  SidebarPane,
+  type RightTab,
+} from "./components/panes";
 
 /**
  * 组合根注入（本组件不碰任何平台 API / 适配器）：

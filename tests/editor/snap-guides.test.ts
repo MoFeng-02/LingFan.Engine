@@ -6,7 +6,7 @@ import {
   nearestSnap,
   SNAP_THRESHOLD_PX,
   snapGuides,
-} from "../../apps/editor/src/snapGuides";
+} from "../../apps/editor/src/domain/snapGuides";
 
 describe("最近线吸附", () => {
   it("阈值内命中最近的那条（不是第一条）", () => {
