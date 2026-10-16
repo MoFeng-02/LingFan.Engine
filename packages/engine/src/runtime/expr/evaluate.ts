@@ -3,7 +3,7 @@
  */
 import type { NameResolver } from "../resolver.ts";
 import { tokenize } from "./lexer.ts";
-import { Parser } from "./parser.ts";
+import { Parser } from "./parser/index.ts";
 import { ExpressionError, type ExprValue } from "./value.ts";
 
 /** rng 缺省 Math.random（引擎注入确定性 rng） */
