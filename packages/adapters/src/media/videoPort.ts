@@ -17,6 +17,9 @@ export interface WebVideoPortOptions {
   /** 媒体源物化配置（Android WebView 的 Range 拦截缺陷绕过，见 blobSource 模块）；
    *  缺省 = 直供 URL（桌面既有行为，形态差异归组合根裁决） */
   blobSource?: BlobSourceOptions;
+  /** 呈现容器（组合根注入）：给了就挂进它、按它定位（随它的变换一起缩放），
+   *  返回 null 或缺省 = 铺满视口的既有行为 */
+  readContainer?: () => HTMLElement | null;
 }
 
 /** 播放参数（契约 VideoPort.play 的 options） */
@@ -30,6 +33,7 @@ interface PlayOptions {
  * 层不吃点击（`pointer-events: none`），所以跳过过场靠引擎命令而不是点画面。
  * 播完经 `onEnded` 通知调用方；自动播放被浏览器拒绝时不报错（玩家很快会交互）。
  * 解码失败只在 `<video>` 真带 MediaError 时上报（WebView 会为内建封面派发无错误码的 error）。
+ * 容器由组合根注入（`readContainer`）：舞台整体缩放时视频层跟着一起缩，不至于只有画面外的那层在变。
  */
 export function createWebVideoPort(
   portOptions: WebVideoPortOptions = {},
@@ -62,9 +66,22 @@ export function createWebVideoPort(
         if (mediaError === null || mediaError === undefined) return;
         portOptions.onError?.("视频资源无法解码或缺失");
       });
-      document.body.appendChild(element);
     }
+    attach(element);
     return element;
+  }
+
+  /**
+   * 挂到当前呈现容器：容器给了就按它定位（`absolute`），否则回落到铺满视口的既有行为。
+   * 每次取用都重挂——容器可能晚于端口出现（舞台根挂载前 `readContainer()` 返回 null），
+   * 挂错位置的表现是「视频不随舞台缩放」，比在端口里缓存容器更值得多这一次比对。
+   */
+  function attach(video: HTMLVideoElement): void {
+    const container = portOptions.readContainer?.() ?? null;
+    const host = container ?? document.body;
+    video.style.position = container === null ? "fixed" : "absolute";
+    // 已挂在别处（含容器换人）就搬过去：appendChild 对已在场的节点是移动到末尾
+    if (video.parentElement !== host) host.appendChild(video);
   }
 
   function applyPlay(
