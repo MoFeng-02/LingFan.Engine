@@ -589,7 +589,8 @@ textarea,
 }
 
 /* UI 层（窗口坐标系）：工具栏、通知、叙事面板与面板族都在这层里，不随舞台缩放而随窗口自适应。
-   容器不吃指针事件（点击与滚轮要落到舞台与外框上），需要交互的部件各自恢复 pointer-events。 */
+   容器不吃指针事件（点击与滚轮要落到舞台与外框上），需要交互的部件各自恢复 pointer-events。
+   文字默认值（颜色与字号）写在这一层：它住在舞台外面，继承不到舞台根那套外观。 */
 .shell-ui {
   position: fixed;
   inset: 0;
@@ -599,6 +600,7 @@ textarea,
   gap: clamp(8px, 1.6vh, 16px);
   box-sizing: border-box;
   padding: clamp(10px, 2.2vh, 22px) clamp(12px, 3vw, 40px);
+  color: #e6e6f0;
   font-size: 17px;
   pointer-events: none;
 }
