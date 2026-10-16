@@ -42,5 +42,5 @@ export function validateCommand(
   validateCollectionsCommand(cmd, at, issues);
   validateSaveCommand(cmd, at, issues);
   validatePresentCommand(cmd, at, issues);
-  validateBlocksCommand(cmd, at, issues);
+  validateBlocksCommand(cmd, at, issues, validateCommand);
 }

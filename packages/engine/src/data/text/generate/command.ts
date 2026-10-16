@@ -13,9 +13,12 @@ import { generateSaveCommand } from "./command/save.ts";
 import { generateMediaCommand } from "./command/media.ts";
 import { generateBlocksCommand } from "./command/blocks.ts";
 import { generatePresentCommand } from "./command/present.ts";
-import { tryProjectToText } from "./body.ts";
+import { tryProjectToText } from "./projection.ts";
 import { TextFormatError } from "../error.ts";
-import type { CustomOpProjections, StoryCommand } from "../../../contracts/index.ts";
+import type {
+  CustomOpProjections,
+  StoryCommand,
+} from "../../../contracts/index.ts";
 import type { GenerateContext } from "./context.ts";
 
 /**
@@ -99,7 +102,7 @@ export function generateCommand(
     case "switch":
     case "menu":
     case "func":
-      generateBlocksCommand(cmd, ctx);
+      generateBlocksCommand(cmd, ctx, generateCommand);
       return;
     case "show":
     case "hide":

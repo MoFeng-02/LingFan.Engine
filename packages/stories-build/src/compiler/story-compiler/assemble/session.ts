@@ -4,38 +4,24 @@ import {
   type StoriesBuildTexts,
 } from "../../../shared/index.ts";
 import type { DiagBag, Graph } from "../graph.ts";
-import {
-  compileFunction,
-  partitionFunctions,
-  tryFuncOp,
-  type CompiledFunction,
-} from "./functions.ts";
+import { compileFunction, partitionFunctions, tryFuncOp } from "./functions.ts";
 import {
   createBodyCtx,
   translateStatements,
   type FuncRegistry,
 } from "../translate.ts";
+import type {
+  AssembleSession,
+  CompiledFunction,
+  CompiledStory,
+} from "./types.ts";
+
+export type { AssembleSession, CompiledStory } from "./types.ts";
 
 /**
  * 会话与列编译：会话持有跨文件共享状态（函数缓存/字体表/文案表/全工程角色表），
  * compileStoryFile 把单个故事文件编译成单列 Story。函数体翻译在 ./functions.ts。
  */
-
-export interface AssembleSession {
-  cache: Map<string, CompiledFunction>;
-  /** 字体名注册表（编排层自 Resources/Fonts 扫描；构建期字体引用检查对照源） */
-  fontNames: ReadonlySet<string>;
-  /** 集中文案表（编译入口注入，已含缺省合并；诊断文案只从这里取） */
-  texts: StoriesBuildTexts;
-  /** 全工程角色表（编排层模块层声明收集产物）：前置成每个故事 start 列头的 character 命令 */
-  characters: ReadonlyMap<string, CharacterDef>;
-}
-
-export interface CompiledStory {
-  columnId: string;
-  sourceRelPath: string;
-  story: Story;
-}
 
 export function createAssembleSession(
   fontNames: ReadonlySet<string> = new Set(),

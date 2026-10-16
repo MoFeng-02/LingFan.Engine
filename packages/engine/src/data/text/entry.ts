@@ -2,8 +2,12 @@
  * 文本创作模式的公共入口：文本 → Story、Story → 文本，以及容错投影。
  * 三个入口的失败口径统一为 `TextFormatError`（整次拒绝，带行列定位）。
  */
-import { baseName } from "../format/index.ts";
-import { parseCommands, parseSimpleStatement, type ParseState } from "./parse/index.ts";
+import { baseName } from "../format/naming.ts";
+import {
+  parseCommands,
+  parseSimpleStatement,
+  type ParseState,
+} from "./parse/index.ts";
 import { generateCommand } from "./generate/command.ts";
 import { generateElement } from "./generate/element.ts";
 import { tokenizeLines, splitTokens, unquote } from "./lexer.ts";

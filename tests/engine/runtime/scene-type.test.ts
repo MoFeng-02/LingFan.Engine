@@ -14,7 +14,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { chapterGroupOf } from "@lingfan/editor";
-import editorChaptersSource from "../../../packages/editor/src/chapters/index.ts?raw";
+import editorChaptersImplSource from "../../../packages/editor/src/chapters/build.ts?raw";
 import {
   SYS,
   StoryEngine,
@@ -443,8 +443,8 @@ describe("场景类型 · 单一判定点互锁（引擎守卫与编辑器分组
   });
 
   it("**判定函数只实现一处**（引擎与编辑器都不许复制判据）", () => {
-    // 编辑器章节分组只允许**调用**引擎的实现，出现判据表达式即第二份定义
-    const editorChapters = editorChaptersSource;
+    // 编辑器章节分组的**实现文件**只允许**调用**引擎的判据，出现判据表达式即第二份定义
+    const editorChapters = editorChaptersImplSource;
     expect(editorChapters).toContain('from "@lingfan/engine"');
     expect(editorChapters).not.toMatch(/type\s*\?\?\s*"game"/);
     expect(editorChapters).not.toMatch(/"game"\s*\)\s*===\s*"game"/);

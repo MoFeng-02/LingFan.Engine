@@ -3,14 +3,15 @@
  * 只判本族 op 的必填与类型，未知字段不在此拒绝（编辑期 schema 负责）。
  */
 import { requireNonEmptyString } from "../guards.ts";
-import { validateInstanceZ } from "../column.ts";
-import { validateBody } from "../body.ts";
+import { validateInstanceZ } from "./shape.ts";
+import { validateBody, type CommandValidator } from "../body.ts";
 import { isPlainObject } from "../../../shared/index.ts";
 
 /**
  * 校验本族 op 的负载（7 个 op：`if` `menu` `while` `for` `foreach` `switch` `func`）。
  *
- * 入参由分发骨架给出：`cmd` 已收窄为非空 op 的对象，`at` 是报错定位前缀，`issues` 是收集器。
+ * 入参由分发骨架给出：`cmd` 已收窄为非空 op 的对象，`at` 是报错定位前缀，`issues` 是收集器，
+ * `validateChild` 是子命令校验器（块体递归用，见 `CommandValidator`）。
  * 无返回值，问题通过 `issues` 交付；不匹配的 op 直接落到函数末尾，等于放行（结构从简）。
  * 失败表现：不抛异常。必填缺失或类型不符时推一条带 `at` 定位的中文 issue，尽量一次报全本族问题。
  */
@@ -18,11 +19,12 @@ export function validateBlocksCommand(
   cmd: Record<string, unknown>,
   at: string,
   issues: string[],
+  validateChild: CommandValidator,
 ): void {
   switch (cmd.op) {
     case "if": {
       requireNonEmptyString(cmd.cond, `${at}.cond`, issues);
-      validateBody(cmd.then, `${at}.then`, issues, true);
+      validateBody(cmd.then, `${at}.then`, issues, true, validateChild);
       if (cmd.elif !== undefined) {
         if (!Array.isArray(cmd.elif)) {
           issues.push(`${at}.elif 必须为数组`);
@@ -33,12 +35,18 @@ export function validateBlocksCommand(
               continue;
             }
             requireNonEmptyString(elif.cond, `${at}.elif[${j}].cond`, issues);
-            validateBody(elif.then, `${at}.elif[${j}].then`, issues, true);
+            validateBody(
+              elif.then,
+              `${at}.elif[${j}].then`,
+              issues,
+              true,
+              validateChild,
+            );
           }
         }
       }
       if (cmd.else !== undefined)
-        validateBody(cmd.else, `${at}.else`, issues, false);
+        validateBody(cmd.else, `${at}.else`, issues, false, validateChild);
       break;
     }
     case "menu": {
@@ -66,17 +74,17 @@ export function validateBlocksCommand(
     }
     case "while":
       requireNonEmptyString(cmd.cond, `${at}.cond`, issues);
-      validateBody(cmd.body, `${at}.body`, issues, true);
+      validateBody(cmd.body, `${at}.body`, issues, true, validateChild);
       break;
     case "for":
       requireNonEmptyString(cmd.var, `${at}.var`, issues);
       requireNonEmptyString(cmd.in, `${at}.in`, issues);
-      validateBody(cmd.body, `${at}.body`, issues, true);
+      validateBody(cmd.body, `${at}.body`, issues, true, validateChild);
       break;
     case "foreach":
       requireNonEmptyString(cmd.var, `${at}.var`, issues);
       requireNonEmptyString(cmd.key, `${at}.key`, issues);
-      validateBody(cmd.body, `${at}.body`, issues, true);
+      validateBody(cmd.body, `${at}.body`, issues, true, validateChild);
       break;
     case "switch": {
       requireNonEmptyString(cmd.on, `${at}.on`, issues);
@@ -89,11 +97,23 @@ export function validateBlocksCommand(
             continue;
           }
           if (!("value" in c)) issues.push(`${at}.cases[${j}].value 必填`);
-          validateBody(c.body, `${at}.cases[${j}].body`, issues, true);
+          validateBody(
+            c.body,
+            `${at}.cases[${j}].body`,
+            issues,
+            true,
+            validateChild,
+          );
         }
       }
       if (cmd.default !== undefined)
-        validateBody(cmd.default, `${at}.default`, issues, false);
+        validateBody(
+          cmd.default,
+          `${at}.default`,
+          issues,
+          false,
+          validateChild,
+        );
       break;
     }
     case "func":
@@ -104,7 +124,7 @@ export function validateBlocksCommand(
       ) {
         issues.push(`${at}.params 必须为非空字符串数组`);
       }
-      validateBody(cmd.body, `${at}.body`, issues, true);
+      validateBody(cmd.body, `${at}.body`, issues, true, validateChild);
       break;
   }
 }
