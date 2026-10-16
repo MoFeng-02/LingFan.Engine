@@ -86,7 +86,7 @@ function tagList(html) {
 }
 /**
  * 判定某位置的元素是否已从无障碍树移除：自身或任一祖先带 aria-hidden="true"。
- * 这是 E 组「装饰性图标不得被读屏念出」的准确判据——Starlight 把 aria-hidden
+ * 这是「装饰性图标不得被读屏念出」的准确判据——Starlight 把 aria-hidden
  * 放在 .sl-anchor-icon 的 <span> 上，图标 <svg> 自身没有该属性。
  */
 export function ancestorHidden(tags, idx) {

@@ -34,7 +34,7 @@ if (JSON_OUT) {
   );
 } else {
   const icon = { PASS: "✓", FAIL: "✗", MANUAL: "?" };
-  console.log("\n=== audit-i18n · 双语站 i18n 检查（B 组）===");
+  console.log("\n=== audit-i18n · 双语站 i18n 检查===");
   console.log(`产物：${DIST}`);
   console.log(
     `页数：${rows.length}（zh ${zhPages.length} / en ${enPages.length}；en 侧 fallback ${enPages.filter((r) => r.isFallback).length} / 真译文 ${enPages.filter((r) => !r.isFallback).length}）\n`,

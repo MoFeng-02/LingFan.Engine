@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * audit-bundle.mjs · 性能与产物体积检查（D 组）
+ * audit-bundle.mjs · 性能与产物体积检查
  * ---------------------------------------------------------------------------
  * 判定项：
  *   D1  Lighthouse 移动端 Performance ≥ 95（3 次取中位）
@@ -466,7 +466,7 @@ if (JSON_OUT) {
   );
 } else {
   const icon = { PASS: "✓", FAIL: "✗", MANUAL: "?" };
-  console.log("\n=== audit-bundle · 性能与产物体积（D 组）===");
+  console.log("\n=== audit-bundle · 性能与产物体积===");
   console.log(`产物：${DIST}`);
   console.log(`页面：${htmlFiles.length} 页；Lighthouse 报告目录：${LH_DIR}\n`);
   for (const r of results) {

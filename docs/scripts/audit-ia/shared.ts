@@ -165,7 +165,7 @@ export const sidebarPage =
 export const sidebar = sidebarPage ? parseSidebar(sidebarPage.html) : null;
 export const groups = sidebar ? sidebar.children : [];
 
-/** 全站 href/src 链接清单（A4-4 URL 规则与 A5 断链共用） */
+/** 全站 href/src 链接清单（URL 规则与断链检查共用） */
 export const htmlLinks = pages.flatMap((p) =>
   [...p.html.matchAll(/(?:href|src)="([^"]*)"/g)].map((m) => ({
     url: p.url,

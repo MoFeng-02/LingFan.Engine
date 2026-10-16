@@ -1,5 +1,5 @@
 /**
- * audit-frontmatter · E 组静态结构检查（h1、层级、landmark、SVG/img、焦点序、nav）
+ * audit-frontmatter · 静态结构检查（h1、层级、landmark、SVG/img、焦点序、nav）
  */
 import { ancestorHidden, fail, pass, rows } from "./shared.ts";
 

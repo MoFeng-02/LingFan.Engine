@@ -2,7 +2,7 @@
  * audit-frontmatter · 组合根（唯一出口）。
  *
  * 入口 audit-frontmatter.mjs 只 import 本文件；五个实现模块按下列顺序求值：
- * 共享配置与产物扫描 → A/H 组 → E 组静态 →
+ * 共享配置与产物扫描 → head 与信息架构 → 静态结构 →
  * 键盘走查（浏览器）→ 输出。
  *
  * 注意：这里必须用 await import() 而不是静态 import——
