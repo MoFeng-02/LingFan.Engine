@@ -12,7 +12,6 @@ export {
 } from "./assign.ts";
 export { lowerCond, loweredToScriptValue, lowerValue } from "./expr.ts";
 export type { Lowered } from "./expr.ts";
-export { engineValueText, quoteEngineString } from "./engine-text.ts";
 export { lowerExpr } from "./lower/index.ts";
 export { probeExpression } from "./probe.ts";
 export { statePath } from "./state-path.ts";
