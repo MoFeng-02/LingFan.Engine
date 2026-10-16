@@ -88,7 +88,7 @@ const SINGLE: Record<string, string> = {
 /** 模板副本：项目模板是独立工程，与宿主各留一份是故意的 */
 const TEMPLATED: Record<string, readonly string[]> = {
   HostFrameLoopOptions: [
-    "apps/playground/src/host/stage/frame/frame-loop.ts",
+    "packages/shell/src/frame/appFrameLoop.ts",
     "template/v1/__PROJECT__/src/host/frame-loop.ts",
   ],
 };
