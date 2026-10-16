@@ -17,13 +17,14 @@ export const RUN_TIME_ROOTS = [
   "@lingfan/ui",
   "@lingfan/editor",
   "@lingfan/adapters",
+  "@lingfan/shell",
 ];
 
 /**
- * 体积实测对象：小程序侧真正可能进主包的三个包。适配器不在其中——它是宿主按平台挑的，
+ * 体积实测对象：小程序侧真正可能进主包的四个包。适配器不在其中——它是宿主按平台挑的，
  * 各平台取不同子面（小程序只取小程序适配器），拿整个包计主包没有意义。
  */
-export const SIZE_ENTRIES = ["@lingfan/engine", "@lingfan/ui", "@lingfan/editor"];
+export const SIZE_ENTRIES = ["@lingfan/engine", "@lingfan/ui", "@lingfan/editor", "@lingfan/shell"];
 
 /**
  * 构建期工具**必须**留在图外：它们在 Node 里跑，用 node:fs 是本职，不是违规。
