@@ -24,6 +24,7 @@ import {
 } from "@lingfan/engine";
 import { createCommandRegistry, routesToNarrative } from "@lingfan/ui";
 import {
+  browserFrameSource,
   createAppElementLayer,
   createAppEngineLife,
   createAppEvents,
@@ -282,10 +283,11 @@ const { initEngine, restart, unbind } = createAppEngineLife({
 
 initEngine();
 
-// —— 帧驱动表现与 rAF 帧循环（打字机推进 → 可见文本 → 媒体回写 → 表现）——
-/** 帧驱动：rAF 循环串起打字机推进、媒体回写与舞台表现（遮罩透明度/层偏移） */
+// —— 帧驱动表现与共享帧循环（打字机推进 → 可见文本 → 媒体回写 → 表现）——
+/** 帧驱动：帧循环串起打字机推进、媒体回写与舞台表现（帧源由本宿主提供 rAF 实现） */
 const { frameLoop } = createAppFrame({
   getEngine: () => engine,
+  frame: browserFrameSource(),
   narrative,
   media,
   typewriter,

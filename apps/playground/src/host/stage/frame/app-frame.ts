@@ -8,8 +8,9 @@
 
 import { type Ref } from "vue";
 import { SYS, type StoryEngine } from "@lingfan/engine";
+import { type FrameSource } from "@lingfan/ui";
+import { startHostFrameLoop as startLoop } from "@lingfan/shell";
 import { createHostEffects } from "../elements/effects";
-import { startHostFrameLoop as startLoop } from "./frame-loop";
 import type { AppMedia } from "../media/app-media";
 import type { VueNarrativeState } from "../../narrative/runtime/narrative-state";
 import type { TypewriterHandle } from "../../narrative/wiring/app-narrative";
@@ -18,6 +19,8 @@ import type { TypewriterHandle } from "../../narrative/wiring/app-narrative";
 export interface AppFrameOptions {
   /** 引擎句柄取用（动画/转场/震动描述读取与完成回传；重启重建后指向新实例） */
   getEngine: () => StoryEngine;
+  /** 帧源（组合根注入：浏览器宿主给 rAF 帧源，小程序宿主给画布帧源） */
+  frame: FrameSource;
   /** 叙事视图状态（正文与可见文本字段） */
   narrative: VueNarrativeState;
   /** 媒体单元格（音频位置逐帧回写） */
@@ -42,6 +45,7 @@ export interface AppFrame {
 export function createAppFrame(options: AppFrameOptions): AppFrame {
   const {
     getEngine,
+    frame,
     narrative,
     media,
     typewriter,
@@ -79,10 +83,11 @@ export function createAppFrame(options: AppFrameOptions): AppFrame {
     readOverlay: () => transitionEl.value,
     readStage: () => stageEl.value,
   });
-  // —— rAF 帧循环驱动打字机 ——
+  // —— 共享帧循环驱动打字机（帧源由组合根注入，本文件不认平台帧 API）——
   // 帧内顺序（推进打字机 → 上交可见文本 → 媒体位置回写 → 帧驱动表现）。
   // 打字机为空时用正文兜底：整句直出（不经打字机）也得上屏。
   const frameLoop = startLoop({
+    frame,
     readTypewriter: () => typewriter.get(),
     onText: (visible) => {
       shownText.value = typewriter.get() === null ? text.value : visible;
