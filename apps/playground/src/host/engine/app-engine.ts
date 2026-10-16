@@ -22,9 +22,9 @@ import {
 } from "@lingfan/engine";
 import { guards as engineGuards } from "../../stories";
 import { playgroundEngineTexts } from "./engine-texts";
-import type { AppMedia } from "../stage/app-media";
-import type { VueNarrativeState } from "../narrative/narrative-state";
-import type { TypewriterHandle } from "../narrative/app-narrative";
+import type { AppMedia } from "../stage/media/app-media";
+import type { VueNarrativeState } from "../narrative/runtime/narrative-state";
+import type { TypewriterHandle } from "../narrative/wiring/app-narrative";
 
 /** 装配入参：宿主属性、装配层句柄与重启时需复位的各单元格 */
 export interface AppEngineLifeOptions {

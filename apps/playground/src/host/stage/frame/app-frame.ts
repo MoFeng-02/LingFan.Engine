@@ -8,11 +8,11 @@
 
 import { type Ref } from "vue";
 import { SYS, type StoryEngine } from "@lingfan/engine";
-import { createHostEffects } from "./effects";
+import { createHostEffects } from "../elements/effects";
 import { startHostFrameLoop as startLoop } from "./frame-loop";
-import type { AppMedia } from "./app-media";
-import type { VueNarrativeState } from "../narrative/narrative-state";
-import type { TypewriterHandle } from "../narrative/app-narrative";
+import type { AppMedia } from "../media/app-media";
+import type { VueNarrativeState } from "../../narrative/runtime/narrative-state";
+import type { TypewriterHandle } from "../../narrative/wiring/app-narrative";
 
 /** 装配入参：引擎句柄、叙事状态、媒体单元格与表现层目标元素 */
 export interface AppFrameOptions {

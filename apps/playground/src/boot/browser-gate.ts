@@ -6,7 +6,7 @@
  * 静态根（`fetch` + 明文 `Resources/**`）——两种供给面不可共存于同一个构建产物。故组合根
  * 在装配端口之前先过守卫，无壳且未显式放行即拒绝启动，页面不留白屏也不静默退场。
  */
-import { browserBlockedMessage } from "../browserGuard";
+import { browserBlockedMessage } from "./browserGuard";
 
 /**
  * 形态判定用**运行时事实**而非只看构建标记：tauri 形态的页面可能落在外部浏览器

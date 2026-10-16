@@ -14,9 +14,9 @@ import {
   type NarrativeEvents,
   type Notice,
 } from "@lingfan/shell";
-import type { AppMedia } from "../stage/app-media";
-import type { VueNarrativeState } from "../narrative/narrative-state";
-import type { TypewriterHandle } from "../narrative/app-narrative";
+import type { AppMedia } from "../stage/media/app-media";
+import type { VueNarrativeState } from "../narrative/runtime/narrative-state";
+import type { TypewriterHandle } from "../narrative/wiring/app-narrative";
 
 /** 装配入参：叙事状态、媒体单元格、错误横幅、引擎句柄与打字机句柄 */
 export interface AppEventsOptions {

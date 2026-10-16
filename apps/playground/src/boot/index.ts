@@ -8,6 +8,13 @@
 
 /** 交付守卫：形态判定与无壳时的可见拒绝 */
 export { detectTauriWindow, renderBrowserBlocked } from "./browser-gate";
+/** 浏览器形态闸门：构建期开关与拒绝文案 */
+export {
+  BROWSER_GAME_FLAG,
+  browserBlockedMessage,
+  browserPlayAllowed,
+  type BrowserPlayEnv,
+} from "./browserGuard";
 /** 接宿主通道：WS dev 桥（读工程/存档/平台）与按需加载的 Tauri 窗口 API */
 export {
   connectWsDevChannel,

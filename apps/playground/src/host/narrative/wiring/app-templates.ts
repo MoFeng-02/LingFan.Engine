@@ -23,7 +23,7 @@ import {
   type DialogueTemplateView,
   type NotifyTemplateView,
 } from "@lingfan/ui";
-import type { VueNarrativeState } from "./narrative-state";
+import type { VueNarrativeState } from "../runtime/narrative-state";
 
 /** 装配入参：叙事视图状态与 NVL 滚动主体取用 */
 export interface AppTemplatesOptions {

@@ -78,15 +78,17 @@ const SINGLE: Record<string, string> = {
   NvlCommandMode: "packages/editor/src/script/words/narrative.ts",
   MenuOptionSpec: "packages/editor/src/script/words/narrative.ts",
   // 宿主侧：宿主专属形状带宿主前缀
-  VueNarrativeState: "apps/playground/src/host/narrative/narrative-state.ts",
-  HostLayerZController: "apps/playground/src/host/narrative/layer-z.ts",
-  HostLayerZControllerOptions: "apps/playground/src/host/narrative/layer-z.ts",
+  VueNarrativeState:
+    "apps/playground/src/host/narrative/runtime/narrative-state.ts",
+  HostLayerZController: "apps/playground/src/host/narrative/runtime/layer-z.ts",
+  HostLayerZControllerOptions:
+    "apps/playground/src/host/narrative/runtime/layer-z.ts",
 };
 
 /** 模板副本：项目模板是独立工程，与宿主各留一份是故意的 */
 const TEMPLATED: Record<string, readonly string[]> = {
   HostFrameLoopOptions: [
-    "apps/playground/src/host/stage/frame-loop.ts",
+    "apps/playground/src/host/stage/frame/frame-loop.ts",
     "template/v1/__PROJECT__/src/host/frame-loop.ts",
   ],
 };

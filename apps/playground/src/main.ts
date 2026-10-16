@@ -60,7 +60,7 @@ import {
   MEDIA_BLOB_SOURCE_MAX_BYTES,
   renderBrowserBlocked,
 } from "./boot";
-import { browserPlayAllowed } from "./browserGuard";
+import { browserPlayAllowed } from "./boot/browserGuard";
 import { installStoryFonts } from "./host/assets/app-fonts";
 
 // 渲染诊断探针：`VITE_LFEN_DIAG=1` 构建时启用（白屏诊断用）；默认构建
