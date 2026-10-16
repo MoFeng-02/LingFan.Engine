@@ -4,9 +4,14 @@
  * 三类视觉态（`disabled_*` / `hover_*` / `selected_*`）与点击行为**正交**：
  * 禁用元素不挂点击但仍保留可辨识视觉态，否则玩家只看到「点了没反应」。
  * 点击类判定走纯函数，与宿主选路同源，避免两处判定漂移。
+ *
+ * 视觉态交换以「事件补丁」表达（`RenderEvent.handler` 的返回值）：
+ * 空闲值取自描述树自身，**不从节点读回**——渲染器手上没有节点。
  */
 import { hasElementInteraction, isElementDisabled } from "../interaction";
 import type { ElementRenderContext } from "../registry";
+import type { RenderEventPatch, RenderSpec } from "../spec";
+import { withEvents, withProps, withStyle } from "./base";
 
 /**
  * 元素是否被禁用（最高优先级 `disabled`；`enabled=false` 同义）。
@@ -17,104 +22,123 @@ export function isDisabled(ctx: ElementRenderContext): boolean {
   return isElementDisabled(props, { evalDisable: ctx.evalDisable });
 }
 
+/** 非空字符串属性（`disabled_color` / `hover_color` / `selected_color` 共用判据） */
+function colorProp(value: unknown): string | undefined {
+  return typeof value === "string" && value !== "" ? value : undefined;
+}
+
+/** 数值或长度串属性（`*_opacity` 共用判据） */
+function opacityProp(value: unknown): string | undefined {
+  if (typeof value === "number") return String(value);
+  return typeof value === "string" && value !== "" ? value : undefined;
+}
+
+/** 换图资源（`*_source`）：解析不出即不做改动（不伪造） */
+function sourceUrl(
+  ctx: ElementRenderContext,
+  value: unknown,
+): string | undefined {
+  const source = colorProp(value);
+  return source === undefined ? undefined : ctx.resolveResource?.(source);
+}
+
 /**
  * `disabled_*` 视觉：禁用时改前景色 / 透明度 / 换图。
  * 与点击正交——禁用元素不挂点击，但仍有可辨识的视觉态。
  */
-function bindDisabled(el: HTMLElement, ctx: ElementRenderContext): void {
-  if (!isDisabled(ctx)) return;
+function applyDisabled(
+  spec: RenderSpec,
+  ctx: ElementRenderContext,
+): RenderSpec {
+  if (!isDisabled(ctx)) return spec;
   const props = ctx.element.props;
-  const color =
-    typeof props.disabled_color === "string" && props.disabled_color !== ""
-      ? props.disabled_color
-      : undefined;
-  const rawOpacity = props.disabled_opacity;
-  const opacity =
-    typeof rawOpacity === "number"
-      ? String(rawOpacity)
-      : typeof rawOpacity === "string" && rawOpacity !== ""
-        ? rawOpacity
-        : undefined;
-  const source =
-    typeof props.disabled_source === "string" && props.disabled_source !== ""
-      ? props.disabled_source
-      : undefined;
-  const url = source === undefined ? undefined : ctx.resolveResource?.(source);
-  if (color !== undefined) el.style.color = color;
-  if (opacity !== undefined) el.style.opacity = opacity;
-  if (url !== undefined && el.tagName === "IMG") {
-    (el as HTMLImageElement).src = url;
+  const color = colorProp(props.disabled_color);
+  const opacity = opacityProp(props.disabled_opacity);
+  const url = sourceUrl(ctx, props.disabled_source);
+  let out = spec;
+  const style: Record<string, string> = {};
+  if (color !== undefined) style.color = color;
+  if (opacity !== undefined) style.opacity = opacity;
+  if (Object.keys(style).length > 0) out = withStyle(out, style);
+  // 换图只发生在图像壳上（与既有实现同判据：非图像壳忽略 `disabled_source`）
+  if (url !== undefined && spec.kind === "image") {
+    out = withProps(out, { src: url });
   }
+  return out;
 }
 
 /**
  * `hover_*` 视觉：`hover_color` 改前景色、
- * `hover_opacity` 改透明度、`hover_source` 换图（仅 img）。与点击正交。
+ * `hover_opacity` 改透明度、`hover_source` 换图（仅 image）。与点击正交。
  */
-function bindHover(el: HTMLElement, ctx: ElementRenderContext): void {
+function applyHover(spec: RenderSpec, ctx: ElementRenderContext): RenderSpec {
   const props = ctx.element.props;
-  const color =
-    typeof props.hover_color === "string" && props.hover_color !== ""
-      ? props.hover_color
-      : undefined;
-  const rawOpacity = props.hover_opacity;
-  const opacity =
-    typeof rawOpacity === "number"
-      ? String(rawOpacity)
-      : typeof rawOpacity === "string" && rawOpacity !== ""
-        ? rawOpacity
-        : undefined;
-  const source =
-    typeof props.hover_source === "string" && props.hover_source !== ""
-      ? props.hover_source
-      : undefined;
-  const url = source === undefined ? undefined : ctx.resolveResource?.(source);
-  const isImg = el.tagName === "IMG";
-  if (color === undefined && opacity === undefined && url === undefined) return;
+  const color = colorProp(props.hover_color);
+  const opacity = opacityProp(props.hover_opacity);
+  const url = sourceUrl(ctx, props.hover_source);
+  if (color === undefined && opacity === undefined && url === undefined) {
+    return spec;
+  }
 
-  const idleColor = el.style.color;
-  const idleOpacity = el.style.opacity;
-  const idleSrc = isImg ? (el as HTMLImageElement).src : "";
-  el.addEventListener("mouseenter", () => {
-    if (color !== undefined) el.style.color = color;
-    if (opacity !== undefined) el.style.opacity = opacity;
-    if (url !== undefined && isImg) (el as HTMLImageElement).src = url;
-  });
-  el.addEventListener("mouseleave", () => {
-    if (color !== undefined) el.style.color = idleColor;
-    if (opacity !== undefined) el.style.opacity = idleOpacity;
-    if (url !== undefined && isImg) (el as HTMLImageElement).src = idleSrc;
-  });
+  const isImage = spec.kind === "image";
+  const idleColor = spec.style?.color;
+  const idleOpacity = spec.style?.opacity;
+  const idleSrc = isImage ? spec.props?.src : undefined;
+
+  const enter: RenderEventPatch = {};
+  const leave: RenderEventPatch = {};
+  if (color !== undefined) {
+    enter.style = { ...enter.style, color };
+    leave.style = { ...leave.style, color: idleColor ?? "" };
+  }
+  if (opacity !== undefined) {
+    enter.style = { ...enter.style, opacity };
+    leave.style = { ...leave.style, opacity: idleOpacity ?? "" };
+  }
+  if (url !== undefined && isImage) {
+    enter.props = { ...enter.props, src: url };
+    leave.props = { ...leave.props, src: idleSrc ?? "" };
+  }
+
+  return withEvents(spec, [
+    { on: "mouseenter", handler: () => enter },
+    { on: "mouseleave", handler: () => leave },
+  ]);
 }
 
 /**
  * `selected_*` 视觉：点击切换选中态
  * （`selected_color` 改前景色、`selected_source` 换图）。
  */
-function bindSelected(el: HTMLElement, ctx: ElementRenderContext): void {
+function applySelected(
+  spec: RenderSpec,
+  ctx: ElementRenderContext,
+): RenderSpec {
   const props = ctx.element.props;
-  const color =
-    typeof props.selected_color === "string" && props.selected_color !== ""
-      ? props.selected_color
-      : undefined;
-  const source =
-    typeof props.selected_source === "string" && props.selected_source !== ""
-      ? props.selected_source
-      : undefined;
-  const url = source === undefined ? undefined : ctx.resolveResource?.(source);
-  if (color === undefined && url === undefined) return;
+  const color = colorProp(props.selected_color);
+  const url = sourceUrl(ctx, props.selected_source);
+  if (color === undefined && url === undefined) return spec;
 
-  const isImg = el.tagName === "IMG";
-  const idleColor = el.style.color;
-  const idleSrc = isImg ? (el as HTMLImageElement).src : "";
+  const isImage = spec.kind === "image";
+  const idleColor = spec.style?.color;
+  const idleSrc = isImage ? spec.props?.src : undefined;
   let selected = false;
-  el.addEventListener("click", () => {
-    selected = !selected;
-    if (color !== undefined) el.style.color = selected ? color : idleColor;
-    if (url !== undefined && isImg) {
-      (el as HTMLImageElement).src = selected ? url : idleSrc;
-    }
-  });
+  return withEvents(spec, [
+    {
+      on: "click",
+      handler: (): RenderEventPatch => {
+        selected = !selected;
+        const patch: RenderEventPatch = {};
+        if (color !== undefined) {
+          patch.style = { color: selected ? color : (idleColor ?? "") };
+        }
+        if (url !== undefined && isImage) {
+          patch.props = { src: selected ? url : (idleSrc ?? "") };
+        }
+        return patch;
+      },
+    },
+  ]);
 }
 
 /**
@@ -125,24 +149,30 @@ function bindSelected(el: HTMLElement, ctx: ElementRenderContext): void {
  * - 视觉：`hover_*` / `selected_*` / `disabled_*` 与点击正交，独立绑定。
  */
 export function bindInteraction(
-  el: HTMLElement,
+  spec: RenderSpec,
   ctx: ElementRenderContext,
-): void {
-  bindDisabled(el, ctx); // 禁用视觉态（不挂点击）
-  if (isDisabled(ctx)) return; // 最高优先级：禁用即不挂任何交互
-  bindHover(el, ctx);
-  bindSelected(el, ctx);
+): RenderSpec {
+  let out = applyDisabled(spec, ctx); // 禁用视觉态（不挂点击）
+  if (isDisabled(ctx)) return out; // 最高优先级：禁用即不挂任何交互
+  out = applyHover(out, ctx);
+  out = applySelected(out, ctx);
 
   // 点击类交互判定走纯函数（与宿主分支同源，避免两处判定漂移）
   if (
     !hasElementInteraction(ctx.element.props, { evalDisable: ctx.evalDisable })
-  )
-    return;
-  el.style.cursor = "pointer";
+  ) {
+    return out;
+  }
   // 元素层容器 pointer-events:none（不阻塞舞台推进）——可交互元素自行恢复
-  el.style.pointerEvents = "auto";
-  el.addEventListener("click", (event) => {
-    event.stopPropagation(); // 元素点击不应同时触发舞台推进
-    ctx.activate?.(ctx.element);
-  });
+  out = withStyle(out, { cursor: "pointer", pointerEvents: "auto" });
+  return withEvents(out, [
+    {
+      on: "click",
+      // 元素点击不应同时触发舞台推进
+      stopPropagation: true,
+      handler: () => {
+        ctx.activate?.(ctx.element);
+      },
+    },
+  ]);
 }

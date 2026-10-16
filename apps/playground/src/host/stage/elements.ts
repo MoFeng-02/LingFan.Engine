@@ -14,6 +14,7 @@ import {
   type ElementResourceResolver,
   createElementRegistry,
   createElementResourceResolver,
+  createDomRenderPort,
   registerBuiltinElementRenderers,
   renderElementTree,
   resolveElementAction,
@@ -115,7 +116,7 @@ export function createElementLayer(options: ElementLayerOptions): ElementLayer {
     if (container === null) return;
     renderElementTree({
       registry,
-      container,
+      port: createDomRenderPort(container),
       elements: options.readElements(),
       activate,
       evalDisable,

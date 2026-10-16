@@ -1,19 +1,20 @@
 /**
- * 文本族渲染器：`text` / `dialog` / `narrator` / `speaker` 共用同一落地形态
- * （差异在属性与样式，不在 DOM 结构）。
+ * 文本族渲染（text / dialog / narrator / speaker）。
+ *
+ * 四种类型共用同一渲染器：差异由属性（font/size/color/halign…）与 CSS 类名表达，
+ * 结构上都是「一个承载纯文本的块元素」。文本内容**不做转义/净化**——
+ * 文本族的富文本渲染由对话域负责；元素文本是纯文本，交给宿主原样落地。
  */
+import type { ElementRenderContext } from "../registry";
+import type { RenderSpec } from "../spec";
 import { bindInteraction } from "./bindings";
 import { createRoot } from "./base";
-import type { ElementRenderContext } from "../registry";
 
-/**
- * 文本：取 `text` 作纯文本内容（不解析标记——富文本归对话渲染接缝），再挂交互绑定。
- * 四种文本类型的差异只体现在属性与皮肤上，DOM 形态因此共用这一个函数。
- */
-export function renderText(ctx: ElementRenderContext): HTMLElement {
-  const el = createRoot("div", ctx);
+export function renderText(ctx: ElementRenderContext): RenderSpec {
+  const spec = createRoot("text", ctx);
   const text = ctx.element.props.text;
-  if (typeof text === "string") el.textContent = text;
-  bindInteraction(el, ctx);
-  return el;
+  return bindInteraction(
+    typeof text === "string" ? { ...spec, text } : spec,
+    ctx,
+  );
 }

@@ -14,6 +14,14 @@ export { elementClassName, elementSource, elementStyle } from "./style";
 export { registerBuiltinElementRenderers } from "./renderers";
 export { renderElementTree, type ElementTreeRenderOptions } from "./render";
 export {
+  type RenderEvent,
+  type RenderEventPatch,
+  type RenderKind,
+  type RenderPort,
+  type RenderPropValue,
+  type RenderSpec,
+} from "./spec";
+export {
   hasElementInteraction,
   isElementDisabled,
   resolveElementAction,

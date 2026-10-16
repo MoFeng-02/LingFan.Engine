@@ -24,6 +24,7 @@ import {
   createCommandRegistry,
   createElementRegistry,
   createElementResourceResolver,
+  createDomRenderPort,
   createStateView,
   registerBuiltinElementRenderers,
   renderElementTree,
@@ -112,7 +113,7 @@ export function wireEngine(options: HostWiringOptions): void {
   function renderElements(): void {
     renderElementTree({
       registry: elementRegistry,
-      container: dom.stage,
+      port: createDomRenderPort(dom.stage),
       elements,
       activate: activateElement,
       resolveResource: elementResources.resolveForElement,

@@ -1,14 +1,13 @@
 /**
- * 选择层渲染：菜单选项与输入等待两个形态共用一个挂载点。
+ * 选择层视图模型：菜单选项与输入等待两个形态共用一个提交点，**不碰任何节点**。
  *
- * 两个形态互斥（`input` 等待渲染表单，`menu` 等待渲染选项列表），因此每次重渲
- * 都先清空并整体重建——层内不存在需要保留的局部状态。
- * 点击一律交核心：选项目标是**列 id**（不是显示文本），输入值经宿主提交路径送核心。
+ * 两个形态互斥（`input` 等待渲染输入表单，`menu` 等待渲染选项列表），因此给出的是
+ * `ChoicesLayerView | null`：`null` 表示整层隐藏。点击一律交核心：选项目标是**列 id**
+ * （不是显示文本），输入值经宿主提交路径送核心。
  */
 import { builtinChoiceTemplate } from "../choices/templates";
 import type { ChoiceTemplateRegistry } from "../choices/templates";
-import { clickable } from "./dom";
-import type { NarrativeMounts } from "./types";
+import type { ChoicesLayerView } from "./surface";
 
 /** 一次选择层重渲所需的渲染态（全部来自状态投影） */
 export interface ChoicesRenderInput {
@@ -25,91 +24,53 @@ export interface ChoicesTexts {
 }
 
 /**
- * 选择层的装配输入。`choose` / `submitInput` 是回核心的两条出口——视图不认识引擎，
- * 只把「点了哪一项」「输了什么字」原样交出去。`templates` 不传即用内建模板。
+ * 选择层的装配输入。`choose` / `submitInput` 不在模型里——它们是端口上的两条出口
+ * （见 `OverlaySurface.onChoose` / `onSubmitInput`），视图模型不认识引擎。
  */
 export interface ChoicesViewDeps {
-  container: HTMLElement;
-  mounts: NarrativeMounts;
+  /** 模板注册表（不传 = 内建模板） */
   templates?: ChoiceTemplateRegistry;
   /** 文案覆盖（不传 = 内建缺省） */
   texts?: Partial<ChoicesTexts>;
-  /** 选择选项（交核心 `choose(列 id)`） */
-  choose: (target: string) => void;
-  /** 提交输入（交核心 `input`） */
-  submitInput: (value: string) => void;
 }
 
 /** 内建文案：不传 texts 时的缺省值 */
 const DEFAULT_CHOICES_TEXTS: ChoicesTexts = { inputSubmit: "确定" };
 
 /**
- * 造一个选择层渲染函数：调用它即用当帧的渲染态整体重渲挂载点。
+ * 算出一层选择模型：等待态不是 `menu` / `input` 时返回 `null`（整层隐藏）。
  *
- * 等待态不是 `menu` / `input` 时整层隐藏（`display: none`，不卸载节点——挂载点由装配器拥有）。
- * 重渲先清空再重建，因此层内不留任何跨帧状态；点击直接调 `deps.choose` /
- * `deps.submitInput`，视图自己不判叙事流向。
+ * 输入形态不带皮肤类名（原文如此：`lf-choices` 基类由渲染侧拼，模板只服务菜单形态）；
+ * 菜单形态连同每个选项的三个字段一起给出——`html` 是呈现片段，`label` 是可访问名，
+ * 因此「innerHTML 不进无障碍名计算」这条口径在宿主侧照样能落实。
  */
-export function createChoicesView(
-  deps: ChoicesViewDeps,
-): (input: ChoicesRenderInput) => void {
-  const texts: ChoicesTexts = { ...DEFAULT_CHOICES_TEXTS, ...deps.texts };
-  return (input) => {
-    const doc = deps.container.ownerDocument;
-    const choices = deps.mounts.choices;
-    const active = input.waiting === "menu" || input.waiting === "input";
-    choices.style.display = active ? "" : "none";
-    choices.innerHTML = "";
-    if (!active) return;
+export function choicesLayerView(
+  input: ChoicesRenderInput,
+  deps: ChoicesViewDeps = {},
+): ChoicesLayerView | null {
+  if (input.waiting === "input") {
+    const texts: ChoicesTexts = { ...DEFAULT_CHOICES_TEXTS, ...deps.texts };
+    return {
+      rootClass: "",
+      promptHtml: "",
+      options: [],
+      input: { prompt: input.inputPrompt, submitText: texts.inputSubmit },
+    };
+  }
+  if (input.waiting !== "menu") return null;
 
-    if (input.waiting === "input") {
-      choices.className = "lf-choices";
-      const label = doc.createElement("p");
-      label.className = "lf-prompt";
-      label.textContent = input.inputPrompt;
-      const form = doc.createElement("form");
-      form.className = "lf-input-row";
-      const field = clickable(doc.createElement("input"));
-      field.type = "text";
-      field.setAttribute(
-        "aria-label",
-        input.inputPrompt === "" ? "输入" : input.inputPrompt,
-      );
-      const submit = clickable(doc.createElement("button"));
-      submit.type = "submit";
-      submit.textContent = texts.inputSubmit;
-      form.addEventListener("submit", (e) => {
-        e.preventDefault();
-        deps.submitInput(field.value.trim());
-      });
-      form.append(field, submit);
-      choices.append(label, form);
-      return;
-    }
-
-    const built = (deps.templates?.resolve(null) ?? builtinChoiceTemplate)({
-      prompt: input.menuPrompt,
-      options: input.menuOptions,
-    });
-    choices.className = `lf-choices ${built.rootClass}`;
-    if (built.promptHtml !== "") {
-      const p = doc.createElement("p");
-      p.className = "lf-prompt";
-      p.innerHTML = built.promptHtml;
-      choices.appendChild(p);
-    }
-    const row = doc.createElement("div");
-    row.className = "lf-choice-row";
-    for (const [idx, option] of input.menuOptions.entries()) {
-      const btn = clickable(doc.createElement("button"));
-      btn.type = "button";
-      btn.innerHTML = built.optionHtml[idx] ?? "";
-      // innerHTML 内容不进无障碍名计算（等价于 v-html）：显式给可访问名
-      btn.setAttribute("aria-label", option.text);
-      // 点击交核心 choose(目标是列 id，不是显示文本)
-      btn.addEventListener("click", () => deps.choose(option.target));
-      row.appendChild(btn);
-    }
-    choices.appendChild(row);
+  const built = (deps.templates?.resolve(null) ?? builtinChoiceTemplate)({
+    prompt: input.menuPrompt,
+    options: input.menuOptions,
+  });
+  return {
+    rootClass: built.rootClass,
+    promptHtml: built.promptHtml,
+    options: input.menuOptions.map((option, index) => ({
+      html: built.optionHtml[index] ?? "",
+      label: option.text,
+      target: option.target,
+    })),
+    input: null,
   };
 }

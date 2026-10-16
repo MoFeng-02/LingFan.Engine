@@ -82,8 +82,13 @@ export function createHostEffects(
       },
     },
     animation: {
-      readAnimationHost: () => options.readElementHost(),
-      onAnimatedProperty: (node, property, value) => {
+      onAnimatedProperty: (target, property, value) => {
+        const host = options.readElementHost();
+        if (host === null) return;
+        const node = host.querySelector<HTMLElement>(
+          `[data-lf-id="${target}"]`,
+        );
+        if (node === null) return;
         const style = resolveAnimatedStyle(property, value);
         if (style !== null) Object.assign(node.style, style);
       },

@@ -39,8 +39,11 @@ export function createHostEffects(
     },
     animation: {
       // 动画节点在舞台层里按 data-lf-id 找（元素渲染器写入的定位锚）
-      readAnimationHost: () => dom.stage,
-      onAnimatedProperty: (node, property, value) => {
+      onAnimatedProperty: (target, property, value) => {
+        const node = dom.stage.querySelector<HTMLElement>(
+          `[data-lf-id="${target}"]`,
+        );
+        if (node === null) return;
         const style = resolveAnimatedStyle(property, value);
         // 未识别的属性跳过：写一个空声明会把元素已有样式抹掉
         if (style !== null) Object.assign(node.style, style);

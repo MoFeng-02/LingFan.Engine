@@ -16,6 +16,7 @@ import {
   loadProject,
 } from "@lingfan/adapters";
 import {
+  createDomOverlaySurface,
   createElementResourceResolver,
   createNarrativeOverlay,
   type NarrativeOverlay,
@@ -89,9 +90,12 @@ async function main(): Promise<void> {
     onResolved: () => overlay.sync(),
   });
 
-  // ③ 一行挂载：覆盖层自带五挂载点 + 层级 + 打字机 + 帧循环
+  // ③ 两行挂载：建 Web 覆盖层表面（层骨架），再把表面交给装配器
+  const surface = createDomOverlaySurface(
+    document.querySelector<HTMLElement>("#embed")!,
+  );
   const overlay: NarrativeOverlay = createNarrativeOverlay({
-    container: document.querySelector<HTMLElement>("#embed")!,
+    surface,
     engine,
     textSpeed: OVERLAY_TEXT_SPEED,
     resolveResource: elementResources.resolveForElement,
@@ -102,7 +106,7 @@ async function main(): Promise<void> {
   //    （本演示无外部玩法系统，域恒为叙事；有玩法接管时应切 world 让位）
   window.addEventListener("keydown", (e) => {
     if (e.key === " " || e.key === "Enter") {
-      if (!overlay.shouldConsumeInput(e)) return;
+      if (!overlay.shouldConsumeInput(e.target)) return;
       e.preventDefault();
       overlay.advance();
       return;
@@ -124,7 +128,7 @@ async function main(): Promise<void> {
       text: overlay.view().text,
       canAdvance: overlay.view().canAdvance,
       options: overlay.view().menuOptions,
-      mounts: Object.keys(overlay.mounts),
+      mounts: Object.keys(surface.nodes),
     }),
   };
 }

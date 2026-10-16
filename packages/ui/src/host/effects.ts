@@ -12,8 +12,8 @@
  * 累计量与收尾顺序只留在这一处。
  *
  * DOM 写入同样经注入：
- * - `readAnimationHost()` 返回动画节点所在的容器（无容器时元素动画仍要交回引擎，故不能提前 return）；
- * - `onAnimatedProperty(node, property, value)` 把数值属性写进该节点；
+ * - `onAnimatedProperty(target, property, value)` 按元素 id 把数值属性写进该节点
+ *   （节点解析与写入都在宿主侧，本模块既不持有也不查询节点）；
  * - `onTransitionFrame(opacity)` / `onTransitionDone()` 与 `onShakeFrame(x, y)` / `onShakeDone()`
  *   成对出现：宿主在 `*Frame` 里写遮罩与位移，在 `*Done` 里收尾（隐藏遮罩、位移归位）。
  *
@@ -81,14 +81,15 @@ export interface EffectSource {
 }
 
 /**
- * 宿主触点（注入端口）：本模块只做插值与时机判定，DOM 读写全由宿主实现。
- * `node` 是不透明句柄——本模块不查节点、不读样式、不写样式。
+ * 宿主触点（注入端口）：本模块只做插值与时机判定，节点解析与 DOM 读写全由宿主实现。
+ * 本模块只交出 `target`（元素 id）——不持有节点、不查节点、不读样式、不写样式。
  */
 export interface AnimationHost {
-  /** 动画节点所在容器；返回 null 时元素动画只交回引擎、不写 DOM */
-  readAnimationHost(): HTMLElement | null;
-  /** 数值属性 → CSS 写入（映射口径与元素样式一致） */
-  onAnimatedProperty(node: HTMLElement, property: string, value: number): void;
+  /**
+   * 数值属性 → CSS 写入：宿主按 `target` 自行解析动画节点（元素渲染器写在
+   * `data-lf-id` 上的定位锚），映射口径用 `resolveAnimatedStyle`；节点不存在时宿主忽略该帧。
+   */
+  onAnimatedProperty(target: string, property: string, value: number): void;
 }
 
 /** 全屏转场与屏幕震动的宿主触点（每帧回调先于播毕回调） */
@@ -130,17 +131,11 @@ export function createVisualEffects(
     // ① 元素动画：累计 elapsed → 插值写 DOM → 播毕交回引擎（终值写回元素属性）
     const animations = source.animations();
     if (animations.length > 0) {
-      const hostEl = animation.readAnimationHost();
       for (const spec of animations) {
         const elapsed = (animatedElapsed.get(spec.seq) ?? 0) + dt;
         animatedElapsed.set(spec.seq, elapsed);
         const { value, done } = interpolateAnimation(spec, elapsed);
-        const node = hostEl?.querySelector<HTMLElement>(
-          `[data-lf-id="${spec.target}"]`,
-        );
-        if (node != null) {
-          animation.onAnimatedProperty(node, spec.property, value);
-        }
+        animation.onAnimatedProperty(spec.target, spec.property, value);
         if (done) {
           animatedElapsed.delete(spec.seq);
           source.animationFinished(spec.seq);

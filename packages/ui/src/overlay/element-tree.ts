@@ -9,6 +9,7 @@ import type { ElementInstance, StoryEngine } from "@lingfan/engine";
 import { resolveElementAction } from "../element/interaction";
 import { renderElementTree } from "../element/render";
 import type { ElementRegistry } from "../element/registry";
+import type { RenderPort } from "../element/spec";
 
 /** 元素 `cmd` 命令处理器（未注册 = fail-closed 上报） */
 export type ElementCommandHandler = (
@@ -23,8 +24,8 @@ export type ElementCommandHandler = (
 export interface ElementTreeDeps {
   /** 元素渲染器注册表（36 类型全集，或宿主替换的实现） */
   registry: ElementRegistry;
-  /** 元素层（元素树的渲染目标） */
-  container: HTMLElement;
+  /** 元素层的渲染端口（元素树的物化目标；Web 侧由 `createDomRenderPort` 就地包装） */
+  port: RenderPort;
   engine: StoryEngine;
   /** 宿主注册的元素命令表 */
   commands?: Map<string, ElementCommandHandler>;
@@ -95,7 +96,7 @@ export function createElementTree(deps: ElementTreeDeps): ElementTree {
       // 置 cursor:pointer + pointer-events:auto）——本层不重判第二遍。
       renderElementTree({
         registry: deps.registry,
-        container: deps.container,
+        port: deps.port,
         elements,
         activate,
         evalDisable,
