@@ -35,7 +35,7 @@ export default function start(): void {
   a %= 2;
   say('{a} 我是取余值');
   let c = 100;
-  let b = 200;
+  const b = 200;
   say('{c} 我是 c');
   say('{b} 我是 b');
   c = c * b;
@@ -45,6 +45,7 @@ export default function start(): void {
   a = 66;
   c = c * a * b;
   say('{c} 我是 c * a * b');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 这次写入由下一行 say 的 {c} 插值读取，插值在故事编译期求值，TypeScript 看不到该读取
   c = c / a / b;
   say('{c} 我是 c / a / b');
   say("数值测试结束")
