@@ -6,13 +6,15 @@
  * 这是有意的：执行器对未实现 op fail-closed，编辑期 schema 负责字段面。
  */
 import { isPlainObject } from "../../shared/index.ts";
-import { validateDialogCommand } from "./validate/dialog.ts";
-import { validateFlowCommand } from "./validate/flow.ts";
-import { validateVariablesCommand } from "./validate/variables.ts";
-import { validateCollectionsCommand } from "./validate/collections.ts";
-import { validateSaveCommand } from "./validate/save.ts";
-import { validatePresentCommand } from "./validate/present.ts";
-import { validateBlocksCommand } from "./validate/blocks.ts";
+import {
+  validateBlocksCommand,
+  validateCollectionsCommand,
+  validateDialogCommand,
+  validateFlowCommand,
+  validatePresentCommand,
+  validateSaveCommand,
+  validateVariablesCommand,
+} from "./validate/index.ts";
 
 /**
  * 校验单条命令的负载结构，把问题记进 `issues`。

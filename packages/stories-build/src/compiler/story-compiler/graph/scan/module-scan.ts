@@ -1,6 +1,6 @@
 import * as ts from "typescript";
-import { scanEnum } from "./fold.ts";
-import type { Binding, DiagBag, ModuleRecord } from "./core.ts";
+import { scanEnum } from "../fold.ts";
+import type { Binding, DiagBag, ModuleRecord } from "../core.ts";
 
 /**
  * 模块语句扫描：把单个 .ts 模块的顶层语句归类登记进 ModuleRecord

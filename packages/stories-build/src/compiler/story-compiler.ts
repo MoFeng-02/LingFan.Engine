@@ -1,21 +1,23 @@
-import { isSafeFileNameSegment, type CharacterDef, type Story } from "@lingfan/engine";
+import {
+  isSafeFileNameSegment,
+  type CharacterDef,
+  type Story,
+} from "@lingfan/engine";
 import type { StorySourceConfig } from "../config/story-config.ts";
 import {
   defaultStoriesBuildTexts,
   type StoriesBuildTexts,
 } from "../shared/index.ts";
 import {
-  DiagBag,
   buildGraph,
-  resolveStart,
-  type CompileDiag,
-  type Graph,
-} from "./story-compiler/graph.ts";
-import {
   compileStoryFile,
   createAssembleSession,
+  DiagBag,
+  resolveStart,
+  type CompileDiag,
   type CompiledStory,
-} from "./story-compiler/assemble.ts";
+  type Graph,
+} from "./story-compiler/index.ts";
 import type { CompilerConstValues } from "./compiler-contract.ts";
 
 export interface CompileStoriesResult {

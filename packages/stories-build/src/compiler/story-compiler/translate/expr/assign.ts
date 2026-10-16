@@ -6,8 +6,8 @@ import {
   lookupScope,
   lookupOwnScope,
   declareLocal,
-} from "./shared.ts";
-import type { BodyCtx } from "./shared.ts";
+} from "../shared.ts";
+import type { BodyCtx } from "../shared.ts";
 import { statePath } from "./expr-core.ts";
 import { lowerValue, loweredToScriptValue } from "./expr.ts";
 import { callWord, emitCallCommand, resolveFunctionCallee } from "./words.ts";

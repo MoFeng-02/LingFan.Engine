@@ -1,17 +1,17 @@
 import * as ts from "typescript";
 import type { StoryCommand } from "@lingfan/engine";
-import { foldConst } from "../graph.ts";
+import { foldConst } from "../../graph.ts";
 import {
   diag,
   lookupBinding,
   lookupScope,
   isAssignmentOperator,
-} from "./shared.ts";
-import type { BodyCtx, Scope } from "./shared.ts";
-import { statePath } from "./expr-core.ts";
-import { lowerCond, lowerValue, loweredToScriptValue } from "./expr.ts";
-import { callWord } from "./words.ts";
-import { emitAssignment, translateIncrement } from "./assign.ts";
+} from "../shared.ts";
+import type { BodyCtx, Scope } from "../shared.ts";
+import { statePath } from "../expr/expr-core.ts";
+import { lowerCond, lowerValue, loweredToScriptValue } from "../expr/expr.ts";
+import { callWord } from "../expr/words.ts";
+import { emitAssignment, translateIncrement } from "../expr/assign.ts";
 
 /**
  * 语句递归入口：块体与 `case` 体由此下探。

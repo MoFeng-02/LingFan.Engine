@@ -10,10 +10,13 @@ import {
   toPosix,
 } from "./core.ts";
 import type { Graph, ModuleRecord } from "./core.ts";
-import { scanModule } from "./module-scan.ts";
+import { scanModule } from "./scan/module-scan.ts";
 import { discoverStateRoot } from "./state-root.ts";
-import { scanConstStatement, assertNpmNamesConstOnly } from "./bindings.ts";
-import { resolveImports } from "./imports.ts";
+import {
+  scanConstStatement,
+  assertNpmNamesConstOnly,
+} from "./scan/bindings.ts";
+import { resolveImports } from "./scan/imports.ts";
 
 /**
  * 图谱构建：布局声明（config 求值产物）为必填入参——本层不再解析 config.ts

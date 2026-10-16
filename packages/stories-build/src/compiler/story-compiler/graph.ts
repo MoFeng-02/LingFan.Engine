@@ -1,12 +1,18 @@
-// graph.ts —— 纯转发出口（原单文件实现拆分至 graph/ 子目录，导入路径零改动）
+/**
+ * 图谱族的对上游出口（本文件与 `graph/` 目录同族，导出面与目录出口一致）。
+ */
 export type {
+  Binding,
   CompileDiag,
   ConstValue,
-  Binding,
+  Graph,
   ModuleRecord,
   StoryConfig,
-  Graph,
-} from "./graph/core.ts";
-export { DiagBag, toPosix } from "./graph/core.ts";
-export { foldConst } from "./graph/fold.ts";
-export { buildGraph, resolveStart } from "./graph/build.ts";
+} from "./graph/index.ts";
+export {
+  buildGraph,
+  DiagBag,
+  foldConst,
+  resolveStart,
+  toPosix,
+} from "./graph/index.ts";

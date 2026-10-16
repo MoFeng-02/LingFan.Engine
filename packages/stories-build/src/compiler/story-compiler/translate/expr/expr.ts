@@ -1,6 +1,6 @@
 import * as ts from "typescript";
-import { diag, lookupBinding, lookupScope } from "./shared.ts";
-import type { BodyCtx } from "./shared.ts";
+import { diag, lookupBinding, lookupScope } from "../shared.ts";
+import type { BodyCtx } from "../shared.ts";
 import {
   probeExpression,
   lowerExpr,

@@ -2,17 +2,19 @@
  * 命令文本投影的分发骨架：建上下文、按 op 族转交、兜底走扩展投影或 fail-closed。
  * 各族的判定与文案都在 command/ 下的族文件里，这里只负责路由。
  *
- * 注意：本文件与同名的 `command/` 目录并存——模块解析**文件优先**，
- * 故 `./command` 恒指本文件；在 `command/` 下新增 `index.ts` 会使 `./command` 解析到目录——保持该目录无 `index.ts`。
+ * 注意：本文件与同名的 `command/` 目录并存——本仓 import 一律带显式 `.ts` 后缀，
+ * `./command.ts` 与 `./command/index.ts` 不会撞车；族目录的出口是 `command/index.ts`。
  */
-import { generateDialogCommand } from "./command/dialog.ts";
-import { generateFlowCommand } from "./command/flow.ts";
-import { generateVariablesCommand } from "./command/variables.ts";
-import { generateCollectionsCommand } from "./command/collections.ts";
-import { generateSaveCommand } from "./command/save.ts";
-import { generateMediaCommand } from "./command/media.ts";
-import { generateBlocksCommand } from "./command/blocks.ts";
-import { generatePresentCommand } from "./command/present.ts";
+import {
+  generateBlocksCommand,
+  generateCollectionsCommand,
+  generateDialogCommand,
+  generateFlowCommand,
+  generateMediaCommand,
+  generatePresentCommand,
+  generateSaveCommand,
+  generateVariablesCommand,
+} from "./command/index.ts";
 import { tryProjectToText } from "./projection.ts";
 import { TextFormatError } from "../error.ts";
 import type {
