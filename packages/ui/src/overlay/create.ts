@@ -1,14 +1,15 @@
 /**
- * 叙事覆盖层装配器：把一个父容器变成可运行的叙事覆盖层。
+ * 叙事覆盖层装配器：把一个宿主的覆盖层表面变成可运行的叙事覆盖层。
  *
  * **解决的问题**：把叙事能力嵌入已有游戏（2D/3D 引擎）时，宿主需要自行实现一份
- * 参考宿主的渲染接线（五个挂载点 + 状态投影 + 打字机 + 帧循环 + 输入判据）。
- * 本装配器把这套接线收进展示层：宿主只给一个容器与一个引擎实例。
+ * 参考宿主的渲染接线（五层视图模型 + 状态投影 + 打字机 + 帧循环 + 输入判据）。
+ * 本装配器把这套接线收进展示层：宿主只给一个覆盖层表面（`OverlaySurface`）与一个引擎实例。
  *
  * **设计约束（与引擎架构一致）**：
  * - 引擎核心**不驱动帧**（帧归宿主），本装配器就是那个宿主：它持帧循环，
  *   只做插值，不逐帧写状态（帧级高频键由引擎自己的静默写通道负责）。
- * - 挂载点与层级 z 由本装配器创建（渲染目标的宿主侧落地）；引擎只写状态。
+ * - 渲染落点全部经端口（`surface.setDialogue` / `setChoices` / `pushNotification` /
+ *   `setLayerZ`），本模块不出现任何平台类型；层骨架由宿主的实现建。
  * - 模板注册表可选注入，不传即内建默认（模板只决定「长什么样」）。
  * - **不自行绑定键盘**：宿主游戏的键位归宿主。本层只提供判据与命令入口，
  *   并复用展示层唯一的输入判据（`isGameInputTarget`），不另立第二份口径。
@@ -17,7 +18,7 @@
  * 经引擎选项注入）、不改叙事语义。
  *
  * 本模块只做**装配、接线与销毁编排**：各职责的实现分别在同目录的
- * `mounts` / `projector` / `*-view` / `element-tree` / `frame-loop` 内。
+ * `projector` / `*-view`（视图模型）/ `element-tree` / `frame-loop` / `layer-z` 内。
  * 所有状态都由各职责的工厂持有（每次调用装配器产出独立的一份），
  * 因此两个覆盖层实例互不串扰。
  */
@@ -27,13 +28,16 @@ import { isGameInputTarget } from "../input/scope";
 import { createElementRegistry } from "../element/registry";
 import type { ElementRegistry } from "../element/registry";
 import { registerBuiltinElementRenderers } from "../element";
-import { createChoicesView } from "./choices-view";
-import { createDialogueView } from "./dialogue-view";
+import { DEFAULT_NOTIFY_MS } from "../host/duration";
+import { choicesLayerView } from "./choices-view";
+import type { ChoicesViewDeps } from "./choices-view";
+import { dialogueLayerView } from "./dialogue-view";
+import type { DialogueViewDeps } from "./dialogue-view";
 import { createElementTree } from "./element-tree";
 import { createFrameLoop } from "./frame-loop";
 import { createLayerZController } from "./layer-z";
-import { createMounts } from "./mounts";
-import { createNotifyView } from "./notify-view";
+import { notifyLayerItem } from "./notify-view";
+import type { NotifyViewDeps } from "./notify-view";
 import { createProjector } from "./projector";
 import type { RenderTarget } from "./projector";
 import type { NarrativeOverlay, NarrativeOverlayOptions } from "./types";
@@ -49,10 +53,11 @@ function createBuiltinElementRegistry(): ElementRegistry {
  * 装配叙事覆盖层。
  *
  * ```ts
- * const overlay = createNarrativeOverlay({ container, engine });
+ * const surface = createDomOverlaySurface(container);
+ * const overlay = createNarrativeOverlay({ surface, engine });
  * engine.start();
  * window.addEventListener("keydown", (e) => {
- *   if (e.key === " " && overlay.shouldConsumeInput(e)) overlay.advance();
+ *   if (e.key === " " && overlay.shouldConsumeInput(e.target)) overlay.advance();
  * });
  * // 卸载：overlay.dispose();
  * ```
@@ -60,16 +65,19 @@ function createBuiltinElementRegistry(): ElementRegistry {
 export function createNarrativeOverlay(
   options: NarrativeOverlayOptions,
 ): NarrativeOverlay {
-  const { container, engine } = options;
+  const { surface, engine } = options;
   const report = options.onError ?? ((m: string) => console.error(m));
   const layerZ: LayerZTable = options.layerZ ?? DEFAULT_LAYER_Z;
   const reader = createStateReader(engine);
 
-  const mounts = createMounts(container, layerZ);
   const elements = options.elementRegistry ?? createBuiltinElementRegistry();
   const textSpeed = options.textSpeed ?? 30;
 
-  const layerZController = createLayerZController(mounts, layerZ);
+  const layerZController = createLayerZController(surface, layerZ);
+  // 表面可能由宿主先建（那时还不知道本实例的层默认表）：构造末尾统一下发一次，
+  // 此后层默认表与本实例一致；下发幂等，不产生渲染目标。
+  layerZController.apply();
+
   const projector = createProjector({
     reader,
     engine,
@@ -77,57 +85,62 @@ export function createNarrativeOverlay(
     textSpeed,
   });
 
-  const renderDialogue = createDialogueView({
-    container,
-    mounts,
+  const dialogueDeps: DialogueViewDeps = {
     templates: options.dialogueTemplates,
     readTemplateName: () => reader.dialogTemplate(),
-  });
-  const renderChoices = createChoicesView({
-    container,
-    mounts,
+  };
+  const choicesDeps: ChoicesViewDeps = {
     templates: options.choiceTemplates,
     texts: options.choiceTexts,
-    choose: (target) => engine.choose(target),
-    submitInput: (value) => engine.input(value),
-  });
-  const notifyView = createNotifyView({
-    container,
-    mounts,
-    templates: options.notifyTemplates,
-  });
+  };
+  const notifyDeps: NotifyViewDeps = { templates: options.notifyTemplates };
+
   const elementTree = createElementTree({
     registry: elements,
-    container: mounts.elementLayer,
+    port: surface.elements,
     engine,
     commands: options.commands,
     resolveResource: options.resolveResource,
     report,
   });
 
+  // 两条交互出口（DOM 侧的按钮点击与表单提交就是调用点）
+  surface.onChoose = (target) => engine.choose(target);
+  surface.onSubmitInput = (value) => engine.input(value);
+
   /** 重渲对话层（正文 HTML 每次现算：打字帧下它就是变化的那部分） */
   function renderDialogueNow(): void {
     const s = projector.state;
-    renderDialogue({
-      speaker: s.speaker,
-      speakerColor: s.speakerColor,
-      dialogFont: s.dialogFont,
-      canAdvance: s.canAdvance,
-      dialogHidden: s.dialogHidden,
-      waiting: s.waiting,
-      lineHtml: projector.lineHtml(),
-    });
+    surface.setDialogue(
+      dialogueLayerView(
+        {
+          speaker: s.speaker,
+          speakerColor: s.speakerColor,
+          dialogFont: s.dialogFont,
+          canAdvance: s.canAdvance,
+          dialogHidden: s.dialogHidden,
+          waiting: s.waiting,
+          lineHtml: projector.lineHtml(),
+        },
+        dialogueDeps,
+      ),
+    );
   }
 
-  /** 重渲选择层 */
+  /** 重渲选择层（`null` = 整层隐藏） */
   function renderChoicesNow(): void {
     const s = projector.state;
-    renderChoices({
-      waiting: s.waiting,
-      menuPrompt: s.menuPrompt,
-      menuOptions: s.menuOptions,
-      inputPrompt: s.inputPrompt,
-    });
+    surface.setChoices(
+      choicesLayerView(
+        {
+          waiting: s.waiting,
+          menuPrompt: s.menuPrompt,
+          menuOptions: s.menuOptions,
+          inputPrompt: s.inputPrompt,
+        },
+        choicesDeps,
+      ),
+    );
   }
 
   /** 重渲元素树 */
@@ -159,15 +172,17 @@ export function createNarrativeOverlay(
   });
 
   const offEvent = engine.onEvent(({ payload }) => {
-    if (payload.kind === "notify") notifyView.render(payload);
-    else if (payload.kind === "engine.error") report(payload.message);
+    if (payload.kind === "notify") {
+      surface.pushNotification(
+        notifyLayerItem(payload, notifyDeps),
+        payload.duration ?? DEFAULT_NOTIFY_MS,
+      );
+    } else if (payload.kind === "engine.error") report(payload.message);
   });
 
-  // 帧循环的宿主入口：无 rAF 环境（测试/降级）下静默不启，功能仍可用
-  const view0 = container.ownerDocument.defaultView;
+  // 帧循环的帧能力来自端口：无帧环境下帧源不回调，循环静默不启、功能仍可用
   const frameLoop = createFrameLoop({
-    view: view0,
-    readView: () => container.ownerDocument.defaultView,
+    frame: surface.frame,
     tickTypewriter: (dt) => projector.tickTypewriter(dt),
     onTyped,
     onFrame: options.onFrame,
@@ -199,9 +214,9 @@ export function createNarrativeOverlay(
     engine.input(value);
   }
 
-  function shouldConsumeInput(event: Event): boolean {
+  function shouldConsumeInput(target: unknown): boolean {
     // 复用展示层唯一判据：控件与 UI 面板内的输入不归叙事
-    return isGameInputTarget((event as { target?: unknown }).target);
+    return isGameInputTarget(target);
   }
 
   let disposed = false;
@@ -212,8 +227,7 @@ export function createNarrativeOverlay(
     frameLoop.stop();
     offState();
     offEvent();
-    notifyView.clear();
-    mounts.root.remove();
+    surface.clear();
   }
 
   function setRunning(next: boolean): void {
@@ -224,7 +238,7 @@ export function createNarrativeOverlay(
   renderChoicesNow();
 
   return {
-    mounts,
+    surface,
     view: () => projector.view(),
     sync,
     setRunning,

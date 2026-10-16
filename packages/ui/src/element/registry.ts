@@ -1,24 +1,25 @@
 /**
  * 元素渲染器注册表（UI 层职责）：核心层只声明元素 `type` 与属性，
- * 宿主经注册表解析渲染器后挂载到舞台。
+ * 宿主经注册表解析渲染器后把结果交给渲染端口物化。
  *
  * 与 minigame 注册表同一口径：**未知类型无默认回退** = fail-closed
  * ——静默占位会掩盖内容错误（渲染"看得见"，但语义是错的）。
  *
- * 框架无关：本模块只碰 DOM 与回调，不依赖任何 UI 框架（核心只写状态，
- * UI 只渲染；渲染器是宿主可替换的产物）。
+ * 框架与平台无关：渲染器只产出 `RenderSpec`，不碰 DOM，也不依赖任何 UI 框架
+ * （核心只写状态，UI 只渲染；渲染器是宿主可替换的产物）。
  */
 import type { ElementInstance } from "@lingfan/engine";
+import type { RenderSpec } from "./spec";
 
 /** 元素渲染上下文：渲染器只消费宿主提供的能力，不直接接触引擎 */
 export interface ElementRenderContext {
   /** 元素实例（id/type/name/props/z/children） */
   element: ElementInstance;
-  /** 递归渲染子元素（容器渲染器把 children 渲染进给定容器） */
-  renderChildren: (
-    container: HTMLElement,
-    children: readonly ElementInstance[],
-  ) => void;
+  /**
+   * 递归渲染子元素，返回子树的描述树（容器渲染器把结果放进自己的 `children`）。
+   * 未注册的类型不产出节点（fail-closed），因此返回的项数与传入的子元素数可能不等。
+   */
+  renderChildren: (children: readonly ElementInstance[]) => RenderSpec[];
   /** 交互激活（判定通过后由渲染器调用；具体 nav/ops/cmd 语义归宿主） */
   activate?: (element: ElementInstance) => void;
   /**
@@ -30,8 +31,8 @@ export interface ElementRenderContext {
   resolveResource?: (path: string) => string | undefined;
 }
 
-/** 渲染器：把元素渲染进自己的容器（返回根节点以便统一应用样式） */
-export type ElementRenderer = (ctx: ElementRenderContext) => HTMLElement;
+/** 渲染器：产出元素的描述树（根节点承载类名/样式，子元素在 `children` 里） */
+export type ElementRenderer = (ctx: ElementRenderContext) => RenderSpec;
 
 /**
  * 元素类型 → 渲染器的查表。`get` 未命中即 `undefined`，本表不做兜底

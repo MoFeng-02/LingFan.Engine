@@ -1,8 +1,12 @@
 /**
- * 叙事覆盖层的对外契约：挂载点、渲染投影、装配选项与实例方法。
+ * 叙事覆盖层的对外契约：表面端口、渲染投影、装配选项与实例方法。
  *
  * 这些类型是宿主与覆盖层之间的边界——实现可以按职责拆开，边界形状不动；
  * 宿主只依赖这里声明的名字，不依赖覆盖层内部的模块划分。
+ *
+ * **渲染落点不在本文件**：覆盖层只产出每层的视图模型，落到哪个渲染体系由宿主实现的
+ * `OverlaySurface` 决定（Web 实现见 `packages/ui/src/dom/overlay-surface.ts`）。
+ * 因此本文件不出现任何平台类型。
  */
 import type {
   ElementInstance,
@@ -14,26 +18,7 @@ import type { ChoicesTexts } from "./choices-view";
 import type { DialogueTemplateRegistry } from "../dialogue/templates";
 import type { ElementRegistry } from "../element/registry";
 import type { NotifyTemplateRegistry } from "../notify/templates";
-
-/** 覆盖层挂载点（`RenderTargets` 的宿主侧落地形态） */
-export interface NarrativeMounts {
-  /** 覆盖层根 */
-  root: HTMLElement;
-  /** 舞台层：背景 / 立绘 */
-  stage: HTMLElement;
-  /** 元素层：舞台之上的空间层（元素树渲染目标） */
-  elementLayer: HTMLElement;
-  /** 对话层（含打字机） */
-  dialogue: HTMLElement;
-  /** 选择层（菜单 / 输入） */
-  choices: HTMLElement;
-  /** 通知层（toast） */
-  overlay: HTMLElement;
-  /** 外部系统接管层（小游戏 / 玩法系统） */
-  takeover: HTMLElement;
-  /** 全屏转场遮罩 */
-  transition: HTMLElement;
-}
+import type { OverlaySurface } from "./surface";
 
 /** 渲染投影（只读快照；宿主诊断与自定义渲染可读） */
 export interface NarrativeOverlayView {
@@ -55,14 +40,17 @@ export interface NarrativeOverlayView {
 }
 
 /**
- * 装配覆盖层的全部输入：一个容器 + 一个已构造的引擎，其余都可省。
+ * 装配覆盖层的全部输入：一个覆盖层表面 + 一个已构造的引擎，其余都可省。
  *
  * 省掉的每一项都有明确后果（用内建默认或不做）——例如不传 `resolveResource`
  * 则元素里的图片一律显示替代文本。逐字段说明见下。
  */
 export interface NarrativeOverlayOptions {
-  /** 挂载点父容器（本装配器在其内创建层骨架） */
-  container: HTMLElement;
+  /**
+   * 覆盖层表面：宿主把「每一层要显示什么」落到自己渲染体系的出口。
+   * Web 宿主用 `createDomOverlaySurface(container)`（层骨架由它建）。
+   */
+  surface: OverlaySurface;
   /** 引擎实例（已构造；`start()` 与平台端口归宿主） */
   engine: StoryEngine;
   /**
@@ -101,14 +89,15 @@ export interface NarrativeOverlayOptions {
 }
 
 /**
- * 装配出的覆盖层实例：一面是宿主可读的挂载点（`mounts`），一面是交给宿主的动作。
+ * 装配出的覆盖层实例：一面是宿主给进来的表面（`surface`，宿主可自行往舞台/接管层挂内容），
+ * 一面是交给宿主的动作。
  *
  * 引擎的推进权仍在宿主手里——`advance` / `choose` / `submitInput` 是宿主根据
  * 自己的输入路由决定要不要调的，覆盖层不代宿主决定。
  */
 export interface NarrativeOverlay {
-  /** 挂载点（宿主可进一步定制，如往 stage 内插自己的背景） */
-  readonly mounts: NarrativeMounts;
+  /** 覆盖层表面（宿主可进一步定制，如往 `stage` / 接管层挂自己的内容） */
+  readonly surface: OverlaySurface;
   /** 当前渲染投影（只读） */
   view(): NarrativeOverlayView;
   /** 与引擎状态对齐（读档 / 回溯完成后调用） */
@@ -119,8 +108,11 @@ export interface NarrativeOverlay {
    * 输入是否归叙事层消费（**只判事件目标**：控件/面板内不吃）。
    * 模式层面的让位（外部玩法系统接管）由宿主按自己的域状态决定——
    * 那是宿主游戏的路由权，覆盖层不代宿主决定。
+   *
+   * 参数是**事件目标**（DOM 宿主传 `event.target`），故类型为 `unknown`：
+   * 判据在展示层唯一的 `isGameInputTarget` 里，本层不引入平台事件类型。
    */
-  shouldConsumeInput(event: Event): boolean;
+  shouldConsumeInput(target: unknown): boolean;
   /** 推进（二段式已处理：打字中先瞬间完成） */
   advance(): void;
   /** 选择选项（`menu` 等待） */

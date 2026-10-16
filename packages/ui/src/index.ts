@@ -84,7 +84,20 @@ export {
   type ElementRenderContext,
   type ElementResourceResolver,
   type ElementTreeRenderOptions,
+  type RenderEvent,
+  type RenderEventPatch,
+  type RenderKind,
+  type RenderPort,
+  type RenderPropValue,
+  type RenderSpec,
 } from "./element";
+export {
+  createDomOverlaySurface,
+  createDomRenderPort,
+  materialize,
+  type DomOverlaySurface,
+  type NarrativeMounts,
+} from "./dom";
 export {
   createCommandRegistry,
   type CommandRegistry,
@@ -103,11 +116,17 @@ export {
 } from "./input";
 export {
   createNarrativeOverlay,
+  type ChoicesLayerInput,
+  type ChoicesLayerOption,
+  type ChoicesLayerView,
   type ChoicesTexts,
-  type NarrativeMounts,
+  type DialogueLayerView,
   type NarrativeOverlay,
   type NarrativeOverlayOptions,
   type NarrativeOverlayView,
+  type NotifyLayerItem,
+  type OverlayLayerId,
+  type OverlaySurface,
 } from "./overlay";
 export {
   DEFAULT_ACTION_TOAST_MS,

@@ -8,7 +8,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SYS } from "@lingfan/engine";
-import { createNarrativeOverlay } from "@lingfan/ui";
+import { createDomOverlaySurface, createNarrativeOverlay } from "@lingfan/ui";
+import type { DomOverlaySurface } from "@lingfan/ui";
 
 interface FakeEl {
   tagName: string;
@@ -196,21 +197,23 @@ afterEach(() => {
 
 function build(options: Record<string, unknown> = {}): {
   overlay: ReturnType<typeof createNarrativeOverlay>;
+  surface: DomOverlaySurface;
   engine: FakeEngine;
 } {
   const engine = createEngine();
+  const surface = createDomOverlaySurface(container as unknown as HTMLElement);
   const overlay = createNarrativeOverlay({
-    container: container as unknown as HTMLElement,
+    surface,
     engine: engine as never,
     ...options,
   });
-  return { overlay, engine };
+  return { overlay, surface, engine };
 }
 
 describe("骨架：五挂载点建齐且层级正确", () => {
   it("root 下建齐 stage / dialogue / choices / notifications / takeover / transition", () => {
-    const { overlay } = build();
-    const { mounts } = overlay;
+    const { surface } = build();
+    const mounts = surface.nodes;
     expect(mounts.stage.parentElement ?? container).toBeTruthy();
     // 五挂载点都在 DOM 里（用替身的父子关系判断）
     const all = findAll(container, () => true);
@@ -228,29 +231,27 @@ describe("骨架：五挂载点建齐且层级正确", () => {
   });
 
   it("层级 z 按内建默认（对话在舞台之上、通知在对话之上）", () => {
-    const { overlay } = build();
+    const { surface } = build();
     const z = (el: unknown): number => Number((el as FakeEl).style.zIndex);
-    expect(z(overlay.mounts.stage)).toBe(0);
-    expect(z(overlay.mounts.dialogue)).toBe(999);
-    expect(z(overlay.mounts.choices)).toBe(1100);
-    expect(z(overlay.mounts.overlay)).toBe(1300);
-    expect(z(overlay.mounts.dialogue)).toBeGreaterThan(z(overlay.mounts.stage));
-    expect(z(overlay.mounts.overlay)).toBeGreaterThan(
-      z(overlay.mounts.dialogue),
-    );
+    expect(z(surface.nodes.stage)).toBe(0);
+    expect(z(surface.nodes.dialogue)).toBe(999);
+    expect(z(surface.nodes.choices)).toBe(1100);
+    expect(z(surface.nodes.overlay)).toBe(1300);
+    expect(z(surface.nodes.dialogue)).toBeGreaterThan(z(surface.nodes.stage));
+    expect(z(surface.nodes.overlay)).toBeGreaterThan(z(surface.nodes.dialogue));
   });
 
   it("层自身不吃事件，控件另行恢复（空白区透传给宿主游戏）", () => {
-    const { overlay, engine } = build();
+    const { engine, surface } = build();
     const pe = (el: unknown): string => (el as FakeEl).style.pointerEvents;
     // 全部层自身透明：对话框铺满视口时，玩家仍能点到对话框之外的宿主游戏
     for (const layer of [
-      overlay.mounts.root,
-      overlay.mounts.stage,
-      overlay.mounts.dialogue,
-      overlay.mounts.choices,
-      overlay.mounts.overlay,
-      overlay.mounts.takeover,
+      surface.nodes.root,
+      surface.nodes.stage,
+      surface.nodes.dialogue,
+      surface.nodes.choices,
+      surface.nodes.overlay,
+      surface.nodes.takeover,
     ]) {
       expect(pe(layer)).toBe("none");
     }
@@ -259,14 +260,14 @@ describe("骨架：五挂载点建齐且层级正确", () => {
     engine.emit(SYS.menuOptions, ["A"]);
     engine.emit(SYS.menuTargets, ["a"]);
     const btn = findAll(
-      overlay.mounts.choices as unknown as FakeEl,
+      surface.nodes.choices as unknown as FakeEl,
       (el) => el.tagName === "BUTTON",
     )[0]!;
     expect(btn.style.pointerEvents).toBe("auto");
   });
 
   it("工程层覆盖经 layerZ 注入生效", () => {
-    const { overlay } = build({
+    const { surface } = build({
       layerZ: {
         stage: 0,
         video: 100,
@@ -279,10 +280,10 @@ describe("骨架：五挂载点建齐且层级正确", () => {
         prefs: 1500,
       },
     });
-    expect((overlay.mounts.dialogue as unknown as FakeEl).style.zIndex).toBe(
+    expect((surface.nodes.dialogue as unknown as FakeEl).style.zIndex).toBe(
       "500",
     );
-    expect((overlay.mounts.overlay as unknown as FakeEl).style.zIndex).toBe(
+    expect((surface.nodes.overlay as unknown as FakeEl).style.zIndex).toBe(
       "800",
     );
   });
@@ -290,8 +291,8 @@ describe("骨架：五挂载点建齐且层级正确", () => {
 
 describe("状态投影：只经 ValueChanged 渲染", () => {
   it("say 文本上屏且模板 skin 类叠加", () => {
-    const { overlay, engine } = build();
-    const dialogue = overlay.mounts.dialogue as unknown as FakeEl;
+    const { engine, surface } = build();
+    const dialogue = surface.nodes.dialogue as unknown as FakeEl;
     /** 每次重渲都会重建正文节点 ⇒ 断言前重新查询（不持有陈旧引用） */
     const body = (): FakeEl =>
       findAll(dialogue, (el) => el.className === "lf-text")[0]!;
@@ -308,18 +309,18 @@ describe("状态投影：只经 ValueChanged 渲染", () => {
   });
 
   it("说话人行在说话人为空时隐藏", () => {
-    const { overlay, engine } = build();
+    const { engine, surface } = build();
     engine.emit(SYS.currentDialogText, "旁白");
     expect(
-      findAll(overlay.mounts.dialogue as unknown as FakeEl, (el) =>
+      findAll(surface.nodes.dialogue as unknown as FakeEl, (el) =>
         el.className.includes("lf-speaker"),
       ),
     ).toHaveLength(0);
   });
 
   it("等待态驱动选择层显隐（none 时隐藏）", () => {
-    const { overlay, engine } = build();
-    const choices = overlay.mounts.choices as unknown as FakeEl;
+    const { engine, surface } = build();
+    const choices = surface.nodes.choices as unknown as FakeEl;
     expect(choices.style.display).toBe("none");
     engine.emit(SYS.waiting, "menu");
     expect(choices.style.display).toBe("");
@@ -328,31 +329,31 @@ describe("状态投影：只经 ValueChanged 渲染", () => {
   });
 
   it("dialogVisible=hide 隐藏对话层（随快照回档）", () => {
-    const { overlay, engine } = build();
+    const { engine, surface } = build();
     engine.emit(SYS.currentDialogText, "x");
     engine.emit(SYS.dialogVisible, "show");
-    expect((overlay.mounts.dialogue as unknown as FakeEl).style.display).toBe(
+    expect((surface.nodes.dialogue as unknown as FakeEl).style.display).toBe(
       "",
     );
     engine.emit(SYS.dialogVisible, "hide");
-    expect((overlay.mounts.dialogue as unknown as FakeEl).style.display).toBe(
+    expect((surface.nodes.dialogue as unknown as FakeEl).style.display).toBe(
       "none",
     );
   });
 
   it("实例级 z（命令带 z）覆盖层默认", () => {
-    const { overlay, engine } = build();
+    const { engine, surface } = build();
     engine.emit(SYS.dialogueZ, 42);
-    expect((overlay.mounts.dialogue as unknown as FakeEl).style.zIndex).toBe(
+    expect((surface.nodes.dialogue as unknown as FakeEl).style.zIndex).toBe(
       "42",
     );
   });
 
   it("说话人色：命令覆盖色 > 角色定义色", () => {
-    const { overlay, engine } = build();
+    const { engine, surface } = build();
     engine.characters.set("旅人", { color: "#88ccff" });
     const speakerEl = (): FakeEl | undefined =>
-      findAll(overlay.mounts.dialogue as unknown as FakeEl, (el) =>
+      findAll(surface.nodes.dialogue as unknown as FakeEl, (el) =>
         el.className.includes("lf-speaker"),
       )[0];
 
@@ -364,7 +365,7 @@ describe("状态投影：只经 ValueChanged 渲染", () => {
   });
 
   it("颜色键先到、说话人后到也不滞后（派生值不依赖事件到达顺序）", () => {
-    const { overlay, engine } = build();
+    const { engine, surface } = build();
     engine.characters.set("旅人", { color: "#88ccff" });
     engine.emit(SYS.currentDialogText, "x");
     // 覆盖色先到（此时还没有说话人）
@@ -372,7 +373,7 @@ describe("状态投影：只经 ValueChanged 渲染", () => {
     // 说话人后到：应立刻用覆盖色，而不是角色色（滞后一句的经典症状）
     engine.emit(SYS.currentDialogSpeaker, "旅人");
     const speakerEl = findAll(
-      overlay.mounts.dialogue as unknown as FakeEl,
+      surface.nodes.dialogue as unknown as FakeEl,
       (el) => el.className.includes("lf-speaker"),
     )[0];
     expect(speakerEl?.style.color).toBe("#ff0000");
@@ -381,14 +382,14 @@ describe("状态投影：只经 ValueChanged 渲染", () => {
 
 describe("选项：点击交核心 choose，且传的是目标列 id", () => {
   it("选项文本与目标成对，点击传 target 而非显示文本", () => {
-    const { overlay, engine } = build();
+    const { engine, surface } = build();
     engine.emit(SYS.waiting, "menu");
     engine.emit(SYS.menuPrompt, "去哪里？");
     engine.emit(SYS.menuOptions, ["酒馆", "离开"]);
     engine.emit(SYS.menuTargets, ["tavern", "leave"]);
 
     const buttons = findAll(
-      overlay.mounts.choices as unknown as FakeEl,
+      surface.nodes.choices as unknown as FakeEl,
       (el) => el.tagName === "BUTTON",
     );
     expect(buttons).toHaveLength(2);
@@ -402,12 +403,12 @@ describe("选项：点击交核心 choose，且传的是目标列 id", () => {
   });
 
   it("两个键任一到达都重读成对数据（不会只更新一半）", () => {
-    const { overlay, engine } = build();
+    const { engine, surface } = build();
     engine.emit(SYS.waiting, "menu");
     engine.emit(SYS.menuOptions, ["A"]);
     const buttons = (): FakeEl[] =>
       findAll(
-        overlay.mounts.choices as unknown as FakeEl,
+        surface.nodes.choices as unknown as FakeEl,
         (el) => el.tagName === "BUTTON",
       );
     expect(buttons()[0]!.attrs["aria-label"]).toBe("A");
@@ -419,11 +420,11 @@ describe("选项：点击交核心 choose，且传的是目标列 id", () => {
 
 describe("输入等待：提交走核心 input", () => {
   it("input 等待渲染输入框与提交按钮，提交送核心", () => {
-    const { overlay, engine } = build();
+    const { overlay, engine, surface } = build();
     engine.emit(SYS.waiting, "input");
     engine.emit(SYS.inputPrompt, "报上名来：");
     const inputs = findAll(
-      overlay.mounts.choices as unknown as FakeEl,
+      surface.nodes.choices as unknown as FakeEl,
       (el) => el.tagName === "INPUT",
     );
     expect(inputs).toHaveLength(1);
@@ -481,18 +482,18 @@ describe("推进：二段式（打字中先瞬间完成，完成后才交引擎�
 describe("通知：引擎事件 → 覆盖层，到时自动移除", () => {
   it("notify 事件上屏并按 tone 加皮肤，超过时长移除", () => {
     vi.useFakeTimers();
-    const { overlay, engine } = build();
+    const { engine, surface } = build();
     engine.events[0]!({
       payload: { kind: "notify", text: "钱袋沉了一点", notifyType: "warning" },
     });
-    const items = findAll(overlay.mounts.overlay as unknown as FakeEl, (el) =>
+    const items = findAll(surface.nodes.overlay as unknown as FakeEl, (el) =>
       el.className.includes("tpl-notify"),
     );
     expect(items).toHaveLength(1);
     expect(items[0]!.className).toContain("warning");
     vi.advanceTimersByTime(3001);
     expect(
-      findAll(overlay.mounts.overlay as unknown as FakeEl, (el) =>
+      findAll(surface.nodes.overlay as unknown as FakeEl, (el) =>
         el.className.includes("tpl-notify"),
       ),
     ).toHaveLength(0);
@@ -510,12 +511,12 @@ describe("通知：引擎事件 → 覆盖层，到时自动移除", () => {
 
 describe("生命周期：卸载彻底", () => {
   it("dispose 后退订（状态变化不再渲染）且根从容器移除", () => {
-    const { overlay, engine } = build();
+    const { overlay, engine, surface } = build();
     overlay.dispose();
     expect(engine.listeners).toHaveLength(0);
     expect(engine.events).toHaveLength(0);
     expect(findAll(container, () => true)).not.toContain(
-      overlay.mounts.root as unknown as FakeEl,
+      surface.nodes.root as unknown as FakeEl,
     );
   });
 
@@ -539,16 +540,13 @@ describe("生命周期：卸载彻底", () => {
 describe("输入判据：复用展示层唯一口径（不另立第二份）", () => {
   it("控件/面板内的目标不吃输入，舞台目标可吃", () => {
     const { overlay } = build();
-    const inControl = {
-      target: { closest: () => ({}) },
-    } as unknown as Event;
-    const onStage = { target: { closest: () => null } } as unknown as Event;
+    const inControl = { closest: () => ({}) };
+    const onStage = { closest: () => null };
+    // 判据收的是**事件目标**（不是事件对象）：宿主自己取 `event.target` 再问。
     expect(overlay.shouldConsumeInput(inControl)).toBe(false);
     expect(overlay.shouldConsumeInput(onStage)).toBe(true);
     // 非元素目标保守视为可消费
-    expect(
-      overlay.shouldConsumeInput({ target: null } as unknown as Event),
-    ).toBe(true);
+    expect(overlay.shouldConsumeInput(null)).toBe(true);
   });
 });
 

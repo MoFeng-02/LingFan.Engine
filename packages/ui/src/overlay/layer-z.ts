@@ -1,12 +1,12 @@
 /**
- * 层级 z 控制器：持有实例级覆盖表，并负责把它写回各挂载点的 `z-index`。
+ * 层级 z 控制器：持有实例级覆盖表，并负责把它写回各层（经覆盖层端口下发）。
  *
  * 三级链由引擎的 `resolveInstanceZ` 决定（**实例显式指定 > 工程层默认 > 内建默认**），
- * 本控制器只负责「收下覆盖值 → 重算 → 写样式」这一段接线。
+ * 本控制器只负责「收下覆盖值 → 重算 → 经端口下发」这一段接线。
  */
 import { resolveInstanceZ } from "@lingfan/engine";
 import type { LayerId, LayerZOverrides, LayerZTable } from "@lingfan/engine";
-import type { NarrativeMounts } from "./types";
+import type { OverlaySurface } from "./surface";
 
 /** 层级 z 控制器（每实例一份覆盖表） */
 export interface LayerZController {
@@ -26,32 +26,37 @@ export function setLayerOverride(
 }
 
 /**
- * 造一个层级控制器：覆盖表初始为空（全部层走默认），需调 `apply()` 才写样式。
+ * 造一个层级控制器：覆盖表初始为空（全部层走默认），需调 `apply()` 才下发 z。
  *
  * `layerZ` 是工程级的层默认表，控制器只在其上加一层「实例显式指定」的覆盖；
- * 覆盖表逐实例持有，所以两个覆盖层不会互相改 z。写样式是幂等的，重复调无副作用。
+ * 覆盖表逐实例持有，所以两个覆盖层不会互相改 z。下发是幂等的，重复调无副作用。
  */
 export function createLayerZController(
-  mounts: NarrativeMounts,
+  surface: OverlaySurface,
   layerZ: LayerZTable,
 ): LayerZController {
   const controller: LayerZController = {
     overrides: {},
     apply(): void {
       const z = controller.overrides;
-      mounts.dialogue.style.zIndex = String(
+      surface.setLayerZ(
+        "dialogue",
         resolveInstanceZ("dialogue", z.dialogue, layerZ),
       );
-      mounts.choices.style.zIndex = String(
+      surface.setLayerZ(
+        "choices",
         resolveInstanceZ("choices", z.choices, layerZ),
       );
-      mounts.overlay.style.zIndex = String(
+      surface.setLayerZ(
+        "notifications",
         resolveInstanceZ("notifications", z.notifications, layerZ),
       );
-      mounts.takeover.style.zIndex = String(
+      surface.setLayerZ(
+        "takeover",
         resolveInstanceZ("minigame", z.minigame, layerZ),
       );
-      mounts.transition.style.zIndex = String(
+      surface.setLayerZ(
+        "transition",
         resolveInstanceZ("video", z.video, layerZ),
       );
     },

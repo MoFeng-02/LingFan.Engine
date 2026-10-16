@@ -15,7 +15,7 @@ import {
   StoryEngine,
 } from "@lingfan/engine";
 import type { Story } from "@lingfan/engine";
-import { createNarrativeOverlay } from "@lingfan/ui";
+import { createDomOverlaySurface, createNarrativeOverlay } from "@lingfan/ui";
 import type { NarrativeOverlay } from "@lingfan/ui";
 import { DEMO_STORIES } from "./stories";
 
@@ -162,7 +162,7 @@ function rebuild(s: DemoState, story: Story, errTab: Tab): boolean {
   s.engine?.dispose();
   const container = must<HTMLDivElement>("lf-demo-preview");
   const overlay = createNarrativeOverlay({
-    container,
+    surface: createDomOverlaySurface(container),
     engine,
     textSpeed: 40,
     onError: (message) => setStatus(`引擎消息：${message}`),
@@ -266,7 +266,7 @@ function initDemo(): void {
   container.addEventListener("keydown", (event) => {
     const overlay = s.overlay;
     if (overlay === null || s.mode !== "preview") return;
-    if (!overlay.shouldConsumeInput(event)) return;
+    if (!overlay.shouldConsumeInput(event.target)) return;
     event.preventDefault();
     overlay.advance();
   });

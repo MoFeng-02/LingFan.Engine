@@ -25,6 +25,7 @@ import {
   createDialogueTemplateRegistry,
   createElementRegistry,
   createElementResourceResolver,
+  createDomRenderPort,
   createNotifyTemplateRegistry,
   createVideoRenderer,
   registerBuiltinElementRenderers,
@@ -176,7 +177,7 @@ function renderElements(): void {
   if (host === null) return;
   renderElementTree({
     registry: elementRegistry,
-    container: host,
+    port: createDomRenderPort(host),
     elements: elements.value,
     activate: activateElement,
     resolveResource: elementResources.resolveForElement,
