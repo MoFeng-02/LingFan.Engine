@@ -8,5 +8,7 @@
  *
  * 依赖方向：可用 `contracts` / `domain` / `shared`；不得依赖 `ui` / `app`。
  */
+export * from "./browser-storage";
+export * from "./download";
 export * from "./layout";
 export * from "./localHost";

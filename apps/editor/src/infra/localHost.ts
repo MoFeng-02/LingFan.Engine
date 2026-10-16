@@ -7,7 +7,7 @@
  * 端点形状与 `server/host.ts` 对齐：`GET /__editor_host__/ping`。
  * 前端**不假设**宿主在：探测失败一律当「无宿主」，不抛错、不重试刷屏。
  */
-import type { WatchStatus } from "../contracts";
+import type { PackRequest, PackResult, WatchStatus } from "../contracts";
 
 /** 宿主端点（探测结果）；`baseUrl` 为 `undefined` 表示无宿主 */
 export interface LocalHostEndpoint {
@@ -91,6 +91,35 @@ export async function openExternal(
     );
     if (!res.ok) return { ok: false, reason: `宿主返回 ${res.status}` };
     return (await res.json()) as { ok: boolean; reason?: string };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      reason: `无法联系本地宿主：${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+/**
+ * 打包请求转发：把 `PackRequest` 交给本地宿主执行（前端不 spawn 进程）。
+ *
+ * 失败一律回 `{ ok: false, reason }`：宿主未启动是**正常降级**，不是异常路径。
+ */
+export async function postPackRequest(
+  host: LocalHostEndpoint,
+  request: PackRequest,
+  fetchImpl: typeof fetch = globalThis.fetch,
+): Promise<PackResult> {
+  try {
+    const res = await fetchImpl(
+      `${host.baseUrl}/__editor_host__/${host.token}/pack`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(request),
+      },
+    );
+    if (!res.ok) return { ok: false, reason: `宿主返回 ${res.status}` };
+    return (await res.json()) as PackResult;
   } catch (error: unknown) {
     return {
       ok: false,

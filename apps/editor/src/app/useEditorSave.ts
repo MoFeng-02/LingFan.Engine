@@ -27,6 +27,8 @@ export interface EditorSaveDeps {
   >;
   /** 本机视图偏好存储（「不再提示」勾选；失败静默 = 仅本次会话有效） */
   storage: () => KeyValueStorage | undefined;
+  /** 导出下载（平台实现由组合根注入；本层不碰 DOM） */
+  downloadFile: (fileName: string, text: string) => void;
 }
 
 /**
@@ -44,6 +46,7 @@ export function useEditorSave(deps: EditorSaveDeps) {
     errorCount,
     ports,
     storage,
+    downloadFile,
   } = deps;
 
   const saving = ref(false);
@@ -53,9 +56,7 @@ export function useEditorSave(deps: EditorSaveDeps) {
   const pendingSave = ref<
     ((s: Story) => Promise<ProjectWriteReport>) | undefined
   >(undefined);
-  const skipNormalizationNotice = ref(
-    readSkipNormalizationNotice(storage()),
-  );
+  const skipNormalizationNotice = ref(readSkipNormalizationNotice(storage()));
 
   /** 保存可用性：未绑定工程 / 只读取径 / 保存中 / 无改动 / 有错误 → 禁用（fail-closed） */
   const canSave = computed(
@@ -180,16 +181,12 @@ export function useEditorSave(deps: EditorSaveDeps) {
     writeSkipNormalizationNotice(storage(), skipNormalizationNotice.value);
   }
 
+  /** 导出当前故事为 JSON 文件；落盘动作由组合根注入的实现完成 */
   function onExport(): void {
-    const blob = new Blob([JSON.stringify(story.value, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${story.value.id}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    downloadFile(
+      `${story.value.id}.json`,
+      JSON.stringify(story.value, null, 2),
+    );
   }
 
   return {

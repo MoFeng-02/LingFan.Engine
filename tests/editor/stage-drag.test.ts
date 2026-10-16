@@ -36,13 +36,16 @@ describe("舞台拖拽回归 · select 不得再切视图", () => {
     expect(body).not.toContain("scrollIntoView");
   });
 
-  it("`reveal()` 独立存在且承担「切视图 + 滚动」", () => {
+  it("`reveal()` 承担「切视图 + 发滚动信号」，滚动本体在时间线视图", () => {
     const src = code(apiSource);
     const start = src.indexOf("reveal(pointer: string): void {");
     expect(start).toBeGreaterThan(-1);
     const body = src.slice(start, src.indexOf("\n    },", start));
     expect(body).toContain('centerView.value = "timeline"');
-    expect(body).toContain("scrollIntoView");
+    // app 层不许摸 DOM：滚动落到视图层，这里只发信号
+    expect(body).not.toContain("scrollIntoView");
+    expect(body).toContain("revealTick.value += 1");
+    expect(code(timelineSource)).toContain("scrollIntoView");
   });
 
   it("`reveal` 先选中再切视图（顺序不能反，否则滚动时无选中行可锚）", () => {

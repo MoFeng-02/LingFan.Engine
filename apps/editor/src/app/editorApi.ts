@@ -1,4 +1,3 @@
-import { nextTick } from "vue";
 import type { Ref, ShallowRef } from "vue";
 import type { Story } from "@lingfan/engine";
 import {
@@ -28,6 +27,12 @@ export interface EditorApiDeps {
   selectedColumnId: Ref<string>;
   projectTree: Ref<Story | undefined>;
   centerView: Ref<"timeline" | "stage" | "graph" | "step">;
+  /**
+   * 「揭示」序号：每次 `reveal` 自增，时间线视图据此把选中行滚入视口。
+   *
+   * 滚动是 DOM 行为，归视图层——本层只发信号，不查文档。
+   */
+  revealTick: Ref<number>;
   grouping: Ref<ColumnGroupingView>;
   workspace: Workspace;
   openColumnDocument: (id: string) => void;
@@ -46,6 +51,7 @@ export function createEditorApi(deps: EditorApiDeps): EditorApiPort {
     selectedColumnId,
     projectTree,
     centerView,
+    revealTick,
     grouping,
     workspace,
     openColumnDocument,
@@ -114,25 +120,21 @@ export function createEditorApi(deps: EditorApiDeps): EditorApiPort {
       const columnPointer = pointer?.match(/^\/columns\/(\d+)/);
       if (columnPointer !== null && columnPointer !== undefined) {
         const column = getAtPointer(story.value, columnPointer[0]) as
-          | { id?: string }
-          | undefined;
+          { id?: string } | undefined;
         if (typeof column?.id === "string") selectedColumnId.value = column.id;
       }
     },
     /**
-     * 定位揭示（**选中 + 切回时间线 + 把目标行滚到视口中央**）。
+     * 定位揭示（**选中 + 切回时间线 + 递增揭示序号**）。
      *
      * 存在理由：点了诊断必须「看得见」——长列表/其他视图下目标行在视口外，
      * 用户感知就是「点了没反应」。**只有诊断面板与步骤图需要它**。
+     * 真正的滚动由时间线视图监听 `revealTick` 完成（滚动是 DOM 行为，不属本层）。
      */
     reveal(pointer: string): void {
       api.select(pointer);
       centerView.value = "timeline";
-      void nextTick(() => {
-        document
-          .querySelector(".timeline .rows li.selected")
-          ?.scrollIntoView({ block: "center" });
-      });
+      revealTick.value += 1;
     },
     /**
      * 选中列：**同时把命令指针指向列本身**（`/columns/<i>`）——
@@ -232,8 +234,7 @@ export function createEditorApi(deps: EditorApiDeps): EditorApiPort {
       if (!applied || parentPointer !== undefined) return;
       selectedPointer.value = `${target}/${appendedAt}`;
       const column = getAtPointer(story.value, columnPointer) as
-        | { id?: string }
-        | undefined;
+        { id?: string } | undefined;
       if (typeof column?.id === "string") selectedColumnId.value = column.id;
     },
     /**

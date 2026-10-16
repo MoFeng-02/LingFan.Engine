@@ -14,8 +14,9 @@ import {
   renameGroup,
   toggleCollapsed,
   type ColumnGroupingView,
+  type KeyValueStorage,
 } from "@lingfan/editor";
-import { readLocalStorage, sampleStory } from "./shared";
+import { sampleStory } from "./shared";
 import {
   buildResourceTree,
   columnIdOfDocument,
@@ -42,6 +43,7 @@ import {
   COLUMN_GROUPING_API_KEY,
   COLUMN_PATHS_KEY,
   EDITOR_API_KEY,
+  KEY_VALUE_STORAGE_KEY,
   SELECTED_POINTER_KEY,
   type LastProjectEntry,
   type OpenedProject,
@@ -63,7 +65,8 @@ import type { RightTab } from "./components/RightPane.vue";
  * - `initialStory` = 未打开工程时的示例故事；
  * - `opener` = 「打开工程」取径（目录选择与文件读取都在 main.ts）；
  * - `lastProject` = 「记住上次工程」：句柄就绪后由组合根填充（ref）；
- * - 媒体端口工厂 = 视频层 z 等实现细节留在组合根。
+ * - 媒体端口工厂 = 视频层 z 等实现细节留在组合根；
+ * - `storage` / `downloadFile` = 本机偏好存储与导出下载，实现在 `infra`。
  */
 const props = defineProps<{
   /** 启动时的故事（未打开工程 = 内存示例；「打开工程」后由会话中枢换基线） */
@@ -73,6 +76,10 @@ const props = defineProps<{
   lastProject?: Ref<LastProjectEntry | undefined>;
   createAudioPort: (onError: (message: string) => void) => AudioPort;
   createVideoPort: (onError: (message: string) => void) => VideoPort;
+  /** 本机键值存储（组合根注入；站点数据被禁时为 `undefined` = 本会话无持久化） */
+  storage: KeyValueStorage | undefined;
+  /** 导出下载（平台细节在 `infra`，由组合根注入） */
+  downloadFile: (fileName: string, text: string) => void;
 }>();
 
 /* —— 应用内对话框（替代原生 prompt/confirm/alert） —— */
@@ -84,6 +91,8 @@ dialogState.subscribe(() => {
   dialogRequest.value = dialogState.current;
 });
 provide(DIALOG_PORT_KEY, dialog);
+/** 本机存储下发给需要自持久化的视图域（节点图布局等） */
+provide(KEY_VALUE_STORAGE_KEY, props.storage);
 
 /* ——— 工程绑定状态端口集（各视图域从这一份状态取数） ——— */
 const ports = useProjectPorts();
@@ -116,7 +125,7 @@ const {
 });
 
 /* ——— 布局（可拖 + 可持久化） ——— */
-const layoutStore = createLayoutStore(readLocalStorage());
+const layoutStore = createLayoutStore(props.storage);
 const layout = reactive<LayoutState>(layoutStore.load());
 function persistLayout(): void {
   layoutStore.save(layout);
@@ -133,6 +142,8 @@ function setRightWidth(width: number): void {
 const leftTab = ref<LeftTab>("resources");
 const rightTab = ref<RightTab>("property");
 const centerView = ref<"timeline" | "stage" | "graph" | "step">("timeline");
+/** 「揭示」序号（诊断面板/步骤图点选后自增）：时间线视图据此把选中行滚入视口 */
+const revealTick = ref(0);
 
 /**
  * 诊断供给侧：打开工程才注入（`resourceFiles` / `overlayKeys`）。
@@ -262,7 +273,8 @@ const {
   dirty,
   errorCount,
   ports,
-  storage: readLocalStorage,
+  storage: () => props.storage,
+  downloadFile: props.downloadFile,
 });
 /** 保存三态（写入侧统一出口：预览/骨架/打开域从这一份状态取数） */
 const saveStatus = {
@@ -303,14 +315,14 @@ const {
 const {
   openProject,
   reopenLastProject,
-  onFallbackFiles,
+  openFromFiles,
   applyOpened,
   unbindProject,
   reloadFromDisk,
 } = useProjectOpen({
   opener: props.opener,
   lastProject: props.lastProject,
-  fallbackInput,
+  requestFallbackPicker: () => fallbackInput.value?.click(),
   ports,
   diagnosticSupply,
   projectTree,
@@ -326,6 +338,17 @@ const {
   activeSource,
 });
 
+/**
+ * 目录 input 兜底取径的 DOM 侧：取文件快照 + 清空 input 值（允许重复选同一目录），
+ * 再把快照交给打开域（打开域不碰元素）。
+ */
+function onFallbackInput(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files ?? []);
+  input.value = "";
+  void openFromFiles(files);
+}
+
 /* ——— 本地化工作台（聚合面；数据全部来自既有诊断供给） ——— */
 const { i18nSources, i18nLangs, generateLangSkeleton } = useI18nWorkbench({
   story,
@@ -340,26 +363,22 @@ const { i18nSources, i18nLangs, generateLangSkeleton } = useI18nWorkbench({
 
 /* ——— 宿主桥（能力探测 + 热重载 + 打包转发） ——— */
 const hostHint = ref(false);
-const {
-  localHostAvailable,
-  packing,
-  sendPackRequest,
-  togglePackPane,
-} = useHostBridge({
-  ports,
-  hostHint,
-  dialog,
-  rightTab,
-  reloadFromDisk,
-  dirtyCount: () => workspace.dirtyCount,
-});
+const { localHostAvailable, packing, sendPackRequest, togglePackPane } =
+  useHostBridge({
+    ports,
+    hostHint,
+    dialog,
+    rightTab,
+    reloadFromDisk,
+    dirtyCount: () => workspace.dirtyCount,
+  });
 
 /**
  * 列分组归类：**UI 侧元数据**——按 `story.id` 存本机、不入故事 JSON。
  * 列序 = 文件路径码元序属**叙事语义**，用存储层目录分组会隐式改写它；归类只是作者视图偏好。
  * 降级与节点图布局同款：读失败 → 平铺；写失败 → 仅本次会话有效。
  */
-const groupingStore = createColumnGroupingStore(readLocalStorage());
+const groupingStore = createColumnGroupingStore(props.storage);
 const grouping = ref<ColumnGroupingView>(emptyGroupingView());
 
 /** 换工程 / 新建 / 导入都随 `story.id` 归位（不照抄节点图的「onMounted 只读一次」） */
@@ -444,6 +463,7 @@ const api = createEditorApi({
   selectedColumnId,
   projectTree,
   centerView,
+  revealTick,
   grouping,
   workspace,
   openColumnDocument,
@@ -563,7 +583,7 @@ function onImportFile(event: Event): void {
       type="file"
       webkitdirectory
       multiple
-      @change="onFallbackFiles"
+      @change="onFallbackInput"
     />
     <input
       ref="importInput"
@@ -634,6 +654,7 @@ function onImportFile(event: Event): void {
           :active-read-only-reason="activeReadOnlyReason"
           :read-error="readError"
           :center-view="centerView"
+          :reveal-tick="revealTick"
           :story="story"
           :selected-column-id="selectedColumnId"
           :selected-pointer="selectedPointer"

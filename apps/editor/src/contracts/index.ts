@@ -11,6 +11,7 @@ export {
   COLUMN_GROUPING_API_KEY,
   COLUMN_PATHS_KEY,
   EDITOR_API_KEY,
+  KEY_VALUE_STORAGE_KEY,
   SELECTED_POINTER_KEY,
   type ColumnGroupingApi,
 } from "./injection-keys";
