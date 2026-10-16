@@ -27,21 +27,21 @@ export function registerBuiltinElementRenderers(
   registry: ElementRegistry,
 ): void {
   const reg: Record<string, ElementRenderer> = {
-    // 文本族 4
+    // 文本族
     text: renderText,
     dialog: renderText,
     narrator: renderText,
     speaker: renderText,
-    // 交互族 3
+    // 交互族
     button: renderButton,
     choice: renderButton,
     imagebutton: renderImageButton,
-    // 图像族 4
+    // 图像族
     image: renderImage,
     background: renderImage,
     portrait: renderImage,
     video: renderVideo,
-    // 容器族 15
+    // 容器族
     panel: renderContainer,
     frame: renderContainer,
     window: renderContainer,
@@ -57,17 +57,17 @@ export function registerBuiltinElementRenderers(
     stackpanel: renderContainer,
     canvas: renderCanvas,
     border: renderBorder,
-    // 滚动族 3
+    // 滚动族
     scroll: renderScroll,
     scrollviewer: renderScroll,
     viewport: renderScroll,
-    // 进度族 5
+    // 进度族
     bar: renderProgress,
     vbar: renderProgress,
     progressbar: renderProgress,
     slider: renderSlider,
     checkbox: renderCheckbox,
-    // 间隔族 2
+    // 间隔族
     separator: renderSeparator,
     spacer: renderSpacer,
   };

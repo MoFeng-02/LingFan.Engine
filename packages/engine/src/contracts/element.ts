@@ -48,21 +48,21 @@ export const ELEMENT_OPS_BLOCKED: ReadonlySet<string> = new Set([
  * 分组：文本 / 交互 / 图像 / 容器 / 滚动 / 进度 / 间隔七组。
  */
 export const ELEMENT_TYPES = [
-  // 文本（4）
+  // 文本
   "text",
   "dialog",
   "narrator",
   "speaker",
-  // 交互（3）
+  // 交互
   "button",
   "choice",
   "imagebutton",
-  // 图像（4）
+  // 图像
   "image",
   "background",
   "portrait",
   "video",
-  // 容器（15）
+  // 容器
   "panel",
   "frame",
   "window",
@@ -78,17 +78,17 @@ export const ELEMENT_TYPES = [
   "stackpanel",
   "canvas",
   "border",
-  // 滚动（3）
+  // 滚动
   "scroll",
   "scrollviewer",
   "viewport",
-  // 进度 / 滑块 / 选择（5）
+  // 进度 / 滑块 / 选择
   "bar",
   "vbar",
   "progressbar",
   "slider",
   "checkbox",
-  // 间隔（2）
+  // 间隔
   "separator",
   "spacer",
 ] as const;
