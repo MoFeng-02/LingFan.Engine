@@ -35,6 +35,7 @@ import {
   createAppNarrative,
   createAppPrefs,
   createAppSlots,
+  createAppStageFit,
   createAppTemplates,
 } from "./host";
 import {
@@ -75,7 +76,10 @@ const props = defineProps<{
   preferences: PlayerPreferences;
   /** 端口工厂而非实例：restart 重建音频/视频通道时保持「选择权在组合根」 */
   createAudioPort: (onError: (message: string) => void) => AudioPort;
-  createVideoPort: (onError: (message: string) => void) => VideoPort;
+  createVideoPort: (
+    onError: (message: string) => void,
+    readContainer?: () => HTMLElement | null,
+  ) => VideoPort;
 }>();
 
 /** 引擎实例：initEngine 建立订阅与媒体渲染器；restart 整体重建（取用句柄指向新实例） */
@@ -138,8 +142,12 @@ function resolveExtension(): void {
 const demoHostRef = ref<InstanceType<typeof DemoHost> | null>(null);
 /** 舞台元素层容器（声明式空间层的挂载点） */
 const elementLayerEl = ref<HTMLElement | null>(null);
-/** 舞台根（震动偏移写它的 transform） */
+/** 舞台外框（铺满视口；适配读数从这里来，舞台在其中居中留边） */
+const stageViewportEl = ref<HTMLElement | null>(null);
+/** 舞台根（作者坐标系：基准宽高与适配变换由适配装配写入，别再往它写别的 transform） */
 const stageEl = ref<HTMLElement | null>(null);
+/** 舞台内容层（震动偏移写它的 transform——与舞台根的适配变换分层，互不覆盖） */
+const stageShakeEl = ref<HTMLElement | null>(null);
 /** 全屏转场遮罩（不透明度与显隐由帧驱动写入） */
 const transitionEl = ref<HTMLElement | null>(null);
 /** 对话面板实例（NVL 累积层滚动主体经其暴露） */
@@ -163,7 +171,13 @@ const handleExtensionMount = createExtensionMountHandler({
 
 // —— 音视频渲染：端口由组合根注入（装配只见契约）；重启经单元格整体重建 ——
 /** 音视频装配：订阅引擎事件渲染媒体；restart 时按单元格整体重建，旧端口成对释放 */
-const media = createAppMedia({ props, getEngine: () => engine, error });
+const media = createAppMedia({
+  props,
+  getEngine: () => engine,
+  error,
+  // 视频层挂舞台根：整场缩放时它跟着缩（不能挂在 body 上按视口定位）
+  readVideoContainer: () => stageEl.value,
+});
 
 // —— 元素层装配（元素表渲染 + 容器挂载后渲染监听）——
 createAppElementLayer({
@@ -279,6 +293,7 @@ const { initEngine, restart, unbind } = createAppEngineLife({
   handleState,
   handleEvent,
   readMinigameHost: () => demoHostRef.value?.minigameHostEl ?? null,
+  readVideoContainer: () => stageEl.value,
 });
 
 initEngine();
@@ -293,8 +308,22 @@ const { frameLoop } = createAppFrame({
   typewriter,
   elementLayerEl,
   transitionEl,
-  stageEl,
+  shakeEl: stageShakeEl,
 });
+
+// —— 舞台适配（作者按基准像素写坐标，整场等比缩放套进外框）——
+/** 舞台适配：读数取外框容器的布局尺寸（不是舞台自身的 clientWidth——那已被变换放大过） */
+const stageFit = createAppStageFit({
+  readFrame: () => ({
+    width: stageViewportEl.value?.clientWidth ?? 0,
+    height: stageViewportEl.value?.clientHeight ?? 0,
+  }),
+  readStageRoot: () => stageEl.value,
+});
+/** 外框尺寸变化（窗口缩放、旋转、软键盘收起）后重算一次：读数即时取，不依赖事件载荷 */
+function applyStageFit(): void {
+  stageFit.apply();
+}
 
 // —— 玩家偏好与键位映射（状态归核心层，面板只是 UI 皮）——
 /** 偏好面板能力：音量/静音/文字速度/方向/全屏视图、键位捕获与展示（状态归核心层） */
@@ -339,6 +368,10 @@ function onWheel(event: WheelEvent): void {
 onMounted(() => {
   window.addEventListener("keydown", onKeydown);
   window.addEventListener("keydown", onCaptureKeydown, true);
+  // 舞台适配：挂载后才量得到外框尺寸；窗口变化与方向切换都要重算
+  applyStageFit();
+  window.addEventListener("resize", applyStageFit);
+  window.addEventListener("orientationchange", applyStageFit);
 });
 
 /**
@@ -372,98 +405,106 @@ onUnmounted(() => {
   frameLoop.stop(); // 停 rAF 帧循环
   window.removeEventListener("keydown", onKeydown);
   window.removeEventListener("keydown", onCaptureKeydown, true);
+  window.removeEventListener("resize", applyStageFit);
+  window.removeEventListener("orientationchange", applyStageFit);
 });
 </script>
 
 <template>
-  <main ref="stageEl" class="stage" @click="onStageClick" @wheel="onWheel">
-    <!-- 舞台元素层：声明式空间层（z 由 shell.layers.stage 决定，默认 0 = 位于 video 之下） -->
-    <div
-      ref="elementLayerEl"
-      class="element-layer"
-      :style="{ zIndex: layerZ.stage }"
-    ></div>
-    <!-- 全屏转场遮罩（屏幕级效果，恒在最上；透明度由帧驱动写入） -->
+  <!-- 舞台外框：铺满视口不滚动，舞台在其内按设计基准等比缩放居中（留边即画面外的底色） -->
+  <div ref="stageViewportEl" class="stage-viewport">
+    <!-- 全屏转场遮罩：屏幕级效果（含留边在内恒在最上），透明度由帧驱动写入 -->
     <div ref="transitionEl" class="transition-overlay" aria-hidden="true"></div>
-    <!-- 固定工具条：单条 flex 行（布局由构造保证不重叠；safe-area 适配移动端） -->
-    <ToolbarPanel
-      :layer-z="layerZ"
-      :available-langs="availableLangs"
-      :current-lang="currentLang"
-      @restart="restart"
-      @open-slot-panel="openSlotPanel"
-      @toggle-history="toggleHistory"
-      @toggle-prefs="showPrefs = !showPrefs"
-      @change-lang="changeLang"
-    />
-    <!-- RenderTargets.overlay（notify toast）：列表状态与皮肤类经 NotificationLayer 落地 -->
-    <NotificationLayer
-      :notices="notifications"
-      :notify-view-of="notifyViewOf"
-      :z-of="zOf"
-    />
-    <!-- 扩展 op 等待覆盖层：extension.mount 展示，「确认」即 resolveExtensionOp 解除（解除权在宿主） -->
-    <ExtensionOverlayCard
-      v-if="extensionOverlay !== null"
-      :overlay="extensionOverlay"
-      :z-of="zOf"
-      @confirm="resolveExtension"
-    />
-    <!-- 叙事层四层（选择 / 输入 / 玩法挂载 / 对话）共用一个面板骨架 -->
-    <DialoguePanel
-      ref="dialoguePanelRef"
-      v-model:input-value="inputValue"
-      :z-of="zOf"
-      :in-menu="inMenu"
-      :choice-view="choiceView"
-      :menu-options="menuOptions"
-      :in-input="inInput"
-      :input-prompt="inputPrompt"
-      :in-minigame="inMinigame"
-      :in-interaction="inInteraction"
-      :in-extension="inExtension"
-      :in-video="inVideo"
-      :dialog-hidden="dialogHidden"
-      :dialog-view="dialogView"
-      :nvl-mode="nvlMode"
-      :nvl-past-lines="nvlPastLines"
-      :nvl-typing-line="nvlTypingLine"
-      :shown-text="shownText"
-      :speaker-color="speakerColor"
-      :dialog-font="dialogFont"
-      :can-advance="canAdvance"
-      :in-wait="inWait"
-      @choose="choose"
-      @submit-input="submitInput"
-    >
-      <!-- 外部系统挂载点（小游戏与玩法系统共用同一容器） -->
-      <DemoHost ref="demoHostRef" />
-    </DialoguePanel>
-    <!-- 面板群：历史 / 偏好 / 槽位三张卡片共用一个面板族 -->
-    <SettingsPanels
-      :layer-z="layerZ"
-      :show-history="showHistory"
-      :history-blocks="historyBlocks"
-      :show-prefs="showPrefs"
-      :prefs-view="prefsView"
-      :pref-channels="PREF_CHANNELS"
-      :capture-action="captureAction"
-      :display-keys="displayKeys"
-      :slot-panel="slotPanel"
-      :slot-views="slotViews"
-      :host="host"
-      @rollback-to-entry="rollbackToEntry"
-      @set-pref-volume="setPrefVolume"
-      @set-pref-muted="setPrefMuted"
-      @set-pref-text-speed="setPrefTextSpeed"
-      @set-pref-orientation="setPrefOrientation"
-      @set-pref-fullscreen="setPrefFullscreen"
-      @start-capture="startCapture"
-      @reset-keybinding="resetKeybinding"
-      @choose-slot="chooseSlot"
-    />
-    <p v-if="error" class="error">{{ error }}</p>
-  </main>
+    <main ref="stageEl" class="stage" @click="onStageClick" @wheel="onWheel">
+      <!-- 舞台内容层：舞台根的适配变换之外的另一层变换——震动偏移写这里，两层各写各的 -->
+      <div ref="stageShakeEl" class="stage-shake">
+        <!-- 舞台元素层：声明式空间层（z 由 shell.layers.stage 决定，默认 0 = 位于 video 之下） -->
+        <div
+          ref="elementLayerEl"
+          class="element-layer"
+          :style="{ zIndex: layerZ.stage }"
+        ></div>
+        <!-- 固定工具条：单条 flex 行（布局由构造保证不重叠；safe-area 适配移动端） -->
+        <ToolbarPanel
+          :layer-z="layerZ"
+          :available-langs="availableLangs"
+          :current-lang="currentLang"
+          @restart="restart"
+          @open-slot-panel="openSlotPanel"
+          @toggle-history="toggleHistory"
+          @toggle-prefs="showPrefs = !showPrefs"
+          @change-lang="changeLang"
+        />
+        <!-- RenderTargets.overlay（notify toast）：列表状态与皮肤类经 NotificationLayer 落地 -->
+        <NotificationLayer
+          :notices="notifications"
+          :notify-view-of="notifyViewOf"
+          :z-of="zOf"
+        />
+        <!-- 扩展 op 等待覆盖层：extension.mount 展示，「确认」即 resolveExtensionOp 解除（解除权在宿主） -->
+        <ExtensionOverlayCard
+          v-if="extensionOverlay !== null"
+          :overlay="extensionOverlay"
+          :z-of="zOf"
+          @confirm="resolveExtension"
+        />
+        <!-- 叙事层四层（选择 / 输入 / 玩法挂载 / 对话）共用一个面板骨架 -->
+        <DialoguePanel
+          ref="dialoguePanelRef"
+          v-model:input-value="inputValue"
+          :z-of="zOf"
+          :in-menu="inMenu"
+          :choice-view="choiceView"
+          :menu-options="menuOptions"
+          :in-input="inInput"
+          :input-prompt="inputPrompt"
+          :in-minigame="inMinigame"
+          :in-interaction="inInteraction"
+          :in-extension="inExtension"
+          :in-video="inVideo"
+          :dialog-hidden="dialogHidden"
+          :dialog-view="dialogView"
+          :nvl-mode="nvlMode"
+          :nvl-past-lines="nvlPastLines"
+          :nvl-typing-line="nvlTypingLine"
+          :shown-text="shownText"
+          :speaker-color="speakerColor"
+          :dialog-font="dialogFont"
+          :can-advance="canAdvance"
+          :in-wait="inWait"
+          @choose="choose"
+          @submit-input="submitInput"
+        >
+          <!-- 外部系统挂载点（小游戏与玩法系统共用同一容器） -->
+          <DemoHost ref="demoHostRef" />
+        </DialoguePanel>
+        <!-- 面板群：历史 / 偏好 / 槽位三张卡片共用一个面板族 -->
+        <SettingsPanels
+          :layer-z="layerZ"
+          :show-history="showHistory"
+          :history-blocks="historyBlocks"
+          :show-prefs="showPrefs"
+          :prefs-view="prefsView"
+          :pref-channels="PREF_CHANNELS"
+          :capture-action="captureAction"
+          :display-keys="displayKeys"
+          :slot-panel="slotPanel"
+          :slot-views="slotViews"
+          :host="host"
+          @rollback-to-entry="rollbackToEntry"
+          @set-pref-volume="setPrefVolume"
+          @set-pref-muted="setPrefMuted"
+          @set-pref-text-speed="setPrefTextSpeed"
+          @set-pref-orientation="setPrefOrientation"
+          @set-pref-fullscreen="setPrefFullscreen"
+          @start-capture="startCapture"
+          @reset-keybinding="resetKeybinding"
+          @choose-slot="chooseSlot"
+        />
+        <p v-if="error" class="error">{{ error }}</p>
+      </div>
+    </main>
+  </div>
 </template>
 
 <style>
@@ -479,25 +520,43 @@ body,
 </style>
 
 <style scoped>
-/** 舞台骨架样式：舞台根、元素层、转场遮罩与错误横幅（面板与通知/扩展层的样式随各自组件） */
+/** 舞台骨架样式：外框、舞台根、元素层、转场遮罩与错误横幅（面板与通知/扩展层的样式随各自组件） */
 
-/* 舞台骨架：宿主自身的 DOM；各面板与叙事层的样式随各自组件走 */
-
-.stage {
+/* 舞台外框：铺满视口、不滚动；舞台内容按基准缩放后在其中居中，留边露出这里的底色 */
+.stage-viewport {
   position: fixed;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: clamp(12px, 3vh, 28px) clamp(12px, 4vw, 40px);
+  overflow: hidden;
+  background: #0a0a10;
+}
+
+/* 舞台根：作者坐标系（基准像素，1280 × 720）——宽高与适配变换由适配装配按外框写入，
+   这里只定摆放与外观。基准确认尺寸落在样式表之外，换基准不必改样式。 */
+.stage {
+  position: absolute;
+  top: 0;
+  left: 0;
   cursor: pointer;
   /* 舞台是整屏点击目标：WebView 默认的点击高亮会随「被点元素」铺满整个视口
      （看起来像蒙了一层），故此处关闭；交互元素的触摸反馈不受影响。 */
   -webkit-tap-highlight-color: transparent;
   background: #12121a;
   color: #e6e6f0;
-  font-size: clamp(14px, 1.4vw + 8px, 17px);
+  font-size: 17px;
+}
+
+/* 舞台内容层：面板栈与元素层的实际摆放都在这层里，尺寸即舞台根的内容盒。
+   震动偏移写它的 transform——舞台根那层归适配变换，两层各写各的、互不覆盖。 */
+.stage-shake {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  padding: 22px 40px;
 }
 
 /* 舞台元素层：容器不阻塞舞台点击（可交互元素自身恢复 pointer-events） */

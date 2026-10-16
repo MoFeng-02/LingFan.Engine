@@ -80,13 +80,16 @@ export function createAppSlots(options: AppSlotsOptions): AppSlots {
         timestamp: Date.now(),
       };
       // 真像素分层合成优先（元素图/视频帧）；污染/失败降级合成卡（尽力而为）
+      // 基准取舞台根的实际占位（含适配变换）：媒体包围盒也是变换后的真像素，
+      // 两者同基准才能等比例映射进缩略图（clientWidth 是变换前的布局尺寸，会错档）
+      const stageBox = stageEl.value?.getBoundingClientRect();
       let shot: string;
       try {
         shot = captureStageComposite({
           ...base,
           stage: {
-            width: stageEl.value?.clientWidth ?? 0,
-            height: stageEl.value?.clientHeight ?? 0,
+            width: stageBox?.width ?? 0,
+            height: stageBox?.height ?? 0,
           },
           media: collectStageMedia(stageEl.value),
         });

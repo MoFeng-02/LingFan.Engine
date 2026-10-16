@@ -58,8 +58,10 @@ const emit = defineEmits<{
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: min(86vw, 420px);
-  padding: clamp(16px, 2.4vh, 24px) clamp(18px, 2.6vw, 28px);
+  /* 尺寸按舞台基准（1280 × 720）折算：舞台子树内不用视口单位——那些先按真实窗口解析，
+     再被舞台缩放一次，等于随窗口二次变化，与「按基准像素书写」的口径冲突 */
+  width: 420px;
+  padding: 17px 28px;
   border-radius: 12px;
   background: #1c2136;
   border: 1px solid #3b4261;

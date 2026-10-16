@@ -36,8 +36,11 @@ export interface MediaPortFactoriesOptions {
 export interface MediaPortFactories {
   /** 造音频端口（诊断出口逐次传入） */
   createAudioPort(onError: (message: string) => void): AudioPort;
-  /** 造视频端口（层 z 与物化配置由装配参数给定） */
-  createVideoPort(onError: (message: string) => void): VideoPort;
+  /** 造视频端口（层 z 与物化配置由装配参数给定；呈现容器由消费方按当地事实注入） */
+  createVideoPort(
+    onError: (message: string) => void,
+    readContainer?: () => HTMLElement | null,
+  ): VideoPort;
 }
 
 /**
@@ -55,11 +58,15 @@ export function createMediaPortFactories(
     createAudioPort(onError: (message: string) => void): AudioPort {
       return createWebAudioPort({ onError, blobSource });
     },
-    createVideoPort(onError: (message: string) => void): VideoPort {
+    createVideoPort(
+      onError: (message: string) => void,
+      readContainer?: () => HTMLElement | null,
+    ): VideoPort {
       return createWebVideoPort({
         onError,
         zIndex: options.videoZIndex,
         blobSource,
+        readContainer,
       });
     },
   };

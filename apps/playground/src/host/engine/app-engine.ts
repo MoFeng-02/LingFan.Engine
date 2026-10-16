@@ -35,7 +35,10 @@ export interface AppEngineLifeOptions {
     savePort: SavePort;
     extensions: OpExtension[];
     createAudioPort: (onError: (message: string) => void) => AudioPort;
-    createVideoPort: (onError: (message: string) => void) => VideoPort;
+    createVideoPort: (
+      onError: (message: string) => void,
+      readContainer?: () => HTMLElement | null,
+    ) => VideoPort;
   };
   /** 引擎实例取用（装配层持有 `let engine`，重启重建后指向新实例） */
   getEngine: () => StoryEngine;
@@ -61,6 +64,8 @@ export interface AppEngineLifeOptions {
   handleState: (event: { key: string; value: unknown }) => void;
   /** 引擎事件订阅回调（event → 提示条/挂载/诊断分流） */
   handleEvent: (event: { payload: OutboundPayload }) => void;
+  /** 视频层的呈现容器（重启重建端口时同样注入：舞台根 → 视频层随舞台缩放） */
+  readVideoContainer?: () => HTMLElement | null;
 }
 
 /** 引擎生命周期能力：初始化接线、fail-closed 后整体重建、订阅解除 */
@@ -91,6 +96,7 @@ export function createAppEngineLife(
     zOf,
     handleState,
     handleEvent,
+    readVideoContainer,
   } = options;
   const {
     speaker,
@@ -155,7 +161,10 @@ export function createAppEngineLife(
     media.audioPort = props.createAudioPort(media.reportAudioError);
     media.videoPort.dispose();
     media.videoRenderer?.dispose();
-    media.videoPort = props.createVideoPort(media.reportAudioError);
+    media.videoPort = props.createVideoPort(
+      media.reportAudioError,
+      readVideoContainer,
+    );
     media.videoPort.setZIndex?.(zOf("video")); // 重建端口后补上当前实例 z
     getEngine().dispose();
     setEngine(

@@ -199,8 +199,10 @@ const submitInput = (): void => emit("submit-input");
   position: relative;
   width: min(100%, 960px);
   margin: 0 auto;
-  min-height: clamp(5.5em, 18vh, 9em);
-  padding: clamp(12px, 2vh, 18px) clamp(16px, 2.5vw, 24px);
+  /* 尺寸按舞台基准（1280 × 720）折算：舞台子树内不用视口单位——那些先按真实窗口解析，
+     再被舞台缩放一次，等于随窗口二次变化，与「按基准像素书写」的口径冲突 */
+  min-height: 130px;
+  padding: 14px 24px;
   border: 1px solid #4444;
   border-radius: 12px;
   background: #1e1e2ecc;
@@ -209,7 +211,7 @@ const submitInput = (): void => emit("submit-input");
 
 /* NVL 累积层形态：对话容器抬升为阅读区（累积文本自上而下滚动） */
 .dialogue.nvl-mode {
-  min-height: 46vh;
+  min-height: 331px; /* 46vh @ 720 基准 */
   display: flex;
   flex-direction: column;
 }
@@ -266,7 +268,7 @@ const submitInput = (): void => emit("submit-input");
 }
 
 .choices button {
-  padding: clamp(8px, 1.6vh, 12px) clamp(18px, 3vw, 30px);
+  padding: 12px 30px;
   border: 1px solid #7aa2f766;
   border-radius: 10px;
   background: #1e1e2ecc;
@@ -287,7 +289,7 @@ const submitInput = (): void => emit("submit-input");
 }
 
 .input-row input {
-  width: min(60vw, 320px);
+  width: min(60%, 320px);
   padding: 10px 14px;
   border: 1px solid #7aa2f766;
   border-radius: 10px;

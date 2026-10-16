@@ -31,8 +31,8 @@ export interface AppFrameOptions {
   elementLayerEl: Ref<HTMLElement | null>;
   /** 全屏转场遮罩（不透明度与显隐由帧驱动写入） */
   transitionEl: Ref<HTMLElement | null>;
-  /** 舞台根（震动偏移写它的 transform） */
-  stageEl: Ref<HTMLElement | null>;
+  /** 震动落点（内容层容器：偏移写它的 transform，别写套着适配变换的舞台根） */
+  shakeEl: Ref<HTMLElement | null>;
 }
 
 /** 帧驱动能力：可停止的 rAF 帧循环句柄 */
@@ -51,7 +51,7 @@ export function createAppFrame(options: AppFrameOptions): AppFrame {
     typewriter,
     elementLayerEl,
     transitionEl,
-    stageEl,
+    shakeEl,
   } = options;
   const { text, shownText } = narrative;
   // —— 帧驱动表现：元素动画 / 全屏转场 / 屏幕震动 ——
@@ -81,7 +81,7 @@ export function createAppFrame(options: AppFrameOptions): AppFrame {
     },
     readElementHost: () => elementLayerEl.value,
     readOverlay: () => transitionEl.value,
-    readStage: () => stageEl.value,
+    readStage: () => shakeEl.value,
   });
   // —— 共享帧循环驱动打字机（帧源由组合根注入，本文件不认平台帧 API）——
   // 帧内顺序（推进打字机 → 上交可见文本 → 媒体位置回写 → 帧驱动表现）。

@@ -34,6 +34,7 @@
     "packages/*/src/**/*.ts",
     "apps/*/src/**/*.ts",
     "apps/*/src/**/*.vue",
+    "apps/*/pages/**/*.ts",
     "apps/*/*.ts",
     "template/**/src/**/*.ts",
     "tests/**/*.ts"
