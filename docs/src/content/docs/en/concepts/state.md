@@ -131,6 +131,6 @@ engine.onStateChanged((change) => {
 
 ## Next
 
-- [Rollback & History](/en/concepts/rollback/): how variables rewind along with rollback.
+- [Rollback & History](/concepts/rollback/): how variables rewind along with rollback.
 - [Save System](/en/concepts/saves/): which state goes into a save and which does not.
-- [Extending the Engine](/en/concepts/extensions/): how extensions read and write state.
+- [Extending the Engine](/concepts/extensions/): how extensions read and write state.

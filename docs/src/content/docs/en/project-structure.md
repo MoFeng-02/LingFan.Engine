@@ -119,6 +119,6 @@ The host depends on no UI framework and manipulates the DOM directly. Moving to 
 
 ## Next
 
-- [Create from a Template](/en/from-template/): placeholder replacement, packaging, and where the template stops.
+- [Create from a Template](/from-template/): placeholder replacement, packaging, and where the template stops.
 - [Story & Narrative Flow](/en/concepts/story/): how columns and commands are organised.
-- [Multilingual Stories](/en/concepts/i18n/): the complete rules for `Lang/`.
+- [Multilingual Stories](/concepts/i18n/): the complete rules for `Lang/`.

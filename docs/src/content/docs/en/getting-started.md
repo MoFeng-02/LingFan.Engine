@@ -107,5 +107,5 @@ The desktop shell does not use this table: it recursively collects every story f
 ## Next
 
 - [Project Structure](/en/project-structure/): what goes in each directory and how to fill in the fields.
-- [Create from a Template](/en/from-template/): placeholder replacement, packaging and template limits for a real project.
+- [Create from a Template](/from-template/): placeholder replacement, packaging and template limits for a real project.
 - [Story & Narrative Flow](/en/concepts/story/): the complete rules for columns and commands.

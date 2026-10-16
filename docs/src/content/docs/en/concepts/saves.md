@@ -179,10 +179,10 @@ Width runs 80 to 1280, height 45 to 720, and `quality` sits between 0 and 1. The
 
 ## Preferences stay out
 
-Volume, text speed and key bindings are player preferences and live outside saves; loading does not change them. They are persisted separately, so switching saves leaves your settings alone. See the [dialogue guide](/en/guides/dialogue/) for details — if the host has no preferences panel yet, volume takes the value written in the command.
+Volume, text speed and key bindings are player preferences and live outside saves; loading does not change them. They are persisted separately, so switching saves leaves your settings alone. See the [dialogue guide](/guides/dialogue/) for details — if the host has no preferences panel yet, volume takes the value written in the command.
 
 ## Next
 
-- [Rollback & History](/en/concepts/rollback/): the other way back in time, the one that never touches disk.
-- [Extending the Engine](/en/concepts/extensions/): how extension state travels with saves.
+- [Rollback & History](/concepts/rollback/): the other way back in time, the one that never touches disk.
+- [Extending the Engine](/concepts/extensions/): how extension state travels with saves.
 - [Project Structure](/en/project-structure/): which file `shell` configuration goes in.
