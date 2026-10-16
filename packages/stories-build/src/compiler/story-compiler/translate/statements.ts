@@ -15,7 +15,14 @@ import {
   translateFor,
   translateForOf,
   translateSwitch,
+  type StatementDispatch,
 } from "./control-flow.ts";
+
+/** 语句递归入口：本文件即分发器，自引用注入给控制流族（见 `StatementDispatch`） */
+const DISPATCH: StatementDispatch = {
+  statement: translateStatement,
+  statements: translateStatements,
+};
 
 export function translateStatement(
   ctx: BodyCtx,
@@ -45,19 +52,19 @@ export function translateStatement(
     diag(ctx, stmt, "表达式语句只能是词函数/函数调用或赋值");
     return [];
   }
-  if (ts.isIfStatement(stmt)) return translateIf(ctx, stmt);
-  if (ts.isWhileStatement(stmt)) return translateWhile(ctx, stmt);
+  if (ts.isIfStatement(stmt)) return translateIf(ctx, stmt, DISPATCH);
+  if (ts.isWhileStatement(stmt)) return translateWhile(ctx, stmt, DISPATCH);
   if (ts.isDoStatement(stmt)) {
     diag(ctx, stmt, "do-while 不支持：请改写为 while（先求值再循环）");
     return [];
   }
-  if (ts.isForStatement(stmt)) return translateFor(ctx, stmt);
-  if (ts.isForOfStatement(stmt)) return translateForOf(ctx, stmt);
+  if (ts.isForStatement(stmt)) return translateFor(ctx, stmt, DISPATCH);
+  if (ts.isForOfStatement(stmt)) return translateForOf(ctx, stmt, DISPATCH);
   if (ts.isForInStatement(stmt)) {
     diag(ctx, stmt, "for-in 不支持：对象遍历请改用明确的状态键读取");
     return [];
   }
-  if (ts.isSwitchStatement(stmt)) return translateSwitch(ctx, stmt);
+  if (ts.isSwitchStatement(stmt)) return translateSwitch(ctx, stmt, DISPATCH);
   if (ts.isReturnStatement(stmt)) {
     if (!ctx.inFunction) {
       diag(ctx, stmt, ctx.shared.texts.topLevelReturn());

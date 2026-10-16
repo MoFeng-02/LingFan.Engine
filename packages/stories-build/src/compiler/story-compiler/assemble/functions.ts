@@ -14,18 +14,7 @@ import {
   type Scope,
   type ScopeEntry,
 } from "../translate.ts";
-import type { AssembleSession } from "./session.ts";
-
-/** 一次函数编译的产物：签名、体命令、被引函数名与全部嵌套名（同列重名检查用） */
-export interface CompiledFunction {
-  key: string;
-  file: string;
-  name: string;
-  params: string[];
-  body: StoryCommand[];
-  refs: ReadonlySet<string>;
-  allNames: ReadonlyMap<string, { file: string; line: number; col: number }>;
-}
+import type { AssembleSession, CompiledFunction } from "./types.ts";
 
 function nodePos(
   sf: ts.SourceFile,

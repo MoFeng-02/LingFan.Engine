@@ -1,5 +1,5 @@
 /**
- * import 环判据（对应章节「严禁循环依赖」，仓库级源级扫描）。
+ * import 环判据（仓库级源级扫描）。
  *
  * 为什么要有：环不报错、测试也常绿，只在打包器/加载顺序变化时炸；靠人眼读 import 守不住。
  * 口径：`from "spec"` **跨行解析**（多行 import 是常见写法，按行匹配会漏）、含裸 `import "spec"`
@@ -7,8 +7,7 @@
  * `/index.ts` / `/index.vue`；`.d.ts` 不入图。
  *
  * 判据形态（与 `tests/ui/platform-neutral.test.ts` 的完成手法一致）：
- * 白名单 = 当前已知的非平凡强连通分量，**逐项相等**——新增环立刻失败；拆掉一个就从白名单删一项。
- * 目标是把白名单清空。
+ * 白名单 = 允许保留的非平凡强连通分量，**逐项相等**——新增环立刻失败；删掉一个就从白名单删一项。
  *
  * 词法判据前先剥掉注释：否则注释里的 `from "./x"` 例子会被当成真依赖。
  */
@@ -142,44 +141,9 @@ function signature(component: readonly string[]): string {
 }
 
 /**
- * 已知环白名单（拆环后逐项删除；清空即达 对应章节 判据）。
- * 上游：`项目记录`。
+ * 允许保留的环白名单（逐项相等匹配；当前为空 = 全仓无环）。
  */
-const KNOWN_CYCLES: readonly (readonly string[])[] = [
-  [
-    "packages/engine/src/data/format/body.ts",
-    "packages/engine/src/data/format/column.ts",
-    "packages/engine/src/data/format/validate.ts",
-    "packages/engine/src/data/format/validate/blocks.ts",
-    "packages/engine/src/data/format/validate/dialog.ts",
-    "packages/engine/src/data/format/validate/flow.ts",
-  ],
-  [
-    "packages/engine/src/data/format/entry.ts",
-    "packages/engine/src/data/format/index.ts",
-    "packages/engine/src/data/text/entry.ts",
-    "packages/engine/src/data/text/index.ts",
-  ],
-  [
-    "packages/engine/src/data/text/generate/body.ts",
-    "packages/engine/src/data/text/generate/command.ts",
-    "packages/engine/src/data/text/generate/command/blocks.ts",
-  ],
-  [
-    "packages/engine/src/runtime/i18n/index.ts",
-    "packages/engine/src/runtime/i18n/translate.ts",
-    "packages/engine/src/runtime/internal/index.ts",
-    "packages/engine/src/runtime/internal/session.ts",
-  ],
-  [
-    "packages/stories-build/src/compiler/story-compiler/assemble/functions.ts",
-    "packages/stories-build/src/compiler/story-compiler/assemble/session.ts",
-  ],
-  [
-    "packages/stories-build/src/compiler/story-compiler/translate/control-flow.ts",
-    "packages/stories-build/src/compiler/story-compiler/translate/statements.ts",
-  ],
-];
+const KNOWN_CYCLES: readonly (readonly string[])[] = [];
 
 describe("import 环判据（仓库级扫描）", () => {
   const graph = buildGraph(SOURCES);

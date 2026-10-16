@@ -12,7 +12,19 @@ import { statePath } from "./expr-core.ts";
 import { lowerCond, lowerValue, loweredToScriptValue } from "./expr.ts";
 import { callWord } from "./words.ts";
 import { emitAssignment, translateIncrement } from "./assign.ts";
-import { translateStatement, translateStatements } from "./statements.ts";
+
+/**
+ * 语句递归入口：块体与 `case` 体由此下探。
+ *
+ * 控制流语句的体内可以再出现控制流语句，本族与语句分发器天然互相递归；
+ * 入口由调用方**注入**（本模块不 import 分发器）。
+ */
+export interface StatementDispatch {
+  /** 单条语句 → 命令序列 */
+  statement(ctx: BodyCtx, stmt: ts.Statement): StoryCommand[];
+  /** 语句列表 → 命令序列 */
+  statements(ctx: BodyCtx, stmts: readonly ts.Statement[]): StoryCommand[];
+}
 
 function isUnlabeledBreak(stmt: ts.Statement): boolean {
   return ts.isBreakStatement(stmt) && stmt.label === undefined;
@@ -21,9 +33,10 @@ function isUnlabeledBreak(stmt: ts.Statement): boolean {
 export function translateBlockBody(
   ctx: BodyCtx,
   stmt: ts.Statement,
+  dispatch: StatementDispatch,
 ): StoryCommand[] {
-  if (ts.isBlock(stmt)) return translateStatements(ctx, stmt.statements);
-  return translateStatement(ctx, stmt);
+  if (ts.isBlock(stmt)) return dispatch.statements(ctx, stmt.statements);
+  return dispatch.statement(ctx, stmt);
 }
 
 interface IfChainInput {
@@ -55,6 +68,7 @@ interface Chain {
 export function translateIf(
   ctx: BodyCtx,
   stmt: ts.IfStatement,
+  dispatch: StatementDispatch,
 ): StoryCommand[] {
   const { branches, elseStmt } = collectIfChain(stmt);
   const rendered: Array<[string, StoryCommand[]]> = [];
@@ -62,14 +76,14 @@ export function translateIf(
     const cond = lowerCond(ctx, branch.cond);
     if (cond === undefined) return [];
     ctx.scopes.push(new Map());
-    const body = translateBlockBody(ctx, branch.then);
+    const body = translateBlockBody(ctx, branch.then, dispatch);
     ctx.scopes.pop();
     rendered.push([cond, body]);
   }
   let elseBody: StoryCommand[] = [];
   if (elseStmt !== undefined) {
     ctx.scopes.push(new Map());
-    elseBody = translateBlockBody(ctx, elseStmt);
+    elseBody = translateBlockBody(ctx, elseStmt, dispatch);
     ctx.scopes.pop();
   }
   const [firstCond, firstThen] = rendered[0];
@@ -92,12 +106,13 @@ export function translateIf(
 export function translateWhile(
   ctx: BodyCtx,
   stmt: ts.WhileStatement,
+  dispatch: StatementDispatch,
 ): StoryCommand[] {
   const cond = lowerCond(ctx, stmt.expression);
   if (cond === undefined) return [];
   ctx.scopes.push(new Map());
   ctx.breakables.push("loop");
-  const body = translateBlockBody(ctx, stmt.statement);
+  const body = translateBlockBody(ctx, stmt.statement, dispatch);
   ctx.breakables.pop();
   ctx.scopes.pop();
   const op = callWord(ctx, stmt, "whileDo", [cond, body]);
@@ -107,6 +122,7 @@ export function translateWhile(
 export function translateFor(
   ctx: BodyCtx,
   stmt: ts.ForStatement,
+  dispatch: StatementDispatch,
 ): StoryCommand[] {
   if (
     stmt.initializer === undefined ||
@@ -145,7 +161,7 @@ export function translateFor(
   const scope: Scope = new Map([[varName, { kind: "let" }]]);
   ctx.scopes.push(scope);
   ctx.breakables.push("loop");
-  const body = translateBlockBody(ctx, stmt.statement);
+  const body = translateBlockBody(ctx, stmt.statement, dispatch);
   const update = translateForUpdate(ctx, stmt);
   ctx.breakables.pop();
   ctx.scopes.pop();
@@ -191,6 +207,7 @@ function translateForUpdate(
 export function translateForOf(
   ctx: BodyCtx,
   stmt: ts.ForOfStatement,
+  dispatch: StatementDispatch,
 ): StoryCommand[] {
   const initializer = stmt.initializer;
   if (
@@ -206,7 +223,7 @@ export function translateForOf(
   if (collection === undefined) return [];
   ctx.scopes.push(new Map([[varName, { kind: "let" }]]));
   ctx.breakables.push("loop");
-  const body = translateBlockBody(ctx, stmt.statement);
+  const body = translateBlockBody(ctx, stmt.statement, dispatch);
   ctx.breakables.pop();
   ctx.scopes.pop();
   const op = callWord(ctx, stmt, "forIn", [varName, collection, body]);
@@ -254,6 +271,7 @@ function forOfCollection(
 export function translateSwitch(
   ctx: BodyCtx,
   stmt: ts.SwitchStatement,
+  dispatch: StatementDispatch,
 ): StoryCommand[] {
   const sf = ctx.shared.mod.sf;
   const on = lowerCond(ctx, stmt.expression);
@@ -281,7 +299,7 @@ export function translateSwitch(
     }
     ctx.scopes.push(new Map());
     ctx.breakables.push("switch");
-    const commands = translateStatements(ctx, body);
+    const commands = dispatch.statements(ctx, body);
     ctx.breakables.pop();
     ctx.scopes.pop();
     if (ts.isDefaultClause(clause)) {
