@@ -3,7 +3,7 @@
  */
 export { createNarrativeState } from "./narrativeState";
 export type {
-  MenuOption,
+  MenuChoice,
   NarrativeState,
   NarrativeStateOptions,
   StateCells,

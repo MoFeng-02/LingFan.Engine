@@ -6,6 +6,9 @@
  * 归共享的 `createLayerView`，视频层的 z 由它经 `applyVideo` 下发给端口（该层不在 DOM 上）。
  *
  * 写入只走 `set` / `restore` 两个入口，镜像与共享视图始终拿同一个值，不会各说各话。
+ *
+ * 与展示层覆盖层的同名概念区分：这里是**宿主 DOM 模板绑定的镜像控制器**（读 `zOf()` 落 `:style`），
+ * 覆盖层内部的 `LayerZController`（`@lingfan/ui` 的 `overlay/layer-z.ts`）则直接把 z 下发到覆盖层端口。
  */
 import { ref, type Ref } from "vue";
 import {
@@ -16,16 +19,16 @@ import {
 } from "@lingfan/engine";
 import { createLayerView, type LayerView } from "@lingfan/ui";
 
-/** 层 z 控制器的输入 */
-export interface LayerZControllerOptions {
+/** 层 z 镜像控制器的输入 */
+export interface HostLayerZControllerOptions {
   /** 工程层默认表（三级链的第二级） */
   layerZ: LayerZTable;
   /** 把解析后的 z 落到视频端口（端口重建后需重新下发一次） */
   applyVideoZ(z: number): void;
 }
 
-/** 层 z 控制器 */
-export interface LayerZController {
+/** 宿主层 z 镜像控制器 */
+export interface HostLayerZController {
   /** 实例级覆盖镜像（模板绑定读它；改动即触发重渲染） */
   readonly overrides: Ref<Partial<Record<string, number>>>;
   /** 某层当前的 z（模板绑定用） */
@@ -39,11 +42,11 @@ export interface LayerZController {
 }
 
 /**
- * 创建层 z 控制器。
+ * 创建宿主层 z 镜像控制器。
  */
-export function createLayerZController(
-  options: LayerZControllerOptions,
-): LayerZController {
+export function createHostLayerZController(
+  options: HostLayerZControllerOptions,
+): HostLayerZController {
   const overrides = ref<Partial<Record<string, number>>>({});
   const view: LayerView = createLayerView({
     layerZ: options.layerZ,

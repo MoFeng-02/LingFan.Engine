@@ -10,12 +10,12 @@ import { nextTick, watch, type Ref } from "vue";
 import { type ResourcePort, type StoryEngine } from "@lingfan/engine";
 import { createCommandRegistry } from "@lingfan/ui";
 import { createElementLayer } from "./elements";
-import type { NarrativeState } from "../narrative/narrative-state";
+import type { VueNarrativeState } from "../narrative/narrative-state";
 
 /** 装配入参：叙事状态、元素层容器、资源与引擎命令面 */
 export interface AppElementLayerOptions {
   /** 叙事视图状态（元素表响应式来源） */
-  narrative: NarrativeState;
+  narrative: VueNarrativeState;
   /** 舞台元素层容器（模板 ref；声明式空间层的挂载点） */
   elementLayerEl: Ref<HTMLElement | null>;
   /** 组合根注入的宿主属性（只读消费 `resourcePort`） */

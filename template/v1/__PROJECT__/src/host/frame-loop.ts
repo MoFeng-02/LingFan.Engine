@@ -28,10 +28,14 @@ export function startHostFrameLoop(options: HostFrameLoopOptions): FrameLoop {
       request: (callback) => requestAnimationFrame(callback),
       cancel: (handle) => cancelAnimationFrame(handle),
     },
-    readTypewriter: () => options.dialogue.readTypewriter(),
-    onText: (visible) => options.dialogue.onText(visible),
-    onMediaTick: () => options.onMediaTick(),
-    onFrame: (dt) => options.onFrame(dt),
+    // 每帧顺序固定：打字机推进 → 上交可见文本 → 媒体位置回写 → 帧驱动表现
+    onTick: (dt) => {
+      const typewriter = options.dialogue.readTypewriter();
+      typewriter?.tick(dt);
+      options.dialogue.onText(typewriter?.visible ?? "");
+      options.onMediaTick();
+      options.onFrame(dt);
+    },
   });
   loop.start();
   return loop;

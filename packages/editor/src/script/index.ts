@@ -54,10 +54,10 @@ export {
 // —— 叙事 ——
 export { say, option, menu, input, notify, nvl, character, uncharacter } from "./words/index.ts";
 export type {
-  MenuOption,
+  MenuOptionSpec,
   SayOptions,
   NotifyOptions,
-  NvlMode,
+  NvlCommandMode,
   CharacterOptions,
 } from "./words/index.ts";
 

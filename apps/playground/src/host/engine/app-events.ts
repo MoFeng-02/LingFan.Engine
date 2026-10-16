@@ -15,13 +15,13 @@ import {
   type Notice,
 } from "@lingfan/shell";
 import type { AppMedia } from "../stage/app-media";
-import type { NarrativeState } from "../narrative/narrative-state";
+import type { VueNarrativeState } from "../narrative/narrative-state";
 import type { TypewriterHandle } from "../narrative/app-narrative";
 
 /** 装配入参：叙事状态、媒体单元格、错误横幅、引擎句柄与打字机句柄 */
 export interface AppEventsOptions {
   /** 叙事视图状态（等待/输入/正文等响应式字段来源） */
-  narrative: NarrativeState;
+  narrative: VueNarrativeState;
   /** 媒体单元格（回放/读档后媒体位置对齐） */
   media: AppMedia;
   /** 错误横幅内容（诊断与 fail-closed 上报都落这里） */

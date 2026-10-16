@@ -95,8 +95,13 @@ export function say<const S extends string>(
   };
 }
 
-/** 菜单选项：一项显示文字 + 选中后要跳去的目标列名 */
-export type MenuOption = CommandOf<"menu">["options"][number];
+/**
+ * 菜单选项的**命令参数**形态：一项显示文字 + 选中后跳去的目标列名（列名收窄到已知列）。
+ *
+ * 与运行期的读取面（引擎 `MenuChoice`：文本与目标列成对）不是同一条链：这里供作者写脚本，
+ * 目标列名会在生成物存在时收窄成字面量联合，故单独命名，避免与读取面的同形状类型混用。
+ */
+export type MenuOptionSpec = CommandOf<"menu">["options"][number];
 
 /**
  * 构造一个菜单选项，配合 {@link menu} 使用：玩家点中这一项后，
@@ -110,7 +115,7 @@ export type MenuOption = CommandOf<"menu">["options"][number];
  *   option("广场", "to_square"),
  * ]);
  */
-export function option(text: string, target: KnownColumnName): MenuOption {
+export function option(text: string, target: KnownColumnName): MenuOptionSpec {
   return { text, target };
 }
 
@@ -132,7 +137,7 @@ export function option(text: string, target: KnownColumnName): MenuOption {
  */
 export function menu(
   prompt: string | undefined,
-  options: readonly MenuOption[],
+  options: readonly MenuOptionSpec[],
 ): CommandOf<"menu"> {
   return {
     op: "menu",
@@ -186,7 +191,13 @@ export function notify<const S extends string>(
   return { op: "notify", text, ...opts };
 }
 
-export type NvlMode = NonNullable<CommandOf<"nvl">["mode"]>;
+/**
+ * NVL 命令的模式参数：作者在脚本里写的动作（`enter` 进入累积层 / `auto` 跟随 / `clear` 清屏 / `exit` 退出）。
+ *
+ * 与引擎的 `NvlMode`（`none` / `active` / `clear` / `exit`）**不是同一套取值**：那是运行期
+ * `__nvl_mode` 的状态值，这里是命令参数，两者语义不同、不可互换。
+ */
+export type NvlCommandMode = NonNullable<CommandOf<"nvl">["mode"]>;
 
 /**
  * 切换 NVL（整屏文本）模式。本命令立即生效、故事继续，不等待。
@@ -207,7 +218,7 @@ export type NvlMode = NonNullable<CommandOf<"nvl">["mode"]>;
  * nvl("clear");     // 清屏，继续整屏
  * nvl("exit");      // 退出整屏，恢复对话框
  */
-export function nvl(mode?: NvlMode): CommandOf<"nvl"> {
+export function nvl(mode?: NvlCommandMode): CommandOf<"nvl"> {
   return { op: "nvl", ...(mode === undefined ? {} : { mode }) };
 }
 

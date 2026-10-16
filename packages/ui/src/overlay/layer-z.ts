@@ -3,6 +3,10 @@
  *
  * 三级链由引擎的 `resolveInstanceZ` 决定（**实例显式指定 > 工程层默认 > 内建默认**），
  * 本控制器只负责「收下覆盖值 → 重算 → 经端口下发」这一段接线。
+ *
+ * 与宿主模板绑定的同名概念区分：本控制器直接把 z 下发到覆盖层端口；宿主若要拿响应式镜像
+ * 给模板绑定（`:style="{ zIndex: zOf(...) }"`），那是宿主自己的控制器（如 playground 的
+ * `HostLayerZController`），承载面与层表都不同。
  */
 import { resolveInstanceZ } from "@lingfan/engine";
 import type { LayerId, LayerZOverrides, LayerZTable } from "@lingfan/engine";

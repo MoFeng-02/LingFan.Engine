@@ -17,9 +17,9 @@ import {
 } from "@lingfan/engine";
 import { Typewriter } from "@lingfan/ui";
 import { createNarrativeState } from "@lingfan/shell";
-import { createLayerZController } from "./layer-z";
+import { createHostLayerZController } from "./layer-z";
 import { vueCells } from "./vue-cells";
-import type { NarrativeState } from "./narrative-state";
+import type { VueNarrativeState } from "./narrative-state";
 
 /** 打字机的宿主级共享句柄：当前句的读取与整体置空（重启时用） */
 export interface TypewriterHandle {
@@ -42,7 +42,7 @@ export interface AppNarrativeOptions {
 /** 叙事装配能力：共享叙事视图状态、层最终 z 与打字机句柄 */
 export interface AppNarrative {
   /** 叙事视图状态（模板与各装配共享的响应式字段来源） */
-  narrative: NarrativeState;
+  narrative: VueNarrativeState;
   /** 层最终 z（实例 > 层默认 > 内建）——模板直接用 */
   zOf: (layer: LayerId) => number;
   /** 打字机共享句柄 */
@@ -78,10 +78,10 @@ export function createAppNarrative(options: AppNarrativeOptions): AppNarrative {
     },
   });
   /**
-   * 层 z 控制器：实例级覆盖的**响应式镜像** + 视频层下发。
+   * 层 z 镜像控制器：实例级覆盖的**响应式镜像** + 视频层下发。
    * 镜像必须响应式——模板绑定读它，才会在该层 z 变化时重渲染。
    */
-  const zController = createLayerZController({
+  const zController = createHostLayerZController({
     layerZ,
     applyVideoZ,
   });
@@ -91,7 +91,7 @@ export function createAppNarrative(options: AppNarrativeOptions): AppNarrative {
   }
   return {
     // 注入的单元就是 Vue ref/computed（vue-cells.ts），模板解包与类型检查按 Vue 语义命名
-    narrative: narrative as unknown as NarrativeState,
+    narrative: narrative as unknown as VueNarrativeState,
     zOf,
     typewriter: {
       get: () => typewriter,

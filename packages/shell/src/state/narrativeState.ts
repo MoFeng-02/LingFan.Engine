@@ -20,7 +20,7 @@ import {
   type StateKeyTable,
 } from "@lingfan/ui";
 import type {
-  MenuOption,
+  MenuChoice,
   NarrativeState,
   NarrativeStateOptions,
 } from "./types.ts";
@@ -75,7 +75,7 @@ export function createNarrativeState(
    * 本模块独占 `rawTexts`/`rawTargets` 的全部写入点，故在写入点直接重算这个
    * 普通单元即可——不要求装配方提供响应式派生（无依赖追踪的框架也能接入）。
    */
-  const menuOptions = cell<MenuOption[]>([]);
+  const menuOptions = cell<MenuChoice[]>([]);
   function refreshMenuOptions(): void {
     // 与既有派生语义逐位一致：目标缺失（含两键长度不齐）按空串兜底
     menuOptions.value = rawTexts.value.map((t, i) => ({

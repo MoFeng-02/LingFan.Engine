@@ -6,14 +6,8 @@
  */
 import { builtinNotifyTemplate, toNotifyTone } from "../notify/templates";
 import type { NotifyTemplateRegistry } from "../notify/templates";
+import type { NotifyPayload } from "@lingfan/engine";
 import type { NotifyLayerItem } from "./surface";
-
-/** 一条通知的渲染输入：正文必填，`notifyType` 决定配色语气，`duration` 覆盖缺省停留时长 */
-export interface NotifyPayload {
-  text: string;
-  notifyType?: string;
-  duration?: number;
-}
 
 /** 通知层的装配输入：模板注册表可选 */
 export interface NotifyViewDeps {
