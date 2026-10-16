@@ -1,6 +1,6 @@
 /**
  * Script 词汇层 · **音频域**（bgm / se / ambient / voice 四通道 + 对称 stop）。
- * 生命周期由作者手动控制（引擎 R7：状态走 `__audio_*` 系统键 ⇒ 快照/存档/回溯随行）。
+ * 生命周期由作者手动控制（状态走 `__audio_*` 系统键 ⇒ 快照/存档/回溯随行）。
  * Options 派生自 schema（零漂移）；voice 例外——autoStop 是作者侧驼峰词，
  * builder 负责映射到 op 的 auto_stop 字段。
  */

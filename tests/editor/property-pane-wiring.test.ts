@@ -64,7 +64,7 @@ describe("属性面板入右栏 · 接线互锁", () => {
     // 左栏 6 个 + 右栏 5 个 tab 都有选中态；顶栏视图切换另有若干，不逐一枚举。
     // 左栏以 v-for 渲染（字面量各 1 处），运行时数量 = LEFT_TABS 长度：
     // 模板断言 v-for/role/aria-selected 就位，再以 LEFT_TABS 实际条目数 + 右栏
-    // 字面量数合计验收（语义与原「逐字面量计数 ≥11」等价）。
+    // 字面量数合计覆盖全部 tab。
     expect(sidebar).toContain('v-for="tab in LEFT_TABS"');
     expect(sidebar).toContain('role="tab"');
     expect(sidebar).toContain(":aria-selected=");

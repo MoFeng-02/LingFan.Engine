@@ -169,7 +169,7 @@ function updateRefsDeep(value: unknown, from: string, to: string): unknown {
     });
   }
   if (next.op === "navigate") {
-    // 目标列 = scene ?? path（② navigate 语义）：显式 scene 优先，无 scene 时 path 承载目标
+    // 目标列 = scene ?? path：显式 scene 优先，无 scene 时 path 承载目标
     if (
       next.scene === from ||
       (next.scene === undefined && next.path === from)
