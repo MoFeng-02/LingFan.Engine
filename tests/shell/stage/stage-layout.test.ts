@@ -9,6 +9,7 @@
  * 与桌面宿主只能各抄一份算法。
  */
 import { describe, expect, it } from "vitest";
+import { resolveStageConfig } from "@lingfan/engine";
 import {
   computeStageLayout,
   DEFAULT_STAGE_FIT,
@@ -188,6 +189,36 @@ describe("舞台适配计算", () => {
           baseline.height === DEFAULT_STAGE_HEIGHT,
       ),
     ).toBe(true);
+  });
+
+  it("基准预设含 2K / 4K 两档，且每一档都能被配置解析器原样接受", () => {
+    const byId = new Map(
+      STAGE_BASELINES.map((baseline) => [baseline.id, baseline]),
+    );
+    expect(byId.get("landscape-2560x1440")).toMatchObject({
+      width: 2560,
+      height: 1440,
+    });
+    expect(byId.get("landscape-3840x2160")).toMatchObject({
+      width: 3840,
+      height: 2160,
+    });
+    expect(byId.get("portrait-1440x2560")).toMatchObject({
+      width: 1440,
+      height: 2560,
+    });
+    expect(byId.get("portrait-2160x3840")).toMatchObject({
+      width: 2160,
+      height: 3840,
+    });
+    // 预设表与契约的区间必须咬合：换判定器就是换一套「能开多大」的口径
+    for (const baseline of STAGE_BASELINES) {
+      const resolved = resolveStageConfig({
+        shell: { stage: { width: baseline.width, height: baseline.height } },
+      });
+      expect(resolved.width).toBe(baseline.width);
+      expect(resolved.height).toBe(baseline.height);
+    }
   });
 
   it("任意自定义基准尺寸都被吃得下（不必在预设表里）", () => {
