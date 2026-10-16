@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Story, StoryColumn, StoryCommand } from "@lingfan/engine";
 import {
   assembleProject,
+  CAPABILITY_VERSION,
   diffProjectFiles,
   isSafeFileNameSegment,
   MANIFEST_FILE,
@@ -453,6 +454,8 @@ describe("serializeProject（写回往返互锁）", () => {
       resourceEncryption: true,
       shell: { orientation: "landscape" },
       "x-future": { anything: [1, 2, 3] },
+      // 能力版本是托管键：写回时由工具链盖章（见 tests/engine/data/capability-version.test.ts）
+      capabilityVersion: CAPABILITY_VERSION,
     });
   });
 
@@ -489,7 +492,15 @@ describe("diffProjectFiles（最小差量）", () => {
     const { files } = serializeProject(story, entry);
     const column = JSON.parse(files.get("Stories/start.json") ?? "") as unknown;
     const baseline = new Map<string, string>([
-      [MANIFEST_FILE, JSON.stringify(entry, null, 4)], // 排版不同、语义相同
+      // 排版不同、语义相同（+ 托管键已在盘上 ⇒ 序列化后不再变）
+      [
+        MANIFEST_FILE,
+        JSON.stringify(
+          { ...entry, capabilityVersion: CAPABILITY_VERSION },
+          null,
+          4,
+        ),
+      ],
       // 故事文件同样手写排版（单行内联）——语义相等即跳过，不重排版作者文件
       ["Stories/start.json", JSON.stringify(column)],
     ]);
