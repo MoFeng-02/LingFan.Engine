@@ -29,7 +29,7 @@ scene stage_demo
   say "The elements are already loaded when this column is entered."
 ```
 
-A `scene` column can hold commands too, written after the elements. For the full rules on elements, see [Visual Elements](/en/concepts/elements/).
+A `scene` column can hold commands too, written after the elements. For the full rules on elements, see [Visual Elements](/concepts/elements/).
 
 Column ids are unique across the project and may cross files. File names are unrelated to column ids; the error is two files declaring the same column id.
 
@@ -130,5 +130,5 @@ label chapter_one:
 ## Next
 
 - [State & Variables](/en/concepts/state/): how data moves between commands.
-- [Rollback & History](/en/concepts/rollback/): how the player gets back to an earlier position.
+- [Rollback & History](/concepts/rollback/): how the player gets back to an earlier position.
 - [Save System](/en/concepts/saves/): what a save actually stores.

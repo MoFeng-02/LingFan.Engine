@@ -96,6 +96,8 @@ export function farewell(who: string): void {
 
 自定义函数不会内联展开，而是编译成一个真子程序：函数定义发 `func` op 前置到列的命令序列头部，每个调用点发 `call` op。递归因此可用。
 
+函数可以带值返回：`return v` 编译成 `ret` op，值送给带 `into` 的调用点——`const r = someFunc()` 会把返回值绑成局部变量 `r`，`{r}` 可直接插值；没有接收点的调用处返回值丢弃，不报错。
+
 ```ts
 function greet(who: string): void {
   say(`${who}，欢迎来到灵泛！`, who);
@@ -112,11 +114,11 @@ export default function start(): void {
 
 `@lingfan/editor` 的词函数有四种取法，都成立：
 
-| 你写的 TS                                                         | 取到什么             |
-| ----------------------------------------------------------------- | -------------------- |
-| `import { say, menu } from "@lingfan/editor";`                    | 词函数本身，直接调用 |
-| `import { script } from "@lingfan/editor";`，之后 `script.say(…)` | 词汇层命名空间       |
-| `import * as ct from "@lingfan/editor";`，之后 `ct.say(…)`        | 整套命名空间         |
+| 你写的 TS                                                         | 取到什么              |
+| ----------------------------------------------------------------- | --------------------- |
+| `import { say, menu } from "@lingfan/editor";`                    | 词函数本身，直接调用  |
+| `import { script } from "@lingfan/editor";`，之后 `script.say(…)` | 词汇层命名空间        |
+| `import * as ct from "@lingfan/editor";`，之后 `ct.say(…)`        | 整套命名空间          |
 | 不写 import，直接 `script.say(…)`                                 | 免导入直呼（ambient） |
 
 改短名用 `as`：`import { say as 说 }`、`import { script as ct }` 都可以，命名空间起别名之后里面的词函数跟着别名走。
@@ -197,7 +199,6 @@ staticFor(3, (i) => [say(`第 ${i + 1} 组。`)]);
 - `for (const k in obj)`——引擎没有对象键枚举语义
 - `state.a.b = e`——引擎的 `set` 键是平名；深字段要走词函数 `dictSet`
 - `const f = () => {}`——自定义函数只认 `function` 声明
-- 函数体内 `return v`（带值）——引擎的 `call` 没有返回值通道，写 `return v` 会在构建期被拦下，而不是运行期静默丢弃
 
 条件表达式、`let` 的值、实参这些位置能写什么，由引擎的表达式文法决定，不是 TS 的子集。字面量、`state.a.b` 路径、局部变量名、运算符组合、内建函数调用（`random`/`min`/`max`/`abs`/`clamp`/`arrayGet`/`dictGet`/`optGet`/`len`）都可以；`new`、方法调用、`typeof`、解构、展开，以及内建之外的函数调用一律构建期报错。
 
@@ -319,7 +320,7 @@ pnpm stories-typecheck    # tsc --noEmit 类型检查
 
 ## 实现状态
 
-TS 创作模式在实现中，还没有对外发布。构建 CLI、语句转译、编译期常量求值器都已落地并通过测试，构建链也已经完成包化：构建入口是独立的 `@lingfan/stories-build` 包，工程里随构建生成的 `Stories.src/gen/stories.gen.d.ts` 把本工程的列名与插值键交给 IDE 做即时校验。还没做完的是 `stories:watch` 的增量体验——它现在是 `tsx watch` 包一层全量重编译——以及词汇层 `staticFor` 声明的生成来源。
+TS 创作模式在实现中，还没有对外发布。构建 CLI、语句转译、编译期常量求值器都已落地并通过测试，构建链也已经完成包化：构建入口是独立的 `@lingfan/stories-build` 包，工程里随构建生成的 `Stories.src/gen/stories.gen.d.ts` 把本工程的列名与插值键交给 IDE 做即时校验。`stories:watch` 已是常驻增量监听：保存源文件即重编译，产物与全量构建逐字节一致，并会报出本轮差量与受影响的故事列。
 
 具体到你写故事时可能碰到的：
 

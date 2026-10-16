@@ -94,6 +94,8 @@ This is the mechanism behind the whole mode: **the build statically compiles you
 
 A function of yours is not inlined at each call site. It compiles to a real subroutine: the definition emits a `func` op hoisted to the head of the column's command sequence, and each call site emits a `call` op. Recursion works as a result.
 
+A function may return a value: `return v` compiles to the `ret` op and the value goes to call sites that carry `into` — `const r = someFunc()` binds the return value to the local `r`, and `{r}` interpolates directly. At a call site with no receiver the value is discarded without an error.
+
 ```ts
 function greet(who: string): void {
   say(`${who}, welcome to LingFan!`, who);
@@ -195,7 +197,6 @@ These forms fail the build instead of being quietly ignored:
 - `for (const k in obj)` — the engine has no object-key enumeration
 - `state.a.b = e` — the engine's `set` key is a flat name; deep fields go through the `dictSet` word function
 - `const f = () => {}` — custom functions only accept `function` declarations
-- `return v` inside a function body — the engine's `call` has no return channel, so `return v` is stopped at build time rather than silently discarded at runtime
 
 What you may write in condition expressions, `let` values and arguments is decided by the engine's expression grammar, not by a subset of TypeScript. Literals, `state.a.b` paths, local variable names, operator combinations and built-in function calls (`random`/`min`/`max`/`abs`/`clamp`/`arrayGet`/`dictGet`/`optGet`/`len`) are fine; calls to anything outside the built-ins, `new`, method calls, `typeof`, destructuring and spread all fail the build.
 
@@ -297,7 +298,7 @@ export default function start(): void {
 }
 ```
 
-The command name passed to `extOp` only means something once the engine has actually registered it. Writing `extOp("http.get", …)` against an engine that has no such op behaves like any other unregistered command and does nothing — adding ops is engine-side work, see [Extending the Engine](/en/concepts/extensions/).
+The command name passed to `extOp` only means something once the engine has actually registered it. Writing `extOp("http.get", …)` against an engine that has no such op behaves like any other unregistered command and does nothing — adding ops is engine-side work, see [Extending the Engine](/concepts/extensions/).
 
 ## Building and output
 
@@ -317,7 +318,7 @@ The editor treats a TypeScript source project's JSON output as read-only; change
 
 ## Status
 
-TypeScript authoring is still being implemented and has not shipped. The build CLI, statement translation and compile-time constant evaluator have all landed and pass their tests, and the build chain is packaged: the entry point is a standalone `@lingfan/stories-build` package, and the `Stories.src/gen/stories.gen.d.ts` generated alongside your build hands your project's column names and interpolation keys to the IDE for instant checking. What is still missing is the incremental story for `stories:watch` — today it is `tsx watch` wrapping a full rebuild — and the generation source for the vocabulary layer's `staticFor` declaration.
+TypeScript authoring is still being implemented and has not shipped. The build CLI, statement translation and compile-time constant evaluator have all landed and pass their tests, and the build chain is packaged: the entry point is a standalone `@lingfan/stories-build` package, and the `Stories.src/gen/stories.gen.d.ts` generated alongside your build hands your project's column names and interpolation keys to the IDE for instant checking. `stories:watch` is now a persistent incremental watcher: saving a source file triggers a recompile whose artifacts are byte-identical to a full build, and each round reports its diff and the affected story columns.
 
 Concretely, what you may run into while writing:
 
@@ -334,4 +335,4 @@ Concretely, what you may run into while writing:
 
 - [Story & Narrative Flow](/en/concepts/story/): the runtime rules for columns, wait points and jumps.
 - [State & Variables](/en/concepts/state/): how paths like `state.gold` are read and written at runtime.
-- [Extending the Engine](/en/concepts/extensions/): registering the custom ops `extOp` points at.
+- [Extending the Engine](/concepts/extensions/): registering the custom ops `extOp` points at.
