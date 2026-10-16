@@ -1,7 +1,15 @@
+/**
+ * 表达式降级主分发：把 TS 表达式逐个形态降成引擎表达式文本 + 优先级。
+ *
+ * 白名单外的形态一律 `diag` 报诊断后返回 undefined（fail-closed，不做猜测性转换）；
+ * 值位置不支持函数调用（词函数只能作为命令）。递归自调用，所以必须在同一文件内。
+ */
 import * as ts from "typescript";
-import { evaluateExpression } from "@lingfan/engine";
-import { diag, lookupBinding, lookupScope } from "../shared.ts";
-import type { BodyCtx } from "../shared.ts";
+import { diag, lookupBinding, lookupScope } from "../../shared.ts";
+import type { BodyCtx } from "../../shared.ts";
+import { quoteEngineString, engineValueText } from "../engine-text.ts";
+import { statePath } from "../state-path.ts";
+import { PRECEDENCE, wrapOperand, foldNumericBinary } from "./numeric.ts";
 
 const BUILTIN_EXPR_FNS = new Set([
   "random",
@@ -16,99 +24,6 @@ const BUILTIN_EXPR_FNS = new Set([
 ]);
 /** 路径型内建：首参必须是路径字符串字面量（路径在构建期定型，不接受变量） */
 const PATH_BUILTINS = new Set(["arrayGet", "dictGet", "optGet", "len"]);
-
-const probeCache = new Set<string>();
-
-/** 探针免检前缀：路径型内建的实参由编译器构造性生成（文法必然合法），运行期语义不归探针管 */
-const PROBE_LENIENT = /^(arrayGet|dictGet|optGet|len)\(/;
-
-export function probeExpression(src: string): boolean {
-  if (probeCache.has(src) || PROBE_LENIENT.test(src)) return true;
-  try {
-    evaluateExpression(src, () => ({ found: true as const, value: 1 }));
-    probeCache.add(src);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function quoteEngineString(text: string): string {
-  const escaped = text
-    .replace(/\\/g, "\\\\")
-    .replace(/\n/g, "\\n")
-    .replace(/\r/g, "\\r")
-    .replace(/\t/g, "\\t")
-    .replace(/"/g, '\\"');
-  return `"${escaped}"`;
-}
-
-export function engineValueText(value: string | number | boolean): string {
-  return typeof value === "string" ? quoteEngineString(value) : String(value);
-}
-
-const PRECEDENCE: Record<string, number> = {
-  "||": 2,
-  "??": 1,
-  "&&": 3,
-  "==": 4,
-  "!=": 4,
-  "<": 5,
-  ">": 5,
-  "<=": 5,
-  ">=": 5,
-  "+": 6,
-  "-": 6,
-  "*": 7,
-  "/": 7,
-  "%": 7,
-};
-
-function wrapOperand(
-  child: string,
-  childPrec: number,
-  parentPrec: number,
-): string {
-  return childPrec < parentPrec ? `(${child})` : child;
-}
-
-export interface StatePath {
-  /** 根名剥离后的点路径（如 state.player.gold → "player.gold"） */
-  path: string;
-  /** 链上存在 `?.`（可选段）；值位置会脱糖为 optGet，写位置/for-of 集合不支持 */
-  optional: boolean;
-}
-
-export function statePath(
-  ctx: BodyCtx,
-  expr: ts.Expression,
-): StatePath | undefined {
-  const root = ctx.shared.stateRoot;
-  const parts: string[] = [];
-  let cur: ts.Expression = expr;
-  let optional = false;
-  for (;;) {
-    if (ts.isPropertyAccessExpression(cur)) {
-      if (cur.questionDotToken !== undefined) optional = true;
-      parts.unshift(cur.name.text);
-      cur = cur.expression;
-      continue;
-    }
-    if (ts.isIdentifier(cur) && cur.text === root) {
-      if (parts.length === 0) {
-        diag(ctx, expr, `${root} 必须以成员路径使用：${root}.player.gold`);
-        return undefined;
-      }
-      return { path: parts.join("."), optional };
-    }
-    diag(
-      ctx,
-      expr,
-      `成员表达式只支持 ${root} 路径（如 ${root}.player.gold）或枚举成员访问`,
-    );
-    return undefined;
-  }
-}
 
 export function lowerExpr(
   ctx: BodyCtx,
@@ -348,31 +263,4 @@ export function lowerExpr(
   }
   diag(ctx, expr, "表达式不在引擎文法白名单内（TS-only 结构不支持）");
   return undefined;
-}
-
-const NUMERIC_TEXT = /^-?\d+(?:\.\d+)?$/;
-
-/** 两侧均为数字字面量的算术二元式在构建期折叠成单值（除/模零不折叠，留给运行期文法校验）。 */
-function foldNumericBinary(
-  left: string,
-  right: string,
-  op: string,
-): string | undefined {
-  if (!NUMERIC_TEXT.test(left) || !NUMERIC_TEXT.test(right)) return undefined;
-  const a = Number(left);
-  const b = Number(right);
-  switch (op) {
-    case "+":
-      return String(a + b);
-    case "-":
-      return String(a - b);
-    case "*":
-      return String(a * b);
-    case "/":
-      return b === 0 ? undefined : String(a / b);
-    case "%":
-      return b === 0 ? undefined : String(a % b);
-    default:
-      return undefined;
-  }
 }
