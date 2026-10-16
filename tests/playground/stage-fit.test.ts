@@ -276,4 +276,21 @@ describe("舞台适配装配", () => {
     expect(uiBlock).toContain("display: flex");
     expect(uiBlock).toContain("pointer-events: none");
   });
+
+  it("UI 层自带文字默认值，且与舞台根同色（它住在舞台外，继承不到那套外观）", () => {
+    const blockOf = (selector: string) => {
+      const start = appSource.indexOf(`${selector} {`);
+      expect(start, `缺 ${selector} 样式块`).toBeGreaterThan(-1);
+      const block = appSource.slice(start);
+      return block.slice(0, block.indexOf("}"));
+    };
+    const stageColor = /color:\s*(#[0-9a-f]{3,8})/i.exec(
+      blockOf(".stage"),
+    )?.[1];
+    expect(stageColor).toBeDefined();
+    const uiBlock = blockOf(".shell-ui");
+    expect(uiBlock).toMatch(/color:\s*#[0-9a-f]{3,8}/i);
+    expect(/color:\s*(#[0-9a-f]{3,8})/i.exec(uiBlock)?.[1]).toBe(stageColor);
+    expect(uiBlock).toContain("font-size:");
+  });
 });
