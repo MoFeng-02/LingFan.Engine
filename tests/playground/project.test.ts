@@ -100,6 +100,23 @@ describe("示例工程防腐", () => {
     expect([...declared].sort()).toEqual(Object.keys(FILES).sort());
   });
 
+  it("stories-table.ts 的嵌入演示故事清单 ↔ 磁盘文件（回归：与 main.ts 同一防漂移）", () => {
+    // 嵌入演示页（embed-demo.html）用这张表 fetch 故事文件——漂移会让演示页
+    // 拿到 SPA 回退的 index.html 而报文本投影错（回归覆盖的历史缺陷）
+    const tableSource = (
+      import.meta.glob("../../apps/playground/src/stories/*.ts", {
+        eager: true,
+        query: "?raw",
+        import: "default",
+      }) as Record<string, string>
+    )["../../apps/playground/src/stories/stories-table.ts"];
+    const block = /const STORIES[^=]*= \[([^\]]*)\]/.exec(tableSource ?? "")?.[1];
+    expect(block, "未在 stories-table.ts 中找到 STORIES 清单").toBeDefined();
+    const declared = [...String(block).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    expect(declared.length).toBeGreaterThan(0); // 防提取失效空跑
+    expect([...declared].sort()).toEqual(Object.keys(FILES).sort());
+  });
+
   it("文本投影（projectText）对示例工程不抛错：编辑器文本模式打开真实工程不崩", () => {
     // 缺陷回归（编辑器工程模型）：编辑器「文本」视图对示例工程投影时崩在
     // `escapeForText(undefined)`——projectText 的契约是**降级为 issues**，不许抛
