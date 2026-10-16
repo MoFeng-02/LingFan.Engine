@@ -17,6 +17,7 @@ export { Scope } from "./scope.ts";
 export {
   DEFAULT_LAYER_Z,
   DEFAULT_SAVES_CONFIG,
+  DEFAULT_STAGE_CONFIG,
   INSTANCE_Z_KEYS,
   instanceZLayer,
   LAYER_IDS,
@@ -25,6 +26,7 @@ export {
   resolveLayerZ,
   resolveOrientationMode,
   resolveSavesConfig,
+  resolveStageConfig,
   slotIds,
 } from "./shell.ts";
 export type {
@@ -33,6 +35,10 @@ export type {
   LayerZTable,
   SavesConfig,
   SavesThumbnailConfig,
+  StageAlign,
+  StageConfig,
+  StageFit,
+  StageScalePolicy,
 } from "./shell.ts";
 export { findJsonValueError, jsonUnsafeReason } from "./stateContract.ts";
 export {

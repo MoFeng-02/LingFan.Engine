@@ -7,12 +7,14 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_LAYER_Z,
   DEFAULT_SAVES_CONFIG,
+  DEFAULT_STAGE_CONFIG,
   LAYER_IDS,
   manifestOrientation,
   resolveInstanceZ,
   resolveLayerZ,
   resolveOrientationMode,
   resolveSavesConfig,
+  resolveStageConfig,
   slotIds,
 } from "@lingfan/engine";
 
@@ -111,6 +113,94 @@ describe("resolveSavesConfig（存档壳配置：内建默认 × 工程覆盖）
       },
     });
     expect(config).toEqual(DEFAULT_SAVES_CONFIG);
+  });
+});
+
+describe("resolveStageConfig（舞台适配配置：内建默认 × 工程覆盖）", () => {
+  it("无声明 → 内建默认（1280 × 720 完整显示）", () => {
+    expect(resolveStageConfig({})).toEqual(DEFAULT_STAGE_CONFIG);
+    expect(resolveStageConfig(null)).toEqual(DEFAULT_STAGE_CONFIG);
+    expect(resolveStageConfig(undefined)).toEqual(DEFAULT_STAGE_CONFIG);
+  });
+
+  it("shell.stage 逐键覆盖（基准 + 策略 + 夹取）", () => {
+    const config = resolveStageConfig({
+      shell: {
+        stage: {
+          width: 1920,
+          height: 1080,
+          fit: "cover",
+          alignX: "start",
+          minScale: 0.5,
+          maxScale: 2,
+        },
+      },
+    });
+    expect(config.width).toBe(1920);
+    expect(config.height).toBe(1080);
+    expect(config.fit).toBe("cover");
+    expect(config.alignX).toBe("start");
+    expect(config.minScale).toBe(0.5);
+    expect(config.maxScale).toBe(2);
+    expect(config.alignY).toBeUndefined(); // 未覆盖键保持未声明（由计算件的预设锚点兜底）
+  });
+
+  it("显式 scaleBy 收名字与有限正倍率，其余忽略", () => {
+    expect(
+      resolveStageConfig({ shell: { stage: { scaleBy: "height" } } }).scaleBy,
+    ).toBe("height");
+    expect(
+      resolveStageConfig({ shell: { stage: { scaleBy: 1.5 } } }).scaleBy,
+    ).toBe(1.5);
+    expect(
+      resolveStageConfig({ shell: { stage: { scaleBy: "zoom" } } }).scaleBy,
+    ).toBeUndefined();
+    expect(
+      resolveStageConfig({ shell: { stage: { scaleBy: 0 } } }).scaleBy,
+    ).toBeUndefined();
+  });
+
+  it("非法值/越界一律忽略（信任边界）", () => {
+    const config = resolveStageConfig({
+      shell: {
+        stage: {
+          width: -5, // 越界（低于基准下限）
+          height: 99999, // 越界（高于基准上限）
+          fit: "zoom",
+          alignX: "middle",
+          alignY: 7,
+          minScale: 0, // 越界（倍率下限）
+          maxScale: Number.POSITIVE_INFINITY,
+        },
+      },
+    });
+    expect(config).toEqual(DEFAULT_STAGE_CONFIG);
+  });
+
+  it("minScale > maxScale：两条一起弃用（保留默认的不夹取）", () => {
+    const config = resolveStageConfig({
+      shell: { stage: { minScale: 4, maxScale: 2 } },
+    });
+    expect(config).toEqual(DEFAULT_STAGE_CONFIG);
+  });
+
+  it("只声明一条夹取时原样采纳", () => {
+    expect(
+      resolveStageConfig({ shell: { stage: { minScale: 0.75 } } }).minScale,
+    ).toBe(0.75);
+    expect(
+      resolveStageConfig({ shell: { stage: { maxScale: 3 } } }).maxScale,
+    ).toBe(3);
+  });
+
+  it("缺省表可换（宿主另有基准时不必改解析逻辑）", () => {
+    const config = resolveStageConfig(
+      { shell: { stage: { fit: "fill" } } },
+      { width: 750, height: 1334 },
+    );
+    expect(config.width).toBe(750);
+    expect(config.height).toBe(1334);
+    expect(config.fit).toBe("fill");
   });
 });
 

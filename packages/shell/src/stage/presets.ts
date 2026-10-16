@@ -6,6 +6,7 @@
  * 行为时直接写 `scaleBy`/`alignX`/`alignY`，与预设走同一条计算路径，所以预设与自定义
  * 之间不存在两套代码。
  */
+import { DEFAULT_STAGE_CONFIG } from "@lingfan/engine";
 import {
   type StageAlign,
   type StageFit,
@@ -29,10 +30,13 @@ export interface StagePreset {
   readonly alignY: StageAlign;
 }
 
-/** 缺省基准宽：横屏 16:9，与视频、存档缩略图同比例 */
-export const DEFAULT_STAGE_WIDTH = 1280;
+/**
+ * 缺省基准宽：取自引擎内建舞台配置（横屏 16:9，与视频、存档缩略图同比例）。
+ * 基准的**唯一事实源**在契约层；这里只把它摆成预设下拉要用的名字，避免两处各写一个 1280。
+ */
+export const DEFAULT_STAGE_WIDTH = DEFAULT_STAGE_CONFIG.width;
 /** 缺省基准高 */
-export const DEFAULT_STAGE_HEIGHT = 720;
+export const DEFAULT_STAGE_HEIGHT = DEFAULT_STAGE_CONFIG.height;
 
 /** 基准尺寸预设（横竖屏各两档，覆盖常见发布形态） */
 export const STAGE_BASELINES: readonly StageBaseline[] = [
@@ -62,8 +66,9 @@ export const STAGE_BASELINES: readonly StageBaseline[] = [
   },
 ];
 
-/** 缺省策略 */
-export const DEFAULT_STAGE_FIT: StageFit = "contain";
+/** 缺省策略（同样取契约层的内建值；工程未声明 `fit` 时落到这里） */
+export const DEFAULT_STAGE_FIT: StageFit =
+  DEFAULT_STAGE_CONFIG.fit ?? "contain";
 
 /** 内置策略表 */
 export const STAGE_PRESETS: Readonly<Record<StageFit, StagePreset>> = {

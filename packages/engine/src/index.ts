@@ -33,6 +33,7 @@ export {
   createStateReader,
   DEFAULT_LAYER_Z,
   DEFAULT_SAVES_CONFIG,
+  DEFAULT_STAGE_CONFIG,
   evaluateExpression,
   ExpressionError,
   findJsonValueError,
@@ -51,6 +52,7 @@ export {
   resolveLayerZ,
   resolveOrientationMode,
   resolveSavesConfig,
+  resolveStageConfig,
   slotIds,
   StoryEngine,
   WAITING_OPS,
@@ -66,6 +68,10 @@ export {
   type NameResolver,
   type SavesConfig,
   type SavesThumbnailConfig,
+  type StageAlign,
+  type StageConfig,
+  type StageFit,
+  type StageScalePolicy,
   type WaitSpec,
 } from "./runtime/index.ts";
 /**
