@@ -11,6 +11,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { ELEMENT_TYPES } from "@lingfan/engine";
+import { expectTwoWayEqual } from "../helpers/two-way-diff";
 
 /** 渲染器全部源码，键 = 仓库相对路径（前端不碰文件系统，改用打包器读取） */
 const RENDERER_SOURCES = import.meta.glob(
@@ -75,8 +76,14 @@ describe("内建元素渲染器登记 · 源级互锁（单点登记 + 覆盖面
       (r) => r.type,
     );
     expect(registered).toHaveLength(ELEMENT_TYPES.length);
-    // 双向：漏登记（契约有、表里无）与越界（表里有、契约无）都能抓住
-    expect(new Set(registered)).toEqual(new Set(ELEMENT_TYPES));
+    // 双向：漏登记（契约有、表里无）与越界（表里有、契约无）都能抓住，
+    // 失败消息用共享断言产出可读差集（与锚点面互锁同一套手法）
+    expectTwoWayEqual({
+      declared: ELEMENT_TYPES,
+      landed: registered,
+      declaredLabel: "契约元素类型",
+      landedLabel: "登记表键",
+    });
   });
 
   it("每个登记项都指向一个内建渲染器（键名漂移立刻红）", () => {
