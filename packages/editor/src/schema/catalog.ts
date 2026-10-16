@@ -10,9 +10,8 @@ import type { FieldKind, OpGroup, OpMeta } from "../contracts/index.ts";
 /**
  * op 分组顺序（与时间线插入菜单一致）。
  *
- * 放在本数据叶子里而非 `elementPalette`：`surface`（扩展 op 归组校验）与
- * `elementPalette`（分组渲染）都要它，而 `elementPalette` 又依赖 `surface` 的合并面
- * ⇒ 留在派生模块会形成 import 环（对应章节）。
+ * 放在本数据叶子里：`surface`（扩展 op 归组校验）与 `elementPalette`（分组渲染）
+ * 都要取用，两者又分处依赖链两端。
  */
 export const OP_GROUP_ORDER: readonly OpGroup[] = [
   "narrative",
