@@ -98,6 +98,19 @@ export interface Story {
   extensions?: string[];
 }
 
+/**
+ * 能力版本：产出该产物的创作工具链所支持的**作者面**版本——构建期事实。
+ *
+ * - **唯一声明处**：全仓只此一处；`packages/stories-build` 取值写入产物清单
+ *   （`project.json` 的 `capabilityVersion`），**不得自建副本**（唯一性由测试锁定）。
+ * - **形态**：声明处用字符串（语义化版本）；契约允许整数——存量产物或其他工具
+ *   写入的整数照常读入。读取侧**只读不校验**（不做 `z.literal` 硬校验，缺键照常打开）。
+ * - **谁改它**：人工维护。作者面新增能力进位 `minor`，破坏性变更进位 `major`，
+ *   纯修复与文档不进位。**禁止**从 git 提交数、时间戳或产物哈希派生——那会让产物
+ *   不再可复现，破坏构建的「零差量」幂等守卫。
+ */
+export const CAPABILITY_VERSION = "0.9.0";
+
 /** 工程清单（project.json）：结构化/原子化多文件工程的组装契约 */
 export interface ProjectManifest {
   formatVersion: 1;
@@ -128,6 +141,14 @@ export interface ProjectManifest {
   defines?: Record<string, unknown>;
   /** 故事版本（作者声明，正整数；TS 源链经托管键更新落盘；缺省 = 1） */
   version?: number;
+  /**
+   * 能力版本（构建期事实）：产出本清单的工具链所支持的作者面版本。
+   *
+   * 由构建写入（托管键，值取 `CAPABILITY_VERSION`）；**读取侧只读不校验**——
+   * 缺键照常打开、不降级、不落 notice。整数与字符串都合法（见 `CAPABILITY_VERSION`）；
+   * 与磁盘形状（`formatVersion`）、剧情版本（`version`）均无关系。
+   */
+  capabilityVersion?: number | string;
 }
 
 /** overlay 译文文件：overlay 根内相对路径（`/` 分隔；`main.json` = 全局兜底，最先合并）

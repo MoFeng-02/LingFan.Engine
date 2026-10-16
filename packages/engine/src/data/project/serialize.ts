@@ -7,7 +7,12 @@ import {
   isSafeFileNameSegment,
 } from "./naming.ts";
 import { columnShapeDefect } from "../format/column.ts";
-import type { SerializedProject, Story, StoryColumn } from "../../contracts/index.ts";
+import {
+  CAPABILITY_VERSION,
+  type SerializedProject,
+  type Story,
+  type StoryColumn,
+} from "../../contracts/index.ts";
 
 /**
  * 工程写回：Story → 多文件工程（组装的逆过程）。
@@ -65,6 +70,10 @@ function manifestText(story: Story, manifest: Record<string, unknown>): string {
     } else if (key === "version") {
       // 故事版本（作者声明）：只写声明过的（缺席不写——缺省 1 语义，往返幂等不新增键）
       if (story.version !== undefined) out[key] = story.version;
+    } else if (key === "capabilityVersion") {
+      // 能力版本：**托管键**——值恒取 `CAPABILITY_VERSION`（工具链唯一声明处），
+      // 源文件里手写的旧值不保留。只增不改：不读、不校验、不据此改行为。
+      out[key] = CAPABILITY_VERSION;
     } else {
       out[key] = value;
     }
@@ -74,6 +83,9 @@ function manifestText(story: Story, manifest: Record<string, unknown>): string {
   if (!("id" in out)) out.id = story.id;
   if (!("entry" in out)) out.entry = story.entry;
   if (!("defines" in out) && hasDefines) out.defines = defines;
+  // 能力版本：托管键，写回时一律盖章（值是工具链的事实，不是作者的输入）。
+  // 首次盖章落在末尾；此后源文件已含该键 ⇒ 走上面的原位分支，键序稳定 ⇒ 往返幂等。
+  if (!("capabilityVersion" in out)) out.capabilityVersion = CAPABILITY_VERSION;
   return stableJson(out);
 }
 

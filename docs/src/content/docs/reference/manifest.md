@@ -1,6 +1,6 @@
 ---
 title: 工程清单 project.json
-description: 清单字段逐条说明：formatVersion、id、entry、lang、shell.layers、shell.saves、shell.orientation、extensions、defines、resourceEncryption。
+description: 清单字段逐条说明：formatVersion、capabilityVersion、id、entry、lang、shell.layers、shell.saves、shell.orientation、extensions、defines、resourceEncryption。
 ---
 
 `Resources/project.json` 是工程的唯一清单。引擎启动时读它，校验不过整个工程打不开。
@@ -24,6 +24,7 @@ description: 清单字段逐条说明：formatVersion、id、entry、lang、shel
 | 字段                 | 类型     | 必填 | 缺省    |
 | -------------------- | -------- | ---- | ------- |
 | `formatVersion`      | `1`      | 是   | 无      |
+| `capabilityVersion`  | 见下     | 否   | 工具链  |
 | `id`                 | string   | 是   | 无      |
 | `entry`              | string   | 是   | 无      |
 | `name`               | string   | 否   | `id`    |
@@ -36,6 +37,25 @@ description: 清单字段逐条说明：formatVersion、id、entry、lang、shel
 ### formatVersion
 
 固定 `1`。写别的值报 `project.json: formatVersion 必须为 1，收到 2`，整个工程拒绝加载。
+
+### capabilityVersion
+
+**能力版本**：产出这份产物的创作工具链支持到哪一版作者面。它回答「这份产物是拿多新的工具写出来的」，**不**回答磁盘形状（那是 `formatVersion`）、**不**回答剧情版本（那是故事列的 `version`）、也**不**等于包的 npm 版本。
+
+这个键**由工具链写入**：构建与编辑器保存时自动盖章，值取自引擎导出的常量 `CAPABILITY_VERSION`，由维护者手工单调递增（只增不减，破坏性变化才进位）。它是托管键——**不要手改**，下次写入会就地覆盖成工具链的值。
+
+读取侧**只读不校验**：缺这个键照常打开，不降级、不提示；整数与字符串都合法（新产物是语义化字符串，如 `"0.9.0"`，整数是早期产物的合法形态）。写旧、写错都不会让工程打不开。
+
+四个「版本」各管一件事：
+
+| 名称                | 写在哪                            | 回答什么                             |
+| ------------------- | --------------------------------- | ------------------------------------ |
+| `capabilityVersion` | `project.json`（工具链写入）      | 作者面能力到哪一版                   |
+| `formatVersion`     | 工程 / 故事 / 文本 / 存档四种格式 | 磁盘形状是第几版（解析器认哪种形状） |
+| `version`           | 故事列与清单托管键                | 剧情版本，驱动存档迁移               |
+| 包版本              | 各 `package.json`                 | npm 分发版本，**与能力版本无关**     |
+
+查能力版本的唯一入口：TS 里 `import { CAPABILITY_VERSION } from "@lingfan/engine"`；产物里看 `project.json` 的 `capabilityVersion` 键。
 
 ### id
 

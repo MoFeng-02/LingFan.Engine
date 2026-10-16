@@ -17,5 +17,6 @@
     "player.name": "旅人",
     "dice": 1,
     "supplies": []
-  }
+  },
+  "capabilityVersion": "0.9.0"
 }
