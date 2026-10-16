@@ -90,7 +90,7 @@ export const pages = htmlFiles.map((p) => {
   };
 });
 
-// ================================================================ C 组 · 令牌
+// ================================================================ 令牌
 export const TOKENS_PATH = join(DOCS, "src", "styles", "tokens.css");
 export const BASE_PATH = join(DOCS, "src", "styles", "base.css");
 export const STYLE_DIR = join(DOCS, "src", "styles");

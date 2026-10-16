@@ -1,5 +1,5 @@
 /**
- * audit-frontmatter · A 组（title/description/canonical/OG）与 H 组（站名）
+ * audit-frontmatter · head 元信息（title/description/canonical/OG）与站名
  */
 import {
   DESC_MAX,

@@ -3,9 +3,9 @@
  * audit-frontmatter.mjs · 逐页 head 与文档结构审计
  * ---------------------------------------------------------------------------
  * 覆盖以下检查项：
- *   A 组 · 信息架构（title 唯一且 ≤60、description ≤160 且 100% 覆盖、canonical/OG）
- *   E 组 · 无障碍（每页恰一个 h1、标题层级不跳级、landmark、装饰性 SVG、alt、焦点序、键盘走查）
- *   H 组 · 反模板感（每页 title 含站名）
+ *   head 与信息架构（title 唯一且 ≤60、description ≤160 且 100% 覆盖、canonical/OG）
+ *   无障碍（每页恰一个 h1、标题层级不跳级、landmark、装饰性 SVG、alt、焦点序、键盘走查）
+ *   反模板感（每页 title 含站名）
  *
  * 度量基线：production 产物 docs/dist（`astro build` 输出）。dev server 的 HTML
  * 与 dist 不同，不得作为判据。

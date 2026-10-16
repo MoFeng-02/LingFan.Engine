@@ -1,5 +1,5 @@
 /**
- * audit-ia · F 组 · 浏览器检查（响应式五档 + 移动菜单焦点管理）
+ * audit-ia · 浏览器检查（响应式五档 + 移动菜单焦点管理）
  */
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";

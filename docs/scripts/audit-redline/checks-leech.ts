@@ -1,12 +1,12 @@
 /**
- * G 组 · 内容合规（泄露词表扫描、内部文档名、可疑标记词、占位、站名、承诺、文风）
+ * 内容合规（泄露词表扫描、内部文档名、可疑标记词、占位、站名、承诺、文风）
  */
 
 import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { DOCS, REPO, SITE_NAME, SITE_NAME_EN, cssFiles, fail, isBinary, jsonFiles, manual, pages, pass, read, rel, walk } from "./shared.ts";
 
-// ================================================================ G 组 · 内容合规
+// ================================================================ 内容合规
 const LEECH_PATTERNS = [
   ["私有文档引用", /私有文档/g],
   ["内部规约文件", /\.rules\.md|\.rules\b|agent\.md|AGENTS\.md|CLAUDE\.md/gi],
@@ -300,4 +300,4 @@ manual(
     "结论由人工精读评定，本脚本不参与自动判过。",
 );
 
-// ================================================================ E 组 · axe
+// ================================================================ axe 无障碍

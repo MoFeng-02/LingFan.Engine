@@ -2,8 +2,7 @@
  * audit-ia · 组合根（唯一出口）。
  *
  * 入口 audit-ia.mjs 只 import 本文件；六个实现模块按下列顺序求值：
- * 共享配置与产物扫描 → A1/A2 侧栏 →
- * A4 op 参考 → A5 断链 → F 组浏览器检查 → 输出。
+ * 共享配置与产物扫描 → 侧栏 → op 参考 → 断链 → 浏览器检查 → 输出。
  *
  * 注意：这里必须用 await import() 而不是静态 import——
  * 含顶层 await 的模块（checks-browser 的 fetch/puppeteer）作为静态

@@ -1,5 +1,5 @@
 /**
- * E 组 · axe 无障碍（E3-1/E3-2/E3-3）
+ * axe 无障碍（E3-1/E3-2/E3-3）
  */
 
 import { existsSync } from "node:fs";
