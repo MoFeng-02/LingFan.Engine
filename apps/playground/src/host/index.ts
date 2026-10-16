@@ -24,4 +24,4 @@ export { createAppPrefs } from "./panels/app-prefs";
 export { createAppSlots } from "./panels/app-slots";
 
 /** —— 面板类型（App/*.vue 消费）—— */
-export type { HistoryBlock, MenuOption, SlotPanelMode, SlotView } from "@lingfan/shell";
+export type { HistoryBlock, MenuChoice, SlotPanelMode, SlotView } from "@lingfan/shell";

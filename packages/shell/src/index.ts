@@ -39,7 +39,7 @@ export {
 /** 叙事视图状态投影 */
 export {
   createNarrativeState,
-  type MenuOption,
+  type MenuChoice,
   type NarrativeState,
   type NarrativeStateOptions,
   type StateCells,

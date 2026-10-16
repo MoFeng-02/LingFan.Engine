@@ -11,7 +11,7 @@ import { SYS, type StoryEngine } from "@lingfan/engine";
 import { createHostEffects } from "./effects";
 import { startHostFrameLoop as startLoop } from "./frame-loop";
 import type { AppMedia } from "./app-media";
-import type { NarrativeState } from "../narrative/narrative-state";
+import type { VueNarrativeState } from "../narrative/narrative-state";
 import type { TypewriterHandle } from "../narrative/app-narrative";
 
 /** 装配入参：引擎句柄、叙事状态、媒体单元格与表现层目标元素 */
@@ -19,7 +19,7 @@ export interface AppFrameOptions {
   /** 引擎句柄取用（动画/转场/震动描述读取与完成回传；重启重建后指向新实例） */
   getEngine: () => StoryEngine;
   /** 叙事视图状态（正文与可见文本字段） */
-  narrative: NarrativeState;
+  narrative: VueNarrativeState;
   /** 媒体单元格（音频位置逐帧回写） */
   media: AppMedia;
   /** 打字机共享句柄（逐帧推进与读取） */

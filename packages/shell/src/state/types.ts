@@ -5,15 +5,12 @@
  * 结构上就是 Cell，可直接传），无框架宿主传普通对象。本域不触碰任何框架、DOM
  * 或宿主全局。
  */
-import type { ElementInstance, LayerId } from "@lingfan/engine";
+import type { ElementInstance, LayerId, MenuChoice } from "@lingfan/engine";
 import type { TypingSetting } from "@lingfan/ui";
 import type { Cell, ReadonlyCell } from "../cell";
 
-/** 一条菜单选项：展示文本 + 选中后要去的列 */
-export interface MenuOption {
-  text: string;
-  target: string;
-}
+// 选项形状属于引擎读口，本域只转出：消费方不必为此再引一个包
+export type { MenuChoice };
 
 /** 本域的状态单元集：每个视图字段一个单元（框架宿主传响应式单元） */
 export interface StateCells {
@@ -79,8 +76,8 @@ export interface NarrativeState {
   readonly rawTexts: Cell<string[]>;
   /** 选项目标（引擎原样） */
   readonly rawTargets: Cell<string[]>;
-  /** 选项（文本 + 目标配对后供渲染） */
-  readonly menuOptions: ReadonlyCell<MenuOption[]>;
+  /** 选项（文本 + 目标配对后供渲染；形状取自引擎读口的 `MenuChoice`） */
+  readonly menuOptions: ReadonlyCell<MenuChoice[]>;
   /** 当前对话模板名（null = 全局默认回退） */
   readonly dialogTemplateName: Cell<string | null>;
   /** 本句对话字体（引擎分辨链结果；空串 = 无声明，回落项目默认） */

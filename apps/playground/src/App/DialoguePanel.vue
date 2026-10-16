@@ -13,7 +13,7 @@ import {
   type DialogueTemplateView,
 } from "@lingfan/ui";
 import { computed, ref } from "vue";
-import type { MenuOption } from "../host";
+import type { MenuChoice } from "../host";
 
 /** 累积层容器：宿主接线读它做「新行贴底滚动」 */
 const nvlBody = ref<HTMLElement | null>(null);
@@ -31,7 +31,7 @@ const props = defineProps<{
   /** 选择层的模板产出（皮肤类与三个挂点内容） */
   choiceView: ChoiceTemplateView;
   /** 选项（文本 + 目标） */
-  menuOptions: MenuOption[];
+  menuOptions: MenuChoice[];
   /** 输入层是否在场 */
   inInput: boolean;
   /** 输入提示行 */

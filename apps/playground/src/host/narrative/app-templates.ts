@@ -23,12 +23,12 @@ import {
   type DialogueTemplateView,
   type NotifyTemplateView,
 } from "@lingfan/ui";
-import type { NarrativeState } from "./narrative-state";
+import type { VueNarrativeState } from "./narrative-state";
 
 /** 装配入参：叙事视图状态与 NVL 滚动主体取用 */
 export interface AppTemplatesOptions {
   /** 叙事视图状态（菜单/对话/输入字段的响应式来源） */
-  narrative: NarrativeState;
+  narrative: VueNarrativeState;
   /** NVL 累积层滚动主体取用（对话面板暴露的容器；新句落定后贴底） */
   readNvlBody: () => HTMLElement | null;
 }

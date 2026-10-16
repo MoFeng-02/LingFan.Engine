@@ -18,7 +18,8 @@
  * 经引擎选项注入）、不改叙事语义。
  *
  * 本模块只做**装配、接线与销毁编排**：各职责的实现分别在同目录的
- * `projector` / `*-view`（视图模型）/ `element-tree` / `frame-loop` / `layer-z` 内。
+ * `projector` / `*-view`（视图模型）/ `element-tree` / `layer-z` 内，
+ * 帧循环则复用展示层的共享实现（`../host/frame-loop`，与各宿主的 `startHostFrameLoop` 同一份）。
  * 所有状态都由各职责的工厂持有（每次调用装配器产出独立的一份），
  * 因此两个覆盖层实例互不串扰。
  */
@@ -34,7 +35,7 @@ import type { ChoicesViewDeps } from "./choices-view";
 import { dialogueLayerView } from "./dialogue-view";
 import type { DialogueViewDeps } from "./dialogue-view";
 import { createElementTree } from "./element-tree";
-import { createFrameLoop } from "./frame-loop";
+import { createFrameLoop } from "../host/frame-loop";
 import { createLayerZController } from "./layer-z";
 import { notifyLayerItem } from "./notify-view";
 import type { NotifyViewDeps } from "./notify-view";
@@ -181,11 +182,13 @@ export function createNarrativeOverlay(
   });
 
   // 帧循环的帧能力来自端口：无帧环境下帧源不回调，循环静默不启、功能仍可用
+  // 每帧顺序固定——推进打字机（变了才重渲正文），再交宿主做帧驱动表现
   const frameLoop = createFrameLoop({
     frame: surface.frame,
-    tickTypewriter: (dt) => projector.tickTypewriter(dt),
-    onTyped,
-    onFrame: options.onFrame,
+    onTick: (dt) => {
+      if (projector.tickTypewriter(dt)) onTyped();
+      options.onFrame?.(dt);
+    },
   });
   frameLoop.start();
 
