@@ -12,12 +12,12 @@ import type { PlayerPreferences } from "@lingfan/engine";
 import {
   createKeybindingPanel,
   type KeybindingPanel,
-} from "./keybinding-panel";
+} from "../views/keybinding-panel";
 import {
   createPreferencesPanel,
   type PreferencesPanel,
-} from "./preferences-panel";
-import type { TypewriterHandle } from "../narrative/app-narrative";
+} from "../views/preferences-panel";
+import type { TypewriterHandle } from "../../narrative/wiring/app-narrative";
 
 /** 装配入参：玩家偏好与打字机句柄（字速即时生效落点） */
 export interface AppPrefsOptions {

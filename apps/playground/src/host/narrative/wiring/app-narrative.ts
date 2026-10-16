@@ -17,9 +17,9 @@ import {
 } from "@lingfan/engine";
 import { Typewriter } from "@lingfan/ui";
 import { createNarrativeState } from "@lingfan/shell";
-import { createHostLayerZController } from "./layer-z";
-import { vueCells } from "./vue-cells";
-import type { VueNarrativeState } from "./narrative-state";
+import { createHostLayerZController } from "../runtime/layer-z";
+import { vueCells } from "../runtime/vue-cells";
+import type { VueNarrativeState } from "../runtime/narrative-state";
 
 /** 打字机的宿主级共享句柄：当前句的读取与整体置空（重启时用） */
 export interface TypewriterHandle {

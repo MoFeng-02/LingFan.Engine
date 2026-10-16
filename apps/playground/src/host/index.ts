@@ -11,17 +11,22 @@
  */
 
 /** —— 装配工厂（App.vue 组合根消费）—— */
-export { createAppNarrative } from "./narrative/app-narrative";
+export { createAppNarrative } from "./narrative/wiring/app-narrative";
 export { createAppLang } from "./assets/app-lang";
-export { createAppTemplates } from "./narrative/app-templates";
-export { createAppMedia } from "./stage/app-media";
-export { createAppElementLayer } from "./stage/app-element-layer";
+export { createAppTemplates } from "./narrative/wiring/app-templates";
+export { createAppMedia } from "./stage/media/app-media";
+export { createAppElementLayer } from "./stage/elements/app-element-layer";
 export { createAppEvents } from "./engine/app-events";
-export { createAppHistory } from "./panels/app-history";
+export { createAppHistory } from "./panels/wiring/app-history";
 export { createAppEngineLife } from "./engine/app-engine";
-export { createAppFrame } from "./stage/app-frame";
-export { createAppPrefs } from "./panels/app-prefs";
-export { createAppSlots } from "./panels/app-slots";
+export { createAppFrame } from "./stage/frame/app-frame";
+export { createAppPrefs } from "./panels/wiring/app-prefs";
+export { createAppSlots } from "./panels/wiring/app-slots";
 
 /** —— 面板类型（App/*.vue 消费）—— */
-export type { HistoryBlock, MenuChoice, SlotPanelMode, SlotView } from "@lingfan/shell";
+export type {
+  HistoryBlock,
+  MenuChoice,
+  SlotPanelMode,
+  SlotView,
+} from "@lingfan/shell";

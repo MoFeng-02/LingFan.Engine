@@ -10,7 +10,7 @@ import { nextTick, watch, type Ref } from "vue";
 import { type ResourcePort, type StoryEngine } from "@lingfan/engine";
 import { createCommandRegistry } from "@lingfan/ui";
 import { createElementLayer } from "./elements";
-import type { VueNarrativeState } from "../narrative/narrative-state";
+import type { VueNarrativeState } from "../../narrative/runtime/narrative-state";
 
 /** 装配入参：叙事状态、元素层容器、资源与引擎命令面 */
 export interface AppElementLayerOptions {

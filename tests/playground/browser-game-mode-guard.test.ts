@@ -6,13 +6,13 @@
 import { describe, expect, it } from "vitest";
 import viteConfigSource from "../../apps/playground/vite.config.ts?raw";
 import mainSource from "../../apps/playground/src/main.ts?raw";
-import guardSource from "../../apps/playground/src/browserGuard.ts?raw";
+import guardSource from "../../apps/playground/src/boot/browserGuard.ts?raw";
 import templateViteSource from "../../template/v1/__PROJECT__/vite.config.ts?raw";
 import {
   BROWSER_GAME_FLAG,
   browserBlockedMessage,
   browserPlayAllowed,
-} from "../../apps/playground/src/browserGuard";
+} from "../../apps/playground/src/boot/browserGuard";
 
 describe("判据真值表（fail-closed：只有 dev 与显式开关放行）", () => {
   it("dev 放行（开发模式便利）", () => {
