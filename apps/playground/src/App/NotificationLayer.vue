@@ -33,8 +33,10 @@ defineProps<{
 <style scoped>
 .notifications {
   position: fixed;
-  top: calc(16px + env(safe-area-inset-top));
-  right: calc(16px + env(safe-area-inset-right));
+  /* UI 层（窗口坐标系）：贴窗口右上角，随窗口收放留边。提示条不可交互，
+     容器不再恢复 pointer-events——点击穿过它落到舞台与外框上。 */
+  top: calc(clamp(10px, 1.6vh, 18px) + env(safe-area-inset-top));
+  right: calc(clamp(12px, 2.4vw, 22px) + env(safe-area-inset-right));
   display: flex;
   flex-direction: column;
   gap: 8px;

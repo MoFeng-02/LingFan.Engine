@@ -298,16 +298,18 @@ const emit = defineEmits<{
 
 .history-panel {
   position: fixed;
-  top: calc(60px + env(safe-area-inset-top));
-  left: calc(16px + env(safe-area-inset-left));
+  /* UI 层（窗口坐标系）：贴窗口左上角排布，宽度与高度上限按视口折算 */
+  top: calc(clamp(48px, 7vh, 60px) + env(safe-area-inset-top));
+  left: calc(clamp(12px, 2.4vw, 22px) + env(safe-area-inset-left));
   width: min(80%, 360px);
-  max-height: 432px; /* 60vh @ 720 基准 */
+  max-height: 60vh;
   overflow-y: auto;
   border: 1px solid #4448;
   border-radius: 12px;
   background: #1e1e2eee;
   box-sizing: border-box;
   padding: 12px;
+  pointer-events: auto;
 }
 
 .history-panel ul {
