@@ -7,9 +7,12 @@ import {
   DialogHostState,
   parseTextAnswer,
   type DialogRequest,
-} from "../../apps/editor/src/dialog";
-import { emptyStateOf, viewStateOf } from "../../apps/editor/src/viewState";
-import stageSource from "../../apps/editor/src/components/StageEditor.vue?raw";
+} from "../../apps/editor/src/domain/dialog";
+import {
+  emptyStateOf,
+  viewStateOf,
+} from "../../apps/editor/src/domain/viewState";
+import stageSource from "../../apps/editor/src/components/stage/StageEditor.vue?raw";
 
 describe("五态判定", () => {
   it("正常可读", () => {

@@ -22,22 +22,22 @@ import filesSource from "../../apps/editor/src/app/useProjectFiles.ts?raw";
 import searchSource from "../../apps/editor/src/app/useSearchCorpus.ts?raw";
 import bridgeSource from "../../apps/editor/src/app/useHostBridge.ts?raw";
 import openSource from "../../apps/editor/src/app/useProjectOpen.ts?raw";
-import sidebarSource from "../../apps/editor/src/components/SidebarPane.vue?raw";
-import rightPaneSource from "../../apps/editor/src/components/RightPane.vue?raw";
-import centerSource from "../../apps/editor/src/components/CenterStage.vue?raw";
-import toolbarSource from "../../apps/editor/src/components/TopToolbar.vue?raw";
+import sidebarSource from "../../apps/editor/src/components/panes/SidebarPane.vue?raw";
+import rightPaneSource from "../../apps/editor/src/components/panes/RightPane.vue?raw";
+import centerSource from "../../apps/editor/src/components/panes/CenterStage.vue?raw";
+import toolbarSource from "../../apps/editor/src/components/shell/TopToolbar.vue?raw";
 // .css 的 `?raw` 导入在 vitest（css:false）下被 stub 成空串 ⇒ readFileSync 直读
 const workspaceCss = readFileSync(
   join(process.cwd(), "apps/editor/src/styles/app-workspace.css"),
   "utf8",
 );
-import splitterSource from "../../apps/editor/src/components/PaneSplitter.vue?raw";
-import treeViewSource from "../../apps/editor/src/components/ResourceTreeView.vue?raw";
-import statusSource from "../../apps/editor/src/components/StatusBar.vue?raw";
-import columnListSource from "../../apps/editor/src/components/ColumnList.vue?raw";
-import nodeGraphSource from "../../apps/editor/src/components/NodeGraph.vue?raw";
-import timelineSource from "../../apps/editor/src/components/StoryTimeline.vue?raw";
-import fieldRowSource from "../../apps/editor/src/components/FieldRow.vue?raw";
+import splitterSource from "../../apps/editor/src/components/shell/PaneSplitter.vue?raw";
+import treeViewSource from "../../apps/editor/src/components/sidebar/ResourceTreeView.vue?raw";
+import statusSource from "../../apps/editor/src/components/shell/StatusBar.vue?raw";
+import columnListSource from "../../apps/editor/src/components/panels/ColumnList.vue?raw";
+import nodeGraphSource from "../../apps/editor/src/components/stage/NodeGraph.vue?raw";
+import timelineSource from "../../apps/editor/src/components/stage/StoryTimeline.vue?raw";
+import fieldRowSource from "../../apps/editor/src/components/stage/FieldRow.vue?raw";
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
 const code = (source: string): string =>
@@ -75,7 +75,8 @@ describe("四区骨架 · 接线互锁", () => {
     // 活动栏已删（与左栏 tab 重复）⇒「活动栏驱动侧栏模式」这半边不再存在；
     // 但**它守的不变量仍在** —— 资源/搜索/最近三个内页必须喂**同一个** resourceNodes，
     // 否则会逼出三份数据源（第二份定义）。
-    const feeds = code(sidebarSource).match(/:nodes="props\.resourceNodes"/g) ?? [];
+    const feeds =
+      code(sidebarSource).match(/:nodes="props\.resourceNodes"/g) ?? [];
     expect(feeds.length).toBe(3);
     // 且不再有第二个驱动侧栏模式的入口
     expect(code(appSource)).not.toContain("setSidebarMode");
@@ -107,7 +108,9 @@ describe("四区骨架 · 接线互锁", () => {
     // **活动栏已删**（其三项与左栏 tab 重复），同一职责现由**左栏 tab** 承担
     //   ⇒ 本断言在 SidebarPane 的左栏 tab 条上验；顶栏视图切换在 TopToolbar。
     const sidebar = code(sidebarSource);
-    const leftTabs = sidebar.slice(sidebar.indexOf('class="tab-strip left-tabs"'));
+    const leftTabs = sidebar.slice(
+      sidebar.indexOf('class="tab-strip left-tabs"'),
+    );
     expect(leftTabs.slice(0, 400)).toContain('class="tab-strip left-tabs"');
     // 顶栏的视图切换补齐了 tab 语义
     expect(code(toolbarSource)).toContain('role="tablist"');

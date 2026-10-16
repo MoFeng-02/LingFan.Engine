@@ -10,7 +10,7 @@
  * 与其它源级接线守卫同套路：读源码断言接线，防「抽象做完了但没人用」。
  */
 import { describe, expect, it } from "vitest";
-import previewHost from "../../../apps/editor/src/components/PreviewHost.vue?raw";
+import previewHost from "../../../apps/editor/src/components/stage/PreviewHost.vue?raw";
 
 /**
  * playground 宿主扫描面：接线字样散在宿主与其面板组件里，

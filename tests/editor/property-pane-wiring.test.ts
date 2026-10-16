@@ -14,10 +14,10 @@
 import { describe, expect, it } from "vitest";
 import appSource from "../../apps/editor/src/App.vue?raw";
 import leftTabsSource from "../../apps/editor/src/app/leftTabs.ts?raw";
-import centerSource from "../../apps/editor/src/components/CenterStage.vue?raw";
-import rightPaneSource from "../../apps/editor/src/components/RightPane.vue?raw";
-import sidebarSource from "../../apps/editor/src/components/SidebarPane.vue?raw";
-import propertyPanelSource from "../../apps/editor/src/components/PropertyPanel.vue?raw";
+import centerSource from "../../apps/editor/src/components/panes/CenterStage.vue?raw";
+import rightPaneSource from "../../apps/editor/src/components/panes/RightPane.vue?raw";
+import sidebarSource from "../../apps/editor/src/components/panes/SidebarPane.vue?raw";
+import propertyPanelSource from "../../apps/editor/src/components/panels/PropertyPanel.vue?raw";
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
 const code = (source: string): string =>
@@ -45,8 +45,9 @@ describe("属性面板入右栏 · 接线互锁", () => {
     // 双侧去空白后再比（prettier 可能把泛型折成多行，语义不变）
     // 互斥视图联合类型在 RightPane（export type RightTab），组合根持默认值
     expect(src.replace(/\s+/g, "")).toContain('ref<RightTab>("property")');
-    expect(rightPane.replace(/\s+/g, "")).toContain(
-      'exporttypeRightTab=|"property"|"diagnostics"|"json"|"text"|"i18n"|"pack"',
+    expect(rightPane.replace(/\s+/g, "")).toMatch(
+      // 前导 `|` 可有可无：prettier 在联合类型能排成一行时会去掉它（语义与顺序都不变）
+      /exporttypeRightTab=\|?"property"\|"diagnostics"\|"json"\|"text"\|"i18n"\|"pack"/,
     );
     // 右栏 tab strip 里「属性」在「诊断」之前
     const strip = rightPane.slice(

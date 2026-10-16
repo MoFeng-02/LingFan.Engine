@@ -17,8 +17,8 @@
  * - 剥离注释（守卫对象是模板代码，注释里的说明不算）
  */
 import { describe, expect, it } from "vitest";
-import textModeSource from "../../apps/editor/src/components/TextModeView.vue?raw";
-import jsonViewSource from "../../apps/editor/src/components/JsonView.vue?raw";
+import textModeSource from "../../apps/editor/src/components/panels/TextModeView.vue?raw";
+import jsonViewSource from "../../apps/editor/src/components/panels/JsonView.vue?raw";
 
 /** 剥离注释后再断言——守卫的对象是**模板/代码**，不是注释 */
 function stripComments(source: string): string {

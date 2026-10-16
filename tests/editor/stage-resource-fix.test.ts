@@ -16,10 +16,10 @@ import { describe, expect, it } from "vitest";
 import appSource from "../../apps/editor/src/App.vue?raw";
 import previewSource from "../../apps/editor/src/app/useResourcePreview.ts?raw";
 import filesSource from "../../apps/editor/src/app/useProjectFiles.ts?raw";
-import docTabsSource from "../../apps/editor/src/components/DocTabs.vue?raw";
-import sidebarSource from "../../apps/editor/src/components/SidebarPane.vue?raw";
-import stageSource from "../../apps/editor/src/components/StageEditor.vue?raw";
-import treeSource from "../../apps/editor/src/components/ResourceTreeView.vue?raw";
+import docTabsSource from "../../apps/editor/src/components/sidebar/DocTabs.vue?raw";
+import sidebarSource from "../../apps/editor/src/components/panes/SidebarPane.vue?raw";
+import stageSource from "../../apps/editor/src/components/stage/StageEditor.vue?raw";
+import treeSource from "../../apps/editor/src/components/sidebar/ResourceTreeView.vue?raw";
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
 const code = (source: string): string =>

@@ -31,7 +31,10 @@ function readSources(root: string): { file: string; text: string }[] {
 
 const EDITOR_SRC = join(process.cwd(), "apps/editor/src");
 // .css 的 `?raw` 导入在 vitest（css:false）下会被 stub 成空串 ⇒ 用 readFileSync 直读
-const shellSource = readFileSync(join(EDITOR_SRC, "styles", "app-shell.css"), "utf8");
+const shellSource = readFileSync(
+  join(EDITOR_SRC, "styles", "app-shell.css"),
+  "utf8",
+);
 const TOKEN_FILE = "tokens.css";
 const sources = readSources(EDITOR_SRC);
 const components = sources.filter((s) => !s.file.endsWith(TOKEN_FILE));
@@ -146,7 +149,7 @@ describe("交互态与布局守卫", () => {
 
   it("⑧ 控件右缘统一（不再有 260px 硬顶与 grow 打架）", () => {
     const fieldRow = readFileSync(
-      join(EDITOR_SRC, "components/FieldRow.vue"),
+      join(EDITOR_SRC, "components/stage/FieldRow.vue"),
       "utf8",
     );
     // `.control` 自身不许再出现 max-width 硬顶

@@ -8,7 +8,7 @@ import {
   parseStory,
   serializeColumnDocument,
 } from "@lingfan/engine";
-import { assembleColumnWrite } from "../../apps/editor/src/columnWrite";
+import { assembleColumnWrite } from "../../apps/editor/src/domain/columnWrite";
 
 const manifestText = JSON.stringify(
   { formatVersion: 1, id: "demo", entry: "start", name: "示例" },

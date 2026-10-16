@@ -8,7 +8,7 @@ import {
   planOverlaySkeleton,
   type SkeletonLayoutChoice,
 } from "@lingfan/editor";
-import type { LangSummary } from "../components/LangWorkbench.vue";
+import type { LangSummary } from "../components/panels";
 import type { DiagnosticSupply, ProjectPorts } from "./useProjectPorts";
 import type { LastProjectEntry, OpenedProject } from "../contracts";
 import type { DialogPort } from "../domain";

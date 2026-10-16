@@ -10,9 +10,9 @@
 import { describe, expect, it } from "vitest";
 import appSource from "../../apps/editor/src/App.vue?raw";
 import bridgeSource from "../../apps/editor/src/app/useHostBridge.ts?raw";
-import rightPaneSource from "../../apps/editor/src/components/RightPane.vue?raw";
-import statusBarSource from "../../apps/editor/src/components/StatusBar.vue?raw";
-import packPanelSource from "../../apps/editor/src/components/PackPanel.vue?raw";
+import rightPaneSource from "../../apps/editor/src/components/panes/RightPane.vue?raw";
+import statusBarSource from "../../apps/editor/src/components/shell/StatusBar.vue?raw";
+import packPanelSource from "../../apps/editor/src/components/panels/PackPanel.vue?raw";
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
 const code = (source: string): string =>

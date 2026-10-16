@@ -8,7 +8,7 @@ import {
   columnIdOfDocument,
   storyDocumentPath,
   Workspace,
-} from "../../apps/editor/src/workspace";
+} from "../../apps/editor/src/domain/workspace";
 
 const storyOf = (id: string, text: string): Story => ({
   formatVersion: 1,

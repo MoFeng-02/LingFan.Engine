@@ -12,10 +12,10 @@
  */
 import { describe, expect, it } from "vitest";
 import apiSource from "../../apps/editor/src/app/editorApi.ts?raw";
-import stageEditorSource from "../../apps/editor/src/components/StageEditor.vue?raw";
-import diagnosticsSource from "../../apps/editor/src/components/DiagnosticsPanel.vue?raw";
-import stepLayoutSource from "../../apps/editor/src/components/StepLayout.vue?raw";
-import timelineSource from "../../apps/editor/src/components/StoryTimeline.vue?raw";
+import stageEditorSource from "../../apps/editor/src/components/stage/StageEditor.vue?raw";
+import diagnosticsSource from "../../apps/editor/src/components/panels/DiagnosticsPanel.vue?raw";
+import stepLayoutSource from "../../apps/editor/src/components/stage/StepLayout.vue?raw";
+import timelineSource from "../../apps/editor/src/components/stage/StoryTimeline.vue?raw";
 import editorApiContractSource from "../../apps/editor/src/contracts/editor.ts?raw";
 
 /** 去注释（守卫对象是代码，注释里提到旧行为是正常的） */

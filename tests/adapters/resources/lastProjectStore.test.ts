@@ -16,7 +16,7 @@ import {
 import appSource from "../../../apps/editor/src/App.vue?raw";
 import mainSource from "../../../apps/editor/src/main.ts?raw";
 // 顶栏按钮本体在 TopToolbar.vue、失败文案在 useProjectOpen.ts（App 只留接线）
-import toolbarSource from "../../../apps/editor/src/components/TopToolbar.vue?raw";
+import toolbarSource from "../../../apps/editor/src/components/shell/TopToolbar.vue?raw";
 import openSource from "../../../apps/editor/src/app/useProjectOpen.ts?raw";
 
 /** 目录句柄替身（组合根只读 name + 传引用；IDB 存取不深究内部） */

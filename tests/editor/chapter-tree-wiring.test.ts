@@ -8,14 +8,14 @@
  * 本守卫锁的是**「某能力必须接在某处」**这一类性质（与同类源级接线守卫同风格）：
  * 这些性质在界面上表现为「看起来对」，但一旦被拆掉，判据测试**依然全绿**。
  *
- * 左栏模板在 `components/SidebarPane.vue`、tab 定义在 `app/leftTabs.ts`，
+ * 左栏模板在 `components/panes/SidebarPane.vue`、tab 定义在 `app/leftTabs.ts`，
  * 断言随之重新指向（找的内容不变，换找的位置）。
  */
 import { describe, expect, it } from "vitest";
 import appSource from "../../apps/editor/src/App.vue?raw";
 import leftTabsSource from "../../apps/editor/src/app/leftTabs.ts?raw";
-import sidebarSource from "../../apps/editor/src/components/SidebarPane.vue?raw";
-import chapterTreeSource from "../../apps/editor/src/components/ChapterTree.vue?raw";
+import sidebarSource from "../../apps/editor/src/components/panes/SidebarPane.vue?raw";
+import chapterTreeSource from "../../apps/editor/src/components/sidebar/ChapterTree.vue?raw";
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
 const code = (source: string): string =>
@@ -24,7 +24,10 @@ const code = (source: string): string =>
 describe("章节树 · 接线互锁（防「判据绿但没接上」）", () => {
   it("侧栏**import 并渲染** ChapterTree（能力真的接进了主界面）", () => {
     const src = code(sidebarSource);
-    expect(src).toContain('import ChapterTree from "./ChapterTree.vue"');
+    // 组件按栏分组后，侧栏经**同栏出口** `../sidebar` 具名取件（不再直连文件）
+    expect(src).toMatch(
+      /import\s*\{[^}]*\bChapterTree\b[^}]*\}\s*from\s*"\.\.\/sidebar"/,
+    );
     // 必须用**词边界**：`toContain("<ChapterTree")` 会被 `ChapterTreeDX` 前缀匹配骗过
     //    ⇒ 守卫形同虚设。
     expect(src).toMatch(/<ChapterTree\s/);

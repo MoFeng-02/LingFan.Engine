@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import appSource from "../../apps/editor/src/App.vue?raw";
 import bridgeSource from "../../apps/editor/src/app/useHostBridge.ts?raw";
-import toolbarSource from "../../apps/editor/src/components/TopToolbar.vue?raw";
+import toolbarSource from "../../apps/editor/src/components/shell/TopToolbar.vue?raw";
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
 const code = (source: string): string =>

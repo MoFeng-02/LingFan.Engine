@@ -13,7 +13,7 @@ import {
   MIN_SIDEBAR_WIDTH,
   parseLayout,
   serializeLayout,
-} from "../../apps/editor/src/layout";
+} from "../../apps/editor/src/infra/layout";
 
 /** 内存替身（可注入抛错，模拟隐私模式 / 配额满） */
 function memStore(): KeyValueStorage & { map: Map<string, string> } {

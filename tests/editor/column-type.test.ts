@@ -15,8 +15,8 @@ import {
   buildChapterIndex,
   sceneTypeBadgeOf,
 } from "@lingfan/editor";
-import { parseChoiceAnswer } from "../../apps/editor/src/dialog";
-import { sampleStory } from "../../apps/editor/src/sample";
+import { parseChoiceAnswer } from "../../apps/editor/src/domain/dialog";
+import { sampleStory } from "../../apps/editor/src/shared/sample";
 
 /** 列对象的 JSON 键形态（断言「不落 type 字段」用 —— `in` 检查比 deepEqual 更精确指向字段） */
 const jsonOf = (story: ReturnType<typeof addColumn>["story"]) =>

@@ -20,7 +20,7 @@
 import { describe, expect, it } from "vitest";
 import { parseStory } from "@lingfan/engine";
 import { describeSelection } from "@lingfan/editor";
-import propertyPanelSource from "../../apps/editor/src/components/PropertyPanel.vue?raw";
+import propertyPanelSource from "../../apps/editor/src/components/panels/PropertyPanel.vue?raw";
 
 /** 0 = flow 列（首条 say + 一条 if[then 数组]）；1 = scene 列（一个 text 元素） */
 function story() {

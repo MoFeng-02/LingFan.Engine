@@ -7,8 +7,8 @@ import {
   isEditableKind,
   registeredKinds,
   viewOfKind,
-} from "../../apps/editor/src/dispatch";
-import { searchResources } from "../../apps/editor/src/search";
+} from "../../apps/editor/src/domain/dispatch";
+import { searchResources } from "../../apps/editor/src/domain/search";
 
 describe("分派表 · 路由", () => {
   it("故事 → 可编辑的故事视图", () => {

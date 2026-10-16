@@ -12,7 +12,7 @@ import {
   isDragPastThreshold,
   shouldSuppressClick,
   type DragProbe,
-} from "../../apps/editor/src/pointerIntent";
+} from "../../apps/editor/src/domain/pointerIntent";
 
 const probe = (dx: number, dy = 0): DragProbe => ({
   startX: 100,

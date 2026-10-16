@@ -13,7 +13,7 @@
  * 本守卫锁住这条链路，防它被摘掉。
  */
 import { describe, expect, it } from "vitest";
-import langViewSource from "../../apps/editor/src/components/LangView.vue?raw";
+import langViewSource from "../../apps/editor/src/components/panels/LangView.vue?raw";
 
 /** 去注释后再匹配（守卫对象是代码，不是注释里的字样） */
 const code = (source: string): string =>

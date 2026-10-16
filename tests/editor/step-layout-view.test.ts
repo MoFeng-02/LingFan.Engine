@@ -7,9 +7,9 @@
  */
 import { describe, expect, it } from "vitest";
 import appSource from "../../apps/editor/src/App.vue?raw";
-import centerSource from "../../apps/editor/src/components/CenterStage.vue?raw";
-import toolbarSource from "../../apps/editor/src/components/TopToolbar.vue?raw";
-import stepLayoutSource from "../../apps/editor/src/components/StepLayout.vue?raw";
+import centerSource from "../../apps/editor/src/components/panes/CenterStage.vue?raw";
+import toolbarSource from "../../apps/editor/src/components/shell/TopToolbar.vue?raw";
+import stepLayoutSource from "../../apps/editor/src/components/stage/StepLayout.vue?raw";
 import editorApiContractSource from "../../apps/editor/src/contracts/editor.ts?raw";
 import stepsSource from "../../packages/editor/src/layout/steps.ts?raw";
 import editorIndexSource from "../../packages/editor/src/index.ts?raw";
@@ -24,7 +24,9 @@ describe("视图接线：centerView 四态 + 步骤分支", () => {
 
   it("工具栏有「步骤」入口（点击切到 step）", () => {
     // 顶栏在 TopToolbar（子组件经 emit 上抛）
-    expect(toolbarSource).toContain("@click=\"emit('update:centerView', 'step')\"");
+    expect(toolbarSource).toContain(
+      "@click=\"emit('update:centerView', 'step')\"",
+    );
   });
 
   it("中心区按 centerView 渲染 StepLayout", () => {
@@ -34,7 +36,9 @@ describe("视图接线：centerView 四态 + 步骤分支", () => {
   });
 
   it("防回退：NodeGraph 分支必须是 v-else-if（裸 v-else 会让步骤视图失效）", () => {
-    expect(centerSource).toContain("v-else-if=\"props.centerView === 'graph'\"");
+    expect(centerSource).toContain(
+      "v-else-if=\"props.centerView === 'graph'\"",
+    );
     expect(centerSource).not.toMatch(/<NodeGraph\s+v-else[\s>]/);
   });
 
