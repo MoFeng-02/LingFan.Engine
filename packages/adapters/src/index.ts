@@ -52,10 +52,15 @@ export type {
 } from "@lingfan/engine";
 export {
   createFetchProjectFilesPort,
+  createHttpProjectFilesPort,
   loadProject,
   loadProjectFromFetch,
   createTauriProjectWriter,
   type FetchProjectFilesOptions,
+  type HttpFetch,
+  type HttpProjectFilesOptions,
+  type HttpProjectPayload,
+  type HttpTextResponse,
 } from "./resources";
 export {
   createTauriProjectFilesPort,

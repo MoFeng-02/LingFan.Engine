@@ -3,14 +3,23 @@
 用 UniApp（Vue 3）写页面层，把叙事引擎的端口接在小程序的能力上。这一层只做三件事：
 取画布、把宿主给的补丁写进页面状态、把点击与输入交回覆盖层——叙事逻辑一律不在这里。
 
+**包里只装代码**：故事与素材都是内容，由服务端经 HTTP 提供（工程接口一次返回清单与全部故事，
+资源按同一基址取）。所以演示工程放在包外的 `project/` 目录，开发时用本地服务提供，发布时换成
+自己的静态托管 + 接口地址。
+
 ## 命令
 
 ```bash
+pnpm --filter @lingfan/miniprogram serve:project # 本地提供演示工程（http://127.0.0.1:5273，仅开发用）
 pnpm --filter @lingfan/miniprogram dev        # 编译到 mp-weixin（watch），产物 dist/dev/mp-weixin
 pnpm --filter @lingfan/miniprogram build      # 编译到 mp-weixin，产物 dist/build/mp-weixin
 pnpm --filter @lingfan/miniprogram dev:h5     # 浏览器里预览同一份页面代码
 pnpm --filter @lingfan/miniprogram typecheck  # 本包单独类型检查（仓库根 `pnpm -w run typecheck` 已覆盖）
 ```
+
+**开发时先起 `serve:project` 再起 `dev`**：页面一进就要拉工程，工程接口不通会停在错误态
+（宿主对装载失败是 fail-closed，不会拿空工程继续跑）。基址可用环境变量 `VITE_PROJECT_BASE_URL`
+覆盖（要 http(s) 绝对地址），改完重新编译小程序。
 
 用微信开发者工具**导入** `apps/miniprogram/dist/dev/mp-weixin`（或 `dist/build/mp-weixin`）即可预览；
 `dist/` 是构建产物，不入版本库。
@@ -44,7 +53,7 @@ node 私有文档\工具\mp-automator\mp-media.mjs apps\miniprogram\dist\dev\mp-
 ```
 
 它照真机路径走一遍演示故事（一进页面就有 `bgm`，输入名字后是 `cutscene`），验三件事：视频字段落进
-页面数据（实测 `f=/static/Resources/Video/m1.mp4`、可见 `true`、音量 `0.8`、循环 `false`，与故事里
+页面数据（实测 `f=http://127.0.0.1:5273/Video/m1.mp4`、可见 `true`、音量 `0.8`、循环 `false`，与故事里
 的 `cutscene` 一致）、从起播到收起之间没有媒体类日志（`mediaErrors` 为空）、「组件播完 → 宿主 →
 `engine.videoFinished()`」这条回传链通（给组件触发一次 `ended` 后视频层收起、引擎继续往下执行）。
 报告落在证据目录的 `media-report.json`。
@@ -56,30 +65,33 @@ CDP 通道又是 `unimplemented`，所以媒体这段拿不到截图，证据是
 
 ## 目录
 
-| 路径                          | 作用                                                                                      |
-| ----------------------------- | ----------------------------------------------------------------------------------------- |
-| `src/pages/index/index.vue`   | 页面装配：取画布 → 启动宿主 → 补丁进页面状态 → 动作交回覆盖层                             |
-| `src/components/NodeTree.vue` | 递归节点树：把描述树铺成节点（小程序组件样式隔离，样式自带）                              |
-| `src/host/host.ts`            | 组合根：装载工程 → 建引擎 → 建媒体渲染器 → 建表面 → 建覆盖层 → 起帧循环                   |
-| `src/host/surface.ts`         | 覆盖层表面：把「每层显示什么」翻成页面数据补丁（小程序没有 DOM）                          |
-| `src/host/view.ts`            | 描述树 → 节点数据；舞台盒的行内样式串（基准尺寸 + 平移缩放）                              |
-| `src/host/platform.ts`        | **平台全局 `uni` 唯一取用点**：系统信息、同步存储、画布节点、尺寸变化、音视频柄           |
-| `src/host/ports.ts`           | 端口装配：存档 / 偏好 / 资源地址 / 音频 / 视频落到平台能力与呈现面                        |
-| `src/host/video-surface.ts`   | 视频呈现面：端口命令 → 页面数据（`src`/显隐/音量），控制动作走 `videoContext`             |
-| `src/host/frame.ts`           | 帧源：有画布走画布 rAF，没有退回定时器（约 60 帧/秒）                                     |
-| `src/host/fixture.ts`         | 内建演示工程：示例故事随包打进来，宿主不依赖文件系统                                      |
-| `src/fixture/`                | 演示工程本体（`project.json` + `Stories/**`），由 `fixture.ts` 在构建期收进包内           |
-| `src/static/Resources/`       | 随包素材（`Audio/` `Video/` `Images/`）：故事里的资源 id 由端口拼成 `/static/Resources/…` |
+| 路径                          | 作用                                                                                              |
+| ----------------------------- | ------------------------------------------------------------------------------------------------- |
+| `src/pages/index/index.vue`   | 页面装配：取画布 → 启动宿主 → 补丁进页面状态 → 动作交回覆盖层                                     |
+| `src/components/NodeTree.vue` | 递归节点树：把描述树铺成节点（小程序组件样式隔离，样式自带）                                      |
+| `src/host/host.ts`            | 组合根：装载工程 → 建引擎 → 建媒体渲染器 → 建表面 → 建覆盖层 → 起帧循环                           |
+| `src/host/project-source.ts`  | 工程来源：工程接口地址与远端资源根（基址一处，`VITE_PROJECT_BASE_URL` 可覆盖）                    |
+| `src/host/surface.ts`         | 覆盖层表面：把「每层显示什么」翻成页面数据补丁（小程序没有 DOM）                                  |
+| `src/host/view.ts`            | 描述树 → 节点数据；舞台盒的行内样式串（基准尺寸 + 平移缩放）                                      |
+| `src/host/platform.ts`        | **平台全局 `uni` 唯一取用点**：系统信息、同步存储、网络请求、画布节点、尺寸变化、音视频柄         |
+| `src/host/ports.ts`           | 端口装配：存档 / 偏好 / 资源地址 / 音频 / 视频落到平台能力与呈现面                                |
+| `src/host/video-surface.ts`   | 视频呈现面：端口命令 → 页面数据（`src`/显隐/音量），控制动作走 `videoContext`                     |
+| `src/host/frame.ts`           | 帧源：有画布走画布 rAF，没有退回定时器（约 60 帧/秒）                                             |
+| `project/`                    | 包外演示工程（`project.json` + `Stories/**` + `Audio/` `Video/` `Images/`），开发时由本地服务提供 |
+| `scripts/serve-project.mjs`   | 本地开发服务：`GET /project` 合成清单与故事，其余路径按静态资源 + Range 提供                      |
 
 ## 口径
 
-- **素材随包**：uni-app 只把 `src/static/` 原样拷进包，所以演示工程的音频/视频/图片放在
-  `src/static/Resources/`，故事里仍写裸资源 id（`Audio/crickets_night01.mp3`），由
-  `host/ports.ts` 的资源端口拼成包内绝对地址（`/static/Resources/…`，根常量
-  `PACKAGE_RESOURCE_ROOT`）。素材是按主包体积上限压过的（单文件 178 KB 的视频、83 KB 的环境音），
-  四个文件合计约 490 KB；仓库里的原始素材（`apps/playground/Resources/`，视频 7.8 MB、环境音
-  2.5 MB）直接塞进来会超主包大小，不能照抄。`tests/miniprogram/app-host.test.ts` 有一条互锁：
-  示例故事引用的每个资源都必须在包内存在，缺一个就是哑音或黑屏。
+- **内容在远端，包里只有代码**：故事与素材都属于内容，由服务端经 HTTP 提供——小程序包体不装它们，
+  改故事、换素材不必重新提审发版。取法两条：工程接口一次返回 `{manifest, stories}`（故事原文，
+  解析归引擎的组装器），资源按同一个基址拼地址（故事里仍写裸 id `Audio/crickets_night01.mp3`，
+  端口拼成 `<基址>/Audio/crickets_night01.mp3`）。基址只有 `host/project-source.ts` 一处常量，
+  可用 `VITE_PROJECT_BASE_URL` 覆盖；配错（非 http(s)、拼坏地址）在启动时直接抛错，不带到播放阶段。
+  开发期的接口与静态托管由 `scripts/serve-project.mjs` 扮演，生产换成自己的服务即可，宿主只换基址。
+  `tests/miniprogram/app-host.test.ts` 有互锁：演示故事引用的每个资源都必须在 `project/` 里存在
+  （缺一个就是哑音或黑屏），且 `src/` 下不许有 `static/`、`fixture/` 这类随包内容。
+- **内容体积不受主包限制**：素材放服务端后不必再按主包上限压缩，`project/` 里这份是按演示需要
+  压过的（视频 178 KB、环境音 83 KB），换成高清原片也只是流量与加载时间的问题。
 - **层次与桌面宿主一致**：舞台层是唯一带基准尺寸与变换的容器（画布等比缩放，缩放与偏移来自
   `@lingfan/shell` 的 `computeStageLayout`，行内样式串由 `host/view.ts` 的 `stageStyle` 拼成数据），
   对话 / 选择 / 通知各层住在窗口坐标系里，尺寸只跟窗口走（页面自身用 `rpx`，舞台内的元素尺寸来自

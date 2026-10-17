@@ -5,16 +5,22 @@
  * 这里要锁住的是别让页面卡在启动上。页面层用源级断言：全量渲染要真机，口径可以机械核对。
  */
 import { computeStageLayout } from "../../packages/shell/src/stage/layout.ts";
+import type { HttpFetch } from "@lingfan/adapters";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import appPackage from "../../apps/miniprogram/package.json?raw";
-import { createFixtureProjectFilesPort } from "../../apps/miniprogram/src/host/fixture.ts";
 import hostSource from "../../apps/miniprogram/src/host/host.ts?raw";
-import { queryCanvasNode } from "../../apps/miniprogram/src/host/platform.ts";
+import {
+  createRequestFetch,
+  queryCanvasNode,
+} from "../../apps/miniprogram/src/host/platform.ts";
 import portsSource from "../../apps/miniprogram/src/host/ports.ts?raw";
 import {
-  createPackageResourcePort,
-  PACKAGE_RESOURCE_ROOT,
-} from "../../apps/miniprogram/src/host/ports.ts";
+  createRemoteProjectFilesPort,
+  createRemoteResourcePort,
+  DEFAULT_PROJECT_BASE_URL,
+  normalizeProjectBaseUrl,
+  projectEndpointUrl,
+} from "../../apps/miniprogram/src/host/project-source.ts";
 import {
   createMiniprogramVideoSurface,
   VIDEO_COMPONENT_ID,
@@ -23,6 +29,7 @@ import {
 import { stageStyle } from "../../apps/miniprogram/src/host/view.ts";
 import manifestSource from "../../apps/miniprogram/src/manifest.json?raw";
 import pageSource from "../../apps/miniprogram/src/pages/index/index.vue?raw";
+import projectManifestSource from "../../apps/miniprogram/project/project.json?raw";
 
 /** 宿主各模块源码：平台全局的收口边界靠它机械核对 */
 const hostSources = import.meta.glob("../../apps/miniprogram/src/host/*.ts", {
@@ -36,19 +43,35 @@ function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 }
 
-/** 随包素材清单：键是故事里用的资源 id（`Audio/x.mp3`） */
-const packageAssets = new Set(
+/** 包外演示工程的文件清单：键是工程内逻辑路径（`Stories/…`、`Audio/…`） */
+const projectFiles = new Set(
   Object.keys(
-    import.meta.glob("../../apps/miniprogram/src/static/Resources/**/*", {
+    import.meta.glob("../../apps/miniprogram/project/**/*", {
       eager: true,
       query: "?url",
       import: "default",
     }),
   ).map((path) => {
-    const mark = "/static/Resources/";
+    const mark = "/project/";
     return path.slice(path.indexOf(mark) + mark.length);
   }),
 );
+
+/** 演示工程的故事原文（构建期收集，只用于判资源引用完整性） */
+const demoStorySources = import.meta.glob(
+  "../../apps/miniprogram/project/Stories/**/*.json",
+  { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
+
+/** 演示故事原文：逻辑路径（`Stories/…`）→ 文本 */
+const demoStoryFiles: Record<string, string> = (() => {
+  const files: Record<string, string> = {};
+  for (const [path, text] of Object.entries(demoStorySources)) {
+    const mark = "/project/";
+    files[path.slice(path.indexOf(mark) + mark.length)] = text;
+  }
+  return files;
+})();
 
 /** 收集故事里被引用的资源 id（op 的 `resource` 字段，含嵌套与数组） */
 function collectResourceIds(value: unknown, into: Set<string>): void {
@@ -63,14 +86,31 @@ function collectResourceIds(value: unknown, into: Set<string>): void {
   }
 }
 
-/** 内建示例工程（随包故事）引用到的全部资源 id */
-async function fixtureResourceIds(): Promise<string[]> {
-  const stories = await createFixtureProjectFilesPort().stories();
+/** 演示故事引用到的全部资源 id */
+function demoResourceIds(): string[] {
   const ids = new Set<string>();
-  for (const text of stories.values()) {
-    collectResourceIds(JSON.parse(text), ids);
+  for (const text of Object.values(demoStoryFiles)) {
+    collectResourceIds(JSON.parse(text) as unknown, ids);
   }
   return [...ids].sort();
+}
+
+/** 造一个固定回包的取件面（工程接口替身），顺带记账请求次数 */
+function serveProject(
+  body: unknown,
+  status = 200,
+): { fetch: HttpFetch; calls: string[] } {
+  const calls: string[] = [];
+  const payload = JSON.stringify(body);
+  const fetch: HttpFetch = async (url) => {
+    calls.push(url);
+    return {
+      ok: status >= 200 && status < 300,
+      status,
+      text: async () => payload,
+    };
+  };
+  return { fetch, calls };
 }
 
 /** 造一个只在指定时机回执的节点查询替身 */
@@ -200,25 +240,47 @@ describe("宿主身份中立（UniApp 不止微信一端）", () => {
   });
 });
 
-describe("内建演示工程随包可达", () => {
-  it("包内供给口能交出清单与故事：示例工程缺一不可，缺了引擎会整包拒绝", async () => {
-    const port = createFixtureProjectFilesPort();
-    const manifest = (await port.manifest()) as {
-      formatVersion?: number;
-      entry?: string;
-    };
-    expect(manifest.formatVersion).toBe(1);
-    expect(typeof manifest.entry).toBe("string");
+describe("演示工程走工程接口（包体只装代码）", () => {
+  it("清单与故事从工程接口一次取回：端点 = 基址 + `project`", async () => {
+    const { fetch, calls } = serveProject({
+      manifest: JSON.parse(projectManifestSource),
+      stories: demoStoryFiles,
+    });
+    const port = createRemoteProjectFilesPort({
+      baseUrl: "https://cdn.test/",
+      fetch,
+    });
+    await expect(port.manifest()).resolves.toMatchObject({ formatVersion: 1 });
 
     const stories = await port.stories();
     expect(stories.size).toBeGreaterThanOrEqual(10);
     expect([...stories.keys()].every((key) => key.startsWith("Stories/"))).toBe(
       true,
     );
-    // 每份都必须是可解析的 JSON：供给口交出去的是文本，坏一份就整包组装失败
+    // 故事文本照原样交回（解析归引擎的组装器）——坏一份就整包组装失败
     for (const text of stories.values()) {
       expect(() => JSON.parse(text) as unknown).not.toThrow();
     }
+    expect(calls).toEqual(["https://cdn.test/project"]);
+  });
+
+  it("基址必须是 http(s) 绝对地址且以 / 结尾：拼坏地址要在启动时暴露", () => {
+    expect(DEFAULT_PROJECT_BASE_URL).toBe("http://127.0.0.1:5273/");
+    expect(normalizeProjectBaseUrl("https://cdn.test")).toBe(
+      "https://cdn.test/",
+    );
+    expect(() => normalizeProjectBaseUrl("/api/")).toThrow(
+      "工程基址必须是 http(s) 绝对地址",
+    );
+    expect(projectEndpointUrl("https://cdn.test/media")).toBe(
+      "https://cdn.test/media/project",
+    );
+  });
+
+  it("工程接口失败 → 启动即失败：不降级成空工程", async () => {
+    const { fetch } = serveProject({ manifest: {} }, 502);
+    const port = createRemoteProjectFilesPort({ fetch });
+    await expect(port.stories()).rejects.toThrow("HTTP 502");
   });
 
   it("清单与基库版本显式给定：IDE 读到空串会拿不确定的默认值", () => {
@@ -324,21 +386,60 @@ describe("媒体端口接线（音频实例与视频呈现面）", () => {
   });
 });
 
-describe("示例工程素材：真机上能实听实看", () => {
-  it("包内资源端口把故事 id 拼成包内绝对地址", async () => {
-    expect(PACKAGE_RESOURCE_ROOT).toBe("/static/Resources/");
-    const port = createPackageResourcePort();
+describe("演示内容与资源都在包外（HTTP 取）", () => {
+  it("资源端口把故事 id 拼到工程基址下：换服务端地址不动故事与代码", async () => {
+    const port = createRemoteResourcePort("https://cdn.test/");
     await expect(port.resolve("Audio/crickets_night01.mp3")).resolves.toBe(
-      "/static/Resources/Audio/crickets_night01.mp3",
+      "https://cdn.test/Audio/crickets_night01.mp3",
+    );
+    await expect(port.resolve("Video/m1.mp4")).resolves.toBe(
+      "https://cdn.test/Video/m1.mp4",
+    );
+    // 基址没写尾斜杠也补齐（否则会拼出 https://cdn.test/cdnVideo/…）
+    await expect(
+      createRemoteResourcePort("https://cdn.test/cdn").resolve("Video/m1.mp4"),
+    ).resolves.toBe("https://cdn.test/cdn/Video/m1.mp4");
+    // 路径穿越仍走资源域的同一份规则：信任边界上拒绝
+    await expect(port.resolve("../secret.mp4")).rejects.toThrow("资源路径非法");
+  });
+
+  it("端口装配走远端资源根：宿主不再持有包内资源根", () => {
+    expect(portsSource).toContain(
+      "resources: createRemoteResourcePort(options.projectBaseUrl),",
+    );
+    expect(portsSource).not.toMatch(/static\/|PACKAGE_RESOURCE_ROOT/);
+  });
+
+  it("组合根用平台取件面装载工程：不在包里收集故事文件", () => {
+    expect(hostSource).toContain("createRequestFetch()");
+    expect(hostSource).toContain("createRemoteProjectFilesPort(");
+    expect(hostSource).not.toContain("import.meta.glob");
+    expect(hostSource).not.toContain("fixture");
+  });
+
+  it("包体里没有工程内容：故事与素材都只在包外的 project/ 目录", () => {
+    expect(
+      Object.keys(
+        import.meta.glob("../../apps/miniprogram/src/static/**/*", {
+          eager: true,
+        }),
+      ),
+    ).toEqual([]);
+    expect(
+      Object.keys(
+        import.meta.glob("../../apps/miniprogram/src/fixture/**/*", {
+          eager: true,
+        }),
+      ),
+    ).toEqual([]);
+    expect(projectFiles.has("project.json")).toBe(true);
+    expect([...projectFiles].some((path) => path.startsWith("Stories/"))).toBe(
+      true,
     );
   });
 
-  it("端口装配走包内资源根：素材随包发布，不落用户目录", () => {
-    expect(portsSource).toContain("resources: createPackageResourcePort(),");
-  });
-
-  it("示例故事引用的每个资源都在包内：缺一个就是哑音或黑屏", async () => {
-    const ids = await fixtureResourceIds();
+  it("演示故事引用的每个资源都在包外工程里：缺一个就是哑音或黑屏", () => {
+    const ids = demoResourceIds();
     // 演示流程真的覆盖了音频与视频两类，不只是留了端口代码
     expect(ids).toEqual(
       expect.arrayContaining([
@@ -347,7 +448,61 @@ describe("示例工程素材：真机上能实听实看", () => {
         "Video/m1.mp4",
       ]),
     );
-    const missing = ids.filter((id) => !packageAssets.has(id));
-    expect(missing).toEqual([]);
+    expect(ids.filter((id) => !projectFiles.has(id))).toEqual([]);
+  });
+});
+
+describe("取件面（uni.request → fetch 形状）", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("成功回执：状态码决定 ok，原文照交（故事不交给平台解析）", async () => {
+    const request = vi.fn(
+      (options: {
+        success(result: { statusCode: number; data: unknown }): void;
+      }) => {
+        options.success({
+          statusCode: 200,
+          data: '{"manifest":{"entry":"x"}}',
+        });
+      },
+    );
+    vi.stubGlobal("uni", { request });
+
+    const response = await createRequestFetch()("https://cdn.test/project");
+    expect(response.ok).toBe(true);
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "https://cdn.test/project",
+        method: "GET",
+        dataType: "text",
+      }),
+    );
+    await expect(response.text()).resolves.toBe('{"manifest":{"entry":"x"}}');
+  });
+
+  it("非 2xx 状态码：ok 为 false，状态码原样交回（由装载方 fail-closed）", async () => {
+    vi.stubGlobal("uni", {
+      request: (options: {
+        success(result: { statusCode: number; data: unknown }): void;
+      }) => {
+        options.success({ statusCode: 404, data: "没有这个工程" });
+      },
+    });
+    const response = await createRequestFetch()("https://cdn.test/project");
+    expect(response.ok).toBe(false);
+    expect(response.status).toBe(404);
+  });
+
+  it("失败回执：reject 带可读原因，不让宿主拿着半个工程继续跑", async () => {
+    vi.stubGlobal("uni", {
+      request: (options: { fail(error: { errMsg?: string }): void }) => {
+        options.fail({ errMsg: "request:fail timeout" });
+      },
+    });
+    await expect(
+      createRequestFetch()("https://cdn.test/project"),
+    ).rejects.toThrow("请求失败：request:fail timeout");
   });
 });
