@@ -8,6 +8,7 @@ import { computeStageLayout } from "../../packages/shell/src/stage/layout.ts";
 import type { HttpFetch } from "@lingfan/adapters";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import appPackage from "../../apps/miniprogram/package.json?raw";
+import { guards } from "../../apps/miniprogram/src/host/guards.ts";
 import hostSource from "../../apps/miniprogram/src/host/host.ts?raw";
 import {
   createRequestFetch,
@@ -93,6 +94,28 @@ function demoResourceIds(): string[] {
     collectResourceIds(JSON.parse(text) as unknown, ids);
   }
   return [...ids].sort();
+}
+
+/** 收集故事里被引用的守卫名（guard op 的 `fn` 字段） */
+function collectGuardNames(value: unknown, into: Set<string>): void {
+  if (Array.isArray(value)) {
+    for (const item of value) collectGuardNames(item, into);
+    return;
+  }
+  if (typeof value !== "object" || value === null) return;
+  for (const [key, item] of Object.entries(value)) {
+    if (key === "fn" && typeof item === "string") into.add(item);
+    else collectGuardNames(item, into);
+  }
+}
+
+/** 演示故事引用到的全部守卫名 */
+function demoGuardNames(): string[] {
+  const names = new Set<string>();
+  for (const text of Object.values(demoStoryFiles)) {
+    collectGuardNames(JSON.parse(text) as unknown, names);
+  }
+  return [...names].sort();
 }
 
 /** 造一个固定回包的取件面（工程接口替身），顺带记账请求次数 */
@@ -449,6 +472,14 @@ describe("演示内容与资源都在包外（HTTP 取）", () => {
       ]),
     );
     expect(ids.filter((id) => !projectFiles.has(id))).toEqual([]);
+  });
+
+  it("演示故事引用的守卫都在宿主注册表里：缺一个就是运行期「未注册的守卫」", () => {
+    const names = demoGuardNames();
+    expect(names.length).toBeGreaterThan(0);
+    expect(names.filter((name) => !(name in guards))).toEqual([]);
+    // 组合根确实把注册表交给了引擎（只登记不接线同样会 fail-closed）
+    expect(hostSource).toMatch(/new StoryEngine\(story, \{[\s\S]*guards,/);
   });
 });
 

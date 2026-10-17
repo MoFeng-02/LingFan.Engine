@@ -48,6 +48,7 @@ import {
   createRemoteProjectFilesPort,
   resolveProjectBaseUrl,
 } from "./project-source.ts";
+import { guards } from "./guards.ts";
 import {
   createMiniprogramOverlaySurface,
   type MiniprogramSurfacePatch,
@@ -121,6 +122,8 @@ export async function startMiniprogramHost(
   const engine = new StoryEngine(story, {
     savePort: ports.save,
     texts: withSlotLabels(defaultEngineTexts),
+    // 守卫实现由宿主随代码带上：故事 JSON 只写名字，没登记的运行期会 fail-closed
+    guards,
   });
 
   // 玩家偏好在渲染器之前水合：首帧起用的就是上次的音量，不必等下一次用户操作
