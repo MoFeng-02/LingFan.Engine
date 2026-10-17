@@ -1,10 +1,11 @@
 /**
  * 平台端口装配：把小程序能力接到引擎与展示层的端口上。
  *
- * 四件事：同步存储（存档与玩家偏好共用同一份面）、资源地址（包内路径直接可用，
- * 用户目录留了文件面的接口但本工程暂时没有可写文件，故不传）、媒体端口（音频实例由
- * 平台造，视频呈现面由组合根注入——它要写页面数据，属宿主形态而非平台能力）、
- * 以及存档键前缀（与参考宿主的前缀区分开，同一台设备上不会串档）。
+ * 四件事：同步存储（存档与玩家偏好共用同一份面）、资源地址（包根指到
+ * `/static/Resources/`：故事里的裸 id 由端口拼成包内绝对地址；用户目录留了文件面的
+ * 接口但本工程暂时没有可写文件，故不传）、媒体端口（音频实例由平台造，视频呈现面由
+ * 组合根注入——它要写页面数据，属宿主形态而非平台能力）、以及存档键前缀（与参考
+ * 宿主的前缀区分开，同一台设备上不会串档）。
  */
 import {
   createMiniprogramAudioPort,
@@ -28,6 +29,12 @@ import { createAudioContext, uniApi } from "./platform.ts";
 const SAVE_KEY_PREFIX = "lingfan-miniprogram:";
 /** 高水位键：低于已记录档数的读档会被拒绝，防误覆盖 */
 const SAVE_HIGH_WATER_KEY = "lingfan-miniprogram:highwater";
+/**
+ * 包内资源根：故事里的资源 id（`Audio/x.mp3` 一类）不带根，运行时按包根拼。
+ * uni-app 只把 `src/static/` 原样拷进包，所以素材放 `src/static/Resources/`，
+ * 运行时地址就是 `/static/Resources/…`。
+ */
+export const PACKAGE_RESOURCE_ROOT = "/static/Resources/";
 
 /** 宿主给引擎与装配器用的端口 */
 export interface MiniprogramHostPorts {
@@ -46,6 +53,18 @@ export interface MiniprogramPortsOptions {
   videoSurface: MiniprogramVideoSurfaceLike;
 }
 
+/**
+ * 造包内资源端口：故事里的资源 id → 包内绝对地址。
+ *
+ * 单独拆出来是为了「素材落在哪」这条口径能被单元测试直接验证——它不碰平台全局，
+ * 也不需要起宿主。
+ */
+export function createPackageResourcePort(): ResourcePort {
+  return createMiniprogramResourcePort(undefined, {
+    packageRoot: PACKAGE_RESOURCE_ROOT,
+  });
+}
+
 /** 装配平台端口 */
 export function createMiniprogramHostPorts(
   options: MiniprogramPortsOptions,
@@ -57,7 +76,7 @@ export function createMiniprogramHostPorts(
       highWaterKey: SAVE_HIGH_WATER_KEY,
     }),
     preferences: createMiniprogramPreferencesPort(storage),
-    resources: createMiniprogramResourcePort(),
+    resources: createPackageResourcePort(),
     audio: createMiniprogramAudioPort(createAudioContext),
     video: createMiniprogramVideoPort(options.videoSurface),
   };
