@@ -16,7 +16,7 @@ import type {
   OverlaySurface,
 } from "@lingfan/ui";
 import { toMiniTree, type MiniNode } from "./view.ts";
-import type { WechatFrameSource } from "@lingfan/adapters";
+import type { MiniprogramFrameSource } from "@lingfan/adapters";
 
 /** 对话层的小程序形态（字段与 WXML 绑定一致） */
 export interface MiniprogramDialogueData {
@@ -68,7 +68,7 @@ export type MiniprogramSurfacePatch = Partial<MiniprogramSurfaceData>;
 /** 表面装配参数 */
 export interface MiniprogramSurfaceDeps {
   /** 帧源（覆盖层打字机与帧驱动表现都靠它） */
-  frame: WechatFrameSource;
+  frame: MiniprogramFrameSource;
   /** 数据发布口：页面把补丁送进 setData */
   publish(patch: MiniprogramSurfacePatch): void;
 }

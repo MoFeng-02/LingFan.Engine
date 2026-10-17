@@ -9,7 +9,7 @@
  * 同步键值存储面（`wx.setStorageSync` / `getStorageSync` / `removeStorageSync` / `getStorageInfoSync`）。
  * 注意缺省值语义与 `localStorage` 不同：**取不存在的键返回空串**（不是 null）。
  */
-export interface WechatStorageLike {
+export interface MiniprogramStorageLike {
   set(key: string, value: string): void;
   get(key: string): string;
   remove(key: string): void;
@@ -22,7 +22,7 @@ export interface WechatStorageLike {
  * `currentTime` 是只读播放位置（秒）；平台不提供该字段时按 0 处理。
  * `onEnded` 用来回收一次性实例（`se` 通道允许叠放，播完即销毁）；注册式，后注册替换先注册。
  */
-export interface WechatAudioContextLike {
+export interface MiniprogramAudioContextLike {
   /** 资源地址（包内路径或临时地址） */
   src: string;
   /** 0..1 */
@@ -40,7 +40,7 @@ export interface WechatAudioContextLike {
  * 视频呈现面：小程序的 `video` 是声明式组件（由宿主建节点、绑 `bindended`），
  * 所以本包只推状态，不自己创建播放器——宿主实现本面即为「把状态落到那个组件上」。
  */
-export interface WechatVideoSurfaceLike {
+export interface MiniprogramVideoSurfaceLike {
   show(request: {
     url: string;
     volume: number;
@@ -56,7 +56,7 @@ export interface WechatVideoSurfaceLike {
 }
 
 /** 帧面（`canvas.requestAnimationFrame` 形态；小程序侧还有全局 rAF，由宿主决定注入哪个） */
-export interface WechatCanvasFrameLike {
+export interface MiniprogramCanvasFrameLike {
   requestAnimationFrame(callback: (now: number) => void): number;
   cancelAnimationFrame(handle: number): void;
 }
@@ -65,7 +65,7 @@ export interface WechatCanvasFrameLike {
  * 用户目录文件面（下载或写入过的资源；包内静态资源不经过这里）。
  * 小程序的用户目录路径不能直接当播放地址用，需要经文件系统换成可访问地址。
  */
-export interface WechatFileSystemLike {
+export interface MiniprogramFileSystemLike {
   exists(path: string): boolean;
   url(path: string): string;
   release(url: string): void;

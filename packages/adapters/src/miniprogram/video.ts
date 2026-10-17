@@ -6,10 +6,10 @@
  * 层 z 取构造期值，随 `show` 一起交给呈现面（缺省 5 = 旧行为）。
  */
 import type { VideoPort } from "@lingfan/engine";
-import type { WechatVideoSurfaceLike } from "./platform.ts";
+import type { MiniprogramVideoSurfaceLike } from "./platform.ts";
 
 /** 视频端口的装配参数 */
-export interface WechatVideoOptions {
+export interface MiniprogramVideoOptions {
   /** 层 z 序（层级契约）：组合根传入解析后的层表值；缺省 5 = 旧行为 */
   zIndex?: number;
 }
@@ -24,9 +24,9 @@ function clamp(value: number): number {
  * @param surface 呈现面：宿主注入「把状态落到 `video` 组件上」的实现
  * @param options 层 z 等装配参数
  */
-export function createWechatVideoPort(
-  surface: WechatVideoSurfaceLike,
-  options: WechatVideoOptions = {},
+export function createMiniprogramVideoPort(
+  surface: MiniprogramVideoSurfaceLike,
+  options: MiniprogramVideoOptions = {},
 ): VideoPort {
   const zIndex = options.zIndex ?? 5;
   let endedHandler: (() => void) | null = null;

@@ -4,11 +4,11 @@
  * 未播放时不打扰呈现面、自然结束只通知当前那次 `play` 的回调。
  */
 import { describe, expect, it } from "vitest";
-import type { WechatVideoSurfaceLike } from "@lingfan/adapters";
-import { createWechatVideoPort } from "@lingfan/adapters";
+import type { MiniprogramVideoSurfaceLike } from "@lingfan/adapters";
+import { createMiniprogramVideoPort } from "@lingfan/adapters";
 
 /** 呈现面替身：记下每次下发的状态，并允许测试触发 `bindended` */
-class FakeVideoSurface implements WechatVideoSurfaceLike {
+class FakeVideoSurface implements MiniprogramVideoSurfaceLike {
   readonly shows: Array<{
     url: string;
     volume: number;
@@ -56,10 +56,10 @@ class FakeVideoSurface implements WechatVideoSurfaceLike {
   }
 }
 
-describe("createWechatVideoPort（推状态给呈现面）", () => {
+describe("createMiniprogramVideoPort（推状态给呈现面）", () => {
   it("play：把 url / 夹过的音量 / 循环 / 层 z 一并下发", () => {
     const surface = new FakeVideoSurface();
-    const port = createWechatVideoPort(surface);
+    const port = createMiniprogramVideoPort(surface);
     port.play("usr/op.mp4", { volume: 3, loop: true });
     expect(surface.shows).toEqual([
       { url: "usr/op.mp4", volume: 1, loop: true, zIndex: 5 },
@@ -68,7 +68,7 @@ describe("createWechatVideoPort（推状态给呈现面）", () => {
 
   it("构造期层 z 覆盖：随每次 show 下发", () => {
     const surface = new FakeVideoSurface();
-    const port = createWechatVideoPort(surface, { zIndex: 7 });
+    const port = createMiniprogramVideoPort(surface, { zIndex: 7 });
     port.play("usr/op.mp4", { volume: 0.4, loop: false });
     expect(surface.shows[0]).toEqual({
       url: "usr/op.mp4",
@@ -80,7 +80,7 @@ describe("createWechatVideoPort（推状态给呈现面）", () => {
 
   it("没播过时 pause / resume / seek 不打扰呈现面", () => {
     const surface = new FakeVideoSurface();
-    const port = createWechatVideoPort(surface);
+    const port = createMiniprogramVideoPort(surface);
     port.pause();
     port.resume();
     port.seek(5);
@@ -91,7 +91,7 @@ describe("createWechatVideoPort（推状态给呈现面）", () => {
 
   it("播放后转发 pause / resume / seek，负位置钳到 0", () => {
     const surface = new FakeVideoSurface();
-    const port = createWechatVideoPort(surface);
+    const port = createMiniprogramVideoPort(surface);
     port.play("usr/op.mp4", { volume: 0.4, loop: false });
     port.pause();
     port.resume();
@@ -104,7 +104,7 @@ describe("createWechatVideoPort（推状态给呈现面）", () => {
 
   it("自然结束：通知当前这次 play 的回调", () => {
     const surface = new FakeVideoSurface();
-    const port = createWechatVideoPort(surface);
+    const port = createMiniprogramVideoPort(surface);
     let ended = 0;
     port.play("usr/op.mp4", { volume: 1, loop: false }, () => {
       ended += 1;
@@ -115,7 +115,7 @@ describe("createWechatVideoPort（推状态给呈现面）", () => {
 
   it("stop 后组件再报结束不再回调（过场等待不会二次解除）", () => {
     const surface = new FakeVideoSurface();
-    const port = createWechatVideoPort(surface);
+    const port = createMiniprogramVideoPort(surface);
     let ended = 0;
     port.play("usr/op.mp4", { volume: 1, loop: false }, () => {
       ended += 1;
@@ -128,7 +128,7 @@ describe("createWechatVideoPort（推状态给呈现面）", () => {
 
   it("新 play 替换：只有最新一次的回调被通知", () => {
     const surface = new FakeVideoSurface();
-    const port = createWechatVideoPort(surface);
+    const port = createMiniprogramVideoPort(surface);
     const calls: string[] = [];
     port.play("usr/a.mp4", { volume: 1, loop: false }, () => {
       calls.push("a");
@@ -142,7 +142,7 @@ describe("createWechatVideoPort（推状态给呈现面）", () => {
 
   it("dispose：收掉呈现面（不留着占屏）", () => {
     const surface = new FakeVideoSurface();
-    const port = createWechatVideoPort(surface);
+    const port = createMiniprogramVideoPort(surface);
     port.play("usr/op.mp4", { volume: 1, loop: false });
     port.dispose();
     expect(surface.hideCount).toBe(1);

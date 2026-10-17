@@ -7,13 +7,13 @@
  * 以及存档键前缀（与参考宿主的前缀区分开，同一台设备上不会串档）。
  */
 import {
-  createWechatAudioPort,
-  createWechatPreferencesPort,
-  createWechatResourcePort,
-  createWechatSavePort,
-  createWechatVideoPort,
-  type WechatStorageLike,
-  type WechatVideoSurfaceLike,
+  createMiniprogramAudioPort,
+  createMiniprogramPreferencesPort,
+  createMiniprogramResourcePort,
+  createMiniprogramSavePort,
+  createMiniprogramVideoPort,
+  type MiniprogramStorageLike,
+  type MiniprogramVideoSurfaceLike,
 } from "@lingfan/adapters";
 import type {
   AudioPort,
@@ -43,7 +43,7 @@ export interface MiniprogramHostPorts {
 /** 端口装配参数：视频呈现面由组合根造（它要写页面数据） */
 export interface MiniprogramPortsOptions {
   /** 视频呈现面（宿主形态相关，不属于平台能力） */
-  videoSurface: WechatVideoSurfaceLike;
+  videoSurface: MiniprogramVideoSurfaceLike;
 }
 
 /** 装配平台端口 */
@@ -52,19 +52,19 @@ export function createMiniprogramHostPorts(
 ): MiniprogramHostPorts {
   const storage = createStorageFace();
   return {
-    save: createWechatSavePort(storage, {
+    save: createMiniprogramSavePort(storage, {
       keyPrefix: SAVE_KEY_PREFIX,
       highWaterKey: SAVE_HIGH_WATER_KEY,
     }),
-    preferences: createWechatPreferencesPort(storage),
-    resources: createWechatResourcePort(),
-    audio: createWechatAudioPort(createAudioContext),
-    video: createWechatVideoPort(options.videoSurface),
+    preferences: createMiniprogramPreferencesPort(storage),
+    resources: createMiniprogramResourcePort(),
+    audio: createMiniprogramAudioPort(createAudioContext),
+    video: createMiniprogramVideoPort(options.videoSurface),
   };
 }
 
 /** 把 `uni` 的同步存储包成适配器认识的存储面（取不到的键归一为空串） */
-function createStorageFace(): WechatStorageLike {
+function createStorageFace(): MiniprogramStorageLike {
   const api = uniApi();
   return {
     set: (key, value) => {

@@ -4,11 +4,11 @@
  * `onEnded` 回收、音量斜坡用定时器推进、`position` 读平台只读位置。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { WechatAudioContextLike } from "@lingfan/adapters";
-import { createWechatAudioPort } from "@lingfan/adapters";
+import type { MiniprogramAudioContextLike } from "@lingfan/adapters";
+import { createMiniprogramAudioPort } from "@lingfan/adapters";
 
 /** 单个音频实例替身：`src` 用访问器记账，其余动作只累计调用 */
-class FakeAudioContext implements WechatAudioContextLike {
+class FakeAudioContext implements MiniprogramAudioContextLike {
   #src = "";
   volume = 1;
   loop = false;
@@ -58,11 +58,11 @@ class FakeAudioContext implements WechatAudioContextLike {
 
 /** 造端口并保留所有被创建实例的清单（宿主注入的工厂在真实环境是 `wx.createInnerAudioContext`） */
 function setup(): {
-  port: ReturnType<typeof createWechatAudioPort>;
+  port: ReturnType<typeof createMiniprogramAudioPort>;
   created: FakeAudioContext[];
 } {
   const created: FakeAudioContext[] = [];
-  const port = createWechatAudioPort(() => {
+  const port = createMiniprogramAudioPort(() => {
     const context = new FakeAudioContext();
     created.push(context);
     return context;
@@ -87,7 +87,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("createWechatAudioPort（常驻通道）", () => {
+describe("createMiniprogramAudioPort（常驻通道）", () => {
   it("起播：写入 src / 音量 / 循环并调用 play", () => {
     const { port, created } = setup();
     port.play("bgm", "/Audio/bgm.mp3", {
@@ -169,7 +169,7 @@ describe("createWechatAudioPort（常驻通道）", () => {
   });
 });
 
-describe("createWechatAudioPort（一次性 se 通道）", () => {
+describe("createMiniprogramAudioPort（一次性 se 通道）", () => {
   it("每次都是新实例（允许叠放），播完只回收自己", () => {
     const { port, created } = setup();
     port.play("se", "/Audio/hit.mp3", OPTS);
@@ -197,7 +197,7 @@ describe("createWechatAudioPort（一次性 se 通道）", () => {
   });
 });
 
-describe("createWechatAudioPort（音量斜坡）", () => {
+describe("createMiniprogramAudioPort（音量斜坡）", () => {
   it("淡入：从 0 爬到目标音量", () => {
     const { port, created } = setup();
     port.play("bgm", "/Audio/a.mp3", { ...OPTS, volume: 0.8, fadeMs: 120 });

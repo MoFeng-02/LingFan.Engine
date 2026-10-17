@@ -6,8 +6,8 @@
  * 上层装配器与帧循环不需要知道用的是哪条。
  */
 import {
-  createWechatFrameSource,
-  type WechatFrameSource,
+  createMiniprogramFrameSource,
+  type MiniprogramFrameSource,
 } from "@lingfan/adapters";
 import { uniApi, type MiniprogramCanvasNode } from "./platform.ts";
 
@@ -17,16 +17,16 @@ const TIMER_FRAME_MS = 16;
 /** 造帧源：给画布就走画布，否则走定时器 */
 export function createHostFrameSource(
   canvas: MiniprogramCanvasNode | null,
-): WechatFrameSource {
+): MiniprogramFrameSource {
   return canvas !== null
-    ? createWechatFrameSource(canvas)
+    ? createMiniprogramFrameSource(canvas)
     : createTimerFrameSource();
 }
 
 /**
  * 定时器帧源：句柄从 1 起编（0 留给「无句柄」的既有约定），取消时清掉在排的定时器。
  */
-function createTimerFrameSource(): WechatFrameSource {
+function createTimerFrameSource(): MiniprogramFrameSource {
   const api = uniApi();
   const pending = new Map<number, number>();
   let nextHandle = 1;

@@ -7,7 +7,7 @@
  */
 import type { ResourcePort } from "@lingfan/engine";
 import { normalizeResourceId } from "../resources/resourcePort.ts";
-import type { WechatFileSystemLike } from "./platform.ts";
+import type { MiniprogramFileSystemLike } from "./platform.ts";
 
 /** 包内资源根：包内文件以 `/` 开头即包根 */
 const PACKAGE_ROOT = "/";
@@ -15,7 +15,7 @@ const PACKAGE_ROOT = "/";
 const USER_ROOT = "usr/";
 
 /** 资源端口的装配参数 */
-export interface WechatResourceOptions {
+export interface MiniprogramResourceOptions {
   /** 包内资源根；缺省 "/"（包根） */
   packageRoot?: string;
   /** 用户目录根；缺省 "usr/"（与 `wx.env.USER_DATA_PATH` 的形态对应） */
@@ -27,9 +27,9 @@ export interface WechatResourceOptions {
  * @param fileSystem 用户目录文件面；**不给则只走包内资源**（纯包内故事不需要它）
  * @param options 两个根的拼法；缺省包根 `/` + 用户目录 `usr/`
  */
-export function createWechatResourcePort(
-  fileSystem?: WechatFileSystemLike,
-  options?: WechatResourceOptions,
+export function createMiniprogramResourcePort(
+  fileSystem?: MiniprogramFileSystemLike,
+  options?: MiniprogramResourceOptions,
 ): ResourcePort {
   const packageRoot = options?.packageRoot ?? PACKAGE_ROOT;
   const userRoot = options?.userRoot ?? USER_ROOT;

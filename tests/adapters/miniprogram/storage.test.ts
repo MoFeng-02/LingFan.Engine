@@ -6,15 +6,15 @@
 import { describe, expect, it } from "vitest";
 import type { PlayerPrefsData } from "@lingfan/engine";
 import { DEFAULT_PLAYER_PREFS } from "@lingfan/engine";
-import type { WechatStorageLike } from "@lingfan/adapters";
+import type { MiniprogramStorageLike } from "@lingfan/adapters";
 import {
-  createWechatPreferencesPort,
-  createWechatSavePort,
-  wechatStorageFace,
+  createMiniprogramPreferencesPort,
+  createMiniprogramSavePort,
+  miniprogramStorageFace,
 } from "@lingfan/adapters";
 
 /** 微信同步存储替身：未存的键返回空串；`putRaw` 供测试直接塞入脏值绕过适配器 */
-class FakeWechatStorage implements WechatStorageLike {
+class FakeMiniprogramStorage implements MiniprogramStorageLike {
   private map = new Map<string, string>();
 
   set(key: string, value: string): void {
@@ -45,20 +45,22 @@ class FakeWechatStorage implements WechatStorageLike {
   }
 }
 
-describe("wechatStorageFace（空串 = 键不存在）", () => {
+describe("miniprogramStorageFace（空串 = 键不存在）", () => {
   it("未存的键 → null", () => {
-    expect(wechatStorageFace(new FakeWechatStorage()).getItem("k")).toBeNull();
+    expect(
+      miniprogramStorageFace(new FakeMiniprogramStorage()).getItem("k"),
+    ).toBeNull();
   });
 
   it("存了空串也当不存在（平台层面无法区分）", () => {
-    const storage = new FakeWechatStorage();
+    const storage = new FakeMiniprogramStorage();
     storage.putRaw("k", "");
-    expect(wechatStorageFace(storage).getItem("k")).toBeNull();
+    expect(miniprogramStorageFace(storage).getItem("k")).toBeNull();
   });
 
   it("写入 / 删除 / 键集透传到平台面", () => {
-    const storage = new FakeWechatStorage();
-    const face = wechatStorageFace(storage);
+    const storage = new FakeMiniprogramStorage();
+    const face = miniprogramStorageFace(storage);
     face.setItem("a", "1");
     expect(storage.get("a")).toBe("1");
     expect(face.getItem("a")).toBe("1");
@@ -68,21 +70,21 @@ describe("wechatStorageFace（空串 = 键不存在）", () => {
   });
 });
 
-describe("createWechatSavePort（明文档位）", () => {
+describe("createMiniprogramSavePort（明文档位）", () => {
   it("write → read 往返同载荷", async () => {
-    const port = createWechatSavePort(new FakeWechatStorage());
+    const port = createMiniprogramSavePort(new FakeMiniprogramStorage());
     await port.write("slot1", '{"a":1}', "machine-bound");
     await expect(port.read("slot1")).resolves.toBe('{"a":1}');
   });
 
   it("槽位不存在 → 读被拒（不静默返回空载荷）", async () => {
-    const port = createWechatSavePort(new FakeWechatStorage());
+    const port = createMiniprogramSavePort(new FakeMiniprogramStorage());
     await expect(port.read("nope")).rejects.toThrow("槽位不存在：nope");
   });
 
   it("高水位自管：旧计数的档被拒（防回档）", async () => {
-    const storage = new FakeWechatStorage();
-    const port = createWechatSavePort(storage);
+    const storage = new FakeMiniprogramStorage();
+    const port = createMiniprogramSavePort(storage);
     await port.write("slot1", "旧", "machine-bound");
     await port.write("slot1", "新", "machine-bound");
     // 把第一份记录的计数改小，模拟「拿旧数据覆盖回来」
@@ -91,8 +93,8 @@ describe("createWechatSavePort（明文档位）", () => {
   });
 
   it("list 只认命名空间前缀并跳过高水位键；remove 后列表清空（高水位不动）", async () => {
-    const storage = new FakeWechatStorage();
-    const port = createWechatSavePort(storage);
+    const storage = new FakeMiniprogramStorage();
+    const port = createMiniprogramSavePort(storage);
     storage.putRaw("页面上的其它键", "x");
     await port.write("slot1", "payload-1", "machine-bound");
     const listed = await port.list();
@@ -107,16 +109,20 @@ describe("createWechatSavePort（明文档位）", () => {
   });
 
   it("自定义前缀：换命名空间后旧前缀的键读不到（迁移由宿主自管）", async () => {
-    const storage = new FakeWechatStorage();
-    await createWechatSavePort(storage).write("slot1", "旧档", "machine-bound");
-    const other = createWechatSavePort(storage, { keyPrefix: "lf4:" });
+    const storage = new FakeMiniprogramStorage();
+    await createMiniprogramSavePort(storage).write(
+      "slot1",
+      "旧档",
+      "machine-bound",
+    );
+    const other = createMiniprogramSavePort(storage, { keyPrefix: "lf4:" });
     await expect(other.read("slot1")).rejects.toThrow("槽位不存在");
   });
 });
 
-describe("createWechatPreferencesPort（明文 JSON，坏值不挡启动）", () => {
+describe("createMiniprogramPreferencesPort（明文 JSON，坏值不挡启动）", () => {
   it("save → load 往返同值", async () => {
-    const port = createWechatPreferencesPort(new FakeWechatStorage());
+    const port = createMiniprogramPreferencesPort(new FakeMiniprogramStorage());
     const data: PlayerPrefsData = {
       ...DEFAULT_PLAYER_PREFS,
       volumes: { ...DEFAULT_PLAYER_PREFS.volumes, bgm: 0.25 },
@@ -127,15 +133,15 @@ describe("createWechatPreferencesPort（明文 JSON，坏值不挡启动）", ()
   });
 
   it("没存过 → null（首次启动用默认值）", async () => {
-    const port = createWechatPreferencesPort(new FakeWechatStorage());
+    const port = createMiniprogramPreferencesPort(new FakeMiniprogramStorage());
     await expect(port.load()).resolves.toBeNull();
   });
 
   it("存坏了 → null（偏好损坏不影响启动）", async () => {
-    const storage = new FakeWechatStorage();
+    const storage = new FakeMiniprogramStorage();
     storage.putRaw("lingfan.prefs.v1", "{ not json");
     await expect(
-      createWechatPreferencesPort(storage).load(),
+      createMiniprogramPreferencesPort(storage).load(),
     ).resolves.toBeNull();
   });
 });

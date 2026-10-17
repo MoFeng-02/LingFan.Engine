@@ -5,11 +5,11 @@
  */
 import { describe, expect, it } from "vitest";
 import type { FrameSource } from "@lingfan/ui";
-import type { WechatCanvasFrameLike } from "@lingfan/adapters";
-import { createWechatFrameSource } from "@lingfan/adapters";
+import type { MiniprogramCanvasFrameLike } from "@lingfan/adapters";
+import { createMiniprogramFrameSource } from "@lingfan/adapters";
 
 /** 帧面替身：登记回调，句柄自增（从 1 起，0 留给「无句柄」） */
-class FakeCanvasFrame implements WechatCanvasFrameLike {
+class FakeCanvasFrame implements MiniprogramCanvasFrameLike {
   #next = 1;
   readonly requested = new Map<number, (now: number) => void>();
   readonly cancelled: number[] = [];
@@ -32,10 +32,10 @@ class FakeCanvasFrame implements WechatCanvasFrameLike {
   }
 }
 
-describe("createWechatFrameSource（帧面转发）", () => {
+describe("createMiniprogramFrameSource（帧面转发）", () => {
   it("request 返回平台句柄，回调收到平台时间原点", () => {
     const canvas = new FakeCanvasFrame();
-    const source = createWechatFrameSource(canvas);
+    const source = createMiniprogramFrameSource(canvas);
     const stamps: number[] = [];
     const handle = source.request((now) => {
       stamps.push(now);
@@ -47,7 +47,7 @@ describe("createWechatFrameSource（帧面转发）", () => {
 
   it("cancel 转发给帧面", () => {
     const canvas = new FakeCanvasFrame();
-    const source = createWechatFrameSource(canvas);
+    const source = createMiniprogramFrameSource(canvas);
     const handle = source.request(() => undefined);
     source.cancel(handle);
     expect(canvas.cancelled).toEqual([handle]);
@@ -55,7 +55,7 @@ describe("createWechatFrameSource（帧面转发）", () => {
 
   it("与界面层的 FrameSource 结构一致（改签名会在此处编译失败）", () => {
     const canvas = new FakeCanvasFrame();
-    const source: FrameSource = createWechatFrameSource(canvas);
+    const source: FrameSource = createMiniprogramFrameSource(canvas);
     const handle = source.request(() => undefined);
     source.cancel(handle);
     expect(canvas.cancelled).toEqual([handle]);

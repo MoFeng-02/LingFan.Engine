@@ -4,15 +4,15 @@
  */
 import type { PreferencesPort } from "@lingfan/engine";
 import { createWebStoragePreferencesPort } from "../preferences/webStoragePreferences.ts";
-import type { WechatStorageLike } from "./platform.ts";
-import { wechatStorageFace } from "./save.ts";
+import type { MiniprogramStorageLike } from "./platform.ts";
+import { miniprogramStorageFace } from "./save.ts";
 
 /**
  * 造一个偏好端口（小程序）。
  * @param storage 微信同步存储面（宿主注入 `wx` 上那四个动作）
  */
-export function createWechatPreferencesPort(
-  storage: WechatStorageLike,
+export function createMiniprogramPreferencesPort(
+  storage: MiniprogramStorageLike,
 ): PreferencesPort {
-  return createWebStoragePreferencesPort(wechatStorageFace(storage));
+  return createWebStoragePreferencesPort(miniprogramStorageFace(storage));
 }
