@@ -246,11 +246,15 @@ const submitInput = (): void => emit("submit-input");
   animation: blink 1.2s infinite;
 }
 
+/* 选择 / 输入 / 玩法挂载三层共用这个容器：它住在 UI 层（那一层容器是 pointer-events: none，
+   好让空白处的点击穿到舞台上推进对话），所以这层必须自己恢复指针事件——选项按钮、输入行与
+   挂载内容都要能接事件。漏了它就是整块面板静默失效（元素还在、就是点不到、也 focus 不上）。 */
 .choices {
   position: relative;
   width: min(100%, 960px);
   margin: 0 auto;
   box-sizing: border-box;
+  pointer-events: auto;
 }
 
 .layer-prompt {
