@@ -253,6 +253,9 @@ function onVideoEnded(): void {
  * 尺寸单位：舞台内的元素尺寸来自叙事数据（px，基准坐标系）；页面自身的留白、字号与面板
  * 几何用 rpx（宽度基准 750）。桌面对应值来自 `apps/playground/src/App/DialoguePanel.vue`
  * （那里用 px + clamp 跟窗口），两边只差单位，不差形态——改形态时两处一起改。
+ *
+ * 横屏例外：横过来后宽度变大、高度变小，rpx 会把字号与内边距一起放大，所以结尾那段
+ * `@media (orientation: landscape)` 用 px 定死排版；层高一律用百分比随视口。
  */
 .page {
   display: block;
@@ -312,14 +315,15 @@ function onVideoEnded(): void {
   background: #000;
 }
 
-/* 对话层：贴底居中的卡片（桌面对应 `.dialogue`：宽上限、圆角、半透明底） */
+/* 对话层：贴底居中的卡片（桌面对应 `.dialogue`：宽上限、圆角、半透明底）。
+   高度按视口百分比给下限：竖屏约等于桌面的 104~150px，横屏不会因为 rpx 基准换成大宽度而撑破屏。 */
 .dialogue {
   top: auto;
   bottom: 24rpx;
   left: 24rpx;
   right: 24rpx;
   width: auto;
-  min-height: 220rpx;
+  min-height: 16%;
   padding: 32rpx 40rpx;
   box-sizing: border-box;
   border: 2rpx solid rgba(68, 68, 68, 0.27);
@@ -330,7 +334,7 @@ function onVideoEnded(): void {
 
 /* NVL 累积层形态：容器抬升为阅读区（累积文本自上而下滚动） */
 .dialogue.nvl-mode {
-  min-height: 600rpx;
+  min-height: 46%;
   display: flex;
   flex-direction: column;
 }
@@ -483,6 +487,81 @@ function onVideoEnded(): void {
 /* 编号选项皮肤：整行靠左（序号由模板正文自带） */
 .choices.tpl-choice-numbered .option {
   text-align: left;
+}
+
+/*
+ * 横屏：`rpx` 的基准是窗口宽度，横过来宽度变大、同一串 rpx 会被放大（字号与内边距都涨），
+ * 而屏幕高度反而变小。所以方向相关的排版在横屏下改用 px 定值，与桌面面板的 px/clamp 同一量级；
+ * 竖屏继续用 rpx（平台惯例）。层高用百分比随视口，两种方向都不会撑破屏。
+ */
+@media (orientation: landscape) {
+  .dialogue,
+  .choices {
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    padding: 12px 16px;
+    border-width: 1px;
+    border-radius: 12px;
+  }
+
+  .speaker {
+    margin: 0 0 6px;
+    font-size: 15px;
+    letter-spacing: 0;
+  }
+
+  .text,
+  .layer-prompt,
+  .option,
+  .input-box,
+  .submit {
+    font-size: 16px;
+  }
+
+  .advance-hint {
+    right: 12px;
+    bottom: 8px;
+    font-size: 13px;
+  }
+
+  .choice-row {
+    gap: 10px;
+  }
+
+  .layer-prompt {
+    margin-bottom: 10px;
+  }
+
+  .option,
+  .submit {
+    padding: 8px 16px;
+    border-width: 1px;
+    border-radius: 10px;
+  }
+
+  .input-row {
+    gap: 10px;
+  }
+
+  .input-box {
+    padding: 8px 12px;
+    border-width: 1px;
+    border-radius: 10px;
+  }
+
+  .notices {
+    top: 12px;
+    right: 12px;
+    max-width: 320px;
+    gap: 8px;
+  }
+
+  .notice {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
 }
 
 @keyframes blink {

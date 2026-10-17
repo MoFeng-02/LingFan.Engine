@@ -63,6 +63,10 @@ CDP 通道又是 `unimplemented`，所以媒体这段拿不到截图，证据是
 解码起播（`naturalEnd: false`），所以「真的听见、真的看见」必须在真机上确认——开发者工具点「真机
 调试」扫码后，耳边是约 20 秒的蟋蟀环境音，名字提交后是一段可点跳过的过场视频。
 
+屏幕方向也只在真机/手动下看得准：`src/pages.json` 的页面配置里声明了 `pageOrientation: "auto"`，
+开发者工具工具栏的「旋转」按钮（或真机横过来）就能看到横屏版式；自动化通道没有旋转能力，这一项
+不列入自动化读数。
+
 ## 目录
 
 | 路径                          | 作用                                                                                              |
@@ -132,3 +136,11 @@ CDP 通道又是 `unimplemented`，所以媒体这段拿不到截图，证据是
   只推数据（`src`/显隐/音量/循环），暂停、续播、定位走 `uni.createVideoContext`，自然播完由页面把
   `bindended` 回传给宿主，宿主再交 `engine.videoFinished()` 解除 cutscene 等待。音量偏好随
   `PlayerPreferences` 水合生效（与桌面宿主同一套设置）。
+- **屏幕方向由静态配置声明**：页面在 `src/pages.json` 里写 `pageOrientation: "auto"`（跟随系统旋转；
+  要强制横屏改成 `landscape`，两值分别要求基库 2.4.0 / 2.5.0）。微信没有运行期改页面方向的 API，
+  所以工程 `project.json` 的 `shell.orientation` 到小程序端只能落在这份静态配置上（桌面宿主走
+  `OrientationPort`：Tauri 真调原生、浏览器 noop）。横屏版式靠两条纪律成立：**层高一律用视口百分比**
+  （竖屏写死的 `rpx` 高度横过来会被放大成近屏高），**方向相关的字号/内边距在
+  `@media (orientation: landscape)` 里换成 px**（`rpx` 基准是宽度，横屏会把字撑大）。旋转后舞台由
+  `watchWindowResize` → `started.resize()` 重算，`tests/miniprogram/app-host.test.ts` 有 3 例守住
+  （`pageOrientation`、百分比层高、横屏媒体查询与 px 覆盖）。
