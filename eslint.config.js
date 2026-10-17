@@ -72,7 +72,13 @@ export default defineConfigWithVueTs(
   eslintConfigPrettier,
   {
     name: "lingfan/allow-single-word-app",
-    files: ["apps/playground/src/App.vue", "apps/editor/src/App.vue"],
+    // 单文件组件名不满足「多词」约定：应用外壳（App.vue）与**路由页**——
+    // 页面文件名即路由路径（由 pages.json 决定），组件名跟路由走，不由命名约定决定。
+    files: [
+      "apps/playground/src/App.vue",
+      "apps/editor/src/App.vue",
+      "apps/wechat/src/pages/**/*.vue",
+    ],
     rules: {
       "vue/multi-word-component-names": "off",
     },
@@ -129,6 +135,8 @@ export default defineConfigWithVueTs(
       "tests/ui/**/*.ts",
       "tests/playground/**/*.ts",
       "tests/template/**/*.ts",
+      // 小程序宿主测试与 adapters/ui 同域：都在 WebView（或小程序运行层）里跑，不受 Node 面
+      "tests/wechat/**/*.ts",
     ],
     rules: {
       "no-restricted-imports": [

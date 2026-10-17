@@ -1,0 +1,31 @@
+{
+  "name": "@lingfan/wechat",
+  "private": true,
+  "version": "0.0.0",
+  "description": "微信小程序宿主：UniApp（Vue 3）页面层 + 框架无关的端口装配",
+  "type": "module",
+  "scripts": {
+    "dev": "uni -p mp-weixin",
+    "build": "uni build -p mp-weixin",
+    "dev:h5": "uni",
+    "build:h5": "uni build -p h5",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-4080720251210001",
+    "@dcloudio/uni-components": "3.0.0-4080720251210001",
+    "@dcloudio/uni-h5": "3.0.0-4080720251210001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-4080720251210001",
+    "@lingfan/adapters": "workspace:*",
+    "@lingfan/engine": "workspace:*",
+    "@lingfan/shell": "workspace:*",
+    "@lingfan/ui": "workspace:*",
+    "vue": "3.4.21"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "3.4.19",
+    "@dcloudio/uni-cli-shared": "3.0.0-4080720251210001",
+    "@dcloudio/vite-plugin-uni": "3.0.0-4080720251210001",
+    "vite": "5.2.8"
+  }
+}
