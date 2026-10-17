@@ -5,5 +5,9 @@ packages:
 # 构建脚本批准面（pnpm 12 起「未批准的构建脚本」= 硬错误 ERR_PNPM_IGNORED_BUILDS，
 # 会让 `pnpm install --frozen-lockfile` 直接失败，并连锁跳过其后的构建/冒烟步骤）。
 # 只批 esbuild：它是 vite 工具链的既定安装步骤；其余包的构建脚本一律不放开（供应链面维持最小）。
+# 显式不批准面：带安装脚本但不需要执行的包写在这里（=「知道了、故意不跑」，与「未批准」
+# 区别开，否则每次 install 都以 ERR_PNPM_IGNORED_BUILDS 收场）。core-js 的 postinstall
+# 只打印赞助信息，随 UniApp 工具链传入，不执行不影响构建。
 allowBuilds:
+  core-js: false
   esbuild: true

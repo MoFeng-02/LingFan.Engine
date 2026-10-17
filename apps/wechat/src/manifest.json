@@ -1,0 +1,20 @@
+{
+  "name": "灵泛引擎（小程序宿主）",
+  "appid": "",
+  "description": "灵泛叙事引擎的微信小程序宿主：UniApp（Vue 3）页面层接住框架无关的端口装配",
+  "versionName": "0.0.0",
+  "versionCode": "0",
+  "mp-weixin": {
+    "appid": "touristappid",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "minified": false
+    },
+    "usingComponents": true,
+    "lazyCodeLoading": "requiredComponents"
+  },
+  "h5": {
+    "title": "灵泛引擎（小程序宿主）"
+  }
+}
