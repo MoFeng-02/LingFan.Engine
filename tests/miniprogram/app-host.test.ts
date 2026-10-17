@@ -40,6 +40,7 @@ import { renderDialogueLine, type NarrativeOverlayView } from "@lingfan/ui";
 import dialoguePanelSource from "../../apps/playground/src/App/DialoguePanel.vue?raw";
 import { stageStyle } from "../../apps/miniprogram/src/host/view.ts";
 import manifestSource from "../../apps/miniprogram/src/manifest.json?raw";
+import pagesSource from "../../apps/miniprogram/src/pages.json?raw";
 import pageSource from "../../apps/miniprogram/src/pages/index/index.vue?raw";
 import projectManifestSource from "../../apps/miniprogram/project/project.json?raw";
 
@@ -234,6 +235,36 @@ describe("页面层的单位与层次口径", () => {
     expect(pageSource).toContain("layerStyle('dialogue')");
     expect(pageSource).toContain("layerStyle('choices')");
     expect(pageSource).toContain("layerStyle('notifications')");
+  });
+});
+
+describe("屏幕方向（横屏支持）", () => {
+  it("页面声明 auto 方向：允许系统旋转，锁定方向改这一处", () => {
+    const pages = JSON.parse(pagesSource) as {
+      pages: { path: string; style?: { pageOrientation?: string } }[];
+    };
+    const page = pages.pages.find((item) => item.path === "pages/index/index");
+    // 微信页面配置：auto = 跟随系统旋转（2.4.0+），landscape = 强制横屏（2.5.0+）
+    expect(page?.style?.pageOrientation).toBe("auto");
+  });
+
+  it("层高用视口百分比：横屏时 rpx 基准换成大宽度也不会把卡片撑出屏", () => {
+    expect(pageSource).toContain("min-height: 16%");
+    expect(pageSource).toContain("min-height: 46%");
+    // 固定 rpx 高度是横屏的坑：竖屏 600rpx 在横屏会变成近 700px，直接盖满屏
+    expect(pageSource).not.toMatch(/min-height:\s*\d+rpx/);
+  });
+
+  it("横屏排版改用 px：rpx 会随宽度放大字号与内边距", () => {
+    expect(pageSource).toContain("@media (orientation: landscape)");
+    const landscape = pageSource.slice(
+      pageSource.indexOf("@media (orientation: landscape)"),
+    );
+    expect(landscape).toContain("font-size: 16px");
+    expect(landscape).toContain("padding: 12px 16px");
+    // 方向切换后宿主负责重算舞台：页面订阅窗口尺寸变化（旋转会触发 uni 的 onWindowResize）
+    expect(pageSource).toContain("watchWindowResize");
+    expect(pageSource).toContain("started.resize()");
   });
 });
 
