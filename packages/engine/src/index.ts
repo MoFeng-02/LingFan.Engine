@@ -19,6 +19,10 @@ export * from "./contracts/index.ts";
  *   内建表本体不解释扩展）；
  * - 写入契约守卫（`jsonUnsafeReason` / `findJsonValueError`）：宿主、扩展与测试模板写入前断言共用。
  *
+ * 守卫登记校验（`collectGuardNames` / `findMissingGuards`）同属「装载即断言」的一类：
+ * 守卫名写在内容里、实现由宿主注入，两者分开发布时缺名要能在起播前一次报全，
+ * 而不是播到那条命令才 fail-closed。
+ *
  * 表达式求值（`evaluateExpression` / `interpolateText` / `ExpressionError` / `NameResolver`）
  * 同属执行期语义，编辑器侧的构建期校验与它逐条互锁，故一并公开。
  *
@@ -28,6 +32,7 @@ export * from "./contracts/index.ts";
 export {
   BUILTIN_OP_NAMES,
   buildOpRegistry,
+  collectGuardNames,
   collectTextProjections,
   collectWaitSpecs,
   createStateReader,
@@ -37,6 +42,7 @@ export {
   evaluateExpression,
   ExpressionError,
   findJsonValueError,
+  findMissingGuards,
   INSTANCE_Z_KEYS,
   instanceZLayer,
   interpolateText,

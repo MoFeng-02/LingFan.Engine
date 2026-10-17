@@ -41,6 +41,7 @@ export type {
   StageScalePolicy,
 } from "./shell.ts";
 export { findJsonValueError, jsonUnsafeReason } from "./stateContract.ts";
+export { collectGuardNames, findMissingGuards } from "./guardNames.ts";
 export {
   BUILTIN_OP_NAMES,
   buildOpRegistry,
