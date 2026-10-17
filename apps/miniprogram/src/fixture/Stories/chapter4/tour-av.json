@@ -1,0 +1,154 @@
+{
+  "formatVersion": 1,
+  "id": "tour_av",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "func",
+      "name": "stationsMenu",
+      "params": [],
+      "body": [
+        {
+          "op": "menu",
+          "prompt": "下一道？",
+          "options": [
+            {
+              "text": "变量盛宴1",
+              "target": "tour_vars"
+            },
+            {
+              "text": "流程厨房",
+              "target": "tour_flow"
+            },
+            {
+              "text": "存档试吃",
+              "target": "tour_save"
+            },
+            {
+              "text": "声光餐车",
+              "target": "tour_av"
+            },
+            {
+              "text": "舞台窗口",
+              "target": "tour_stage"
+            },
+            {
+              "text": "扩展工坊",
+              "target": "tour_ext"
+            },
+            {
+              "text": "守卫工坊",
+              "target": "tour_guard"
+            },
+            {
+              "text": "回主线菜单",
+              "target": "start"
+            },
+            {
+              "text": "离席（终幕）",
+              "target": "end"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "op": "say",
+      "text": "声光餐车——BGM、环境音、配音三轨各停各的；视频支持暂停/续播/跳帧/点击跳过。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "stop_bgm",
+      "fade": 600
+    },
+    {
+      "op": "say",
+      "text": "stop_bgm（600ms 淡出）——序幕的夜蟋蟀退场。"
+    },
+    {
+      "op": "ambient",
+      "resource": "Audio/crickets_night01.mp3",
+      "volume": 0.4,
+      "loop": true
+    },
+    {
+      "op": "say",
+      "text": "ambient 循环环境音进场（同一素材、不同轨、独立音量）。"
+    },
+    {
+      "op": "stop_ambient"
+    },
+    {
+      "op": "say",
+      "text": "stop_ambient 收环境音——三轨互不干扰。"
+    },
+    {
+      "op": "voice",
+      "resource": "Audio/chest_drawer_open.mp3",
+      "auto_stop": true
+    },
+    {
+      "op": "say",
+      "text": "voice 播一句配音（auto_stop 播完自停）。"
+    },
+    {
+      "op": "stop_voice"
+    },
+    {
+      "op": "say",
+      "text": "stop_voice 立刻收线。"
+    },
+    {
+      "op": "video_skipable",
+      "value": true
+    },
+    {
+      "op": "say",
+      "text": "video_skipable(true)——下一段视频可点击跳过。"
+    },
+    {
+      "op": "video",
+      "resource": "Video/m1.mp4",
+      "volume": 0.5
+    },
+    {
+      "op": "pause_video"
+    },
+    {
+      "op": "say",
+      "text": "视频已暂停（pause_video）——画面停在最后一帧。"
+    },
+    {
+      "op": "resume_video"
+    },
+    {
+      "op": "say",
+      "text": "resume_video 续播。"
+    },
+    {
+      "op": "seek_video",
+      "seconds": 4
+    },
+    {
+      "op": "say",
+      "text": "seek_video 跳到 4 秒处继续播。"
+    },
+    {
+      "op": "wait",
+      "seconds": 1.5,
+      "skipable": true
+    },
+    {
+      "op": "stop_video"
+    },
+    {
+      "op": "say",
+      "text": "stop_video 收屏——声光餐车打烊。"
+    },
+    {
+      "op": "call",
+      "target": "stationsMenu",
+      "args": []
+    }
+  ]
+}

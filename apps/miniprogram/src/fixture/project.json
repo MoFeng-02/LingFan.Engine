@@ -1,0 +1,18 @@
+{
+  "formatVersion": 1,
+  "id": "start",
+  "entry": "start",
+  "name": "灵泛演示（小程序）",
+  "shell": {
+    "orientation": "auto"
+  },
+  "defines": {
+    "player.gold": 100,
+    "player.level": 1,
+    "player.sex": "male",
+    "player.name": "旅人",
+    "dice": 1,
+    "supplies": []
+  },
+  "capabilityVersion": "0.9.0"
+}
