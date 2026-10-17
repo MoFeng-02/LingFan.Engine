@@ -12,22 +12,22 @@ import {
   type WechatStorageLike,
 } from "@lingfan/adapters";
 import type { PreferencesPort, ResourcePort, SavePort } from "@lingfan/engine";
-import { wechatApi } from "./platform.ts";
+import { uniApi } from "./platform.ts";
 
 /** 本工程的存档键前缀（含高水位键，两者必须同前缀才互不干扰） */
-const SAVE_KEY_PREFIX = "lingfan-wechat:";
+const SAVE_KEY_PREFIX = "lingfan-miniprogram:";
 /** 高水位键：低于已记录档数的读档会被拒绝，防误覆盖 */
-const SAVE_HIGH_WATER_KEY = "lingfan-wechat:highwater";
+const SAVE_HIGH_WATER_KEY = "lingfan-miniprogram:highwater";
 
 /** 宿主给引擎与装配器用的三个端口 */
-export interface WechatHostPorts {
+export interface MiniprogramHostPorts {
   save: SavePort;
   preferences: PreferencesPort;
   resources: ResourcePort;
 }
 
 /** 装配平台端口 */
-export function createWechatHostPorts(): WechatHostPorts {
+export function createMiniprogramHostPorts(): MiniprogramHostPorts {
   const storage = createStorageFace();
   return {
     save: createWechatSavePort(storage, {
@@ -41,7 +41,7 @@ export function createWechatHostPorts(): WechatHostPorts {
 
 /** 把 `uni` 的同步存储包成适配器认识的存储面（取不到的键归一为空串） */
 function createStorageFace(): WechatStorageLike {
-  const api = wechatApi();
+  const api = uniApi();
   return {
     set: (key, value) => {
       api.setStorageSync(key, value);

@@ -25,11 +25,14 @@ import {
 } from "@lingfan/ui";
 import { createFixtureProjectFilesPort } from "./fixture.ts";
 import { createHostFrameSource } from "./frame.ts";
-import { readWindowSize, type WechatCanvasNode } from "./platform.ts";
-import { createWechatHostPorts, type WechatHostPorts } from "./ports.ts";
+import { readWindowSize, type MiniprogramCanvasNode } from "./platform.ts";
 import {
-  createWechatOverlaySurface,
-  type WechatSurfacePatch,
+  createMiniprogramHostPorts,
+  type MiniprogramHostPorts,
+} from "./ports.ts";
+import {
+  createMiniprogramOverlaySurface,
+  type MiniprogramSurfacePatch,
 } from "./surface.ts";
 import { stageStyle } from "./view.ts";
 
@@ -44,24 +47,24 @@ const STAGE_CONFIG: StageConfig = {
 };
 
 /** 页面数据补丁：覆盖层各层 + 舞台尺寸串 + 错误横幅 */
-export type WechatHostPatch = WechatSurfacePatch & {
+export type MiniprogramHostPatch = MiniprogramSurfacePatch & {
   stageBox?: string;
   error?: string;
 };
 
 /** 宿主装配参数 */
-export interface WechatHostDeps {
+export interface MiniprogramHostDeps {
   /** 页面数据发布口 */
-  publish(patch: WechatHostPatch): void;
+  publish(patch: MiniprogramHostPatch): void;
   /** 画布节点（有则用它做帧源；无则退回定时器帧源） */
-  canvas?: WechatCanvasNode | null;
+  canvas?: MiniprogramCanvasNode | null;
 }
 
 /** 宿主句柄：页面用它做重算、销毁与调试观测 */
-export interface WechatHostHandle {
+export interface MiniprogramHostHandle {
   engine: StoryEngine;
   overlay: NarrativeOverlay;
-  ports: WechatHostPorts;
+  ports: MiniprogramHostPorts;
   /** 当前舞台布局（视口 + 基准算出的缩放与偏移） */
   layout(): StageLayout;
   /** 视口尺寸变化后重算布局并下发 */
@@ -71,17 +74,17 @@ export interface WechatHostHandle {
 }
 
 /** 启动小程序宿主：装载包内演示工程并起叙事循环 */
-export async function startWechatHost(
-  deps: WechatHostDeps,
-): Promise<WechatHostHandle> {
+export async function startMiniprogramHost(
+  deps: MiniprogramHostDeps,
+): Promise<MiniprogramHostHandle> {
   const story: Story = await loadProject(createFixtureProjectFilesPort());
-  const ports = createWechatHostPorts();
+  const ports = createMiniprogramHostPorts();
   const engine = new StoryEngine(story, {
     savePort: ports.save,
     texts: withSlotLabels(defaultEngineTexts),
   });
 
-  const surface = createWechatOverlaySurface({
+  const surface = createMiniprogramOverlaySurface({
     frame: createHostFrameSource(deps.canvas ?? null),
     publish: deps.publish,
   });

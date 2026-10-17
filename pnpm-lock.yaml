@@ -92,6 +92,49 @@ importers:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@26.6.3)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15)
 
+  apps/miniprogram:
+    dependencies:
+      '@dcloudio/uni-app':
+        specifier: 3.0.0-4080720251210001
+        version: 3.0.0-4080720251210001(@dcloudio/types@3.4.19)(postcss@8.5.28)(rollup@4.64.7)(supports-color@5.5.0)(vue@3.4.21(typescript@6.0.3))
+      '@dcloudio/uni-components':
+        specifier: 3.0.0-4080720251210001
+        version: 3.0.0-4080720251210001(postcss@8.5.28)(rollup@4.64.7)(supports-color@5.5.0)(vue@3.4.21(typescript@6.0.3))
+      '@dcloudio/uni-h5':
+        specifier: 3.0.0-4080720251210001
+        version: 3.0.0-4080720251210001(postcss@8.5.28)(rollup@4.64.7)(supports-color@5.5.0)(vue@3.4.21(typescript@6.0.3))
+      '@dcloudio/uni-mp-weixin':
+        specifier: 3.0.0-4080720251210001
+        version: 3.0.0-4080720251210001(debug@4.4.3(supports-color@5.5.0))(postcss@8.5.28)(rollup@4.64.7)(supports-color@5.5.0)(vue@3.4.21(typescript@6.0.3))
+      '@lingfan/adapters':
+        specifier: workspace:*
+        version: link:../../packages/adapters
+      '@lingfan/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
+      '@lingfan/shell':
+        specifier: workspace:*
+        version: link:../../packages/shell
+      '@lingfan/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      vue:
+        specifier: 3.4.21
+        version: 3.4.21(typescript@6.0.3)
+    devDependencies:
+      '@dcloudio/types':
+        specifier: 3.4.19
+        version: 3.4.19
+      '@dcloudio/uni-cli-shared':
+        specifier: 3.0.0-4080720251210001
+        version: 3.0.0-4080720251210001(postcss@8.5.28)(rollup@4.64.7)(supports-color@5.5.0)(vue@3.4.21(typescript@6.0.3))
+      '@dcloudio/vite-plugin-uni':
+        specifier: 3.0.0-4080720251210001
+        version: 3.0.0-4080720251210001(postcss@8.5.28)(rollup@4.64.7)(supports-color@5.5.0)(vite@5.2.8(@types/node@26.6.3)(lightningcss@1.33.0)(terser@5.51.2))(vue@3.4.21(typescript@6.0.3))
+      vite:
+        specifier: 5.2.8
+        version: 5.2.8(@types/node@26.6.3)(lightningcss@1.33.0)(terser@5.51.2)
+
   apps/playground:
     dependencies:
       '@lingfan/adapters':
@@ -137,49 +180,6 @@ importers:
       vite:
         specifier: ^8.0.16
         version: 8.3.0(@types/node@26.6.3)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15)
-
-  apps/wechat:
-    dependencies:
-      '@dcloudio/uni-app':
-        specifier: 3.0.0-4080720251210001
-        version: 3.0.0-4080720251210001(@dcloudio/types@3.4.19)(postcss@8.5.28)(rollup@4.64.7)(supports-color@5.5.0)(vue@3.4.21(typescript@6.0.3))
-      '@dcloudio/uni-components':
-        specifier: 3.0.0-4080720251210001
-        version: 3.0.0-4080720251210001(postcss@8.5.28)(rollup@4.64.7)(supports-color@5.5.0)(vue@3.4.21(typescript@6.0.3))
-      '@dcloudio/uni-h5':
-        specifier: 3.0.0-4080720251210001
-        version: 3.0.0-4080720251210001(postcss@8.5.28)(rollup@4.64.7)(supports-color@5.5.0)(vue@3.4.21(typescript@6.0.3))
-      '@dcloudio/uni-mp-weixin':
-        specifier: 3.0.0-4080720251210001
-        version: 3.0.0-4080720251210001(debug@4.4.3(supports-color@5.5.0))(postcss@8.5.28)(rollup@4.64.7)(supports-color@5.5.0)(vue@3.4.21(typescript@6.0.3))
-      '@lingfan/adapters':
-        specifier: workspace:*
-        version: link:../../packages/adapters
-      '@lingfan/engine':
-        specifier: workspace:*
-        version: link:../../packages/engine
-      '@lingfan/shell':
-        specifier: workspace:*
-        version: link:../../packages/shell
-      '@lingfan/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
-      vue:
-        specifier: 3.4.21
-        version: 3.4.21(typescript@6.0.3)
-    devDependencies:
-      '@dcloudio/types':
-        specifier: 3.4.19
-        version: 3.4.19
-      '@dcloudio/uni-cli-shared':
-        specifier: 3.0.0-4080720251210001
-        version: 3.0.0-4080720251210001(postcss@8.5.28)(rollup@4.64.7)(supports-color@5.5.0)(vue@3.4.21(typescript@6.0.3))
-      '@dcloudio/vite-plugin-uni':
-        specifier: 3.0.0-4080720251210001
-        version: 3.0.0-4080720251210001(postcss@8.5.28)(rollup@4.64.7)(supports-color@5.5.0)(vite@5.2.8(@types/node@26.6.3)(lightningcss@1.33.0)(terser@5.51.2))(vue@3.4.21(typescript@6.0.3))
-      vite:
-        specifier: 5.2.8
-        version: 5.2.8(@types/node@26.6.3)(lightningcss@1.33.0)(terser@5.51.2)
 
   packages/adapters:
     dependencies:
@@ -3857,7 +3857,7 @@ snapshots:
   '@babel/code-frame@7.24.7':
     dependencies:
       '@babel/highlight': 7.25.9
-      picocolors: 1.1.1
+      picocolors: 1.1.0
 
   '@babel/code-frame@7.29.7':
     dependencies:
@@ -3875,12 +3875,12 @@ snapshots:
       '@babel/helper-compilation-targets': 7.29.7
       '@babel/helper-module-transforms': 7.29.7(@babel/core@7.25.2(supports-color@5.5.0))(supports-color@5.5.0)
       '@babel/helpers': 7.29.10
-      '@babel/parser': 7.29.9
+      '@babel/parser': 7.25.6
       '@babel/template': 7.29.7
       '@babel/traverse': 7.29.10(supports-color@5.5.0)
-      '@babel/types': 7.29.8
+      '@babel/types': 7.25.6
       convert-source-map: 2.0.0
-      debug: 4.4.3(supports-color@5.5.0)
+      debug: 4.3.7(supports-color@5.5.0)
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -3889,7 +3889,7 @@ snapshots:
 
   '@babel/generator@7.25.6':
     dependencies:
-      '@babel/types': 7.29.8
+      '@babel/types': 7.25.6
       '@jridgewell/gen-mapping': 0.3.13
       '@jridgewell/trace-mapping': 0.3.31
       jsesc: 2.5.2
@@ -4025,11 +4025,11 @@ snapshots:
       '@babel/helper-validator-identifier': 7.29.7
       chalk: 2.4.2
       js-tokens: 4.0.0
-      picocolors: 1.1.1
+      picocolors: 1.1.0
 
   '@babel/parser@7.25.6':
     dependencies:
-      '@babel/types': 7.29.8
+      '@babel/types': 7.25.6
 
   '@babel/parser@7.29.9':
     dependencies:
@@ -4557,7 +4557,7 @@ snapshots:
       '@babel/parser': 7.29.9
       '@babel/template': 7.29.7
       '@babel/types': 7.29.8
-      debug: 4.4.3(supports-color@5.5.0)
+      debug: 4.3.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -5836,7 +5836,7 @@ snapshots:
       browserslist: 4.29.3
       browserslist-to-esbuild: 2.1.1(browserslist@4.29.3)
       core-js: 3.50.0
-      magic-string: 0.30.21
+      magic-string: 0.30.11
       regenerator-runtime: 0.14.1
       systemjs: 6.15.1
       terser: 5.51.2
@@ -5927,7 +5927,7 @@ snapshots:
 
   '@vue/compiler-core@3.4.21':
     dependencies:
-      '@babel/parser': 7.29.9
+      '@babel/parser': 7.25.6
       '@vue/shared': 3.4.21
       entities: 4.5.0
       estree-walker: 2.0.2
@@ -5953,13 +5953,13 @@ snapshots:
 
   '@vue/compiler-sfc@3.4.21':
     dependencies:
-      '@babel/parser': 7.29.9
+      '@babel/parser': 7.25.6
       '@vue/compiler-core': 3.4.21
       '@vue/compiler-dom': 3.4.21
       '@vue/compiler-ssr': 3.4.21
       '@vue/shared': 3.4.21
       estree-walker: 2.0.2
-      magic-string: 0.30.21
+      magic-string: 0.30.11
       postcss: 8.5.28
       source-map-js: 1.2.1
 
@@ -6100,7 +6100,7 @@ snapshots:
       caniuse-lite: 1.0.30001816
       fraction.js: 4.3.7
       normalize-range: 0.1.2
-      picocolors: 1.1.1
+      picocolors: 1.1.0
       postcss: 8.5.28
       postcss-value-parser: 4.2.0
 
@@ -7128,7 +7128,7 @@ snapshots:
   postcss@8.4.45:
     dependencies:
       nanoid: 3.3.19
-      picocolors: 1.1.1
+      picocolors: 1.1.0
       source-map-js: 1.2.1
 
   postcss@8.5.28:

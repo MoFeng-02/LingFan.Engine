@@ -9,14 +9,14 @@ import {
   createWechatFrameSource,
   type WechatFrameSource,
 } from "@lingfan/adapters";
-import { wechatApi, type WechatCanvasNode } from "./platform.ts";
+import { uniApi, type MiniprogramCanvasNode } from "./platform.ts";
 
 /** 定时器帧源的间隔（毫秒）：约 60 帧/秒，与常见屏幕刷新率一致 */
 const TIMER_FRAME_MS = 16;
 
 /** 造帧源：给画布就走画布，否则走定时器 */
 export function createHostFrameSource(
-  canvas: WechatCanvasNode | null,
+  canvas: MiniprogramCanvasNode | null,
 ): WechatFrameSource {
   return canvas !== null
     ? createWechatFrameSource(canvas)
@@ -27,7 +27,7 @@ export function createHostFrameSource(
  * 定时器帧源：句柄从 1 起编（0 留给「无句柄」的既有约定），取消时清掉在排的定时器。
  */
 function createTimerFrameSource(): WechatFrameSource {
-  const api = wechatApi();
+  const api = uniApi();
   const pending = new Map<number, number>();
   let nextHandle = 1;
   return {

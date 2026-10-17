@@ -19,7 +19,7 @@ import { toMiniTree, type MiniNode } from "./view.ts";
 import type { WechatFrameSource } from "@lingfan/adapters";
 
 /** 对话层的小程序形态（字段与 WXML 绑定一致） */
-export interface WechatDialogueData {
+export interface MiniprogramDialogueData {
   visible: boolean;
   rootClass: string;
   speakerHtml: string;
@@ -30,7 +30,7 @@ export interface WechatDialogueData {
 }
 
 /** 选项的小程序形态：多一个稳定键供 wx:key 用 */
-export interface WechatChoiceOptionData {
+export interface MiniprogramChoiceOptionData {
   key: string;
   html: string;
   label: string;
@@ -38,55 +38,55 @@ export interface WechatChoiceOptionData {
 }
 
 /** 选择层的小程序形态（菜单与输入两形态互斥：`options` 与 `input` 只有一个非空） */
-export interface WechatChoicesData {
+export interface MiniprogramChoicesData {
   rootClass: string;
   promptHtml: string;
-  options: WechatChoiceOptionData[];
+  options: MiniprogramChoiceOptionData[];
   input: { prompt: string; submitText: string } | null;
 }
 
 /** 一条通知的小程序形态 */
-export interface WechatNoticeData {
+export interface MiniprogramNoticeData {
   key: string;
   rootClass: string;
   bodyHtml: string;
 }
 
 /** 页面持有的覆盖层数据（首次渲染前各层为空） */
-export interface WechatSurfaceData {
+export interface MiniprogramSurfaceData {
   stage: MiniNode[];
   elements: MiniNode[];
-  dialogue: WechatDialogueData | null;
-  choices: WechatChoicesData | null;
-  notices: WechatNoticeData[];
+  dialogue: MiniprogramDialogueData | null;
+  choices: MiniprogramChoicesData | null;
+  notices: MiniprogramNoticeData[];
   layers: Record<string, number>;
 }
 
 /** 一次整层提交：字段缺省即不动 */
-export type WechatSurfacePatch = Partial<WechatSurfaceData>;
+export type MiniprogramSurfacePatch = Partial<MiniprogramSurfaceData>;
 
 /** 表面装配参数 */
-export interface WechatSurfaceDeps {
+export interface MiniprogramSurfaceDeps {
   /** 帧源（覆盖层打字机与帧驱动表现都靠它） */
   frame: WechatFrameSource;
   /** 数据发布口：页面把补丁送进 setData */
-  publish(patch: WechatSurfacePatch): void;
+  publish(patch: MiniprogramSurfacePatch): void;
 }
 
 /** 造小程序覆盖层表面 */
-export function createWechatOverlaySurface(
-  deps: WechatSurfaceDeps,
+export function createMiniprogramOverlaySurface(
+  deps: MiniprogramSurfaceDeps,
 ): OverlaySurface {
   /** 通知键的自增序号 */
   let noticeSeq = 0;
   /** 在排的通知移除定时器 */
   const timers = new Set<ReturnType<typeof setTimeout>>();
   /** 当前在屏通知（顺序即呈现顺序） */
-  let notices: WechatNoticeData[] = [];
+  let notices: MiniprogramNoticeData[] = [];
   /** 各层 z（由中立核心下发；页面按它排层） */
   const layers: Record<string, number> = {};
-  let dialogue: WechatDialogueData | null = null;
-  let choices: WechatChoicesData | null = null;
+  let dialogue: MiniprogramDialogueData | null = null;
+  let choices: MiniprogramChoicesData | null = null;
 
   function publishStage(tree: MiniNode[]): void {
     deps.publish({ stage: tree });
@@ -159,7 +159,7 @@ export function createWechatOverlaySurface(
 }
 
 /** 选择层视图 → 页面数据（选项补稳定键） */
-function toChoicesData(view: ChoicesLayerView): WechatChoicesData {
+function toChoicesData(view: ChoicesLayerView): MiniprogramChoicesData {
   return {
     rootClass: view.rootClass,
     promptHtml: view.promptHtml,

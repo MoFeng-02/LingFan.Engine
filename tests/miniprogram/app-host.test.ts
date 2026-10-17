@@ -6,12 +6,13 @@
  */
 import { computeStageLayout } from "../../packages/shell/src/stage/layout.ts";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { queryCanvasNode } from "../../apps/wechat/src/host/platform.ts";
-import { stageStyle } from "../../apps/wechat/src/host/view.ts";
-import pageSource from "../../apps/wechat/src/pages/index/index.vue?raw";
+import appPackage from "../../apps/miniprogram/package.json?raw";
+import { queryCanvasNode } from "../../apps/miniprogram/src/host/platform.ts";
+import { stageStyle } from "../../apps/miniprogram/src/host/view.ts";
+import pageSource from "../../apps/miniprogram/src/pages/index/index.vue?raw";
 
 /** 宿主各模块源码：平台全局的收口边界靠它机械核对 */
-const hostSources = import.meta.glob("../../apps/wechat/src/host/*.ts", {
+const hostSources = import.meta.glob("../../apps/miniprogram/src/host/*.ts", {
   eager: true,
   query: "?raw",
   import: "default",
@@ -125,5 +126,12 @@ describe("页面层的单位与层次口径", () => {
     expect(pageSource).toContain("layerStyle('dialogue')");
     expect(pageSource).toContain("layerStyle('choices')");
     expect(pageSource).toContain("layerStyle('notifications')");
+  });
+});
+
+describe("宿主身份中立（UniApp 不止微信一端）", () => {
+  it("包名与页面源码都不带平台专属名：换端只动 adapters 取件，不动宿主身份", () => {
+    expect(appPackage).toContain('"name": "@lingfan/miniprogram"');
+    expect(pageSource).not.toMatch(/wechat/i);
   });
 });

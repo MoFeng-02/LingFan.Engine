@@ -1,4 +1,4 @@
-# @lingfan/wechat — 微信小程序宿主
+# @lingfan/miniprogram — 小程序宿主（UniApp）
 
 用 UniApp（Vue 3）写页面层，把叙事引擎的端口接在小程序的能力上。这一层只做三件事：
 取画布、把宿主给的补丁写进页面状态、把点击与输入交回覆盖层——叙事逻辑一律不在这里。
@@ -6,13 +6,13 @@
 ## 命令
 
 ```bash
-pnpm --filter @lingfan/wechat dev        # 编译到 mp-weixin（watch），产物 dist/dev/mp-weixin
-pnpm --filter @lingfan/wechat build      # 编译到 mp-weixin，产物 dist/build/mp-weixin
-pnpm --filter @lingfan/wechat dev:h5     # 浏览器里预览同一份页面代码
-pnpm --filter @lingfan/wechat typecheck  # 本包单独类型检查（仓库根 `pnpm -w run typecheck` 已覆盖）
+pnpm --filter @lingfan/miniprogram dev        # 编译到 mp-weixin（watch），产物 dist/dev/mp-weixin
+pnpm --filter @lingfan/miniprogram build      # 编译到 mp-weixin，产物 dist/build/mp-weixin
+pnpm --filter @lingfan/miniprogram dev:h5     # 浏览器里预览同一份页面代码
+pnpm --filter @lingfan/miniprogram typecheck  # 本包单独类型检查（仓库根 `pnpm -w run typecheck` 已覆盖）
 ```
 
-用微信开发者工具**导入** `apps/wechat/dist/dev/mp-weixin`（或 `dist/build/mp-weixin`）即可预览；
+用微信开发者工具**导入** `apps/miniprogram/dist/dev/mp-weixin`（或 `dist/build/mp-weixin`）即可预览；
 `dist/` 是构建产物，不入版本库。
 
 ## 目录
@@ -35,7 +35,9 @@ pnpm --filter @lingfan/wechat typecheck  # 本包单独类型检查（仓库根 
   `@lingfan/shell` 的 `computeStageLayout`，行内样式串由 `host/view.ts` 的 `stageStyle` 拼成数据），
   对话 / 选择 / 通知各层住在窗口坐标系里，尺寸只跟窗口走（页面自身用 `rpx`，舞台内的元素尺寸来自
   叙事数据的基准像素——两者不混用）。
-- **平台中立**：`packages/*` 不依赖任何小程序 API，宿主只经由 `@lingfan/adapters` 的微信适配器族取件；
-  `uni` 全局只允许出现在 `src/host/platform.ts`（`tests/wechat/app-host.test.ts` 有互锁）。
+- **平台中立**：宿主自己的名字不带平台名（目录 `apps/miniprogram`、包名 `@lingfan/miniprogram`），
+  换端只动 `@lingfan/adapters` 的取件；`packages/*` 不依赖任何小程序 API，平台差异（含 `uni` 全局）
+  收在 `src/host/platform.ts` 与适配器包里（`tests/miniprogram/app-host.test.ts` 有互锁）。目前只接了
+  `mp-weixin` 一个编译目标，其余端按同一份页面代码另接适配器族即可。
 - **依赖钉版**：UniApp 工具链的 `@dcloudio/*` 各包共用同一版本号，且 `@dcloudio/vite-plugin-uni` 对
   vite 有硬约束（peer `5.2.8`）——所以本包自带一份 vite，与仓库根的大版本各用各的（pnpm 隔离安装）。

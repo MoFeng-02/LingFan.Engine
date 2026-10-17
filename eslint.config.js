@@ -77,7 +77,7 @@ export default defineConfigWithVueTs(
     files: [
       "apps/playground/src/App.vue",
       "apps/editor/src/App.vue",
-      "apps/wechat/src/pages/**/*.vue",
+      "apps/miniprogram/src/pages/**/*.vue",
     ],
     rules: {
       "vue/multi-word-component-names": "off",
@@ -136,7 +136,7 @@ export default defineConfigWithVueTs(
       "tests/playground/**/*.ts",
       "tests/template/**/*.ts",
       // 小程序宿主测试与 adapters/ui 同域：都在 WebView（或小程序运行层）里跑，不受 Node 面
-      "tests/wechat/**/*.ts",
+      "tests/miniprogram/**/*.ts",
     ],
     rules: {
       "no-restricted-imports": [
