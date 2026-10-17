@@ -97,12 +97,28 @@ CDP 通道又是 `unimplemented`，所以媒体这段拿不到截图，证据是
   由宿主注册（引擎是组合根注册制，未登记即在运行期 fail-closed 并停在当前命令）。演示工程的两个
   守卫（`gold-non-negative`、`tour-open`）写在 `src/host/guards.ts`，语义与
   `apps/playground/Stories.src/lib/guards.ts` 的 cell 声明一致；服务端换故事时如果引入新守卫名，
-  宿主必须同步补实现——判据互锁 `tests/miniprogram/app-host.test.ts`：故事里出现的每个 `fn` 都要在
-  注册表里，且组合根确实把注册表交给了引擎。
+  宿主必须同步补实现。两道闸：装载完成即 `findMissingGuards(story, guards)` 对名字（缺名在起播前
+  一次报全，报错串列出所有缺的），运行期引擎仍按组合根注册制 fail-closed。判据互锁
+  `tests/miniprogram/app-host.test.ts`：故事里出现的每个 `fn` 都要在注册表里，且组合根确实把注册表
+  交给了引擎、装载后有这次校验。引擎侧还有 `tests/engine/runtime/guard-names.test.ts` 7 例守住走查
+  形状（两类列、`if` 嵌套、`args` 里的同形对象不算命令）。
 - **层次与桌面宿主一致**：舞台层是唯一带基准尺寸与变换的容器（画布等比缩放，缩放与偏移来自
   `@lingfan/shell` 的 `computeStageLayout`，行内样式串由 `host/view.ts` 的 `stageStyle` 拼成数据），
   对话 / 选择 / 通知各层住在窗口坐标系里，尺寸只跟窗口走（页面自身用 `rpx`，舞台内的元素尺寸来自
   叙事数据的基准像素——两者不混用）。
+- **面板形态与桌面同源**：对话、选择、通知三层的结构类名、色值与形态跟桌面面板
+  `apps/playground/src/App/DialoguePanel.vue` 一一对应（`.dialogue` / `.speaker` / `.text` /
+  `.advance-hint` / `.layer-prompt` / `.choice-row` / `.nvl-body` / `.tpl-center` /
+  `.tpl-notify-*`，底色 `rgba(30,30,46,·)`、强调色 `#7aa2f7`）。差别只在单位——桌面用
+  `px` + `clamp` 跟窗口，页面按平台惯例用 `rpx`（宽度基准 750），比例同源、绝对尺寸按宽度折算。
+  **桌面那份是基准**：改形态时两处一起改，`tests/miniprogram/app-host.test.ts` 有三条互锁
+  （同名结构、同色值、`.nvl-body`/`.nvl-mode` 都在），改一边另一边会红。
+- **NVL 累积层走投影，不进表面契约**：`OverlaySurface` 只有对话/选择/通知三层（桌面宿主是读
+  渲染投影自己渲染累积层），小程序沿用同一条通道——组合根把 `onView` 接下来交给
+  `surface.setNvl()`，表面把「已打完的行 + 正在打字的最新一行」翻成 HTML 交给页面。可见性仍归
+  对话层（菜单/输入/视频等待时整层让位），NVL 只是对话容器的另一种内容形态（`.nvl-mode` 把卡片
+  抬成阅读区）。`app-host.test.ts` 有 7 例守住这条：激活/退出/打字帧缓存/清层/`onView` 唯一通道/
+  页面绑定/两端同源。
 - **平台中立**：宿主自己的名字不带平台名（目录 `apps/miniprogram`、包名 `@lingfan/miniprogram`），
   能力面也统一：`@lingfan/adapters` 的中立族（`miniprogram/`）只吃注入的能力面（同步存储、音频实例、
   视频呈现面、画布），里面没有一行厂商 API；厂商差异只落在 `src/host/platform.ts` 的取用面上。

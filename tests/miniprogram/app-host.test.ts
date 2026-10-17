@@ -6,6 +6,11 @@
  */
 import { computeStageLayout } from "../../packages/shell/src/stage/layout.ts";
 import type { HttpFetch } from "@lingfan/adapters";
+import {
+  assembleProject,
+  collectGuardNames,
+  findMissingGuards,
+} from "@lingfan/engine";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import appPackage from "../../apps/miniprogram/package.json?raw";
 import { guards } from "../../apps/miniprogram/src/host/guards.ts";
@@ -27,6 +32,12 @@ import {
   VIDEO_COMPONENT_ID,
   type MiniprogramVideoData,
 } from "../../apps/miniprogram/src/host/video-surface.ts";
+import {
+  createMiniprogramOverlaySurface,
+  type MiniprogramNvlData,
+} from "../../apps/miniprogram/src/host/surface.ts";
+import { renderDialogueLine, type NarrativeOverlayView } from "@lingfan/ui";
+import dialoguePanelSource from "../../apps/playground/src/App/DialoguePanel.vue?raw";
 import { stageStyle } from "../../apps/miniprogram/src/host/view.ts";
 import manifestSource from "../../apps/miniprogram/src/manifest.json?raw";
 import pageSource from "../../apps/miniprogram/src/pages/index/index.vue?raw";
@@ -96,27 +107,11 @@ function demoResourceIds(): string[] {
   return [...ids].sort();
 }
 
-/** 收集故事里被引用的守卫名（guard op 的 `fn` 字段） */
-function collectGuardNames(value: unknown, into: Set<string>): void {
-  if (Array.isArray(value)) {
-    for (const item of value) collectGuardNames(item, into);
-    return;
-  }
-  if (typeof value !== "object" || value === null) return;
-  for (const [key, item] of Object.entries(value)) {
-    if (key === "fn" && typeof item === "string") into.add(item);
-    else collectGuardNames(item, into);
-  }
-}
-
-/** 演示故事引用到的全部守卫名 */
-function demoGuardNames(): string[] {
-  const names = new Set<string>();
-  for (const text of Object.values(demoStoryFiles)) {
-    collectGuardNames(JSON.parse(text) as unknown, names);
-  }
-  return [...names].sort();
-}
+/** 演示工程组装出的故事：用引擎自己的组装器，测试里不另写一份解析 */
+const demoStory = assembleProject(
+  JSON.parse(projectManifestSource) as unknown,
+  new Map(Object.entries(demoStoryFiles)),
+);
 
 /** 造一个固定回包的取件面（工程接口替身），顺带记账请求次数 */
 function serveProject(
@@ -409,6 +404,120 @@ describe("媒体端口接线（音频实例与视频呈现面）", () => {
   });
 });
 
+describe("NVL 累积层（对话容器的另一种形态）", () => {
+  /** 造一个只收 NVL 补丁的表面：帧源给空实现（这组用例不走帧循环） */
+  function makeSurface(): {
+    patches: (MiniprogramNvlData | null)[];
+    setNvl: (view: NarrativeOverlayView) => void;
+    clear: () => void;
+  } {
+    const patches: (MiniprogramNvlData | null)[] = [];
+    const surface = createMiniprogramOverlaySurface({
+      frame: { request: () => 0, cancel: () => undefined },
+      publish: (patch) => {
+        if (patch.nvl !== undefined) patches.push(patch.nvl);
+      },
+    });
+    return {
+      patches,
+      setNvl: (view) => surface.setNvl(view),
+      clear: () => surface.clear(),
+    };
+  }
+
+  /** 投影快照：NVL 激活时累积两行，第二行正在打 */
+  function nvlView(lines: string[], typing: string): NarrativeOverlayView {
+    return {
+      speaker: "",
+      text: lines.at(-1) ?? "",
+      lineHtml: typing,
+      canAdvance: false,
+      waiting: "dialog",
+      menuPrompt: "",
+      menuOptions: [],
+      inputPrompt: "",
+      nvlMode: "active",
+      nvlLines: lines,
+      hasElements: false,
+    };
+  }
+
+  it("激活时把累积行翻成 HTML、最新一行只给打字前缀", () => {
+    const surface = makeSurface();
+    surface.setNvl(nvlView(["第一段。", "第二段"], "第二"));
+    expect(surface.patches).toEqual([
+      {
+        pastLines: [renderDialogueLine({ text: "第一段。" }).html],
+        typingHtml: "第二",
+      },
+    ]);
+  });
+
+  it("累积行只按缓冲变化重算：打字帧复用同一份 HTML 数组", () => {
+    const surface = makeSurface();
+    const lines = ["第一段。", "第二段"];
+    surface.setNvl(nvlView(lines, "第"));
+    surface.setNvl(nvlView(lines, "第二"));
+    const [first, second] = surface.patches;
+    expect(second?.typingHtml).toBe("第二");
+    // 同一份缓冲 ⇒ 已打完行的 html 数组引用不变（打字帧不重算累积行）
+    expect(second?.pastLines).toBe(first?.pastLines);
+  });
+
+  it("退出 NVL（mode 非 active 或没有累积行）⇒ 落 null，页面回三段式", () => {
+    const surface = makeSurface();
+    surface.setNvl(nvlView(["只剩一行"], "只"));
+    surface.setNvl({ ...nvlView(["a"], "a"), nvlMode: "none" });
+    surface.setNvl({ ...nvlView([], "") });
+    expect(surface.patches.at(-1)).toBeNull();
+    // 已经不在 NVL 时不重复下发
+    surface.setNvl({ ...nvlView(["a"], "a"), nvlMode: "none" });
+    expect(surface.patches).toHaveLength(2);
+  });
+
+  it("卸载时把 NVL 一并清空：清层就是四个层都归零", () => {
+    const surface = makeSurface();
+    surface.setNvl(nvlView(["一行"], "一"));
+    surface.clear();
+    expect(surface.patches.at(-1)).toBeNull();
+  });
+
+  it("组合根把投影接到表面上：onView 是唯一通道（NVL 不在表面契约里）", () => {
+    expect(hostSource).toContain("onView: (view) => surface.setNvl(view)");
+    // 读档/回溯后覆盖层 sync 不发投影通知，这里要显式补一次
+    expect(hostSource).toMatch(/surface\.setNvl\(overlay\.view\(\)\)/);
+  });
+
+  it("页面按 NVL 形态换内容而不是换层：累积行与打字行都绑在对话层里", () => {
+    expect(pageSource).toContain('class="nvl-body"');
+    expect(pageSource).toContain("nvl.pastLines");
+    expect(pageSource).toContain("nvl.typingHtml");
+    expect(pageSource).toContain("'nvl-mode'");
+    expect(pageSource).toContain("patch.nvl");
+  });
+
+  it("面板视觉与桌面同源：同名结构与同色值，改形态时两处一起改", () => {
+    // 结构锚点：两端都按这套类名排版（一份视觉语言两处落地）
+    for (const anchor of [
+      ".nvl-body",
+      ".advance-hint",
+      ".layer-prompt",
+      ".choice-row",
+      ".dialogue.tpl-center",
+    ]) {
+      expect(pageSource).toContain(anchor);
+      expect(dialoguePanelSource).toContain(anchor);
+    }
+    // 底卡与文字配色同源（同一批色值在两边出现；底色两端一个写 rgba 一个写 #1e1e2ecc）
+    for (const color of ["#7aa2f7", "#9aa5ce", "#e6e6f0", "blink"]) {
+      expect(pageSource).toContain(color);
+      expect(dialoguePanelSource).toContain(color);
+    }
+    // 桌面是基准文件：它变了这条会跟着失效，提示回来看小程序
+    expect(dialoguePanelSource).toContain("--lf-story-font");
+  });
+});
+
 describe("演示内容与资源都在包外（HTTP 取）", () => {
   it("资源端口把故事 id 拼到工程基址下：换服务端地址不动故事与代码", async () => {
     const port = createRemoteResourcePort("https://cdn.test/");
@@ -474,12 +583,14 @@ describe("演示内容与资源都在包外（HTTP 取）", () => {
     expect(ids.filter((id) => !projectFiles.has(id))).toEqual([]);
   });
 
-  it("演示故事引用的守卫都在宿主注册表里：缺一个就是运行期「未注册的守卫」", () => {
-    const names = demoGuardNames();
+  it("演示故事引用的守卫都在宿主注册表里：缺一个就是启动即失败", () => {
+    const names = collectGuardNames(demoStory);
     expect(names.length).toBeGreaterThan(0);
-    expect(names.filter((name) => !(name in guards))).toEqual([]);
-    // 组合根确实把注册表交给了引擎（只登记不接线同样会 fail-closed）
+    expect(findMissingGuards(demoStory, guards)).toEqual([]);
+    // 组合根把注册表交给引擎，并在装载后先对名字：只登记不接线、或只在运行期才查，
+    // 都会退化成「播到那条命令才弹未注册」
     expect(hostSource).toMatch(/new StoryEngine\(story, \{[\s\S]*guards,/);
+    expect(hostSource).toMatch(/findMissingGuards\(story, guards\)/);
   });
 });
 
