@@ -28,6 +28,13 @@ export {
   type FetchProjectFilesOptions,
 } from "./projectLoader";
 export {
+  createHttpProjectFilesPort,
+  type HttpFetch,
+  type HttpProjectFilesOptions,
+  type HttpProjectPayload,
+  type HttpTextResponse,
+} from "./httpProjectFiles";
+export {
   createTauriProjectWriter,
   type TauriProjectWriterOptions,
 } from "./projectWriterTauri";

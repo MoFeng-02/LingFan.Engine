@@ -1,10 +1,11 @@
 /**
- * 小程序宿主装配：从包内工程到可跑的叙事覆盖层，一次接线到位。
+ * 小程序宿主装配：从远端工程到可跑的叙事覆盖层，一次接线到位。
  *
  * 接线顺序与嵌入演示一致——装载工程 → 建引擎（注入平台端口与文案）→ 建媒体渲染器 →
- * 建表面 → 建覆盖层 → 起帧循环。差别只有三处：表面把视图变成页面数据而不是 DOM 节点；
- * 舞台按视口与基准算出缩放再交给页面（小程序没有 vw/vh 之类整体缩放手段）；
- * 媒体的位置回写借覆盖层的帧循环（与打字机同一条时间线），视频播完由页面回传。
+ * 建表面 → 建覆盖层 → 起帧循环。差别只有三处：工程来自工程接口而不是包内文件；
+ * 表面把视图变成页面数据而不是 DOM 节点；舞台按视口与基准算出缩放再交给页面
+ * （小程序没有 vw/vh 之类整体缩放手段）；媒体的位置回写借覆盖层的帧循环
+ * （与打字机同一条时间线），视频播完由页面回传。
  *
  * 本文件是组合根：允许它同时知道引擎、展示层与平台，别处不允许这样横跨。
  */
@@ -33,13 +34,20 @@ import {
   type NarrativeOverlay,
   type VideoRenderer,
 } from "@lingfan/ui";
-import { createFixtureProjectFilesPort } from "./fixture.ts";
 import { createHostFrameSource } from "./frame.ts";
-import { readWindowSize, type MiniprogramCanvasNode } from "./platform.ts";
+import {
+  createRequestFetch,
+  readWindowSize,
+  type MiniprogramCanvasNode,
+} from "./platform.ts";
 import {
   createMiniprogramHostPorts,
   type MiniprogramHostPorts,
 } from "./ports.ts";
+import {
+  createRemoteProjectFilesPort,
+  resolveProjectBaseUrl,
+} from "./project-source.ts";
 import {
   createMiniprogramOverlaySurface,
   type MiniprogramSurfacePatch,
@@ -74,6 +82,8 @@ export interface MiniprogramHostDeps {
   publish(patch: MiniprogramHostPatch): void;
   /** 画布节点（有则用它做帧源；无则退回定时器帧源） */
   canvas?: MiniprogramCanvasNode | null;
+  /** 工程基址（故事与资源都从它取）；缺省读运行期配置 */
+  projectBaseUrl?: string;
 }
 
 /** 宿主句柄：页面用它做重算、媒体回传、销毁与调试观测 */
@@ -93,15 +103,21 @@ export interface MiniprogramHostHandle {
   dispose(): void;
 }
 
-/** 启动小程序宿主：装载包内演示工程并起叙事循环 */
+/** 启动小程序宿主：从工程接口装载故事并起叙事循环 */
 export async function startMiniprogramHost(
   deps: MiniprogramHostDeps,
 ): Promise<MiniprogramHostHandle> {
-  const story: Story = await loadProject(createFixtureProjectFilesPort());
+  const projectBaseUrl = deps.projectBaseUrl ?? resolveProjectBaseUrl();
+  const story: Story = await loadProject(
+    createRemoteProjectFilesPort({
+      baseUrl: projectBaseUrl,
+      fetch: createRequestFetch(),
+    }),
+  );
   const videoSurface: MiniprogramVideoSurface = createMiniprogramVideoSurface({
     publish: (video) => deps.publish({ video }),
   });
-  const ports = createMiniprogramHostPorts({ videoSurface });
+  const ports = createMiniprogramHostPorts({ videoSurface, projectBaseUrl });
   const engine = new StoryEngine(story, {
     savePort: ports.save,
     texts: withSlotLabels(defaultEngineTexts),

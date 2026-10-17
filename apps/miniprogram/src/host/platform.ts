@@ -7,7 +7,7 @@
  * 将来换端只需替换本文件。
  */
 
-import type { MiniprogramAudioContextLike } from "@lingfan/adapters";
+import type { HttpFetch, MiniprogramAudioContextLike } from "@lingfan/adapters";
 
 /** 小程序同步存储面（值与键都是字符串；取不存在的键返回空串） */
 export interface UniStorageApi {
@@ -47,6 +47,28 @@ export interface UniResizeResult {
   size: { windowWidth: number; windowHeight: number };
 }
 
+/** 网络请求回执：只声明工程接口用到的那几个字段（`data` 可能已被平台解析） */
+export interface UniRequestResult {
+  statusCode: number;
+  data: unknown;
+}
+
+/** 网络请求的失败回执：`errMsg` 是平台给的可读原因 */
+export interface UniRequestFailure {
+  errMsg?: string;
+}
+
+/** 网络请求参数：只声明本工程用到的那一层 */
+export interface UniRequestOptions {
+  url: string;
+  method?: "GET";
+  /** 返回体的处理方式：`"text"` = 不当 JSON 解析（故事要原文） */
+  dataType?: string;
+  responseType?: string;
+  success(result: UniRequestResult): void;
+  fail(error: UniRequestFailure): void;
+}
+
 /**
  * 视频组件的控制柄（`uni.createVideoContext(id)` 返回值里用到的四个动作）。
  * 小程序的 `video` 是声明式组件：起播靠组件属性，播放中控制靠这个柄。
@@ -68,6 +90,7 @@ export interface UniApi {
   createSelectorQuery(): UniSelectorQuery;
   createInnerAudioContext(): MiniprogramAudioContextLike;
   createVideoContext(id: string): UniVideoContext;
+  request(options: UniRequestOptions): void;
   onWindowResize(callback: (result: UniResizeResult) => void): void;
   offWindowResize(callback: (result: UniResizeResult) => void): void;
   nextTick(callback: () => void): void;
@@ -104,6 +127,38 @@ export function createAudioContext(): MiniprogramAudioContextLike {
  */
 export function createVideoContext(id: string): UniVideoContext {
   return uniApi().createVideoContext(id);
+}
+
+/**
+ * 造一个取件面（HTTP）：把 `uni.request` 包成适配器认的最小 `fetch` 形状。
+ *
+ * 工程接口要的是**原文**（故事的解析归引擎），所以返回体不交给平台解析；失败走 reject，
+ * 由装载方 fail-closed（不降级成空工程）。取件面在调用时才碰 `uni`，模块导入不依赖运行时。
+ */
+export function createRequestFetch(): HttpFetch {
+  return (url) =>
+    new Promise((resolve, reject) => {
+      uniApi().request({
+        url,
+        method: "GET",
+        // 非 json 的处理方式：原样拿到文本，不在平台侧解析
+        dataType: "text",
+        responseType: "text",
+        success: (result) => {
+          resolve({
+            ok: result.statusCode >= 200 && result.statusCode < 300,
+            status: result.statusCode,
+            text: async () =>
+              typeof result.data === "string"
+                ? result.data
+                : JSON.stringify(result.data),
+          });
+        },
+        fail: (error) => {
+          reject(new Error(`${url} 请求失败：${error.errMsg ?? "未知原因"}`));
+        },
+      });
+    });
 }
 
 /**
