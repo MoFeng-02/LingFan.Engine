@@ -35,24 +35,51 @@ node 项目记录 apps\miniprogram\dist\build\mp-weixin 项目记录
 等 `.input-box` 出现 → 打字 → 点 `.submit` → 截图留证。跑通的读数是「推进 16 次到达输入等待态，
 输入「阿寻」后台词变成「阿寻，欢迎来到灵泛！12」」。
 
+媒体这一段同样可以自动验（`项目记录`，端口默认 9431）：
+
+```bash
+set AUTOMATOR_ROOT=%TEMP%\mpauto\node_modules\miniprogram-automator
+set AUTO_PORT=9431
+node 项目记录 apps\miniprogram\dist\dev\mp-weixin 项目记录
+```
+
+它照真机路径走一遍演示故事（一进页面就有 `bgm`，输入名字后是 `cutscene`），验三件事：视频字段落进
+页面数据（实测 `f=/static/Resources/Video/m1.mp4`、可见 `true`、音量 `0.8`、循环 `false`，与故事里
+的 `cutscene` 一致）、从起播到收起之间没有媒体类日志（`mediaErrors` 为空）、「组件播完 → 宿主 →
+`engine.videoFinished()`」这条回传链通（给组件触发一次 `ended` 后视频层收起、引擎继续往下执行）。
+报告落在证据目录的 `media-report.json`。
+
+两条环境限制要说明：这版开发者工具（Stable v2.01.2510280）的 `App.captureScreenshot` 不回包、
+CDP 通道又是 `unimplemented`，所以媒体这段拿不到截图，证据是 JSON 报告；另外模拟器里视频不会自动
+解码起播（`naturalEnd: false`），所以「真的听见、真的看见」必须在真机上确认——开发者工具点「真机
+调试」扫码后，耳边是约 20 秒的蟋蟀环境音，名字提交后是一段可点跳过的过场视频。
+
 ## 目录
 
-| 路径                          | 作用                                                                            |
-| ----------------------------- | ------------------------------------------------------------------------------- |
-| `src/pages/index/index.vue`   | 页面装配：取画布 → 启动宿主 → 补丁进页面状态 → 动作交回覆盖层                   |
-| `src/components/NodeTree.vue` | 递归节点树：把描述树铺成节点（小程序组件样式隔离，样式自带）                    |
-| `src/host/host.ts`            | 组合根：装载工程 → 建引擎 → 建媒体渲染器 → 建表面 → 建覆盖层 → 起帧循环         |
-| `src/host/surface.ts`         | 覆盖层表面：把「每层显示什么」翻成页面数据补丁（小程序没有 DOM）                |
-| `src/host/view.ts`            | 描述树 → 节点数据；舞台盒的行内样式串（基准尺寸 + 平移缩放）                    |
-| `src/host/platform.ts`        | **平台全局 `uni` 唯一取用点**：系统信息、同步存储、画布节点、尺寸变化、音视频柄 |
-| `src/host/ports.ts`           | 端口装配：存档 / 偏好 / 资源地址 / 音频 / 视频落到平台能力与呈现面              |
-| `src/host/video-surface.ts`   | 视频呈现面：端口命令 → 页面数据（`src`/显隐/音量），控制动作走 `videoContext`   |
-| `src/host/frame.ts`           | 帧源：有画布走画布 rAF，没有退回定时器（约 60 帧/秒）                           |
-| `src/host/fixture.ts`         | 内建演示工程：示例故事随包打进来，宿主不依赖文件系统                            |
-| `src/fixture/`                | 演示工程本体（`project.json` + `Stories/**`），由 `fixture.ts` 在构建期收进包内 |
+| 路径                          | 作用                                                                                      |
+| ----------------------------- | ----------------------------------------------------------------------------------------- |
+| `src/pages/index/index.vue`   | 页面装配：取画布 → 启动宿主 → 补丁进页面状态 → 动作交回覆盖层                             |
+| `src/components/NodeTree.vue` | 递归节点树：把描述树铺成节点（小程序组件样式隔离，样式自带）                              |
+| `src/host/host.ts`            | 组合根：装载工程 → 建引擎 → 建媒体渲染器 → 建表面 → 建覆盖层 → 起帧循环                   |
+| `src/host/surface.ts`         | 覆盖层表面：把「每层显示什么」翻成页面数据补丁（小程序没有 DOM）                          |
+| `src/host/view.ts`            | 描述树 → 节点数据；舞台盒的行内样式串（基准尺寸 + 平移缩放）                              |
+| `src/host/platform.ts`        | **平台全局 `uni` 唯一取用点**：系统信息、同步存储、画布节点、尺寸变化、音视频柄           |
+| `src/host/ports.ts`           | 端口装配：存档 / 偏好 / 资源地址 / 音频 / 视频落到平台能力与呈现面                        |
+| `src/host/video-surface.ts`   | 视频呈现面：端口命令 → 页面数据（`src`/显隐/音量），控制动作走 `videoContext`             |
+| `src/host/frame.ts`           | 帧源：有画布走画布 rAF，没有退回定时器（约 60 帧/秒）                                     |
+| `src/host/fixture.ts`         | 内建演示工程：示例故事随包打进来，宿主不依赖文件系统                                      |
+| `src/fixture/`                | 演示工程本体（`project.json` + `Stories/**`），由 `fixture.ts` 在构建期收进包内           |
+| `src/static/Resources/`       | 随包素材（`Audio/` `Video/` `Images/`）：故事里的资源 id 由端口拼成 `/static/Resources/…` |
 
 ## 口径
 
+- **素材随包**：uni-app 只把 `src/static/` 原样拷进包，所以演示工程的音频/视频/图片放在
+  `src/static/Resources/`，故事里仍写裸资源 id（`Audio/crickets_night01.mp3`），由
+  `host/ports.ts` 的资源端口拼成包内绝对地址（`/static/Resources/…`，根常量
+  `PACKAGE_RESOURCE_ROOT`）。素材是按主包体积上限压过的（单文件 178 KB 的视频、83 KB 的环境音），
+  四个文件合计约 490 KB；仓库里的原始素材（`apps/playground/Resources/`，视频 7.8 MB、环境音
+  2.5 MB）直接塞进来会超主包大小，不能照抄。`tests/miniprogram/app-host.test.ts` 有一条互锁：
+  示例故事引用的每个资源都必须在包内存在，缺一个就是哑音或黑屏。
 - **层次与桌面宿主一致**：舞台层是唯一带基准尺寸与变换的容器（画布等比缩放，缩放与偏移来自
   `@lingfan/shell` 的 `computeStageLayout`，行内样式串由 `host/view.ts` 的 `stageStyle` 拼成数据），
   对话 / 选择 / 通知各层住在窗口坐标系里，尺寸只跟窗口走（页面自身用 `rpx`，舞台内的元素尺寸来自

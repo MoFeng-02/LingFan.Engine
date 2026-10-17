@@ -12,6 +12,10 @@ import hostSource from "../../apps/miniprogram/src/host/host.ts?raw";
 import { queryCanvasNode } from "../../apps/miniprogram/src/host/platform.ts";
 import portsSource from "../../apps/miniprogram/src/host/ports.ts?raw";
 import {
+  createPackageResourcePort,
+  PACKAGE_RESOURCE_ROOT,
+} from "../../apps/miniprogram/src/host/ports.ts";
+import {
   createMiniprogramVideoSurface,
   VIDEO_COMPONENT_ID,
   type MiniprogramVideoData,
@@ -30,6 +34,43 @@ const hostSources = import.meta.glob("../../apps/miniprogram/src/host/*.ts", {
 /** 去掉注释后再判平台全局：注释里提名字是文档，不算越界使用 */
 function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+}
+
+/** 随包素材清单：键是故事里用的资源 id（`Audio/x.mp3`） */
+const packageAssets = new Set(
+  Object.keys(
+    import.meta.glob("../../apps/miniprogram/src/static/Resources/**/*", {
+      eager: true,
+      query: "?url",
+      import: "default",
+    }),
+  ).map((path) => {
+    const mark = "/static/Resources/";
+    return path.slice(path.indexOf(mark) + mark.length);
+  }),
+);
+
+/** 收集故事里被引用的资源 id（op 的 `resource` 字段，含嵌套与数组） */
+function collectResourceIds(value: unknown, into: Set<string>): void {
+  if (Array.isArray(value)) {
+    for (const item of value) collectResourceIds(item, into);
+    return;
+  }
+  if (typeof value !== "object" || value === null) return;
+  for (const [key, item] of Object.entries(value)) {
+    if (key === "resource" && typeof item === "string") into.add(item);
+    else collectResourceIds(item, into);
+  }
+}
+
+/** 内建示例工程（随包故事）引用到的全部资源 id */
+async function fixtureResourceIds(): Promise<string[]> {
+  const stories = await createFixtureProjectFilesPort().stories();
+  const ids = new Set<string>();
+  for (const text of stories.values()) {
+    collectResourceIds(JSON.parse(text), ids);
+  }
+  return [...ids].sort();
 }
 
 /** 造一个只在指定时机回执的节点查询替身 */
@@ -280,5 +321,33 @@ describe("媒体端口接线（音频实例与视频呈现面）", () => {
     expect(hostSource).toMatch(
       /dispose: \(\) => \{[\s\S]*audio\.dispose\(\);[\s\S]*video\.dispose\(\);/,
     );
+  });
+});
+
+describe("示例工程素材：真机上能实听实看", () => {
+  it("包内资源端口把故事 id 拼成包内绝对地址", async () => {
+    expect(PACKAGE_RESOURCE_ROOT).toBe("/static/Resources/");
+    const port = createPackageResourcePort();
+    await expect(port.resolve("Audio/crickets_night01.mp3")).resolves.toBe(
+      "/static/Resources/Audio/crickets_night01.mp3",
+    );
+  });
+
+  it("端口装配走包内资源根：素材随包发布，不落用户目录", () => {
+    expect(portsSource).toContain("resources: createPackageResourcePort(),");
+  });
+
+  it("示例故事引用的每个资源都在包内：缺一个就是哑音或黑屏", async () => {
+    const ids = await fixtureResourceIds();
+    // 演示流程真的覆盖了音频与视频两类，不只是留了端口代码
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        "Audio/crickets_night01.mp3",
+        "Audio/chest_drawer_open.mp3",
+        "Video/m1.mp4",
+      ]),
+    );
+    const missing = ids.filter((id) => !packageAssets.has(id));
+    expect(missing).toEqual([]);
   });
 });
