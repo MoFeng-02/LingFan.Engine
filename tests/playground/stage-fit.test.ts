@@ -230,17 +230,36 @@ describe("舞台适配装配", () => {
         /[0-9]+\.?[0-9]*(vw|vh)\b/,
       );
     }
-    // 会接事件的部件各自恢复指针事件（UI 层容器是 none，点击要穿到舞台与外框）
-    for (const name of ["ToolbarPanel", "DialoguePanel", "SettingsPanels"]) {
-      const source = entries.find(([key]) => key.endsWith(`${name}.vue`))?.[1];
-      expect(source, `${name} 缺 pointer-events: auto`).toContain(
-        "pointer-events: auto",
-      );
+    // 会接事件的部件各自恢复指针事件（UI 层容器是 none，点击要穿到舞台与外框）。
+    // 逐个「样式块」查，而不是查整个文件里有没有出现过 auto：选择/输入层曾与对话层同文件，
+    // 文件里有 auto、它自己漏了，于是整块面板静默失效（选项点不到、输入框 focus 不上）。
+    const blockOf = (source: string, selector: string) => {
+      const start = source.indexOf(`${selector} {`);
+      expect(start, `缺 ${selector} 样式块`).toBeGreaterThan(-1);
+      const block = source.slice(start);
+      return block.slice(0, block.indexOf("}"));
+    };
+    const sourceOf = (name: string) =>
+      entries.find(([key]) => key.endsWith(`${name}.vue`))?.[1] ?? "";
+    for (const [name, selectors] of [
+      ["ToolbarPanel", [".toolbar"]],
+      ["DialoguePanel", [".dialogue", ".choices"]],
+      ["SettingsPanels", [".history-panel"]],
+    ] as const) {
+      const source = sourceOf(name);
+      for (const selector of selectors) {
+        expect(
+          blockOf(source, selector),
+          `${name} 的 ${selector} 缺 pointer-events: auto（UI 层容器是 none，漏写即整块面板点不到）`,
+        ).toContain("pointer-events: auto");
+      }
     }
+    // 兜底不靠容器自觉：UI 层里的原生控件一律恢复指针事件（层内任何容器漏写都不会连带失活）
+    expect(appSource).toMatch(
+      /\.shell-ui :is\(button, input[^)]*\)[^{]*\{[^}]*pointer-events: auto;/,
+    );
     // 提示条不可交互：容器保持穿透
-    const notify = entries.find(([key]) =>
-      key.endsWith("NotificationLayer.vue"),
-    )?.[1];
+    const notify = sourceOf("NotificationLayer");
     expect(notify).not.toContain("pointer-events: auto");
   });
 

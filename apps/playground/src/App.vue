@@ -543,6 +543,13 @@ textarea,
   user-select: text;
   -webkit-user-select: text;
 }
+
+/* UI 层容器不吃指针事件（空白处的点击要穿到舞台上推进对话），层内的原生控件一律恢复：
+   面板作者漏写容器的 pointer-events 时，按钮与输入框不该跟着整层一起静默失活
+   （2026-10-17 选择/输入层就这么失效过：元素在、没有命中、点不到也 focus 不上）。 */
+.shell-ui :is(button, input, textarea, select):not(:disabled) {
+  pointer-events: auto;
+}
 </style>
 
 <style scoped>
