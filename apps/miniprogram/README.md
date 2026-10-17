@@ -71,6 +71,7 @@ CDP 通道又是 `unimplemented`，所以媒体这段拿不到截图，证据是
 | `src/components/NodeTree.vue` | 递归节点树：把描述树铺成节点（小程序组件样式隔离，样式自带）                                      |
 | `src/host/host.ts`            | 组合根：装载工程 → 建引擎 → 建媒体渲染器 → 建表面 → 建覆盖层 → 起帧循环                           |
 | `src/host/project-source.ts`  | 工程来源：工程接口地址与远端资源根（基址一处，`VITE_PROJECT_BASE_URL` 可覆盖）                    |
+| `src/host/guards.ts`          | 演示工程的守卫实现：故事只写守卫名，实现随宿主代码带上（未登记即运行期 fail-closed）              |
 | `src/host/surface.ts`         | 覆盖层表面：把「每层显示什么」翻成页面数据补丁（小程序没有 DOM）                                  |
 | `src/host/view.ts`            | 描述树 → 节点数据；舞台盒的行内样式串（基准尺寸 + 平移缩放）                                      |
 | `src/host/platform.ts`        | **平台全局 `uni` 唯一取用点**：系统信息、同步存储、网络请求、画布节点、尺寸变化、音视频柄         |
@@ -92,6 +93,12 @@ CDP 通道又是 `unimplemented`，所以媒体这段拿不到截图，证据是
   （缺一个就是哑音或黑屏），且 `src/` 下不许有 `static/`、`fixture/` 这类随包内容。
 - **内容体积不受主包限制**：素材放服务端后不必再按主包上限压缩，`project/` 里这份是按演示需要
   压过的（视频 178 KB、环境音 83 KB），换成高清原片也只是流量与加载时间的问题。
+- **守卫随代码，名字随内容**：故事里的 `{"op":"guard","fn":"gold-non-negative"}` 只是名字，实现必须
+  由宿主注册（引擎是组合根注册制，未登记即在运行期 fail-closed 并停在当前命令）。演示工程的两个
+  守卫（`gold-non-negative`、`tour-open`）写在 `src/host/guards.ts`，语义与
+  `apps/playground/Stories.src/lib/guards.ts` 的 cell 声明一致；服务端换故事时如果引入新守卫名，
+  宿主必须同步补实现——判据互锁 `tests/miniprogram/app-host.test.ts`：故事里出现的每个 `fn` 都要在
+  注册表里，且组合根确实把注册表交给了引擎。
 - **层次与桌面宿主一致**：舞台层是唯一带基准尺寸与变换的容器（画布等比缩放，缩放与偏移来自
   `@lingfan/shell` 的 `computeStageLayout`，行内样式串由 `host/view.ts` 的 `stageStyle` 拼成数据），
   对话 / 选择 / 通知各层住在窗口坐标系里，尺寸只跟窗口走（页面自身用 `rpx`，舞台内的元素尺寸来自
