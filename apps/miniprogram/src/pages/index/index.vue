@@ -6,7 +6,12 @@
  * 页面状态、把点击与输入交给覆盖层。别在页面里写叙事逻辑。
  *
  * 层次口径与桌面宿主一致：舞台层是唯一带基准尺寸与变换的容器（画布等比缩放），对话、
- * 选择、通知各层住在窗口坐标系里，尺寸只跟窗口走（`rpx`/百分比），不随舞台缩放。
+ * 选择、通知各层住在窗口坐标系里，尺寸只跟窗口走。
+ *
+ * 对话面板形态也与桌面面板对齐（一份视觉语言两处落地）：居中卡片、上衣色卡、同名的
+ * `.text`/`.speaker`/`.advance-hint`/`.layer-prompt`/`.choice-row` 结构，NVL 累积层用
+ * `.nvl-mode`/`.nvl-body` 把容器抬成阅读区。差别只在单位——桌面用 px + clamp 跟窗口，
+ * 小程序页面按平台惯例用 rpx（宽度基准 750），比例同源、绝对尺寸按 750 宽度折算。
  */
 import { onReady, onUnload } from "@dcloudio/uni-app";
 import { ref } from "vue";
@@ -17,6 +22,7 @@ import {
   watchWindowResize,
   type MiniprogramHostHandle,
   type MiniprogramHostPatch,
+  type MiniprogramNvlData,
   type MiniprogramSurfaceData,
   type MiniprogramVideoData,
 } from "../../host/index.ts";
@@ -27,6 +33,7 @@ const CANVAS_SELECTOR = "#stage-canvas";
 const stage = ref<MiniprogramSurfaceData["stage"]>([]);
 const elements = ref<MiniprogramSurfaceData["elements"]>([]);
 const dialogue = ref<MiniprogramSurfaceData["dialogue"]>(null);
+const nvl = ref<MiniprogramNvlData | null>(null);
 const choices = ref<MiniprogramSurfaceData["choices"]>(null);
 const notices = ref<MiniprogramSurfaceData["notices"]>([]);
 const layers = ref<MiniprogramSurfaceData["layers"]>({});
@@ -43,6 +50,7 @@ function applyPatch(patch: MiniprogramHostPatch): void {
   if (patch.stage !== undefined) stage.value = patch.stage;
   if (patch.elements !== undefined) elements.value = patch.elements;
   if (patch.dialogue !== undefined) dialogue.value = patch.dialogue;
+  if (patch.nvl !== undefined) nvl.value = patch.nvl;
   if (patch.choices !== undefined) choices.value = patch.choices;
   if (patch.notices !== undefined) notices.value = patch.notices;
   if (patch.layers !== undefined) layers.value = patch.layers;
@@ -145,32 +153,45 @@ function onVideoEnded(): void {
       @ended="onVideoEnded"
     />
 
-    <!-- 对话层：说话人 / 正文 / 推进提示三段 -->
+    <!--
+      对话层：普通形态三段式（说话人 / 正文 / 推进提示）；
+      NVL 形态把容器抬成阅读区（累积行 + 打字中的最新一行），与桌面面板同构。
+    -->
     <view
       v-if="dialogue && dialogue.visible"
       class="layer dialogue"
-      :class="dialogue.rootClass"
+      :class="nvl ? 'nvl-mode' : dialogue.rootClass"
       :style="layerStyle('dialogue')"
       @tap="onAdvance"
     >
-      <view
-        v-if="dialogue.speakerHtml"
-        class="speaker"
-        :style="{ color: dialogue.speakerColor }"
-      >
-        <rich-text :nodes="dialogue.speakerHtml" />
+      <view v-if="nvl" class="nvl-body">
+        <view v-for="(html, index) in nvl.pastLines" :key="index" class="text">
+          <rich-text :nodes="html" />
+        </view>
+        <view class="text">
+          <rich-text :nodes="nvl.typingHtml" />
+        </view>
       </view>
-      <view
-        class="body"
-        :style="
-          dialogue.bodyFont ? { fontFamily: dialogue.bodyFont } : undefined
-        "
-      >
-        <rich-text :nodes="dialogue.bodyHtml" />
-      </view>
-      <view v-if="dialogue.hintHtml" class="hint">
-        <rich-text :nodes="dialogue.hintHtml" />
-      </view>
+      <template v-else>
+        <view
+          v-if="dialogue.speakerHtml"
+          class="speaker"
+          :style="{ color: dialogue.speakerColor }"
+        >
+          <rich-text :nodes="dialogue.speakerHtml" />
+        </view>
+        <view
+          class="text"
+          :style="
+            dialogue.bodyFont ? { fontFamily: dialogue.bodyFont } : undefined
+          "
+        >
+          <rich-text :nodes="dialogue.bodyHtml" />
+        </view>
+        <view v-if="dialogue.hintHtml" class="advance-hint">
+          <rich-text :nodes="dialogue.hintHtml" />
+        </view>
+      </template>
     </view>
 
     <!-- 选择层：菜单与输入两形态互斥 -->
@@ -181,10 +202,10 @@ function onVideoEnded(): void {
       :style="layerStyle('choices')"
       @tap.stop="onNothing"
     >
-      <view v-if="choices.promptHtml" class="prompt">
+      <view v-if="choices.promptHtml" class="layer-prompt">
         <rich-text :nodes="choices.promptHtml" />
       </view>
-      <view v-if="choices.options.length" class="menu">
+      <view v-if="choices.options.length" class="choice-row">
         <view
           v-for="option in choices.options"
           :key="option.key"
@@ -208,7 +229,7 @@ function onVideoEnded(): void {
       </view>
     </view>
 
-    <!-- 通知层：不吃点击，免得挡住下面的层 -->
+    <!-- 通知层：贴右上角，不吃点击，免得挡住下面的层 -->
     <view class="layer notices" :style="layerStyle('notifications')">
       <view
         v-for="notice in notices"
@@ -229,8 +250,9 @@ function onVideoEnded(): void {
 /**
  * 页面样式：舞台按宿主算好的尺寸与变换摆放，其余各层直接铺在视口上。
  *
- * 尺寸单位：舞台内的元素尺寸来自叙事数据（px，基准坐标系），页面自身的留白与字号用
- * rpx——两者不混用，换算只在舞台那一层发生。
+ * 尺寸单位：舞台内的元素尺寸来自叙事数据（px，基准坐标系）；页面自身的留白、字号与面板
+ * 几何用 rpx（宽度基准 750）。桌面对应值来自 `apps/playground/src/App/DialoguePanel.vue`
+ * （那里用 px + clamp 跟窗口），两边只差单位，不差形态——改形态时两处一起改。
  */
 .page {
   display: block;
@@ -290,64 +312,100 @@ function onVideoEnded(): void {
   background: #000;
 }
 
-/* 对话层：贴在底部的三段式，上缘渐隐压在舞台之上 */
+/* 对话层：贴底居中的卡片（桌面对应 `.dialogue`：宽上限、圆角、半透明底） */
 .dialogue {
   top: auto;
-  bottom: 0;
-  padding: 24rpx 32rpx 40rpx;
+  bottom: 24rpx;
+  left: 24rpx;
+  right: 24rpx;
+  width: auto;
+  min-height: 220rpx;
+  padding: 32rpx 40rpx;
   box-sizing: border-box;
-  background: linear-gradient(
-    180deg,
-    rgba(10, 12, 18, 0) 0%,
-    rgba(10, 12, 18, 0.88) 40%
-  );
+  border: 2rpx solid rgba(68, 68, 68, 0.27);
+  border-radius: 24rpx;
+  background: rgba(30, 30, 46, 0.8);
+  color: #e6e6f0;
 }
 
-.speaker {
-  font-size: 26rpx;
-  letter-spacing: 1rpx;
-  margin-bottom: 10rpx;
-  opacity: 0.92;
-}
-
-.body {
-  font-size: 32rpx;
-  line-height: 1.7;
-}
-
-.hint {
-  margin-top: 14rpx;
-  font-size: 24rpx;
-  opacity: 0.6;
-}
-
-/* 选择层：整屏遮暗，菜单或输入二选一 */
-.choices {
-  top: auto;
-  bottom: 0;
-  padding: 48rpx 32rpx 72rpx;
-  box-sizing: border-box;
-  background: rgba(8, 10, 16, 0.84);
-}
-
-.prompt {
-  font-size: 30rpx;
-  opacity: 0.86;
-  margin-bottom: 22rpx;
-}
-
-.menu {
+/* NVL 累积层形态：容器抬升为阅读区（累积文本自上而下滚动） */
+.dialogue.nvl-mode {
+  min-height: 600rpx;
   display: flex;
   flex-direction: column;
 }
 
-.option {
-  padding: 22rpx 26rpx;
-  margin-bottom: 16rpx;
-  border: 1rpx solid rgba(140, 170, 255, 0.35);
-  border-radius: 14rpx;
-  background: rgba(30, 38, 60, 0.62);
+.nvl-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.speaker {
+  margin: 0 0 16rpx;
+  font-weight: 600;
   font-size: 30rpx;
+  letter-spacing: 1rpx;
+}
+
+.text {
+  margin: 0;
+  font-size: 34rpx;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+/* 推进指示器：右下角闪烁（桌面对应 `.advance-hint`） */
+.advance-hint {
+  position: absolute;
+  right: 24rpx;
+  bottom: 16rpx;
+  font-size: 26rpx;
+  color: #7aa2f7;
+  opacity: 0.9;
+  animation: blink 1.2s infinite;
+}
+
+/* 选择层：与对话层同一张卡片形态，菜单或输入二选一 */
+.choices {
+  top: auto;
+  bottom: 24rpx;
+  left: 24rpx;
+  right: 24rpx;
+  width: auto;
+  padding: 32rpx 40rpx;
+  box-sizing: border-box;
+  border: 2rpx solid rgba(68, 68, 68, 0.27);
+  border-radius: 24rpx;
+  background: rgba(30, 30, 46, 0.92);
+  color: #e6e6f0;
+}
+
+.layer-prompt {
+  margin: 0 0 20rpx;
+  color: #9aa5ce;
+  text-align: center;
+  font-size: 30rpx;
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24rpx;
+  justify-content: center;
+}
+
+.option {
+  padding: 16rpx 32rpx;
+  border: 2rpx solid rgba(122, 162, 247, 0.4);
+  border-radius: 20rpx;
+  background: rgba(30, 30, 46, 0.8);
+  color: #e6e6f0;
+  font-size: 30rpx;
+  text-align: center;
 }
 
 .option:active {
@@ -357,41 +415,80 @@ function onVideoEnded(): void {
 .input-row {
   display: flex;
   align-items: center;
+  gap: 20rpx;
 }
 
 .input-box {
   flex: 1;
-  padding: 18rpx 22rpx;
-  border-radius: 12rpx;
-  background: rgba(30, 38, 60, 0.72);
-  color: #e8ecf5;
+  padding: 16rpx 24rpx;
+  border: 2rpx solid rgba(122, 162, 247, 0.4);
+  border-radius: 20rpx;
+  background: rgba(30, 30, 46, 0.8);
+  color: #e6e6f0;
   font-size: 30rpx;
 }
 
 .submit {
-  margin-left: 18rpx;
-  padding: 18rpx 30rpx;
-  border-radius: 12rpx;
-  background: rgba(90, 120, 220, 0.78);
+  padding: 16rpx 32rpx;
+  border: 2rpx solid rgba(122, 162, 247, 0.4);
+  border-radius: 20rpx;
+  background: rgba(30, 30, 46, 0.8);
+  color: #e6e6f0;
   font-size: 30rpx;
 }
 
-/* 通知层：居中偏上的一条条气泡，不吃点击 */
+/* 通知层：贴右上角的一条条气泡（桌面对应 NotificationLayer），不吃点击 */
 .notices {
-  top: auto;
-  bottom: 360rpx;
+  top: 24rpx;
+  left: auto;
+  right: 24rpx;
+  width: auto;
+  max-width: 560rpx;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
+  gap: 16rpx;
   pointer-events: none;
 }
 
 .notice {
-  margin-top: 14rpx;
-  padding: 14rpx 26rpx;
-  border-radius: 999rpx;
-  background: rgba(0, 0, 0, 0.68);
+  padding: 16rpx 28rpx;
+  border-radius: 16rpx;
+  background: rgba(42, 47, 69, 0.87);
+  color: #9ece6a;
   font-size: 26rpx;
+}
+
+/* 通知层皮肤：按 tone 换色（与桌面的 .tpl-notify-* 同名同色） */
+.notice.tpl-notify-warning {
+  color: #e0af68;
+}
+
+.notice.tpl-notify-error {
+  color: #f7768e;
+}
+
+/* 对话模板皮肤：居中独白形态（与桌面的 .tpl-center 同名同色） */
+.dialogue.tpl-center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-size: 1.15em;
+  background: rgba(22, 22, 30, 0.8);
+  border-color: rgba(122, 162, 247, 0.27);
+}
+
+/* 编号选项皮肤：整行靠左（序号由模板正文自带） */
+.choices.tpl-choice-numbered .option {
+  text-align: left;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.2;
+  }
 }
 
 .error {

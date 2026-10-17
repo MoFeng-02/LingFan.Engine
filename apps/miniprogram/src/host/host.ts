@@ -11,6 +11,7 @@
  */
 import {
   defaultEngineTexts,
+  findMissingGuards,
   PlayerPreferences,
   StoryEngine,
   type Story,
@@ -115,6 +116,16 @@ export async function startMiniprogramHost(
       fetch: createRequestFetch(),
     }),
   );
+
+  // 内容是包外的（故事走工程接口，改故事不必发版），守卫却在包里：装载完成先对名字，
+  // 缺谁一次报全——错误停在起播之前，而不是播到那条命令才弹「未注册的守卫」。
+  const missingGuards = findMissingGuards(story, guards);
+  if (missingGuards.length > 0) {
+    throw new Error(
+      `故事引用了未注册的守卫：${missingGuards.join("、")}（宿主需在 src/host/guards.ts 补齐实现）`,
+    );
+  }
+
   const videoSurface: MiniprogramVideoSurface = createMiniprogramVideoSurface({
     publish: (video) => deps.publish({ video }),
   });
@@ -122,7 +133,7 @@ export async function startMiniprogramHost(
   const engine = new StoryEngine(story, {
     savePort: ports.save,
     texts: withSlotLabels(defaultEngineTexts),
-    // 守卫实现由宿主随代码带上：故事 JSON 只写名字，没登记的运行期会 fail-closed
+    // 守卫实现由宿主随代码带上：故事 JSON 只写名字（装载期已校验名字齐全）
     guards,
   });
 
@@ -172,6 +183,8 @@ export async function startMiniprogramHost(
     onError: reportError,
     // 覆盖层的帧循环一直在跑：音频播放位置借它逐帧回写（与打字机同一条时间线）
     onFrame: () => audio.pollPosition(),
+    // NVL 累积层读同一条渲染投影（桌面面板也是读它自己渲染）：表面把它翻成页面数据
+    onView: (view) => surface.setNvl(view),
   });
 
   let layout = computeStageLayout(readWindowSize(), STAGE_CONFIG);
@@ -195,6 +208,8 @@ export async function startMiniprogramHost(
     syncMedia: () => {
       audio.sync();
       video.sync();
+      // 覆盖层 sync 只重渲各层、不触发投影通知：NVL 也在这里补一次对齐
+      surface.setNvl(overlay.view());
     },
     dispose: () => {
       overlay.dispose();
