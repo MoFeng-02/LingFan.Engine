@@ -58,9 +58,11 @@ node 私有文档\工具\mp-automator\mp-verify.mjs apps\miniprogram\dist\build\
   对话 / 选择 / 通知各层住在窗口坐标系里，尺寸只跟窗口走（页面自身用 `rpx`，舞台内的元素尺寸来自
   叙事数据的基准像素——两者不混用）。
 - **平台中立**：宿主自己的名字不带平台名（目录 `apps/miniprogram`、包名 `@lingfan/miniprogram`），
-  换端只动 `@lingfan/adapters` 的取件；`packages/*` 不依赖任何小程序 API，平台差异（含 `uni` 全局）
-  收在 `src/host/platform.ts` 与适配器包里（`tests/miniprogram/app-host.test.ts` 有互锁）。目前只接了
-  `mp-weixin` 一个编译目标，其余端按同一份页面代码另接适配器族即可。
+  能力面也统一：`@lingfan/adapters` 的中立族（`miniprogram/`）只吃注入的能力面（同步存储、音频实例、
+  视频呈现面、画布），里面没有一行厂商 API；厂商差异只落在 `src/host/platform.ts` 的取用面上。
+  `packages/*` 不依赖任何小程序 API，`tests/miniprogram/app-host.test.ts` 有三条互锁：`uni` 只在
+  `platform.ts`、宿主模块里没有 `wx.` / 厂商命名、端口装配取中立族。目前只接了 `mp-weixin` 一个编译
+  目标，换到别的小程序端只换 `platform.ts` 的取用面与 `manifest.json` 的目标段。
 - **依赖钉版**：UniApp 工具链的 `@dcloudio/*` 各包共用同一版本号，且 `@dcloudio/vite-plugin-uni` 对
   vite 有硬约束（peer `5.2.8`）——所以本包自带一份 vite，与仓库根的大版本各用各的（pnpm 隔离安装）。
 - **媒体两端形态不同**：音频是命令式实例（`uni.createInnerAudioContext`，每条通道一个，位置由渲染器

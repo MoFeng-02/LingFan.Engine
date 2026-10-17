@@ -7,7 +7,7 @@
  * 将来换端只需替换本文件。
  */
 
-import type { WechatAudioContextLike } from "@lingfan/adapters";
+import type { MiniprogramAudioContextLike } from "@lingfan/adapters";
 
 /** 小程序同步存储面（值与键都是字符串；取不存在的键返回空串） */
 export interface UniStorageApi {
@@ -66,7 +66,7 @@ export interface UniApi {
   removeStorageSync(key: string): void;
   getStorageInfoSync(): { keys: string[] };
   createSelectorQuery(): UniSelectorQuery;
-  createInnerAudioContext(): WechatAudioContextLike;
+  createInnerAudioContext(): MiniprogramAudioContextLike;
   createVideoContext(id: string): UniVideoContext;
   onWindowResize(callback: (result: UniResizeResult) => void): void;
   offWindowResize(callback: (result: UniResizeResult) => void): void;
@@ -94,7 +94,7 @@ export function readWindowSize(): { width: number; height: number } {
  *
  * 实例的 `src` 是包内路径或临时地址；`se` 通道播完即销毁，常驻通道由适配器回收。
  */
-export function createAudioContext(): WechatAudioContextLike {
+export function createAudioContext(): MiniprogramAudioContextLike {
   return uniApi().createInnerAudioContext();
 }
 

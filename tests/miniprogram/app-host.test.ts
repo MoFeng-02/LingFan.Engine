@@ -139,9 +139,23 @@ describe("页面层的单位与层次口径", () => {
 });
 
 describe("宿主身份中立（UniApp 不止微信一端）", () => {
-  it("包名与页面源码都不带平台专属名：换端只动 adapters 取件，不动宿主身份", () => {
+  it("包名与页面源码都不带厂商名：换端只动 platform.ts 的取用面，不动宿主身份", () => {
     expect(appPackage).toContain('"name": "@lingfan/miniprogram"');
-    expect(pageSource).not.toMatch(/wechat/i);
+    expect(pageSource).not.toMatch(/\bwx\b|WeChat|wechat/i);
+  });
+
+  it("宿主模块的代码里没有厂商专属 API：换端只换 platform.ts 的取用面", () => {
+    const offenders = Object.entries(hostSources)
+      .filter(([, source]) =>
+        /\bwx\b|WeChat|Wechat|wechat/.test(stripComments(source)),
+      )
+      .map(([path]) => path);
+    expect(offenders).toEqual([]);
+  });
+
+  it("端口装配取自中立适配器族：统一能力面而非某家 API", () => {
+    expect(portsSource).toContain("createMiniprogramSavePort");
+    expect(portsSource).not.toMatch(/Wechat|wechat/);
   });
 });
 
@@ -248,9 +262,11 @@ describe("媒体端口接线（音频实例与视频呈现面）", () => {
 
   it("组合根把两个渲染器都接上，并在帧源里回写音频位置、销毁时一并收场", () => {
     // 端口由适配器工厂造（音频实例从平台取，视频呈现面由组合根注入）
-    expect(portsSource).toContain("createWechatAudioPort(createAudioContext)");
     expect(portsSource).toContain(
-      "createWechatVideoPort(options.videoSurface)",
+      "createMiniprogramAudioPort(createAudioContext)",
+    );
+    expect(portsSource).toContain(
+      "createMiniprogramVideoPort(options.videoSurface)",
     );
     // 渲染器：音频带偏好，视频播完交回引擎
     expect(hostSource).toContain("createAudioRenderer(");

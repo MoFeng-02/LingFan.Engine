@@ -12,7 +12,7 @@ import type {
   AudioPlayOptions,
   AudioPort,
 } from "@lingfan/engine";
-import type { WechatAudioContextLike } from "./platform.ts";
+import type { MiniprogramAudioContextLike } from "./platform.ts";
 
 /** 位置写入容差（秒）：小于此不 seek，避免每帧抖动（与 Web 实现同口径） */
 const SEEK_EPSILON = 0.25;
@@ -27,7 +27,7 @@ const PERSISTENT_CHANNELS: readonly AudioChannel[] = [
 
 /** 一条常驻通道的实例状态 */
 interface Slot {
-  ctx: WechatAudioContextLike;
+  ctx: MiniprogramAudioContextLike;
   url: string;
   /** 在跑的音量斜坡定时器句柄 */
   ramp?: ReturnType<typeof setTimeout>;
@@ -42,8 +42,8 @@ function clamp(value: number): number {
  * 造一个音频端口（小程序）。
  * @param createAudio 造实例：宿主注入 `() => wx.createInnerAudioContext()`
  */
-export function createWechatAudioPort(
-  createAudio: () => WechatAudioContextLike,
+export function createMiniprogramAudioPort(
+  createAudio: () => MiniprogramAudioContextLike,
 ): AudioPort {
   /** 常驻通道实例（bgm / ambient / voice） */
   const slots = new Map<AudioChannel, Slot>();

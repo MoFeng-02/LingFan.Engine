@@ -1,6 +1,6 @@
 /**
  * SavePort 同步键值存储实现：浏览器走 localStorage（演示兜底，明文——不作为安全边界），
- * 其它平台注入等价面（小程序微信存储见 `../wechat/save.ts`），语义对齐原生（高水位/计数由本侧自管）。
+ * 其它平台注入等价面（小程序同步存储见 `../miniprogram/save.ts`），语义对齐原生（高水位/计数由本侧自管）。
  * 由组合根按平台装配。
  */
 import type { SavePort, SlotSummary } from "@lingfan/engine";

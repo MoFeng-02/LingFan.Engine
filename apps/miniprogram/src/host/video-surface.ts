@@ -9,7 +9,7 @@
  * 不让一次时序问题炸掉整个宿主。
  */
 
-import type { WechatVideoSurfaceLike } from "@lingfan/adapters";
+import type { MiniprogramVideoSurfaceLike } from "@lingfan/adapters";
 import { createVideoContext, type UniVideoContext } from "./platform.ts";
 
 /** 页面数据里的视频状态（页面据此渲染 `video` 组件） */
@@ -33,7 +33,7 @@ export interface MiniprogramVideoSurfaceDeps {
 }
 
 /** 呈现面：端口契约 + 页面侧的播完回传口 */
-export interface MiniprogramVideoSurface extends WechatVideoSurfaceLike {
+export interface MiniprogramVideoSurface extends MiniprogramVideoSurfaceLike {
   /** 播放自然结束（页面 `bindended` 转发） */
   notifyEnded(): void;
 }

@@ -10,10 +10,12 @@ import {
   type SyncStorageLike,
   type WebStorageSaveOptions,
 } from "../save/webStorage.ts";
-import type { WechatStorageLike } from "./platform.ts";
+import type { MiniprogramStorageLike } from "./platform.ts";
 
 /** 把微信存储面接成存档实现要的同步键值面（空串 = 不存在） */
-export function wechatStorageFace(storage: WechatStorageLike): SyncStorageLike {
+export function miniprogramStorageFace(
+  storage: MiniprogramStorageLike,
+): SyncStorageLike {
   return {
     getItem: (key) => {
       const raw = storage.get(key);
@@ -30,9 +32,9 @@ export function wechatStorageFace(storage: WechatStorageLike): SyncStorageLike {
  * @param storage 微信同步存储面（宿主注入 `wx` 上那四个动作）
  * @param options 存储键命名空间；缺省沿用演示值（`lf3-demo:`），换前缀后旧档读不到——迁移由宿主自管
  */
-export function createWechatSavePort(
-  storage: WechatStorageLike,
+export function createMiniprogramSavePort(
+  storage: MiniprogramStorageLike,
   options?: WebStorageSaveOptions,
 ): SavePort {
-  return createWebStorageSavePort(options, wechatStorageFace(storage));
+  return createWebStorageSavePort(options, miniprogramStorageFace(storage));
 }
