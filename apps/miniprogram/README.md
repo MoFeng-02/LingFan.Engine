@@ -15,19 +15,40 @@ pnpm --filter @lingfan/miniprogram typecheck  # 本包单独类型检查（仓�
 用微信开发者工具**导入** `apps/miniprogram/dist/dev/mp-weixin`（或 `dist/build/mp-weixin`）即可预览；
 `dist/` 是构建产物，不入版本库。
 
+## 在微信开发者工具里验证（已跑通）
+
+`src/manifest.json` 的 `mp-weixin.appid` 现在写的是一个**测试号 AppID**（`wx2a603d61ee137d96`），
+只为让产物导入后能直接编译；正式开发请换成自己的 AppID。`libVersion` 显式钉成 `3.15.1`，
+不让 IDE 去猜基库版本。
+
+自动化验证（真机模拟器，走 `miniprogram-automator`）：
+
+```bash
+# 依赖装在仓库外，避免污染工程依赖
+npm install --prefix %TEMP%\mpauto miniprogram-automator
+set AUTOMATOR_ROOT=%TEMP%\mpauto\node_modules\miniprogram-automator
+set MP_NAME=阿寻
+node 项目记录 apps\miniprogram\dist\build\mp-weixin 项目记录
+```
+
+脚本自己起 `cli auto`（`--auto-port`，默认 9430）再连上去，然后：反复点 `.viewport` 推进 →
+等 `.input-box` 出现 → 打字 → 点 `.submit` → 截图留证。跑通的读数是「推进 16 次到达输入等待态，
+输入「阿寻」后台词变成「阿寻，欢迎来到灵泛！12」」。
+
 ## 目录
 
-| 路径                          | 作用                                                                  |
-| ----------------------------- | --------------------------------------------------------------------- |
-| `src/pages/index/index.vue`   | 页面装配：取画布 → 启动宿主 → 补丁进页面状态 → 动作交回覆盖层         |
-| `src/components/NodeTree.vue` | 递归节点树：把描述树铺成节点（小程序组件样式隔离，样式自带）          |
-| `src/host/host.ts`            | 组合根：装载工程 → 建引擎 → 建表面 → 建覆盖层 → 起帧循环              |
-| `src/host/surface.ts`         | 覆盖层表面：把「每层显示什么」翻成页面数据补丁（小程序没有 DOM）      |
-| `src/host/view.ts`            | 描述树 → 节点数据；舞台盒的行内样式串（基准尺寸 + 平移缩放）          |
-| `src/host/platform.ts`        | **平台全局 `uni` 唯一取用点**：系统信息、同步存储、画布节点、尺寸变化 |
-| `src/host/ports.ts`           | 端口装配：存档 / 偏好 / 资源地址落到微信同步存储与包内路径            |
-| `src/host/frame.ts`           | 帧源：有画布走画布 rAF，没有退回定时器（约 60 帧/秒）                 |
-| `src/host/fixture.ts`         | 内建演示工程：示例故事随包打进来，宿主不依赖文件系统                  |
+| 路径                          | 作用                                                                            |
+| ----------------------------- | ------------------------------------------------------------------------------- |
+| `src/pages/index/index.vue`   | 页面装配：取画布 → 启动宿主 → 补丁进页面状态 → 动作交回覆盖层                   |
+| `src/components/NodeTree.vue` | 递归节点树：把描述树铺成节点（小程序组件样式隔离，样式自带）                    |
+| `src/host/host.ts`            | 组合根：装载工程 → 建引擎 → 建表面 → 建覆盖层 → 起帧循环                        |
+| `src/host/surface.ts`         | 覆盖层表面：把「每层显示什么」翻成页面数据补丁（小程序没有 DOM）                |
+| `src/host/view.ts`            | 描述树 → 节点数据；舞台盒的行内样式串（基准尺寸 + 平移缩放）                    |
+| `src/host/platform.ts`        | **平台全局 `uni` 唯一取用点**：系统信息、同步存储、画布节点、尺寸变化           |
+| `src/host/ports.ts`           | 端口装配：存档 / 偏好 / 资源地址落到微信同步存储与包内路径                      |
+| `src/host/frame.ts`           | 帧源：有画布走画布 rAF，没有退回定时器（约 60 帧/秒）                           |
+| `src/host/fixture.ts`         | 内建演示工程：示例故事随包打进来，宿主不依赖文件系统                            |
+| `src/fixture/`                | 演示工程本体（`project.json` + `Stories/**`），由 `fixture.ts` 在构建期收进包内 |
 
 ## 口径
 

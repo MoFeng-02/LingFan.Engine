@@ -7,8 +7,10 @@
 import { computeStageLayout } from "../../packages/shell/src/stage/layout.ts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import appPackage from "../../apps/miniprogram/package.json?raw";
+import { createFixtureProjectFilesPort } from "../../apps/miniprogram/src/host/fixture.ts";
 import { queryCanvasNode } from "../../apps/miniprogram/src/host/platform.ts";
 import { stageStyle } from "../../apps/miniprogram/src/host/view.ts";
+import manifestSource from "../../apps/miniprogram/src/manifest.json?raw";
 import pageSource from "../../apps/miniprogram/src/pages/index/index.vue?raw";
 
 /** 宿主各模块源码：平台全局的完成边界靠它机械核对 */
@@ -133,5 +135,36 @@ describe("宿主身份中立（UniApp 不止微信一端）", () => {
   it("包名与页面源码都不带平台专属名：换端只动 adapters 取件，不动宿主身份", () => {
     expect(appPackage).toContain('"name": "@lingfan/miniprogram"');
     expect(pageSource).not.toMatch(/wechat/i);
+  });
+});
+
+describe("内建演示工程随包可达", () => {
+  it("包内供给口能交出清单与故事：示例工程缺一不可，缺了引擎会整包拒绝", async () => {
+    const port = createFixtureProjectFilesPort();
+    const manifest = (await port.manifest()) as {
+      formatVersion?: number;
+      entry?: string;
+    };
+    expect(manifest.formatVersion).toBe(1);
+    expect(typeof manifest.entry).toBe("string");
+
+    const stories = await port.stories();
+    expect(stories.size).toBeGreaterThanOrEqual(10);
+    expect([...stories.keys()].every((key) => key.startsWith("Stories/"))).toBe(
+      true,
+    );
+    // 每份都必须是可解析的 JSON：供给口交出去的是文本，坏一份就整包组装失败
+    for (const text of stories.values()) {
+      expect(() => JSON.parse(text) as unknown).not.toThrow();
+    }
+  });
+
+  it("清单与基库版本显式给定：IDE 读到空串会拿不确定的默认值", () => {
+    const manifest = JSON.parse(manifestSource) as {
+      "mp-weixin"?: { appid?: string; libVersion?: string };
+    };
+    const weixin = manifest["mp-weixin"];
+    expect(weixin?.appid?.trim()).toBeTruthy();
+    expect(weixin?.libVersion?.trim()).toBeTruthy();
   });
 });

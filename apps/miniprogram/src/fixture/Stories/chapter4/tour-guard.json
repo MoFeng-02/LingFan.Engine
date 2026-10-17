@@ -1,0 +1,88 @@
+{
+  "formatVersion": 1,
+  "id": "tour_guard",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "func",
+      "name": "stationsMenu",
+      "params": [],
+      "body": [
+        {
+          "op": "menu",
+          "prompt": "下一道？",
+          "options": [
+            {
+              "text": "变量盛宴1",
+              "target": "tour_vars"
+            },
+            {
+              "text": "流程厨房",
+              "target": "tour_flow"
+            },
+            {
+              "text": "存档试吃",
+              "target": "tour_save"
+            },
+            {
+              "text": "声光餐车",
+              "target": "tour_av"
+            },
+            {
+              "text": "舞台窗口",
+              "target": "tour_stage"
+            },
+            {
+              "text": "扩展工坊",
+              "target": "tour_ext"
+            },
+            {
+              "text": "守卫工坊",
+              "target": "tour_guard"
+            },
+            {
+              "text": "回主线菜单",
+              "target": "start"
+            },
+            {
+              "text": "离席（终幕）",
+              "target": "end"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "op": "set",
+      "key": "tour.open",
+      "value": true
+    },
+    {
+      "op": "say",
+      "text": "守卫工坊——先 set 深路径状态（tour.open），再交给 guard 执法。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "guard",
+      "fn": "tour-open"
+    },
+    {
+      "op": "say",
+      "text": "guard 通过：巡礼闸门开启（本列状态已置位）。"
+    },
+    {
+      "op": "notify",
+      "text": "守卫与断言（assert）都在运行期执法：非法状态 → fail-fast 拦停。",
+      "type": "info"
+    },
+    {
+      "op": "say",
+      "text": "守卫工坊到此为止——从本列回主菜单收尾。"
+    },
+    {
+      "op": "call",
+      "target": "stationsMenu",
+      "args": []
+    }
+  ]
+}

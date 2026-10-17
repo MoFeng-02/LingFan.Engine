@@ -5,7 +5,8 @@
   "versionName": "0.0.0",
   "versionCode": "0",
   "mp-weixin": {
-    "appid": "touristappid",
+    "appid": "wx2a603d61ee137d96",
+    "libVersion": "3.15.1",
     "setting": {
       "urlCheck": false,
       "es6": true,

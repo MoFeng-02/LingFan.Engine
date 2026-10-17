@@ -1,0 +1,136 @@
+{
+  "formatVersion": 1,
+  "id": "tour_stage",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "func",
+      "name": "stationsMenu",
+      "params": [],
+      "body": [
+        {
+          "op": "menu",
+          "prompt": "下一道？",
+          "options": [
+            {
+              "text": "变量盛宴1",
+              "target": "tour_vars"
+            },
+            {
+              "text": "流程厨房",
+              "target": "tour_flow"
+            },
+            {
+              "text": "存档试吃",
+              "target": "tour_save"
+            },
+            {
+              "text": "声光餐车",
+              "target": "tour_av"
+            },
+            {
+              "text": "舞台窗口",
+              "target": "tour_stage"
+            },
+            {
+              "text": "扩展工坊",
+              "target": "tour_ext"
+            },
+            {
+              "text": "守卫工坊",
+              "target": "tour_guard"
+            },
+            {
+              "text": "回主线菜单",
+              "target": "start"
+            },
+            {
+              "text": "离席（终幕）",
+              "target": "end"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "op": "say",
+      "text": "舞台窗口——背景与对话窗都是 op 层的舞台资产，故事按名开关。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "background",
+      "resource": "Images/lingfan.png"
+    },
+    {
+      "op": "say",
+      "text": "background 换底图。"
+    },
+    {
+      "op": "window",
+      "mode": "hide"
+    },
+    {
+      "op": "notify",
+      "text": "对话窗已隐藏（dialog_window hide），正文走全屏舞台。",
+      "type": "info"
+    },
+    {
+      "op": "say",
+      "text": "这句仍照常推进——列命令流不受窗口开合影响。"
+    },
+    {
+      "op": "window",
+      "mode": "show"
+    },
+    {
+      "op": "say",
+      "text": "对话窗回到台前。"
+    },
+    {
+      "op": "show",
+      "target": "Images/lingfan.png",
+      "id": "tour_block",
+      "x": 180,
+      "y": 120
+    },
+    {
+      "op": "animate_block",
+      "target": "tour_block",
+      "x": 420,
+      "y": 180,
+      "opacity": 0.8,
+      "duration": 1.2,
+      "easing": "EaseOutQuad"
+    },
+    {
+      "op": "say",
+      "text": "animate_block 一次做完移动/淡入/时长/缓动（单元素块动画）。"
+    },
+    {
+      "op": "text_typewriter",
+      "enabled": false
+    },
+    {
+      "op": "say",
+      "text": "打字机关掉后，这句是整段浮出（对比下面一句）。"
+    },
+    {
+      "op": "text_typewriter",
+      "enabled": true,
+      "speed": 30
+    },
+    {
+      "op": "say",
+      "text": "打字机以每秒 30 字符的速度逐字上屏——两段体感不同。"
+    },
+    {
+      "op": "hide",
+      "target": "tour_block"
+    },
+    {
+      "op": "call",
+      "target": "stationsMenu",
+      "args": []
+    }
+  ]
+}
