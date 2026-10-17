@@ -1,8 +1,8 @@
 {
-  "name": "@lingfan/wechat",
+  "name": "@lingfan/miniprogram",
   "private": true,
   "version": "0.0.0",
-  "description": "微信小程序宿主：UniApp（Vue 3）页面层 + 框架无关的端口装配",
+  "description": "小程序宿主：UniApp（Vue 3）页面层 + 框架无关的端口装配",
   "type": "module",
   "scripts": {
     "dev": "uni -p mp-weixin",

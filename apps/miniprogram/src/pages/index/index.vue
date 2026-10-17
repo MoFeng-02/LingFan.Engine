@@ -13,31 +13,31 @@ import { ref } from "vue";
 import NodeTree from "../../components/NodeTree.vue";
 import {
   queryCanvasNode,
-  startWechatHost,
+  startMiniprogramHost,
   watchWindowResize,
-  type WechatHostHandle,
-  type WechatHostPatch,
-  type WechatSurfaceData,
+  type MiniprogramHostHandle,
+  type MiniprogramHostPatch,
+  type MiniprogramSurfaceData,
 } from "../../host/index.ts";
 
 /** 帧时钟画布的节点选择器 */
 const CANVAS_SELECTOR = "#stage-canvas";
 
-const stage = ref<WechatSurfaceData["stage"]>([]);
-const elements = ref<WechatSurfaceData["elements"]>([]);
-const dialogue = ref<WechatSurfaceData["dialogue"]>(null);
-const choices = ref<WechatSurfaceData["choices"]>(null);
-const notices = ref<WechatSurfaceData["notices"]>([]);
-const layers = ref<WechatSurfaceData["layers"]>({});
+const stage = ref<MiniprogramSurfaceData["stage"]>([]);
+const elements = ref<MiniprogramSurfaceData["elements"]>([]);
+const dialogue = ref<MiniprogramSurfaceData["dialogue"]>(null);
+const choices = ref<MiniprogramSurfaceData["choices"]>(null);
+const notices = ref<MiniprogramSurfaceData["notices"]>([]);
+const layers = ref<MiniprogramSurfaceData["layers"]>({});
 const stageBox = ref("");
 const error = ref("");
 const inputValue = ref("");
 
-let host: WechatHostHandle | null = null;
+let host: MiniprogramHostHandle | null = null;
 let stopResizeWatch: (() => void) | null = null;
 
 /** 把一次补丁写进页面状态：字段缺省即不动（`null` 是「清空」而不是「不动」） */
-function applyPatch(patch: WechatHostPatch): void {
+function applyPatch(patch: MiniprogramHostPatch): void {
   if (patch.stage !== undefined) stage.value = patch.stage;
   if (patch.elements !== undefined) elements.value = patch.elements;
   if (patch.dialogue !== undefined) dialogue.value = patch.dialogue;
@@ -57,7 +57,7 @@ function layerStyle(layer: string): { zIndex: number } {
 async function boot(): Promise<void> {
   try {
     const canvas = await queryCanvasNode(CANVAS_SELECTOR);
-    const started = await startWechatHost({ canvas, publish: applyPatch });
+    const started = await startMiniprogramHost({ canvas, publish: applyPatch });
     host = started;
     stopResizeWatch = watchWindowResize(() => {
       started.resize();

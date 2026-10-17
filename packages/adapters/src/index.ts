@@ -93,7 +93,7 @@ export {
   readTauriPlatform,
   type HostPortOptions,
 } from "./host";
-// 微信小程序适配器族：宿主 `apps/wechat` 经此取件
+// 微信小程序适配器族：宿主 `apps/miniprogram` 经此取件
 export {
   createWechatAudioPort,
   createWechatFrameSource,
