@@ -8,7 +8,14 @@ import { computeStageLayout } from "../../packages/shell/src/stage/layout.ts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import appPackage from "../../apps/miniprogram/package.json?raw";
 import { createFixtureProjectFilesPort } from "../../apps/miniprogram/src/host/fixture.ts";
+import hostSource from "../../apps/miniprogram/src/host/host.ts?raw";
 import { queryCanvasNode } from "../../apps/miniprogram/src/host/platform.ts";
+import portsSource from "../../apps/miniprogram/src/host/ports.ts?raw";
+import {
+  createMiniprogramVideoSurface,
+  VIDEO_COMPONENT_ID,
+  type MiniprogramVideoData,
+} from "../../apps/miniprogram/src/host/video-surface.ts";
 import { stageStyle } from "../../apps/miniprogram/src/host/view.ts";
 import manifestSource from "../../apps/miniprogram/src/manifest.json?raw";
 import pageSource from "../../apps/miniprogram/src/pages/index/index.vue?raw";
@@ -166,5 +173,96 @@ describe("内建演示工程随包可达", () => {
     const weixin = manifest["mp-weixin"];
     expect(weixin?.appid?.trim()).toBeTruthy();
     expect(weixin?.libVersion?.trim()).toBeTruthy();
+  });
+});
+
+describe("媒体端口接线（音频实例与视频呈现面）", () => {
+  /** 收集页面补丁的替身 */
+  function collectPatches(): {
+    patches: MiniprogramVideoData[];
+    publish: (video: MiniprogramVideoData) => void;
+  } {
+    const patches: MiniprogramVideoData[] = [];
+    return { patches, publish: (video) => patches.push(video) };
+  }
+
+  it("起播把片源、可见性与音量落到页面数据：换片与显隐由组件属性决定", () => {
+    const { patches, publish } = collectPatches();
+    const surface = createMiniprogramVideoSurface({ publish });
+    surface.show({
+      url: "https://example.test/op.webm",
+      volume: 0.5,
+      loop: true,
+    });
+    expect(patches).toEqual([
+      {
+        url: "https://example.test/op.webm",
+        visible: true,
+        volume: 0.5,
+        loop: true,
+      },
+    ]);
+  });
+
+  it("停止把页面数据归零：不可见即不占位，也不盖住舞台", () => {
+    const { patches, publish } = collectPatches();
+    const surface = createMiniprogramVideoSurface({ publish });
+    surface.show({ url: "a.webm", volume: 1, loop: false });
+    surface.hide();
+    expect(patches.at(-1)).toEqual({
+      url: "",
+      visible: false,
+      volume: 0,
+      loop: false,
+    });
+  });
+
+  it("控制动作在无控制柄时静默丢弃：组件未渲染不该炸掉宿主", () => {
+    const { publish } = collectPatches();
+    const surface = createMiniprogramVideoSurface({ publish });
+    surface.show({ url: "a.webm", volume: 1, loop: false });
+    // `uni` 缺失 ⇒ 取柄抛错；三个动作都必须吞掉这次失败
+    expect(() => {
+      surface.pause();
+      surface.resume();
+      surface.seek(3);
+    }).not.toThrow();
+  });
+
+  it("播完回传走注册的处理器：组件 bindended → 引擎解除 video 等待", () => {
+    const { publish } = collectPatches();
+    const surface = createMiniprogramVideoSurface({ publish });
+    const ended = vi.fn();
+    surface.onEnded(ended);
+    surface.notifyEnded();
+    expect(ended).toHaveBeenCalledTimes(1);
+  });
+
+  it("页面组件的 id 与呈现面取柄用的 id 同源：改名不会只改一半", () => {
+    expect(VIDEO_COMPONENT_ID).toBe("stage-video");
+    expect(pageSource).toContain(`id="${VIDEO_COMPONENT_ID}"`);
+    expect(pageSource).toContain('@ended="onVideoEnded"');
+    expect(pageSource).toContain("layerStyle('video')");
+    expect(pageSource).toContain("host?.videoEnded()");
+  });
+
+  it("组合根把两个渲染器都接上，并在帧源里回写音频位置、销毁时一并收场", () => {
+    // 端口由适配器工厂造（音频实例从平台取，视频呈现面由组合根注入）
+    expect(portsSource).toContain("createWechatAudioPort(createAudioContext)");
+    expect(portsSource).toContain(
+      "createWechatVideoPort(options.videoSurface)",
+    );
+    // 渲染器：音频带偏好，视频播完交回引擎
+    expect(hostSource).toContain("createAudioRenderer(");
+    expect(hostSource).toContain("createVideoRenderer(");
+    expect(hostSource).toContain(
+      "onVideoFinished: () => engine.videoFinished()",
+    );
+    // 位置回写与打字机同帧（不另起定时器）
+    expect(hostSource).toContain("() => audio.pollPosition()");
+    // 卸载时媒体与引擎一起收场
+    expect(hostSource).toMatch(
+      /dispose: \(\) => \{[\s\S]*audio\.dispose\(\);[\s\S]*video\.dispose\(\);/,
+    );
   });
 });

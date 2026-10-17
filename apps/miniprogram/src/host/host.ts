@@ -1,13 +1,19 @@
 /**
  * 小程序宿主装配：从包内工程到可跑的叙事覆盖层，一次接线到位。
  *
- * 接线顺序与嵌入演示一致——装载工程 → 建引擎（注入平台端口与文案）→ 建表面 →
- * 建覆盖层 → 起帧循环。差别只有两处：表面把视图变成页面数据而不是 DOM 节点；
- * 舞台按视口与基准算出缩放再交给页面（小程序没有 vw/vh 之类整体缩放手段）。
+ * 接线顺序与嵌入演示一致——装载工程 → 建引擎（注入平台端口与文案）→ 建媒体渲染器 →
+ * 建表面 → 建覆盖层 → 起帧循环。差别只有三处：表面把视图变成页面数据而不是 DOM 节点；
+ * 舞台按视口与基准算出缩放再交给页面（小程序没有 vw/vh 之类整体缩放手段）；
+ * 媒体的位置回写借覆盖层的帧循环（与打字机同一条时间线），视频播完由页面回传。
  *
  * 本文件是组合根：允许它同时知道引擎、展示层与平台，别处不允许这样横跨。
  */
-import { defaultEngineTexts, StoryEngine, type Story } from "@lingfan/engine";
+import {
+  defaultEngineTexts,
+  PlayerPreferences,
+  StoryEngine,
+  type Story,
+} from "@lingfan/engine";
 import { loadProject } from "@lingfan/adapters";
 import {
   computeStageLayout,
@@ -19,9 +25,13 @@ import {
   type StageLayout,
 } from "@lingfan/shell";
 import {
+  createAudioRenderer,
   createElementResourceResolver,
   createNarrativeOverlay,
+  createVideoRenderer,
+  type AudioRenderer,
   type NarrativeOverlay,
+  type VideoRenderer,
 } from "@lingfan/ui";
 import { createFixtureProjectFilesPort } from "./fixture.ts";
 import { createHostFrameSource } from "./frame.ts";
@@ -34,6 +44,11 @@ import {
   createMiniprogramOverlaySurface,
   type MiniprogramSurfacePatch,
 } from "./surface.ts";
+import {
+  createMiniprogramVideoSurface,
+  type MiniprogramVideoData,
+  type MiniprogramVideoSurface,
+} from "./video-surface.ts";
 import { stageStyle } from "./view.ts";
 
 /** 覆盖层字速（字符/秒） */
@@ -46,9 +61,10 @@ const STAGE_CONFIG: StageConfig = {
   fit: DEFAULT_STAGE_FIT,
 };
 
-/** 页面数据补丁：覆盖层各层 + 舞台尺寸串 + 错误横幅 */
+/** 页面数据补丁：覆盖层各层 + 视频状态 + 舞台尺寸串 + 错误横幅 */
 export type MiniprogramHostPatch = MiniprogramSurfacePatch & {
   stageBox?: string;
+  video?: MiniprogramVideoData;
   error?: string;
 };
 
@@ -60,7 +76,7 @@ export interface MiniprogramHostDeps {
   canvas?: MiniprogramCanvasNode | null;
 }
 
-/** 宿主句柄：页面用它做重算、销毁与调试观测 */
+/** 宿主句柄：页面用它做重算、媒体回传、销毁与调试观测 */
 export interface MiniprogramHostHandle {
   engine: StoryEngine;
   overlay: NarrativeOverlay;
@@ -69,7 +85,11 @@ export interface MiniprogramHostHandle {
   layout(): StageLayout;
   /** 视口尺寸变化后重算布局并下发 */
   resize(): void;
-  /** 卸载：停帧循环、退订状态、清空各层 */
+  /** 视频自然播完（页面 `bindended` 转发）：引擎据此解除 video 等待 */
+  videoEnded(): void;
+  /** 媒体与引擎状态对齐（读档/回溯完成后显式调用） */
+  syncMedia(): void;
+  /** 卸载：停帧循环、停媒体、退订状态、清空各层 */
   dispose(): void;
 }
 
@@ -78,11 +98,41 @@ export async function startMiniprogramHost(
   deps: MiniprogramHostDeps,
 ): Promise<MiniprogramHostHandle> {
   const story: Story = await loadProject(createFixtureProjectFilesPort());
-  const ports = createMiniprogramHostPorts();
+  const videoSurface: MiniprogramVideoSurface = createMiniprogramVideoSurface({
+    publish: (video) => deps.publish({ video }),
+  });
+  const ports = createMiniprogramHostPorts({ videoSurface });
   const engine = new StoryEngine(story, {
     savePort: ports.save,
     texts: withSlotLabels(defaultEngineTexts),
   });
+
+  // 玩家偏好在渲染器之前水合：首帧起用的就是上次的音量，不必等下一次用户操作
+  const preferences = new PlayerPreferences(ports.preferences);
+  await preferences.hydrate();
+
+  /** 诊断出口：媒体装配失败与覆盖层运行时错误都落到同一条出口（fail-closed：不播，但不静默） */
+  const reportError = (message: string): void => {
+    deps.publish({ error: message });
+  };
+
+  // 音频渲染器与视频渲染器都按引擎状态做差量；构造即订阅，先于覆盖层建好不影响语义。
+  const audio: AudioRenderer = createAudioRenderer(
+    engine,
+    ports.audio,
+    ports.resources,
+    { onError: reportError, preferences },
+  );
+  const video: VideoRenderer = createVideoRenderer(
+    engine,
+    ports.video,
+    ports.resources,
+    {
+      onError: reportError,
+      // 组合根职责：cutscene 播完 → 引擎解除 video 等待
+      onVideoFinished: () => engine.videoFinished(),
+    },
+  );
 
   const surface = createMiniprogramOverlaySurface({
     frame: createHostFrameSource(deps.canvas ?? null),
@@ -100,7 +150,9 @@ export async function startMiniprogramHost(
     engine,
     textSpeed: TEXT_SPEED,
     resolveResource: elementResources.resolveForElement,
-    onError: (message) => deps.publish({ error: message }),
+    onError: reportError,
+    // 覆盖层的帧循环一直在跑：音频播放位置借它逐帧回写（与打字机同一条时间线）
+    onFrame: () => audio.pollPosition(),
   });
 
   let layout = computeStageLayout(readWindowSize(), STAGE_CONFIG);
@@ -120,9 +172,17 @@ export async function startMiniprogramHost(
     ports,
     layout: () => layout,
     resize,
+    videoEnded: () => videoSurface.notifyEnded(),
+    syncMedia: () => {
+      audio.sync();
+      video.sync();
+    },
     dispose: () => {
       overlay.dispose();
+      audio.dispose();
+      video.dispose();
       engine.dispose();
+      preferences.dispose();
     },
   };
 }

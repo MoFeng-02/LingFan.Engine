@@ -4,4 +4,5 @@
 export * from "./platform.ts";
 export * from "./view.ts";
 export * from "./surface.ts";
+export * from "./video-surface.ts";
 export * from "./host.ts";

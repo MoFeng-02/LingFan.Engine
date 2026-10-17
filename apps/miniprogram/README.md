@@ -41,11 +41,12 @@ node 项目记录 apps\miniprogram\dist\build\mp-weixin 项目记录
 | ----------------------------- | ------------------------------------------------------------------------------- |
 | `src/pages/index/index.vue`   | 页面装配：取画布 → 启动宿主 → 补丁进页面状态 → 动作交回覆盖层                   |
 | `src/components/NodeTree.vue` | 递归节点树：把描述树铺成节点（小程序组件样式隔离，样式自带）                    |
-| `src/host/host.ts`            | 组合根：装载工程 → 建引擎 → 建表面 → 建覆盖层 → 起帧循环                        |
+| `src/host/host.ts`            | 组合根：装载工程 → 建引擎 → 建媒体渲染器 → 建表面 → 建覆盖层 → 起帧循环         |
 | `src/host/surface.ts`         | 覆盖层表面：把「每层显示什么」翻成页面数据补丁（小程序没有 DOM）                |
 | `src/host/view.ts`            | 描述树 → 节点数据；舞台盒的行内样式串（基准尺寸 + 平移缩放）                    |
-| `src/host/platform.ts`        | **平台全局 `uni` 唯一取用点**：系统信息、同步存储、画布节点、尺寸变化           |
-| `src/host/ports.ts`           | 端口装配：存档 / 偏好 / 资源地址落到微信同步存储与包内路径                      |
+| `src/host/platform.ts`        | **平台全局 `uni` 唯一取用点**：系统信息、同步存储、画布节点、尺寸变化、音视频柄 |
+| `src/host/ports.ts`           | 端口装配：存档 / 偏好 / 资源地址 / 音频 / 视频落到平台能力与呈现面              |
+| `src/host/video-surface.ts`   | 视频呈现面：端口命令 → 页面数据（`src`/显隐/音量），控制动作走 `videoContext`   |
 | `src/host/frame.ts`           | 帧源：有画布走画布 rAF，没有退回定时器（约 60 帧/秒）                           |
 | `src/host/fixture.ts`         | 内建演示工程：示例故事随包打进来，宿主不依赖文件系统                            |
 | `src/fixture/`                | 演示工程本体（`project.json` + `Stories/**`），由 `fixture.ts` 在构建期收进包内 |
@@ -62,3 +63,8 @@ node 项目记录 apps\miniprogram\dist\build\mp-weixin 项目记录
   `mp-weixin` 一个编译目标，其余端按同一份页面代码另接适配器族即可。
 - **依赖钉版**：UniApp 工具链的 `@dcloudio/*` 各包共用同一版本号，且 `@dcloudio/vite-plugin-uni` 对
   vite 有硬约束（peer `5.2.8`）——所以本包自带一份 vite，与仓库根的大版本各用各的（pnpm 隔离安装）。
+- **媒体两端形态不同**：音频是命令式实例（`uni.createInnerAudioContext`，每条通道一个，位置由渲染器
+  逐帧回写、与打字机同一条帧时间线）；视频是声明式组件（页面里的 `<video id="stage-video">`），宿主
+  只推数据（`src`/显隐/音量/循环），暂停、续播、定位走 `uni.createVideoContext`，自然播完由页面把
+  `bindended` 回传给宿主，宿主再交 `engine.videoFinished()` 解除 cutscene 等待。音量偏好随
+  `PlayerPreferences` 水合生效（与桌面宿主同一套设置）。
