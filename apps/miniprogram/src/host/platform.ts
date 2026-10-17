@@ -7,6 +7,8 @@
  * 将来换端只需替换本文件。
  */
 
+import type { WechatAudioContextLike } from "@lingfan/adapters";
+
 /** 小程序同步存储面（值与键都是字符串；取不存在的键返回空串） */
 export interface UniStorageApi {
   setStorageSync(key: string, value: string): void;
@@ -45,6 +47,17 @@ export interface UniResizeResult {
   size: { windowWidth: number; windowHeight: number };
 }
 
+/**
+ * 视频组件的控制柄（`uni.createVideoContext(id)` 返回值里用到的四个动作）。
+ * 小程序的 `video` 是声明式组件：起播靠组件属性，播放中控制靠这个柄。
+ */
+export interface UniVideoContext {
+  play(): void;
+  pause(): void;
+  seek(seconds: number): void;
+  stop(): void;
+}
+
 /** 本工程用到的 `uni` 全局的一层 */
 export interface UniApi {
   getSystemInfoSync(): UniSystemInfo;
@@ -53,6 +66,8 @@ export interface UniApi {
   removeStorageSync(key: string): void;
   getStorageInfoSync(): { keys: string[] };
   createSelectorQuery(): UniSelectorQuery;
+  createInnerAudioContext(): WechatAudioContextLike;
+  createVideoContext(id: string): UniVideoContext;
   onWindowResize(callback: (result: UniResizeResult) => void): void;
   offWindowResize(callback: (result: UniResizeResult) => void): void;
   nextTick(callback: () => void): void;
@@ -72,6 +87,23 @@ export function uniApi(): UniApi {
 export function readWindowSize(): { width: number; height: number } {
   const info = uniApi().getSystemInfoSync();
   return { width: info.windowWidth, height: info.windowHeight };
+}
+
+/**
+ * 造一个音频实例（`bgm` / `ambient` / `voice` / `se` 四条通道各持一个）。
+ *
+ * 实例的 `src` 是包内路径或临时地址；`se` 通道播完即销毁，常驻通道由适配器回收。
+ */
+export function createAudioContext(): WechatAudioContextLike {
+  return uniApi().createInnerAudioContext();
+}
+
+/**
+ * 取页面上某个 `video` 组件的控制柄；组件还没渲染时调用方要自己兜住异常。
+ * @param id 页面里 `video` 组件的 id
+ */
+export function createVideoContext(id: string): UniVideoContext {
+  return uniApi().createVideoContext(id);
 }
 
 /**

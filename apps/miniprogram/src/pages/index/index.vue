@@ -18,6 +18,7 @@ import {
   type MiniprogramHostHandle,
   type MiniprogramHostPatch,
   type MiniprogramSurfaceData,
+  type MiniprogramVideoData,
 } from "../../host/index.ts";
 
 /** 帧时钟画布的节点选择器 */
@@ -30,6 +31,7 @@ const choices = ref<MiniprogramSurfaceData["choices"]>(null);
 const notices = ref<MiniprogramSurfaceData["notices"]>([]);
 const layers = ref<MiniprogramSurfaceData["layers"]>({});
 const stageBox = ref("");
+const video = ref<MiniprogramVideoData | null>(null);
 const error = ref("");
 const inputValue = ref("");
 
@@ -45,6 +47,7 @@ function applyPatch(patch: MiniprogramHostPatch): void {
   if (patch.notices !== undefined) notices.value = patch.notices;
   if (patch.layers !== undefined) layers.value = patch.layers;
   if (patch.stageBox !== undefined) stageBox.value = patch.stageBox;
+  if (patch.video !== undefined) video.value = patch.video;
   if (patch.error !== undefined) error.value = patch.error;
 }
 
@@ -105,6 +108,11 @@ function onSubmitInput(): void {
 function onNothing(): void {
   // 有意留空
 }
+
+/** 视频自然播完：交回宿主，由它解除引擎的 video 等待 */
+function onVideoEnded(): void {
+  host?.videoEnded();
+}
 </script>
 
 <template>
@@ -120,6 +128,22 @@ function onNothing(): void {
         </view>
       </view>
     </view>
+
+    <!-- 视频层：声明式组件——起播与换片靠这里的数据，控制动作由宿主的 videoContext 驱动 -->
+    <video
+      v-if="video && video.visible"
+      id="stage-video"
+      class="layer video"
+      :src="video.url"
+      :autoplay="true"
+      :loop="video.loop"
+      :volume="video.volume"
+      :controls="false"
+      :show-center-play-btn="false"
+      :enable-progress-gesture="false"
+      :style="layerStyle('video')"
+      @ended="onVideoEnded"
+    />
 
     <!-- 对话层：说话人 / 正文 / 推进提示三段 -->
     <view
@@ -254,6 +278,16 @@ function onNothing(): void {
   left: 0;
   top: 0;
   width: 100%;
+}
+
+/* 视频层：铺满窗口，层序由宿主下发的 z 决定（要压在舞台之上、对话之下） */
+.video {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
 }
 
 /* 对话层：贴在底部的三段式，上缘渐隐压在舞台之上 */
