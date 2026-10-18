@@ -5,11 +5,19 @@
  * 这里要锁住的是别让页面卡在启动上。页面层用源级断言：全量渲染要真机，口径可以机械核对。
  */
 import { computeStageLayout } from "../../packages/shell/src/stage/layout.ts";
-import type { HttpFetch } from "@lingfan/adapters";
 import {
+  createMiniprogramSavePort,
+  type HttpFetch,
+  type MiniprogramStorageLike,
+} from "@lingfan/adapters";
+import {
+  SYS,
+  StoryEngine,
   assembleProject,
   collectGuardNames,
   findMissingGuards,
+  parseStory,
+  type SavePort,
 } from "@lingfan/engine";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import appPackage from "../../apps/miniprogram/package.json?raw";
@@ -42,6 +50,11 @@ import { stageStyle } from "../../apps/miniprogram/src/host/view.ts";
 import manifestSource from "../../apps/miniprogram/src/manifest.json?raw";
 import pagesSource from "../../apps/miniprogram/src/pages.json?raw";
 import pageSource from "../../apps/miniprogram/src/pages/index/index.vue?raw";
+import {
+  chooseHostSlot,
+  loadHostSlotViews,
+} from "../../apps/miniprogram/src/host/slots.ts";
+import saveBarSource from "../../apps/miniprogram/src/components/SaveLoadBar.vue?raw";
 import projectManifestSource from "../../apps/miniprogram/project/project.json?raw";
 
 /** 宿主各模块源码：平台全局的完成边界靠它机械核对 */
@@ -677,5 +690,164 @@ describe("取件面（uni.request → fetch 形状）", () => {
     await expect(
       createRequestFetch()("https://cdn.test/project"),
     ).rejects.toThrow("请求失败：request:fail timeout");
+  });
+});
+
+describe("存读入口（任务：小程序也要能存 → 读）", () => {
+  /** 内存版小程序存储面：与 `uni.setStorageSync` 同形（未存的键给空串） */
+  function memoryStorage(): MiniprogramStorageLike {
+    const map = new Map<string, string>();
+    return {
+      set: (key, value) => {
+        map.set(key, value);
+      },
+      get: (key) => map.get(key) ?? "",
+      remove: (key) => {
+        map.delete(key);
+      },
+      keys: () => [...map.keys()],
+    };
+  }
+
+  /** 造一份测试存档端口：前缀与高水位键同前缀（与宿主装配口径一致） */
+  function testSavePort(): SavePort {
+    return createMiniprogramSavePort(memoryStorage(), {
+      keyPrefix: "test:",
+      highWaterKey: "test:highwater",
+    });
+  }
+
+  /** 等某条出站事件（存读的完成信号） */
+  function waitEvent(engine: StoryEngine, kind: string): Promise<void> {
+    return new Promise((resolve) => {
+      const stop = engine.onEvent((event) => {
+        if (event.payload.kind === kind) {
+          stop();
+          resolve();
+        }
+      });
+    });
+  }
+
+  /** 三句对话的小故事：够验证「存 → 推进 → 读」把进度退回去 */
+  function saveStory(): ReturnType<typeof parseStory> {
+    return parseStory({
+      formatVersion: 1,
+      id: "save-demo",
+      columns: [
+        {
+          id: "start",
+          kind: "flow",
+          commands: [
+            { op: "say", text: "第一句" },
+            { op: "say", text: "第二句" },
+            { op: "say", text: "第三句" },
+          ],
+        },
+      ],
+    });
+  }
+
+  it("槽位视图按工程清单的槽数铺开：没档的槽标成空槽", async () => {
+    const views = await loadHostSlotViews({
+      savePort: testSavePort(),
+      slots: 3,
+    });
+    expect(views.map((view) => view.id)).toEqual([
+      "slot_1",
+      "slot_2",
+      "slot_3",
+    ]);
+    // 槽位名用壳层唯一规则（`slot_1` → 槽位 1），不在小程序另起一套叫法
+    expect(views.map((view) => view.label)).toEqual([
+      "槽位 1",
+      "槽位 2",
+      "槽位 3",
+    ]);
+    expect(views.every((view) => view.empty)).toBe(true);
+  });
+
+  it("写入后槽位不再为空，标题从存档快照里读回", async () => {
+    const savePort = testSavePort();
+    await savePort.write(
+      "slot_2",
+      JSON.stringify({ title: "第二段旅程" }),
+      "machine-bound",
+    );
+    const views = await loadHostSlotViews({ savePort, slots: 3 });
+    const filled = views.find((view) => view.id === "slot_2");
+    expect(filled?.empty).toBe(false);
+    expect(filled?.title).toBe("第二段旅程");
+    expect(views.filter((view) => view.empty)).toHaveLength(2);
+  });
+
+  it("空槽在读档模式不可点、在存档模式可点：判据与桌面面板同一份", async () => {
+    const [view] = await loadHostSlotViews({
+      savePort: testSavePort(),
+      slots: 1,
+    });
+    const save = vi.fn(() => true);
+    const load = vi.fn(() => true);
+    expect(chooseHostSlot({ mode: "load", view, save, load })).toBe(false);
+    // 读档模式点空槽：引擎读不到档必失败，命令根本不下去
+    expect(load).not.toHaveBeenCalled();
+    expect(chooseHostSlot({ mode: "save", view, save, load })).toBe(true);
+    expect(save).toHaveBeenCalledWith("slot_1");
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("端到端：同一份存档端口上存 → 推进 → 读，进度回到存档点", async () => {
+    const savePort = testSavePort();
+    const engine = new StoryEngine(saveStory(), { savePort });
+    engine.start();
+    const savedDialog = engine.get(SYS.currentDialogText);
+    const savedLength = engine.historyLength();
+
+    expect(engine.save("slot_1")).toBe(true);
+    // 写入是异步落地：等完成信号再往下走，否则读到的是空槽
+    await waitEvent(engine, "save.done");
+
+    engine.advance();
+    engine.advance();
+    expect(engine.historyLength()).toBeGreaterThan(savedLength);
+    expect(engine.get(SYS.currentDialogText)).not.toBe(savedDialog);
+
+    expect(engine.load("slot_1")).toBe(true);
+    await waitEvent(engine, "load.done");
+    expect(engine.historyLength()).toBe(savedLength);
+    expect(engine.get(SYS.currentDialogText)).toBe(savedDialog);
+
+    // 存进去的档确实躺在这份端口里（换实例读同一份存储也读得到）
+    const views = await loadHostSlotViews({ savePort, slots: 1 });
+    expect(views[0]?.empty).toBe(false);
+    engine.dispose();
+  });
+
+  it("组合根把槽数与读档完成信号接上：槽数来自清单、媒体对齐挂 load.done", () => {
+    // 槽数取清单 `shell.saves`（与故事同一次装载，不另发请求）
+    expect(hostSource).toContain(
+      "resolveSavesConfig(await filesPort.manifest())",
+    );
+    expect(hostSource).toContain("slotIds: slotIds(saves.slots)");
+    // 读档真正落地晚于命令返回：对齐必须挂完成信号，不能在 loadGame 里当场同步
+    // 落地后两件事都要做：整幅画面全量重渲（引擎重放只驱动变化量）+ 媒体重对齐
+    expect(hostSource).toMatch(
+      /if \(event\.payload\.kind !== "load\.done"\) return;\s*\n\s*overlay\.sync\(\);\s*\n\s*syncMedia\(\);/,
+    );
+    expect(hostSource).toContain("stopLoadEvents();");
+  });
+
+  it("页面挂上入口条，面板判据与命令都走宿主：页面不自己判空槽", () => {
+    expect(pageSource).toContain("<SaveLoadBar");
+    expect(pageSource).toContain(':views="slotViews"');
+    expect(pageSource).toContain("loadHostSlotViews(");
+    expect(pageSource).toContain("chooseHostSlot(");
+    // 面板容器不吃舞台点击：推进照常
+    expect(pageSource).toContain(".ui-chrome");
+    expect(pageSource).toContain("pointer-events: none");
+    expect(saveBarSource).toContain("canChooseSlot(view, props.mode)");
+    expect(saveBarSource).toContain(
+      'mode === "save" ? "写入存档" : "读取存档"',
+    );
   });
 });

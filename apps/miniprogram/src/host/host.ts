@@ -13,7 +13,10 @@ import {
   defaultEngineTexts,
   findMissingGuards,
   PlayerPreferences,
+  resolveSavesConfig,
+  slotIds,
   StoryEngine,
+  type SavesConfig,
   type Story,
 } from "@lingfan/engine";
 import { loadProject } from "@lingfan/adapters";
@@ -101,6 +104,14 @@ export interface MiniprogramHostHandle {
   videoEnded(): void;
   /** 媒体与引擎状态对齐（读档/回溯完成后显式调用） */
   syncMedia(): void;
+  /** 存档壳配置（槽数由工程清单 `shell.saves` 覆盖，缺省内建值） */
+  saves: SavesConfig;
+  /** 槽位 id 序列（面板呈现顺序） */
+  slotIds: string[];
+  /** 写入存档：回执来自引擎（失败文案由引擎通知，宿主不另编） */
+  saveGame(slot: string): boolean;
+  /** 读取存档：成功则媒体与投影各对齐一次 */
+  loadGame(slot: string): boolean;
   /** 卸载：停帧循环、停媒体、退订状态、清空各层 */
   dispose(): void;
 }
@@ -110,12 +121,15 @@ export async function startMiniprogramHost(
   deps: MiniprogramHostDeps,
 ): Promise<MiniprogramHostHandle> {
   const projectBaseUrl = deps.projectBaseUrl ?? resolveProjectBaseUrl();
-  const story: Story = await loadProject(
-    createRemoteProjectFilesPort({
-      baseUrl: projectBaseUrl,
-      fetch: createRequestFetch(),
-    }),
-  );
+  const filesPort = createRemoteProjectFilesPort({
+    baseUrl: projectBaseUrl,
+    fetch: createRequestFetch(),
+  });
+  const story: Story = await loadProject(filesPort);
+
+  // 存档槽数与缩略图参数来自同一份工程清单（`shell.saves` 逐键覆盖）：清单与故事是同一次
+  // 装载（端口内 memo），这里再取一次不产生第二个请求。
+  const saves: SavesConfig = resolveSavesConfig(await filesPort.manifest());
 
   // 内容是包外的（故事走工程接口，改故事不必发版），守卫却在包里：装载完成先对名字，
   // 缺谁一次报全——错误停在起播之前，而不是播到那条命令才弹「未注册的守卫」。
@@ -198,20 +212,36 @@ export async function startMiniprogramHost(
   resize();
   engine.start();
 
+  /** 媒体与投影对齐：读档/回溯后音频、视频与 NVL 要跟引擎状态重新对齐 */
+  function syncMedia(): void {
+    audio.sync();
+    video.sync();
+    // 覆盖层 sync 只重渲各层、不触发投影通知：NVL 也在这里补一次对齐
+    surface.setNvl(overlay.view());
+  }
+
+  // 读档真正落地晚于命令返回：对齐挂在完成信号上，别在 `loadGame` 里当场同步。
+  // 覆盖层 sync 是必须的——引擎重放只驱动「变化量」，读档后的整幅画面要靠一次全量重渲补齐。
+  const stopLoadEvents = engine.onEvent((event) => {
+    if (event.payload.kind !== "load.done") return;
+    overlay.sync();
+    syncMedia();
+  });
+
   return {
     engine,
     overlay,
     ports,
+    saves,
+    slotIds: slotIds(saves.slots),
     layout: () => layout,
     resize,
     videoEnded: () => videoSurface.notifyEnded(),
-    syncMedia: () => {
-      audio.sync();
-      video.sync();
-      // 覆盖层 sync 只重渲各层、不触发投影通知：NVL 也在这里补一次对齐
-      surface.setNvl(overlay.view());
-    },
+    syncMedia,
+    saveGame: (slot) => engine.save(slot),
+    loadGame: (slot) => engine.load(slot),
     dispose: () => {
+      stopLoadEvents();
       overlay.dispose();
       audio.dispose();
       video.dispose();
