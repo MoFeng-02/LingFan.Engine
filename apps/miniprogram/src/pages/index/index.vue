@@ -16,7 +16,10 @@
 import { onReady, onUnload } from "@dcloudio/uni-app";
 import { ref } from "vue";
 import NodeTree from "../../components/NodeTree.vue";
+import SaveLoadBar from "../../components/SaveLoadBar.vue";
 import {
+  chooseHostSlot,
+  loadHostSlotViews,
   queryCanvasNode,
   startMiniprogramHost,
   watchWindowResize,
@@ -25,6 +28,8 @@ import {
   type MiniprogramNvlData,
   type MiniprogramSurfaceData,
   type MiniprogramVideoData,
+  type SlotPanelMode,
+  type SlotView,
 } from "../../host/index.ts";
 
 /** 帧时钟画布的节点选择器 */
@@ -41,6 +46,9 @@ const stageBox = ref("");
 const video = ref<MiniprogramVideoData | null>(null);
 const error = ref("");
 const inputValue = ref("");
+/** 存读面板模式与逐槽视图：null = 收起（只留入口条） */
+const slotMode = ref<SlotPanelMode | null>(null);
+const slotViews = ref<SlotView[]>([]);
 
 let host: MiniprogramHostHandle | null = null;
 let stopResizeWatch: (() => void) | null = null;
@@ -120,6 +128,40 @@ function onNothing(): void {
 /** 视频自然播完：交回宿主，由它解除引擎的 video 等待 */
 function onVideoEnded(): void {
   host?.videoEnded();
+}
+
+/** 打开存读面板：槽位视图从宿主取（槽数来自工程清单），取不到就把原因摆到横幅上 */
+async function openSlots(mode: SlotPanelMode): Promise<void> {
+  const current = host;
+  if (current === null) return;
+  slotMode.value = mode;
+  try {
+    slotViews.value = await loadHostSlotViews({
+      savePort: current.ports.save,
+      slots: current.saves.slots,
+    });
+  } catch (cause: unknown) {
+    error.value = String(cause);
+  }
+}
+
+/** 点槽位：面板先收起（存读结果由引擎发通知，宿主不弹第二层） */
+function onChooseSlot(view: SlotView): void {
+  const current = host;
+  const mode = slotMode.value;
+  slotMode.value = null;
+  if (current === null || mode === null) return;
+  chooseHostSlot({
+    mode,
+    view,
+    save: (slot) => current.saveGame(slot),
+    load: (slot) => current.loadGame(slot),
+  });
+}
+
+/** 收起面板：不动任何叙事状态，玩家可以继续点舞台推进 */
+function closeSlots(): void {
+  slotMode.value = null;
 }
 </script>
 
@@ -243,6 +285,20 @@ function onVideoEnded(): void {
 
     <!-- 失败横幅：只显示信息，不参与交互 -->
     <view v-if="error" class="error">{{ error }}</view>
+
+    <!--
+      宿主界面层：存读入口与槽位面板。层序跟通知层同档（都属操作面），
+      容器本身不吃点击，只有入口条与面板本体接手势——舞台推进照常。
+    -->
+    <view class="layer ui-chrome" :style="layerStyle('notifications')">
+      <SaveLoadBar
+        :mode="slotMode"
+        :views="slotViews"
+        @open="openSlots"
+        @choose="onChooseSlot"
+        @close="closeSlots"
+      />
+    </view>
   </view>
 </template>
 
@@ -303,6 +359,11 @@ function onVideoEnded(): void {
   left: 0;
   top: 0;
   width: 100%;
+}
+
+/* 宿主界面层：容器不吃点击，只有其中的入口与面板接手势（舞台推进不被挡住） */
+.ui-chrome {
+  pointer-events: none;
 }
 
 /* 视频层：铺满窗口，层序由宿主下发的 z 决定（要压在舞台之上、对话之下） */
