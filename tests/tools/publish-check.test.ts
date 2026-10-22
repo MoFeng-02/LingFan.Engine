@@ -19,16 +19,21 @@ interface PackageSample {
 interface PublishCheckModule {
   PUBLISHED_PACKAGES: string[];
   checkPackage: (sample: PackageSample) => string[];
-  checkCrossPackage: (input: { manifests: Record<string, Record<string, unknown>> }) => string[];
+  checkCrossPackage: (input: {
+    manifests: Record<string, Record<string, unknown>>;
+  }) => string[];
 }
 
 const publishCheck = (await import(
-  /* @vite-ignore */ new URL("../../scripts/publish-check.mjs", import.meta.url).href
+  /* @vite-ignore */ new URL("../../scripts/publish-check.mjs", import.meta.url)
+    .href
 )) as PublishCheckModule;
 const { PUBLISHED_PACKAGES, checkPackage, checkCrossPackage } = publishCheck;
 
 /** 一份全部合格的样本：每个用例只破坏想测的那一处 */
-function healthyPackage(overrides: Record<string, unknown> = {}): PackageSample {
+function healthyPackage(
+  overrides: Record<string, unknown> = {},
+): PackageSample {
   const manifest = {
     name: "@lingfan-engine/core",
     version: "0.1.1",
