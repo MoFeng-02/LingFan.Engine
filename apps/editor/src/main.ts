@@ -31,7 +31,7 @@ import {
   loadProject,
   pickProjectDirectory,
   supportsDirectoryPicker,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 import {
   DEFAULT_LAYER_Z,
   MANIFEST_FILE,
@@ -47,12 +47,12 @@ import {
   type ProjectWriteReport,
   type Story,
   type VideoPort,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import {
   TS_SOURCE_READONLY_HINT,
   assertTsSourceWritable,
   isTsSourceProject,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 // 设计 token 唯一源：先于所有组件样式加载（组件里只准引用 var(--lf-*)）
 import "./styles/tokens.css";
 import App from "./App.vue";

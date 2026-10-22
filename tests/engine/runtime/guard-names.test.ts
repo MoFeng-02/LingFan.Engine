@@ -10,7 +10,7 @@ import {
   findMissingGuards,
   parseStory,
   type GuardFn,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** guard 命令字面（args 只在需要时出现） */
 function guard(fn: string, args?: object): object {

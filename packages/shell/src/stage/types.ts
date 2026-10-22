@@ -7,14 +7,14 @@
  * 类型，实现文件之间不成环。
  */
 
-import type { StageScalePolicy } from "@lingfan/engine";
+import type { StageScalePolicy } from "@lingfan-engine/core";
 
 export type {
   StageAlign,
   StageConfig,
   StageFit,
   StageScalePolicy,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** 视口尺寸（宿主提供的逻辑像素尺寸） */
 export interface StageViewport {

@@ -37,4 +37,4 @@ export type {
   DiagnosticSupply,
   LastProjectHandleStore,
   ProjectFileSource,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";

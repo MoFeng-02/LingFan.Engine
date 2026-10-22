@@ -40,7 +40,7 @@ async function onPack(): Promise<void> {
     await dialog.notify({
       title: "当前形态无法打包",
       message:
-        "打包需要本地宿主（pnpm --filter @lingfan/editor-app host）。请先启动它。",
+        "打包需要本地宿主（pnpm --filter @lingfan-engine/editor-app host）。请先启动它。",
       tone: "info",
     });
     return;

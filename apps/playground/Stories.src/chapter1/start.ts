@@ -2,7 +2,7 @@
  * 第一章 · 序幕列（列 id = default 导出函数名）：bgm / 状态复合赋值 / 插值 / input /
  * if-else + 嵌套函数（func+call）/ wait / NVL / cutscene / 守卫 / 菜单，一章内集中亮相。
  */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const {
   bgm,

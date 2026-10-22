@@ -55,7 +55,7 @@ export interface StoriesCompiler {
     /** 全工程角色表（编排层模块层声明收集产物）；缺省 = 空表，无前置角色命令 */
     readonly characters?: ReadonlyMap<
       string,
-      import("@lingfan/engine").CharacterDef
+      import("@lingfan-engine/core").CharacterDef
     >;
     /** 文案注入（Partial）；缺省 = 内建缺省文案（即构建层的既有文案） */
     readonly texts?: Partial<StoriesBuildTexts>;

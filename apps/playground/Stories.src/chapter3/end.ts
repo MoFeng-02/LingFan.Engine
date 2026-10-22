@@ -1,5 +1,5 @@
 /** 尾声列（id: end）：全库 jump("end") 的落点；列尾之后点击不再推进。 */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const { say } = script;
 

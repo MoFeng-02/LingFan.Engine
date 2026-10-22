@@ -6,9 +6,9 @@
  * 「未覆盖」分两类：
  * ① **由渲染器消费**而非 CSS 的属性（`text` / `source` / `orientation` / `checked` / `nav` / `cmd` / Grid 轨道…）——正常分工；
  * ② **已声明但当前无 CSS 语义的属性**（`valign` / `xalign` / `yalign` / `xoffset` / `yoffset` / `xanchor` / `yanchor`）——
- *    对本映射写了不生效；清单单一事实源 = `@lingfan/editor` 的 `UNIMPLEMENTED_ELEMENT_ATTRS`
+ *    对本映射写了不生效；清单单一事实源 = `@lingfan-engine/editor` 的 `UNIMPLEMENTED_ELEMENT_ATTRS`
  *    （编辑器不再下发这些控件，并对已存在的写出 warning；三面对齐互锁测试守住差集）。
- *    例外：`order` 不是死属性——引擎装载期在用（z 兜底：packages/engine/src/data/element.ts:157、
+ *    例外：`order` 不是死属性——引擎装载期在用（z 兜底：packages/core/src/data/element.ts:157、
  *    runtime/internal/frame-stack.ts:62 消费），只是不经本 CSS 映射，故不在本清单。
  *
  * 定位语义：`x`/`y` 支持百分比（若换算为像素 Margin 就锁死了尺寸，

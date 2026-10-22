@@ -55,7 +55,7 @@ description: 清单字段逐条说明：formatVersion、capabilityVersion、id�
 | `version`           | 故事列与清单托管键                | 剧情版本，驱动存档迁移               |
 | 包版本              | 各 `package.json`                 | npm 分发版本，**与能力版本无关**     |
 
-查能力版本的唯一入口：TS 里 `import { CAPABILITY_VERSION } from "@lingfan/engine"`；产物里看 `project.json` 的 `capabilityVersion` 键。
+查能力版本的唯一入口：TS 里 `import { CAPABILITY_VERSION } from "@lingfan-engine/core"`；产物里看 `project.json` 的 `capabilityVersion` 键。
 
 ### id
 
@@ -176,7 +176,7 @@ description: 清单字段逐条说明：formatVersion、capabilityVersion、id�
 
 `width` / `height` 是**设计基准**（作者坐标系的宽高）：面板、元素、字号都照这个坐标系写，换基准就等于整场换坐标系，样式表不用动。取值 160–16384（宽）与 90–16384（高），缺省 1280 × 720。
 
-内置基准八档（横竖屏各四档，枚举见 `@lingfan/shell` 的 `STAGE_BASELINES`）：
+内置基准八档（横竖屏各四档，枚举见 `@lingfan-engine/shell` 的 `STAGE_BASELINES`）：
 
 | 档位  | 横屏               | 竖屏        |
 | ----- | ------------------ | ----------- |
@@ -207,12 +207,12 @@ description: 清单字段逐条说明：formatVersion、capabilityVersion、id�
 宿主侧读法只有一条路——引擎解析后取结果，不要自己读清单：
 
 ```ts
-import { resolveStageConfig } from "@lingfan/engine";
+import { resolveStageConfig } from "@lingfan-engine/core";
 
 const stage = resolveStageConfig(manifest); // 内建缺省 × 工程覆盖
 ```
 
-拿到之后交给舞台计算件算变换：`@lingfan/shell` 的 `computeStageLayout(视口, stage)` 给出缩放与偏移，`stageTransform(layout)` 给出 CSS `transform` 串。宿主只负责量视口、套样式、听 `resize`——计算里不读平台全局，所以桌面壳、浏览器与小程序共用同一份口径。
+拿到之后交给舞台计算件算变换：`@lingfan-engine/shell` 的 `computeStageLayout(视口, stage)` 给出缩放与偏移，`stageTransform(layout)` 给出 CSS `transform` 串。宿主只负责量视口、套样式、听 `resize`——计算里不读平台全局，所以桌面壳、浏览器与小程序共用同一份口径。
 
 套用时要分层：`transform` 只写在舞台根上，UI 挂在舞台之外的兄弟节点里（窗口坐标系）。把 UI 放进舞台根，窗口一变 UI 会被缩放同步放大一遍——等于跟着窗口二次变化。
 

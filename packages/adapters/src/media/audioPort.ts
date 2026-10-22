@@ -12,7 +12,7 @@ import type {
   AudioChannel,
   AudioPlayOptions,
   AudioPort,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { createBlobSource, type BlobSourceOptions } from "./blobSource";
 
 /** 位置写入容差（秒）：小于此不写 currentTime，避免每帧抖动 */

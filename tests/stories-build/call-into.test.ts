@@ -14,7 +14,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildStories } from "@lingfan/stories-build";
+import { buildStories } from "@lingfan-engine/stories-build";
 
 const BASE = fileURLToPath(new URL("./.tmp-call-into/", import.meta.url));
 
@@ -42,7 +42,7 @@ const MANIFEST = `{
   "shell": { "orientation": "auto" }
 }`;
 
-const WORDS = `import { script } from "@lingfan/editor";
+const WORDS = `import { script } from "@lingfan-engine/editor";
 const { say } = script;
 
 `;

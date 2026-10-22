@@ -7,7 +7,7 @@
  * （内建 op 全集必须被划入「等待」或「非等待」，新增 op 未归类即红）防漏网。
  */
 import { describe, expect, it } from "vitest";
-import type { OutboundEvent } from "@lingfan/engine";
+import type { OutboundEvent } from "@lingfan-engine/core";
 import {
   BUILTIN_OP_NAMES,
   SYS,
@@ -16,7 +16,7 @@ import {
   WAITING_OPS,
   waitingStateOfOp,
   parseStory,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** 造引擎：首列放待测命令（可按需补后续命令），需要目标列的用例自行构造列 */
 function engineOf(

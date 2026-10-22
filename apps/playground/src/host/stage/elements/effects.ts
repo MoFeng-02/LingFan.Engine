@@ -16,7 +16,7 @@ import {
   createVisualEffects,
   resolveAnimatedStyle,
   type EffectSource,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 
 /** 本宿主帧驱动需要的注入点；引擎侧效果源由调用方按契约提供 */
 export interface HostEffectsOptions {

@@ -20,8 +20,8 @@
  * 锚定三面对齐：声明面（契约）、消费面（渲染）、表单面（编辑器）。
  */
 import { describe, expect, it } from "vitest";
-import { ELEMENT_ATTRIBUTES } from "@lingfan/engine";
-import { UNIMPLEMENTED_ELEMENT_ATTRS } from "@lingfan/editor";
+import { ELEMENT_ATTRIBUTES } from "@lingfan-engine/core";
+import { UNIMPLEMENTED_ELEMENT_ATTRS } from "@lingfan-engine/editor";
 
 // 运行期消费面 = `packages/ui/src/element/**` 全目录（按目录取，新增文件自动纳入）
 const ELEMENT_SOURCES = import.meta.glob(

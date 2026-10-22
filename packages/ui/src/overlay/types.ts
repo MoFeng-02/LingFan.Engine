@@ -12,7 +12,7 @@ import type {
   ElementInstance,
   LayerZTable,
   StoryEngine,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import type { ChoiceTemplateRegistry } from "../choices/templates";
 import type { ChoicesTexts } from "./choices-view";
 import type { DialogueTemplateRegistry } from "../dialogue/templates";

@@ -22,8 +22,8 @@ import {
   type StageConfig,
   type Story,
   type VideoPort,
-} from "@lingfan/engine";
-import { createCommandRegistry, routesToNarrative } from "@lingfan/ui";
+} from "@lingfan-engine/core";
+import { createCommandRegistry, routesToNarrative } from "@lingfan-engine/ui";
 import {
   browserFrameSource,
   createAppElementLayer,
@@ -220,13 +220,13 @@ const { showHistory, historyBlocks, toggleHistory, rollbackToEntry } =
 
 /**
  * 事件落点：提示条、读档诊断与错误横幅。
- * 分流顺序留在本组件（接线契约），每条分支做什么归 `@lingfan/shell` 的事件域与
+ * 分流顺序留在本组件（接线契约），每条分支做什么归 `@lingfan-engine/shell` 的事件域与
  * `host/mount/` 挂载分支。
  */
 function handleEvent({
   payload,
 }: {
-  payload: import("@lingfan/engine").OutboundPayload;
+  payload: import("@lingfan-engine/core").OutboundPayload;
 }): void {
   if (payload.kind === "notify") {
     narrativeEvents.notify(payload.text, payload.notifyType, payload.duration);

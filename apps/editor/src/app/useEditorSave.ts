@@ -1,19 +1,19 @@
 import { computed, ref } from "vue";
 import type { ComputedRef, Ref, ShallowRef } from "vue";
-import type { KeyValueStorage } from "@lingfan/editor";
-import type { ProjectWriteReport, Story } from "@lingfan/engine";
+import type { KeyValueStorage } from "@lingfan-engine/editor";
+import type { ProjectWriteReport, Story } from "@lingfan-engine/core";
 import {
   describeNormalization,
   readSkipNormalizationNotice,
   writeSkipNormalizationNotice,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import { columnIdOfDocument, type Workspace } from "../domain";
 import { UNBOUND_HINT, type ProjectPorts } from "./useProjectPorts";
 
 export interface EditorSaveDeps {
   story: ShallowRef<Story>;
   /** 活动文档会话（整工程保存路径用 markSaved 钉基线） */
-  session: () => import("@lingfan/editor").EditorSession;
+  session: () => import("@lingfan-engine/editor").EditorSession;
   workspace: Workspace;
   /** 各文档脏态（标签栏脏点投影；单文档保存后刷新） */
   documentDirty: Ref<Set<string>>;

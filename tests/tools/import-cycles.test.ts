@@ -3,7 +3,7 @@
  *
  * 为什么要有：环不报错、测试也常绿，只在打包器/加载顺序变化时炸；靠人眼读 import 守不住。
  * 口径：`from "spec"` **跨行解析**（多行 import 是常见写法，按行匹配会漏）、含裸 `import "spec"`
- * 与 `export * from`；只解析相对路径与 `@lingfan/<pkg>` 映射；候选补全 `.ts` / `.vue` /
+ * 与 `export * from`；只解析相对路径与 `@lingfan-engine/<pkg>` 映射；候选补全 `.ts` / `.vue` /
  * `/index.ts` / `/index.vue`；`.d.ts` 不入图。
  *
  * 判据形态（与 `tests/ui/platform-neutral.test.ts` 的收口手法一致）：
@@ -57,8 +57,8 @@ function resolveSpecifier(
   files: ReadonlySet<string>,
 ): string | undefined {
   let base: string;
-  if (spec.startsWith("@lingfan/")) {
-    const pkg = spec.slice("@lingfan/".length).split("/")[0];
+  if (spec.startsWith("@lingfan-engine/")) {
+    const pkg = spec.slice("@lingfan-engine/".length).split("/")[0];
     base = `packages/${pkg}/src/index`;
   } else if (spec.startsWith(".")) {
     base = normalize(`${dirOf(fromRel)}/${spec}`);

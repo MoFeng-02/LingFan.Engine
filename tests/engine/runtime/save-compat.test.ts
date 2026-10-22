@@ -13,8 +13,8 @@
  *   可选字段缺席 + 未知额外字段双向兼容；formatVersion≠1 → migrateSave 钩子迁移或可操作拒绝
  */
 import { describe, expect, it } from "vitest";
-import type { OpExtension, SaveDataV1 } from "@lingfan/engine";
-import { StoryEngine } from "@lingfan/engine";
+import type { OpExtension, SaveDataV1 } from "@lingfan-engine/core";
+import { StoryEngine } from "@lingfan-engine/core";
 
 function demoExtension(
   overrides: Partial<OpExtension> = {},

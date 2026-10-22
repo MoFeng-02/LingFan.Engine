@@ -189,7 +189,7 @@ function finiteInRange(
     : null;
 }
 
-/** 内置策略名（与 `@lingfan/shell` 预设表的键一致） */
+/** 内置策略名（与 `@lingfan-engine/shell` 预设表的键一致） */
 const STAGE_FITS: readonly StageFit[] = ["contain", "cover", "fill", "none"];
 /** 显式缩放策略名（数字倍率另走有限数校验） */
 const STAGE_SCALE_POLICIES: readonly StageScalePolicy[] = [

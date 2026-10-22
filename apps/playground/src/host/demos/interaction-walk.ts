@@ -15,7 +15,7 @@ import type {
   GameStateWriter,
   InteractionContext,
   InteractionResult,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { abortSignalOf } from "../engine/abort-signal";
 
 /** 故事未在 `config.target` 里给终点时的演示默认值（像素） */

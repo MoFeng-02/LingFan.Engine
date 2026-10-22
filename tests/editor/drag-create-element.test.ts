@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { Story, StoryColumn } from "@lingfan/engine";
+import type { Story, StoryColumn } from "@lingfan-engine/core";
 import {
   analyzeStory,
   createElementDraft,
@@ -19,7 +19,7 @@ import {
   planElementDrop,
   setAtPointer,
   UNIMPLEMENTED_ELEMENT_ATTRS,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import apiSource from "../../apps/editor/src/app/editorApi.ts?raw";
 import stageEditorSource from "../../apps/editor/src/components/stage/StageEditor.vue?raw";
 // 空态口径表**源码**（提示文案集中于此，组件不各写一份；定义在 domain/）

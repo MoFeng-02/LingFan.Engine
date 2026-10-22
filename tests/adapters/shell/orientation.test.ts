@@ -7,7 +7,7 @@ import {
   createNoopOrientationPort,
   createTauriOrientationPort,
   type TauriInvoke,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 
 function fakeInvoke(result: unknown | Error): {
   invoke: TauriInvoke;

@@ -11,7 +11,7 @@ import type {
   AudioChannel,
   AudioPlayOptions,
   AudioPort,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import type { MiniprogramAudioContextLike } from "./platform.ts";
 
 /** 位置写入容差（秒）：小于此不 seek，避免每帧抖动（与 Web 实现同口径） */

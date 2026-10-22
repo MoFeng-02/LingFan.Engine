@@ -2,8 +2,8 @@
  * 编译期求值接入段（编排层）：扫描源清单，把含 node_modules 值导入的文件
  * 整体交给 const-eval 求值，产出「文件 → 导出名 → JSON 值」喂给 story-compiler 内联。
  *
- * 触发判据（npm 值导入边界）：静态 import 的模块说明符非相对路径、非 @lingfan/editor、
- * 非 @lingfan/engine，且存在值绑定（default / 命名空间 / 任一非 type 具名绑定）。
+ * 触发判据（npm 值导入边界）：静态 import 的模块说明符非相对路径、非 @lingfan-engine/editor、
+ * 非 @lingfan-engine/core，且存在值绑定（default / 命名空间 / 任一非 type 具名绑定）。
  * `import type` 整句编译期擦除，不触发求值；副作用导入同样不触发（图谱层自有
  * fail-closed 诊断）。
  *
@@ -29,8 +29,8 @@ import {
 
 /** 词汇层两包不触发求值：editor 是词汇出口（图谱层按词/命名空间绑定），engine 不参与创作导入。 */
 const RESERVED_SPECS: ReadonlySet<string> = new Set([
-  "@lingfan/editor",
-  "@lingfan/engine",
+  "@lingfan-engine/editor",
+  "@lingfan-engine/core",
 ]);
 
 interface NpmValueImport {

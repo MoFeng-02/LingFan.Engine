@@ -18,7 +18,7 @@ import {
   TextFormatError,
   type OpExtension,
   type Story,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 const diceExtension: OpExtension = {
   id: "dice",

@@ -4,7 +4,7 @@
  * 注册表是模块级单元格，泄漏会污染同文件的其他用例。
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { configureStoryFonts, renderInlineMarkup } from "@lingfan/ui";
+import { configureStoryFonts, renderInlineMarkup } from "@lingfan-engine/ui";
 
 afterEach(() => {
   configureStoryFonts(undefined);

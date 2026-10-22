@@ -14,7 +14,7 @@
  *   ④ 边界条件：空列集 / 极大列集 / 超长列名 / 特殊字符键
  *   ⑤ 回归：config.vars 键只在插值里用时必须进注册表（config 化前为 defineVars 清单）
  *
- * 白盒访问内部渲染器走相对深引：公共 API 走 @lingfan/*，内部走相对深引。
+ * 白盒访问内部渲染器走相对深引：公共 API 走 @lingfan-engine/*，内部走相对深引。
  */
 import {
   existsSync,
@@ -26,7 +26,7 @@ import {
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildStories } from "@lingfan/stories-build";
+import { buildStories } from "@lingfan-engine/stories-build";
 import {
   collectDeclaredNames,
   renderTypegen,
@@ -85,7 +85,7 @@ function registryKeys(text: string, interfaceName: string): string[] {
  * 为什么不用合成编译器：类型面数据全部来自真实编译结果（列 id 来自编译产物、
  * 键域来自 config 单次求值、声明名来自 op 流），合成缝产的条目没有这些。
  */
-const WORDS_LIB = `import { script } from "@lingfan/editor";
+const WORDS_LIB = `import { script } from "@lingfan-engine/editor";
 export const { say, option, menu, cell, guard, extOp, staticFor, jump } = script;
 
 `;
@@ -93,7 +93,7 @@ export const { say, option, menu, cell, guard, extOp, staticFor, jump } = script
 const MANIFEST = manifest();
 
 /** 扩展模块范式（与 build-pipeline.test.ts 的 EXT_DEMO 同一形态：default 导出 OpExtension）。 */
-const EXT_DEMO = `import type { OpExtension } from "@lingfan/engine";
+const EXT_DEMO = `import type { OpExtension } from "@lingfan-engine/core";
 
 const extension: OpExtension = {
   id: "demoquest",
@@ -157,7 +157,7 @@ export default function start(): void {
       ),
     ).toBe(true);
     expect(text).toContain("export {};");
-    expect(text).toContain('declare module "@lingfan/editor" {');
+    expect(text).toContain('declare module "@lingfan-engine/editor" {');
 
     // 列名：两列都出现（来自编译产物列 id，不是文件名猜的）。
     expect(registryKeys(text, "ColumnNameRegistry")).toEqual([
@@ -232,7 +232,7 @@ describe("类型面生成器 · 故意错误（fail-closed 且诊断可定位）
     const root = makeProject("bad-definevars", {
       "Stories.src/config.ts": config(["lib", "ch1"]),
       "Stories.src/lib/vocabulary.ts": WORDS_LIB,
-      "Stories.src/lib/vars.ts": `import { script } from "@lingfan/editor";
+      "Stories.src/lib/vars.ts": `import { script } from "@lingfan-engine/editor";
 const { defineVars } = script;
 export const vars = defineVars({ "player.hp": "num" });
 `,

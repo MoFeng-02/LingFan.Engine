@@ -3,7 +3,7 @@
  *
  * 引擎的状态键是弱类型的（`value: unknown`），每个键怎么解读、缺省怎么回退，是一套
  * 容易在多个宿主里各写一遍、然后慢慢走样的规则。解读规则本身来自共享的
- * `createStateView`（`@lingfan/ui` 的 host 域）；本模块负责两件事：声明订阅哪些键，
+ * `createStateView`（`@lingfan-engine/ui` 的 host 域）；本模块负责两件事：声明订阅哪些键，
  * 以及每条意图落到哪个状态单元上。
  *
  * 共享投影会把非字符串的文本键归一成空串、把非数组的数组键归一成空数组；本模块维持
@@ -13,12 +13,16 @@
  * 键名与键分类都由装配方注入：订阅哪几个状态键是宿主与引擎之间的接线契约，
  * 共享投影不内置任何键名。
  */
-import { INSTANCE_Z_KEYS, SYS, type ElementInstance } from "@lingfan/engine";
+import {
+  INSTANCE_Z_KEYS,
+  SYS,
+  type ElementInstance,
+} from "@lingfan-engine/core";
 import {
   createStateView,
   type StateIntent,
   type StateKeyTable,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 import type {
   MenuChoice,
   NarrativeState,

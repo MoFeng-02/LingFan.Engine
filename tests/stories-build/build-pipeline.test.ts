@@ -36,9 +36,12 @@ import {
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildStories } from "@lingfan/stories-build";
-import { renderFunRegister, scanCells } from "@lingfan/stories-build/cell";
-import type { StoriesCompiler } from "@lingfan/stories-build";
+import { buildStories } from "@lingfan-engine/stories-build";
+import {
+  renderFunRegister,
+  scanCells,
+} from "@lingfan-engine/stories-build/cell";
+import type { StoriesCompiler } from "@lingfan-engine/stories-build";
 
 const BASE = fileURLToPath(new URL("./.tmp-build/", import.meta.url));
 
@@ -77,7 +80,7 @@ const MANIFEST_EXT = `{
 }`;
 
 /** 词汇层绑定（graph 词绑定形态之一：script 命名空间解构；与真实工程一致）。 */
-const WORDS = `import { script } from "@lingfan/editor";
+const WORDS = `import { script } from "@lingfan-engine/editor";
 const { say, option, menu, guard, cell, extOp } = script;
 
 `;
@@ -554,7 +557,7 @@ describe("stories:build v2 · defines 工程级收敛与冲突（注入编译器
 });
 
 describe("stories:build v2 · 扩展声明通道（extOp → 清单声明 → 构建期放行）", () => {
-  const EXT_DEMO = `import type { OpExtension } from "@lingfan/engine";
+  const EXT_DEMO = `import type { OpExtension } from "@lingfan-engine/core";
 
 const extension: OpExtension = {
   id: "demoquest",
@@ -577,7 +580,7 @@ const extension: OpExtension = {
 export default extension;
 `;
 
-  const EXT_STATEFUL = `import type { OpExtension } from "@lingfan/engine";
+  const EXT_STATEFUL = `import type { OpExtension } from "@lingfan-engine/core";
 
 const extension: OpExtension = {
   id: "demoquest-state",
@@ -717,7 +720,7 @@ export default extension;
 });
 
 describe("stories:build v2 · cell 函数注册构建期提取", () => {
-  const CELL_STORY = `import { script } from "@lingfan/editor";
+  const CELL_STORY = `import { script } from "@lingfan-engine/editor";
 import { helperGuard } from "./tools";
 const { cell, guard, say } = script;
 export const checkGold = cell("gold-non-negative", (ctx, args) => {
@@ -748,7 +751,9 @@ export default function start(): void {
     expect(report.functions).toEqual(["gold-non-negative", "helper-guard"]);
     const gen = genOf(root);
     // GuardFn 语境定型（strict 下无 implicit-any）
-    expect(gen).toContain('import type { GuardFn } from "@lingfan/engine";');
+    expect(gen).toContain(
+      'import type { GuardFn } from "@lingfan-engine/core";',
+    );
     expect(gen).toContain("export const guards: Record<string, GuardFn> = {");
     // 内联字面量原文落生成物
     expect(gen).toContain('"gold-non-negative": (ctx, args) => {');
@@ -756,7 +761,7 @@ export default function start(): void {
     expect(gen).toContain('"helper-guard": helperGuard,');
     expect(gen).toContain('from "../common/tools"');
     // 类型扩充（vue-router typed-routes 机制）
-    expect(gen).toContain('declare module "@lingfan/editor"');
+    expect(gen).toContain('declare module "@lingfan-engine/editor"');
     expect(gen).toContain('"gold-non-negative": 1;');
     // 幂等：二次构建零差量（含生成物）
     const again = await buildStories(root);
@@ -770,14 +775,14 @@ export default function start(): void {
     const impl = `cell("dup", (ctx, args) => { ctx.get("x"); });`;
     const root = makeProject("cell-dedupe", {
       "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": `import { script } from "@lingfan/editor";
+      "Stories.src/common/start.ts": `import { script } from "@lingfan-engine/editor";
 const { cell, say } = script;
 export const a = ${impl}
 export default function start(): void {
   say("x");
 }
 `,
-      "Stories.src/lib/more.ts": `import { script } from "@lingfan/editor";
+      "Stories.src/lib/more.ts": `import { script } from "@lingfan-engine/editor";
 const { cell } = script;
 export const b = ${impl}
 `,
@@ -792,14 +797,14 @@ export const b = ${impl}
   it("故意错误：同名不同实现 ⇒ fail-closed（带两处定位）", async () => {
     const root = makeProject("cell-conflict", {
       "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": `import { script } from "@lingfan/editor";
+      "Stories.src/common/start.ts": `import { script } from "@lingfan-engine/editor";
 const { cell, say } = script;
 export const a = cell("dup", (ctx, args) => { ctx.get("x"); });
 export default function start(): void {
   say("x");
 }
 `,
-      "Stories.src/lib/more.ts": `import { script } from "@lingfan/editor";
+      "Stories.src/lib/more.ts": `import { script } from "@lingfan-engine/editor";
 const { cell } = script;
 export const b = cell("dup", (ctx, args) => { ctx.get("y"); });
 `,
@@ -813,7 +818,7 @@ export const b = cell("dup", (ctx, args) => { ctx.get("y"); });
   it("故意错误：内联实现引用模块级本地 const ⇒ fail-closed（不做传递闭包）", async () => {
     const root = makeProject("cell-local-ref", {
       "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": `import { script } from "@lingfan/editor";
+      "Stories.src/common/start.ts": `import { script } from "@lingfan-engine/editor";
 const { cell } = script;
 const 阈值 = 10;
 export const check = cell("check", (ctx, args) => { ctx.get(阈值); });
@@ -843,7 +848,7 @@ export default function start(): void {
   it("故意错误：调用表达式（参数固化）= L2 ⇒ 显式不支持", async () => {
     const root = makeProject("cell-baked", {
       "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": `import { script } from "@lingfan/editor";
+      "Stories.src/common/start.ts": `import { script } from "@lingfan-engine/editor";
 import { baked } from "./tools";
 const { cell } = script;
 export const a = cell("baked-entry", baked(1));

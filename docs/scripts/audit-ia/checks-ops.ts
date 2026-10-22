@@ -17,7 +17,7 @@ import {
 } from "./shared.ts";
 
 const opsFromEngine = (() => {
-  const f = join(REPO, "packages/engine/src/runtime/opRegistry.ts");
+  const f = join(REPO, "packages/core/src/runtime/opRegistry.ts");
   if (!existsSync(f)) return null;
   const body = readFileSync(f, "utf8").match(
     /BUILTIN_OP_NAMES[\s\S]*?new Set\(\[([\s\S]*?)\]\)/,
@@ -71,7 +71,7 @@ if (OP_NAMES.length) {
       "65 个内建 op 在域页中各有一个锚点小节且不重复",
       "拦截",
       `${OP_NAMES.length} 个 op 全部命中，覆盖 ${new Set([...anchors.values()].flat()).size} 个域页`,
-      "op 名单取自 packages/engine/src/runtime/opRegistry.ts 的 BUILTIN_OP_NAMES（单一事实源）",
+      "op 名单取自 packages/core/src/runtime/opRegistry.ts 的 BUILTIN_OP_NAMES（单一事实源）",
     );
   } else {
     fail(
@@ -140,7 +140,7 @@ if (OP_NAMES.length) {
     "A",
     "65 个内建 op 锚点覆盖",
     "拦截",
-    `未能从 ${join(REPO, "packages/engine/src/runtime/opRegistry.ts")} 读取 BUILTIN_OP_NAMES，未验证`,
+    `未能从 ${join(REPO, "packages/core/src/runtime/opRegistry.ts")} 读取 BUILTIN_OP_NAMES，未验证`,
   );
 }
 

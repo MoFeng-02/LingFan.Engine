@@ -2,7 +2,7 @@
  * Script 词汇层 · **复合词**（多 op/元素的高频组合，纯展开）。
  * 复合词不产出新语义：每个函数 = 既有元素的语法糖。
  */
-import type { ElementNode } from "@lingfan/engine";
+import type { ElementNode } from "@lingfan-engine/core";
 
 export interface ElementOptions {
   id?: string;

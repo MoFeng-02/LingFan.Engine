@@ -5,7 +5,7 @@
  * 子元素一律经 `ctx.renderChildren` 取描述树，再放进自己节点的 `children` 里——
  * 容器渲染器不接触任何节点对象。
  */
-import { ELEMENT_CONTAINER_TYPES } from "@lingfan/engine";
+import { ELEMENT_CONTAINER_TYPES } from "@lingfan-engine/core";
 import { bindInteraction } from "./bindings";
 import { createRoot } from "./base";
 import type { ElementRenderContext } from "../registry";

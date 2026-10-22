@@ -8,7 +8,7 @@
  * 手写表——后者会在引擎新增句子时静默漏接。
  */
 import { describe, expect, it } from "vitest";
-import { defaultEngineTexts, type EngineTexts } from "@lingfan/engine";
+import { defaultEngineTexts, type EngineTexts } from "@lingfan-engine/core";
 import { playgroundEngineTexts } from "../../apps/playground/src/host/engine/engine-texts";
 
 describe("宿主引擎文案（槽位名与面板同源）", () => {

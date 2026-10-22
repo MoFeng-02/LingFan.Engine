@@ -18,13 +18,13 @@ import {
   createSourceProjectFilesPort,
   loadDiagnosticSupply,
   loadProject,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 import {
   analyzeStory,
   getAtPointer,
   type AnalyzeOptions,
-} from "@lingfan/editor";
-import type { Story } from "@lingfan/engine";
+} from "@lingfan-engine/editor";
+import type { Story } from "@lingfan-engine/core";
 
 type Tree = { [name: string]: Tree | string };
 

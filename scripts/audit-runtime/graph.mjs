@@ -88,7 +88,11 @@ function packageDirOf(spec, repoRoot) {
   return {
     packageName,
     subpath,
-    dir: join(repoRoot, "packages", packageName.replace("@lingfan/", "")),
+    dir: join(
+      repoRoot,
+      "packages",
+      packageName.replace("@lingfan-engine/", ""),
+    ),
   };
 }
 

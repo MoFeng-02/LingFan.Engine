@@ -10,7 +10,7 @@
  * 本模块只暴露 `startDrag` / `onDragMove` / `endDrag` 等纯状态推进函数。
  */
 import { computed, nextTick, onMounted, ref, type Ref } from "vue";
-import type { KeyValueStorage } from "@lingfan/editor";
+import type { KeyValueStorage } from "@lingfan-engine/editor";
 
 /** 缩放范围（Ctrl+滚轮与按钮共用同一夹取区间） */
 const ZOOM_MIN = 0.4;

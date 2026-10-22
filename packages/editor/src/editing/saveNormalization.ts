@@ -7,7 +7,7 @@
  * 不入故事 JSON、任何存储失败全静默，与列分组相同降级策略），文案负责把 finding
  * 翻成与真实写回行为一一对应的行。
  */
-import type { WriteNormalizationFinding } from "@lingfan/engine";
+import type { WriteNormalizationFinding } from "@lingfan-engine/core";
 import type { KeyValueStorage } from "./columnGrouping.ts";
 
 /** 「不再提示」键（全局一次性偏好，非按工程——规范化行为是引擎布局规则，不随工程变） */

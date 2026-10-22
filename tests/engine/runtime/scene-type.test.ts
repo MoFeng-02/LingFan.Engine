@@ -13,7 +13,7 @@
  * ⑥ 单一判定点互锁
  */
 import { describe, expect, it, vi } from "vitest";
-import { chapterGroupOf } from "@lingfan/editor";
+import { chapterGroupOf } from "@lingfan-engine/editor";
 import editorChaptersImplSource from "../../../packages/editor/src/chapters/build.ts?raw";
 import {
   SYS,
@@ -25,19 +25,16 @@ import {
   type OutboundEvent,
   type Story,
   type StoryColumn,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 // ---------- 引擎源码（供「单一判定点」互锁断言读文本用） ----------
 
 /** 引擎全部源码，键 = 仓库相对路径（前端不碰文件系统，改用打包器读取） */
-const ENGINE_SOURCES = import.meta.glob(
-  "../../../packages/engine/src/**/*.ts",
-  {
-    eager: true,
-    query: "?raw",
-    import: "default",
-  },
-) as Record<string, string>;
+const ENGINE_SOURCES = import.meta.glob("../../../packages/core/src/**/*.ts", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+}) as Record<string, string>;
 
 /** 契约层提供的 7 个判定函数 */
 const GUARD_FUNCTIONS = [
@@ -445,7 +442,7 @@ describe("场景类型 · 单一判定点互锁（引擎守卫与编辑器分组
   it("**判定函数只实现一处**（引擎与编辑器都不许复制判据）", () => {
     // 编辑器章节分组的**实现文件**只允许**调用**引擎的判据，出现判据表达式即第二份定义
     const editorChapters = editorChaptersImplSource;
-    expect(editorChapters).toContain('from "@lingfan/engine"');
+    expect(editorChapters).toContain('from "@lingfan-engine/core"');
     expect(editorChapters).not.toMatch(/type\s*\?\?\s*"game"/);
     expect(editorChapters).not.toMatch(/"game"\s*\)\s*===\s*"game"/);
 

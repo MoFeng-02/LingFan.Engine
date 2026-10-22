@@ -17,7 +17,7 @@ import {
   STORIES_DIR,
   type ProjectWriteReport,
   type ProjectWriterPort,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import type { ResourceTexts } from "../../texts";
 import { locateResourceRootHandle } from "../root-locate";
 import {

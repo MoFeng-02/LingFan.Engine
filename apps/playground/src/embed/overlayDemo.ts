@@ -9,18 +9,18 @@
  * - **宿主循环不暂停**（方块一直走动，帧数持续增长）——覆盖式对话的前提；
  * - **输入域让位**：叙事等待推进时按键归叙事，覆盖层收起后按键归宿主游戏。
  */
-import { StoryEngine, type Story } from "@lingfan/engine";
+import { StoryEngine, type Story } from "@lingfan-engine/core";
 import {
   createFetchProjectFilesPort,
   createStaticResourcePort,
   loadProject,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 import {
   createDomOverlaySurface,
   createElementResourceResolver,
   createNarrativeOverlay,
   type NarrativeOverlay,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 // 默认故事清单与守卫都从故事侧出口取：生成物路径与清单形态只在那一个目录里出现，
 // 覆盖层演示与组合根共用同一份（换生成器输出名或调整默认清单时只改一处）。
 import { STORIES, guards } from "../stories";

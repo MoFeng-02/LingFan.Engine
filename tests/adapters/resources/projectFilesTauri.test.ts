@@ -9,7 +9,7 @@ import {
   type TauriInvoke,
   type TauriListen,
   type TauriProjectFiles,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 
 function fakeInvoke(payload: TauriProjectFiles, calls: string[]): TauriInvoke {
   return async <T>(command: string): Promise<T> => {

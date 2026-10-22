@@ -21,7 +21,7 @@ import {
   coverageStateOf,
   workbenchOverview,
   type SkeletonLayoutChoice,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 // 取自具体模块而非聚合出口 `../app`：`app/index.ts` 反向依赖本组件（取 `LangSummary`
 // 类型），从聚合出口取件会形成 import 环。
 import { useDialog } from "../../app/dialogInjection";

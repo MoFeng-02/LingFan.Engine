@@ -8,7 +8,7 @@
 import {
   createMiniprogramFrameSource,
   type MiniprogramFrameSource,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 import { uniApi, type MiniprogramCanvasNode } from "./platform.ts";
 
 /** 定时器帧源的间隔（毫秒）：约 60 帧/秒，与常见屏幕刷新率一致 */

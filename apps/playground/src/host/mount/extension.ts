@@ -6,7 +6,7 @@
  * `App/ExtensionOverlayCard.vue` 的消费方（App.vue），本文件只维护展示态与订阅。
  */
 
-import type { AbortHandle, ExtensionMountPayload } from "@lingfan/engine";
+import type { AbortHandle, ExtensionMountPayload } from "@lingfan-engine/core";
 import { abortSignalOf } from "../engine/abort-signal";
 
 /** 当前扩展等待的展示态（null = 无扩展等待）；解除权在宿主——覆盖层「确认」触发 resolve */

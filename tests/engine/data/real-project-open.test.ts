@@ -18,8 +18,12 @@
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { assembleProject, serializeProject, type Story } from "@lingfan/engine";
-import { analyzeStory } from "@lingfan/editor";
+import {
+  assembleProject,
+  serializeProject,
+  type Story,
+} from "@lingfan-engine/core";
+import { analyzeStory } from "@lingfan-engine/editor";
 
 /** 真实工程资源根（由环境变量 `LFEN_REAL_PROJECT` 提供；未提供 ⇒ 跳过本套件） */
 const ROOT = process.env.LFEN_REAL_PROJECT ?? "";

@@ -1,12 +1,12 @@
 /**
- * 渲染树翻译：把 `@lingfan/ui` 的元素描述翻成小程序能绑定的数据树。
+ * 渲染树翻译：把 `@lingfan-engine/ui` 的元素描述翻成小程序能绑定的数据树。
  *
  * 小程序没有 DOM，WXML 只能绑数据，所以渲染端口在这里不是「造节点」而是「算数据」：
  * 本文件把描述树算成 `MiniNode[]`，由页面把它送进 setData，再由 WXML 的递归模板
  * 铺开。样式串也在这里拼好（camelCase 键 → CSS 声明），免得模板里再算一遍。
  */
-import type { StageLayout } from "@lingfan/shell";
-import type { RenderSpec } from "@lingfan/ui";
+import type { StageLayout } from "@lingfan-engine/shell";
+import type { RenderSpec } from "@lingfan-engine/ui";
 
 /** 一个待渲染节点：字段与 WXML 模板一一对应 */
 export interface MiniNode {

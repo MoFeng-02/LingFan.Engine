@@ -19,7 +19,7 @@ import {
   type SavePort,
   type Story,
   type VideoPort,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { guards as engineGuards } from "../../stories";
 import { playgroundEngineTexts } from "./engine-texts";
 import type { AppMedia } from "../stage/media/app-media";

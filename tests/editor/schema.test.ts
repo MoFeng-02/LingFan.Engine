@@ -10,7 +10,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { z } from "zod";
-import type { Story, StoryColumn, StoryCommand } from "@lingfan/engine";
+import type { Story, StoryColumn, StoryCommand } from "@lingfan-engine/core";
 import {
   coerceFieldValue,
   describeForm,
@@ -18,14 +18,14 @@ import {
   listOps,
   validateCommand,
   validateStory,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import { OP_SCHEMAS } from "../../packages/editor/src/schema/opSchemas";
 import { FIELD_META } from "../../packages/editor/src/schema/catalog";
 import {
   parseStory,
   StoryFormatError,
-} from "../../packages/engine/src/data/format";
-import { interpolateText } from "@lingfan/engine";
+} from "../../packages/core/src/data/format";
+import { interpolateText } from "@lingfan-engine/core";
 
 /**
  * 引擎深校验源（只读提取 op 面；跨包字符串契约互锁，同 bridge_check.rs 手法）。
@@ -33,7 +33,7 @@ import { interpolateText } from "@lingfan/engine";
  * 单文件改名或挪位不会让提取静默变空。
  */
 const ENGINE_FORMAT_SOURCES = import.meta.glob(
-  "../../packages/engine/src/data/format/**/*.ts",
+  "../../packages/core/src/data/format/**/*.ts",
   {
     eager: true,
     query: "?raw",

@@ -5,7 +5,10 @@
  * 取件面是注入的 `HttpFetch`：按契约以内存替身替换，不碰真实网络、也不 Mock 引擎实现。
  */
 import { describe, expect, it } from "vitest";
-import { createHttpProjectFilesPort, type HttpFetch } from "@lingfan/adapters";
+import {
+  createHttpProjectFilesPort,
+  type HttpFetch,
+} from "@lingfan-engine/adapters";
 
 const MANIFEST = { formatVersion: 1, id: "demo", entry: "start" };
 const STORIES = {

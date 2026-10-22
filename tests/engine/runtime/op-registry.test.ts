@@ -10,10 +10,10 @@
  * - **fail-closed**：exec 失败/抛出 → engine.error + 停在当前命令；未注册 op 仍 unknown-op
  */
 import { describe, expect, it } from "vitest";
-import type { OpExtension, SaveDataV1 } from "@lingfan/engine";
-import { BUILTIN_OP_NAMES, StoryEngine, SYS } from "@lingfan/engine";
-import dispatchSource from "../../../packages/engine/src/runtime/dispatch.ts?raw";
-import { buildMinigameRegistry } from "../../../packages/engine/src/runtime/opRegistry";
+import type { OpExtension, SaveDataV1 } from "@lingfan-engine/core";
+import { BUILTIN_OP_NAMES, StoryEngine, SYS } from "@lingfan-engine/core";
+import dispatchSource from "../../../packages/core/src/runtime/dispatch.ts?raw";
+import { buildMinigameRegistry } from "../../../packages/core/src/runtime/opRegistry";
 
 function extension(overrides: Partial<OpExtension> = {}): OpExtension {
   return {

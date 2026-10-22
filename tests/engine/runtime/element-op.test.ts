@@ -5,8 +5,8 @@
  * 差异：既有实现分场景元素与运行时元素两处，新引擎合并进 `SYS.elements`。
  */
 import { describe, expect, it } from "vitest";
-import type { ElementInstance, OutboundEvent } from "@lingfan/engine";
-import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
+import type { ElementInstance, OutboundEvent } from "@lingfan-engine/core";
+import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
 
 function makeEngine(entry: object[]): {
   engine: StoryEngine;

@@ -14,7 +14,7 @@
  * ②故意错误（不可识别 descriptor type fail-closed 且不落盘）③不变量（二进制稳定/差量）
  * ④边界（空树 Record<string, never>）⑤回归（import 改写与联合回退的逐字节契约）。
  *
- * 白盒为零：全部走公共入口 buildStories，公共 API 走 @lingfan/*。
+ * 白盒为零：全部走公共入口 buildStories，公共 API 走 @lingfan-engine/*。
  */
 import {
   existsSync,
@@ -26,7 +26,7 @@ import {
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildStories } from "@lingfan/stories-build";
+import { buildStories } from "@lingfan-engine/stories-build";
 // typegen 域内部单元（与 typegen.test.ts 同口径的深导入先例）：default 导入收集
 // 在构建链上不可达（Stories.src 内 default 导出 = 故事文件，源发现拒收），直测收集器。
 import { collectEnumTypeSlots } from "../../packages/stories-build/src/typegen";
@@ -57,7 +57,7 @@ const MANIFEST = `{
   "shell": { "orientation": "auto" }
 }`;
 
-const WORDS = `import { script } from "@lingfan/editor";
+const WORDS = `import { script } from "@lingfan-engine/editor";
 const { say } = script;
 
 `;

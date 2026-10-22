@@ -31,12 +31,12 @@ pnpm -v
    }
    ```
 
-3. 装依赖。模板依赖 `@lingfan/engine`、`@lingfan/adapters`、`@lingfan/ui`，这三个包**还没发布到 registry**，直接 `pnpm install` 会报 404。先用本地链接指到引擎仓库的包目录：
+3. 装依赖。模板依赖 `@lingfan-engine/core`、`@lingfan-engine/adapters`、`@lingfan-engine/ui`，这三个包**还没发布到 registry**，直接 `pnpm install` 会报 404。先用本地链接指到引擎仓库的包目录：
 
    ```sh
-   pnpm add @lingfan/engine@link:../LingFan.Engine/packages/engine \
-            @lingfan/adapters@link:../LingFan.Engine/packages/adapters \
-            @lingfan/ui@link:../LingFan.Engine/packages/ui
+   pnpm add @lingfan-engine/core@link:../LingFan.Engine/packages/core \
+            @lingfan-engine/adapters@link:../LingFan.Engine/packages/adapters \
+            @lingfan-engine/ui@link:../LingFan.Engine/packages/ui
    ```
 
    路径按你放仓库的位置改。三个包以 TypeScript 源码出口发布，Vite 直接编译，不用先构建它们。

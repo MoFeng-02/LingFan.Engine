@@ -11,7 +11,7 @@
 
 | 能力                                            | 模板                   | 说明                                                                            |
 | ----------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------- |
-| 对话层（打字机 + 内联标记）                     | 是                     | `{p}/{w}` 停顿、样式标记零宽由 `@lingfan/ui` 提供                               |
+| 对话层（打字机 + 内联标记）                     | 是                     | `{p}/{w}` 停顿、样式标记零宽由 `@lingfan-engine/ui` 提供                        |
 | 等待态出口：`menu` / `input` / `wait` / `video` | 是                     | 缺任何一个，含该命令的故事都会**永久停滞**                                      |
 | 等待态：`minigame`                              | 是（可见 fail-closed） | 模板不接注册表 → 显示「未注册」并说明接入方式，**不伪造完成**                   |
 | 舞台元素层（36 类型 + 交互 + 12 个表现 op）     | 是                     | 含 `animate`/`transition`/`shake` 的帧驱动（不驱动会让动画队列只增不减）        |
@@ -42,16 +42,16 @@
 
 ## 依赖接入（引擎包）
 
-模板依赖三个引擎包：`@lingfan/engine`（核心）、`@lingfan/adapters`（预设适配器）、`@lingfan/ui`（参考展示层）。
+模板依赖三个引擎包：`@lingfan-engine/core`（核心）、`@lingfan-engine/adapters`（预设适配器）、`@lingfan-engine/ui`（参考展示层）。
 它们以 **TS 源码出口**（`exports: "./src/index.ts"`）发布——消费方由 Vite/TS 直接编译，**无中间构建步骤**。
 
 - 已发布到 registry：`pnpm install` 直接可用
 - 尚未发布（**现状，截至模板 1.1.x；是否发布 registry 待定**）：用本地链接指向引擎仓库的包目录
 
   ```
-  pnpm add @lingfan/engine@link:<引擎仓库>/packages/engine \
-           @lingfan/adapters@link:<引擎仓库>/packages/adapters \
-           @lingfan/ui@link:<引擎仓库>/packages/ui
+  pnpm add @lingfan-engine/core@link:<引擎仓库>/packages/core \
+           @lingfan-engine/adapters@link:<引擎仓库>/packages/adapters \
+           @lingfan-engine/ui@link:<引擎仓库>/packages/ui
   ```
 
 ## 工程结构（单资源根）

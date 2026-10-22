@@ -7,7 +7,7 @@
  *   是否被声明扩展提供（未被放行 = 构建期拦截，fail-early）；
  * - **运行期**：opRegistry 注册制，未注册 = `unknown-op` fail-closed。
  */
-import type { StoryCommand } from "@lingfan/engine";
+import type { StoryCommand } from "@lingfan-engine/core";
 
 /**
  * 扩展 op 通用构造：op 恒由首参决定（负载展开在前、op 在后——负载不得劫持 op 键）。

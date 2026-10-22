@@ -25,7 +25,7 @@ description: 在工程平级放 Stories.src/，用原生 TypeScript 写故事，
 
 ## config.ts
 
-`Stories.src/config.ts` 是这个目录根级唯一允许的 `.ts`，声明哪些目录参与构建、哪个文件是入口。推荐用 default 对象形态——单一强类型出口，配合 `satisfies StoriesConfig` 获得字段补全与拼写检查（`StoriesConfig` 是全局类型，来自 `@lingfan/stories-build` 的创作垫片，无需 import）：
+`Stories.src/config.ts` 是这个目录根级唯一允许的 `.ts`，声明哪些目录参与构建、哪个文件是入口。推荐用 default 对象形态——单一强类型出口，配合 `satisfies StoriesConfig` 获得字段补全与拼写检查（`StoriesConfig` 是全局类型，来自 `@lingfan-engine/stories-build` 的创作垫片，无需 import）：
 
 ```ts
 // apps/playground/Stories.src/config.ts
@@ -112,14 +112,14 @@ export default function start(): void {
 
 ### 从词汇层取词函数的写法
 
-`@lingfan/editor` 的词函数有四种取法，都成立：
+`@lingfan-engine/editor` 的词函数有四种取法，都成立：
 
-| 你写的 TS                                                         | 取到什么              |
-| ----------------------------------------------------------------- | --------------------- |
-| `import { say, menu } from "@lingfan/editor";`                    | 词函数本身，直接调用  |
-| `import { script } from "@lingfan/editor";`，之后 `script.say(…)` | 词汇层命名空间        |
-| `import * as ct from "@lingfan/editor";`，之后 `ct.say(…)`        | 整套命名空间          |
-| 不写 import，直接 `script.say(…)`                                 | 免导入直呼（ambient） |
+| 你写的 TS                                                                | 取到什么              |
+| ------------------------------------------------------------------------ | --------------------- |
+| `import { say, menu } from "@lingfan-engine/editor";`                    | 词函数本身，直接调用  |
+| `import { script } from "@lingfan-engine/editor";`，之后 `script.say(…)` | 词汇层命名空间        |
+| `import * as ct from "@lingfan-engine/editor";`，之后 `ct.say(…)`        | 整套命名空间          |
+| 不写 import，直接 `script.say(…)`                                        | 免导入直呼（ambient） |
 
 改短名用 `as`：`import { say as 说 }`、`import { script as ct }` 都可以，命名空间起别名之后里面的词函数跟着别名走。
 
@@ -128,7 +128,7 @@ export default function start(): void {
 下面四种写法在构建期报错。报错原文照抄，各例只差导入那几行：
 
 ```ts
-import script from "@lingfan/editor"; // ← 默认导入
+import script from "@lingfan-engine/editor"; // ← 默认导入
 
 export default function start(): void {
   script.say("默认导入。");
@@ -137,7 +137,7 @@ export default function start(): void {
 
 ```text
 故事编译失败（2 条）：
-- ch1/start.ts:1:8 词汇层请以具名导入（import { say, … } from "@lingfan/editor"）或 script 命名空间使用
+- ch1/start.ts:1:8 词汇层请以具名导入（import { say, … } from "@lingfan-engine/editor"）或 script 命名空间使用
 - ch1/start.ts:4:3 方法调用不支持：词函数通过具名导入或 script 命名空间调用
 ```
 
@@ -156,7 +156,7 @@ export default function start(): void {
 ```
 
 ```ts
-import { say, notAWord } from "@lingfan/editor"; // ← 词汇层里没有 notAWord
+import { say, notAWord } from "@lingfan-engine/editor"; // ← 词汇层里没有 notAWord
 
 export default function start(): void {
   say("不存在的词。");
@@ -169,8 +169,8 @@ export default function start(): void {
 ```
 
 ```ts
-import "@lingfan/editor"; // ← 副作用导入
-import { say } from "@lingfan/editor";
+import "@lingfan-engine/editor"; // ← 副作用导入
+import { say } from "@lingfan-engine/editor";
 
 export default function start(): void {
   say("副作用导入。");
@@ -182,7 +182,7 @@ export default function start(): void {
 - ch1/start.ts:1:1 副作用导入不支持：请显式导入所需符号
 ```
 
-**为什么词函数必须经 `@lingfan/editor` 导入**：词汇层是构建期的子语言，词调用在构建期被静态转译成 op，运行期不存在 `script` 这个对象。编译器必须直接从导入语句看出你说的是哪个词，只有 `@lingfan/editor` 的具名导入和它的 `script` 命名空间带着这个信息。
+**为什么词函数必须经 `@lingfan-engine/editor` 导入**：词汇层是构建期的子语言，词调用在构建期被静态转译成 op，运行期不存在 `script` 这个对象。编译器必须直接从导入语句看出你说的是哪个词，只有 `@lingfan-engine/editor` 的具名导入和它的 `script` 命名空间带着这个信息。
 
 `staticFor` 是编译期循环——展开成静态命令，不是运行期循环：
 
@@ -320,13 +320,13 @@ pnpm stories-typecheck    # tsc --noEmit 类型检查
 
 ## 实现状态
 
-TS 创作模式在实现中，还没有对外发布。构建 CLI、语句转译、编译期常量求值器都已落地并通过测试，构建链也已经完成包化：构建入口是独立的 `@lingfan/stories-build` 包，工程里随构建生成的 `Stories.src/gen/stories.gen.d.ts` 把本工程的列名与插值键交给 IDE 做即时校验。`stories:watch` 已是常驻增量监听：保存源文件即重编译，产物与全量构建逐字节一致，并会报出本轮差量与受影响的故事列。
+TS 创作模式在实现中，还没有对外发布。构建 CLI、语句转译、编译期常量求值器都已落地并通过测试，构建链也已经完成包化：构建入口是独立的 `@lingfan-engine/stories-build` 包，工程里随构建生成的 `Stories.src/gen/stories.gen.d.ts` 把本工程的列名与插值键交给 IDE 做即时校验。`stories:watch` 已是常驻增量监听：保存源文件即重编译，产物与全量构建逐字节一致，并会报出本轮差量与受影响的故事列。
 
 具体到你写故事时可能碰到的：
 
 - 词汇层出口由源生成：`vocabulary.g.ts` 由 generate-vocabulary CLI 从 words/ 源自动生成，并带 fail-closed 登记一致性校验。引擎加了新 op，跑一次生成即同步，无需手写。
 - `extOp` 能调用哪些命令名，取决于引擎侧注册了哪些——这套创作模式本身不新增 op。
-- `state` 的声明住进 `Stories.src`：`config.ts` 或任意模块的顶层（函数体之外）都可以调 `define` 累积，构建期求值后汇入同一棵树降维为扁平 defines——跨文件同键定义会一次报出全部位置；`defineVars`（插值键登记）仍只在 `config.ts`。构建同时把合并树生成成精确类型面 `Stories.src/gen/state.gen.d.ts`（枚举走 `import type` 引用，descriptor 按槽位取类型），工程侧桥文件（如 `Stories.src/lib/state-root.d.ts`）`import type { StoryState }` 后 `declare global` 挂上状态根——IDE 里的 `state.…` 跳转和检查都是精确类型，不再依赖宽索引签名。`@lingfan/stories-build` 包出口仍提供宽类型垫片，仅供未接桥的工程作缺省回退。
+- `state` 的声明住进 `Stories.src`：`config.ts` 或任意模块的顶层（函数体之外）都可以调 `define` 累积，构建期求值后汇入同一棵树降维为扁平 defines——跨文件同键定义会一次报出全部位置；`defineVars`（插值键登记）仍只在 `config.ts`。构建同时把合并树生成成精确类型面 `Stories.src/gen/state.gen.d.ts`（枚举走 `import type` 引用，descriptor 按槽位取类型），工程侧桥文件（如 `Stories.src/lib/state-root.d.ts`）`import type { StoryState }` 后 `declare global` 挂上状态根——IDE 里的 `state.…` 跳转和检查都是精确类型，不再依赖宽索引签名。`@lingfan-engine/stories-build` 包出口仍提供宽类型垫片，仅供未接桥的工程作缺省回退。
 - 状态值域：`null` 是状态槽的合法空值（`type: "number", default: null` 或运行期 `set` 写入都行；`undefined` 才等于销毁键），需要 `??` 兜底的表达式可以直接吃 null。descriptor 的 `type` 槽还支持并集：`type: ["number", Sex, null]` 声明「数字或枚举 Sex 或空」，构建按成员生成精确类型（`number | Sex | null`，枚举仍走 `import type`），`default` 必须落在至少一个成员的值域内，未知成员一次报全部；形态 A 用 `as const` 元组获得同样的静态推导。
 - 插值键注册表自动收声明名：故事体里的 `let n = 0`、`local("k", …)`，以及 `const r = someFunc()` 这类取函数返回值的声明——引擎会把返回值绑定名声明成局部变量，`{r}` 因此是合法插值，构建会把这些名字自动登记进插值键注册表，无需再手填 `defineVars`；与 state/define 键同名时按键去重，不报错。
 - 模块层角色声明：`config.ts` 或任意模块的顶层（函数体之外）可以调 `character(key, spec)` 声明角色，构建期求值后前置到每一列的命令头部（按 key 字典序，先于列体任何命令）——写作时不必在每个故事文件里重复登记。六字段 `name` / `color` / `size` / `font` / `textColor` / `screen` 走构建期常量求值，未知字段、非字符串值、key 非字符串字面量都 fail-closed；跨文件同名不同义一次报两处声明位置，全等声明幂等不报。列内 `character` 词调用仍可用，运行期覆盖模块层声明（同键整条替换，与 JSON 形态同一规则）。模块层调用经免导入直呼（`script.gen.d.ts` 指向词汇层命名空间，`character` 词本就在列）有完整类型提示；模块里自有同名声明按 TS 遮蔽语义优先，构建期会拒绝本地遮蔽 `character` 标识符的模块（避免把构建期声明误当运行期词）。注销用运行期词 `uncharacter(key)`（词汇层导出，函数体内调用）：注销后 `say` 不再套该角色样式，键不存在发 `character.missing` 知情事件不停机，随回溯回滚。

@@ -2,7 +2,7 @@
  * script 词汇层命名空间的 ambient 类型面渲染器（免导入直呼）。
  *
  * 输出 = `Stories.src/gen/script.gen.d.ts` 全文：一条全局 `declare const script`
- * 指向 `@lingfan/editor` 根出口的 `script` 命名空间类型。纯编译期声明——不注入
+ * 指向 `@lingfan-engine/editor` 根出口的 `script` 命名空间类型。纯编译期声明——不注入
  * 任何运行时对象；模块层自有同名声明按 TS 遮蔽语义优先于本全局声明，显式
  * import 与解构形态（含重命名）不受影响。内容恒定、与工程状态无关，同输入逐字节同输出。
  */
@@ -14,7 +14,7 @@ const HEADER = [
 ].join("\n");
 
 const DECLARATION =
-  'declare const script: typeof import("@lingfan/editor").script;';
+  'declare const script: typeof import("@lingfan-engine/editor").script;';
 
 export function renderScriptTypegen(): string {
   return `${HEADER}\n\n${DECLARATION}\n`;

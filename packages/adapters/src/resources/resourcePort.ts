@@ -4,7 +4,7 @@
  * 当前实现 = WebView 源根静态资源（Vite `public/` 在开发与打包产物中同名同路径）；
  * 加密管线接入后替换为 Rust 解密适配器（decrypt → 短生命周期 Blob URL），本端口契约不变。
  */
-import type { ResourcePort } from "@lingfan/engine";
+import type { ResourcePort } from "@lingfan-engine/core";
 
 /** 应用资源根（WebView 源根） */
 const RESOURCE_ROOT = "/";

@@ -13,8 +13,8 @@ import {
   createHttpProjectFilesPort,
   createStaticResourcePort,
   type HttpFetch,
-} from "@lingfan/adapters";
-import type { ProjectFilesPort, ResourcePort } from "@lingfan/engine";
+} from "@lingfan-engine/adapters";
+import type { ProjectFilesPort, ResourcePort } from "@lingfan-engine/core";
 
 /** 缺省基址：与本地开发服务（`scripts/serve-project.mjs`）的端口一致 */
 export const DEFAULT_PROJECT_BASE_URL = "http://127.0.0.1:5273/";

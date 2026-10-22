@@ -5,7 +5,7 @@
  * 面板只渲染控件并把用户动作回抛宿主——整体重建引擎、按需载入译文、槽位读盘
  * 都不是展示层能自持的事，状态与命令一律留在组合根。
  */
-import type { LayerZTable } from "@lingfan/engine";
+import type { LayerZTable } from "@lingfan-engine/core";
 import type { SlotPanelMode } from "../host";
 
 defineProps<{

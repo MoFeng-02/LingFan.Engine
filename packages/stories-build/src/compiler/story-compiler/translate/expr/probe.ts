@@ -4,7 +4,7 @@
  * 探针只关心文法（`evaluateExpression` 抛错即不合法），结果按源串缓存——
  * 同一表达式在构建期会被反复试探，缓存是必须的（模块级单例，不可复制成两份）。
  */
-import { evaluateExpression } from "@lingfan/engine";
+import { evaluateExpression } from "@lingfan-engine/core";
 
 const probeCache = new Set<string>();
 

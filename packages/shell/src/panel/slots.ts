@@ -7,7 +7,7 @@
  *
  * 本模块平台无关：不触碰任何框架、DOM 或宿主全局。
  */
-import type { SaveDataV1, SavePort } from "@lingfan/engine";
+import type { SaveDataV1, SavePort } from "@lingfan-engine/core";
 
 /** 面板用途：存或读 */
 export type SlotPanelMode = "save" | "load";

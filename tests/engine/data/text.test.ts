@@ -4,7 +4,7 @@
  * JSON 唯一真相源（JSON → text → JSON 结构等价）/ 混存识别
  */
 import { describe, expect, it } from "vitest";
-import type { StoryCommand } from "@lingfan/engine";
+import type { StoryCommand } from "@lingfan-engine/core";
 import {
   drainTextProjectionWarnings,
   generateText,
@@ -14,7 +14,7 @@ import {
   projectText,
   StoryFormatError,
   TextFormatError,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** 覆盖全部已实现 op 的规范文本（生成器的规范形 = 2 空格缩进、字段序固定） */
 const canonical = `define "player.gold" 100

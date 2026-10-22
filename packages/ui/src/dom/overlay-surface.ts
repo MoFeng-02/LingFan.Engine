@@ -12,8 +12,8 @@
  * 接管层（`lf-takeover`）与转场遮罩（`lf-transition`）是**宿主自己的层**：中立核心从不
  * 驱动它们，这里只按 `LayerZTable` 建出来并交给 `nodes`，宿主往里面挂自己的内容。
  */
-import { DEFAULT_LAYER_Z, resolveInstanceZ } from "@lingfan/engine";
-import type { LayerZTable } from "@lingfan/engine";
+import { DEFAULT_LAYER_Z, resolveInstanceZ } from "@lingfan-engine/core";
+import type { LayerZTable } from "@lingfan-engine/core";
 import type { FrameSource } from "../host/frame-loop";
 import type {
   ChoicesLayerView,

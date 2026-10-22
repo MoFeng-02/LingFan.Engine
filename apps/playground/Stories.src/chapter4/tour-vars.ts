@@ -1,5 +1,5 @@
 /** 第四章 · 变量盛宴：数组 / 字典 / let / undef 词逃生舱——SSOT 状态随快照、存档、回溯随行。 */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const { arrayPop, arrayPush, dict, dictSet, letVar, newArray, say, undef } =
   script;

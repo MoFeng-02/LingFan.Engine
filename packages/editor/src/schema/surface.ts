@@ -6,10 +6,10 @@
  */
 
 import type { z } from "zod";
-import type { OpExtension, WaitSpec } from "@lingfan/engine";
+import type { OpExtension, WaitSpec } from "@lingfan-engine/core";
 import type { EditorTexts, OpMeta } from "../contracts/index.ts";
 import { resolveEditorTexts } from "../contracts/index.ts";
-import { WAITING_OPS, collectWaitSpecs } from "@lingfan/engine";
+import { WAITING_OPS, collectWaitSpecs } from "@lingfan-engine/core";
 import { OP_GROUP_ORDER, OP_META } from "./catalog.ts";
 import { OP_SCHEMAS } from "./opSchemas/index.ts";
 

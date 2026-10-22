@@ -8,7 +8,7 @@
  * 框架与平台无关：渲染器只产出 `RenderSpec`，不碰 DOM，也不依赖任何 UI 框架
  * （核心只写状态，UI 只渲染；渲染器是宿主可替换的产物）。
  */
-import type { ElementInstance } from "@lingfan/engine";
+import type { ElementInstance } from "@lingfan-engine/core";
 import type { RenderSpec } from "./spec";
 
 /** 元素渲染上下文：渲染器只消费宿主提供的能力，不直接接触引擎 */

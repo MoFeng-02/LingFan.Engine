@@ -5,7 +5,7 @@
  * 交互激活（nav / ops / cmd 三条语义）、`disabled` 表达式求值、未注册类型上报。
  * 求值一律经引擎的插值入口，本层不解析表达式语法——语法归核心层。
  */
-import type { ElementInstance, StoryEngine } from "@lingfan/engine";
+import type { ElementInstance, StoryEngine } from "@lingfan-engine/core";
 import { resolveElementAction } from "../element/interaction";
 import { renderElementTree } from "../element/render";
 import type { ElementRegistry } from "../element/registry";

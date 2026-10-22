@@ -18,7 +18,7 @@
  * 玩家偏好面板、I18N 供给、对话框模板注册、存档缩略图合成。
  */
 
-import { DEFAULT_TEXT_CPS, DEFAULT_TOAST_MS } from "@lingfan/ui";
+import { DEFAULT_TEXT_CPS, DEFAULT_TOAST_MS } from "@lingfan-engine/ui";
 import { bootHost, must, reportBootFailure, type StageDom } from "./host";
 
 /**

@@ -4,7 +4,7 @@
  * 自 App.vue 抽出的装配组件：纯模板转发，tab 与搜索词经 `v-model` 上抛组合根，
  * 行为与原内联模板完全一致（含各页的常驻说明与 a11y 注释）。
  */
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import { searchResources, type ResourceNode } from "../../domain";
 import { LEFT_TABS, type LeftTab } from "../../app/leftTabs";
 import { MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from "../../infra";

@@ -9,12 +9,12 @@
  * 每份投影状态都归实例所有（本模块只导出工厂，不持有任何跨实例的共享变量）：
  * 两个覆盖层实例各有自己的说话人、等待态与打字机，互不串扰。
  */
-import { instanceZLayer, SYS } from "@lingfan/engine";
+import { instanceZLayer, SYS } from "@lingfan-engine/core";
 import type {
   ElementInstance,
   StateReader,
   StoryEngine,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { renderDialogueLine } from "../dialogue/textView";
 import { Typewriter } from "../dialogue/typewriter";
 import { setLayerOverride } from "./layer-z";

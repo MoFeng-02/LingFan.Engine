@@ -12,7 +12,7 @@ import {
   parseStory,
   parseTextStory,
   type StoryCommand,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { OP_SCHEMAS } from "../../packages/editor/src/schema/opSchemas";
 import { OP_SCHEMA_MAP } from "../../packages/editor/src/schema/opSchemas/map";
 import * as script from "../../packages/editor/src/script";

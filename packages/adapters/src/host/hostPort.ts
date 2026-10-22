@@ -5,8 +5,8 @@
  *
  * 问 Rust 走 Tauri 桥接域的缺省实现，本文件不直连 Tauri 运行时。
  */
-import { resolveHost } from "@lingfan/engine";
-import type { HostInfo, HostPort } from "@lingfan/engine";
+import { resolveHost } from "@lingfan-engine/core";
+import type { HostInfo, HostPort } from "@lingfan-engine/core";
 import { defaultInvoke } from "../platform";
 
 /** 宿主端口的供值：组合根把「编译目标平台」交进来，适配器只负责解析与缓存 */

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, provide, reactive, ref, useTemplateRef, watch } from "vue";
 import type { Ref } from "vue";
-import type { Story } from "@lingfan/engine";
-import type { AudioPort, VideoPort } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
+import type { AudioPort, VideoPort } from "@lingfan-engine/core";
 import {
   addGroup,
   analyzeStory,
@@ -15,7 +15,7 @@ import {
   toggleCollapsed,
   type ColumnGroupingView,
   type KeyValueStorage,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import { sampleStory } from "./shared";
 import {
   buildResourceTree,
@@ -222,7 +222,7 @@ function onEmptyAction(action: EmptyAction): void {
   void dialog.notify({
     title: "当前形态无法用外部编辑器打开",
     message:
-      "需要本地应用宿主（pnpm --filter @lingfan/editor-app host）。请先用「打开工程」。",
+      "需要本地应用宿主（pnpm --filter @lingfan-engine/editor-app host）。请先用「打开工程」。",
     tone: "info",
   });
 }

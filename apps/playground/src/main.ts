@@ -28,7 +28,7 @@ import {
   createWebStorageSavePort,
   loadProject,
   watchTauriProjectFiles,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 import {
   MANIFEST_FILE,
   PlayerPreferences,
@@ -49,7 +49,7 @@ import {
   type SavesConfig,
   type StageConfig,
   type Story,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import demoQuestExtension from "../extensions/demo-quest";
 import App from "./App.vue";
 import {

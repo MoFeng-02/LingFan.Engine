@@ -19,7 +19,7 @@ import {
   parseStory,
   parseTextStory,
   type OutboundEvent,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { validateCommand } from "../../packages/editor/src/schema/opSchemas";
 
 function instrument(engine: StoryEngine) {

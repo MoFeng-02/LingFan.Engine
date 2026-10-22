@@ -7,7 +7,7 @@
  * 边界（空输入 / 空列集 / 子目录）/ 不变量（输入不被修改、确定性、码元序输出）。
  */
 import { describe, expect, it } from "vitest";
-import { detectWriteNormalization } from "@lingfan/engine";
+import { detectWriteNormalization } from "@lingfan-engine/core";
 
 const COLUMNS = ["title_main", "start", "keep"];
 

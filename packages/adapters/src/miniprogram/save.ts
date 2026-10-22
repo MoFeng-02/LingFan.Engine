@@ -4,7 +4,7 @@
  * 微信存储取不存在的键返回**空串**，这里归一成 `null`（Web 侧 `localStorage` 本身就是 null）。
  * 明文存储，不作为安全边界。
  */
-import type { SavePort } from "@lingfan/engine";
+import type { SavePort } from "@lingfan-engine/core";
 import {
   createWebStorageSavePort,
   type SyncStorageLike,

@@ -7,7 +7,7 @@ import type {
   Story,
   ValueChanged,
   VideoPort,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import {
   SYS,
   StoryEngine,
@@ -15,7 +15,7 @@ import {
   resolveInstanceZ,
   type LayerZTable,
   type OutboundPayload,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import {
   builtinBubbleTemplate,
   builtinChoiceTemplate,
@@ -37,7 +37,7 @@ import {
   type AudioRenderer,
   type DialogueTemplateView,
   type VideoRenderer,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 
 /**
  * 预览视图：当前故事快照跑真引擎。预览为打开时刻的快照运行，编辑不实时渗入。
@@ -163,7 +163,7 @@ const elements = ref<ElementInstance[]>([]);
 const elementLayerEl = ref<HTMLElement | null>(null);
 const elementRegistry = createElementRegistry();
 registerBuiltinElementRenderers(elementRegistry);
-// 资源解析缓存 = @lingfan/ui 共用实现（未打开工程 = 不解析 → 替代文本）
+// 资源解析缓存 = @lingfan-engine/ui 共用实现（未打开工程 = 不解析 → 替代文本）
 const elementResources = createElementResourceResolver({
   resolve: (path) =>
     resourcePort === undefined

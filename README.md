@@ -9,25 +9,27 @@
 | 层      | 管什么                                                        | 位置                                          |
 | ------- | ------------------------------------------------------------- | --------------------------------------------- |
 | Rust    | 安全、平台、文件读写。WebView 里没有 Node，文件与进程操作走它 | `apps/playground/src-tauri/`                  |
-| TS 核心 | 叙事语义：故事格式、指令执行、回溯、作用域、存档编排          | `packages/engine/`                            |
+| TS 核心 | 叙事语义：故事格式、指令执行、回溯、作用域、存档编排          | `packages/core/`                              |
 | 展示层  | 渲染：订阅状态变化 + rAF 帧循环                               | `packages/ui/`、`apps/playground/src/App.vue` |
 
 这三行是硬边界：核心层禁止 import UI 框架、Tauri API 和 Node 内建模块，由 lint 规则强制。
 
-参考宿主目前用 Vue 3 + Vite + Tauri 2 装配。换框架只动 `apps/playground` 与脚手架模板，`packages/engine` 一行不改。
+参考宿主目前用 Vue 3 + Vite + Tauri 2 装配。换框架只动 `apps/playground` 与脚手架模板，`packages/core` 一行不改。
 
 ## 仓库结构（pnpm workspace）
 
 ```
 packages/
-├── engine/       @lingfan/engine     框架无关核心（零资源、零运行时依赖）
+├── core/         @lingfan-engine/core       框架无关核心（零资源、零运行时依赖）
 │   └── src/{contracts, data, runtime, shared}   契约 / 数据层 / 执行层
-├── adapters/     @lingfan/adapters   预设适配器：存档、资源、媒体、宿主信息
-├── ui/           @lingfan/ui         参考展示层：对话、音频、视频等可测纯逻辑
-└── editor/       @lingfan/editor     编辑器核心：op schema、编辑期诊断、故事树映射
+├── adapters/     @lingfan-engine/adapters   预设适配器：存档、资源、媒体、宿主信息
+├── ui/           @lingfan-engine/ui         参考展示层：对话、音频、视频等可测纯逻辑
+├── shell/        @lingfan-engine/shell      宿主编排：平台无关的装配逻辑与叙事状态投影
+├── editor/       @lingfan-engine/editor     编辑器核心：op schema、编辑期诊断、故事树映射
+└── stories-build/@lingfan-engine/stories-build  创作链编译：Stories.src → Resources/Stories
 apps/
-├── playground/   @lingfan/playground 参考宿主（Vue 3 + Tauri 2）= 模板的第一个实例
-└── editor/       @lingfan/editor-app 编辑器界面：时间线、属性面板、诊断、JSON 视图
+├── playground/   @lingfan-engine/playground 参考宿主（Vue 3 + Tauri 2）= 模板的第一个实例
+└── editor/       @lingfan-engine/editor-app 编辑器界面：时间线、属性面板、诊断、JSON 视图
 template/v1/                          脚手架：新工程骨架，含最小可跑宿主
 tests/                                集中测试：按「包 → 功能域」归类，不与源码混放
 docs/                                 文档站源码（Astro + Starlight，中英双语）
@@ -85,4 +87,6 @@ pnpm editor     # 编辑器界面（Vite，默认 http://localhost:1425）
 
 ## 许可
 
-`@lingfan/engine`、`@lingfan/adapters`、`@lingfan/ui` 三个包以 MIT 许可发布。`@lingfan/editor`、两个应用与脚手架模板暂未单独声明许可。
+本仓库全部代码以 Apache-2.0 许可发布，全文见根目录 `LICENSE`；`packages/` 下每个包各带一份副本，随包分发时自带许可声明。
+
+对外发布的是 `@lingfan-engine/core`、`@lingfan-engine/adapters`、`@lingfan-engine/ui`、`@lingfan-engine/shell` 四个包。`@lingfan-engine/editor` 为内部依赖（构建期使用，不单独发布），两个应用与脚手架模板不单独声明许可。

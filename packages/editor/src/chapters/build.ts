@@ -9,7 +9,7 @@ import {
   isReplayableColumn,
   STORIES_DIR,
   type StoryColumn,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import type {
   ChapterDir,
   ChapterGroup,

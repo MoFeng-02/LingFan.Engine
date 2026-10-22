@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import type { StoryCommand } from "@lingfan/engine";
+import type { StoryCommand } from "@lingfan-engine/core";
 import { diag, lookupScope } from "../../shared.ts";
 import type { BodyCtx } from "../../shared.ts";
 import { statePath } from "../../expr/state-path.ts";

@@ -4,8 +4,8 @@
  * `onEnded` 回收、音量斜坡用定时器推进、`position` 读平台只读位置。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { MiniprogramAudioContextLike } from "@lingfan/adapters";
-import { createMiniprogramAudioPort } from "@lingfan/adapters";
+import type { MiniprogramAudioContextLike } from "@lingfan-engine/adapters";
+import { createMiniprogramAudioPort } from "@lingfan-engine/adapters";
 
 /** 单个音频实例替身：`src` 用访问器记账，其余动作只累计调用 */
 class FakeAudioContext implements MiniprogramAudioContextLike {

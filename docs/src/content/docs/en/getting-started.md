@@ -31,12 +31,12 @@ The template lives at `template/v1/__PROJECT__/` in the engine repository.
    }
    ```
 
-3. Install dependencies. The template depends on `@lingfan/engine`, `@lingfan/adapters` and `@lingfan/ui`, and those three packages **are not published to a registry yet** — a plain `pnpm install` fails with a 404. Point them at the package directories in the engine repository with local links first:
+3. Install dependencies. The template depends on `@lingfan-engine/core`, `@lingfan-engine/adapters` and `@lingfan-engine/ui`, and those three packages **are not published to a registry yet** — a plain `pnpm install` fails with a 404. Point them at the package directories in the engine repository with local links first:
 
    ```sh
-   pnpm add @lingfan/engine@link:../LingFan.Engine/packages/engine \
-            @lingfan/adapters@link:../LingFan.Engine/packages/adapters \
-            @lingfan/ui@link:../LingFan.Engine/packages/ui
+   pnpm add @lingfan-engine/core@link:../LingFan.Engine/packages/core \
+            @lingfan-engine/adapters@link:../LingFan.Engine/packages/adapters \
+            @lingfan-engine/ui@link:../LingFan.Engine/packages/ui
    ```
 
    Adjust the paths to wherever you put the repository. All three packages publish TypeScript source entry points, so Vite compiles them directly and you never build them first.

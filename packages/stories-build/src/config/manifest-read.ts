@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { MANIFEST_FILE } from "@lingfan/engine";
+import { MANIFEST_FILE } from "@lingfan-engine/core";
 import { StoryBuildError } from "../shared/index.ts";
 
 /**

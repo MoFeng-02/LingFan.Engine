@@ -14,7 +14,7 @@ import {
   detectEncryptedProject,
   encryptedProjectMessage,
   type ProjectFileSource,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 import encryptedProjectSource from "../../../packages/adapters/src/resources/encryptedProject.ts?raw";
 
 /** 目录取径供给的源码全集（键排序只为失败信息稳定，结果不影响判定） */

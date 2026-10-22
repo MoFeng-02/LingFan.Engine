@@ -10,7 +10,7 @@
  *   未命中 → 追加为顶级元素，落点即 `x`/`y`。
  */
 
-import { ELEMENT_TYPES } from "@lingfan/engine";
+import { ELEMENT_TYPES } from "@lingfan-engine/core";
 
 /** 一次落点的规划结果：`parentIndex = null` → 顶级；否则 → 该下标容器的 `children`（坐标已换算为相对值） */
 export interface ElementDropPlan {

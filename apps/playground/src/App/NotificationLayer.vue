@@ -2,11 +2,11 @@
 /**
  * 通知层：RenderTargets.overlay 的 toast 列表。
  *
- * 列表状态由宿主供给（@lingfan/shell 的提示条编排维护），模板产出皮肤类与
+ * 列表状态由宿主供给（@lingfan-engine/shell 的提示条编排维护），模板产出皮肤类与
  * 正文挂点（HTML 已由模板层消毒）；条目皮肤样式随本组件走。
  */
-import type { Notice } from "@lingfan/shell";
-import type { NotifyTemplateView } from "@lingfan/ui";
+import type { Notice } from "@lingfan-engine/shell";
+import type { NotifyTemplateView } from "@lingfan-engine/ui";
 
 defineProps<{
   /** 当前在场的提示条（尾部追加、到期摘除） */

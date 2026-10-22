@@ -14,7 +14,7 @@
  * （`isNvlActive` / `isDialogueSuppressed`），本模块只把结果写成样式。
  */
 
-import { SYS } from "@lingfan/engine";
+import { SYS } from "@lingfan-engine/core";
 import {
   DEFAULT_TEXT_CPS,
   Typewriter,
@@ -25,7 +25,7 @@ import {
   resolveTypingCps,
   sanitizeFont,
   type TypingSetting,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 import type { StageDom } from "./stage-dom";
 
 /** 对话视图要用到的引擎能力：读状态、推进菜单与输入 */

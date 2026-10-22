@@ -5,7 +5,7 @@
  * 返回 `undefined`，调用方按「本会话无持久化」降级，功能不因偏好存不下而失效。
  * 平台细节只出现在本层：上层只见到契约类型与 `undefined`。
  */
-import type { KeyValueStorage } from "@lingfan/editor";
+import type { KeyValueStorage } from "@lingfan-engine/editor";
 
 /** 取浏览器本机存储；不可用时返回 `undefined` */
 export function createBrowserStorage(): KeyValueStorage | undefined {

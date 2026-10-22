@@ -26,7 +26,7 @@
  *
  * 测试直接调 `buildStories`（纯编排，fs 全在参数 root 之下）；CLI 主守卫在
  * `cli` 域——那里依赖被直接执行这一事实，不属于本流水线的出口面，故不在下面导出
- * （它以包说明符 `@lingfan/stories-build/cli` 暴露给宿主）。
+ * （它以包说明符 `@lingfan-engine/stories-build/cli` 暴露给宿主）。
  */
 
 /** 构建失败（fail-closed）。消息即 CLI 打印的失败原因，逐字稳定——不要在别处重写措辞 */
@@ -54,7 +54,7 @@ export {
 } from "./const-eval/index.ts";
 /** 布局声明与 config.ts 契约类型 */
 export { CONFIG_FILE, type StorySourceConfig } from "./config/index.ts";
-/** 创作垫片类型（@lingfan/stories-build/authoring 随包 .d.ts 的主出口同源） */
+/** 创作垫片类型（@lingfan-engine/stories-build/authoring 随包 .d.ts 的主出口同源） */
 export type { InferStateSchema } from "./config/state-type.ts";
 /** 源发现 v2（folders 多目录 + start 全局恰一） */
 export { discoverSources, type DiscoveredSources } from "./discovery/index.ts";

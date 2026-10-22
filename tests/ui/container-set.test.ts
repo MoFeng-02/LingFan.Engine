@@ -12,7 +12,7 @@
  * 判据在渲染层是模块私有常量（不对外导出），故从源码文本提取。
  */
 import { describe, expect, it } from "vitest";
-import { ELEMENT_CONTAINER_TYPES } from "@lingfan/engine";
+import { ELEMENT_CONTAINER_TYPES } from "@lingfan-engine/core";
 
 /** 渲染器全部源码，键 = 仓库相对路径（前端不碰文件系统，改用打包器读取） */
 const RENDERER_SOURCES = import.meta.glob(

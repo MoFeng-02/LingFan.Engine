@@ -125,14 +125,14 @@ export type StageScalePolicy =
 /** 留边方向上的对齐锚点 */
 export type StageAlign = "start" | "center" | "end";
 
-/** 内置适配策略名（展开成缩放策略 + 对齐锚点，见 `@lingfan/shell` 的预设表） */
+/** 内置适配策略名（展开成缩放策略 + 对齐锚点，见 `@lingfan-engine/shell` 的预设表） */
 export type StageFit = "contain" | "cover" | "fill" | "none";
 
 /**
  * 舞台适配配置（`project.json` 的 `shell.stage`；解析见 `runtime/shell.ts`）。
  *
  * 作者按设计基准像素书写元素与控件坐标，宿主把整场等比缩放套进窗口——**只影响宿主表现**，
- * 不进引擎状态、快照与存档（与方向偏好同属壳配置口径）。计算件在 `@lingfan/shell`，
+ * 不进引擎状态、快照与存档（与方向偏好同属壳配置口径）。计算件在 `@lingfan-engine/shell`，
  * 契约与解析在引擎：宿主一律取解析结果，不各自读清单、不各自定缺省。
  */
 export interface StageConfig {

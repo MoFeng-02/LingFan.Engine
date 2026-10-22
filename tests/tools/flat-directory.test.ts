@@ -59,7 +59,7 @@ describe("平铺目录（源级扫描）", () => {
     );
     expect(files).toBeGreaterThanOrEqual(500);
     for (const known of [
-      "packages/engine/src/data/format/validate",
+      "packages/core/src/data/format/validate",
       "packages/stories-build/src/compiler/story-compiler/translate/stmt",
       "apps/playground/src/host/panels",
     ]) {

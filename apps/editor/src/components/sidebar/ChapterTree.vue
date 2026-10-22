@@ -19,14 +19,14 @@
  * 章节树是路径推导的客观结构 —— 两者语义不同，不互相取代。
  */
 import { computed, inject, ref } from "vue";
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import {
   buildChapterIndex,
   chapterSummaryText,
   sceneTypeBadgeOf,
   type ChapterInput,
   type ChapterNode,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import { COLUMN_PATHS_KEY, EDITOR_API_KEY } from "../../contracts";
 
 const props = defineProps<{ story: Story; selectedId: string }>();

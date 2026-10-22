@@ -36,10 +36,10 @@ export default defineConfig({
   vite: {
     resolve: {
       alias: {
-        "@lingfan/engine": fileURLToPath(
-          new URL("../packages/engine/src/index.ts", import.meta.url),
+        "@lingfan-engine/core": fileURLToPath(
+          new URL("../packages/core/src/index.ts", import.meta.url),
         ),
-        "@lingfan/ui": fileURLToPath(
+        "@lingfan-engine/ui": fileURLToPath(
           new URL("../packages/ui/src/index.ts", import.meta.url),
         ),
       },

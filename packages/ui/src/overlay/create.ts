@@ -23,8 +23,8 @@
  * 所有状态都由各职责的工厂持有（每次调用装配器产出独立的一份），
  * 因此两个覆盖层实例互不串扰。
  */
-import { createStateReader, DEFAULT_LAYER_Z } from "@lingfan/engine";
-import type { LayerZTable } from "@lingfan/engine";
+import { createStateReader, DEFAULT_LAYER_Z } from "@lingfan-engine/core";
+import type { LayerZTable } from "@lingfan-engine/core";
 import { isGameInputTarget } from "../input/scope";
 import { createElementRegistry } from "../element/registry";
 import type { ElementRegistry } from "../element/registry";

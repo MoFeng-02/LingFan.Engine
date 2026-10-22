@@ -9,9 +9,13 @@ import type {
   AudioPlayOptions,
   AudioPort,
   ResourcePort,
-} from "@lingfan/engine";
-import { PlayerPreferences, StoryEngine, parseStory } from "@lingfan/engine";
-import { createAudioRenderer, readAudioView } from "@lingfan/ui";
+} from "@lingfan-engine/core";
+import {
+  PlayerPreferences,
+  StoryEngine,
+  parseStory,
+} from "@lingfan-engine/core";
+import { createAudioRenderer, readAudioView } from "@lingfan-engine/ui";
 
 /** bgm 常驻播放的引擎（bgm op volume 可调） */
 function engineWithBgm(volume = 0.8): StoryEngine {

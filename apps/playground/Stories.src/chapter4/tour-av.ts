@@ -1,5 +1,5 @@
 /** 第四章 · 声光餐车：bgm/ambient/voice 三轨 + 视频族（暂停/续播/跳帧/跳过开关）一条龙。 */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const {
   ambient,

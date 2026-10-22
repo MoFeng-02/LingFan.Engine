@@ -15,7 +15,7 @@ import type {
   OutboundEvent,
   SaveMode,
   SavePort,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import {
   BUILTIN_OP_NAMES,
   StoryEngine,
@@ -23,9 +23,9 @@ import {
   WAITING_OPS,
   collectWaitSpecs,
   parseStory,
-} from "@lingfan/engine";
-import dispatchSource from "../../../packages/engine/src/runtime/dispatch.ts?raw";
-import waitingSource from "../../../packages/engine/src/runtime/internal/waiting.ts?raw";
+} from "@lingfan-engine/core";
+import dispatchSource from "../../../packages/core/src/runtime/dispatch.ts?raw";
+import waitingSource from "../../../packages/core/src/runtime/internal/waiting.ts?raw";
 
 /** FNV-1a 32 位指纹（内联实现，WebView 无 Node——文件/进程必经 Rust 命令）：逐字节漂移检测用 */
 function fnv1a(text: string): number {

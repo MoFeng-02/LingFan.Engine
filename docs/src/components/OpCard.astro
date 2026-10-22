@@ -10,7 +10,7 @@
  *     name="say"        → id="op-say"
  *     name="array_push" → id="op-array_push"
  *   之所以敢原样拼接：内建 op 名匹配 SHORT_ID_PATTERN
- *   `/^[a-z][a-z0-9_-]{0,31}$/`（packages/engine/src/contracts/identifiers.ts:12），
+ *   `/^[a-z][a-z0-9_-]{0,31}$/`（packages/core/src/contracts/identifiers.ts:12），
  *   字符集全部落在合法 HTML id 内，且不含空格/引号/`#`。
  *   规则稳定、可离线预测 —— 域页页首索引直接写 `[say](#op-say)` 即可。
  *   id 挂在 <article> 上（不是名字上），配合 components.css 里的

@@ -8,7 +8,7 @@
  * 装载结果 memo：manifest()/stories() 共享一次 invoke；失败粘滞（boot fail-closed，无重试路径）。
  * 热重载以重建端口实现，未来增补刷新语义走契约增补。
  */
-import type { ProjectFilesPort } from "@lingfan/engine";
+import type { ProjectFilesPort } from "@lingfan-engine/core";
 import {
   defaultInvoke,
   defaultListen,

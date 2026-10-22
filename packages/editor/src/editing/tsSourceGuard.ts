@@ -1,4 +1,4 @@
-import { MANIFEST_FILE, STORIES_DIR } from "@lingfan/engine";
+import { MANIFEST_FILE, STORIES_DIR } from "@lingfan-engine/core";
 
 /**
  * TS 源工程只读守卫：启用 `Stories.src/` 的工程，其 JSON 产物（`Stories/**` 与

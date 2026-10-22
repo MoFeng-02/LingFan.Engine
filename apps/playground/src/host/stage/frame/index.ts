@@ -2,4 +2,7 @@
 export type { AppFrame, AppFrameOptions } from "./app-frame.ts";
 export { createAppFrame } from "./app-frame.ts";
 export { browserFrameSource } from "./frame-loop.ts";
-export { startHostFrameLoop, type HostFrameLoopOptions } from "@lingfan/shell";
+export {
+  startHostFrameLoop,
+  type HostFrameLoopOptions,
+} from "@lingfan-engine/shell";

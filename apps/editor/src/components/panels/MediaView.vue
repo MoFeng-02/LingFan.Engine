@@ -6,7 +6,7 @@
  * 本组件不新造取数机制。URL 属宿主生命周期，卸载即释放（防 Blob 泄漏）。
  */
 import { onBeforeUnmount, ref, watch } from "vue";
-import type { ResourcePort } from "@lingfan/engine";
+import type { ResourcePort } from "@lingfan-engine/core";
 
 const props = defineProps<{
   path: string;

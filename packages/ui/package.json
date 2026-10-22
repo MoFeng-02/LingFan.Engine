@@ -1,9 +1,9 @@
 {
-  "name": "@lingfan/ui",
+  "name": "@lingfan-engine/ui",
   "version": "0.1.0",
   "type": "module",
   "description": "灵泛叙事引擎参考展示层：框架无关的可测纯逻辑（内联标记、打字机、音频差量规划）",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -13,6 +13,28 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@lingfan/engine": "workspace:*"
+    "@lingfan-engine/core": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MoFeng-02/LingFan.Engine.git",
+    "directory": "packages/ui"
+  },
+  "homepage": "https://github.com/MoFeng-02/LingFan.Engine#readme",
+  "bugs": {
+    "url": "https://github.com/MoFeng-02/LingFan.Engine/issues"
+  },
+  "keywords": [
+    "narrative",
+    "ui",
+    "dialogue",
+    "typewriter",
+    "framework-agnostic"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

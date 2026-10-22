@@ -6,7 +6,7 @@
  */
 import { builtinNotifyTemplate, toNotifyTone } from "../notify/templates";
 import type { NotifyTemplateRegistry } from "../notify/templates";
-import type { NotifyPayload } from "@lingfan/engine";
+import type { NotifyPayload } from "@lingfan-engine/core";
 import type { NotifyLayerItem } from "./surface";
 
 /** 通知层的装配输入：模板注册表可选 */

@@ -4,7 +4,7 @@
  * 模块级函数默认仅本文件可见（TS 原生作用域）；export + import 才能跨文件调用——
  * 编译器把导入函数前置为 func 命令（导入组），调用点发射 call（运行期真子程序）。
  */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const { say } = script;
 

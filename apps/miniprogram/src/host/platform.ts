@@ -7,7 +7,10 @@
  * 将来换端只需替换本文件。
  */
 
-import type { HttpFetch, MiniprogramAudioContextLike } from "@lingfan/adapters";
+import type {
+  HttpFetch,
+  MiniprogramAudioContextLike,
+} from "@lingfan-engine/adapters";
 
 /** 小程序同步存储面（值与键都是字符串；取不存在的键返回空串） */
 export interface UniStorageApi {

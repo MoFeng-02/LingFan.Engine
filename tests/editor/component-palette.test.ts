@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { ELEMENT_CONTAINER_TYPES, ELEMENT_TYPES } from "@lingfan/engine";
+import { ELEMENT_CONTAINER_TYPES, ELEMENT_TYPES } from "@lingfan-engine/core";
 import {
   ELEMENT_TYPE_GROUPS,
   elementLabel,
@@ -18,7 +18,7 @@ import {
   listOps,
   OP_GROUP_LABELS,
   OP_GROUP_ORDER,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import componentPaletteSource from "../../apps/editor/src/components/stage/ComponentPalette.vue?raw";
 import storyTimelineSource from "../../apps/editor/src/components/stage/StoryTimeline.vue?raw";
 import sidebarSource from "../../apps/editor/src/components/panes/SidebarPane.vue?raw";

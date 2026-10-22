@@ -2,7 +2,7 @@
  * 符号索引：把故事里的定义键 / 列 / 函数 / 跳转目标 / 变量引用与可翻译原文
  * 收进一张 SymbolIndex（单次遍历）。消费方是分析器（./analyze）与编辑器功能。
  */
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import type { FieldDescriptor, SymbolIndex } from "../contracts/index.ts";
 import { joinPointer } from "../contracts/index.ts";
 import { TRANSLATE_SURFACES, valuesAtPath } from "../i18n/index.ts";

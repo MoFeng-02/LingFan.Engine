@@ -8,8 +8,8 @@
  * - 只在等待期生效（与正在推进的命令流不交叉）
  */
 import { describe, expect, it } from "vitest";
-import type { OutboundEvent } from "@lingfan/engine";
-import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
+import type { OutboundEvent } from "@lingfan-engine/core";
+import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
 
 /** 构造一个停在对话等待的引擎（元素动作只在等待期生效） */
 function makeEngine(

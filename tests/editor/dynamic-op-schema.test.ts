@@ -22,12 +22,12 @@ import {
   OP_SCHEMAS,
   validateCommand,
   validateStory,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import {
   BUILTIN_OP_NAMES,
   buildOpRegistry,
   type OpExtension,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 const diceSchema = z.strictObject({ sides: z.number().int().min(2) });
 

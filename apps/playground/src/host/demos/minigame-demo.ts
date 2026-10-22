@@ -9,7 +9,7 @@
  * 样式表与源级互锁都按那里的写法读，工厂只负责在正确的时机调用它。
  */
 
-import type { MinigameFactory } from "@lingfan/engine";
+import type { MinigameFactory } from "@lingfan-engine/core";
 import { abortSignalOf } from "../engine/abort-signal";
 
 /** 故事未在 `config.target` 里给点击数时的演示默认值 */

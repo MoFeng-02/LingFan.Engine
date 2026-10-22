@@ -12,7 +12,7 @@
  * 纯函数：宿主据此选路（`nav` → 核心 `navigate`；`ops` → 引擎 `runElementOps`；
  * `cmd` → 宿主命名命令注册表）。
  */
-import type { ElementInstance } from "@lingfan/engine";
+import type { ElementInstance } from "@lingfan-engine/core";
 
 /**
  * 点击动作的解析结果：调用方据 `kind` 选路，不自行读属性。

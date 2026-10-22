@@ -64,9 +64,9 @@ const INDEX = declaringFiles(ENTRIES);
 /** 单一声明：概念名 → 唯一声明文件 */
 const SINGLE: Record<string, string> = {
   // 引擎读口/契约
-  NotifyPayload: "packages/engine/src/contracts/runtime/events.ts",
-  MenuChoice: "packages/engine/src/contracts/runtime/reader.ts",
-  NvlMode: "packages/engine/src/contracts/runtime/entities.ts",
+  NotifyPayload: "packages/core/src/contracts/runtime/events.ts",
+  MenuChoice: "packages/core/src/contracts/runtime/reader.ts",
+  NvlMode: "packages/core/src/contracts/runtime/entities.ts",
   // 渲染层：帧循环与层 z 控制器各只留一份实现面
   FrameSource: "packages/ui/src/host/frame-loop.ts",
   FrameLoopOptions: "packages/ui/src/host/frame-loop.ts",
@@ -75,7 +75,7 @@ const SINGLE: Record<string, string> = {
   // 视图状态域
   NarrativeState: "packages/shell/src/state/types.ts",
   // 舞台适配：配置契约在引擎（与 shell.saves 同层，宿主一律取解析结果），算出来的布局在壳
-  StageConfig: "packages/engine/src/contracts/shell.ts",
+  StageConfig: "packages/core/src/contracts/shell.ts",
   StageLayout: "packages/shell/src/stage/types.ts",
   // 编辑器作者面：命令参数名与运行期状态名分开
   NvlCommandMode: "packages/editor/src/script/words/narrative.ts",

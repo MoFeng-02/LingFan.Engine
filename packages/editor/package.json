@@ -1,5 +1,5 @@
 {
-  "name": "@lingfan/editor",
+  "name": "@lingfan-engine/editor",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -8,7 +8,25 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@lingfan/engine": "workspace:*",
+    "@lingfan-engine/core": "workspace:*",
     "zod": "^4.6.5"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MoFeng-02/LingFan.Engine.git",
+    "directory": "packages/editor"
+  },
+  "homepage": "https://github.com/MoFeng-02/LingFan.Engine#readme",
+  "bugs": {
+    "url": "https://github.com/MoFeng-02/LingFan.Engine/issues"
+  },
+  "keywords": [
+    "narrative",
+    "editor",
+    "schema"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

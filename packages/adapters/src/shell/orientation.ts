@@ -3,7 +3,7 @@
  * iOS 未声明该方向 / 无壳形态）不算错误，由实现返回布尔告知是否已应用。
  * invoke 可注入（缺省取 Tauri 桥接域的缺省实现）：测试以契约替身注入。
  */
-import type { OrientationMode, OrientationPort } from "@lingfan/engine";
+import type { OrientationMode, OrientationPort } from "@lingfan-engine/core";
 import { defaultInvoke, type TauriInvoke } from "../platform";
 
 /**

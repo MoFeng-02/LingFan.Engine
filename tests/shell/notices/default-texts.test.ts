@@ -5,7 +5,7 @@
  * 提示条也写「槽位 1」，不得退回槽位 id（`已保存到 slot_1`）。逐句覆盖与
  * `labelFor` 覆盖的优先级也在此锁住。
  */
-import type { TimerHandle, TimerPort } from "@lingfan/engine";
+import type { TimerHandle, TimerPort } from "@lingfan-engine/core";
 import { describe, expect, it } from "vitest";
 import { createNotices } from "../../../packages/shell/src/notices";
 import { defaultSlotLabel } from "../../../packages/shell/src/panel";

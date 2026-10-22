@@ -4,8 +4,8 @@
  * 自 App.vue 抽出的装配组件：纯模板转发，不持有业务状态（tab 归属由
  * `v-model:right-tab` 上抛组合根，行为与原内联模板完全一致）。
  */
-import type { Diagnostic } from "@lingfan/editor";
-import type { Story } from "@lingfan/engine";
+import type { Diagnostic } from "@lingfan-engine/editor";
+import type { Story } from "@lingfan-engine/core";
 import type { PackRequest, PackResult } from "../../contracts";
 import { MAX_RIGHT_WIDTH, MIN_RIGHT_WIDTH } from "../../infra";
 import {
@@ -44,7 +44,7 @@ const emit = defineEmits<{
     e: "generate",
     request: {
       lang: string;
-      layout: import("@lingfan/editor").SkeletonLayoutChoice;
+      layout: import("@lingfan-engine/editor").SkeletonLayoutChoice;
     },
   ): void;
   (e: "toggle-pack"): void;

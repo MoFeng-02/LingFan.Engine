@@ -1,5 +1,9 @@
-import { BUILTIN_OP_NAMES, MANIFEST_FILE, type Story } from "@lingfan/engine";
-import { walkStoryCommands } from "@lingfan/editor";
+import {
+  BUILTIN_OP_NAMES,
+  MANIFEST_FILE,
+  type Story,
+} from "@lingfan-engine/core";
+import { walkStoryCommands } from "@lingfan-engine/editor";
 import {
   defaultStoriesBuildTexts,
   StoryBuildError,

@@ -5,7 +5,7 @@
  * - 用户目录文件（下载或写入过的）：经文件面换成可访问地址，并在 `release` 时释放。
  * 小程序的包体有体积上限，动态资源只能落在用户目录，所以这两段是真实存在的两条路。
  */
-import type { ResourcePort } from "@lingfan/engine";
+import type { ResourcePort } from "@lingfan-engine/core";
 import { normalizeResourceId } from "../resources/resourcePort.ts";
 import type { MiniprogramFileSystemLike } from "./platform.ts";
 

@@ -1,4 +1,4 @@
-import { STORIES_DIR } from "@lingfan/engine";
+import { STORIES_DIR } from "@lingfan-engine/core";
 
 /**
  * 列 → 产物故事键（i18n per-story 骨架的权威口径）：列落盘文件相对 `Stories/` 的

@@ -3,7 +3,7 @@
  * 缺失/不可读的路径**不入表**——读取侧取不到即认定为「被外部删除」，
  * 于是冲突判定能把「消失」与「改动」区分开；IO 以外的致命问题照抛。
  */
-import type { FileStamp } from "@lingfan/engine";
+import type { FileStamp } from "@lingfan-engine/core";
 import { isMissingHandle } from "../walk";
 import { asWritableDir, safeSegments } from "./access";
 

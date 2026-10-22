@@ -7,7 +7,7 @@ import {
   createTauriI18nPort,
   type TauriInvoke,
   type TauriOverlayFile,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 
 function fakeInvoke(files: TauriOverlayFile[] | Error): {
   invoke: TauriInvoke;

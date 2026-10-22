@@ -12,7 +12,7 @@
  * 打包中状态也在这里（长任务必须有存在感，切走面板也不丢进度感知）。
  */
 import { computed } from "vue";
-import type { DegradedOpen } from "@lingfan/engine";
+import type { DegradedOpen } from "@lingfan-engine/core";
 
 const props = defineProps<{
   root: string;

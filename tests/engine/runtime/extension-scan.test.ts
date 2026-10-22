@@ -11,7 +11,7 @@
  *   （写回保真由 manifestText 非托管键原值保留保证）
  */
 import { describe, expect, it, vi } from "vitest";
-import type { OpExtension, Story } from "@lingfan/engine";
+import type { OpExtension, Story } from "@lingfan-engine/core";
 import {
   assembleProject,
   collectTextProjections,
@@ -20,7 +20,7 @@ import {
   parseTextStory,
   ProjectAssemblyError,
   StoryEngine,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** demo 扩展：`say_command` 台词命令；执行计数随 SSOT（状态进存档链路） */
 function demoCommandModule(): unknown {

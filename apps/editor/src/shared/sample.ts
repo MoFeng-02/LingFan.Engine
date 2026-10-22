@@ -1,5 +1,5 @@
 /** 编辑器初始示例故事（新建/首开用）：小而全——say/变量/分支体/菜单跳转 */
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 
 export function sampleStory(): Story {
   return {

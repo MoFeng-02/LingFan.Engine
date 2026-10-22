@@ -8,8 +8,12 @@
  * 给模板绑定（`:style="{ zIndex: zOf(...) }"`），那是宿主自己的控制器（如 playground 的
  * `HostLayerZController`），承载面与层表都不同。
  */
-import { resolveInstanceZ } from "@lingfan/engine";
-import type { LayerId, LayerZOverrides, LayerZTable } from "@lingfan/engine";
+import { resolveInstanceZ } from "@lingfan-engine/core";
+import type {
+  LayerId,
+  LayerZOverrides,
+  LayerZTable,
+} from "@lingfan-engine/core";
 import type { OverlaySurface } from "./surface";
 
 /** 层级 z 控制器（每实例一份覆盖表） */

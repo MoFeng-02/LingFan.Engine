@@ -6,7 +6,7 @@
  * 给了容器就挂进去并按容器定位、没给容器仍是铺满视口的既有行为、容器晚到也能改挂。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createWebVideoPort } from "@lingfan/adapters";
+import { createWebVideoPort } from "@lingfan-engine/adapters";
 
 /** 假 `<video>`：只留端口真会碰到的字段与方法 */
 interface FakeVideo {

@@ -14,7 +14,7 @@ import type {
   KeymapAction,
   PlayerKeymap,
   PlayerPreferences,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** 键位面板的输入 */
 export interface KeybindingPanelOptions {

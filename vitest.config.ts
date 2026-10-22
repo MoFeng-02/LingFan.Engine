@@ -3,7 +3,7 @@
  *
  * 存在的理由只有一条：**别把「首个用例所在文件的装载墙钟」记成用例超时**。
  *
- * `tests/stories-build/build-pipeline.test.ts` 静态导入 `@lingfan/stories-build`，
+ * `tests/stories-build/build-pipeline.test.ts` 静态导入 `@lingfan-engine/stories-build`，
  * 入口拉进整条 TypeScript 编译管线。同一 import 的装载开销：
  *
  * - 空载 2889ms；

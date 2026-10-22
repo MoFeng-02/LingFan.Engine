@@ -9,8 +9,8 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { Story, StoryColumn, StoryCommand } from "@lingfan/engine";
-import { generateText, parseTextStory } from "@lingfan/engine";
+import type { Story, StoryColumn, StoryCommand } from "@lingfan-engine/core";
+import { generateText, parseTextStory } from "@lingfan-engine/core";
 import {
   analyzeStory,
   branchPointerToCommand,
@@ -20,7 +20,7 @@ import {
   isBranchTarget,
   planBranchInsertion,
   removeColumn,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import apiSource from "../../apps/editor/src/app/editorApi.ts?raw";
 import centerSource from "../../apps/editor/src/components/panes/CenterStage.vue?raw";
 import nodeGraphSource from "../../apps/editor/src/components/stage/NodeGraph.vue?raw";

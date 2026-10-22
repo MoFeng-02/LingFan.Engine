@@ -18,7 +18,7 @@
  * ②故意错误（混用/互斥/冲突/空段/点键/值文法）③不变量（define 合并树只经降维进 defines）
  * ④边界（皆缺省）⑤回归（defines 逐键落 project.json）。
  *
- * 白盒为零：全部走公共入口 buildStories，公共 API 走 @lingfan/*。
+ * 白盒为零：全部走公共入口 buildStories，公共 API 走 @lingfan-engine/*。
  */
 import {
   existsSync,
@@ -30,7 +30,7 @@ import {
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildStories } from "@lingfan/stories-build";
+import { buildStories } from "@lingfan-engine/stories-build";
 
 const BASE = fileURLToPath(new URL("./.tmp-config-state/", import.meta.url));
 
@@ -58,7 +58,7 @@ const MANIFEST = `{
   "shell": { "orientation": "auto" }
 }`;
 
-const WORDS = `import { script } from "@lingfan/editor";
+const WORDS = `import { script } from "@lingfan-engine/editor";
 const { say } = script;
 
 `;

@@ -6,7 +6,7 @@
  * 宿主不传 texts 时行为不变。改缺省措辞前先确认没有测试断言其内容
  * （`tests/adapters/resources/` 有逐字锚定）。
  */
-import { MANIFEST_FILE, STORIES_DIR } from "@lingfan/engine";
+import { MANIFEST_FILE, STORIES_DIR } from "@lingfan-engine/core";
 import {
   encryptedProjectMessage,
   type EncryptedProjectFinding,

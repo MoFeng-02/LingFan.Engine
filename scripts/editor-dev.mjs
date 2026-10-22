@@ -25,7 +25,7 @@ const HOST_PORT = process.env.LFEN_EDITOR_HOST_PORT ?? "14250";
 const projectRoot = process.argv[2] ?? join(ROOT, "apps", "playground");
 const host = spawn(
   "pnpm",
-  ["--filter", "@lingfan/editor-app", "host", projectRoot],
+  ["--filter", "@lingfan-engine/editor-app", "host", projectRoot],
   {
     cwd: ROOT,
     shell: process.platform === "win32",
@@ -33,7 +33,7 @@ const host = spawn(
   },
   { stdio: ["ignore", "pipe", "pipe"] },
 );
-const web = spawn("pnpm", ["--filter", "@lingfan/editor-app", "dev"], {
+const web = spawn("pnpm", ["--filter", "@lingfan-engine/editor-app", "dev"], {
   cwd: ROOT,
   shell: process.platform === "win32",
   stdio: ["ignore", "pipe", "pipe"],

@@ -10,8 +10,8 @@
  * 故意错误：非等待期 resolve / 系统标识不符 / 畸形结果 / 坏负载 / 非法系统标识。
  */
 import { describe, expect, it, vi } from "vitest";
-import type { OutboundEvent } from "@lingfan/engine";
-import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
+import type { OutboundEvent } from "@lingfan-engine/core";
+import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
 
 function makeEngine(
   entry: object[],

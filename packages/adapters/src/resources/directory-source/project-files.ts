@@ -14,7 +14,7 @@ import {
   type DegradedOpen,
   type ProjectFileSource,
   type ProjectFilesPort,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { detectEncryptedProject } from "../encryptedProject";
 import { defaultResourceTexts, type ResourceTexts } from "../texts";
 

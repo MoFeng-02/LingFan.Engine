@@ -4,8 +4,8 @@
  * 未播放时不打扰呈现面、自然结束只通知当前那次 `play` 的回调。
  */
 import { describe, expect, it } from "vitest";
-import type { MiniprogramVideoSurfaceLike } from "@lingfan/adapters";
-import { createMiniprogramVideoPort } from "@lingfan/adapters";
+import type { MiniprogramVideoSurfaceLike } from "@lingfan-engine/adapters";
+import { createMiniprogramVideoPort } from "@lingfan-engine/adapters";
 
 /** 呈现面替身：记下每次下发的状态，并允许测试触发 `bindended` */
 class FakeVideoSurface implements MiniprogramVideoSurfaceLike {

@@ -10,9 +10,9 @@ import type {
   MinigameMountPayload,
   MinigameResult,
   OutboundEvent,
-} from "@lingfan/engine";
-import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
-import { createMinigameRegistry } from "@lingfan/ui";
+} from "@lingfan-engine/core";
+import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
+import { createMinigameRegistry } from "@lingfan-engine/ui";
 import { createClick3Demo } from "../../../apps/playground/src/host/demos/minigame-demo";
 
 interface Harness {

@@ -18,8 +18,8 @@
  * - 接线互锁：组件确实调用了纯函数（不是各写一份判断）
  */
 import { describe, expect, it } from "vitest";
-import { parseStory } from "@lingfan/engine";
-import { describeSelection } from "@lingfan/editor";
+import { parseStory } from "@lingfan-engine/core";
+import { describeSelection } from "@lingfan-engine/editor";
 import propertyPanelSource from "../../apps/editor/src/components/panels/PropertyPanel.vue?raw";
 
 /** 0 = flow 列（首条 say + 一条 if[then 数组]）；1 = scene 列（一个 text 元素） */

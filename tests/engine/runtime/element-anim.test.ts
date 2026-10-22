@@ -5,8 +5,8 @@
  * 动画播毕由 UI 回调 `animationFinished(seq)` 触发终值写回。
  */
 import { describe, expect, it } from "vitest";
-import type { OutboundEvent } from "@lingfan/engine";
-import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
+import type { OutboundEvent } from "@lingfan-engine/core";
+import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
 
 function makeEngine(entry: object[]): {
   engine: StoryEngine;

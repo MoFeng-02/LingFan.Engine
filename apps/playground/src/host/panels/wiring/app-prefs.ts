@@ -8,7 +8,7 @@
  */
 
 import { ref, type Ref } from "vue";
-import type { PlayerPreferences } from "@lingfan/engine";
+import type { PlayerPreferences } from "@lingfan-engine/core";
 import {
   createKeybindingPanel,
   type KeybindingPanel,

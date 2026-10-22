@@ -14,7 +14,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildStories } from "@lingfan/stories-build";
+import { buildStories } from "@lingfan-engine/stories-build";
 
 const BASE = fileURLToPath(
   new URL("./.tmp-module-characters/", import.meta.url),
@@ -44,7 +44,7 @@ const MANIFEST = `{
   "shell": { "orientation": "auto" }
 }`;
 
-const WORDS = `import { script } from "@lingfan/editor";
+const WORDS = `import { script } from "@lingfan-engine/editor";
 const { say, wait, character } = script;
 
 `;
@@ -169,7 +169,7 @@ describe("模块层构建期角色 · fail-closed", () => {
   it("遮蔽（本地声明 character 标识符）拒绝", async () => {
     const root = makeProject("shadowed", {
       "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/a.ts": `import { script } from "@lingfan/editor";\nconst { character } = script;\nfunction local(): void {}\ncharacter("键", { name: "x" });\n`,
+      "Stories.src/ch1/a.ts": `import { script } from "@lingfan-engine/editor";\nconst { character } = script;\nfunction local(): void {}\ncharacter("键", { name: "x" });\n`,
       [START]: story("start", `  say("ok");\n`),
       "Resources/project.json": MANIFEST,
     });

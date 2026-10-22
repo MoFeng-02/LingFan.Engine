@@ -4,7 +4,7 @@
  * 自 App.vue 抽出的装配组件：纯模板转发，视图切换经 `v-model:center-view`
  * 上抛组合根，行为与原内联模板完全一致（含各分派注释）。
  */
-import type { ResourcePort, Story } from "@lingfan/engine";
+import type { ResourcePort, Story } from "@lingfan-engine/core";
 import { type EmptyAction, type ResourceViewSpec } from "../../domain";
 import { NodeGraph, StageEditor, StepLayout, StoryTimeline } from "../stage";
 import { JsonResourceView, LangView, MediaView, ReadOnlyView } from "../panels";

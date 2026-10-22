@@ -24,7 +24,7 @@ import {
   type FileStamp,
   type ProjectWriteReport,
   type ProjectWriterPort,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { defaultInvoke, type TauriInvoke } from "../platform";
 
 /** 原生写回端口的装配参数（测试可注入 invoke 替身，不连 Tauri 运行时） */

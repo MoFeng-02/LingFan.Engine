@@ -5,8 +5,12 @@
  * 结构上就是 Cell，可直接传），无框架宿主传普通对象。本域不触碰任何框架、DOM
  * 或宿主全局。
  */
-import type { ElementInstance, LayerId, MenuChoice } from "@lingfan/engine";
-import type { TypingSetting } from "@lingfan/ui";
+import type {
+  ElementInstance,
+  LayerId,
+  MenuChoice,
+} from "@lingfan-engine/core";
+import type { TypingSetting } from "@lingfan-engine/ui";
 import type { Cell, ReadonlyCell } from "../cell";
 
 // 选项形状属于引擎读口，本域只转出：消费方不必为此再引一个包

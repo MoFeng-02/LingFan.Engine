@@ -2,7 +2,7 @@
  * 第三章 · TS 能力列：清单逐条对应 Stories.src 新范式源真实用到的能力，
  * assert 用引擎表达式文法做运行期断言收尾。
  */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const { assert, say, jump } = script;
 

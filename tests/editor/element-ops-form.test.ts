@@ -7,9 +7,13 @@
  * 执行语义（原子回滚 / 不建检查点 / 等待期限定）由 `tests/engine/runtime/element-ops-run.test.ts` 覆盖。
  */
 import { describe, expect, it } from "vitest";
-import type { ElementNode, Story } from "@lingfan/engine";
-import { ELEMENT_OPS_BLOCKED } from "@lingfan/engine";
-import { analyzeStory, describeElement, getAtPointer } from "@lingfan/editor";
+import type { ElementNode, Story } from "@lingfan-engine/core";
+import { ELEMENT_OPS_BLOCKED } from "@lingfan-engine/core";
+import {
+  analyzeStory,
+  describeElement,
+  getAtPointer,
+} from "@lingfan-engine/editor";
 
 function sceneStory(elements: ElementNode[]): Story {
   return {

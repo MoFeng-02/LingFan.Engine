@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createBrowserFullscreenApplier,
   createTauriFullscreenApplier,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 
 describe("createTauriFullscreenApplier（prefs-fullscreen 宿主应用）", () => {
   it("走窗口命令 setFullscreen（无需用户手势）", async () => {

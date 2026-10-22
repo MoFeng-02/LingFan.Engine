@@ -6,7 +6,7 @@ import {
   describeNodeLabel,
   listOps,
   type FieldDescriptor,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 
 /**
  * 属性面板字段行：由表单描述符驱动渲染（kind → 控件），

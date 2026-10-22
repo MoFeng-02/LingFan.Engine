@@ -6,7 +6,7 @@
  * 拟态用户：说话→换模板→回溯→前进→menu→choose 的完整交互序列。
  */
 import { describe, expect, it } from "vitest";
-import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
+import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
 
 function makeHarness(
   columns: object[],

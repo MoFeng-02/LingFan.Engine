@@ -59,7 +59,7 @@ describe("说明符分类", () => {
     expect(classifySpecifier("process").kind).toBe("violation");
     expect(classifySpecifier("./helper.ts").kind).toBe("relative");
     expect(classifySpecifier("../ui/index.ts").kind).toBe("relative");
-    expect(classifySpecifier("@lingfan/engine").kind).toBe("workspace");
+    expect(classifySpecifier("@lingfan-engine/core").kind).toBe("workspace");
     expect(classifySpecifier("zod").kind).toBe("external");
     expect(classifySpecifier("zod").name).toBe("zod");
     expect(classifySpecifier("../logo/logo.svg").kind).toBe("relative");
@@ -92,13 +92,13 @@ describe("说明符分类", () => {
 describe("可达图", () => {
   it("从入口沿相对导入走到底，目录索引入口也能解析", () => {
     const root = makeRepo({
-      "packages/rt/package.json": workspacePackage("@lingfan/rt"),
+      "packages/rt/package.json": workspacePackage("@lingfan-engine/rt"),
       "packages/rt/src/index.ts": 'export { helper } from "./helper.ts";\n',
       "packages/rt/src/helper.ts":
         'export { deep } from "./deep/index.ts";\nexport const helper = 1;\n',
       "packages/rt/src/deep/index.ts": "export const deep = 2;\n",
     });
-    const graph = walkGraph(["@lingfan/rt"], root);
+    const graph = walkGraph(["@lingfan-engine/rt"], root);
     const relOnly = [...graph.files]
       .map((file: string) => relative(root, file).split("\\").join("/"))
       .sort();
@@ -113,12 +113,12 @@ describe("可达图", () => {
 
   it("运行期包出现 node:fs 即变红，并指出文件与行号", () => {
     const root = makeRepo({
-      "packages/bad/package.json": workspacePackage("@lingfan/bad"),
+      "packages/bad/package.json": workspacePackage("@lingfan-engine/bad"),
       "packages/bad/src/index.ts": 'export { ok } from "./inner.ts";\n',
       "packages/bad/src/inner.ts":
         'import { readFileSync } from "node:fs";\nexport const ok = readFileSync;\n',
     });
-    const graph = walkGraph(["@lingfan/bad"], root);
+    const graph = walkGraph(["@lingfan-engine/bad"], root);
     expect(graph.violations).toHaveLength(1);
     expect(graph.violations[0].reason).toContain("node:fs");
     expect(relFromRepo(root, graph.violations[0].file)).toBe(
@@ -132,23 +132,23 @@ describe("可达图", () => {
 
   it("运行期包出现 process 用法也变红", () => {
     const root = makeRepo({
-      "packages/bad/package.json": workspacePackage("@lingfan/bad"),
+      "packages/bad/package.json": workspacePackage("@lingfan-engine/bad"),
       "packages/bad/src/index.ts": "export const env = process.env.MODE;\n",
     });
-    const graph = walkGraph(["@lingfan/bad"], root);
+    const graph = walkGraph(["@lingfan-engine/bad"], root);
     expect(graph.violations).toHaveLength(1);
     expect(graph.violations[0].reason).toContain("process.env");
   });
 
   it("构建期包不在扫描范围：只从运行期入口出发，它的 node:fs 不受影响", () => {
     const root = makeRepo({
-      "packages/rt/package.json": workspacePackage("@lingfan/rt"),
+      "packages/rt/package.json": workspacePackage("@lingfan-engine/rt"),
       "packages/rt/src/index.ts": "export const rt = 1;\n",
-      "packages/tool/package.json": workspacePackage("@lingfan/tool"),
+      "packages/tool/package.json": workspacePackage("@lingfan-engine/tool"),
       "packages/tool/src/index.ts":
         'import { writeFileSync } from "node:fs";\nexport const tool = writeFileSync;\n',
     });
-    const graph = walkGraph(["@lingfan/rt"], root);
+    const graph = walkGraph(["@lingfan-engine/rt"], root);
     expect(graph.violations).toEqual([]);
     expect(
       [...graph.files].map((file: string) => relFromRepo(root, file)),
@@ -157,10 +157,10 @@ describe("可达图", () => {
 
   it("解析失败的导入按失败处理，不静默放行", () => {
     const root = makeRepo({
-      "packages/rt/package.json": workspacePackage("@lingfan/rt"),
+      "packages/rt/package.json": workspacePackage("@lingfan-engine/rt"),
       "packages/rt/src/index.ts": 'export { missing } from "./missing.ts";\n',
     });
-    const graph = walkGraph(["@lingfan/rt"], root);
+    const graph = walkGraph(["@lingfan-engine/rt"], root);
     expect(graph.unresolved).toHaveLength(1);
     expect(graph.unresolved[0].reason).toContain("相对导入解析失败");
   });
@@ -179,7 +179,7 @@ describe("真实仓库", () => {
       [...result.graph.files].map((file: string) =>
         relFromRepo(repoRoot, file),
       ),
-    ).toContain("packages/engine/src/index.ts");
+    ).toContain("packages/core/src/index.ts");
     expect([...result.graph.externals].sort()).toEqual([
       "@tauri-apps/api/core",
       "@tauri-apps/api/event",

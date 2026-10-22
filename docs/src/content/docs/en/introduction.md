@@ -42,13 +42,13 @@ The engine is not tied to an editor. Stories are plain text, so write them in wh
 
 ## Three layers
 
-| Layer        | Package             | Responsibility                                                           |
-| ------------ | ------------------- | ------------------------------------------------------------------------ |
-| Core         | `@lingfan/engine`   | Parses stories, executes commands, holds state, saves and rollback       |
-| Adapters     | `@lingfan/adapters` | Preset implementations for audio, video, assets and saves                |
-| Presentation | `@lingfan/ui`       | Reference implementations of dialogue box, choices and element rendering |
+| Layer        | Package                    | Responsibility                                                           |
+| ------------ | -------------------------- | ------------------------------------------------------------------------ |
+| Core         | `@lingfan-engine/core`     | Parses stories, executes commands, holds state, saves and rollback       |
+| Adapters     | `@lingfan-engine/adapters` | Preset implementations for audio, video, assets and saves                |
+| Presentation | `@lingfan-engine/ui`       | Reference implementations of dialogue box, choices and element rendering |
 
-The three packages in the table above plus the editor app package `@lingfan/editor` — four engine packages (engine / adapters / ui / editor) — all publish TypeScript source (`exports: "./src/index.ts"`), compiled directly by Vite/TS with no intermediate build step (see [Template & package boundaries](/reference/template-boundaries/)).
+The three packages in the table above plus the editor app package `@lingfan-engine/editor` — four engine packages (engine / adapters / ui / editor) — all publish TypeScript source (`exports: "./src/index.ts"`), compiled directly by Vite/TS with no intermediate build step (see [Template & package boundaries](/reference/template-boundaries/)).
 
 ## Next
 

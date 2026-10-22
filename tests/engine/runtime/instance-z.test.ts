@@ -7,14 +7,14 @@
  * 契约事实：命令上的 `z` 只对**拥有独立渲染层**的 op 有效；元素实例 z 走 `ElementInstance.z`（另一条路）。
  */
 import { describe, expect, it } from "vitest";
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import {
   SYS,
   StoryEngine,
   generateText,
   parseStory,
   parseTextStory,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 interface Harness {
   engine: StoryEngine;

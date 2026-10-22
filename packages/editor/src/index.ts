@@ -1,5 +1,5 @@
 /**
- * @lingfan/editor 公共出口：op schema 单一事实源 + 编辑期诊断 +
+ * @lingfan-engine/editor 公共出口：op schema 单一事实源 + 编辑期诊断 +
  * 故事树纯映射器：只读写故事 JSON，不碰运行时与 Rust；
  * 作者视图偏好（列分组 / 折叠）走**注入式存储**、不入故事树。
  */
@@ -212,7 +212,7 @@ export {
 } from "./editing/index.ts";
 /**
  * 步骤布局：列内切分为「步骤」（等待态边界）+ 列间分支边。
- * 边界判据取自引擎的等待声明表（`@lingfan/engine` 的 `waitingStateOfOp`），本模块不做逐 op 判定。
+ * 边界判据取自引擎的等待声明表（`@lingfan-engine/core` 的 `waitingStateOfOp`），本模块不做逐 op 判定。
  */
 export {
   columnSteps,
@@ -234,7 +234,7 @@ export * as script from "./script/index.ts";
 
 /**
  * 字符串域类型扩充点：词汇层声明的空注册表接口必须经**包根**再导出一次，
- * 生成物 `stories.gen.d.ts` 的 `declare module "@lingfan/editor"` 才合得上——
+ * 生成物 `stories.gen.d.ts` 的 `declare module "@lingfan-engine/editor"` 才合得上——
  * 模块增强只认包根出口面，`export * as script` 是命名空间、不是根出口
  * （不 re-export 时增强静默落空，注册表恒为空表、收窄失效）。
  */

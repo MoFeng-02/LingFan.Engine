@@ -1,5 +1,5 @@
 {
-  "name": "@lingfan/miniprogram",
+  "name": "@lingfan-engine/miniprogram",
   "private": true,
   "version": "0.0.0",
   "description": "小程序宿主：UniApp（Vue 3）页面层 + 框架无关的端口装配",
@@ -17,10 +17,10 @@
     "@dcloudio/uni-components": "3.0.0-4080720251210001",
     "@dcloudio/uni-h5": "3.0.0-4080720251210001",
     "@dcloudio/uni-mp-weixin": "3.0.0-4080720251210001",
-    "@lingfan/adapters": "workspace:*",
-    "@lingfan/engine": "workspace:*",
-    "@lingfan/shell": "workspace:*",
-    "@lingfan/ui": "workspace:*",
+    "@lingfan-engine/adapters": "workspace:*",
+    "@lingfan-engine/core": "workspace:*",
+    "@lingfan-engine/shell": "workspace:*",
+    "@lingfan-engine/ui": "workspace:*",
     "vue": "3.4.21"
   },
   "devDependencies": {

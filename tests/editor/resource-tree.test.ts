@@ -3,7 +3,7 @@
  * 拟态旅程形态：喂真实工程的资源集，断言树的形状与排除口径。
  */
 import { describe, expect, it } from "vitest";
-import type { KeyValueStorage } from "@lingfan/editor";
+import type { KeyValueStorage } from "@lingfan-engine/editor";
 import {
   buildResourceTree,
   COLLAPSED_DIRS_LIMIT,

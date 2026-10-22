@@ -23,8 +23,8 @@ import type {
   StoryColumn,
   WaitingState,
   WaitSpec,
-} from "@lingfan/engine";
-import { waitSpecOfOp, waitingStateOfOp } from "@lingfan/engine";
+} from "@lingfan-engine/core";
+import { waitSpecOfOp, waitingStateOfOp } from "@lingfan-engine/core";
 import { getAtPointer } from "../editing/index.ts";
 import { indexStory } from "../diagnostics/index.ts";
 import { BUILTIN_OP_SURFACE, type OpSurface } from "../schema/index.ts";

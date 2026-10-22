@@ -10,7 +10,7 @@
  * 版本化：结构演进靠 `version` 判定，不符一律降级为默认布局（fail-soft，不抛）。
  */
 
-import type { KeyValueStorage } from "@lingfan/editor";
+import type { KeyValueStorage } from "@lingfan-engine/editor";
 
 /** 侧栏模式（活动栏三个切面；共享同一份工程树，不重复持有数据） */
 export type SidebarMode = "resources" | "search" | "recent";

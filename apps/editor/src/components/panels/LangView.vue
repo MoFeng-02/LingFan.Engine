@@ -20,7 +20,7 @@ import {
   serializeTranslationTable,
   setTranslationValue,
   type TranslationRow,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import { useDialog } from "../../app/dialogInjection";
 
 const props = defineProps<{

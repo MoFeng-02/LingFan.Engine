@@ -1,9 +1,9 @@
 {
-  "name": "@lingfan/shell",
+  "name": "@lingfan-engine/shell",
   "version": "0.1.0",
   "type": "module",
   "description": "灵泛叙事引擎宿主编排层：平台无关的宿主装配逻辑（提示条、事件落点、面板数据、叙事状态投影），消费方用自己的响应式系统落地",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -13,7 +13,29 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@lingfan/engine": "workspace:*",
-    "@lingfan/ui": "workspace:*"
+    "@lingfan-engine/core": "workspace:*",
+    "@lingfan-engine/ui": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MoFeng-02/LingFan.Engine.git",
+    "directory": "packages/shell"
+  },
+  "homepage": "https://github.com/MoFeng-02/LingFan.Engine#readme",
+  "bugs": {
+    "url": "https://github.com/MoFeng-02/LingFan.Engine/issues"
+  },
+  "keywords": [
+    "narrative",
+    "host",
+    "orchestration",
+    "stage",
+    "framework-agnostic"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

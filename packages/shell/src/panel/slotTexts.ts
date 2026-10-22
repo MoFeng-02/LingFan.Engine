@@ -9,7 +9,7 @@
  * 只摊开引擎缺省表改这两句，其余句子跟着引擎演进：整表手写会在引擎新增句子时
  * 静默漏接。整体改写或本地化玩家文案时改的是底表，这套槽位名规则不动。
  */
-import { type EngineTexts } from "@lingfan/engine";
+import { type EngineTexts } from "@lingfan-engine/core";
 import { defaultSlotLabel } from "./slots.ts";
 
 /** 槽位名与面板同源的引擎文案表（未改写的句子 = 传入底表的原句） */

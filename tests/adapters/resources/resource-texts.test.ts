@@ -9,7 +9,7 @@ import {
   defaultResourceTexts,
   locateResourceRootFromPaths,
   type ProjectFileSource,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 
 /** 替身供给：只给路径与文本（file() 不参与本测试的文案路径，恒抛即可） */
 function fakeSource(

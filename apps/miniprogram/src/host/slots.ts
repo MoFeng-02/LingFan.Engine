@@ -1,19 +1,19 @@
 /**
  * 存档入口的宿主侧装配：槽位视图与存读点选。
  *
- * 槽位数、「空槽能不能点」这些判据都在壳层与引擎（`@lingfan/shell` / `@lingfan/engine`），
+ * 槽位数、「空槽能不能点」这些判据都在壳层与引擎（`@lingfan-engine/shell` / `@lingfan-engine/core`），
  * 本文件只做两件事：按工程清单的槽数拉一次逐槽视图，把面板上的点选翻成存/读命令。
  * 规则不在这里另写一份——槽位 id 生成与桌面宿主同源，改规则只改那一处。
  *
  * 本文件不碰平台全局与框架：面板由页面渲染，这里只产出数据与回执，Node 下可直测。
  */
-import { slotIds, type SavePort } from "@lingfan/engine";
+import { slotIds, type SavePort } from "@lingfan-engine/core";
 import {
   canChooseSlot,
   loadSlotViews,
   type SlotPanelMode,
   type SlotView,
-} from "@lingfan/shell";
+} from "@lingfan-engine/shell";
 
 export type { SlotPanelMode, SlotView };
 /** 空槽判据随出口一起给页面用：槽位能不能点全仓只有壳层这一份规则 */

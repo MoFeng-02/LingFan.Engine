@@ -12,7 +12,7 @@ import type {
   OrientationMode,
   PlayerPreferences,
   PlayerPrefsData,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** 音量通道与显示名；顺序即面板里的行顺序 */
 export const PREF_CHANNELS: ReadonlyArray<{

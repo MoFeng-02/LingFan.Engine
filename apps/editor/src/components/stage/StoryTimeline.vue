@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import {
   createElementDraft,
   describeNodeLabel,
@@ -8,7 +8,7 @@ import {
   elementLabel,
   getAtPointer,
   listOpGroups,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import { EDITOR_API_KEY } from "../../contracts";
 
 const props = defineProps<{
@@ -42,7 +42,7 @@ watch(
 );
 onMounted(() => void nextTick(scrollSelectedIntoView));
 
-/** op 分组与中文标签 = `@lingfan/editor` 单一事实源（与组件面板共用，勿在此另列清单） */
+/** op 分组与中文标签 = `@lingfan-engine/editor` 单一事实源（与组件面板共用，勿在此另列清单） */
 const opGroups = listOpGroups();
 const insertOp = ref("say");
 /** 元素层容器的插入源 = 元素类型分组（与组件面板同源），默认取第一组首个类型 */

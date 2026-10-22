@@ -1,5 +1,5 @@
 /**
- * 舞台适配装配：读数（外框）→ 计算（`@lingfan/shell`）→ 落笔（舞台根样式）。
+ * 舞台适配装配：读数（外框）→ 计算（`@lingfan-engine/shell`）→ 落笔（舞台根样式）。
  *
  * 舞台原是「作者像素 = 屏幕像素」，窗口一变内容尺寸不变；装配把基准宽高与变换写进舞台根，
  * 同一份作者坐标于是在任意窗口下等比呈现。这里钉住五件事：基准来自配置而不是样式表、
@@ -11,7 +11,7 @@
  * 宿主侧的监听注册与注销成对写在本组件里，源级断言防止只留一半。
  */
 import { describe, expect, it } from "vitest";
-import { DEFAULT_STAGE_CONFIG } from "@lingfan/engine";
+import { DEFAULT_STAGE_CONFIG } from "@lingfan-engine/core";
 import appSource from "../../apps/playground/src/App.vue?raw";
 import fitSource from "../../apps/playground/src/host/stage/fit/app-stage-fit.ts?raw";
 import frameSource from "../../apps/playground/src/host/stage/frame/app-frame.ts?raw";

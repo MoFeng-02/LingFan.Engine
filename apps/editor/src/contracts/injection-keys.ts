@@ -9,7 +9,7 @@
  * 注意：这些键只在本应用内使用，不属于引擎或适配器的对外契约。
  */
 import type { InjectionKey, Ref } from "vue";
-import type { ColumnGroupingView, KeyValueStorage } from "@lingfan/editor";
+import type { ColumnGroupingView, KeyValueStorage } from "@lingfan-engine/editor";
 import type { EditorApiPort } from "./editor";
 
 /** 编辑操作面（见 `./editor`） */

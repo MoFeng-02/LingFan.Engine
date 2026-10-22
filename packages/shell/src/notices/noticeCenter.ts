@@ -13,7 +13,7 @@
  * 本模块平台无关：状态放在调用方传入的 Cell 里，定时器走注入的 TimerPort，
  * 不直接触碰任何框架或宿主全局。
  */
-import { hostTimer, type TimerPort } from "@lingfan/engine";
+import { hostTimer, type TimerPort } from "@lingfan-engine/core";
 import {
   DEFAULT_ACTION_TOAST_MS,
   DEFAULT_LOAD_TOAST_MS,
@@ -21,7 +21,7 @@ import {
   DEFAULT_ROLLBACK_NOTICE_MS,
   toNotifyTone,
   type NotifyTone,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 import type { Cell } from "../cell";
 import { defaultSlotLabel } from "../panel/slots";
 

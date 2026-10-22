@@ -7,7 +7,7 @@
  * 幂等：每次调用整体重建（元素数量有限；避免增量 diff 的复杂度，
  * 帧级高频状态另有其道，见帧驱动文档）。
  */
-import type { ElementInstance } from "@lingfan/engine";
+import type { ElementInstance } from "@lingfan-engine/core";
 import type { ElementRegistry } from "./registry";
 import type { RenderPort, RenderSpec } from "./spec";
 

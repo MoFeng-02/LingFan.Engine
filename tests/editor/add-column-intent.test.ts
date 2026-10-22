@@ -16,8 +16,8 @@
  * - 源级互锁：见 `semantic-column-id.test.ts`（`decideAddColumn` 调用必须先于 `api.addColumn`）
  */
 import { describe, expect, it } from "vitest";
-import { parseStory } from "@lingfan/engine";
-import { addColumn } from "@lingfan/editor";
+import { parseStory } from "@lingfan-engine/core";
+import { addColumn } from "@lingfan-engine/editor";
 import { decideAddColumn } from "../../apps/editor/src/domain/addColumnIntent";
 
 describe("真值表：取消 / 留空 / 有值 三态互不相同", () => {

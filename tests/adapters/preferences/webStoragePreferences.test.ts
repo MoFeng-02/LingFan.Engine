@@ -3,9 +3,9 @@
  * 缺失/损坏 → null（默认值起航）；数据信任边界在 PlayerPreferences.hydrate。
  */
 import { describe, expect, it } from "vitest";
-import type { PlayerPrefsData } from "@lingfan/engine";
-import { DEFAULT_PLAYER_PREFS } from "@lingfan/engine";
-import { createWebStoragePreferencesPort } from "@lingfan/adapters";
+import type { PlayerPrefsData } from "@lingfan-engine/core";
+import { DEFAULT_PLAYER_PREFS } from "@lingfan-engine/core";
+import { createWebStoragePreferencesPort } from "@lingfan-engine/adapters";
 
 class MemoryStorage {
   private map = new Map<string, string>();

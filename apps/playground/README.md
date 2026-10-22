@@ -1,4 +1,4 @@
-# @lingfan/playground — 参考宿主
+# @lingfan-engine/playground — 参考宿主
 
 全功能参考实现，同时是**脚手架模板的第一个实例**（结构、资源根、接线方式与 `template/v1/__PROJECT__` 同构）。
 它**不是引擎的一部分**：删掉本目录不影响 `packages/*` 的构建与测试。
@@ -34,13 +34,13 @@ se  "Audio/chest_drawer_open.mp3" volume=0.8
 
 | 层                                                                             | 归属             | 说明                                             |
 | ------------------------------------------------------------------------------ | ---------------- | ------------------------------------------------ |
-| [packages/engine](../../packages/engine)                                       | 引擎核心         | 零资源、零路径假设；寻址只经 `ResourcePort` 契约 |
+| [packages/core](../../packages/core)                                           | 引擎核心         | 零资源、零路径假设；寻址只经 `ResourcePort` 契约 |
 | [packages/adapters](../../packages/adapters)、[packages/ui](../../packages/ui) | 预设（可替换）   | 端口实现与框架无关的可测纯逻辑                   |
 | 本目录                                                                         | 参考宿主（可删） | 展示层 + 平台壳；换框架只动这里                  |
 
 ## 命令（在仓库根执行）
 
 ```
-pnpm dev         # = pnpm --filter @lingfan/playground dev
-pnpm tauri dev   # = pnpm --filter @lingfan/playground exec tauri dev
+pnpm dev         # = pnpm --filter @lingfan-engine/playground dev
+pnpm tauri dev   # = pnpm --filter @lingfan-engine/playground exec tauri dev
 ```

@@ -100,7 +100,7 @@ export default defineConfigWithVueTs(
     // packages/editor（编辑器核心，纯映射器）与 tests/engine|editor/**（集中测试目录）
     // 测试同样受核心层边界约束（测试集中化）
     files: [
-      "packages/engine/**/*.{ts,vue}",
+      "packages/core/**/*.{ts,vue}",
       "packages/editor/**/*.ts",
       "tests/engine/**/*.ts",
       "tests/editor/**/*.ts",
@@ -267,7 +267,7 @@ export default defineConfigWithVueTs(
     // node:fs 等（不在 WebView 运行，不受「WebView 无 Node」守卫；编辑器/引擎/Rust 零感知）
     files: [
       "apps/playground/scripts/**/*.{ts,mjs}",
-      // 创作链编译包（@lingfan/stories-build）：同上，Node 侧创作期工具，
+      // 创作链编译包（@lingfan-engine/stories-build）：同上，Node 侧创作期工具，
       // 且它是 `apps/playground/scripts` 原管线的搬移归宿——例外随代码一起搬家
       "packages/stories-build/**/*.{ts,mjs}",
       // 创作链编译域的测试整域豁免（读文件、跑 CLI 的用例都在这儿）

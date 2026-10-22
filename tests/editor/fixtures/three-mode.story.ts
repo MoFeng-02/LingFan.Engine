@@ -4,7 +4,7 @@
  * `satisfies Story` 提供编译期类型检查；运行期合法性由 parseStory（与 JSON 同口径）兜底。
  * 列 id 用语义化短 id。
  */
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 
 export default {
   formatVersion: 1,

@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import type { StoryCommand } from "@lingfan/engine";
+import type { StoryCommand } from "@lingfan-engine/core";
 import { WORDS, diag, lookupBinding, lookupScope } from "../../shared.ts";
 import type { BodyCtx } from "../../shared.ts";
 import { lowerValue, loweredToScriptValue } from "../expr.ts";

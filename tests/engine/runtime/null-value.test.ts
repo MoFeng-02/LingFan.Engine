@@ -12,8 +12,8 @@ import type {
   SaveDataV1,
   SaveMode,
   ValueChanged,
-} from "@lingfan/engine";
-import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
+} from "@lingfan-engine/core";
+import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
 
 interface WriteCall {
   slot: string;

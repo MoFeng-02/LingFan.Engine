@@ -4,7 +4,7 @@
  * 失败不粘滞（资源补上后仍可再试，且不触发重渲染）。
  */
 import { describe, expect, it, vi } from "vitest";
-import { createElementResourceResolver } from "@lingfan/ui";
+import { createElementResourceResolver } from "@lingfan-engine/ui";
 
 /** 手动控制的解析（观察「在途」窗口） */
 function deferred(): {

@@ -1,6 +1,6 @@
 /** 作用域树测试（嵌套生命周期 / 声明层语义） */
 import { describe, expect, it } from "vitest";
-import { Scope } from "../../../packages/engine/src/runtime";
+import { Scope } from "../../../packages/core/src/runtime";
 
 describe("Scope（块 → 列 → 全局 链）", () => {
   it("父链查找：全局声明块内可见", () => {

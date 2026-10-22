@@ -13,7 +13,7 @@ import {
   ExpressionError,
   interpolateText,
   type NameResolver,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 const vars = new Map<string, unknown>([
   ["gold", 7],

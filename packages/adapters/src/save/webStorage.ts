@@ -3,7 +3,7 @@
  * 其它平台注入等价面（小程序同步存储见 `../miniprogram/save.ts`），语义对齐原生（高水位/计数由本侧自管）。
  * 由组合根按平台装配。
  */
-import type { SavePort, SlotSummary } from "@lingfan/engine";
+import type { SavePort, SlotSummary } from "@lingfan-engine/core";
 
 /**
  * 同步键值存储面：`SavePort` 实现只依赖这四个动作，不认具体平台对象。

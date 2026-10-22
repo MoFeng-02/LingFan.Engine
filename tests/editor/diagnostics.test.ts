@@ -4,8 +4,8 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { Story, StoryColumn, StoryCommand } from "@lingfan/engine";
-import { analyzeStory, getAtPointer, indexStory } from "@lingfan/editor";
+import type { Story, StoryColumn, StoryCommand } from "@lingfan-engine/core";
+import { analyzeStory, getAtPointer, indexStory } from "@lingfan-engine/editor";
 
 function flowColumn(id: string, commands: StoryCommand[]): StoryColumn {
   return { id, kind: "flow", commands };

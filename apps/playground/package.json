@@ -1,5 +1,5 @@
 {
-  "name": "@lingfan/playground",
+  "name": "@lingfan-engine/playground",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -15,12 +15,12 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@lingfan/adapters": "workspace:*",
-    "@lingfan/editor": "workspace:*",
-    "@lingfan/engine": "workspace:*",
-    "@lingfan/shell": "workspace:*",
-    "@lingfan/stories-build": "workspace:*",
-    "@lingfan/ui": "workspace:*",
+    "@lingfan-engine/adapters": "workspace:*",
+    "@lingfan-engine/editor": "workspace:*",
+    "@lingfan-engine/core": "workspace:*",
+    "@lingfan-engine/shell": "workspace:*",
+    "@lingfan-engine/stories-build": "workspace:*",
+    "@lingfan-engine/ui": "workspace:*",
     "@tauri-apps/api": "^2.12.1",
     "vue": "^3.5.13"
   },

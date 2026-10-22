@@ -20,7 +20,7 @@ import {
   type SavePort,
   type Story,
   type VideoPort,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import {
   createFetchProjectFilesPort,
   createStaticResourcePort,
@@ -28,14 +28,14 @@ import {
   createWebStorageSavePort,
   createWebVideoPort,
   loadProject,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 import {
   DEFAULT_TEXT_CPS,
   DEFAULT_TOAST_MS,
   createAudioRenderer,
   createVideoRenderer,
   type TypingSetting,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 import { createErrorReporter, type StageDom } from "./stage-dom";
 import { createHostLayerZ } from "./layer-z";
 import { fillSaveSlots, wireSaveSlots } from "./save-slots";

@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { Story, StoryColumn, StoryCommand } from "@lingfan/engine";
+import type { Story, StoryColumn, StoryCommand } from "@lingfan-engine/core";
 import {
   EditorSession,
   addColumn,
@@ -20,7 +20,7 @@ import {
   setAtPointer,
   updateCommandField,
   validateStory,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 
 function flowColumn(id: string, commands: StoryCommand[]): StoryColumn {
   return { id, kind: "flow", commands };

@@ -5,8 +5,8 @@
  * 是否被全链使用（set + clear 都走端口）。
  */
 import { describe, expect, it } from "vitest";
-import { SYS, StoryEngine, parseStory, hostTimer } from "@lingfan/engine";
-import type { TimerPort } from "@lingfan/engine";
+import { SYS, StoryEngine, parseStory, hostTimer } from "@lingfan-engine/core";
+import type { TimerPort } from "@lingfan-engine/core";
 
 interface TimerEntry {
   fn: () => void;

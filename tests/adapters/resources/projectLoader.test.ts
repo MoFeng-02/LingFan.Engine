@@ -4,7 +4,7 @@
  * fetch 为平台 API：按契约以内存映射替换（不 Mock 引擎实现）。
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadProjectFromFetch } from "@lingfan/adapters";
+import { loadProjectFromFetch } from "@lingfan-engine/adapters";
 
 const MANIFEST = JSON.stringify({
   formatVersion: 1,

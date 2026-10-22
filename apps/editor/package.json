@@ -1,5 +1,5 @@
 {
-  "name": "@lingfan/editor-app",
+  "name": "@lingfan-engine/editor-app",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -11,10 +11,10 @@
     "host": "tsx server/main.ts"
   },
   "dependencies": {
-    "@lingfan/adapters": "workspace:*",
-    "@lingfan/editor": "workspace:*",
-    "@lingfan/engine": "workspace:*",
-    "@lingfan/ui": "workspace:*",
+    "@lingfan-engine/adapters": "workspace:*",
+    "@lingfan-engine/editor": "workspace:*",
+    "@lingfan-engine/core": "workspace:*",
+    "@lingfan-engine/ui": "workspace:*",
     "vue": "^3.5.13"
   },
   "devDependencies": {

@@ -7,7 +7,7 @@
  * 由组合根回退 web 端口（现状不变，尽力而为）。socket 工厂可注入（测试替身
  * 不依赖真实 WS 服务器）。
  */
-import type { ProjectFilesPort, SavePort } from "@lingfan/engine";
+import type { ProjectFilesPort, SavePort } from "@lingfan-engine/core";
 
 /** 最小 WS 契约（浏览器 WebSocket 结构性满足；测试替身按此实现） */
 export interface WsSocketLike {

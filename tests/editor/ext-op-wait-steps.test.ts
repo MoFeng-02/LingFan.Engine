@@ -9,14 +9,14 @@
  * 不变量：步骤成员仍是顶层命令行的有序精确划分（不重、不漏、不乱序）。
  */
 import { describe, expect, it } from "vitest";
-import type { OpExtension, Story } from "@lingfan/engine";
-import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
+import type { OpExtension, Story } from "@lingfan-engine/core";
+import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
 import {
   BUILTIN_OP_SURFACE,
   columnSteps,
   mergeOpSurface,
   type OpSurface,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 
 /** 演示扩展：一个声明等待的 op + 一个不声明的 op（回退口径下都是非边界） */
 const waitExt: OpExtension = {

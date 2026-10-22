@@ -3,7 +3,7 @@
  * 拟态旅程形态（模拟作者在多标签间来回改、只存一个、关掉另一个）。
  */
 import { describe, expect, it } from "vitest";
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import {
   columnIdOfDocument,
   storyDocumentPath,

@@ -9,7 +9,11 @@
  * 统一给出（见 `engine-wiring.ts`）。
  */
 
-import { resolveSavesConfig, slotIds, type StoryEngine } from "@lingfan/engine";
+import {
+  resolveSavesConfig,
+  slotIds,
+  type StoryEngine,
+} from "@lingfan-engine/core";
 import type { StageDom } from "./stage-dom";
 
 /** 按工程清单里的存档壳配置填充槽位下拉（调用方保证只填一次） */

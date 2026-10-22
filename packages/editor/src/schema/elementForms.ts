@@ -13,7 +13,7 @@ import {
   ELEMENT_ATTRIBUTES,
   ELEMENT_SPECIFIC_ATTRS,
   ELEMENT_TYPES,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** 36 类型中文标签（新建菜单与画布角标） */
 const ELEMENT_LABELS: Readonly<Record<string, string>> = {
@@ -73,7 +73,7 @@ export const UNIMPLEMENTED_ELEMENT_ATTRS: ReadonlySet<string> = new Set([
   "xalign",
   "yalign",
   // 例外：order 不是死属性——引擎装载期在用（z 兜底：
-  // packages/engine/src/data/element.ts:157、runtime/internal/frame-stack.ts:62 消费）。
+  // packages/core/src/data/element.ts:157、runtime/internal/frame-stack.ts:62 消费）。
   // 保留本条仅为维持现状行为（编辑器表单不下发 + unimplemented-element-attr warning +
   // 互锁白名单 attr-alignment.test.ts），即「编辑器表单不暴露但引擎装载在用」。
   "order",

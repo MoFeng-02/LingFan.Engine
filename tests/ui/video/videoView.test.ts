@@ -3,10 +3,10 @@
  * 按契约 Mock：VideoPort 与 ResourcePort 为契约的可行实现（node 环境无解码器）。
  */
 import { describe, expect, it } from "vitest";
-import type { ResourcePort, VideoPort } from "@lingfan/engine";
-import { SYS, StoryEngine } from "@lingfan/engine";
-import { parseStory } from "@lingfan/engine";
-import { createVideoRenderer } from "@lingfan/ui";
+import type { ResourcePort, VideoPort } from "@lingfan-engine/core";
+import { SYS, StoryEngine } from "@lingfan-engine/core";
+import { parseStory } from "@lingfan-engine/core";
+import { createVideoRenderer } from "@lingfan-engine/ui";
 
 function makeStoryEngine(commands: object[]): StoryEngine {
   return new StoryEngine(

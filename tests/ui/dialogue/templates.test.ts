@@ -6,12 +6,15 @@
  * 故意错误：恶意 speaker HTML 注入、未知模板名解析。
  */
 import { describe, expect, it } from "vitest";
-import type { DialogueTemplateFn, DialogueTemplateInput } from "@lingfan/ui";
+import type {
+  DialogueTemplateFn,
+  DialogueTemplateInput,
+} from "@lingfan-engine/ui";
 import {
   builtinBubbleTemplate,
   createDialogueTemplateRegistry,
   renderDialogueLine,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 
 const baseInput: DialogueTemplateInput = {
   speaker: "少女",

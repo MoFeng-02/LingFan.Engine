@@ -7,13 +7,13 @@
  */
 
 import { type Ref, ref } from "vue";
-import type { StoryEngine } from "@lingfan/engine";
+import type { StoryEngine } from "@lingfan-engine/core";
 import {
   createNarrativeEvents,
   createNotices,
   type NarrativeEvents,
   type Notice,
-} from "@lingfan/shell";
+} from "@lingfan-engine/shell";
 import type { AppMedia } from "../stage/media/app-media";
 import type { VueNarrativeState } from "../narrative/runtime/narrative-state";
 import type { TypewriterHandle } from "../narrative/wiring/app-narrative";
@@ -67,7 +67,7 @@ export function createAppEvents(options: AppEventsOptions): AppEvents {
   }
   /**
    * 事件落点：提示条、读档诊断与错误横幅。
-   * 每条分支做什么归 @lingfan/shell 的事件域；分流顺序（哪个分支在前）留在 App.vue。
+   * 每条分支做什么归 @lingfan-engine/shell 的事件域；分流顺序（哪个分支在前）留在 App.vue。
    */
   const narrativeEvents = createNarrativeEvents({
     notices,

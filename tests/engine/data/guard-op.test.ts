@@ -4,7 +4,7 @@
  * args 纯数据、失败 = engine.error + 状态原样 + 停在当前命令、回溯重放同判。
  */
 import { describe, expect, it } from "vitest";
-import type { GuardContext, OutboundEvent } from "@lingfan/engine";
+import type { GuardContext, OutboundEvent } from "@lingfan-engine/core";
 import {
   SYS,
   StoryEngine,
@@ -12,7 +12,7 @@ import {
   parseStory,
   parseTextStory,
   type EngineOptions,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 interface Harness {
   engine: StoryEngine;

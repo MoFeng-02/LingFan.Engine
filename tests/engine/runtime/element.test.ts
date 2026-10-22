@@ -9,8 +9,8 @@ import type {
   ElementInstance,
   OutboundEvent,
   SaveDataV1,
-} from "@lingfan/engine";
-import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
+} from "@lingfan-engine/core";
+import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
 
 function sceneStory(): unknown {
   return {

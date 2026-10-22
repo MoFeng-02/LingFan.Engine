@@ -2,7 +2,7 @@
  * 偏好持久化（小程序）：微信同步存储上的明文 JSON，语义与 Web 演示实现共用同一份代码——
  * 没存过或存坏了都返回 `null`（上层用默认值起航，不因偏好损坏挡住启动）。
  */
-import type { PreferencesPort } from "@lingfan/engine";
+import type { PreferencesPort } from "@lingfan-engine/core";
 import { createWebStoragePreferencesPort } from "../preferences/webStoragePreferences.ts";
 import type { MiniprogramStorageLike } from "./platform.ts";
 import { miniprogramStorageFace } from "./save.ts";

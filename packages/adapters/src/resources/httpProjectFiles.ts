@@ -8,7 +8,7 @@
  * 取件面可注入：浏览器直接用全局 `fetch`，小程序用 `uni.request` 包一层最小面
  * （见 `apps/miniprogram/src/host/platform.ts`）——本文件因此不假设任何平台 API。
  */
-import type { ProjectFilesPort } from "@lingfan/engine";
+import type { ProjectFilesPort } from "@lingfan-engine/core";
 
 /** 取件响应面：只声明本端口用到的三件事（`Response` 结构上满足它） */
 export interface HttpTextResponse {

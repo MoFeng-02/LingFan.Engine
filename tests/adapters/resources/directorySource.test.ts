@@ -16,7 +16,7 @@ import {
   createSourceResourcePort,
   loadProject,
   locateResourceRootFromPaths,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 
 type Tree = { [name: string]: Tree | string };
 

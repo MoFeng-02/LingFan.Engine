@@ -4,7 +4,7 @@
  * 分工：核心层写「描述」，本模块提供**每帧计算**，宿主（App.vue / 其他）把结果写到 DOM。
  * 不碰引擎、不碰 DOM —— 便于单测覆盖（帧驱动）。
  */
-import type { AnimationSpec } from "@lingfan/engine";
+import type { AnimationSpec } from "@lingfan-engine/core";
 
 /**
  * 缓动名 → 归一化函数（`t ∈ [0,1] → [0,1]`）。

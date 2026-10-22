@@ -11,19 +11,19 @@
  * 故比较基准是 `sortedStory(story)`（已排序的当前故事）。
  */
 import { describe, expect, it } from "vitest";
-import type { ProjectWriterPort, Story } from "@lingfan/engine";
+import type { ProjectWriterPort, Story } from "@lingfan-engine/core";
 import {
   assembleProject,
   diffProjectFiles,
   MANIFEST_FILE,
   ProjectSerializationError,
   serializeProject,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import {
   createSourceProjectFilesPort,
   loadProject,
   type ProjectFileSource,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 import {
   EditorSession,
   addColumn,
@@ -32,7 +32,7 @@ import {
   removeColumn,
   renameColumn,
   setAtPointer,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 
 function colText(id: string, commands: unknown[] = []): string {
   return `${JSON.stringify({ formatVersion: 1, id, kind: "flow", commands }, null, 2)}\n`;

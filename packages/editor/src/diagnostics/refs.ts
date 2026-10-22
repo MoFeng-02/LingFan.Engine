@@ -5,7 +5,7 @@
  * ../diagnostics/index.ts 对外转发。
  */
 
-/** 行内富文本标记（镜像 packages/engine/src/runtime/expr/interpolate.ts；行为互锁见 tests/editor/schema.test.ts） */
+/** 行内富文本标记（镜像 packages/core/src/runtime/expr/interpolate.ts；行为互锁见 tests/editor/schema.test.ts） */
 const INLINE_SHORT_TAGS = new Set([
   "b",
   "/b",

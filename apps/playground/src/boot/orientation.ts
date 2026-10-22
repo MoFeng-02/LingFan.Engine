@@ -6,9 +6,9 @@
  * 全屏静默（偏好已持久化，下次有手势的切换生效）。去重的意义在于：偏好里的音量、
  * 字速、键位等任意一项变化都会触发监听，方向与全屏只在**自身取值真的变了**时才落壳。
  */
-import type { FullscreenApplier } from "@lingfan/adapters";
-import type { OrientationMode, OrientationPort } from "@lingfan/engine";
-import { resolveOrientationMode } from "@lingfan/engine";
+import type { FullscreenApplier } from "@lingfan-engine/adapters";
+import type { OrientationMode, OrientationPort } from "@lingfan-engine/core";
+import { resolveOrientationMode } from "@lingfan-engine/core";
 
 /** 方向落壳策略的装配参数：端口与两个取值来源都以具名注入（缺省语义由调用方给定） */
 export interface OrientationPolicyOptions {

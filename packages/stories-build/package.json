@@ -1,9 +1,9 @@
 {
-  "name": "@lingfan/stories-build",
+  "name": "@lingfan-engine/stories-build",
   "version": "0.1.0",
   "type": "module",
   "description": "Stories 创作链编译包：把 Stories.src 的多目录原生 TS 源编译成 Resources/Stories/** + project.json，并产出 cell 注册生成物",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts",
     "./authoring": "./src/authoring.d.ts",
@@ -18,8 +18,27 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@lingfan/editor": "workspace:*",
-    "@lingfan/engine": "workspace:*",
+    "@lingfan-engine/editor": "workspace:*",
+    "@lingfan-engine/core": "workspace:*",
     "esbuild": "^0.28.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MoFeng-02/LingFan.Engine.git",
+    "directory": "packages/stories-build"
+  },
+  "homepage": "https://github.com/MoFeng-02/LingFan.Engine#readme",
+  "bugs": {
+    "url": "https://github.com/MoFeng-02/LingFan.Engine/issues"
+  },
+  "keywords": [
+    "narrative",
+    "build",
+    "story-compiler",
+    "esbuild"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "private": true
 }

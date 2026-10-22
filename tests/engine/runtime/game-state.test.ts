@@ -9,8 +9,13 @@
  * 故意错误：循环引用 / 类实例 / NaN / 保留键 / 非法 systemId。
  */
 import { describe, expect, it } from "vitest";
-import type { OutboundEvent } from "@lingfan/engine";
-import { SYS, StoryEngine, gameScopedKey, parseStory } from "@lingfan/engine";
+import type { OutboundEvent } from "@lingfan-engine/core";
+import {
+  SYS,
+  StoryEngine,
+  gameScopedKey,
+  parseStory,
+} from "@lingfan-engine/core";
 
 function makeEngine(defines: Record<string, unknown> = {}): {
   engine: StoryEngine;

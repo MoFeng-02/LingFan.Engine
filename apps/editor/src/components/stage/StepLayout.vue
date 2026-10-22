@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, inject } from "vue";
-import type { Story } from "@lingfan/engine";
-import { storySteps, type StepEdge, type StoryStep } from "@lingfan/editor";
+import type { Story } from "@lingfan-engine/core";
+import { storySteps, type StepEdge, type StoryStep } from "@lingfan-engine/editor";
 import { EDITOR_API_KEY } from "../../contracts";
 
 /**
  * 步骤视图：以「步骤」为单位的布局——每列一条泳道，泳道内步骤盒按序竖排，
  * 分支步骤自右缘拉出连线指向目标列首步（一个步骤多目标 = 分叉，多边汇入 = 合流）。
  *
- * 步骤与出边的判定**全在 `@lingfan/editor` 的 `storySteps`**（其边界判据取自引擎的等待声明表）；
+ * 步骤与出边的判定**全在 `@lingfan-engine/editor` 的 `storySteps`**（其边界判据取自引擎的等待声明表）；
  * 本组件只做坐标换算与呈现，不含任何叙事语义。
  * 视图确定性排布（分层定 x、步序定 y），**不记忆布局**——步骤视图是派生视图，记忆会引入重复状态。
  */

@@ -13,8 +13,8 @@ import viteConfig from "../../template/v1/__PROJECT__/vite.config.ts?raw";
 import indexHtml from "../../template/v1/__PROJECT__/index.html?raw";
 import templatePkg from "../../template/v1/__PROJECT__/package.json?raw";
 import storySource from "../../template/v1/__PROJECT__/Resources/Stories/title/title_main.story?raw";
-import type { ProjectManifest } from "@lingfan/engine";
-import { parseStory, parseTextStory } from "@lingfan/engine";
+import type { ProjectManifest } from "@lingfan-engine/core";
+import { parseStory, parseTextStory } from "@lingfan-engine/core";
 
 /** 模板宿主全部源码，键 = 仓库相对路径（前端不碰文件系统，改用打包器读取） */
 const SRC_SOURCES = import.meta.glob(
@@ -92,9 +92,9 @@ describe("template/v1 脚手架防腐", () => {
 
   it("宿主按契约接线：端口 + 订阅渲染 + 帧循环 + 输入映射", () => {
     for (const token of [
-      "@lingfan/engine",
-      "@lingfan/adapters",
-      "@lingfan/ui",
+      "@lingfan-engine/core",
+      "@lingfan-engine/adapters",
+      "@lingfan-engine/ui",
       "createFetchProjectFilesPort",
       "loadProject",
       "onStateChanged",
@@ -166,9 +166,9 @@ describe("template/v1 脚手架防腐", () => {
     };
     expect(Object.keys(pkg.dependencies ?? {})).toEqual(
       expect.arrayContaining([
-        "@lingfan/engine",
-        "@lingfan/adapters",
-        "@lingfan/ui",
+        "@lingfan-engine/core",
+        "@lingfan-engine/adapters",
+        "@lingfan-engine/ui",
       ]),
     );
   });

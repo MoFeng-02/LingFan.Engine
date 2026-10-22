@@ -8,8 +8,8 @@
  * 元素也永远到不了终值——终值是引擎在播毕后写回元素属性的。
  */
 
-import { SYS, type StoryEngine } from "@lingfan/engine";
-import { createVisualEffects, resolveAnimatedStyle } from "@lingfan/ui";
+import { SYS, type StoryEngine } from "@lingfan-engine/core";
+import { createVisualEffects, resolveAnimatedStyle } from "@lingfan-engine/ui";
 import type { StageDom } from "./stage-dom";
 
 /** 逐帧驱动函数的输入：节点句柄表与引擎（三个播毕交回都直连引擎） */
