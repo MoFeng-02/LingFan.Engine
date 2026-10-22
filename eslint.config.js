@@ -300,6 +300,10 @@ export default defineConfigWithVueTs(
       // 词汇层声明重建 CLI：读 words 源 + 注册表键，差量写生成物（Node 侧生成工具；
       // 渲染是纯函数 vocabulary-gen，本文件只做 IO 与主模块守卫）
       "packages/editor/src/script/generate-vocabulary.ts",
+      // 禁选守卫需要**读模板样式表**做机械核对；模板样式已从 index.html 抽成独立
+      // `.css`，而 `?raw` 导入 `.css` 在 vitest（css:false）下同样被 stub 成空串
+      // ⇒ 只能 readFileSync。属测试期工具，不进浏览器产物
+      "tests/playground/text-selection-guard.test.ts",
     ],
     rules: {
       "no-restricted-imports": "off",

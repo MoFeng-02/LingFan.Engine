@@ -1,0 +1,16 @@
+{
+  "dependencies": {
+    "vue": "^3.5.44"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "vue-tsc": "^3.3.5"
+  },
+  "scripts": {
+    "typecheck": "vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json"
+  },
+  "create": {
+    "pinned": ["typescript"]
+  }
+}

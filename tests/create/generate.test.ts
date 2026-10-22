@@ -17,6 +17,7 @@ import {
   collectDependencyNames,
   generateProject,
   layerBases,
+  pinnedNames,
 } from "../../packages/create/src/generate/project.ts";
 import { finalize } from "../../packages/create/src/generate/project.ts";
 import { restoreDotfile } from "../../packages/create/src/generate/dotfiles.ts";
@@ -216,6 +217,50 @@ describe("产物字节", () => {
       found = false;
     }
     expect(found).toBe(false);
+  });
+});
+
+describe("钉住的依赖", () => {
+  it("增量点名的包保持模板版本，不进解析结果", () => {
+    // 上游并非都兼容：vue-tsc 在 typescript 7 上会因 ./lib/tsc 不再导出而直接崩，
+    // 这类约束只有模板作者知道，所以允许增量声明「这个包别跟最新」。
+    const root = makeTemplate("pinned");
+    const patch = join(root, "overlays/vue/package.patch.json");
+    writeFileSync(
+      patch,
+      JSON.stringify({
+        dependencies: { vue: "^3.5.0" },
+        create: { pinned: ["vite"] },
+      }),
+    );
+    const result = generateProject({
+      templateRoot: root,
+      targetBase: BASE,
+      projectName: "story",
+      framework: "vue",
+      shell: "browser",
+      resolved: new Map<string, string>([
+        ["vue", "3.9.0"],
+        ["vite", "9.0.0"],
+      ]),
+    });
+    const manifest = JSON.parse(
+      readFileSync(join(result.projectDir, "package.json"), "utf8"),
+    ) as {
+      dependencies: Record<string, string>;
+      devDependencies: Record<string, string>;
+      create?: unknown;
+    };
+    expect(manifest.devDependencies.vite).toBe("^8.0.0");
+    expect(manifest.dependencies.vue).toBe("^3.9.0");
+    // 生成期指令不是产物字段：写进清单会让 npm 与读者都看到未知键
+    expect(manifest.create).toBeUndefined();
+  });
+
+  it("没有增量时不钉任何包", () => {
+    expect(pinnedNames(undefined)).toEqual([]);
+    expect(pinnedNames({ dependencies: { vue: "^3" } })).toEqual([]);
+    expect(pinnedNames({ create: { pinned: "vite" } })).toEqual([]);
   });
 });
 

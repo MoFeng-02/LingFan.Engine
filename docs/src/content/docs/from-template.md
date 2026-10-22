@@ -12,7 +12,7 @@ npm create @lingfan-engine my-story
 pnpm create @lingfan-engine my-story
 ```
 
-生成器问两件事：工程名、框架与壳。当前提供「原生（框架无关）」与「浏览器」两项，后续的框架层与桌面壳从这里长出来。
+生成器问两件事：工程名、框架与壳。当前框架可选「原生（框架无关）」与「Vue 3」，壳暂时只有「浏览器」。
 
 跳过问答、全部取缺省值：
 
@@ -23,17 +23,19 @@ npm create @lingfan-engine my-story -- --yes
 直接指定选项：
 
 ```sh
-npm create @lingfan-engine my-story -- --framework none --shell browser
+npm create @lingfan-engine my-story -- --framework vue --shell browser
 ```
 
 生成后 `cd my-story && pnpm install && pnpm dev`。
+
+框架层只换页面结构与入口：`--framework vue` 把 `index.html` 换成挂载点、加 `src/App.vue` 与 Vue 版组合根，`src/host/**`（装配、订阅、帧循环、输入映射）一行不改——引擎与适配器不认识 Vue。两种形态的样式表是同一份 `src/styles/stage.css`。
 
 工程名只允许小写字母、数字、`-`、`_`，不能以下划线或点开头——它同时进 `package.json` 的 `name`、`Resources/project.json` 的 `id` 与目录名，大写与点开头在 npm 侧非法。
 
 有两件事生成器会替你做，手工复制目录时容易漏：
 
 - **占位符整体替换**：`__PROJECT__` 与 `__project__` 两种形态都换（后者是 `package.json` 的 name，必须小写）。漏一处，包名与清单 `id` 就对不上。
-- **引擎包版本取当下最新**：生成时查一次 registry，把最新版写成 `^x.y.z`。不写 `latest` 标签，是因为它每次安装都解析到当时最高版，同一份工程在两台机器上会装出不同版本。
+- **引擎包版本取当下最新**：生成时查一次 registry，把最新版写成 `^x.y.z`。不写 `latest` 标签，是因为它每次安装都解析到当时最高版，同一份工程在两台机器上会装出不同版本。少数上游还不兼容的包（当前是 `typescript`——`vue-tsc` 在 7 上会崩）由叠加层声明保留模板记录的区间，不跟最新。
 
 ## 模板的组织方式
 
@@ -115,7 +117,7 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
 
 ```json
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "minEngineVersion": "0.1.0",
   "placeholder": "__PROJECT__",
   "frameworks": [
@@ -123,6 +125,11 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
       "id": "none",
       "label": "原生（框架无关）",
       "hint": "只用骨架，不叠加任何框架层"
+    },
+    {
+      "id": "vue",
+      "label": "Vue 3",
+      "hint": "页面结构换成单文件组件，装配与宿主不变"
     }
   ],
   "shells": [

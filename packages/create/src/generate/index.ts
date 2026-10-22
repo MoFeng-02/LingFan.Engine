@@ -7,6 +7,7 @@ export {
   collectDependencyNames,
   generateProject,
   layerBases,
+  pinnedNames,
   SKELETON_DIR,
 } from "./project.ts";
 export type { GenerateOptions, GenerateResult } from "./project.ts";

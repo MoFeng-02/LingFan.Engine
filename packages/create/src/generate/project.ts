@@ -177,7 +177,8 @@ export function finalize(
  * 把增量与版本号写进 `package.json`。
  *
  * 依赖表只改「已经存在的键」：模板决定依赖集合，生成器不是包管理器，
- * 不会凭 registry 上的存在性往工程里塞新包。
+ * 不会凭 registry 上的存在性往工程里塞新包。叠加层 `create.pinned` 点名的包
+ * 不参与版本解析，保留模板记录的区间——上游版本兼容性只有模板作者知道。
  */
 function renderManifest(
   content: Buffer,
@@ -190,13 +191,31 @@ function renderManifest(
   >;
   const withPatch =
     patch === undefined ? manifest : mergeManifest(manifest, patch);
+  delete withPatch[CREATE_FIELD];
+  const pinned = new Set(pinnedNames(patch));
   for (const field of ["dependencies", "devDependencies"] as const) {
     const table = withPatch[field];
     if (isStringMap(table)) {
-      withPatch[field] = applyResolvedVersions(table, resolved);
+      withPatch[field] = applyResolvedVersions(
+        table,
+        withoutNames(resolved, pinned),
+      );
     }
   }
   return Buffer.from(`${JSON.stringify(withPatch, null, 2)}\n`, "utf8");
+}
+
+/** 去掉被钉住的包：它们不进解析结果表，版本区间因此保持模板原值 */
+function withoutNames(
+  resolved: ReadonlyMap<string, string>,
+  names: ReadonlySet<string>,
+): Map<string, string> {
+  if (names.size === 0) return new Map(resolved);
+  const out = new Map<string, string>();
+  for (const [name, version] of resolved) {
+    if (!names.has(name)) out.set(name, version);
+  }
+  return out;
 }
 
 /** 顶层深合并：嵌套对象递归，其余（含数组）由增量整体取代 */
@@ -213,6 +232,37 @@ function mergeManifest(
         : value;
   }
   return out;
+}
+
+/**
+ * 生成器专用字段名。
+ *
+ * 叠加层可以用它声明「生成期要做的事」，这些内容不属于产物清单，写盘前必须抹掉——
+ * 否则新工程的 `package.json` 里会多出一个 npm 不认识、读者也不懂的字段。
+ */
+const CREATE_FIELD = "create";
+
+/**
+ * 读叠加层声明的「不要跟最新版」的依赖名。
+ *
+ * 存在的理由：模板希望依赖尽量新，但上游并非都兼容——`vue-tsc` 在 `typescript` 7 上
+ * 会因 `./lib/tsc` 不再导出而直接崩，这类约束只有模板作者知道。钉住的包保留模板
+ * 记录的版本区间，其余照常解析到最新。
+ */
+export function pinnedNames(
+  patch: Readonly<Record<string, unknown>> | undefined,
+): string[] {
+  if (patch === undefined) return [];
+  const section = patch[CREATE_FIELD];
+  if (!isPlainRecord(section)) return [];
+  const pinned = section.pinned;
+  if (!Array.isArray(pinned)) return [];
+  return pinned.filter((item): item is string => typeof item === "string");
+}
+
+/** 只认普通对象：数组与 null 不算 */
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** 只认「字符串到字符串」的表：依赖就是这个形状 */
