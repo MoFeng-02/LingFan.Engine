@@ -4,7 +4,11 @@
  * - 路径形态（目录 input 快照）以清单所在层为资源根，同深多个清单即无法判定。
  * 资源根 = 逻辑路径的相对基准，与 fetch / Tauri 两种供给实现的键完全一致。
  */
-import { MANIFEST_FILE, STORIES_DIR } from "@lingfan-engine/core";
+import {
+  compareOrdinal,
+  MANIFEST_FILE,
+  STORIES_DIR,
+} from "@lingfan-engine/core";
 import { defaultResourceTexts, type ResourceTexts } from "../texts";
 import { dirOf, segmentDepth, tryDirectoryHandle, tryFileHandle } from "./walk";
 
@@ -66,7 +70,7 @@ export function locateResourceRootFromPaths(
   if (candidates.length > 0) {
     const sorted = [...candidates].sort((a, b) => {
       const depth = segmentDepth(a) - segmentDepth(b);
-      return depth !== 0 ? depth : a.localeCompare(b);
+      return depth !== 0 ? depth : compareOrdinal(a, b);
     });
     const first = sorted[0] ?? MANIFEST_FILE;
     const ambiguous = sorted.filter(

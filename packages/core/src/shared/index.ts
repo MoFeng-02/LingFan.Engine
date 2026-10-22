@@ -4,3 +4,4 @@
  */
 export * from "./guards.ts";
 export * from "./numbers.ts";
+export * from "./ordering.ts";
