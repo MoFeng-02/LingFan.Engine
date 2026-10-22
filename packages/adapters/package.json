@@ -1,6 +1,6 @@
 {
   "name": "@lingfan-engine/adapters",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "灵泛叙事引擎预设适配器：SavePort（Tauri/localStorage）、ResourcePort（静态资源根）、AudioPort（WebView 解码）",
   "license": "Apache-2.0",
@@ -13,7 +13,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@lingfan-engine/core": "workspace:*",
+    "@lingfan-engine/core": "workspace:^",
     "@tauri-apps/api": "^2"
   },
   "repository": {

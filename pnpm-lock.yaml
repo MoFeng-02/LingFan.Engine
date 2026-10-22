@@ -184,7 +184,7 @@ importers:
   packages/adapters:
     dependencies:
       '@lingfan-engine/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@tauri-apps/api':
         specifier: ^2
@@ -204,10 +204,10 @@ importers:
   packages/shell:
     dependencies:
       '@lingfan-engine/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@lingfan-engine/ui':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../ui
 
   packages/stories-build:
@@ -225,7 +225,7 @@ importers:
   packages/ui:
     dependencies:
       '@lingfan-engine/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
 packages:
