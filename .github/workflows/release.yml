@@ -87,11 +87,13 @@ jobs:
         with:
           version: 12
 
+      # 不设 `registry-url`：setup-node 会往 ~/.npmrc 写一行指向 `${NODE_AUTH_TOKEN}` 的
+      # 认证条目，而这里没有长期 token，那行就成了字面量占位符，被当作无效凭据发出去，
+      # 反而盖住了 Trusted Publishing 的换证路径。不设它，npm 默认就打官方 registry。
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-          registry-url: https://registry.npmjs.org
 
       # npm CLI 自带版本偏旧，Trusted Publishing 需要较新的 CLI 才能完成 OIDC 换证
       - name: 升级 npm CLI
@@ -120,6 +122,10 @@ jobs:
         if: ${{ !inputs.dry_run }}
         run: |
           set -euo pipefail
+          # 发布前先打印身份与认证来源：OIDC 换证失败时，这一行能区分「没换到证」与
+          # 「换到证但包被拒」，两种原因的修法完全不同。
+          npm --version
+          echo "npmrc 认证条目：$(grep -c _authToken "$HOME/.npmrc" 2>/dev/null || echo 0)"
           # 逐个上传同一批 tarball。任何一个失败都中止，避免出现「一半新一半旧」的版本组合。
           for tgz in dist-npm/*.tgz; do
             echo "发布 $tgz"
