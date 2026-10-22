@@ -40,5 +40,8 @@
     "apps/*/*.ts",
     "template/**/src/**/*.ts",
     "tests/**/*.ts"
-  ]
+  ],
+  /* 叠加层是生成器的事实素材，不是本仓源码：它们各自带 tsconfig、依赖别的框架
+     （vue / react / @vitejs/plugin-*），本仓没装那些包，纳入检查只会得到必然的解析失败 */
+  "exclude": ["template/*/overlays/**"]
 }

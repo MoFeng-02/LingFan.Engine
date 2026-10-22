@@ -20,7 +20,9 @@ pnpm -v
 npm create @lingfan-engine my-story
 ```
 
-`pnpm create @lingfan-engine my-story` works the same way. The generator asks for a project name plus a framework and a shell; pass `--yes` to take every default.
+`pnpm create @lingfan-engine my-story` works the same way. The generator asks for a project name plus a framework and a shell — the framework is either plain (framework-agnostic) or Vue 3, and the only shell today is browser. Pass `--yes` to take every default, or name them: `--framework vue --shell browser`.
+
+A framework layer swaps the page structure and entry point only: `src/host/**` stays byte-identical and the stylesheet is shared with the skeleton, so the engine and adapters never learn which framework renders.
 
 Generating by hand works too. The template lives at `template/v1/__PROJECT__/` in the engine repository.
 

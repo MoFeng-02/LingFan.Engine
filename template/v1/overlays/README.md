@@ -8,6 +8,26 @@
 `none`（框架无关）与 `browser`（浏览器）表示「这一层什么都不加」，所以这里看不到它们。
 缺目录不是错误，只是没有内容可叠。
 
+## 现有层
+
+- `vue/` —— 页面结构换成单文件组件：`index.html` 变成挂载点，新增 `src/App.vue` 与 Vue 版组合根，
+  `package.patch.json` 补 `vue` / `@vitejs/plugin-vue` / `vue-tsc`，并把 `typecheck` 换成
+  `vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json`。`src/host/**` 一行不改，
+  样式仍用骨架的 `src/styles/stage.css`。
+
+## 钉住版本
+
+`package.patch.json` 可以带一个生成期字段 `create.pinned`：数组里点名的依赖不参与
+「查 registry 写最新版」，版本区间保持骨架记录的原值，写盘前这个字段本身会被抹掉。
+
+```json
+{ "create": { "pinned": ["typescript"] } }
+```
+
+存在的理由：模板希望依赖尽量新，但上游并非都兼容——`vue-tsc` 在 `typescript` 7 上会因
+`./lib/tsc` 不再导出而直接崩，这类约束只有层作者知道。只有确实需要时才钉，钉住的包不会再跟到
+最新版。
+
 ## 一层里能放什么
 
 - 任意工程文件：路径相对工程根，与骨架同名即覆盖。

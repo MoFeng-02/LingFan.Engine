@@ -1,0 +1,183 @@
+/* RenderTargets 的落地：stage / dialogue / choices / notifications / toolbar。
+   **层级（z 序）不在这里写死**——由 src/main.ts 按「内建默认 × 工程覆盖
+   （project.json shell.layers）」解析后内联写入。 */
+:root {
+  color-scheme: dark;
+}
+body {
+  margin: 0;
+  background: #10131a;
+  color: #e6e6e6;
+  font-family: system-ui, "Microsoft YaHei", sans-serif;
+  /* 文本框选：台词、按钮、面板标签只作展示，拖动或连点不该留下选中段。
+     要提供复制能力时，给那个部件加 data-lf-selectable 放行，不在宿主外面破例。 */
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* 放行名单：输入框要能选词改写；带 data-lf-selectable 的部件由给出复制操作的宿主自行标记 */
+input,
+textarea,
+[data-lf-selectable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+/* 舞台根：铺满视口；屏幕震动（shake）施加在它上面 */
+#stage-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+/* 舞台元素层：容器不阻塞点击（可交互元素自身恢复 pointer-events） */
+#stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+/* 对话层 */
+#dialogue {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  left: 24px;
+  box-sizing: border-box;
+  border: 1px solid #2a3140;
+  border-radius: 10px;
+  background: rgba(20, 24, 33, 0.92);
+  padding: 16px 20px;
+  min-height: 96px;
+}
+#speaker {
+  color: #7aa2f7;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+#text {
+  line-height: 1.7;
+  white-space: pre-wrap;
+  /* 项目默认字体档：theme-fonts setProperty(--lf-story-font) 装配；未声明时
+     变量无效，属性落到继承值（等价不设），逐句声明的字体以内联样式覆盖 */
+  font-family: var(--lf-story-font);
+}
+#hint {
+  text-align: right;
+  color: #6b7280;
+  font-size: 12px;
+}
+/* NVL 累积层：与对话层同域，铺成阅读区 */
+#nvl {
+  position: absolute;
+  inset: 24px;
+  overflow: auto;
+  border: 1px solid #2a3140;
+  border-radius: 10px;
+  background: rgba(20, 24, 33, 0.94);
+  padding: 16px 20px;
+  line-height: 1.7;
+}
+/* 等待态层（各自渲染进 #choices） */
+#choices {
+  position: absolute;
+  top: 50%;
+  left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  max-width: min(520px, calc(100% - 48px));
+  transform: translateY(-50%);
+}
+#choices:empty {
+  display: none;
+}
+.prompt {
+  margin: 0 0 4px;
+  color: #9aa5ce;
+}
+.choice {
+  padding: 8px 16px;
+}
+.input-row {
+  display: flex;
+  gap: 8px;
+}
+.input-row input {
+  min-width: 200px;
+}
+.note {
+  color: #6b7280;
+  font-size: 13px;
+}
+.banner {
+  border: 1px solid #e0af6888;
+  border-radius: 6px;
+  background: rgba(42, 36, 21, 0.9);
+  color: #e0af68;
+  padding: 8px 12px;
+}
+/* 通知 toast 层 */
+#notifications {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+.toast {
+  border: 1px solid #7aa2f755;
+  border-radius: 6px;
+  background: rgba(36, 40, 59, 0.94);
+  padding: 6px 12px;
+  font-size: 13px;
+}
+/* 工具条（存/读）：槽位数来自 project.json shell.saves.slots */
+#toolbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+button,
+select,
+input {
+  font: inherit;
+  color: #e6e6e6;
+  background: #1b2130;
+  border: 1px solid #2f3a4d;
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+button {
+  cursor: pointer;
+}
+/* 全屏转场遮罩（transition）：屏幕级，恒在最上；透明度由帧驱动写入 */
+#transition {
+  position: absolute;
+  inset: 0;
+  display: none;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5000;
+}
+/* 引擎错误横幅（fail-closed 可见，不静默） */
+#error {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 12px;
+  display: none;
+  border: 1px solid #f7768e88;
+  border-radius: 6px;
+  background: rgba(60, 20, 28, 0.94);
+  color: #f7768e;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+#error:not(:empty) {
+  display: block;
+}

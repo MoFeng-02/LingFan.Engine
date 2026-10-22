@@ -40,8 +40,8 @@ npm create @lingfan-engine my-story
 pnpm create @lingfan-engine my-story
 ```
 
-生成器会问两件事：工程名、框架与壳（当前提供「原生（框架无关）」与「浏览器」，后续叠加层会加进来）。
-全部取缺省值可以跳过问答：
+生成器会问两件事：工程名、框架与壳。当前框架可选「原生（框架无关）」与「Vue 3」，
+壳暂时只有「浏览器」。全部取缺省值可以跳过问答：
 
 ```
 npm create @lingfan-engine my-story -- --yes
@@ -52,8 +52,12 @@ npm create @lingfan-engine my-story -- --yes
 想不开交互问答、直接指定框架与壳：
 
 ```
-npm create @lingfan-engine my-story -- --framework none --shell browser
+npm create @lingfan-engine my-story -- --framework vue --shell browser
 ```
+
+**框架层只换页面结构与入口**：`--framework vue` 会把 `index.html` 换成挂载点、加 `src/App.vue`
+与 Vue 版组合根，`src/host/**`（装配、订阅、帧循环、输入映射）一行不改——引擎与适配器不认识 Vue。
+两种形态的样式表是同一份 `src/styles/stage.css`，所以换框架不影响游玩界面的外观口径。
 
 工程名只允许小写字母、数字、`-` 与 `_`，且不能以下划线或点开头——它同时进 `package.json` 的 `name`、
 `project.json` 的 `id` 与目录名，大写与点开头在 npm 侧非法。
@@ -73,10 +77,12 @@ npm create @lingfan-engine my-story -- --framework none --shell browser
 __PROJECT__/
 ├── project.json          # 工程清单：id/name/entry/lang/formatVersion
 ├── package.json
-├── tsconfig.json
+├── tsconfig.json         # 浏览器侧：src/ 下的 ts 与 vue
+├── tsconfig.node.json    # Node 侧：只覆盖 vite.config.ts（它要 node:fs 与 @types/node）
 ├── vite.config.ts        # publicDir: "Resources" ← 资源根即静态根
 ├── index.html            # RenderTargets 落地：stage/dialogue/choices/notifications/toolbar
 ├── src/main.ts           # 组合根：装配适配器 → 组装工程 → 建引擎 → 订阅渲染 + 帧驱动
+├── src/styles/stage.css  # 页面与层样式（换框架不动这份：叠加层共用同一张表）
 └── Resources/            # 故事工程根（自包含、可整体搬运）
     ├── project.json      #   工程清单：id/name/entry/lang/formatVersion
     ├── Stories/          #   故事（JSON v1 / .story 混存合法）
