@@ -43,9 +43,9 @@
  * 缺省的 testTimeout（vitest.config.ts）：它们显式抬到 60s——时限先到会把绿例判红并
  * 触发重试，真回归本就会红，放宽时限不动判定力。
  */
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { buildStories } from "@lingfan-engine/stories-build";
@@ -107,6 +107,15 @@ function isConfigContractTransition(error: unknown): boolean {
     (/缺少 folders 导出/.test(error.message) ||
       /config\.ts 不存在/.test(error.message))
   );
+}
+
+/**
+ * 落桩字体文件：字体目录不进版本库（真实字体二进制不入仓，且该目录下有本机私有字体子目录），
+ * 干净检出里根本没有 Fonts 目录——写文件前必须先建目录，否则 ENOENT 直接红而不是断言红。
+ */
+function writeStubFont(fontFile: string): void {
+  mkdirSync(dirname(fontFile), { recursive: true });
+  writeFileSync(fontFile, "");
 }
 
 describe("真实工程回归锚点（apps/playground 整链）", () => {
@@ -208,7 +217,7 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
       const committedFont = readFileSync(fontGenPath, "utf8");
       try {
         // 桩字体文件：注册表只认文件名（去扩展名），内容不参与扫描——真实字体二进制不入仓
-        writeFileSync(fontFile, "");
+        writeStubFont(fontFile);
         let report;
         try {
           report = await buildStories(PLAYGROUND_ROOT);
@@ -311,7 +320,7 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
         });
       try {
         // 探针需要非空注册表：落桩字体并重建类型面（finally 恢复封闭空类型）
-        writeFileSync(fontFile, "");
+        writeStubFont(fontFile);
         try {
           await buildStories(PLAYGROUND_ROOT);
         } catch (error) {
