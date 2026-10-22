@@ -1,5 +1,5 @@
 /**
- * 发布前自检：把四个公开包逐个打成 tarball，按**消费者实际拿到的东西**检查，全部合格才允许发布。
+ * 发布前自检：把待发布的包逐个打成 tarball，按**消费者实际拿到的东西**检查，全部合格才允许发布。
  *
  * 为什么必须查 tarball 而不是查仓库里的 package.json：发布链路上有两处会改动元数据，
  * 只看源文件会漏掉——
@@ -24,12 +24,19 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** 对外发布的包。私有包（构建期工具与编辑器）不在此列，它们不进 registry。 */
+/**
+ * 对外发布的包。
+ *
+ * `editor` 与 `stories-build` 是作者侧工具链：宿主工程要用 TS 写故事，得先拿到词函数
+ * 与编译器，所以它们也必须能被安装——不再是仓库内部依赖。
+ */
 export const PUBLISHED_PACKAGES = [
   "@lingfan-engine/core",
   "@lingfan-engine/adapters",
   "@lingfan-engine/ui",
   "@lingfan-engine/shell",
+  "@lingfan-engine/editor",
+  "@lingfan-engine/stories-build",
 ];
 
 /** 每个包都必须声明的字段。缺失会让 registry 页面、来源追溯或安装行为缺东西。 */
@@ -294,7 +301,9 @@ if (isMain) {
   }
   if (keepIn !== undefined) console.log(`\n  打包产物保留在 ${destination}`);
   if (failures.length === 0) {
-    console.log("\n  检查结论 · 通过（四个包可直接发布）");
+    console.log(
+      `\n  检查结论 · 通过（${PUBLISHED_PACKAGES.length} 个包可直接发布）`,
+    );
   } else {
     console.log(`\n  检查结论 · 失败 ${failures.length} 项：`);
     for (const failure of failures) console.log(`    ${failure}`);

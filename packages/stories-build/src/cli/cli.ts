@@ -9,11 +9,16 @@
  *
  * 本文件是**入口与呈现**：流水线在 `./index`（唯一出口），这里只做三件事——解析可选的
  * 位置参数工程根、跑一次编译、把 `BuildReport` 打印成人读的几段（完成行 / 零差量 /
- * 新增 / 更新 / 清理陈旧 / 词汇层提示）。失败一律打到 stderr 并以退出码 1 结束，
- * 便于脚本链中断。
+ * 新增 / 更新 / 清理陈旧 / 词汇层提示）。失败一律打到 stderr 并返回退出码 1，便于脚本
+ * 链中断。
  *
- * 用法：`pnpm stories:build [工程根]`；缺省工程根 = 进程工作目录（调用方脚本已 cd 到
- * 宿主工程根，或经 DSH_STORIES_ROOT 指明——包内没有「谁在调我、宿主工程在哪」这件事实）。
+ * 两种触发方式共用 `runBuildCli`：仓内 `pnpm stories:build` 经底部主模块守卫直接跑本文件
+ * （tsx 解释 TS）；装了本包的工程经 `bin` 里的 `.mjs` 垫片跑——node_modules 内的 TS 不能靠
+ * Node 类型擦除加载，垫片用 tsx 的 `tsImport` 装本文件再调同一个 `runBuildCli`，两条路
+ * 因此共用一份呈现逻辑。
+ *
+ * 用法：`<工程根可省略>`；缺省工程根 = 进程工作目录（调用方脚本已 cd 到宿主工程根，
+ * 或经 DSH_STORIES_ROOT 指明——包内没有「谁在调我、宿主工程在哪」这件事实）。
  * 测试不经这里——它们直接调 `buildStories`（纯编排，fs 全在参数 root 之下）。
  */
 import { resolve } from "node:path";
@@ -26,14 +31,23 @@ import {
 
 export { StoryBuildError, buildStories, type BuildReport } from "../index.ts";
 
-// —— 主模块守卫：仅直接执行时跑真实工程（tests 直测 buildStories 纯编排）——
-// 可选位置参数 = 工程根（默认 = 工作目录，可由 DSH_STORIES_ROOT 覆盖）
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+/** 工程根：位置参数优先，其次 `DSH_STORIES_ROOT`，最后进程工作目录 */
+export function resolveBuildRoot(argv: readonly string[]): string {
   const envRoot = process.env.DSH_STORIES_ROOT;
-  const root = resolve(
-    process.argv[2] ??
+  return resolve(
+    argv[0] ??
       (envRoot !== undefined && envRoot !== "" ? envRoot : process.cwd()),
   );
+}
+
+/**
+ * 跑一次编译并把结果打到标准输出/标准错误，返回进程退出码。
+ * 不调用 `process.exit`——谁来决定退出由调用方（主模块守卫或 bin 垫片）负责。
+ */
+export async function runBuildCli(
+  argv: readonly string[] = process.argv.slice(2),
+): Promise<number> {
+  const root = resolveBuildRoot(argv);
   try {
     const report = await buildStories(root);
     console.log(
@@ -68,10 +82,18 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
           .join("\n")}`,
       );
     }
+    return 0;
   } catch (error) {
     console.error(
       `[stories:build] 失败：${error instanceof StoryBuildError ? error.message : String(error)}`,
     );
-    process.exit(1);
+    return 1;
   }
+}
+
+// —— 主模块守卫：仅直接执行时跑（tests 直测 buildStories，bin 垫片直调 runBuildCli）——
+// 可选位置参数 = 工程根（默认 = 工作目录，可由 DSH_STORIES_ROOT 覆盖）
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  const code = await runBuildCli();
+  if (code !== 0) process.exit(code);
 }

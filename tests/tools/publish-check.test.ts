@@ -69,6 +69,8 @@ describe("发布包元数据判据", () => {
       "@lingfan-engine/adapters",
       "@lingfan-engine/ui",
       "@lingfan-engine/shell",
+      "@lingfan-engine/editor",
+      "@lingfan-engine/stories-build",
     ]);
     expect(checkPackage(healthyPackage())).toEqual([]);
   });
