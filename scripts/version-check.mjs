@@ -127,18 +127,30 @@ export function checkVersions({ manifests, tag }) {
   return failures;
 }
 
+/**
+ * 从 CI 环境里取出本次运行的发行标签，非标签触发时返回 undefined。
+ *
+ * 只认 `GITHUB_REF` 的 `refs/tags/` 形态：合入 main 的分支推送里 `GITHUB_REF_NAME`
+ * 是分支名（`main`），拿它当标签会立刻触发「标签缺少前缀」的误报——那些运行本来就
+ * 不该做标签对账，只该查包之间是否齐。
+ */
+export function tagFromEnv(env) {
+  const ref = env.GITHUB_REF ?? "";
+  const prefix = "refs/tags/";
+  return ref.startsWith(prefix) ? ref.slice(prefix.length) : undefined;
+}
+
 const isMain =
   process.argv[1] !== undefined &&
   import.meta.url ===
     new URL(`file://${process.argv[1].replace(/\\/g, "/")}`).href;
 
 if (isMain) {
-  // `--tag <标签>`：发布流程传入本次触发的标签；本地不传，只查包之间是否齐。
+  // `--tag <标签>`：发布流程显式传入本次触发的标签；不传时按环境推断，
+  // 分支推送推断不出标签，就只查包之间是否齐。
   const tagIndex = process.argv.indexOf("--tag");
   const tag =
-    tagIndex === -1
-      ? (process.env.GITHUB_REF_NAME ?? undefined)
-      : process.argv[tagIndex + 1];
+    tagIndex === -1 ? tagFromEnv(process.env) : process.argv[tagIndex + 1];
 
   const manifests = readManifests();
   const failures = checkVersions({ manifests, tag });
