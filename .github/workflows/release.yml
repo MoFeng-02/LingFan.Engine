@@ -1,0 +1,103 @@
+# 发布四个公开包到 npm：@lingfan-engine/{core,adapters,ui,shell}
+#
+# 认证走 Trusted Publishing（OIDC）：GitHub Actions 用工作流身份换取 registry 的短期凭据，
+# 仓库里不存任何长期 token，也不需要浏览器里的二次验证码。
+#
+# 为什么不是 `pnpm publish`：四个包的依赖写的是 workspace 协议，只有 pnpm 在打包阶段
+# 会把它改写成具体版本范围。而发布动作要交给 npm（registry 的 OIDC 与 provenance 都
+# 以 npm CLI 为准）。所以流程拆成两步——`pnpm pack` 产出已改写的 tarball，`npm publish`
+# 发布该 tarball。直接 `npm publish <包目录>` 会把 workspace 协议原样发出去，消费方装不上。
+#
+# 启用前提（一次性，在 npmjs.com 上做）：每个包设置里添加 Trusted Publisher，
+# 指向本仓库与本文件名，并勾选允许发布。未配置时本工作流无权发布。
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 只打包与检查，不真正发布
+        type: boolean
+        default: false
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: pnpm 与 Node
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 类型检查
+        run: pnpm typecheck
+
+      - name: 代码风格
+        run: pnpm lint
+
+      - name: 单元测试
+        run: pnpm test:unit
+
+      - name: 运行时可达图审计
+        run: pnpm audit:runtime
+
+  publish:
+    needs: gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: pnpm 与 Node
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      # npm CLI 自带版本偏旧，Trusted Publishing 需要较新的 CLI 才能完成 OIDC 换证
+      - name: 升级 npm CLI
+        run: npm install -g npm@latest
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      # 打包与校验是同一步：`--keep` 让脚本把 tarball 留在 dist-npm，随后发布的就是这一批。
+      # 分开做会出现「检查的是 A、发出去的是 B」。
+      - name: 打包并自检
+        run: node scripts/publish-check.mjs --keep dist-npm
+
+      - name: 发布
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          for tgz in dist-npm/*.tgz; do
+            npm publish "$tgz" --access public --provenance
+          done
