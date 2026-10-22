@@ -1,4 +1,9 @@
-import type { CharacterDef, Story, StoryCommand } from "@lingfan-engine/core";
+import {
+  compareOrdinal,
+  type CharacterDef,
+  type Story,
+  type StoryCommand,
+} from "@lingfan-engine/core";
 import {
   defaultStoriesBuildTexts,
   type StoriesBuildTexts,
@@ -151,13 +156,13 @@ export function compileStoryFile(
   const commands: StoryCommand[] = [];
   // 全工程角色表前置：模块层声明的角色进场即有（注册先于一切命令，含 func）
   for (const def of [...session.characters.values()].sort((a, b) =>
-    a.key.localeCompare(b.key),
+    compareOrdinal(a.key, b.key),
   )) {
     commands.push(characterCommand(def));
   }
   for (const group of [localGroup, importedGroup]) {
     for (const compiled of [...group].sort((a, b) =>
-      a.name.localeCompare(b.name),
+      compareOrdinal(a.name, b.name),
     )) {
       const op = tryFuncOp(
         sf,

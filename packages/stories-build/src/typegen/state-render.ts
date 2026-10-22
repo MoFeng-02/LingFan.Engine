@@ -16,6 +16,7 @@
  *   逐字节同输出。
  */
 import { posix } from "node:path";
+import { compareOrdinal } from "@lingfan-engine/core";
 import type { EnumTypeSlot } from "./state-enum-ast.ts";
 
 export interface StateTypegenInput {
@@ -213,7 +214,7 @@ function renderImports(
     }
     const named = slots
       .filter((s) => s.importedName !== "default")
-      .sort((a, b) => a.localName.localeCompare(b.localName))
+      .sort((a, b) => compareOrdinal(a.localName, b.localName))
       .map((s) =>
         s.importedName === s.localName
           ? s.localName

@@ -1,4 +1,5 @@
 import * as ts from "typescript";
+import { compareOrdinal } from "@lingfan-engine/core";
 import { script } from "@lingfan-engine/editor";
 
 export interface CompileDiag {
@@ -24,10 +25,10 @@ export class DiagBag {
   list(): CompileDiag[] {
     return [...this.items.values()].sort(
       (a, b) =>
-        a.file.localeCompare(b.file) ||
+        compareOrdinal(a.file, b.file) ||
         a.line - b.line ||
         a.col - b.col ||
-        a.message.localeCompare(b.message),
+        compareOrdinal(a.message, b.message),
     );
   }
 }

@@ -4,7 +4,7 @@
  * 会话与列编译入口在 ./session.ts。
  */
 import * as ts from "typescript";
-import type { StoryCommand } from "@lingfan-engine/core";
+import { compareOrdinal, type StoryCommand } from "@lingfan-engine/core";
 import type { DiagBag, Graph } from "../graph.ts";
 import {
   createBodyCtx,
@@ -174,7 +174,9 @@ export function compileFunction(
     ...nested.flatMap((item) => [...item.refs]),
   ]);
   const nestedOps: StoryCommand[] = [];
-  for (const item of [...nested].sort((a, b) => a.name.localeCompare(b.name))) {
+  for (const item of [...nested].sort((a, b) =>
+    compareOrdinal(a.name, b.name),
+  )) {
     const op = tryFuncOp(
       sf,
       decl.name,

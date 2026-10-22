@@ -5,6 +5,7 @@
  * 因此引擎侧不设端口。目录缺失 = 空注册表（未引用字体名的工程零打扰；引用了即 fail-closed）。
  */
 import { existsSync, readdirSync } from "node:fs";
+import { compareOrdinal } from "@lingfan-engine/core";
 
 /** 字体根目录名（位于 Resources/ 之下） */
 export const FONTS_DIR_NAME = "Fonts";
@@ -21,7 +22,7 @@ export interface FontEntry {
 
 /**
  * 扫描字体根目录产注册表；目录不存在或为空 = 空数组（合法，等价「未声明任何字体」）。
- * 文件名按字典序稳定排序，保证注册表（与后续产物）不受文件系统枚举顺序影响。
+ * 文件名按码元序稳定排序，保证注册表（与后续产物）不受文件系统枚举顺序影响。
  */
 export function scanFontRegistry(fontsDir: string): readonly FontEntry[] {
   if (!existsSync(fontsDir)) {
@@ -40,7 +41,7 @@ export function scanFontRegistry(fontsDir: string): readonly FontEntry[] {
     }
     entries.push({ file, name: file.slice(0, dot) });
   }
-  entries.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
+  entries.sort((a, b) => compareOrdinal(a.file, b.file));
   return entries;
 }
 

@@ -87,7 +87,7 @@ describe("模块层构建期角色 · 收集与前置", () => {
     expect(commands[1]?.op).toBe("say");
   });
 
-  it("跨文件多角色按 key 字典序前置；列内同键 character 沿用覆盖语义不合并", async () => {
+  it("跨文件多角色按 key 码元序前置；列内同键 character 沿用覆盖语义不合并", async () => {
     const root = makeProject("multi-sorted", {
       "Stories.src/config.ts": config(["ch1"]),
       "Stories.src/ch1/roles.ts":
@@ -107,8 +107,10 @@ describe("模块层构建期角色 · 收集与前置", () => {
       "character",
       "say",
     ]);
-    expect(commands[0]).toMatchObject({ key: "甲", name: "甲名" });
-    expect(commands[1]).toMatchObject({ key: "乙", name: "乙名" });
+    // 码元序：乙 U+4E59 先于 甲 U+7532。断言这条口径本身——换成语言相关的比较器
+    // （按拼音/ICU 排则 甲 在前）就会红，构建产物也才与宿主 locale 无关。
+    expect(commands[0]).toMatchObject({ key: "乙", name: "乙名" });
+    expect(commands[1]).toMatchObject({ key: "甲", name: "甲名" });
     expect(commands[2]).toMatchObject({
       op: "character",
       key: "甲",
