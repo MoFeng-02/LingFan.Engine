@@ -122,16 +122,9 @@ jobs:
         if: ${{ !inputs.dry_run }}
         run: |
           set -euo pipefail
-          # 发布前先打印身份与认证来源：OIDC 换证失败时，这一行能区分「没换到证」与
-          # 「换到证但包被拒」，两种原因的修法完全不同。
-          npm --version
-          echo "npmrc 认证条目：$(grep -c _authToken "$HOME/.npmrc" 2>/dev/null || echo 0)"
-          # 逐个上传同一批 tarball。任何一个失败都中止，避免出现「一半新一半旧」的版本组合。
-          # 路径必须带 `./`：npm 会把两段式的 `dist-npm/x.tgz` 认成 `github:dist-npm/x.tgz`。
-          for tgz in dist-npm/*.tgz; do
-            echo "发布 $tgz"
-            npm publish "./$tgz" --access public --provenance
-          done
+          # 逐包先问 registry：已存在的版本跳过，缺的补上。这样重跑同一条流水线不会因为
+          # 「版本已存在」而失败，中途挂掉也能原样再跑一次补齐，不需要人挑出漏掉的包。
+          node scripts/publish-tarballs.mjs --keep dist-npm
 
   release:
     needs: publish
@@ -149,22 +142,14 @@ jobs:
       # `类型(范围): 摘要`，正文分「新增 / 优化 / 修复 / 其他变更」。
       # 这样发布说明与提交记录同源，不需要人再手写一遍。
       - name: 生成发布说明
-        id: notes
-        run: |
-          set -euo pipefail
-          node scripts/release-notes.mjs --version "${{ needs.publish.outputs.version }}" > notes.md
-          cat notes.md
-          {
-            echo "body<<RELEASE_NOTES_EOF"
-            cat notes.md
-            echo "RELEASE_NOTES_EOF"
-          } >> "$GITHUB_OUTPUT"
+        run: node scripts/release-notes.mjs --version "${{ needs.publish.outputs.version }}" > notes.md
 
       - name: 建 Release
         uses: softprops/action-gh-release@v2
         with:
           name: v${{ needs.publish.outputs.version }}
-          body: ${{ steps.notes.outputs.body }}
+          # 直接从文件读正文：多行内容经步骤输出中转时要自己配对分隔符，容易在这里翻车。
+          body_path: notes.md
           # 预发布版本号（含 `-rc.1` 之类后缀）自动标为预发布，正式版不标
           prerelease: ${{ contains(needs.publish.outputs.version, '-') }}
           generate_release_notes: false

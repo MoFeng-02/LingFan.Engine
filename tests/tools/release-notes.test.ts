@@ -123,4 +123,15 @@ describe("发布说明成文", () => {
     expect(bulletCount).toBe(commits.length);
     expect(notes).toContain(`共 ${commits.length} 条提交`);
   });
+
+  // 说明会被 `cat` 拼进别的内容里（发布步骤就是把文件内容交给下一步）。
+  // 结尾缺换行时，最后一行会和紧随其后的内容粘成一行，肉眼很难看出是这里的问题。
+  it("成文以换行收尾，拼接时不会与后续内容粘连", () => {
+    expect(renderNotes({ version: "0.1.2", commits }).endsWith("\n")).toBe(
+      true,
+    );
+    expect(renderNotes({ version: "0.1.2", commits: [] }).endsWith("\n")).toBe(
+      true,
+    );
+  });
 });

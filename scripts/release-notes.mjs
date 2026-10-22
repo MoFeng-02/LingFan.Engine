@@ -93,6 +93,8 @@ export function sectionOf(type) {
  *
  * 空节直接省略：只有一个节有内容时还印四个标题，读的人会以为其余三节漏了内容。
  * 每条带短哈希，便于从发布说明跳回提交。
+ *
+ * 末尾保留一个换行：调用方常用 `cat` 把它拼进别的内容里，没有结尾换行就会和下一行粘连。
  */
 export function renderNotes({ version, commits }) {
   const grouped = new Map(SECTIONS.map((section) => [section.title, []]));
@@ -113,7 +115,46 @@ export function renderNotes({ version, commits }) {
   }
   const total = commits.length;
   lines.push(total === 0 ? "本次没有代码提交。" : `共 ${total} 条提交。`);
-  return lines.join("\n");
+  return `${lines.join("\n")}\n`;
+}
+
+/** 当前提交上的标签。用来把它们排除出「上一个标签」的搜索。 */
+function tagsAtHead() {
+  try {
+    const output = execFileSync("git", ["tag", "--points-at", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    return output
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 取上一个标签作为提交范围的起点。
+ *
+ * 必须排除「指向当前提交的标签」：发布流水线检出的正是打了本次标签的提交，不排除的话
+ * `describe` 会把这个标签自己返回回来，范围退化成空区间，发布说明就变成「没有提交」。
+ *
+ * 找不到更早的标签时返回 undefined（首个版本取全部历史）。stderr 一并丢弃：没有标签是
+ * 正常状态，不该在日志里留下一条看着像失败的 `fatal:`。
+ */
+export function previousTag() {
+  const excluded = tagsAtHead().flatMap((tag) => ["--exclude", tag]);
+  try {
+    const output = execFileSync(
+      "git",
+      ["describe", "--tags", "--abbrev=0", ...excluded],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    ).trim();
+    return output === "" ? undefined : output;
+  } catch {
+    return undefined;
+  }
 }
 
 const isMain =
@@ -134,20 +175,9 @@ if (isMain) {
     );
     process.exit(1);
   }
-  // `--from` 缺省时自动找上一个标签：`git describe` 在打标签前取到的是更早的那个。
+  // `--from` 缺省时自动找上一个标签：跳过指向当前提交的标签，否则范围会是空的。
   const fromIndex = process.argv.indexOf("--from");
-  let from;
-  if (fromIndex !== -1) {
-    from = process.argv[fromIndex + 1];
-  } else {
-    try {
-      from = execFileSync("git", ["describe", "--tags", "--abbrev=0"], {
-        encoding: "utf8",
-      }).trim();
-    } catch {
-      from = undefined;
-    }
-  }
+  const from = fromIndex !== -1 ? process.argv[fromIndex + 1] : previousTag();
   process.stdout.write(
     renderNotes({ version, commits: readCommits({ from }) }),
   );
