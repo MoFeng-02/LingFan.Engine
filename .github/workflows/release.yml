@@ -103,12 +103,13 @@ jobs:
       # 标签与包内版本必须一致：这一步同时负责把版本号交给后续步骤与 Release 正文。
       # 不显式传 `--tag`：脚本自己按 `GITHUB_REF` 判断本次是不是标签触发。手工触发时
       # `GITHUB_REF` 指向分支，推不出标签，于是只做包间对账——演练因此不会被分支名卡住。
+      # 版本用单引号：双引号里反引号会被 bash 当命令替换，`\`` 与 `\${...}` 都救不回来。
       - name: 版本一致性
         id: version
         run: |
           set -euo pipefail
           node scripts/version-check.mjs
-          node -e "console.log(\`version=${require('./package.json').version}\`)" >> "$GITHUB_OUTPUT"
+          node -e 'console.log("version=" + require("./package.json").version)' >> "$GITHUB_OUTPUT"
 
       # 打包与校验是同一步：`--keep` 让脚本把 tarball 留在 dist-npm，随后发布的就是这一批。
       # 分开做会出现「检查的是 A、发出去的是 B」。
