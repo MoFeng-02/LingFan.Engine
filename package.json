@@ -15,6 +15,7 @@
     "test:unit": "vitest run",
     "audit:runtime": "node scripts/audit-runtime/index.mjs",
     "publish:check": "node scripts/publish-check.mjs",
+    "publish:push": "node scripts/publish-tarballs.mjs",
     "version:check": "node scripts/version-check.mjs",
     "release:notes": "node scripts/release-notes.mjs",
     "typecheck": "vue-tsc --noEmit",
