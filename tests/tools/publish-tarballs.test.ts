@@ -52,8 +52,8 @@ describe("发布脚本 · 清单读取", () => {
     }
   });
 
-  it("六个包都读得到，发布面与打包自检同源", () => {
-    expect(PUBLISHED_PACKAGES).toHaveLength(6);
+  it("七个包都读得到，发布面与打包自检同源", () => {
+    expect(PUBLISHED_PACKAGES).toHaveLength(7);
     const versions = PUBLISHED_PACKAGES.map((name) => manifestOf(name).version);
     expect(new Set(versions).size).toBe(1);
   });

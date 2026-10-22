@@ -86,6 +86,18 @@ const SINGLE: Record<string, string> = {
   HostLayerZController: "apps/playground/src/host/narrative/runtime/layer-z.ts",
   HostLayerZControllerOptions:
     "apps/playground/src/host/narrative/runtime/layer-z.ts",
+  // 工程生成器：模板元数据、叠加层合并、版本解析三处的对外形状各只一份
+  TemplateMeta: "packages/create/src/registry/template-meta.ts",
+  TemplateOption: "packages/create/src/registry/template-meta.ts",
+  ResolvedVersion: "packages/create/src/registry/versions.ts",
+  PendingFile: "packages/create/src/overlay/merge.ts",
+  MergedLayer: "packages/create/src/overlay/merge.ts",
+  GenerateOptions: "packages/create/src/generate/project.ts",
+  GenerateResult: "packages/create/src/generate/project.ts",
+  CreateArgs: "packages/create/src/cli/cli.ts",
+  PromptTexts: "packages/create/src/cli/prompts.ts",
+  PromptIo: "packages/create/src/cli/prompts.ts",
+  CreateTexts: "packages/create/src/shared/texts.ts",
 };
 
 /** 模板副本：项目模板是独立工程，与宿主各留一份是故意的 */

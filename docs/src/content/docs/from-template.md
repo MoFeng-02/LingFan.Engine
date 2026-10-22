@@ -7,12 +7,41 @@ description: 模板提供工程骨架和一个能跑的示例故事。它自带�
 
 ## 生成一个新工程
 
-1. 复制 `v1/__PROJECT__/` 到目标位置，重命名为你的工程名。
-2. 把目录内所有 `__PROJECT__` 占位符替换成工程名。三处：目录名、`package.json` 的 `name`、`Resources/project.json` 的 `id` 和 `name`。
-3. 装依赖（引擎包未发布，先本地链接，见[快速开始](/getting-started/)）。
-4. `pnpm dev`。
+```sh
+npm create @lingfan-engine my-story
+pnpm create @lingfan-engine my-story
+```
 
-占位符是整体替换：`__PROJECT__` 出现的地方全都要换成同一个名字。漏掉一处，`package.json` 的名字和清单的 `id` 就对不上。
+生成器问两件事：工程名、框架与壳。当前提供「原生（框架无关）」与「浏览器」两项，后续的框架层与桌面壳从这里长出来。
+
+跳过问答、全部取缺省值：
+
+```sh
+npm create @lingfan-engine my-story -- --yes
+```
+
+直接指定选项：
+
+```sh
+npm create @lingfan-engine my-story -- --framework none --shell browser
+```
+
+生成后 `cd my-story && pnpm install && pnpm dev`。
+
+工程名只允许小写字母、数字、`-`、`_`，不能以下划线或点开头——它同时进 `package.json` 的 `name`、`Resources/project.json` 的 `id` 与目录名，大写与点开头在 npm 侧非法。
+
+有两件事生成器会替你做，手工复制目录时容易漏：
+
+- **占位符整体替换**：`__PROJECT__` 与 `__project__` 两种形态都换（后者是 `package.json` 的 name，必须小写）。漏一处，包名与清单 `id` 就对不上。
+- **引擎包版本取当下最新**：生成时查一次 registry，把最新版写成 `^x.y.z`。不写 `latest` 标签，是因为它每次安装都解析到当时最高版，同一份工程在两台机器上会装出不同版本。
+
+## 模板的组织方式
+
+`template/v1/__PROJECT__/` 是框架无关的骨架，`template/v1/overlays/<id>/` 是叠加层。叠加规则：同路径文件覆盖骨架，根目录的 `*.patch.json` 深合并进 `package.json`。
+
+`template-meta.json` 的 `frameworks` / `shells` 声明有哪些可选项，每项 `id` 对应一个叠加层目录；缺省项（`none` / `browser`）没有目录，表示这一层什么都不加。
+
+`.gitignore` 在模板里存成不带点的 `gitignore`：npm 把包装进 `node_modules` 时会把包内的 `.gitignore` 改名成 `.npmignore`，按原名存会导致生成的工程既缺忽略规则又多个无用文件。
 
 ## 示例故事
 
@@ -86,9 +115,23 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
 
 ```json
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "minEngineVersion": "0.1.0",
-  "placeholder": "__PROJECT__"
+  "placeholder": "__PROJECT__",
+  "frameworks": [
+    {
+      "id": "none",
+      "label": "原生（框架无关）",
+      "hint": "只用骨架，不叠加任何框架层"
+    }
+  ],
+  "shells": [
+    {
+      "id": "browser",
+      "label": "浏览器",
+      "hint": "只生成 Web 端工程，用 vite 起本地服务"
+    }
+  ]
 }
 ```
 

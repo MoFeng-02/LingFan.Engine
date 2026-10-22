@@ -16,7 +16,13 @@ pnpm -v
 
 ## 生成工程
 
-模板在引擎仓库的 `template/v1/__PROJECT__/`。
+```sh
+npm create @lingfan-engine my-story
+```
+
+也可以用 `pnpm create @lingfan-engine my-story`，两者等价。生成器会问工程名、框架与壳，全部取缺省值加 `--yes`。
+
+手工生成也可以：模板在引擎仓库的 `template/v1/__PROJECT__/`。
 
 1. 把 `__PROJECT__/` 整个复制到你想放工程的位置，目录名改成你的工程名，比如 `my-story`。
 2. 把目录里所有 `__PROJECT__` 占位符替换成同一个工程名。要改三处：目录名、`package.json` 的 `name`、`Resources/project.json` 的 `id` 和 `name`。
@@ -31,17 +37,11 @@ pnpm -v
    }
    ```
 
-3. 装依赖。模板依赖 `@lingfan-engine/core`、`@lingfan-engine/adapters`、`@lingfan-engine/ui`，这三个包**还没发布到 registry**，直接 `pnpm install` 会报 404。先用本地链接指到引擎仓库的包目录：
+3. 装依赖。模板依赖 `@lingfan-engine/core`、`@lingfan-engine/adapters`、`@lingfan-engine/ui`，这三个包已在 registry 上，`pnpm install` 直接可用。生成器还会在生成时查一次最新版本写进产物；手工复制时版本是模板里记录的那个，想跟最新就自己改。
 
-   ```sh
-   pnpm add @lingfan-engine/core@link:../LingFan.Engine/packages/core \
-            @lingfan-engine/adapters@link:../LingFan.Engine/packages/adapters \
-            @lingfan-engine/ui@link:../LingFan.Engine/packages/ui
-   ```
+   三个包以 TypeScript 源码出口发布，Vite 直接编译，不用先构建它们。
 
-   路径按你放仓库的位置改。三个包以 TypeScript 源码出口发布，Vite 直接编译，不用先构建它们。
-
-   如果 `pnpm add` 报 `ERR_PNPM_IGNORED_BUILDS`，是 pnpm 默认不跑依赖的构建脚本。在 `pnpm-workspace.yaml` 里批准一次：
+   如果 `pnpm install` 报 `ERR_PNPM_IGNORED_BUILDS`，是 pnpm 默认不跑依赖的构建脚本。在 `pnpm-workspace.yaml` 里批准一次：
 
    ```yaml
    allowBuilds:

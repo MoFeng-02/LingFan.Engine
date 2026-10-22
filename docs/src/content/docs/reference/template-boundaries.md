@@ -85,14 +85,14 @@ dialogVisible  elements
 
 ## 模板版本
 
-模板版本记在 `template/v1/template-meta.json` 里，当前 `1.1.0`，要求的引擎版本是 `0.1.0`。
+模板版本记在 `template/v1/template-meta.json` 里，当前 `1.2.0`，要求的引擎版本是 `0.1.0`。
 
-它和引擎版本**是两条线**。引擎发新版不会自动抬高模板版本——只有当模板内容真的变了才手动改这个数。所以你看到引擎是 0.3.0、模板还写着 1.1.0 是正常的。
+它和引擎版本**是两条线**。引擎发新版不会自动抬高模板版本——只有当模板内容真的变了才手动改这个数。所以你看到引擎是 0.3.0、模板还写着 1.2.0 是正常的。
 
-四个引擎包（engine / adapters / ui / editor）以 TS 源码出口发布（`exports: "./src/index.ts"`），消费方由 Vite 和 TypeScript 直接编译，没有中间构建步骤。目前还没发到 registry，本地用 `pnpm add ...@link:<引擎仓库>/packages/...` 链接。
+引擎包以 TS 源码出口发布（`exports: "./src/index.ts"`），消费方由 Vite 和 TypeScript 直接编译，没有中间构建步骤。它们都在 registry 上，`pnpm install` 直接可用。
 
 ## 下一步
 
-- [从模板创建工程](/from-template/)——四步生成自己的工程。
+- [从模板创建工程](/from-template/)——用生成器起一个自己的工程。
 - [工程清单 project.json](/reference/manifest/)——`shell.*` 每个字段的取值和缺省。
 - [扩展引擎](/concepts/extensions/)——引擎侧的能力扩展点。

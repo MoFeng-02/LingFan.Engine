@@ -16,7 +16,13 @@ pnpm -v
 
 ## Generate a project
 
-The template lives at `template/v1/__PROJECT__/` in the engine repository.
+```sh
+npm create @lingfan-engine my-story
+```
+
+`pnpm create @lingfan-engine my-story` works the same way. The generator asks for a project name plus a framework and a shell; pass `--yes` to take every default.
+
+Generating by hand works too. The template lives at `template/v1/__PROJECT__/` in the engine repository.
 
 1. Copy the whole `__PROJECT__/` directory wherever you want the project, and rename it to your project name, say `my-story`.
 2. Replace every `__PROJECT__` placeholder inside the directory with that same name. Three places need it: the directory name, `name` in `package.json`, and `id` plus `name` in `Resources/project.json`.
@@ -31,17 +37,11 @@ The template lives at `template/v1/__PROJECT__/` in the engine repository.
    }
    ```
 
-3. Install dependencies. The template depends on `@lingfan-engine/core`, `@lingfan-engine/adapters` and `@lingfan-engine/ui`, and those three packages **are not published to a registry yet** — a plain `pnpm install` fails with a 404. Point them at the package directories in the engine repository with local links first:
+3. Install dependencies. The template depends on `@lingfan-engine/core`, `@lingfan-engine/adapters` and `@lingfan-engine/ui`, all of which are on the registry, so `pnpm install` just works. The generator also queries the registry once at generation time and writes the latest versions into the output; when copying by hand the versions are the ones recorded in the template — bump them yourself if you want the newest.
 
-   ```sh
-   pnpm add @lingfan-engine/core@link:../LingFan.Engine/packages/core \
-            @lingfan-engine/adapters@link:../LingFan.Engine/packages/adapters \
-            @lingfan-engine/ui@link:../LingFan.Engine/packages/ui
-   ```
+   All three packages publish TypeScript source entry points, so Vite compiles them directly and you never build them first.
 
-   Adjust the paths to wherever you put the repository. All three packages publish TypeScript source entry points, so Vite compiles them directly and you never build them first.
-
-   If `pnpm add` fails with `ERR_PNPM_IGNORED_BUILDS`, that is pnpm declining to run dependencies' build scripts by default. Approve it once in `pnpm-workspace.yaml`:
+   If `pnpm install` fails with `ERR_PNPM_IGNORED_BUILDS`, that is pnpm declining to run dependencies' build scripts by default. Approve it once in `pnpm-workspace.yaml`:
 
    ```yaml
    allowBuilds:
