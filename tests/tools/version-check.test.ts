@@ -13,6 +13,7 @@ interface VersionCheckModule {
   VERSIONED_PACKAGES: string[];
   TAG_PREFIX: string;
   versionOfTag: (tag: string) => { version?: string; problem?: string };
+  tagFromEnv: (env: Record<string, string | undefined>) => string | undefined;
   checkVersions: (input: {
     manifests: { label: string; manifest: Record<string, unknown> }[];
     tag?: string;
@@ -23,8 +24,13 @@ const versionCheck = (await import(
   /* @vite-ignore */ new URL("../../scripts/version-check.mjs", import.meta.url)
     .href
 )) as VersionCheckModule;
-const { VERSIONED_PACKAGES, TAG_PREFIX, versionOfTag, checkVersions } =
-  versionCheck;
+const {
+  VERSIONED_PACKAGES,
+  TAG_PREFIX,
+  versionOfTag,
+  tagFromEnv,
+  checkVersions,
+} = versionCheck;
 
 /**
  * 六个包加仓库根，全部同号：每个用例只破坏想测的那一处。
@@ -116,6 +122,20 @@ describe("版本一致性判据", () => {
       problem: undefined,
     });
     expect(versionOfTag("0.1.2").problem).toBeDefined();
+  });
+
+  it("分支推送推不出标签，只做包间对账", () => {
+    // 合入 main 的推送里 refs 指向分支，拿分支名当标签会立刻误报「标签缺少前缀」。
+    expect(tagFromEnv({ GITHUB_REF: "refs/heads/main" })).toBeUndefined();
+    expect(tagFromEnv({})).toBeUndefined();
+    expect(tagFromEnv({ GITHUB_REF: "refs/pull/12/merge" })).toBeUndefined();
+  });
+
+  it("标签触发的运行能推出标签名", () => {
+    expect(tagFromEnv({ GITHUB_REF: "refs/tags/v0.1.2" })).toBe("v0.1.2");
+    expect(tagFromEnv({ GITHUB_REF: "refs/tags/v0.1.2-rc.1" })).toBe(
+      "v0.1.2-rc.1",
+    );
   });
 
   it("发布清单与发布自检同口径：六个包", () => {
