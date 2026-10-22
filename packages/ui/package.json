@@ -1,6 +1,6 @@
 {
   "name": "@lingfan-engine/ui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "灵泛叙事引擎参考展示层：框架无关的可测纯逻辑（内联标记、打字机、音频差量规划）",
   "license": "Apache-2.0",
@@ -13,7 +13,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@lingfan-engine/core": "workspace:*"
+    "@lingfan-engine/core": "workspace:^"
   },
   "repository": {
     "type": "git",
