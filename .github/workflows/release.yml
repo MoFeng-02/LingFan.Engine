@@ -127,9 +127,10 @@ jobs:
           npm --version
           echo "npmrc 认证条目：$(grep -c _authToken "$HOME/.npmrc" 2>/dev/null || echo 0)"
           # 逐个上传同一批 tarball。任何一个失败都中止，避免出现「一半新一半旧」的版本组合。
+          # 路径必须带 `./`：npm 会把两段式的 `dist-npm/x.tgz` 认成 `github:dist-npm/x.tgz`。
           for tgz in dist-npm/*.tgz; do
             echo "发布 $tgz"
-            npm publish "$tgz" --access public --provenance
+            npm publish "./$tgz" --access public --provenance
           done
 
   release:
