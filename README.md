@@ -89,4 +89,4 @@ pnpm editor     # 编辑器界面（Vite，默认 http://localhost:1425）
 
 本仓库全部代码以 Apache-2.0 许可发布，全文见根目录 `LICENSE`；`packages/` 下每个包各带一份副本，随包分发时自带许可声明。
 
-对外发布的是 `@lingfan-engine/core`、`@lingfan-engine/adapters`、`@lingfan-engine/ui`、`@lingfan-engine/shell` 四个包。`@lingfan-engine/editor` 为内部依赖（构建期使用，不单独发布），两个应用与脚手架模板不单独声明许可。
+对外发布六个包：运行时侧 `@lingfan-engine/core`、`@lingfan-engine/adapters`、`@lingfan-engine/ui`、`@lingfan-engine/shell`，作者侧 `@lingfan-engine/editor`（op schema 与词函数）与 `@lingfan-engine/stories-build`（Stories.src 编译器，带 `lingfan-stories-build` / `lingfan-stories-watch` 两条命令）。两个应用与脚手架模板不单独声明许可。

@@ -310,6 +310,14 @@ pnpm stories:watch        # 改完自动重编译
 pnpm stories-typecheck    # tsc --noEmit 类型检查
 ```
 
+上面三条是仓库自身（参考宿主 `apps/playground`）的脚本。装了 `@lingfan-engine/stories-build` 的工程直接用它带的命令，工程根作为位置参数，省略则取工作目录：
+
+```powershell
+pnpm add -D @lingfan-engine/stories-build
+pnpm exec lingfan-stories-build .      # 编译一次
+pnpm exec lingfan-stories-watch .      # 常驻增量
+```
+
 产物写到 `Resources/Stories/`，路径镜像源文件路径——`Stories.src/chapter1/start.ts` 编译成 `Resources/Stories/chapter1/start.json`。TS 源工程对列集是**全量管理**：源里没有的列，构建期从产物目录删掉，删除项逐条列在报告里。
 
 忘记把新章节加进 `folders` 不会静默变成「陈旧删除」——覆盖范围外发现 `default` 导出会直接报错。
@@ -320,7 +328,7 @@ pnpm stories-typecheck    # tsc --noEmit 类型检查
 
 ## 实现状态
 
-TS 创作模式在实现中，还没有对外发布。构建 CLI、语句转译、编译期常量求值器都已落地并通过测试，构建链也已经完成包化：构建入口是独立的 `@lingfan-engine/stories-build` 包，工程里随构建生成的 `Stories.src/gen/stories.gen.d.ts` 把本工程的列名与插值键交给 IDE 做即时校验。`stories:watch` 已是常驻增量监听：保存源文件即重编译，产物与全量构建逐字节一致，并会报出本轮差量与受影响的故事列。
+TS 创作模式的运行时侧与作者侧都已包化：作者侧是 `@lingfan-engine/editor`（op schema 单一事实源与词函数）与 `@lingfan-engine/stories-build`（构建 CLI，带 `lingfan-stories-build` / `lingfan-stories-watch` 两条命令）；工程里随构建生成的 `Stories.src/gen/stories.gen.d.ts` 把本工程的列名与插值键交给 IDE 做即时校验。`stories:watch` 已是常驻增量监听：保存源文件即重编译，产物与全量构建逐字节一致，并会报出本轮差量与受影响的故事列。
 
 具体到你写故事时可能碰到的：
 

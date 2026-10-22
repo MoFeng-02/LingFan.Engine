@@ -227,8 +227,8 @@ export {
 
 /**
  * Script 词汇层：构建期作者词汇——builder 全部产出 StoryCommand
- * 数据（与 JSON 同族）。**命名空间导出**：词汇是子语言，`script` 隔离避免常用词
- * （set/define/say）与既有出口冲突；作者 `const { say, menu, when } = script` 解构即用。
+ * 数据（与 JSON 同族）。**命名空间导出**：词汇是子语言，`script` 是它的整体入口；
+ * 作者 `const { say, menu, when } = script` 解构即用。单个词函数的具名出口见文件末尾。
  */
 export * as script from "./script/index.ts";
 
@@ -242,4 +242,101 @@ export {
   type ColumnNameRegistry,
   type GuardNameRegistry,
   type InterpolationKeyRegistry,
+} from "./script/index.ts";
+
+/**
+ * 词函数**具名**出口：`script` 命名空间里的词函数同时经包根再导出一次，
+ * 于是 `import { say, menu } from "@lingfan-engine/editor"` 与
+ * `const { say } = script` 取到同一个函数对象。
+ *
+ * 为什么要有这一层：编译器子语言只认具名导入与 `script` 命名空间两条路
+ * （`import { say }` 的 `say` 会去 `WORD_NAMES` 里核对），但两条路里具名那条
+ * 需要包根真的导出该名字——只写 `export * as script` 时，仓内靠生成物
+ * 侥幸通过，**仓外消费者 tsc 报 TS2305「does not provide an export named 'say'」**。
+ *
+ * 只转发函数值，不转发类型：类型面由上方各域出口与词汇层注册表出口提供，
+ * 此处再转发会与根出口的既有类型名重复声明。
+ */
+export {
+  ambient,
+  animate,
+  animateBlock,
+  arrayPop,
+  arrayPush,
+  assert,
+  autoSave,
+  background,
+  bgSwitch,
+  bgm,
+  breakLoop,
+  buttonElement,
+  call,
+  cell,
+  character,
+  cond,
+  continueLoop,
+  cutscene,
+  define,
+  defineVars,
+  dialogWindow,
+  dict,
+  dictSet,
+  drainExpressionWarnings,
+  expr,
+  extOp,
+  forEach,
+  forIn,
+  func,
+  guard,
+  hide,
+  imageElement,
+  input,
+  interaction,
+  jump,
+  letVar,
+  load,
+  localVar,
+  menu,
+  minigame,
+  navigate,
+  newArray,
+  notify,
+  nvl,
+  option,
+  pause,
+  pauseVideo,
+  random,
+  resumeVideo,
+  ret,
+  reward,
+  save,
+  saveDelete,
+  say,
+  sceneSetup,
+  sceneType,
+  se,
+  seekVideo,
+  set,
+  setZ,
+  shake,
+  show,
+  staticFor,
+  stopAmbient,
+  stopBgm,
+  stopVideo,
+  stopVoice,
+  style,
+  switchOn,
+  textElement,
+  textTypewriter,
+  transition,
+  uncharacter,
+  undef,
+  video,
+  videoSkipable,
+  voice,
+  wait,
+  when,
+  whenChain,
+  whileDo,
 } from "./script/index.ts";

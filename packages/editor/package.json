@@ -1,20 +1,25 @@
 {
   "name": "@lingfan-engine/editor",
-  "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "灵泛编辑器核心：op schema 单一事实源 + 编辑期诊断 + 故事树纯映射器——只读写故事 JSON，不碰运行时与 Rust",
+  "description": "灵泛叙事作者层：op schema 单一事实源 + 词函数子语言 + 编辑期诊断 + 故事树纯映射器——只读写故事 JSON，不碰运行时与平台",
   "exports": {
     ".": "./src/index.ts"
   },
+  "files": [
+    "src",
+    "!src/**/*.test.ts",
+    "!src/script/generate-vocabulary.ts"
+  ],
+  "sideEffects": false,
   "dependencies": {
-    "@lingfan-engine/core": "workspace:*",
+    "@lingfan-engine/core": "workspace:^",
     "zod": "^4.6.5"
   },
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MoFeng-02/LingFan.Engine.git",
+    "url": "git+https://github.com/MoFeng-02/LingFan.Engine.git",
     "directory": "packages/editor"
   },
   "homepage": "https://github.com/MoFeng-02/LingFan.Engine#readme",
@@ -24,9 +29,14 @@
   "keywords": [
     "narrative",
     "editor",
-    "schema"
+    "schema",
+    "story",
+    "typescript"
   ],
   "engines": {
     "node": ">=22.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

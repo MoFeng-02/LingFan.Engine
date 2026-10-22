@@ -195,7 +195,7 @@ importers:
   packages/editor:
     dependencies:
       '@lingfan-engine/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       zod:
         specifier: ^4.6.5
@@ -213,14 +213,20 @@ importers:
   packages/stories-build:
     dependencies:
       '@lingfan-engine/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@lingfan-engine/editor':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../editor
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
 
   packages/ui:
     dependencies:
