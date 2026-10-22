@@ -1,7 +1,7 @@
 /**
- * 版本一致性自检：六个对外包与仓库根声明的版本必须相同，且与本次发行标签对齐。
+ * 版本一致性自检：七个对外包与仓库根声明的版本必须相同，且与本次发行标签对齐。
  *
- * 为什么需要它：这六个包是一套配套件，消费方会同时装 core 与 adapters/ui/shell，
+ * 为什么需要它：这些包是一套配套件，消费方会同时装 core 与 adapters/ui/shell，
  * 版本错开就会出现「适配器要 core 0.1.2、实际装到 0.1.1」这类无解组合。这类缺陷在
  * 单包视角下完全合法，只有把它们放在一起看才暴露。
  *
@@ -24,6 +24,7 @@ export const VERSIONED_PACKAGES = [
   "@lingfan-engine/shell",
   "@lingfan-engine/editor",
   "@lingfan-engine/stories-build",
+  "@lingfan-engine/create",
 ];
 
 /** 发行标签前缀。本仓单线版本，所有包同号，因此不需要按包区分前缀。 */

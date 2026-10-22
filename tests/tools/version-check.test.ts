@@ -33,7 +33,7 @@ const {
 } = versionCheck;
 
 /**
- * 六个包加仓库根，全部同号：每个用例只破坏想测的那一处。
+ * 全部对外包加仓库根，全部同号：每个用例只破坏想测的那一处。
  *
  * 显式标注返回类型而不是让 TS 推断：推断会收紧成「必有 name」的联合类型，
  * 于是「把某一份改成空清单」这种用例在类型层面就不成立，而它恰恰是要测的场景。
@@ -82,10 +82,11 @@ describe("版本一致性判据", () => {
 
   it("非语义化版本会被拦下——registry 会拒收这类版本", () => {
     // 样本把版本灌给全部清单，因此每条都要报：判据不因「根已报过」就放过包里的同一问题。
-    // 七份清单各报一条，外加根版本自身的一条——共八条。
+    // 每份清单（含仓库根自己）各报一条，外加根版本专属的那一条。
+    const publishedCount = VERSIONED_PACKAGES.length;
     for (const bad of ["v0.1.2", "0.1", "0.1.2.3"]) {
       const failures = checkVersions({ manifests: sampleManifests(bad) });
-      expect(failures).toHaveLength(8);
+      expect(failures).toHaveLength(publishedCount + 2);
       expect(failures.every((item) => item.includes("语义化版本"))).toBe(true);
     }
   });
@@ -138,7 +139,7 @@ describe("版本一致性判据", () => {
     );
   });
 
-  it("发布清单与发布自检同口径：六个包", () => {
+  it("发布清单与发布自检同口径：七个包", () => {
     expect(VERSIONED_PACKAGES).toEqual([
       "@lingfan-engine/core",
       "@lingfan-engine/adapters",
@@ -146,6 +147,7 @@ describe("版本一致性判据", () => {
       "@lingfan-engine/shell",
       "@lingfan-engine/editor",
       "@lingfan-engine/stories-build",
+      "@lingfan-engine/create",
     ]);
   });
 });

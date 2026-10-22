@@ -1,6 +1,20 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "minEngineVersion": "0.1.0",
   "placeholder": "__PROJECT__",
-  "_comment": "模板版本唯一来源，独立于引擎版本：仅当 template/v1 内容真正变化时才手动 bump（避免每次引擎发版都抬高模板版本）。placeholder 是目录/文件内的工程名占位符，生成时整体替换为工程名（对齐 _LingFanEngineTemplateTitle_ 占位符语义）。minEngineVersion 表示此模板要求的最低引擎版本。"
+  "frameworks": [
+    {
+      "id": "none",
+      "label": "原生（框架无关）",
+      "hint": "只用骨架，不叠加任何框架层"
+    }
+  ],
+  "shells": [
+    {
+      "id": "browser",
+      "label": "浏览器",
+      "hint": "只生成 Web 端工程，用 vite 起本地服务"
+    }
+  ],
+  "_comment": "模板版本唯一来源，独立于引擎版本：仅当 template/v1 内容真正变化时才手动 bump。placeholder 是目录/文件内的工程名占位符，生成时整体替换为工程名（对齐 _LingFanEngineTemplateTitle_ 占位符语义）。minEngineVersion 表示此模板要求的最低引擎版本。frameworks 与 shells 决定生成器会问什么、能叠哪些层，首项为缺省值；每一项的 id 对应 template/v1/overlays/<id> 目录（缺省层可以没有目录）。"
 }

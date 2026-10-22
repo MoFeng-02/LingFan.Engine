@@ -192,6 +192,12 @@ importers:
 
   packages/core: {}
 
+  packages/create:
+    dependencies:
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+
   packages/editor:
     dependencies:
       '@lingfan-engine/core':

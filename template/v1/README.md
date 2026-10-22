@@ -35,24 +35,37 @@
 
 ## 生成一个新工程
 
-1. 复制 `v1/__PROJECT__/` 到目标位置，重命名为你的工程名
-2. 把目录内所有 `__PROJECT__` 占位符替换为工程名（目录名、`package.json` 的 `name`、`project.json` 的 `id`/`name`）
-3. `pnpm install`
-4. `pnpm dev` → 打开提示的地址，点击/空格推进对话
+```
+npm create @lingfan-engine my-story
+pnpm create @lingfan-engine my-story
+```
+
+生成器会问两件事：工程名、框架与壳（当前提供「原生（框架无关）」与「浏览器」，后续叠加层会加进来）。
+全部取缺省值可以跳过问答：
+
+```
+npm create @lingfan-engine my-story -- --yes
+```
+
+生成后按提示 `cd my-story && pnpm install && pnpm dev`。
+
+想不开交互问答、直接指定框架与壳：
+
+```
+npm create @lingfan-engine my-story -- --framework none --shell browser
+```
+
+工程名只允许小写字母、数字、`-` 与 `_`，且不能以下划线或点开头——它同时进 `package.json` 的 `name`、
+`project.json` 的 `id` 与目录名，大写与点开头在 npm 侧非法。
+
+引擎包版本由生成器在**生成时**查一次 registry，把当时的最新版本写成 `^x.y.z` 记进产物。
+不写 `latest` 标签是因为它每次安装都解析到当时最高版，同一份工程在两台机器上会装出不同版本。
 
 ## 依赖接入（引擎包）
 
 模板依赖三个引擎包：`@lingfan-engine/core`（核心）、`@lingfan-engine/adapters`（预设适配器）、`@lingfan-engine/ui`（参考展示层）。
-它们以 **TS 源码出口**（`exports: "./src/index.ts"`）发布——消费方由 Vite/TS 直接编译，**无中间构建步骤**。
-
-- 已发布到 registry：`pnpm install` 直接可用
-- 尚未发布（**现状，截至模板 1.1.x；是否发布 registry 待定**）：用本地链接指向引擎仓库的包目录
-
-  ```
-  pnpm add @lingfan-engine/core@link:<引擎仓库>/packages/core \
-           @lingfan-engine/adapters@link:<引擎仓库>/packages/adapters \
-           @lingfan-engine/ui@link:<引擎仓库>/packages/ui
-  ```
+它们以 **TS 源码出口**（`exports: "./src/index.ts"`）发布——消费方由 Vite/TS 直接编译，**无中间构建步骤**，
+`pnpm install` 直接可用。
 
 ## 工程结构（单资源根）
 
@@ -84,6 +97,20 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
 ```
 
 排除 `node_modules/`、`dist/`、`.git/`、`Resources/Saves/`（运行期产物不进模板）。
+
+打包脚本是给「不走生成器、只想把骨架拿走」的场景准备的。正常路径是 `npm create @lingfan-engine`。
+
+## 叠加层与占位符
+
+`template-meta.json` 的 `frameworks` / `shells` 声明生成器会问哪些选项，每项的 `id` 对应
+`overlays/<id>/` 目录：同路径文件**覆盖**骨架，根目录的 `*.patch.json` **深合并**进 `package.json`。
+缺省项（`none` / `browser`）没有目录，表示「这一层什么都不加」，不是错误。
+
+骨架里的占位符有两种大小写形态：`__PROJECT__`（清单 id/name、页面标题、目录名）与
+`__project__`（`package.json` 的 name，npm 要求小写）。生成时两者都替换成工程名。
+
+`.gitignore` 在模板里存成不带点的 `gitignore`：npm 把包装进 `node_modules` 时会把包内的
+`.gitignore` 改名成 `.npmignore`，模板若按原名存，生成的工程就会既缺忽略规则又多个无用文件。
 
 ## 版本
 

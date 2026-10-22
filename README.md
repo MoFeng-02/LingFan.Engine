@@ -26,11 +26,12 @@ packages/
 ├── ui/           @lingfan-engine/ui         参考展示层：对话、音频、视频等可测纯逻辑
 ├── shell/        @lingfan-engine/shell      宿主编排：平台无关的装配逻辑与叙事状态投影
 ├── editor/       @lingfan-engine/editor     编辑器核心：op schema、编辑期诊断、故事树映射
-└── stories-build/@lingfan-engine/stories-build  创作链编译：Stories.src → Resources/Stories
+├── stories-build/@lingfan-engine/stories-build  创作链编译：Stories.src → Resources/Stories
+└── create/       @lingfan-engine/create     工程生成器：npm create @lingfan-engine
 apps/
 ├── playground/   @lingfan-engine/playground 参考宿主（Vue 3 + Tauri 2）= 模板的第一个实例
 └── editor/       @lingfan-engine/editor-app 编辑器界面：时间线、属性面板、诊断、JSON 视图
-template/v1/                          脚手架：新工程骨架，含最小可跑宿主
+template/v1/                          脚手架：新工程骨架（__PROJECT__）+ 可选叠加层（overlays/）
 tests/                                集中测试：按「包 → 功能域」归类，不与源码混放
 docs/                                 文档站源码（Astro + Starlight，中英双语）
 ```
@@ -41,7 +42,13 @@ docs/                                 文档站源码（Astro + Starlight，中�
 
 ## 工程结构：清单 + 单资源根
 
-新工程由 `template/v1` 生成，结构长这样：
+新工程由生成器从 `template/v1` 起：
+
+```bash
+npm create @lingfan-engine my-story
+```
+
+也可以手工复制 `template/v1/__PROJECT__/` 再改占位符，见[从模板创建工程](https://mofeng-02.github.io/LingFan.Engine/from-template/)。生成出来的结构长这样：
 
 ```
 我的工程/

@@ -29,6 +29,8 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
  *
  * `editor` 与 `stories-build` 是作者侧工具链：宿主工程要用 TS 写故事，得先拿到词函数
  * 与编译器，所以它们也必须能被安装——不再是仓库内部依赖。
+ * `create` 是工程生成器：`npm create @lingfan-engine` 会去 registry 上找它，同样必须发布，
+ * 且它随包带模板内容（`prepack` 时从仓库 `template/v1` 复制进来），因此包内需要 `template/`。
  */
 export const PUBLISHED_PACKAGES = [
   "@lingfan-engine/core",
@@ -37,6 +39,7 @@ export const PUBLISHED_PACKAGES = [
   "@lingfan-engine/shell",
   "@lingfan-engine/editor",
   "@lingfan-engine/stories-build",
+  "@lingfan-engine/create",
 ];
 
 /** 每个包都必须声明的字段。缺失会让 registry 页面、来源追溯或安装行为缺东西。 */
