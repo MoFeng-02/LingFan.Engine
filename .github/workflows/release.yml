@@ -2,7 +2,8 @@
 #
 # 触发方式只有一种：推送形如 `v0.1.2` 的标签。标签既是版本号的载体，也是发布的开关——
 # 不推标签就不会有版本上线，因此「发了什么」与「git 里有个什么标签」永远对得上。
-# 手工触发只用于演练：`dry_run` 为真时打包、自检、跑门禁，但不碰 registry。
+# 手工触发只跑门禁与打包自检，并且不会建 Release：演练该看的是「会不会被拒」，
+# 而不是在分支上造一个没有标签的发布记录。
 #
 # 认证走 Trusted Publishing（OIDC）：GitHub Actions 用工作流身份换取 registry 的短期凭据，
 # 仓库里不存任何长期 token，也不需要浏览器里的二次验证码。
@@ -128,7 +129,10 @@ jobs:
 
   release:
     needs: publish
-    if: ${{ !inputs.dry_run }}
+    # 只在推标签时建 Release。手工触发时工作流的 ref 是分支，`action-gh-release`
+    # 取不到标签，会直接报「GitHub Releases requires a tag」——这种失败没有意义，
+    # 演练与补发只需要 publish 那一段，不该被它拖红。
+    if: ${{ github.ref_type == 'tag' && !inputs.dry_run }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
