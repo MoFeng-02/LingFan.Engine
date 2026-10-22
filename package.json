@@ -14,6 +14,7 @@
     "format:check": "prettier --check .",
     "test:unit": "vitest run",
     "audit:runtime": "node scripts/audit-runtime/index.mjs",
+    "publish:check": "node scripts/publish-check.mjs",
     "typecheck": "vue-tsc --noEmit",
     "editor": "pnpm --filter @lingfan-engine/editor-app dev",
     "editor:host": "pnpm --filter @lingfan-engine/editor-app host",

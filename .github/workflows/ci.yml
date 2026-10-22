@@ -1,0 +1,54 @@
+# 提交门禁：类型检查、代码风格、单元测试、运行时可达图检查
+#
+# 四条判据与本地 `pnpm <script>` 同源，不接受 CI 专属变体：本地绿了这里才可能绿，
+# 反之这里红了就是本地漏跑——不需要在两处维护两套标准。
+#
+# 不跑任何打包命令：产物构建属于发布流程（release.yml）与人工，门禁只管静态正确性。
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同一分支的新提交直接取代旧运行：门禁只关心最新一次是否绿
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: pnpm 与 Node
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 类型检查
+        run: pnpm typecheck
+
+      - name: 代码风格
+        run: pnpm lint
+
+      - name: 单元测试
+        run: pnpm test:unit
+
+      - name: 运行时可达图检查
+        run: pnpm audit:runtime
