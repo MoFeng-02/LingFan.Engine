@@ -1,6 +1,6 @@
 {
   "name": "@lingfan-engine/stories-build",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "type": "module",
   "description": "Stories 创作链编译包：把 Stories.src 的多目录原生 TS 源编译成 Resources/Stories/** + project.json，并产出 cell 注册生成物",
   "license": "Apache-2.0",
