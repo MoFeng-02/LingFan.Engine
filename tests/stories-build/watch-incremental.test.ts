@@ -21,8 +21,11 @@ import {
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildStories } from "@lingfan/stories-build";
-import { affectedStories, watchStories } from "@lingfan/stories-build/watch";
+import { buildStories } from "@lingfan-engine/stories-build";
+import {
+  affectedStories,
+  watchStories,
+} from "@lingfan-engine/stories-build/watch";
 
 const BASE = fileURLToPath(new URL("./.tmp-watch/", import.meta.url));
 
@@ -50,7 +53,7 @@ const MANIFEST = `{
   "shell": { "orientation": "auto" }
 }`;
 
-const WORDS = `import { script } from "@lingfan/editor";
+const WORDS = `import { script } from "@lingfan-engine/editor";
 const { say } = script;
 
 `;
@@ -64,7 +67,7 @@ interface Fixture {
 function makeTwoStoryProject(name: string): Fixture {
   const root = makeProject(name, {
     "Stories.src/config.ts": config(["ch1", "ch2"]),
-    "Stories.src/lib/greet.ts": `import { script } from "@lingfan/editor";
+    "Stories.src/lib/greet.ts": `import { script } from "@lingfan-engine/editor";
 
 const { say } = script;
 
@@ -211,7 +214,7 @@ export default function start(): void {
     const before = snapshotArtifacts(root);
     writeFileSync(
       join(root, "Stories.src/lib/greet.ts"),
-      `import { script } from "@lingfan/editor";
+      `import { script } from "@lingfan-engine/editor";
 
 const { say } = script;
 

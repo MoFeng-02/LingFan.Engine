@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import manifestRaw from "../../apps/playground/Resources/project.json?raw";
 import mainSource from "../../apps/playground/src/main.ts?raw";
-import type { Story, StoryCommand } from "@lingfan/engine";
+import type { Story, StoryCommand } from "@lingfan-engine/core";
 import {
   assembleProject,
   diffProjectFiles,
@@ -15,7 +15,7 @@ import {
   parseStoryFile,
   projectText,
   serializeProject,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** 磁盘真实存在的故事文件（glob 键即文件清单）→ `Stories/<file>` 逻辑路径
  *  playground 启用 **TS 源工程**（`Stories.src/` → `stories:build`）：

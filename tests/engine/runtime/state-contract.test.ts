@@ -15,7 +15,7 @@
  * `__teleport_target`（非 SYS 键）必须继续合法（`engine.test.ts:227` 既有用法）。
  */
 import { describe, expect, it } from "vitest";
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import {
   RESERVED_STATE_KEYS,
   SYS,
@@ -23,7 +23,7 @@ import {
   findJsonValueError,
   jsonUnsafeReason,
   parseStory,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 interface Harness {
   engine: StoryEngine;

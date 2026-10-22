@@ -4,10 +4,10 @@
  * 邻接、BFS 分层（环安全）、层内排布与已拖拽位置优先，全部是纯函数——
  * 组件只负责视口交互与渲染。这类判据集中在此才可单测。
  *
- * 依赖方向：仅依赖 `@lingfan/editor` 的 `indexStory`；零框架、零 DOM、零 I/O。
+ * 依赖方向：仅依赖 `@lingfan-engine/editor` 的 `indexStory`；零框架、零 DOM、零 I/O。
  */
-import { indexStory } from "@lingfan/editor";
-import type { Story } from "@lingfan/engine";
+import { indexStory } from "@lingfan-engine/editor";
+import type { Story } from "@lingfan-engine/core";
 
 /** 节点尺寸与层间距（自动布局用） */
 export const NODE_W = 156;

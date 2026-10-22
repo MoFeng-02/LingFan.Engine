@@ -9,7 +9,7 @@
  * （那是玩家在打字）。
  */
 
-import type { StoryEngine } from "@lingfan/engine";
+import type { StoryEngine } from "@lingfan-engine/core";
 import type { StageDom } from "./stage-dom";
 import type { DialogueView } from "./dialogue-view";
 

@@ -8,7 +8,7 @@
  * 先上屏再写表现，否则同一帧里的动画会看到上一帧的文本。
  */
 
-import { createFrameLoop, type FrameLoop } from "@lingfan/ui";
+import { createFrameLoop, type FrameLoop } from "@lingfan-engine/ui";
 import type { DialogueView } from "./dialogue-view";
 
 /** 帧循环的输入：对话视图（打字机与上屏都经它）与两项每帧回调 */

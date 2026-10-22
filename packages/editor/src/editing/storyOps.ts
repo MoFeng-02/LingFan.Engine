@@ -5,8 +5,8 @@
  * ——「列名即标签」，重命名必须保持全部列的引用图一致。
  */
 
-import type { Story } from "@lingfan/engine";
-import { isSafeFileNameSegment } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
+import { isSafeFileNameSegment } from "@lingfan-engine/core";
 import {
   getAtPointer,
   insertAtPointer,

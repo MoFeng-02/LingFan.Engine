@@ -11,8 +11,8 @@ import {
   createWebAudioPort,
   createWebVideoPort,
   type BlobSourceOptions,
-} from "@lingfan/adapters";
-import type { AudioPort, VideoPort } from "@lingfan/engine";
+} from "@lingfan-engine/adapters";
+import type { AudioPort, VideoPort } from "@lingfan-engine/core";
 
 /**
  * 媒体源物化上限（字节）：物化后整段驻留内存，故只承载小媒体（本工程 v1 媒体 ≤ 8 MiB）；

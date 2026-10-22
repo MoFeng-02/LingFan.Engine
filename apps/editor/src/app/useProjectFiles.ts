@@ -1,7 +1,7 @@
 import { ref, shallowRef } from "vue";
 import type { Ref, ShallowRef } from "vue";
-import type { Story } from "@lingfan/engine";
-import { EditorSession } from "@lingfan/editor";
+import type { Story } from "@lingfan-engine/core";
+import { EditorSession } from "@lingfan-engine/editor";
 import {
   Workspace,
   columnIdOfDocument,

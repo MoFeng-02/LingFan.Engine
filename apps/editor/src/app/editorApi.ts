@@ -1,5 +1,5 @@
 import type { Ref, ShallowRef } from "vue";
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import {
   EditorSession,
   addColumn,
@@ -15,7 +15,7 @@ import {
   renameColumnMember,
   setAtPointer,
   type ColumnGroupingView,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import type { EditorApiPort } from "../contracts";
 import { storyDocumentPath, type Workspace } from "../domain";
 
@@ -168,7 +168,7 @@ export function createEditorApi(deps: EditorApiDeps): EditorApiPort {
     addColumn(
       kind: "flow" | "scene",
       hint?: string,
-      /** 运行语义轴（正交）；缺省/game 不写字段 —— 判据在 `@lingfan/editor` 的 addColumn */
+      /** 运行语义轴（正交）；缺省/game 不写字段 —— 判据在 `@lingfan-engine/editor` 的 addColumn */
       type?: "game" | "menu" | "ui",
     ): void {
       // 新增列是**工程级**操作（改的是文件集，不是某个文件的内容）。

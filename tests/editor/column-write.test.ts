@@ -7,7 +7,7 @@ import {
   diffProjectFiles,
   parseStory,
   serializeColumnDocument,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { assembleColumnWrite } from "../../apps/editor/src/domain/columnWrite";
 
 const manifestText = JSON.stringify(

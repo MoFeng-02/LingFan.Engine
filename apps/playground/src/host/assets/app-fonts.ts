@@ -8,7 +8,7 @@
  * 资源 URL 走静态根（/Fonts/<file>，publicDir 镜像）；Tauri 形态由 bundle.resources
  * 覆盖 Resources/**，URL 形态一致。
  */
-import { configureStoryFonts } from "@lingfan/ui";
+import { configureStoryFonts } from "@lingfan-engine/ui";
 import { storyFonts } from "virtual:story-fonts";
 
 /** 扩展名 → @font-face format()（与注册表扩展名集合一致） */

@@ -19,7 +19,7 @@ import {
   type OutboundPayload,
   type ResourcePort,
   type StoryEngine,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import {
   createCommandRegistry,
   createElementRegistry,
@@ -32,7 +32,7 @@ import {
   type LayerView,
   type StateIntent,
   type TypingSetting,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 import type { StageDom } from "./stage-dom";
 import type { DialogueView } from "./dialogue-view";
 
@@ -85,7 +85,7 @@ export function wireEngine(options: HostWiringOptions): void {
   const commands = createCommandRegistry();
   let elements: readonly ElementInstance[] = [];
 
-  // 资源解析缓存 = @lingfan/ui 共用实现（宿主只提供端口与重渲染回调）
+  // 资源解析缓存 = @lingfan-engine/ui 共用实现（宿主只提供端口与重渲染回调）
   const elementResources = createElementResourceResolver({
     resolve: (path) => resources.resolve(path),
     onResolved: () => renderElements(),

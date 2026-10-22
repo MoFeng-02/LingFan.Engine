@@ -3,8 +3,8 @@
  * 路径规范化与 Web/加密/目录句柄实现共用同一份（拒绝空段与 `..` 逃逸），这里锁住两条来源的分支。
  */
 import { describe, expect, it } from "vitest";
-import type { MiniprogramFileSystemLike } from "@lingfan/adapters";
-import { createMiniprogramResourcePort } from "@lingfan/adapters";
+import type { MiniprogramFileSystemLike } from "@lingfan-engine/adapters";
+import { createMiniprogramResourcePort } from "@lingfan-engine/adapters";
 
 /** 用户目录文件面替身：只认登记过的路径，`url` 造地址并记账，`release` 记账 */
 class FakeFileSystem implements MiniprogramFileSystemLike {

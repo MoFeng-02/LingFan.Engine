@@ -11,7 +11,7 @@ import {
   createMinigameRegistry,
   type InputScopeState,
   type MinigameRegistry,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 import { createClick3Demo } from "../demos/minigame-demo";
 import {
   createInteractionWalk,

@@ -19,10 +19,10 @@ import type {
   NotifyLayerItem,
   OverlayLayerId,
   OverlaySurface,
-} from "@lingfan/ui";
-import { isNvlActive, renderDialogueLine } from "@lingfan/ui";
+} from "@lingfan-engine/ui";
+import { isNvlActive, renderDialogueLine } from "@lingfan-engine/ui";
 import { toMiniTree, type MiniNode } from "./view.ts";
-import type { MiniprogramFrameSource } from "@lingfan/adapters";
+import type { MiniprogramFrameSource } from "@lingfan-engine/adapters";
 
 /** 对话层的小程序形态（字段与 WXML 绑定一致） */
 export interface MiniprogramDialogueData {

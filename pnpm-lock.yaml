@@ -8,23 +8,23 @@ importers:
 
   .:
     dependencies:
-      '@lingfan/editor':
+      '@lingfan-engine/editor':
         specifier: workspace:*
         version: link:packages/editor
       zod:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
-      '@lingfan/adapters':
+      '@lingfan-engine/adapters':
         specifier: workspace:*
         version: link:packages/adapters
-      '@lingfan/engine':
+      '@lingfan-engine/core':
         specifier: workspace:*
-        version: link:packages/engine
-      '@lingfan/stories-build':
+        version: link:packages/core
+      '@lingfan-engine/stories-build':
         specifier: workspace:*
         version: link:packages/stories-build
-      '@lingfan/ui':
+      '@lingfan-engine/ui':
         specifier: workspace:*
         version: link:packages/ui
       '@types/node':
@@ -66,16 +66,16 @@ importers:
 
   apps/editor:
     dependencies:
-      '@lingfan/adapters':
+      '@lingfan-engine/adapters':
         specifier: workspace:*
         version: link:../../packages/adapters
-      '@lingfan/editor':
+      '@lingfan-engine/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@lingfan-engine/editor':
         specifier: workspace:*
         version: link:../../packages/editor
-      '@lingfan/engine':
-        specifier: workspace:*
-        version: link:../../packages/engine
-      '@lingfan/ui':
+      '@lingfan-engine/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       vue:
@@ -106,16 +106,16 @@ importers:
       '@dcloudio/uni-mp-weixin':
         specifier: 3.0.0-4080720251210001
         version: 3.0.0-4080720251210001(debug@4.4.3(supports-color@5.5.0))(postcss@8.5.28)(rollup@4.64.7)(supports-color@5.5.0)(vue@3.4.21(typescript@6.0.3))
-      '@lingfan/adapters':
+      '@lingfan-engine/adapters':
         specifier: workspace:*
         version: link:../../packages/adapters
-      '@lingfan/engine':
+      '@lingfan-engine/core':
         specifier: workspace:*
-        version: link:../../packages/engine
-      '@lingfan/shell':
+        version: link:../../packages/core
+      '@lingfan-engine/shell':
         specifier: workspace:*
         version: link:../../packages/shell
-      '@lingfan/ui':
+      '@lingfan-engine/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       vue:
@@ -137,22 +137,22 @@ importers:
 
   apps/playground:
     dependencies:
-      '@lingfan/adapters':
+      '@lingfan-engine/adapters':
         specifier: workspace:*
         version: link:../../packages/adapters
-      '@lingfan/editor':
+      '@lingfan-engine/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@lingfan-engine/editor':
         specifier: workspace:*
         version: link:../../packages/editor
-      '@lingfan/engine':
-        specifier: workspace:*
-        version: link:../../packages/engine
-      '@lingfan/shell':
+      '@lingfan-engine/shell':
         specifier: workspace:*
         version: link:../../packages/shell
-      '@lingfan/stories-build':
+      '@lingfan-engine/stories-build':
         specifier: workspace:*
         version: link:../../packages/stories-build
-      '@lingfan/ui':
+      '@lingfan-engine/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tauri-apps/api':
@@ -183,50 +183,50 @@ importers:
 
   packages/adapters:
     dependencies:
-      '@lingfan/engine':
+      '@lingfan-engine/core':
         specifier: workspace:*
-        version: link:../engine
+        version: link:../core
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.1
 
+  packages/core: {}
+
   packages/editor:
     dependencies:
-      '@lingfan/engine':
+      '@lingfan-engine/core':
         specifier: workspace:*
-        version: link:../engine
+        version: link:../core
       zod:
         specifier: ^4.6.5
         version: 4.6.5
 
-  packages/engine: {}
-
   packages/shell:
     dependencies:
-      '@lingfan/engine':
+      '@lingfan-engine/core':
         specifier: workspace:*
-        version: link:../engine
-      '@lingfan/ui':
+        version: link:../core
+      '@lingfan-engine/ui':
         specifier: workspace:*
         version: link:../ui
 
   packages/stories-build:
     dependencies:
-      '@lingfan/editor':
+      '@lingfan-engine/core':
+        specifier: workspace:*
+        version: link:../core
+      '@lingfan-engine/editor':
         specifier: workspace:*
         version: link:../editor
-      '@lingfan/engine':
-        specifier: workspace:*
-        version: link:../engine
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
 
   packages/ui:
     dependencies:
-      '@lingfan/engine':
+      '@lingfan-engine/core':
         specifier: workspace:*
-        version: link:../engine
+        version: link:../core
 
 packages:
 

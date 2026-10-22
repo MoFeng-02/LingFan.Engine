@@ -14,13 +14,13 @@ import {
   type ResourcePort,
   type StoryEngine,
   type VideoPort,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import {
   createAudioRenderer,
   createVideoRenderer,
   type AudioRenderer,
   type VideoRenderer,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 
 /** 装配入参：媒体相关宿主属性、引擎句柄与错误横幅 */
 export interface AppMediaOptions {

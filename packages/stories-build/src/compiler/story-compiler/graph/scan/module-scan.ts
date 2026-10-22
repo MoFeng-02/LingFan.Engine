@@ -22,8 +22,8 @@ function collectNpmNames(
     : "";
   if (
     spec.startsWith(".") ||
-    spec === "@lingfan/editor" ||
-    spec === "@lingfan/engine"
+    spec === "@lingfan-engine/editor" ||
+    spec === "@lingfan-engine/core"
   )
     return;
   const clause = imp.importClause;

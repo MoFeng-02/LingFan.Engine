@@ -7,7 +7,7 @@
  * 缺扩展整档拒绝）→ 未注册 fail-closed（unknown-op，不静默跑过）。
  */
 import { describe, expect, it } from "vitest";
-import { StoryEngine, type Story } from "@lingfan/engine";
+import { StoryEngine, type Story } from "@lingfan-engine/core";
 import demoQuest from "../../apps/playground/extensions/demo-quest";
 
 function questStory(): Story {

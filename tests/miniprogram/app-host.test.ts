@@ -9,7 +9,7 @@ import {
   createMiniprogramSavePort,
   type HttpFetch,
   type MiniprogramStorageLike,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 import {
   SYS,
   StoryEngine,
@@ -18,7 +18,7 @@ import {
   findMissingGuards,
   parseStory,
   type SavePort,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import appPackage from "../../apps/miniprogram/package.json?raw";
 import { guards } from "../../apps/miniprogram/src/host/guards.ts";
@@ -44,7 +44,10 @@ import {
   createMiniprogramOverlaySurface,
   type MiniprogramNvlData,
 } from "../../apps/miniprogram/src/host/surface.ts";
-import { renderDialogueLine, type NarrativeOverlayView } from "@lingfan/ui";
+import {
+  renderDialogueLine,
+  type NarrativeOverlayView,
+} from "@lingfan-engine/ui";
 import dialoguePanelSource from "../../apps/playground/src/App/DialoguePanel.vue?raw";
 import { stageStyle } from "../../apps/miniprogram/src/host/view.ts";
 import manifestSource from "../../apps/miniprogram/src/manifest.json?raw";
@@ -283,7 +286,7 @@ describe("屏幕方向（横屏支持）", () => {
 
 describe("宿主身份中立（UniApp 不止微信一端）", () => {
   it("包名与页面源码都不带厂商名：换端只动 platform.ts 的取用面，不动宿主身份", () => {
-    expect(appPackage).toContain('"name": "@lingfan/miniprogram"');
+    expect(appPackage).toContain('"name": "@lingfan-engine/miniprogram"');
     expect(pageSource).not.toMatch(/\bwx\b|WeChat|wechat/i);
   });
 

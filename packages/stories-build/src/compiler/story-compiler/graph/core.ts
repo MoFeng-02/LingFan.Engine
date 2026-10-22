@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 export interface CompileDiag {
   file: string;

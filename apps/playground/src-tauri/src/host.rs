@@ -5,7 +5,7 @@
 //! 宿主误判为 desktop，iOS 构建同理）→ 编译期路线不可靠；`std::env::consts::OS` 在
 //! 对应 target 下恒正确（android/ios/windows/macos/linux），且零依赖、零权限面。
 //!
-//! 取值与契约 `HostOs` 对齐（见 packages/engine/src/contracts/host.ts）。
+//! 取值与契约 `HostOs` 对齐（见 packages/core/src/contracts/host.ts）。
 
 /// 当前编译目标平台（`std::env::consts::OS`：windows/macos/linux/android/ios）
 #[tauri::command]

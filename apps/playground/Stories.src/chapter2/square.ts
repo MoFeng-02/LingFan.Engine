@@ -1,5 +1,5 @@
 /** 第二章 · 广场列：staticFor 构建期展开热身三行 → click3 小游戏（通关金币 +10）→ jump 收束。 */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const { minigame, reward, say, staticFor, jump } = script;
 

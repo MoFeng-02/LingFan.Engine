@@ -11,8 +11,8 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { Story, StoryColumn, StoryCommand } from "@lingfan/engine";
-import { diffProjectFiles, serializeProject } from "@lingfan/engine";
+import type { Story, StoryColumn, StoryCommand } from "@lingfan-engine/core";
+import { diffProjectFiles, serializeProject } from "@lingfan-engine/core";
 import {
   COLUMN_GROUPING_KEY_PREFIX,
   EditorSession,
@@ -33,7 +33,7 @@ import {
   toggleCollapsed,
   type ColumnGroupingView,
   type KeyValueStorage,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import appSource from "../../apps/editor/src/App.vue?raw";
 import columnListSource from "../../apps/editor/src/components/panels/ColumnList.vue?raw";
 

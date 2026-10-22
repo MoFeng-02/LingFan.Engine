@@ -9,7 +9,7 @@
  * 名字闭合靠 `tests/miniprogram/app-host.test.ts` 的互锁：`project/Stories/**` 里出现的
  * 每个 `"fn"` 都必须在 `guards` 里登记，缺一个就是运行期的「未注册的守卫」。
  */
-import type { GuardFn } from "@lingfan/engine";
+import type { GuardFn } from "@lingfan-engine/core";
 
 export const guards: Readonly<Record<string, GuardFn>> = {
   /** 金币非负：`player.gold` 被改成负数即拦下，故事停在当前命令。 */

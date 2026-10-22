@@ -15,8 +15,8 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildStories } from "@lingfan/stories-build";
-import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
+import { buildStories } from "@lingfan-engine/stories-build";
+import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
 
 const BASE = fileURLToPath(new URL("./.tmp-nested-scope/", import.meta.url));
 
@@ -45,7 +45,7 @@ const MANIFEST = `{
 }`;
 
 /** 词汇层绑定：故事文件内直接解构（与 build-pipeline.test.ts 的 WORDS 同一形态）。 */
-const WORDS = `import { script } from "@lingfan/editor";
+const WORDS = `import { script } from "@lingfan-engine/editor";
 const { say } = script;
 
 `;

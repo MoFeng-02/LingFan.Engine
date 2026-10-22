@@ -7,6 +7,6 @@
  *   列名字面量（KnownColumnName），TS 面须收 `string | (() => void)`，故此处保留 declare 宽类型；
  *   编译器对 declare 绑定按名特判（无体函数声明 → emitJump）。
  */
-import type { StoryCommand } from "@lingfan/engine";
+import type { StoryCommand } from "@lingfan-engine/core";
 
 export declare function jump(target: string | (() => void)): StoryCommand;

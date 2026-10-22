@@ -5,7 +5,7 @@
  * 小程序原生 `video` 组件不受 `z-index` 控制，因此**不实现** `VideoPort.setZIndex` 这个可选能力：
  * 层 z 取构造期值，随 `show` 一起交给呈现面（缺省 5 = 旧行为）。
  */
-import type { VideoPort } from "@lingfan/engine";
+import type { VideoPort } from "@lingfan-engine/core";
 import type { MiniprogramVideoSurfaceLike } from "./platform.ts";
 
 /** 视频端口的装配参数 */

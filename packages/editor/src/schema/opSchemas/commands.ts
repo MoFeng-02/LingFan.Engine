@@ -1,9 +1,9 @@
 /**
  * op 负载 schema 全集：每条命令一个 `z.strictObject`，`.strict()` 拒绝未知字段
- * （编辑期 fail-closed）。字段面以执行器为权威（packages/engine/src/runtime/ops/）。
+ * （编辑期 fail-closed）。字段面以执行器为权威（packages/core/src/runtime/ops/）。
  */
 import { z } from "zod";
-import { isValidSayColor } from "@lingfan/engine";
+import { isValidSayColor } from "@lingfan-engine/core";
 import {
   Body,
   Fade,

@@ -10,7 +10,7 @@
  *   validateCommand、Options 派生的能力面（如 character.textColor）真实可用。
  */
 import { describe, expect, it } from "vitest";
-import type { StoryCommand } from "@lingfan/engine";
+import type { StoryCommand } from "@lingfan-engine/core";
 import {
   OP_SCHEMAS,
   validateCommand,

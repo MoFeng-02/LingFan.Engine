@@ -10,7 +10,7 @@
  * 注意：契约只描述**能力形状**，不含实现——提交、undo、选中怎么做都在宿主。
  * 某些组件只会用到其中几个成员，多出来的成员不影响它们。
  */
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 
 export interface EditorApiPort {
   /** 写入字段值（`pointer` 指向该字段本身） */

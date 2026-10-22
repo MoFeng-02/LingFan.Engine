@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { ELEMENT_CONTAINER_TYPES } from "@lingfan/engine";
+import { ELEMENT_CONTAINER_TYPES } from "@lingfan-engine/core";
 import {
   ELEMENT_TYPE_GROUPS,
   elementLabel,
   listOpGroups,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 
 /**
  * 组件面板：**元素 36 类型** + **命令 op** 的归类视图。
  *
  * 职责 = 归类展示 + **拖拽源**。落点只有一个：**舞台画布**（元素落点即 `x`/`y`）。
  * 面板的 op 条目**不是**「拖到时间线」用的——时间线不接 drop，命令走「选中 op → 插入」。
- * 分组数据全部取自 `@lingfan/editor` 的纯模块（`ELEMENT_TYPE_GROUPS` / `listOpGroups`），
+ * 分组数据全部取自 `@lingfan-engine/editor` 的纯模块（`ELEMENT_TYPE_GROUPS` / `listOpGroups`），
  * 本组件不新增任何类型清单——面板覆盖度由互锁测试锁定。
  * 面板是**静态归类源**（不依赖当前故事），故不声明 props。
  */

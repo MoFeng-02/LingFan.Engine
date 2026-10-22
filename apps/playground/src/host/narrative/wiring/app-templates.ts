@@ -22,7 +22,7 @@ import {
   type ChoiceTemplateView,
   type DialogueTemplateView,
   type NotifyTemplateView,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 import type { VueNarrativeState } from "../runtime/narrative-state";
 
 /** 装配入参：叙事视图状态与 NVL 滚动主体取用 */

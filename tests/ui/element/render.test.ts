@@ -5,7 +5,7 @@
  * 收描述树即可——渲染器的产物与平台无关，DOM 物化另有 `spec-materialize.test.ts` 覆盖。
  */
 import { describe, expect, it, vi } from "vitest";
-import { ELEMENT_TYPES, type ElementInstance } from "@lingfan/engine";
+import { ELEMENT_TYPES, type ElementInstance } from "@lingfan-engine/core";
 import {
   createElementRegistry,
   elementStyle,
@@ -13,7 +13,7 @@ import {
   renderElementTree,
   type RenderPort,
   type RenderSpec,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 
 /** 假渲染端口：只收描述树（clear = 清空收集，mount = 追加） */
 function createFakePort(): { port: RenderPort; specs: RenderSpec[] } {

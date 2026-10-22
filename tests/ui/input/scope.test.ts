@@ -15,7 +15,7 @@ import {
   isInputScope,
   routesToNarrative,
   type ClosestLike,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 
 /**
  * 宿主扫描面：宿主接线散在宿主与挂载域（host/mount/）——
@@ -208,7 +208,7 @@ describe("组合根接线：滚轮与键盘都先过判据，再谈游戏动作"
   });
 
   it("判据只写一份：宿主不再自持输入域实现", () => {
-    // 域判据与状态归 @lingfan/ui（换宿主复用同一份），宿主只消费
+    // 域判据与状态归 @lingfan-engine/ui（换宿主复用同一份），宿主只消费
     expect(appSource).toMatch(/createInputScopeState/);
     expect(appSource).not.toMatch(/GAME_INPUT_BLOCKED_SELECTOR\s*=/);
     expect(appSource).not.toMatch(/function isGameInputTarget/);

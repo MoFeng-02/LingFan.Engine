@@ -3,7 +3,7 @@
  * 统一 undo（所有视图共享，一次提交 = 一个 undo 单元）。
  */
 
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 
 /** 一次编辑提交（一个 undo 单元）：before/after 以不可变结构共享 */
 export interface UndoEntry {

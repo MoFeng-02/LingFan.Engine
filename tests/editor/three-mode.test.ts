@@ -8,8 +8,8 @@
  * - DSL 形态不承载 story.id（归 project.json 清单）→ 对比归一 id。
  */
 import { describe, expect, it } from "vitest";
-import type { Story } from "@lingfan/engine";
-import { generateText, parseStory, parseTextStory } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
+import { generateText, parseStory, parseTextStory } from "@lingfan-engine/core";
 import storySource from "./fixtures/three-mode.story";
 
 const canonical = parseStory(storySource);

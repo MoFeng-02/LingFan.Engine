@@ -5,7 +5,7 @@
  * - 自然播放结束经 onEnded 上报（cutscene 由它解除引擎等待）
  * - 浏览器自动播放策略拒绝时登记，首次用户交互后重试
  */
-import type { VideoPort } from "@lingfan/engine";
+import type { VideoPort } from "@lingfan-engine/core";
 import { createBlobSource, type BlobSourceOptions } from "./blobSource";
 
 /** 视频端口的装配参数：诊断出口、层 z 与可选的媒体源物化 */

@@ -42,13 +42,13 @@ label chapter_one:
 
 ## 三层
 
-| 层     | 包                  | 干什么                               |
-| ------ | ------------------- | ------------------------------------ |
-| 核心   | `@lingfan/engine`   | 解析故事、执行命令、状态、存档与回溯 |
-| 适配器 | `@lingfan/adapters` | 音频、视频、资源、存档的预设实现     |
-| 展示层 | `@lingfan/ui`       | 对话框、选项、元素渲染的参考实现     |
+| 层     | 包                         | 干什么                               |
+| ------ | -------------------------- | ------------------------------------ |
+| 核心   | `@lingfan-engine/core`     | 解析故事、执行命令、状态、存档与回溯 |
+| 适配器 | `@lingfan-engine/adapters` | 音频、视频、资源、存档的预设实现     |
+| 展示层 | `@lingfan-engine/ui`       | 对话框、选项、元素渲染的参考实现     |
 
-上表三个包加上编辑器应用包 `@lingfan/editor`，四个引擎包（engine / adapters / ui / editor）都以 TypeScript 源码出口发布（`exports: "./src/index.ts"`），由 Vite/TS 直接编译，没有中间构建步骤（见[模板与包边界](/reference/template-boundaries/)）。
+上表三个包加上编辑器应用包 `@lingfan-engine/editor`，四个引擎包（engine / adapters / ui / editor）都以 TypeScript 源码出口发布（`exports: "./src/index.ts"`），由 Vite/TS 直接编译，没有中间构建步骤（见[模板与包边界](/reference/template-boundaries/)）。
 
 ## 下一步
 

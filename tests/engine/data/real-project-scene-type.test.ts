@@ -7,7 +7,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseStory } from "@lingfan/engine";
+import { parseStory } from "@lingfan-engine/core";
 
 /** 真实工程资源根（由环境变量提供；缺省 = 未提供 ⇒ 跳过本套件） */
 const ROOT = process.env.LFEN_REAL_PROJECT ?? "";

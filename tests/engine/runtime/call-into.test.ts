@@ -6,8 +6,8 @@
  * （result 槽与 into 名随帧快照保存，存档/读档不丢）。
  */
 import { describe, expect, it } from "vitest";
-import type { OutboundEvent, SaveDataV1 } from "@lingfan/engine";
-import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
+import type { OutboundEvent, SaveDataV1 } from "@lingfan-engine/core";
+import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
 
 const VALID_WAITING = [
   undefined,

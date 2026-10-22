@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import {
   EditorSession,
   addColumn,
@@ -19,7 +19,7 @@ import {
   renameColumn,
   setAtPointer,
   updateCommandField,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 
 function snapshot(value: unknown): string {
   return JSON.stringify(value);

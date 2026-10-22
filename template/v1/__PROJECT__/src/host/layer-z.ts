@@ -8,8 +8,8 @@
  * 所以这里用 getter 取端口：装配期先落一次 DOM 层，那时端口还没建。
  */
 
-import { createLayerView, type LayerView } from "@lingfan/ui";
-import type { LayerId, LayerZTable, VideoPort } from "@lingfan/engine";
+import { createLayerView, type LayerView } from "@lingfan-engine/ui";
+import type { LayerId, LayerZTable, VideoPort } from "@lingfan-engine/core";
 import type { StageDom } from "./stage-dom";
 
 /**

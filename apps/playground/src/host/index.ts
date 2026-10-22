@@ -31,4 +31,4 @@ export type {
   MenuChoice,
   SlotPanelMode,
   SlotView,
-} from "@lingfan/shell";
+} from "@lingfan-engine/shell";

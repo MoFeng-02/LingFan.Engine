@@ -5,7 +5,7 @@
  * 于是打字机推进与媒体回写会各自演化。故用假帧源驱动，断言排帧与取消只经注入面，
  * 并用源级断言锁住「本模块不认任何平台帧 API」。
  */
-import type { FrameSource } from "@lingfan/ui";
+import type { FrameSource } from "@lingfan-engine/ui";
 import { describe, expect, it } from "vitest";
 import {
   startHostFrameLoop,

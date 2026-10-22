@@ -31,7 +31,7 @@ import {
   shakeOffset,
   transitionOpacity,
 } from "../element";
-import type { AnimationSpec } from "@lingfan/engine";
+import type { AnimationSpec } from "@lingfan-engine/core";
 
 /**
  * 元素动画的可写样式声明：只有故事语言里出现的那五个数值属性。

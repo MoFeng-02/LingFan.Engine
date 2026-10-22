@@ -9,7 +9,7 @@
  * - `src/*.ts` 等代码在**资源根之外** ⇒ 本函数压根收不到（枚举只覆盖资源根内）。
  */
 
-import type { KeyValueStorage } from "@lingfan/editor";
+import type { KeyValueStorage } from "@lingfan-engine/editor";
 
 /** 资源种类（决定图标与默认动作；**不是**视图分派的唯一依据） */
 export type ResourceKind =

@@ -10,7 +10,7 @@ import {
   createWsHostPlatform,
   type WsBridge,
   type WsSocketLike,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 
 /** 测试替身 WS：事件注册表 + 已发帧记录（回放由测试驱动） */
 class FakeSocket implements WsSocketLike {

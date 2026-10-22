@@ -11,7 +11,7 @@ import {
   StoryFormatError,
   parseStory,
   validateElement,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 function issuesOf(node: unknown): string[] {
   const issues: string[] = [];

@@ -14,7 +14,7 @@ import {
   chapterGroupOf,
   buildChapterIndex,
   sceneTypeBadgeOf,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import { parseChoiceAnswer } from "../../apps/editor/src/domain/dialog";
 import { sampleStory } from "../../apps/editor/src/shared/sample";
 

@@ -2,7 +2,7 @@
  * 控件族渲染器：`button` / `choice` / `slider` / `checkbox` / 进度条三型。
  * 取值统一经 `numProp` 归一，比例裁剪复用引擎侧的数值判据。
  */
-import { clamp01 } from "@lingfan/engine";
+import { clamp01 } from "@lingfan-engine/core";
 import { bindInteraction, isDisabled } from "./bindings";
 import { createRoot, numProp, withProps, withStyle } from "./base";
 import type { ElementRenderContext } from "../registry";

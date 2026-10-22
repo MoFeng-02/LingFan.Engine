@@ -58,7 +58,7 @@ export async function evalConstModule(
           line: 1,
           col: 1,
           message:
-            "esbuild 未解析到——@lingfan/stories-build 依赖 esbuild 完成依赖链打包，" +
+            "esbuild 未解析到——@lingfan-engine/stories-build 依赖 esbuild 完成依赖链打包，" +
             "请确认该依赖已装好（本包从自身位置解析 esbuild，不借用调用方工程的 node_modules）",
         },
       ],

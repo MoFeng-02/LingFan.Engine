@@ -9,7 +9,7 @@
  * 进程内同资源幂等复用」（解密结果的明文只存在于受管临时目录，威胁模型不降级）。
  * 契约不变（resolve/release）；invoke 与 URL 构造均可注入（契约替身测试不依赖 Tauri 运行时）。
  */
-import type { ResourcePort } from "@lingfan/engine";
+import type { ResourcePort } from "@lingfan-engine/core";
 import { defaultInvoke, type TauriInvoke } from "../platform";
 
 /** Rust `decrypt_resource` 返回形状：v2 与 file 互斥（url 总随行），取到哪个由解密形态决定 */

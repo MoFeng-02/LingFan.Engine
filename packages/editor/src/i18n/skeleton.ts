@@ -16,7 +16,7 @@
 
 import type { EditorTexts } from "../contracts/index.ts";
 import { resolveEditorTexts } from "../contracts/index.ts";
-import { isSafeFileNameSegment } from "@lingfan/engine";
+import { isSafeFileNameSegment } from "@lingfan-engine/core";
 
 /** 占位策略：original = 原文占位（未翻译时画面可读，翻译工作表语义）；empty = 空串（运行期命中即隐句） */
 export type SkeletonPlaceholder = "original" | "empty";

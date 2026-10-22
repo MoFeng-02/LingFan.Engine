@@ -7,9 +7,9 @@
  */
 
 import { type Ref } from "vue";
-import { SYS, type StoryEngine } from "@lingfan/engine";
-import { type FrameSource } from "@lingfan/ui";
-import { startHostFrameLoop as startLoop } from "@lingfan/shell";
+import { SYS, type StoryEngine } from "@lingfan-engine/core";
+import { type FrameSource } from "@lingfan-engine/ui";
+import { startHostFrameLoop as startLoop } from "@lingfan-engine/shell";
 import { createHostEffects } from "../elements/effects";
 import type { AppMedia } from "../media/app-media";
 import type { VueNarrativeState } from "../../narrative/runtime/narrative-state";

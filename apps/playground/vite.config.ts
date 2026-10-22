@@ -2,7 +2,7 @@ import { defineConfig, type Plugin } from "vite";
 import vue from "@vitejs/plugin-vue";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-// 只取字体叶子（而非整包 @lingfan/stories-build）：配置文件由 Node 原生 ESM 加载，
+// 只取字体叶子（而非整包 @lingfan-engine/stories-build）：配置文件由 Node 原生 ESM 加载，
 // 深导入只把叶子打进配置包，不连带整包模块图谱；包内相对导入已全量完整指定（原生
 // 解析可用），此深导入是「最小面」选择而非绕开方言。仅本配置文件消费，不进运行期产物。
 import { scanFontRegistry } from "../../packages/stories-build/src/fonts/font-registry.ts";
@@ -13,7 +13,7 @@ const host = process.env.TAURI_DEV_HOST;
 // `vite dev` 恒放行（开发模式便利，也是「浏览器复用宿主能力」场景的前提）。
 const isBrowserGame = process.env.VITE_LFEN_BROWSER_GAME === "1";
 
-// 字体清单虚拟模块：与 stories:build 共用同一注册表实现（@lingfan/stories-build
+// 字体清单虚拟模块：与 stories:build 共用同一注册表实现（@lingfan-engine/stories-build
 // 的 scanFontRegistry，文件名去扩展名 = 字体名），宿主据清单注入 @font-face 并装配
 // 渲染层注册表。字体是纯展示资产，引擎侧不设端口。
 function storyFontsVirtual(): Plugin {

@@ -10,7 +10,7 @@
  * 扫描面 = 渲染器全目录（新增文件自动纳入）。
  */
 import { describe, expect, it } from "vitest";
-import { ELEMENT_TYPES } from "@lingfan/engine";
+import { ELEMENT_TYPES } from "@lingfan-engine/core";
 import { expectTwoWayEqual } from "../helpers/two-way-diff";
 
 /** 渲染器全部源码，键 = 仓库相对路径（前端不碰文件系统，改用打包器读取） */

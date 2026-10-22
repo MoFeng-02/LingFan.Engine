@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, ref, watch } from "vue";
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import { EDITOR_API_KEY } from "../../contracts";
 
 /**

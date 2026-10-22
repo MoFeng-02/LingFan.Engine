@@ -7,7 +7,7 @@
  * 故意错误：恶意 HTML 注入（两挂载点都经统一接缝转义）。
  */
 import { describe, expect, it } from "vitest";
-import type { ChoiceTemplateFn, NotifyTemplateFn } from "@lingfan/ui";
+import type { ChoiceTemplateFn, NotifyTemplateFn } from "@lingfan-engine/ui";
 import {
   builtinChoiceTemplate,
   builtinNotifyTemplate,
@@ -16,7 +16,7 @@ import {
   createTemplateRegistry,
   renderDialogueLine,
   toNotifyTone,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 
 describe("通用模板注册表（TemplateRegistry）", () => {
   type In = { text: string };

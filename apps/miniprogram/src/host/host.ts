@@ -18,8 +18,8 @@ import {
   StoryEngine,
   type SavesConfig,
   type Story,
-} from "@lingfan/engine";
-import { loadProject } from "@lingfan/adapters";
+} from "@lingfan-engine/core";
+import { loadProject } from "@lingfan-engine/adapters";
 import {
   computeStageLayout,
   DEFAULT_STAGE_FIT,
@@ -28,7 +28,7 @@ import {
   withSlotLabels,
   type StageConfig,
   type StageLayout,
-} from "@lingfan/shell";
+} from "@lingfan-engine/shell";
 import {
   createAudioRenderer,
   createElementResourceResolver,
@@ -37,7 +37,7 @@ import {
   type AudioRenderer,
   type NarrativeOverlay,
   type VideoRenderer,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 import { createHostFrameSource } from "./frame.ts";
 import {
   createRequestFetch,

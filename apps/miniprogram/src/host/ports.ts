@@ -13,14 +13,14 @@ import {
   createMiniprogramVideoPort,
   type MiniprogramStorageLike,
   type MiniprogramVideoSurfaceLike,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 import type {
   AudioPort,
   PreferencesPort,
   ResourcePort,
   SavePort,
   VideoPort,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { createAudioContext, uniApi } from "./platform.ts";
 import { createRemoteResourcePort } from "./project-source.ts";
 

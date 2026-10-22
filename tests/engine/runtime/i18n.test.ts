@@ -11,13 +11,13 @@
  * I18nPort 为契约替身；Rust 侧文件列举/解密在 cargo 测（project_files/），两侧各测一半。
  */
 import { describe, expect, it } from "vitest";
-import type { I18nOverlayFile } from "@lingfan/engine";
+import type { I18nOverlayFile } from "@lingfan-engine/core";
 import {
   SYS,
   StoryEngine,
   mergeOverlayFiles,
   parseStory,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** I18nPort 契约替身：内存译文表 + 调用记录 + 定点故障注入 */
 class MemoryI18nPort {

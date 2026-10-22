@@ -45,19 +45,19 @@ export function resolveImports(
     const spec = ts.isStringLiteral(imp.moduleSpecifier)
       ? imp.moduleSpecifier.text
       : "";
-    if (editorPass !== (spec === "@lingfan/editor")) continue;
+    if (editorPass !== (spec === "@lingfan-engine/editor")) continue;
     const clause = imp.importClause;
     if (clause === undefined) {
       diags.add(rel, sf, imp, "副作用导入不支持：请显式导入所需符号");
       continue;
     }
-    if (spec === "@lingfan/editor") {
+    if (spec === "@lingfan-engine/editor") {
       if (clause.name !== undefined) {
         diags.add(
           rel,
           sf,
           clause.name,
-          '词汇层请以具名导入（import { say, … } from "@lingfan/editor"）或 script 命名空间使用',
+          '词汇层请以具名导入（import { say, … } from "@lingfan-engine/editor"）或 script 命名空间使用',
         );
       }
       if (
@@ -92,7 +92,7 @@ export function resolveImports(
       continue;
     }
     if (clause.isTypeOnly) continue;
-    if (spec === "@lingfan/engine") {
+    if (spec === "@lingfan-engine/core") {
       diags.add(rel, sf, imp, "引擎包不参与创作导入：请使用词汇层词函数");
       continue;
     }

@@ -6,8 +6,8 @@ import type {
   ResourcePort,
   Story,
   WriteNormalizationFinding,
-} from "@lingfan/engine";
-import { DEFAULT_LAYER_Z } from "@lingfan/engine";
+} from "@lingfan-engine/core";
+import { DEFAULT_LAYER_Z } from "@lingfan-engine/core";
 import type { OpenedProject } from "../contracts";
 
 /** 未绑定磁盘工程时的提示（状态口径：不携带「刚点了新建/导入」这类历史） */

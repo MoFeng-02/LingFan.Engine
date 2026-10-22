@@ -9,8 +9,11 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { ProjectWriterPort } from "@lingfan/engine";
-import { createTauriProjectWriter, type TauriInvoke } from "@lingfan/adapters";
+import type { ProjectWriterPort } from "@lingfan-engine/core";
+import {
+  createTauriProjectWriter,
+  type TauriInvoke,
+} from "@lingfan-engine/adapters";
 
 /** invoke 替身：内存盘 + Rust 同语义（校验 → 指纹 → 写 → 删；调用序记录） */
 function makeMemoryBackend() {

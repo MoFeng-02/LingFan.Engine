@@ -4,7 +4,7 @@
  * 会话与列编译入口在 ./session.ts。
  */
 import * as ts from "typescript";
-import type { StoryCommand } from "@lingfan/engine";
+import type { StoryCommand } from "@lingfan-engine/core";
 import type { DiagBag, Graph } from "../graph.ts";
 import {
   createBodyCtx,

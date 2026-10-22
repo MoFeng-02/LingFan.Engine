@@ -2,4 +2,4 @@
    script 词汇层命名空间的免导入直呼声明：纯编译期类型面，不注入任何运行时对象；
    显式 import 与解构形态优先于本声明（TS 遮蔽语义，重命名不受影响）。 */
 
-declare const script: typeof import("@lingfan/editor").script;
+declare const script: typeof import("@lingfan-engine/editor").script;

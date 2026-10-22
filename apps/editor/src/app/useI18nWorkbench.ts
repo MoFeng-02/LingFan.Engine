@@ -1,13 +1,13 @@
 import { computed } from "vue";
 import type { Ref, ShallowRef } from "vue";
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import {
   extractStoryKeys,
   columnStoryKey,
   groupKeysByStory,
   planOverlaySkeleton,
   type SkeletonLayoutChoice,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import type { LangSummary } from "../components/panels";
 import type { DiagnosticSupply, ProjectPorts } from "./useProjectPorts";
 import type { LastProjectEntry, OpenedProject } from "../contracts";

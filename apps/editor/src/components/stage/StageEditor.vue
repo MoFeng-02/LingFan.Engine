@@ -4,7 +4,7 @@ import {
   ELEMENT_CONTAINER_TYPES,
   type ResourcePort,
   type Story,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import {
   createElementDraft,
   describeElement,
@@ -12,8 +12,8 @@ import {
   elementLabel,
   planElementDrop,
   type FieldDescriptor,
-} from "@lingfan/editor";
-import { elementSource } from "@lingfan/ui";
+} from "@lingfan-engine/editor";
+import { elementSource } from "@lingfan-engine/ui";
 import { EmptyState } from "../shell";
 import { EDITOR_API_KEY } from "../../contracts";
 import type { EmptyAction } from "../../domain";
@@ -26,7 +26,7 @@ import FieldRow from "./FieldRow.vue";
  * - **画布**：把目标 scene 列的 `elements[]` 按 `x/y/width/height/zindex/opacity` 摆成可拖拽方块。
  *   编辑仍以布局为主（占位方块 + 尺寸/层级）。
  * - **资源缩略（编辑器工程模型）**：打开工程后，带 `source/src/path` 的元素把已解析
- *   资源铺成方块背景（`@lingfan/ui` 的 `elementSource` 取路径，与渲染器同源判定）；
+ *   资源铺成方块背景（`@lingfan-engine/ui` 的 `elementSource` 取路径，与渲染器同源判定）；
  *   未打开工程 = 无资源根 → 保持占位方块。
  * - **拖拽**：拖拽中仅本地预览（transform），**松手才写回一次** `x`/`y`，避免每帧污染 undo。
  *   字符串坐标（如 `"50%"`）保持原值不动（像素位移无法与百分比相加）。
@@ -50,7 +50,7 @@ const props = defineProps<{
 }>();
 
 /**
- * 资源缩略缓存：声明式侧缓存（`@lingfan/ui` 的 `createElementResourceResolver` 面向
+ * 资源缩略缓存：声明式侧缓存（`@lingfan-engine/ui` 的 `createElementResourceResolver` 面向
  * 「解析落地后重渲染 DOM」的命令式宿主；这里需要**响应式**失效，故就地维护）。
  * 失败保持占位方块（不伪造 URL）。
  */
@@ -314,7 +314,7 @@ const fields = computed<readonly FieldDescriptor[]>(
 );
 
 /**
- * 落点创建：DOM/事件留在组件，**判定与数值走 `@lingfan/editor` 纯函数**。
+ * 落点创建：DOM/事件留在组件，**判定与数值走 `@lingfan-engine/editor` 纯函数**。
  * 画布内容坐标 = client 坐标 − 画布原点（含边框：`clientLeft`）+ 滚动量；
  * 容器命中 = 顶级容器块中**DOM 序最后**（默认 z 序最上）包含落点者。
  */

@@ -4,7 +4,7 @@
  * 这个数此前只活在一条提交信息里（`0a21c97` 的「0.9.0」），产物、清单、包版本都没有它，
  * 于是「能力进展」机器读不到、外部消费者无法判断兼容性。本文件守四条不变式：
  *
- * 1. **只此一处声明**——值只在 `packages/engine/src/contracts/story/entities.ts` 出现，
+ * 1. **只此一处声明**——值只在 `packages/core/src/contracts/story/entities.ts` 出现，
  *    其余包的源码里不得再写一份字面量。这条是本次改动的核心要求：一旦
  *    stories-build / editor 各写一份，产物标识与包版本就会各自漂移，且没有测试会红。
  * 2. **工具链盖章**——任何 `serializeProject` 写出的 `project.json` 都带该键，
@@ -18,23 +18,20 @@
  * 「glob 写错 ⇒ 空扫描 ⇒ 恒绿」这种已知假绿形态。
  */
 import { describe, expect, it } from "vitest";
-import type { Story, StoryColumn } from "@lingfan/engine";
+import type { Story, StoryColumn } from "@lingfan-engine/core";
 import {
   assembleProject,
   CAPABILITY_VERSION,
   MANIFEST_FILE,
   serializeProject,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** 引擎源码全文（键 = 相对本测试文件的 glob 模式；本文件在 tests/engine/data/，故上溯三级） */
-const ENGINE_SOURCES = import.meta.glob(
-  "../../../packages/engine/src/**/*.ts",
-  {
-    eager: true,
-    query: "?raw",
-    import: "default",
-  },
-) as Record<string, string>;
+const ENGINE_SOURCES = import.meta.glob("../../../packages/core/src/**/*.ts", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+}) as Record<string, string>;
 
 /** 其余包的源码：这些地方**不得**再声明能力版本 */
 const OTHER_PACKAGE_SOURCES = import.meta.glob(
@@ -42,7 +39,7 @@ const OTHER_PACKAGE_SOURCES = import.meta.glob(
   { eager: true, query: "?raw", import: "default" },
 ) as Record<string, string>;
 
-const DECLARATION_FILE = "packages/engine/src/contracts/story/entities.ts";
+const DECLARATION_FILE = "packages/core/src/contracts/story/entities.ts";
 
 const COLUMN: StoryColumn = {
   id: "start",

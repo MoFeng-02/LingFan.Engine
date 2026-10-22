@@ -10,8 +10,8 @@ import type {
   GameStateWriter,
   MinigameMountPayload,
   MinigameResult,
-} from "@lingfan/engine";
-import type { MinigameRegistry } from "@lingfan/ui";
+} from "@lingfan-engine/core";
+import type { MinigameRegistry } from "@lingfan-engine/ui";
 import { abortSignalOf } from "../engine/abort-signal";
 
 /** 小游戏挂载分支所需的宿主侧依赖 */

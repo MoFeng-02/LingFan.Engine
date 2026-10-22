@@ -1,7 +1,7 @@
 import { computed, ref } from "vue";
 import type { Ref, ShallowRef } from "vue";
-import type { Story } from "@lingfan/engine";
-import { firstColumnIdOfSourcePath } from "@lingfan/editor";
+import type { Story } from "@lingfan-engine/core";
+import { firstColumnIdOfSourcePath } from "@lingfan-engine/editor";
 import {
   columnIdOfDocument,
   kindOfPath,

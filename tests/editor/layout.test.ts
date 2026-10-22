@@ -3,7 +3,7 @@
  * 拟态旅程：拖宽→刷新→宽度还在；存储被改坏→回落默认而不是白屏。
  */
 import { describe, expect, it } from "vitest";
-import type { KeyValueStorage } from "@lingfan/editor";
+import type { KeyValueStorage } from "@lingfan-engine/editor";
 import {
   clampLayout,
   createLayoutStore,

@@ -4,7 +4,7 @@
  * 用户实测回归：面板必须列全所有槽位——端口拒读个别槽位只丢该槽的标题与缩略图，
  * 不能连槽位一起丢；槽位显示名与提示条文案取同一个规则；读档模式下空槽不可点选。
  */
-import type { SavePort, SlotSummary } from "@lingfan/engine";
+import type { SavePort, SlotSummary } from "@lingfan-engine/core";
 import { describe, expect, it } from "vitest";
 import {
   canChooseSlot,

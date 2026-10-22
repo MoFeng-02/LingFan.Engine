@@ -6,14 +6,14 @@
  * 2. 偏好 = 本机视图偏好：round trip / 缺失坏值归 false / 存储失败全静默。
  */
 import { describe, expect, it } from "vitest";
-import { detectWriteNormalization } from "@lingfan/engine";
+import { detectWriteNormalization } from "@lingfan-engine/core";
 import {
   describeNormalization,
   NORMALIZATION_NOTICE_PREF_KEY,
   readSkipNormalizationNotice,
   writeSkipNormalizationNotice,
   type KeyValueStorage,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 
 function memoryStorage(initial?: Record<string, string>): {
   store: KeyValueStorage;

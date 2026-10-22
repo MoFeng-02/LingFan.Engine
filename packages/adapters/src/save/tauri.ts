@@ -4,7 +4,7 @@
  * 由组合根按平台装配；与 Rust 通信经 Tauri 桥接域的缺省实现，本文件不直连 Tauri 运行时。
  * invoke 可注入（缺省取 Tauri 桥接域的缺省实现）：测试以契约替身注入。
  */
-import type { SavePort, SlotSummary } from "@lingfan/engine";
+import type { SavePort, SlotSummary } from "@lingfan-engine/core";
 import { defaultInvoke, type TauriInvoke } from "../platform";
 
 /** Rust `save_list` 的返回行（snake_case；本侧映射成引擎的 camelCase 槽位摘要） */

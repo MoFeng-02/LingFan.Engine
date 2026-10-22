@@ -2,8 +2,8 @@
  * 分析入口：先取符号索引（./symbols），再叠加结构校验与逐条语义诊断。
  * 行为契约（诊断族与缺省跳过口径）见 analyzeStory 的函数注释。
  */
-import type { Story } from "@lingfan/engine";
-import { ELEMENT_OPS_BLOCKED } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
+import { ELEMENT_OPS_BLOCKED } from "@lingfan-engine/core";
 import type { AnalyzeOptions, Diagnostic, EditorTexts } from "../contracts/index.ts";
 import { escapePointerToken, resolveEditorTexts } from "../contracts/index.ts";
 import { UNIMPLEMENTED_ELEMENT_ATTRS } from "../schema/index.ts";

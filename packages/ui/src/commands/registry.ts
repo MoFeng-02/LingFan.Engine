@@ -7,7 +7,7 @@
  *
  * 与 minigame / 元素渲染器注册表同一口径：**无默认回退**。
  */
-import type { ElementInstance } from "@lingfan/engine";
+import type { ElementInstance } from "@lingfan-engine/core";
 
 /**
  * 命令处理器。

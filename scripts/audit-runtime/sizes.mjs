@@ -8,7 +8,7 @@ const VIRTUAL_ENTRY = "\0audit-runtime-virtual-entry";
 /**
  * 命名空间聚合：把包的**公开面整体**挂到全局对象上再打包。
  *
- * 为什么不用 `import "@lingfan/engine"` 这种副作用式导入：包声明了 `sideEffects: false`，
+ * 为什么不用 `import "@lingfan-engine/core"` 这种副作用式导入：包声明了 `sideEffects: false`，
  * 副作用式导入会被摇树清空，量出来是 0 KB 的假数。逐名导入又只量到宿主恰好用到的那几个词，
  * 低估分包压力。挂命名空间对象强制保留公开面全部导出——量到的是**上界**，这正是
  * 「主包到底装不装得下」需要的保守口径。
@@ -28,7 +28,7 @@ function virtualEntryPlugin(repoRoot, source) {
     name: "audit-runtime-virtual-entry",
     resolveId(id) {
       if (id === VIRTUAL_ENTRY) return VIRTUAL_ENTRY;
-      if (!id.startsWith("@lingfan/")) return null;
+      if (!id.startsWith("@lingfan-engine/")) return null;
       return (
         resolveImport(id, join(repoRoot, "package.json"), repoRoot).file ?? null
       );

@@ -17,8 +17,8 @@ import {
   StoryEngine,
   parseStory,
   type OutboundEvent,
-} from "@lingfan/engine";
-import { analyzeStory } from "@lingfan/editor";
+} from "@lingfan-engine/core";
+import { analyzeStory } from "@lingfan-engine/editor";
 
 function instrument(engine: StoryEngine) {
   const errors: OutboundEvent[] = [];

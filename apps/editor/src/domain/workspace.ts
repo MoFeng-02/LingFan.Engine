@@ -14,8 +14,8 @@
  * 组装整工程期望集是调用方（宿主）的事——它才持有打开基线与写回端口。
  */
 
-import type { Story } from "@lingfan/engine";
-import { EditorSession } from "@lingfan/editor";
+import type { Story } from "@lingfan-engine/core";
+import { EditorSession } from "@lingfan-engine/editor";
 
 /** 文档身份：**资源根内的逻辑路径**（`/` 分隔，如 `Stories/tavern.json`）——唯一且稳定 */
 export type DocumentPath = string;

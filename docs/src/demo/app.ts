@@ -1,6 +1,6 @@
 /**
  * /demo/ 内嵌真引擎 demo（懒加载模块）——页面引导脚本按需动态 import 本文件，
- * 因此 @lingfan/engine 与 @lingfan/ui 只进异步 chunk，不进任何页面的首屏 JS。
+ * 因此 @lingfan-engine/core 与 @lingfan-engine/ui 只进异步 chunk，不进任何页面的首屏 JS。
  *
  * 数据流：内置 story DSL 常量 → parseTextStory → assembleProject（真组装器）
  *   → new StoryEngine → createNarrativeOverlay → engine.start()。
@@ -13,10 +13,13 @@ import {
   parseTextStory,
   projectText,
   StoryEngine,
-} from "@lingfan/engine";
-import type { Story } from "@lingfan/engine";
-import { createDomOverlaySurface, createNarrativeOverlay } from "@lingfan/ui";
-import type { NarrativeOverlay } from "@lingfan/ui";
+} from "@lingfan-engine/core";
+import type { Story } from "@lingfan-engine/core";
+import {
+  createDomOverlaySurface,
+  createNarrativeOverlay,
+} from "@lingfan-engine/ui";
+import type { NarrativeOverlay } from "@lingfan-engine/ui";
 import { DEMO_STORIES } from "./stories";
 
 type Mode = "preview" | "source";

@@ -20,7 +20,7 @@ import {
   chapterSummaryText,
   type ChapterInput,
 } from "../../packages/editor/src/chapters";
-import type { StoryColumn } from "@lingfan/engine";
+import type { StoryColumn } from "@lingfan-engine/core";
 
 function col(
   id: string,

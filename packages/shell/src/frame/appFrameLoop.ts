@@ -7,7 +7,11 @@
  * `onText` 每帧无条件上交打字机的可见前缀，没有打字机时上交空串——整句直出时打字机可能已被丢弃，
  * 所以调用方要自己用当前句文本兜底，不能把空串直接当成上屏内容。
  */
-import { createFrameLoop, type FrameLoop, type FrameSource } from "@lingfan/ui";
+import {
+  createFrameLoop,
+  type FrameLoop,
+  type FrameSource,
+} from "@lingfan-engine/ui";
 
 /** 宿主帧循环需要的帧源与回调 */
 export interface HostFrameLoopOptions {

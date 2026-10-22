@@ -23,7 +23,7 @@
 import * as ts from "typescript";
 import { CONFIG_FILE } from "../config/index.ts";
 import { StoryBuildError } from "../shared/index.ts";
-import type { CharacterDef } from "@lingfan/engine";
+import type { CharacterDef } from "@lingfan-engine/core";
 import { type ConstExprContext, evalConstExpr } from "./const-expr.ts";
 
 /** 一条模块层角色声明：求值产物 + 声明位置（跨文件冲突诊断要带两处位置） */

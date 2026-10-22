@@ -4,7 +4,7 @@
  * 渲染协同：任意前缀经 renderInlineMarkup 不得残留裸 `{`。
  */
 import { describe, expect, it } from "vitest";
-import { renderInlineMarkup, Typewriter } from "@lingfan/ui";
+import { renderInlineMarkup, Typewriter } from "@lingfan-engine/ui";
 import { tokenizeStream } from "../../../packages/ui/src/dialogue/typewriter";
 
 describe("tokenizeStream（标记分词）", () => {

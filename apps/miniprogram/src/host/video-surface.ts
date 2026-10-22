@@ -9,7 +9,7 @@
  * 不让一次时序问题炸掉整个宿主。
  */
 
-import type { MiniprogramVideoSurfaceLike } from "@lingfan/adapters";
+import type { MiniprogramVideoSurfaceLike } from "@lingfan-engine/adapters";
 import { createVideoContext, type UniVideoContext } from "./platform.ts";
 
 /** 页面数据里的视频状态（页面据此渲染 `video` 组件） */

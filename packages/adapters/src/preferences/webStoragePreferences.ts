@@ -2,7 +2,7 @@
  * 玩家偏好持久化（浏览器/WebView 演示兜底）：localStorage 明文 JSON。
  * 缺失/解析失败 → null（默认值起航）；数据信任边界在 PlayerPreferences.hydrate。
  */
-import type { PlayerPrefsData, PreferencesPort } from "@lingfan/engine";
+import type { PlayerPrefsData, PreferencesPort } from "@lingfan-engine/core";
 
 /** 偏好 JSON 的 localStorage 键 */
 const STORAGE_KEY = "lingfan.prefs.v1";

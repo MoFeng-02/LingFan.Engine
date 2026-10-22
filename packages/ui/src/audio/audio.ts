@@ -13,8 +13,8 @@ import type {
   PlayerPreferences,
   ResourcePort,
   StoryEngine,
-} from "@lingfan/engine";
-import { createStateReader, SYS } from "@lingfan/engine";
+} from "@lingfan-engine/core";
+import { createStateReader, SYS } from "@lingfan-engine/core";
 import { createResourceUrlCache } from "../resources";
 
 /** 渲染视图：四通道状态 + bgm 播放位置（帧级键直读，不进事件流） */

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import { EDITOR_API_KEY, KEY_VALUE_STORAGE_KEY } from "../../contracts";
 // 取自具体模块而非聚合出口 `../../app`：聚合出口反向依赖本地化工作台视图，
 // 整包取会与「视图 → 应用层」形成 import 环。
@@ -13,7 +13,7 @@ import {
   branchPointerToCommand,
   isBranchTarget,
   planBranchInsertion,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import {
   buildGraphModel,
   connectPathOf,

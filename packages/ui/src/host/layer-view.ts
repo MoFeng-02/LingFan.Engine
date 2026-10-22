@@ -15,7 +15,7 @@ import {
   resolveInstanceZ,
   type LayerId,
   type LayerZTable,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** 由 DOM 承载的层（顺序即写入顺序；视频/小游戏/历史/偏好不在此表） */
 const DOM_LAYERS: readonly LayerId[] = [

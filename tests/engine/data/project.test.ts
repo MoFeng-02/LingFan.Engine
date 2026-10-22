@@ -1,6 +1,6 @@
 /** 工程组装测试：混合形态、确定性、跨文件唯一、入口校验、defines 覆盖序 */
 import { describe, expect, it } from "vitest";
-import type { Story, StoryColumn, StoryCommand } from "@lingfan/engine";
+import type { Story, StoryColumn, StoryCommand } from "@lingfan-engine/core";
 import {
   assembleProject,
   CAPABILITY_VERSION,
@@ -13,7 +13,7 @@ import {
   serializeColumnDocument,
   serializeProject,
   StoryEngine,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 const manifest = { formatVersion: 1, id: "demo", entry: "start" };
 

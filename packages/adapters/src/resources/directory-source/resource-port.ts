@@ -2,7 +2,7 @@
  * 资源端口：逻辑路径 → 文件内容 → Blob URL（同路径复用同一 URL，`release` 才 revoke）。
  * 解析失败必须抛错——调用方 fail-closed 不播放/不显示。
  */
-import type { ProjectFileSource, ResourcePort } from "@lingfan/engine";
+import type { ProjectFileSource, ResourcePort } from "@lingfan-engine/core";
 import { normalizeResourceId } from "../resourcePort";
 
 /**

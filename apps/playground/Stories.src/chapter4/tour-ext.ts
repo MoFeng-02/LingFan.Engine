@@ -1,5 +1,5 @@
 /** 第四章 · 扩展工坊：extOp 词逃生舱——引擎未内置的领域命令（quest 插件）走 ext 扩展位。 */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const { extOp, say } = script;
 

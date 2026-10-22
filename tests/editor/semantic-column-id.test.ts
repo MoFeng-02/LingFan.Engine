@@ -8,8 +8,8 @@
  * - 源码互锁：编辑器「+列」走**应用内对话框**（留空可过）→ api.addColumn(kind, hint)
  */
 import { describe, expect, it } from "vitest";
-import { parseStory } from "@lingfan/engine";
-import { addColumn, suggestColumnId } from "@lingfan/editor";
+import { parseStory } from "@lingfan-engine/core";
+import { addColumn, suggestColumnId } from "@lingfan-engine/editor";
 import columnListSource from "../../apps/editor/src/components/panels/ColumnList.vue?raw";
 
 function storyWith(...ids: string[]): ReturnType<typeof parseStory> {

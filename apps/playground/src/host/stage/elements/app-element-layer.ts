@@ -7,8 +7,8 @@
  */
 
 import { nextTick, watch, type Ref } from "vue";
-import { type ResourcePort, type StoryEngine } from "@lingfan/engine";
-import { createCommandRegistry } from "@lingfan/ui";
+import { type ResourcePort, type StoryEngine } from "@lingfan-engine/core";
+import { createCommandRegistry } from "@lingfan-engine/ui";
 import { createElementLayer } from "./elements";
 import type { VueNarrativeState } from "../../narrative/runtime/narrative-state";
 

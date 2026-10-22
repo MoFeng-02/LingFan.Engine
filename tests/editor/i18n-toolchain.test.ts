@@ -12,13 +12,13 @@
  * - **对账三态**：缺译 / 多译 / 齐各一 + 按语言分组 + 可读报告。
  */
 import { describe, expect, it } from "vitest";
-import type { I18nOverlayFile } from "@lingfan/engine";
+import type { I18nOverlayFile } from "@lingfan-engine/core";
 import {
   SYS,
   StoryEngine,
   mergeOverlayFiles,
   parseStory,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import {
   analyzeStory,
   extractStoryKeys,
@@ -26,11 +26,11 @@ import {
   indexStory,
   planOverlaySkeleton,
   reconcileTranslations,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 
 /** 引擎运行层全部源码，键 = 仓库相对路径（前端不碰文件系统，改用打包器读取） */
 const ENGINE_RUNTIME_SOURCES = import.meta.glob(
-  "../../packages/engine/src/runtime/**/*.ts",
+  "../../packages/core/src/runtime/**/*.ts",
   {
     eager: true,
     query: "?raw",

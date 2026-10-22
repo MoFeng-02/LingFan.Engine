@@ -24,8 +24,12 @@ import {
   UNIMPLEMENTED_ELEMENT_ATTRS,
   validateStory,
   type FieldDescriptor,
-} from "@lingfan/editor";
-import { ELEMENT_ATTRIBUTES, ELEMENT_TYPES, type Story } from "@lingfan/engine";
+} from "@lingfan-engine/editor";
+import {
+  ELEMENT_ATTRIBUTES,
+  ELEMENT_TYPES,
+  type Story,
+} from "@lingfan-engine/core";
 import { sampleStory } from "../../apps/editor/src/shared/sample";
 import fieldRowSource from "../../apps/editor/src/components/stage/FieldRow.vue?raw";
 

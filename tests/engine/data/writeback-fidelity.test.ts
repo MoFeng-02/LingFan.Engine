@@ -20,7 +20,7 @@ import {
   MANIFEST_FILE,
   serializeColumnDocument,
   serializeProject,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 const MANIFEST = { formatVersion: 1, id: "demo", entry: "chapter1" };
 /** 单列夹具用的清单（entry 指向该列 id） */

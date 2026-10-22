@@ -6,14 +6,14 @@
  * - 偏好不进引擎 SSOT/存档（exportSave 载荷无偏好键）
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { PlayerPrefsData } from "@lingfan/engine";
+import type { PlayerPrefsData } from "@lingfan-engine/core";
 import {
   DEFAULT_PLAYER_PREFS,
   PlayerPreferences,
   SYS,
   StoryEngine,
   parseStory,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** PreferencesPort 契约替身：内存存储 + 调用记录 + 故障注入 */
 class MemoryPrefsPort {

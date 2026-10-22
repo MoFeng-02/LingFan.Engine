@@ -128,11 +128,13 @@ describe("创作链编译包 · 边界与结构不变式", () => {
         'from "../../apps/playground/scripts/cell-extract";',
       ),
     ).toBe(true);
-    expect(STALE_SPECIFIER_PATTERN.test('from "@lingfan/stories-build";')).toBe(
-      false,
-    );
     expect(
-      STALE_SPECIFIER_PATTERN.test('from "@lingfan/stories-build/cell";'),
+      STALE_SPECIFIER_PATTERN.test('from "@lingfan-engine/stories-build";'),
+    ).toBe(false);
+    expect(
+      STALE_SPECIFIER_PATTERN.test(
+        'from "@lingfan-engine/stories-build/cell";',
+      ),
     ).toBe(false);
 
     // 管道级自检：把历史写法拼进扫描面必须能被抓到（证明扫的是真文本）。
@@ -195,7 +197,7 @@ describe("创作链编译包 · 边界与结构不变式", () => {
       "./src/authoring.d.ts",
     );
     expect(PACKAGE_MANIFEST.exports?.["./cell"]).toBe("./src/cell/index.ts");
-    // CLI 必须是包的一等入口：模板工程只有 `pnpm add @lingfan/stories-build` 这一条路，
+    // CLI 必须是包的一等入口：模板工程只有 `pnpm add @lingfan-engine/stories-build` 这一条路，
     // 拿不到 ./cli 就只能写 monorepo 内部裸路径，包化对模板即失效。
     expect(PACKAGE_MANIFEST.exports?.["./cli"]).toBe("./src/cli/cli.ts");
 

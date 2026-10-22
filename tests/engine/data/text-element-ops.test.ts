@@ -11,7 +11,7 @@ import {
   parseTextStory,
   projectText,
   type Story,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 function flowStory(...commands: Record<string, unknown>[]): Story {
   return parseStory({

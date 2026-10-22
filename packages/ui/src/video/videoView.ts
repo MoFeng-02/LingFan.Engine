@@ -10,8 +10,8 @@ import type {
   VideoCommand,
   VideoPort,
   StoryEngine,
-} from "@lingfan/engine";
-import { createStateReader, SYS } from "@lingfan/engine";
+} from "@lingfan-engine/core";
+import { createStateReader, SYS } from "@lingfan-engine/core";
 import { createResourceUrlCache } from "../resources";
 
 /**

@@ -1,6 +1,6 @@
 import * as ts from "typescript";
-import type { StoryCommand } from "@lingfan/engine";
-import { script } from "@lingfan/editor";
+import type { StoryCommand } from "@lingfan-engine/core";
+import { script } from "@lingfan-engine/editor";
 import {
   defaultStoriesBuildTexts,
   type StoriesBuildTexts,

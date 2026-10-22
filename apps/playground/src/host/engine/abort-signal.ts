@@ -1,4 +1,4 @@
-import type { AbortHandle } from "@lingfan/engine";
+import type { AbortHandle } from "@lingfan-engine/core";
 
 /**
  * 中止句柄收窄（宿主侧）：契约层只用语言核心类型，只承诺 `signal.aborted` 可轮询；

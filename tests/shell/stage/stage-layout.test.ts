@@ -9,7 +9,7 @@
  * 与桌面宿主只能各抄一份算法。
  */
 import { describe, expect, it } from "vitest";
-import { resolveStageConfig } from "@lingfan/engine";
+import { resolveStageConfig } from "@lingfan-engine/core";
 import {
   computeStageLayout,
   DEFAULT_STAGE_FIT,

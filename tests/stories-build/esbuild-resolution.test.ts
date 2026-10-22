@@ -7,7 +7,7 @@
  * 新位置向上只有包自己的 `node_modules` —— 包清单里没声明 esbuild 时，这一段在
  * 裸 node 下必然 MODULE_NOT_FOUND。当时没人发现，是因为 `pnpm stories:build` 走
  * tsx，而 **tsx 会修补 CJS 解析**，把缺口盖住了：真实环境里模板工程 `pnpm add
- * @lingfan/stories-build` 装不到 esbuild，求值段直接失败，且错误文案还指向
+ * @lingfan-engine/stories-build` 装不到 esbuild，求值段直接失败，且错误文案还指向
  * apps/playground，照做也扑空。
  *
  * 所以本文件的断言必须**跨进程跑裸 node**：vitest 自己就跑在 tsx/vite 管线里，
@@ -113,7 +113,7 @@ describe("创作链编译包 · 求值器的 esbuild 解析", () => {
       .find((line) => line.includes("esbuild 未解析到"));
 
     expect(typeof messageLine).toBe("string");
-    expect(messageLine).toContain("@lingfan/stories-build");
+    expect(messageLine).toContain("@lingfan-engine/stories-build");
     expect(messageLine).not.toContain("apps/playground");
     // 整个求值器都不该再提宿主工程——包不知道谁在调它。
     expect(source).not.toContain("apps/playground");

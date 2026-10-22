@@ -2,7 +2,7 @@
  * 第四章 · 词汇全席（菜单枢纽列）：开席两句 + 站点菜单。
  * 站点菜单唯一来源 = lib/stations.ts 的 stationsMenu()，本列与其余站点列尾同形调用。
  */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const { say } = script;
 

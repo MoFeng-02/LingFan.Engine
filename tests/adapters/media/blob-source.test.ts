@@ -9,7 +9,7 @@ import mainSource from "../../../apps/playground/src/main.ts?raw";
 import videoSource from "../../../packages/adapters/src/media/videoPort.ts?raw";
 import audioSource from "../../../packages/adapters/src/media/audioPort.ts?raw";
 import resourceCryptoSource from "../../../apps/playground/src-tauri/src/resource_crypto/stream/protocol.rs?raw";
-import { createBlobSource } from "@lingfan/adapters";
+import { createBlobSource } from "@lingfan-engine/adapters";
 
 /** 受管协议 v1 token 形态（{hex64}.{ext}） */
 const TOKEN_URL = `http://lfstream.localhost/${"a".repeat(64)}.mp4`;

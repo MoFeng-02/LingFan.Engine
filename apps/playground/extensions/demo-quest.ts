@@ -15,7 +15,7 @@
  * id 取 `demoquest`（无连字符）：**插值 `{ext.<id>.<key>}` 的名字段不含连字符**——
  * 带连字符的 id 写得出状态却插不进台词，任务进度要在画面上看到就得用它。
  */
-import type { OpExtension } from "@lingfan/engine";
+import type { OpExtension } from "@lingfan-engine/core";
 
 const extension: OpExtension = {
   id: "demoquest",

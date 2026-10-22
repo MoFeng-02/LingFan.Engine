@@ -5,8 +5,8 @@
  * Rust 侧行为在 cargo 侧测（`resource_crypto/`），两侧各测一半。
  */
 import { describe, expect, it } from "vitest";
-import { createTauriEncryptedResourcePort } from "@lingfan/adapters";
-import type { TauriInvoke } from "@lingfan/adapters";
+import { createTauriEncryptedResourcePort } from "@lingfan-engine/adapters";
+import type { TauriInvoke } from "@lingfan-engine/adapters";
 
 function makeInvoke(payload: string, calls: string[]): TauriInvoke {
   return async <T>(

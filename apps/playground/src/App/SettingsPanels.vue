@@ -13,9 +13,9 @@ import {
   type KeymapAction,
   type LayerZTable,
   type PlayerPrefsData,
-} from "@lingfan/engine";
-import { renderDialogueLine } from "@lingfan/ui";
-import { canChooseSlot } from "@lingfan/shell";
+} from "@lingfan-engine/core";
+import { renderDialogueLine } from "@lingfan-engine/ui";
+import { canChooseSlot } from "@lingfan-engine/shell";
 import type { HistoryBlock, SlotPanelMode, SlotView } from "../host";
 
 defineProps<{

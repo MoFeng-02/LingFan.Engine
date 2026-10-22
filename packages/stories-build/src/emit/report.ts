@@ -1,4 +1,4 @@
-import { script, type ExpressionWarning } from "@lingfan/editor";
+import { script, type ExpressionWarning } from "@lingfan-engine/editor";
 
 /** 一次构建的结果（CLI 据此打印，测试据此断言） */
 export interface BuildReport {

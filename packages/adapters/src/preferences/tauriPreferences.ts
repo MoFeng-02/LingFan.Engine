@@ -4,7 +4,7 @@
  * 偏好非敏感资产无密钥；数据校验降级归 PlayerPreferences.hydrate）。
  * invoke 可注入（缺省取 Tauri 桥接域的缺省实现）：测试以契约替身注入。
  */
-import type { PlayerPrefsData, PreferencesPort } from "@lingfan/engine";
+import type { PlayerPrefsData, PreferencesPort } from "@lingfan-engine/core";
 import { defaultInvoke, type TauriInvoke } from "../platform";
 
 /**

@@ -13,7 +13,7 @@ import stepLayoutSource from "../../apps/editor/src/components/stage/StepLayout.
 import editorApiContractSource from "../../apps/editor/src/contracts/editor.ts?raw";
 import stepsSource from "../../packages/editor/src/layout/steps.ts?raw";
 import editorIndexSource from "../../packages/editor/src/index.ts?raw";
-import engineIndexSource from "../../packages/engine/src/index.ts?raw";
+import engineIndexSource from "../../packages/core/src/index.ts?raw";
 
 describe("视图接线：centerView 四态 + 步骤分支", () => {
   it("centerView 联合类型含 'step'，默认仍为 timeline", () => {
@@ -73,8 +73,8 @@ describe("单一事实源：边界判定只来自引擎的等待声明表（不�
     expect(engineIndexSource).toContain("waitSpecOfOp");
   });
 
-  it("步骤算法从 @lingfan/engine 取等待事实（消费而非复制判定）", () => {
-    expect(stepsSource).toContain('from "@lingfan/engine"');
+  it("步骤算法从 @lingfan-engine/core 取等待事实（消费而非复制判定）", () => {
+    expect(stepsSource).toContain('from "@lingfan-engine/core"');
     expect(stepsSource).toContain("waitingStateOfOp");
     expect(stepsSource).toContain("waitSpecOfOp");
     // 不得在本模块私自声明等待 op 表（那会成为第二份定义）

@@ -1,4 +1,4 @@
-# @lingfan/miniprogram — 小程序宿主（UniApp）
+# @lingfan-engine/miniprogram — 小程序宿主（UniApp）
 
 用 UniApp（Vue 3）写页面层，把叙事引擎的端口接在小程序的能力上。这一层只做三件事：
 取画布、把宿主给的补丁写进页面状态、把点击与输入交回覆盖层——叙事逻辑一律不在这里。
@@ -10,11 +10,11 @@
 ## 命令
 
 ```bash
-pnpm --filter @lingfan/miniprogram serve:project # 本地提供演示工程（http://127.0.0.1:5273，仅开发用）
-pnpm --filter @lingfan/miniprogram dev        # 编译到 mp-weixin（watch），产物 dist/dev/mp-weixin
-pnpm --filter @lingfan/miniprogram build      # 编译到 mp-weixin，产物 dist/build/mp-weixin
-pnpm --filter @lingfan/miniprogram dev:h5     # 浏览器里预览同一份页面代码
-pnpm --filter @lingfan/miniprogram typecheck  # 本包单独类型检查（仓库根 `pnpm -w run typecheck` 已覆盖）
+pnpm --filter @lingfan-engine/miniprogram serve:project # 本地提供演示工程（http://127.0.0.1:5273，仅开发用）
+pnpm --filter @lingfan-engine/miniprogram dev        # 编译到 mp-weixin（watch），产物 dist/dev/mp-weixin
+pnpm --filter @lingfan-engine/miniprogram build      # 编译到 mp-weixin，产物 dist/build/mp-weixin
+pnpm --filter @lingfan-engine/miniprogram dev:h5     # 浏览器里预览同一份页面代码
+pnpm --filter @lingfan-engine/miniprogram typecheck  # 本包单独类型检查（仓库根 `pnpm -w run typecheck` 已覆盖）
 ```
 
 **开发时先起 `serve:project` 再起 `dev`**：页面一进就要拉工程，工程接口不通会停在错误态
@@ -110,7 +110,7 @@ CDP 通道又是 `unimplemented`，所以媒体这段拿不到截图，证据是
   形状（两类列、`if` 嵌套、`args` 里的同形对象不算命令）。
 - **存读入口与桌面同一份判据**：页面左上角的入口条给出「存 / 读」，槽位数取自工程清单
   （`project.json` 的 `shell.saves`，缺省 6 槽），槽位标题与空槽判断都来自存档快照本身；
-  点槽位的合法性判据复用 `@lingfan/shell` 的 `canChooseSlot`（与桌面面板同一份）。命令只落在
+  点槽位的合法性判据复用 `@lingfan-engine/shell` 的 `canChooseSlot`（与桌面面板同一份）。命令只落在
   宿主组合根：`saveGame` / `loadGame` 转给引擎，命令返回只代表「被接受」，真正落地以
   `save.done` / `load.done` 事件为准；读档完成后要重渲覆盖层并重对齐媒体（读档换列后音视频源要重取）。
 - **存档点与作用域**：引擎契约里块 / 列级作用域（`let` / `local` 声明）随帧出栈销毁、不进存档，
@@ -118,7 +118,7 @@ CDP 通道又是 `unimplemented`，所以媒体这段拿不到截图，证据是
   不存在（表现为插值失败并保留原文）——这是引擎的作用域口径，不是宿主缺陷；验收与演示都取
   列级声明之前的画面。
 - **层次与桌面宿主一致**：舞台层是唯一带基准尺寸与变换的容器（画布等比缩放，缩放与偏移来自
-  `@lingfan/shell` 的 `computeStageLayout`，行内样式串由 `host/view.ts` 的 `stageStyle` 拼成数据），
+  `@lingfan-engine/shell` 的 `computeStageLayout`，行内样式串由 `host/view.ts` 的 `stageStyle` 拼成数据），
   对话 / 选择 / 通知各层住在窗口坐标系里，尺寸只跟窗口走（页面自身用 `rpx`，舞台内的元素尺寸来自
   叙事数据的基准像素——两者不混用）。
 - **面板形态与桌面同源**：对话、选择、通知三层的结构类名、色值与形态跟桌面面板
@@ -134,8 +134,8 @@ CDP 通道又是 `unimplemented`，所以媒体这段拿不到截图，证据是
   对话层（菜单/输入/视频等待时整层让位），NVL 只是对话容器的另一种内容形态（`.nvl-mode` 把卡片
   抬成阅读区）。`app-host.test.ts` 有 7 例守住这条：激活/退出/打字帧缓存/清层/`onView` 唯一通道/
   页面绑定/两端同源。
-- **平台中立**：宿主自己的名字不带平台名（目录 `apps/miniprogram`、包名 `@lingfan/miniprogram`），
-  能力面也统一：`@lingfan/adapters` 的中立族（`miniprogram/`）只吃注入的能力面（同步存储、音频实例、
+- **平台中立**：宿主自己的名字不带平台名（目录 `apps/miniprogram`、包名 `@lingfan-engine/miniprogram`），
+  能力面也统一：`@lingfan-engine/adapters` 的中立族（`miniprogram/`）只吃注入的能力面（同步存储、音频实例、
   视频呈现面、画布），里面没有一行厂商 API；厂商差异只落在 `src/host/platform.ts` 的取用面上。
   `packages/*` 不依赖任何小程序 API，`tests/miniprogram/app-host.test.ts` 有三条互锁：`uni` 只在
   `platform.ts`、宿主模块里没有 `wx.` / 厂商命名、端口装配取中立族。目前只接了 `mp-weixin` 一个编译

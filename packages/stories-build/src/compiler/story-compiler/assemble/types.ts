@@ -4,7 +4,7 @@
  * 类型放叶子：会话实现与函数体翻译都要用这些形状，声明在任一实现里都会让另一方反向依赖。
  */
 
-import type { CharacterDef, Story, StoryCommand } from "@lingfan/engine";
+import type { CharacterDef, Story, StoryCommand } from "@lingfan-engine/core";
 import type { StoriesBuildTexts } from "../../../shared/index.ts";
 
 /** 会话：跨文件共享状态（函数缓存 / 字体表 / 文案表 / 全工程角色表） */

@@ -1,6 +1,6 @@
 /** 统一文字渲染接缝测试：typed 优先 / 转义 / 管线一致性。 */
 import { describe, expect, it } from "vitest";
-import { renderDialogueLine, renderInlineMarkup } from "@lingfan/ui";
+import { renderDialogueLine, renderInlineMarkup } from "@lingfan-engine/ui";
 
 describe("renderDialogueLine（统一文字渲染接缝）", () => {
   it("静态行：整段 text 走管线（等价 renderInlineMarkup）", () => {

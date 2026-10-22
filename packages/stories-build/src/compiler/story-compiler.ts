@@ -2,7 +2,7 @@ import {
   isSafeFileNameSegment,
   type CharacterDef,
   type Story,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import type { StorySourceConfig } from "../config/story-config.ts";
 import {
   defaultStoriesBuildTexts,

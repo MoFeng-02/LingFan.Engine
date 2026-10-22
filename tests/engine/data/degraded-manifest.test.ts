@@ -10,7 +10,7 @@ import {
   assembleProject,
   ProjectAssemblyError,
   synthesizeDegradedManifest,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 const ATOMIC = (id: string, text: string) =>
   JSON.stringify({

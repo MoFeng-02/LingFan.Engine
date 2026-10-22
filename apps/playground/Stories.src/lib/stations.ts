@@ -5,7 +5,7 @@
  * 菜单等待中选中即跳转，enterColumn 整体替换帧栈，func 帧随之干净销毁。
  * （数组/对象复合值不得作常量绑定内联，故经函数共享而非共享 const。）
  */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const { menu, option } = script;
 

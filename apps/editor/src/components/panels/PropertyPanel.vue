@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, inject } from "vue";
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import {
   describeForm,
   describeSelection,
   elementLabel,
   getAtPointer,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 import { EDITOR_API_KEY } from "../../contracts";
 import { FieldRow } from "../stage";
 
@@ -16,7 +16,7 @@ const api = inject(EDITOR_API_KEY)!;
 
 /**
  * 选中态**四态**：`none` / `non-command` / `unknown-op` / `command`。
- * 判定收在 `@lingfan/editor` 的纯函数里（可测），本组件只按 `kind` 选文案。
+ * 判定收在 `@lingfan-engine/editor` 的纯函数里（可测），本组件只按 `kind` 选文案。
  */
 const selection = computed(() => describeSelection(props.story, props.pointer));
 

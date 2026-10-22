@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 
 /** 运行层全部源码，键 = 仓库相对路径 */
 const RUNTIME_SOURCES = import.meta.glob(
-  "../../../packages/engine/src/runtime/**/*.ts",
+  "../../../packages/core/src/runtime/**/*.ts",
   {
     eager: true,
     query: "?raw",

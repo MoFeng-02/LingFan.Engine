@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from "node:fs";
-import { isSafeFileNameSegment } from "@lingfan/engine";
+import { isSafeFileNameSegment } from "@lingfan-engine/core";
 import { StoryBuildError } from "../shared/index.ts";
 
 /**

@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-const engineSources = import.meta.glob("../../packages/engine/src/**/*.ts", {
+const engineSources = import.meta.glob("../../packages/core/src/**/*.ts", {
   eager: true,
   query: "?raw",
   import: "default",
@@ -78,7 +78,7 @@ function stripToCodeSkeleton(source: string): string {
 /**
  * 平台 API 词表（只列内核不该出现的）。
  * `window` 只认**取值形态**（`window.` / `window[`）：元素类型名里就有 `window`
- * （`packages/engine/src/contracts/element.ts:68`）与 `window:` 键
+ * （`packages/core/src/contracts/element.ts:68`）与 `window:` 键
  * （`element/renderers/register.ts:47`），裸词判据会把这些误报成 DOM 触点。
  * `HTML*Element` 要求 HTML 与 Element 之间至少一个字母，故 `HTMLElement` 不会双命中。
  */

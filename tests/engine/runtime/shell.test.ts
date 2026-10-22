@@ -16,7 +16,7 @@ import {
   resolveSavesConfig,
   resolveStageConfig,
   slotIds,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 describe("resolveLayerZ（层 z 表：内建默认 × 工程覆盖）", () => {
   it("无声明 → 内建默认（say/dialogue=999）", () => {

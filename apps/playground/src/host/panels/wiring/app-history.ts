@@ -4,13 +4,13 @@
  */
 
 import { computed, ref, type ComputedRef, type Ref } from "vue";
-import type { StoryEngine } from "@lingfan/engine";
+import type { StoryEngine } from "@lingfan-engine/core";
 import {
   buildHistoryBlocks,
   filterHistoryEntries,
   type HistoryBlock,
   type HistoryEntry,
-} from "@lingfan/shell";
+} from "@lingfan-engine/shell";
 
 /** 装配入参：引擎句柄取用与回放后的渲染同步 */
 export interface AppHistoryOptions {

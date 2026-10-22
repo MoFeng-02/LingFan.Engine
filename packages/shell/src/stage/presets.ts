@@ -6,7 +6,7 @@
  * 行为时直接写 `scaleBy`/`alignX`/`alignY`，与预设走同一条计算路径，所以预设与自定义
  * 之间不存在两套代码。
  */
-import { DEFAULT_STAGE_CONFIG } from "@lingfan/engine";
+import { DEFAULT_STAGE_CONFIG } from "@lingfan-engine/core";
 import {
   type StageAlign,
   type StageFit,

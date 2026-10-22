@@ -1,7 +1,7 @@
 /**
  * 第四章 · 舞台窗口：背景 + 对话窗开合 + 单元素 animate_block + 打字机开关 + notify 角标。
  */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const {
   animateBlock,

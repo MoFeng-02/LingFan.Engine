@@ -1,0 +1,39 @@
+{
+  "name": "@lingfan-engine/core",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "灵泛叙事引擎核心：框架无关的叙事语义（格式/执行/回溯/作用域/存档编排）",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contracts": "./src/contracts/index.ts"
+  },
+  "files": [
+    "src",
+    "!src/**/*.test.ts"
+  ],
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MoFeng-02/LingFan.Engine.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/MoFeng-02/LingFan.Engine#readme",
+  "bugs": {
+    "url": "https://github.com/MoFeng-02/LingFan.Engine/issues"
+  },
+  "keywords": [
+    "narrative",
+    "visual-novel",
+    "game-engine",
+    "story",
+    "typescript",
+    "framework-agnostic"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

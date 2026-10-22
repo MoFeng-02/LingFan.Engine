@@ -6,7 +6,7 @@
  * 逻辑路径一律相对资源根（含 `project.json` 的那一层），与 fetch / Tauri 两种供给
  * 实现的键完全一致：组装器是唯一解析点，本模块只负责「取」。
  */
-import type { ProjectFileSource } from "@lingfan/engine";
+import type { ProjectFileSource } from "@lingfan-engine/core";
 import { normalizeResourceId } from "../resourcePort";
 import type { ResourceTexts } from "../texts";
 import { RESOURCES_DIR } from "./root-locate";

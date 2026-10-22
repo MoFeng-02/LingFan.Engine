@@ -4,7 +4,7 @@
  * - 路径形态（目录 input 快照）以清单所在层为资源根，同深多个清单即无法判定。
  * 资源根 = 逻辑路径的相对基准，与 fetch / Tauri 两种供给实现的键完全一致。
  */
-import { MANIFEST_FILE, STORIES_DIR } from "@lingfan/engine";
+import { MANIFEST_FILE, STORIES_DIR } from "@lingfan-engine/core";
 import { defaultResourceTexts, type ResourceTexts } from "../texts";
 import { dirOf, segmentDepth, tryDirectoryHandle, tryFileHandle } from "./walk";
 

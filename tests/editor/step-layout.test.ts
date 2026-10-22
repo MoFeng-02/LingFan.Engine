@@ -11,9 +11,9 @@
  *    函数互为环 / 非对象命令 / 缺 op / 悬空目标。
  */
 import { describe, expect, it } from "vitest";
-import type { Story } from "@lingfan/engine";
-import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
-import { columnSteps, storySteps } from "@lingfan/editor";
+import type { Story } from "@lingfan-engine/core";
+import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
+import { columnSteps, storySteps } from "@lingfan-engine/editor";
 
 /** 顶层命令指针序列（时间线行口径：flow→commands，scene→entry） */
 function topLevelPointers(story: Story, columnIndex: number): string[] {

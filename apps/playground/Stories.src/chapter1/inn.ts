@@ -1,5 +1,5 @@
 /** 第一章 · 酒馆列：老板招呼 + 跨文件函数调用（lib/cast.ts 的 farewell）→ jump 收束到终幕。 */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const { say, jump } = script;
 

@@ -15,7 +15,7 @@
  * 本模块是纯函数式的：不持有视图状态、不写 DOM。
  */
 
-import type { ElementInstance, LayerId } from "@lingfan/engine";
+import type { ElementInstance, LayerId } from "@lingfan-engine/core";
 
 /** 故事级打字机设置（`text_typewriter` 命令写入的状态形态） */
 export interface TypingSetting {

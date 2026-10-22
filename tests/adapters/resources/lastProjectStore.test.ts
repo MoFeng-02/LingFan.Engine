@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import {
   createLastProjectStore,
   type LastProjectHandleStore,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 import appSource from "../../../apps/editor/src/App.vue?raw";
 import mainSource from "../../../apps/editor/src/main.ts?raw";
 // 顶栏按钮本体在 TopToolbar.vue、失败文案在 useProjectOpen.ts（App 只留接线）

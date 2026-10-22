@@ -3,12 +3,12 @@
  * 不依赖 Tauri 运行时（Rust 侧文件存取在 cargo 测——preferences.rs）。
  */
 import { describe, expect, it } from "vitest";
-import type { PlayerPrefsData } from "@lingfan/engine";
+import type { PlayerPrefsData } from "@lingfan-engine/core";
 import {
   createTauriPreferencesPort,
   type TauriInvoke,
-} from "@lingfan/adapters";
-import { DEFAULT_PLAYER_PREFS } from "@lingfan/engine";
+} from "@lingfan-engine/adapters";
+import { DEFAULT_PLAYER_PREFS } from "@lingfan-engine/core";
 
 function fakeInvoke(result: unknown | Error): {
   invoke: TauriInvoke;

@@ -13,7 +13,7 @@
  *   产物逐字节一致，且形状必须仍锚在「从 config define 树生成的精确类型」上——
  *   枚举走 import type 引用（`Sex`），不回退内联联合；类型面退化为宽 any 时本锚点红。
  * - script 命名空间 ambient 声明（script.gen.d.ts）同口径锚定：内容恒定，锚住
- *   `declare const script: typeof import("@lingfan/editor").script;` 一行——声明面
+ *   `declare const script: typeof import("@lingfan-engine/editor").script;` 一行——声明面
  *   换形（如改成运行时注入）时本锚点红。
  * - 字体类型面（font.gen.d.ts）同口径锚定：工程未声明字体时锚住封闭空类型
  *   `Record<never, never>`——退化成开放索引签名（放弃拼错保护）时本锚点红。
@@ -48,7 +48,7 @@ import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { buildStories } from "@lingfan/stories-build";
+import { buildStories } from "@lingfan-engine/stories-build";
 
 const PLAYGROUND_ROOT = fileURLToPath(
   new URL("../../apps/playground/", import.meta.url),
@@ -150,7 +150,7 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
         expect(committed).toContain('"ticket": 1;');
         // script ambient 声明形状锚：单条 declare 指向 editor 根出口的 script 命名空间
         expect(committedScript).toContain(
-          'declare const script: typeof import("@lingfan/editor").script;',
+          'declare const script: typeof import("@lingfan-engine/editor").script;',
         );
         // 字体类型面形状锚：工程未放字体文件 = 封闭空类型（非宽 Record<string, string>，
         // 退化会放弃拼错保护）；键 = 值 = 注册表字体名的契约由下方新鲜度用例与 font 探针覆盖

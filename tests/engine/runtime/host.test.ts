@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveHost } from "@lingfan/engine";
+import { resolveHost } from "@lingfan-engine/core";
 
 describe("resolveHost（宿主信息解析）", () => {
   it("映射 Tauri 的五种编译期平台", () => {

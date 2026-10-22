@@ -8,7 +8,7 @@
  * cell 是 **build-time 声明词**：运行期（模块被导入时，如测试/类型检查）必须纯——
  * 只返回句柄、零副作用；实现文本由构建期 AST 提取，不经过本函数。
  */
-import type { GuardFn } from "@lingfan/engine";
+import type { GuardFn } from "@lingfan-engine/core";
 
 /** 具名实现句柄：消费方（guard 等）按 face 取名字；face v1 恒 `guards` */
 export interface CellHandle<N extends string = string> {
@@ -17,7 +17,7 @@ export interface CellHandle<N extends string = string> {
 }
 
 /**
- * 守卫名注册表（类型扩充点）：生成物尾部 `declare module "@lingfan/editor"`
+ * 守卫名注册表（类型扩充点）：生成物尾部 `declare module "@lingfan-engine/editor"`
  * 往本接口塞进每个已声明守卫名的字面量键 ⇒ `guard("…")` 的名字参数获得
  * 补全与写错即红（vue-router typed-routes 同机制）。
  * 空表 = `KnownGuardName` 退化为普通 string——不空注册表吓跑作者。

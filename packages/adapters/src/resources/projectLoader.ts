@@ -11,7 +11,7 @@ import {
   assembleProject,
   type ProjectFilesPort,
   type Story,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** `createFetchProjectFilesPort` 的装配参数：清单路径、故事文件路径表、资源根 URL 前缀 */
 export interface FetchProjectFilesOptions {

@@ -3,7 +3,7 @@
  * switchOn / whileDo / for 运行期 op，显式种子 ⇒ 回溯确定性）；forEach 保留词逃生舱。
  * 站尾 jump 接收导入的故事引用——编译期解析为列 id（declare 通道，lib/jump.ts）。
  */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const { forEach, newArray, random, say } = script;
 

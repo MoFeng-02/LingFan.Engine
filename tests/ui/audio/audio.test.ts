@@ -10,15 +10,15 @@ import type {
   AudioPort,
   ResourcePort,
   SaveDataV1,
-} from "@lingfan/engine";
-import { SYS, StoryEngine } from "@lingfan/engine";
-import { parseStory } from "@lingfan/engine";
+} from "@lingfan-engine/core";
+import { SYS, StoryEngine } from "@lingfan-engine/core";
+import { parseStory } from "@lingfan-engine/core";
 import {
   EMPTY_AUDIO_VIEW,
   createAudioRenderer,
   planAudioActions,
   type AudioView,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 
 function play(
   resource: string,

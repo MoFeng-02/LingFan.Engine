@@ -7,7 +7,7 @@
  */
 
 import { ref, type Ref } from "vue";
-import { SYS, type I18nPort, type StoryEngine } from "@lingfan/engine";
+import { SYS, type I18nPort, type StoryEngine } from "@lingfan-engine/core";
 
 /** 装配入参：I18N 供给（可选）与引擎句柄取用 */
 export interface AppLangOptions {

@@ -4,7 +4,7 @@
  * ——get 返回 undefined = fail-closed（宿主必须显式上报，不得伪造完成）。
  */
 
-import type { MinigameFactory } from "@lingfan/engine";
+import type { MinigameFactory } from "@lingfan-engine/core";
 
 /**
  * 小游戏 id → 工厂的查表。`get` 未命中即 `undefined`，调用方必须显式上报

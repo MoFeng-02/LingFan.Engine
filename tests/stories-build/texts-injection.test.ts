@@ -12,7 +12,10 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildStories, type StoriesBuildTexts } from "@lingfan/stories-build";
+import {
+  buildStories,
+  type StoriesBuildTexts,
+} from "@lingfan-engine/stories-build";
 
 /**
  * 独立 BASE（仓内约定：每测试文件一个 .tmp-* 目录）。不共用 build-pipeline 的
@@ -48,7 +51,7 @@ const MANIFEST = `{
 }`;
 
 /** 词汇层绑定（与 build-pipeline.test.ts 同款）。 */
-const WORDS = `import { script } from "@lingfan/editor";
+const WORDS = `import { script } from "@lingfan-engine/editor";
 const { say, option, menu, guard, cell, extOp } = script;
 
 `;

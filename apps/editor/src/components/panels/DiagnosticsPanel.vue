@@ -19,7 +19,7 @@ import {
   summarizeDiagnostics,
   type Diagnostic,
   type SeverityFilter,
-} from "@lingfan/editor";
+} from "@lingfan-engine/editor";
 
 const props = defineProps<{ diagnostics: Diagnostic[] }>();
 const api = inject(EDITOR_API_KEY)!;

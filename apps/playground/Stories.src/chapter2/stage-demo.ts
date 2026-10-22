@@ -2,7 +2,7 @@
  * 第二章 · 元素舞台列：新范式纯命令流——原 scene 列的 elements[] 面板不再由故事源承载，
  * 元素能力（show/animate/style/setZ/shake/transition/bgSwitch）全部经词函数发射运行期 op。
  */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const { animate, bgSwitch, hide, say, setZ, show, shake, style, transition } =
   script;

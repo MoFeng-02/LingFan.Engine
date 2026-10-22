@@ -14,7 +14,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildStories } from "@lingfan/stories-build";
+import { buildStories } from "@lingfan-engine/stories-build";
 
 const BASE = fileURLToPath(new URL("./.tmp-script-ambient/", import.meta.url));
 
@@ -58,7 +58,7 @@ const story = (head: string, body: string): string =>
 
 const AMBIENT_STORY = story("", AMBIENT_BODY);
 const DESTRUCTURE_STORY = story(
-  `import { script } from "@lingfan/editor";\nconst { bgm, wait, menu, option } = script;\n`,
+  `import { script } from "@lingfan-engine/editor";\nconst { bgm, wait, menu, option } = script;\n`,
   DESTRUCTURE_BODY,
 );
 
@@ -84,7 +84,7 @@ describe("script 命名空间 ambient 直呼", () => {
     // ambient 声明文件随之落盘，tsc/IDE 侧才有 script 的类型可引
     const genText = readFileSync(join(ambientRoot, SCRIPT_GEN), "utf8");
     expect(genText).toContain(
-      'declare const script: typeof import("@lingfan/editor").script;',
+      'declare const script: typeof import("@lingfan-engine/editor").script;',
     );
   });
 
@@ -126,7 +126,7 @@ describe("script 命名空间 ambient 直呼", () => {
     const aliasRoot = makeProject("alias-eq", {
       "Stories.src/config.ts": config(["ch1"]),
       [START]: story(
-        `import { script as st } from "@lingfan/editor";\n`,
+        `import { script as st } from "@lingfan-engine/editor";\n`,
         `  st.bgm("loop.ogg");`,
       ),
       "Resources/project.json": MANIFEST,
@@ -134,7 +134,7 @@ describe("script 命名空间 ambient 直呼", () => {
     const namedRoot = makeProject("named-eq", {
       "Stories.src/config.ts": config(["ch1"]),
       [START]: story(
-        `import { bgm } from "@lingfan/editor";\n`,
+        `import { bgm } from "@lingfan-engine/editor";\n`,
         `  bgm("loop.ogg");`,
       ),
       "Resources/project.json": MANIFEST,

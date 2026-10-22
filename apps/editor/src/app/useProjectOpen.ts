@@ -1,6 +1,6 @@
 import type { Ref } from "vue";
-import { DEFAULT_LAYER_Z } from "@lingfan/engine";
-import type { Story } from "@lingfan/engine";
+import { DEFAULT_LAYER_Z } from "@lingfan-engine/core";
+import type { Story } from "@lingfan-engine/core";
 import {
   storyDocumentPath,
   type EditorDocument,

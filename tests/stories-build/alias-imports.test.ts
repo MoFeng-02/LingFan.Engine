@@ -24,7 +24,7 @@ import {
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildStories } from "@lingfan/stories-build";
+import { buildStories } from "@lingfan-engine/stories-build";
 
 const BASE = fileURLToPath(new URL("./.tmp-alias/", import.meta.url));
 
@@ -52,7 +52,7 @@ const MANIFEST = `{
   "shell": { "orientation": "auto" }
 }`;
 
-const WORDS = `import { script } from "@lingfan/editor";
+const WORDS = `import { script } from "@lingfan-engine/editor";
 const { say, option, menu } = script;
 
 `;
@@ -266,8 +266,8 @@ describe("词汇层别名与命名空间等价性（族 B）", () => {
   it("严格多方位：import { say as 说 } 与 import { script as ct } 两条通道都可用", async () => {
     const root = makeProject("word-alias", {
       "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `import { say as 说 } from "@lingfan/editor";
-import { script as ct } from "@lingfan/editor";
+      "Stories.src/ch1/start.ts": `import { say as 说 } from "@lingfan-engine/editor";
+import { script as ct } from "@lingfan-engine/editor";
 
 export default function start(): void {
   说("中文别名");
@@ -303,7 +303,7 @@ export default function start(): void {
     // staticFor：命名空间 vs 具名（模板串，不能用 "第"+i 拼接）。
     const sfNs = await build(
       "sf-ns",
-      `import { script } from "@lingfan/editor";
+      `import { script } from "@lingfan-engine/editor";
 const { say } = script;
 
 export default function start(): void {
@@ -313,7 +313,7 @@ export default function start(): void {
     );
     const sfNamed = await build(
       "sf-named",
-      `import { script, staticFor } from "@lingfan/editor";
+      `import { script, staticFor } from "@lingfan-engine/editor";
 const { say } = script;
 
 export default function start(): void {
@@ -351,7 +351,7 @@ export default function start(): void {
   it("故意错误：ct.cell 作命令 ⇒ 报「构建期声明词」，不得退化成「实参形态非法」", async () => {
     const root = makeProject("cell-ns-cmd", {
       "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `import { script } from "@lingfan/editor";
+      "Stories.src/ch1/start.ts": `import { script } from "@lingfan-engine/editor";
 const { say } = script;
 
 export default function start(): void {

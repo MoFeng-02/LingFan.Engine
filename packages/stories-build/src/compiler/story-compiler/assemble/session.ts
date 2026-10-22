@@ -1,4 +1,4 @@
-import type { CharacterDef, Story, StoryCommand } from "@lingfan/engine";
+import type { CharacterDef, Story, StoryCommand } from "@lingfan-engine/core";
 import {
   defaultStoriesBuildTexts,
   type StoriesBuildTexts,

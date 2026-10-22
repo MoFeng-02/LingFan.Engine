@@ -5,7 +5,7 @@
  * 而槽位 id 形如 `slot_1`，直出就是玩家从没见过的「槽位 slot_2」，他在面板上点的
  * 却是「槽位 2」。规则收在这里后，各宿主共用同一处改名，底表可换（本地化）而规则不动。
  */
-import { defaultEngineTexts } from "@lingfan/engine";
+import { defaultEngineTexts } from "@lingfan-engine/core";
 import { describe, expect, it } from "vitest";
 import { withSlotLabels } from "../../../packages/shell/src/panel";
 

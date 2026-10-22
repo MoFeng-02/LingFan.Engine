@@ -2,7 +2,7 @@
  * 第四章 · 守卫工坊：set 词逃生舱写深路径状态（tour.open）→ guard(句柄) 两层执法——
  * 状态变更走 set、闸门读 SSOT 事实；没过守卫的故事在运行期被拦停。
  */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const { guard, notify, say, set } = script;
 

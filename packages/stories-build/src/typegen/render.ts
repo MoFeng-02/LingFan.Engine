@@ -1,7 +1,7 @@
 /**
  * 类型面渲染：把收集好的字符串域落成 `Stories.src/gen/stories.gen.d.ts`。
  *
- * 生成物只做一件事——往 `@lingfan/editor` 的注册表接口里塞字面量键。接口声明在词汇层，
+ * 生成物只做一件事——往 `@lingfan-engine/editor` 的注册表接口里塞字面量键。接口声明在词汇层，
  * 经包根再导出后才可被合并；本文件必须带 `export {};`（没有它就是全局脚本，
  * `declare module` 会整体覆盖该模块而不是合并，包出口会被抹掉）。
  *
@@ -52,7 +52,7 @@ export function renderTypegen(input: TypegenInput): string {
   lines.push(HEADER);
   lines.push("export {};");
   lines.push("");
-  lines.push('declare module "@lingfan/editor" {');
+  lines.push('declare module "@lingfan-engine/editor" {');
   renderRegistry(lines, "ColumnNameRegistry", input.columns);
 
   // 插值键域 = state 键、config.vars 键、产物声明名、扩展 id 模式四源并集（合并去重后再排序；

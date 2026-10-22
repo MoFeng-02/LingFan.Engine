@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import type { StoryCommand } from "@lingfan/engine";
+import type { StoryCommand } from "@lingfan-engine/core";
 import { foldConst } from "../../../graph.ts";
 import { diag, lookupBinding, lookupScope } from "../../shared.ts";
 import type { BodyCtx, Scope } from "../../shared.ts";

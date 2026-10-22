@@ -7,7 +7,7 @@
  * 「抽取器 ≡ 诊断原文集合 ≡ 运行期真查的键」三方可证。
  */
 
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import { walkStoryCommands, walkStoryElements } from "../schema/index.ts";
 import { isPlainObject } from "../shared/index.ts";
 import { TRANSLATE_SURFACES, valuesAtPath } from "./surfaces.ts";

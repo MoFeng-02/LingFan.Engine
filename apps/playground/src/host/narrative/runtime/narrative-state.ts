@@ -1,10 +1,10 @@
 /**
- * 叙事视图状态（本宿主类型面）：字段表从 `@lingfan/shell` 的叙事状态域**派生**，
+ * 叙事视图状态（本宿主类型面）：字段表从 `@lingfan-engine/shell` 的叙事状态域**派生**，
  * 本文件只声明「单元 → Vue 单元」这一步映射——Vue 的 `ref`/`computed` 结构上就是
  * Cell（`{ value: T }`），模板解包与类型检查按 Vue 语义走。
  */
 import type { ComputedRef, Ref } from "vue";
-import type { MenuChoice, NarrativeState } from "@lingfan/shell";
+import type { MenuChoice, NarrativeState } from "@lingfan-engine/shell";
 
 /** 单元 → Vue 单元：带 `value` 的盒子映射成 `Ref`，方法原样保留 */
 type VueUnit<T> = T extends { value: infer V } ? Ref<V> : T;

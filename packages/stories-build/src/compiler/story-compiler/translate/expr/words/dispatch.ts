@@ -1,5 +1,5 @@
 import type * as ts from "typescript";
-import type { StoryCommand } from "@lingfan/engine";
+import type { StoryCommand } from "@lingfan-engine/core";
 import type { BodyCtx } from "../../shared.ts";
 
 /**

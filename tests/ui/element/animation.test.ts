@@ -2,14 +2,14 @@
  * 帧驱动纯逻辑测试（缓动 / 插值 / 震动 / 转场透明度）。
  */
 import { describe, expect, it } from "vitest";
-import type { AnimationSpec } from "@lingfan/engine";
+import type { AnimationSpec } from "@lingfan-engine/core";
 import {
   easingFn,
   easingNames,
   interpolateAnimation,
   shakeOffset,
   transitionOpacity,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 
 function spec(partial: Partial<AnimationSpec> = {}): AnimationSpec {
   return {

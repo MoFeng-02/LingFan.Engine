@@ -9,7 +9,7 @@ import {
   hasElementInteraction,
   isElementDisabled,
   resolveElementAction,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 
 describe("resolveElementAction（点击优先级）", () => {
   it("disabled 短路：不产生任何动作（最高优先级）", () => {

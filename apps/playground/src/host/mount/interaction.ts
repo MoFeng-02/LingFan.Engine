@@ -10,7 +10,7 @@ import type {
   GameStateWriter,
   InteractionMountPayload,
   InteractionResult,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { abortSignalOf } from "../engine/abort-signal";
 import type { WalkFactory } from "../demos/interaction-walk";
 

@@ -6,7 +6,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { STORIES_DIR, type SerializedProject } from "@lingfan/engine";
+import { STORIES_DIR, type SerializedProject } from "@lingfan-engine/core";
 import { renderFunRegister, type CellScan } from "../cell/index.ts";
 import { walkFiles } from "../shared/index.ts";
 

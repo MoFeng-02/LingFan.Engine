@@ -3,8 +3,8 @@
  * 与对话框模板注册表「未知名回退默认」的关键差异）。
  */
 import { describe, expect, it } from "vitest";
-import type { MinigameFactory } from "@lingfan/engine";
-import { createMinigameRegistry } from "@lingfan/ui";
+import type { MinigameFactory } from "@lingfan-engine/core";
+import { createMinigameRegistry } from "@lingfan-engine/ui";
 
 const factory: MinigameFactory = async () => ({ outcome: "success" });
 

@@ -14,7 +14,7 @@ import type {
   Story,
   VideoPort,
   WriteNormalizationFinding,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 /** 「打开工程」的结果：已组装的故事 + 该工程的资源供给端口（+ 资源根名，供界面显示） */
 export interface OpenedProject {

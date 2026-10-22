@@ -5,13 +5,13 @@
  * 四层共用一个 `choices` 骨架类（同一处布局约定），故由同一文件承载；各层的可见性
  * 由等待态决定。面板只填内容与样式——点击选项、提交输入都回抛宿主，叙事流向不变。
  */
-import type { LayerId } from "@lingfan/engine";
+import type { LayerId } from "@lingfan-engine/core";
 import {
   renderDialogueLine,
   sanitizeFont,
   type ChoiceTemplateView,
   type DialogueTemplateView,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 import { computed, ref } from "vue";
 import type { MenuChoice } from "../host";
 

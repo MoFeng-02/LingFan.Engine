@@ -8,7 +8,7 @@
  * 写入只走 `set` / `restore` 两个入口，镜像与共享视图始终拿同一个值，不会各说各话。
  *
  * 与展示层覆盖层的同名概念区分：这里是**宿主 DOM 模板绑定的镜像控制器**（读 `zOf()` 落 `:style`），
- * 覆盖层内部的 `LayerZController`（`@lingfan/ui` 的 `overlay/layer-z.ts`）则直接把 z 下发到覆盖层端口。
+ * 覆盖层内部的 `LayerZController`（`@lingfan-engine/ui` 的 `overlay/layer-z.ts`）则直接把 z 下发到覆盖层端口。
  */
 import { ref, type Ref } from "vue";
 import {
@@ -16,8 +16,8 @@ import {
   resolveInstanceZ,
   type LayerId,
   type LayerZTable,
-} from "@lingfan/engine";
-import { createLayerView, type LayerView } from "@lingfan/ui";
+} from "@lingfan-engine/core";
+import { createLayerView, type LayerView } from "@lingfan-engine/ui";
 
 /** 层 z 镜像控制器的输入 */
 export interface HostLayerZControllerOptions {

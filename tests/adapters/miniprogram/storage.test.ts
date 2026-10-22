@@ -4,14 +4,14 @@
  * 适配器把它归一成 null；其余命名空间、高水位、列表、损坏兜底语义与 Web 实现同源。
  */
 import { describe, expect, it } from "vitest";
-import type { PlayerPrefsData } from "@lingfan/engine";
-import { DEFAULT_PLAYER_PREFS } from "@lingfan/engine";
-import type { MiniprogramStorageLike } from "@lingfan/adapters";
+import type { PlayerPrefsData } from "@lingfan-engine/core";
+import { DEFAULT_PLAYER_PREFS } from "@lingfan-engine/core";
+import type { MiniprogramStorageLike } from "@lingfan-engine/adapters";
 import {
   createMiniprogramPreferencesPort,
   createMiniprogramSavePort,
   miniprogramStorageFace,
-} from "@lingfan/adapters";
+} from "@lingfan-engine/adapters";
 
 /** 微信同步存储替身：未存的键返回空串；`putRaw` 供测试直接塞入脏值绕过适配器 */
 class FakeMiniprogramStorage implements MiniprogramStorageLike {

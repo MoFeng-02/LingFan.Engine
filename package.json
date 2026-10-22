@@ -5,25 +5,25 @@
   "type": "module",
   "description": "灵泛叙事引擎：框架无关核心 + 预设适配器 + 参考宿主 + 脚手架",
   "scripts": {
-    "dev": "pnpm --filter @lingfan/playground dev",
-    "build": "pnpm --filter @lingfan/playground build",
-    "preview": "pnpm --filter @lingfan/playground preview",
-    "tauri": "pnpm --filter @lingfan/playground exec tauri",
+    "dev": "pnpm --filter @lingfan-engine/playground dev",
+    "build": "pnpm --filter @lingfan-engine/playground build",
+    "preview": "pnpm --filter @lingfan-engine/playground preview",
+    "tauri": "pnpm --filter @lingfan-engine/playground exec tauri",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:unit": "vitest run",
     "audit:runtime": "node scripts/audit-runtime/index.mjs",
     "typecheck": "vue-tsc --noEmit",
-    "editor": "pnpm --filter @lingfan/editor-app dev",
-    "editor:host": "pnpm --filter @lingfan/editor-app host",
+    "editor": "pnpm --filter @lingfan-engine/editor-app dev",
+    "editor:host": "pnpm --filter @lingfan-engine/editor-app host",
     "editor:dev": "node scripts/editor-dev.mjs"
   },
   "devDependencies": {
-    "@lingfan/adapters": "workspace:*",
-    "@lingfan/engine": "workspace:*",
-    "@lingfan/stories-build": "workspace:*",
-    "@lingfan/ui": "workspace:*",
+    "@lingfan-engine/adapters": "workspace:*",
+    "@lingfan-engine/core": "workspace:*",
+    "@lingfan-engine/stories-build": "workspace:*",
+    "@lingfan-engine/ui": "workspace:*",
     "@types/node": "^26.6.3",
     "@vue/eslint-config-typescript": "^14.9.0",
     "eslint": "^10.11.0",
@@ -38,7 +38,7 @@
     "vue-tsc": "^3.3.5"
   },
   "dependencies": {
-    "@lingfan/editor": "workspace:*",
+    "@lingfan-engine/editor": "workspace:*",
     "zod": "^4.6.5"
   }
 }

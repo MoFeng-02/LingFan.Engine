@@ -7,9 +7,12 @@
  * 卸载彻底（退订 + 清 DOM + 停帧）；模板缺失回退默认（fail-soft）。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SYS } from "@lingfan/engine";
-import { createDomOverlaySurface, createNarrativeOverlay } from "@lingfan/ui";
-import type { DomOverlaySurface } from "@lingfan/ui";
+import { SYS } from "@lingfan-engine/core";
+import {
+  createDomOverlaySurface,
+  createNarrativeOverlay,
+} from "@lingfan-engine/ui";
+import type { DomOverlaySurface } from "@lingfan-engine/ui";
 
 interface FakeEl {
   tagName: string;

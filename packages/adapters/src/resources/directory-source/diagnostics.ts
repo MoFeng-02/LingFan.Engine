@@ -23,7 +23,7 @@
  *
  * 编辑器**唯一**接线点 = 组合根调用 `loadDiagnosticSupply`。
  */
-import type { DiagnosticSupply, ProjectFileSource } from "@lingfan/engine";
+import type { DiagnosticSupply, ProjectFileSource } from "@lingfan-engine/core";
 
 /** overlay 根目录名（Rust `LANG_ROOT` 同名） */
 const LANG_ROOT = "Lang";

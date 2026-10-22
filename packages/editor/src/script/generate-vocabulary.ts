@@ -1,7 +1,7 @@
 /**
  * 词汇层声明重建 CLI（Node 侧，tsx 运行，不经打包）：
  *
- *   pnpm --filter @lingfan/playground exec tsx ../../packages/editor/src/script/generate-vocabulary.ts
+ *   pnpm --filter @lingfan-engine/playground exec tsx ../../packages/editor/src/script/generate-vocabulary.ts
  *
  * words 域源码扫描 + op 注册表键集（OP_SCHEMAS，与 OP_SCHEMA_MAP 同一对象）→
  * 差量写 vocabulary.g.ts：内容不变 = 零差量零写入。

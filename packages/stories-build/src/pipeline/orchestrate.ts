@@ -1,6 +1,10 @@
 import { join } from "node:path";
-import { STORIES_DIR, type Story, type StoryColumn } from "@lingfan/engine";
-import { TS_SOURCE_MANIFEST_KEY } from "@lingfan/editor";
+import {
+  STORIES_DIR,
+  type Story,
+  type StoryColumn,
+} from "@lingfan-engine/core";
+import { TS_SOURCE_MANIFEST_KEY } from "@lingfan-engine/editor";
 import {
   defaultStoriesBuildTexts,
   StoryBuildError,

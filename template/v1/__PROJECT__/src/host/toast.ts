@@ -5,7 +5,7 @@
  * 现状取值）；写死在模块里会让「换一个宿主」变成改共享代码。
  */
 
-import { DEFAULT_TOAST_MS } from "@lingfan/ui";
+import { DEFAULT_TOAST_MS } from "@lingfan-engine/ui";
 import type { StageDom } from "./stage-dom";
 
 /** 提示函数的输入：通知层句柄与驻留毫秒数（缺省 = 展示层默认时长） */

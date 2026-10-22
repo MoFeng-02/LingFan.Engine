@@ -13,11 +13,11 @@ import { measureSizes } from "./sizes.mjs";
  * 新增运行期包时把它加进这张表——可达图会跟着出口走，不必再登记文件清单。
  */
 export const RUN_TIME_ROOTS = [
-  "@lingfan/engine",
-  "@lingfan/ui",
-  "@lingfan/editor",
-  "@lingfan/adapters",
-  "@lingfan/shell",
+  "@lingfan-engine/core",
+  "@lingfan-engine/ui",
+  "@lingfan-engine/editor",
+  "@lingfan-engine/adapters",
+  "@lingfan-engine/shell",
 ];
 
 /**
@@ -25,10 +25,10 @@ export const RUN_TIME_ROOTS = [
  * 各平台取不同子面（小程序只取小程序适配器），拿整个包计主包没有意义。
  */
 export const SIZE_ENTRIES = [
-  "@lingfan/engine",
-  "@lingfan/ui",
-  "@lingfan/editor",
-  "@lingfan/shell",
+  "@lingfan-engine/core",
+  "@lingfan-engine/ui",
+  "@lingfan-engine/editor",
+  "@lingfan-engine/shell",
 ];
 
 /**
@@ -36,7 +36,7 @@ export const SIZE_ENTRIES = [
  * 门禁的范围界线就画在这里——只查运行期产物，构建期工具不受影响。
  */
 export const BUILD_TIME_ONLY = [
-  "@lingfan/stories-build",
+  "@lingfan-engine/stories-build",
   "packages/editor/src/script/generate-vocabulary.ts",
 ];
 
@@ -53,7 +53,7 @@ function formatKb(bytes) {
 export async function runAudit({ sizes = true } = {}) {
   const graph = walkGraph(RUN_TIME_ROOTS, repoRoot);
   const buildTimeInGraph = BUILD_TIME_ONLY.filter((item) =>
-    item.startsWith("@lingfan/")
+    item.startsWith("@lingfan-engine/")
       ? RUN_TIME_ROOTS.includes(item)
       : [...graph.files].some((file) => rel(file) === item),
   );

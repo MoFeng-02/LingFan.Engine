@@ -8,7 +8,7 @@
  * - 元素表每次渲染都现读，节点每次现查（`findNode`），不做缓存——元素表随时可被整体重建，
  *   缓存会读到已从 DOM 上摘掉的旧节点。
  */
-import { type ElementInstance } from "@lingfan/engine";
+import { type ElementInstance } from "@lingfan-engine/core";
 import {
   type CommandRegistry,
   type ElementResourceResolver,
@@ -18,7 +18,7 @@ import {
   registerBuiltinElementRenderers,
   renderElementTree,
   resolveElementAction,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 
 /** 元素层需要的引擎命令面 */
 export interface ElementEnginePort {

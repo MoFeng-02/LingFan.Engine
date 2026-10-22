@@ -253,7 +253,7 @@ function scanSources(pattern) {
     for (const m of idx.matchAll(/export\s+\*\s+from\s+["']([^"']+)["']/g))
       exported.add(`* from ${m[1]}`);
 
-    // 收集文档代码块里从 @lingfan/engine 的具名导入，逐个对照导出面。
+    // 收集文档代码块里从 @lingfan-engine/core 的具名导入，逐个对照导出面。
     // 直接扫源文档树（dist 只保留渲染结果，且 404 无对应源文件）。
     const imports = new Map();
     const contentRoot = join(DOCS, "src", "content", "docs");
@@ -276,20 +276,20 @@ function scanSources(pattern) {
       }
     }
     const unknown = [...imports.entries()].filter(([id]) => !exported.has(id));
-    // 引擎真实依赖：docs/package.json 未声明 @lingfan/engine，站内示例不参与构建解析
+    // 引擎真实依赖：docs/package.json 未声明 @lingfan-engine/core，站内示例不参与构建解析
     const dep = JSON.parse(read(join(DOCS, "package.json")));
-    const declared = !!dep.dependencies?.["@lingfan/engine"];
+    const declared = !!dep.dependencies?.["@lingfan-engine/core"];
     if (!unknown.length) {
       pass(
         "G4-1",
         "G",
         "无未实现承诺（对照引擎公开导出面）",
         "拦截",
-        `文档中 @lingfan/engine 的具名导入共 ${imports.size} 个（${[...imports.keys()].join(", ")}），全部存在于引擎公共出口面；未发现引用未导出 API 的示例` +
+        `文档中 @lingfan-engine/core 的具名导入共 ${imports.size} 个（${[...imports.keys()].join(", ")}），全部存在于引擎公共出口面；未发现引用未导出 API 的示例` +
           (declared
             ? ""
-            : "。注：@lingfan/engine 未列入 docs/package.json 依赖，示例代码不参与站点构建解析，属文档示例而非运行时依赖"),
-        `引擎导出符号 ${exported.size} 个；核对文件 packages/engine/src/index.ts`,
+            : "。注：@lingfan-engine/core 未列入 docs/package.json 依赖，示例代码不参与站点构建解析，属文档示例而非运行时依赖"),
+        `引擎导出符号 ${exported.size} 个；核对文件 packages/core/src/index.ts`,
       );
     } else {
       fail(

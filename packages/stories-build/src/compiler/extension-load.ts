@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import {
   loadDeclaredExtensions,
   type ExtensionModuleLoader,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { StoryBuildError } from "../shared/index.ts";
 
 /** Node 侧缺省装载器：相对说明符按工程根解析（与 Stories.src/Resources 同级），裸说明符交给 Node */

@@ -5,7 +5,7 @@
  * 统一 undo：跨视图同步、一次提交一个单元。
  */
 
-import type { Story } from "@lingfan/engine";
+import type { Story } from "@lingfan-engine/core";
 import type { StoryListener, UndoEntry } from "../contracts/index.ts";
 
 const DEFAULT_UNDO_CAPACITY = 100;

@@ -11,7 +11,7 @@
  * type 导入不引入任何绑定，也不被构建图当作值导入处理）。
  */
 import type { StoryState } from "../gen/state.gen";
-import type {} from "@lingfan/stories-build/authoring";
+import type {} from "@lingfan-engine/stories-build/authoring";
 
 declare global {
   var state: StoryState;

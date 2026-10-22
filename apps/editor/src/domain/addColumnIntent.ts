@@ -5,7 +5,7 @@
  * - `null`  = 用户取消 / 按 Esc  ⇒ **不执行**（**不得当成"留空"**）
  * - `""`    = 用户确定但留空     ⇒ **执行**，id 交引擎兜底生成 `column-N`
  * - 非空串  = 用户给了建议 id    ⇒ **执行**，作为建议 id（trim / 不安全字符 / 重名
- *   由 `@lingfan/editor` 的 `suggestColumnId` 兜底唯一化）
+ *   由 `@lingfan-engine/editor` 的 `suggestColumnId` 兜底唯一化）
  *
  * **为什么抽成纯函数**：组件里直接调对话框 API 无法单测（jsdom 之外没有真实
  * 对话框语义与用户手势），但"取消 vs 留空"的判定是**纯逻辑** —— 抽出来即可用真值表

@@ -14,9 +14,9 @@ import {
   type LayerZTable,
   type PlayerPreferences,
   type StoryEngine,
-} from "@lingfan/engine";
-import { Typewriter } from "@lingfan/ui";
-import { createNarrativeState } from "@lingfan/shell";
+} from "@lingfan-engine/core";
+import { Typewriter } from "@lingfan-engine/ui";
+import { createNarrativeState } from "@lingfan-engine/shell";
 import { createHostLayerZController } from "../runtime/layer-z";
 import { vueCells } from "../runtime/vue-cells";
 import type { VueNarrativeState } from "../runtime/narrative-state";

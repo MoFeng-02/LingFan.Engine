@@ -6,14 +6,14 @@
  * 覆盖：契约校验 / 运行期拦截 / 表达式联动 / 回溯重放同判 / 文本投影往返。
  */
 import { describe, expect, it } from "vitest";
-import type { OutboundEvent, ValueChanged } from "@lingfan/engine";
+import type { OutboundEvent, ValueChanged } from "@lingfan-engine/core";
 import {
   SYS,
   StoryEngine,
   generateText,
   parseStory,
   parseTextStory,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 
 interface Harness {
   engine: StoryEngine;

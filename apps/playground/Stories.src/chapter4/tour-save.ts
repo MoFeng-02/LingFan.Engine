@@ -1,5 +1,5 @@
 /** 第四章 · 存档试吃：autoSave 开关 + 命名档 save + 临时档 saveDelete 的时机演示（编排归引擎命令面，安全归 Rust）。 */
-import { script } from "@lingfan/editor";
+import { script } from "@lingfan-engine/editor";
 
 const { autoSave, notify, say, save, saveDelete } = script;
 

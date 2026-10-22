@@ -6,8 +6,8 @@
  * 对 `.story` 工程**永不命中**（旧的 `columnIdOfDocument` 后缀门）。
  */
 import { describe, expect, it } from "vitest";
-import { firstColumnIdOfSourcePath } from "@lingfan/editor";
-import type { Story } from "@lingfan/engine";
+import { firstColumnIdOfSourcePath } from "@lingfan-engine/editor";
+import type { Story } from "@lingfan-engine/core";
 
 const col = (id: string, sourcePath?: string) =>
   ({

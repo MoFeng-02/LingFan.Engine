@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createHostPort } from "@lingfan/adapters";
-import { resolveHost } from "@lingfan/engine";
+import { createHostPort } from "@lingfan-engine/adapters";
+import { resolveHost } from "@lingfan-engine/core";
 
 describe("createHostPort（宿主端口适配器）", () => {
   it("解析并缓存宿主事实（get 返回同一快照）", () => {

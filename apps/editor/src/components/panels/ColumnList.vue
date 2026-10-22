@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
-import type { Story, StoryColumn } from "@lingfan/engine";
-import { layoutColumns, sceneTypeBadgeOf } from "@lingfan/editor";
+import type { Story, StoryColumn } from "@lingfan-engine/core";
+import { layoutColumns, sceneTypeBadgeOf } from "@lingfan-engine/editor";
 import { decideAddColumn } from "../../domain";
 import { COLUMN_GROUPING_API_KEY, EDITOR_API_KEY } from "../../contracts";
 import { useDialog } from "../../app/dialogInjection";

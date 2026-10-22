@@ -12,8 +12,8 @@ import {
   createWsProjectFilesPort,
   createWsSavePort,
   type FullscreenWindowLike,
-} from "@lingfan/adapters";
-import type { ProjectFilesPort, SavePort } from "@lingfan/engine";
+} from "@lingfan-engine/adapters";
+import type { ProjectFilesPort, SavePort } from "@lingfan-engine/core";
 
 /** WS dev 通道连接超时（毫秒）缺省值：宿主未运行 = 快速失败，维持 web 端口 */
 export const WS_BRIDGE_TIMEOUT_MS = 1500;

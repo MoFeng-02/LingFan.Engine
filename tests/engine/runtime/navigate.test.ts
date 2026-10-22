@@ -9,8 +9,8 @@
  * - 当前列被删 → engine.error + 回入口列
  */
 import { describe, expect, it } from "vitest";
-import type { OutboundEvent, ValueChanged } from "@lingfan/engine";
-import { SYS, StoryEngine, parseStory } from "@lingfan/engine";
+import type { OutboundEvent, ValueChanged } from "@lingfan-engine/core";
+import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
 
 interface Harness {
   engine: StoryEngine;

@@ -11,7 +11,7 @@ import {
   type RenderEventPatch,
   type RenderKind,
   type RenderSpec,
-} from "@lingfan/ui";
+} from "@lingfan-engine/ui";
 
 interface FakeEvent {
   stopped: boolean;

@@ -7,8 +7,8 @@
  * SavePort 为契约替身（内存实现）；Rust 侧安全校验在 cargo 侧测。
  */
 import { describe, expect, it, vi } from "vitest";
-import type { SaveDataV1, SaveMode, SlotSummary } from "@lingfan/engine";
-import { StoryEngine, parseStory } from "@lingfan/engine";
+import type { SaveDataV1, SaveMode, SlotSummary } from "@lingfan-engine/core";
+import { StoryEngine, parseStory } from "@lingfan-engine/core";
 
 interface WriteCall {
   slot: string;

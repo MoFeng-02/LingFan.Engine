@@ -4,7 +4,7 @@ import {
   serializeProject,
   type SerializedProject,
   type Story,
-} from "@lingfan/engine";
+} from "@lingfan-engine/core";
 import { StoryBuildError } from "../shared/index.ts";
 
 /**

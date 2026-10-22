@@ -4,7 +4,7 @@
  * 存取两侧都要做形状校验与尽力而为的错误吞并：本模块**绝不**因持久化失败
  * 而阻断打开流程，取不到就当没存过。
  */
-import type { LastProjectHandleStore } from "@lingfan/engine";
+import type { LastProjectHandleStore } from "@lingfan-engine/core";
 
 /** IndexedDB 数据库名 */
 const LAST_PROJECT_DB = "lingfan-editor";

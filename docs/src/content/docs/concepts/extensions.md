@@ -71,7 +71,7 @@ export default {
 字符串是模块说明符，宿主用它动态 `import`：
 
 ```ts
-import { loadDeclaredExtensions } from "@lingfan/engine";
+import { loadDeclaredExtensions } from "@lingfan-engine/core";
 
 const extensions = await loadDeclaredExtensions(
   manifest.extensions,

@@ -5,8 +5,11 @@
  * 发 character.missing 知情事件后继续推进，停机与否由创作者在事件侧自行决定。
  */
 import { describe, expect, it } from "vitest";
-import type { CharacterMissingPayload, OutboundEvent } from "@lingfan/engine";
-import { StoryEngine, SYS, parseStory } from "@lingfan/engine";
+import type {
+  CharacterMissingPayload,
+  OutboundEvent,
+} from "@lingfan-engine/core";
+import { StoryEngine, SYS, parseStory } from "@lingfan-engine/core";
 
 /** 造引擎：JSON 故事直构（注销探针用） */
 function engineOf(
