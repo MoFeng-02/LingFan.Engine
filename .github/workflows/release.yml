@@ -119,8 +119,12 @@ jobs:
       - name: 打包并自检
         run: node scripts/publish-check.mjs --keep dist-npm
 
+      # 两个条件都要：只在标签上发布，且演练时必须显式关掉 dry_run。
+      # 光看 dry_run 不够——手工触发的默认值是「只检查」，但人可以把勾去掉；
+      # 那时工作流的 ref 是分支，发出去的版本没有任何标签与之对应，
+      # 「发了什么」和「git 里有个什么标签」就对不上了。
       - name: 发布
-        if: ${{ !inputs.dry_run }}
+        if: ${{ github.ref_type == 'tag' && !inputs.dry_run }}
         run: |
           set -euo pipefail
           # 逐包先问 registry：已存在的版本跳过，缺的补上。这样重跑同一条流水线不会因为
