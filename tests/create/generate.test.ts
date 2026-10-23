@@ -92,6 +92,14 @@ describe("占位符替换", () => {
     expect(isTextPath("LICENSE")).toBe(true);
   });
 
+  it("图标与字体这类资源一律当二进制", () => {
+    // 桌面壳与移动端会把图标一起带进工程：漏判就会做文本替换，
+    // 命中时整块字节错位，图标文件从此打不开。
+    for (const path of ["icons/icon.ico", "icons/icon.icns", "icons/a.png"]) {
+      expect(isTextPath(path)).toBe(false);
+    }
+  });
+
   it("二进制文件不做替换", () => {
     const bytes = Buffer.from("__PROJECT__", "utf8");
     expect(replaceInFile("a.ttf", bytes, "__PROJECT__", "story")).toBe(bytes);

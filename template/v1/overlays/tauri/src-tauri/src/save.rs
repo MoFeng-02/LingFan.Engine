@@ -32,9 +32,12 @@ fn saves_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
-/// 单个槽位的文件路径。槽位名来自调用方，`..` 之类会逃出目录，
-/// 这里只放行字母数字与 `-` `_`，其余一律拒绝。
-fn slot_path(app: &AppHandle, slot: &str) -> Result<PathBuf, String> {
+/// 校验槽位名。槽位名来自调用方，`..` 或路径分隔符会逃出存档目录，
+/// 因此只放行 ASCII 字母数字与 `-` `_`。
+///
+/// 单独拆出来是为了能直接对校验规则做单元测试：`slot_path` 需要 `AppHandle`，
+/// 在测试里造不出来。
+fn validate_slot(slot: &str) -> Result<(), String> {
     if slot.is_empty()
         || !slot
             .chars()
@@ -42,6 +45,12 @@ fn slot_path(app: &AppHandle, slot: &str) -> Result<PathBuf, String> {
     {
         return Err(format!("非法槽位名: {slot}"));
     }
+    Ok(())
+}
+
+/// 单个槽位的文件路径。
+fn slot_path(app: &AppHandle, slot: &str) -> Result<PathBuf, String> {
+    validate_slot(slot)?;
     Ok(saves_dir(app)?.join(format!("{slot}.json")))
 }
 
@@ -142,4 +151,28 @@ fn now_secs() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_slot;
+
+    #[test]
+    fn accepts_regular_slot_names() {
+        for slot in ["slot1", "Slot_2", "a-b_c", "9"] {
+            assert!(validate_slot(slot).is_ok(), "{slot} 应当被接受");
+        }
+    }
+
+    #[test]
+    fn rejects_empty_slot_name() {
+        assert!(validate_slot("").is_err());
+    }
+
+    #[test]
+    fn rejects_names_escaping_save_dir() {
+        for slot in ["..", "../etc", "a/b", "a\\b", "a.b", "slot 1"] {
+            assert!(validate_slot(slot).is_err(), "{slot} 应当被拒绝");
+        }
+    }
 }
