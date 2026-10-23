@@ -16,6 +16,7 @@ import {
   StoryEngine,
   resolveLayerZ,
   type AudioPort,
+  type ProjectFilesPort,
   type ResourcePort,
   type SavePort,
   type Story,
@@ -62,6 +63,24 @@ export interface HostBootOptions {
   defaultCps?: number;
   /** 提示条驻留毫秒数；缺省 = 展示层给出的默认时长 */
   toastDurationMs?: number;
+  /**
+   * 端口覆盖：换平台形态时由组合根传入原生实现，装配顺序与接线一行不改。
+   * 缺省走 Web 形态（静态资源根 + localStorage 存档 + fetch 取工程文件）。
+   */
+  ports?: BootPortOverrides;
+}
+
+/**
+ * 端口覆盖表：换平台形态时由组合根传入原生实现，装配顺序与接线一行不改。
+ * 三个端口都可单独覆盖——缺哪一个就用该端口的 Web 形态。
+ */
+export interface BootPortOverrides {
+  /** 工程文件供给（缺省走 fetch 取资源根下的静态文件） */
+  files?: ProjectFilesPort;
+  /** 资源 URL 解析（缺省走 WebView 源根静态资源） */
+  resources?: ResourcePort;
+  /** 存档（桌面壳换成 Rust 命令：WebView 的 localStorage 会被清缓存带走） */
+  saves?: SavePort;
 }
 
 /**
@@ -76,18 +95,21 @@ export async function bootHost(options: HostBootOptions): Promise<void> {
   installStoryFonts();
 
   // —— 工程文件：清单与故事同走 ProjectFilesPort（组装归引擎纯函数，宿主不预解析）——
-  const filesPort = createFetchProjectFilesPort({
-    manifest: options.manifestFile,
-    stories: options.stories,
-  });
+  const filesPort: ProjectFilesPort =
+    options.ports?.files ??
+    createFetchProjectFilesPort({
+      manifest: options.manifestFile,
+      stories: options.stories,
+    });
   const manifest: unknown = await filesPort.manifest();
   const story: Story = await loadProject(filesPort);
 
-  // —— 适配器装配（Web 形态；原生实现换端口，契约不变）——
+  // —— 适配器装配（Web 形态为缺省；原生形态经 ports 换掉资源与存档，契约不变）——
   const reportError = createErrorReporter(dom);
-  const resourcePort: ResourcePort = createStaticResourcePort();
+  const resourcePort: ResourcePort =
+    options.ports?.resources ?? createStaticResourcePort();
   const audioPort: AudioPort = createWebAudioPort({ onError: reportError });
-  const savePort: SavePort = createWebStorageSavePort();
+  const savePort: SavePort = options.ports?.saves ?? createWebStorageSavePort();
 
   // —— 层级（z 序）：内建默认 × 工程覆盖（project.json 的 shell.layers）——
   const layerZ = resolveLayerZ(manifest);
