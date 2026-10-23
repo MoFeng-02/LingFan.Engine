@@ -24,4 +24,4 @@ export { createHostEffects, type HostEffectsOptions } from "./effects";
 export { wireEngine, type HostWiringOptions } from "./engine-wiring";
 export { startHostFrameLoop, type HostFrameLoopOptions } from "./frame-loop";
 export { wireInput, type HostInputOptions } from "./input-map";
-export { bootHost, type HostBootOptions } from "./boot";
+export { bootHost, type BootPortOverrides, type HostBootOptions } from "./boot";
