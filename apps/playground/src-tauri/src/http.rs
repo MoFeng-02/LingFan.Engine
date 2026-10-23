@@ -1,7 +1,8 @@
-//! HTTP 响应概念（通用底座）：`Range` 请求解析、MIME 判定、URL 段 percent 编码。
+//! HTTP 响应概念（通用底座）：`Range` 请求解析、MIME 判定、URL 段 percent 编码、
+//! 自定义协议的 URL 基座与跨源响应头。
 //!
-//! 这些概念与加密/资源目录布局无关，故不落在加密实现内部；媒体回环服务与 lfstream
-//! 协议处理器共用同一份实现。两条 Range 通道各有一个入口：头通道对畸形值宽容
+//! 这些概念与加密/资源目录布局无关，故不落在加密实现内部；媒体回环服务、lfstream
+//! 协议处理器与明文资源段共用同一份实现。两条 Range 通道各有一个入口：头通道对畸形值宽容
 //! （回全量），query 通道 fail-closed（拒绝即 416）——判定顺序不同，各自独立实现。
 
 /// Range 请求解析结果：三段判定（全量 / 明确闭区间 / 无法满足）。
@@ -153,6 +154,55 @@ pub(crate) fn utf8_percent_encode(path: &str) -> String {
         .remove(b'.')
         .remove(b'_');
     percent_encoding::utf8_percent_encode(path, SEGMENT).to_string()
+}
+
+/// 自定义协议的 URL 基座（平台差异归 Rust——wry 行为：Windows/Android 映射
+/// `http://*.localhost`，macOS/iOS/Linux 原生 scheme）。前端零编码逻辑：URL 由命令完整给出。
+#[cfg(any(windows, target_os = "android"))]
+pub(crate) fn protocol_base() -> &'static str {
+    "http://lfstream.localhost"
+}
+
+/// 自定义协议的 URL 基座（非 Windows/Android：原生 scheme 形态）。
+#[cfg(not(any(windows, target_os = "android")))]
+pub(crate) fn protocol_base() -> &'static str {
+    "lfstream://localhost"
+}
+
+/// 给协议响应补跨源头：页面源与协议源不同源，webview 的 fetch 与媒体元素拉流需要显式放行。
+///
+/// `Expose-Headers` 让 fetch 能读到 Range 相关头（浏览器默认只暴露 safelist）；媒体元素
+/// 内部不受此限，但同一响应两类消费者共存，头集合保持一份。
+pub(crate) fn with_cors(
+    mut response: tauri::http::Response<Vec<u8>>,
+) -> tauri::http::Response<Vec<u8>> {
+    response.headers_mut().insert(
+        tauri::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
+        tauri::http::HeaderValue::from_static("*"),
+    );
+    response.headers_mut().insert(
+        tauri::http::header::ACCESS_CONTROL_EXPOSE_HEADERS,
+        tauri::http::HeaderValue::from_static(
+            "content-range,content-length,content-type,accept-ranges,x-total-size",
+        ),
+    );
+    response
+}
+
+/// 空体 404 响应：协议面统一用「不存在」回答无权限与寻址失误，不向外区分两者。
+pub(crate) fn not_found() -> tauri::http::Response<Vec<u8>> {
+    tauri::http::Response::builder()
+        .status(tauri::http::StatusCode::NOT_FOUND)
+        .body(Vec::new())
+        .expect("静态 404 响应构造不可失败")
+}
+
+/// 空体 400 响应：明确的越权请求（路径穿越、绝对路径）才用，寻址失误仍回 404。
+pub(crate) fn bad_request() -> tauri::http::Response<Vec<u8>> {
+    tauri::http::Response::builder()
+        .status(tauri::http::StatusCode::BAD_REQUEST)
+        .body(Vec::new())
+        .expect("静态 400 响应构造不可失败")
 }
 
 #[cfg(test)]

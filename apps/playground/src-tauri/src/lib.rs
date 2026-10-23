@@ -16,6 +16,7 @@ pub mod project_files;
 pub mod project_writer;
 pub mod resource_crypto;
 pub mod resource_fs;
+pub mod resource_plain;
 pub mod save;
 pub mod shell;
 pub mod zip_index;
@@ -36,12 +37,18 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         // 大资源流式：lfstream 协议双路径——v2 分块按需解密（Range/206，明文不落盘）
         // + v1 token 缓存；缓存文件名信任边界（hex64.ext / v2/逻辑路径 validate）在 handler 内。
+        // 明文资源段（`raw/` 前缀）同协议、同 Range 实现，按路径前缀先分流：它供的是构建期
+        // 未加密的音视频/图/字体，与加密段的 `v2/`、v1 token 命名空间互不重叠。
         .register_uri_scheme_protocol("lfstream", |ctx, request| {
             // 面包屑：主线程可能在启动后一段时间（心跳某一拍）卡住，而该时点正是前端开始拉资源。
             // 这两条把「卡在协议处理器里」直接夹出来——**只要出现「进入」而无「返回」即为卡点**。
             let uri = request.uri().to_string();
             eprintln!("[lfen] lfstream 进入：{uri}");
-            let response = resource_crypto::lfstream_protocol_handler(request, ctx.app_handle());
+            let response = if resource_plain::handles(request.uri().path()) {
+                resource_plain::serve(request, ctx.app_handle())
+            } else {
+                resource_crypto::lfstream_protocol_handler(request, ctx.app_handle())
+            };
             eprintln!("[lfen] lfstream 返回：{uri}");
             response
         })
@@ -56,6 +63,7 @@ pub fn run() {
             preferences::preferences_write,
             resource_crypto::decrypt_resource,
             resource_crypto::decrypt_story,
+            resource_plain::resource_url,
             save::save_write,
             save::save_read,
             save::save_list,
