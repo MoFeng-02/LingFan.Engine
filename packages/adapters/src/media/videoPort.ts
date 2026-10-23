@@ -48,6 +48,12 @@ export function createWebVideoPort(
       : createBlobSource(portOptions.blobSource);
   /** 当前逻辑 URL（物化释放的键）；世代号作废在途物化（stop / dispose / 新 play 取代） */
   let currentUrl: string | null = null;
+  /**
+   * 最近一次 play 的逻辑 URL，仅供 error 文案点名资源。与 `currentUrl` 分开：后者随
+   * `stop` 置空（物化结果的释放键），而解码失败事件常在断源之后才到——那时仍要报得出是
+   * 哪个资源，所以这里只在新 play 时覆盖，不在 stop 时清空。
+   */
+  let errorUrl: string | null = null;
   let generation = 0;
 
   function ensure(): HTMLVideoElement {
@@ -64,7 +70,9 @@ export function createWebVideoPort(
         // 派发一次不带 MediaError 的 error 事件，那不是解码失败，报出来会误导用户
         const mediaError = element?.error;
         if (mediaError === null || mediaError === undefined) return;
-        portOptions.onError?.("视频资源无法解码或缺失");
+        portOptions.onError?.(
+          `视频资源无法解码或缺失：${errorUrl ?? "（未知资源）"}`,
+        );
       });
     }
     attach(element);
@@ -126,6 +134,7 @@ export function createWebVideoPort(
         if (endedHandler !== null) endedHandler();
       };
       currentUrl = url;
+      errorUrl = url;
       generation += 1;
       startPlay(video, url, options);
     },
@@ -153,6 +162,7 @@ export function createWebVideoPort(
     dispose(): void {
       generation += 1;
       currentUrl = null;
+      errorUrl = null;
       if (element !== null) {
         element.pause();
         element.onended = null;

@@ -51,6 +51,8 @@ export function createWebAudioPort(
   /** 常驻通道元素（se 为一次性，不入表——允许叠放） */
   const elements = new Map<AudioChannel, HTMLAudioElement>();
   const urls = new Map<AudioChannel, string>();
+  /** 各通道最近一次 play 的逻辑 URL：仅供 error 文案点名资源（元素与监听器常驻复用） */
+  const errorUrls = new Map<AudioChannel, string>();
   const ramps = new Map<AudioChannel, Ramp>();
   /** 被自动播放策略拒绝的通道：首次用户交互后重试 */
   const blocked = new Set<AudioChannel>();
@@ -164,16 +166,24 @@ export function createWebAudioPort(
     );
   }
 
-  function ensure(channel: AudioChannel): HTMLAudioElement {
+  /**
+   * 取通道元素（必要时创建）。`url` 是**本次 play 的逻辑 URL**，只用于 error 文案：
+   * 元素常驻复用，监听器却只挂一次，所以文案不能闭包捕获首播 URL——由 `errorUrl`
+   * 在每次换源后写入，报错时读最新值，才点得出是哪个资源。
+   */
+  function ensure(channel: AudioChannel, url: string): HTMLAudioElement {
     let element = elements.get(channel);
     if (element === undefined) {
       element = new Audio();
       element.preload = "auto";
       element.addEventListener("error", () => {
-        portOptions.onError?.(`音频资源无法解码或缺失（通道 ${channel}）`);
+        portOptions.onError?.(
+          `音频资源无法解码或缺失：${errorUrls.get(channel) ?? url}（通道 ${channel}）`,
+        );
       });
       elements.set(channel, element);
     }
+    errorUrls.set(channel, url);
     return element;
   }
 
@@ -195,7 +205,7 @@ export function createWebAudioPort(
       });
       return;
     }
-    const element = ensure(channel);
+    const element = ensure(channel, url);
     const sameUrl = urls.get(channel) === url;
     if (sameUrl && !options.restart) {
       // 无缝续播/更新：不重设 src（不打断解码与播放位置）
@@ -270,6 +280,7 @@ export function createWebAudioPort(
     }
     elements.clear();
     urls.clear();
+    errorUrls.clear();
     generations.clear();
     blobSource?.dispose(); // 元素已断源，物化结果可安全释放
   }

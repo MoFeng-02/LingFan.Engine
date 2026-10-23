@@ -22,6 +22,7 @@ import {
   readTauriPlatform,
   createTauriPreferencesPort,
   createTauriProjectFilesPort,
+  createTauriResourcePort,
   createTauriOrientationPort,
   createTauriSavePort,
   createWebStoragePreferencesPort,
@@ -140,8 +141,7 @@ async function boot(): Promise<void> {
   }
   // ref 包装：热重载重新组装后注入新 Story（App watch → engine.reloadStory）
   const story = ref<Story>(await loadProject(filesPort));
-  // 资源加密装配：清单声明 resourceEncryption（恒明文）→ Tauri 形态换加密
-  // ResourcePort（Rust 解密 → Blob URL，契约不变）；否则静态根（未加密开发形态）。
+  // 资源加密事实：清单 `resourceEncryption` 为真表示资源在盘上加密，取数前需先解密。
   const manifest = await filesPort.manifest();
   const encrypted =
     (manifest as { resourceEncryption?: unknown } | null)
@@ -163,10 +163,18 @@ async function boot(): Promise<void> {
       return mod;
     },
   );
-  const resourcePort: ResourcePort =
-    useNative && encrypted
-      ? createTauriEncryptedResourcePort()
-      : createStaticResourcePort();
+  // 资源供给：壳内没有「页面源根」这个命名空间——页面从打包产物加载，资源却在
+  // `resource_root()` 指向的目录，静态根相对路径必然取不到。故壳形态**一律原生供给**
+  // （Rust 构造协议 URL）：加密清单取数前先解密，明文清单直读。只有浏览器形态落到静态根
+  // （Vite `public/`，仅开发/Web 构建存在）。
+  let resourcePort: ResourcePort;
+  if (!useNative) {
+    resourcePort = createStaticResourcePort();
+  } else if (encrypted) {
+    resourcePort = createTauriEncryptedResourcePort();
+  } else {
+    resourcePort = createTauriResourcePort();
+  }
   // 层级（z 序）：内建默认 × 工程覆盖（project.json shell.layers）——层级不写死。
   // 视频适配器与舞台各层只消费解析结果（App 经 props 注入）。
   const layerZ: LayerZTable = resolveLayerZ(manifest);
