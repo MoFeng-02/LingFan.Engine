@@ -1,6 +1,6 @@
 {
   "name": "@lingfan-engine/create",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "description": "工程生成器：从模板骨架生成新工程，可选框架与壳",
   "license": "Apache-2.0",
