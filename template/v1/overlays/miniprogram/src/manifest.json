@@ -1,0 +1,21 @@
+{
+  "name": "__PROJECT__",
+  "appid": "",
+  "description": "灵泛叙事引擎的小程序形态：UniApp（Vue 3）页面层接住框架无关的端口装配",
+  "versionName": "0.1.0",
+  "versionCode": "0",
+  "mp-weixin": {
+    "appid": "",
+    "libVersion": "3.15.1",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "minified": false
+    },
+    "usingComponents": true,
+    "lazyCodeLoading": "requiredComponents"
+  },
+  "h5": {
+    "title": "__PROJECT__"
+  }
+}

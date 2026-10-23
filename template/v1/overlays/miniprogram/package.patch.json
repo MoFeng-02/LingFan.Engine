@@ -1,0 +1,40 @@
+{
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-4080720251210001",
+    "@dcloudio/uni-components": "3.0.0-4080720251210001",
+    "@dcloudio/uni-h5": "3.0.0-4080720251210001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-4080720251210001",
+    "@lingfan-engine/shell": "^0.1.0",
+    "vue": "3.4.21"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "3.4.19",
+    "@dcloudio/uni-cli-shared": "3.0.0-4080720251210001",
+    "@dcloudio/vite-plugin-uni": "3.0.0-4080720251210001",
+    "vite": "5.2.8",
+    "vue-tsc": "^3.3.5"
+  },
+  "scripts": {
+    "dev": "uni -p mp-weixin",
+    "dev:h5": "uni",
+    "dev:mp": "uni -p mp-weixin",
+    "build": "uni build -p mp-weixin",
+    "build:h5": "uni build -p h5",
+    "build:mp": "uni build -p mp-weixin",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"
+  },
+  "create": {
+    "pinned": [
+      "@dcloudio/types",
+      "@dcloudio/uni-app",
+      "@dcloudio/uni-cli-shared",
+      "@dcloudio/uni-components",
+      "@dcloudio/uni-h5",
+      "@dcloudio/uni-mp-weixin",
+      "@dcloudio/vite-plugin-uni",
+      "typescript",
+      "vite",
+      "vue"
+    ]
+  }
+}

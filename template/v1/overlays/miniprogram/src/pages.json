@@ -1,0 +1,18 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#0a0a10",
+        "disableScroll": true,
+        "pageOrientation": "auto"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationStyle": "custom",
+    "backgroundColor": "#0a0a10",
+    "backgroundTextStyle": "dark"
+  }
+}
