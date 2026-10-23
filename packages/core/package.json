@@ -1,6 +1,6 @@
 {
   "name": "@lingfan-engine/core",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "description": "灵泛叙事引擎核心：框架无关的叙事语义（格式/执行/回溯/作用域/存档编排）",
   "license": "Apache-2.0",
