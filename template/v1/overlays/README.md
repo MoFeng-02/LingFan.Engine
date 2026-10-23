@@ -14,6 +14,29 @@
   `package.patch.json` 补 `vue` / `@vitejs/plugin-vue` / `vue-tsc`，并把 `typecheck` 换成
   `vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json`。`src/host/**` 一行不改，
   样式仍用骨架的 `src/styles/stage.css`。
+- `react/` —— 页面结构换成 JSX 组件：`index.html` 变成挂载点（`#app`），新增 `src/App.tsx`
+  （渲染骨架 `must()` 要的全部节点）、React 版组合根 `src/main.tsx`（先 `createRoot` 挂载再读节点句柄，
+  然后 `bootHost`）与 `src/vite-env.d.ts`，`vite.config.ts` 在骨架配置上多一个 `@vitejs/plugin-react`
+  （`publicDir`、`server.port` 与字体虚拟模块逐项保留），`tsconfig.json` 打开 `jsx: react-jsx`。
+  `package.patch.json` 补 `react` / `react-dom` 与 `@types/react` / `@types/react-dom` /
+  `@vitejs/plugin-react` / `@types/node`，并把 `typecheck` 换成
+  `tsc --noEmit && tsc --noEmit -p tsconfig.node.json`。`src/host/**` 一行不改，
+  样式仍用骨架的 `src/styles/stage.css`。
+- `miniprogram/` —— 壳层，换掉整套页面与宿主：页面结构由 `src/components/**` 承接（`stage-canvas`、
+  `stage-video` 两个 id 落在组件模板里），宿主装配在 `src/mp/**`（`uni.*` 只在
+  `src/mp/platform.ts` 出现一处），`src/main.ts` 按 UniApp 约定返回 `createSSRApp`，
+  另有 `src/pages.json`、`src/manifest.json` 与开发期内容服务 `scripts/serve-project.mjs`。
+  `vite.config.ts` 保留 `publicDir: "Resources"` 供 H5 形态取资源，同时用
+  `build.copyPublicDir: false` 让小程序包体只有代码；`vite` 与 `vue` 钉在 UniApp 插件要求的
+  那一代（`create.pinned` 保住），`tsconfig.json` 排除 `src/host/**`——那是浏览器形态的宿主，
+  本形态不用它。
+- `tauri/` —— 壳层，只加桌面外壳、不碰页面：新增 `src-tauri/`（`Cargo.toml`、`build.rs`、
+  `tauri.conf.json`、`capabilities/default.json`、`src/{main,lib,save,preferences}.rs`）与
+  一份覆盖骨架的组合根 `src/main.ts`（`ports.saves` 换成 `createTauriSavePort()`，其余端口不换）。
+  `package.patch.json` 补 `@tauri-apps/api` / `@tauri-apps/cli` 与 `tauri` 脚本，
+  `@tauri-apps/*` 用 `create.pinned` 钉住。`index.html`、`vite.config.ts` 与 `src/host/**`
+  全部沿用骨架：`Resources/` 是 `publicDir`，打包时复制进 `dist/`，所以工程文件与资源仍按
+  同一套路径取，不需要额外命令。
 
 ## 钉住版本
 

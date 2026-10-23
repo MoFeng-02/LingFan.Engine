@@ -20,7 +20,9 @@ pnpm -v
 npm create @lingfan-engine my-story
 ```
 
-`pnpm create @lingfan-engine my-story` works the same way. The generator asks for a project name plus a framework and a shell — the framework is either plain (framework-agnostic) or Vue 3, and the only shell today is browser. Pass `--yes` to take every default, or name them: `--framework vue --shell browser`.
+`pnpm create @lingfan-engine my-story` works the same way. The generator asks for a project name plus a framework and a shell — the framework is plain (framework-agnostic), Vue 3 or React, and the shell is browser, miniprogram (UniApp) or desktop (Tauri 2). Pass `--yes` to take every default, or name them: `--framework vue --shell browser`, `--framework react --shell browser`, `--shell miniprogram`, or `--framework vue --shell tauri`.
+
+A framework layer swaps only the page structure and the entry point: `src/host/**` stays untouched and both shapes share one stylesheet. A shell layer swaps the whole page and host (miniprogram) or adds a desktop shell on top (Tauri). The two stack, so `--framework react --shell tauri` gives you React pages inside a desktop shell.
 
 A framework layer swaps the page structure and entry point only: `src/host/**` stays byte-identical and the stylesheet is shared with the skeleton, so the engine and adapters never learn which framework renders.
 

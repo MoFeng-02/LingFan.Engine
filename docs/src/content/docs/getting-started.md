@@ -20,9 +20,9 @@ pnpm -v
 npm create @lingfan-engine my-story
 ```
 
-也可以用 `pnpm create @lingfan-engine my-story`，两者等价。生成器会问工程名、框架与壳——框架可选「原生（框架无关）」与「Vue 3」，壳暂时只有「浏览器」；全部取缺省值加 `--yes`，或直接 `--framework vue --shell browser`。
+也可以用 `pnpm create @lingfan-engine my-story`，两者等价。生成器会问工程名、框架与壳——框架可选「原生（框架无关）」「Vue 3」「React」，壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」；全部取缺省值加 `--yes`，或直接 `--framework vue --shell browser` / `--framework react --shell browser` / `--shell miniprogram` / `--framework vue --shell tauri`。
 
-框架层只换页面结构与入口：`src/host/**` 一行不改，样式表与骨架共用同一份，引擎与适配器不认识 Vue。
+框架层只换页面结构与入口：`src/host/**` 一行不改，样式表与骨架共用同一份，引擎与适配器不认识任何 UI 框架。壳层换的是整套页面与宿主（小程序）或只补桌面外壳（Tauri），两层可以叠：`--framework react --shell tauri` 得到 React 页面 + 桌面外壳。
 
 手工生成也可以：模板在引擎仓库的 `template/v1/__PROJECT__/`。
 
