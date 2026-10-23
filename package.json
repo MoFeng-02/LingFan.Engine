@@ -17,6 +17,7 @@
     "publish:check": "node scripts/publish-check.mjs",
     "publish:push": "node scripts/publish-tarballs.mjs",
     "version:check": "node scripts/version-check.mjs",
+    "release": "node scripts/release/main.mjs",
     "release:notes": "node scripts/release-notes.mjs",
     "typecheck": "vue-tsc --noEmit",
     "editor": "pnpm --filter @lingfan-engine/editor-app dev",

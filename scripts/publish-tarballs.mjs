@@ -8,12 +8,17 @@
  *
  * 只做发布，不做打包与校验：tarball 由 `scripts/publish-check.mjs` 产出并验过，
  * 两条命令分工明确，避免「验的是 A、发的是 B」。
+ *
+ * 每个包都显式带 `--tag`：npm 对预发布版本强制要求它（不传直接拒发），而正式版显式传
+ * `latest` 也顺带挡掉了另一条拒绝规则——「已发布的更高版本存在时不得隐式用 latest」。
+ * dist-tag 由版本号推出来（见 `scripts/release/version.mjs` 的 `distTagOf`），不在这里重复判断。
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { PUBLISHED_PACKAGES, packageDirOf } from "./publish-check.mjs";
+import { distTagOf } from "./release/version.mjs";
 
 /**
  * npm 可执行名。
@@ -98,10 +103,21 @@ export function publishAll({ keepIn, dryRun = false, log = () => {} } = {}) {
       log(`${label}：将上传`);
       continue;
     }
-    log(`${label}：上传 ${file}`);
-    runNpm(["publish", `./${file}`, "--access", "public", "--provenance"], {
-      stdio: "inherit",
-    });
+    log(`${label}：上传 ${file}（dist-tag ${distTagOf(version)}）`);
+    runNpm(
+      [
+        "publish",
+        `./${file}`,
+        "--access",
+        "public",
+        "--provenance",
+        "--tag",
+        distTagOf(version),
+      ],
+      {
+        stdio: "inherit",
+      },
+    );
     results.push({ name, version, action: "published", ok: true });
   }
   return { ok: results.every((item) => item.ok), results };
