@@ -99,9 +99,7 @@ fn apply_orientation(app: &tauri::AppHandle, mode: OrientationMode) -> Result<bo
             #[cfg(target_os = "android")]
             android::apply(&platform, mode, tx);
             #[cfg(target_os = "ios")]
-            if let Err(message) = ios::apply(platform.view_controller(), mode, tx) {
-                eprintln!("[lfen] 方向下发失败（{mode:?}）：{message}");
-            }
+            ios::apply(platform.view_controller(), mode, tx);
         })
         .map_err(|e| ShellError::Native(format!("平台 webview 句柄获取失败：{e}")))?;
     match rx.recv_timeout(APPLY_TIMEOUT) {
