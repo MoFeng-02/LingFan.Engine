@@ -42,6 +42,8 @@ npm create @lingfan-engine my-story -- --framework vue --shell tauri
 - **占位符整体替换**：`__PROJECT__` 与 `__project__` 两种形态都换（后者是 `package.json` 的 name，必须小写）。漏一处，包名与清单 `id` 就对不上。
 - **引擎包版本取当下最新**：生成时查一次 registry，把最新版写成 `^x.y.z`。不写 `latest` 标签，是因为它每次安装都解析到当时最高版，同一份工程在两台机器上会装出不同版本。少数上游还不兼容的包（当前是 `typescript`——`vue-tsc` 在 7 上会崩）由叠加层声明保留模板记录的区间，不跟最新。
 
+工程自带的 `pnpm-workspace.yaml` 只做一件事：声明 `allowBuilds`。pnpm 12 起「未批准的构建脚本」是硬错误，会让 `pnpm install` 整个失败；模板已批准 `esbuild`、并给 `core-js` 显式写 `false`（「知道了、故意不跑」与「未批准」不是一回事）。报别的包时按提示补一行即可。
+
 ## 模板的组织方式
 
 `template/v1/__PROJECT__/` 是框架无关的骨架，`template/v1/overlays/<id>/` 是叠加层。叠加规则：同路径文件覆盖骨架，根目录的 `*.patch.json` 深合并进 `package.json`。
