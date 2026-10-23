@@ -181,11 +181,11 @@ describe("真实仓库", () => {
       ),
     ).toContain("packages/core/src/index.ts");
     expect([...result.graph.externals].sort()).toEqual([
-      // `@tauri-apps/api/*` 不在表里是有意的：桥接域的缺省实现把这两个模块名写成变量
-      // 再动态导入（字面量说明符会被打包器静态解析，浏览器与小程序形态因此构建失败），
-      // 于是这里扫描不到它们——扫得到反而说明那处又快改回字面量了。
-      // 那两个模块名仍以字符串常量留在 `packages/adapters/src/platform/tauri-invoke.ts`，
-      // 由 `tests/adapters/platform/tauriInvoke.test.ts` 守着。
+      // `@tauri-apps/api/*` 不在表里是有意的：适配器包对 Tauri 运行时零认知——桥由宿主
+      // 组合根经 `installTauriBridge` 装进来，包内不出现该模块名（写字面量说明符会让
+      // 浏览器与小程序形态构建期解析失败，写变量说明符又会在产物里残留裸名、WebView
+      // 执行时抛错）。于是这里扫描不到它——扫得到反而说明包内又直连了 Tauri 运行时。
+      // 该约束由 `tests/adapters/platform/tauriInvoke.test.ts` 守着。
       "zod",
     ]);
     for (const item of BUILD_TIME_ONLY) {
