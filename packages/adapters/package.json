@@ -13,8 +13,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@lingfan-engine/core": "workspace:^",
-    "@tauri-apps/api": "^2"
+    "@lingfan-engine/core": "workspace:^"
   },
   "repository": {
     "type": "git",

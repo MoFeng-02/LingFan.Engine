@@ -254,4 +254,46 @@ describe("宿主接线互锁（源级扫描）", () => {
       'export { guards } from "../../Stories.src/gen/fun_register.g";',
     );
   });
+
+  it("真壳分支先装宿主桥，再建原生端口", () => {
+    if (mainKey === undefined)
+      throw new Error("扫描面缺 src/main.ts（glob 失配）");
+    const raw = playground[mainKey];
+    // 原生端口工厂的缺省实现是 defaultInvoke：桥没装就 fail-closed，装配顺序不能反
+    expectOrderedNeedles(raw, raw.indexOf("if (useNative) {"), [
+      "await loadTauriBridge();",
+      "createTauriProjectFilesPort()",
+      "createTauriSavePort()",
+    ]);
+  });
+
+  it("Tauri 运行时的模块名只在 boot 的两个装载叶子里被导入", () => {
+    // 适配器包内一处都没有（由 tauriInvoke.test.ts 守）；宿主侧收拢在 boot 下两个叶子：
+    // 桥装载（core + event）与窗口 API（window，切全屏用）。组合根与其余 boot 叶子
+    // 都只认契约。判据落在**导入语句**上而不是裸模块名——注释里点名该模块是刻意的。
+    const importPattern = /(?:from\s*|import\s*\(\s*)["']@tauri-apps\/api\//g;
+    const hits = Object.entries(playground)
+      .map(([key, raw]) => ({
+        key,
+        count: (raw.match(importPattern) ?? []).length,
+      }))
+      .filter((entry) => entry.count > 0);
+    expect(hits.map((entry) => entry.key).sort()).toEqual([
+      expect.stringMatching(/src\/boot\/native-bridge\.ts$/),
+      expect.stringMatching(/src\/boot\/tauri-bridge\.ts$/),
+    ]);
+    // 两处都用字面量说明符（打包器能静态解析），不得用 @vite-ignore 绕过解析——
+    // 绕过解析的产物里会留下裸模块名，WebView 执行时抛 TypeError。
+    for (const { key } of hits) {
+      const bypassed = [
+        ...playground[key].matchAll(
+          /import\s*\(\s*\/\*\s*@vite-ignore\s*\*\/\s*["']@tauri-apps/g,
+        ),
+      ];
+      expect(
+        bypassed.length,
+        `${key} 用 @vite-ignore 绕过了 Tauri 模块解析`,
+      ).toBe(0);
+    }
+  });
 });

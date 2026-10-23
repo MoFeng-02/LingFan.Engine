@@ -58,6 +58,7 @@ import {
   createMediaPortFactories,
   createOrientationPolicy,
   detectTauriWindow,
+  loadTauriBridge,
   loadTauriWindow,
   MEDIA_BLOB_SOURCE_MAX_BYTES,
   renderBrowserBlocked,
@@ -112,6 +113,8 @@ async function boot(): Promise<void> {
   let savePort: SavePort;
   let wsPlatform: string | undefined;
   if (useNative) {
+    // 宿主桥必须先装：下面的原生端口工厂缺省用 defaultInvoke，桥没装就 fail-closed。
+    await loadTauriBridge();
     filesPort = createTauriProjectFilesPort();
     savePort = createTauriSavePort();
   } else {

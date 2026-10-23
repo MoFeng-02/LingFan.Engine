@@ -70,6 +70,14 @@ export {
   type TauriListen,
   type TauriProjectFiles,
 } from "./resources";
+// 宿主桥接：`invoke`/`listen` 的契约与装配入口。本包不写 `@tauri-apps/api` 模块名，
+// 由组合根（有该依赖、只在壳里跑）装桥进来——两条动态导入的路都会坏：
+// 字面量说明符让浏览器/小程序构建期解析失败，变量说明符让产物残留裸名、WebView 运行期抛错。
+export {
+  installTauriBridge,
+  TauriBridgeError,
+  type TauriBridge,
+} from "./platform";
 export { createTauriI18nPort, type TauriOverlayFile } from "./i18n";
 export {
   createTauriPreferencesPort,

@@ -23,6 +23,8 @@ export {
   type WsDevChannelOptions,
   type WsDevSink,
 } from "./native-bridge";
+/** 真壳形态的宿主桥装载：Tauri 运行时的模块名只允许出现在这一层 */
+export { loadTauriBridge } from "./tauri-bridge";
 /** 平台形态策略：媒体源物化阈值与两个媒体端口工厂 */
 export {
   createMediaPortFactories,
