@@ -40,8 +40,8 @@ npm create @lingfan-engine my-story
 pnpm create @lingfan-engine my-story
 ```
 
-生成器会问两件事：工程名、框架与壳。当前框架可选「原生（框架无关）」与「Vue 3」，
-壳暂时只有「浏览器」。全部取缺省值可以跳过问答：
+生成器会问两件事：工程名、框架与壳。当前框架可选「原生（框架无关）」「Vue 3」「React」，
+壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」。全部取缺省值（原生 + 浏览器）可以跳过问答：
 
 ```
 npm create @lingfan-engine my-story -- --yes
@@ -53,11 +53,25 @@ npm create @lingfan-engine my-story -- --yes
 
 ```
 npm create @lingfan-engine my-story -- --framework vue --shell browser
+npm create @lingfan-engine my-story -- --framework react --shell browser
+npm create @lingfan-engine my-story -- --shell miniprogram
+npm create @lingfan-engine my-story -- --framework vue --shell tauri
 ```
 
-**框架层只换页面结构与入口**：`--framework vue` 会把 `index.html` 换成挂载点、加 `src/App.vue`
-与 Vue 版组合根，`src/host/**`（装配、订阅、帧循环、输入映射）一行不改——引擎与适配器不认识 Vue。
-两种形态的样式表是同一份 `src/styles/stage.css`，所以换框架不影响游玩界面的外观口径。
+**框架层只换页面结构与入口，`src/host/**`（装配、订阅、帧循环、输入映射）一行不改，
+样式表仍是同一份 `src/styles/stage.css`**，所以换框架不影响游玩界面的外观口径，
+也不影响引擎与适配器——它们不认识任何 UI 框架。选 Vue 3 是 `index.html` 换成挂载点、
+加 `src/App.vue` 与 Vue 版组合根；选 React 是同一套做法换成 `src/App.tsx` 与 React 版组合根，
+外加 `tsconfig.json` 的 `jsx: react-jsx`。
+
+壳层与框架层可以叠加（先框架后壳）：`--framework react --shell tauri` 得到 React 页面 + 桌面外壳。
+小程序是例外——它自带 Vue 页面层，不与其他框架层叠加。
+
+**壳层是换一整套页面与宿主**：小程序形态的页面结构由 `src/components/**` 承接，宿主装配在
+`src/mp/**`（`uni.*` 只在 `src/mp/platform.ts` 出现一处），内容不进包体、走工程接口按基址取。
+因此它是壳而不是框架，与 `--framework` 不叠加：小程序已自带 Vue 页面层，框架取缺省值即可。
+它的 `vite` 与 `vue` 是一组钉住的版本（UniApp 插件对这些版本有硬约束），由
+`package.patch.json` 的 `create.pinned` 保住，不会被改写成「跟最新」。
 
 工程名只允许小写字母、数字、`-` 与 `_`，且不能以下划线或点开头——它同时进 `package.json` 的 `name`、
 `project.json` 的 `id` 与目录名，大写与点开头在 npm 侧非法。

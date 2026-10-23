@@ -12,9 +12,9 @@ npm create @lingfan-engine my-story
 pnpm create @lingfan-engine my-story
 ```
 
-生成器问两件事：工程名、框架与壳。当前框架可选「原生（框架无关）」与「Vue 3」，壳暂时只有「浏览器」。
+生成器问两件事：工程名、框架与壳。当前框架可选「原生（框架无关）」「Vue 3」「React」，壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」。
 
-跳过问答、全部取缺省值：
+跳过问答、全部取缺省值（原生 + 浏览器）：
 
 ```sh
 npm create @lingfan-engine my-story -- --yes
@@ -24,11 +24,16 @@ npm create @lingfan-engine my-story -- --yes
 
 ```sh
 npm create @lingfan-engine my-story -- --framework vue --shell browser
+npm create @lingfan-engine my-story -- --framework react --shell browser
+npm create @lingfan-engine my-story -- --shell miniprogram
+npm create @lingfan-engine my-story -- --framework vue --shell tauri
 ```
 
 生成后 `cd my-story && pnpm install && pnpm dev`。
 
-框架层只换页面结构与入口：`--framework vue` 把 `index.html` 换成挂载点、加 `src/App.vue` 与 Vue 版组合根，`src/host/**`（装配、订阅、帧循环、输入映射）一行不改——引擎与适配器不认识 Vue。两种形态的样式表是同一份 `src/styles/stage.css`。
+框架层只换页面结构与入口：`--framework vue` 把 `index.html` 换成挂载点、加 `src/App.vue` 与 Vue 版组合根，`--framework react` 换成 `src/App.tsx` 与 React 版组合根；两者都不动 `src/host/**`（装配、订阅、帧循环、输入映射）——引擎与适配器不认识任何 UI 框架。两种形态的样式表是同一份 `src/styles/stage.css`。
+
+壳层是换一整套页面与宿主，与框架层不叠加：小程序形态的页面结构由 `src/components/**` 承接，宿主装配在 `src/mp/**`（平台 API 只在一处出现），内容不进包体、按基址走工程接口；它的 `vite` 与 `vue` 是一组被 UniApp 插件钉死的版本，由叠加层声明保留，不参与「跟最新」。
 
 工程名只允许小写字母、数字、`-`、`_`，不能以下划线或点开头——它同时进 `package.json` 的 `name`、`Resources/project.json` 的 `id` 与目录名，大写与点开头在 npm 侧非法。
 
@@ -117,7 +122,7 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
 
 ```json
 {
-  "version": "1.3.0",
+  "version": "1.6.0",
   "minEngineVersion": "0.1.0",
   "placeholder": "__PROJECT__",
   "frameworks": [
@@ -130,6 +135,11 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
       "id": "vue",
       "label": "Vue 3",
       "hint": "页面结构换成单文件组件，装配与宿主不变"
+    },
+    {
+      "id": "react",
+      "label": "React",
+      "hint": "页面结构换成 JSX 组件，装配与宿主不变"
     }
   ],
   "shells": [
@@ -137,6 +147,16 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
       "id": "browser",
       "label": "浏览器",
       "hint": "只生成 Web 端工程，用 vite 起本地服务"
+    },
+    {
+      "id": "miniprogram",
+      "label": "小程序（UniApp）",
+      "hint": "页面层换成 UniApp Vue 3 单文件组件，宿主装配走小程序端口"
+    },
+    {
+      "id": "tauri",
+      "label": "桌面（Tauri 2）",
+      "hint": "给浏览器形态再加一个桌面壳：存档落到应用数据目录，其余不变"
     }
   ]
 }
