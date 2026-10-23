@@ -1,9 +1,13 @@
 //! lfstream 自定义协议的请求入口：分发、令牌与 v2 路径识别、整文件 Range 响应。
 
-use crate::http::RangeSpec;
+use crate::http::bad_request;
 use crate::http::mime_for;
+use crate::http::not_found;
+use crate::http::RangeSpec;
 use crate::http::parse_range;
+use crate::http::protocol_base;
 use crate::http::utf8_percent_encode;
+use crate::http::with_cors;
 use crate::paths::app_data;
 use crate::paths::resource_root;
 use crate::resource_crypto::block_cache::{decrypt_v2_block_range};
@@ -73,26 +77,6 @@ pub fn decrypt_resource(
     Ok(serde_json::json!({ "file": file, "url": url }).to_string())
 }
 
-/// 协议 URL 基座（平台差异归 Rust——wry 行为：Windows/Android 映射 http://*.localhost，
-/// macOS/iOS/Linux 原生 scheme）。TS 零编码逻辑：URL 由本命令完整给出。
-#[cfg(any(windows, target_os = "android"))]
-fn protocol_base() -> &'static str {
-    "http://lfstream.localhost"
-}
-
-#[cfg(not(any(windows, target_os = "android")))]
-fn protocol_base() -> &'static str {
-    "lfstream://localhost"
-}
-
-/// 构造 404 响应。
-pub(crate) fn not_found() -> tauri::http::Response<Vec<u8>> {
-    tauri::http::Response::builder()
-        .status(tauri::http::StatusCode::NOT_FOUND)
-        .body(Vec::new())
-        .expect("静态 404 响应构造不可失败")
-}
-
 /// lfstream 协议响应核心（纯函数，单测覆盖 200/206/416/404）：
 /// Range → 206 Partial（Content-Range/Accept-Ranges——video seek 流式）；
 /// 无 Range → 200 全量（webview 对 mp4 的初始请求恒带 `bytes=0-`，实际不触发大内存路径）。
@@ -159,20 +143,7 @@ pub(crate) fn lfstream_protocol_handler(
     request: tauri::http::Request<Vec<u8>>,
     app: &tauri::AppHandle,
 ) -> tauri::http::Response<Vec<u8>> {
-    let mut resp = handle_stream_request(request, app);
-    resp.headers_mut().insert(
-        tauri::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
-        tauri::http::HeaderValue::from_static("*"),
-    );
-    // fetch 可读 Range 相关头（浏览器默认只暴露 safelist；媒体元素内部不受此限）
-    // `x-total-size` 属 URL-query 通道（绕过 Android WebView 二次偏移）的明文总量回传
-    resp.headers_mut().insert(
-        tauri::http::header::ACCESS_CONTROL_EXPOSE_HEADERS,
-        tauri::http::HeaderValue::from_static(
-            "content-range,content-length,content-type,accept-ranges,x-total-size",
-        ),
-    );
-    resp
+    with_cors(handle_stream_request(request, app))
 }
 
 fn handle_stream_request(
@@ -208,12 +179,4 @@ pub(crate) fn is_v1_token(raw: &str) -> bool {
         && raw.len() == 64 + 1 + ext.unwrap_or("").len()
         && token.is_some_and(|t| t.len() == 64 && t.chars().all(|c| c.is_ascii_hexdigit()))
         && ext.is_some_and(|e| !e.is_empty() && e.chars().all(|c| c.is_ascii_alphanumeric()))
-}
-
-/// 构造 400 响应。
-pub(crate) fn bad_request() -> tauri::http::Response<Vec<u8>> {
-    tauri::http::Response::builder()
-        .status(tauri::http::StatusCode::BAD_REQUEST)
-        .body(Vec::new())
-        .expect("静态 400 响应构造不可失败")
 }

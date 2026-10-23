@@ -1,5 +1,7 @@
 //! v2 资源的分块 Range 响应：请求头通道与查询参数通道，含越界与不可满足的处理。
 
+use crate::http::bad_request;
+use crate::http::not_found;
 use crate::http::RangeSpec;
 use crate::http::mime_for;
 use crate::http::parse_range;
@@ -8,7 +10,6 @@ use crate::paths::app_data;
 use crate::paths::resource_root;
 use crate::resource_crypto::block_cache::{decrypt_v2_block_range};
 use crate::resource_crypto::dek::{resource_dek};
-use crate::resource_crypto::stream::protocol::{bad_request, not_found};
 use crate::resource_crypto::v2::{V2_HEADER_LEN, v2_parse_header};
 use crate::resource_fs::ResourceFs;
 use percent_encoding::percent_decode_str;
