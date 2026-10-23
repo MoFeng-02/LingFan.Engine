@@ -18,9 +18,6 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
-# iOS 原生插件（Swift 包）的编译与链接：build.rs 用 tauri_utils::build::link_apple_library，
-# 与 tauri-plugin 的 ios_path() 同一实现（feature 取 build-2 以与 tauri-build 的依赖集一致）
-tauri-utils = { version = "2", features = ["build-2"] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
@@ -54,6 +51,11 @@ ndk-context = "0.1.1"
 # Android 的 ndk-context 由 Tauri 侧已初始化（官方 README 明示 Tauri Mobile 已提供），无需额外 Kotlin 类。
 [target.'cfg(target_os = "ios")'.dependencies]
 apple-native-keyring-store = { version = "1", features = ["protected"] }
+# 屏幕方向的 iOS 落地：objc2 直调 UIKit（运行时子类覆写方向方法 + 场景几何更新），
+# 仓库内因此不需要任何 Swift/ObjC 原生源码包，也不需要构建期的 Swift 链接步骤。
+objc2 = "0.6.4"
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString", "NSValue", "NSKeyValueCoding"] }
+objc2-ui-kit = { version = "0.3.2", default-features = false, features = ["std", "objc2-core-foundation", "UIViewController", "UIWindow", "UIWindowScene", "UIWindowSceneGeometryPreferences", "UIWindowSceneGeometryPreferencesIOS", "UIOrientation", "UIApplication", "UIView", "UIScene", "UIDevice", "UIResponder", "block2"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android-native-keyring-store = "1"

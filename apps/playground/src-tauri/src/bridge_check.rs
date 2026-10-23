@@ -11,8 +11,8 @@
 //! 5. Android JNI 字符串契约：方法名 / 方法签名 / `ActivityInfo` 常量 / 三态字面量——
 //!    JNI 调用编译期完全不校验，方法名拼错要到运行期才暴露；本测试兼守「自维护 Kotlin
 //!    插件不得回流」（该插件已退役；其 Rust 契约与 Kotlin 实现成对演进，两侧失配无编译期信号）
-//! 6. iOS Swift 自注册插件字符串契约（C 入口符号 / 命令名 / 参数键 / 模式字面量）——
-//!    Swift 在本机（Windows）不可编译，源断言是当前唯一能自动检查它的手段
+//! 6. iOS 方向落地的 objc2 契约（选择器名 / UIKit 掩码常量 / 平台直调不回流插件）——
+//!    iOS cfg 分支在本机（Windows）不参与编译，源断言是当前唯一能自动检查它的手段
 //!
 //! TS 侧编组行为已由契约替身测试覆盖（tests/adapters/**），本模块只补跨边界字符串契约；
 //! 局限注明：invoke 泛型提取不支持嵌套尖括号（当前代码库无此形态）。
@@ -38,7 +38,8 @@ mod tests {
 
     fn collect_ts(dir: &std::path::Path, out: &mut Vec<(String, String)>) {
         // 扫描面读不到必须显式失败：静默跳过会让「有没有未注册命令」的断言在空集上通过
-        let entries = fs::read_dir(dir).unwrap_or_else(|e| panic!("读 {} 失败：{e}", dir.display()));
+        let entries =
+            fs::read_dir(dir).unwrap_or_else(|e| panic!("读 {} 失败：{e}", dir.display()));
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
@@ -91,8 +92,8 @@ mod tests {
     fn rust_sources_text() -> String {
         let mut out = String::new();
         for path in rust_source_paths() {
-            let text =
-                fs::read_to_string(&path).unwrap_or_else(|e| panic!("读 {} 失败：{e}", path.display()));
+            let text = fs::read_to_string(&path)
+                .unwrap_or_else(|e| panic!("读 {} 失败：{e}", path.display()));
             out.push_str(&text);
             out.push('\n');
         }
@@ -336,11 +337,6 @@ const y = await invoke("real_cmd", { foo: 1 });"#;
         assert_eq!(missing, vec!["other_cmd".to_string()]);
     }
 
-    fn rust_source(file: &str) -> String {
-        fs::read_to_string(crate_dir().join("src").join(file))
-            .unwrap_or_else(|e| panic!("读 {file}：{e}"))
-    }
-
     /// 目录下 `**/*.rs` 全文拼接：一个模块拆成多个文件时，源级断言必须覆盖全部叶子，
     /// 否则断言会随着实现搬进新文件而悄悄失效。
     ///
@@ -370,8 +366,8 @@ const y = await invoke("real_cmd", { foo: 1 });"#;
         );
         let mut out = String::new();
         for path in paths {
-            let text =
-                fs::read_to_string(&path).unwrap_or_else(|e| panic!("读 {} 失败：{e}", path.display()));
+            let text = fs::read_to_string(&path)
+                .unwrap_or_else(|e| panic!("读 {} 失败：{e}", path.display()));
             out.push_str(&text);
             out.push('\n');
         }
@@ -386,13 +382,18 @@ const y = await invoke("real_cmd", { foo: 1 });"#;
     /// 这些字面量在桌面测试运行下也只能靠源断言（Android cfg 分支桌面编译不到）。
     #[test]
     fn android_jni_string_contracts_match_platform_api() {
-        let shell_rs = rust_source("shell.rs");
+        let shell_rs = rust_source_tree_text("shell");
         let fs_rs = rust_source_tree_text("resource_fs");
         let lib_rs = lib_rs_text();
 
         // ① 自维护 Kotlin 插件不得回流（历史包路径：assets / shell）
-        for legacy in ["com/langfeng/lingfanengine/assets", "com/langfeng/lingfanengine/shell"] {
-            let dir = crate_dir().join("gen/android/app/src/main/java").join(legacy);
+        for legacy in [
+            "com/langfeng/lingfanengine/assets",
+            "com/langfeng/lingfanengine/shell",
+        ] {
+            let dir = crate_dir()
+                .join("gen/android/app/src/main/java")
+                .join(legacy);
             assert!(
                 !dir.exists(),
                 "自维护 Kotlin 插件目录不应存在：{}（供给与方向已收进 Rust）",
@@ -443,72 +444,62 @@ const y = await invoke("real_cmd", { foo: 1 });"#;
         );
     }
 
+    /// iOS 方向落地的 objc2 契约（源级断言）。
+    ///
+    /// 为什么仍需测试：iOS cfg 分支在桌面编译不到，选择器名（`supportedInterfaceOrientations`
+    /// / `shouldAutorotate`）、UIKit 掩码常量与「不再回流原生插件」这三件事都只有运行期才会
+    /// 暴露——拼错选择器不报编译错，方法不被调用而已。本测试把这三条钉在源码上。
     #[test]
-    fn swift_plugin_string_contracts_match_rust() {
-        // iOS 侧与 Rust 同样是纯字符串契约
-        // （C 入口符号 = ios_plugin_binding! 的 ident / 命令名 = @objc 方法名 / 参数键 / 模式字面量）。
-        // Swift 无法在本机（Windows）编译，本测试是当前唯一能自动检查它的手段：符号与字面量漂移即刻暴露。
-        // 源落点：src-tauri/ios/（Swift 包：build.rs 经 link_apple_library 于 cargo 构建期编译链接；
-        // 不能放进 Xcode 工程 Sources——Rust 先于 app target 的 Swift 链接，符号会未定义）
-        let swift = fs::read_to_string(crate_dir().join("ios/Sources/ShellPlugin.swift"))
-            .expect("读 ios/Sources/ShellPlugin.swift");
-        let package = fs::read_to_string(crate_dir().join("ios/Package.swift"))
-            .expect("读 ios/Package.swift");
-        let build_rs = fs::read_to_string(crate_dir().join("build.rs")).expect("读 build.rs");
-        let shell_rs = rust_source("shell.rs");
+    fn ios_orientation_objc2_contracts_match_platform_api() {
+        let shell_tree = rust_source_tree_text("shell");
+        let lib_rs = lib_rs_text();
 
-        // Swift 包名：Package.swift 的 package/product 名 == build.rs 传给 link_apple_library 的名字
-        assert!(
-            package.contains("name: \"lfen-shell\""),
-            "Package.swift 包名漂移（须与 build.rs 的 PACKAGE 常量一致）"
-        );
-        assert!(
-            build_rs.contains("const PACKAGE: &str = \"lfen-shell\""),
-            "build.rs 的 Swift 包名与 Package.swift 失配"
-        );
-        assert!(
-            build_rs.contains("link_apple_library"),
-            "build.rs 缺 link_apple_library（iOS 链接期符号将未定义）"
-        );
-
-        // C 入口符号：Swift @_cdecl 名 == Rust ios_plugin_binding! 的 ident
-        assert!(
-            swift.contains("@_cdecl(\"init_plugin_shell\")"),
-            "Swift 缺 @_cdecl(\"init_plugin_shell\") 入口"
-        );
-        assert!(
-            shell_rs.contains("ios_plugin_binding!(init_plugin_shell)"),
-            "Rust ios_plugin_binding! 符号与 Swift @_cdecl 失配"
-        );
-
-        // 命令名 == Swift @objc 方法名；参数键 == Decodable 字段名
-        assert!(
-            swift.contains("func setOrientation(_ invoke: Invoke)"),
-            "Swift 缺 setOrientation 命令"
-        );
-        assert!(
-            shell_rs.contains("\"setOrientation\""),
-            "Rust 调用的命令名与 Swift 失配"
-        );
-        assert!(swift.contains("let mode: String"), "Swift 缺 mode 参数");
-        assert!(shell_rs.contains("\"mode\""), "Rust 负载键 mode 缺失");
-
-        // 方向模式字面量三态一致
-        for mode in ["auto", "portrait", "landscape"] {
+        // ① 两个被覆写的选择器必须存在（拼错不报编译错，只会静默不生效）
+        for selector in ["supportedInterfaceOrientations", "shouldAutorotate"] {
             assert!(
-                swift.contains(&format!("\"{mode}\"")),
-                "Swift 缺方向模式 {mode}"
-            );
-            assert!(
-                shell_rs.contains(&format!("\"{mode}\"")),
-                "Rust 缺方向模式 {mode}"
+                shell_tree.contains(&format!("sel!({selector})")),
+                "方向覆写缺选择器 {selector}（拼错时编译不报错，运行期只是不生效）"
             );
         }
-
-        // 响应键（Rust 侧只判成功，不解字段）——锁定 Swift 侧回报形态，避免静默改协议
+        // ② UIKit 三态掩码（auto 取不含倒竖的默认集合，与 TS 契约三态一一对应）
+        for mask in [
+            "UIInterfaceOrientationMask::AllButUpsideDown",
+            "UIInterfaceOrientationMask::Portrait",
+            "UIInterfaceOrientationMask::Landscape",
+        ] {
+            assert!(shell_tree.contains(mask), "方向掩码映射缺 {mask}");
+        }
+        // ③ 几何更新入口（iOS 16+ 的旋转请求；缺它就只有集合限制、不会真的转）
         assert!(
-            swift.contains("\"applied\""),
-            "Swift 回报缺 applied 键（Rust/TS 契约面）"
+            shell_tree.contains("requestGeometryUpdateWithPreferences_errorHandler"),
+            "缺 requestGeometryUpdate 调用（iOS 16+ 不会真的旋转）"
+        );
+        // ④ 15 及以下回退路径
+        assert!(
+            shell_tree.contains("attemptRotationToDeviceOrientation"),
+            "缺 <iOS16 回退路径（老设备方向切换会静默失效）"
+        );
+        // ⑤ 不再回流原生插件：仓库内没有 Swift/ObjC 源，也没有插件的注册与调用面
+        for banned in [
+            "ios_plugin_binding!",
+            "register_ios_plugin",
+            "run_mobile_plugin",
+            "link_apple_library",
+        ] {
+            assert!(
+                !shell_tree.contains(banned),
+                "方向能力已收进 Rust 直调，不应再出现 {banned}"
+            );
+            assert!(!lib_rs.contains(banned), "lib.rs 不应再出现 {banned}");
+        }
+        let build_rs = fs::read_to_string(crate_dir().join("build.rs")).expect("读 build.rs");
+        assert!(
+            !build_rs.contains("link_apple_library") && !build_rs.contains("lfen-shell"),
+            "build.rs 不应再有 iOS 原生包的链接步骤"
+        );
+        assert!(
+            !crate_dir().join("ios").exists(),
+            "仓库内不应再有 iOS 原生源码目录"
         );
     }
 }

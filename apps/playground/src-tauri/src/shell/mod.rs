@@ -1,15 +1,24 @@
 //! 平台壳能力命令面：屏幕方向配置（壳配置，非叙事语义——引擎核心不解释）。
 //!
-//! 移动端经原生插件落地方向（Android = `Activity.requestedOrientation`；iOS 待接：
-//! 需 `UIWindowScene.requestGeometryUpdate` + Info.plist 声明集合）；桌面与浏览器宿主
-//! 无此概念 → no-op 返回 `false`（「尽力而为」契约：未生效不算错误）。
+//! 移动端经原生通道落地方向：Android = JNI 直调 `Activity.requestedOrientation`；
+//! iOS = objc2 直调 UIKit（运行时子类覆写方向方法 + 几何更新请求，见 [`ios`]）。
+//! 桌面与浏览器宿主无此概念 → no-op 返回 `false`（「尽力而为」契约：未生效不算错误）。
 //!
 //! 平台边界：静态声明决定「允许集合」上限——Android 16 起 sw≥600dp 大屏忽略方向限制，
 //! 工程以 `android:appCategory="game"` 取游戏豁免；iOS 须在 plist 内声明过该方向。
 
+#[cfg(target_os = "android")]
+mod android;
+#[cfg(target_os = "ios")]
+mod ios;
+
 use serde::Serialize;
 
-/// 方向模式（与 TS `OrientationMode` 同构；字符串映射与 Kotlin ShellPlugin 一致，互锁见 bridge_check）
+/// 原生侧回传等待上限：超过即按「未生效」返回 `false`（契约允许，留诊断）。
+#[cfg(any(target_os = "android", target_os = "ios"))]
+const APPLY_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(1000);
+
+/// 方向模式（与 TS `OrientationMode` 同构；字符串映射是跨边界契约，互锁见 bridge_check）
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OrientationMode {
     Auto,
@@ -29,16 +38,6 @@ impl OrientationMode {
             OrientationMode::Auto => -1,
             OrientationMode::Portrait => 1,
             OrientationMode::Landscape => 0,
-        }
-    }
-
-    /// 原生侧载荷字符串（iOS Swift 插件判据；Android 走 JNI 常量映射不经此）
-    #[cfg_attr(not(any(target_os = "ios", test)), allow(dead_code))]
-    fn as_str(self) -> &'static str {
-        match self {
-            OrientationMode::Auto => "auto",
-            OrientationMode::Portrait => "portrait",
-            OrientationMode::Landscape => "landscape",
         }
     }
 }
@@ -84,99 +83,35 @@ pub fn set_orientation(app: tauri::AppHandle, mode: String) -> Result<bool, Shel
     apply_orientation(&app, parsed)
 }
 
-/// Android：JNI 直调 `Activity.setRequestedOrientation(int)`（不经自维护 Kotlin 插件）。
-///
-/// 通道 = `Webview::with_webview(|平台句柄| …)` 内的 `jni_handle().exec(...)`：`with_webview`
-/// 只按 `wry` feature 门控（默认开），闭包拿到 `PlatformWebview`，其 `exec` 直接给出
-/// JNIEnv 与当前 Activity——不必走 `Manager::get_webview`（那条要求 tauri `unstable` feature）。
-///
-/// 同步语义保留：`exec` 是派发不等待，闭包内以通道回传结果，命令侧短超时收取
-/// （Tauri 命令运行在独立线程池、不在主线程，等待不会死锁）；超时按「未生效」
-/// 返回 `false`——契约允许，并留诊断。
-#[cfg(target_os = "android")]
-const ANDROID_APPLY_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(1000);
-
-#[cfg(target_os = "android")]
+/// 方向应用分平台：Android 走 JNI 直调、iOS 走 objc2 直调；其余 no-op（未应用 = false）
+#[cfg(any(target_os = "android", target_os = "ios"))]
 fn apply_orientation(app: &tauri::AppHandle, mode: OrientationMode) -> Result<bool, ShellError> {
     use tauri::Manager;
 
     let Some(window) = app.get_webview_window("main") else {
         return Err(ShellError::Native("主窗口不存在".to_string()));
     };
+    // 两条平台通道都在主线程执行（JNI 的 exec 派发 / objc2 的 UIKit 调用），命令本身跑在
+    // Tauri 的线程池里，等待不会死锁；回传失败只说明接收端已超时离开，不影响原生结果。
     let (tx, rx) = std::sync::mpsc::channel::<Result<(), String>>();
-    let webview: tauri::Webview<_> = window.as_ref().clone();
-    webview
+    window
         .with_webview(move |platform| {
-            platform.jni_handle().exec(move |env, activity, _webview| {
-                let result = env
-                    .call_method(
-                        activity,
-                        "setRequestedOrientation",
-                        "(I)V",
-                        &[jni::objects::JValue::Int(mode.android_constant())],
-                    )
-                    .map(|_| ())
-                    .map_err(|e| format!("setRequestedOrientation 调用失败：{e}"));
-                // 接收端可能已超时离开——发送失败不影响原生侧已执行的结果
-                let _ = tx.send(result);
-            });
+            #[cfg(target_os = "android")]
+            android::apply(&platform, mode, tx);
+            #[cfg(target_os = "ios")]
+            if let Err(message) = ios::apply(platform.view_controller(), mode, tx) {
+                eprintln!("[lfen] 方向下发失败（{mode:?}）：{message}");
+            }
         })
         .map_err(|e| ShellError::Native(format!("平台 webview 句柄获取失败：{e}")))?;
-    match rx.recv_timeout(ANDROID_APPLY_TIMEOUT) {
+    match rx.recv_timeout(APPLY_TIMEOUT) {
         Ok(Ok(())) => Ok(true),
         Ok(Err(message)) => Err(ShellError::Native(message)),
         Err(_) => {
-            eprintln!("[lfen] 方向应用超时（{mode:?}）：webview 线程未在时限内回传");
+            eprintln!("[lfen] 方向应用超时（{mode:?}）：主线程未在时限内回传");
             Ok(false)
         }
     }
-}
-
-/// iOS：Swift 插件 C 入口声明（`ios/ShellPlugin.swift` 的 `@_cdecl("init_plugin_shell")`）
-/// 与自注册插件（lib.rs 装配用）。
-#[cfg(target_os = "ios")]
-mod ios {
-    use super::OrientationMode;
-    use tauri::Manager;
-
-    tauri::ios_plugin_binding!(init_plugin_shell);
-
-    /// Kotlin 侧的 Swift 对应物：ShellPlugin 句柄（setup 期注册后入 managed state）
-    pub struct ShellBridge(pub tauri::plugin::PluginHandle<tauri::Wry>);
-
-    /// 注册 Swift ShellPlugin 的内联 tauri 插件（iOS 专用）
-    pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
-        tauri::plugin::Builder::<tauri::Wry>::new("lfen-shell")
-            .setup(|app, api| {
-                let handle = api.register_ios_plugin(init_plugin_shell)?;
-                app.manage(std::sync::Arc::new(ShellBridge(handle)));
-                Ok(())
-            })
-            .build()
-    }
-
-    /// 经 Swift 插件下发方向模式；成功返回 `true`，插件报错转 [`super::ShellError`]。
-    pub fn apply(app: &tauri::AppHandle, mode: OrientationMode) -> Result<bool, super::ShellError> {
-        use super::ShellError;
-        let bridge = app.state::<std::sync::Arc<ShellBridge>>();
-        bridge
-            .0
-            .run_mobile_plugin::<serde_json::Value>(
-                "setOrientation",
-                serde_json::json!({ "mode": mode.as_str() }),
-            )
-            .map(|_| true)
-            .map_err(|e| ShellError::Native(e.to_string()))
-    }
-}
-
-#[cfg(target_os = "ios")]
-pub use ios::plugin as ios_plugin;
-
-/// 方向应用分平台：Android 走 JNI 直调（见上）；iOS 走 Swift 插件；其余 no-op（未应用 = false）
-#[cfg(target_os = "ios")]
-fn apply_orientation(app: &tauri::AppHandle, mode: OrientationMode) -> Result<bool, ShellError> {
-    ios::apply(app, mode)
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -200,9 +135,6 @@ mod tests {
             parse_orientation("landscape").unwrap(),
             OrientationMode::Landscape
         );
-        assert_eq!(OrientationMode::Auto.as_str(), "auto");
-        assert_eq!(OrientationMode::Portrait.as_str(), "portrait");
-        assert_eq!(OrientationMode::Landscape.as_str(), "landscape");
     }
 
     /// 三态 → Android `SCREEN_ORIENTATION_*` 常量映射。

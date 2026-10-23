@@ -69,10 +69,6 @@ pub fn run() {
     #[cfg(target_os = "android")]
     let builder = builder.plugin(resource_fs::apk_zip_fs_plugin());
 
-    // 屏幕方向：Android 走 JNI 直调（无需插件注册）；iOS 走 Swift 插件注册
-    #[cfg(target_os = "ios")]
-    let builder = builder.plugin(shell::ios_plugin());
-
     builder
         .setup(|app| {
             boot::setup(app.handle());

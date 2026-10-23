@@ -2272,6 +2272,9 @@ dependencies = [
  "keyring-core",
  "ndk-context",
  "notify",
+ "objc2",
+ "objc2-foundation",
+ "objc2-ui-kit",
  "percent-encoding",
  "serde",
  "serde_json",
@@ -2280,7 +2283,6 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-fs",
  "tauri-plugin-opener",
- "tauri-utils",
  "tokio",
  "tokio-tungstenite",
 ]

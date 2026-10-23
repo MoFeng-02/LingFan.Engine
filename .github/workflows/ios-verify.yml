@@ -1,7 +1,7 @@
 # iOS 构建与冒烟验证（macOS runner）
 #
 # 为什么需要它：iOS 只能在 macOS + Xcode 上编译，本机是 Windows——本工作流是 iOS 侧
-# 唯一的编译/运行验证途径（Swift 插件、Rust ios 分支、Info.plist 声明、端到端冒烟）。
+# 唯一的编译/运行验证途径（Rust ios 分支、Info.plist 声明、端到端冒烟）。
 #
 # 三条关键约束（勿随意改动）：
 # 1. 必须用 `cargo tauri`（cargo-binstall 安装的 tauri-cli）——`ios init` 生成的 Xcode 工程
@@ -129,10 +129,6 @@ jobs:
       - name: 初始化 iOS 工程
         working-directory: apps/playground
         run: cargo tauri ios init --ci
-
-      # Swift 插件源在 src-tauri/ios/（Swift 包），由 build.rs 经 link_apple_library 于 cargo
-      # 构建期编译并链接——**不需要**复制进 gen/apple 或重跑 xcodegen（Rust 先于 app Swift 链接，
-      # 放 Xcode 工程 Sources 反而会 Undefined symbol _init_plugin_shell）。
 
       - name: 诊断环境与工程架构设置（排错用；以 notice annotation 回传，匿名可读）
         working-directory: apps/playground/src-tauri
@@ -300,7 +296,7 @@ jobs:
             tail -10 /tmp/ios-launch.log 2>/dev/null
             echo "--- 存活检查命中行 ---"
             cat /tmp/ios-alive-raw.txt 2>/dev/null
-            echo "--- lfen 标记（Rust 命令 / Swift 插件视图树）---"
+            echo "--- lfen 标记（Rust 命令 / 方向视图树）---"
             grep -a "lfen" /tmp/ios-oslog.txt 2>/dev/null | tail -15
             echo "--- app 进程自身日志（末 15 行）---"
             grep -a "lingfanengine" /tmp/ios-oslog.txt 2>/dev/null \
