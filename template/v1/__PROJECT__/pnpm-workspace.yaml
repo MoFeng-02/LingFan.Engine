@@ -1,0 +1,8 @@
+# pnpm 12 起，「未批准的构建脚本」是硬错误（ERR_PNPM_IGNORED_BUILDS），
+# 会让 `pnpm install` 整个失败、并连锁跳过其后的构建步骤。
+# 这里的批准面只放 esbuild（vite 与 UniApp 工具链的既定安装步骤）；
+# 带安装脚本但不需要执行的包显式写 false ——「知道了、故意不跑」与「未批准」是两回事，
+# 不写 false 每次安装都会以同一个错误收场。core-js 的 postinstall 只打印赞助信息。
+allowBuilds:
+  core-js: false
+  esbuild: true

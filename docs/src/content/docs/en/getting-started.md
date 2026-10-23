@@ -45,11 +45,12 @@ Generating by hand works too. The template lives at `template/v1/__PROJECT__/` i
 
    All three packages publish TypeScript source entry points, so Vite compiles them directly and you never build them first.
 
-   If `pnpm install` fails with `ERR_PNPM_IGNORED_BUILDS`, that is pnpm declining to run dependencies' build scripts by default. Approve it once in `pnpm-workspace.yaml`:
+   If `pnpm install` fails with `ERR_PNPM_IGNORED_BUILDS`, that is pnpm declining to run dependencies' build scripts by default; since pnpm 12 it is a hard error that aborts the whole install. Generated projects ship a `pnpm-workspace.yaml` that only declares `allowBuilds`: `esbuild` is approved (Vite and the UniApp toolchain rely on it) and `core-js` is explicitly `false` — "known, deliberately skipped" is a different state from "not approved". If some other package is reported, add it to that table:
 
    ```yaml
    allowBuilds:
      esbuild: true
+     core-js: false
    ```
 
 ## Run it

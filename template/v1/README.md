@@ -91,6 +91,7 @@ npm create @lingfan-engine my-story -- --framework vue --shell tauri
 __PROJECT__/
 ├── project.json          # 工程清单：id/name/entry/lang/formatVersion
 ├── package.json
+├── pnpm-workspace.yaml   # 只声明 allowBuilds：pnpm 12 起「未批准的构建脚本」是硬错误
 ├── tsconfig.json         # 浏览器侧：src/ 下的 ts 与 vue
 ├── tsconfig.node.json    # Node 侧：只覆盖 vite.config.ts（它要 node:fs 与 @types/node）
 ├── vite.config.ts        # publicDir: "Resources" ← 资源根即静态根

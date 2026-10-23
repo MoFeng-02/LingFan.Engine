@@ -43,11 +43,12 @@ npm create @lingfan-engine my-story
 
    三个包以 TypeScript 源码出口发布，Vite 直接编译，不用先构建它们。
 
-   如果 `pnpm install` 报 `ERR_PNPM_IGNORED_BUILDS`，是 pnpm 默认不跑依赖的构建脚本。在 `pnpm-workspace.yaml` 里批准一次：
+   生成的工程自带一份 `pnpm-workspace.yaml`，里面只写 `allowBuilds`：pnpm 12 起「未批准的构建脚本」是硬错误 `ERR_PNPM_IGNORED_BUILDS`，会让整个安装失败。模板已批准 `esbuild`（Vite 与 UniApp 工具链都用它），并对不需要执行的 `core-js` 显式写 `false`——「知道了、故意不跑」与「未批准」是两回事。安装时若报别的包未批准，按提示加进这张表即可：
 
    ```yaml
    allowBuilds:
      esbuild: true
+     core-js: false
    ```
 
 ## 跑起来
