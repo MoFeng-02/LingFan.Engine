@@ -1,6 +1,8 @@
 //! 源工程热重载监视：仅桌面调试构建可用，事件防抖后通知前端。
 
 use crate::project_files::supply::{ProjectFilesError};
+// 仅桌面调试构建用到（移动端整段监视逻辑被 cfg 排除）
+#[cfg(all(debug_assertions, not(any(target_os = "android", target_os = "ios"))))]
 use std::path::Path;
 
 /// 热重载事件名：工程文件变更（防抖后）→ 前端重新供给+组装并 reloadStory
