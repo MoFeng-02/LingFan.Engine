@@ -1,7 +1,7 @@
 {
   "name": "lingfan-engine",
   "private": true,
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "description": "灵泛叙事引擎：框架无关核心 + 预设适配器 + 参考宿主 + 脚手架",
   "scripts": {
