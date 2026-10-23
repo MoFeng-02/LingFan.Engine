@@ -20,6 +20,7 @@ export {
 export {
   createStaticResourcePort,
   createTauriEncryptedResourcePort,
+  createTauriResourcePort,
 } from "./resources";
 // 加密工程形态识别（唯一判定点）：无壳形态剥不开 ⇒ 前置显式拒绝 + 可操作文案
 export {
