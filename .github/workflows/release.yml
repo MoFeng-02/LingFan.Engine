@@ -13,7 +13,7 @@
 # 以 npm CLI 为准）。所以流程拆成两步——`pnpm pack` 产出已改写的 tarball，`npm publish`
 # 发布该 tarball。直接 `npm publish <包目录>` 会把 workspace 协议原样发出去，消费方装不上。
 #
-# 启用前提（一次性，在 npmjs.com 上做）：六个包各自在设置里添加 Trusted Publisher，
+# 启用前提（一次性，在 npmjs.com 上做）：七个包各自在设置里添加 Trusted Publisher，
 # 指向本仓库与本文件名，并勾选允许发布。未配置时发布步骤会因无权限失败，门禁与自检仍然照跑。
 
 name: Release

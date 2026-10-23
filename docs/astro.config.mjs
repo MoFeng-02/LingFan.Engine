@@ -182,6 +182,11 @@ export default defineConfig({
               translations: { en: "Building a Multilingual Project" },
               link: "/guides/i18n/",
             },
+            {
+              label: "发布新版本",
+              translations: { en: "Publishing a Release" },
+              link: "/guides/release/",
+            },
           ],
         },
         {

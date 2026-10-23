@@ -41,7 +41,7 @@ jobs:
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
 
-      # 版本一致性排在四道门禁之前：六个包是一套配套件，版本错开就会产生
+      # 版本一致性排在四道门禁之前：七个包是一套配套件，版本错开就会产生
       # 「适配器要 core 新号、实际装到旧号」这类无解组合，而任何单包都不会因此报错。
       - name: 版本一致性
         run: node scripts/version-check.mjs
