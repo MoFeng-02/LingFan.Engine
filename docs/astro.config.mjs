@@ -109,6 +109,11 @@ export default defineConfig({
               translations: { en: "Create from a Template" },
               link: "/from-template/",
             },
+            {
+              label: "更新日志",
+              translations: { en: "Changelog" },
+              link: "/changelog/",
+            },
           ],
         },
         {
