@@ -12,9 +12,9 @@ npm create @lingfan-engine my-story
 pnpm create @lingfan-engine my-story
 ```
 
-生成器问两件事：工程名、框架与壳。当前框架可选「原生（框架无关）」「Vue 3」「React」，壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」。
+生成器问三件事：工程名、框架、故事源形态，以及壳。当前框架可选「原生（框架无关）」「Vue 3」「React」；故事源形态可选「故事文件（`.story`）」与「TypeScript 源（`Stories.src/`）」；壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」。
 
-跳过问答、全部取缺省值（原生 + 浏览器）：
+跳过问答、全部取缺省值（原生 + 故事文件 + 浏览器）：
 
 ```sh
 npm create @lingfan-engine my-story -- --yes
@@ -27,13 +27,28 @@ npm create @lingfan-engine my-story -- --framework vue --shell browser
 npm create @lingfan-engine my-story -- --framework react --shell browser
 npm create @lingfan-engine my-story -- --shell miniprogram
 npm create @lingfan-engine my-story -- --framework vue --shell tauri
+npm create @lingfan-engine my-story -- --sources ts
 ```
 
-生成后 `cd my-story && pnpm install && pnpm dev`。
+生成后 `cd my-story && pnpm install && pnpm dev`。选了 TypeScript 源形态的，`pnpm dev` 之前先跑一次 `pnpm stories:build`（模板自带产物，改过源之后才需要）。
 
 框架层只换页面结构与入口：`--framework vue` 把 `index.html` 换成挂载点、加 `src/App.vue` 与 Vue 版组合根，`--framework react` 换成 `src/App.tsx` 与 React 版组合根；两者都不动 `src/host/**`（装配、订阅、帧循环、输入映射）——引擎与适配器不认识任何 UI 框架。两种形态的样式表是同一份 `src/styles/stage.css`。
 
 壳层是换一整套页面与宿主，与框架层不叠加：小程序形态的页面结构由 `src/components/**` 承接，宿主装配在 `src/mp/**`（平台 API 只在一处出现），内容不进包体、按基址走工程接口；它的 `vite` 与 `vue` 是一组被 UniApp 插件钉死的版本，由叠加层声明保留，不参与「跟最新」。
+
+故事源形态层决定故事从哪来，它与框架层、壳层正交：
+
+| 形态 | 故事从哪来                              | 改故事的姿势                                        |
+| ---- | --------------------------------------- | --------------------------------------------------- |
+| 缺省 | `Resources/Stories/**/*.story`          | 直接改 `.story` 文本，保存即生效                    |
+| `ts` | `Resources/Stories/**/*.json`（生成物） | 改 `Stories.src/**/*.ts`，再跑 `pnpm stories:build` |
+
+`ts` 形态会把骨架那份手写故事换成构建产物：层里声明了 `create.remove: ["Resources/Stories"]`，删掉骨架的 `.story`，再补上开箱可跑的生成物与三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）。两条注意：
+
+- 产物目录 `Resources/Stories/**` 由构建**全量管理**——源里没有的列，构建会当成陈旧列删掉。所以别在产物目录里手改，改源。
+- 类型检查走独立的 `tsconfig.stories.json`，与框架层那份 `tsconfig.json` 分开：故事源有 `state` 等 ambient 全局，和页面代码的 DOM 类型面不该混在一个工程里。
+
+两种形态的写法差异见 [TS 创作模式](/advanced/ts-story-source/)。
 
 工程名只允许小写字母、数字、`-`、`_`，不能以下划线或点开头——它同时进 `package.json` 的 `name`、`Resources/project.json` 的 `id` 与目录名，大写与点开头在 npm 侧非法。
 
@@ -48,13 +63,13 @@ npm create @lingfan-engine my-story -- --framework vue --shell tauri
 
 `template/v1/__PROJECT__/` 是框架无关的骨架，`template/v1/overlays/<id>/` 是叠加层。叠加规则：同路径文件覆盖骨架，根目录的 `*.patch.json` 深合并进 `package.json`。
 
-`template-meta.json` 的 `frameworks` / `shells` 声明有哪些可选项，每项 `id` 对应一个叠加层目录；缺省项（`none` / `browser`）没有目录，表示这一层什么都不加。
+`template-meta.json` 的 `frameworks` / `sources` / `shells` 声明有哪些可选项，每项 `id` 对应一个叠加层目录；缺省项（`none` / `story` / `browser`）没有目录，表示这一层什么都不加。合并顺序固定为「骨架 → 框架 → 故事源 → 壳」：故事源要晚于框架层，才能把各框架入口里的故事表指向生成物；壳放最后，因为它对工程形态有最终发言权（小程序壳会删掉骨架的 `src/host`）。
 
 `.gitignore` 在模板里存成不带点的 `gitignore`：npm 把包装进 `node_modules` 时会把包内的 `.gitignore` 改名成 `.npmignore`，按原名存会导致生成的工程既缺忽略规则又多个无用文件。
 
 ## 示例故事
 
-`Resources/Stories/title/title_main.story` 是模板自带的示例，它把几件事都演了一遍：
+`Resources/Stories/title/title_main.story` 是模板自带的示例（选了 `--sources ts` 的话，同一份内容在 `Stories.src/title/*.ts` 里），它把几件事都演了一遍：
 
 ```text
 label title_main:
@@ -124,7 +139,7 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
 
 ```json
 {
-  "version": "1.6.0",
+  "version": "1.7.0",
   "minEngineVersion": "0.1.0",
   "placeholder": "__PROJECT__",
   "frameworks": [
@@ -142,6 +157,18 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
       "id": "react",
       "label": "React",
       "hint": "页面结构换成 JSX 组件，装配与宿主不变"
+    }
+  ],
+  "sources": [
+    {
+      "id": "story",
+      "label": "故事文件（.story）",
+      "hint": "直接写引擎自带的文本故事格式，改完保存即生效"
+    },
+    {
+      "id": "ts",
+      "label": "TypeScript 源（Stories.src）",
+      "hint": "用 TS 写故事列：有类型补全与重构，构建时编译成故事文件"
     }
   ],
   "shells": [

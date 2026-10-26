@@ -277,7 +277,6 @@ export default defineConfig({
               label: "TS 创作模式",
               translations: { en: "TypeScript Authoring" },
               link: "/advanced/ts-story-source/",
-              badge: "实现中",
             },
           ],
         },

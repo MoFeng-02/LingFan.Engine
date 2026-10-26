@@ -19,7 +19,13 @@ your-project/
 
 ## When to use it
 
-Reach for TypeScript when the story is long, when it has many branches and loops, when you want the type system keeping your state keys honest, or when you want to pull a table of pure data out of an npm package. For changing two lines of dialogue, or a project already running fine on `.story`, don't migrate — this compile chain is still being finished, and what hasn't landed is listed under "Status" below.
+Reach for TypeScript when the story is long, when it has many branches and loops, when you want the type system keeping your state keys honest, or when you want to pull a table of pure data out of an npm package. For changing two lines of dialogue, or a project already running fine on `.story`, there is no need to migrate — both paths produce the same output and the runtime knows nothing about TypeScript. To use it, pick `--sources ts` when creating a project from the template and the whole build chain is there; for an existing project, add one package and one `config.ts`.
+
+## The template ships this chain
+
+Generating a project with `npm create @lingfan-engine` and choosing the `ts` source shape gives you `Stories.src/` (a `config.ts` plus example columns), three scripts (`stories:build` / `stories:watch` / `stories-typecheck`), `@lingfan-engine/stories-build` and `@lingfan-engine/editor` as dev dependencies, and an output that runs out of the box — `Resources/Stories/**` plus `Resources/project.json`. The skeleton's hand-written `.story` is deleted at the same time: the output directory manages its column set wholesale, so with both story sets present the first build would treat the `.story` as a stale column and remove it.
+
+Wiring an existing project by hand comes down to the same pieces: `pnpm add -D @lingfan-engine/stories-build @lingfan-engine/editor`, write `Stories.src/config.ts`, then run the commands under "Building and output" below.
 
 ## config.ts
 
@@ -302,11 +308,23 @@ The command name passed to `extOp` only means something once the engine has actu
 
 ## Building and output
 
+A template-generated `ts` project carries three scripts:
+
 ```powershell
 pnpm stories:build        # compile once
 pnpm stories:watch        # recompile on change
-pnpm stories-typecheck    # tsc --noEmit type check
+pnpm stories-typecheck    # type check (via tsconfig.stories.json)
 ```
+
+A project without them uses the commands the package ships — the project root as a positional argument, or the working directory when omitted:
+
+```powershell
+pnpm add -D @lingfan-engine/stories-build
+pnpm exec lingfan-stories-build .      # compile once
+pnpm exec lingfan-stories-watch .      # persistent incremental
+```
+
+The reference host `apps/playground` runs the same package commands, only through `tsx` so the build chain can be edited in place inside this repository.
 
 Output goes to `Resources/Stories/` with paths mirroring the source — `Stories.src/chapter1/start.ts` compiles to `Resources/Stories/chapter1/start.json`. A TypeScript source project manages its column set **wholesale**: a column the source no longer declares is deleted from the output directory, and every deletion is listed in the report.
 
@@ -316,9 +334,9 @@ A file with a `default` export whose directory `folders` does not cover fails wi
 
 The editor treats a TypeScript source project's JSON output as read-only; change columns in the source.
 
-## Status
+## Capabilities
 
-TypeScript authoring is still being implemented and has not shipped. The build CLI, statement translation and compile-time constant evaluator have all landed and pass their tests, and the build chain is packaged: the entry point is a standalone `@lingfan-engine/stories-build` package, and the `Stories.src/gen/stories.gen.d.ts` generated alongside your build hands your project's column names and interpolation keys to the IDE for instant checking. `stories:watch` is now a persistent incremental watcher: saving a source file triggers a recompile whose artifacts are byte-identical to a full build, and each round reports its diff and the affected story columns.
+Both the runtime side and the authoring side of TypeScript authoring are packaged: the authoring side is `@lingfan-engine/editor` (the single source of truth for op schemas, plus the word functions) and `@lingfan-engine/stories-build` (the build CLI, shipping `lingfan-stories-build` / `lingfan-stories-watch`); the `Stories.src/gen/stories.gen.d.ts` generated alongside your build hands your project's column names and interpolation keys to the IDE for instant checking. `stories:watch` is a persistent incremental watcher: saving a source file triggers a recompile whose artifacts are byte-identical to a full build, and each round reports its diff and the affected story columns.
 
 Concretely, what you may run into while writing:
 

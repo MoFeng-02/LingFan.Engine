@@ -21,7 +21,13 @@ description: 在工程平级放 Stories.src/，用原生 TypeScript 写故事，
 
 写长故事、有大量条件分支和循环、想用类型系统约束状态键、或者依赖某个 npm 包里的纯数据表时，TS 模式比手写文本省事。
 
-只想改两句台词、或者工程里已经有 `.story` 且跑得好，别迁移——这条路径的编译链仍在实现中，没走完的能力见文末「实现状态」。
+只想改两句台词、或者工程里已经有 `.story` 且跑得好，就不必迁移——两条路径的产物完全一样，运行期对 TS 零感知。真要用，[从模板创建工程](/from-template/)时选 `--sources ts` 就有整套现成的构建链；已有工程想接，装一个包、写一个 `config.ts` 即可。
+
+## 模板自带这条链
+
+用 `npm create @lingfan-engine` 生成工程时，故事源形态选 `ts` 会得到：`Stories.src/`（`config.ts` + 示例列）、三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）、`@lingfan-engine/stories-build` 与 `@lingfan-engine/editor` 两个开发依赖，以及一份开箱可跑的产物 `Resources/Stories/**` 与 `Resources/project.json`。同时骨架那份手写 `.story` 会被删掉——产物目录对列集全量管理，两套故事并存时第一次构建就会把 `.story` 当陈旧列清理。
+
+已有工程手工接入，等价于补齐上面这些：`pnpm add -D @lingfan-engine/stories-build @lingfan-engine/editor`，写 `Stories.src/config.ts`，然后按后文「构建与产物」的命令跑。
 
 ## config.ts
 
@@ -304,19 +310,23 @@ export default function start(): void {
 
 ## 构建与产物
 
+模板生成的 `ts` 工程自带三条脚本：
+
 ```powershell
 pnpm stories:build        # 编译一次
 pnpm stories:watch        # 改完自动重编译
-pnpm stories-typecheck    # tsc --noEmit 类型检查
+pnpm stories-typecheck    # 类型检查（走 tsconfig.stories.json）
 ```
 
-上面三条是仓库自身（参考宿主 `apps/playground`）的脚本。装了 `@lingfan-engine/stories-build` 的工程直接用它带的命令，工程根作为位置参数，省略则取工作目录：
+已有工程没装模板那份脚本，用包自带的命令，工程根作为位置参数，省略则取工作目录：
 
 ```powershell
 pnpm add -D @lingfan-engine/stories-build
 pnpm exec lingfan-stories-build .      # 编译一次
 pnpm exec lingfan-stories-watch .      # 常驻增量
 ```
+
+参考宿主 `apps/playground` 用的是同一套包命令，只是脚本里以 `tsx` 直调源码，便于在仓库内改构建链。
 
 产物写到 `Resources/Stories/`，路径镜像源文件路径——`Stories.src/chapter1/start.ts` 编译成 `Resources/Stories/chapter1/start.json`。TS 源工程对列集是**全量管理**：源里没有的列，构建期从产物目录删掉，删除项逐条列在报告里。
 
@@ -326,7 +336,7 @@ pnpm exec lingfan-stories-watch .      # 常驻增量
 
 编辑器对 TS 源工程的 JSON 产物只读，改列请在源里改。
 
-## 实现状态
+## 能力清单
 
 TS 创作模式的运行时侧与作者侧都已包化：作者侧是 `@lingfan-engine/editor`（op schema 单一事实源与词函数）与 `@lingfan-engine/stories-build`（构建 CLI，带 `lingfan-stories-build` / `lingfan-stories-watch` 两条命令）；工程里随构建生成的 `Stories.src/gen/stories.gen.d.ts` 把本工程的列名与插值键交给 IDE 做即时校验。`stories:watch` 已是常驻增量监听：保存源文件即重编译，产物与全量构建逐字节一致，并会报出本轮差量与受影响的故事列。
 
