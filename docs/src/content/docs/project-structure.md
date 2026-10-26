@@ -74,11 +74,13 @@ my-story/
 
 新文件怎么进故事清单，按宿主形态分两种：
 
-- **模板宿主（纯 Web 形态）**：按 `src/main.ts` 里 `STORIES` 数组显式取文件，新文件要追加进去：
+- **模板宿主（纯 Web 形态）**：按 `src/stories.ts` 里 `STORIES` 数组显式取文件，新文件要追加进去：
 
   ```ts
-  const STORIES = ["Stories/title/title_main.story"];
+  export const STORIES: readonly string[] = ["Stories/title/title_main.story"];
   ```
+
+  这张表单独成文件，是为了让叠加层能整体替换它：选了 `--sources ts` 的工程里，同一份文件指向的是构建产物 `Stories/title/*.json`。
 
 - **桌面壳**：递归收集 `Resources/Stories/` 下所有故事文件，放了就认，不需要登记；子目录就是章节分组。
 

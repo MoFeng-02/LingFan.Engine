@@ -70,12 +70,12 @@ description: 脚手架自带宿主接了哪些能力、哪些没接、哪些在�
 
 模板的宿主不依赖任何 UI 框架——直接操作 DOM。换成 Vue、React 或者别的都行，引擎和适配器零改动。
 
-接口本来就在那一层：宿主订阅引擎的状态变更，把变更落到自己的视图上；引擎不知道视图是什么。模板里那张订阅键表只有九个：
+接口本来就在那一层：宿主订阅引擎的状态变更，把变更落到自己的视图上；引擎不知道视图是什么。模板里那张订阅键表只有十个：
 
 ```text
 currentDialogSpeaker  currentDialogText  waiting
 nvlMode  nvlBuffer
-menuOptions  menuTargets
+menuOptions  menuTargets  inputOptions
 dialogVisible  elements
 ```
 
@@ -85,9 +85,9 @@ dialogVisible  elements
 
 ## 模板版本
 
-模板版本记在 `template/v1/template-meta.json` 里，当前 `1.6.0`，要求的引擎版本是 `0.1.0`。
+模板版本记在 `template/v1/template-meta.json` 里，当前 `1.7.0`，要求的引擎版本是 `0.1.0`。
 
-它和引擎版本**是两条线**。引擎发新版不会自动抬高模板版本——只有当模板内容真的变了才手动改这个数。所以你看到引擎是 0.3.0、模板还写着 1.6.0 是正常的。
+它和引擎版本**是两条线**。引擎发新版不会自动抬高模板版本——只有当模板内容真的变了才手动改这个数。所以你看到引擎是 0.3.0、模板还写着 1.7.0 是正常的。
 
 引擎包以 TS 源码出口发布（`exports: "./src/index.ts"`），消费方由 Vite 和 TypeScript 直接编译，没有中间构建步骤。它们都在 registry 上，`pnpm install` 直接可用。
 

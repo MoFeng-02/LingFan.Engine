@@ -87,10 +87,10 @@ Resources/Lang/en-US/main.json  → 不跳过（名字里有连字符和点，�
 
 新故事文件要不要登记，取决于宿主怎么取文件。引擎不读文件系统——它拿到的是供给方交上来的一批文件内容，列举文件是供给方的事。
 
-桌面壳的供给方递归扫 `Stories/`，新增文件不用登记。模板和浏览器形态按一张显式清单逐个取（HTTP 没法列目录），所以要加进 `src/main.ts` 的 `STORIES` 数组：
+桌面壳的供给方递归扫 `Stories/`，新增文件不用登记。模板和浏览器形态按一张显式清单逐个取（HTTP 没法列目录），所以要加进 `src/stories.ts` 的 `STORIES` 数组：
 
 ```ts
-const STORIES = [
+export const STORIES: readonly string[] = [
   "Stories/title/title_main.story",
   "Stories/chapter1/chapter1.story",
 ];

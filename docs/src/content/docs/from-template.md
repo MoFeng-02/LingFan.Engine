@@ -3,7 +3,7 @@ title: 从模板创建工程
 description: 模板提供工程骨架和一个能跑的示例故事。它自带宿主已接的能力有边界，用之前先看清哪些是模板没接、哪些是引擎没有。
 ---
 
-模板在引擎仓库的 `template/v1/`。`__PROJECT__/` 是工程骨架，`README.md` 是模板自己的说明，`pack-template.ps1` 负责打包，`template-meta.json` 记录模板版本。
+模板在引擎仓库的 `template/v1/`。`__PROJECT__/` 是工程骨架，`overlays/` 是可叠加层，`README.md` 是模板自己的说明，`pack-template.ps1` 负责打包，`template-meta.json` 记录模板版本与可选项。
 
 ## 生成一个新工程
 
@@ -12,7 +12,7 @@ npm create @lingfan-engine my-story
 pnpm create @lingfan-engine my-story
 ```
 
-生成器问三件事：工程名、框架、故事源形态，以及壳。当前框架可选「原生（框架无关）」「Vue 3」「React」；故事源形态可选「故事文件（`.story`）」与「TypeScript 源（`Stories.src/`）」；壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」。
+生成器问四件事：工程名、框架、壳、故事源形态。当前框架可选「原生（框架无关）」「Vue 3」「React」；壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」；故事源形态可选「故事文件（`.story`）」与「TypeScript 源（`Stories.src/`）」。
 
 跳过问答、全部取缺省值（原生 + 故事文件 + 浏览器）：
 

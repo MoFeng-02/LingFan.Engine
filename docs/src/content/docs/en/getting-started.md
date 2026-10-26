@@ -97,10 +97,10 @@ Refresh the page and the music should start when the first line appears.
 
 **The page is blank and the console shows a 404.** Your resource path is wrong. `bgm "Audio/theme.mp3"` maps to `Resources/Audio/theme.mp3`; paths are case-sensitive and cannot contain `..`.
 
-**You added a story file and the engine says it cannot find the column.** The new file never made it into the story list. How the list is supplied depends on the host form: the template's pure-Web host takes files explicitly from the `STORIES` array in `src/main.ts`, so a new file has to be appended there — the template source's comment says it verbatim: 「新增故事文件必须同步此表」 (every new story file must be synced into this list):
+**You added a story file and the engine says it cannot find the column.** The new file never made it into the story list. How the list is supplied depends on the host form: the template's pure-Web host takes files explicitly from the `STORIES` array in `src/stories.ts`, so a new file has to be appended there — the template source's comment says it verbatim: 「新增故事文件必须同步此表」 (every new story file must be synced into this list):
 
 ```ts
-const STORIES = ["Stories/title/title_main.story"];
+export const STORIES: readonly string[] = ["Stories/title/title_main.story"];
 ```
 
 The desktop shell does not use this table: it recursively collects every story file under `Resources/Stories/`, and anything you drop in is picked up. The engine side treats both forms the same: it only assembles files under `Stories/` and skips everything else.

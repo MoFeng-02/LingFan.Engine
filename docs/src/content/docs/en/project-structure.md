@@ -74,11 +74,13 @@ Put them anywhere inside `Stories/`, in whatever subdirectories you like. Column
 
 How a new file gets into the story list depends on the host form:
 
-- **Template host (pure-Web form)**: files are taken explicitly from the `STORIES` array in `src/main.ts`; a new file has to be appended there:
+- **Template host (pure-Web form)**: files are taken explicitly from the `STORIES` array in `src/stories.ts`; a new file has to be appended there:
 
   ```ts
-  const STORIES = ["Stories/title/title_main.story"];
+  export const STORIES: readonly string[] = ["Stories/title/title_main.story"];
   ```
+
+  The list lives in its own file so an overlay can replace it wholesale: in a project generated with `--sources ts`, the same file points at the build output `Stories/title/*.json`.
 
 - **Desktop shell**: recursively collects every story file under `Resources/Stories/` — drop one in and it is picked up, no registration needed; subdirectories double as chapter grouping.
 

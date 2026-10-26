@@ -1,15 +1,20 @@
 # 叠加层
 
-每个子目录是一层可选的工程内容，目录名就是 `template-meta.json` 里 `frameworks[]` / `shells[]` 的 `id`。
-生成器按「骨架 → 框架层 → 壳层」的顺序合并，同路径文件由后一层覆盖前一层。
+每个子目录是一层可选的工程内容，目录名就是 `template-meta.json` 里 `frameworks[]` / `sources[]` / `shells[]` 的 `id`。
+生成器按「骨架 → 框架层 → 故事源层 → 壳层」的顺序合并，同路径文件由后一层覆盖前一层。
 
 ## 缺省项没有目录
 
-`none`（框架无关）与 `browser`（浏览器）表示「这一层什么都不加」，所以这里看不到它们。
+`none`（框架无关）、`story`（故事文件）与 `browser`（浏览器）表示「这一层什么都不加」，所以这里看不到它们。
 缺目录不是错误，只是没有内容可叠。
 
 ## 现有层
 
+- `ts/` —— 故事源层，只换故事素材、不碰页面：新增 `Stories.src/`（`config.ts` + 两个示例列）、
+  构建产物 `Resources/Stories/title/*.json` 与 `Stories.src/gen/*.gen.d.ts`、覆盖骨架的
+  `src/stories.ts`（清单改指 `.json` 产物）与独立的 `tsconfig.stories.json`。
+  `package.patch.json` 补 `@lingfan-engine/stories-build` / `@lingfan-engine/editor` 与三条脚本，
+  并用 `create.remove` 删掉骨架那份手写故事（产物目录由构建全量管理，两套并存会把 `.story` 当陈旧列清掉）。
 - `vue/` —— 页面结构换成单文件组件：`index.html` 变成挂载点，新增 `src/App.vue` 与 Vue 版组合根，
   `package.patch.json` 补 `vue` / `@vitejs/plugin-vue` / `vue-tsc`，并把 `typecheck` 换成
   `vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json`。`src/host/**` 一行不改，
@@ -56,13 +61,19 @@
 - 任意工程文件：路径相对工程根，与骨架同名即覆盖。
 - `package.patch.json`（只在层根）：深合并进产物 `package.json`。依赖表按字段合并，
   数组与标量整体取代——数组拼接会得到既非骨架也非叠加层的第三种值。
+- `create.remove`（写在同一份 `package.patch.json` 里）：字符串数组，点在它之前各层里的路径
+  （文件或目录，目录写不带尾斜杠也行），本层写入前先删掉它们。用来清掉换形态后不再需要的骨架文件。
+
+```json
+{ "create": { "remove": ["src/host", "src/styles"] } }
+```
 
 新增依赖只写进 `package.patch.json`，不要复制整份 `package.json`：整份复制会让骨架后来加的字段
 在这一层永久丢失。生成器会在合并之后统一查一次 registry，把依赖写成当下最新的 `^x.y.z`。
 
 ## 新增一层
 
-1. 在 `template-meta.json` 的 `frameworks` 或 `shells` 里加一项 `{ id, label, hint }`。
+1. 在 `template-meta.json` 的 `frameworks`、`sources` 或 `shells` 里加一项 `{ id, label, hint }`。
 2. 建同名目录，放入该层独有的文件与 `package.patch.json`。
 3. 生成器不改：它对目录是缺席即跳过，不需要为新 `id` 写分支。
 

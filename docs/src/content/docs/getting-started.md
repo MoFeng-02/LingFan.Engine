@@ -93,10 +93,10 @@ label title_main:
 
 **页面一片空白，控制台报 404。** 资源路径写错了。`bgm "Audio/theme.mp3"` 对应 `Resources/Audio/theme.mp3`，大小写敏感，路径里不能有 `..`。
 
-**加了新故事文件，引擎说找不到列。** 新文件没进故事清单。故事清单按宿主形态分两种：模板这套纯 Web 宿主按 `src/main.ts` 里 `STORIES` 数组显式取文件，新文件要追加进去——模板源码里的注释原话就是「新增故事文件必须同步此表」：
+**加了新故事文件，引擎说找不到列。** 新文件没进故事清单。故事清单按宿主形态分两种：模板这套纯 Web 宿主按 `src/stories.ts` 里 `STORIES` 数组显式取文件，新文件要追加进去——模板源码里的注释原话就是「新增故事文件必须同步此表」：
 
 ```ts
-const STORIES = ["Stories/title/title_main.story"];
+export const STORIES: readonly string[] = ["Stories/title/title_main.story"];
 ```
 
 桌面壳不走这张表，它递归收集 `Resources/Stories/` 下所有故事文件，放了就认。引擎侧两种形态一致：只组装 `Stories/` 下的文件，其余一律跳过。

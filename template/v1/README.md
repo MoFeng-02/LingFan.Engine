@@ -40,14 +40,16 @@ npm create @lingfan-engine my-story
 pnpm create @lingfan-engine my-story
 ```
 
-生成器会问两件事：工程名、框架与壳。当前框架可选「原生（框架无关）」「Vue 3」「React」，
-壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」。全部取缺省值（原生 + 浏览器）可以跳过问答：
+生成器会问四件事：工程名、框架、故事源形态、壳。当前框架可选「原生（框架无关）」「Vue 3」「React」，
+故事源形态可选「故事文件（`.story`）」与「TypeScript 源（`Stories.src/`）」，
+壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」。全部取缺省值（原生 + 故事文件 + 浏览器）可以跳过问答：
 
 ```
 npm create @lingfan-engine my-story -- --yes
 ```
 
-生成后按提示 `cd my-story && pnpm install && pnpm dev`。
+生成后按提示 `cd my-story && pnpm install && pnpm dev`。选了 TypeScript 源形态的，
+`pnpm dev` 之前先跑一次 `pnpm stories:build`（模板已带产物，改过源之后才需要）。
 
 想不开交互问答、直接指定框架与壳：
 
@@ -56,6 +58,7 @@ npm create @lingfan-engine my-story -- --framework vue --shell browser
 npm create @lingfan-engine my-story -- --framework react --shell browser
 npm create @lingfan-engine my-story -- --shell miniprogram
 npm create @lingfan-engine my-story -- --framework vue --shell tauri
+npm create @lingfan-engine my-story -- --sources ts
 ```
 
 **框架层只换页面结构与入口，`src/host/**`（装配、订阅、帧循环、输入映射）一行不改，
@@ -66,6 +69,13 @@ npm create @lingfan-engine my-story -- --framework vue --shell tauri
 
 壳层与框架层可以叠加（先框架后壳）：`--framework react --shell tauri` 得到 React 页面 + 桌面外壳。
 小程序是例外——它自带 Vue 页面层，不与其他框架层叠加。
+
+**故事源形态层与框架层、壳层正交**，只决定故事从哪来：缺省形态直接改 `Resources/Stories/**/*.story`；
+`ts` 形态改 `Stories.src/**/*.ts` 再跑构建，产物是 `Resources/Stories/**/*.json`。后者会删掉骨架那份
+手写故事（层里声明 `create.remove: ["Resources/Stories"]`），再补上开箱可跑的生成物与三条脚本
+（`stories:build` / `stories:watch` / `stories-typecheck`）。产物目录由构建**全量管理**——源里没有的列
+构建会当陈旧列删掉，所以别在产物目录里手改；类型检查走独立的 `tsconfig.stories.json`（故事源有 ambient
+全局，不该和页面 DOM 类型面混在一个工程里）。
 
 **壳层是换一整套页面与宿主**：小程序形态的页面结构由 `src/components/**` 承接，宿主装配在
 `src/mp/**`（`uni.*` 只在 `src/mp/platform.ts` 出现一处），内容不进包体、走工程接口按基址取。
@@ -83,7 +93,8 @@ npm create @lingfan-engine my-story -- --framework vue --shell tauri
 
 模板依赖三个引擎包：`@lingfan-engine/core`（核心）、`@lingfan-engine/adapters`（预设适配器）、`@lingfan-engine/ui`（参考展示层）。
 它们以 **TS 源码出口**（`exports: "./src/index.ts"`）发布——消费方由 Vite/TS 直接编译，**无中间构建步骤**，
-`pnpm install` 直接可用。
+`pnpm install` 直接可用。选了 TypeScript 源形态的工程会多两个创作期依赖
+（`@lingfan-engine/stories-build` 与 `@lingfan-engine/editor`），由 `ts` 层自己声明。
 
 ## 工程结构（单资源根）
 
@@ -97,6 +108,7 @@ __PROJECT__/
 ├── vite.config.ts        # publicDir: "Resources" ← 资源根即静态根
 ├── index.html            # RenderTargets 落地：stage/dialogue/choices/notifications/toolbar
 ├── src/main.ts           # 组合根：装配适配器 → 组装工程 → 建引擎 → 订阅渲染 + 帧驱动
+├── src/stories.ts        # 故事文件表（Web 形态按显式清单取文件，全工程唯一声明点）
 ├── src/styles/stage.css  # 页面与层样式（换框架不动这份：叠加层共用同一张表）
 └── Resources/            # 故事工程根（自包含、可整体搬运）
     ├── project.json      #   工程清单：id/name/entry/lang/formatVersion
@@ -123,9 +135,11 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
 
 ## 叠加层与占位符
 
-`template-meta.json` 的 `frameworks` / `shells` 声明生成器会问哪些选项，每项的 `id` 对应
-`overlays/<id>/` 目录：同路径文件**覆盖**骨架，根目录的 `*.patch.json` **深合并**进 `package.json`。
-缺省项（`none` / `browser`）没有目录，表示「这一层什么都不加」，不是错误。
+`template-meta.json` 的 `frameworks` / `sources` / `shells` 声明生成器会问哪些选项，每项的 `id` 对应
+`overlays/<id>/` 目录：同路径文件**覆盖**骨架，根目录的 `*.patch.json` **深合并**进 `package.json`，
+其中 `create.remove` 列出本层要删掉的骨架路径（换形态时清残留）。缺省项（`none` / `story` / `browser`）
+没有目录，表示「这一层什么都不加」，不是错误。合并顺序固定为「骨架 → 框架 → 故事源 → 壳」：
+故事源要晚于框架层才能把各框架入口的故事表指向生成物；壳放最后，因为它对工程形态有最终发言权。
 
 骨架里的占位符有两种大小写形态：`__PROJECT__`（清单 id/name、页面标题、目录名）与
 `__project__`（`package.json` 的 name，npm 要求小写）。生成时两者都替换成工程名。
