@@ -11,6 +11,11 @@
  *    叠加层只说「我要多一个依赖、多一条脚本」。
  * 3. 其余文件按相对路径复制。
  *
+ * 覆盖只能加不能减：叠加层换了整套页面与宿主之后，骨架里那些被替换掉的部件仍然会
+ * 落进产物（小程序形态拿不到浏览器宿主，留着就是一堆没人 import 的死文件）。所以
+ * 第 4 条规则是**删除**——层根的 `package.patch.json` 用 `create.remove` 点名要去掉
+ * 的路径（文件或目录），删除作用于它之前的层，本层自己的文件随后照常写入。
+ *
  * 占位符替换不在这里做——它是纯文本层面的最后一刀，见 `generate` 域。
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -64,6 +69,7 @@ const SKIP_DIRS = new Set(["node_modules", "dist", ".git", "Saves"]);
 export function readLayer(base: string): {
   readonly files: PendingFile[];
   readonly patch: Readonly<Record<string, unknown>> | undefined;
+  readonly removes: readonly string[];
 } {
   const files: PendingFile[] = [];
   let patch: Record<string, unknown> | undefined;
@@ -82,7 +88,48 @@ export function readLayer(base: string): {
     }
     files.push({ path, content: readFileSync(join(base, path)) });
   }
-  return { files, patch };
+  return { files, patch, removes: removeList(patch) };
+}
+
+/**
+ * 读本层 `create.remove` 点名的路径，归一成 posix 相对路径。
+ *
+ * 必须在**每层各读一次**，不能读合并后的增量：增量深合并时数组由后者整体取代，
+ * 两个叠加层各删各的，合并后只剩最后一层的名单。删除是逐层施加的动作，不是配置。
+ *
+ * 归一规则只有两条——去掉开头的 `./` 与结尾的 `/`：前者是手写 JSON 时的常见笔误，
+ * 后者让人能写 `src/pages/` 表示「这个目录」，与写 `src/pages` 等价。
+ */
+function removeList(
+  patch: Readonly<Record<string, unknown>> | undefined,
+): readonly string[] {
+  if (patch === undefined) return [];
+  const section = patch[CREATE_FIELD];
+  if (!isPlainObject(section)) return [];
+  const raw = section.remove;
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    const normalized = item.replace(/^\.\//, "").replace(/\/+$/, "");
+    if (normalized.length > 0) out.push(normalized);
+  }
+  return out;
+}
+
+/** 生成器专用字段名；与 `generate` 域共用同一个约定 */
+const CREATE_FIELD = "create";
+
+/**
+ * 这个路径是否被删除名单命中：精确同名，或落在被点名的目录下。
+ *
+ * 目录按前缀判，而不是先查磁盘上有没有这个目录——删除发生在「文件表」这一层，
+ * 表里可能已经因为上一层被删而不再有该目录，此时仍要拦住本层不该写的文件。
+ */
+function isRemoved(path: string, removes: readonly string[]): boolean {
+  return removes.some(
+    (entry) => path === entry || path.startsWith(`${entry}/`),
+  );
 }
 
 /** 合并结果：文件表（后写覆盖先写）+ 合并后的工程清单增量 */
@@ -94,8 +141,9 @@ export interface MergedLayer {
 /**
  * 依次合并多层目录，先出现的层在前（骨架先，叠加层后）。
  *
- * 同路径后者覆盖前者；增量逐层深合并。返回的文件表保持「每个路径只出现一次」，
- * 值是最后写入的那份——调用方可以直接顺序写盘，不需要自己判重。
+ * 同路径后者覆盖前者；每层的删除名单先作用于已有文件表，再写入本层文件；
+ * 增量逐层深合并。返回的文件表保持「每个路径只出现一次」，值是最后写入的那份——
+ * 调用方可以直接顺序写盘，不需要自己判重。
  */
 export function mergeLayers(bases: readonly string[]): MergedLayer {
   const byPath = new Map<string, PendingFile>();
@@ -104,6 +152,11 @@ export function mergeLayers(bases: readonly string[]): MergedLayer {
   for (const base of bases) {
     if (!existsSync(base)) continue;
     const layer = readLayer(base);
+    if (layer.removes.length > 0) {
+      for (const path of [...byPath.keys()]) {
+        if (isRemoved(path, layer.removes)) byPath.delete(path);
+      }
+    }
     for (const file of layer.files) byPath.set(file.path, file);
     if (layer.patch) {
       patch = deepMerge(patch, layer.patch);

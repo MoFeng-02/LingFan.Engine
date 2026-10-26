@@ -145,3 +145,95 @@ describe("深合并语义", () => {
     });
   });
 });
+
+describe("叠加层删除", () => {
+  it("点名一个文件就删掉它", () => {
+    const skeleton = makeLayer("r-file-skeleton", {
+      "main.ts": "a",
+      "host.ts": "b",
+    });
+    const overlay = makeLayer("r-file-overlay", {
+      "package.patch.json": '{"create":{"remove":["host.ts"]}}',
+      "mini.ts": "c",
+    });
+    const merged = mergeLayers([skeleton, overlay]);
+    expect(merged.files.map((file) => file.path)).toEqual([
+      "main.ts",
+      "mini.ts",
+    ]);
+  });
+
+  it("点名一个目录就删掉整棵子树", () => {
+    const skeleton = makeLayer("r-dir-skeleton", {
+      "src/pages/a.ts": "a",
+      "src/pages/deep/b.ts": "b",
+      "src/main.ts": "m",
+    });
+    const overlay = makeLayer("r-dir-overlay", {
+      "package.patch.json": '{"create":{"remove":["src/pages"]}}',
+    });
+    const merged = mergeLayers([skeleton, overlay]);
+    expect(merged.files.map((file) => file.path)).toEqual(["src/main.ts"]);
+  });
+
+  it("删除只作用于它之前的层，本层同名文件照常写入", () => {
+    const skeleton = makeLayer("r-self-skeleton", { "main.ts": "骨架" });
+    const overlay = makeLayer("r-self-overlay", {
+      "package.patch.json": '{"create":{"remove":["main.ts"]}}',
+      "main.ts": "叠加层",
+    });
+    const merged = mergeLayers([skeleton, overlay]);
+    expect(merged.files.map((file) => file.path)).toEqual(["main.ts"]);
+    expect(String(merged.files[0]?.content)).toBe("叠加层");
+  });
+
+  it("前缀相同的兄弟路径不被误删", () => {
+    const skeleton = makeLayer("r-prefix-skeleton", {
+      "src/pages.ts": "单文件",
+      "src/pages/a.ts": "目录内",
+    });
+    const overlay = makeLayer("r-prefix-overlay", {
+      "package.patch.json": '{"create":{"remove":["src/pages"]}}',
+    });
+    const merged = mergeLayers([skeleton, overlay]);
+    expect(merged.files.map((file) => file.path)).toEqual(["src/pages.ts"]);
+  });
+
+  it("两层各删各的，互不吞掉名单", () => {
+    const skeleton = makeLayer("r-two-skeleton", {
+      "a.ts": "a",
+      "b.ts": "b",
+      "c.ts": "c",
+    });
+    const framework = makeLayer("r-two-framework", {
+      "package.patch.json": '{"create":{"remove":["a.ts"]}}',
+    });
+    const shell = makeLayer("r-two-shell", {
+      "package.patch.json": '{"create":{"remove":["b.ts"]}}',
+    });
+    const merged = mergeLayers([skeleton, framework, shell]);
+    expect(merged.files.map((file) => file.path)).toEqual(["c.ts"]);
+  });
+
+  it("`./` 前缀与结尾斜杠都被归一", () => {
+    const skeleton = makeLayer("r-norm-skeleton", {
+      "src/pages/a.ts": "a",
+      "src/keep.ts": "k",
+    });
+    const overlay = makeLayer("r-norm-overlay", {
+      "package.patch.json": '{"create":{"remove":["./src/pages/"]}}',
+    });
+    const merged = mergeLayers([skeleton, overlay]);
+    expect(merged.files.map((file) => file.path)).toEqual(["src/keep.ts"]);
+  });
+
+  it("没有删除名单时行为与从前一致", () => {
+    const skeleton = makeLayer("r-none-skeleton", { "main.ts": "a" });
+    const overlay = makeLayer("r-none-overlay", {
+      "package.patch.json": '{"dependencies":{"vue":"^3.5.0"}}',
+    });
+    const merged = mergeLayers([skeleton, overlay]);
+    expect(merged.files.map((file) => file.path)).toEqual(["main.ts"]);
+    expect(merged.patch).toEqual({ dependencies: { vue: "^3.5.0" } });
+  });
+});

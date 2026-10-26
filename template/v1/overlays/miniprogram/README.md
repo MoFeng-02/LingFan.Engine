@@ -14,7 +14,6 @@
 | `src/pages.json`、`src/manifest.json` | 页面与平台声明                                                       |
 | `Resources/`                          | 内容根：清单、故事、音频、视频、图片（**不随包体分发**）             |
 | `scripts/serve-project.mjs`           | 开发期内容服务                                                       |
-| `src/host/**`                         | 浏览器形态的宿主，本形态不使用（见「已知残留」）                     |
 
 ## 起工程
 
@@ -81,11 +80,19 @@ pnpm dev:h5        # 等价 uni
 代价：`vite.config.ts` 不能跟着升到 8，脚本与插件类型按 5 的形态写；上游哪天跟进新 vite，
 这三处（`vite`、`vue`、插件）要成对改完再放开钉版。
 
-## 已知残留
+## 被换掉的骨架文件
 
-`src/host/**` 与 `src/styles/stage.css` 是骨架的浏览器宿主，本形态不使用：没有人 import 它们，
-`tsconfig.json` 已把两者排除，类型检查不会碰。脚手架目前只做「同路径覆盖」、没有删除能力，
-所以它们会留在工程里；删掉不影响运行。
+本形态换掉了整套页面与宿主，骨架里那些只服务浏览器形态的部件由本层
+`package.patch.json` 的 `create.remove` 点名删除——生成器在合并时会真把它们从产物里去掉，
+不会留在工程里：
+
+| 路径            | 为什么不带       |
+| --------------- | ---------------- |
+| `src/host/**`   | 浏览器宿主的装配 |
+| `src/styles/**` | 浏览器页面样式表 |
+
+`src/vite-env.d.ts` 保留：它声明的 `virtual:story-fonts` 与本层 `vite.config.ts` 的字体插件
+一一对应，`src/mp/project-source.ts` 里的 `import.meta.env` 也靠它拿到 `vite/client` 类型。
 
 ## 验收这条链路
 

@@ -15,6 +15,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"],
-  "exclude": ["src/host/**", "src/styles/**"]
+  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]
 }

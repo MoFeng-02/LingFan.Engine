@@ -35,6 +35,7 @@
       "typescript",
       "vite",
       "vue"
-    ]
+    ],
+    "remove": ["src/host", "src/styles"]
   }
 }
