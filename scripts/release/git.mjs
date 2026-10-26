@@ -10,13 +10,21 @@
  */
 import { execFileSync } from "node:child_process";
 
-/** 跑一条 git 命令，返回 stdout（已去掉首尾空白）。 */
+/**
+ * 跑一条 git 命令，返回 stdout（已去掉首尾空白）。
+ *
+ * 读类命令要拿输出，写类命令（推送）只想让 git 的进度直通终端，于是把 stdout 从管
+ * 道换成 `inherit`。那时 `execFileSync` **不返回字符串而返回 `null`**——对 `null` 调
+ * `trim()` 会抛 `Cannot read properties of null (reading 'trim')`，把一次成功的推送
+ * 报成失败。所以这里先判类型，非字符串一律按「没有输出」处理。
+ */
 function runGit(args, options = {}) {
-  return execFileSync("git", args, {
+  const output = execFileSync("git", args, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
     ...options,
-  }).trim();
+  });
+  return typeof output === "string" ? output.trim() : "";
 }
 
 /** 当前分支名。 */
