@@ -1,0 +1,25 @@
+{
+  /* Stories.src 的类型检查工程：与工程根的 tsconfig.json 分开。
+     理由：根 tsconfig 由框架层/壳层决定（Vue 要 vue-tsc、React 要 jsx），
+     而故事源只需要纯 tsc + 故事源自己的全局声明（defineVars / StoriesConfig /
+     script 的词表）。合并成一个工程会让两侧的 compilerOptions 互相打架。
+
+     构建（pnpm stories:build）不做类型检查——它只把 TS 编译成命令序列，
+     类型错了照样能生成故事文件。想让类型错误拦住你，就单独跑
+     pnpm stories-typecheck。 */
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["Stories.src/**/*.ts"]
+}

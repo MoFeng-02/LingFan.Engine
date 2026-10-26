@@ -1,0 +1,30 @@
+{
+  "formatVersion": 1,
+  "id": "title_main",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "say",
+      "text": "这是用 TypeScript 写的故事列。",
+      "speaker": "旁白"
+    },
+    {
+      "op": "say",
+      "text": "改完保存，在工程根跑 pnpm stories:build 就会重新生成故事文件。"
+    },
+    {
+      "op": "menu",
+      "prompt": "接下来做什么？",
+      "options": [
+        {
+          "text": "四处看看",
+          "target": "look_around"
+        },
+        {
+          "text": "重来一次",
+          "target": "title_main"
+        }
+      ]
+    }
+  ]
+}

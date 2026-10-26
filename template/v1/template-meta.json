@@ -1,5 +1,5 @@
 {
-  "version": "1.6.0",
+  "version": "1.7.0",
   "minEngineVersion": "0.1.0",
   "placeholder": "__PROJECT__",
   "frameworks": [
@@ -36,5 +36,17 @@
       "hint": "给浏览器形态再加一个桌面壳：存档落到应用数据目录，其余不变"
     }
   ],
-  "_comment": "模板版本唯一来源，独立于引擎版本：仅当 template/v1 内容真正变化时才手动 bump。placeholder 是目录/文件内的工程名占位符，生成时整体替换为工程名（对齐 _LingFanEngineTemplateTitle_ 占位符语义）。minEngineVersion 表示此模板要求的最低引擎版本。frameworks 与 shells 决定生成器会问什么、能叠哪些层，首项为缺省值；每一项的 id 对应 template/v1/overlays/<id> 目录（缺省层可以没有目录）。"
+  "sources": [
+    {
+      "id": "story",
+      "label": "故事文件（.story）",
+      "hint": "直接写引擎自带的文本故事格式，改完保存即生效"
+    },
+    {
+      "id": "ts",
+      "label": "TypeScript 源（Stories.src）",
+      "hint": "用 TS 写故事列：有类型补全与重构，构建时编译成故事文件"
+    }
+  ],
+  "_comment": "模板版本唯一来源，独立于引擎版本：仅当 template/v1 内容真正变化时才手动 bump。placeholder 是目录/文件内的工程名占位符，生成时整体替换为工程名（对齐 _LingFanEngineTemplateTitle_ 占位符语义）。minEngineVersion 表示此模板要求的最低引擎版本。frameworks / shells / sources 决定生成器会问什么、能叠哪些层，各自首项为缺省值；每一项的 id 对应 template/v1/overlays/<id> 目录（缺省层可以没有目录）。合并顺序为「骨架 → 框架 → 故事源 → 壳」，同路径文件由后一层覆盖前一层。"
 }

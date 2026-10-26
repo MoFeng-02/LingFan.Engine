@@ -12,16 +12,15 @@ import { createElement, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { DEFAULT_TEXT_CPS, DEFAULT_TOAST_MS } from "@lingfan-engine/ui";
 import { bootHost, must, reportBootFailure, type StageDom } from "./host";
+import { STORIES } from "./stories";
 import { App } from "./App.tsx";
 
 /**
  * 工程清单与故事文件：**都在应用资源根 `Resources/` 内**。
  * 宿主把 `Resources` 作为静态根，故逻辑路径就是 `project.json` / `Stories/**`。
- * **新增故事文件必须同步此表**（Web 形态按显式清单取文件）。
+ * 故事表在 `./stories`（唯一声明点，各形态共用）。
  */
 const MANIFEST = "project.json";
-/** 本工程的故事文件表（相对资源根；新增故事必须同步此表） */
-const STORIES = ["Stories/title/title_main.story"];
 
 /** 页面节点句柄表：每个 id 都必须由 `App.tsx` 渲染（缺一个 `must` 当场抛） */
 function readDom(): StageDom {

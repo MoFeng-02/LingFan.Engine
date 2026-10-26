@@ -1,0 +1,8 @@
+{
+  "formatVersion": 1,
+  "id": "title_main",
+  "name": "__PROJECT__",
+  "entry": "title_main",
+  "lang": "zh-CN",
+  "tsSource": true
+}

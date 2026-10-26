@@ -28,7 +28,22 @@ interface TemplateOption {
 const meta = JSON.parse(templateMeta) as {
   frameworks?: TemplateOption[];
   shells?: TemplateOption[];
+  sources?: TemplateOption[];
 };
+
+/** 声明过的全部可选层：三个维度一起看，漏掉一维就等于那维没被验过 */
+const ALL_OPTIONS = [
+  ...(meta.frameworks ?? []),
+  ...(meta.sources ?? []),
+  ...(meta.shells ?? []),
+];
+
+/** 每个维度的缺省项：缺省形态就是骨架本身，可以没有目录 */
+const DEFAULT_IDS = new Set(
+  [meta.frameworks?.[0], meta.sources?.[0], meta.shells?.[0]]
+    .map((option) => option?.id)
+    .filter((id): id is string => id !== undefined),
+);
 
 /** 叠加层全部文本，键 = 仓库相对路径 */
 const OVERLAY_SOURCES = import.meta.glob(
@@ -43,11 +58,18 @@ const ENTRY_NAMES = ["src/main.ts", "src/main.tsx"];
 const VIEW_NAMES = ["App.vue", "App.tsx"];
 
 /**
- * 不换页面结构的层：它们只补工程外围（如桌面壳的 `src-tauri/`），
- * 页面与 `index.html` 仍是骨架那一份，因此层里没有自己的 `index.html`。
+ * 不换页面结构的层：它们只补工程外围，页面与 `index.html` 仍是骨架那一份，
+ * 因此层里没有自己的 `index.html`。
  * 它们可以有组合根（换掉个别端口），但节点表必须与骨架同源。
+ *
+ * - `tauri`：只补 `src-tauri/` 与清单补丁；
+ * - `ts`：故事源形态层，只把 `Resources/Stories/**` 换成 TS 编译链的产物，
+ *   页面与装配一行不动。
  */
-const PERIPHERAL_OPTIONS = new Set(["tauri"]);
+const PERIPHERAL_OPTIONS = new Set(["tauri", "ts"]);
+
+/** 外围层里带原生平台桥的那一类：只有它们该声明平台依赖与命令行 */
+const DESKTOP_SHELL_OPTIONS = new Set(["tauri"]);
 
 /** 骨架组合根要的节点 id 表（与 `src/main.ts` 的 `must("#x")` 同源） */
 function mustedIds(): string[] {
@@ -82,15 +104,13 @@ function overlaySource(optionId: string, names: readonly string[]): string {
 
 describe("模板叠加层：声明与素材一致", () => {
   it("声明过的每个层都有目录，且每层至少含一份入口文件", () => {
-    const options = [...(meta.frameworks ?? []), ...(meta.shells ?? [])];
-    expect(options.length).toBeGreaterThan(0);
-    for (const option of options) {
+    expect(ALL_OPTIONS.length).toBeGreaterThan(0);
+    for (const option of ALL_OPTIONS) {
       const files = overlayFiles(option.id);
-      // 首项是缺省值，可以没有目录：骨架本身就是它的形态（原生框架 / 浏览器壳）
+      // 缺省项可以没有目录：骨架本身就是它的形态（原生框架 / 故事文件 / 浏览器壳）
       if (files.length === 0) {
         expect(
-          (meta.frameworks ?? [])[0]?.id === option.id ||
-            (meta.shells ?? [])[0]?.id === option.id,
+          DEFAULT_IDS.has(option.id),
           `首项之外的层必须有目录：${option.id}`,
         ).toBe(true);
         continue;
@@ -109,7 +129,7 @@ describe("模板叠加层：声明与素材一致", () => {
   it("有目录的层都靠清单补丁接入：不能只丢文件不声明依赖与脚本", () => {
     // 生成器只认层根的 package.patch.json（深合并进产物 package.json）；
     // 没有它，层里的文件就是到不了位的死素材。
-    for (const option of [...(meta.frameworks ?? []), ...(meta.shells ?? [])]) {
+    for (const option of ALL_OPTIONS) {
       if (overlayFiles(option.id).length === 0) continue;
       expect(
         overlayFiles(option.id).some(([path]) =>
@@ -123,7 +143,7 @@ describe("模板叠加层：声明与素材一致", () => {
   it("每层的占位符写法与骨架同源（工程名只认两套形态）", () => {
     // 带点/不带点的两套占位符由生成器统一替换；层里必须照抄，不能自创
     expect(skeletonHtml).toContain("__PROJECT__");
-    for (const option of [...(meta.frameworks ?? []), ...(meta.shells ?? [])]) {
+    for (const option of ALL_OPTIONS) {
       for (const [path, source] of overlayFiles(option.id)) {
         if (!path.endsWith("index.html")) continue;
         expect(source, `${path} 丢了工程名占位符`).toContain("__PROJECT__");
@@ -131,7 +151,7 @@ describe("模板叠加层：声明与素材一致", () => {
     }
   });
 
-  it("只补工程外围的层登记在壳，不冒充框架（框架层必须自带页面结构）", () => {
+  it("只补工程外围的层登记在壳或故事源，不冒充框架（框架层必须自带页面结构）", () => {
     const frameworkIds = (meta.frameworks ?? []).map((option) => option.id);
     for (const optionId of PERIPHERAL_OPTIONS) {
       expect(
@@ -146,16 +166,14 @@ describe("模板叠加层：页面节点覆盖组合根的全部 must()", () => 
   /**
    * 节点互锁只对「自己重画页面结构」且「用骨架那套 `must("#x")` 取节点」的层成立：
    * - 小程序壳自带整套页面与组件，入口是 `createSSRApp`，不经 `must()` 取节点，按证据筛掉；
-   * - 桌面壳（`PERIPHERAL_OPTIONS`）也用 `must()` 取节点，但页面结构仍是骨架那份、
-   *   层里没有自己的视图文件，节点 id 由骨架 `index.html` 提供，故不参与本组。
+   * - 外围层（`PERIPHERAL_OPTIONS`）不重画页面，节点 id 由骨架 `index.html` 提供，
+   *   故不参与本组。
    */
-  const interlocked = [...(meta.frameworks ?? []), ...(meta.shells ?? [])]
-    .filter((option) => {
-      if (PERIPHERAL_OPTIONS.has(option.id)) return false;
-      const entry = overlaySource(option.id, ENTRY_NAMES);
-      return entry.includes("must(");
-    })
-    .map((option) => [option.id] as const);
+  const interlocked = ALL_OPTIONS.filter((option) => {
+    if (PERIPHERAL_OPTIONS.has(option.id)) return false;
+    const entry = overlaySource(option.id, ENTRY_NAMES);
+    return entry.includes("must(");
+  }).map((option) => [option.id] as const);
 
   it("至少有一层用 must() 取节点（防判据因筛空而空跑）", () => {
     expect(interlocked.length).toBeGreaterThan(0);
@@ -183,8 +201,8 @@ describe("模板叠加层：页面节点覆盖组合根的全部 must()", () => 
   );
 });
 
-describe("模板叠加层：桌面壳只换端口，不重画页面", () => {
-  it("桌面壳层不带 index.html（页面结构仍来自骨架）", () => {
+describe("模板叠加层：外围层只换端口与素材，不重画页面", () => {
+  it("外围层不带 index.html（页面结构仍来自骨架）", () => {
     for (const optionId of PERIPHERAL_OPTIONS) {
       if (overlayFiles(optionId).length === 0) continue;
       expect(
@@ -194,8 +212,8 @@ describe("模板叠加层：桌面壳只换端口，不重画页面", () => {
     }
   });
 
-  it("桌面壳层的组合根与骨架组合根取的是同一批节点", () => {
-    // 壳层没有自己的视图文件，节点由骨架的 index.html 提供；
+  it("外围层的组合根与骨架组合根取的是同一批节点", () => {
+    // 外围层没有自己的视图文件，节点由骨架的 index.html 提供；
     // 只要它仍用 must() 取节点，取的就必须是同一批——多一个、少一个都会在启动时抛。
     for (const optionId of PERIPHERAL_OPTIONS) {
       const entry = overlaySource(optionId, ENTRY_NAMES);
@@ -207,7 +225,7 @@ describe("模板叠加层：桌面壳只换端口，不重画页面", () => {
     }
   });
 
-  it("桌面壳层的组合根通过 ports 换端口，而不是自己重写装配", () => {
+  it("外围层若自带组合根，只通过 ports 换端口，不重写装配", () => {
     const shellEntries = [...PERIPHERAL_OPTIONS]
       .map((optionId) => overlaySource(optionId, ENTRY_NAMES))
       .filter((source) => source !== "");
@@ -220,8 +238,8 @@ describe("模板叠加层：桌面壳只换端口，不重画页面", () => {
     }
   });
 
-  it("清单补丁声明了桌面壳的运行时与命令行依赖", () => {
-    for (const optionId of PERIPHERAL_OPTIONS) {
+  it("桌面壳的清单补丁声明了运行时与命令行依赖", () => {
+    for (const optionId of DESKTOP_SHELL_OPTIONS) {
       const hit = overlayFiles(optionId).find(([path]) =>
         path.endsWith("/package.patch.json"),
       );
@@ -261,10 +279,59 @@ describe("模板叠加层：不得改动骨架的交付形态", () => {
 
   it("页面结构只在视图文件里，宿主层一行未改（换框架不动装配）", () => {
     // 叠加层不得自带 host/：装配与交互仍由骨架的 src/host/** 负责
-    for (const option of [...(meta.frameworks ?? []), ...(meta.shells ?? [])]) {
+    for (const option of ALL_OPTIONS) {
       for (const [path] of overlayFiles(option.id)) {
         expect(path, `${path} 不应自带宿主实现`).not.toContain("/host/");
       }
     }
+  });
+});
+
+describe("模板叠加层：故事源形态层只换故事素材", () => {
+  const TS_FILES = overlayFiles("ts");
+
+  it("ts 层自带故事源与构建脚本，开箱就能跑 stories:build", () => {
+    const patch = TS_FILES.find(([path]) =>
+      path.endsWith("/package.patch.json"),
+    );
+    expect(patch, "ts 层缺 package.patch.json").toBeDefined();
+    const parsed = JSON.parse(patch![1]) as {
+      devDependencies?: Record<string, string>;
+      scripts?: Record<string, string>;
+    };
+    // 构建链是层内自带的：消费工程不该再自己装包、自己拼命令
+    expect(
+      parsed.devDependencies?.["@lingfan-engine/stories-build"],
+    ).toBeDefined();
+    expect(parsed.devDependencies?.["@lingfan-engine/editor"]).toBeDefined();
+    for (const script of ["stories:build", "stories:watch"]) {
+      expect(parsed.scripts?.[script], `ts 层缺 ${script} 脚本`).toBeDefined();
+    }
+  });
+
+  it("ts 层用生成物接管故事目录：骨架那份手写故事必须先被删掉", () => {
+    // 产物由 stories:build 全量管理 Stories/**：留着骨架的 .story，
+    // 第一次构建就会把它当陈旧列删掉，使用者会以为文件「自己消失了」。
+    const patch = TS_FILES.find(([path]) =>
+      path.endsWith("/package.patch.json"),
+    );
+    const parsed = JSON.parse(patch![1]) as { create?: { remove?: string[] } };
+    expect(parsed.create?.remove).toContain("Resources/Stories");
+    // 删除之后必须补上生成物，否则工程开箱没有任何可跑的故事
+    expect(
+      TS_FILES.some(([path]) => path.endsWith("Resources/project.json")),
+      "ts 层缺 Resources/project.json",
+    ).toBe(true);
+    expect(
+      TS_FILES.filter(([path]) => path.endsWith(".json")).length,
+      "ts 层缺故事生成物",
+    ).toBeGreaterThan(1);
+  });
+
+  it("ts 层的故事表指向生成物而非手写故事", () => {
+    const stories = TS_FILES.find(([path]) => path.endsWith("/src/stories.ts"));
+    expect(stories, "ts 层缺 src/stories.ts").toBeDefined();
+    expect(stories![1]).toContain('.json"');
+    expect(stories![1]).not.toContain(".story");
   });
 });

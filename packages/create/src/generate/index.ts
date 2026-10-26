@@ -5,6 +5,7 @@
  */
 export {
   collectDependencyNames,
+  DEFAULT_SOURCES,
   generateProject,
   layerBases,
   pinnedNames,

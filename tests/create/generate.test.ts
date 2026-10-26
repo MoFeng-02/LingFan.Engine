@@ -63,6 +63,10 @@ function makeTemplate(name: string): string {
       dependencies: { vue: "^3.5.0" },
     }),
     "overlays/vue/src/App.vue": "<template>__PROJECT__</template>",
+    "overlays/ts/package.patch.json": JSON.stringify({
+      devDependencies: { "@lingfan-engine/stories-build": "^0.1.0" },
+    }),
+    "overlays/ts/src/stories.ts": "export const STORIES = [];",
     "overlays/browser/vite.patch.ts": "// browser only __PROJECT__",
   };
   for (const [rel, text] of Object.entries(files)) {
@@ -290,8 +294,28 @@ describe("点文件名还原", () => {
 });
 
 describe("层序与写盘", () => {
-  it("层序为骨架 → 框架 → 壳", () => {
+  it("层序为骨架 → 框架 → 故事源 → 壳", () => {
     const root = makeTemplate("layers");
+    expect(
+      layerBases({
+        templateRoot: root,
+        targetBase: BASE,
+        projectName: "story",
+        framework: "vue",
+        sources: "ts",
+        shell: "browser",
+        resolved: new Map<string, string>(),
+      }),
+    ).toEqual([
+      join(root, "__PROJECT__"),
+      join(root, "overlays", "vue"),
+      join(root, "overlays", "ts"),
+      join(root, "overlays", "browser"),
+    ]);
+  });
+
+  it("故事源形态缺省为 story，不改变既有调用方的层序", () => {
+    const root = makeTemplate("sources-default");
     expect(
       layerBases({
         templateRoot: root,

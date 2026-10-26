@@ -17,7 +17,7 @@ const PACKAGE_ROOT = resolve(
   "..",
 );
 
-/** 模板元数据：模板版本、占位符、可选的框架与壳 */
+/** 模板元数据：模板版本、占位符、可选的框架、壳与故事源形态 */
 export interface TemplateMeta {
   /** 模板自身版本，独立于引擎版本 */
   readonly version: string;
@@ -29,6 +29,8 @@ export interface TemplateMeta {
   readonly frameworks: readonly TemplateOption[];
   /** 可选壳，首项为缺省值 */
   readonly shells: readonly TemplateOption[];
+  /** 可选故事源形态，首项为缺省值 */
+  readonly sources: readonly TemplateOption[];
 }
 
 /** 一个可选项（框架或壳）：`id` 对应叠加层目录名 */
@@ -59,8 +61,8 @@ export function resolveTemplateRoot(): string | undefined {
 /**
  * 读取模板元数据。
  *
- * `frameworks` / `shells` 缺失时补成只剩缺省项的单元素表，而不是报错——旧模板
- * （只有骨架、没有框架分层）仍然可以被生成器消费，向后兼容由此保证。
+ * `frameworks` / `shells` / `sources` 缺失时补成只剩缺省项的单元素表，而不是报错——旧模板
+ * （只有骨架、没有分层）仍然可以被生成器消费，向后兼容由此保证。
  */
 export function readTemplateMeta(root: string): TemplateMeta {
   const raw = JSON.parse(
@@ -72,6 +74,7 @@ export function readTemplateMeta(root: string): TemplateMeta {
     placeholder: raw.placeholder,
     frameworks: raw.frameworks ?? [SKELETON_ONLY],
     shells: raw.shells ?? [BROWSER_ONLY],
+    sources: raw.sources ?? [STORY_ONLY],
   };
 }
 
@@ -87,6 +90,13 @@ const BROWSER_ONLY: TemplateOption = {
   id: "browser",
   label: "浏览器",
   hint: "只生成 Web 端工程",
+};
+
+/** 旧模板无故事源分层时的缺省项 */
+const STORY_ONLY: TemplateOption = {
+  id: "story",
+  label: "故事文件（.story）",
+  hint: "直接写引擎自带的文本故事格式",
 };
 
 /** 叠加层目录名 */

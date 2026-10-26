@@ -46,6 +46,12 @@ export interface GenerateOptions {
   readonly framework: string;
   /** 壳叠加层 id */
   readonly shell: string;
+  /**
+   * 故事源形态叠加层 id；缺省 `story`（直接写故事文件）。
+   *
+   * 可选是为了不破坏既有调用方——只关心框架与壳的代码不必为一个用不到的参数改签名。
+   */
+  readonly sources?: string;
   /** 引擎包的最新版本；缺席项沿用模板记录的值 */
   readonly resolved: ReadonlyMap<string, string>;
 }
@@ -56,10 +62,14 @@ export interface GenerateResult {
   readonly projectDir: string;
   /** 写出的文件数 */
   readonly fileCount: number;
-  /** 实际采用的框架与壳 */
+  /** 实际采用的框架、壳与故事源形态 */
   readonly framework: string;
   readonly shell: string;
+  readonly sources: string;
 }
+
+/** 故事源形态的缺省 id：不叠加任何层，直接用骨架自带的故事文件 */
+export const DEFAULT_SOURCES = "story";
 
 /**
  * 生成一个工程。
@@ -92,18 +102,30 @@ export function generateProject(options: GenerateOptions): GenerateResult {
     fileCount: files.length,
     framework: options.framework,
     shell: options.shell,
+    sources: options.sources ?? DEFAULT_SOURCES,
   };
 }
 
 /**
- * 依次列出要合并的目录：骨架在前，框架层次之，壳层最后。
+ * 依次列出要合并的目录：骨架在前，框架层次之，故事源形态层再次，壳层最后。
  *
- * 缺席的叠加层直接跳过——缺省项（`none` / `browser`）本就没有目录，
+ * 顺序有实际后果，不是随便排的：
+ * - 故事源形态层要晚于框架层——它替换 `src/stories.ts`，而各框架入口都从那里取表，
+ *   晚于框架层才能覆盖到「框架层是否也带了自己的 stories.ts」这类情况；
+ * - 壳层最后——壳对工程形态有最终发言权（小程序壳会删掉浏览器宿主的 `src/host/`），
+ *   让它压过其余各层才不会出现「壳删了、下层又写回来」。
+ *
+ * 缺席的叠加层直接跳过——缺省项（`none` / `browser` / `story`）本就没有目录，
  * 这不是错误，只是「这一层什么都不加」。
  */
 export function layerBases(options: GenerateOptions): string[] {
   const bases = [join(options.templateRoot, SKELETON_DIR)];
-  for (const id of unique([options.framework, options.shell])) {
+  const ids = unique([
+    options.framework,
+    options.sources ?? DEFAULT_SOURCES,
+    options.shell,
+  ]);
+  for (const id of ids) {
     const dir = overlayDirOf(options.templateRoot, id);
     if (dir !== undefined && !bases.includes(dir)) bases.push(dir);
   }

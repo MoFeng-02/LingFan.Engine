@@ -7,6 +7,9 @@ target
 apps/playground/Stories.src/gen/
 # 同上：创作链编译产物（Resources/Stories/** + project.json，由 stories:build 差量写盘）
 apps/playground/Resources/
+# 同上：模板的 TS 故事源层自带一份开箱产物，同样是生成器写的
+template/v1/overlays/ts/Stories.src/gen/
+template/v1/overlays/ts/Resources/
 # 平台与框架生成物（Tauri / Astro 自动生成，人工排版会被覆盖）
 apps/playground/src-tauri/gen/
 docs/.astro/

@@ -23,15 +23,14 @@ import {
   installTauriBridge,
 } from "@lingfan-engine/adapters";
 import { bootHost, must, reportBootFailure, type StageDom } from "./host";
+import { STORIES } from "./stories";
 
 /**
  * 工程清单与故事文件：**都在应用资源根 `Resources/` 内**。
  * 打包后它们位于 `dist/` 顶层，路径与开发期一致。
- * **新增故事文件必须同步此表**（Web 形态按显式清单取文件）。
+ * 故事表在 `./stories`（唯一声明点，各形态共用）。
  */
 const MANIFEST = "project.json";
-/** 本工程的故事文件表（相对资源根；新增故事必须同步此表） */
-const STORIES = ["Stories/title/title_main.story"];
 
 /** 页面节点句柄表：每个 id 都必须存在于 index.html（缺一个 `must` 当场抛） */
 const dom: StageDom = {

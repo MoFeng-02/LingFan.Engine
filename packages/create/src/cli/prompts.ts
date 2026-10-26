@@ -1,8 +1,8 @@
 /**
  * 交互问答。
  *
- * 生成器要问三件事：工程名、框架、壳。三项都能用命令行参数预先给定——CI、脚本、
- * 或「我已经知道要什么」的人不该被问答拦住，因此问答只在参数缺席时发生。
+ * 生成器要问四件事：工程名、框架、壳、故事源形态。四项都能用命令行参数预先给定——CI、
+ * 脚本、或「我已经知道要什么」的人不该被问答拦住，因此问答只在参数缺席时发生。
  *
  * 实现只用 `node:readline` 的 promise 版：它随 Node 自带，不引第三方交互库。
  * 提问写 stderr 而不是 stdout，产物路径之类的结果才走 stdout，这样
@@ -17,10 +17,12 @@ export interface PromptTexts {
   readonly promptProjectName: string;
   readonly promptFramework: string;
   readonly promptShell: string;
+  readonly promptSources: string;
   readonly nameRequired: string;
   readonly nameInvalid: string;
   readonly frameworkUnknown: string;
   readonly shellUnknown: string;
+  readonly sourcesUnknown: string;
 }
 
 /** 问答依赖的输入输出面；默认接真实终端，测试可换成脚本化实现 */

@@ -1,0 +1,14 @@
+{
+  "devDependencies": {
+    "@lingfan-engine/editor": "^0.1.0",
+    "@lingfan-engine/stories-build": "^0.1.0"
+  },
+  "scripts": {
+    "stories:build": "lingfan-stories-build .",
+    "stories:watch": "lingfan-stories-watch .",
+    "stories-typecheck": "tsc --noEmit -p tsconfig.stories.json"
+  },
+  "create": {
+    "remove": ["Resources/Stories"]
+  }
+}

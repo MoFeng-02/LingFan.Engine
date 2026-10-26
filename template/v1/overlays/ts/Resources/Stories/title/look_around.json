@@ -1,0 +1,16 @@
+{
+  "formatVersion": 1,
+  "id": "look_around",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "say",
+      "text": "你绕着走了一圈，什么也没发生。",
+      "speaker": "旁白"
+    },
+    {
+      "op": "say",
+      "text": "想加点东西，就打开 Stories.src/title/look_around.ts 改写这一列。"
+    }
+  ]
+}

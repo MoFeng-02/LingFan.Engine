@@ -6,6 +6,7 @@
  */
 export {
   collectDependencyNames,
+  DEFAULT_SOURCES,
   generateProject,
   layerBases,
   SKELETON_DIR,

@@ -32,6 +32,7 @@ export interface CreateArgs {
   readonly projectName?: string;
   readonly framework?: string;
   readonly shell?: string;
+  readonly sources?: string;
   readonly dir?: string;
   readonly install: boolean;
   readonly yes: boolean;
@@ -51,6 +52,7 @@ export function parseArgs(argv: readonly string[]): CreateArgs {
   let projectName: string | undefined;
   let framework: string | undefined;
   let shell: string | undefined;
+  let sources: string | undefined;
   let dir: string | undefined;
   let install = true;
   let yes = false;
@@ -77,6 +79,10 @@ export function parseArgs(argv: readonly string[]): CreateArgs {
       case "--shell":
         shell = takeValue();
         break;
+      case "-t":
+      case "--sources":
+        sources = takeValue();
+        break;
       case "-d":
       case "--dir":
         dir = takeValue();
@@ -100,7 +106,7 @@ export function parseArgs(argv: readonly string[]): CreateArgs {
         projectName = flag;
     }
   }
-  return { projectName, framework, shell, dir, install, yes, help };
+  return { projectName, framework, shell, sources, dir, install, yes, help };
 }
 
 /** 拆出 `--flag=value`；无等号时第二项为 undefined */
@@ -162,6 +168,14 @@ export async function runCreateCli(argv: readonly string[]): Promise<number> {
       io,
     );
     if (shell === undefined) return 1;
+    const sources = await resolveOption(
+      "sources",
+      args.sources,
+      meta,
+      promptTexts,
+      io,
+    );
+    if (sources === undefined) return 1;
     return await generate({
       args,
       meta,
@@ -169,6 +183,7 @@ export async function runCreateCli(argv: readonly string[]): Promise<number> {
       projectName,
       framework,
       shell,
+      sources,
     });
   } finally {
     io?.close();
@@ -183,6 +198,7 @@ async function generate(input: {
   readonly projectName: string;
   readonly framework: string;
   readonly shell: string;
+  readonly sources: string;
 }): Promise<number> {
   const texts = defaultCreateTexts;
   const targetBase = resolvePath(input.args.dir ?? process.cwd());
@@ -192,6 +208,7 @@ async function generate(input: {
     projectName: input.projectName,
     framework: input.framework,
     shell: input.shell,
+    sources: input.sources,
     resolved: new Map<string, string>(),
   };
 
@@ -222,7 +239,7 @@ async function generate(input: {
     [
       "",
       `${texts.doneTitle}：${result.projectDir}`,
-      `共 ${result.fileCount} 个文件，框架 ${input.framework}，壳 ${input.shell}`,
+      `共 ${result.fileCount} 个文件，框架 ${result.framework}，壳 ${result.shell}，故事源 ${result.sources}`,
       "",
       installed ? "依赖已安装。" : "依赖未安装。",
       texts.nextSteps.split("<name>").join(result.projectDir),
@@ -250,23 +267,36 @@ async function resolveName(
 }
 
 /**
- * 解析框架/壳：必须真实存在对应的叠加层，否则报错。
+ * 解析框架/壳/故事源：必须真实存在对应的叠加层，否则报错。
  *
  * 只校验「模板声明过」而不校验「目录存在」会放过一种情况：元数据写了 `vue`
  * 但仓库里没有 `overlays/vue`，生成出来的工程静默缺少该框架的文件。
  */
 async function resolveOption(
-  kind: "framework" | "shell",
+  kind: "framework" | "shell" | "sources",
   value: string | undefined,
   meta: TemplateMeta,
   texts: PromptTexts & { readonly overlayMissing: string },
   io: Parameters<typeof askOption>[0] | undefined,
 ): Promise<string | undefined> {
-  const options = kind === "framework" ? meta.frameworks : meta.shells;
+  const options =
+    kind === "framework"
+      ? meta.frameworks
+      : kind === "shell"
+        ? meta.shells
+        : meta.sources;
   const invalidText =
-    kind === "framework" ? texts.frameworkUnknown : texts.shellUnknown;
+    kind === "framework"
+      ? texts.frameworkUnknown
+      : kind === "shell"
+        ? texts.shellUnknown
+        : texts.sourcesUnknown;
   const label =
-    kind === "framework" ? texts.promptFramework : texts.promptShell;
+    kind === "framework"
+      ? texts.promptFramework
+      : kind === "shell"
+        ? texts.promptShell
+        : texts.promptSources;
   const picked =
     value !== undefined || io === undefined
       ? (value ?? options[0]?.id)
