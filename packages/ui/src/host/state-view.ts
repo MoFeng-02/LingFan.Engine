@@ -62,6 +62,8 @@ export interface StateKeyTable {
   menuOptions: string;
   /** 菜单选项目标 */
   menuTargets: string;
+  /** 输入候选（可选：不订阅则输入等待只有输入框，行为同加候选之前） */
+  inputOptions?: string;
   /** 对话框显隐 */
   dialogVisible: string;
   /** 舞台元素表 */
@@ -139,6 +141,9 @@ export function createStateView(
     }
     // 选项与目标两键分别写入：任一到达都做一次整体重建
     if (key === keys.menuOptions || key === keys.menuTargets)
+      return { kind: "choices" };
+    // 输入候选与输入提示同属选择层：候选到达也重建（否则点了候选后旧候选会留在屏上）
+    if (keys.inputOptions !== undefined && key === keys.inputOptions)
       return { kind: "choices" };
     if (key === keys.dialogVisible)
       return { kind: "dialog-visible", hidden: value === "hide" };

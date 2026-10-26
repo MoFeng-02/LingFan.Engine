@@ -45,6 +45,8 @@ const STATE_KEYS = {
   nvlBuffer: SYS.nvlBuffer,
   menuOptions: SYS.menuOptions,
   menuTargets: SYS.menuTargets,
+  // 输入候选：到达也走 choices 意图（否则候选要等下一次 waiting 变化才出现）
+  inputOptions: SYS.inputOptions,
   dialogVisible: SYS.dialogVisible,
   elements: SYS.elements,
 } as const;

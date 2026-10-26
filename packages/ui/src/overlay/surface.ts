@@ -62,6 +62,19 @@ export interface ChoicesLayerInput {
   prompt: string;
   /** 提交按钮显示文本 */
   submitText: string;
+  /**
+   * 候选快捷值（缺省空数组 = 只有输入框）：点一项即把该项 `value` 当输入值提交，
+   * 输入框仍可用。`label` 是显示文本（可能已翻译），`value` 是要写进变量的原样值。
+   */
+  candidates: readonly ChoicesLayerCandidate[];
+}
+
+/** 输入候选（显示文本与要填的值成对；与菜单选项不同——它不跳列，只替玩家填值） */
+export interface ChoicesLayerCandidate {
+  /** 显示文本（已走翻译；也用作按钮的可访问名） */
+  label: string;
+  /** 要填进变量的原样值（不进翻译表） */
+  value: string;
 }
 
 /**

@@ -103,6 +103,12 @@ textarea,
 .input-row input {
   min-width: 200px;
 }
+/* 输入候选：横向一排，不挤占输入行 */
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .note {
   color: #6b7280;
   font-size: 13px;

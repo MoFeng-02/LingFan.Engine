@@ -9,7 +9,12 @@ import type {
   ValueChanged,
   VideoCommand,
 } from "@lingfan-engine/core";
-import { SYS, StoryEngine, parseStory } from "@lingfan-engine/core";
+import {
+  SYS,
+  StoryEngine,
+  createStateReader,
+  parseStory,
+} from "@lingfan-engine/core";
 
 interface Harness {
   engine: StoryEngine;
@@ -1200,6 +1205,56 @@ describe("input（prompt + store；命令面 input(text)）", () => {
     engine.start();
     engine.input("x");
     expect(errorPayload(errors[0]).code).toBe("input-invalid");
+    dispose();
+  });
+
+  it("带候选：候选文本进翻译、值原样留在候选表；提交仍走普通输入", () => {
+    const { engine, dispose } = makeEngine([
+      {
+        op: "input",
+        prompt: "身份",
+        store: "role",
+        options: [
+          { text: "旅人", value: "traveler" },
+          { text: "商人", value: "merchant" },
+        ],
+      },
+      { op: "say", text: "你是{role}" },
+    ]);
+    engine.start();
+    expect(engine.get(SYS.waiting)).toBe("input");
+    expect(
+      createStateReader({ get: (k) => engine.get(k) }).inputCandidates(),
+    ).toEqual([
+      { text: "旅人", value: "traveler" },
+      { text: "商人", value: "merchant" },
+    ]);
+    // 点候选 = 提交它的 value（与手打同一条出口，不是跳列）
+    engine.input("merchant");
+    expect(engine.get("role")).toBe("merchant");
+    expect(engine.get(SYS.currentDialogText)).toBe("你是merchant");
+    dispose();
+  });
+
+  it("无候选的 input 会把候选清空（不残留上一轮）", () => {
+    const { engine, dispose } = makeEngine([
+      {
+        op: "input",
+        prompt: "一",
+        store: "a",
+        options: [{ text: "甲", value: "A" }],
+      },
+      { op: "input", prompt: "二", store: "b" },
+    ]);
+    engine.start();
+    expect(
+      createStateReader({ get: (k) => engine.get(k) }).inputCandidates(),
+    ).toHaveLength(1);
+    engine.input("x");
+    expect(engine.get(SYS.waiting)).toBe("input");
+    expect(
+      createStateReader({ get: (k) => engine.get(k) }).inputCandidates(),
+    ).toEqual([]);
     dispose();
   });
 });

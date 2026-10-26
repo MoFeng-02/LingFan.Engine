@@ -7,6 +7,7 @@
  */
 import type {
   ElementInstance,
+  InputCandidate,
   LayerId,
   MenuChoice,
 } from "@lingfan-engine/core";
@@ -14,7 +15,7 @@ import type { TypingSetting } from "@lingfan-engine/ui";
 import type { Cell, ReadonlyCell } from "../cell";
 
 // 选项形状属于引擎读口，本域只转出：消费方不必为此再引一个包
-export type { MenuChoice };
+export type { InputCandidate, MenuChoice };
 
 /** 本域的状态单元集：每个视图字段一个单元（框架宿主传响应式单元） */
 export interface StateCells {
@@ -74,6 +75,8 @@ export interface NarrativeState {
   readonly menuPrompt: Cell<string>;
   /** 输入提示行 */
   readonly inputPrompt: Cell<string>;
+  /** 输入候选（显示文本 + 填入值；空数组 = 只有输入框） */
+  readonly inputCandidates: ReadonlyCell<InputCandidate[]>;
   /** 输入框内容 */
   readonly inputValue: Cell<string>;
   /** 选项文本（引擎原样） */

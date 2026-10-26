@@ -39,6 +39,17 @@ export interface MenuChoice {
 }
 
 /**
+ * 输入候选：显示文本与要填进变量的值成对（数组顺序即呈现顺序）。
+ *
+ * 与 `MenuChoice` 分开定义：候选是「替玩家填一个值」，不是「跳到另一列」，
+ * 字段名不同是刻意的——把两者混用会在多语言环境下把译文写进变量。
+ */
+export interface InputCandidate {
+  text: string;
+  value: string;
+}
+
+/**
  * 类型化读口：按用途分组读状态。
  *
  * 每个方法都自带形状校验与降级（见文件头），返回值即界面可直接使用的形态；
@@ -53,6 +64,8 @@ export interface StateReader {
   videoCommand(): VideoCommand | null;
   /** 菜单选项（文本与目标列成对；两键分属不同状态条目，任一畸形都按空处理） */
   menuChoices(): MenuChoice[];
+  /** 输入候选（显示文本与要填的值成对；缺省或形状不合 = 空数组，界面只渲染输入框） */
+  inputCandidates(): InputCandidate[];
   /** 当前说话人（缺省空串） */
   dialogSpeaker(): string;
   /** 当前正文（缺省空串） */

@@ -43,6 +43,8 @@ export interface RenderState {
   menuPrompt: string;
   menuOptions: Array<{ text: string; target: string }>;
   inputPrompt: string;
+  /** 输入候选（显示文本与要填的值成对；空数组 = 只有输入框） */
+  inputCandidates: Array<{ text: string; value: string }>;
   nvlMode: string;
   nvlBuffer: string[];
   elementList: ElementInstance[];
@@ -103,6 +105,7 @@ export function createProjector(deps: {
     menuPrompt: "",
     menuOptions: [],
     inputPrompt: "",
+    inputCandidates: [],
     nvlMode: "none",
     nvlBuffer: [],
     elementList: [],
@@ -190,6 +193,10 @@ export function createProjector(deps: {
       state.inputPrompt = reader.inputPrompt();
       return { kind: "render", targets: ["choices"] };
     }
+    if (key === SYS.inputOptions) {
+      state.inputCandidates = reader.inputCandidates();
+      return { kind: "render", targets: ["choices"] };
+    }
     if (key === SYS.nvlMode) {
       const next = reader.nvlMode();
       state.nvlMode = next === "" ? "none" : next;
@@ -218,6 +225,7 @@ export function createProjector(deps: {
     state.menuPrompt = reader.menuPrompt();
     readMenuOptions();
     state.inputPrompt = reader.inputPrompt();
+    state.inputCandidates = reader.inputCandidates();
     const mode = reader.nvlMode();
     state.nvlMode = mode === "" ? "none" : mode;
     state.nvlBuffer = reader.nvlLines();

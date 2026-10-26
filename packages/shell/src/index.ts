@@ -41,6 +41,7 @@ export {
 /** 叙事视图状态投影 */
 export {
   createNarrativeState,
+  type InputCandidate,
   type MenuChoice,
   type NarrativeState,
   type NarrativeStateOptions,

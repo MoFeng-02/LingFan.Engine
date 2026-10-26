@@ -110,6 +110,7 @@ export function createAppEngineLife(
     inMinigame,
     menuPrompt,
     inputPrompt,
+    inputCandidates,
     inputValue,
     rawTexts,
     rawTargets,
@@ -191,6 +192,7 @@ export function createAppEngineLife(
     readMinigameHost()?.replaceChildren();
     menuPrompt.value = "";
     inputPrompt.value = "";
+    inputCandidates.value = [];
     inputValue.value = "";
     error.value = "";
     rawTexts.value = [];

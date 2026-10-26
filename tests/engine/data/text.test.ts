@@ -395,3 +395,35 @@ describe("警告池出口（取走并清空）", () => {
     expect(warnings[0]).toContain("pause 无参数");
   });
 });
+
+describe("input 候选（options）文法往返", () => {
+  const text = `label a:
+  input "身份" store="role" options=[{"text": "旅人", "value": "traveler"}, {"text": "商人", "value": "merchant"}]
+  input "带 z" store="k" options=[{"text": "甲", "value": "A"}] z=20
+  input "无候选" store="plain"
+`;
+
+  it("往返等价：parse → generate 字节一致", () => {
+    const story = parseTextStory(text, "d.story");
+    expect(generateText(story)).toBe(text);
+  });
+
+  it("候选进命令负载，字段名 text/value 原样保留", () => {
+    const cmds = parseTextStory(text, "d.story").columns[0]?.commands ?? [];
+    expect(cmds[0]?.options).toEqual([
+      { text: "旅人", value: "traveler" },
+      { text: "商人", value: "merchant" },
+    ]);
+    expect(cmds[1]?.z).toBe(20);
+    expect(cmds[2]?.options).toBeUndefined();
+  });
+
+  it("候选字面量坏形 → TextFormatError（不静默丢弃）", () => {
+    expect(() =>
+      parseTextStory(
+        'label a:\n  input "身份" store="k" options=[{"text": "旅人"}]\n',
+        "d.story",
+      ),
+    ).toThrow(TextFormatError);
+  });
+});

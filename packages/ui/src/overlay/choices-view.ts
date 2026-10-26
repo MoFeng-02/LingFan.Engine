@@ -15,6 +15,8 @@ export interface ChoicesRenderInput {
   menuPrompt: string;
   menuOptions: readonly { text: string; target: string }[];
   inputPrompt: string;
+  /** 输入候选（缺省空数组 = 只有输入框） */
+  inputCandidates?: readonly { text: string; value: string }[];
 }
 
 /** 选择层文案（宿主可覆盖；缺省实现即内建文案） */
@@ -50,11 +52,20 @@ export function choicesLayerView(
 ): ChoicesLayerView | null {
   if (input.waiting === "input") {
     const texts: ChoicesTexts = { ...DEFAULT_CHOICES_TEXTS, ...deps.texts };
+    // 候选与输入框并存：玩家可以点候选，也可以自己打字（两者走同一个提交出口）
+    const candidates = (input.inputCandidates ?? []).map((item) => ({
+      label: item.text,
+      value: item.value,
+    }));
     return {
       rootClass: "",
       promptHtml: "",
       options: [],
-      input: { prompt: input.inputPrompt, submitText: texts.inputSubmit },
+      input: {
+        prompt: input.inputPrompt,
+        submitText: texts.inputSubmit,
+        candidates,
+      },
     };
   }
   if (input.waiting !== "menu") return null;

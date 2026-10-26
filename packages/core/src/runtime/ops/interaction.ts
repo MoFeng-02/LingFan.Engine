@@ -26,7 +26,13 @@ const INTERACTION_FIELDS = new Set([
   "z", // 实例级 z（与 minigame 同层：外部系统整屏接管）
 ]);
 
-/** input（prompt + store）→ 进入 input 等待；options 选项式输入延后（解析层拒绝） */
+/**
+ * input（prompt + store，可选 options 候选）→ 进入 input 等待。
+ *
+ * 候选值 `{ text, value }[]`：`text` 走翻译表（显示），`value` 原样进状态（玩家点选后
+ * 由命令面按普通输入提交）。没有候选时也写一个空数组，**不能跳过**——否则上一次输入
+ * 留下的候选会被这一轮读到（状态是跨命令持久的）。
+ */
 export function execInput(
   ctx: OpContext,
   frame: Frame,
@@ -41,6 +47,13 @@ export function execInput(
     SYS.inputPrompt,
     typeof cmd.prompt === "string" ? ctx.translate(cmd.prompt) : "",
   );
+  const candidates = Array.isArray(cmd.options)
+    ? (cmd.options as Array<{ text: string; value: string }>).map((o) => ({
+        text: ctx.translate(o.text),
+        value: o.value,
+      }))
+    : [];
+  ctx.setSystem(SYS.inputOptions, candidates);
   ctx.inputStore = cmd.store as string;
   ctx.setInstanceZ(SYS.choicesZ, cmd.z); // 输入形态的实例 z（choices 层）
   ctx.setSystem(SYS.waiting, "input");

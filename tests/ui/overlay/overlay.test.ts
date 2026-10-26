@@ -436,6 +436,43 @@ describe("输入等待：提交走核心 input", () => {
     overlay.submitInput("小明"); // 宿主路径
     expect(engine.input).toHaveBeenCalledWith("小明");
   });
+
+  it("带候选时输入框旁多出候选按钮，点候选提交它的值（不是文本）", () => {
+    const { engine, surface } = build();
+    engine.emit(SYS.waiting, "input");
+    engine.emit(SYS.inputPrompt, "身份：");
+    engine.emit(SYS.inputOptions, [
+      { text: "旅人", value: "traveler" },
+      { text: "商人", value: "merchant" },
+    ]);
+    const buttons = findAll(
+      surface.nodes.choices as unknown as FakeEl,
+      (el) => el.tagName === "BUTTON" && el.type === "button",
+    );
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0]!.attrs["aria-label"]).toBe("旅人");
+    // 输入框仍在：候选是快捷方式，不是唯一出路
+    expect(
+      findAll(
+        surface.nodes.choices as unknown as FakeEl,
+        (el) => el.tagName === "INPUT",
+      ),
+    ).toHaveLength(1);
+    buttons[1]!.listeners["click"]![0]!({});
+    expect(engine.input).toHaveBeenCalledWith("merchant");
+    expect(engine.input).not.toHaveBeenCalledWith("商人");
+  });
+
+  it("无候选时不渲染候选按钮（不残留上一轮的）", () => {
+    const { engine, surface } = build();
+    engine.emit(SYS.waiting, "input");
+    engine.emit(SYS.inputPrompt, "名字：");
+    const buttons = findAll(
+      surface.nodes.choices as unknown as FakeEl,
+      (el) => el.tagName === "BUTTON" && el.type === "button",
+    );
+    expect(buttons).toHaveLength(0);
+  });
 });
 
 describe("推进：二段式（打字中先瞬间完成，完成后才交引擎）", () => {

@@ -229,6 +229,22 @@ export function createDomOverlaySurface(
         });
         form.append(field, submit);
         choices.append(label, form);
+        // 候选按钮排在输入表单之后：点一项直接以该项 value 走同一提交出口
+        if (view.input.candidates.length > 0) {
+          const row = doc().createElement("div");
+          row.className = "lf-choice-row";
+          for (const candidate of view.input.candidates) {
+            const button = clickable(doc().createElement("button"));
+            button.type = "button";
+            button.textContent = candidate.label;
+            button.setAttribute("aria-label", candidate.label);
+            button.addEventListener("click", () =>
+              surface.onSubmitInput?.(candidate.value),
+            );
+            row.appendChild(button);
+          }
+          choices.appendChild(row);
+        }
         return;
       }
 

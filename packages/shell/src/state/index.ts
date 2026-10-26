@@ -3,6 +3,7 @@
  */
 export { createNarrativeState } from "./narrativeState";
 export type {
+  InputCandidate,
   MenuChoice,
   NarrativeState,
   NarrativeStateOptions,

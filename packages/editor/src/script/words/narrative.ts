@@ -146,6 +146,31 @@ export function menu(
   };
 }
 
+/** 输入候选：显示文本 + 要填进变量的值（用 {@link inputCandidate} 构造） */
+export type InputCandidateSpec = NonNullable<CommandOf<"input">["options"]>[number];
+
+/**
+ * 构造一个输入候选，配合 {@link input} 使用：玩家点中它，`value` 就直接当输入值提交，
+ * 同时仍然可以自己打字。
+ *
+ * 与菜单的 {@link option} 不同——候选不跳列，只替玩家填一个值。
+ *
+ * @param text 候选上显示的文字（支持翻译；翻译只影响显示）。
+ * @param value 选中后写进 `store` 的原样值（**不进翻译表**，多语言下不变）。
+ * @returns 输入候选数据。
+ * @example
+ * input("你的身份是？", "role", [
+ *   inputCandidate("旅人", "traveler"),
+ *   inputCandidate("商人", "merchant"),
+ * ]);
+ */
+export function inputCandidate(
+  text: string,
+  value: string,
+): InputCandidateSpec {
+  return { text, value };
+}
+
 /**
  * 向玩家要一段文字：弹出输入框显示 `prompt`，玩家提交后，输入内容写进
  * 状态键 `store`，故事从下一句继续。
@@ -154,13 +179,30 @@ export function menu(
  *
  * @param prompt 输入框上方显示的问题/提示语（必填非空）。
  * @param store 收纳玩家输入的状态变量名（写进全局状态，之后可用 `{store}` 插值显示）。
+ * @param options 候选快捷值（可选）：给了就在输入框旁列出，玩家点一项即提交该项的 `value`，
+ *   也可以不理候选自己打字。用 {@link inputCandidate} 构造。
  * @returns `input` 故事命令。
  * @example
  * input("主角叫什么名字？", "playerName");
  * say("你好，{playerName}！");
+ * @example
+ * // 带候选：既能点，也能自己打
+ * input("你的身份是？", "role", [
+ *   inputCandidate("旅人", "traveler"),
+ *   inputCandidate("商人", "merchant"),
+ * ]);
  */
-export function input(prompt: string, store: string): CommandOf<"input"> {
-  return { op: "input", prompt, store };
+export function input(
+  prompt: string,
+  store: string,
+  options?: readonly InputCandidateSpec[],
+): CommandOf<"input"> {
+  return {
+    op: "input",
+    prompt,
+    store,
+    ...(options === undefined ? {} : { options: [...options] }),
+  };
 }
 
 /** type 保持手写的窄联合（schema 是 string）——作者侧补全优于校验面放宽 */

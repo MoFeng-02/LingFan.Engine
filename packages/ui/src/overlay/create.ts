@@ -138,6 +138,7 @@ export function createNarrativeOverlay(
           menuPrompt: s.menuPrompt,
           menuOptions: s.menuOptions,
           inputPrompt: s.inputPrompt,
+          inputCandidates: s.inputCandidates,
         },
         choicesDeps,
       ),

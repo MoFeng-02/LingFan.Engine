@@ -1,6 +1,10 @@
 /** dialog 族的读向解析。 */
 import { parseSay } from "../say.ts";
 import { unquote } from "../../lexer.ts";
+import {
+  extractKeyedArrayLiteral,
+  parseInputOptionsLiteral,
+} from "../../literals.ts";
 import type { StoryCommand } from "../../../../contracts/index.ts";
 import type { StatementContext } from "../state.ts";
 
@@ -89,6 +93,21 @@ export function parseDialogStatement(c: StatementContext): StoryCommand | null {
         prompt: unquote(prompt),
         store: unquote(storeEq.slice(6)),
       };
+      // 候选快捷值：`input "提示" store="k" options=[{"text": "…", "value": "…"}]`
+      // 从整行里摘（不能只搜 token——数组内部有空格，会被切词拆散）
+      const optionsLiteral = extractKeyedArrayLiteral(rest, "options");
+      if (optionsLiteral !== null) {
+        const candidates = parseInputOptionsLiteral(optionsLiteral.literal);
+        // 缺字段的项在字面量层会落成空串；这里补一条带定位的 issue，
+        // 不让它悄悄变成「点了候选写入空值」（与 JSON 侧的 requireNonEmptyString 同口径）
+        const broken = candidates.findIndex(
+          (item) => item.text === "" || item.value === "",
+        );
+        if (broken >= 0) {
+          return fail(`input 候选 options[${broken}] 需要 text 与 value`);
+        }
+        cmd.options = candidates;
+      }
       const zEq = tokens.find(
         (t) => t.startsWith("z=") || t.startsWith("z-index="),
       );

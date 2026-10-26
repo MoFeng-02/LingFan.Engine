@@ -168,6 +168,27 @@ export function createDialogueView(options: DialogueViewOptions): DialogueView {
       });
       dom.choices.append(prompt, row);
       input.focus();
+      // 候选快捷值：点一项直接把该项 value 当输入提交（输入框仍可用）
+      const candidates =
+        (engine.get(SYS.inputOptions) as
+          Array<{ text?: unknown; value?: unknown }> | undefined) ?? [];
+      const shortcuts = candidates.filter(
+        (item) =>
+          typeof item?.text === "string" && typeof item?.value === "string",
+      ) as Array<{ text: string; value: string }>;
+      if (shortcuts.length > 0) {
+        const row2 = document.createElement("div");
+        row2.className = "choice-row";
+        for (const candidate of shortcuts) {
+          const button = document.createElement("button");
+          button.className = "choice";
+          button.type = "button";
+          button.textContent = candidate.text;
+          button.addEventListener("click", () => engine.input(candidate.value));
+          row2.append(button);
+        }
+        dom.choices.append(row2);
+      }
     } else if (waiting === "wait" || waiting === "video") {
       const note = document.createElement("p");
       note.className = "note";

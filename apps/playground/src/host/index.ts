@@ -28,6 +28,7 @@ export { createAppSlots } from "./panels/wiring/app-slots";
 /** —— 面板类型（App/*.vue 消费）—— */
 export type {
   HistoryBlock,
+  InputCandidate,
   MenuChoice,
   SlotPanelMode,
   SlotView,

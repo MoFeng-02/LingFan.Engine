@@ -17,6 +17,7 @@ import {
   INSTANCE_Z_KEYS,
   SYS,
   type ElementInstance,
+  type InputCandidate,
 } from "@lingfan-engine/core";
 import {
   createStateView,
@@ -38,6 +39,7 @@ const STATE_KEYS: StateKeyTable = {
   nvlBuffer: SYS.nvlBuffer,
   menuOptions: SYS.menuOptions,
   menuTargets: SYS.menuTargets,
+  inputOptions: SYS.inputOptions,
   dialogVisible: SYS.dialogVisible,
   elements: SYS.elements,
 };
@@ -65,6 +67,7 @@ export function createNarrativeState(
   const dialogHidden = cell(false);
   const menuPrompt = cell("");
   const inputPrompt = cell("");
+  const inputCandidates = cell<InputCandidate[]>([]);
   const inputValue = cell("");
   const rawTexts = cell<string[]>([]);
   const rawTargets = cell<string[]>([]);
@@ -86,6 +89,19 @@ export function createNarrativeState(
       text: t,
       target: rawTargets.value[i] ?? "",
     }));
+  }
+
+  /** 输入候选的读形：只收 `{ text, value }` 双字符串项，畸形项整项丢弃 */
+  function candidatesOf(value: unknown): InputCandidate[] {
+    if (!Array.isArray(value)) return [];
+    const out: InputCandidate[] = [];
+    for (const item of value) {
+      if (item === null || typeof item !== "object") continue;
+      const { text, value: fill } = item as { text?: unknown; value?: unknown };
+      if (typeof text !== "string" || typeof fill !== "string") continue;
+      out.push({ text, value: fill });
+    }
+    return out;
   }
 
   const toIntent = createStateView({
@@ -151,6 +167,9 @@ export function createNarrativeState(
             rawTargets.value = value as string[];
             refreshMenuOptions();
           }
+        } else if (key === STATE_KEYS.inputOptions) {
+          // 候选是「显示文本 + 填入值」的对象数组：畸形项整项丢弃，全丢即等于无候选
+          inputCandidates.value = candidatesOf(value);
         }
         return;
       case "nvl-mode":
@@ -198,6 +217,7 @@ export function createNarrativeState(
     dialogHidden,
     menuPrompt,
     inputPrompt,
+    inputCandidates,
     inputValue,
     rawTexts,
     rawTargets,
@@ -229,6 +249,7 @@ export function createNarrativeState(
       menuPrompt.value = typeof mp === "string" ? mp : "";
       const ip = read(SYS.inputPrompt);
       inputPrompt.value = typeof ip === "string" ? ip : "";
+      inputCandidates.value = candidatesOf(read(SYS.inputOptions));
       const opts = read(SYS.menuOptions);
       rawTexts.value = Array.isArray(opts) ? (opts as string[]) : [];
       const tgts = read(SYS.menuTargets);

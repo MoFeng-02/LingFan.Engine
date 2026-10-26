@@ -36,6 +36,14 @@ export const SYS = {
   menuTargets: "__menu_targets",
   menuSelected: "__menu_selected",
   inputPrompt: "__input_prompt",
+  /**
+   * 输入等待的**候选快捷值**（`input options=[…]` 写入）：`{ text, value }[]`。
+   *
+   * 语义：玩家既可以点候选（把该项 `value` 直接当输入值提交），也可以自己打字。
+   * 与 `menuOptions` 分开存，因为两者字段不同（候选是「替玩家填值」不是「跳列」），
+   * 混用一个键会让读口无法判断该按哪种形状解析。缺省 = 无候选。
+   */
+  inputOptions: "__input_options",
   rollbackActive: "__rollback_active",
   /** I18N 当前语言（setLanguage 命令写入，空串 = 默认语言/原文直出） */
   currentLanguage: "__current_language",

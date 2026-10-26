@@ -110,6 +110,146 @@ export function extractKeyedDictLiteral(
   };
 }
 
+/**
+ * 提取 `key=[…]` 形式的数组字面量（方括号计数，引号内的括号不算）。
+ *
+ * 与 `extractKeyedDictLiteral` 同法，只是括号类型不同；`key` 只认**字符串外**且前面是空白
+ * 或行首的那一处（避免提示语里恰好出现 `options=` 被误当参数）。
+ * 返回字面量与剥离后的余文；找不到或不闭合返回 `null`。
+ */
+export function extractKeyedArrayLiteral(
+  source: string,
+  key: string,
+): { literal: string; remainder: string } | null {
+  const at = findKeyOutsideString(source, key);
+  if (at < 0) return null;
+  const bracketAt = source.indexOf("[", at + key.length + 1);
+  if (bracketAt < 0) return null;
+  let depth = 0;
+  let end = -1;
+  let inString = false;
+  for (let i = bracketAt; i < source.length; i += 1) {
+    const ch = source[i]!;
+    if (inString) {
+      if (ch === "\\") {
+        i += 1;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "[") depth += 1;
+    else if (ch === "]") {
+      depth -= 1;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
+  }
+  if (end < 0) return null;
+  return {
+    literal: source.slice(bracketAt, end + 1),
+    remainder: `${source.slice(0, at)} ${source.slice(end + 1)}`,
+  };
+}
+
+/** 找 `key=` 在字符串外、且位于行首或空白之后的位置；找不到返回 -1 */
+function findKeyOutsideString(source: string, key: string): number {
+  let inString = false;
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i]!;
+    if (inString) {
+      if (ch === "\\") {
+        i += 1;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (
+      source.startsWith(`${key}=`, i) &&
+      (i === 0 || /\s/.test(source[i - 1]!))
+    ) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * `[{"text": …, "value": …}, …]` 数组字面量 → 输入候选表。
+ *
+ * 与 `generateInputOptions` 严格互逆（往返字节级一致）；字段不是字符串的项原样保留为
+ * `undefined` 之外的空串，交由校验层报错——解析器不替作者猜。
+ */
+export function parseInputOptionsLiteral(
+  raw: string,
+): Array<{ text: string; value: string }> {
+  const inner = raw.trim().replace(/^\[/, "").replace(/\]$/, "");
+  const parts: string[] = [];
+  let cur = "";
+  let inString = false;
+  let depth = 0;
+  for (let i = 0; i < inner.length; i += 1) {
+    const ch = inner[i]!;
+    if (inString) {
+      cur += ch;
+      if (ch === "\\") {
+        cur += inner[i + 1] ?? "";
+        i += 1;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      cur += ch;
+      continue;
+    }
+    if (ch === "{") depth += 1;
+    if (ch === "}") depth -= 1;
+    if (ch === "," && depth === 0) {
+      if (cur.trim() !== "") parts.push(cur);
+      cur = "";
+      continue;
+    }
+    cur += ch;
+  }
+  if (cur.trim() !== "") parts.push(cur);
+  return parts.map((part) => {
+    const dict = parseDictLiteral(part);
+    return {
+      text: typeof dict.text === "string" ? dict.text : "",
+      value: typeof dict.value === "string" ? dict.value : "",
+    };
+  });
+}
+
+/**
+ * 输入候选表的文本投影：`[{"text": "…", "value": "…"}, …]`。
+ *
+ * 与 `parseInputOptionsLiteral` 严格互逆；每项经 `generateDictLiteral`（键序 text → value，
+ * 插入序确定，故同一份数据两次投影字节相同）。
+ */
+export function generateInputOptions(
+  options: readonly { text: string; value: string }[],
+): string {
+  const items = options.map((item) =>
+    generateDictLiteral({ text: item.text, value: item.value }),
+  );
+  return `[${items.join(", ")}]`;
+}
+
 /** {"f":v} 字典字面量 → 对象（字段值走 parseValueLiteral 语义） */
 export function parseDictLiteral(raw: string): Record<string, unknown> {
   const inner = raw.trim().replace(/^\{/, "").replace(/\}$/, "");

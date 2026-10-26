@@ -254,13 +254,14 @@ describe("per-op 结构校验（fail-closed）", () => {
     ).toThrow(StoryFormatError);
   });
 
-  it("input 缺 prompt/store 拒绝；options 选项式输入暂未实现（fail-closed）", () => {
+  it("input 缺 prompt/store 拒绝；options 形态错误拒绝", () => {
     expect(() =>
       parseStory(withCommands([{ op: "input", store: "k" }])),
     ).toThrow(StoryFormatError);
     expect(() =>
       parseStory(withCommands([{ op: "input", prompt: "p" }])),
     ).toThrow(StoryFormatError);
+    // 旧形态（string[]）不再是合法形状：候选必须带 value
     expect(() =>
       parseStory(
         withCommands([
@@ -268,5 +269,41 @@ describe("per-op 结构校验（fail-closed）", () => {
         ]),
       ),
     ).toThrow(StoryFormatError);
+    // 项缺 value 也拒（text 有、value 无）
+    expect(() =>
+      parseStory(
+        withCommands([
+          {
+            op: "input",
+            prompt: "p",
+            store: "k",
+            options: [{ text: "旅人" }],
+          },
+        ]),
+      ),
+    ).toThrow(StoryFormatError);
+  });
+
+  it("input 带候选 {text,value} 通过校验（含空数组）", () => {
+    expect(() =>
+      parseStory(
+        withCommands([
+          {
+            op: "input",
+            prompt: "身份",
+            store: "role",
+            options: [
+              { text: "旅人", value: "traveler" },
+              { text: "商人", value: "merchant" },
+            ],
+          },
+        ]),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      parseStory(
+        withCommands([{ op: "input", prompt: "p", store: "k", options: [] }]),
+      ),
+    ).not.toThrow();
   });
 });

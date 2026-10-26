@@ -56,6 +56,10 @@ const menuSchema = z.strictObject({
 const inputSchema = z.strictObject({
   prompt: NonEmpty,
   store: NonEmpty,
+  // 候选快捷值：显示文本 + 要填进 store 的值（与 menu 的 {text,target} 刻意不同名）
+  options: z
+    .array(z.strictObject({ text: NonEmpty, value: NonEmpty }))
+    .optional(),
   z: InstanceZ, // choices 层实例 z
 });
 

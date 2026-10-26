@@ -9,11 +9,12 @@
  * 路径语法：`a.b` 逐段取值；`a[].b` 的 `[]` = 对数组逐项迭代（`options[].text`）。
  */
 
-/** 可翻译原文面（运行期 Translate 挂接：say 文本+说话人 / menu prompt+选项 / input prompt / notify 文本。character.screen 见下——仅入编辑器比对面，运行期不翻） */
+/** 可翻译原文面（运行期 Translate 挂接：say 文本+说话人 / menu prompt+选项 / input prompt+候选文本 / notify 文本。character.screen 见下——仅入编辑器比对面，运行期不翻） */
 export const TRANSLATE_SURFACES: Readonly<Record<string, readonly string[]>> = {
   say: ["text", "speaker"],
   menu: ["prompt", "options[].text"],
-  input: ["prompt"],
+  // 候选只翻显示文本；`value` 是要写进变量的原样值，**不进翻译面**（否则多语言下故事逻辑随语言漂移）
+  input: ["prompt", "options[].text"],
   notify: ["text"],
   // character.screen 仅入编辑器比对面（原文收集/键抽取），运行期**不翻**：引擎恰好 7 个
   // translate 调用点（runtime/i18n/translate.ts:31、ops/dialog.ts:92/107/171/175、

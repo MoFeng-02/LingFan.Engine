@@ -7,6 +7,37 @@ import { validateInstanceZ } from "./shape.ts";
 import { isPlainObject } from "../../../shared/index.ts";
 
 /**
+ * `input.options` 的候选快捷值：`{ text, value }[]`，每项两字段都必填非空。
+ *
+ * 形态选 `text` + `value` 而非 `string[]` 或 menu 的 `{text, target}`：
+ * - `text` 进翻译表（多语言只译显示文本），`value` 原样写进 `store`——若用 `string[]`，
+ *   译文会被写进变量，多语言环境下故事逻辑跟着语言漂移；
+ * - 与 `menu` 的 `{text, target}` 区分开：input 的候选是「替玩家填一个值」，
+ *   不是「跳到另一列」，两者语义不同，不共用字段名以免误用。
+ *
+ * 缺省（字段不存在）= 无候选，只有输入框；空数组与 menu 不同**不算错**（等于没写）。
+ */
+function validateInputOptions(
+  options: unknown,
+  at: string,
+  issues: string[],
+): void {
+  if (options === undefined) return;
+  if (!Array.isArray(options)) {
+    issues.push(`${at} 必须为数组`);
+    return;
+  }
+  for (const [i, option] of options.entries()) {
+    if (!isPlainObject(option)) {
+      issues.push(`${at}[${i}] 必须为对象`);
+      continue;
+    }
+    requireNonEmptyString(option.text, `${at}[${i}].text`, issues);
+    requireNonEmptyString(option.value, `${at}[${i}].value`, issues);
+  }
+}
+
+/**
  * 校验本族 op 的负载（7 个 op：`say` `assert` `guard` `notify` `wait` `pause` `input`）。
  *
  * 入参由分发骨架给出：`cmd` 已收窄为非空 op 的对象，`at` 是报错定位前缀，`issues` 是收集器。
@@ -59,9 +90,7 @@ export function validateDialogCommand(
     case "input":
       requireNonEmptyString(cmd.prompt, `${at}.prompt`, issues);
       requireNonEmptyString(cmd.store, `${at}.store`, issues);
-      if (cmd.options !== undefined) {
-        issues.push(`${at}.options 选项式输入暂未实现（fail-closed）`);
-      }
+      validateInputOptions(cmd.options, `${at}.options`, issues);
       validateInstanceZ(cmd, at, issues); // input 的实例 z（choices 层）
       break;
   }

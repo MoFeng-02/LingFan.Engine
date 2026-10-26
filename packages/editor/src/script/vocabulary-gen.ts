@@ -39,6 +39,7 @@ export function selectWordSources(fileNames: readonly string[]): string[] {
  *  未登记的新导出词会让重建失败（见 renderVocabulary 的缺登记核对）。 */
 export const HELPER_WORDS: Readonly<Record<string, string>> = {
   option: "$menu.option",
+  inputCandidate: "$input.candidate",
   whenChain: "$if.chain",
   reward: "$minigame.reward",
   extOp: "$ext.op",

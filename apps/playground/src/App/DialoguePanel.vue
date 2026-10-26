@@ -13,7 +13,7 @@ import {
   type DialogueTemplateView,
 } from "@lingfan-engine/ui";
 import { computed, ref } from "vue";
-import type { MenuChoice } from "../host";
+import type { InputCandidate, MenuChoice } from "../host";
 
 /** 累积层容器：宿主接线读它做「新行贴底滚动」 */
 const nvlBody = ref<HTMLElement | null>(null);
@@ -36,6 +36,8 @@ const props = defineProps<{
   inInput: boolean;
   /** 输入提示行 */
   inputPrompt: string;
+  /** 输入候选（空数组 = 只有输入框） */
+  inputCandidates: InputCandidate[];
   /** 小游戏挂载层是否可见 */
   inMinigame: boolean;
   /** 外部玩法系统接管是否在场（与小游戏共用挂载层） */
@@ -79,6 +81,12 @@ const emit = defineEmits<{
 const choose = (target: string): void => emit("choose", target);
 /** 输入提交回抛：模板保持基线字面 */
 const submitInput = (): void => emit("submit-input");
+
+/** 点候选 = 直接把它的 value 当输入提交（不经输入框，值原样写进变量） */
+const submitCandidate = (value: string): void => {
+  inputValue.value = value;
+  emit("submit-input");
+};
 </script>
 
 <template>
@@ -124,6 +132,18 @@ const submitInput = (): void => emit("submit-input");
       />
       <button type="submit" @click.stop>确定</button>
     </form>
+    <!-- 候选快捷值：点一项就以它的 value 提交（与手打同一个出口） -->
+    <div v-if="inputCandidates.length > 0" class="choice-row">
+      <button
+        v-for="item in inputCandidates"
+        :key="item.value"
+        type="button"
+        :aria-label="item.text"
+        @click.stop="submitCandidate(item.value)"
+      >
+        {{ item.text }}
+      </button>
+    </div>
   </section>
   <!-- 外部系统挂载层：小游戏经注册表挂载，外部玩法系统接管复用同一层。
        两者都是「整屏接管」形态，可见性分别由 inMinigame / inInteraction 决定；

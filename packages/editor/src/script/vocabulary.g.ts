@@ -164,6 +164,7 @@ export const SCRIPT_COVERAGE: Readonly<Record<string, string>> = {
   videoSkipable: "video_skipable",
   // —— 辅助词（补充表登记，不产独立 op） ——
   option: "$menu.option",
+  inputCandidate: "$input.candidate",
   whenChain: "$if.chain",
   reward: "$minigame.reward",
   extOp: "$ext.op",

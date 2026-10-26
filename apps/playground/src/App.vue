@@ -110,8 +110,14 @@ const {
   inExtension,
 } = narrative;
 /** 对话层显隐与内容字段：面板开关、NVL 模式、菜单选项、输入提示与输入值 */
-const { dialogHidden, nvlMode, menuOptions, inputPrompt, inputValue } =
-  narrative;
+const {
+  dialogHidden,
+  nvlMode,
+  menuOptions,
+  inputPrompt,
+  inputCandidates,
+  inputValue,
+} = narrative;
 /** 对话文本视效字段：打字机可见文本、说话人配色与推进许可 */
 const { shownText, speakerColor, dialogFont, canAdvance } = narrative;
 
@@ -471,6 +477,7 @@ onUnmounted(() => {
         :menu-options="menuOptions"
         :in-input="inInput"
         :input-prompt="inputPrompt"
+        :input-candidates="inputCandidates"
         :in-minigame="inMinigame"
         :in-interaction="inInteraction"
         :in-extension="inExtension"

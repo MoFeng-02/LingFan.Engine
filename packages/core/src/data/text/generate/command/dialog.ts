@@ -1,5 +1,9 @@
 /** dialog 族的文本投影。 */
-import { quoteForText, instanceZText } from "../../literals.ts";
+import {
+  quoteForText,
+  instanceZText,
+  generateInputOptions,
+} from "../../literals.ts";
 import type { StoryCommand } from "../../../../contracts/index.ts";
 import type { GenerateContext } from "../context.ts";
 
@@ -51,11 +55,19 @@ export function generateDialogCommand(
     case "pause":
       out.push(`${pad}pause ${cmd.seconds}`);
       return;
-    case "input":
+    case "input": {
+      // 候选数组内部含空格与引号，必须整体投影成一行内联字面量（解析侧同法整体摘取）
+      const candidates = cmd.options as
+        Array<{ text: string; value: string }> | undefined;
+      const optionsText =
+        Array.isArray(candidates) && candidates.length > 0
+          ? ` options=${generateInputOptions(candidates)}`
+          : "";
       out.push(
-        `${pad}input ${quoteForText(cmd.prompt as string)} store=${quoteForText(cmd.store as string)}${instanceZText(cmd)}`,
+        `${pad}input ${quoteForText(cmd.prompt as string)} store=${quoteForText(cmd.store as string)}${optionsText}${instanceZText(cmd)}`,
       );
       return;
+    }
     case "nvl": {
       const mode = (cmd.mode as string | undefined) ?? "enter";
       out.push(

@@ -14,6 +14,7 @@ import {
   type AudioChannel,
   type AudioChannelState,
   type ElementInstance,
+  type InputCandidate,
   type LayerId,
   type LayerZOverrides,
   type MenuChoice,
@@ -157,6 +158,20 @@ export function createStateReader(source: StateSource): StateReader {
         text,
         target: targetList[index] ?? "",
       }));
+    },
+
+    inputCandidates(): InputCandidate[] {
+      // 候选是单条目里的对象数组：畸形项整项丢弃（不猜字段），全部丢弃即等于「无候选」
+      const raw = get(SYS.inputOptions);
+      if (!Array.isArray(raw)) return [];
+      const out: InputCandidate[] = [];
+      for (const item of raw) {
+        if (item === null || typeof item !== "object") continue;
+        const { text, value } = item as { text?: unknown; value?: unknown };
+        if (typeof text !== "string" || typeof value !== "string") continue;
+        out.push({ text, value });
+      }
+      return out;
     },
 
     dialogSpeaker(): string {

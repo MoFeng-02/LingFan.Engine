@@ -291,6 +291,7 @@ export {
   hide,
   imageElement,
   input,
+  inputCandidate,
   interaction,
   jump,
   letVar,
