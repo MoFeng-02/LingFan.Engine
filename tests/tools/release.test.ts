@@ -8,6 +8,8 @@
  * 因此这里的重点是几处容易写错的分支：预发布怎么递增、预发布怎么排序、
  * dist-tag 从哪来、构建元数据为什么必须拦下。
  */
+import { readFile } from "node:fs/promises";
+
 import { describe, expect, it } from "vitest";
 
 interface VersionModule {
@@ -161,5 +163,36 @@ describe("发版 · 参数解析", () => {
       await runRelease(["--version=0.2.0-rc.1", "--dry-run"], { log }),
     ).toBe(0);
     expect(lines.some((line) => line.includes("0.2.0-rc.1"))).toBe(true);
+  });
+
+  /**
+   * 干跑必须先于分支检查。
+   *
+   * 发版流水线的门禁跑在标签提交上，`actions/checkout` 检出标签时 HEAD 是分离头
+   * （`rev-parse --abbrev-ref` 回字面量 `HEAD`）。分支检查若排在干跑之前，这条
+   * 「在标签提交上预览一次」的正当用法会被当成「不在 main 上」拒掉，流水线就红在
+   * 一个与代码无关的地方。
+   *
+   * 行为断言只能覆盖「当前不在分离头」这一半，所以这里再锁一次源码顺序：
+   * 干跑的提前返回必须出现在 `currentBranch()` 之前。
+   */
+  it("干跑不受分支限制：提前返回排在分支检查之前", async () => {
+    const lines: string[] = [];
+    const log = (line: string) => lines.push(line);
+    expect(await runRelease(["--bump=patch", "--dry-run"], { log })).toBe(0);
+    expect(lines.some((line) => line.includes("--dry-run"))).toBe(true);
+    expect(lines.some((line) => line.includes("发版必须在 main"))).toBe(false);
+
+    const source = await readFile(
+      new URL("../../scripts/release/main.mjs", import.meta.url),
+      "utf8",
+    );
+    const dryRunExit = source.indexOf("--dry-run：到此为止");
+    const branchCheck = source.indexOf("currentBranch()");
+    expect(dryRunExit, "找不到干跑的提前返回").toBeGreaterThan(-1);
+    expect(branchCheck, "找不到分支检查").toBeGreaterThan(-1);
+    expect(dryRunExit, "干跑的提前返回必须排在分支检查之前").toBeLessThan(
+      branchCheck,
+    );
   });
 });

@@ -133,13 +133,6 @@ export async function runRelease(argv, { log = () => {} } = {}) {
     return 1;
   }
 
-  const branch = currentBranch();
-  if (branch !== "main") {
-    log(
-      `当前分支是 ${branch}：发版必须在 main 上进行（标签会指向 main 上的提交）`,
-    );
-    return 1;
-  }
   // 正式发版要提交，工作区必须先干净；`--dry-run` 不写文件也不提交，脏工作区不该拦住预览。
   if (!options.dryRun && !isClean()) {
     log("工作区有未提交的改动：先提交或清理，否则发版提交会把它们一起带走");
@@ -155,6 +148,17 @@ export async function runRelease(argv, { log = () => {} } = {}) {
   if (options.dryRun) {
     log("--dry-run：到此为止，未跑门禁、未提交、未打标签");
     return 0;
+  }
+
+  // 分支检查放在 dry-run 之后：预览不产生提交，分支无关紧要；而 CI 检出标签时
+  // HEAD 是分离头（`rev-parse --abbrev-ref` 返回字面量 `HEAD`），提前拦下会让
+  // 「在标签提交上跑一次干跑」这种正当用法失败。
+  const branch = currentBranch();
+  if (branch !== "main") {
+    log(
+      `当前分支是 ${branch}：发版必须在 main 上进行（标签会指向 main 上的提交）`,
+    );
+    return 1;
   }
 
   log("跑门禁…");
