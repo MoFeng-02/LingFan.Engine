@@ -32,12 +32,22 @@ const ANCHOR_LINE = /锚点[:：]\s*(.+)$/gm;
 /** 锚点 ID 词法：小写字母数字 + 连字符、至少两段（与 §4.1 规范一致） */
 const ANCHOR_ID = /[a-z0-9]+(?:-[a-z0-9]+)+/g;
 
+/**
+ * 讲格式本身的句子不是声明：`锚点: <kebab-id>` 这类讲解行会把占位符
+ * 与正则字符类一起算成「已声明」，虚增分母。规约 00 §4.1 恰有两行如此，
+ * 剔除后分母才等于真实待落地面。
+ */
+const isFormatProse = (body: string): boolean =>
+  body.includes("<") || body.includes("[");
+
 /** 从规约全文抽出全部声明的锚点 ID（含重复；重复声明合法） */
 function declaredAnchorIds(): { ids: string[]; fileCount: number } {
   const ids: string[] = [];
   for (const source of Object.values(SPEC_SOURCES)) {
     for (const m of source.matchAll(ANCHOR_LINE)) {
-      for (const id of (m[1] ?? "").matchAll(ANCHOR_ID)) {
+      const body = m[1] ?? "";
+      if (isFormatProse(body)) continue;
+      for (const id of body.matchAll(ANCHOR_ID)) {
         ids.push(id[0] ?? "");
       }
     }
@@ -103,6 +113,26 @@ describe.skipIf(!hasSpecSources)(
       const probe = ENFORCED_ANCHORS[0] ?? "";
       const corpus = Object.values(TEST_SOURCES).join("\n");
       expect(corpus.includes(probe)).toBe(landedAnchorIds([probe]).has(probe));
+    });
+
+    it("判据自证：讲解格式的句子不算声明（防分母虚增）", () => {
+      const { ids } = declaredAnchorIds();
+      // `锚点: <kebab-id>` 与 `锚点: <描述>` 两行是格式说明，占位符与正则
+      // 字符类不该进分母；它们一旦被算进来，覆盖率会凭空变低。
+      expect(ids).not.toContain("kebab-id");
+      expect(ids).not.toContain("a-z0-9");
+    });
+
+    it("白名单外：测试里出现的锚点必须已入白名单（防落地了却不设防）", () => {
+      const { ids } = declaredAnchorIds();
+      const landed = landedAnchorIds(ids);
+      const unguarded = [...landed].filter(
+        (id) => !(ENFORCED_ANCHORS as readonly string[]).includes(id),
+      );
+      expect(
+        unguarded,
+        `这些锚点在测试里已落地却没进白名单，等于钉了不设防：${unguarded.join("、")}`,
+      ).toEqual([]);
     });
 
     it("白名单内：声明 ↔ 落地双向精确相等（缺失即红，写法漂移也红）", () => {
