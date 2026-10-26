@@ -222,7 +222,7 @@ describe("宿主接线互锁（源级扫描）", () => {
     const start = raw.indexOf("const STORIES = [");
     expect(start, "main.ts 缺 const STORIES = [ 声明").toBeGreaterThan(-1);
     const end = raw.indexOf("];", start);
-    expect(end, "main.ts 的 STORIES 清单缺完成 ];").toBeGreaterThan(-1);
+    expect(end, "main.ts 的 STORIES 清单缺结尾 ];").toBeGreaterThan(-1);
     // 结构判据（v2 形态，具体路径与磁盘的互锁在 project.test.ts）：
     // ① 每个条目都是 Stories/ 产物路径；② 条目按码元序递增（与组装器确定性排序一致）
     const block = raw.slice(start, end);

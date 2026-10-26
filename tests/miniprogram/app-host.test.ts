@@ -60,7 +60,7 @@ import {
 import saveBarSource from "../../apps/miniprogram/src/components/SaveLoadBar.vue?raw";
 import projectManifestSource from "../../apps/miniprogram/project/project.json?raw";
 
-/** 宿主各模块源码：平台全局的完成边界靠它机械核对 */
+/** 宿主各模块源码：平台全局的收口边界靠它机械核对 */
 const hostSources = import.meta.glob("../../apps/miniprogram/src/host/*.ts", {
   eager: true,
   query: "?raw",
@@ -225,7 +225,7 @@ describe("queryCanvasNode（取不到就退回）", () => {
   });
 });
 
-describe("平台全局的完成边界", () => {
+describe("平台全局的收口边界", () => {
   it("`uni` 只出现在 platform.ts，其余宿主模块一律经此取件", () => {
     const offenders = Object.entries(hostSources)
       .filter(([path, source]) => {
@@ -696,7 +696,7 @@ describe("取件面（uni.request → fetch 形状）", () => {
   });
 });
 
-describe("存读入口（任务：小程序也要能存 → 读）", () => {
+describe("存读入口（小程序也要能存 → 读）", () => {
   /** 内存版小程序存储面：与 `uni.setStorageSync` 同形（未存的键给空串） */
   function memoryStorage(): MiniprogramStorageLike {
     const map = new Map<string, string>();

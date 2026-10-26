@@ -31,7 +31,7 @@ const WIRING_SOURCES = import.meta.glob(
   { eager: true, query: "?raw", import: "default" },
 ) as Record<string, string>;
 
-/** 平台取径的落点：这两个适配器必须存在（完成不是删功能，而是换地方） */
+/** 平台取径的落点：这两个适配器必须存在（迁移不是删功能，而是换地方） */
 const INFRA_SOURCES = import.meta.glob("../../apps/editor/src/infra/**/*.ts", {
   eager: true,
   query: "?raw",

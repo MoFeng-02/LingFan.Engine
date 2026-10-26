@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * audit-frontmatter.mjs · 逐页 head 与文档结构检查
+ * audit-frontmatter.mjs · 逐页 head 与文档结构审计
  * ---------------------------------------------------------------------------
  * 覆盖以下检查项：
  *   head 与信息架构（title 唯一且 ≤60、description ≤160 且 100% 覆盖、canonical/OG）
@@ -14,7 +14,7 @@
  *   cd docs && node scripts/audit-frontmatter.mjs          # 人类可读
  *   cd docs && node scripts/audit-frontmatter.mjs --json    # 机器可读（报告用）
  * 退出码：0 = 无「拦截级」失败；1 = 存在拦截级失败或 dist 缺失。
- *         「必修 / 建议」级问题只记录，不改变退出码（发布门禁 = 拦截级通过）。
+ *         「必修 / 建议」级问题只记录，不改变退出码（发布门禁只看拦截级问题）。
  *
  * 实现位于 ./audit-frontmatter/ 子目录（index.ts 为唯一出口），本入口只负责加载：
  */

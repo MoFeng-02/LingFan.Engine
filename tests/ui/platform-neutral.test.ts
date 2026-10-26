@@ -4,7 +4,7 @@
  * 覆盖层自身（`overlay/**`）是纯模型构造，层骨架与事件绑定
  * 全部下沉到 `src/dom/overlay-surface.ts`，故这里不再有例外清单。
  *
- * `UI_DOM_TIER` 的语义是命中集合与清单**逐项相等**；完成完成后清单为空，
+ * `UI_DOM_TIER` 的语义是命中集合与清单**逐项相等**；迁移完成后清单为空，
  * 判据收敛为「除 `src/dom/` 外零命中」。
  *
  * 词法判据前先剥掉注释与字符串（沿用 `tests/playground/shell-purity.test.ts` 的手法），

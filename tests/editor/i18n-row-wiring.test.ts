@@ -4,7 +4,7 @@
  * 为何要补：判据 `addTranslationRow` / `removeTranslationRow` / `renameTranslationRow`
  * 早已实现且有 5 组边界测试（`i18n-table-rows.test.ts`），但**「UI 是否接了」没有守卫**。
  * 判据通过、组件写好了，**却没接进界面**是常见漏法 ——
- * 判据测试绿 ≠ 能力可用。
+ * 判据测试通过 ≠ 能力可用。
  *
  * 两个组件职责不重叠：
  * - `LangWorkbench`（右栏「本地化」tab）定位是**发现**（覆盖率 / 缺译清单），

@@ -37,19 +37,19 @@ pnpm --filter @lingfan-engine/miniprogram typecheck  # 本包单独类型检查�
 npm install --prefix %TEMP%\mpauto miniprogram-automator
 set AUTOMATOR_ROOT=%TEMP%\mpauto\node_modules\miniprogram-automator
 set MP_NAME=阿寻
-node 项目记录 apps\miniprogram\dist\build\mp-weixin 项目记录
+node <自动化脚本>\mp-verify.mjs apps\miniprogram\dist\build\mp-weixin <证据输出目录>
 ```
 
 脚本自己起 `cli auto`（`--auto-port`，默认 9430）再连上去，然后：反复点 `.viewport` 推进 →
 等 `.input-box` 出现 → 打字 → 点 `.submit` → 截图留证。跑通的读数是「推进 16 次到达输入等待态，
 输入「阿寻」后台词变成「阿寻，欢迎来到灵泛！12」」。
 
-媒体这一段同样可以自动验（`项目记录`，端口默认 9431）：
+媒体这一段同样可以自动验（同一套自动化脚本里的 `mp-media.mjs`，端口默认 9431）：
 
 ```bash
 set AUTOMATOR_ROOT=%TEMP%\mpauto\node_modules\miniprogram-automator
 set AUTO_PORT=9431
-node 项目记录 apps\miniprogram\dist\dev\mp-weixin 项目记录
+node <自动化脚本>\mp-media.mjs apps\miniprogram\dist\dev\mp-weixin <证据输出目录>\media-dev
 ```
 
 它照真机路径走一遍演示故事（一进页面就有 `bgm`，输入名字后是 `cutscene`），验三件事：视频字段落进

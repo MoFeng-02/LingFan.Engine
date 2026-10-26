@@ -20,7 +20,7 @@ docs/.astro/
 .rules.ai.md
 agent.md
 
-# 编辑器范围搁置（2026-10-16 用户裁定「app 下的 editor 暂时不用管」）：暂不重排其源码。
-# 解除搁置时删除本段并跑 `pnpm format`（模块 10 台账列有当时的漂移清单）。
+# 编辑器源码暂不纳入格式门禁：历史排版漂移量大，统一重排会掩盖真实改动。
+# 恢复纳入时删除本段并跑 `pnpm format`，重排范围以当次 `prettier --list-different` 为准。
 apps/editor/src/
 packages/editor/src/
