@@ -1,6 +1,6 @@
 {
   "name": "@lingfan-engine/editor",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "type": "module",
   "description": "灵泛叙事作者层：op schema 单一事实源 + 词函数子语言 + 编辑期诊断 + 故事树纯映射器——只读写故事 JSON，不碰运行时与平台",
   "exports": {
