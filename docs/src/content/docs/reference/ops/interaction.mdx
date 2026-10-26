@@ -68,15 +68,24 @@ label crossroad:
 ```text
 input "你叫什么名字？" store="player.name"
 input "密码" store="code" z=20
+input "身份" store="role" options=[{"text": "旅人", "value": "traveler"}, {"text": "商人", "value": "merchant"}]
 ```
 
 **参数**
 
-| 字段     | 类型   | 说明                       |
-| -------- | ------ | -------------------------- |
-| `prompt` | string | 必填。输入提示             |
-| `store`  | string | 必填。变量名               |
-| `z`      | number | 可选。实例 z（choices 层） |
+| 字段      | 类型     | 说明                         |
+| --------- | -------- | ---------------------------- |
+| `prompt`  | string   | 必填。输入提示               |
+| `store`   | string   | 必填。变量名                 |
+| `options` | object[] | 可选。候选快捷值，每项见下表 |
+| `z`       | number   | 可选。实例 z（choices 层）   |
+
+`options` 的每一项：
+
+| 字段    | 类型   | 说明                                   |
+| ------- | ------ | -------------------------------------- |
+| `text`  | string | 必填非空。候选上显示的文字（支持翻译） |
+| `value` | string | 必填非空。点中后原样写进 `store` 的值  |
 
 **最小示例**
 
@@ -93,7 +102,9 @@ label ask_name:
 
 写进去的是**全局**变量。`store="player.name"` 里的 `.` 只是命名习惯，不构成嵌套结构——它不是「`player` 对象下的 `name`」，就是一个叫 `player.name` 的键。
 
-**没有选项式输入**。写 `options` 报「.options 选项式输入暂未实现（fail-closed）」，解析层直接拒。三选一请用 `menu`。
+**候选是快捷方式，不是单选题**。给了 `options` 就在输入框旁列出按钮，点一项直接把它的 `value` 当输入提交；玩家照样可以不理候选自己打字——两条路走同一个提交出口。需要「只能三选一」请用 `menu`（`menu` 选的是列 id，`input` 候选填的是变量值，这是两者刻意的分野）。
+
+`value` **不进翻译表**：多语言下故事逻辑读到的变量值不随语言漂移，只有 `text` 会被翻译。候选缺 `text` 或 `value`（含空串）在解析期就报「input 候选 options[i] 需要 text 与 value」，不静默降级成空值。
 
 解除靠宿主调 `engine.input("阿岚")`。不在输入等待时调用报 `input-invalid`「input 仅在输入等待中有效（当前 \_\_waiting=dialog）」；等待态在但 `store` 丢了报 `input-state-corrupt`「输入等待缺少 store 目标」——后者属于引擎内部不一致，见到就该报障。
 

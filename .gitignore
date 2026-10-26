@@ -47,6 +47,7 @@ apps/playground/src-tauri/gen/android/app/src/main/assets/Resources/
 /.workbuddy/
 /.trae
 /.agent-teams
+/.mnemon
 
 # 测试运行产物：json reporter 的落盘目录（谁跑谁生成，不入版本库）
 /.vitest
