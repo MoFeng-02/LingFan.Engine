@@ -35,6 +35,22 @@ const LEECH_PATTERNS = [
     /packages\/engine\/src\/|apps\/[a-z]+\/src\/|\.agent-teams/g,
   ],
   ["内部代号", /Agent\s*Teams|agent-teams|主理人|qa-verifier|写入范围/g],
+  // 打包流程与加密实现的标识符：公开站点只讲「资源可以是密文」这一契约，
+  // 不讲怎么产出密文包（工具名、开关名、密钥引导文件、加密原语名词）。
+  [
+    "打包实现细节",
+    /lfenpack|LFEN_ENCRYPTED_BUILD|LFEN2|LFS3|__key__|prepare-dist|dist-enc|密钥派生|\bAAD\b|魔数/g,
+  ],
+];
+/**
+ * 严格 0 命中的词表名。与 {@link LEECH_PATTERNS} 的其余项相比，这些词一旦出现
+ * 就能直接判定为泄露，无需人工复核是否误用。
+ */
+const STRICT_NAMES = [
+  "私有文档引用",
+  "内部规约文件",
+  "源码路径注释",
+  "打包实现细节",
 ];
 const PLACEHOLDER_PATTERNS = [
   ["My Docs", /My Docs/g],
@@ -76,10 +92,7 @@ function scanSources(pattern) {
 
 // --- 源码与产物中不得出现内部文档名（严格 0 命中项）
 {
-  const STRICT = LEECH_PATTERNS.filter(
-    ([n]) =>
-      n === "私有文档引用" || n === "内部规约文件" || n === "源码路径注释",
-  );
+  const STRICT = LEECH_PATTERNS.filter(([n]) => STRICT_NAMES.includes(n));
   const hits = [];
   for (const [name, re] of STRICT)
     for (const h of scanSources(new RegExp(re.source, re.flags)))
@@ -88,7 +101,7 @@ function scanSources(pattern) {
     pass(
       "G1-1",
       "G",
-      "内部内容零泄露：私有文档 / 内部规约文件 / 源码路径 0 命中",
+      "内部内容零泄露：私有文档 / 内部规约文件 / 源码路径 / 打包实现细节 0 命中",
       "拦截",
       `扫描 ${pages.length} 个 HTML 的可见文本 + ${cssFiles.length} 个 CSS + ${jsonFiles.length} 个 JSON（已排除 Pagefind 二进制索引与 SVG path 数据，二者会产生假阳性）`,
       STRICT.map(([n, re]) => `${n}: /${re.source}/ → 0`).join("；"),
@@ -97,7 +110,7 @@ function scanSources(pattern) {
     fail(
       "G1-1",
       "G",
-      "内部内容零泄露：私有文档 / 内部规约文件 / 源码路径 0 命中",
+      "内部内容零泄露：私有文档 / 内部规约文件 / 源码路径 / 打包实现细节 0 命中",
       "拦截",
       `${hits.length} 处命中`,
       hits
@@ -110,9 +123,7 @@ function scanSources(pattern) {
 
 // --- 可疑标记词命中须人工复核（逐条登记）
 {
-  const REVIEW = LEECH_PATTERNS.filter(
-    ([n]) => !["私有文档引用", "内部规约文件", "源码路径注释"].includes(n),
-  );
+  const REVIEW = LEECH_PATTERNS.filter(([n]) => !STRICT_NAMES.includes(n));
   const hits = [];
   for (const [name, re] of REVIEW)
     for (const h of scanSources(new RegExp(re.source, re.flags)))
