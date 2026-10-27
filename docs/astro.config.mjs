@@ -192,6 +192,11 @@ export default defineConfig({
               translations: { en: "Publishing a Release" },
               link: "/guides/release/",
             },
+            {
+              label: "打包与加密发布",
+              translations: { en: "Packaging & Encrypted Release" },
+              link: "/guides/packaging/",
+            },
           ],
         },
         {
