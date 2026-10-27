@@ -104,11 +104,12 @@ __PROJECT__/
 ├── package.json
 ├── pnpm-workspace.yaml   # 只声明 allowBuilds：pnpm 12 起「未批准的构建脚本」是硬错误
 ├── tsconfig.json         # 浏览器侧：src/ 下的 ts 与 vue
-├── tsconfig.node.json    # Node 侧：只覆盖 vite.config.ts（它要 node:fs 与 @types/node）
+├── tsconfig.node.json    # Node 侧：vite.config.ts 与 vite.plugins.ts（要 node:fs 与 @types/node）
 ├── vite.config.ts        # publicDir: "Resources" ← 资源根即静态根
+├── vite.plugins.ts       # 构建期扫描：故事清单与字体清单（虚拟模块，层只换插件数组）
 ├── index.html            # RenderTargets 落地：stage/dialogue/choices/notifications/toolbar
 ├── src/main.ts           # 组合根：装配适配器 → 组装工程 → 建引擎 → 订阅渲染 + 帧驱动
-├── src/stories.ts        # 故事文件表（Web 形态按显式清单取文件，全工程唯一声明点）
+├── src/stories.ts        # 故事清单出口（转发 virtual:story-list；清单本身来自磁盘扫描）
 ├── src/styles/stage.css  # 页面与层样式（换框架不动这份：叠加层共用同一张表）
 └── Resources/            # 故事工程根（自包含、可整体搬运）
     ├── project.json      #   工程清单：id/name/entry/lang/formatVersion

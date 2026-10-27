@@ -28,7 +28,7 @@ import { STORIES } from "./stories";
 /**
  * 工程清单与故事文件：**都在应用资源根 `Resources/` 内**。
  * 打包后它们位于 `dist/` 顶层，路径与开发期一致。
- * 故事表在 `./stories`（唯一声明点，各形态共用）。
+ * 故事表在 `./stories`（唯一出口，各形态共用），内容由构建期扫描资源根得出。
  */
 const MANIFEST = "project.json";
 

@@ -12,3 +12,12 @@ declare module "virtual:story-fonts" {
   /** 构建期扫描 Resources/Fonts 的字体清单（与 stories:build 注册表同源） */
   export const storyFonts: readonly StoryFontEntry[];
 }
+
+/**
+ * 故事清单的宿主侧声明：构建期递归扫描 `Resources/Stories/` 得到的逻辑路径表
+ * （相对资源根，如 `Stories/title/title_main.story`）。
+ */
+declare module "virtual:story-list" {
+  /** 按路径码元序排列的故事文件逻辑路径 */
+  export const STORIES: readonly string[];
+}

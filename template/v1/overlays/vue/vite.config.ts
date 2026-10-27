@@ -3,56 +3,13 @@
  *
  * 资源根仍是无条件镜像 `Resources`——纯 Web 工程就是「浏览器游戏模式」的交付正例，
  * 不引入壳侧的开关判定（那属于 Tauri 壳的交付形态，见引擎仓库 `apps/playground`）。
+ *
+ * 字体清单与故事清单的扫描实现在骨架的 `vite.plugins.ts`，本层只多挂一个框架插件：
+ * 清单规则一处维护，换框架不该换掉「清单来自磁盘」这件事。
  */
-import { existsSync, readdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import vue from "@vitejs/plugin-vue";
-import { defineConfig, type Plugin } from "vite";
-
-/** 字体文件扩展名集合（与 stories-build 的字体名注册表同口径） */
-const FONT_EXTENSIONS = [".ttf", ".otf", ".woff", ".woff2"] as const;
-
-/** 字体清单条目：file = 资源文件名，name = 字体名（文件名去扩展名） */
-interface StoryFontEntry {
-  file: string;
-  name: string;
-}
-
-/** Resources/Fonts 扫描：点文件与未知扩展名跳过，文件名字典序稳定 */
-function scanFonts(fontsDir: string): readonly StoryFontEntry[] {
-  if (!existsSync(fontsDir)) return [];
-  return readdirSync(fontsDir)
-    .filter((file) => {
-      const dot = file.lastIndexOf(".");
-      return (
-        dot > 0 &&
-        (FONT_EXTENSIONS as readonly string[]).includes(
-          file.slice(dot).toLowerCase(),
-        )
-      );
-    })
-    .sort()
-    .map((file) => ({ file, name: file.slice(0, file.lastIndexOf(".")) }));
-}
-
-/** 字体清单虚拟模块：构建期扫描 Resources/Fonts，与 stories:build 的注册表同源 */
-function storyFontsVirtual(): Plugin {
-  const moduleId = "virtual:story-fonts";
-  const fontsDir = fileURLToPath(new URL("./Resources/Fonts", import.meta.url));
-  return {
-    name: "story-fonts",
-    resolveId(id) {
-      if (id === moduleId) return `\0${moduleId}`;
-      return null;
-    },
-    load(id) {
-      if (id === `\0${moduleId}`) {
-        return `export const storyFonts = ${JSON.stringify(scanFonts(fontsDir))};`;
-      }
-      return null;
-    },
-  };
-}
+import { defineConfig } from "vite";
+import { storyFontsVirtual, storyListVirtual } from "./vite.plugins";
 
 /** 脚手架工程的 Vite 配置（Vue 形态） */
 export default defineConfig({
@@ -63,5 +20,5 @@ export default defineConfig({
   // 宿主端口与 Tauri 约定一致；换平台壳时只改这里
   server: { port: 1420, strictPort: true },
 
-  plugins: [vue(), storyFontsVirtual()],
+  plugins: [vue(), storyFontsVirtual(), storyListVirtual()],
 });

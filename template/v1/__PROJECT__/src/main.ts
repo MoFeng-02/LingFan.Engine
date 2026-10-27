@@ -26,7 +26,7 @@ import { STORIES } from "./stories";
  * 工程清单与故事文件：**都在应用资源根 `Resources/` 内**。
  * 宿主把 `Resources` 作为静态根，故逻辑路径就是 `project.json` / `Stories/**`。
  * 清单放在资源根内是有意为之——只有资源根内的文件才会进打包产物，dev 与 prod 同机制。
- * 故事表在 `./stories`（唯一声明点，各形态共用）。
+ * 故事表在 `./stories`（唯一出口，各形态共用），内容由构建期扫描资源根得出。
  */
 const MANIFEST = "project.json";
 

@@ -11,10 +11,11 @@
 ## 现有层
 
 - `ts/` —— 故事源层，只换故事素材、不碰页面：新增 `Stories.src/`（`config.ts` + 两个示例列）、
-  构建产物 `Resources/Stories/title/*.json` 与 `Stories.src/gen/*.gen.d.ts`、覆盖骨架的
-  `src/stories.ts`（清单改指 `.json` 产物）与独立的 `tsconfig.stories.json`。
+  构建产物 `Resources/Stories/title/*.json` 与 `Stories.src/gen/*.gen.d.ts`、独立的 `tsconfig.stories.json`。
   `package.patch.json` 补 `@lingfan-engine/stories-build` / `@lingfan-engine/editor` 与三条脚本，
   并用 `create.remove` 删掉骨架那份手写故事（产物目录由构建全量管理，两套并存会把 `.story` 当陈旧列清掉）。
+  故事清单不归本层管：骨架的 `vite.plugins.ts` 扫 `Resources/Stories/`，产物 `.json` 落在同一棵树里，
+  自动进清单——层不需要也不应该覆盖 `src/stories.ts`。
 - `vue/` —— 页面结构换成单文件组件：`index.html` 变成挂载点，新增 `src/App.vue` 与 Vue 版组合根，
   `package.patch.json` 补 `vue` / `@vitejs/plugin-vue` / `vue-tsc`，并把 `typecheck` 换成
   `vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json`。`src/host/**` 一行不改，

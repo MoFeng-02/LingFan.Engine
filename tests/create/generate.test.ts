@@ -66,7 +66,6 @@ function makeTemplate(name: string): string {
     "overlays/ts/package.patch.json": JSON.stringify({
       devDependencies: { "@lingfan-engine/stories-build": "^0.1.0" },
     }),
-    "overlays/ts/src/stories.ts": "export const STORIES = [];",
     "overlays/browser/vite.patch.ts": "// browser only __PROJECT__",
   };
   for (const [rel, text] of Object.entries(files)) {

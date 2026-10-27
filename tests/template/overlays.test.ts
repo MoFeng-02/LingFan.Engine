@@ -328,10 +328,13 @@ describe("模板叠加层：故事源形态层只换故事素材", () => {
     ).toBeGreaterThan(1);
   });
 
-  it("ts 层的故事表指向生成物而非手写故事", () => {
-    const stories = TS_FILES.find(([path]) => path.endsWith("/src/stories.ts"));
-    expect(stories, "ts 层缺 src/stories.ts").toBeDefined();
-    expect(stories![1]).toContain('.json"');
-    expect(stories![1]).not.toContain(".story");
+  it("ts 层不覆盖故事表：清单由构建期扫描资源根得出，与创作形态无关", () => {
+    // 手写产物名单会让「加了列却忘了登记」在构建期无声通过、运行期才 unknown-column，
+    // 所以清单是磁盘事实的投影（骨架 vite.plugins.ts 的 virtual:story-list）。
+    // 创作形态只决定产物从哪来，不该再长出一个需要同步的第二事实来源。
+    expect(
+      TS_FILES.some(([path]) => path.endsWith("/src/stories.ts")),
+      "ts 层不应带自己的 src/stories.ts",
+    ).toBe(false);
   });
 });
