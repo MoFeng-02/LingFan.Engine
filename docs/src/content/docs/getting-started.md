@@ -93,13 +93,13 @@ label title_main:
 
 **页面一片空白，控制台报 404。** 资源路径写错了。`bgm "Audio/theme.mp3"` 对应 `Resources/Audio/theme.mp3`，大小写敏感，路径里不能有 `..`。
 
-**加了新故事文件，引擎说找不到列。** 新文件没进故事清单。故事清单按宿主形态分两种：模板这套纯 Web 宿主按 `src/stories.ts` 里 `STORIES` 数组显式取文件，新文件要追加进去——模板源码里的注释原话就是「新增故事文件必须同步此表」：
+**加了新故事文件，引擎说找不到列。** 先确认文件真的在 `Resources/Stories/` 下——放进去就会被扫到，清单由构建期递归扫描得出，不需要登记，也不用回来改任何名单。`src/stories.ts` 只是这份扫描结果的出口：
 
 ```ts
-export const STORIES: readonly string[] = ["Stories/title/title_main.story"];
+export { STORIES } from "virtual:story-list";
 ```
 
-桌面壳不走这张表，它递归收集 `Resources/Stories/` 下所有故事文件，放了就认。引擎侧两种形态一致：只组装 `Stories/` 下的文件，其余一律跳过。
+扫描与刷新在 `vite.plugins.ts` 里：dev 下新增或删除故事文件会自动作废清单并整页刷新。桌面壳走自己那套递归收集，效果一样。引擎侧两种形态一致：只组装 `Stories/` 下的文件，其余一律跳过。真报了找不到列，多半是文件名大小写不符，或者文件放在了 `Stories/` 之外。
 
 **端口 1420 被占用。** 改 `vite.config.ts` 里的 `server.port`。
 

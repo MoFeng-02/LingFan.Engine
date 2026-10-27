@@ -72,19 +72,19 @@ Story files. Both forms can sit side by side:
 
 Put them anywhere inside `Stories/`, in whatever subdirectories you like. Column ids are unique across the whole project. File names are unrelated to column ids; collisions are decided by column id.
 
-How a new file gets into the story list depends on the host form:
+A new story file is picked up as soon as it lands in `Stories/` — there is no registration step, and no list for you to hand-maintain:
 
-- **Template host (pure-Web form)**: files are taken explicitly from the `STORIES` array in `src/stories.ts`; a new file has to be appended there:
+- **Template host (pure-Web form)**: a build-time scan walks `Resources/Stories/` recursively and hands the result to the host through the virtual module `virtual:story-list`. `src/stories.ts` is only the exit:
 
   ```ts
-  export const STORIES: readonly string[] = ["Stories/title/title_main.story"];
+  export { STORIES } from "virtual:story-list";
   ```
 
-  The list lives in its own file so an overlay can replace it wholesale: in a project generated with `--sources ts`, the same file points at the build output `Stories/title/*.json`.
+  The scan lives in `vite.plugins.ts`, and adding or removing a story file refreshes it during dev. In a project generated with `--sources ts`, the build output `.json` and handwritten `.story` files share the same tree and the same scan.
 
-- **Desktop shell**: recursively collects every story file under `Resources/Stories/` — drop one in and it is picked up, no registration needed; subdirectories double as chapter grouping.
+- **Desktop shell**: also collects every story file under `Resources/Stories/` recursively — drop one in and it is picked up; subdirectories double as chapter grouping.
 
-The engine side is the same for both forms: the assembler only processes files under `Stories/` and skips every other path. A file that never made the list (a missed registration in the Web form) has no columns at all, so jumping to one of them fails to load with "target column does not exist".
+The engine side is the same for both forms: the assembler only processes files under `Stories/` and skips every other path. A file outside `Stories/` (or with a case mismatch) has no columns at all, so jumping to one of them fails to load with "target column does not exist".
 
 A project authored in TypeScript writes its output here, with paths mirroring the source files under `Stories.src/`. Such a project manages its column set wholesale at build time: a column the source no longer declares is deleted from the output directory. The editor treats that output as read-only, so change columns in the source. The test is whether the project root has `Stories.src/config.ts` — the files currently sitting in `Stories/` are irrelevant. See [TypeScript Authoring](/en/advanced/ts-story-source/).
 

@@ -72,19 +72,19 @@ my-story/
 
 在 `Stories/` 里放哪儿都行，子目录随意，列 id 在整个工程内唯一。文件名和列 id 无关，撞车由列 id 判重。
 
-新文件怎么进故事清单，按宿主形态分两种：
+新故事文件放进 `Stories/` 就会被扫到，不需要登记——宿主侧没有一份要你手抄的名单：
 
-- **模板宿主（纯 Web 形态）**：按 `src/stories.ts` 里 `STORIES` 数组显式取文件，新文件要追加进去：
+- **模板宿主（纯 Web 形态）**：构建期递归扫描 `Resources/Stories/`，结果经虚拟模块 `virtual:story-list` 交给宿主。`src/stories.ts` 只是出口：
 
   ```ts
-  export const STORIES: readonly string[] = ["Stories/title/title_main.story"];
+  export { STORIES } from "virtual:story-list";
   ```
 
-  这张表单独成文件，是为了让叠加层能整体替换它：选了 `--sources ts` 的工程里，同一份文件指向的是构建产物 `Stories/title/*.json`。
+  扫描实现在 `vite.plugins.ts`，dev 下新增或删除故事文件会自动刷新。选 `--sources ts` 的工程，产物 `.json` 与手写 `.story` 落在同一棵树，共用这一条扫描。
 
-- **桌面壳**：递归收集 `Resources/Stories/` 下所有故事文件，放了就认，不需要登记；子目录就是章节分组。
+- **桌面壳**：同样递归收集 `Resources/Stories/` 下所有故事文件，放了就认；子目录就是章节分组。
 
-引擎侧两种形态一致：组装器只处理 `Stories/` 下的文件，其余路径一律跳过。没进清单的文件（Web 形态漏登记），它的列等于不存在，跳过去就是「目标列不存在」的加载失败。
+引擎侧两种形态一致：组装器只处理 `Stories/` 下的文件，其余路径一律跳过。文件不在 `Stories/` 下（或大小写不符），它的列等于不存在，跳过去就是「目标列不存在」的加载失败。
 
 用 TS 创作模式写的工程，产物落在这里，路径镜像 `Stories.src/` 的源文件路径。这种工程由构建期全量管理列集：源里没有的列会从产物目录删掉。编辑器对这类工程只读，改列请在源里改。判据是工程根有没有 `Stories.src/config.ts`，与 `Stories/` 里当前的文件无关，见 [TS 创作模式](/advanced/ts-story-source/)。
 

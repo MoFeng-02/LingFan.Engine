@@ -85,18 +85,15 @@ Resources/Lang/en-US/main.json  → 不跳过（名字里有连字符和点，�
 - 译文文件放 `Lang/` 下。
 - 别把故事文件放在资源根顶层或 `Audio/` 里——引擎根本不会看它。
 
-新故事文件要不要登记，取决于宿主怎么取文件。引擎不读文件系统——它拿到的是供给方交上来的一批文件内容，列举文件是供给方的事。
+新故事文件不需要登记。引擎不读文件系统——它拿到的是供给方交上来的一批文件内容，列举文件是供给方的事。
 
-桌面壳的供给方递归扫 `Stories/`，新增文件不用登记。模板和浏览器形态按一张显式清单逐个取（HTTP 没法列目录），所以要加进 `src/stories.ts` 的 `STORIES` 数组：
+桌面壳的供给方递归扫 `Stories/`，新增文件直接生效。模板与浏览器形态同理：`vite.plugins.ts` 在构建期递归扫描 `Resources/Stories/`，把结果作为 `virtual:story-list` 交给宿主，`src/stories.ts` 只是这份扫描结果的出口：
 
 ```ts
-export const STORIES: readonly string[] = [
-  "Stories/title/title_main.story",
-  "Stories/chapter1/chapter1.story",
-];
+export { STORIES } from "virtual:story-list";
 ```
 
-按清单取的形态下，漏登记的后果不是「文件被忽略」这么温和——跳转到那个列会报「目标列不存在」。
+dev 下往 `Stories/` 里放文件或删文件，清单会自动作废并整页刷新。漏掉只可能是文件不在 `Stories/` 下、扩展名不是 `.story`/`.json`，或大小写与引用不符——这时候跳转到那个列会报「目标列不存在」。
 
 ## 文件名与列 id
 
