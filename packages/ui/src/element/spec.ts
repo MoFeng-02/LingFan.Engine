@@ -32,10 +32,24 @@ export interface RenderEventPatch {
   props?: Readonly<Record<string, RenderPropValue>>;
 }
 
-/** 事件绑定；`handler` 的返回值即触发时要应用的补丁（无返回值 = 不改节点） */
+/**
+ * 事件名：前三个是交互态（进出/点击），后两个带值（表单类控件用）。
+ *
+ * `input` 是「值在变」（连续），`change` 是「值已定」（一次）——滑块拖动时前者每帧都来，
+ * 后者只在松手/提交时来，写回状态一律走 `change`，避免每帧刷引擎。
+ */
+export type RenderEventName =
+  "click" | "mouseenter" | "mouseleave" | "input" | "change";
+
+/**
+ * 事件绑定；`handler` 的返回值即触发时要应用的补丁（无返回值 = 不改节点）。
+ *
+ * `handler` 的可选参数是事件载荷：只有 `input` / `change` 会带（控件当前值），
+ * 其余事件一律 `undefined`。既有 handler 不接参数，多一个可选参数对它们零影响。
+ */
 export interface RenderEvent {
-  on: "click" | "mouseenter" | "mouseleave";
-  handler?: () => RenderEventPatch | void;
+  on: RenderEventName;
+  handler?: (value?: RenderPropValue) => RenderEventPatch | void;
   /** 阻止冒泡（元素点击不应同时触发舞台推进） */
   stopPropagation?: boolean;
 }

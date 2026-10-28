@@ -9,7 +9,7 @@
  * ① 写回**路径不变**（章节层级 + 文件名）
  * ② 写回**扩展名不变**（`.story` 不变 `.json`）
  * ③ **零删除**（原文件不是「陈旧」）
- * ④ `type` 必须写回（漏了 ⇒ 菜单场景下次打开变成 game，**不可逆**）
+ * ④ `type` 必须写回（漏了 ⇒ 界面层下次打开变成 game，**不可逆**）
  * ⑤ `sourcePath` 只表达**例外**（非默认路径才显式写）——保证「保存后重开」深等
  * ⑥ `font` 必须写回（漏了 ⇒ 保存悄悄抹掉列排版，**不可逆**）——未声明列不写（保持干净）
  */
@@ -26,7 +26,7 @@ const MANIFEST = { formatVersion: 1, id: "demo", entry: "chapter1" };
 /** 单列夹具用的清单（entry 指向该列 id） */
 const MANIFEST_A = { formatVersion: 1, id: "demo", entry: "a" };
 
-/** 真实工程形态：章节分目录 + `.story` 文本 + menu 类型 */
+/** 真实工程形态：章节分目录 + `.story` 文本 + 界面层类型 */
 function realProjectFiles(): Map<string, string> {
   const col = (id: string, type?: string): string =>
     JSON.stringify({
@@ -39,8 +39,8 @@ function realProjectFiles(): Map<string, string> {
     });
   return new Map([
     ["Stories/chapter1/chapter1.story", col("chapter1")],
-    ["Stories/system/about.story", col("about", "menu")],
-    ["Stories/title/title_main.story", col("title_main", "menu")],
+    ["Stories/system/about.story", col("about", "ui")],
+    ["Stories/title/title_main.story", col("title_main", "ui")],
   ]);
 }
 
@@ -68,10 +68,10 @@ describe("写回保真 · **不拍平**", () => {
     expect([...diff.deletes]).toEqual([]);
   });
 
-  it("`type` 写回（漏了 ⇒ 菜单场景下次打开变成 game，且不可逆）", () => {
+  it("`type` 写回（漏了 ⇒ 界面层下次打开变成 game，且不可逆）", () => {
     const { files } = serializeProject(loadReal(), MANIFEST);
-    expect(files.get("Stories/system/about.story")).toContain("menu");
-    expect(files.get("Stories/title/title_main.story")).toContain("menu");
+    expect(files.get("Stories/system/about.story")).toContain('"ui"');
+    expect(files.get("Stories/title/title_main.story")).toContain('"ui"');
     // game 是缺省 ⇒ 不写（保持文件干净）
     expect(files.get("Stories/chapter1/chapter1.story")).not.toContain(
       '"type"',

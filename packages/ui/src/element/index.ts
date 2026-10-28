@@ -15,6 +15,7 @@ export { registerBuiltinElementRenderers } from "./renderers";
 export { renderElementTree, type ElementTreeRenderOptions } from "./render";
 export {
   type RenderEvent,
+  type RenderEventName,
   type RenderEventPatch,
   type RenderKind,
   type RenderPort,
@@ -29,6 +30,12 @@ export {
   type ElementActionOptions,
   type ElementActionSource,
 } from "./interaction";
+export {
+  parseWritebackTarget,
+  routeElementValueChange,
+  type ElementWritebackPorts,
+  type WritebackTarget,
+} from "./writeback";
 export {
   easingFn,
   easingNames,

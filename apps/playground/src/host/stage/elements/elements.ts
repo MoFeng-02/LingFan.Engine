@@ -12,12 +12,14 @@ import { type ElementInstance } from "@lingfan-engine/core";
 import {
   type CommandRegistry,
   type ElementResourceResolver,
+  type ElementWritebackPorts,
   createElementRegistry,
   createElementResourceResolver,
   createDomRenderPort,
   registerBuiltinElementRenderers,
   renderElementTree,
   resolveElementAction,
+  routeElementValueChange,
 } from "@lingfan-engine/ui";
 
 /** 元素层需要的引擎命令面 */
@@ -42,6 +44,13 @@ export interface ElementLayerOptions {
   engine: ElementEnginePort;
   /** 业务命令注册表（元素 `cmd` 的业务命令由宿主注册） */
   commands: CommandRegistry;
+  /**
+   * 控件值回写的落点端口（`slider` 等带值控件用）。
+   *
+   * 不传 = 本宿主没接回写通道：控件仍可拖，值不落地（拖了没反应，
+   * 所以真正的落地由组合根注入偏好与玩法写入面）。
+   */
+  writeback?: ElementWritebackPorts;
   /** 错误上报（落到错误横幅） */
   reportError(message: string): void;
 }
@@ -114,12 +123,20 @@ export function createElementLayer(options: ElementLayerOptions): ElementLayer {
   function render(): void {
     const container = options.readContainer();
     if (container === null) return;
+    const writeback = options.writeback;
     renderElementTree({
       registry,
       port: createDomRenderPort(container),
       elements: options.readElements(),
       activate,
       evalDisable,
+      // 回写落点归共享判定点：本层不重复判 `volume:` / `game.` 形态
+      onElementValueChange:
+        writeback === undefined
+          ? undefined
+          : (element, value) => {
+              routeElementValueChange(element, value, writeback);
+            },
       resolveResource: resources.resolveForElement,
       onUnknownType: (type) => {
         reportError(`元素类型未注册：${type}（fail-closed：不伪造渲染）`);

@@ -41,6 +41,27 @@ function applyPatch(node: HTMLElement, patch: RenderEventPatch): void {
   if (patch.props !== undefined) applyProps(node, patch.props);
 }
 
+/**
+ * 取事件载荷：`target` 上有 `value` 字段且为标量才传，其余一律 `undefined`。
+ *
+ * 只做形态判定，**不做业务转换**——物化器不认识元素类型，`range` 输入给字符串是
+ * DOM 事实，转不转数字由渲染器决定（它知道自己渲染的是什么）。
+ */
+function readEventValue(domEvent: Event): RenderPropValue | undefined {
+  const target: unknown = domEvent.target;
+  if (target === null || typeof target !== "object") return undefined;
+  if (!("value" in target)) return undefined;
+  const raw = (target as { value: unknown }).value;
+  if (
+    typeof raw === "string" ||
+    typeof raw === "number" ||
+    typeof raw === "boolean"
+  ) {
+    return raw;
+  }
+  return undefined;
+}
+
 function bindEvents(
   node: HTMLElement,
   events: readonly RenderEvent[] | undefined,
@@ -48,7 +69,7 @@ function bindEvents(
   for (const event of events ?? []) {
     node.addEventListener(event.on, (domEvent) => {
       if (event.stopPropagation === true) domEvent.stopPropagation();
-      const patch = event.handler?.();
+      const patch = event.handler?.(readEventValue(domEvent));
       if (patch !== undefined) applyPatch(node, patch);
     });
   }

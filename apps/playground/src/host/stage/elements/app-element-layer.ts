@@ -7,7 +7,11 @@
  */
 
 import { nextTick, watch, type Ref } from "vue";
-import { type ResourcePort, type StoryEngine } from "@lingfan-engine/core";
+import {
+  type PlayerPreferences,
+  type ResourcePort,
+  type StoryEngine,
+} from "@lingfan-engine/core";
 import { createCommandRegistry } from "@lingfan-engine/ui";
 import { createElementLayer } from "./elements";
 import type { VueNarrativeState } from "../../narrative/runtime/narrative-state";
@@ -18,9 +22,10 @@ export interface AppElementLayerOptions {
   narrative: VueNarrativeState;
   /** 舞台元素层容器（模板 ref；声明式空间层的挂载点） */
   elementLayerEl: Ref<HTMLElement | null>;
-  /** 组合根注入的宿主属性（只读消费 `resourcePort`） */
+  /** 组合根注入的宿主属性（只读消费 `resourcePort` / `preferences`） */
   props: {
     resourcePort: ResourcePort;
+    preferences: PlayerPreferences;
   };
   /** 元素 `cmd` 业务命令注册表（未注册 fail-closed，不静默丢弃） */
   commands: ReturnType<typeof createCommandRegistry>;
@@ -47,6 +52,23 @@ export function createAppElementLayer(options: AppElementLayerOptions): void {
       interpolate: (source) => getEngine().interpolate(source),
     },
     commands,
+    /**
+     * 回写落点：音量走偏好（`setVolume` 内部 clamp01 并触发音频重规划），
+     * 玩法状态走 `game.<系统>.<键>`（保留键与 JSON 安全由引擎写入契约把关）。
+     * 两件都是既有闸门——本层不新开写入面。
+     */
+    writeback: {
+      setVolume: (channel, value) => {
+        props.preferences.setVolume(channel, value);
+      },
+      setScoped: (systemId, key, value) => {
+        const writer = getEngine().gameState;
+        return writer.setScoped(systemId, key, value);
+      },
+      reportError: (message) => {
+        error.value = message;
+      },
+    },
     reportError: (message) => {
       error.value = message;
     },

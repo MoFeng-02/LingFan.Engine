@@ -13,7 +13,8 @@ import type { RenderPort, RenderSpec } from "./spec";
 
 /**
  * 一帧元素树的渲染请求：`registry` / `port` / `elements` 必给，
- * 其余三个回调不传即「没有对应的宿主能力」（表现为元素不可点、表达式不求解、资源显示替代文本）。
+ * 其余回调不传即「没有对应的宿主能力」（表现为元素不可点、表达式不求解、
+ * 资源显示替代文本、控件值不落地）。
  *
  * `port` 是宿主注入的渲染端口（Web 侧 `createDomRenderPort`）——渲染器只产出描述树，
  * 平台差异全部完成在端口实现里。
@@ -28,6 +29,14 @@ export interface ElementTreeRenderOptions {
   evalDisable?: (expression: string) => boolean | null;
   /** 资源解析（source/src/path → URL） */
   resolveResource?: (path: string) => string | undefined;
+  /**
+   * 控件值变化回写（`slider` 等带值控件用）：渲染器只上报「哪个元素变成了什么值」，
+   * 落点由宿主决定（偏好 / 作用域状态 / 命名命令）。不传 = 控件可操作但值不落地。
+   */
+  onElementValueChange?: (
+    element: ElementInstance,
+    value: number | string | boolean,
+  ) => void;
   /** 未注册类型上报（fail-closed；宿主负责可见诊断） */
   onUnknownType?: (type: string) => void;
 }
@@ -63,6 +72,7 @@ export function renderElementTree(options: ElementTreeRenderOptions): void {
       activate: options.activate,
       evalDisable: options.evalDisable,
       resolveResource: options.resolveResource,
+      onElementValueChange: options.onElementValueChange,
     });
     // 舞台内叠放序（两级叠放：元素之间在 stage 容器内独立比较）覆盖作者声明，
     // 帧驱动定位锚挂在根节点上（动画按 id 找节点）

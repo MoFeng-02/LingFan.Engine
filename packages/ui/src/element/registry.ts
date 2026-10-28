@@ -29,6 +29,16 @@ export interface ElementRenderContext {
   evalDisable?: (expression: string) => boolean | null;
   /** 资源解析（source/src/path → 可加载 URL）；缺省或失败返回 undefined（不静默伪造） */
   resolveResource?: (path: string) => string | undefined;
+  /**
+   * 控件值变化回写：渲染器把「哪个元素变成了什么值」交给宿主，**不自己写状态**。
+   *
+   * 落点由宿主决定（偏好 / 作用域状态 / 命名命令），UI 层不认识引擎；
+   * 未注入 = 宿主没接回写通道，控件仍可拖但值不落地（静默，不抛）。
+   */
+  onElementValueChange?: (
+    element: ElementInstance,
+    value: number | string | boolean,
+  ) => void;
 }
 
 /** 渲染器：产出元素的描述树（根节点承载类名/样式，子元素在 `children` 里） */

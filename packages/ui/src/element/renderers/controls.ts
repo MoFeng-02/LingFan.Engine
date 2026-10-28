@@ -4,7 +4,7 @@
  */
 import { clamp01 } from "@lingfan-engine/core";
 import { bindInteraction, isDisabled } from "./bindings";
-import { createRoot, numProp, withProps, withStyle } from "./base";
+import { createRoot, numProp, withEvents, withProps, withStyle } from "./base";
 import type { ElementRenderContext } from "../registry";
 import type { RenderSpec } from "../spec";
 
@@ -54,7 +54,13 @@ export function renderProgress(ctx: ElementRenderContext): RenderSpec {
   return { ...spec, style, children: [fill] };
 }
 
-/** 滑块：`min`/`max`/`value` 归一后写进原生 input；纵向由 `orientation` 决定书写方向 */
+/**
+ * 滑块：`min`/`max`/`value` 归一后写进原生 input；纵向由 `orientation` 决定书写方向。
+ *
+ * 值回写挂 `change`（值已定才上报，拖动过程中的每帧不刷状态）：控件给的是字符串，
+ * 这里转数字——`min`/`max` 的区间由控件自身保证，本层不再裁剪。
+ * 回写不改节点：滑块自己持有当前值，描述树只在重渲时覆盖它。
+ */
 export function renderSlider(ctx: ElementRenderContext): RenderSpec {
   const spec = createRoot("slider", ctx);
   const withPropsSpec = withProps(spec, {
@@ -67,7 +73,23 @@ export function renderSlider(ctx: ElementRenderContext): RenderSpec {
     ctx.element.props.orientation === "vertical"
       ? withStyle(withPropsSpec, { writingMode: "vertical-lr" })
       : withPropsSpec;
-  return bindInteraction(out, ctx);
+  const bound = bindInteraction(out, ctx);
+  // 禁用即不挂回写（与点击同一条短路：禁用的控件不该改动任何状态）
+  if (isDisabled(ctx)) return bound;
+  return withEvents(bound, [
+    {
+      on: "change",
+      handler: (raw) => {
+        // 空串的 Number() 是 0 而不是 NaN，须先挡掉——「没给值」不等于「值为 0」
+        if (typeof raw === "string" && raw.trim() === "") return undefined;
+        const value = typeof raw === "string" ? Number(raw) : raw;
+        if (typeof value === "number" && Number.isFinite(value)) {
+          ctx.onElementValueChange?.(ctx.element, value);
+        }
+        return undefined;
+      },
+    },
+  ]);
 }
 
 /** 复选框：`checked === true` 才勾上（其余取值一律不勾，不猜真值） */
