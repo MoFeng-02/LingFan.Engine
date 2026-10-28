@@ -732,6 +732,7 @@ function onImportFile(event: Event): void {
       :story="story"
       :resource-port="ports.resourcePort.value"
       :layer-z="ports.layerZ.value"
+      :audio-config="ports.audioConfig.value"
       :create-audio-port="createAudioPort"
       :create-video-port="createVideoPort"
       @close="ports.previewing.value = false"

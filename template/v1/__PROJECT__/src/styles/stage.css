@@ -160,6 +160,103 @@ input {
 button {
   cursor: pointer;
 }
+/* 偏好面板槽位：z 由 shell.layers.prefs 写入（缺省 1500，与历史面板同级）；
+   槽位本身不吃事件，只有里面的控件吃——面板空着（这层没装）时点击直接穿透 */
+#prefs {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  max-width: 300px;
+  pointer-events: none;
+}
+#prefs > * {
+  pointer-events: auto;
+}
+.prefs-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #2f3a4d;
+  border-radius: 8px;
+  background: rgba(27, 33, 48, 0.94);
+  padding: 10px 12px;
+  font-size: 13px;
+}
+.prefs-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.prefs-label {
+  flex: 0 0 4em;
+  color: #a9b1d6;
+}
+.prefs-range {
+  flex: 1 1 auto;
+  min-width: 100px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+.prefs-checkbox {
+  padding: 0;
+}
+.prefs-value {
+  flex: 0 0 4em;
+  text-align: right;
+  color: #a9b1d6;
+  font-variant-numeric: tabular-nums;
+}
+/* 页面容器：整屏界面挂这里（列 id → 页面，见 src/host/pages/）。
+   槽位本身不吃事件，只有里面的界面吃——没挂页面时它是空的，点击继续穿透到
+   下面的舞台与对话层，否则工具条会被一层空气挡住。
+   DOM 顺序在工具条之后，所以页面挂上时确实盖住工具条：这是「完整界面替换」。 */
+#page {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#page > * {
+  pointer-events: auto;
+}
+/* 标题页（示范页面的样式；页面自己长什么样由它的样式决定，引擎不管） */
+.page-title {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: radial-gradient(ellipse at center, #1b2233 0%, #0c0f16 70%);
+  text-align: center;
+}
+.page-title__heading {
+  margin: 0;
+  font-size: 40px;
+  letter-spacing: 0.08em;
+  color: #e6e6e6;
+}
+.page-title__subtitle {
+  margin: 0;
+  color: #a9b1d6;
+  font-size: 14px;
+}
+.page-title__progress {
+  margin: 0;
+  color: #565f89;
+  font-size: 12px;
+}
+.page-title__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+.page-title__start,
+.page-title__continue {
+  min-width: 120px;
+  padding: 8px 20px;
+}
 /* 全屏转场遮罩（transition）：屏幕级，恒在最上；透明度由帧驱动写入 */
 #transition {
   position: absolute;

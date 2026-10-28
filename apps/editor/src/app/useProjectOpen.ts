@@ -1,5 +1,8 @@
 import type { Ref } from "vue";
-import { DEFAULT_LAYER_Z } from "@lingfan-engine/core";
+import {
+  DEFAULT_AUDIO_CONFIG,
+  DEFAULT_LAYER_Z,
+} from "@lingfan-engine/core";
 import type { Story } from "@lingfan-engine/core";
 import {
   storyDocumentPath,
@@ -134,6 +137,7 @@ export function useProjectOpen(deps: ProjectOpenDeps) {
     selectedColumnId.value = tree.entry;
     ports.resourcePort.value = opened.resourcePort;
     ports.layerZ.value = opened.layerZ; // 预览用工程层级表解析实例级 z
+    ports.audioConfig.value = opened.audioConfig; // 预览用工程默认音量解析未写 volume 的命令
     diagnosticSupply.value = opened.diagnosticSupply; // 资源/译文检查器生效
     ports.projectRoot.value = opened.root;
     ports.degradedOpen.value = opened.degraded; // 缺清单降级的事实显式上状态栏
@@ -169,6 +173,7 @@ export function useProjectOpen(deps: ProjectOpenDeps) {
     ports.degradedOpen.value = undefined; // 解绑 = 降级态一并作废（绑定状态不随 undo 回滚）
     ports.resourcePort.value = undefined;
     ports.layerZ.value = DEFAULT_LAYER_Z; // 解绑后回内建层级表
+    ports.audioConfig.value = DEFAULT_AUDIO_CONFIG; // 与层级表同步回内建默认
     diagnosticSupply.value = undefined; // 解绑后回「无供给侧」= 检查器族跳过
     projectTree.value = undefined; // 诊断基准随之归零（回落到当前活动树）
     saveStatus.saveError.value = "";

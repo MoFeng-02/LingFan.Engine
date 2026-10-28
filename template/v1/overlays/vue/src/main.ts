@@ -10,9 +10,18 @@
  */
 import { createApp } from "vue";
 import { DEFAULT_TEXT_CPS, DEFAULT_TOAST_MS } from "@lingfan-engine/ui";
-import { bootHost, must, reportBootFailure, type StageDom } from "./host";
+import {
+  bootHost,
+  createPageRegistry,
+  must,
+  optional,
+  reportBootFailure,
+  type PageRegistry,
+  type StageDom,
+} from "./host";
 import { STORIES } from "./stories";
 import App from "./App.vue";
+import TitlePage from "./pages/title-page.vue";
 
 /**
  * 工程清单与故事文件：**都在应用资源根 `Resources/` 内**。
@@ -39,7 +48,36 @@ function readDom(): StageDom {
     load: must<HTMLButtonElement>("#load"),
     transition: must("#transition"),
     error: must("#error"),
+    // 偏好面板槽位（可选）：本层 App 没给就 null，面板不装、游戏照跑
+    prefs: optional("#prefs"),
+    // 页面容器槽位（可选）：本层不给就 null，所有列都按 op 渲染
+    page: optional("#page"),
   };
+}
+
+/**
+ * 页面表：列 id → 整屏页面。
+ *
+ * 这是「用框架渲染界面」的唯一接缝——注册表在宿主里，引擎不认识 Vue，
+ * 也不知道「标题页」是什么；它只是进了某一列，宿主就把那一列注册过的页面挂上去。
+ * 未注册的列照常按 op 渲染：没有自定义界面是合理降级，不是错误。
+ */
+function createPages(): PageRegistry {
+  const pages = createPageRegistry();
+  pages.register("title_main", (ctx) => {
+    // 每次挂载都是新实例：切走时 `unmount` 会 `app.unmount()`，Vue 的响应式与
+    // 事件监听随实例一起拆掉，不留在后台占内存。
+    const app = createApp(TitlePage, { ctx });
+    return {
+      mount(container): void {
+        app.mount(container);
+      },
+      unmount(): void {
+        app.unmount();
+      },
+    };
+  });
+  return pages;
 }
 
 /** 挂载页面结构；失败（含节点缺失）写进页面错误条，不留白屏 */
@@ -61,6 +99,10 @@ if (dom !== undefined) {
     stories: STORIES,
     defaultCps: DEFAULT_TEXT_CPS,
     toastDurationMs: DEFAULT_TOAST_MS,
+    prefsContainer: dom.prefs,
+    // 整屏界面槽位：给了就按列 id 挂页面，不给就整列按 op 渲染
+    pageContainer: dom.page,
+    pages: createPages(),
   }).catch((error: unknown) => {
     reportBootFailure(dom, error);
   });

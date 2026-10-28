@@ -19,7 +19,16 @@
  */
 
 import { DEFAULT_TEXT_CPS, DEFAULT_TOAST_MS } from "@lingfan-engine/ui";
-import { bootHost, must, reportBootFailure, type StageDom } from "./host";
+import {
+  bootHost,
+  createPageRegistry,
+  createTitlePage,
+  must,
+  optional,
+  reportBootFailure,
+  type PageRegistry,
+  type StageDom,
+} from "./host";
 import { STORIES } from "./stories";
 
 /**
@@ -47,7 +56,28 @@ const dom: StageDom = {
   load: must<HTMLButtonElement>("#load"),
   transition: must("#transition"),
   error: must("#error"),
+  prefs: optional("#prefs"),
+  // 页面容器槽位（可选）：本层不给就 null，所有列都按 op 渲染
+  page: optional("#page"),
 };
+
+/**
+ * 页面表：列 id → 整屏页面。
+ *
+ * 这是「用页面渲染界面列」的唯一接缝：引擎不认识页面，也不知道「标题页」是什么，
+ * 它只是进了某一列，宿主就把那一列注册过的页面挂上去。未注册的列照常按 op 渲染
+ * ——没有自定义界面是合理降级，不是错误。
+ */
+function createPages(): PageRegistry {
+  const pages = createPageRegistry();
+  pages.register(
+    "title_main",
+    createTitlePage({
+      subtitle: "这一屏是原生 DOM 渲染的页面，不是 op 堆出来的",
+    }),
+  );
+  return pages;
+}
 
 void bootHost({
   dom,
@@ -55,6 +85,11 @@ void bootHost({
   stories: STORIES,
   defaultCps: DEFAULT_TEXT_CPS,
   toastDurationMs: DEFAULT_TOAST_MS,
+  // 偏好面板槽位：页面给了就装（`optional` 已消化「这层不给」的情况）
+  prefsContainer: dom.prefs,
+  // 整屏界面槽位：给了就按列 id 挂页面，不给就整列按 op 渲染
+  pageContainer: dom.page,
+  pages: createPages(),
 }).catch((error: unknown) => {
   reportBootFailure(dom, error);
 });

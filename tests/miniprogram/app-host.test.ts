@@ -827,10 +827,12 @@ describe("存读入口（小程序也要能存 → 读）", () => {
   });
 
   it("组合根把槽数与读档完成信号接上：槽数来自清单、媒体对齐挂 load.done", () => {
-    // 槽数取清单 `shell.saves`（与故事同一次装载，不另发请求）
-    expect(hostSource).toContain(
-      "resolveSavesConfig(await filesPort.manifest())",
+    // 槽数取清单 `shell.saves`（与故事同一次装载，不另发请求）。
+    // 只锁「一次读清单、解析出自它」：中间变量是否单独起名不属契约。
+    expect(hostSource).toMatch(
+      /const manifest = await filesPort\.manifest\(\);/,
     );
+    expect(hostSource).toContain("resolveSavesConfig(manifest)");
     expect(hostSource).toContain("slotIds: slotIds(saves.slots)");
     // 读档真正落地晚于命令返回：对齐必须挂完成信号，不能在 loadGame 里当场同步
     // 落地后两件事都要做：整幅画面全量重渲（引擎重放只驱动变化量）+ 媒体重对齐

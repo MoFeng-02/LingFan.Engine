@@ -16,7 +16,9 @@ import {
   SYS,
   instanceZLayer,
   type ElementInstance,
+  type GameStateWriter,
   type OutboundPayload,
+  type PlayerPreferences,
   type ResourcePort,
   type StoryEngine,
 } from "@lingfan-engine/core";
@@ -29,6 +31,7 @@ import {
   registerBuiltinElementRenderers,
   renderElementTree,
   resolveElementAction,
+  routeElementValueChange,
   type LayerView,
   type StateIntent,
   type TypingSetting,
@@ -74,6 +77,20 @@ export interface HostWiringOptions {
   readTypingSetting(): TypingSetting | undefined;
   /** 存档 / 读档完成后的显式对齐（音频与视频渲染器） */
   syncMedia(): void;
+  /**
+   * 玩家偏好：元素 `cmd="volume:<通道>"` 的回写落点。
+   *
+   * 可选——宿主没接偏好层时音量回写无落点（上报诊断，不静默吞），
+   * 与「宿主没接回写通道，控件仍可拖但值不落地」同一口径。
+   */
+  preferences?: PlayerPreferences;
+  /**
+   * 外部玩法状态写入面（引擎实例的 `gameState`）：元素 `cmd="game.<系统>.<键>"` 的落点。
+   *
+   * 只经 `setScoped` 走 `game.` 命名空间——保留键由引擎写入契约物理挡住，
+   * 元素层不可能靠这条通道碰到 `__` 系统状态。
+   */
+  gameState?: GameStateWriter;
 }
 
 /** 接线状态订阅、元素层与出站事件 */
@@ -112,12 +129,49 @@ export function wireEngine(options: HostWiringOptions): void {
     );
   }
 
+  /**
+   * 控件值回写：元素层只交 `(element, value)`，落点判定在 `element-writeback`。
+   *
+   * **本函数不碰状态**——它把两件既有闸门（偏好 `setVolume` / `gameState.setScoped`）
+   * 交给落点路由，保留键与 JSON 安全仍由引擎写入契约把关。
+   */
+  function writeElementValue(
+    element: ElementInstance,
+    value: number | string | boolean,
+  ): void {
+    const preferences = options.preferences;
+    const gameState = options.gameState;
+    routeElementValueChange(element, value, {
+      setVolume: (channel, next) => {
+        // 偏好层没接时音量回写无处可落：宁可报一行诊断，也不假装写成功
+        if (preferences === undefined) {
+          reportError(
+            `元素 ${String(element.id)} 的音量回写没有偏好层：宿主未接线 PlayerPreferences`,
+          );
+          return;
+        }
+        preferences.setVolume(channel, next);
+      },
+      setScoped: (systemId, key, next) => {
+        if (gameState === undefined) {
+          reportError(
+            `元素 ${String(element.id)} 的状态回写没有写入面：宿主未接线 gameState`,
+          );
+          return false;
+        }
+        return gameState.setScoped(systemId, key, next);
+      },
+      reportError,
+    });
+  }
+
   function renderElements(): void {
     renderElementTree({
       registry: elementRegistry,
       port: createDomRenderPort(dom.stage),
       elements,
       activate: activateElement,
+      onElementValueChange: writeElementValue,
       resolveResource: elementResources.resolveForElement,
       onUnknownType: (type) => reportError(`元素类型未注册：${type}`),
     });

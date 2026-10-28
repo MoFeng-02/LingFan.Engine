@@ -9,7 +9,11 @@
  * - **宿主循环不暂停**（方块一直走动，帧数持续增长）——覆盖式对话的前提；
  * - **输入域让位**：叙事等待推进时按键归叙事，覆盖层收起后按键归宿主游戏。
  */
-import { StoryEngine, type Story } from "@lingfan-engine/core";
+import {
+  resolveAudioConfig,
+  StoryEngine,
+  type Story,
+} from "@lingfan-engine/core";
 import {
   createFetchProjectFilesPort,
   createStaticResourcePort,
@@ -78,10 +82,14 @@ async function main(): Promise<void> {
     manifest: MANIFEST,
     stories: STORIES,
   });
+  const manifest = await filesPort.manifest();
   const story: Story = await loadProject(filesPort);
 
   // ② 建引擎（平台端口按形态注入；嵌入场景通常还有宿主的存档端口）
-  const engine = new StoryEngine(story, { guards });
+  const engine = new StoryEngine(story, {
+    audioConfig: resolveAudioConfig(manifest),
+    guards,
+  });
   const resourcePort = createStaticResourcePort();
   // 元素资源解析是异步的而元素渲染是同步的：用库里现成的同步查表皮接上。
   // 回调经闭包延后读 `overlay`（挂载后才可能触发），避免声明顺序耦合。

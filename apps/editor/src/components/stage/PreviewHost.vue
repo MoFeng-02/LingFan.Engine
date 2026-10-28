@@ -13,6 +13,7 @@ import {
   StoryEngine,
   instanceZLayer,
   resolveInstanceZ,
+  type AudioConfig,
   type LayerZTable,
   type OutboundPayload,
 } from "@lingfan-engine/core";
@@ -56,6 +57,8 @@ const props = defineProps<{
   resourcePort?: ResourcePort;
   /** 层级表（未打开工程 = 内建默认）——预览据此解析实例级 z */
   layerZ?: LayerZTable;
+  /** 工程默认音量（未打开工程 = 内建 1）——预览据此解析未写 volume 的命令 */
+  audioConfig?: AudioConfig;
   createAudioPort: (onError: (message: string) => void) => AudioPort;
   createVideoPort: (onError: (message: string) => void) => VideoPort;
 }>();
@@ -72,7 +75,9 @@ function zOf(layer: keyof LayerZTable): number {
 }
 
 // 预览不接小游戏注册表：挂载事件按 fail-closed 显示横幅（不伪造完成）
-const engine = new StoryEngine(props.story);
+const engine = new StoryEngine(props.story, {
+  audioConfig: props.audioConfig,
+});
 const column = ref("");
 const dialogText = ref("");
 const speaker = ref("");

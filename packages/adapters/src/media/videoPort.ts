@@ -127,6 +127,11 @@ export function createWebVideoPort(
       zIndex = next;
       if (element !== null) element.style.zIndex = String(next);
     },
+    // 运行期改音量：只改音量属性，不重设 src（重设会打断正在播的过场）
+    setVolume(volume: number): void {
+      if (element === null) return; // 还没播过：下次 play 会带上新音量
+      element.volume = Math.min(1, Math.max(0, volume));
+    },
     play(url, options, onEnded): void {
       const video = ensure();
       endedHandler = onEnded ?? null;

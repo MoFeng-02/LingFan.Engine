@@ -22,7 +22,13 @@ import {
   createTauriSavePort,
   installTauriBridge,
 } from "@lingfan-engine/adapters";
-import { bootHost, must, reportBootFailure, type StageDom } from "./host";
+import {
+  bootHost,
+  must,
+  optional,
+  reportBootFailure,
+  type StageDom,
+} from "./host";
 import { STORIES } from "./stories";
 
 /**
@@ -49,6 +55,10 @@ const dom: StageDom = {
   load: must<HTMLButtonElement>("#load"),
   transition: must("#transition"),
   error: must("#error"),
+  // 偏好面板槽位（可选）：骨架 index.html 里有，缺了也不影响启动
+  prefs: optional("#prefs"),
+  // 页面容器槽位（可选）：本层不给就 null，所有列都按 op 渲染
+  page: optional("#page"),
 };
 
 /**
@@ -70,6 +80,9 @@ async function boot(): Promise<void> {
     stories: STORIES,
     defaultCps: DEFAULT_TEXT_CPS,
     toastDurationMs: DEFAULT_TOAST_MS,
+    prefsContainer: dom.prefs,
+    // 整屏界面槽位：给了就按列 id 挂页面，不给就整列按 op 渲染
+    pageContainer: dom.page,
     ports: {
       // 存档落到应用数据目录的 saves/ 下，一槽一文件（加密与回档保护在 Rust 侧扩展）
       saves: createTauriSavePort(),

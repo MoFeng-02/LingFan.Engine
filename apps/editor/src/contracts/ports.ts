@@ -5,6 +5,7 @@
  * 组件只吃这里声明的契约类型，不 import 适配器实现。
  */
 import type {
+  AudioConfig,
   AudioPort,
   DegradedOpen,
   DiagnosticSupply,
@@ -31,6 +32,8 @@ export interface OpenedProject {
   saveText?: (path: string, text: string) => Promise<ProjectWriteReport>;
   /** 层级表：内建默认 × 工程覆盖（`project.json shell.layers`）；预览靠它把实例级 z 与层默认解析成真实 z */
   layerZ: LayerZTable;
+  /** 工程默认音量（project.json shell.audio）：预览的引擎按它解析未写 volume 的命令 */
+  audioConfig: AudioConfig;
   /** 诊断供给侧：资源根实际文件集合（逻辑路径）+ overlay 译文键（并集 + 分语言） */
   diagnosticSupply: DiagnosticSupply;
   /** 保存回磁盘：组合根绑定的闭包，已含原始清单、打开基线与 writer。缺省 = 只读取径，宿主须禁用保存 */

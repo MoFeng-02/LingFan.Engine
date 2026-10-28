@@ -7,6 +7,7 @@
 
 export {
   must,
+  optional,
   createErrorReporter,
   reportBootFailure,
   type StageDom,
@@ -24,4 +25,31 @@ export { createHostEffects, type HostEffectsOptions } from "./effects";
 export { wireEngine, type HostWiringOptions } from "./engine-wiring";
 export { startHostFrameLoop, type HostFrameLoopOptions } from "./frame-loop";
 export { wireInput, type HostInputOptions } from "./input-map";
-export { bootHost, type BootPortOverrides, type HostBootOptions } from "./boot";
+export {
+  bootHost,
+  type BootPortOverrides,
+  type HostBootOptions,
+  type HostHandle,
+} from "./boot";
+export {
+  createPreferencesPanel,
+  PREF_CHANNELS,
+  type PreferencesPanel,
+  type PreferencesPanelOptions,
+  type PreferencesPanelView,
+} from "./panels/preferences";
+export {
+  createPageRegistry,
+  type Page,
+  type PageContext,
+  type PageFactory,
+  type PageRegistry,
+  type PageRegistryOptions,
+} from "./pages/registry";
+export { createPageMounter, type PageMounter } from "./pages/mount";
+export {
+  createHudPanel,
+  type HudPanel,
+  type HudPanelOptions,
+} from "./pages/hud";
+export { createTitlePage, type TitlePageOptions } from "./pages/title-page";

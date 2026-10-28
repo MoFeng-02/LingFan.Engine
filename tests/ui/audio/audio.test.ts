@@ -307,6 +307,44 @@ describe("状态差量 → 端口动作", () => {
     expect(planAudioActions(before, EMPTY_AUDIO_VIEW)).toEqual([]);
   });
 
+  it("se 停止形态按 seq 判定：新 seq 出 stop、同 seq 零动作、带淡出透传", () => {
+    const playing = view({ se: play("click.mp3", 0.8, false, 0, 3) });
+    const stopped = view({
+      se: { kind: "stop", fadeMs: 120, seq: 4 } as AudioChannelState,
+    });
+    expect(planAudioActions(playing, stopped)).toEqual([
+      { type: "stop", channel: "se", fadeMs: 120 },
+    ]);
+    // 同一停止状态重放（如读档后 sync）：不得再发一次 stop
+    expect(planAudioActions(stopped, stopped)).toEqual([]);
+    // 连续两次停止（seq 递增）：各出一次，否则第二次停不掉其间新触发的音效
+    const stoppedAgain = view({
+      se: { kind: "stop", fadeMs: 0, seq: 6 } as AudioChannelState,
+    });
+    expect(planAudioActions(stopped, stoppedAgain)).toEqual([
+      { type: "stop", channel: "se", fadeMs: 0 },
+    ]);
+  });
+
+  it("se 停止后重新触发：stop → play 两个方向都出动作（停止不是终点）", () => {
+    const stopped = view({
+      se: { kind: "stop", fadeMs: 0, seq: 4 } as AudioChannelState,
+    });
+    const replay = view({ se: play("click.mp3", 0.8, false, 0, 5) });
+    expect(planAudioActions(stopped, replay)).toEqual([
+      {
+        type: "play",
+        channel: "se",
+        resource: "click.mp3",
+        volume: 0.8,
+        loop: false,
+        position: 0,
+        fadeMs: 0,
+        restart: true,
+      },
+    ]);
+  });
+
   it("bgm 位置差超阈值才定位（回滚 seek），阈值内视为播放器噪声", () => {
     const before = view({ bgm: play("bgm.mp3"), bgmPosition: 10 });
     expect(

@@ -35,9 +35,11 @@ import {
   PlayerPreferences,
   loadDeclaredExtensions,
   manifestOrientation,
+  resolveAudioConfig,
   resolveLayerZ,
   resolveSavesConfig,
   resolveStageConfig,
+  type AudioConfig,
   type HostInfo,
   type I18nPort,
   type LayerZTable,
@@ -183,6 +185,9 @@ async function boot(): Promise<void> {
   // 舞台适配配置：设计基准像素与适配策略（project.json shell.stage 可覆盖）——作者按基准像素
   // 书写坐标，宿主整场等比缩放套进窗口；解析在引擎，App 只把它转交给适配装配。
   const stage: StageConfig = resolveStageConfig(manifest);
+  // 工程默认音量（project.json shell.audio.volumes）：音量的第二级——命令没写 volume
+  // 时取它，仍没有才是内建 1。玩家偏好是最外层乘算，不在这层。
+  const audioConfig: AudioConfig = resolveAudioConfig(manifest);
   // 平台区分（宿主信息）：取数来源 = Tauri CLI 注入的编译期平台（浏览器形态 undefined →
   // unknown·desktop，显式未知不猜）。宿主事实不可变，适配器内缓存；UI 只展示，按端分支后续按需加。
   // 置于媒体端口之前：媒体源物化的开关取决于宿主事实（见下）。
@@ -252,6 +257,7 @@ async function boot(): Promise<void> {
     layerZ,
     saves,
     stage,
+    audioConfig,
     savePort,
     resourcePort,
     i18nPort,

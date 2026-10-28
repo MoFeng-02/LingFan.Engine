@@ -6,6 +6,7 @@
  * 性能：sync 仅由 `__video` 事件与显式调用触发（回溯/读档后对齐），非逐帧。
  */
 import type {
+  PlayerPreferences,
   ResourcePort,
   VideoCommand,
   VideoPort,
@@ -23,6 +24,11 @@ export interface VideoRendererOptions {
   onError?: (message: string) => void;
   /** cutscene 自然播放结束（引擎据此解除 video 等待） */
   onVideoFinished?: () => void;
+  /**
+   * 玩家偏好：视频音轨按 `bgm` 通道的偏好音量衰减（视频没有独立通道，
+   * 且音轨语义属「背景音」）。不传 = 不衰减，行为与未接偏好时一致。
+   */
+  preferences?: PlayerPreferences;
 }
 
 /**
@@ -63,6 +69,13 @@ export function createVideoRenderer(
     }
   }
 
+  /** 播放命令的生效音量：op 音量 × `bgm` 通道偏好（静音由 effectiveVolume 归零） */
+  function effectiveVolume(volume: number): number {
+    const pref = options.preferences?.effectiveVolume("bgm");
+    if (pref === undefined || pref === 1) return volume;
+    return Math.min(1, Math.max(0, volume * pref));
+  }
+
   function execute(command: VideoCommand): void {
     generation += 1;
     const gen = generation;
@@ -71,7 +84,7 @@ export function createVideoRenderer(
         if (url === null || generation !== gen) return; // 已被更新命令取代
         port.play(
           url,
-          { volume: command.volume, loop: command.loop },
+          { volume: effectiveVolume(command.volume), loop: command.loop },
           command.cutscene ? () => options.onVideoFinished?.() : undefined,
         );
       });
@@ -109,12 +122,20 @@ export function createVideoRenderer(
   const off = engine.onStateChanged((change) => {
     if (change.key === SYS.video) sync();
   });
+  // 偏好变化：只调音量不重播（过场正在放时重播会把玩家看到的画面打断）
+  const offPrefs =
+    options.preferences?.onChange(() => {
+      const command = reader.videoCommand();
+      if (command === null || command.kind !== "play") return;
+      port.setVolume?.(effectiveVolume(command.volume));
+    }) ?? null;
   sync();
 
   return {
     sync,
     dispose(): void {
       off();
+      offPrefs?.();
       for (const url of urls.values()) resources.release(url);
       urls.clear();
     },

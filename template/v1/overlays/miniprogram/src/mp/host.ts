@@ -13,6 +13,7 @@ import {
   defaultEngineTexts,
   findMissingGuards,
   PlayerPreferences,
+  resolveAudioConfig,
   resolveSavesConfig,
   slotIds,
   StoryEngine,
@@ -129,7 +130,8 @@ export async function startMiniprogramHost(
 
   // 存档槽数与缩略图参数来自同一份工程清单（`shell.saves` 逐键覆盖）：清单与故事是同一次
   // 装载（端口内 memo），这里再取一次不产生第二个请求。
-  const saves: SavesConfig = resolveSavesConfig(await filesPort.manifest());
+  const manifest = await filesPort.manifest();
+  const saves: SavesConfig = resolveSavesConfig(manifest);
 
   // 内容是包外的（故事走工程接口，改故事不必发版），守卫却在包里：装载完成先对名字，
   // 缺谁一次报全——错误停在起播之前，而不是播到那条命令才弹「未注册的守卫」。
@@ -145,6 +147,8 @@ export async function startMiniprogramHost(
   });
   const ports = createMiniprogramHostPorts({ videoSurface, projectBaseUrl });
   const engine = new StoryEngine(story, {
+    // 工程默认音量（project.json shell.audio.volumes）：音量的第二级
+    audioConfig: resolveAudioConfig(manifest),
     savePort: ports.save,
     texts: withSlotLabels(defaultEngineTexts),
     // 守卫实现由宿主随代码带上：故事 JSON 只写名字（装载期已校验名字齐全）

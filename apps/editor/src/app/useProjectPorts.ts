@@ -1,13 +1,17 @@
 import { ref } from "vue";
 import type {
   DegradedOpen,
+  AudioConfig,
   LayerZTable,
   ProjectWriteReport,
   ResourcePort,
   Story,
   WriteNormalizationFinding,
 } from "@lingfan-engine/core";
-import { DEFAULT_LAYER_Z } from "@lingfan-engine/core";
+import {
+  DEFAULT_AUDIO_CONFIG,
+  DEFAULT_LAYER_Z,
+} from "@lingfan-engine/core";
 import type { OpenedProject } from "../contracts";
 
 /** 未绑定磁盘工程时的提示（状态口径：不携带「刚点了新建/导入」这类历史） */
@@ -33,6 +37,8 @@ export function useProjectPorts() {
   const degradedOpen = ref<DegradedOpen | undefined>(undefined);
   /** 层级表：打开工程 = 清单 `shell.layers` 覆盖；未打开 = 内建默认（预览解析实例级 z 用） */
   const layerZ = ref<LayerZTable>(DEFAULT_LAYER_Z);
+  /** 工程默认音量（未打开工程 = 内建 1）：预览按它解析未写 volume 的命令 */
+  const audioConfig = ref<AudioConfig>(DEFAULT_AUDIO_CONFIG);
   const openError = ref("");
   /** 保存回磁盘：`undefined` = 未打开工程或只读取径 → 保存禁用 */
   const saveFn = ref<((s: Story) => Promise<ProjectWriteReport>) | undefined>(
@@ -65,6 +71,7 @@ export function useProjectPorts() {
     hostRoot,
     degradedOpen,
     layerZ,
+    audioConfig,
     openError,
     saveFn,
     saveColumnFn,

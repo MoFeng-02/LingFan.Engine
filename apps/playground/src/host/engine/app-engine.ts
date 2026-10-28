@@ -11,6 +11,7 @@
 import { watch, type Ref } from "vue";
 import {
   StoryEngine,
+  type AudioConfig,
   type AudioPort,
   type I18nPort,
   type LayerId,
@@ -31,6 +32,7 @@ export interface AppEngineLifeOptions {
   /** 组合根注入的宿主属性（引擎构造与端口重建消费） */
   props: {
     story: Ref<Story>;
+    audioConfig: AudioConfig;
     i18nPort?: I18nPort;
     savePort: SavePort;
     extensions: OpExtension[];
@@ -135,6 +137,7 @@ export function createAppEngineLife(
     // UI 只发 save/load 命令并反应完成信号（save.done / load.done）
     setEngine(
       new StoryEngine(props.story.value, {
+        audioConfig: props.audioConfig,
         i18nPort: props.i18nPort,
         savePort: props.savePort,
         guards: engineGuards,
@@ -170,6 +173,7 @@ export function createAppEngineLife(
     getEngine().dispose();
     setEngine(
       new StoryEngine(props.story.value, {
+        audioConfig: props.audioConfig,
         i18nPort: props.i18nPort,
         savePort: props.savePort,
         guards: engineGuards,

@@ -25,6 +25,10 @@ export function App() {
         <button id="save">存</button>
         <button id="load">读</button>
       </div>
+      {/* 偏好面板槽位：可选节点（本层不给也能跑，只是没有音量/字速面板） */}
+      {/* 页面容器（可选）：整屏界面由宿主按列 id 挂到这里 */}
+      <div id="page"></div>
+      <div id="prefs"></div>
       <div id="transition"></div>
       <div id="error"></div>
     </div>

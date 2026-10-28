@@ -10,6 +10,7 @@ import { onMounted, onUnmounted, ref, type Ref } from "vue";
 import {
   DEFAULT_KEYMAP,
   StoryEngine,
+  type AudioConfig,
   type AudioPort,
   type HostInfo,
   type I18nPort,
@@ -69,6 +70,8 @@ const props = defineProps<{
   saves: SavesConfig;
   /** 舞台适配配置：设计基准像素与适配策略（project.json shell.stage 可覆盖） */
   stage: StageConfig;
+  /** 工程默认音量（project.json shell.audio 可覆盖）：音量的第二级，偏好乘算在渲染层 */
+  audioConfig: AudioConfig;
   savePort: SavePort;
   resourcePort: ResourcePort;
   /** I18N overlay 供给（可选：浏览器形态未装配 = 原文直出） */

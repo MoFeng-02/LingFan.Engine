@@ -11,7 +11,13 @@
 import { createElement, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { DEFAULT_TEXT_CPS, DEFAULT_TOAST_MS } from "@lingfan-engine/ui";
-import { bootHost, must, reportBootFailure, type StageDom } from "./host";
+import {
+  bootHost,
+  must,
+  optional,
+  reportBootFailure,
+  type StageDom,
+} from "./host";
 import { STORIES } from "./stories";
 import { App } from "./App.tsx";
 
@@ -40,6 +46,10 @@ function readDom(): StageDom {
     load: must<HTMLButtonElement>("#load"),
     transition: must("#transition"),
     error: must("#error"),
+    // 偏好面板槽位（可选）：本层 App 没给就 null，面板不装、游戏照跑
+    prefs: optional("#prefs"),
+    // 页面容器槽位（可选）：本层不给就 null，所有列都按 op 渲染
+    page: optional("#page"),
   };
 }
 
@@ -67,6 +77,9 @@ if (dom !== undefined) {
     stories: STORIES,
     defaultCps: DEFAULT_TEXT_CPS,
     toastDurationMs: DEFAULT_TOAST_MS,
+    prefsContainer: dom.prefs,
+    // 整屏界面槽位：给了就按列 id 挂页面，不给就整列按 op 渲染
+    pageContainer: dom.page,
   }).catch((error: unknown) => {
     reportBootFailure(dom, error);
   });

@@ -17,6 +17,18 @@ export function must<T extends HTMLElement>(selector: string): T {
   return el;
 }
 
+/**
+ * 按选择器取**可选**节点：缺失返回 `null`，不抛。
+ *
+ * 只给「有则增强、无则退化成没有该功能」的节点用——目前只有一个：偏好面板的容器。
+ * 它和 `must()` 的区别是**契约强度**：页面结构由叠加层重写时（Vue / React / 小程序
+ * 各自的 `App`），那份页面可以选择不提供这个槽位，此时面板不装，游戏照常跑；
+ * 而 `must()` 守的 15 个节点缺一个就是装配错误，必须当场抛。
+ */
+export function optional<T extends HTMLElement>(selector: string): T | null {
+  return document.querySelector<T>(selector);
+}
+
 /** 常驻节点句柄表：装配期就要用到、且页面里始终存在的那些 */
 export interface StageDom {
   /** 舞台根：屏幕震动施加位移的对象 */
@@ -39,6 +51,22 @@ export interface StageDom {
   notifications: HTMLElement;
   /** 工具条：存档槽与存 / 读按钮 */
   toolbar: HTMLElement;
+  /**
+   * 偏好面板槽位（**可选**：`null` = 本页面没给这个槽位）。
+   *
+   * 与上面 15 个 `must()` 节点的区别：那些是引擎渲染的落点，缺一个就是装配错误；
+   * 这个只是「没有面板就没有音量/字速 UI」，游戏照常跑，所以按可选处理。
+   * 取用点：`optional("#prefs")`；`layer-z.ts` 写 `prefs` 层 z 时会判空。
+   */
+  prefs: HTMLElement | null;
+  /**
+   * 页面容器（**可选**：`null` = 本页面不给整屏界面留槽位）。
+   *
+   * 给了就启用「列 id → 自定义页面」：宿主按 `SYS.currentSceneColumn` 把对应页面挂进来，
+   * 切走即真正销毁；不给则所有列都按 op 渲染。与 `prefs` 同属「有则增强」的槽位。
+   * 取用点：`optional("#page")`。
+   */
+  page: HTMLElement | null;
   /** 存档槽下拉 */
   slot: HTMLSelectElement;
   /** 存按钮 */

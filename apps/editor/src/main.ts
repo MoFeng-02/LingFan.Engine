@@ -36,6 +36,7 @@ import {
   DEFAULT_LAYER_Z,
   MANIFEST_FILE,
   detectWriteNormalization,
+  resolveAudioConfig,
   resolveLayerZ,
   serializeColumnDocument,
   serializeProject,
@@ -218,12 +219,14 @@ async function loadFromSource(
       // 通用读取：译文表 / 清单 / 生成型产物视图都要看文本（ResourcePort 只给 Blob URL）
       readText: (path: string) => source.text(path),
       layerZ: resolveLayerZ(manifest), // 随工程走：预览需要它解析实例级 z
+      audioConfig: resolveAudioConfig(manifest), // 工程默认音量：预览按它解析未写 volume 的命令
       diagnosticSupply,
       degraded,
     },
     manifest,
   };
 }
+
 
 const opener: ProjectOpener = {
   supportsPicker: supportsDirectoryPicker(),
