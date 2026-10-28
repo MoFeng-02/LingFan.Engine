@@ -68,7 +68,7 @@ if (OP_NAMES.length) {
     pass(
       "A4-2",
       "A",
-      "65 个内建 op 在域页中各有一个锚点小节且不重复",
+      "内建 op 在域页中各有一个锚点小节且不重复",
       "拦截",
       `${OP_NAMES.length} 个 op 全部命中，覆盖 ${new Set([...anchors.values()].flat()).size} 个域页`,
       "op 名单取自 packages/core/src/runtime/opRegistry.ts 的 BUILTIN_OP_NAMES（单一事实源）",
@@ -77,20 +77,20 @@ if (OP_NAMES.length) {
     fail(
       "A4-2",
       "A",
-      "65 个内建 op 在域页中各有一个锚点小节且不重复",
+      "内建 op 在域页中各有一个锚点小节且不重复",
       "拦截",
       `缺失 ${missing.length} / 跨域重复 ${dup.length} / 名单外 ${extra.length}`,
       `缺失：${missing.join(", ") || "无"}；重复：${dup.map(([o, ds]) => `${o}(${ds.join("+")})`).join(", ") || "无"}；名单外：${extra.join(", ") || "无"}`,
     );
   }
 
-  // 总览页：65 个 op 锚点链接齐全，且只链实际存在的域页
+  // 总览页：全部内建 op 的锚点链接齐全，且只链实际存在的域页
   const overview = byUrl.get("/reference/ops/");
   if (!overview) {
     fail(
       "A4-3",
       "A",
-      "op 总览页链接覆盖 65 op 且只链实际存在的域页",
+      "op 总览页链接覆盖全部内建 op 且只链实际存在的域页",
       "拦截",
       "缺 /reference/ops/",
       "",
@@ -118,7 +118,7 @@ if (OP_NAMES.length) {
       pass(
         "A4-3",
         "A",
-        "op 总览页链接覆盖 65 op 且只链实际存在的域页",
+        "op 总览页链接覆盖全部内建 op 且只链实际存在的域页",
         "拦截",
         `总览页链出 ${linkedOps.size} 个 op 锚点、${linkedDomains.size} 个域页，全部命中实体`,
         "",
@@ -127,7 +127,7 @@ if (OP_NAMES.length) {
       fail(
         "A4-3",
         "A",
-        "op 总览页链接覆盖 65 op 且只链实际存在的域页",
+        "op 总览页链接覆盖全部内建 op 且只链实际存在的域页",
         "拦截",
         `未链 op ${missingOps.length} 个；悬空域页 ${danglingDomains.length} 个`,
         `未链：${missingOps.join(", ") || "无"}；悬空：${danglingDomains.join(", ") || "无"}`,
@@ -138,7 +138,7 @@ if (OP_NAMES.length) {
   manual(
     "A4-2",
     "A",
-    "65 个内建 op 锚点覆盖",
+    "内建 op 锚点覆盖",
     "拦截",
     `未能从 ${join(REPO, "packages/core/src/runtime/opRegistry.ts")} 读取 BUILTIN_OP_NAMES，未验证`,
   );
