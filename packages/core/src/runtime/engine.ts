@@ -7,6 +7,7 @@ import type {
   AnimationSpec,
   CharacterDef,
   ColumnCoordinate,
+  ColumnSummary,
   ElementInstance,
   EngineOptions,
   EventListener,
@@ -37,6 +38,7 @@ import {
   rollbackTo,
 } from "./history/index.ts";
 import { exportSave, importSave } from "./save/index.ts";
+import { columnSummaries } from "./columns.ts";
 import {
   advance,
   animationFinished,
@@ -179,6 +181,8 @@ export class StoryEngine extends EngineForwarders {
       this.videoSeq,
       this.savePort,
       this.saveMode,
+      // 工程级配置（非状态）
+      this.audioConfig,
       this.i18nPort,
       this.clearTimer,
       this.abortExternalTakeovers,
@@ -229,6 +233,19 @@ export class StoryEngine extends EngineForwarders {
   /** 读 SSOT 里的当前值；从未写过的键返回 undefined。只读，不触发观察事件 */
   get(key: string): unknown {
     return this.state.get(key);
+  }
+
+  // —— 列清单 ——
+
+  /**
+   * 故事列清单的只读摘要（顺序同故事定义）：宿主据此列章节、判当前页、决定跳哪。
+   *
+   * **每次调用都返回新数组**，元素是冻结对象——调用方随手 `push` / 改字段都碰不到引擎。
+   * 不含 `commands` / `elements` / `entry`：那部分归引擎解释，宿主不应自己再解释一遍。
+   * 热重载后重新调用即得新清单（不要缓存返回值跨重载使用）。
+   */
+  columns(): readonly ColumnSummary[] {
+    return columnSummaries(this.story);
   }
 
   // —— 命令面 ——

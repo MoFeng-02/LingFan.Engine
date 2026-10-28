@@ -11,6 +11,7 @@
  */
 import {
   SYS,
+  sceneTypeOf,
   type AudioChannel,
   type AudioChannelState,
   type ElementInstance,
@@ -18,6 +19,7 @@ import {
   type LayerId,
   type LayerZOverrides,
   type MenuChoice,
+  type SceneType,
   type StateReader,
   type StateSource,
   type VideoCommand,
@@ -133,6 +135,27 @@ function textOf(value: unknown): string {
 /** 见契约 `StateReader`：各方法的降级口径写在契约的字段注释里。 */
 export function createStateReader(source: StateSource): StateReader {
   const get = (key: string): unknown => source.get(key);
+
+  /**
+   * 当前列 id：非字符串一律当空串（与 `textOf` 同口径）。
+   *
+   * 空串同时表达「还没进列」与「值被改坏」——两者对界面是同一件事：没有当前位置。
+   */
+  const currentColumnId = (): string => textOf(get(SYS.currentSceneColumn));
+
+  /**
+   * 当前列类型：从列清单里查 id 对应的类型，查不到即缺省。
+   *
+   * 「查不到」有三种来源，对界面是同一件事（没有可用的当前列）：启动期尚未进列、
+   * 读口拿不到列清单、id 已失效（热重载后坐标过期）。三种都交给 `sceneTypeOf` 归一，
+   * 缺省口径因此只有一处——与列清单、与可回溯判定同源，这里不另判一遍。
+   */
+  const currentColumnType = (): SceneType => {
+    const id = currentColumnId();
+    const columns = source.columns?.() ?? [];
+    return sceneTypeOf(columns.find((column) => column.id === id) ?? {});
+  };
+
   return {
     audioChannel(channel: AudioChannel): AudioChannelState | null {
       return channelStateOf(get(AUDIO_CHANNEL_KEY[channel]));
@@ -234,5 +257,9 @@ export function createStateReader(source: StateSource): StateReader {
       }
       return overrides;
     },
+
+    currentColumnId,
+
+    currentColumnType,
   };
 }

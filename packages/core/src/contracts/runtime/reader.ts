@@ -21,15 +21,28 @@ import type {
   VideoCommand,
 } from "../media/index.ts";
 import type { LayerZOverrides } from "../shell.ts";
+import type { SceneType } from "../story/index.ts";
+import type { ColumnSummary } from "./column-summary.ts";
 
 /**
  * 取值来源：任何能按键读状态的对象都满足。
  *
- * 只要求这一个方法是有意为之——引擎实例满足它，测试替身、只读快照、状态代理也满足，
+ * 只要求 `get` 是有意为之——引擎实例满足它，测试替身、只读快照、状态代理也满足，
  * 于是读口不必依赖 `StoryEngine` 的全部能力，凡是「能读」的地方都能复用同一份校验。
  */
 export interface StateSource {
   get(key: string): unknown;
+  /**
+   * 可选：列清单读数（引擎实例天然满足）。
+   *
+   * **为什么读口需要它**：`currentColumnType()` 要由「当前列 id」查「列类型」，
+   * 而状态里只存 id，不存类型——类型是故事定义的一部分。不提供它时读口退回缺省
+   * `game`，不会抛错：读口只承诺「不撒谎」，不承诺「总能知道」。
+   *
+   * 提供者必须给出**已归一**的 `type`（见 `ColumnSummary`），读口不再自己判一遍，
+   * 否则缺省口径就有两份。
+   */
+  columns?(): readonly ColumnSummary[];
 }
 
 /** 菜单选项：文本与目标列成对（数组顺序即呈现顺序） */
@@ -92,4 +105,18 @@ export interface StateReader {
   elements(): ElementInstance[];
   /** 实例级 z 覆盖：只含显式指定过的层（缺省 = 层默认） */
   instanceZOverrides(): LayerZOverrides;
+  /**
+   * 当前所在列 id（**缺省空串** = 尚未进入任何列，或状态被改坏）。
+   *
+   * 空串是「还没有位置」而不是某个真实列：跳转与高亮请按空串当「无当前位置」处理。
+   */
+  currentColumnId(): string;
+  /**
+   * 当前所在列的类型（**缺省 `game`**）。
+   *
+   * 与「可回溯判定」同源：启动期没有当前列时按 `game` 算，与引擎对启动期的既有口径一致；
+   * 当前列 id 在列清单里找不到（热重载后坐标失效等）同样按 `game`。
+   * 读口不知道列清单（`StateSource.columns` 未提供）时也只能给 `game`——它不猜。
+   */
+  currentColumnType(): SceneType;
 }

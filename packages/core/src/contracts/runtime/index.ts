@@ -5,4 +5,5 @@ export * from "./events.ts";
 export * from "./state-keys.ts";
 export * from "./entities.ts";
 export * from "./reader.ts";
+export * from "./column-summary.ts";
 export * from "./timer.ts";

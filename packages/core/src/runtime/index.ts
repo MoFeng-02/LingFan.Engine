@@ -8,6 +8,7 @@
  */
 export { StoryEngine } from "./engine.ts";
 export type { EngineOptions, GuardContext, GuardFn } from "./engine.ts";
+export { columnSummaries } from "./columns.ts";
 export { isValidSayColor } from "./ops/index.ts";
 export { resolveHost } from "./host.ts";
 export { mergeOverlayFiles } from "./i18n/index.ts";
@@ -15,6 +16,7 @@ export { PlayerPreferences } from "./preferences.ts";
 export { createStateReader } from "./state/index.ts";
 export { Scope } from "./scope.ts";
 export {
+  DEFAULT_AUDIO_CONFIG,
   DEFAULT_LAYER_Z,
   DEFAULT_SAVES_CONFIG,
   DEFAULT_STAGE_CONFIG,
@@ -22,6 +24,7 @@ export {
   instanceZLayer,
   LAYER_IDS,
   manifestOrientation,
+  resolveAudioConfig,
   resolveInstanceZ,
   resolveLayerZ,
   resolveOrientationMode,
@@ -30,6 +33,7 @@ export {
   slotIds,
 } from "./shell.ts";
 export type {
+  AudioConfig,
   LayerId,
   LayerZOverrides,
   LayerZTable,
@@ -64,3 +68,4 @@ export {
   interpolateText,
   type NameResolver,
 } from "./expr/index.ts";
+export { directionOf } from "./paramDirection.ts";
