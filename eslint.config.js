@@ -84,6 +84,45 @@ export default defineConfigWithVueTs(
     },
   },
   {
+    name: "lingfan/max-lines-source",
+    // 单文件行数的机器门禁（对应架构纪律里的「禁止上帝文件」）。
+    //
+    // 口径是**有效代码行**（不含注释与空行），故 `skipBlankLines` 与 `skipComments`
+    // 两个开关缺一不可。少了 skipComments，满篇 JSDoc 的文件会被误判超标。
+    //
+    // 只设硬上限，不设软阈值：软阈值是「应当拆分」的架构判断，属于人的决策；
+    // 硬上限才是必须拆的红线。把建议也做成机器拒绝，等于让机器替人做架构决策。
+    //
+    // 级别用 `warn` 而非 `error`：`lint` 脚本不带 `--max-warnings`，
+    // 因此 warn 只作提示、不阻断流水线；用 error 会让存量偏大的文件立刻判红。
+    //
+    // 测试域排除：测试文件按功能域拆文件、不按行数硬卡，这是同一条纪律里写明的例外。
+    // 全仓超出硬上限的文件目前全是测试，排除后源码侧零警告，
+    // 否则噪音会淹掉真信号。
+    files: ["**/*.{ts,mts,tsx,js,mjs,cjs}"],
+    ignores: ["tests/**", "**/*.test.*", "**/*.spec.*"],
+    rules: {
+      "max-lines": [
+        "warn",
+        { max: 500, skipBlankLines: true, skipComments: true },
+      ],
+    },
+  },
+  {
+    name: "lingfan/max-lines-vue",
+    // `.vue` 单文件组件含模板与样式，上限放宽到 600。
+    // 与上一块按扩展名互斥——flat config 同名规则后块覆盖前块，
+    // 两块文件域不得重叠（与文件头「按文件域互斥拆分」的既有纪律一致）。
+    files: ["**/*.vue"],
+    ignores: ["tests/**"],
+    rules: {
+      "max-lines": [
+        "warn",
+        { max: 600, skipBlankLines: true, skipComments: true },
+      ],
+    },
+  },
+  {
     name: "lingfan/unused-conventions",
     // `_` 前缀 = 有意不用的形参/变量（如 fail-closed 运行期守卫的签名占位：
     // 参数只为调用点类型存在，运行期必抛）——生态标准约定，显式放行
