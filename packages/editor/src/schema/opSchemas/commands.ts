@@ -231,6 +231,33 @@ const voiceSchema = z.strictObject({
 });
 const stopSchema = z.strictObject({ fade: Fade.optional() });
 
+/** 音频实例 id：与扩展 / 玩法系统同一条短 id 形态（引擎侧是唯一声明处，此处只校验形态） */
+const AudioInstanceId = z
+  .string()
+  .regex(/^[a-z][a-z0-9_-]{0,31}$/, "须为小写字母开头的短 id（1..32 位）");
+
+const audioChannelSchema = z.enum(["bgm", "se", "ambient", "voice"]);
+
+const audioPlaySchema = z.strictObject({
+  inst: AudioInstanceId,
+  channel: audioChannelSchema,
+  resource: NonEmpty,
+  volume: Finite.optional(),
+  loop: z.boolean().optional(),
+  fade: Fade.optional(),
+  restart: z.boolean().optional(),
+});
+
+const audioStopSchema = z.strictObject({
+  inst: AudioInstanceId.optional(),
+  fade: Fade.optional(),
+});
+
+const audioVolumeSchema = z.strictObject({
+  inst: AudioInstanceId,
+  volume: Finite,
+});
+
 const videoSchema = z.strictObject({
   ...playFields,
   loop: z.boolean().optional(),
@@ -357,6 +384,9 @@ export {
   seSchema,
   voiceSchema,
   stopSchema,
+  audioPlaySchema,
+  audioStopSchema,
+  audioVolumeSchema,
   videoSchema,
   cutsceneSchema,
   seekVideoSchema,

@@ -1,5 +1,6 @@
 import { isPlainObject } from "../../shared/index.ts";
 import {
+  AUDIO_CHANNELS,
   isOrientationMode,
   type DegradedOpen,
   type Story,
@@ -118,12 +119,42 @@ export function assembleProject(
     if (!isPlainObject(manifest.shell)) {
       issues.push("project.json: shell 必须为对象");
     } else {
-      const orientation = (manifest.shell as { orientation?: unknown })
-        .orientation;
+      const shell = manifest.shell as {
+        orientation?: unknown;
+        audio?: unknown;
+      };
+      const orientation = shell.orientation;
       if (orientation !== undefined && !isOrientationMode(orientation)) {
         issues.push(
           `project.json: shell.orientation 必须为 auto|portrait|landscape，收到 ${JSON.stringify(orientation)}`,
         );
+      }
+      // 工程默认音量：形状错即拒绝；逐个通道只认有限数字（越界钳制，不拒绝）。
+      // 与 resolveAudioConfig 同口径——那里是解析（钳制后采纳），这里是拒绝形状错误，
+      // 两处若口径不同，作者会看到「构建通过但音量不对」。
+      if (shell.audio !== undefined) {
+        if (!isPlainObject(shell.audio)) {
+          issues.push("project.json: shell.audio 必须为对象");
+        } else {
+          const volumes = (shell.audio as { volumes?: unknown }).volumes;
+          if (volumes !== undefined) {
+            if (!isPlainObject(volumes)) {
+              issues.push(
+                "project.json: shell.audio.volumes 必须为对象（键为音频通道）",
+              );
+            } else {
+              for (const channel of AUDIO_CHANNELS) {
+                const raw = (volumes as Record<string, unknown>)[channel];
+                if (raw === undefined) continue;
+                if (typeof raw !== "number" || !Number.isFinite(raw)) {
+                  issues.push(
+                    `project.json: shell.audio.volumes.${channel} 必须为 0..1 的有限数字，收到 ${JSON.stringify(raw)}`,
+                  );
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

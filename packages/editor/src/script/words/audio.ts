@@ -112,3 +112,82 @@ export function voice(
 export function stopVoice(opts?: StopOptions): CommandOf<"stop_voice"> {
   return { op: "stop_voice", ...opts };
 }
+
+/**
+ * 停止在播音效（`fade` 渐出毫秒，缺省立即）。
+ *
+ * 音效是「一次性触发 + 可停止」的通道：`se` 每次触发独立叠放，
+ * 本命令停掉当前在播的全部音效（已淡出完成的不受影响）。
+ */
+export function stopSe(opts?: StopOptions): CommandOf<"stop_se"> {
+  return { op: "stop_se", ...opts };
+}
+
+/** `audio_play` 的可选项：音量、循环、淡入毫秒、显式重播 */
+export type AudioPlayOptions = Omit<
+  CommandOf<"audio_play">,
+  "op" | "inst" | "channel" | "resource"
+>;
+
+/** `audio_stop` 的可选项：目标实例（省略 = 停全部）、淡出毫秒 */
+export type AudioStopOptions = Omit<CommandOf<"audio_stop">, "op">;
+
+/**
+ * 起播（或更新）一个**音频实例**：按名字点名的独立音轨，与四通道并存。
+ *
+ * - `channel` 决定偏好归口（BGM 的音量偏好管 bgm 实例，音效的管 se 实例）。
+ * - 同实例重复起播：同资源 = 更新（保留位置），换资源或 `restart: true` = 重播。
+ * - 与 {@link bgm} / {@link se} 的区别：通道是「叙事语义上的那一路声音」
+ *   （各一条、随存档走），实例是「作者点名的编排单元」（可多个、各自独立叠放）。
+ *
+ * @param inst 实例 id（小写字母开头的短 id，1..32 位）。
+ * @param channel 归属通道：`bgm` / `se` / `ambient` / `voice`。
+ * @param resource 音频资源路径。
+ * @param opts 可选项，见 {@link AudioPlayOptions}。
+ * @returns `audio_play` 故事命令。
+ * @example
+ * audioPlay("rain", "ambient", "audio/rain.ogg", { volume: 0.3 });
+ * audioVolume("rain", 0.6);
+ */
+export function audioPlay(
+  inst: string,
+  channel: "bgm" | "se" | "ambient" | "voice",
+  resource: string,
+  opts?: AudioPlayOptions,
+): CommandOf<"audio_play"> {
+  return { op: "audio_play", inst, channel, resource, ...opts };
+}
+
+/**
+ * 停止音频实例：给了 `inst` 只停那一轨，省略则停掉当前全部实例。
+ * @param inst 目标实例 id（省略 = 停全部）。
+ * @param opts 可选项：淡出毫秒。
+ * @returns `audio_stop` 故事命令。
+ */
+export function audioStop(
+  inst?: string,
+  opts?: AudioStopOptions,
+): CommandOf<"audio_stop"> {
+  return {
+    op: "audio_stop",
+    ...(inst === undefined ? {} : { inst }),
+    ...opts,
+  };
+}
+
+/**
+ * 只改一个音频实例的音量：不动播放位置、不重播。
+ *
+ * 这是「实时调音」的正规入口——拖动滑块时不要用 {@link audioPlay} 重发，
+ * 那会重设位置并打断淡入。
+ *
+ * @param inst 目标实例 id。
+ * @param volume 音量（0–1）。
+ * @returns `audio_volume` 故事命令。
+ */
+export function audioVolume(
+  inst: string,
+  volume: number,
+): CommandOf<"audio_volume"> {
+  return { op: "audio_volume", inst, volume };
+}

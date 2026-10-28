@@ -4,7 +4,9 @@ import type { StoryCommand } from "../../../../contracts/index.ts";
 import type { StatementContext } from "../state.ts";
 
 /**
- * 解析本族的 op 行（`bgm` `se` `ambient` `voice` `stop_bgm` `stop_ambient` `stop_voice` `video` `cutscene` `seek_video` `pause_video` `resume_video` `stop_video` `video_skipable`）。
+ * 解析本族的 op 行（`bgm` `se` `ambient` `voice` `stop_bgm` `stop_ambient` `stop_voice` `stop_se`
+ * `audio_play` `audio_stop` `audio_volume` `video` `cutscene` `seek_video` `pause_video`
+ * `resume_video` `stop_video` `video_skipable`）。
  *
  * 入参是分发骨架建好的 `StatementContext`（已切好的词表、定位前缀、issue 出口与警告通道）。
  * 只处理本族的 op，不匹配时落到末尾 `return null`，由骨架决定后续。
@@ -51,7 +53,8 @@ export function parseMediaStatement(c: StatementContext): StoryCommand | null {
     }
     case "stop_bgm":
     case "stop_ambient":
-    case "stop_voice": {
+    case "stop_voice":
+    case "stop_se": {
       const cmd: StoryCommand = { op };
       for (const token of tokens) {
         const eq = token.indexOf("=");
@@ -64,6 +67,79 @@ export function parseMediaStatement(c: StatementContext): StoryCommand | null {
         cmd.fade = num;
       }
       return cmd;
+    }
+    // 音频实例族：位置参数是 id（与 resource 的引号形态区分开，作者一眼能看出哪个是名字）
+    case "audio_play": {
+      const inst = tokens[0];
+      const channel = tokens[1];
+      const resource = tokens.find((t) => t.startsWith('"'));
+      if (inst === undefined) return fail("audio_play 需要实例 id");
+      if (channel === undefined) return fail("audio_play 需要 channel");
+      if (resource === undefined) return fail("audio_play 需要 resource");
+      const cmd: StoryCommand = {
+        op: "audio_play",
+        inst,
+        channel,
+        resource: unquote(resource),
+      };
+      for (const token of tokens) {
+        if (token === inst || token === channel || token.startsWith('"'))
+          continue;
+        const eq = token.indexOf("=");
+        const key = eq < 0 ? token : token.slice(0, eq);
+        const raw = eq < 0 ? "" : token.slice(eq + 1);
+        if (key === "volume" || key === "fade") {
+          const num = Number(raw);
+          if (eq < 0 || raw === "" || Number.isNaN(num))
+            return fail(`audio_play 的 ${key} 需要数字`);
+          cmd[key] = num;
+        } else if (key === "loop" || key === "restart") {
+          if (raw !== "true" && raw !== "false")
+            return fail(`audio_play 的 ${key} 需要 true|false`);
+          cmd[key] = raw === "true";
+        } else {
+          return fail(`audio_play 未知参数：${token}`);
+        }
+      }
+      return cmd;
+    }
+    case "audio_stop": {
+      const cmd: StoryCommand = { op: "audio_stop" };
+      for (const token of tokens) {
+        const eq = token.indexOf("=");
+        if (eq < 0) {
+          // 唯一的无等号位置参数是目标实例；重复给就是写错
+          if (cmd.inst !== undefined)
+            return fail(`audio_stop 只有一个实例位置参数：${token}`);
+          cmd.inst = token;
+          continue;
+        }
+        const key = token.slice(0, eq);
+        const raw = token.slice(eq + 1);
+        if (key !== "fade") return fail(`audio_stop 未知参数：${token}`);
+        const num = Number(raw);
+        if (raw === "" || Number.isNaN(num))
+          return fail("audio_stop 的 fade 需要数字");
+        cmd.fade = num;
+      }
+      return cmd;
+    }
+    case "audio_volume": {
+      const inst = tokens[0];
+      let volume: number | undefined;
+      for (const token of tokens.slice(1)) {
+        const eq = token.indexOf("=");
+        const key = eq < 0 ? token : token.slice(0, eq);
+        const raw = eq < 0 ? "" : token.slice(eq + 1);
+        if (key !== "volume") return fail(`audio_volume 未知参数：${token}`);
+        const num = Number(raw);
+        if (eq < 0 || raw === "" || Number.isNaN(num))
+          return fail("audio_volume 的 volume 需要数字");
+        volume = num;
+      }
+      if (inst === undefined) return fail("audio_volume 需要实例 id");
+      if (volume === undefined) return fail("audio_volume 需要 volume");
+      return { op: "audio_volume", inst, volume };
     }
     // 视频族：resource 位置参数（video/cutscene）；seek_video 为秒数
     case "video":

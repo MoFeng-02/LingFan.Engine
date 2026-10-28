@@ -90,6 +90,8 @@ export const PARAM_DIRECTION: Readonly<Record<string, ParamDirection>> = {
   [SYS.audioSe]: "two-way",
   [SYS.audioAmbient]: "two-way",
   [SYS.audioVoice]: "two-way",
+  /** 音频实例表：命令写、宿主可按 id 改音量；专用接缝 = 实例命令面 */
+  [SYS.audioInstances]: "two-way",
   /** 背景乐播放位置：引擎回写、宿主可定位（读档后对齐） */
   [SYS.bgmPosition]: "two-way",
 };

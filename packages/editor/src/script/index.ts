@@ -112,6 +112,9 @@ export {
 // —— 存档 / 音频 / 视频 / 小游戏 ——
 export { save, load, autoSave, saveDelete } from "./words/index.ts";
 export {
+  audioPlay,
+  audioStop,
+  audioVolume,
   bgm,
   stopBgm,
   se,
@@ -119,8 +122,11 @@ export {
   stopAmbient,
   voice,
   stopVoice,
+  stopSe,
 } from "./words/index.ts";
 export type {
+  AudioPlayOptions,
+  AudioStopOptions,
   PlayOptions,
   BgmOptions,
   StopOptions,

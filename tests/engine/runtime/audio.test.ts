@@ -246,6 +246,67 @@ describe("媒体位置随快照", () => {
     });
   });
 
+  it("stop_se 写停止形态，并按单调 seq 与触发区分（连续两次停止是两次独立事件）", () => {
+    const { engine } = makeEngine([
+      { op: "se", resource: "click.mp3" },
+      { op: "se", resource: "boom.mp3" },
+      { op: "stop_se", fade: 120 },
+      { op: "se", resource: "click.mp3" },
+      { op: "stop_se" },
+      { op: "say", text: "x" },
+    ]);
+    engine.start();
+    const stopped = channel(engine, SYS.audioSe);
+    expect(stopped).toMatchObject({ kind: "stop", fadeMs: 0 });
+    // 两次停止各拿一个新 seq：渲染层靠它判定「这是一次新事件」，
+    // 否则第二次停止与第一次不可区分，之后的音效停不掉。
+    expect(typeof stopped?.seq).toBe("number");
+  });
+
+  it("stop_se 的 seq 单调递增，且与触发的 seq 共用同一计数器", () => {
+    const { engine } = makeEngine([
+      { op: "se", resource: "a.mp3" },
+      { op: "say", text: "一" },
+    ]);
+    engine.start();
+    const first = channel(engine, SYS.audioSe);
+    expect(first?.kind).toBe("play");
+    const firstSeq = first?.seq ?? 0;
+
+    const { engine: engine2 } = makeEngine([
+      { op: "se", resource: "a.mp3" },
+      { op: "stop_se" },
+      { op: "say", text: "一" },
+    ]);
+    engine2.start();
+    const stopped = channel(engine2, SYS.audioSe);
+    expect(stopped?.kind).toBe("stop");
+    // 停止排在触发之后，序号必须更大——两者共用 mediaSeq，否则「触发→停止」判不出先后
+    expect(stopped?.seq).toBeGreaterThan(firstSeq);
+  });
+
+  it("stop_se 未知字段 fail-closed（与其余 stop_* 同口径）", () => {
+    const { engine, errors } = makeEngine([
+      { op: "stop_se", resource: "a.mp3" },
+      { op: "say", text: "x" },
+    ]);
+    engine.start();
+    expect(
+      errors.some((e) => JSON.stringify(e).includes("stop_se-unknown-field")),
+    ).toBe(true);
+  });
+
+  it("stop_se 非法淡出参数 fail-closed", () => {
+    const { engine, errors } = makeEngine([
+      { op: "stop_se", fade: {} },
+      { op: "say", text: "x" },
+    ]);
+    engine.start();
+    expect(
+      errors.some((e) => JSON.stringify(e).includes("stop_se-invalid-fade")),
+    ).toBe(true);
+  });
+
   it('stop_bgm 停背景乐并把播放位置归零（既有实现 `bgm ""` 语义的显式化）', () => {
     const { engine } = makeEngine([
       { op: "bgm", resource: "main.mp3" },

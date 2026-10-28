@@ -97,6 +97,10 @@ export function parseSimpleStatement(
     case "stop_bgm":
     case "stop_ambient":
     case "stop_voice":
+    case "stop_se":
+    case "audio_play":
+    case "audio_stop":
+    case "audio_volume":
     case "video":
     case "cutscene":
     case "seek_video":

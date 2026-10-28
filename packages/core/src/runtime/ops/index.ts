@@ -39,7 +39,12 @@ export {
   execRandom,
   execUndef,
 } from "./variables.ts";
-export { execAudio, execNotify, execVideo } from "./media.ts";
+export {
+  execAudio,
+  execAudioInstance,
+  execNotify,
+  execVideo,
+} from "./media.ts";
 export {
   execAnimate,
   execElementVisual,

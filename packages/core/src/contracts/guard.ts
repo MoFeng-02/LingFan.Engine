@@ -4,6 +4,7 @@
  * 这些形状被跨包消费（编辑器扩展出口、UI 覆盖层、宿主组合根、生成的故事代码），
  * 且本身不依赖引擎实现，故与其它契约同住契约层；引擎实现只按契约读取它们。
  */
+import type { AudioConfig } from "./shell.ts";
 import type { OpExtension } from "./extension.ts";
 import type { MinigameRegistration } from "./minigame.ts";
 import type { SaveDataV1, SaveMode, SavePort } from "./save.ts";
@@ -21,6 +22,14 @@ export interface EngineOptions {
   savePort?: SavePort;
   /** 存档模式（缺省 machine-bound；与 Rust 层同缺省） */
   saveMode?: SaveMode;
+  /**
+   * 工程默认音量（`project.json` 的 `shell.audio`，宿主经 `resolveAudioConfig` 解析后注入）。
+   *
+   * 它是音量的**第二级**：命令没写 `volume=` 时取这里，再没有才是内建 1。
+   * 缺省 = 四通道皆 1（与「不指定 = 满音量」的既有行为逐字节一致）。
+   * 玩家偏好不在这一层——偏好是渲染层最外层的乘算。
+   */
+  audioConfig?: AudioConfig;
   /** 译文供给端口（setLanguage 按需加载译文；缺省 = 原文直出） */
   i18nPort?: I18nPort;
   /**

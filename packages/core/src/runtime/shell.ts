@@ -10,12 +10,16 @@
  */
 
 import {
+  AUDIO_CHANNELS,
+  DEFAULT_AUDIO_CONFIG,
   DEFAULT_LAYER_Z,
   DEFAULT_SAVES_CONFIG,
   DEFAULT_STAGE_CONFIG,
   isOrientationMode,
   LAYER_IDS,
   SYS,
+  type AudioChannel,
+  type AudioConfig,
   type LayerId,
   type LayerZTable,
   type OrientationMode,
@@ -32,12 +36,14 @@ import {
  * 后续并入包出口时统一改走包出口。
  */
 export {
+  DEFAULT_AUDIO_CONFIG,
   DEFAULT_LAYER_Z,
   DEFAULT_SAVES_CONFIG,
   DEFAULT_STAGE_CONFIG,
   LAYER_IDS,
 } from "../contracts/index.ts";
 export type {
+  AudioConfig,
   LayerId,
   LayerZOverrides,
   LayerZTable,
@@ -171,6 +177,48 @@ export function resolveSavesConfig(manifest: unknown): SavesConfig {
       resolved.thumbnail.showText = t.showText;
   }
   return resolved;
+}
+
+/* ============================ 音频壳配置 ============================ */
+
+/** 通道音量：有限数按物理范围钳制；其余（含缺键）回 null，由调用方保持默认 */
+function channelVolume(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Math.min(1, Math.max(0, value));
+}
+
+/**
+ * 解析音频壳配置：内建默认（四通道皆 1）× 工程覆盖（`shell.audio.volumes`）。
+ *
+ * 与 `resolveSavesConfig` 同一口径（清单入参 `unknown`、不猜不抛），差别在越界处理：
+ * 越界值**钳制后采纳**（`1.5` ⇒ `1`）而不是丢弃——与命令面 `volume=` 的行为一致，
+ * 作者手滑写个越界数不该让音量悄悄回满。非有限数（`NaN`/`Infinity`/字符串）仍忽略，
+ * 它们不是「差一点」而是「不是数」。
+ *
+ * 真正的畸形在组装期就 fail-closed 了（`project.json: shell.audio.volumes.<通道>
+ * 必须为 0..1 的有限数字`），这里的宽松只是不让解析函数自己抛。
+ */
+export function resolveAudioConfig(
+  manifest: unknown,
+  defaults: AudioConfig = DEFAULT_AUDIO_CONFIG,
+): AudioConfig {
+  const resolved: Record<AudioChannel, number> = { ...defaults.volumes };
+  if (manifest === null || typeof manifest !== "object") {
+    return { volumes: resolved };
+  }
+  const shell = (manifest as { shell?: unknown }).shell;
+  if (shell === null || typeof shell !== "object") return { volumes: resolved };
+  const audio = (shell as { audio?: unknown }).audio;
+  if (audio === null || typeof audio !== "object") return { volumes: resolved };
+  const volumes = (audio as { volumes?: unknown }).volumes;
+  if (volumes === null || typeof volumes !== "object") {
+    return { volumes: resolved };
+  }
+  for (const channel of AUDIO_CHANNELS) {
+    const value = channelVolume((volumes as Record<string, unknown>)[channel]);
+    if (value !== null) resolved[channel] = value;
+  }
+  return { volumes: resolved };
 }
 
 /* ============================ 舞台适配配置 ============================ */

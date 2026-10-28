@@ -13,6 +13,7 @@ import {
   execAssert,
   execAssign,
   execAudio,
+  execAudioInstance,
   execAutoSaveOp,
   execCall,
   execCharacter,
@@ -253,7 +254,14 @@ export function runDispatch(ctx: OpContext): void {
       case "stop_ambient":
       case "voice":
       case "stop_voice":
+      case "stop_se":
         if (!execAudio(ctx, cmd)) return;
+        frame.index += 1;
+        continue;
+      case "audio_play":
+      case "audio_stop":
+      case "audio_volume":
+        if (!execAudioInstance(ctx, cmd)) return;
         frame.index += 1;
         continue;
       case "video":

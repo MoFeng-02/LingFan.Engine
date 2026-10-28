@@ -16,6 +16,7 @@
  * 本接口只在运行层内部流转，不进包出口。
  */
 import type {
+  AudioConfig,
   EngineTexts,
   I18nPort,
   AnimationSpec,
@@ -58,6 +59,11 @@ export interface OpContext {
   setGlobal(key: string, value: unknown): void;
   /** 写系统键（不进用户存档） */
   setSystem(key: string, value: unknown): void;
+
+  // —— 工程级配置（非状态：来自 project.json，不进存档） ——
+
+  /** 工程默认音量（`shell.audio.volumes`，组装期解析；命令未写 volume 时取它） */
+  audioConfig: AudioConfig;
 
   // —— 帧栈与坐标 ——
 

@@ -4,7 +4,9 @@ import type { StoryCommand } from "../../../../contracts/index.ts";
 import type { GenerateContext } from "../context.ts";
 
 /**
- * 投影本族的 op 行（`bgm` `se` `ambient` `voice` `stop_bgm` `stop_ambient` `stop_voice` `video` `cutscene` `seek_video` `pause_video` `resume_video` `stop_video` `video_skipable`）。
+ * 投影本族的 op 行（`bgm` `se` `ambient` `voice` `stop_bgm` `stop_ambient` `stop_voice` `stop_se`
+ * `audio_play` `audio_stop` `audio_volume` `video` `cutscene` `seek_video` `pause_video`
+ * `resume_video` `stop_video` `video_skipable`）。
  *
  * 入参是分发骨架建好的 `GenerateContext`：`pad` 是本行缩进前缀（块体逐层加深），
  * `out` 是输出缓冲，投影出的行直接推入，不留空行。
@@ -33,12 +35,32 @@ export function generateMediaCommand(
     }
     case "stop_bgm":
     case "stop_ambient":
-    case "stop_voice": {
+    case "stop_voice":
+    case "stop_se": {
       let line = `${pad}${cmd.op}`;
       if (cmd.fade !== undefined) line += ` fade=${cmd.fade}`;
       out.push(line);
       return;
     }
+    case "audio_play": {
+      let line = `${pad}audio_play ${cmd.inst as string} ${cmd.channel as string} ${quoteForText(cmd.resource as string)}`;
+      if (cmd.volume !== undefined) line += ` volume=${cmd.volume}`;
+      if (cmd.loop !== undefined) line += ` loop=${cmd.loop}`;
+      if (cmd.fade !== undefined) line += ` fade=${cmd.fade}`;
+      if (cmd.restart !== undefined) line += ` restart=${cmd.restart}`;
+      out.push(line);
+      return;
+    }
+    case "audio_stop": {
+      let line = `${pad}audio_stop`;
+      if (cmd.inst !== undefined) line += ` ${cmd.inst as string}`;
+      if (cmd.fade !== undefined) line += ` fade=${cmd.fade}`;
+      out.push(line);
+      return;
+    }
+    case "audio_volume":
+      out.push(`${pad}audio_volume ${cmd.inst as string} volume=${cmd.volume}`);
+      return;
     case "video":
     case "cutscene": {
       let line = `${pad}${cmd.op} ${quoteForText(cmd.resource as string)}`;

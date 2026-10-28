@@ -85,6 +85,17 @@ export const SYS = {
   audioSe: "__audio_se",
   audioAmbient: "__audio_ambient",
   audioVoice: "__audio_voice",
+  /**
+   * 音频实例表：`instanceId → { channel, state }`，与上面四个通道键**并存**。
+   *
+   * 四通道是叙事语义（这段是 BGM / 这句是语音），必须有默认值、随档、被偏好分档乘算；
+   * 实例是作者的编排需要（两段环境音交叉、三段音效各调各的），数量不定、名字作者起。
+   * 两者不是同一件事，所以实例另开一张表，不改四通道的任何形态。
+   *
+   * 整表是一个值 ⇒ 快照 / 存档 / 回溯零特判随行；**写时必须整表新建**（写时复制，
+   * 原地改会与快照共享引用，回溯后旧值被一起改掉）。
+   */
+  audioInstances: "__audio_instances",
   /** 帧级键：UI 每帧回写，不进事件流 */
   bgmPosition: "__bgm_position",
   // 视频命令流（单通道）：状态入 SSOT → 快照随行

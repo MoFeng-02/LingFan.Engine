@@ -9,6 +9,7 @@
  * 改字段含义看本层；改行为去 `./internal`、`./state`、`./history`、`./save`、`./ops`、`./i18n`。
  */
 import type {
+  AudioConfig,
   CharacterDef,
   ColumnCoordinate,
   EngineOptions,
@@ -27,7 +28,11 @@ import type {
   GuardFn,
   SaveDataV1,
 } from "../../contracts/index.ts";
-import { defaultEngineTexts, hostTimer } from "../../contracts/index.ts";
+import {
+  DEFAULT_AUDIO_CONFIG,
+  defaultEngineTexts,
+  hostTimer,
+} from "../../contracts/index.ts";
 import {
   buildMinigameRegistry,
   buildOpRegistry,
@@ -136,6 +141,8 @@ export class EngineCore {
   protected savePort: SavePort | undefined;
   /** 存档模式：决定存档可否跨设备读取，也决定 DEK 封装方式（本机绑定 = 用 OS 凭据封存；可携带 = 明文随档）；构造期注入，运行期不变 */
   protected saveMode: SaveMode;
+  /** 工程默认音量（非状态：来自 project.json，不进存档 / 不进快照 / 不进回溯） */
+  protected audioConfig: AudioConfig;
   /** save op 的一次性存档声明：载荷在下一玩家所见等待画面落档（coord = 等待点） */
   protected pendingSave: { slot: string; title?: string } | null = null;
   /** I18N 端口与当前语言译文表（null = 原文直出；切换 = 整表重建并清缓存） */
@@ -181,6 +188,7 @@ export class EngineCore {
     this.rngState = (options?.rngSeed ?? Date.now()) | 0;
     this.savePort = options?.savePort;
     this.saveMode = options?.saveMode ?? "machine-bound";
+    this.audioConfig = options?.audioConfig ?? DEFAULT_AUDIO_CONFIG;
     this.i18nPort = options?.i18nPort;
     this.timerPort = options?.timerPort ?? hostTimer;
     this.texts = { ...defaultEngineTexts, ...options?.texts };

@@ -101,7 +101,7 @@ export function readAudioView(
  * - 换资源 → play（bgm 从目标位置起播）
  * - 同资源 + 显式 restart（seq 变化）→ play 回到起点重播
  * - 同资源仅音量/循环变化 → play 更新（适配器不重头播）；bgm 位置差超阈值 → 定位
- * - se 按单调 seq 判定：每次执行都触发一次（同一资源连续触发亦然）
+ * - se 按单调 seq 判定：每次执行都触发一次（同一资源连续触发亦然）；`stop` 形态同样按 seq 判定
  */
 export function planAudioActions(
   prev: AudioView,
@@ -201,6 +201,15 @@ export function planAudioActions(
       fadeMs: 0,
       restart: true,
     });
+  }
+  // 音效停止：与触发同样按单调 seq 判定（连续两次停止也是两次独立事件，
+  // 否则第二次停不掉第一次停止之后新触发的音效）
+  if (
+    afterSe !== null &&
+    afterSe.kind === "stop" &&
+    (beforeSe === null || beforeSe.seq !== afterSe.seq)
+  ) {
+    actions.push({ type: "stop", channel: "se", fadeMs: afterSe.fadeMs });
   }
   return actions;
 }

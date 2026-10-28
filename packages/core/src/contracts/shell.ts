@@ -10,9 +10,30 @@
  * Android 16 起 sw≥600dp 大屏忽略方向限制（游戏凭 `appCategory="game"` 豁免）；
  * iOS 必须在 plist 内声明过该方向且未开启多任务（iPad）才可能生效。
  */
+import type { AudioChannel } from "./media/entities.ts";
 
 /** 方向模式：auto = 跟随系统与用户自动旋转；portrait/landscape = 锁定方向 */
 export type OrientationMode = "auto" | "portrait" | "landscape";
+
+/**
+ * 工程级音频配置（`project.json` 的 `shell.audio`；解析见 `runtime/shell.ts`）。
+ *
+ * **音量的第二级**：命令没写 `volume=` 时取这里，再没有才是内建 1。
+ * 玩家偏好不在这里——偏好是最外层的乘算（`op 音量 × 通道偏好`），
+ * 顺序不能反：工程默认是作者写的、偏好是玩家设的，把作者默认塞进偏好层
+ * 会让「换个工程，玩家设置被这个工程的默认值改掉」。
+ *
+ * 解析结果是**完整表**（四个通道各一个数），缺声明的通道回 1。
+ */
+export interface AudioConfig {
+  /** 各通道的工程默认音量（0..1） */
+  readonly volumes: Readonly<Record<AudioChannel, number>>;
+}
+
+/** 内建默认音频配置：四个通道都是 1（与「未声明 = 满音量」的既有行为一致） */
+export const DEFAULT_AUDIO_CONFIG: AudioConfig = {
+  volumes: { bgm: 1, se: 1, ambient: 1, voice: 1 },
+};
 
 /**
  * 工程级壳配置（project.json `shell` 段）：作者声明的作品形态。
@@ -21,6 +42,11 @@ export type OrientationMode = "auto" | "portrait" | "landscape";
 export interface ProjectShellConfig {
   /** 作品默认方向（缺省 = auto） */
   orientation?: OrientationMode;
+  /** 作者声明的通道默认音量（缺省 = 四通道皆 1） */
+  audio?: {
+    /** 通道 → 0..1；未列出的通道回内建 1 */
+    volumes?: Partial<Record<AudioChannel, number>>;
+  };
 }
 
 /**
