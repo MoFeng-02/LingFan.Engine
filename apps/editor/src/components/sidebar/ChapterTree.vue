@@ -97,9 +97,7 @@ const groups = computed(() =>
   ).filter((grp) => grp.nodes.length > 0),
 );
 
-/** 类型徽标（精确到 菜单/界面，文案单一事实源 = `sceneTypeBadgeOf`）：
- * `type` 缺省 = game（story 组）不显示徽标——避免满屏都是「剧情」。
- * group=ui ⇔ type∈{menu,ui}（isReplayableColumn 判定）⇒ 徽标必有值。 */
+/** 类型徽标（文案单一事实源 = `sceneTypeBadgeOf`）：game 是常态不标。 */
 function badgeOf(node: ChapterNode): string | null {
   if (node.group === "story") return null; // game 是常态，不标
   return sceneTypeBadgeOf(node.type);

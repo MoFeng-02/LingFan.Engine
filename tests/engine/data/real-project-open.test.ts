@@ -10,7 +10,7 @@
  * **真实工程的关键形态**：
  * - **一个 `.story` 文件承载一章的多个场景**（如 `chapter1.story` 含 4 列）
  *   ⇒ 列 id **天然不等于**文件名，这正是「文件名↔id 解耦」的根本原因。
- * - `type=menu` 只标在**该章的首列**，同文件内的演示子列仍是 game。
+ * - `type=ui` 只标在**该章的首列**，同文件内的演示子列仍是 game。
  * - `Lang/` 下三种布局并存（平铺 / 子目录分类 / 单文件），键 = 中文原文。
  *
  * 守卫口径：读磁盘真实内容（不复制，避免「工程变了」被缓存掩盖）。
@@ -65,11 +65,11 @@ describe.skipIf(!hasRealProject)("真实工程 · **能打开**", () => {
     expect(story.columns.length).toBeGreaterThanOrEqual(50);
   });
 
-  it("**场景类型被识别**（`type=menu` 若一律忽略 ⇒ 菜单全变 game）", () => {
+  it("**场景类型被识别**（`type=ui` 若一律忽略 ⇒ 界面列全变 game）", () => {
     const story = loadReal();
-    const menus = story.columns.filter((c) => c.type === "menu");
-    // 真实工程 7 章标了 menu（about/audio_demo/dialog_templates/sandbox/trans_demo/video_demo/title_main）
-    expect(menus.length).toBeGreaterThanOrEqual(6);
+    const interfaces = story.columns.filter((c) => c.type === "ui");
+    // 真实工程 7 章标了 ui（about/audio_demo/dialog_templates/sandbox/trans_demo/video_demo/title_main）
+    expect(interfaces.length).toBeGreaterThanOrEqual(6);
     // 分章的剧情列是 game（缺省）
     const chapters = story.columns.filter((c) => c.id.startsWith("chapter"));
     expect(chapters.length).toBeGreaterThanOrEqual(3);

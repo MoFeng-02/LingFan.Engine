@@ -94,7 +94,7 @@ Columns default to story columns (`game`): they enter history, can be saved, and
 The other two types take no part in history and build no checkpoints:
 
 ```text
-scene pause_menu type=menu
+scene pause_menu type=ui
   say "Menu scene."
 
 scene status_panel type=ui
@@ -103,7 +103,7 @@ scene status_panel type=ui
 
 Use them for title screens, pause menus and status panels so those transient screens never land in rollback history. Moving from a story column into one of these, the engine notes the progress from before the entry; a save made inside such a column stores the game position from before it, not the menu itself.
 
-`type` only needs writing when it is not the default. Today `menu` and `ui` behave identically inside the engine — no scenario has needed them distinguished yet, so either one runs the same.
+`type` only needs writing when it is not the default: omitted means `game`, and `ui` marks an interface layer. There are **only two values** — whether an interface is a title screen or a settings page is expressed by its column id and the page registry (see [Pages and HUD](/en/guides/pages/)), not by another run-semantics type.
 
 ## Entry column
 

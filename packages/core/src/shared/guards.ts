@@ -61,17 +61,51 @@ export function isPlainObject(
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** 是否是已知的场景类型（非法值由解析层 fail-closed，这里只做收窄） */
+/**
+ * 是否是契约承认的场景类型（**只认 `game` / `ui`**）。
+ *
+ * 调用点都在「拒绝非法输入」的位置：故事文件里写别的值一律 fail-closed 报错，
+ * 不静默当剧情——那种错要等存档/回溯出问题才发现，代价极高。
+ */
 export function isSceneType(value: unknown): value is SceneType {
-  return value === "game" || value === "menu" || value === "ui";
+  return value === "game" || value === "ui";
 }
 
 /**
- * 该列是否参与历史与存档：`type` 缺省按 `game` 算，`menu` / `ui` 不参与。
+ * 把外部输入的场景类型拼写归一为契约值：`game` / `ui`。
+ *
+ * **单一归一函数**：解析层已用 `isSceneType` fail-closed 拒绝非法值，
+ * 这里只负责「缺省」这一种合法输入——`undefined` → `game`。
+ *
+ * 为什么仍单独成函数：`type` 的缺省语义（不写 = 剧情）在 JSON 解析、DSL 解析、
+ * 读侧兜底三处都要用，散写三份 `?? "game"` 会让「缺省是什么」出现三个答案。
+ *
+ * 注意：**归一是读侧兜底，不是校验**。故事文件里的非法 `type` 要 fail-closed 报错，
+ * 那是解析层（`columnShapeDefect`）的职责，不靠这里静默吃掉。
+ */
+export function normalizeSceneType(raw: unknown): SceneType {
+  return isSceneType(raw) ? raw : "game";
+}
+
+/**
+ * 该列是否参与历史与存档：`type` 缺省按 `game` 算，`ui` 不参与。
  *
  * **单一判定点**——引擎的写入守卫与编辑器的章节分组都调用这里，谁都不许另写一份，
  * 否则两侧对「哪些列进存档」的理解会分叉。
  */
 export function isReplayableColumn(column: Pick<StoryColumn, "type">): boolean {
-  return (column.type ?? "game") === "game";
+  return sceneTypeOf(column) === "game";
+}
+
+/**
+ * 列的**归一化**运行语义类型：缺省（以及解析层已 fail-closed 的非法值）一律取 `game`。
+ *
+ * **为什么需要它**：`isReplayableColumn` 只回答「参不参与存档」，回答不了「是哪一种」。
+ * 宿主列清单与状态读口要的是具体类型，若各自写 `column.type ?? "game"`，
+ * 缺省口径就分叉了。归一口径本身归 `normalizeSceneType`，这里只是它的列级入口。
+ *
+ * 注意：**这是读侧归一**。故事文件里的非法 `type` 由解析层拒收，不靠这里兜底。
+ */
+export function sceneTypeOf(column: Pick<StoryColumn, "type">): SceneType {
+  return normalizeSceneType(column.type);
 }

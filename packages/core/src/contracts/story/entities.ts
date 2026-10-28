@@ -25,16 +25,19 @@ export interface StoryCommand {
  *
  * **与 `kind` 正交，两根轴各管一件事**：
  * - `kind`（scene/flow）= **内容形态**：有没有 `elements[]` / `commands[]`
- * - `type`（game/menu/ui）= **运行语义**：进不进历史与存档、菜单是否自动推进
+ * - `type`（game/ui）= **运行语义**：进不进历史与存档
  *
- * 三态语义：
+ * 两态语义：
  * - `game`：实际游戏场景 —— **存档、进历史、建立检查点**
- * - `menu`：菜单 / 标题 / 设置 —— 不存档、不进历史、不建检查点（**可覆盖**）
- * - `ui`：覆盖层 / 弹窗 —— 同上，且**不改变历史游标**
+ * - `ui`：界面层（菜单 / 标题 / 设置 / 覆盖层 / 弹窗）—— 不存档、不进历史、不建检查点
+ *
+ * **两者在运行期没有行为差异**：唯一的判定只有「进不进历史与存档」。所以不拆成
+ * 「菜单」「界面」两个类型——那点区别不存在于引擎里，多一个取值只会让每个消费者
+ * 都得再判一次。界面内部怎么分类（标题页 / 设置页 / 弹窗）归页面层自己表达。
  *
  * **缺省 = `game`** ⇒ 既有工程零改动。
  */
-export type SceneType = "game" | "menu" | "ui";
+export type SceneType = "game" | "ui";
 
 /** 两类列：scene（空间层）与 flow（纯流程） */
 export interface StoryColumn {
@@ -42,8 +45,8 @@ export interface StoryColumn {
   kind: "scene" | "flow";
   /**
    * 运行语义类型（**缺省 `game`**）。
-   * 决定该列是否进历史/存档/检查点，以及菜单态能否自动推进。
-   * **与 `kind` 正交**：`kind: "flow" + type: "menu"`（纯流程的菜单）是合法组合。
+   * 决定该列是否进历史 / 存档 / 检查点。
+   * **与 `kind` 正交**：`kind: "flow" + type: "ui"`（纯流程的界面层）是合法组合。
    */
   type?: SceneType;
   /**

@@ -21,9 +21,8 @@ export interface ChapterNode {
   /** 该章节的场景所属分组（由 `type` 决定，**不按目录猜**） */
   readonly group: ChapterGroup;
   /**
-   * 原始场景类型（列的 `type` 字段原样透传；`undefined` = 缺省 game）。
-   * 分组判定只吃 `group`；要**精确到 菜单/界面** 的展示走 `sceneTypeBadgeOf(node.type)`
-   * （`group=ui` 只说明「不可回溯」，不说明是哪一种）。
+   * 归约后的场景类型（契约值；`undefined` = 缺省 game）。
+   * 分组判定只吃 `group`——`group=ui` 只说明「不可回溯」，不说明作者原本写的是哪一种。
    */
   readonly type: StoryColumn["type"];
   /** 章节在文件树中的位置（逻辑路径，用于联动资源树选中） */

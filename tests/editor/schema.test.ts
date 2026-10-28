@@ -219,6 +219,15 @@ const CANONICAL: Record<string, Record<string, unknown>> = {
     restart: false,
   },
   stop_voice: { op: "stop_voice", fade: 0 },
+  stop_se: { op: "stop_se", fade: 0 },
+  audio_play: {
+    op: "audio_play",
+    inst: "rain",
+    channel: "ambient",
+    resource: "rain.ogg",
+  },
+  audio_stop: { op: "audio_stop", inst: "rain" },
+  audio_volume: { op: "audio_volume", inst: "rain", volume: 0.5 },
   video: { op: "video", resource: "Video/m1.mp4", volume: 0.8, loop: false },
   cutscene: {
     op: "cutscene",

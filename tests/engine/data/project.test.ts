@@ -353,15 +353,15 @@ describe("serializeProject（写回往返互锁）", () => {
     const story = load(entry, {
       "Stories/system/about.story": JSON.stringify({
         formatVersion: 1,
-        columns: [{ id: "about", kind: "flow", type: "menu", commands: [] }],
+        columns: [{ id: "about", kind: "flow", type: "ui", commands: [] }],
       }),
     });
     const { files } = serializeProject(story, entry);
     // 章节层级 + `.story` 扩展名都保住
     expect([...files.keys()]).toContain("Stories/system/about.story");
     expect([...files.keys()]).not.toContain("Stories/about.json");
-    // `type` 必须写回（否则下次打开菜单场景变成 game，且**不可逆**）
-    expect(files.get("Stories/system/about.story")).toContain("menu");
+    // `type` 必须写回（否则下次打开界面层变成 game，且**不可逆**）
+    expect(files.get("Stories/system/about.story")).toContain('"ui"');
     // `sourcePath` 刻意**不写进文件内容**（编辑期元数据，写进去会自指）
     expect(files.get("Stories/system/about.story")).not.toContain("sourcePath");
   });

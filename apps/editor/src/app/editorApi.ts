@@ -1,5 +1,5 @@
 import type { Ref, ShallowRef } from "vue";
-import type { Story } from "@lingfan-engine/core";
+import type { SceneType, Story } from "@lingfan-engine/core";
 import {
   EditorSession,
   addColumn,
@@ -169,7 +169,7 @@ export function createEditorApi(deps: EditorApiDeps): EditorApiPort {
       kind: "flow" | "scene",
       hint?: string,
       /** 运行语义轴（正交）；缺省/game 不写字段 —— 判据在 `@lingfan-engine/editor` 的 addColumn */
-      type?: "game" | "menu" | "ui",
+      type?: SceneType,
     ): void {
       // 新增列是**工程级**操作（改的是文件集，不是某个文件的内容）。
       // 单列文档上直接跑 `addColumn` 会产出「一个文档两列」——违反「一文档 = 一列」不变量，

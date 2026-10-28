@@ -1,5 +1,5 @@
 /**
- * 真实工程验证：三种 Lang 布局 + `type=menu` 场景能被解析器识别。
+ * 真实工程验证：三种 Lang 布局 + `type=ui` 场景能被解析器识别。
  *
  * 需**仓外真实工程**才能跑：用环境变量 `LFEN_REAL_PROJECT` 指向其资源根
  * （内含 `Stories/` 与 `Lang/`）；未设置时本套件**跳过**（不报错）。
@@ -55,24 +55,24 @@ describe.skipIf(!hasRealProject)("真实工程 · 场景类型", () => {
     expect(chapters).toContain("system");
   });
 
-  it("**真实 story 里的 `type=menu` 是当前支持的语义**", () => {
+  it("**真实 story 里的 `type=ui` 是当前支持的语义**", () => {
     // 不用正则含引号（易被工具链切坏）——改成字符串判定
-    const hasMenu = (text: string): boolean => {
+    const hasUi = (text: string): boolean => {
       const line = text
         .split("\n")
         .find((l) => l.trimStart().startsWith("scene "));
-      return line !== undefined && line.includes("type=menu");
+      return line !== undefined && line.includes("type=ui");
     };
-    const menuCount = storyFiles.filter((f) =>
-      hasMenu(readFileSync(join(ROOT, f), "utf8")),
+    const uiCount = storyFiles.filter((f) =>
+      hasUi(readFileSync(join(ROOT, f), "utf8")),
     ).length;
-    const gameCount = storyFiles.length - menuCount;
-    console.log(`真实工程场景分布: game=${gameCount} menu=${menuCount}`);
-    expect(menuCount).toBeGreaterThan(0);
+    const gameCount = storyFiles.length - uiCount;
+    console.log(`真实工程场景分布: game=${gameCount} ui=${uiCount}`);
+    expect(uiCount).toBeGreaterThan(0);
     expect(gameCount).toBeGreaterThan(0);
   });
 
-  it("**解析器接受 type=menu 且识别为不可回溯**", () => {
+  it("**解析器接受 type=ui 且识别为不可回溯**", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "real",
@@ -81,15 +81,15 @@ describe.skipIf(!hasRealProject)("真实工程 · 场景类型", () => {
         {
           id: "title",
           kind: "flow",
-          type: "menu",
+          type: "ui",
           commands: [{ op: "say", text: "标题" }],
         },
         { id: "play", kind: "flow", commands: [{ op: "say", text: "剧情" }] },
       ],
     });
-    const menu = story.columns.find((c) => c.id === "title");
+    const ui = story.columns.find((c) => c.id === "title");
     const game = story.columns.find((c) => c.id === "play");
-    expect(menu?.type).toBe("menu");
+    expect(ui?.type).toBe("ui");
     expect(game?.type).toBeUndefined(); // 缺省 = game
   });
 });

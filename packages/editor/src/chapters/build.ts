@@ -65,15 +65,13 @@ export function chapterGroupOf(
 /**
  * 场景类型的**徽标文案**（单一事实源：列侧栏 / 章节树共用，组件不得自写映射）。
  *
- * - `"menu"` → 「菜单」；`"ui"` → 「界面」
+ * - `"ui"` → 「界面」
  * - 缺省（`undefined`）与 `"game"` → `null`（**game 是常态不标**——满屏「剧情」徽标是噪音）
  */
 export function sceneTypeBadgeOf(
   type: StoryColumn["type"],
-): "菜单" | "界面" | null {
-  if (type === "menu") return "菜单";
-  if (type === "ui") return "界面";
-  return null;
+): "界面" | null {
+  return type === "ui" ? "界面" : null;
 }
 
 /** 命令条数（flow 看 commands、scene 看 entry；缺省 0） */

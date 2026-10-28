@@ -2,7 +2,7 @@
  * Script 词汇层 · **复合词**（多 op/元素的高频组合，纯展开）。
  * 复合词不产出新语义：每个函数 = 既有元素的语法糖。
  */
-import type { ElementNode } from "@lingfan-engine/core";
+import type { ElementNode, SceneType } from "@lingfan-engine/core";
 
 export interface ElementOptions {
   id?: string;
@@ -72,7 +72,7 @@ export function buttonElement(
  * @returns 背景与标题元素节点数组（可省略标题）。
  * @example
  * export default scene("square", () => ({
- *   type: "menu",
+ *   type: "ui",
  *   elements: [...sceneSetup("images/square.png", "城镇广场")],
  *   columns: { ... },
  * }));
@@ -117,9 +117,9 @@ export function sceneSetup(
 
 /**
  * 列的 `type` 字段（game 缺省不写——与序列化口径一致）。
- * @param type 列类型：menu（菜单列）或 ui（界面列）。
+ * @param type 列类型：`ui`（界面层：标题 / 设置 / 覆盖层 / 弹窗）。
  * @returns 带类型标记的对象，展开进列定义。
  */
-export function sceneType(type: "menu" | "ui"): { type: "menu" | "ui" } {
+export function sceneType(type: SceneType): { type: SceneType } {
   return { type };
 }

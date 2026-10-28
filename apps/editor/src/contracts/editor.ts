@@ -10,7 +10,7 @@
  * 注意：契约只描述**能力形状**，不含实现——提交、undo、选中怎么做都在宿主。
  * 某些组件只会用到其中几个成员，多出来的成员不影响它们。
  */
-import type { Story } from "@lingfan-engine/core";
+import type { SceneType, Story } from "@lingfan-engine/core";
 
 export interface EditorApiPort {
   /** 写入字段值（`pointer` 指向该字段本身） */
@@ -40,7 +40,7 @@ export interface EditorApiPort {
   addColumn(
     kind: "flow" | "scene",
     hint?: string,
-    type?: "game" | "menu" | "ui",
+    type?: SceneType,
   ): void;
   removeColumn(id: string): void;
   /** 元素落点创建（`parentPointer` 指向容器元素；一次拖入算一次撤销单元） */

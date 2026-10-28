@@ -37,7 +37,7 @@ describe("场景类型 · 接线互锁", () => {
 
   it("EditorApi 的 addColumn **签名与两处分支都透传 type**", () => {
     const src = code(apiSource);
-    expect(src).toContain('type?: "game" | "menu" | "ui"');
+    expect(src).toContain("type?: SceneType");
     expect(src).toContain("addColumn(s, { kind, hint, type })");
     expect(src).toContain("addColumn(tree, { kind, hint, type })");
   });

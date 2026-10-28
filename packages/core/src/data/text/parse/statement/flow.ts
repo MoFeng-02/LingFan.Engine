@@ -113,7 +113,7 @@ export function parseFlowStatement(c: StatementContext): StoryCommand | null {
       // ——若一律落到「暂不支持的语句」，整个工程就打不开。
       //
       // 语义对齐：`scene "x"`（跳转）≡ `navigate "x"`（坐标切换命令）。
-      // 区别于**列声明**的 `scene "名" type=menu`（那个在顶层解析，见 `parseTextStory`）。
+      // 区别于**列声明**的 `scene "名" type=ui`（那个在顶层解析，见 `parseTextStory`）。
       // `tokens[0]` 是 op 本身，目标名在 `tokens[1]`（`splitTokens` 的口径）
       const target = quoted(0);
       if (target === "") return fail("scene 需要目标场景名");

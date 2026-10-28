@@ -142,11 +142,10 @@ async function promptAddColumn(kind: "flow" | "scene"): Promise<void> {
   const type = await dialog.askChoice({
     title: "场景类型（运行语义）",
     message:
-      "剧情可回溯、可存档；菜单（标题/设置）与界面（覆盖层）不进历史、不进存档。",
+      "剧情可回溯、可存档；界面（标题 / 设置 / 覆盖层 / 弹窗）不进历史、不进存档。",
     options: [
       { value: "game", label: "剧情（缺省：可回溯、可存档）" },
-      { value: "menu", label: "菜单：标题 / 设置页" },
-      { value: "ui", label: "界面：覆盖层 / 弹窗" },
+      { value: "ui", label: "界面：标题 / 设置 / 覆盖层 / 弹窗" },
     ],
   });
   if (type === null) return; // 取消 = 不建列（取消 ≠ 缺省）
@@ -284,11 +283,7 @@ function onDrop(event: DragEvent, sectionKey: string): void {
           <span
             v-if="sceneTypeBadgeOf(column.type)"
             class="type-badge"
-            :title="
-              column.type === 'menu'
-                ? '菜单场景：不参与存档与回溯'
-                : '界面场景：不参与存档与回溯'
-            "
+            title="界面层：不参与存档与回溯"
             >{{ sceneTypeBadgeOf(column.type) }}</span
           >
           <span

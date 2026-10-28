@@ -18,10 +18,12 @@ import type {
   Story,
   StoryColumn,
   StoryCommand,
+  SceneType,
   ElementNode,
   CustomOpProjections,
   TextProjection,
 } from "../../contracts/index.ts";
+import { sceneTypeOf } from "../../shared/index.ts";
 
 /** 文本 → Story（缩进块、注释、全 op 文法；失败整次拒绝并带行列定位）。
  * `projections`（可选）= 扩展自定义 op 的行投影表；缺省 = 现行为逐字节不变。 */
@@ -77,20 +79,18 @@ export function parseTextStory(
       if (name === "" || columns.some((c) => c.id === name)) {
         state.issues.push(`${at}: scene 名为空或重复：${name}`);
       }
-      // `type=menu|ui|game`：**映射到列的运行语义**。
-      // 若「接受但忽略」，作者的 menu 场景**会被当成 game**
-      // ⇒ 保存后菜单会变成可回溯剧情（且不可逆）。
-      let sceneType: "game" | "menu" | "ui" | undefined;
+      // `type=game|ui`：**映射到列的运行语义**。
+      // 若「接受但忽略」，作者的界面层场景**会被当成 game**
+      // ⇒ 保存后界面层会变成可回溯剧情（且不可逆）。
+      // 无从识别的 `type=xxx` 仍走下面的「忽略无法识别的参数」告警，不静默改语义。
+      let sceneType: SceneType | undefined;
       const rest: string[] = [];
       for (let t = 2; t < sceneTokens.length; t += 1) {
         const token = sceneTokens[t]!;
         const eq = token.indexOf("=");
         const key = eq > 0 ? token.slice(0, eq) : "";
         const value = eq > 0 ? unquote(token.slice(eq + 1)) : "";
-        if (
-          key === "type" &&
-          (value === "game" || value === "menu" || value === "ui")
-        ) {
+        if (key === "type" && (value === "game" || value === "ui")) {
           sceneType = value;
           continue;
         }
@@ -194,7 +194,15 @@ export function projectText(
   for (const column of story.columns) {
     if (column.kind === "scene") {
       // scene 列：元素行在前、entry 命令在后（与装载语义一致——先声明空间层再执行）
-      out.push(`scene ${column.id}`);
+      //
+      // `type` 只写非缺省值（`game` 是常态，写进去会让文本噪声变大）；写出的恒是
+      // 契约值 `ui`——旧拼写 `menu` 解析时已归一，投影不还原别名（项目里只允许一种写法）。
+      const sceneType = sceneTypeOf(column);
+      out.push(
+        sceneType === "game"
+          ? `scene ${column.id}`
+          : `scene ${column.id} type=${sceneType}`,
+      );
       for (const node of column.elements ?? []) {
         tolerant(`元素 ${String(node.type ?? "")}`, issues, () =>
           generateElement(node, "  ", out),

@@ -3,7 +3,7 @@
  *
  * 夹具取自真实工程的形态：
  * - `Stories/` 1 层分章（chapter1/chapter1.story …）＋ 一个未分章的 `showcase`
- * - 4 个 `type=game`（3 章节 + showcase）＋ 7 个 `type=menu`
+ * - 4 个 `type=game`（3 章节 + showcase）＋ 7 个 `type=ui`
  * - 另有 **0 层平铺**形态（`Stories/start.json`）⇒ 另一组夹具
  *
  * 三条核心约定（都是设计决策，不是实现细节）：
@@ -20,11 +20,11 @@ import {
   chapterSummaryText,
   type ChapterInput,
 } from "../../packages/editor/src/chapters";
-import type { StoryColumn } from "@lingfan-engine/core";
+import type { SceneType, StoryColumn } from "@lingfan-engine/core";
 
 function col(
   id: string,
-  type?: "game" | "menu" | "ui",
+  type?: SceneType,
   kind: "flow" | "scene" = "flow",
 ): StoryColumn {
   const base: StoryColumn = {
@@ -45,20 +45,20 @@ const realInputs: ChapterInput[] = [
   { path: "Stories/chapter3/chapter3.story", column: col("cavern") },
   //关键反例：**`showcase` 在 system/ 目录下但type=game** ⇒ 不能按目录分组
   { path: "Stories/system/showcase.story", column: col("showcase") },
-  { path: "Stories/system/about.story", column: col("about", "menu") },
-  { path: "Stories/system/sandbox.story", column: col("sandbox", "menu") },
+  { path: "Stories/system/about.story", column: col("about", "ui") },
+  { path: "Stories/system/sandbox.story", column: col("sandbox", "ui") },
   {
     path: "Stories/system/audio_demo.story",
-    column: col("audio_demo", "menu"),
+    column: col("audio_demo", "ui"),
   },
-  { path: "Stories/title/title_main.story", column: col("title_main", "menu") },
+  { path: "Stories/title/title_main.story", column: col("title_main", "ui") },
 ];
 
 /** 演示工程：0 层平铺 */
 const flatInputs: ChapterInput[] = [
   { path: "Stories/start.json", column: col("start") },
   { path: "Stories/inn.json", column: col("inn") },
-  { path: "Stories/square.json", column: col("square", "menu") },
+  { path: "Stories/square.json", column: col("square", "ui") },
 ];
 
 describe("章节树 · 分组**只看 type，不看目录**（核心约定）", () => {
@@ -95,9 +95,10 @@ describe("章节树 · 分组**只看 type，不看目录**（核心约定）", 
     expect(index.ui.map((n) => n.id)).toEqual(["square"]);
   });
 
-  it("`ui` 类型也归界面组（与 menu 同组——两者都不进历史）", () => {
+  it("`ui` 归界面组（不进历史）；缺省按 game 归剧情组", () => {
     expect(chapterGroupOf({ type: "ui" })).toBe("ui");
-    expect(chapterGroupOf({ type: "menu" })).toBe("ui");
+    // 缺省 = game：不写 type 的列一律进剧情组（与引擎的可回溯判定同口径）
+    expect(chapterGroupOf({})).toBe("story");
     expect(chapterGroupOf({})).toBe("story");
   });
 });
@@ -257,7 +258,7 @@ describe("章节树 · 边界条件", () => {
 describe("章节目录 · 按组过滤（storyDirs / uiDirs）", () => {
   it("**目录跟着 type 走**：同一目录里的剧情与界面各归其组，children 不交叉", () => {
     const index = buildChapterIndex([
-      { path: "Stories/system/about.story", column: col("about", "menu") },
+      { path: "Stories/system/about.story", column: col("about", "ui") },
       { path: "Stories/system/sandbox.story", column: col("sandbox") },
     ]);
     expect(index.storyDirs).toHaveLength(1);
@@ -271,7 +272,7 @@ describe("章节目录 · 按组过滤（storyDirs / uiDirs）", () => {
   it("**分组版与全局版同序**（同一目录的 path/label 一致，只是 children 不同）", () => {
     const index = buildChapterIndex([
       { path: "Stories/chapter1/a.story", column: col("a") },
-      { path: "Stories/chapter2/b.story", column: col("b", "menu") },
+      { path: "Stories/chapter2/b.story", column: col("b", "ui") },
     ]);
     expect(index.storyDirs.map((d) => d.path)).toEqual(["chapter1/"]);
     expect(index.uiDirs.map((d) => d.path)).toEqual(["chapter2/"]);
@@ -290,7 +291,7 @@ describe("章节目录 · 按组过滤（storyDirs / uiDirs）", () => {
   it("**排序确定性**（输入顺序不同 ⇒ 分组版逐字节相同）", () => {
     const inputs: ChapterInput[] = [
       { path: "Stories/b/x.story", column: col("x") },
-      { path: "Stories/a/y.story", column: col("y", "menu") },
+      { path: "Stories/a/y.story", column: col("y", "ui") },
       { path: "Stories/a/z.story", column: col("z") },
     ];
     const a = buildChapterIndex(inputs);

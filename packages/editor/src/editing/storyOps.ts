@@ -5,7 +5,7 @@
  * ——「列名即标签」，重命名必须保持全部列的引用图一致。
  */
 
-import type { Story } from "@lingfan-engine/core";
+import type { SceneType, Story } from "@lingfan-engine/core";
 import { isSafeFileNameSegment } from "@lingfan-engine/core";
 import {
   getAtPointer,
@@ -77,11 +77,11 @@ export function addColumn(
     id?: string;
     kind?: "scene" | "flow";
     /**
-     * 运行语义轴（与 `kind` 正交）：game 缺省 / menu 菜单 / ui 覆盖层。
+     * 运行语义轴（与 `kind` 正交）：缺省 = game，非缺省只可能是 ui（界面层）。
      * **缺省与 game 都不写字段**——默认值不显式存储（与写回保真同一口径：
      * 新建列的内存形态必须与重开后的解析形态深等）。
      */
-    type?: "game" | "menu" | "ui";
+    type?: SceneType;
     /** 语义化建议（仅 id 缺省时参与；见 suggestColumnId） */
     hint?: string | null;
   } = {},

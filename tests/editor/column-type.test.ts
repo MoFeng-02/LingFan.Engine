@@ -1,7 +1,8 @@
 /**
  * 列**场景类型（SceneType）**判据：addColumn 透传 · 徽标文案 · choice 判据。
  *
- * 引擎侧 `StoryColumn.type`（game/menu/ui）与 `isReplayableColumn` 已有守卫；
+ * 引擎侧 `StoryColumn.type`（**game / ui 两值**）与 `isReplayableColumn` 已有守卫；
+ * 旧拼写 `menu` 只是读入别名（归约成 `ui`），不是契约值 —— 故本文件不拿它当输入。
  * 本文件锁**编辑器侧**三件事：
  * 1. `addColumn` 契约只增的 `type` 选项 —— **缺省与 game 都不落字段**（默认值不显式存储，
  *    新建列内存形态 ≡ 重开解析形态，这是「往返深等」最强不变量的新建侧）
@@ -23,18 +24,25 @@ const jsonOf = (story: ReturnType<typeof addColumn>["story"]) =>
   JSON.parse(JSON.stringify(story)) as { columns: Record<string, unknown>[] };
 
 describe("addColumn · type 透传（契约只增）", () => {
-  it("type=menu / ui 落字段", () => {
-    const menu = addColumn(sampleStory(), {
+  it("type=ui 落字段（唯一非缺省值）", () => {
+    const title = addColumn(sampleStory(), {
       id: "title_screen",
       kind: "scene",
-      type: "menu",
+      type: "ui",
     });
-    expect(menu.story.columns.at(-1)).toMatchObject({
+    expect(title.story.columns.at(-1)).toMatchObject({
       id: "title_screen",
-      type: "menu",
+      type: "ui",
     });
-    const ui = addColumn(menu.story, { id: "toast", kind: "flow", type: "ui" });
-    expect(ui.story.columns.at(-1)).toMatchObject({ id: "toast", type: "ui" });
+    const toast = addColumn(title.story, {
+      id: "toast",
+      kind: "flow",
+      type: "ui",
+    });
+    expect(toast.story.columns.at(-1)).toMatchObject({
+      id: "toast",
+      type: "ui",
+    });
   });
 
   it("type=game 与缺省都**不落字段**（默认值不显式存储 ⇒ 往返深等成立）", () => {
@@ -44,16 +52,16 @@ describe("addColumn · type 透传（契约只增）", () => {
     expect("type" in jsonOf(plain.story).columns.at(-1)!).toBe(false);
   });
 
-  it("type 与 kind 正交：flow+menu / scene+ui 的容器形态不受影响", () => {
+  it("type 与 kind 正交：flow+ui / scene+ui 的容器形态不受影响", () => {
     const flow = addColumn(sampleStory(), {
       id: "f",
       kind: "flow",
-      type: "menu",
+      type: "ui",
     });
     const flowCol = flow.story.columns.at(-1)!;
     expect(flowCol.kind).toBe("flow");
     expect(flowCol.commands).toEqual([]);
-    expect(flowCol.type).toBe("menu");
+    expect(flowCol.type).toBe("ui");
     const scene = addColumn(flow.story, { id: "s", kind: "scene", type: "ui" });
     const sceneCol = scene.story.columns.at(-1)!;
     expect(sceneCol.elements).toEqual([]);
@@ -65,16 +73,16 @@ describe("addColumn · type 透传（契约只增）", () => {
     const result = addColumn(sampleStory(), {
       kind: "scene",
       hint: "settings",
-      type: "menu",
+      type: "ui",
     });
     expect(result.id).toBe("settings");
     expect(result.story.columns.at(-1)).toMatchObject({
       id: "settings",
-      type: "menu",
+      type: "ui",
     });
   });
 
-  it("与分组判定互锁：type=menu/ui 的列归界面组（chapterGroupOf 单一判定点）", () => {
+  it("与分组判定互锁：type=ui 的列归界面组（chapterGroupOf 单一判定点）", () => {
     const { story } = addColumn(sampleStory(), {
       id: "pause_overlay",
       kind: "scene",
@@ -84,22 +92,21 @@ describe("addColumn · type 透传（契约只增）", () => {
     expect(chapterGroupOf(column)).toBe("ui");
   });
 
-  it("ChapterNode 透传原始 type（组件据此精确区分 菜单/界面，不再按 group 猜）", () => {
+  it("ChapterNode 透传 `type`（组件据此标徽标，不再按 group 猜）", () => {
     const { story } = addColumn(sampleStory(), {
       id: "title",
       kind: "scene",
-      type: "menu",
+      type: "ui",
     });
     const index = buildChapterIndex([
       { path: "Stories/chapter1/title.json", column: story.columns.at(-1)! },
     ]);
-    expect(index.ui[0]).toMatchObject({ id: "title", type: "menu" });
+    expect(index.ui[0]).toMatchObject({ id: "title", type: "ui" });
   });
 });
 
 describe("sceneTypeBadgeOf · 徽标文案真值表（单一事实源）", () => {
-  it("menu→菜单 / ui→界面 / game 与缺省→null（game 常态不标）", () => {
-    expect(sceneTypeBadgeOf("menu")).toBe("菜单");
+  it("ui→界面 / game 与缺省→null（game 常态不标）", () => {
     expect(sceneTypeBadgeOf("ui")).toBe("界面");
     expect(sceneTypeBadgeOf("game")).toBeNull();
     expect(sceneTypeBadgeOf(undefined)).toBeNull();

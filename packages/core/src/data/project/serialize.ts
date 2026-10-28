@@ -9,6 +9,8 @@ import {
 import { columnShapeDefect } from "../format/column.ts";
 import {
   CAPABILITY_VERSION,
+  normalizeSceneType,
+  type SceneType,
   type SerializedProject,
   type Story,
   type StoryColumn,
@@ -23,6 +25,18 @@ function stableJson(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
+/**
+ * 落盘的 `type` 值（**唯一写出点**）：`undefined` = 不写字段（缺省 game 保持文件干净）。
+ *
+ * 写出恒为契约值 `game` / `ui`：内存故事树里若带旧拼写（编辑期脚本、外部构造），
+ * 也不会把别名写回磁盘 —— 否则存量工程每存一次都可能换一次拼写。
+ */
+function writeBackSceneType(column: StoryColumn): SceneType | undefined {
+  if (column.type === undefined) return undefined;
+  const sceneType = normalizeSceneType(column.type);
+  return sceneType === "game" ? undefined : sceneType;
+}
+
 /** 单列原子文件文本：字段序固定（formatVersion, id, kind, type?, font?, commands|elements, entry?） */
 function columnFileText(column: StoryColumn): string {
   const ordered: Record<string, unknown> = {
@@ -30,11 +44,11 @@ function columnFileText(column: StoryColumn): string {
     id: column.id,
     kind: column.kind,
   };
-  // `type`（运行语义）**必须写回**：漏了会让 menu/ui 场景在下次打开时
-  // 变成 game（保存 = 悄悄改语义，且**不可逆**——作者下次打开发现菜单能回溯了）。
+  // `type`（运行语义）**必须写回**：漏了会让 ui 场景在下次打开时
+  // 变成 game（保存 = 悄悄改语义，且**不可逆**——作者下次打开发现界面层能回溯了）。
   // 缺省 game 不写（保持文件干净），非缺省才写。
-  if (column.type !== undefined && column.type !== "game")
-    ordered.type = column.type;
+  const sceneType = writeBackSceneType(column);
+  if (sceneType !== undefined) ordered.type = sceneType;
   // 列级字体（纯展示元数据）必须写回：漏了会让保存悄悄抹掉列排版（不可逆）。
   if (column.font !== undefined) ordered.font = column.font;
   if (column.kind === "flow") {
@@ -150,7 +164,7 @@ export function serializeProject(
       }
       if (shape.reason === "bad-type") {
         issues.push(
-          `列 ${id} 的 type 必须为 "game" / "menu" / "ui"，收到 ${JSON.stringify(shape.received)}`,
+          `列 ${id} 的 type 必须为 "game" / "ui"，收到 ${JSON.stringify(shape.received)}`,
         );
         continue;
       }
@@ -213,8 +227,9 @@ function columnGroupFileText(
         id: column.id,
         kind: column.kind,
       };
-      if (column.type !== undefined && column.type !== "game") {
-        ordered.type = column.type;
+      const sceneType = writeBackSceneType(column);
+      if (sceneType !== undefined) {
+        ordered.type = sceneType;
       }
       if (column.kind === "flow") ordered.commands = column.commands ?? [];
       else {

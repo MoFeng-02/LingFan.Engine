@@ -9,6 +9,7 @@
 import { isPlainObject } from "../../shared/index.ts";
 import {
   isSceneType,
+  normalizeSceneType,
   type ElementNode,
   type SceneType,
   type StoryColumn,
@@ -38,8 +39,8 @@ export type ColumnShapeDefect =
 /**
  * 列对象形状判定（缺省校验 `type`）。
  *
- * `type`（运行语义：game/menu/ui）**缺省合法 = game**，但**给了就必须合法**——
- * 非法值 fail-closed（不静默当 game，否则作者以为设了菜单其实是剧情，
+ * `type`（运行语义：game/ui）**缺省合法 = game**，但**给了就必须合法**——
+ * 非法值 fail-closed（不静默当 game，否则作者以为设了界面层其实是剧情，
  * 那种错要等存档/回溯出问题才发现，代价极高）。
  *
  * 已经另行校验过 `type` 的调用点可传 `checkType: false`，避免同一处报两遍。
@@ -98,7 +99,7 @@ export function parseColumn(
       );
     } else if (shape.reason === "bad-type") {
       issues.push(
-        `${at}.type 必须为 "game" / "menu" / "ui"，收到 ${JSON.stringify(shape.received)}`,
+        `${at}.type 必须为 "game" / "ui"，收到 ${JSON.stringify(shape.received)}`,
       );
     } else if (shape.reason === "flow-without-commands") {
       issues.push(`${at}（flow）必须有 commands 数组`);
@@ -107,7 +108,11 @@ export function parseColumn(
     }
     return null;
   }
-  const type = raw.type as SceneType | undefined;
+  // `type` 通过形状判定（接受两个取值 + 旧拼写 `menu`）后立即归一：
+  // 旧拼写只在读入瞬间存在，此后全链路只见 `game` / `ui`。
+  // 原拼写要不要留（编辑器展示「菜单」还是「界面」）由编辑器自己收，不进故事树。
+  const type: SceneType | undefined =
+    raw.type === undefined ? undefined : normalizeSceneType(raw.type);
   const kind = raw.kind as "scene" | "flow";
   // 列级字体：可选元数据，非空字符串才收（注册表校验在构建期/渲染层闸门，解析只管形状）
   let font: string | undefined;

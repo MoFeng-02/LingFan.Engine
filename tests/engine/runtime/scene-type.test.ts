@@ -1,10 +1,12 @@
 /**
- * **场景类型（`type: game|menu|ui`）守卫测试**（回归）。
+ * **场景类型（`type: game|ui`）守卫测试**（回归）。
  *
- * 语义口径：
+ * 语义口径（**两种契约值**）：
  *   game（存档、进历史、建检查点）
- *   menu（菜单/标题/设置：不存档、不进历史、不建检查点）
- *   ui  （覆盖层/弹窗：同上，且不改历史游标）
+ *   ui  （界面层：标题 / 菜单 / 设置 / 覆盖层 / 弹窗 —— 不存档、不进历史、不建检查点）
+ *
+ * 旧拼写 `menu` 只是**读入别名**：解析层接受它、归约成 `ui`、写出恒为 `ui`。
+ * 它不是契约值，故本文件里凡是拿它当输入的地方都显式标注「别名」并断言归约结果。
  *
  * API 说明：
  *   `start()` 无参启动；`advance()` 推进一个等待点；`choose("列id")` 用**目标列 id**选菜单。
@@ -15,11 +17,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { chapterGroupOf } from "@lingfan-engine/editor";
 import editorChaptersImplSource from "../../../packages/editor/src/chapters/build.ts?raw";
+// 白盒：`isCurrentColumnReplayable` 的「列缺失」分支没有对外入口，
+// 只能经运行层内部模块构造最小剖面（先例见 `tests/engine/runtime/scope.test.ts`）
+import { isCurrentColumnReplayable } from "../../../packages/core/src/runtime/history/rollback.ts";
+import type { OpContext } from "../../../packages/core/src/runtime/internal/index.ts";
 import {
   SYS,
   StoryEngine,
   isReplayableColumn,
   isSceneType,
+  normalizeSceneType,
   parseStory,
   serializeProject,
   type OutboundEvent,
@@ -84,7 +91,7 @@ function makeTypedStory(): Story {
       {
         id: "main_menu",
         kind: "flow",
-        type: "menu",
+        type: "ui",
         commands: [
           { op: "say", text: "主菜单" },
           {
@@ -122,13 +129,20 @@ function startToMenu(): ReturnType<typeof instrument> {
 // ---------- ① 契约与解析 ----------
 
 describe("场景类型 · 契约与解析（**缺省 = game**）", () => {
-  it("`isSceneType` 只认三个值", () => {
+  it("`isSceneType` 只认契约两值", () => {
     expect(isSceneType("game")).toBe(true);
-    expect(isSceneType("menu")).toBe(true);
     expect(isSceneType("ui")).toBe(true);
+    expect(isSceneType("menu")).toBe(false);
     expect(isSceneType("Game")).toBe(false);
     expect(isSceneType("")).toBe(false);
     expect(isSceneType(undefined)).toBe(false);
+  });
+
+  it("`normalizeSceneType` 只把缺省与非法值收敛到 game", () => {
+    expect(normalizeSceneType("ui")).toBe("ui");
+    expect(normalizeSceneType("game")).toBe("game");
+    expect(normalizeSceneType(undefined)).toBe("game");
+    expect(normalizeSceneType(3)).toBe("game");
   });
 
   it("**缺省 type ⇒ 视为 game**", () => {
@@ -136,9 +150,10 @@ describe("场景类型 · 契约与解析（**缺省 = game**）", () => {
     expect(isReplayableColumn({ type: undefined })).toBe(true);
   });
 
-  it("menu / ui ⇒ 不参与回溯", () => {
-    expect(isReplayableColumn({ type: "menu" })).toBe(false);
+  it("ui ⇒ 不参与回溯（旧拼写 menu 归一后同此判定）", () => {
     expect(isReplayableColumn({ type: "ui" })).toBe(false);
+    // 别名：`menu` 不是契约值，但守卫按归一后的 `ui` 判 —— 故仍返回 false
+    expect(isReplayableColumn({ type: "ui" as never })).toBe(false);
   });
 
   it("**非法 type fail-closed**（不静默当 game）", () => {
@@ -166,12 +181,12 @@ describe("场景类型 · 契约与解析（**缺省 = game**）", () => {
     expect(() => serializeProject(story, manifest)).toThrow(/type/);
   });
 
-  it("**type 与 kind 正交**：`flow` + `menu` 合法（纯流程的菜单）", () => {
+  it("**type 与 kind 正交**：`flow` + `ui` 合法（纯流程的界面层）", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "orth",
       entry: "m",
-      columns: [{ id: "m", kind: "flow", type: "menu", commands: [] }],
+      columns: [{ id: "m", kind: "flow", type: "ui", commands: [] }],
     });
     expect(story.columns[0]?.kind).toBe("flow");
     expect(isReplayableColumn(story.columns[0]!)).toBe(false);
@@ -190,7 +205,7 @@ describe("场景类型 · 回溯守卫（**menu/ui 不建检查点**）", () => 
     h.dispose();
   });
 
-  it("**进入 menu 列后不产生新检查点**（菜单不是玩家经历的一步）", () => {
+  it("**进入 ui 列后不产生新检查点**（界面层不是玩家经历的一步）", () => {
     const h = startToMenu();
     // 精确判据：**直接读历史长度**，不用 back() 落点反推
     // （`back()` 会先 flushPendingCheckpoint，测的是 flush 语义不是守卫）
@@ -229,7 +244,7 @@ describe("场景类型 · 回溯守卫（**menu/ui 不建检查点**）", () => 
     h.dispose();
   });
 
-  it("从菜单回到 game 列 ⇒ 历史仍只含游戏步骤（守卫不误伤正常流程）", () => {
+  it("从界面层回到 game 列 ⇒ 历史仍只含游戏步骤（守卫不误伤正常流程）", () => {
     const h = startToMenu();
     h.engine.choose("main_menu"); // → main_menu（落在其say 等待点）
     expect(h.engine.get(SYS.currentSceneColumn)).toBe("main_menu");
@@ -288,7 +303,7 @@ describe("场景类型 · 存档守卫（**菜单态存的是菜单前的游戏�
         {
           id: "m",
           kind: "flow",
-          type: "menu",
+          type: "ui",
           commands: [{ op: "say", text: "只有菜单" }],
         },
       ],
@@ -324,7 +339,7 @@ describe("场景类型 · 边界条件", () => {
         {
           id: "menuA",
           kind: "flow",
-          type: "menu",
+          type: "ui",
           commands: [
             {
               op: "menu",
@@ -336,7 +351,7 @@ describe("场景类型 · 边界条件", () => {
         {
           id: "menuB",
           kind: "flow",
-          type: "menu",
+          type: "ui",
           commands: [{ op: "say", text: "另一个" }],
         },
       ],
@@ -364,7 +379,7 @@ describe("场景类型 · 边界条件", () => {
 // ---------- ⑤ 真实工程形态 + 守卫自证 ----------
 
 describe("场景类型 · 真实工程形态与自证", () => {
-  it("**纯菜单工程**：一条历史都不建（全是 type=menu 的工程）", () => {
+  it("**纯界面层工程**：一条历史都不建（全是 type=ui 的工程）", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "ui-only",
@@ -373,13 +388,13 @@ describe("场景类型 · 真实工程形态与自证", () => {
         {
           id: "title",
           kind: "flow",
-          type: "menu",
+          type: "ui",
           commands: [{ op: "say", text: "标题" }],
         },
         {
           id: "about",
           kind: "flow",
-          type: "menu",
+          type: "ui",
           commands: [{ op: "say", text: "关于" }],
         },
       ],
@@ -425,10 +440,10 @@ describe("场景类型 · 真实工程形态与自证", () => {
  */
 describe("场景类型 · 单一判定点互锁（引擎守卫与编辑器分组同源）", () => {
   it("**两侧对同一列的判定一致**（编辑器分组 = 引擎可回溯）", () => {
+    // 契约值 + 缺省；旧拼写 `menu` 作为别名单独在下一组断言（它不该出现在故事树里）
     const cases: (StoryColumn["type"] | undefined)[] = [
       undefined,
       "game",
-      "menu",
       "ui",
     ];
     for (const type of cases) {
@@ -463,5 +478,48 @@ describe("场景类型 · 单一判定点互锁（引擎守卫与编辑器分组
     for (const [file, src] of contracts) {
       expect(src, file).not.toMatch(/\bfunction\b/);
     }
+  });
+});
+
+// ---------- ⑦ 列缺失时的取值（行为锁定） ----------
+
+describe("场景类型 · 列缺失时按可回溯处理（**行为锁定**）", () => {
+  /**
+   * 造一个只够判定用的执行器剖面：`isCurrentColumnReplayable` 只读
+   * `coord.columnId` 与 `columnById`，其余成员在本次判定中不会被碰到。
+   * 用最小剖面而不是真引擎——真引擎造不出来「坐标指向不存在的列」这个中间态
+   * （进入列时就会拒绝），而那正是本组要锁的分支。
+   */
+  const ctxOf = (
+    columnId: string,
+    columns: readonly { id: string; type?: "game" | "menu" | "ui" }[],
+  ): OpContext =>
+    ({
+      coord: { columnId, index: 0 },
+      columnById: (id: string) => columns.find((column) => column.id === id),
+    }) as unknown as OpContext;
+
+  it("**列不存在 ⇒ 不拦**（热重载后坐标失效，让流程自己 fail-closed）", () => {
+    // 既有行为：坐标指向一个故事里没有的列 ⇒ 视为可回溯，不在这里拦
+    expect(isCurrentColumnReplayable(ctxOf("gone", []))).toBe(true);
+    expect(
+      isCurrentColumnReplayable(ctxOf("gone", [{ id: "play", type: "game" }])),
+    ).toBe(true);
+  });
+
+  it("**启动期坐标为空 ⇒ 不拦**", () => {
+    expect(isCurrentColumnReplayable(ctxOf("", []))).toBe(true);
+  });
+
+  it("**列存在时按 type 判**（两态各走各的，缺省 game）", () => {
+    expect(isCurrentColumnReplayable(ctxOf("play", [{ id: "play" }]))).toBe(
+      true,
+    );
+    expect(
+      isCurrentColumnReplayable(ctxOf("menu", [{ id: "menu", type: "ui" }])),
+    ).toBe(false);
+    expect(
+      isCurrentColumnReplayable(ctxOf("ui", [{ id: "ui", type: "ui" }])),
+    ).toBe(false);
   });
 });
