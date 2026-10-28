@@ -11,6 +11,7 @@ export * from "./shell.ts";
 export * from "./element.ts";
 export * from "./extension.ts";
 export * from "./game.ts";
+export * from "./param-direction.ts";
 export * from "./guard.ts";
 export * from "./messages.ts";
 export * from "./text.ts";
