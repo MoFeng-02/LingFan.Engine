@@ -21,7 +21,8 @@
 | 舞台适配（`shell.stage`）                       | 否                     | 模板按固定视口布局；要接就取 `resolveStageConfig` 结果再算 `computeStageLayout` |
 | 游玩界面禁选文本                                | 是                     | `body` 上 `user-select: none`；要提供复制就给部件加 `data-lf-selectable`        |
 | 历史面板与回溯 UI                               | 否                     | 引擎已具备（`historyView`/`rollbackTo`/`back`/`forward`），UI 见 playground     |
-| 玩家偏好（音量/文字速度面板）                   | 否                     | 未接 = 音量为 op 值、打字机取故事级 `text_typewriter`                           |
+| 玩家偏好（音量/文字速度面板）                   | 是                     | `src/host/panels/preferences.ts`，槽位 `#prefs` 可选；未接线 = 音量为 op 值     |
+| 界面列交给整屏页面渲染                          | 是（示范一页）         | `src/host/pages/**` + 槽位 `#page` 可选；未注册的列回落按 op 渲染               |
 | I18N 供给（`Lang/{lang}/` 覆盖）                | 否                     | 未接 `i18nPort` = 原文直出（引擎契约缺省语义）                                  |
 | 对话框模板注册（`say template=`）               | 否                     | 未接 = 内建默认骨架                                                             |
 | 屏幕方向锁定（`shell.orientation`）             | 不适用                 | **纯 Web 形态没有方向 API**；该配置只在 Tauri 壳（playground）生效              |
@@ -107,9 +108,12 @@ __PROJECT__/
 ├── tsconfig.node.json    # Node 侧：vite.config.ts 与 vite.plugins.ts（要 node:fs 与 @types/node）
 ├── vite.config.ts        # publicDir: "Resources" ← 资源根即静态根
 ├── vite.plugins.ts       # 构建期扫描：故事清单与字体清单（虚拟模块，层只换插件数组）
-├── index.html            # RenderTargets 落地：stage/dialogue/choices/notifications/toolbar
+├── index.html            # RenderTargets 落地：stage/dialogue/choices/notifications/toolbar（+ 可选 #prefs / #page）
 ├── src/main.ts           # 组合根：装配适配器 → 组装工程 → 建引擎 → 订阅渲染 + 帧驱动
 ├── src/stories.ts        # 故事清单出口（转发 virtual:story-list；清单本身来自磁盘扫描）
+├── src/host/             # 宿主：装配、订阅、帧循环、输入映射、页面与面板（不认识 UI 框架）
+│   ├── pages/            #   整屏页面：registry / mount / hud / title-page
+│   └── panels/           #   玩家偏好面板（音量、静音、文字速度）
 ├── src/styles/stage.css  # 页面与层样式（换框架不动这份：叠加层共用同一张表）
 └── Resources/            # 故事工程根（自包含、可整体搬运）
     ├── project.json      #   工程清单：id/name/entry/lang/formatVersion
@@ -123,6 +127,25 @@ __PROJECT__/
 清单若留在项目根，dev 下 Vite 顺带服务根目录能取到，打包产物里却会 404。
 
 故事里的资源路径**相对 `Resources/`**：`bgm "Audio/main.mp3"`、`video "Video/op.mp4"`。
+
+## 界面列与页面
+
+`type=ui` 的列不进历史、不进存档、不建检查点——它是界面，不是剧情。这类列可以按 op 画，也可以交给
+一个整屏页面去画（Vue / React / 原生 DOM 都行）。
+
+页面注册表在宿主里（`src/host/pages/registry.ts`），键是**列 id**，不是列的类型：引擎进到某一列，
+宿主就把那一列注册过的页面挂上去；没注册的列照常按 op 渲染——没有自定义界面是合理降级，不算错。
+骨架开箱注册了一个示范页（`src/host/pages/title-page.ts`，故事侧的 `title_main` 列）。
+
+两条硬边界：
+
+- **读走 `StateReader`，写走命令面**（`navigate` / `choose` / `input` / `save` / `load`）。页面不碰状态键，
+  也不自己造存档格式——绕过去就等于绕过了保留键守卫与快照一致性。
+- **切走即真销毁**。页面切换是完整界面替换：Vue 调 `app.unmount()`、React 调 `root.unmount()`、
+  原生清空容器并解绑监听器。**卸载逻辑归宿主写，引擎不管也不检测。**
+
+HUD 是另一类（`src/host/pages/hud.ts`）：它挂在游戏画面之上、可隐藏但**不卸载**，因为玩家随时会再打开，
+重建会丢滚动位置与展开状态。`#page` 与 `#prefs` 都是**可选槽位**：不给就是整列按 op 渲染，不报错。
 
 ## 打包分发
 

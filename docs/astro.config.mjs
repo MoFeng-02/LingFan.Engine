@@ -183,6 +183,11 @@ export default defineConfig({
               link: "/guides/menu-input/",
             },
             {
+              label: "用页面渲染界面列",
+              translations: { en: "Rendering Interface Columns with Pages" },
+              link: "/guides/pages/",
+            },
+            {
               label: "制作多语言工程",
               translations: { en: "Building a Multilingual Project" },
               link: "/guides/i18n/",
