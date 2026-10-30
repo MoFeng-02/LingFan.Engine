@@ -1,11 +1,11 @@
 ---
 title: 舞台与表现指令
-description: show、hide、background、zindex、style、window 与四条效果指令、animate 系列的签名、参数与常见错误。12 条都不建立等待点。
+description: show、hide、background、zindex、style、window 与四条效果指令、animate 系列、mount 的签名、参数与常见错误。13 条都不建立等待点。
 ---
 
 import OpCard from "../../../../components/OpCard.astro";
 
-这 12 条改元素表或者触发屏幕效果，在任何列都能用——不只是 `scene` 列。它们全部不建立等待点，执行完立刻往下走。
+这 13 条改元素表、触发屏幕效果、或者挂载/卸载宿主上的 UI 组件，在任何列都能用——不只是 `scene` 列。它们全部不建立等待点，执行完立刻往下走。
 
 元素表本身、36 种类型、寻址规则见 [舞台元素](/concepts/elements/)。这一页讲命令。
 
@@ -497,6 +497,66 @@ say "这一句会打得快一些。"
 这条设的是**故事级**设置。玩家的文字速度偏好优先级更高，会盖过它。所以玩家在设置面板调过速度之后，故事里的 `text_typewriter` 就不生效了——这是有意的。
 
 它写的是系统键 `__typewriter`，随存档和回溯走。回退到这条命令之前，打字机设置也跟着回去。
+:::
+
+</OpCard>
+
+## 挂载 UI
+
+### mount
+
+<OpCard name="mount" summary="显示或隐藏一个宿主 UI 组件。" rollback="full" since="0.3.0">
+
+**签名**
+
+```text
+mount hub true
+mount hub false
+mount map true props={"scene": "forest"}
+```
+
+```ts
+import hub from "../../ui/hub/hub.vue";
+
+mount(hub, true); // 显示
+mount(hub, false); // 隐藏
+mount(map, true, { scene: "forest" }); // 带参数
+```
+
+**参数**
+
+| 字段      | 类型                      | 说明                                 |
+| --------- | ------------------------- | ------------------------------------ |
+| `name`    | string                    | 必填。UI 名，即 `src/ui/` 下的目录名 |
+| `visible` | boolean                   | 必填。`true` 挂载、`false` 卸载      |
+| `props`   | `Record<string, unknown>` | 可选。传给组件的入参，必须 JSON 安全 |
+
+**最小示例**
+
+```text
+label chapter_one:
+  mount hub true
+  say "界面上多了一个提示框。"
+  mount hub false
+  say "收起来了。"
+```
+
+**常见错误**
+
+:::caution
+**没有切换写法**。`visible` 必填，写 `mount hub` 报「mount 需要 true|false（显隐必填，没有切换写法）」。想「按一下就开关」用两个分支，别指望它记住上一次。
+
+**隐藏不是 `display:none`**。`visible=false` 是把组件从渲染树上摘下来，宿主不再渲染它、它的生命周期也跟着结束。再 `mount(x, true)` 是一次重新挂载，组件内部状态不会自动保留——需要留存的东西由组件自己经 `gameState` 持久化。
+
+**`props` 是整份替换，不是浅合并**。第二次 `mount hub true props={"a": 1}` 会把上一次的入参整份换掉，不是「只改 a」。想保留旧值就在命令里写全。
+
+**`props` 必须 JSON 安全**。函数、`Map`、`Date`、`undefined`、循环引用都报「mount 的 props 不是 JSON 安全的值」，且失败时状态一点不动。这是为了让它能随存档一起走。
+
+**`name` 必须是合法短标识**：小写字母开头，其后小写字母/数字/`_`/`-`，1..32 位。写 `mount Hub true` 报「mount 的 name 不合法」。
+
+**这个 op 只写状态，不认识组件**。引擎不知道 `hub` 长什么样、有几个按钮；它只维护「哪个名字该不该出现在渲染树上、带什么入参」。真正把组件挂上去的是宿主——宿主读 `__mounts` 这张表去查 `uis` 名字表。所以名字拼错在引擎侧是合法的，只有类型期（`mount("…")` 的字符串实参）和构建期（列声明的 `uis`）才拦得住。
+
+**整表一个值，随快照/存档/回溯走**。回退到某条 `mount` 之前，显隐与入参跟着一起回去——和 `audio_play` 那类实例表同规则，不需要在故事里补「复原」命令。
 :::
 
 </OpCard>

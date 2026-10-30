@@ -1,171 +1,179 @@
 ---
-title: 用页面渲染界面列
-description: 把 ui 列交给一个整屏页面去画——用 Vue、React 或原生 DOM 都行。页面怎么读状态、怎么下命令、切走时为什么必须真销毁，以及它和 HUD 的区别。
+title: 启动界面与渲染切换
+description: 进游戏前先画一个普通界面，点开始再切到舞台——判断依据只有列 id 与列类型，引擎不认识「启动界面」。
 ---
 
-`type=ui` 的列不进历史、不进存档、不建检查点——它是界面，不是剧情。这类列有两种画法：
+进游戏前玩家先看到一屏标题和两个按钮，点「开始」才进故事。这一屏不是引擎里的某种特殊列，也不在任何注册表里——它就是宿主里的一个普通界面，用 `v-if` 叠在舞台上面。
 
-- **按 op 画**：跟 `game` 列一样，用 `say` / `menu` / `scene` 里的元素一层层堆出来。开箱就能跑。
-- **交给页面画**：宿主按列 id 挂一个整屏页面上去。页面可以用 Vue、React，也可以直接写 DOM。
+## 引擎只知道两件事
 
-这一页讲第二种。它更适合标题页、设置页、存档列表这类「一屏换一屏」的界面，也是唯一能让你用上框架组件生态的方式。
+引擎不提供「启动界面」这个概念。它只知道当前停在哪一列（列 id，还没开始跑时是空串），以及那一列是什么类型（`game` 或 `ui`）。「该不该画这一屏」是宿主的判断。
 
-## 两条边界
+判断收在 `@lingfan-engine/ui` 的 `hostScreenOf()` 里，只有两条：
 
-页面能做的事很多，但只有两条硬边界，剩下的都是自由：
+| 情形                              | 画什么   |
+| --------------------------------- | -------- |
+| 列 id 是空串（还没开始跑）        | 启动界面 |
+| 列类型不是 `game`（标题、设置……） | 启动界面 |
+| 其余                              | 舞台     |
 
-**一、读走 `StateReader`，写走命令面。** 页面想知道什么就读什么（当前列、等待态、菜单选项、元素表……），想改变什么就调引擎的命令（`navigate` / `choose` / `input` / `save` / `load`）。它不碰状态键，也不自己造存档格式——绕过去就等于绕过了保留键守卫与快照一致性。
+两条都要。只看类型的话，引擎开跑之前列 id 是空串、列类型缺省按 `game` 算，首帧就会被判成舞台，画面先黑一下再跳回启动界面。
 
-**二、切走即真销毁。** 页面切换是**完整界面替换**，不是显示切换。离开时必须真销毁：Vue 的 `app.unmount()`、React 的 `root.unmount()`、原生的清空容器并解绑监听器。把旧界面「藏起来」留在后台，功能上看起来一样，但内存里堆着几份界面，而且「此刻在哪个界面」有两个答案。
+「进入游戏」就是 `navigate(入口列)`。入口列是 `project.json` 的 `entry`，它指向一个 `type=game` 的列；切过去之后列类型变成 `game`，判断自然翻面。
 
-一句话：**卸载逻辑归宿主写，引擎不管也不检测**。自由度在你手上，代价是你得自己写对。
+## 舞台不卸载
 
-## 页面和 HUD 不是一回事
+启动界面在场时，舞台**留在 DOM 上**，只是被让位：`#stage`、`#nvl`、`#dialogue`、`#choices`、`#notifications`、`#toolbar` 六层各加 `inert` 与 `aria-hidden="true"`，于是它们既接不到点击、也不进无障碍树。根节点不动——启动界面自己挂在根下，是它盖住了舞台。
 
-|          | 页面                     | HUD                          |
-| -------- | ------------------------ | ---------------------------- |
-| 占位     | 整屏（占满视口）         | 叠加层（悬浮在游戏画面上）   |
-| 生命周期 | 切走即销毁               | 常驻，可隐藏但**不卸载**     |
-| 为何如此 | 一屏只该有一个界面       | 玩家随时再打开，重建会丢状态 |
-| 适用     | 标题页、设置页、存档列表 | 工具栏、小地图、常驻状态条   |
+为什么不是「卸掉舞台、再挂回来」：舞台节点在装配期就一次性抓住了句柄，摘掉再挂等于换一批新节点，宿主手里那十几个句柄全部失效，之后所有对话与元素的写入都打到空气里。
 
-HUD 用 `createHudPanel` 建：`mount(container, ctx)` 一次，之后 `setVisible(false)` 只是给根节点加 `hidden` 属性（实例还活着，滚动位置、展开的分组都还在），`destroy()` 才是真拆。
+所以真挂载、真卸载的只有启动界面自己——`v-if` 天然保证这一点。原生形态没有框架帮忙，要自己清空容器。
 
-## 注册一个页面
+## 三种形态各写一份
 
-页面表在宿主里，不在引擎里。三步：
+启动界面是宿主代码，不是引擎代码，因此每种形态各有一份实现，互不共用：
+
+| 形态  | 落点                      |
+| ----- | ------------------------- |
+| Vue   | `src/StartScreen.vue`     |
+| React | `src/StartScreen.tsx`     |
+| 原生  | `src/host/screen/view.ts` |
+
+它不该放进 `src/ui/<名>/`：那里的目录会被构建收进 UI 名字表，启动界面就变成一个能用 `mount` 挂载、也能被故事随手摘掉的组件，而它必须一直在。
+
+## 界面拿到什么
+
+宿主把屏幕态推给视图，视图只负责画。屏幕态长这样：
+
+| 字段            | 含义                                               |
+| --------------- | -------------------------------------------------- |
+| `screen`        | `"start"` 或 `"game"`，视图据此决定画不画          |
+| `title`         | 展示名，取自 `project.json` 的 `name`，缺省用 `id` |
+| `slots`         | 存档槽位名，取自 `shell.saves.slots`               |
+| `resume.slot`   | 「继续」要读的槽位名；没有可用存档时是 `undefined` |
+| `resume.reason` | 不可继续时给玩家看的一行提示；可继续时是空串       |
+| `start()`       | 进入游戏，跳到入口列                               |
+| `load(slot)`    | 读指定槽位                                         |
+
+命令也在屏幕态里，视图不必知道入口列从哪来、槽位叫什么。
+
+`resume.slot` 与 `resume.reason` 一一对应：可继续时 `reason` 是空串，不可继续时 `slot` 是 `undefined`。「继续」按钮据此 `disabled`，并把 `reason` 放到 `title` 上——按钮灰着但玩家知道为什么。
+
+## 宿主侧接线
+
+Vue 与 React 形态：组合根把每个新屏幕态交给 `screenStore`，视图自己订阅。
 
 ```ts
-import {
-  bootHost,
-  createPageRegistry,
-  createTitlePage,
-  optional,
-} from "./host";
-
-const pages = createPageRegistry();
-pages.register("title_main", createTitlePage({ nextColumnId: "chapter1" }));
+// src/main.ts
+import { bootHost } from "./host";
+import { screenStore } from "./screen";
 
 void bootHost({
   dom,
   manifestFile: "project.json",
   stories: STORIES,
-  pageContainer: optional("#page"), // 整屏界面挂这里
-  pages,
+  onScreen: (view) => screenStore.set(view),
 });
 ```
 
-`register(列 id, 工厂)` 的键是**列 id**，不是列的类型。引擎进到某一列，宿主就把那一列注册过的页面挂上去；没注册的列照常按 op 渲染——**没有自定义界面是合理降级，不是错误**。
+原生形态什么都不用传：不给 `onScreen` 时宿主自己在 `#stage-root` 下挂一层不透明覆盖物，并负责给六层写 `inert`。给了 `onScreen` 又给原生落法会冲突——两边都想造节点。
 
-同一个 id 再注册一次是替换，不是追加。id 不合规（要匹配 `/^[a-z][a-z0-9_-]{0,31}$/`）或工厂不是函数，注册会被拒绝并上报，不会静默变成「这列永远按 op 渲染」。
-
-## 页面拿到什么
-
-工厂收到一个 `PageContext`，只有四样东西：
+`screenStore` 在 `src/screen.ts`，一行：
 
 ```ts
-interface PageContext {
-  reader: StateReader; // 只读：当前列、等待态、菜单、元素……
-  engine: Pick<StoryEngine, "navigate" | "choose" | "input" | "save" | "load">;
-  preferences: PlayerPreferences; // 玩家偏好（音量、静音、文字速度）
-  gameState: GameStateWriter; // 页面自己的状态，走 game.<系统>.<键> 命名空间
-}
+export const screenStore = createScreenStore();
 ```
 
-`engine` 只给五个方法是刻意的：页面需要的是「跳转、选中、提交输入、存、读」，不是整个引擎。多给一个方法，就多一种绕开契约的写法。
+它只是把屏幕态存起来并通知订阅者，不碰 DOM，三种形态共用。
 
-页面自己跨多次挂载要保留的东西（比如上次选到第几页），放进 `gameState` ——它随存档与回溯走。放模块级变量也行，但那等于绕过存档：读档回来它不会复位。
+## 一个最小启动界面
 
-## 一个最小页面
-
-原生 DOM 版（模板自带的 `src/host/pages/title-page.ts`）：
-
-```ts
-import { createTitlePage } from "./host";
-
-pages.register("title_main", createTitlePage({ nextColumnId: "chapter1" }));
-```
-
-Vue 版（`src/pages/title-page.vue`，在组合根注册）：
-
-```ts
-import { createApp } from "vue";
-import TitlePage from "./pages/title-page.vue";
-
-pages.register("title_main", (ctx) => {
-  const app = createApp(TitlePage, { ctx });
-  return {
-    mount(container) {
-      app.mount(container);
-    },
-    unmount() {
-      app.unmount();
-    },
-  };
-});
-```
-
-Vue 组件里读状态和下命令：
+Vue 形态，`src/StartScreen.vue`：
 
 ```vue
 <script setup lang="ts">
-import { computed } from "vue";
-import type { PageContext } from "../host";
+import { computed, onUnmounted, ref } from "vue";
+import { screenStore } from "./screen";
 
-const props = defineProps<{ ctx: PageContext }>();
-const at = computed(() => props.ctx.reader.currentColumnId());
+const view = ref(screenStore.snapshot());
+const stop = screenStore.subscribe((next) => {
+  view.value = next;
+});
+onUnmounted(stop);
 
-function start(): void {
-  props.ctx.engine.navigate("chapter1"); // 按列名跳转
-}
-function resume(): void {
-  props.ctx.engine.load("auto"); // 无档时只出一条错误事件，不抛
-}
+const shown = computed(() => {
+  const current = view.value;
+  if (current === undefined || current.screen !== "start") return null;
+  const slot = current.resume.slot;
+  return {
+    title: current.title,
+    reason: current.resume.reason,
+    resumable: slot !== undefined,
+    resume: () => {
+      if (slot !== undefined) current.load(slot);
+    },
+    start: () => current.start(),
+  };
+});
 </script>
 
 <template>
-  <section class="page-title">
-    <h1>我的游戏</h1>
-    <p>{{ at === "" ? "尚无当前界面" : `当前界面：${at}` }}</p>
-    <button @click="start">开始游戏</button>
-    <button @click="resume">继续</button>
-  </section>
+  <!-- 点击不外传：舞台根的点击是「推进对话」，落到这里会顺带跳一句 -->
+  <div v-if="shown !== null" class="screen-start" @click.stop>
+    <div class="screen-start__body">
+      <h1 class="screen-start__heading">{{ shown.title }}</h1>
+      <div class="screen-start__actions">
+        <button
+          type="button"
+          :disabled="!shown.resumable"
+          :title="shown.reason"
+          @click="shown.resume()"
+        >
+          继续
+        </button>
+        <button type="button" @click="shown.start()">开始</button>
+      </div>
+    </div>
+  </div>
 </template>
 ```
 
+React 形态的形状一样，取值换成 `useSyncExternalStore(screenStore.subscribe, screenStore.snapshot, screenStore.snapshot)`：并发渲染要求外部值按快照读，自己 `useState` + `useEffect` 会在首帧读到旧值。
+
 三点值得注意：
 
-- **跳转只认列名。** `navigate("chapter1")` 里的 `chapter1` 必须是产物里真实存在的列 id；页面不需要知道它是 JSON 写的还是 TS 写的。
-- **「继续」不用预检存档。** `load("auto")` 读引擎的自动存档槽，没有存档时引擎只发一条 `engine.error` 事件，不抛异常。
-- **样式自己管。** 引擎不知道「标题页」长什么样，页面容器里的一切都由你的组件与样式表决定。
+- **点击要 `stopPropagation`。** 舞台根的点击是「推进对话」，事件冒上去会顺手跳掉一句台词。
+- **样式自己管。** 引擎不知道启动界面长什么样；层级只要低于转场遮罩，转场就还能盖在它上面。
+- **不要在界面里判断状态。** 能不能继续、标题是什么、跳到哪一列，全在屏幕态里；视图多做一次判断，就多一处和宿主不一致的可能。
 
-## 页面上写什么列
+## 界面列里写什么
 
 故事侧就是普通的 `ui` 列：
 
 ```text
-scene title_main type=ui
-  say "欢迎来到我的游戏。"
+label title_main:
+  say "欢迎来到我的故事。"
   menu "接下来去哪里？"
-    "开始游戏" -> chapter1
-
-scene chapter1
-  say "故事从这里开始。"
+    "开始游戏" -> chapter_one
 ```
 
-`ui` 列里那些 op 不是废的——它们是**没有页面时的兜底**。宿主注册了页面，页面盖在上面；换一个没接页面的宿主，这一段照常按 op 跑。所以把「开箱能玩」的最小流程写进 `ui` 列，是个不亏的习惯。
+```ts
+export const columnType = "ui";
+```
 
-`chapter1` 不写 `type` 就是 `game` 列：从这里开始每一步都可回溯、可存档。
+`ui` 列里的命令不是废的——启动界面只在该显示时显示，换一个没接这一屏的宿主，这一段照常按命令跑。所以把「开箱能玩」的最小流程写进 `ui` 列，是个不亏的习惯。
+
+`chapter_one` 不写类型就是 `game` 列：从它开始每一步都可回溯、可存档。
 
 ## 现状与限制
 
-- **页面容器是可选的。** 骨架的 `index.html` 里有 `<div id="page">`，用 `optional("#page")` 取；你的页面结构若没有这个槽位，传 `null` 就是「所有列都按 op 渲染」，不报错。
+- **一屏只有一个。** 没有页面栈。要做「设置页返回上一页」，把上一个界面的列 id 记在自己手里，再 `navigate` 回去。
 - **不要引路由库。** 界面切换由列切换驱动，不是 URL。接一个路由进来，你得自己解决「URL 改了但引擎没跳」的双重真相。
-- **框架层零改动。** 引擎不认识页面，所以换 Vue、React 或纯原生只动组合根，`packages/*` 一行不改。
-- **不提供页面栈。** 一次只有一页。要「设置页返回上一页」，用 `navigate` 跳回原来那个列的 id——别指望引擎替你记。
+- **框架层零改动。** 引擎不认识启动界面，所以换 Vue、React 或纯原生只动宿主，`packages/*` 一行不改。
 
 ## 相关
 
 - [故事与叙事流](/concepts/story/)：`type=ui` 与 `type=game` 的语义差别。
-- [菜单、输入与通知](/guides/menu-input/)：`menu` 指令与界面列不是一回事。
-- [舞台元素](/concepts/elements/)：不写页面时，界面列用什么画出画面。
+- [挂载 UI 组件](/guides/ui-mount/)：叠在舞台上的常驻界面走另一条路。
+- [工程清单](/reference/manifest/)：`entry`、`name` 与 `shell.saves.slots` 的取值规则。
+- [存档系统](/concepts/saves/)：槽位名从哪来、存档里存了什么。

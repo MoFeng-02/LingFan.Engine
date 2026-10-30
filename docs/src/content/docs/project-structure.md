@@ -86,7 +86,7 @@ my-story/
 
 引擎侧两种形态一致：组装器只处理 `Stories/` 下的文件，其余路径一律跳过。文件不在 `Stories/` 下（或大小写不符），它的列等于不存在，跳过去就是「目标列不存在」的加载失败。
 
-用 TS 创作模式写的工程，产物落在这里，路径镜像 `Stories.src/` 的源文件路径。这种工程由构建期全量管理列集：源里没有的列会从产物目录删掉。编辑器对这类工程只读，改列请在源里改。判据是工程根有没有 `Stories.src/config.ts`，与 `Stories/` 里当前的文件无关，见 [TS 创作模式](/advanced/ts-story-source/)。
+用 TS 创作模式写的工程，产物落在这里，路径镜像 `src/Stories.src/` 的源文件路径。这种工程由构建期全量管理列集：源里没有的列会从产物目录删掉。编辑器对这类工程只读，改列请在源里改。判据是工程根有没有 `src/Stories.src/config.ts`，与 `Stories/` 里当前的文件无关，见 [TS 创作模式](/advanced/ts-story-source/)。
 
 ## Audio/ Images/ Video/
 

@@ -1,17 +1,20 @@
 ---
 title: TypeScript Authoring
-description: Put a Stories.src/ directory beside your project and write stories in plain TypeScript. The build compiles them to the same JSON the engine reads.
+description: Put a Stories.src/ directory under your project's src/ and write stories in plain TypeScript. The build compiles them to the same JSON the engine reads.
 ---
 
-Besides hand-written `.story` files and editing JSON directly, there is a third way to write stories: put a `Stories.src/` directory next to your project root and write plain TypeScript.
+Besides hand-written `.story` files and editing JSON directly, there is a third way to write stories: put a `Stories.src/` directory under your project's `src/` and write plain TypeScript.
 
 The output is still the same JSON under `Resources/Stories/`, unchanged. The engine, the Rust layer and the editor all read JSON and know nothing about the TypeScript source — it exists at build time only, never at runtime.
 
 ```text
 your-project/
-├── Stories.src/          ← you write this
-│   ├── config.ts
-│   └── chapter1/start.ts
+├── src/
+│   ├── Stories.src/      ← you write this
+│   │   ├── config.ts
+│   │   └── chapter1/start.ts
+│   ├── ui/               ← UI components (optional)
+│   └── gen/              ← generated type surfaces and registries
 └── Resources/
     └── Stories/          ← build output; the engine reads this
         └── chapter1/start.json
@@ -23,16 +26,16 @@ Reach for TypeScript when the story is long, when it has many branches and loops
 
 ## The template ships this chain
 
-Generating a project with `npm create @lingfan-engine` and choosing the `ts` source shape gives you `Stories.src/` (a `config.ts` plus example columns), three scripts (`stories:build` / `stories:watch` / `stories-typecheck`), `@lingfan-engine/stories-build` and `@lingfan-engine/editor` as dev dependencies, and an output that runs out of the box — `Resources/Stories/**` plus `Resources/project.json`. The skeleton's hand-written `.story` is deleted at the same time: the output directory manages its column set wholesale, so with both story sets present the first build would treat the `.story` as a stale column and remove it.
+Generating a project with `npm create @lingfan-engine` and choosing the `ts` source shape gives you `src/Stories.src/` (a `config.ts` plus example columns), three scripts (`stories:build` / `stories:watch` / `stories-typecheck`), `@lingfan-engine/stories-build` and `@lingfan-engine/editor` as dev dependencies, and an output that runs out of the box — `Resources/Stories/**` plus `Resources/project.json`. The skeleton's hand-written `.story` is deleted at the same time: the output directory manages its column set wholesale, so with both story sets present the first build would treat the `.story` as a stale column and remove it.
 
-Wiring an existing project by hand comes down to the same pieces: `pnpm add -D @lingfan-engine/stories-build @lingfan-engine/editor`, write `Stories.src/config.ts`, then run the commands under "Building and output" below.
+Wiring an existing project by hand comes down to the same pieces: `pnpm add -D @lingfan-engine/stories-build @lingfan-engine/editor`, write `src/Stories.src/config.ts`, then run the commands under "Building and output" below.
 
 ## config.ts
 
-`Stories.src/config.ts` is the only `.ts` allowed at the root of that directory. It declares which directories take part in the build and which file is the entry point. The recommended shape is a default object — one strongly typed export; `satisfies StoriesConfig` gives you field completion and typo checking (`StoriesConfig` is a global type from the `@lingfan-engine/stories-build` authoring shim, no import needed):
+`src/Stories.src/config.ts` is the only `.ts` allowed at the root of that directory. It declares which directories take part in the build and which file is the entry point. The recommended shape is a default object — one strongly typed export; `satisfies StoriesConfig` gives you field completion and typo checking (`StoriesConfig` is a global type from the `@lingfan-engine/stories-build` authoring shim, no import needed):
 
 ```ts
-// apps/playground/Stories.src/config.ts
+// apps/playground/src/Stories.src/config.ts
 export default {
   folders: ["chapter1", "chapter2", "chapter3", "chapter4"],
   start: "start.ts",
@@ -41,7 +44,7 @@ export default {
 
 The named-exports form (`export const folders = [...]; export const start = "..."`) still works and is equivalent to the default object; mixing both forms in one file is an error — the contract must have a single source. Besides `folders` / `start`, the default object may carry `version` / `vars` / `state` fields (same semantics as the exports of the same name, see below). A missing `folders` / `start` or a misspelled key fails the build — the evaluator only reads names it knows, so a wrong key never silently takes effect, and the default form additionally gets flagged in the IDE by `satisfies`.
 
-`folders` is an array of directory names relative to `Stories.src/`, each scanned recursively. Writing `"*"` means "every directory that holds a story is picked up automatically", which saves you returning to this file each time you add a chapter:
+`folders` is an array of directory names relative to `src/Stories.src/`, each scanned recursively. Writing `"*"` means "every directory that holds a story is picked up automatically", which saves you returning to this file each time you add a chapter:
 
 ```ts
 export default {
@@ -54,7 +57,7 @@ An empty `folders` with no `"*"` fails the build rather than quietly compiling z
 
 `start` is a story file name, `.ts` included, looked up by name across every directory. Exactly one file must match: zero matches or two or more both fail the build and list the candidates. The file that matches is written into `project.json` as `entry`.
 
-Any other `.ts` at the root of `Stories.src/` is an error — you are meant to keep them in subdirectories.
+Any other `.ts` at the root of `src/Stories.src/` is an error — you are meant to keep them in subdirectories.
 
 ## One file is a column, or none
 
@@ -127,7 +130,7 @@ There are four ways to get a vocabulary function out of `@lingfan-engine/editor`
 
 Rename with `as`: `import { say as greet }` and `import { script as ct }` both work, and the vocabulary functions follow the alias of the namespace.
 
-The import-free call is backed by a generated ambient declaration: `Stories.src/gen/script.gen.d.ts` carries one `declare const script` pointing at the vocabulary namespace — a pure compile-time type face, no runtime object is injected. Declarations of the same name inside a module (functions, imports) shadow it per normal TypeScript rules, and explicit imports and renames are unaffected. A misspelled word still fails at build time, and the message points to both the `script.` namespace and the named imports.
+The import-free call is backed by a generated ambient declaration: `src/gen/script.gen.d.ts` carries one `declare const script` pointing at the vocabulary namespace — a pure compile-time type face, no runtime object is injected. Declarations of the same name inside a module (functions, imports) shadow it per normal TypeScript rules, and explicit imports and renames are unaffected. A misspelled word still fails at build time, and the message points to both the `script.` namespace and the named imports.
 
 The four forms below are build-time errors. The error text is quoted verbatim; the examples differ only in the import lines.
 
@@ -257,13 +260,13 @@ This case reports exactly one error — an npm value imported by a story file is
 
 ```text
 编译期求值失败（1 条）：
-- Stories.src/ch1/start.ts:1:1 故事文件不支持 node_modules 值导入 `axios`——npm 值请收敛为纯模块的导出 const（编译期求值仅作用于纯模块），再经相对导入使用（编译期求值引用域规则）
+- src/Stories.src/ch1/start.ts:1:1 故事文件不支持 node_modules 值导入 `axios`——npm 值请收敛为纯模块的导出 const（编译期求值仅作用于纯模块），再经相对导入使用（编译期求值引用域规则）
 ```
 
 The compile-time evaluation error about "referencing an npm value inside a function body" needs a different setup to appear: put the npm import in a pure module and reference it inside a function body of that same module.
 
 ```ts
-// Stories.src/lib/endpoint.ts
+// src/Stories.src/lib/endpoint.ts
 import { version } from "typescript";
 
 export const v = version;
@@ -326,7 +329,7 @@ pnpm exec lingfan-stories-watch .      # persistent incremental
 
 The reference host `apps/playground` runs the same package commands, only through `tsx` so the build chain can be edited in place inside this repository.
 
-Output goes to `Resources/Stories/` with paths mirroring the source — `Stories.src/chapter1/start.ts` compiles to `Resources/Stories/chapter1/start.json`. A TypeScript source project manages its column set **wholesale**: a column the source no longer declares is deleted from the output directory, and every deletion is listed in the report.
+Output goes to `Resources/Stories/` with paths mirroring the source — `src/Stories.src/chapter1/start.ts` compiles to `Resources/Stories/chapter1/start.json`. A TypeScript source project manages its column set **wholesale**: a column the source no longer declares is deleted from the output directory, and every deletion is listed in the report.
 
 Forgetting to add a new chapter to `folders` does not silently turn into a "stale deletion" — a `default` export found outside the covered set is an error.
 
@@ -336,17 +339,17 @@ The editor treats a TypeScript source project's JSON output as read-only; change
 
 ## Capabilities
 
-Both the runtime side and the authoring side of TypeScript authoring are packaged: the authoring side is `@lingfan-engine/editor` (the single source of truth for op schemas, plus the word functions) and `@lingfan-engine/stories-build` (the build CLI, shipping `lingfan-stories-build` / `lingfan-stories-watch`); the `Stories.src/gen/stories.gen.d.ts` generated alongside your build hands your project's column names and interpolation keys to the IDE for instant checking. `stories:watch` is a persistent incremental watcher: saving a source file triggers a recompile whose artifacts are byte-identical to a full build, and each round reports its diff and the affected story columns.
+Both the runtime side and the authoring side of TypeScript authoring are packaged: the authoring side is `@lingfan-engine/editor` (the single source of truth for op schemas, plus the word functions) and `@lingfan-engine/stories-build` (the build CLI, shipping `lingfan-stories-build` / `lingfan-stories-watch`); the `src/gen/stories.gen.d.ts` generated alongside your build hands your project's column names and interpolation keys to the IDE for instant checking. `stories:watch` is a persistent incremental watcher: saving a source file triggers a recompile whose artifacts are byte-identical to a full build, and each round reports its diff and the affected story columns.
 
 Concretely, what you may run into while writing:
 
 - The vocabulary layer's exports are source-generated: `vocabulary.g.ts` is produced by the generate-vocabulary CLI from the words/ sources, with fail-closed consistency checks. When the engine gains an op, one generation run syncs it — no hand-written export layer.
 - Which command names `extOp` can call depends on what the engine has registered — this authoring mode adds no ops of its own.
-- The `state` declaration lives in `Stories.src`: `config.ts` or the top level of any module (outside function bodies) may call `define` to accumulate; everything is evaluated at build time into one merge tree and flattened into flat defines — duplicate keys across files fail with every location reported at once. `defineVars` (interpolation key registration) stays exclusive to `config.ts`. The build also turns the merge tree into a precise type face at `Stories.src/gen/state.gen.d.ts` (enums via `import type` references, descriptors typed slot by slot), and a project-side bridge file (e.g. `Stories.src/lib/state-root.d.ts`) does `import type { StoryState }` plus a `declare global` to attach the state root — IDE jumps and checks on `state.…` see exact types instead of a wide index signature. The wide shim from the `@lingfan-engine/stories-build` package exports remains only as the default fallback for projects not wired to the bridge.
+- The `state` declaration lives in `src/Stories.src`: `config.ts` or the top level of any module (outside function bodies) may call `define` to accumulate; everything is evaluated at build time into one merge tree and flattened into flat defines — duplicate keys across files fail with every location reported at once. `defineVars` (interpolation key registration) stays exclusive to `config.ts`. The build also turns the merge tree into a precise type face at `src/gen/state.gen.d.ts` (enums via `import type` references, descriptors typed slot by slot), and a project-side bridge file (e.g. `src/Stories.src/lib/state-root.d.ts`) does `import type { StoryState }` plus a `declare global` to attach the state root — IDE jumps and checks on `state.…` see exact types instead of a wide index signature. The wide shim from the `@lingfan-engine/stories-build` package exports remains only as the default fallback for projects not wired to the bridge.
 - State value domain: `null` is a legal empty value for state slots (`type: "number", default: null` works, and runtime `set` may write null; `undefined` is what destroys a key), and expressions with `??` fallbacks consume null directly. The descriptor `type` slot also accepts unions: `type: ["number", Sex, null]` declares "number, enum Sex, or empty" — the build emits the exact union type (`number | Sex | null`, enums still via `import type`), `default` must fall inside at least one member's domain, and unknown members fail with every offender reported at once; Form A gets the same static inference with an `as const` tuple.
 - Interpolation keys pick up declared names automatically: `let n = 0`, `local("k", …)` in a story body, and declarations that take a function's return value like `const r = someFunc()` — the engine declares the return binding as a local, so `{r}` is a legal interpolation and the build registers these names into the interpolation registry without hand-listing them in `defineVars`; names shared with state/define keys dedupe silently.
 - Module-level character declarations: `config.ts` or the top level of any module (outside function bodies) may call `character(key, spec)` to declare a speaker. The build evaluates it and prepends it to every column's command header (sorted by key, before any column command) — you don't repeat the registration in every story file. The six fields `name` / `color` / `size` / `font` / `textColor` / `screen` go through compile-time constant evaluation; unknown fields, non-string values and a non-literal `key` all fail closed; same-key different-value declarations across files report both locations at once, and identical declarations are idempotent. The in-column `character` word call still works and overrides the module-level declaration at runtime (same key replaces wholesale, same contract as the JSON form). module-level calls go through the import-free `script` namespace (`script.gen.d.ts` points at the vocabulary layer, where the `character` word already lives) with full type hints; a module's own same-name declaration still wins by TS shadowing semantics, and the build rejects a module that shadows the `character` identifier locally (to avoid mistaking a build-time declaration for a runtime word). Unregistering uses the runtime word `uncharacter(key)` (exported from the vocabulary layer, called inside function bodies): after it runs, `say` no longer picks up that character's styling; an unregistered key emits a non-fatal `character.missing` event and keeps going; it rolls back with the story.
-- Font name registry: dropping a font file into `Resources/Fonts/` registers it; the font name is the file name without its extension (`楷体.ttf` → `楷体`). The story layer only writes the name string — the `{font=楷体}` inline tag or the say `font` parameter; static references fail at build time (unregistered names error with a location), while interpolated dynamic names fall back to the default font at runtime with a host-side diagnostic. The reference host injects `@font-face` for `Resources/Fonts` automatically — no hand-written styles needed. The build also emits `Stories.src/gen/font.gen.d.ts` (write `font["楷体"]` to take a name declaratively; a typo fails type checking immediately). Sentence fonts resolve in four tiers: the say `font` parameter > the character's `font` > the column font (`const columnFont = "楷体";` at a story file's top level) > the project default (a host CSS variable — `--lf-story-font` on the reference host).
+- Font name registry: dropping a font file into `Resources/Fonts/` registers it; the font name is the file name without its extension (`楷体.ttf` → `楷体`). The story layer only writes the name string — the `{font=楷体}` inline tag or the say `font` parameter; static references fail at build time (unregistered names error with a location), while interpolated dynamic names fall back to the default font at runtime with a host-side diagnostic. The reference host injects `@font-face` for `Resources/Fonts` automatically — no hand-written styles needed. The build also emits `src/gen/font.gen.d.ts` (write `font["楷体"]` to take a name declaratively; a typo fails type checking immediately). Sentence fonts resolve in four tiers: the say `font` parameter > the character's `font` > the column font (`const columnFont = "楷体";` at a story file's top level) > the project default (a host CSS variable — `--lf-story-font` on the reference host).
 - Saves follow story upgrades: `config.ts` may declare a `version` (positive integer, as a default-object field or a named export) — it is written into every save; on load, if the current story declares a version and it differs from the save's, the engine hands the save state to the `migrateState` hook provided at engine construction (success emits a notice, unmigratable saves are rejected wholesale), and a story without a version skips reconciliation entirely — old and new saves both load as-is. Also: keys destroyed by `undef` in the global layer are recorded in the save as tombstones, so the load-time padding (new define defaults) never revives them; and minigames that wrote state back get their registered `stateVersion` checked and migrated on load (same semantics as extension dependency marks).
 
 ## Next

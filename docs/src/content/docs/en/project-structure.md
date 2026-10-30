@@ -86,7 +86,7 @@ A new story file is picked up as soon as it lands in `Stories/` — there is no 
 
 The engine side is the same for both forms: the assembler only processes files under `Stories/` and skips every other path. A file outside `Stories/` (or with a case mismatch) has no columns at all, so jumping to one of them fails to load with "target column does not exist".
 
-A project authored in TypeScript writes its output here, with paths mirroring the source files under `Stories.src/`. Such a project manages its column set wholesale at build time: a column the source no longer declares is deleted from the output directory. The editor treats that output as read-only, so change columns in the source. The test is whether the project root has `Stories.src/config.ts` — the files currently sitting in `Stories/` are irrelevant. See [TypeScript Authoring](/en/advanced/ts-story-source/).
+A project authored in TypeScript writes its output here, with paths mirroring the source files under `src/Stories.src/`. Such a project manages its column set wholesale at build time: a column the source no longer declares is deleted from the output directory. The editor treats that output as read-only, so change columns in the source. The test is whether the project root has `src/Stories.src/config.ts` — the files currently sitting in `Stories/` are irrelevant. See [TypeScript Authoring](/en/advanced/ts-story-source/).
 
 ## Audio/ Images/ Video/
 

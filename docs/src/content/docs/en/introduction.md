@@ -48,7 +48,7 @@ The engine is not tied to an editor. Stories are plain text, so write them in wh
 | Adapters     | `@lingfan-engine/adapters` | Preset implementations for audio, video, assets and saves                |
 | Presentation | `@lingfan-engine/ui`       | Reference implementations of dialogue box, choices and element rendering |
 
-Beyond the three packages in the table above, the repository publishes four more: `@lingfan-engine/shell` (host orchestration: toasts, event sinks, panel data, narrative state projection), `@lingfan-engine/editor` (authoring layer: the single source of truth for op schemas, the word-function sublanguage, edit-time diagnostics), `@lingfan-engine/stories-build` (compiles TS sources under `Stories.src/` into story files) and `@lingfan-engine/create` (the project generator). All seven are on the registry and publish TypeScript source (`exports: "./src/index.ts"`), compiled directly by Vite/TS with no intermediate build step (see [Template & package boundaries](/reference/template-boundaries/)).
+Beyond the three packages in the table above, the repository publishes four more: `@lingfan-engine/shell` (host orchestration: toasts, event sinks, panel data, narrative state projection), `@lingfan-engine/editor` (authoring layer: the single source of truth for op schemas, the word-function sublanguage, edit-time diagnostics), `@lingfan-engine/stories-build` (compiles TS sources under `src/Stories.src/` into story files) and `@lingfan-engine/create` (the project generator). All seven are on the registry and publish TypeScript source (`exports: "./src/index.ts"`), compiled directly by Vite/TS with no intermediate build step (see [Template & package boundaries](/reference/template-boundaries/)).
 
 ## Next
 

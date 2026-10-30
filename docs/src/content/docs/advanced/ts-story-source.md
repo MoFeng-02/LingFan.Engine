@@ -1,17 +1,20 @@
 ---
 title: TS 创作模式
-description: 在工程平级放 Stories.src/，用原生 TypeScript 写故事，构建期静态编译成现有 JSON 产物。含词汇层导入写法、npm 依赖的可用边界与构建期报错原文。
+description: 在工程根的 src/ 下放 Stories.src/，用原生 TypeScript 写故事，构建期静态编译成现有 JSON 产物。含词汇层导入写法、npm 依赖的可用边界与构建期报错原文。
 ---
 
-手写 `.story` 和直接编辑 JSON 之外，还有第三条写故事的路径：在工程根平级放一个 `Stories.src/` 目录，用原生 TypeScript 写。
+手写 `.story` 和直接编辑 JSON 之外，还有第三条写故事的路径：在工程根的 `src/` 下放一个 `Stories.src/` 目录，用原生 TypeScript 写。
 
 产出的仍然是 `Resources/Stories/` 下那套 JSON，一行不变。引擎、Rust 层、编辑器读的都是 JSON，对 TS 源零感知——TS 只在构建期存在，运行期没有它。
 
 ```text
 你的工程/
-├── Stories.src/          ← 你写这个
-│   ├── config.ts
-│   └── chapter1/start.ts
+├── src/
+│   ├── Stories.src/      ← 你写这个
+│   │   ├── config.ts
+│   │   └── chapter1/start.ts
+│   ├── ui/               ← 界面组件（可选）
+│   └── gen/              ← 构建生成的类型面与注册表
 └── Resources/
     └── Stories/          ← 构建产物，引擎读这个
         └── chapter1/start.json
@@ -25,16 +28,16 @@ description: 在工程平级放 Stories.src/，用原生 TypeScript 写故事，
 
 ## 模板自带这条链
 
-用 `npm create @lingfan-engine` 生成工程时，故事源形态选 `ts` 会得到：`Stories.src/`（`config.ts` + 示例列）、三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）、`@lingfan-engine/stories-build` 与 `@lingfan-engine/editor` 两个开发依赖，以及一份开箱可跑的产物 `Resources/Stories/**` 与 `Resources/project.json`。同时骨架那份手写 `.story` 会被删掉——产物目录对列集全量管理，两套故事并存时第一次构建就会把 `.story` 当陈旧列清理。
+用 `npm create @lingfan-engine` 生成工程时，故事源形态选 `ts` 会得到：`src/Stories.src/`（`config.ts` + 示例列）、三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）、`@lingfan-engine/stories-build` 与 `@lingfan-engine/editor` 两个开发依赖，以及一份开箱可跑的产物 `Resources/Stories/**` 与 `Resources/project.json`。同时骨架那份手写 `.story` 会被删掉——产物目录对列集全量管理，两套故事并存时第一次构建就会把 `.story` 当陈旧列清理。
 
-已有工程手工接入，等价于补齐上面这些：`pnpm add -D @lingfan-engine/stories-build @lingfan-engine/editor`，写 `Stories.src/config.ts`，然后按后文「构建与产物」的命令跑。
+已有工程手工接入，等价于补齐上面这些：`pnpm add -D @lingfan-engine/stories-build @lingfan-engine/editor`，写 `src/Stories.src/config.ts`，然后按后文「构建与产物」的命令跑。
 
 ## config.ts
 
-`Stories.src/config.ts` 是这个目录根级唯一允许的 `.ts`，声明哪些目录参与构建、哪个文件是入口。推荐用 default 对象形态——单一强类型出口，配合 `satisfies StoriesConfig` 获得字段补全与拼写检查（`StoriesConfig` 是全局类型，来自 `@lingfan-engine/stories-build` 的创作垫片，无需 import）：
+`src/Stories.src/config.ts` 是这个目录根级唯一允许的 `.ts`，声明哪些目录参与构建、哪个文件是入口。推荐用 default 对象形态——单一强类型出口，配合 `satisfies StoriesConfig` 获得字段补全与拼写检查（`StoriesConfig` 是全局类型，来自 `@lingfan-engine/stories-build` 的创作垫片，无需 import）：
 
 ```ts
-// apps/playground/Stories.src/config.ts
+// apps/playground/src/Stories.src/config.ts
 export default {
   folders: ["chapter1", "chapter2", "chapter3", "chapter4"],
   start: "start.ts",
@@ -43,7 +46,7 @@ export default {
 
 兼容 named exports 形态（`export const folders = [...]; export const start = "..."`），与 default 对象等价；同一文件里两种形态混用会报错——契约来源必须唯一。default 对象除 `folders` / `start` 外还可带 `version` / `vars` / `state` 字段（语义与同名导出一致，见后文）。`folders` / `start` 缺失、键名拼错都会在构建期报错——求值器只读认识的名字，写错的键不会静默生效，default 形态还有 `satisfies` 在 IDE 里提前标红。
 
-`folders` 是目录名数组，相对 `Stories.src/`，每个目录递归扫描。写 `"*"` 表示「凡含故事的目录自动纳入」——省掉每加一章就回来改配置：
+`folders` 是目录名数组，相对 `src/Stories.src/`，每个目录递归扫描。写 `"*"` 表示「凡含故事的目录自动纳入」——省掉每加一章就回来改配置：
 
 ```ts
 export default {
@@ -56,7 +59,7 @@ export default {
 
 `start` 是故事文件名（含 `.ts`），按文件名跨所有目录查找。全局恰好命中一个才行：命中 0 个或 ≥2 个都报错，并把候选文件列出来。命中的那个文件会写进 `project.json` 的 `entry`。
 
-除 `config.ts` 外，`Stories.src/` 根级再出现 `.ts` 会报错——引导你放进子目录。
+除 `config.ts` 外，`src/Stories.src/` 根级再出现 `.ts` 会报错——引导你放进子目录。
 
 ## 一个文件是一列，还是零列
 
@@ -129,7 +132,7 @@ export default function start(): void {
 
 改短名用 `as`：`import { say as 说 }`、`import { script as ct }` 都可以，命名空间起别名之后里面的词函数跟着别名走。
 
-免导入直呼是构建生成的 ambient 声明：`Stories.src/gen/script.gen.d.ts` 里一条 `declare const script` 指向词汇层命名空间，纯编译期类型面、零运行时注入。模块里自有同名声明（函数、导入）按 TS 遮蔽语义优先于它，显式导入与重命名不受影响；写错词名仍在构建期报错，文案会指路 `script.` 命名空间与具名导入两条正路。
+免导入直呼是构建生成的 ambient 声明：`src/gen/script.gen.d.ts` 里一条 `declare const script` 指向词汇层命名空间，纯编译期类型面、零运行时注入。模块里自有同名声明（函数、导入）按 TS 遮蔽语义优先于它，显式导入与重命名不受影响；写错词名仍在构建期报错，文案会指路 `script.` 命名空间与具名导入两条正路。
 
 下面四种写法在构建期报错。报错原文照抄，各例只差导入那几行：
 
@@ -235,7 +238,7 @@ const 默认城 = 天气表[城市.北京]; // 求值链上的其他 const 也�
 
 这种写法会在构建期真的执行一次，把结果内联进 JSON 产物。包代码本身不进产物，只留求值后的值。所以结果必须 JSON 可序列化——标量、数组、纯对象。函数值、类实例、`Symbol`、循环引用都会报错。
 
-求值依赖链上的其他模块 `const` 和 npm 导入都可以，但**必须收敛为 `export` const**。`Stories.src` 里非导出的 const 中转会被拦下：
+求值依赖链上的其他模块 `const` 和 npm 导入都可以，但**必须收敛为 `export` const**。`src/Stories.src` 里非导出的 const 中转会被拦下：
 
 ```text
 模块层 const 引用了 node_modules 值导入——仅导出的 const 可经编译期求值内联
@@ -259,13 +262,13 @@ export default function start(): void {
 
 ```text
 编译期求值失败（1 条）：
-- Stories.src/ch1/start.ts:1:1 故事文件不支持 node_modules 值导入 `axios`——npm 值请收敛为纯模块的导出 const（编译期求值仅作用于纯模块），再经相对导入使用（编译期求值引用域规则）
+- src/Stories.src/ch1/start.ts:1:1 故事文件不支持 node_modules 值导入 `axios`——npm 值请收敛为纯模块的导出 const（编译期求值仅作用于纯模块），再经相对导入使用（编译期求值引用域规则）
 ```
 
 「函数体里引用 npm 值」那条编译期求值报错要换个位置才看得到：把 npm 导入放进纯模块，再在同一个模块的函数体里引用它。
 
 ```ts
-// Stories.src/lib/endpoint.ts
+// src/Stories.src/lib/endpoint.ts
 import { version } from "typescript";
 
 export const v = version;
@@ -328,7 +331,7 @@ pnpm exec lingfan-stories-watch .      # 常驻增量
 
 参考宿主 `apps/playground` 用的是同一套包命令，只是脚本里以 `tsx` 直调源码，便于在仓库内改构建链。
 
-产物写到 `Resources/Stories/`，路径镜像源文件路径——`Stories.src/chapter1/start.ts` 编译成 `Resources/Stories/chapter1/start.json`。TS 源工程对列集是**全量管理**：源里没有的列，构建期从产物目录删掉，删除项逐条列在报告里。
+产物写到 `Resources/Stories/`，路径镜像源文件路径——`src/Stories.src/chapter1/start.ts` 编译成 `Resources/Stories/chapter1/start.json`。TS 源工程对列集是**全量管理**：源里没有的列，构建期从产物目录删掉，删除项逐条列在报告里。
 
 忘记把新章节加进 `folders` 不会静默变成「陈旧删除」——覆盖范围外发现 `default` 导出会直接报错。
 
@@ -338,17 +341,17 @@ pnpm exec lingfan-stories-watch .      # 常驻增量
 
 ## 能力清单
 
-TS 创作模式的运行时侧与作者侧都已包化：作者侧是 `@lingfan-engine/editor`（op schema 单一事实源与词函数）与 `@lingfan-engine/stories-build`（构建 CLI，带 `lingfan-stories-build` / `lingfan-stories-watch` 两条命令）；工程里随构建生成的 `Stories.src/gen/stories.gen.d.ts` 把本工程的列名与插值键交给 IDE 做即时校验。`stories:watch` 已是常驻增量监听：保存源文件即重编译，产物与全量构建逐字节一致，并会报出本轮差量与受影响的故事列。
+TS 创作模式的运行时侧与作者侧都已包化：作者侧是 `@lingfan-engine/editor`（op schema 单一事实源与词函数）与 `@lingfan-engine/stories-build`（构建 CLI，带 `lingfan-stories-build` / `lingfan-stories-watch` 两条命令）；工程里随构建生成的 `src/gen/stories.gen.d.ts` 把本工程的列名与插值键交给 IDE 做即时校验。`stories:watch` 已是常驻增量监听：保存源文件即重编译，产物与全量构建逐字节一致，并会报出本轮差量与受影响的故事列。
 
 具体到你写故事时可能碰到的：
 
 - 词汇层出口由源生成：`vocabulary.g.ts` 由 generate-vocabulary CLI 从 words/ 源自动生成，并带 fail-closed 登记一致性校验。引擎加了新 op，跑一次生成即同步，无需手写。
 - `extOp` 能调用哪些命令名，取决于引擎侧注册了哪些——这套创作模式本身不新增 op。
-- `state` 的声明住进 `Stories.src`：`config.ts` 或任意模块的顶层（函数体之外）都可以调 `define` 累积，构建期求值后汇入同一棵树降维为扁平 defines——跨文件同键定义会一次报出全部位置；`defineVars`（插值键登记）仍只在 `config.ts`。构建同时把合并树生成成精确类型面 `Stories.src/gen/state.gen.d.ts`（枚举走 `import type` 引用，descriptor 按槽位取类型），工程侧桥文件（如 `Stories.src/lib/state-root.d.ts`）`import type { StoryState }` 后 `declare global` 挂上状态根——IDE 里的 `state.…` 跳转和检查都是精确类型，不再依赖宽索引签名。`@lingfan-engine/stories-build` 包出口仍提供宽类型垫片，仅供未接桥的工程作缺省回退。
+- `state` 的声明住进 `src/Stories.src`：`config.ts` 或任意模块的顶层（函数体之外）都可以调 `define` 累积，构建期求值后汇入同一棵树降维为扁平 defines——跨文件同键定义会一次报出全部位置；`defineVars`（插值键登记）仍只在 `config.ts`。构建同时把合并树生成成精确类型面 `src/gen/state.gen.d.ts`（枚举走 `import type` 引用，descriptor 按槽位取类型），工程侧桥文件（如 `src/Stories.src/lib/state-root.d.ts`）`import type { StoryState }` 后 `declare global` 挂上状态根——IDE 里的 `state.…` 跳转和检查都是精确类型，不再依赖宽索引签名。`@lingfan-engine/stories-build` 包出口仍提供宽类型垫片，仅供未接桥的工程作缺省回退。
 - 状态值域：`null` 是状态槽的合法空值（`type: "number", default: null` 或运行期 `set` 写入都行；`undefined` 才等于销毁键），需要 `??` 兜底的表达式可以直接吃 null。descriptor 的 `type` 槽还支持并集：`type: ["number", Sex, null]` 声明「数字或枚举 Sex 或空」，构建按成员生成精确类型（`number | Sex | null`，枚举仍走 `import type`），`default` 必须落在至少一个成员的值域内，未知成员一次报全部；形态 A 用 `as const` 元组获得同样的静态推导。
 - 插值键注册表自动收声明名：故事体里的 `let n = 0`、`local("k", …)`，以及 `const r = someFunc()` 这类取函数返回值的声明——引擎会把返回值绑定名声明成局部变量，`{r}` 因此是合法插值，构建会把这些名字自动登记进插值键注册表，无需再手填 `defineVars`；与 state/define 键同名时按键去重，不报错。
 - 模块层角色声明：`config.ts` 或任意模块的顶层（函数体之外）可以调 `character(key, spec)` 声明角色，构建期求值后前置到每一列的命令头部（按 key 码元序，先于列体任何命令）——写作时不必在每个故事文件里重复登记。六字段 `name` / `color` / `size` / `font` / `textColor` / `screen` 走构建期常量求值，未知字段、非字符串值、key 非字符串字面量都 fail-closed；跨文件同名不同义一次报两处声明位置，全等声明幂等不报。列内 `character` 词调用仍可用，运行期覆盖模块层声明（同键整条替换，与 JSON 形态同一规则）。模块层调用经免导入直呼（`script.gen.d.ts` 指向词汇层命名空间，`character` 词本就在列）有完整类型提示；模块里自有同名声明按 TS 遮蔽语义优先，构建期会拒绝本地遮蔽 `character` 标识符的模块（避免把构建期声明误当运行期词）。注销用运行期词 `uncharacter(key)`（词汇层导出，函数体内调用）：注销后 `say` 不再套该角色样式，键不存在发 `character.missing` 知情事件不停机，随回溯回滚。
-- 字体名注册表：把字体文件放进 `Resources/Fonts/` 即完成注册，字体名 = 文件名去扩展名（`楷体.ttf` → `楷体`）。故事层只写字体名字符串——`{font=楷体}` 行内标签或 say 的 `font` 参数；构建期对静态引用 fail-closed（未注册名直接报错并给位置），插值拼出来的动态名字在运行期回退默认字体并由宿主输出诊断。参考宿主会自动为 `Resources/Fonts` 的字体注入 `@font-face`，无需手写样式。构建还会生成 `Stories.src/gen/font.gen.d.ts`（`font["楷体"]` 声明式取名，拼错字在类型检查即红）。整句字体按四级解析：say 行参 `font` > 角色字体（`character` 的 `font`）> 列级字体（故事文件顶层 `const columnFont = "楷体";`）> 项目默认（宿主 CSS 变量，参考宿主即 `--lf-story-font`）。
+- 字体名注册表：把字体文件放进 `Resources/Fonts/` 即完成注册，字体名 = 文件名去扩展名（`楷体.ttf` → `楷体`）。故事层只写字体名字符串——`{font=楷体}` 行内标签或 say 的 `font` 参数；构建期对静态引用 fail-closed（未注册名直接报错并给位置），插值拼出来的动态名字在运行期回退默认字体并由宿主输出诊断。参考宿主会自动为 `Resources/Fonts` 的字体注入 `@font-face`，无需手写样式。构建还会生成 `src/gen/font.gen.d.ts`（`font["楷体"]` 声明式取名，拼错字在类型检查即红）。整句字体按四级解析：say 行参 `font` > 角色字体（`character` 的 `font`）> 列级字体（故事文件顶层 `const columnFont = "楷体";`）> 项目默认（宿主 CSS 变量，参考宿主即 `--lf-story-font`）。
 - 存档随故事升级：`config.ts` 可以声明 `version`（正整数，default 对象字段或 named export）——写档时随档落盘；读档时若当前故事声明了 version 且与档内不一致，引擎把存档状态交给构造引擎时提供的 `migrateState` 钩子迁移（成功发通知、无法迁移整档拒绝），当前故事没声明 version 则不做对账、新旧档都直读。另外：故事里 `undef` 销毁过的全局键会以墓碑形式记进存档，读档垫底（新增 define 默认值补齐）不会让它们复活；小游戏若回填过状态，读档会按注册的 `stateVersion` 校验并迁移（与扩展依赖标记同一套语义）。
 
 ## 下一步

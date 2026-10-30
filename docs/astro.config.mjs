@@ -183,9 +183,14 @@ export default defineConfig({
               link: "/guides/menu-input/",
             },
             {
-              label: "用页面渲染界面列",
-              translations: { en: "Rendering Interface Columns with Pages" },
+              label: "启动界面与渲染切换",
+              translations: { en: "Start Screen & Render Switching" },
               link: "/guides/pages/",
+            },
+            {
+              label: "挂载 UI 组件",
+              translations: { en: "Mounting UI Components" },
+              link: "/guides/ui-mount/",
             },
             {
               label: "制作多语言工程",

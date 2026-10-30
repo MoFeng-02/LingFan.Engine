@@ -12,7 +12,7 @@ npm create @lingfan-engine my-story
 pnpm create @lingfan-engine my-story
 ```
 
-生成器问四件事：工程名、框架、壳、故事源形态。当前框架可选「原生（框架无关）」「Vue 3」「React」；壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」；故事源形态可选「故事文件（`.story`）」与「TypeScript 源（`Stories.src/`）」。
+生成器问四件事：工程名、框架、壳、故事源形态。当前框架可选「原生（框架无关）」「Vue 3」「React」；壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」；故事源形态可选「故事文件（`.story`）」与「TypeScript 源（`src/Stories.src/`）」。
 
 跳过问答、全部取缺省值（原生 + 故事文件 + 浏览器）：
 
@@ -38,10 +38,10 @@ npm create @lingfan-engine my-story -- --sources ts
 
 故事源形态层决定故事从哪来，它与框架层、壳层正交：
 
-| 形态 | 故事从哪来                              | 改故事的姿势                                        |
-| ---- | --------------------------------------- | --------------------------------------------------- |
-| 缺省 | `Resources/Stories/**/*.story`          | 直接改 `.story` 文本，保存即生效                    |
-| `ts` | `Resources/Stories/**/*.json`（生成物） | 改 `Stories.src/**/*.ts`，再跑 `pnpm stories:build` |
+| 形态 | 故事从哪来                              | 改故事的姿势                                            |
+| ---- | --------------------------------------- | ------------------------------------------------------- |
+| 缺省 | `Resources/Stories/**/*.story`          | 直接改 `.story` 文本，保存即生效                        |
+| `ts` | `Resources/Stories/**/*.json`（生成物） | 改 `src/Stories.src/**/*.ts`，再跑 `pnpm stories:build` |
 
 `ts` 形态会把骨架那份手写故事换成构建产物：层里声明了 `create.remove: ["Resources/Stories"]`，删掉骨架的 `.story`，再补上开箱可跑的生成物与三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）。两条注意：
 
@@ -69,7 +69,7 @@ npm create @lingfan-engine my-story -- --sources ts
 
 ## 示例故事
 
-`Resources/Stories/title/title_main.story` 是模板自带的示例（选了 `--sources ts` 的话，同一份内容在 `Stories.src/title/*.ts` 里），它把几件事都演了一遍：
+`Resources/Stories/title/title_main.story` 是模板自带的示例（选了 `--sources ts` 的话，同一份内容在 `src/Stories.src/title/*.ts` 里），它把几件事都演了一遍：
 
 ```text
 label title_main:
@@ -167,7 +167,7 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
     },
     {
       "id": "ts",
-      "label": "TypeScript 源（Stories.src）",
+      "label": "TypeScript 源（src/Stories.src）",
       "hint": "用 TS 写故事列：有类型补全与重构，构建时编译成故事文件"
     }
   ],

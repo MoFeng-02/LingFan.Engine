@@ -48,7 +48,7 @@ label chapter_one:
 | 适配器 | `@lingfan-engine/adapters` | 音频、视频、资源、存档的预设实现     |
 | 展示层 | `@lingfan-engine/ui`       | 对话框、选项、元素渲染的参考实现     |
 
-上表三个包之外，仓库还发四个包：`@lingfan-engine/shell`（宿主编排：提示条、事件落点、面板数据、叙事状态投影）、`@lingfan-engine/editor`（作者层：op schema 单一事实源、词函数子语言、编辑期诊断）、`@lingfan-engine/stories-build`（把 `Stories.src/` 的 TS 源编译成故事文件）、`@lingfan-engine/create`（工程生成器：从模板骨架生成新工程，可选框架、故事源与壳）。七个包都在 registry 上，一律以 TypeScript 源码出口发布（`exports: "./src/index.ts"`），由 Vite/TS 直接编译，没有中间构建步骤（见[模板与包边界](/reference/template-boundaries/)）。
+上表三个包之外，仓库还发四个包：`@lingfan-engine/shell`（宿主编排：提示条、事件落点、面板数据、叙事状态投影）、`@lingfan-engine/editor`（作者层：op schema 单一事实源、词函数子语言、编辑期诊断）、`@lingfan-engine/stories-build`（把 `src/Stories.src/` 的 TS 源编译成故事文件）、`@lingfan-engine/create`（工程生成器：从模板骨架生成新工程，可选框架、故事源与壳）。七个包都在 registry 上，一律以 TypeScript 源码出口发布（`exports: "./src/index.ts"`），由 Vite/TS 直接编译，没有中间构建步骤（见[模板与包边界](/reference/template-boundaries/)）。
 
 ## 下一步
 

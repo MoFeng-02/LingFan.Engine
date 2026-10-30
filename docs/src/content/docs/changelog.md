@@ -11,7 +11,7 @@ description: 灵泛引擎按版本记录的改动要点：每个版本新增了�
 
 ### 新增
 
-- **故事源形态**：生成器多问一件事——故事写 `.story` 文件，还是写 TypeScript。选后者得到 `Stories.src/`、`stories:build` / `stories:watch` / `stories-typecheck` 三条脚本、独立的 `tsconfig.stories.json`，以及一份开箱可跑的产物，装完直接 `pnpm dev`。详见[TS 创作模式](/advanced/ts-story-source/)。
+- **故事源形态**：生成器多问一件事——故事写 `.story` 文件，还是写 TypeScript。选后者得到 `src/Stories.src/`、`stories:build` / `stories:watch` / `stories-typecheck` 三条脚本、独立的 `tsconfig.stories.json`，以及一份开箱可跑的产物，装完直接 `pnpm dev`。详见[TS 创作模式](/advanced/ts-story-source/)。
 - **叠加层可删除骨架文件**：层根的 `package.patch.json` 支持 `create.remove`，列出该层要删掉的路径（文件或目录前缀）。合并时先删后写。小程序壳因此能真的删掉骨架的浏览器宿主与页面样式表，而不是靠 `tsconfig` 排除假装它们不存在。
 - **输入候选快捷值**：`input` 新增可选 `options`，形态是 `{ text, value }[]`。`text` 是候选按钮上的文字，进翻译表；`value` 是点中后原样写进 `store` 的值，**不进**翻译表——否则多语言下故事逻辑读到的变量会跟着语言漂移。文本格式、TypeScript 词汇层（`inputCandidate`）、运行时状态、状态读口（`StateReader.inputCandidates()`）与选择层界面已全链接通。详见[菜单、输入与通知](/guides/menu-input/)。
 - **iOS 屏幕方向**：改为纯 Rust 直调 UIKit，仓库内不再有 Swift。运行期给承载页面的视图控制器换一个动态子类，覆写方向相关的两个选择器；持续锁定靠每次询问都回报当前允许集合。
