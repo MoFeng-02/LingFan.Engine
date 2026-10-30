@@ -151,6 +151,26 @@ export function slotIds(count: number): string[] {
   return Array.from({ length: count }, (_, i) => `slot_${i + 1}`);
 }
 
+/** 取清单里一个非空字符串字段；不是字符串或是空串一律返回 null，由调用方决定回落 */
+function nonEmptyText(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+/**
+ * 解析工程展示名：`name` → `id` → 空串。
+ *
+ * 展示名是**给玩家看的**那一行字，与工程 id 是两个用途：id 是存储与引用目标（不可随意改），
+ * name 才是可随时换的招牌。缺 name 时退回 id 是为了让工程至少有个名字可显示；
+ * 两者都没有才算没名字（空串），由调用方决定怎么兜。
+ *
+ * 入参与其他壳配置解析同口径：`unknown`、不猜不抛——清单是外部文件，畸形是常态不是异常。
+ */
+export function resolveProjectName(manifest: unknown): string {
+  if (manifest === null || typeof manifest !== "object") return "";
+  const record = manifest as Record<string, unknown>;
+  return nonEmptyText(record.name) ?? nonEmptyText(record.id) ?? "";
+}
+
 /** 解析存档壳配置：内建默认 × 工程覆盖（`shell.saves`，逐键合并；非法值/越界忽略） */
 export function resolveSavesConfig(manifest: unknown): SavesConfig {
   const resolved: SavesConfig = {

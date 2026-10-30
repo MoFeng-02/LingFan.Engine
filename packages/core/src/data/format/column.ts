@@ -9,7 +9,9 @@
 import { isPlainObject } from "../../shared/index.ts";
 import {
   isSceneType,
+  isUiName,
   normalizeSceneType,
+  normalizeUiNames,
   type ElementNode,
   type SceneType,
   type StoryColumn,
@@ -125,6 +127,26 @@ export function parseColumn(
     }
     font = raw.font;
   }
+  // 列级 UI 声明：可选元数据，字符串数组且每元素是合法 UI 名（目录名形态）。
+  // 读入即归一（去重 + 码点序）：产物字节要由数据决定，不能由书写顺序决定。
+  // 空数组与缺省等价（`undefined`）——「没有 UI 的列不带该字段」是同一条规则。
+  let uis: readonly string[] | undefined;
+  if (raw.uis !== undefined) {
+    if (!Array.isArray(raw.uis)) {
+      issues.push(`${at}.uis 必须为字符串数组（元素是 UI 目录名）`);
+      return null;
+    }
+    for (const [j, name] of raw.uis.entries()) {
+      if (!isUiName(name)) {
+        issues.push(
+          `${at}.uis[${j}] 不是合法 UI 名：收到 ${JSON.stringify(name)}（小写字母开头，其后小写字母 / 数字 / \`_\` / \`-\`，总长 1..32）`,
+        );
+        return null;
+      }
+    }
+    const normalized = normalizeUiNames(raw.uis as string[]);
+    if (normalized.length > 0) uis = normalized;
+  }
   if (kind === "flow") {
     if (!Array.isArray(raw.commands)) {
       issues.push(`${at}（flow）必须有 commands 数组`);
@@ -170,6 +192,7 @@ export function parseColumn(
     kind,
     type,
     font,
+    uis,
     // `sourcePath` **刻意不解析**：它是编辑期记账（由组装器从实际文件路径回填），
     // 故事文件里不该有这个键——写进去也无效（防止自指：文件描述自己的位置）。
     elements: raw.elements as ElementNode[] | undefined,

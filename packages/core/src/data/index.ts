@@ -16,6 +16,7 @@ export {
   isSafeFileNameSegment,
   MANIFEST_FILE,
   ProjectSerializationError,
+  RESOURCES_DIR,
   serializeColumnDocument,
   serializeProject,
   STORIES_DIR,

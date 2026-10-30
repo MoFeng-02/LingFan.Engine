@@ -90,6 +90,7 @@ describe("行为反例：不建立等待的 op 跑完必须不出等待态", () 
     notify: { op: "notify", text: "提示" },
     nvl: { op: "nvl", mode: "active" },
     video: { op: "video", resource: "Video/m1.mp4" },
+    mount: { op: "mount", name: "hub", visible: true },
     jump: { op: "jump", target: "tail" },
     navigate: { op: "navigate", path: "tail" },
   };
@@ -182,6 +183,7 @@ describe("分类完备账：内建 op 全集必须被显式划分为等待 / 非
     "transition",
     "shake",
     "text_typewriter",
+    "mount",
   ];
 
   it("等待表 + 非等待清单 = 内建 op 全集（无重、无漏、无越界）", () => {

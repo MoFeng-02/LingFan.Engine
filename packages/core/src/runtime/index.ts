@@ -28,6 +28,7 @@ export {
   resolveInstanceZ,
   resolveLayerZ,
   resolveOrientationMode,
+  resolveProjectName,
   resolveSavesConfig,
   resolveStageConfig,
   slotIds,

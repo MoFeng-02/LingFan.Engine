@@ -63,6 +63,11 @@ export type {
 } from "./schema/index.ts";
 /** 词汇层构建期轻类型校验警告（expr/cond 组装时按引擎类型规则产出；drain 取走） */
 export type { ExpressionWarning } from "./script/index.ts";
+/**
+ * 挂载 UI 句柄的形状：故事源 `import hub from "…/ui/hub/hub.vue"` 拿到的就是这个。
+ * 经包根再导出一次，`stories-build/authoring` 的 ambient 声明才能只 import type 转发。
+ */
+export type { UiHandle } from "./script/index.ts";
 export {
   BUILTIN_OP_SURFACE,
   mergeOpMeta,
@@ -242,6 +247,8 @@ export {
   type ColumnNameRegistry,
   type GuardNameRegistry,
   type InterpolationKeyRegistry,
+  type KnownUiName,
+  type UiNameRegistry,
 } from "./script/index.ts";
 
 /**
@@ -299,6 +306,7 @@ export {
   localVar,
   menu,
   minigame,
+  mount,
   navigate,
   newArray,
   notify,

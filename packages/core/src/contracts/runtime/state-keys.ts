@@ -115,6 +115,19 @@ export const SYS = {
    */
   elements: "__elements",
   /**
+   * 挂载到宿主渲染树上的 UI 组件表（`mount` op 写入）：
+   * `Record<string, { visible: boolean; props: Record<string, unknown> }>`。
+   *
+   * 与 `elements` 不是同一件事：`elements` 是核心自己排布的舞台元素，带 animate /
+   * style / zindex 等表现字段，核心知道它们长什么样；`mounts` 只是「哪个 UI 组件该不该
+   * 出现在渲染树上、带什么入参」，核心不认识组件内部，也从不操作 DOM。
+   * `visible: false` 的语义是**从渲染树移除**（不是 `display: none`），宿主据此卸载组件。
+   *
+   * 整表是一个值 ⇒ 快照 / 存档 / 回溯零特判随行；**写时必须整表新建**（写时复制，
+   * 原地改会与快照共享引用，回溯后旧值被一起改掉）。
+   */
+  mounts: "__mounts",
+  /**
    * `window auto|show|hide`：对话框显隐三态（UI 层据此控制对话层可见性；
    * 叙事语义归核心层，DOM 操作归 UI）。
    */

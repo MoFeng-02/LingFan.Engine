@@ -32,6 +32,7 @@ import {
   execLoadOp,
   execMenu,
   execMinigame,
+  execMount,
   execNavigate,
   execNotify,
   execNvl,
@@ -312,6 +313,11 @@ export function runDispatch(ctx: OpContext): void {
       case "text_typewriter":
         // 故事级打字机设置（玩家偏好可覆盖）
         if (!execTextTypewriter(ctx, cmd)) return;
+        frame.index += 1;
+        continue;
+      case "mount":
+        // 挂载 UI 显隐：写 SYS.mounts（宿主据此挂载/卸载渲染树上的组件）
+        if (!execMount(ctx, cmd)) return;
         frame.index += 1;
         continue;
       default:

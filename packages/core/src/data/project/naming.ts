@@ -14,6 +14,14 @@ export const MANIFEST_FILE = "project.json";
 export const STORIES_DIR = "Stories";
 
 /**
+ * 资源根目录名（相对工程根）：清单、`Stories/**` 与素材都住在它下面。
+ *
+ * 两侧共用同一份声明——引擎侧的资源适配器按它定位资源根（所选目录不含清单时
+ * 下探这一层），构建侧按它落清单与故事产物。改名只改这里，两边不会错位。
+ */
+export const RESOURCES_DIR = "Resources";
+
+/**
  * 点文件/点目录判据（`.gitkeep` / `.gitignore` …）—— **任何一段**以 `.` 开头即是。
  *
  * 为什么按「段」而不是整路径：工程里有 `Live2D/.gitkeep`、

@@ -11,7 +11,8 @@ export type OpGroup =
   | "save"
   | "audio"
   | "video"
-  | "minigame";
+  | "minigame"
+  | "ui";
 
 /**
  * 字段呈现语义（驱动诊断扫描面与表单控件选型）：

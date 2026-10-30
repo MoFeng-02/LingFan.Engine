@@ -47,6 +47,7 @@ export const VOCABULARY_OPS = [
   "local",
   "menu",
   "minigame",
+  "mount",
   "navigate",
   "notify",
   "nvl",
@@ -151,6 +152,8 @@ export const SCRIPT_COVERAGE: Readonly<Record<string, string>> = {
   load: "load",
   autoSave: "auto_save",
   saveDelete: "save_delete",
+  // —— ui.ts ——
+  mount: "mount",
   // —— vars.ts ——
   set: "set",
   define: "define",

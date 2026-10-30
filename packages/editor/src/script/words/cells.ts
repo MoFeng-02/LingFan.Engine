@@ -1,7 +1,7 @@
 /**
  * Script 词汇层 · **具名实现槽位**（cell —— build-time 声明词）。
  *
- * cell 声明的实现由构建期扫描收集进生成注册物（`Stories.src/gen/fun_register.g.ts`）：
+ * cell 声明的实现由构建期扫描收集进生成注册物（`src/gen/fun_register.g.ts`）：
  * 故事 JSON 只留名字引用（guard 的 `fn` 字段），实现住生成模块——
  * 「名字在数据、实现在代码、build 做名字闭合」。
  *
@@ -31,7 +31,7 @@ export type KnownGuardName = keyof GuardNameRegistry extends never
   : keyof GuardNameRegistry & string;
 
 /**
- * 列名注册表（类型扩充点）：构建期生成的 `Stories.src/gen/stories.gen.d.ts`
+ * 列名注册表（类型扩充点）：构建期生成的 `src/gen/stories.gen.d.ts`
  * 往本接口塞进工程内每个列 id 的字面量键 ⇒ `jump("…")` 与 `option("…", "…")`
  * 的目标列名获得补全、写错即红。空表退化为普通 string。
  */

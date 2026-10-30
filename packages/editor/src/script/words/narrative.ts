@@ -10,7 +10,7 @@ import type { KnownColumnName, KnownInterpolationKey } from "./cells.ts";
 // —— `{key}` 插值键的编译期校验（纯类型层，零运行期成本）——
 //
 // 只在**字符串字面量**上生效：模板串、变量、宽 string 全部放行（动态文本没法查，
-// 也不该吓唬作者）；键表来自生成物 `Stories.src/gen/stories.gen.d.ts`。
+// 也不该吓唬作者）；键表来自生成物 `src/gen/stories.gen.d.ts`。
 // 富文本行内标记必须豁免——`{b}`/`{color=#FFD700}` 这类与插值共用一个花括号语法，
 // 豁免表对齐引擎 `runtime/expr/interpolate.ts` 的行内标记集。
 type TrimText<S extends string> = S extends ` ${infer R}`

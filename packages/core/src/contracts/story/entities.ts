@@ -69,6 +69,18 @@ export interface StoryColumn {
    * 不设端口、不进存档——只是每列的排版事实。
    */
   font?: string;
+  /**
+   * **列级 UI 声明**（纯展示元数据）：本列引用的 UI 名字，名字 = `src/ui/<名>/` 的目录名。
+   *
+   * 语义要点：
+   * - **静态声明是「告知」不是「加载」**：产物里只有名字，UI 本体住 `src/ui/**`，
+   *   由宿主按名字预加载；引擎不读、不编译、不拷贝那些文件。
+   * - **与 `elements` 是两个概念**：`elements` 是舞台元素，进 `SYS.elements`，
+   *   有 show / hide / animate；`uis` 是挂载界面，进 `SYS.mounts`，只有显隐。
+   * - **未引用不写**：没有 UI 的列不带该字段（与 `font` 同规则）。
+   * - **顺序确定**：按名字码点序去重，构建期即定序，消费方不必再排。
+   */
+  uis?: readonly string[];
   /** scene 专有：舞台元素声明（类型与属性全集 fail-closed）。
    *  进入列时由引擎装载为 `SYS.elements`（声明式空间层，不走命令流） */
   elements?: ElementNode[];

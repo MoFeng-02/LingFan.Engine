@@ -100,7 +100,7 @@ describe("词汇层 · 形状抽测（产物 = 合法 op 数据）", () => {
   });
 
   it("guard 带 args ⇒ 参数原样入数据（JSON 安全口径由运行期校验）", () => {
-    // 本测试用合成守卫名，与工程注册表（Stories.src/gen）无关——故走 cell 句柄形态
+    // 本测试用合成守卫名，与工程注册表（src/gen）无关——故走 cell 句柄形态
     const check = script.cell("inventory-consistent", () => true);
     expect(script.guard(check, { args: { maxSlots: 8 } })).toEqual({
       op: "guard",
@@ -243,7 +243,7 @@ describe("词汇层 · 全 builder 可解析守卫（形状漂移零容忍）", 
     ["breakLoop", script.breakLoop()],
     ["continueLoop", script.continueLoop()],
     ["assert", script.assert("{x >= 0}", "校验")],
-    // 本行用合成守卫名，与工程注册表（Stories.src/gen）无关——故走 cell 句柄形态
+    // 本行用合成守卫名，与工程注册表（src/gen）无关——故走 cell 句柄形态
     [
       "guard",
       script.guard(
@@ -312,6 +312,7 @@ describe("词汇层 · 全 builder 可解析守卫（形状漂移零容忍）", 
     ["transition", script.transition("fade", 0.5)],
     ["shake", script.shake({ intensity: 5 })],
     ["textTypewriter", script.textTypewriter({ enabled: false })],
+    ["mount", script.mount("hub", true, { scene: "inn" })],
   ];
 
   it("direct builder 数 = OP_SCHEMAS 数（采样表不漏不越）", () => {

@@ -345,6 +345,21 @@ const textTypewriterSchema = z.strictObject({
   speed: z.number().finite().positive().optional(),
 });
 
+/**
+ * `mount`：挂载 / 卸载一个 UI 组件。
+ *
+ * `name` 是 UI 目录名（短标识：小写字母开头，其后小写字母 / 数字 / `_` / `-`，1..32 位）——
+ * 与引擎侧 `UI_NAME_PATTERN` 同一形态，名字同时是产物键与目录名，两处必须一致。
+ * `props` 只收对象；键值是否 JSON 安全由运行期写入点判定（schema 看不见值语义）。
+ */
+const mountSchema = z.strictObject({
+  name: z
+    .string()
+    .regex(/^[a-z][a-z0-9_-]{0,31}$/, "UI 名须小写字母开头，其后小写字母/数字/_/-，1..32 位"),
+  visible: z.boolean(),
+  props: z.record(z.string(), z.unknown()).optional(),
+});
+
 export {
   saySchema,
   menuSchema,
@@ -405,4 +420,5 @@ export {
   transitionSchema,
   shakeSchema,
   textTypewriterSchema,
+  mountSchema,
 };

@@ -13,7 +13,12 @@ export type {
   WriteNormalizationFinding,
 } from "../../contracts/index.ts";
 export { ProjectAssemblyError, ProjectSerializationError } from "./error.ts";
-export { isSafeFileNameSegment, MANIFEST_FILE, STORIES_DIR } from "./naming.ts";
+export {
+  isSafeFileNameSegment,
+  MANIFEST_FILE,
+  RESOURCES_DIR,
+  STORIES_DIR,
+} from "./naming.ts";
 export { assembleProject, synthesizeDegradedManifest } from "./assemble.ts";
 export { serializeColumnDocument, serializeProject } from "./serialize.ts";
 export { diffProjectFiles } from "./diff.ts";

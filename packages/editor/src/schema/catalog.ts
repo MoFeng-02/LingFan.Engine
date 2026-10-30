@@ -22,6 +22,7 @@ export const OP_GROUP_ORDER: readonly OpGroup[] = [
   "audio",
   "video",
   "minigame",
+  "ui",
 ];
 
 /** op 分组中文标签（单一事实源） */
@@ -34,6 +35,7 @@ export const OP_GROUP_LABELS: Readonly<Record<OpGroup, string>> = {
   audio: "音频",
   video: "视频",
   minigame: "小游戏",
+  ui: "UI",
 };
 
 export const OP_META: readonly OpMeta[] = [
@@ -108,6 +110,8 @@ export const OP_META: readonly OpMeta[] = [
   { op: "transition", label: "转场", group: "presentation" },
   { op: "shake", label: "屏幕震动", group: "presentation" },
   { op: "text_typewriter", label: "打字机设置", group: "presentation" },
+  // 挂载 UI
+  { op: "mount", label: "挂载 UI 显隐", group: "ui" },
 ];
 
 interface FieldMeta {
@@ -311,6 +315,9 @@ export const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   "shake.duration": { label: "时长（秒）", kind: "number" },
   "text_typewriter.enabled": { label: "启用", kind: "boolean" },
   "text_typewriter.speed": { label: "速度（字符/秒）", kind: "number" },
+  "mount.name": { label: "UI 名", kind: "text" },
+  "mount.visible": { label: "挂载", kind: "boolean" },
+  "mount.props": { label: "入参", kind: "object" },
 };
 
 /** 文本插值面（诊断扫描用）：text kind 字段集合的查询入口 */

@@ -177,7 +177,8 @@ describe("扩展 op 等待 · 互锁", () => {
     // uncharacter：character 后新增注销分支 ——指纹随之更新
     // stop_se：与 stop_voice 共用停止分支 ——指纹随之更新
     // audio_play / audio_stop / audio_volume：实例族独立分支 ——指纹随之更新
-    expect(fnv1a(slice)).toBe(3423280195);
+    // mount：UI 挂载显隐分支（写 SYS.mounts）——指纹随之更新
+    expect(fnv1a(slice)).toBe(2718077150);
     // 中断入口三路齐备：小游戏 / 玩法系统 / 扩展 op（少一路 = 回溯后旧接管还在跑）
     const takeover = waitingSource.slice(
       waitingSource.indexOf("export function abortExternalTakeovers"),

@@ -10,6 +10,7 @@ import { columnShapeDefect } from "../format/column.ts";
 import {
   CAPABILITY_VERSION,
   normalizeSceneType,
+  normalizeUiNames,
   type SceneType,
   type SerializedProject,
   type Story,
@@ -37,7 +38,19 @@ function writeBackSceneType(column: StoryColumn): SceneType | undefined {
   return sceneType === "game" ? undefined : sceneType;
 }
 
-/** 单列原子文件文本：字段序固定（formatVersion, id, kind, type?, font?, commands|elements, entry?） */
+/**
+ * 落盘的列级 `uis`（**唯一写出点**）：`undefined` / 空数组 = 不写字段，否则写归一后的数组。
+ *
+ * 归一（去重 + 码点序）在写出侧再做一次：内存故事树可能由编辑期脚本或外部工具构造，
+ * 不保证已经排过序。漏了这一步，同一个工程在不同保存路径下会产出不同字节。
+ */
+function writeBackUis(column: StoryColumn): readonly string[] | undefined {
+  if (column.uis === undefined) return undefined;
+  const names = normalizeUiNames(column.uis);
+  return names.length === 0 ? undefined : names;
+}
+
+/** 单列原子文件文本：字段序固定（formatVersion, id, kind, type?, font?, uis?, commands|elements, entry?） */
 function columnFileText(column: StoryColumn): string {
   const ordered: Record<string, unknown> = {
     formatVersion: 1,
@@ -51,6 +64,10 @@ function columnFileText(column: StoryColumn): string {
   if (sceneType !== undefined) ordered.type = sceneType;
   // 列级字体（纯展示元数据）必须写回：漏了会让保存悄悄抹掉列排版（不可逆）。
   if (column.font !== undefined) ordered.font = column.font;
+  // 列级 UI 声明同理：漏了会让保存把「本列引用哪些挂载 UI」清空，
+  // 宿主下次打开就少预加载（症状是界面闪一下才出现，很难归因到一次保存）。
+  const uis = writeBackUis(column);
+  if (uis !== undefined) ordered.uis = uis;
   if (column.kind === "flow") {
     ordered.commands = column.commands ?? [];
   } else {
@@ -231,6 +248,10 @@ function columnGroupFileText(
       if (sceneType !== undefined) {
         ordered.type = sceneType;
       }
+      // 多列形态与单列形态的字段集必须一致：同一列换一种文件形态保存，
+      // 字段不该跟着丢（`uis` 丢了宿主就少预加载，且不可逆）。
+      const uis = writeBackUis(column);
+      if (uis !== undefined) ordered.uis = uis;
       if (column.kind === "flow") ordered.commands = column.commands ?? [];
       else {
         ordered.elements = column.elements ?? [];

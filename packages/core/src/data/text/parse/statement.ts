@@ -12,6 +12,7 @@ import {
   parseMediaStatement,
   parsePresentStatement,
   parseSaveStatement,
+  parseUiStatement,
   parseVariablesStatement,
 } from "./statement/index.ts";
 import { unquote } from "../lexer.ts";
@@ -122,6 +123,8 @@ export function parseSimpleStatement(
     case "shake":
     case "text_typewriter":
       return parsePresentStatement(ctx);
+    case "mount":
+      return parseUiStatement(ctx);
     default:
       return fail(`文本投影暂不支持的语句：${op}`);
   }

@@ -13,6 +13,7 @@ import {
   generateMediaCommand,
   generatePresentCommand,
   generateSaveCommand,
+  generateUiCommand,
   generateVariablesCommand,
 } from "./command/index.ts";
 import { tryProjectToText } from "./projection.ts";
@@ -123,6 +124,9 @@ export function generateCommand(
     case "shake":
     case "text_typewriter":
       generatePresentCommand(cmd, ctx);
+      return;
+    case "mount":
+      generateUiCommand(cmd, ctx);
       return;
     default: {
       // 扩展投影：声明了 toText 的自定义 op 交给投影器；否则 fail-closed（不静默）

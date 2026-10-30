@@ -59,6 +59,7 @@ export {
   execSaveDeleteOp,
   execSaveOp,
 } from "./save.ts";
+export { execMount } from "./ui.ts";
 export {
   abortInteraction,
   execInput,

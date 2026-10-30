@@ -301,6 +301,7 @@ const CANONICAL: Record<string, Record<string, unknown>> = {
   transition: { op: "transition", type: "fade", duration: 0.5 },
   shake: { op: "shake", intensity: 8, duration: 0.4 },
   text_typewriter: { op: "text_typewriter", enabled: true, speed: 30 },
+  mount: { op: "mount", name: "hub", visible: true, props: { scene: "inn" } },
 };
 
 function columnOf(id: string, commands: StoryCommand[]): StoryColumn {

@@ -59,6 +59,7 @@ import {
   transitionSchema,
   shakeSchema,
   textTypewriterSchema,
+  mountSchema,
 } from "./commands.ts";
 
 /** op → 负载 schema（不含 op 键本身）；字面量键形态 = `ScriptCommand` 判别联合的派生源。
@@ -135,6 +136,8 @@ export const OP_SCHEMA_MAP = {
   transition: transitionSchema,
   shake: shakeSchema,
   text_typewriter: textTypewriterSchema,
+  // 挂载 UI
+  mount: mountSchema,
 };
 
 /** 运行期查找面（与 `OP_SCHEMA_MAP` 同一对象，键集恒等）；新增 op 自动可用 */

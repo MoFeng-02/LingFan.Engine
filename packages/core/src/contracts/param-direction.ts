@@ -94,4 +94,6 @@ export const PARAM_DIRECTION: Readonly<Record<string, ParamDirection>> = {
   [SYS.audioInstances]: "two-way",
   /** 背景乐播放位置：引擎回写、宿主可定位（读档后对齐） */
   [SYS.bgmPosition]: "two-way",
+  /** 挂载 UI 表：命令写显隐与入参、宿主读后挂载/卸载组件；专用接缝 = `mount` op */
+  [SYS.mounts]: "two-way",
 };

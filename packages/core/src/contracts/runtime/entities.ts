@@ -18,6 +18,27 @@ export type WaitingState =
 /** NVL 模式（`__nvl_mode` 取值）：累积层开关与清屏动作 */
 export type NvlMode = "none" | "active" | "clear" | "exit";
 
+/**
+ * 一条挂载记录：某个 UI 组件该不该出现在渲染树上、带什么入参。
+ *
+ * `visible: false` 的语义是**从渲染树移除**（卸载组件），不是 `display: none`——
+ * 隐藏的组件不该继续跑生命周期、计时器与副作用。
+ */
+export interface MountEntry {
+  /** 是否挂在渲染树上 */
+  visible: boolean;
+  /** 传给组件的入参（JSON 安全；缺省 = 空对象） */
+  props: Record<string, unknown>;
+}
+
+/**
+ * 挂载表（`__mounts` 取值）：UI 名 → 挂载记录。
+ *
+ * 核心只认识名字与显隐，不认识组件内部；整表一个值 ⇒ 快照 / 存档 / 回溯零特判随行。
+ * 写时整表新建（写时复制），原地改会与快照共享引用。
+ */
+export type MountTable = Readonly<Record<string, MountEntry>>;
+
 /** 角色定义（character op 注册；say speaker 匹配自动套样式） */
 export interface CharacterDef {
   key: string;
