@@ -18,26 +18,25 @@
  * 玩家偏好面板、I18N 供给、对话框模板注册、存档缩略图合成。
  */
 
+import { MANIFEST_FILE } from "@lingfan-engine/core";
 import { DEFAULT_TEXT_CPS, DEFAULT_TOAST_MS } from "@lingfan-engine/ui";
 import {
   bootHost,
-  createPageRegistry,
-  createTitlePage,
   must,
   optional,
   reportBootFailure,
-  type PageRegistry,
   type StageDom,
 } from "./host";
 import { STORIES } from "./stories";
+import { uis } from "./mounts";
 
 /**
  * 工程清单与故事文件：**都在应用资源根 `Resources/` 内**。
- * 宿主把 `Resources` 作为静态根，故逻辑路径就是 `project.json` / `Stories/**`。
+ * 宿主把 `Resources` 作为静态根，故逻辑路径就是清单名 / `Stories/**`。
  * 清单放在资源根内是有意为之——只有资源根内的文件才会进打包产物，dev 与 prod 同机制。
+ * 清单名取引擎契约里的 `MANIFEST_FILE`（组装、写回、定位资源根共用同一个声明）；
  * 故事表在 `./stories`（唯一出口，各形态共用），内容由构建期扫描资源根得出。
  */
-const MANIFEST = "project.json";
 
 /** 页面节点句柄表：每个 id 都必须存在于 index.html（缺一个 `must` 当场抛） */
 const dom: StageDom = {
@@ -57,39 +56,22 @@ const dom: StageDom = {
   transition: must("#transition"),
   error: must("#error"),
   prefs: optional("#prefs"),
-  // 页面容器槽位（可选）：本层不给就 null，所有列都按 op 渲染
-  page: optional("#page"),
+  // UI 挂载层槽位（可选）：本层不给就 null，`mount` 命令只改状态、没有组件出现
+  mounts: optional("#mounts"),
 };
-
-/**
- * 页面表：列 id → 整屏页面。
- *
- * 这是「用页面渲染界面列」的唯一接缝：引擎不认识页面，也不知道「标题页」是什么，
- * 它只是进了某一列，宿主就把那一列注册过的页面挂上去。未注册的列照常按 op 渲染
- * ——没有自定义界面是合理降级，不是错误。
- */
-function createPages(): PageRegistry {
-  const pages = createPageRegistry();
-  pages.register(
-    "title_main",
-    createTitlePage({
-      subtitle: "这一屏是原生 DOM 渲染的页面，不是 op 堆出来的",
-    }),
-  );
-  return pages;
-}
 
 void bootHost({
   dom,
-  manifestFile: MANIFEST,
+  manifestFile: MANIFEST_FILE,
   stories: STORIES,
   defaultCps: DEFAULT_TEXT_CPS,
   toastDurationMs: DEFAULT_TOAST_MS,
   // 偏好面板槽位：页面给了就装（`optional` 已消化「这层不给」的情况）
   prefsContainer: dom.prefs,
-  // 整屏界面槽位：给了就按列 id 挂页面，不给就整列按 op 渲染
-  pageContainer: dom.page,
-  pages: createPages(),
+  // UI 挂载槽位：给了就把 `mount` 命令控制显隐的组件挂进来
+  mountsContainer: dom.mounts,
+  // 「名字 → UI 工厂」表：来自生成物，键就是 `SYS.mounts` 里的名字
+  mountsTable: uis,
 }).catch((error: unknown) => {
   reportBootFailure(dom, error);
 });

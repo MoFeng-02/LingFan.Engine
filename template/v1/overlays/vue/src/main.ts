@@ -9,26 +9,26 @@
  * 本层只替换入口与组合根）。
  */
 import { createApp } from "vue";
+import { MANIFEST_FILE } from "@lingfan-engine/core";
 import { DEFAULT_TEXT_CPS, DEFAULT_TOAST_MS } from "@lingfan-engine/ui";
 import {
   bootHost,
-  createPageRegistry,
   must,
   optional,
   reportBootFailure,
-  type PageRegistry,
   type StageDom,
 } from "./host";
 import { STORIES } from "./stories";
+import { mountStore } from "./mounts";
+import { screenStore } from "./screen";
 import App from "./App.vue";
-import TitlePage from "./pages/title-page.vue";
 
 /**
  * 工程清单与故事文件：**都在应用资源根 `Resources/` 内**。
- * 宿主把 `Resources` 作为静态根，故逻辑路径就是 `project.json` / `Stories/**`。
+ * 宿主把 `Resources` 作为静态根，故逻辑路径就是清单名 / `Stories/**`。
+ * 清单名取引擎契约里的 `MANIFEST_FILE`（组装、写回、定位资源根共用同一个声明）；
  * 故事表在 `./stories`（唯一出口，各形态共用），内容由构建期扫描资源根得出。
  */
-const MANIFEST = "project.json";
 
 /** 页面节点句柄表：每个 id 都必须由 `App.vue` 渲染（缺一个 `must` 当场抛） */
 function readDom(): StageDom {
@@ -50,34 +50,9 @@ function readDom(): StageDom {
     error: must("#error"),
     // 偏好面板槽位（可选）：本层 App 没给就 null，面板不装、游戏照跑
     prefs: optional("#prefs"),
-    // 页面容器槽位（可选）：本层不给就 null，所有列都按 op 渲染
-    page: optional("#page"),
+    // UI 挂载层槽位（可选）：本层不给就 null，`mount` 命令只改状态、没有组件出现
+    mounts: optional("#mounts"),
   };
-}
-
-/**
- * 页面表：列 id → 整屏页面。
- *
- * 这是「用框架渲染界面」的唯一接缝——注册表在宿主里，引擎不认识 Vue，
- * 也不知道「标题页」是什么；它只是进了某一列，宿主就把那一列注册过的页面挂上去。
- * 未注册的列照常按 op 渲染：没有自定义界面是合理降级，不是错误。
- */
-function createPages(): PageRegistry {
-  const pages = createPageRegistry();
-  pages.register("title_main", (ctx) => {
-    // 每次挂载都是新实例：切走时 `unmount` 会 `app.unmount()`，Vue 的响应式与
-    // 事件监听随实例一起拆掉，不留在后台占内存。
-    const app = createApp(TitlePage, { ctx });
-    return {
-      mount(container): void {
-        app.mount(container);
-      },
-      unmount(): void {
-        app.unmount();
-      },
-    };
-  });
-  return pages;
 }
 
 /** 挂载页面结构；失败（含节点缺失）写进页面错误条，不留白屏 */
@@ -95,14 +70,17 @@ const dom = mountApp();
 if (dom !== undefined) {
   void bootHost({
     dom,
-    manifestFile: MANIFEST,
+    manifestFile: MANIFEST_FILE,
     stories: STORIES,
     defaultCps: DEFAULT_TEXT_CPS,
     toastDurationMs: DEFAULT_TOAST_MS,
     prefsContainer: dom.prefs,
-    // 整屏界面槽位：给了就按列 id 挂页面，不给就整列按 op 渲染
-    pageContainer: dom.page,
-    pages: createPages(),
+    // UI 挂载落法由 Vue 接管：`#mounts` 的子节点归 `UiHost` 渲染，
+    // 宿主再往里写节点就会与 Vue 的渲染树打架（所以不传 mountsContainer）
+    onMounts: (raw) => mountStore.set(raw),
+    // 屏幕落法同样由 Vue 接管：启动界面是渲染树上的组件（`StartScreen`），
+    // 交给宿主自己造节点会与 Vue 的渲染树打架（所以不传原生形态的落法）
+    onScreen: (view) => screenStore.set(view),
   }).catch((error: unknown) => {
     reportBootFailure(dom, error);
   });

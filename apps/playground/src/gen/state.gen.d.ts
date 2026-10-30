@@ -2,7 +2,7 @@
    state（支持自定义状态根名）为强类型产物，可直接以根名操作关键状态变量；
    运行期 define 动态注入的键不在本类型面。 */
 
-import type { Sex } from "../lib/enums";
+import type { Sex } from "../Stories.src/lib/enums";
 
 export type StoryState = {
   "dice": number;

@@ -91,6 +91,16 @@ export interface HostWiringOptions {
    * 元素层不可能靠这条通道碰到 `__` 系统状态。
    */
   gameState?: GameStateWriter;
+  /**
+   * UI 挂载落点（可选）：`SYS.mounts` 的每次变化都会推给它。
+   *
+   * 与元素层同属「同一路状态变更的另一个落点」，但两者不是一回事：元素是引擎排布的
+   * 舞台节点，UI 是宿主渲染树上的组件。这里只给一个**写入回调**而不是渲染器，
+   * 是因为三种宿主形态的落法完全不同（原生 DOM 自己算差量，Vue / React 进各自的
+   * 响应式系统）——接线的共同点只有「值从哪来」，落法留给装配处。
+   * 不给则 `mount` 命令只改状态，没有任何组件出现——降级是「少功能」，不是错误。
+   */
+  mounts?: (raw: unknown) => void;
 }
 
 /** 接线状态订阅、元素层与出站事件 */
@@ -230,6 +240,17 @@ export function wireEngine(options: HostWiringOptions): void {
   engine.onStateChanged(({ key, value }) => {
     applyIntent(toIntent(key, value));
   });
+
+  // UI 挂载单独一路：`SYS.mounts` 不在状态分发器的键表里——那张表是「引擎状态 → 视图意图」
+  // 的翻译，而挂载没有统一的视图意图可译（三形态落法完全不同），只把值原样交出去。
+  // 首帧主动喂一次：订阅不回放历史，引擎可能在接线之前就写过。
+  const onMounts = options.mounts;
+  if (onMounts !== undefined) {
+    onMounts(engine.get(SYS.mounts));
+    engine.onStateChanged(({ key, value }) => {
+      if (key === SYS.mounts) onMounts(value);
+    });
+  }
 
   /** 出站事件：致命错误 / 提示 / 小游戏挂载 / 存档回执 */
   function applyEvent(payload: OutboundPayload): void {

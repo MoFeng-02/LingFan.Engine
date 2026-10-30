@@ -11,6 +11,12 @@
  */
 import { script } from "@lingfan-engine/editor";
 
+/**
+ * 本列是界面列（`ui`）：引擎此刻只是「停在某个列上」，而这一列声明的类型告诉宿主
+ * 该渲染启动界面而不是舞台。缺省不写即 `game`——所以「是不是界面列」是数据，不是约定。
+ */
+export const columnType = "ui";
+
 const { menu, option, say } = script;
 
 export default function title_main(): void {

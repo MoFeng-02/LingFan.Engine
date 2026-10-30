@@ -10,8 +10,13 @@
 
 ## 现有层
 
-- `ts/` —— 故事源层，只换故事素材、不碰页面：新增 `Stories.src/`（`config.ts` + 两个示例列）、
-  构建产物 `Resources/Stories/title/*.json` 与 `Stories.src/gen/*.gen.d.ts`、独立的 `tsconfig.stories.json`。
+- `ts/` —— 故事源层，只换故事素材、不碰页面：新增 `src/Stories.src/`（`config.ts` + 两个示例列）、
+  构建产物 `Resources/Stories/title/*.json` 与 `src/gen/*.gen.d.ts`、独立的 `tsconfig.stories.json`。
+  故事源与类型面生成物都在 `src/` 下，两者都不进最终包：`src/Stories.src/**` 由 `tsconfig.json`
+  排除在类型检查之外，`src/gen/**` 只有 `fun_register.g.ts` 带运行期值。
+  故事里可以写工程 `tsconfig.json` 声明的任意别名（`@/ui/hub/hub.vue`、`@ui/...`），stories-build
+  会读那份 `paths` 自行解析——宿主不必配任何别名就能构建；若还想让 Vite / tsc 也认同一套别名，
+  在 `vite.config.ts` 里用正则 `find: /^@\//`（字符串 `"@"` 是前缀匹配，会把 `@lingfan-engine/*` 一起吞掉）。
   `package.patch.json` 补 `@lingfan-engine/stories-build` / `@lingfan-engine/editor` 与三条脚本，
   并用 `create.remove` 删掉骨架那份手写故事（产物目录由构建全量管理，两套并存会把 `.story` 当陈旧列清掉）。
   故事清单不归本层管：骨架的 `vite.plugins.ts` 扫 `Resources/Stories/`，产物 `.json` 落在同一棵树里，

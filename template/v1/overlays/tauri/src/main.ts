@@ -17,6 +17,7 @@
  *
  * 页面结构沿用骨架的 `index.html`（本层不带自己的），故节点解析与骨架同源。
  */
+import { MANIFEST_FILE } from "@lingfan-engine/core";
 import { DEFAULT_TEXT_CPS, DEFAULT_TOAST_MS } from "@lingfan-engine/ui";
 import {
   createTauriSavePort,
@@ -30,13 +31,14 @@ import {
   type StageDom,
 } from "./host";
 import { STORIES } from "./stories";
+import { uis } from "./mounts";
 
 /**
  * 工程清单与故事文件：**都在应用资源根 `Resources/` 内**。
  * 打包后它们位于 `dist/` 顶层，路径与开发期一致。
+ * 清单名取引擎契约里的 `MANIFEST_FILE`（组装、写回、定位资源根共用同一个声明）；
  * 故事表在 `./stories`（唯一出口，各形态共用），内容由构建期扫描资源根得出。
  */
-const MANIFEST = "project.json";
 
 /** 页面节点句柄表：每个 id 都必须存在于 index.html（缺一个 `must` 当场抛） */
 const dom: StageDom = {
@@ -57,8 +59,8 @@ const dom: StageDom = {
   error: must("#error"),
   // 偏好面板槽位（可选）：骨架 index.html 里有，缺了也不影响启动
   prefs: optional("#prefs"),
-  // 页面容器槽位（可选）：本层不给就 null，所有列都按 op 渲染
-  page: optional("#page"),
+  // UI 挂载层槽位（可选）：本层不给就 null，`mount` 命令只改状态、没有组件出现
+  mounts: optional("#mounts"),
 };
 
 /**
@@ -76,13 +78,14 @@ async function boot(): Promise<void> {
 
   await bootHost({
     dom,
-    manifestFile: MANIFEST,
+    manifestFile: MANIFEST_FILE,
     stories: STORIES,
     defaultCps: DEFAULT_TEXT_CPS,
     toastDurationMs: DEFAULT_TOAST_MS,
     prefsContainer: dom.prefs,
-    // 整屏界面槽位：给了就按列 id 挂页面，不给就整列按 op 渲染
-    pageContainer: dom.page,
+    // UI 挂载槽位：壳层用骨架的原生渲染器（本层不引框架，`#mounts` 的子节点由宿主写）
+    mountsContainer: dom.mounts,
+    mountsTable: uis,
     ports: {
       // 存档落到应用数据目录的 saves/ 下，一槽一文件（加密与回档保护在 Rust 侧扩展）
       saves: createTauriSavePort(),

@@ -22,5 +22,9 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["Stories.src/**/*.ts"]
+  /* 两份都要进本工程：
+     - 故事源（作者手写的章节与 lib）；
+     - 生成物类型面（state/script/font/stories 四份 gen 声明）——它们是 ambient 全局，
+       不进程序就等于不存在，章节里裸写 script.bgm / state.player 会报未定义。 */
+  "include": ["src/Stories.src/**/*.ts", "src/gen/**/*.ts"]
 }

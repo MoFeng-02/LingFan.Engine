@@ -242,7 +242,8 @@ describe("宿主接线互锁（源级扫描）", () => {
     const hits = Object.entries(playground)
       .map(([key, raw]) => ({
         key,
-        count: (raw.match(/Stories\.src\/gen\/fun_register/g) ?? []).length,
+        // 生成物在 src/gen（故事源之外），宿主侧以相对路径 ../gen 单点引入
+        count: (raw.match(/\.\.\/gen\/fun_register/g) ?? []).length,
       }))
       .filter((entry) => entry.count > 0);
     expect(
@@ -251,7 +252,7 @@ describe("宿主接线互锁（源级扫描）", () => {
     ).toEqual([guardsKey]);
     expect(hits.length).toBe(1);
     expect(playground[guardsKey]).toContain(
-      'export { guards } from "../../Stories.src/gen/fun_register.g";',
+      'export { guards } from "../gen/fun_register.g";',
     );
   });
 

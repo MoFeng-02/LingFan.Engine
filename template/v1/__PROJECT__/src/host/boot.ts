@@ -15,7 +15,6 @@ import {
   SYS,
   PlayerPreferences,
   StoryEngine,
-  createStateReader,
   resolveAudioConfig,
   resolveLayerZ,
   type AudioPort,
@@ -40,6 +39,7 @@ import {
   DEFAULT_TOAST_MS,
   createAudioRenderer,
   createVideoRenderer,
+  type ScreenView,
   type TypingSetting,
 } from "@lingfan-engine/ui";
 import { createErrorReporter, type StageDom } from "./stage-dom";
@@ -53,8 +53,8 @@ import { startHostFrameLoop } from "./frame-loop";
 import { wireInput } from "./input-map";
 import { installStoryFonts } from "./theme-fonts";
 import { createPreferencesPanel } from "./panels/preferences";
-import { createPageMounter } from "./pages/mount";
-import { createPageRegistry, type PageRegistry } from "./pages/registry";
+import { createScreenSwitch } from "./switch";
+import { createNativeMountRenderer } from "./mount/index";
 
 /**
  * 装配输入：节点句柄表、资源根内的清单与故事表，以及两项可配置节律。
@@ -84,14 +84,39 @@ export interface HostBootOptions {
    */
   prefsContainer?: HTMLElement | null;
   /**
-   * 页面容器（可选）：给了就启用「列 id → 自定义页面」这套挂载，不给就整列按 op 渲染。
+   * UI 挂载层容器（可选）：给了就按 `SYS.mounts` 把 `src/ui/` 下的 UI 挂进来。
    *
-   * 容器由组合根提供并常驻（宿主不新建也不摘除它，切换只动它的子节点）。页面在
-   * `pages` 表里按列 id 注册；未注册的列照常跑 op——没有自定义界面是合理降级，不是错误。
+   * 容器由组合根提供并常驻（宿主不新建也不摘除它，变化只动它的子节点）。UI 表来自
+   * 生成物 `src/gen/ui_register.g.ts`——不是 `import.meta.glob`：模板宿主不该绑死构建工具，
+   * 而 glob 会把 `src/ui/` 下的文件全部静态拉进包，删了 UI 忘删文件它就还在。
    */
-  pageContainer?: HTMLElement | null;
-  /** 列 id → 页面工厂（缺省空表 = 所有列都按 op 渲染） */
-  pages?: PageRegistry;
+  mountsContainer?: HTMLElement | null;
+  /**
+   * 「名字 → UI 工厂」表（可选）：缺省空表，即 `mount` 只改状态、没有组件出现。
+   *
+   * 表由组合根从生成物取（`./mounts` 是那份生成物在 `src/**` 里的唯一引用点）：
+   * 各框架形态的 UI 是组件对象、原生形态是工厂函数，所以这张表**由形态自己给**，
+   * 宿主只负责把它的项挂进容器。
+   */
+  mountsTable?: Readonly<Record<string, unknown>>;
+  /**
+   * 自己接管 UI 挂载的落法（可选）：给了就不建原生渲染器，只把 `SYS.mounts` 的每个新值
+   * 交给它。框架形态用这条——挂载点的父子关系归框架管，宿主再往同一个容器里写子节点
+   * 会与框架的渲染树打架。
+   *
+   * 与 `mountsContainer` 互斥，容器优先。两样都不给即 `mount` 命令只改状态。
+   */
+  onMounts?: (raw: unknown) => void;
+  /**
+   * 自己接管启动界面的落法（可选）：给了就不由宿主造节点，只把屏幕态交给它。
+   *
+   * 框架形态用这条——启动界面是渲染树上的组件，宿主再往同一个根节点写子节点
+   * 会与框架的渲染树打架。与原生形态互斥：不给则由宿主按 `#stage-root` 下的一层
+   * 不透明覆盖物落 DOM，并在其在场时把舞台各层置为 `inert`。
+   *
+   * 两样都不给会抛——「既不画也不说」等于启动界面凭空消失，那是缺陷不是降级。
+   */
+  onScreen?: (view: ScreenView) => void;
 }
 
 /**
@@ -228,6 +253,26 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     defaultCps: options.defaultCps ?? DEFAULT_TEXT_CPS,
   });
 
+  // —— UI 挂载：`SYS.mounts` → 容器的子节点（不给容器 = mount 只改状态）——
+  // 容器与表都由组合根给：宿主不造节点，也不猜 UI 长什么样（原生是工厂、框架是组件）。
+  // 隐藏即真卸载（不是 display:none）：组件自己的定时器、订阅、媒体元素随拆除一起停。
+  // 框架形态自己接管落法（`onMounts`）：往框架管的容器里写子节点会与它的渲染树打架。
+  const nativeMounts =
+    options.onMounts !== undefined ||
+    options.mountsContainer === undefined ||
+    options.mountsContainer === null
+      ? null
+      : createNativeMountRenderer({
+          container: options.mountsContainer,
+          table: options.mountsTable ?? {},
+          reportError,
+        });
+  const onMounts =
+    options.onMounts ??
+    (nativeMounts === null
+      ? undefined
+      : (raw: unknown) => nativeMounts.sync(raw));
+
   wireEngine({
     dom,
     engine,
@@ -247,6 +292,8 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     // 元素回写落点：音量走偏好、玩法状态走 game. 命名空间（都经既有闸门）
     preferences,
     gameState: engine.gameState,
+    // UI 挂载落点：没容器也不接管就不订阅（`mount` 命令照常改状态，只是没有组件出现）
+    mounts: onMounts,
   });
 
   const driveEffects = createHostEffects({ dom, engine });
@@ -262,25 +309,23 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
         });
   prefsPanel?.mount();
 
-  // —— 页面挂载：列 id 变了就换界面，切走即销毁（不给容器 = 所有列按 op 渲染）——
-  // 容器由组合根给并常驻；这里只订阅 `SYS.currentSceneColumn`，与故事推进共用同一条状态流。
-  const pageMounter =
-    options.pageContainer === undefined || options.pageContainer === null
-      ? null
-      : createPageMounter({
-          registry: options.pages ?? createPageRegistry(),
-          container: options.pageContainer,
-          engine,
-          reader: createStateReader(engine),
-          preferences,
-          gameState: engine.gameState,
-          reportError,
-        });
-
   const frameLoop = startHostFrameLoop({
     dialogue,
     onMediaTick: () => audio.pollPosition(), // 媒体位置帧级回写
     onFrame: driveEffects,
+  });
+  // —— 屏幕切换：进游戏前画启动界面，进列后还舞台 ——
+  // 判据是本列的类型而不是某个列名白名单：引擎不认识「启动界面」，它只说自己在哪列。
+  // 框架形态给 `onScreen` 自己画；不给就由本文件按原生形态造节点挂到舞台根下。
+  const screenSwitch = createScreenSwitch({
+    engine,
+    manifest,
+    // 入口列来自故事本身：写死名字换个工程就指到不存在的列
+    entry: story.entry,
+    savePort,
+    reportError,
+    dom: options.onScreen === undefined ? dom : undefined,
+    onView: options.onScreen,
   });
   wireInput({ dom, engine, dialogue });
   wireSaveSlots(dom, engine);
@@ -293,8 +338,10 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     if (disposed) return;
     disposed = true;
     frameLoop.stop();
-    // 页面先拆：它可能持有自己那套框架实例，晚拆会让框架卸载跑在引擎销毁之后
-    pageMounter?.dispose();
+    // UI 先拆：它可能持有自己那套框架实例或定时器，晚拆会让卸载跑在引擎销毁之后
+    nativeMounts?.dispose();
+    // 屏幕先拆：它订阅当前列，晚拆会让切屏跑在引擎销毁之后
+    screenSwitch.dispose();
     // 面板先拆：它订阅偏好层，偏好 dispose 之后再退订会漏掉末次回填
     prefsPanel?.destroy();
     audio.dispose();

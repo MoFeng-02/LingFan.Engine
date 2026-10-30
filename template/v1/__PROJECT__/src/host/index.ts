@@ -22,6 +22,15 @@ export {
   type DialogueViewOptions,
 } from "./dialogue-view";
 export { createHostEffects, type HostEffectsOptions } from "./effects";
+export {
+  createNativeMountRenderer,
+  resolveNativeFactory,
+  type NativeMountRenderer,
+  type NativeMountRendererOptions,
+  type NativeUiFactory,
+  type NativeUiInstance,
+  type NativeUiTable,
+} from "./mount/index";
 export { wireEngine, type HostWiringOptions } from "./engine-wiring";
 export { startHostFrameLoop, type HostFrameLoopOptions } from "./frame-loop";
 export { wireInput, type HostInputOptions } from "./input-map";
@@ -32,24 +41,15 @@ export {
   type HostHandle,
 } from "./boot";
 export {
+  createScreenSwitch,
+  type ScreenSwitch,
+  type ScreenSwitchOptions,
+} from "./switch";
+export { createStartScreenElement } from "./screen/view";
+export {
   createPreferencesPanel,
   PREF_CHANNELS,
   type PreferencesPanel,
   type PreferencesPanelOptions,
   type PreferencesPanelView,
 } from "./panels/preferences";
-export {
-  createPageRegistry,
-  type Page,
-  type PageContext,
-  type PageFactory,
-  type PageRegistry,
-  type PageRegistryOptions,
-} from "./pages/registry";
-export { createPageMounter, type PageMounter } from "./pages/mount";
-export {
-  createHudPanel,
-  type HudPanel,
-  type HudPanelOptions,
-} from "./pages/hud";
-export { createTitlePage, type TitlePageOptions } from "./pages/title-page";

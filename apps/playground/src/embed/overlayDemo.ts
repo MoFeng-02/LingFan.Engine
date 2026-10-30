@@ -10,6 +10,7 @@
  * - **输入域让位**：叙事等待推进时按键归叙事，覆盖层收起后按键归宿主游戏。
  */
 import {
+  MANIFEST_FILE,
   resolveAudioConfig,
   StoryEngine,
   type Story,
@@ -29,9 +30,11 @@ import {
 // 覆盖层演示与组合根共用同一份（换生成器输出名或调整默认清单时只改一处）。
 import { STORIES, guards } from "../stories";
 
-/** 工程清单文件名：与适配器 fetch 端口约定一致（Tauri 形态走 Rust 枚举，不经此）。 */
-const MANIFEST = "project.json";
-/** 覆盖层字速（字符/秒）：演示用固定值，正式宿主按玩家偏好注入 */
+/**
+ * 覆盖层字速（字符/秒）：演示用固定值，正式宿主按玩家偏好注入。
+ * 清单名不在这里声明——取引擎契约的 `MANIFEST_FILE`（与适配器 fetch 端口约定同源；
+ * Tauri 形态走 Rust 枚举，不经此）。
+ */
 const OVERLAY_TEXT_SPEED = 30;
 
 /** 错误横幅元素（#error，index.html 提供）：本页所有失败信息只往这里写。 */
@@ -79,7 +82,7 @@ requestAnimationFrame(hostLoop);
 async function main(): Promise<void> {
   // ① 加载工程（组装归引擎纯函数）
   const filesPort = createFetchProjectFilesPort({
-    manifest: MANIFEST,
+    manifest: MANIFEST_FILE,
     stories: STORIES,
   });
   const manifest = await filesPort.manifest();

@@ -207,55 +207,60 @@ button {
   color: #a9b1d6;
   font-variant-numeric: tabular-nums;
 }
-/* 页面容器：整屏界面挂这里（列 id → 页面，见 src/host/pages/）。
-   槽位本身不吃事件，只有里面的界面吃——没挂页面时它是空的，点击继续穿透到
-   下面的舞台与对话层，否则工具条会被一层空气挡住。
-   DOM 顺序在工具条之后，所以页面挂上时确实盖住工具条：这是「完整界面替换」。 */
-#page {
+/* UI 挂载层：`mount` 命令显示/隐藏的组件挂这里（见 src/host/mount/）。
+   隐藏 = 从渲染树移除，所以这里没有 display:none 的分支——容器空着就是没有 UI。
+   槽位本身不吃事件，只有里面的组件吃：UI 覆盖整屏时不该顺带吃掉对话层的点击，
+   而组件要交互时自己声明（与 #prefs 同一口径）。 */
+#mounts {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
-#page > * {
+#mounts > * {
   pointer-events: auto;
 }
-/* 标题页（示范页面的样式；页面自己长什么样由它的样式决定，引擎不管） */
-.page-title {
+/* 启动界面层：进游戏前盖住舞台的整屏界面（见 src/host/switch.ts）。
+   不透明是为了「遮挡」这件事成立——舞台仍在 DOM 上（宿主句柄不能失效），
+   只是被完全盖住且不参与交互。层级低于 #transition，转场仍能盖在它上面。 */
+.screen-start {
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
   background: radial-gradient(ellipse at center, #1b2233 0%, #0c0f16 70%);
+  z-index: 3000;
+}
+.screen-start__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   text-align: center;
 }
-.page-title__heading {
+.screen-start__heading {
   margin: 0;
   font-size: 40px;
   letter-spacing: 0.08em;
   color: #e6e6e6;
 }
-.page-title__subtitle {
+.screen-start__subtitle {
   margin: 0;
   color: #a9b1d6;
   font-size: 14px;
 }
-.page-title__progress {
-  margin: 0;
-  color: #565f89;
-  font-size: 12px;
-}
-.page-title__actions {
+.screen-start__actions {
   display: flex;
   gap: 12px;
   margin-top: 12px;
 }
-.page-title__start,
-.page-title__continue {
+.screen-start__button {
   min-width: 120px;
   padding: 8px 20px;
+}
+.screen-start__button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 /* 全屏转场遮罩（transition）：屏幕级，恒在最上；透明度由帧驱动写入 */
 #transition {
