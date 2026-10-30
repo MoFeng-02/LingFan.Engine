@@ -62,9 +62,10 @@ export default defineConfigWithVueTs(
       // docs 站的 Astro 生成物（content.d.ts / types.d.ts）：astro build/sync 产物，
       // 风格由生成器负责，不入版本库——免检
       "**/.astro/**",
-      // stories:build 的 cell 生成物（fun_register.g.ts）：实现文本从源原样搬运，
-      // 缩进/风格由生成器负责——入库但免检（.prettierignore 已同步）
-      "**/Stories.src/gen/**",
+      // stories:build 的生成物（fun_register.g.ts / *.gen.d.ts）：实现文本从源原样
+      // 搬运、类型面由收集结果拼装，缩进/风格由生成器负责——入库但免检
+      // （.prettierignore 已同步）
+      "**/src/gen/**",
     ],
   },
   pluginVue.configs["flat/essential"],
@@ -74,10 +75,13 @@ export default defineConfigWithVueTs(
     name: "lingfan/allow-single-word-app",
     // 单文件组件名不满足「多词」约定：应用外壳（App.vue）与**路由页**——
     // 页面文件名即路由路径（由 pages.json 决定），组件名跟路由走，不由命名约定决定。
+    // `src/ui/**` 同理：UI 的绑定名由目录名决定（`ui/hub/hub.vue` 只能导成 `hub`），
+    // 名字是构建期事实而非风格选择，单名在这里是规则要求。
     files: [
       "apps/playground/src/App.vue",
       "apps/editor/src/App.vue",
       "apps/miniprogram/src/pages/**/*.vue",
+      "apps/*/src/ui/**/*.vue",
     ],
     rules: {
       "vue/multi-word-component-names": "off",
@@ -343,6 +347,15 @@ export default defineConfigWithVueTs(
       // `.css`，而 `?raw` 导入 `.css` 在 vitest（css:false）下同样被 stub 成空串
       // ⇒ 只能 readFileSync。属测试期工具，不进浏览器产物
       "tests/playground/text-selection-guard.test.ts",
+      // 退场实现守卫需要**递归遍历 template/ 与 apps/ 的源文件**做机械核对：
+      // 判据对象是「这套符号不许出现在任何源文件里」，只能靠扫盘枚举，
+      // 用 `?raw` 静态导入等于事先列出白名单（新增文件自动漏检）。
+      // 属测试期工具，不进浏览器产物
+      "tests/template/no-page-registry.test.ts",
+      // 硬编码名守卫：同理**递归遍历 template/ 与 apps/ 的源文件**做机械核对
+      // （列名/工程名/槽名散落各处，只能扫盘枚举；且要报 文件:行号）。
+      // 属测试期工具，不进浏览器产物
+      "tests/template/no-hardcoded-names.test.ts",
     ],
     rules: {
       "no-restricted-imports": "off",
