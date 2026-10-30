@@ -4,12 +4,14 @@ pnpm-lock.yaml
 target
 
 # 构建生成物（stories:build 幂等产出——格式由生成器负责，人工排版会被覆盖）
-apps/playground/Stories.src/gen/
+apps/playground/src/gen/
 # 同上：创作链编译产物（Resources/Stories/** + project.json，由 stories:build 差量写盘）
 apps/playground/Resources/
 # 同上：模板的 TS 故事源层自带一份开箱产物，同样是生成器写的
-template/v1/overlays/ts/Stories.src/gen/
+template/v1/overlays/ts/src/gen/
 template/v1/overlays/ts/Resources/
+# 同上：骨架自带一份空 UI 注册表基线，`stories:build` 会按 src/ui/ 重写它
+template/v1/__PROJECT__/src/gen/
 # 平台与框架生成物（Tauri / Astro 自动生成，人工排版会被覆盖）
 apps/playground/src-tauri/gen/
 docs/.astro/

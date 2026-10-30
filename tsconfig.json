@@ -41,7 +41,23 @@
     "template/**/src/**/*.ts",
     "tests/**/*.ts"
   ],
-  /* 叠加层是生成器的事实素材，不是本仓源码：它们各自带 tsconfig、依赖别的框架
-     （vue / react / @vitejs/plugin-*），本仓没装那些包，纳入检查只会得到必然的解析失败 */
-  "exclude": ["template/*/overlays/**"]
+  /* 三类不归本仓检查：
+     - 叠加层是生成器的事实素材，不是本仓源码：它们各自带 tsconfig、依赖别的框架
+       （vue / react / @vitejs/plugin-*），本仓没装那些包，纳入检查只会得到必然的解析失败；
+     - Stories.src 是故事源的「真 TS 项目」，由各工程自己的 tsconfig 管（playground 走
+       stories-typecheck）——`defineVars` 这类全局声明只在故事源工程里可见；
+     - stories.gen.d.ts 是某个工程的故事词汇注册表（列名、插值键），只对那个工程的作者
+       源码成立：本仓的 packages 与 tests 要能写任意列名，纳入本工程会把类型面收窄成
+       单一工程的词汇表；
+     - authoring.d.ts 是**给消费工程**的创作垫片，同理只对故事源成立。它还带一条
+       `declare global { module "*.vue" | "*.tsx" | "*.html" }` 通配声明——纳入本工程会让
+       这条通配盖住宿主 SFC 的真实导出（`apps/editor` 的具名导出会全部「不存在」）。
+       消费工程经 package exports 解析它，不依赖本工程是否 include。
+     src/gen 的其余生成物不在排除之列：它们是普通模块，宿主直接 import。 */
+  "exclude": [
+    "template/*/overlays/**",
+    "apps/*/src/Stories.src/**",
+    "apps/*/src/gen/stories.gen.d.ts",
+    "packages/stories-build/src/authoring.d.ts"
+  ]
 }
