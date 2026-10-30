@@ -62,6 +62,36 @@ export {
 } from "./video";
 export { createMinigameRegistry, type MinigameRegistry } from "./minigame";
 export {
+  createMountStore,
+  missingMounts,
+  mountEntryOf,
+  mountProps,
+  planMounts,
+  selectMounts,
+  visibleMounts,
+  type MountEntry,
+  type MountPlan,
+  type MountSelection,
+  type MountSource,
+  type MountStore,
+  type MountTable,
+} from "./mount";
+export {
+  continueSlot,
+  createScreenStore,
+  firstGameColumn,
+  hostScreenOf,
+  latestSave,
+  sameScreenView,
+  screenViewOf,
+  type ContinueHint,
+  type HostScreen,
+  type HostScreenInput,
+  type ScreenStore,
+  type ScreenView,
+  type ScreenViewInput,
+} from "./screen";
+export {
   createElementRegistry,
   createElementResourceResolver,
   easingFn,
@@ -111,6 +141,7 @@ export {
 export {
   GAME_INPUT_BLOCKED_SELECTOR,
   INPUT_SCOPES,
+  UI_ZONE_ATTRIBUTE,
   createInputScopeState,
   isGameInputTarget,
   isInputScope,

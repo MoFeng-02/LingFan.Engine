@@ -29,7 +29,7 @@ import { isGameInputTarget } from "../input/scope";
 import { createElementRegistry } from "../element/registry";
 import type { ElementRegistry } from "../element/registry";
 import { registerBuiltinElementRenderers } from "../element";
-import { DEFAULT_NOTIFY_MS } from "../host/duration";
+import { DEFAULT_NOTIFY_MS, DEFAULT_TEXT_CPS } from "../host/duration";
 import { choicesLayerView } from "./choices-view";
 import type { ChoicesViewDeps } from "./choices-view";
 import { dialogueLayerView } from "./dialogue-view";
@@ -72,7 +72,7 @@ export function createNarrativeOverlay(
   const reader = createStateReader(engine);
 
   const elements = options.elementRegistry ?? createBuiltinElementRegistry();
-  const textSpeed = options.textSpeed ?? 30;
+  const textSpeed = options.textSpeed ?? DEFAULT_TEXT_CPS;
 
   const layerZController = createLayerZController(surface, layerZ);
   // 表面可能由宿主先建（那时还不知道本实例的层默认表）：构造末尾统一下发一次，

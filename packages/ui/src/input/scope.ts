@@ -5,7 +5,7 @@
  *
  * 1. **事件目标层面**（[`isGameInputTarget`]）：舞台铺满视口且内部挂着工具条与面板，
  *    事件会从这些控件冒泡上来。命中原生输入控件、或位于标记为 UI 容器的元素内
- *    （`[data-ui-zone]`）即非游戏输入——否则在历史面板里滚动会连带把故事回退，
+ *    （[`UI_ZONE_ATTRIBUTE`]）即非游戏输入——否则在历史面板里滚动会连带把故事回退，
  *    输入框里的空格会被推进逻辑消费。
  * 2. **模式层面**（[`InputScope`]）：外部玩法系统接管期间（方向键行走、战斗、QTE），
  *    推进类按键应整体让位，而不是逐事件判断。
@@ -35,9 +35,17 @@ export function isInputScope(value: unknown): value is InputScope {
   return value === "dialogue" || value === "world" || value === "ui";
 }
 
+/**
+ * 界面区标记：带此属性的节点内的滚轮 / 按键归 UI，不穿透到游戏输入。
+ *
+ * 语义归属在**输入域**这一侧，不归宿主：宿主只负责给面板根打上这个属性，
+ * 「带了它就等于 UI 输入」这条判据由本模块定义。所以常量声明在这里，
+ * 宿主与嵌入方 import 使用——依赖方向是收窄（宿主不再自持一份字面量），不是扩大。
+ */
+export const UI_ZONE_ATTRIBUTE = "data-ui-zone";
+
 /** 原生输入控件 + UI 容器标记；命中即非游戏输入 */
-export const GAME_INPUT_BLOCKED_SELECTOR =
-  'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [data-ui-zone]';
+export const GAME_INPUT_BLOCKED_SELECTOR = `input, textarea, select, [contenteditable]:not([contenteditable="false"]), [${UI_ZONE_ATTRIBUTE}]`;
 
 /** 判定所需的最小事件目标接口（显式入参便于单测；真实值 = DOM Element） */
 export interface ClosestLike {

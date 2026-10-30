@@ -7,13 +7,14 @@
 import {
   compareOrdinal,
   MANIFEST_FILE,
+  RESOURCES_DIR,
   STORIES_DIR,
 } from "@lingfan-engine/core";
 import { defaultResourceTexts, type ResourceTexts } from "../texts";
 import { dirOf, segmentDepth, tryDirectoryHandle, tryFileHandle } from "./walk";
 
-/** 工程惯例的资源根子目录名（清单不在所选层时下探该层；Rust 侧布局同名） */
-export const RESOURCES_DIR = "Resources";
+/** 工程惯例的资源根子目录名：权威声明在引擎契约（此处只转发，包内消费方沿用旧路径） */
+export { RESOURCES_DIR } from "@lingfan-engine/core";
 
 /**
  * 资源根定位（FSA）：所选目录含清单即资源根；否则下探一层 `Resources/`
