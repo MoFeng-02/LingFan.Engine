@@ -78,7 +78,10 @@ describe("template/v1 脚手架防腐", () => {
     // dev 下 Vite 顺带服务根目录能取到，但 dist/ 里没有 → 生产环境 404。
     const manifest = JSON.parse(projectJson) as ProjectManifest;
     expect(manifest.entry).toBe("title_main");
-    expect(srcText).toContain('"project.json"');
+    // 宿主按清单名去取：名字取引擎契约的 MANIFEST_FILE，不在此处重写一份字面量
+    // （重写会让「改名」变成两处不同步，见 07 魔法值收口）。
+    expect(srcText).toContain("MANIFEST_FILE");
+    expect(srcText).not.toContain('"project.json"');
   });
 
   it("扫描面覆盖模板宿主全目录（文件数 ≥8 且含组合根与宿主叶子，防假绿）", () => {
