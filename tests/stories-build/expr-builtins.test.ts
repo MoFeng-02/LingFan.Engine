@@ -91,8 +91,8 @@ function runStory(
 }
 
 const JOURNEY_FILES = {
-  "Stories.src/config.ts": config(["ch1"], "start.ts"),
-  "Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
+  "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+  "src/Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
   let nick = state.player?.nick ?? "无名";
   say(\`称呼：\${nick}\`);
   state.last = state.bag[0] ?? 0;
@@ -189,8 +189,8 @@ describe("fail-closed：脱糖边界逐项拒绝", () => {
     ["可选下标 ?.[]", `say(\`\${state.bag?.[0]}\`);`, /下标访问不支持可选链/],
   ])("%s ⇒ fail-closed 且零写盘", async (_label, body, pattern) => {
     const root = makeProject("reject", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
   ${body}
 }
 `,
@@ -204,8 +204,8 @@ describe("fail-closed：脱糖边界逐项拒绝", () => {
 
   it("既有文案锚定：裸未知标识符仍走原诊断（?? 不改变白名单口径）", async () => {
     const root = makeProject("unknown-ident", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
   say(\`\${ghost ?? 1}\`);
 }
 `,

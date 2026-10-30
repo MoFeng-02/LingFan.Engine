@@ -19,6 +19,7 @@ import {
   type Graph,
 } from "./story-compiler/index.ts";
 import type { CompilerConstValues } from "./compiler-contract.ts";
+import type { AliasResolver } from "./story-compiler/graph/scan/alias.ts";
 
 export interface CompileStoriesResult {
   stories: Array<{ columnId: string; sourceRelPath: string; story: Story }>;
@@ -41,6 +42,8 @@ export function compileStories(input: {
   readonly characters?: ReadonlyMap<string, CharacterDef>;
   /** 文案注入（Partial）；缺省 = 内建缺省文案（即构建层的既有文案） */
   readonly texts?: Partial<StoriesBuildTexts>;
+  /** 工程 `tsconfig.json` 的 paths 解析器；缺省 = 只认相对路径 */
+  readonly alias?: AliasResolver;
 }): CompileStoriesResult {
   const texts: StoriesBuildTexts = {
     ...defaultStoriesBuildTexts,
@@ -53,6 +56,7 @@ export function compileStories(input: {
     input.config,
     input.constValues,
     texts,
+    input.alias,
   );
   if (graph === null) return { stories: [], diags: diags.list() };
   const entry = resolveStart(graph, diags);

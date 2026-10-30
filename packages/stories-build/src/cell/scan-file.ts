@@ -23,6 +23,8 @@ export function scanFile(
   text: string,
   globalWhitelist: ReadonlySet<string>,
   issues: CellIssue[],
+  rootPrefix = "..",
+  isForeignImport?: (fromRel: string, specifier: string) => boolean,
 ): Array<{
   name: string;
   implText: string;
@@ -33,7 +35,15 @@ export function scanFile(
   const fromDir = relPath.includes("/")
     ? relPath.slice(0, relPath.lastIndexOf("/"))
     : "";
-  const fileImports = collectFileImports(sf, text, fromDir, issues, relPath);
+  const fileImports = collectFileImports(
+    sf,
+    text,
+    fromDir,
+    issues,
+    relPath,
+    rootPrefix,
+    isForeignImport,
+  );
   const found: Array<{
     name: string;
     implText: string;

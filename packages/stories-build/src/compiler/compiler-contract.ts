@@ -1,6 +1,7 @@
 import { StoryBuildError } from "../shared/index.ts";
 import type { StoriesBuildTexts } from "../shared/index.ts";
 import type { StorySourceConfig } from "../config/story-config.ts";
+import type { AliasResolver } from "./story-compiler/graph/scan/alias.ts";
 
 /**
  * story-compiler 契约（编译器下游的唯一对接面）：
@@ -59,6 +60,11 @@ export interface StoriesCompiler {
     >;
     /** 文案注入（Partial）；缺省 = 内建缺省文案（即构建层的既有文案） */
     readonly texts?: Partial<StoriesBuildTexts>;
+    /**
+     * 工程 `tsconfig.json` 的 `paths` 解析器；缺省 = 只认相对路径。
+     * 由编排层读工程配置后注入，编译器自己不读 tsconfig。
+     */
+    readonly alias?: AliasResolver;
   }): CompiledStories | Promise<CompiledStories>;
 }
 

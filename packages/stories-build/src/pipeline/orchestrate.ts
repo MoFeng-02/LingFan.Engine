@@ -1,22 +1,28 @@
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import {
+  RESOURCES_DIR,
   STORIES_DIR,
   type Story,
   type StoryColumn,
 } from "@lingfan-engine/core";
 import { TS_SOURCE_MANIFEST_KEY } from "@lingfan-engine/editor";
 import {
+  DEFAULT_GENERATED_DIR,
   defaultStoriesBuildTexts,
   StoryBuildError,
   type StoriesBuildTexts,
 } from "../shared/index.ts";
-import { assertKnownGuards, assertKnownOps } from "./gates.ts";
+import {
+  assertKnownGuards,
+  assertKnownOps,
+  assertKnownUis,
+  assertUiImports,
+} from "./gates.ts";
 import { scanCellSources } from "../compiler/index.ts";
 import { runConstEvalPass } from "../const-eval/index.ts";
 import { assertRoundTrip, compileStory } from "../emit/index.ts";
 import {
   loadDefaultCompiler,
-  type CompiledStoryEntry,
   type StoriesCompiler,
 } from "../compiler/index.ts";
 import { emitArtifacts } from "../emit/index.ts";
@@ -29,7 +35,6 @@ import {
   evalConfigModule,
   mergeDefineCallsInto,
   runStateSchemaPass,
-  type LocatedDefineCall,
 } from "../const-eval/index.ts";
 import { discoverSources } from "../discovery/index.ts";
 import {
@@ -37,6 +42,13 @@ import {
   fontNameSet,
   scanFontRegistry,
 } from "../fonts/index.ts";
+import {
+  UI_DIR_NAME,
+  renderUiRegister,
+  scanUiRegistry,
+  scanUiTreeImports,
+  uiNameSet,
+} from "../ui/index.ts";
 import {
   collectDeclaredNames,
   collectEnumTypeSlotsForBuild,
@@ -47,13 +59,22 @@ import {
 } from "../typegen/index.ts";
 import { walkFiles } from "../shared/index.ts";
 import { DEFAULT_EVAL_TIMEOUT_MS } from "../const-eval/index.ts";
+import { loadPathsConfig } from "./tsconfig-paths.ts";
+import {
+  mergeDefines,
+  moduleSlotFiles,
+  raiseFormAConflict,
+  readCompiledEntry,
+} from "./merge.ts";
+import { createAliasResolver } from "../compiler/story-compiler/graph/scan/alias.ts";
+import { createUiChannel } from "../compiler/story-compiler/graph/scan/ui-specifier.ts";
 
 /** 构建产物的目录名与生成物文件名（默认值 = 参考宿主的现状目录名） */
-export const DEFAULT_SOURCES_DIR = "Stories.src";
-/** 资源目录名（相对工程根）：清单与 `Stories/**` 产物落在这下面。 */
-export const DEFAULT_RESOURCES_DIR = "Resources";
-/** 生成物目录名（相对源目录）：`fun_register.g.ts` 落在这里。 */
-export const DEFAULT_GENERATED_DIR = "gen";
+export const DEFAULT_SOURCES_DIR = "src/Stories.src";
+/** 资源目录名（相对工程根）：权威声明在引擎契约的 `RESOURCES_DIR`（此处别名转发） */
+export { RESOURCES_DIR as DEFAULT_RESOURCES_DIR } from "@lingfan-engine/core";
+/** 生成物目录名：权威声明在 `shared/generated-dir.ts`（此处只转发，保持包出口不变） */
+export { DEFAULT_GENERATED_DIR } from "../shared/index.ts";
 
 /**
  * 构建的可配置项：只列目录名这类工程布局事实（把同一工程挪到别的目录名只改这里）。
@@ -64,7 +85,7 @@ export interface StoryBuildOptions {
   readonly sourcesDir?: string;
   /** 资源目录名（相对工程根；清单与 `Stories/**` 都住在它下面） */
   readonly resourcesDir?: string;
-  /** 生成物目录名（相对源目录；`fun_register.g.ts` 落在这里） */
+  /** 生成物目录名（相对源根的父目录；`fun_register.g.ts` 落在这里） */
   readonly generatedDir?: string;
   /** 编译器注入（过渡期/测试用）；缺省 = 装载 `compiler` 域的默认实现 */
   readonly compiler?: StoriesCompiler;
@@ -84,6 +105,8 @@ const STATE_TYPEGEN_FILE = "state.gen.d.ts";
 const SCRIPT_TYPEGEN_FILE = "script.gen.d.ts";
 /** font 字面量类型面文件名（字体名注册表的键=值收窄面，内容随注册表） */
 const FONT_TYPEGEN_FILE = "font.gen.d.ts";
+/** UI 注册表生成物文件名（宿主「名字→组件」表 + 故事源具名句柄 + 类型面，内容随注册表） */
+const UI_REGISTER_FILE = "ui_register.g.ts";
 
 /**
  * 编译 `root/Stories.src/` 下的 TS 源 → `root/Resources/`（纯编排，fs 全在参数 root 之下；
@@ -106,7 +129,7 @@ export async function buildStories(
   options: StoryBuildOptions = {},
 ): Promise<BuildReport> {
   const sourcesDirName = options.sourcesDir ?? DEFAULT_SOURCES_DIR;
-  const resourcesDirName = options.resourcesDir ?? DEFAULT_RESOURCES_DIR;
+  const resourcesDirName = options.resourcesDir ?? RESOURCES_DIR;
   const generatedDirName = options.generatedDir ?? DEFAULT_GENERATED_DIR;
   // 文案与求值时限：入口处一次性合并/取缺省，下游各段只收完整对象/数值（纯透传）
   const texts: StoriesBuildTexts = {
@@ -115,9 +138,38 @@ export async function buildStories(
   };
   const evalTimeoutMs = options.evalTimeoutMs ?? DEFAULT_EVAL_TIMEOUT_MS;
 
+  // 生成物目录相对工程根（默认布局 = `src/gen`）：源根名与其父目录在这里一次算清，
+  // 下游只收成品字符串。`posix.dirname("Stories.src")` = "."，故源根在工程根时
+  // 生成物仍落在 `gen/`——旧布局的路径同样由这套算法得出，不留分支。
+  const generatedRelRoot = posix.join(
+    posix.dirname(sourcesDirName),
+    generatedDirName,
+  );
+  // cell 搬运 import 说明符时要从生成物目录回指源根：两个目录都由工程根算出，
+  // 这里一次性折成相对路径（默认布局 = `"../Stories.src"`）传给扫描段。
+  const cellRootPrefix = posix.relative(generatedRelRoot, sourcesDirName);
+
   const sourcesDir = join(root, sourcesDirName);
   const resourcesDir = join(root, resourcesDirName);
   const storiesDir = join(resourcesDir, STORIES_DIR);
+
+  // 作者写的别名来自工程自己的 `tsconfig.json`：一次构建读一次，后续各段共用同一份形状。
+  // 缺失或无 `paths` ⇒ `null`，退化为纯相对路径（宿主零配置也能跑）。
+  const pathsConfig = loadPathsConfig(root);
+
+  // 别名解析器与 UI 通道都在这里一次造好：UI 文件住在源根的兄弟目录 `src/ui/`，
+  // 它的沙箱比模块导入宽一级，两个消费者（cell 搬运、故事编译）共用同一份判定。
+  const alias = createAliasResolver(pathsConfig, sourcesDir);
+  const uiChannel = createUiChannel(sourcesDir, alias);
+  // UI 根与源根是兄弟目录：同一套「谁在哪」的推导只在这里做一次，
+  // 扫描段与闸门文案都从这两个值出发。
+  const uiDirName = UI_DIR_NAME;
+  const uiRelRoot = posix.join(posix.dirname(sourcesDirName), uiDirName);
+  const uiRoot = join(root, uiRelRoot);
+  // 生成物里一律写相对路径（不写别名）：别名是创作期便利，一旦进生成物就把宿主
+  // 绑死在某个 tsconfig 上。默认布局下 `src/gen` 回指 `src/ui` 得 `"../ui"`。
+  const uiRelFromGenerated = posix.relative(generatedRelRoot, uiRelRoot);
+  const uiEntries = scanUiRegistry(uiRoot);
 
   // —— config.ts 单次求值：named exports 四导出（folders/start/vars/state）+ 形态 B
   // define 累积一并取出；布局校验（parseFolders/parseStart）、define 合并冲突与
@@ -140,7 +192,13 @@ export async function buildStories(
   // —— cell 声明扫描（构建期 AST 扫描）：源树（排除生成物目录，仅 .ts；机制不动）。
   // 源树同时是模块层 define 收集与枚举槽位回收的输入（只读复用，不重扫）——
   const sourceTree = walkFiles(sourcesDir);
-  const cellScan = scanCellSources(sourceTree, generatedDirName);
+  const cellScan = scanCellSources(
+    sourceTree,
+    generatedDirName,
+    cellRootPrefix,
+    // UI 句柄导入由 UI 通道处置：它不进生成物、也不受源根沙箱约束。
+    (_fromRel, spec) => uiChannel.classify(_fromRel, spec).kind !== "not-ui",
+  );
 
   // —— 编译期求值：含 node_modules 值导入的文件整体求值，导出常量值喂给
   // 编译器内联；求值诊断与双求值确定性闸门 fail-closed，一次报全部 ——
@@ -151,6 +209,7 @@ export async function buildStories(
     sourcesDirName,
     texts,
     evalTimeoutMs,
+    pathsConfig,
   );
 
   // —— 模块层构建期 define 收集与汇入：源模块顶层 define 语句（函数体外）AST 折叠，
@@ -163,14 +222,7 @@ export async function buildStories(
     generatedDirName,
   });
   if (evaluated.state !== undefined && moduleDefineCalls.length > 0) {
-    throw new StoryBuildError(
-      [
-        `${sourcesDirName}/${CONFIG_FILE}: 形态 A（state 导出）与模块层构建期 define 互斥——形态 A/B 二选一：`,
-        ...moduleDefineCalls.map(
-          (call) => `- ${call.origin}${defineLabel(call)}`,
-        ),
-      ].join("\n"),
-    );
+    raiseFormAConflict(sourcesDirName, CONFIG_FILE, moduleDefineCalls);
   }
   const moduleDefineConflicts = mergeDefineCallsInto(
     evaluated.defineTree,
@@ -207,6 +259,7 @@ export async function buildStories(
   const fontNames = fontNameSet(fontEntries);
 
   // —— story-compiler：故事/模块清单一次性编译（诊断非空 = fail-closed，一次报全部）——
+  // 别名解析器在上面已造好，这里直接复用（读配置与展开候选都在 `tsconfig-paths.ts`）。
   const compiler = options.compiler ?? (await loadDefaultCompiler());
   const compiled = await compiler.compileStories({
     root,
@@ -217,6 +270,7 @@ export async function buildStories(
     constValues,
     fontNames,
     characters: moduleCharacters,
+    alias,
     texts,
   });
   if (compiled.diags.length > 0) {
@@ -271,6 +325,7 @@ export async function buildStories(
   const gateOptions = {
     resourcesDir: resourcesDirName,
     sourcesDir: sourcesDirName,
+    uiDirName,
     texts,
   };
   // —— op 闸门与守卫名闸门（两条 fail-early 判定，各自带定位一次报全部）——
@@ -280,6 +335,12 @@ export async function buildStories(
     new Set(cellScan.guards.map((guard) => guard.name)),
     gateOptions,
   );
+  // —— 列级 uis 闸门：产物里声明的 UI 名必须在源里真有实现文件 ——
+  // 与导入期同一条落位规则（`ui/<名>/<名>.<扩展名>`），此处只核存在性。
+  assertKnownUis(merged, uiNameSet(uiEntries), gateOptions);
+  // —— UI import 面闸门：`src/ui/**` 的越界依赖在构建期一次报全 ——
+  // UI 不进编译链，宿主打包器又拦不住反向依赖，这里是唯一的观测点。
+  assertUiImports(scanUiTreeImports(uiRoot, uiEntries), gateOptions);
 
   // —— 编译与往返自检（config.start → project.json entry 由托管键更新落地）——
   const serialized = compileStory(merged, markedManifest);
@@ -308,7 +369,8 @@ export async function buildStories(
       configSource: sourceTree.get(CONFIG_FILE) ?? "",
       moduleFiles: moduleSlotFiles(sourceTree, moduleDefineCalls),
     }),
-    generatedDir: generatedDirName,
+    sourceRootDir: sourcesDirName,
+    generatedDir: generatedRelRoot,
   });
 
   // —— script 命名空间 ambient 声明（免导入直呼）：内容恒定、与工程状态无关，
@@ -319,29 +381,37 @@ export async function buildStories(
   // 空注册表恒产出封闭空对象，未注册名在 TS 面不可见（改拼即 TS2551）——
   const fontTypegenContent = renderFontTypegen(fontEntries);
 
+  // —— UI 注册表生成物：三段导出（宿主 uis 表 / 故事源具名句柄 / UiNameRegistry）。
+  // 恒产出：没有 UI 时 `uis` 是空表、句柄段整段省略，宿主与类型面都还有形状可引 ——
+  const uiRegisterContent = renderUiRegister(uiEntries, uiRelFromGenerated);
+
   // —— 差量写盘 + 生成物（逻辑路径，相对资源根）——
   const { added, updated, removed } = emitArtifacts({
     root,
     resourcesDir,
     storiesDir,
-    generatedRel: `${sourcesDirName}/${generatedDirName}/${GENERATED_FILE}`,
+    generatedRel: `${generatedRelRoot}/${GENERATED_FILE}`,
     serialized,
     cellScan,
     typegen: {
-      rel: `${sourcesDirName}/${generatedDirName}/${TYPEGEN_FILE}`,
+      rel: `${generatedRelRoot}/${TYPEGEN_FILE}`,
       content: typegenContent,
     },
     stateGen: {
-      rel: `${sourcesDirName}/${generatedDirName}/${STATE_TYPEGEN_FILE}`,
+      rel: `${generatedRelRoot}/${STATE_TYPEGEN_FILE}`,
       content: stateTypegenContent,
     },
     scriptGen: {
-      rel: `${sourcesDirName}/${generatedDirName}/${SCRIPT_TYPEGEN_FILE}`,
+      rel: `${generatedRelRoot}/${SCRIPT_TYPEGEN_FILE}`,
       content: scriptTypegenContent,
     },
     fontGen: {
-      rel: `${sourcesDirName}/${generatedDirName}/${FONT_TYPEGEN_FILE}`,
+      rel: `${generatedRelRoot}/${FONT_TYPEGEN_FILE}`,
       content: fontTypegenContent,
+    },
+    uiGen: {
+      rel: `${generatedRelRoot}/${UI_REGISTER_FILE}`,
+      content: uiRegisterContent,
     },
   });
 
@@ -356,104 +426,4 @@ export async function buildStories(
     functions: cellScan.guards.map((guard) => guard.name),
     warnings: drainBuildWarnings(),
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/** 互斥文案里的一条调用签名（path 形带键名；spec 形统一签名） */
-function defineLabel(call: LocatedDefineCall): string {
-  return call.call.kind === "path"
-    ? `define("${call.call.path}")`
-    : "define({…})";
-}
-
-/** 枚举槽位回收的模块源文（按调用落点去重排序；树里缺文本的文件跳过） */
-function moduleSlotFiles(
-  sourceTree: ReadonlyMap<string, string>,
-  calls: readonly { rel: string }[],
-): Map<string, string> {
-  const files = new Map<string, string>();
-  for (const rel of [...new Set(calls.map((call) => call.rel))].sort()) {
-    const text = sourceTree.get(rel);
-    if (text !== undefined) files.set(rel, text);
-  }
-  return files;
-}
-
-/**
- * 编译条目防御读取：取条目列（columnId 必须在产物列集中）、回填产物 sourcePath、
- * 复核 story 骨架（columns 列集 + id/entry 字符串）。更深的合法性（列 id 安全段、
- * 重复、entry 存在性等）交给 serializeProject/assembleProject 既有校验兜底。
- */
-function readCompiledEntry(
-  entry: CompiledStoryEntry,
-  sourcesDirName: string,
-): { story: Story; column: StoryColumn } {
-  const sourceLabel = `${sourcesDirName}/${entry.sourceRelPath}`;
-  if (!isRecord(entry.story) || !Array.isArray(entry.story.columns)) {
-    throw new StoryBuildError(
-      `${sourceLabel}: 编译器条目 story 缺少列集（compileStories 契约破坏）`,
-    );
-  }
-  const column = entry.story.columns.find(
-    (item) => isRecord(item) && item.id === entry.columnId,
-  );
-  if (column === undefined) {
-    throw new StoryBuildError(
-      `${sourceLabel}: 编译器条目 columnId "${entry.columnId}" 不在产物列集中（compileStories 契约破坏）`,
-    );
-  }
-  if (
-    typeof entry.story.id !== "string" ||
-    entry.story.id === "" ||
-    typeof entry.story.entry !== "string" ||
-    entry.story.entry === ""
-  ) {
-    throw new StoryBuildError(
-      `${sourceLabel}: 编译器条目 story 缺少 id/entry（compileStories 契约破坏）`,
-    );
-  }
-  const story = entry.story as unknown as Story;
-  const typedColumn = column as unknown as StoryColumn;
-  typedColumn.sourcePath = `${STORIES_DIR}/${entry.sourceRelPath.replace(/\.ts$/, ".json")}`;
-  return { story, column: typedColumn };
-}
-
-/**
- * 跨来源的 defines 合并：同键同值收敛，同键异值 = 冲突 fail-closed（一次报全部）。
- * 来源 = config 状态（config 先行：形态 A state 或形态 B define 合并树）+ 各故事文件；
- * config 与故事同键异值同样冲突。
- */
-function mergeDefines(
-  bySource: ReadonlyMap<string, { story: Story; columns: StoryColumn[] }>,
-  sourcesDirName: string,
-  schemaDefines: Record<string, unknown> = {},
-): Record<string, unknown> {
-  const merged: Record<string, unknown> = {};
-  const conflicts: string[] = [];
-  const put = (key: string, value: unknown, source: string): void => {
-    if (key in merged && merged[key] !== value) {
-      conflicts.push(
-        `- defines["${key}"] 在 ${sourcesDirName}/${source} 与先前的声明不一致（${JSON.stringify(merged[key])} ≠ ${JSON.stringify(value)}）`,
-      );
-      return;
-    }
-    merged[key] = value;
-  };
-  for (const [key, value] of Object.entries(schemaDefines)) {
-    put(key, value, "config.ts（state/define）");
-  }
-  for (const [source, { story }] of bySource) {
-    for (const [key, value] of Object.entries(story.defines ?? {})) {
-      put(key, value, source);
-    }
-  }
-  if (conflicts.length > 0) {
-    throw new StoryBuildError(
-      `跨故事文件的 defines 冲突（工程级 defines 只有一份，请统一到工程清单或消除同名异值）：\n${conflicts.join("\n")}`,
-    );
-  }
-  return merged;
 }

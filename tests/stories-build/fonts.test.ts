@@ -57,7 +57,7 @@ const { say } = script;
 const story = (name: string, body: string): string =>
   `${WORDS}export default function ${name}(): void {\n${body}\n}\n`;
 
-const START = "Stories.src/ch1/start.ts";
+const START = "src/Stories.src/ch1/start.ts";
 const STORY_JSON = "Resources/Stories/ch1/start.json";
 
 function readStoryText(root: string): string {
@@ -69,7 +69,7 @@ describe("字体名注册表 · 构建期 fail-closed", () => {
     const root = makeProject(
       "registered-pass",
       {
-        "Stories.src/config.ts": config(["ch1"]),
+        "src/Stories.src/config.ts": config(["ch1"]),
         [START]: story(
           "start",
           `  say("你好", { font: "楷体" });\n  say("{font=楷体}强调{/font}正文");\n`,
@@ -87,7 +87,7 @@ describe("字体名注册表 · 构建期 fail-closed", () => {
 
   it("未注册的 say 行参 font fail-closed：诊断带 源文件:行:列", async () => {
     const root = makeProject("unregistered-font-field", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: story("start", `  say("你好", { font: "宋体" });\n`),
       "Resources/project.json": MANIFEST,
     });
@@ -98,7 +98,7 @@ describe("字体名注册表 · 构建期 fail-closed", () => {
 
   it("未注册的 {font=} 标签一次报全部（一个文本里两个未注册名 = 两条诊断）", async () => {
     const root = makeProject("unregistered-tags", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: story(
         "start",
         `  say("{font=宋体}甲{/font}{font=黑体}乙{/font}");\n`,
@@ -111,7 +111,7 @@ describe("字体名注册表 · 构建期 fail-closed", () => {
 
   it("动态值编译期放行：插值降糖形态（{…} 包裹）不对照注册表", async () => {
     const root = makeProject("dynamic-pass", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["ch1"]) + `define("player.skin", "楷体");\n`,
       [START]: story(
         "start",
@@ -128,7 +128,7 @@ describe("字体名注册表 · 构建期 fail-closed", () => {
 
   it("空注册表（无 Fonts 目录）同样 fail-closed：引用即报", async () => {
     const root = makeProject("no-fonts-dir", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: story("start", `  say("你好", { font: "楷体" });\n`),
       "Resources/project.json": MANIFEST,
     });
@@ -137,7 +137,7 @@ describe("字体名注册表 · 构建期 fail-closed", () => {
 
   it("无字体引用且无 Fonts 目录 = 零打扰：正常构建", async () => {
     const root = makeProject("no-fonts-no-refs", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: story("start", `  say("你好");\n`),
       "Resources/project.json": MANIFEST,
     });
@@ -150,7 +150,7 @@ describe("字体名注册表 · 构建期 fail-closed", () => {
     const root = makeProject(
       "ext-filter",
       {
-        "Stories.src/config.ts": config(["ch1"]),
+        "src/Stories.src/config.ts": config(["ch1"]),
         [START]: story("start", `  say("你好", { font: "楷体" });\n`),
         "Resources/project.json": MANIFEST,
       },

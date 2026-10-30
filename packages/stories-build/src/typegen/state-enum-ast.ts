@@ -25,6 +25,7 @@
  */
 import { posix } from "node:path";
 import * as ts from "typescript";
+import { MAX_ALIAS_HOPS } from "../shared/index.ts";
 
 /** 一个可 import 的枚举 type 槽位：源文件里的本地绑定名 + 模块说明符 */
 export interface EnumTypeSlot {
@@ -42,7 +43,6 @@ export interface EnumTypeSlot {
 }
 
 /** 别名回溯上限：有限跳数防环（与 module-scan 状态根别名链同思路） */
-const MAX_ALIAS_HOPS = 10;
 
 export function collectEnumTypeSlots(
   configSource: string,

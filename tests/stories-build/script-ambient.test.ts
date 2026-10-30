@@ -42,8 +42,8 @@ const MANIFEST = `{
   "shell": { "orientation": "auto" }
 }`;
 
-const START = "Stories.src/ch1/start.ts";
-const SCRIPT_GEN = "Stories.src/gen/script.gen.d.ts";
+const START = "src/Stories.src/ch1/start.ts";
+const SCRIPT_GEN = "src/gen/script.gen.d.ts";
 
 const AMBIENT_BODY = `  script.bgm("loop.ogg");
   script.wait(30);
@@ -69,12 +69,12 @@ function readStoryJson(root: string): string {
 describe("script 命名空间 ambient 直呼", () => {
   it("免导入 script.* 直呼：编译成功且与解构形态产物逐字节等值", async () => {
     const ambientRoot = makeProject("ambient-eq", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: AMBIENT_STORY,
       "Resources/project.json": MANIFEST,
     });
     const destructureRoot = makeProject("destructure-eq", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: DESTRUCTURE_STORY,
       "Resources/project.json": MANIFEST,
     });
@@ -90,8 +90,8 @@ describe("script 命名空间 ambient 直呼", () => {
 
   it("模块函数体内同样直呼：词函数体经 ambient 解析（缺兜底会报方法调用不支持）", async () => {
     const root = makeProject("module-fn", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/lib/sfx.ts": `export function ping(): void {\n  script.bgm("x.ogg");\n}\n`,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/lib/sfx.ts": `export function ping(): void {\n  script.bgm("x.ogg");\n}\n`,
       [START]: `import { ping } from "../lib/sfx";\n\nexport default function start(): void {\n  ping();\n}\n`,
       "Resources/project.json": MANIFEST,
     });
@@ -104,7 +104,7 @@ describe("script 命名空间 ambient 直呼", () => {
 
   it("未知词 fail-closed：文案指路 script 命名空间与具名导入", async () => {
     const root = makeProject("unknown-word", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: story("", `  script.nope("x");`),
       "Resources/project.json": MANIFEST,
     });
@@ -115,7 +115,7 @@ describe("script 命名空间 ambient 直呼", () => {
 
   it("模块内自有声明遮蔽 ambient：不按词解析（fail-closed）", async () => {
     const root = makeProject("shadowed", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: `function script(): void {}\n\n${story("", `  script.bgm("x");`)}`,
       "Resources/project.json": MANIFEST,
     });
@@ -124,7 +124,7 @@ describe("script 命名空间 ambient 直呼", () => {
 
   it("别名导入不受影响：import { script as st } 后 st.bgm 与具名导入产物等值", async () => {
     const aliasRoot = makeProject("alias-eq", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: story(
         `import { script as st } from "@lingfan-engine/editor";\n`,
         `  st.bgm("loop.ogg");`,
@@ -132,7 +132,7 @@ describe("script 命名空间 ambient 直呼", () => {
       "Resources/project.json": MANIFEST,
     });
     const namedRoot = makeProject("named-eq", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: story(
         `import { bgm } from "@lingfan-engine/editor";\n`,
         `  bgm("loop.ogg");`,
@@ -146,8 +146,8 @@ describe("script 命名空间 ambient 直呼", () => {
 
   it("模块层词调用语句仍 fail-closed：白名单不含词调用", async () => {
     const root = makeProject("module-layer-word", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/extra.ts": `script.bgm("x.ogg");\n`,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/extra.ts": `script.bgm("x.ogg");\n`,
       [START]: story("", `  script.bgm("loop.ogg");`),
       "Resources/project.json": MANIFEST,
     });

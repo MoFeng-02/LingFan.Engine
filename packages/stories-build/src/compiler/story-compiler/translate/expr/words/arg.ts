@@ -22,6 +22,11 @@ export function evaluateWordArg(
     if (binding?.kind === "cell") {
       return { name: binding.guard };
     }
+    // UI 句柄作词实参时就是它的名字（`mount(hub, true)` 的 `hub`），
+    // 与句柄在其他位置被折叠成字符串是同一件事。
+    if (binding?.kind === "ui") {
+      return { name: binding.name };
+    }
   }
   if (ts.isArrayLiteralExpression(expr)) {
     const out: unknown[] = [];

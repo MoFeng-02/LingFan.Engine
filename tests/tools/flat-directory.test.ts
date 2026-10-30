@@ -8,7 +8,14 @@
 import { describe, expect, it } from "vitest";
 
 const SOURCES = import.meta.glob(
-  ["../../packages/*/src/**/*.{ts,vue}", "../../apps/*/src/**/*.{ts,vue}"],
+  [
+    "../../packages/*/src/**/*.{ts,vue}",
+    "../../apps/*/src/**/*.{ts,vue}",
+    // 故事源不是本仓的「模块/功能域」：它是作者手写的创作目录（每个子目录 = 一个章节，
+    // 由 config.ts 的 folders 声明），自带 tsconfig、只归 stories-build 处理。往章节目录
+    // 塞 index.ts 还会被故事发现当成一个新故事列，故不纳入平铺判据。
+    "!../../apps/*/src/Stories.src/**",
+  ],
   { eager: false },
 );
 

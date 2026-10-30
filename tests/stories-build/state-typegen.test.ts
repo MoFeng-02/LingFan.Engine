@@ -2,7 +2,7 @@
  * state 类型面生成（形态 B gen 类型面）契约测试。
  *
  * 契约口径（类型面分流 / 生成四处 / ambient 桥）：
- * buildStories 恒产出 `Stories.src/gen/state.gen.d.ts`：从 config 求值合并树
+ * buildStories 恒产出 `src/gen/state.gen.d.ts`：从 config 求值合并树
  * （形态 A state 导出 / 形态 B define 累积，二选一）渲染精确 `StoryState`——
  * descriptor 的 type 槽位按形状取精确类型（原生标量 / 单元素数组 leaf /
  * 多元素数组并集（成员可含 null）/ 枚举引用），枚举标识符从 config.ts 与模块层
@@ -67,7 +67,7 @@ const story = (name: string, body: string): string =>
 
 const SEX_LIB = `export enum Sex {\n  Male = "male",\n  Female = "female",\n}\n`;
 
-const STATE_GEN_REL = "Stories.src/gen/state.gen.d.ts";
+const STATE_GEN_REL = "src/gen/state.gen.d.ts";
 
 /** 生成物头注释（与 state-render 的 HEADER 逐字节同源；扩写口径见用户定案） */
 const HEADER =
@@ -82,8 +82,8 @@ function readStateGen(root: string): string {
 describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", () => {
   it("descriptor 全形状逐字节契约：原生/数组/枚举别名导入/缺省回退联合", async () => {
     const root = makeProject("form-b-shapes", {
-      "Stories.src/lib/sex.ts": SEX_LIB,
-      "Stories.src/config.ts":
+      "src/Stories.src/lib/sex.ts": SEX_LIB,
+      "src/Stories.src/config.ts":
         `import { Sex as Gender } from "./lib/sex";\n` +
         config(["ch1"]) +
         `define("player.gold", 100);\n` +
@@ -93,7 +93,7 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
         `define("dice", { type: "number", default: 1 });\n` +
         `define("supplies", { type: ["string"], default: [] });\n` +
         `define("mood", { type: { Happy: "happy", Sad: "sad" }, default: "happy" });\n`,
-      "Stories.src/ch1/start.ts": story(
+      "src/Stories.src/ch1/start.ts": story(
         "start",
         `  state.player.gold += 20;\n  say("金币 {player.gold}");\n`,
       ),
@@ -106,7 +106,7 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
     expect(readStateGen(root)).toBe(
       `${HEADER}\n` +
         `\n` +
-        `import type { Sex as Gender } from "../lib/sex";\n` +
+        `import type { Sex as Gender } from "../Stories.src/lib/sex";\n` +
         `\n` +
         `export type StoryState = {\n` +
         `  "dice": number;\n` +
@@ -124,12 +124,12 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
 
   it("形态 A state 导出同链路：枚举相对导入的 type 槽位同样生成 import", async () => {
     const root = makeProject("form-a-enum", {
-      "Stories.src/lib/sex.ts": SEX_LIB,
-      "Stories.src/config.ts":
+      "src/Stories.src/lib/sex.ts": SEX_LIB,
+      "src/Stories.src/config.ts":
         `import { Sex } from "./lib/sex";\n` +
         config(["ch1"]) +
         `export const state = { player: { sex: { type: Sex, default: Sex.Female } } } as const;\n`,
-      "Stories.src/ch1/start.ts": story(
+      "src/Stories.src/ch1/start.ts": story(
         "start",
         `  say("form A 的 gen 面只看 config 求值树，故事体无关");\n`,
       ),
@@ -139,7 +139,7 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
     expect(readStateGen(root)).toBe(
       `${HEADER}\n` +
         `\n` +
-        `import type { Sex } from "../lib/sex";\n` +
+        `import type { Sex } from "../Stories.src/lib/sex";\n` +
         `\n` +
         `export type StoryState = {\n` +
         `  "player": {\n` +
@@ -188,15 +188,15 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
 
   it("并集 type 槽位逐字节契约：枚举引用按成员下标配对、作者序保序、嵌套并集与内联枚举数组", async () => {
     const root = makeProject("union-shapes", {
-      "Stories.src/lib/sex.ts": SEX_LIB,
-      "Stories.src/config.ts":
+      "src/Stories.src/lib/sex.ts": SEX_LIB,
+      "src/Stories.src/config.ts":
         `import { Sex as Gender } from "./lib/sex";\n` +
         config(["ch1"]) +
         `define("hp", { type: ["number", Gender, null], default: null });\n` +
         `define("grade", { type: [null, "number", null], default: null });\n` +
         `define("span", { type: [["number", "string"], null], default: null });\n` +
         `define("team", { type: [Gender], default: [] });\n`,
-      "Stories.src/ch1/start.ts": story(
+      "src/Stories.src/ch1/start.ts": story(
         "start",
         `  say("并集成员按作者序渲染，回收槽位按下标配对");\n`,
       ),
@@ -206,7 +206,7 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
     expect(readStateGen(root)).toBe(
       `${HEADER}\n` +
         `\n` +
-        `import type { Sex as Gender } from "../lib/sex";\n` +
+        `import type { Sex as Gender } from "../Stories.src/lib/sex";\n` +
         `\n` +
         `export type StoryState = {\n` +
         `  "grade": null | number;\n` +
@@ -219,14 +219,14 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
 
   it("形态 A 并集同链路：as const 元组 + null 成员的枚举引用同样生成 import", async () => {
     const root = makeProject("union-form-a", {
-      "Stories.src/lib/sex.ts": SEX_LIB,
-      "Stories.src/config.ts":
+      "src/Stories.src/lib/sex.ts": SEX_LIB,
+      "src/Stories.src/config.ts":
         `import { Sex } from "./lib/sex";\n` +
         config(["ch1"]) +
         `export const state = {\n` +
         `  medal: { type: ["string", Sex, null] as const, default: null },\n` +
         `} as const;\n`,
-      "Stories.src/ch1/start.ts": story(
+      "src/Stories.src/ch1/start.ts": story(
         "start",
         `  say("形态 A 的并集走同一渲染器");\n`,
       ),
@@ -236,7 +236,7 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
     expect(readStateGen(root)).toBe(
       `${HEADER}\n` +
         `\n` +
-        `import type { Sex } from "../lib/sex";\n` +
+        `import type { Sex } from "../Stories.src/lib/sex";\n` +
         `\n` +
         `export type StoryState = {\n` +
         `  "medal": string | Sex | null;\n` +
@@ -246,8 +246,8 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
 
   it("空树恒产出：无 state 导出也无 define ⇒ Record<string, never>，桥永远有类型可引", async () => {
     const root = makeProject("empty-tree", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": story("start", `  say("hello");\n`),
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": story("start", `  say("hello");\n`),
       "Resources/project.json": MANIFEST,
     });
     const first = await buildStories(root);
@@ -261,9 +261,9 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
 
   it("差量与幂等：改 type ⇒ updated；不变 ⇒ 第三跑 added/updated 均不含", async () => {
     const root = makeProject("delta", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["ch1"]) + `define("score", { type: "number", default: 0 });\n`,
-      "Stories.src/ch1/start.ts": story("start", `  say("hello");\n`),
+      "src/Stories.src/ch1/start.ts": story("start", `  say("hello");\n`),
       "Resources/project.json": MANIFEST,
     });
     const first = await buildStories(root);
@@ -272,7 +272,7 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
 
     // 改 type：内容随之变，差量记为 updated（且只此一条类型面变化）。
     writeFileSync(
-      join(root, "Stories.src/config.ts"),
+      join(root, "src/Stories.src/config.ts"),
       config(["ch1"]) + `define("score", { type: "string", default: "0" });\n`,
     );
     const second = await buildStories(root);
@@ -288,18 +288,16 @@ describe("state.gen.d.ts · 形态 B define 合并树 → 精确 StoryState", ()
 
   it("fail-closed：不可识别 descriptor type ⇒ 构建抛错且不落任何生成物", async () => {
     const root = makeProject("bad-descriptor", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["ch1"]) + `define("weird", { type: "carrot", default: 1 });\n`,
-      "Stories.src/ch1/start.ts": story("start", `  say("hello");\n`),
+      "src/Stories.src/ch1/start.ts": story("start", `  say("hello");\n`),
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
       /无法识别的 descriptor type/,
     );
     expect(existsSync(join(root, STATE_GEN_REL))).toBe(false);
-    expect(existsSync(join(root, "Stories.src/gen/stories.gen.d.ts"))).toBe(
-      false,
-    );
+    expect(existsSync(join(root, "src/gen/stories.gen.d.ts"))).toBe(false);
   });
 });
 
@@ -307,12 +305,12 @@ describe("state.gen.d.ts · 自定义状态根（ambient 桥）", () => {
   it("declare global { var hero: StoryState } 被按名识别：按 hero 剥根编译", async () => {
     const root = makeProject("ambient-root", {
       // 桥文件形态：类型本地别名 + ambient 全局根（export/export {} 使其成为模块）。
-      "Stories.src/lib/root.ts":
+      "src/Stories.src/lib/root.ts":
         `export type StoryState = { player: { gold: number } };\n` +
         `declare global {\n  var hero: StoryState;\n}\nexport {};\n`,
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["ch1"]) + `define("player.gold", 100);\n`,
-      "Stories.src/ch1/start.ts": story(
+      "src/Stories.src/ch1/start.ts": story(
         "start",
         `  hero.player.gold += 10;\n  say("金币 {player.gold}");\n`,
       ),

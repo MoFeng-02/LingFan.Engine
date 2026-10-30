@@ -8,9 +8,10 @@
  */
 import { watch } from "node:fs";
 import { join, resolve } from "node:path";
+import { RESOURCES_DIR } from "@lingfan-engine/core";
 import { DEFAULT_SOURCES_DIR, buildStories } from "./index.ts";
 import type { StoryBuildOptions } from "./orchestrate.ts";
-import { walkFiles } from "../shared/index.ts";
+import { GEN_PREFIX, walkFiles } from "../shared/index.ts";
 
 /** 相对导入抽取（单双引号皆可；type 导入同算依赖——保守向） */
 const REL_IMPORT_RE = /(?:^|[\s;])from\s+["'](\.{1,2}\/[^"']+)["']/g;
@@ -108,7 +109,7 @@ export interface WatchRoundReport {
 }
 
 /** 源树与字体目录的监听目标（相对工程根） */
-const WATCHED_FONT_DIR = join("Resources", "Fonts");
+const WATCHED_FONT_DIR = join(RESOURCES_DIR, "Fonts");
 
 /**
  * 常驻增量监听入口：首轮全量构建落基准 → `fs.watch` 监听源目录（与字体目录，
@@ -208,7 +209,7 @@ function readSourceTexts(
   const texts = new Map<string, string>();
   for (const [rel, text] of walkFiles(sourcesDir)) {
     const posix = rel.replace(/\\/g, "/");
-    if (posix.startsWith("gen/") || !posix.endsWith(".ts")) continue;
+    if (posix.startsWith(GEN_PREFIX) || !posix.endsWith(".ts")) continue;
     texts.set(`${sourcesDirName}/${posix}`, text);
   }
   return texts;

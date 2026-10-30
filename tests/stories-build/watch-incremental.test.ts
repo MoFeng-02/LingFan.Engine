@@ -66,8 +66,8 @@ interface Fixture {
  *  夹具源码须用真实编译器支持的模块形态：export function 具名导出 + 语句位置调用。 */
 function makeTwoStoryProject(name: string): Fixture {
   const root = makeProject(name, {
-    "Stories.src/config.ts": config(["ch1", "ch2"]),
-    "Stories.src/lib/greet.ts": `import { script } from "@lingfan-engine/editor";
+    "src/Stories.src/config.ts": config(["ch1", "ch2"]),
+    "src/Stories.src/lib/greet.ts": `import { script } from "@lingfan-engine/editor";
 
 const { say } = script;
 
@@ -75,13 +75,13 @@ export function greet(): void {
   say("你好，旅人。");
 }
 `,
-    "Stories.src/ch1/start.ts": `${WORDS}import { greet } from "../lib/greet.ts";
+    "src/Stories.src/ch1/start.ts": `${WORDS}import { greet } from "../lib/greet.ts";
 
 export default function start(): void {
   greet();
 }
 `,
-    "Stories.src/ch2/talk.ts": `${WORDS}import { greet } from "../lib/greet.ts";
+    "src/Stories.src/ch2/talk.ts": `${WORDS}import { greet } from "../lib/greet.ts";
 
 export default function talk(): void {
   greet();
@@ -110,10 +110,10 @@ function snapshotArtifacts(root: string): Map<string, Uint8Array> {
     }
   };
   if (existsSync(storiesDir)) visit(storiesDir, "");
-  const genDir = join(root, "Stories.src", "gen");
+  const genDir = join(root, "src", "gen");
   if (existsSync(genDir)) {
     for (const name of readdirSync(genDir)) {
-      snap.set(`Stories.src/gen/${name}`, readFileSync(join(genDir, name)));
+      snap.set(`src/gen/${name}`, readFileSync(join(genDir, name)));
     }
   }
   const manifest = join(root, "Resources", "project.json");
@@ -175,7 +175,7 @@ describe("增量监听（watchStories）", () => {
     // 改单个故事文件 → 等监听轮落盘
     const before = snapshotArtifacts(root);
     writeFileSync(
-      join(root, "Stories.src/ch1/start.ts"),
+      join(root, "src/Stories.src/ch1/start.ts"),
       `${WORDS}import { greet } from "../lib/greet.ts";
 
 export default function start(): void {
@@ -200,7 +200,7 @@ export default function start(): void {
     // 差量收敛：监听轮 updated 只含被改列的产物
     const round = lines.find((line) => line.startsWith("监听轮完成"));
     expect(round).toBeDefined();
-    expect(round).toContain("波及故事：Stories.src/ch1/start");
+    expect(round).toContain("波及故事：src/Stories.src/ch1/start");
   }, 30_000);
 
   it("改被引用模块：波及故事集 = 反向闭包命中全部引用者", async () => {
@@ -213,7 +213,7 @@ export default function start(): void {
 
     const before = snapshotArtifacts(root);
     writeFileSync(
-      join(root, "Stories.src/lib/greet.ts"),
+      join(root, "src/Stories.src/lib/greet.ts"),
       `import { script } from "@lingfan-engine/editor";
 
 const { say } = script;
@@ -228,13 +228,13 @@ export function greet(): void {
 
     const round = lines.find((line) => line.startsWith("监听轮完成"));
     expect(round).toBeDefined();
-    expect(round).toContain("Stories.src/ch1/start");
-    expect(round).toContain("Stories.src/ch2/talk");
+    expect(round).toContain("src/Stories.src/ch1/start");
+    expect(round).toContain("src/Stories.src/ch2/talk");
   }, 30_000);
 
   it("首轮失败保持监听：补上 config 后保存即恢复", async () => {
     const root = makeProject("first-round-fail", {
-      "Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {\n  say("开局");\n}\n`,
+      "src/Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {\n  say("开局");\n}\n`,
       "Resources/project.json": MANIFEST,
     });
     const lines: string[] = [];
@@ -245,7 +245,7 @@ export function greet(): void {
     expect(lines.some((line) => line.includes("首轮构建失败"))).toBe(true);
 
     // 补上 config 后，防抖轮重试成功
-    writeFileSync(join(root, "Stories.src/config.ts"), config(["ch1"]));
+    writeFileSync(join(root, "src/Stories.src/config.ts"), config(["ch1"]));
     const deadline = Date.now() + 10_000;
     for (;;) {
       if (lines.some((line) => line.startsWith("监听轮完成"))) break;
@@ -262,55 +262,55 @@ export function greet(): void {
 describe("反向依赖闭包（affectedStories）", () => {
   const TEXTS = new Map<string, string>([
     [
-      "Stories.src/lib/greet.ts",
+      "src/Stories.src/lib/greet.ts",
       `export const greet = (who: string): string => who;\n`,
     ],
     [
-      "Stories.src/lib/deep/util.ts",
+      "src/Stories.src/lib/deep/util.ts",
       `import { greet } from "../greet.ts";\nexport const shout = (w: string): string => greet(w).toUpperCase();\n`,
     ],
     [
-      "Stories.src/ch1/start.ts",
+      "src/Stories.src/ch1/start.ts",
       `import { shout } from "../lib/deep/util.ts";\nexport default function start(): void {}\n`,
     ],
     [
-      "Stories.src/ch2/standalone.ts",
+      "src/Stories.src/ch2/standalone.ts",
       `export default function standalone(): void {}\n`,
     ],
     [
-      "Stories.src/ch3/indirect.ts",
+      "src/Stories.src/ch3/indirect.ts",
       `import { shout } from "../lib/deep/util.ts";\nexport default function indirect(): void {}\n`,
     ],
   ]);
 
   it("模块改动沿引用链闭包到全部故事；无关故事不进来", () => {
-    expect(affectedStories(["Stories.src/lib/greet.ts"], TEXTS)).toEqual([
-      "Stories.src/ch1/start.ts",
-      "Stories.src/ch3/indirect.ts",
+    expect(affectedStories(["src/Stories.src/lib/greet.ts"], TEXTS)).toEqual([
+      "src/Stories.src/ch1/start.ts",
+      "src/Stories.src/ch3/indirect.ts",
     ]);
   });
 
   it("故事文件自身改动 = 只含自己；非源文件（config）改动不产生波及集", () => {
-    expect(affectedStories(["Stories.src/ch2/standalone.ts"], TEXTS)).toEqual([
-      "Stories.src/ch2/standalone.ts",
-    ]);
-    expect(affectedStories(["Stories.src/config.ts"], TEXTS)).toEqual([]);
+    expect(
+      affectedStories(["src/Stories.src/ch2/standalone.ts"], TEXTS),
+    ).toEqual(["src/Stories.src/ch2/standalone.ts"]);
+    expect(affectedStories(["src/Stories.src/config.ts"], TEXTS)).toEqual([]);
   });
 
   it("index 模块与 .ts 扩展名书写形态都能解析", () => {
     const texts = new Map<string, string>([
-      ["Stories.src/lib/words/index.ts", `export const word = "词";\n`],
+      ["src/Stories.src/lib/words/index.ts", `export const word = "词";\n`],
       [
-        "Stories.src/ch1/start.ts",
+        "src/Stories.src/ch1/start.ts",
         `import { word } from "../lib/words/index.ts";\nimport { other } from "../lib/other.ts";\nexport default function start(): void {}\n`,
       ],
-      ["Stories.src/lib/other.ts", `export const other = 1;\n`],
+      ["src/Stories.src/lib/other.ts", `export const other = 1;\n`],
     ]);
-    expect(affectedStories(["Stories.src/lib/words/index.ts"], texts)).toEqual([
-      "Stories.src/ch1/start.ts",
-    ]);
-    expect(affectedStories(["Stories.src/lib/other.ts"], texts)).toEqual([
-      "Stories.src/ch1/start.ts",
+    expect(
+      affectedStories(["src/Stories.src/lib/words/index.ts"], texts),
+    ).toEqual(["src/Stories.src/ch1/start.ts"]);
+    expect(affectedStories(["src/Stories.src/lib/other.ts"], texts)).toEqual([
+      "src/Stories.src/ch1/start.ts",
     ]);
   });
 });

@@ -118,8 +118,8 @@ describe("别名导入跨文件函数（族 A）", () => {
     // 四种形态一次跑完：都是「调用点局部名 ≠ 声明名」，修复前一律产悬空 call，
     // 因为 refs 键与 call.target 都用调用点局部名，而 func 表按声明名索引。
     const root = makeProject("alias-forms", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/tools.ts": `${WORDS}export function noArg(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/tools.ts": `${WORDS}export function noArg(): void {
   say("无参");
 }
 export function withArg(tag: string, times: number): void {
@@ -132,7 +132,7 @@ export function recur(n: number): void {
   }
 }
 `,
-      "Stories.src/ch1/start.ts": `${WORDS}import { noArg as a1 } from "./tools";
+      "src/Stories.src/ch1/start.ts": `${WORDS}import { noArg as a1 } from "./tools";
 import { withArg as a2, recur as a3 } from "./tools";
 import { noArg as a4 } from "./tools";
 
@@ -172,18 +172,18 @@ export default function start(): void {
 
   it("拟态用户：别名指向的函数体本身又调用了一个别名导入的函数（两跳）", async () => {
     const root = makeProject("alias-two-hop", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/leaf.ts": `${WORDS}export function leaf(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/leaf.ts": `${WORDS}export function leaf(): void {
   say("叶子");
 }
 `,
-      "Stories.src/ch1/mid.ts": `${WORDS}import { leaf as l } from "./leaf";
+      "src/Stories.src/ch1/mid.ts": `${WORDS}import { leaf as l } from "./leaf";
 
 export function mid(): void {
   l();
 }
 `,
-      "Stories.src/ch1/start.ts": `${WORDS}import { mid as m } from "./mid";
+      "src/Stories.src/ch1/start.ts": `${WORDS}import { mid as m } from "./mid";
 
 export default function start(): void {
   m();
@@ -213,16 +213,16 @@ export default function start(): void {
     // 别名直连过去会静默留下 `call{target:"other"}` 且无对应 func。改用声明名后，
     // 两个不同源的 helper 都要发 `func name="helper"`，撞上同列同名闸门并拒绝整列。
     const root = makeProject("alias-collide", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/alpha.ts": `${WORDS}export function helper(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/alpha.ts": `${WORDS}export function helper(): void {
   say("alpha 体");
 }
 `,
-      "Stories.src/ch1/beta.ts": `${WORDS}export function helper(): void {
+      "src/Stories.src/ch1/beta.ts": `${WORDS}export function helper(): void {
   say("beta 体");
 }
 `,
-      "Stories.src/ch1/start.ts": `${WORDS}import { helper } from "./alpha";
+      "src/Stories.src/ch1/start.ts": `${WORDS}import { helper } from "./alpha";
 import { helper as other } from "./beta";
 
 export default function start(): void {
@@ -244,12 +244,12 @@ export default function start(): void {
 
   it("边界条件：别名指向不存在的导出 ⇒ 报未导出并列出模块，不静默降级", async () => {
     const root = makeProject("alias-missing", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/tools.ts": `${WORDS}export function present(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/tools.ts": `${WORDS}export function present(): void {
   say("在");
 }
 `,
-      "Stories.src/ch1/start.ts": `${WORDS}import { absent as a } from "./tools";
+      "src/Stories.src/ch1/start.ts": `${WORDS}import { absent as a } from "./tools";
 
 export default function start(): void {
   a();
@@ -265,8 +265,8 @@ export default function start(): void {
 describe("词汇层别名与命名空间等价性（族 B）", () => {
   it("严格多方位：import { say as 说 } 与 import { script as ct } 两条通道都可用", async () => {
     const root = makeProject("word-alias", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `import { say as 说 } from "@lingfan-engine/editor";
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/start.ts": `import { say as 说 } from "@lingfan-engine/editor";
 import { script as ct } from "@lingfan-engine/editor";
 
 export default function start(): void {
@@ -289,8 +289,8 @@ export default function start(): void {
     // 三条各写成命名空间形态与具名形态两个工程，产物必须完全相同。
     const build = async (name: string, src: string): Promise<string> => {
       const root = makeProject(name, {
-        "Stories.src/config.ts": config(["ch1"], "start.ts"),
-        "Stories.src/ch1/start.ts": src,
+        "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+        "src/Stories.src/ch1/start.ts": src,
         "Resources/project.json": MANIFEST,
       });
       await buildStories(root);
@@ -350,8 +350,8 @@ export default function start(): void {
 
   it("故意错误：ct.cell 作命令 ⇒ 报「构建期声明词」，不得退化成「实参形态非法」", async () => {
     const root = makeProject("cell-ns-cmd", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `import { script } from "@lingfan-engine/editor";
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/start.ts": `import { script } from "@lingfan-engine/editor";
 const { say } = script;
 
 export default function start(): void {
@@ -391,12 +391,12 @@ export default function start(): void {
 describe("族 C 回归：非别名路径产物不受影响", () => {
   it("不变量：裸名导入 / 同文件私有函数 / script.say 三条路径产物正确", async () => {
     const root = makeProject("regression", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/tools.ts": `${WORDS}export function plain(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/tools.ts": `${WORDS}export function plain(): void {
   say("裸名体");
 }
 `,
-      "Stories.src/ch1/start.ts": `${WORDS}import { plain } from "./tools";
+      "src/Stories.src/ch1/start.ts": `${WORDS}import { plain } from "./tools";
 
 function local(): void {
   say("本地体");

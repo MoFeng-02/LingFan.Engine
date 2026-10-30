@@ -17,8 +17,10 @@
  * Node 类型擦除加载，垫片用 tsx 的 `tsImport` 装本文件再调同一个 `runBuildCli`，两条路
  * 因此共用一份呈现逻辑。
  *
- * 用法：`<工程根可省略>`；缺省工程根 = 进程工作目录（调用方脚本已 cd 到宿主工程根，
- * 或经 DSH_STORIES_ROOT 指明——包内没有「谁在调我、宿主工程在哪」这件事实）。
+ * 用法：`[工程根] [--sources-dir=<目录>] [--resources-dir=<目录>]`；缺省工程根 = 进程
+ * 工作目录（调用方脚本已 cd 到宿主工程根，或经 DSH_STORIES_ROOT 指明——包内没有
+ * 「谁在调我、宿主工程在哪」这件事实）。目录参数缺省 = `buildStories` 的默认常量，
+ * 自定义布局的工程用它们覆盖（拒绝在包内猜目录名）。
  * 测试不经这里——它们直接调 `buildStories`（纯编排，fs 全在参数 root 之下）。
  */
 import { resolve } from "node:path";
@@ -28,6 +30,7 @@ import {
   StoryBuildError,
   buildStories,
 } from "../index.ts";
+import type { StoryBuildOptions } from "../index.ts";
 
 export { StoryBuildError, buildStories, type BuildReport } from "../index.ts";
 
@@ -40,6 +43,48 @@ export function resolveBuildRoot(argv: readonly string[]): string {
   );
 }
 
+/** 目录名类参数：命令行可覆盖 `buildStories` 的默认目录名 */
+const DIR_FLAGS = [
+  ["--sources-dir", "sourcesDir"],
+  ["--resources-dir", "resourcesDir"],
+] as const;
+
+/**
+ * 拆命令行：目录参数进 `options`（缺省不下发，让 `buildStories` 用默认常量），
+ * 剩下的位置参数按原序留给 `resolveBuildRoot`。
+ *
+ * 写成 `<目录>=<绝对值>` 或 `<目录>=<相对路径>` 都行——值原样交给 `buildStories`，
+ * 它按工程根 join（与配置文件里的相对口径一致）。缺值时按空串下发会让构建落到工程根
+ * 本身，这类误用直接 fail-closed 报参数名。
+ */
+export function parseCliArgs(argv: readonly string[]): {
+  root: string;
+  options: StoryBuildOptions;
+} {
+  const positional: string[] = [];
+  const options: { sourcesDir?: string; resourcesDir?: string } = {};
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index]!;
+    const match = DIR_FLAGS.find(
+      ([flag]) => arg === flag || arg.startsWith(`${flag}=`),
+    );
+    if (match === undefined) {
+      positional.push(arg);
+      continue;
+    }
+    const [flag, key] = match;
+    const inline = arg.startsWith(`${flag}=`) ? arg.slice(flag.length + 1) : "";
+    const value = inline !== "" ? inline : argv[++index];
+    if (value === undefined || value === "") {
+      throw new StoryBuildError(
+        `${flag} 需要一个目录值（如 ${flag}=src/Stories.src）`,
+      );
+    }
+    options[key] = value;
+  }
+  return { root: resolveBuildRoot(positional), options };
+}
+
 /**
  * 跑一次编译并把结果打到标准输出/标准错误，返回进程退出码。
  * 不调用 `process.exit`——谁来决定退出由调用方（主模块守卫或 bin 垫片）负责。
@@ -47,9 +92,9 @@ export function resolveBuildRoot(argv: readonly string[]): string {
 export async function runBuildCli(
   argv: readonly string[] = process.argv.slice(2),
 ): Promise<number> {
-  const root = resolveBuildRoot(argv);
   try {
-    const report = await buildStories(root);
+    const { root, options } = parseCliArgs(argv);
+    const report = await buildStories(root, options);
     console.log(
       `TS 故事源编译完成：${DEFAULT_SOURCES_DIR}/${report.source} → story "${report.storyId}"（${report.columns} 列）`,
     );

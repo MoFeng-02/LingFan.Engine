@@ -3,7 +3,7 @@
  *
  * 锚定口径：
  * - 真实工程全链构建（源发现 → 编译 → 往返自检 → 差量写盘）必须零差量——入库的
- *   `Stories.src/gen/stories.gen.d.ts` 与当轮计算产物逐字节一致。链上任一环改变输出
+ *   `src/gen/stories.gen.d.ts` 与当轮计算产物逐字节一致。链上任一环改变输出
  *   （编译器、typegen、扩展装载、源文件），本锚点立即红，倒逼产物随源显式重建。
  * - 判别性落点：`journal.flag` 只在变量清单（config.vars，换道前是 defineVars 清单）
  *   出现（state/let/插值均无此键），
@@ -25,6 +25,11 @@
  *   （注册表跟随构建，不是一次性快照）。font ambient 探针同样两态：错键
  *   `font.缺省字体` 拒、注册名 `font.楷体` 过（两例都自置桩字体夹具，finally 全清，
  *   入库态保持空注册表）。
+ * - UI 注册表生成物（ui_register.g.ts）同口径锚定：入库字节与当轮计算产物逐字节一致，
+ *   且三段导出都在——宿主「名字→组件」表、故事源具名句柄、`UiNameRegistry` 类型面。
+ * - UI 句柄与名字收窄：由故事源自己的类型断言守住（`src/Stories.src/lib/ui-probe.ts`：
+ *   句柄形状与注册名两态，跑在 `stories-typecheck`）——本文件不另起临时探针，
+ *   避免为同一件事再加一处「写-删工程文件」的窗口。
  * - 手改生成物的修复路径也锚定：作者误改 gen 文件后，构建必须重写回正确字节——
  *   同时证明逐字节一致不是「构建没算」的空转绿。
  *
@@ -54,12 +59,13 @@ const PLAYGROUND_ROOT = fileURLToPath(
   new URL("../../apps/playground/", import.meta.url),
 );
 /** report 里的逻辑路径是 posix 相对路径（与源根命名空间一致），保持正斜杠字面量 */
-const TYPEGEN_REL = "Stories.src/gen/stories.gen.d.ts";
-const STATE_GEN_REL = "Stories.src/gen/state.gen.d.ts";
-const SCRIPT_GEN_REL = "Stories.src/gen/script.gen.d.ts";
-const FONT_GEN_REL = "Stories.src/gen/font.gen.d.ts";
+const TYPEGEN_REL = "src/gen/stories.gen.d.ts";
+const STATE_GEN_REL = "src/gen/state.gen.d.ts";
+const SCRIPT_GEN_REL = "src/gen/script.gen.d.ts";
+const FONT_GEN_REL = "src/gen/font.gen.d.ts";
+const UI_GEN_REL = "src/gen/ui_register.g.ts";
 /** tsc 负例探针：类型错误章节模块（finally 删除，不带 default 导出、不进故事发现） */
-const PROBE_REL = "Stories.src/chapter1/typecheck-probe.ts";
+const PROBE_REL = "src/Stories.src/chapter1/typecheck-probe.ts";
 const PROBE_SOURCE = [
   "/* 临时探针：tsc --noEmit 必须拒绝 state 上的错误类型（测试 finally 删除本文件） */",
   "export function typecheckProbe(): void {",
@@ -68,7 +74,7 @@ const PROBE_SOURCE = [
   "",
 ].join("\n");
 /** script ambient 探针：错键/正键两态（finally 删除；ambient 直呼不导入，走全局声明） */
-const SCRIPT_PROBE_REL = "Stories.src/chapter1/script-probe.ts";
+const SCRIPT_PROBE_REL = "src/Stories.src/chapter1/script-probe.ts";
 const SCRIPT_PROBE_NEGATIVE = [
   "/* 临时探针：错键 script.bgmX 必须被拒绝（测试 finally 删除本文件） */",
   "export function scriptProbeNegative(): void {",
@@ -84,7 +90,7 @@ const SCRIPT_PROBE_POSITIVE = [
   "",
 ].join("\n");
 /** font ambient 探针：未注册名/注册名两态（finally 删除；须先落桩字体使 font.gen 带键） */
-const FONT_PROBE_REL = "Stories.src/chapter1/font-probe.ts";
+const FONT_PROBE_REL = "src/Stories.src/chapter1/font-probe.ts";
 const FONT_PROBE_NEGATIVE = [
   "/* 临时探针：未注册名 font.缺省字体 必须被拒绝（测试 finally 删除本文件） */",
   "export function fontProbeNegative(): string {",
@@ -99,7 +105,6 @@ const FONT_PROBE_POSITIVE = [
   "}",
   "",
 ].join("\n");
-
 /** config 化过渡守卫：旧 config 契约的确定性失败（缺 folders 导出 / 文件缺失）。Stories.src 迁移完成后可删。 */
 function isConfigContractTransition(error: unknown): boolean {
   return (
@@ -127,10 +132,12 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
       const stateGenPath = join(PLAYGROUND_ROOT, STATE_GEN_REL);
       const scriptGenPath = join(PLAYGROUND_ROOT, SCRIPT_GEN_REL);
       const fontGenPath = join(PLAYGROUND_ROOT, FONT_GEN_REL);
+      const uiGenPath = join(PLAYGROUND_ROOT, UI_GEN_REL);
       const committed = readFileSync(typegenPath, "utf8");
       const committedState = readFileSync(stateGenPath, "utf8");
       const committedScript = readFileSync(scriptGenPath, "utf8");
       const committedFont = readFileSync(fontGenPath, "utf8");
+      const committedUi = readFileSync(uiGenPath, "utf8");
       try {
         let report;
         try {
@@ -148,10 +155,11 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
         expect(readFileSync(stateGenPath, "utf8")).toBe(committedState);
         expect(readFileSync(scriptGenPath, "utf8")).toBe(committedScript);
         expect(readFileSync(fontGenPath, "utf8")).toBe(committedFont);
+        expect(readFileSync(uiGenPath, "utf8")).toBe(committedUi);
         // state 类型面形状锚：精确到枚举引用（Sex 走 import type），不得退化为宽 any
         expect(committedState).toContain("export type StoryState = {");
         expect(committedState).toContain(
-          'import type { Sex } from "../lib/enums";',
+          'import type { Sex } from "../Stories.src/lib/enums";',
         );
         expect(committedState).toContain('"sex": Sex;');
         // 插值键注册表的 let 声明名形状锚：ticket 只经 let 词调用声明（无 vars/state 同名双源），
@@ -166,6 +174,14 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
         expect(committedFont).toContain(
           "declare const font: Record<never, never>;",
         );
+        // UI 注册表三段导出：宿主查表用的「名字→组件」、故事源具名句柄、类型面登记处。
+        // 任一段被删都意味着有消费方拿不到入口——宿主挂不上、作者写不出句柄、
+        // 拼错名字不再被类型拦。
+        expect(committedUi).toContain('"hub": hubView,');
+        expect(committedUi).toContain(
+          'export const hub: UiHandle<"hub"> = { face: "uis", name: "hub" };',
+        );
+        expect(committedUi).toContain('"hub": 1;');
       } finally {
         if (readFileSync(typegenPath, "utf8") !== committed) {
           writeFileSync(typegenPath, committed);
@@ -178,6 +194,9 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
         }
         if (readFileSync(fontGenPath, "utf8") !== committedFont) {
           writeFileSync(fontGenPath, committedFont);
+        }
+        if (readFileSync(uiGenPath, "utf8") !== committedUi) {
+          writeFileSync(uiGenPath, committedUi);
         }
       }
     },

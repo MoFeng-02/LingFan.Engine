@@ -98,19 +98,19 @@ describe("跨文件同名私有函数：碰撞路径互锁", () => {
     // start 导入 alpha 的 helper（裸名）与 beta 的 wrapper（其体内调本地 helper）：
     // closure 里两条 CompiledFunction 同名不同源，registerName 必须报出**两个文件**的位置。
     const root = makeProject("two-hops", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/alpha.ts": `${WORDS}export function helper(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/alpha.ts": `${WORDS}export function helper(): void {
   say("alpha 的私有体");
 }
 `,
-      "Stories.src/ch1/beta.ts": `${WORDS}export function helper(): void {
+      "src/Stories.src/ch1/beta.ts": `${WORDS}export function helper(): void {
   say("beta 的私有体");
 }
 export function wrapper(): void {
   helper();
 }
 `,
-      "Stories.src/ch1/start.ts": `${WORDS}import { helper } from "./alpha";
+      "src/Stories.src/ch1/start.ts": `${WORDS}import { helper } from "./alpha";
 import { wrapper } from "./beta";
 
 export default function start(): void {
@@ -133,22 +133,22 @@ export default function start(): void {
 
   it("两个文件各自的嵌套私有函数同名 ⇒ 同样报双文件定位（ownerChain 参与键控）", async () => {
     const root = makeProject("nested", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/alpha.ts": `${WORDS}export function outerA(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/alpha.ts": `${WORDS}export function outerA(): void {
   function helper(): void {
     say("嵌套于 alpha");
   }
   helper();
 }
 `,
-      "Stories.src/ch1/beta.ts": `${WORDS}export function outerB(): void {
+      "src/Stories.src/ch1/beta.ts": `${WORDS}export function outerB(): void {
   function helper(): void {
     say("嵌套于 beta");
   }
   helper();
 }
 `,
-      "Stories.src/ch1/start.ts": `${WORDS}import { outerA } from "./alpha";
+      "src/Stories.src/ch1/start.ts": `${WORDS}import { outerA } from "./alpha";
 import { outerB } from "./beta";
 
 export default function start(): void {
@@ -166,8 +166,8 @@ export default function start(): void {
 
   it("同文件内的同名嵌套函数 ⇒ 同一诊断（定位落在同一文件两处，仍须各有行列）", async () => {
     const root = makeProject("same-file", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/alpha.ts": `${WORDS}export function outerA(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/alpha.ts": `${WORDS}export function outerA(): void {
   function helper(): void {
     say("第一处");
   }
@@ -180,7 +180,7 @@ export function outerB(): void {
   helper();
 }
 `,
-      "Stories.src/ch1/start.ts": `${WORDS}import { outerA, outerB } from "./alpha";
+      "src/Stories.src/ch1/start.ts": `${WORDS}import { outerA, outerB } from "./alpha";
 
 export default function start(): void {
   outerA();
@@ -203,16 +203,16 @@ export default function start(): void {
     // 同名闸门——与两跳路径（上一条用例）报的是同一族文案、同样 fail-closed。
     // 断言锚点仍在**产物字节**上：报错即不产该列文件。
     const root = makeProject("alias-mixed", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/alpha.ts": `${WORDS}export function helper(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/alpha.ts": `${WORDS}export function helper(): void {
   say("alpha 体");
 }
 `,
-      "Stories.src/ch1/beta.ts": `${WORDS}export function helper(): void {
+      "src/Stories.src/ch1/beta.ts": `${WORDS}export function helper(): void {
   say("beta 体");
 }
 `,
-      "Stories.src/ch1/start.ts": `${WORDS}import { helper } from "./alpha";
+      "src/Stories.src/ch1/start.ts": `${WORDS}import { helper } from "./alpha";
 import { helper as other } from "./beta";
 
 export default function start(): void {
@@ -235,12 +235,12 @@ export default function start(): void {
     // 与上一条配对：碰撞闸门只该拦「同名不同源」，不能连单个别名也一起拦掉。
     // 这正是族 A 的正例——修复前这里产 `call{target:"h"}` 且无 func（悬空）。
     const root = makeProject("alias-single", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/alpha.ts": `${WORDS}export function helper(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/alpha.ts": `${WORDS}export function helper(): void {
   say("alpha 体");
 }
 `,
-      "Stories.src/ch1/start.ts": `${WORDS}import { helper as h } from "./alpha";
+      "src/Stories.src/ch1/start.ts": `${WORDS}import { helper as h } from "./alpha";
 
 export default function start(): void {
   h();

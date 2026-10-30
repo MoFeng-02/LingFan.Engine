@@ -1,6 +1,10 @@
 import { existsSync, readdirSync } from "node:fs";
 import { isSafeFileNameSegment } from "@lingfan-engine/core";
-import { StoryBuildError } from "../shared/index.ts";
+import {
+  StoryBuildError,
+  DEFAULT_GENERATED_DIR,
+  GEN_PREFIX,
+} from "../shared/index.ts";
 
 /**
  * 源工程布局声明（`Stories.src/config.ts`，根级唯一根文件）：
@@ -55,7 +59,7 @@ export function parseFolders(
         `${sourcesDirName}/${CONFIG_FILE}: folders[${index}] 须为目录名字符串或 "*"，得到 ${describe(entry)}`,
       );
     }
-    if (entry === "gen" || entry.startsWith("gen/")) {
+    if (entry === DEFAULT_GENERATED_DIR || entry.startsWith(GEN_PREFIX)) {
       throw new StoryBuildError(
         `${sourcesDirName}/${CONFIG_FILE}: folders[${index}] "${entry}" 指向生成物目录——gen/ 由构建管理，不参与源扫描`,
       );

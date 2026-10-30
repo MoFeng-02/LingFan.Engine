@@ -26,6 +26,8 @@ export interface EmitOptions {
   readonly scriptGen: { readonly rel: string; readonly content: string };
   /** font 字面量类型面生成物（font.gen.d.ts）：同规则的恒产出生成物（空注册表也恒产出） */
   readonly fontGen: { readonly rel: string; readonly content: string };
+  /** UI 注册表生成物（ui_register.g.ts）：同规则的恒产出生成物（没有 UI 也恒产出） */
+  readonly uiGen: { readonly rel: string; readonly content: string };
 }
 
 /**
@@ -33,7 +35,7 @@ export interface EmitOptions {
  * - `Stories/**` 由源全量管理——内容不同的产物才写（新增/更新分开计），不在产物集内的
  *   既有列文件 = 陈旧，删除；
  * - 生成物（`<sourcesDir>/<generatedDir>/fun_register.g.ts`、`stories.gen.d.ts`、
- *   `state.gen.d.ts`、`script.gen.d.ts`、`font.gen.d.ts`）同规则：零守卫时若存在则删除，否则内容不同才写。它们的逻辑路径与
+ *   `state.gen.d.ts`、`script.gen.d.ts`、`font.gen.d.ts`、`ui_register.g.ts`）同规则：零守卫时若存在则删除，否则内容不同才写。它们的逻辑路径与
  *   `Stories/**` 不同命名空间，报告里以 `Stories.src/` 开头即生成物。
  * 返回值里的路径都是逻辑路径（相对工程根），供 CLI 直接打印。
  */
@@ -53,6 +55,7 @@ export function emitArtifacts(options: EmitOptions): {
     stateGen,
     scriptGen,
     fontGen,
+    uiGen,
   } = options;
   const existing = walkFiles(storiesDir);
   const added: string[] = [];
@@ -120,6 +123,13 @@ export function emitArtifacts(options: EmitOptions): {
     join(root, fontGen.rel),
     fontGen.rel,
     fontGen.content,
+    added,
+    updated,
+  );
+  writeConstantArtifact(
+    join(root, uiGen.rel),
+    uiGen.rel,
+    uiGen.content,
     added,
     updated,
   );

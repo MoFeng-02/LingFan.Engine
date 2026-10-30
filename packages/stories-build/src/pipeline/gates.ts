@@ -9,11 +9,14 @@ import {
   StoryBuildError,
   type StoriesBuildTexts,
 } from "../shared/index.ts";
+import type { UiImportViolation } from "../ui/scan-imports.ts";
 
 /** 闸门判定的可配置项：文案里出现的目录名（缺省 = 现状；只影响文案，不影响判定） */
 export interface GateOptions {
   readonly resourcesDir: string;
   readonly sourcesDir: string;
+  /** UI 根目录名（源根的兄弟目录；只用于 `uis` 闸门的文案定位） */
+  readonly uiDirName: string;
   /** 文案注入（Partial）；缺省 = 内建缺省文案（即构建层的既有文案） */
   readonly texts?: Partial<StoriesBuildTexts>;
 }
@@ -72,10 +75,78 @@ export function assertKnownOps(
 }
 
 /**
+ * 列级 `uis` 闸门：产物里出现的每个 UI 名，源里必须有对应实现文件。
+ *
+ * 判据取 `src/ui/<名>/<名>.<扩展名>`（与导入期同一条落位规则）——名字写错一个字母
+ * 在编译期毫无反应，只在宿主预加载落空时表现为「界面闪一下才出现」，很难归因；
+ * 构建期对着目录核一遍就把这类笔误变成一次构建失败。
+ */
+export function assertKnownUis(
+  story: Story,
+  uiNames: ReadonlySet<string>,
+  options: GateOptions,
+): void {
+  const unknownUis = new Map<string, string[]>();
+  story.columns.forEach((column, index) => {
+    const uis = column.uis;
+    if (!Array.isArray(uis)) return;
+    for (const name of uis) {
+      if (typeof name !== "string" || uiNames.has(name)) continue;
+      const hits = unknownUis.get(name) ?? [];
+      hits.push(`/columns/${index}`);
+      unknownUis.set(name, hits);
+    }
+  });
+  if (unknownUis.size === 0) return;
+  const texts: StoriesBuildTexts = {
+    ...defaultStoriesBuildTexts,
+    ...options.texts,
+  };
+  const at = columnLabeler(story);
+  const detail = [...unknownUis.entries()]
+    .map(
+      ([name, pointers]) =>
+        `  - ui "${name}" —— ${pointers.map(at).join("、")}`,
+    )
+    .join("\n");
+  throw new StoryBuildError(
+    texts.unknownUisGate(detail, options.sourcesDir, options.uiDirName),
+  );
+}
+
+/**
+ * UI import 面闸门（fail-closed）：`src/ui/**` 下任何越界 import 都让构建整体失败。
+ *
+ * 为什么在构建期拦：UI 不归 stories-build 编译，宿主打包器又拦不住 `@/host/boot`
+ * 这类合法路径。越界依赖只在这里可见，放过一次就再也看不见了。
+ * 明细每行带 `文件:行` 与说明符，超过 3 处折叠为「（共 N 处）」。
+ */
+export function assertUiImports(
+  violations: readonly UiImportViolation[],
+  options: GateOptions,
+): void {
+  if (violations.length === 0) return;
+  const texts: StoriesBuildTexts = {
+    ...defaultStoriesBuildTexts,
+    ...options.texts,
+  };
+  const shown = violations
+    .slice(0, 3)
+    .map(
+      (violation) =>
+        `  - ${violation.file}:${violation.line} \`${violation.specifier}\` —— ${violation.reason}`,
+    );
+  const more =
+    violations.length > 3 ? `\n  （共 ${violations.length} 处）` : "";
+  throw new StoryBuildError(
+    texts.uiImportGate(shown.join("\n") + more, options.uiDirName),
+  );
+}
+
+/**
  * 守卫名闸门（cell 范式的闭合校验）：故事 `guard.fn` 必须都在 cell 注册表键集内。
  * fail-closed 带命令指针定位（编辑器不校验守卫名——构建期兜住）。
- */
-export function assertKnownGuards(
+ */ export function assertKnownGuards(
   story: Story,
   guardNames: ReadonlySet<string>,
   options: GateOptions,

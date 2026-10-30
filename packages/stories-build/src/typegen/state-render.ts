@@ -3,7 +3,7 @@
  *
  * 输入 = config 求值合并树（形态 A state 树 / 形态 B define 树，与降维段同一棵）+
  * AST 侧回收的枚举 type 槽位（collectEnumTypeSlotsForBuild）。输出 =
- * `Stories.src/gen/state.gen.d.ts` 全文：嵌套对象字面量的 `export type StoryState = { … }`，
+ * `src/gen/state.gen.d.ts` 全文：嵌套对象字面量的 `export type StoryState = { … }`，
  * descriptor 叶按 type 槽位取精确类型——原生标量 / 单元素数组 leaf / 多元素数组并集 /
  * 枚举引用（import type）或内联字面量联合。
  *
@@ -24,7 +24,15 @@ export interface StateTypegenInput {
   readonly tree: unknown;
   /** 点路径 → 枚举 type 槽位列表（直接槽位与并集成员槽位，collectEnumTypeSlotsForBuild 的结果） */
   readonly enumSlots: ReadonlyMap<string, EnumTypeSlot[]>;
-  /** 生成物目录名（相对源根，如 "gen"）：import 说明符按它改写相对层级 */
+  /**
+   * 源根目录（相对工程根，默认布局 `"src/Stories.src"`；源根就是工程根时省略）：
+   * 槽位的 `source` 都是源根内路径，换算说明符要一个能对齐两个基准的原点。
+   */
+  readonly sourceRootDir?: string;
+  /**
+   * 生成物目录（相对工程根，默认布局 `"src/gen"`）：与 `sourceRootDir` 同一基准，
+   * import 说明符按两者的相对位置改写。
+   */
   readonly generatedDir: string;
 }
 
@@ -40,7 +48,11 @@ export function renderStateTypegen(input: StateTypegenInput): string {
   const used = new Map<string, EnumTypeSlot>();
   const body = renderValue(input.tree, "", 0, input.enumSlots, used);
   const lines: string[] = [HEADER, ""];
-  const importLines = renderImports(used, input.generatedDir);
+  const importLines = renderImports(
+    used,
+    input.sourceRootDir ?? "",
+    input.generatedDir,
+  );
   if (importLines.length > 0) lines.push(...importLines, "");
   lines.push(`export type StoryState = ${body ?? "Record<string, never>"};`);
   return `${lines.join("\n")}\n`;
@@ -196,6 +208,7 @@ function renderEnumUnion(values: Record<string, unknown>): string {
 
 function renderImports(
   used: ReadonlyMap<string, EnumTypeSlot>,
+  sourceRootDir: string,
   generatedDir: string,
 ): string[] {
   const bySource = new Map<string, EnumTypeSlot[]>();
@@ -206,7 +219,9 @@ function renderImports(
   }
   const lines: string[] = [];
   for (const source of [...bySource.keys()].sort()) {
-    const specifier = JSON.stringify(rewriteSpecifier(source, generatedDir));
+    const specifier = JSON.stringify(
+      rewriteSpecifier(source, sourceRootDir, generatedDir),
+    );
     const slots = bySource.get(source);
     if (slots === undefined) continue;
     for (const slot of slots.filter((s) => s.importedName === "default")) {
@@ -228,12 +243,23 @@ function renderImports(
 }
 
 /**
- * import 说明符改写：源根内相对路径（"./lib/enums"）按生成物目录换算相对层级
- * （"gen" → "../lib/enums"）；包导入原样保留。
+ * import 说明符改写：槽位路径（源根内相对路径 `"./lib/enums"`）折到工程根坐标系，
+ * 再换算到生成物目录（默认布局 `src/Stories.src/lib/enums` 对 `src/gen` →
+ * `"../../Stories.src/lib/enums"`）；包导入原样保留。
+ *
+ * 两个参数必须同基准（都相对工程根）——只把生成物目录换掉而不补源根段，会算出
+ * 丢掉 `Stories.src/` 的错误路径。
  */
-function rewriteSpecifier(source: string, generatedDir: string): string {
+function rewriteSpecifier(
+  source: string,
+  sourceRootDir: string,
+  generatedDir: string,
+): string {
   if (!source.startsWith(".")) return source;
-  const rel = posix.relative(generatedDir, posix.normalize(source));
+  const target = posix.normalize(
+    posix.join(sourceRootDir === "" ? "." : sourceRootDir, source),
+  );
+  const rel = posix.relative(generatedDir, target);
   return rel.startsWith(".") ? rel : `./${rel}`;
 }
 

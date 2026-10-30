@@ -52,7 +52,7 @@ const { say, wait, character } = script;
 const story = (name: string, body: string): string =>
   `${WORDS}export default function ${name}(): void {\n${body}\n}\n`;
 
-const START = "Stories.src/ch1/start.ts";
+const START = "src/Stories.src/ch1/start.ts";
 
 interface SerializedCommand {
   op: string;
@@ -70,8 +70,8 @@ function readCommands(root: string, rel: string): SerializedCommand[] {
 describe("模块层构建期角色 · 收集与前置", () => {
   it("模块顶层 character 前置进列头：六字段全投影，先于 say", async () => {
     const root = makeProject("prefixed", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/roles.ts": `character("主角", {\n  name: "旅人",\n  color: "#123456",\n  size: "28px",\n});\n`,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/roles.ts": `character("主角", {\n  name: "旅人",\n  color: "#123456",\n  size: "28px",\n});\n`,
       [START]: story("start", `  say("你好。", "主角");\n  wait(0.01);\n`),
       "Resources/project.json": MANIFEST,
     });
@@ -89,8 +89,8 @@ describe("模块层构建期角色 · 收集与前置", () => {
 
   it("跨文件多角色按 key 码元序前置；列内同键 character 沿用覆盖语义不合并", async () => {
     const root = makeProject("multi-sorted", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/roles.ts":
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/roles.ts":
         `character("乙", { name: "乙名" });\n` +
         `character("甲", { name: "甲名" });\n`,
       [START]: story(
@@ -120,9 +120,9 @@ describe("模块层构建期角色 · 收集与前置", () => {
 
   it("全等声明幂等：两处一致不报冲突", async () => {
     const root = makeProject("idempotent", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/a.ts": `character("同", { name: "同名" });\n`,
-      "Stories.src/ch1/b.ts": `character("同", { name: "同名" });\n`,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/a.ts": `character("同", { name: "同名" });\n`,
+      "src/Stories.src/ch1/b.ts": `character("同", { name: "同名" });\n`,
       [START]: story("start", `  say("ok");\n`),
       "Resources/project.json": MANIFEST,
     });
@@ -133,9 +133,9 @@ describe("模块层构建期角色 · 收集与前置", () => {
 describe("模块层构建期角色 · fail-closed", () => {
   it("同名不同义：一次报两处声明位置", async () => {
     const root = makeProject("conflict", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/a.ts": `character("冲突", { name: "A" });\n`,
-      "Stories.src/ch1/b.ts": `character("冲突", { name: "B" });\n`,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/a.ts": `character("冲突", { name: "A" });\n`,
+      "src/Stories.src/ch1/b.ts": `character("冲突", { name: "B" });\n`,
       [START]: story("start", `  say("ok");\n`),
       "Resources/project.json": MANIFEST,
     });
@@ -148,8 +148,8 @@ describe("模块层构建期角色 · fail-closed", () => {
 
   it("未知字段拒绝并提示白名单", async () => {
     const root = makeProject("unknown-field", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/a.ts": `character("探针", { name: "x", 非法: "1" });\n`,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/a.ts": `character("探针", { name: "x", 非法: "1" });\n`,
       [START]: story("start", `  say("ok");\n`),
       "Resources/project.json": MANIFEST,
     });
@@ -158,8 +158,8 @@ describe("模块层构建期角色 · fail-closed", () => {
 
   it("key 非字符串字面量拒绝", async () => {
     const root = makeProject("bad-key", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/a.ts": `const k = "动态";\ncharacter(k, { name: "x" });\n`,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/a.ts": `const k = "动态";\ncharacter(k, { name: "x" });\n`,
       [START]: story("start", `  say("ok");\n`),
       "Resources/project.json": MANIFEST,
     });
@@ -170,8 +170,8 @@ describe("模块层构建期角色 · fail-closed", () => {
 
   it("遮蔽（本地声明 character 标识符）拒绝", async () => {
     const root = makeProject("shadowed", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/a.ts": `import { script } from "@lingfan-engine/editor";\nconst { character } = script;\nfunction local(): void {}\ncharacter("键", { name: "x" });\n`,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/a.ts": `import { script } from "@lingfan-engine/editor";\nconst { character } = script;\nfunction local(): void {}\ncharacter("键", { name: "x" });\n`,
       [START]: story("start", `  say("ok");\n`),
       "Resources/project.json": MANIFEST,
     });
@@ -180,8 +180,8 @@ describe("模块层构建期角色 · fail-closed", () => {
 
   it("非字符串 spec 值拒绝", async () => {
     const root = makeProject("bad-spec", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/a.ts": `character("探针", { name: 42 });\n`,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/a.ts": `character("探针", { name: 42 });\n`,
       [START]: story("start", `  say("ok");\n`),
       "Resources/project.json": MANIFEST,
     });
@@ -192,8 +192,8 @@ describe("模块层构建期角色 · fail-closed", () => {
 describe("模块层构建期角色 · 运行期边界", () => {
   it("函数体内 character 是运行期词：收集器不收，构建照常通过", async () => {
     const root = makeProject("runtime-character", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/a.ts": `export function seed(): void {\n  character("幽灵", { name: "幽灵" });\n}\n`,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/a.ts": `export function seed(): void {\n  character("幽灵", { name: "幽灵" });\n}\n`,
       [START]: story("start", `  say("ok");\n`),
       "Resources/project.json": MANIFEST,
     });

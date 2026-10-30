@@ -57,7 +57,7 @@ const { say } = script;
 const story = (name: string, body: string): string =>
   `${WORDS}export default function ${name}(): void {\n${body}\n}\n`;
 
-const START = "Stories.src/ch1/start.ts";
+const START = "src/Stories.src/ch1/start.ts";
 const STORY_JSON = "Resources/Stories/ch1/start.json";
 
 describe("列级字体 · 构建期", () => {
@@ -65,7 +65,7 @@ describe("列级字体 · 构建期", () => {
     const root = makeProject(
       "registered-column-font",
       {
-        "Stories.src/config.ts": config(["ch1"]),
+        "src/Stories.src/config.ts": config(["ch1"]),
         [START]: `export const columnFont = "楷体";\n\n${story(
           "start",
           `  say("你好", { font: "黑体" });\n`,
@@ -83,7 +83,7 @@ describe("列级字体 · 构建期", () => {
 
   it("未注册的列级字体 fail-closed：诊断带 源文件:行:列", async () => {
     const root = makeProject("unregistered-column-font", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: `export const columnFont = "宋体";\n\n${story("start", `  say("你好");\n`)}`,
       "Resources/project.json": MANIFEST,
     });
@@ -96,8 +96,8 @@ describe("列级字体 · 构建期", () => {
     const root = makeProject(
       "module-column-font",
       {
-        "Stories.src/config.ts": config(["ch1"]),
-        "Stories.src/ch1/theme.ts": `export const columnFont = "楷体";\n`,
+        "src/Stories.src/config.ts": config(["ch1"]),
+        "src/Stories.src/ch1/theme.ts": `export const columnFont = "楷体";\n`,
         [START]: story("start", `  say("你好");\n`),
         "Resources/project.json": MANIFEST,
       },
@@ -110,7 +110,7 @@ describe("列级字体 · 构建期", () => {
 
   it("columnFont 非字符串字面量 fail-closed（数值/空串都拒）", async () => {
     const numeric = makeProject("numeric-column-font", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: `export const columnFont = 42;\n\n${story("start", `  say("你好");\n`)}`,
       "Resources/project.json": MANIFEST,
     });
@@ -118,7 +118,7 @@ describe("列级字体 · 构建期", () => {
       /columnFont 必须折叠为非空字符串字面量/,
     );
     const empty = makeProject("empty-column-font", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: `export const columnFont = "";\n\n${story("start", `  say("你好");\n`)}`,
       "Resources/project.json": MANIFEST,
     });
@@ -129,7 +129,7 @@ describe("列级字体 · 构建期", () => {
 
   it("无声明零打扰：产物不带 font 键", async () => {
     const root = makeProject("no-column-font", {
-      "Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/config.ts": config(["ch1"]),
       [START]: story("start", `  say("你好");\n`),
       "Resources/project.json": MANIFEST,
     });

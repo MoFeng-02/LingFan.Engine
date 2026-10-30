@@ -76,6 +76,9 @@ export function foldConst(
   }
   if (ts.isIdentifier(expr)) {
     const b = lookup(expr.text);
+    // UI 句柄在编译期就是一个名字：`export const picked = hub` 折成 `"hub"`，
+    // 于是 `mount(picked, true)` 与 `mount(hub, true)` 的产物完全一致。
+    if (b?.kind === "ui") return b.name;
     return b?.kind === "const" ? b.value : undefined;
   }
   if (ts.isPropertyAccessExpression(expr) && ts.isIdentifier(expr.expression)) {

@@ -1,6 +1,8 @@
 import * as ts from "typescript";
 import { WORD_NAMES, GEN_PREFIX, toPosix } from "../core.ts";
 import type { ModuleRecord, DiagBag } from "../core.ts";
+import type { AliasResolver } from "./alias.ts";
+import type { UiChannel } from "./ui-specifier.ts";
 
 function resolveModuleFile(rel: string, spec: string): string | null {
   const dirParts = toPosix(rel).split("/").slice(0, -1);
@@ -39,6 +41,8 @@ export function resolveImports(
   records: Map<string, ModuleRecord>,
   diags: DiagBag,
   editorPass: boolean,
+  alias?: AliasResolver,
+  uiChannel?: UiChannel,
 ): void {
   const { sf, rel } = record;
   for (const imp of record.imports) {
@@ -96,21 +100,64 @@ export function resolveImports(
       diags.add(rel, sf, imp, "引擎包不参与创作导入：请使用词汇层词函数");
       continue;
     }
+    // UI 说明符已由 UI 通道处置（登记或诊断），这里只负责不再按模块解析它——
+    // 否则 `.vue`/`.tsx`/`.html` 会落到「不支持外部包」或「必须解析到相对 .ts 文件」。
+    if (
+      uiChannel !== undefined &&
+      uiChannel.classify(rel, spec).kind !== "not-ui"
+    )
+      continue;
+    let targetRel: string | null;
     if (!spec.startsWith(".")) {
-      if (record.evaluated === undefined) {
+      // 非相对说明符先问工程别名：引擎包（editor/core）已在上面的分支判定完毕，
+      // 这里只剩作者自己在 tsconfig.json 里定义的 paths。
+      const outcome = alias?.resolveSpecifier(spec);
+      if (outcome?.kind === "missing") {
         diags.add(
           rel,
           sf,
           imp,
-          `导入仅限相对路径与词汇层既有出口，不支持外部包 \`${spec}\``,
+          `已读 tsconfig.json 的 paths，未命中 \`${spec}\``,
         );
         continue;
       }
-      // 经编译期求值的文件允许 node_modules 值导入——值经求值结果内联，
-      // 引用域仅限模块层 const 初始化链（buildGraph 末尾 assertNpmNamesConstOnly 兜底）。
-      continue;
+      if (outcome?.kind === "other") {
+        diags.add(
+          rel,
+          sf,
+          imp,
+          `别名 \`${spec}\` 解析到 ${outcome.rel}：创作导入只接受 .ts 模块`,
+        );
+        continue;
+      }
+      if (outcome?.kind === "outside") {
+        // 越界的别名一律 fail-closed：静默丢弃会让作者以为引用生效了。
+        diags.add(
+          rel,
+          sf,
+          imp,
+          `别名 \`${spec}\` 解析到源根之外（${outcome.target}）：创作导入只接受源根内的文件`,
+        );
+        continue;
+      }
+      if (outcome?.kind !== "module") {
+        if (record.evaluated === undefined) {
+          diags.add(
+            rel,
+            sf,
+            imp,
+            `导入仅限相对路径与词汇层既有出口，不支持外部包 \`${spec}\``,
+          );
+          continue;
+        }
+        // 经编译期求值的文件允许 node_modules 值导入——值经求值结果内联，
+        // 引用域仅限模块层 const 初始化链（buildGraph 末尾 assertNpmNamesConstOnly 兜底）。
+        continue;
+      }
+      targetRel = outcome.rel;
+    } else {
+      targetRel = resolveModuleImportPath(rel, spec);
     }
-    const targetRel = resolveModuleImportPath(rel, spec);
     if (targetRel === null) {
       diags.add(rel, sf, imp, `模块说明符 \`${spec}\` 必须解析到相对 .ts 文件`);
       continue;

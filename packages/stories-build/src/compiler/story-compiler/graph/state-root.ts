@@ -5,11 +5,11 @@
  * 根名与词函数冲突、或多个异名声明并存 → fail-closed 诊断（定位声明处）。
  */
 import * as ts from "typescript";
+import { MAX_ALIAS_HOPS } from "../../../shared/index.ts";
 import { DEFAULT_STATE_ROOT, WORD_NAMES } from "./core.ts";
 import type { DiagBag, ModuleRecord } from "./core.ts";
 
 const STATE_ROOT_ANNOTATION = "StoryState";
-const MAX_ALIAS_HOPS = 10;
 
 interface StateRootCandidate {
   rel: string;

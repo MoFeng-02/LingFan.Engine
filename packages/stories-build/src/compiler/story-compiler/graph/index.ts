@@ -11,7 +11,10 @@ export type {
   Graph,
   ModuleRecord,
   StoryConfig,
+  UiRecord,
 } from "./core.ts";
-export { DiagBag, toPosix } from "./core.ts";
+export { DiagBag, toPosix, UI_EXTENSIONS, uiExtensionOf } from "./core.ts";
 export { foldConst } from "./fold.ts";
 export { buildGraph, resolveStart } from "./build.ts";
+export { createUiChannel } from "./scan/ui-specifier.ts";
+export type { UiChannel, UiOutcome } from "./scan/ui-specifier.ts";

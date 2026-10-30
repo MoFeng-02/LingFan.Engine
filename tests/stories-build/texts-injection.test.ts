@@ -69,8 +69,8 @@ const TOP_RETURN_STORY = story("start", `  say("前");\n  return;\n`);
 describe("stories-build 文案表注入（texts）与 evalTimeoutMs", () => {
   it("①缺省路径：E10 顶层 return 文案即既有文案（不传 texts 行为不变）", async () => {
     const root = makeProject("texts-default-e10", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": TOP_RETURN_STORY,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": TOP_RETURN_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -84,8 +84,8 @@ describe("stories-build 文案表注入（texts）与 evalTimeoutMs", () => {
       topLevelReturn: () => SENTINEL,
     };
     const root = makeProject("texts-inject-e10", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": TOP_RETURN_STORY,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": TOP_RETURN_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root, { texts })).rejects.toThrow(SENTINEL);
@@ -100,9 +100,9 @@ describe("stories-build 文案表注入（texts）与 evalTimeoutMs", () => {
         `列 id 冲突哨兵（E06）: ${id} vs ${prev}`,
     };
     const root = makeProject("texts-inject-e06", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": story("Start", `  say("一");`),
-      "Stories.src/ch1/second.ts": story("start", `  say("二");`),
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": story("Start", `  say("一");`),
+      "src/Stories.src/ch1/second.ts": story("start", `  say("二");`),
       "Resources/project.json": MANIFEST,
     });
     // prev 实参 = 对侧文件相对路径（checkColumnIds 以 sourceRelPath 记 seen）
@@ -113,11 +113,11 @@ describe("stories-build 文案表注入（texts）与 evalTimeoutMs", () => {
 
   it("④evalTimeoutMs：config.ts 顶层自旋 + 1ms 时限 ⇒ 超时诊断（fail-closed）", async () => {
     const root = makeProject("texts-eval-timeout", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         `${config(["ch1"])}const spinStart = Date.now();\n` +
         `while (Date.now() - spinStart < 5_000) {}\n` +
         `export const after = 1;\n`,
-      "Stories.src/ch1/start.ts": story("start", `  say("你好");`),
+      "src/Stories.src/ch1/start.ts": story("start", `  say("你好");`),
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root, { evalTimeoutMs: 1 })).rejects.toThrow(
@@ -133,8 +133,8 @@ describe("stories-build 文案表注入（texts）与 evalTimeoutMs", () => {
       topLevelReturn: () => "哨兵文案",
     };
     const root = makeProject("texts-fail-closed", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": TOP_RETURN_STORY,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": TOP_RETURN_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root, { texts })).rejects.toThrow("哨兵文案");

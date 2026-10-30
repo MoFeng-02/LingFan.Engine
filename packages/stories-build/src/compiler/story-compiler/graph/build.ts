@@ -1,5 +1,10 @@
 import * as ts from "typescript";
-import { walkFiles, type StoriesBuildTexts } from "../../../shared/index.ts";
+import { isSceneType } from "@lingfan-engine/core";
+import {
+  walkFiles,
+  defaultStoriesBuildTexts,
+  type StoriesBuildTexts,
+} from "../../../shared/index.ts";
 import type { StorySourceConfig } from "../../../config/story-config.ts";
 import type { CompilerConstValues } from "../../compiler-contract.ts";
 import {
@@ -7,6 +12,7 @@ import {
   ROOT_TS_FILES_ALLOWED,
   GEN_PREFIX,
   COLUMN_FONT_DECL,
+  COLUMN_TYPE_DECL,
   toPosix,
 } from "./core.ts";
 import type { Graph, ModuleRecord } from "./core.ts";
@@ -17,10 +23,15 @@ import {
   assertNpmNamesConstOnly,
 } from "./scan/bindings.ts";
 import { resolveImports } from "./scan/imports.ts";
+import { createUiChannel } from "./scan/ui-specifier.ts";
+import { resolveUiImports } from "./scan/ui-import.ts";
+import type { AliasResolver } from "./scan/alias.ts";
 
 /**
  * 图谱构建：布局声明（config 求值产物）为必填入参——本层不再解析 config.ts
  *（读取/校验统一走 const-eval/config-eval），只消费 folders/start。
+ *
+ * `alias` 是工程 `tsconfig.json` 的 `paths` 解析器；缺省 = 只认相对路径。
  */
 export function buildGraph(
   sourcesDir: string,
@@ -28,6 +39,7 @@ export function buildGraph(
   config: StorySourceConfig,
   constValues?: CompilerConstValues,
   texts?: StoriesBuildTexts,
+  alias?: AliasResolver,
 ): Graph | null {
   const files = new Map<string, string>();
   for (const [rel, text] of walkFiles(sourcesDir)) {
@@ -91,19 +103,28 @@ export function buildGraph(
       npmNames: new Set(),
       evaluated: constValues?.[rel],
       columnFont: null,
+      columnType: null,
+      uis: new Map(),
     });
   }
 
+  // UI 沙箱根是源根的上一级（`src/`）：UI 目录与故事源树是兄弟，不是它的子目录。
+  // 这一遍必须早于模块层常量扫描——`export const picked = hub` 折叠时要看得到 UI 绑定。
+  const uiChannel = createUiChannel(sourcesDir, alias);
+  const uiTexts = texts ?? defaultStoriesBuildTexts;
   for (const record of records.values()) scanModule(record, diags);
   for (const record of records.values())
-    resolveImports(record, records, diags, true);
+    resolveUiImports(record, diags, uiChannel, uiTexts);
+  for (const record of records.values())
+    resolveImports(record, records, diags, true, alias, uiChannel);
   for (const record of records.values()) {
     for (const stmt of record.consts)
       scanConstStatement(stmt, record, diags, texts);
   }
   collectColumnFonts(records, diags);
+  collectColumnTypes(records, diags);
   for (const record of records.values())
-    resolveImports(record, records, diags, false);
+    resolveImports(record, records, diags, false, alias, uiChannel);
   for (const record of records.values())
     assertNpmNamesConstOnly(record, diags, texts);
 
@@ -133,6 +154,24 @@ export function buildGraph(
 }
 
 /**
+ * 列级声明所在的语法节点（诊断定位用）。
+ *
+ * 找不到对应的 `const` 语句时退回整个源文件：报错仍能指出哪个文件，
+ * 比拿不到位置更好，也和 `columnFont` 既有行为一致。
+ */
+function declNodeOf(record: ModuleRecord, name: string): ts.Node {
+  const stmt = record.consts.find((s) => {
+    const decl = s.declarationList.declarations[0];
+    return (
+      decl !== undefined &&
+      ts.isIdentifier(decl.name) &&
+      decl.name.text === name
+    );
+  });
+  return stmt ?? record.sf;
+}
+
+/**
  * 列级字体声明拾取：`export const columnFont = "<名>"`。
  * 值走既有 const 绑定通道（字面量 / 常量运算 / 其他 const / 编译期求值内联同源），
  * 这里只做归属与形状判定；字体名是否在注册表内由汇编段对照 fontNames 报（注册表
@@ -145,15 +184,7 @@ function collectColumnFonts(
   for (const record of records.values()) {
     const binding = record.exports.get(COLUMN_FONT_DECL);
     if (binding === undefined) continue;
-    const stmt = record.consts.find((s) => {
-      const decl = s.declarationList.declarations[0];
-      return (
-        decl !== undefined &&
-        ts.isIdentifier(decl.name) &&
-        decl.name.text === COLUMN_FONT_DECL
-      );
-    });
-    const node = stmt ?? record.sf;
+    const node = declNodeOf(record, COLUMN_FONT_DECL);
     if (record.story === null) {
       diags.add(
         record.rel,
@@ -177,6 +208,43 @@ function collectColumnFonts(
       continue;
     }
     record.columnFont = { value: binding.value, node };
+  }
+}
+
+/**
+ * 列类型声明拾取：`export const columnType = "ui"`。
+ *
+ * 与 JSON / 文本形态的 `type` 字段同义：不写 = `game`，写了必须是契约承认的两个取值之一。
+ * 为什么要这条通道：列类型是**列自身的语义**，而 TS 创作链里一列就是一个函数模块，
+ * 没有别的位置能放下它；让作者改生成物或手写 JSON 会把同一份事实劈成两处。
+ */
+function collectColumnTypes(
+  records: ReadonlyMap<string, ModuleRecord>,
+  diags: DiagBag,
+): void {
+  for (const record of records.values()) {
+    const binding = record.exports.get(COLUMN_TYPE_DECL);
+    if (binding === undefined) continue;
+    const node = declNodeOf(record, COLUMN_TYPE_DECL);
+    if (record.story === null) {
+      diags.add(
+        record.rel,
+        record.sf,
+        node,
+        "columnType 只能声明在故事文件（default 导出列）的模块顶层",
+      );
+      continue;
+    }
+    if (binding.kind !== "const" || !isSceneType(binding.value)) {
+      diags.add(
+        record.rel,
+        record.sf,
+        node,
+        'columnType 必须折叠为 "game" 或 "ui" 字面量（缺省即 game，不必声明）',
+      );
+      continue;
+    }
+    record.columnType = { value: binding.value, node };
   }
 }
 

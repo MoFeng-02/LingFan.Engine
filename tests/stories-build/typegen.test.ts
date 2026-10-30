@@ -2,9 +2,9 @@
  * 类型面生成器（stories.gen.d.ts）测试。
  *
  * 契约口径：
- * 编译链生成 `Stories.src/gen/stories.gen.d.ts`，把字符串域收窄为字面量联合类型——
+ * 编译链生成 `src/gen/stories.gen.d.ts`，把字符串域收窄为字面量联合类型——
  * 列名（jump / navigate / option 的 target）、插值键（`{...}`）、扩展命名空间前缀。
- * 生成物落 `Stories.src/gen/`，被 `apps/playground/tsconfig.json` 的 `include` 覆盖，
+ * 生成物落 `src/gen/`，被 `apps/playground/tsconfig.json` 的 `include` 覆盖，
  * 根工程看不见（分层，不是遗漏）。
  *
  * 五类覆盖（测试分层约定）：
@@ -60,7 +60,7 @@ const manifest = (extensions?: readonly string[]): string =>
     shell: { orientation: "auto" },
   });
 
-const TYPEGEN_REL = "Stories.src/gen/stories.gen.d.ts";
+const TYPEGEN_REL = "src/gen/stories.gen.d.ts";
 
 function readTypegen(root: string): string {
   return readFileSync(join(root, TYPEGEN_REL), "utf8");
@@ -114,8 +114,8 @@ async function buildDefaultProject(
   extra: Record<string, string> = {},
 ): Promise<string> {
   const root = makeProject(name, {
-    "Stories.src/config.ts": config(["lib", "ch1"], "start.ts"),
-    "Stories.src/lib/vocabulary.ts": WORDS_LIB,
+    "src/Stories.src/config.ts": config(["lib", "ch1"], "start.ts"),
+    "src/Stories.src/lib/vocabulary.ts": WORDS_LIB,
     "Resources/project.json": MANIFEST,
     ...extra,
   });
@@ -128,21 +128,21 @@ describe("类型面生成器 · 拟态用户（真实工程形态走完整管线
     // 扩展 op 必须在清单里声明（gates 的 assertKnownOps），所以本用例自带 EXT_DEMO 与
     // 声明它的清单——同时让「扩展模式行」与「三源字面量键」在同一份生成物里并存，验证混排合法。
     const root = makeProject("mimic", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["lib", "ch1"]) +
         `export const vars = defineVars({ "bag.size": "num", hp: "num" });\n` +
         `export const state = {\n  player: { gold: 0, name: "" },\n} as const;\n`,
-      "Stories.src/lib/vocabulary.ts": WORDS_LIB,
+      "src/Stories.src/lib/vocabulary.ts": WORDS_LIB,
       "Resources/project.json": manifest(["./extensions/demo.ts"]),
       "extensions/demo.ts": EXT_DEMO,
-      "Stories.src/ch1/start.ts": `import { say, extOp } from "../lib/vocabulary";
+      "src/Stories.src/ch1/start.ts": `import { say, extOp } from "../lib/vocabulary";
 
 export default function start(): void {
   say("金币 {player.gold}，背包 {bag.size}，血量 {hp}");
   extOp("quest", { step: "接取" });
 }
 `,
-      "Stories.src/ch1/shop.ts": `export default function shop(): void {
+      "src/Stories.src/ch1/shop.ts": `export default function shop(): void {
 }
 `,
     });
@@ -189,10 +189,10 @@ export default function start(): void {
     // 换道后键域来自 config.ts 单次求值——config 恒被读取、与故事是否 import 无关；
     // 本用例故事文件**刻意不 import** 任何变量清单模块，锚定的正是这一点。
     const root = await buildDefaultProject("definevars-only-interp", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["lib", "ch1"]) +
         `export const vars = defineVars({ "player.hp": "num", mana: "num" });\n`,
-      "Stories.src/ch1/start.ts": `import { say } from "../lib/vocabulary";
+      "src/Stories.src/ch1/start.ts": `import { say } from "../lib/vocabulary";
 
 export default function start(): void {
   say("血量 {player.hp}，魔力 {mana}");
@@ -207,9 +207,9 @@ export default function start(): void {
 
   it("清单声明的扩展 ⇒ 生成一条 per-id 模式索引签名（键集运行期不可知，只能模板匹配）", async () => {
     const root = makeProject("extension", {
-      "Stories.src/config.ts": config(["lib", "ch1"], "start.ts"),
-      "Stories.src/lib/vocabulary.ts": WORDS_LIB,
-      "Stories.src/ch1/start.ts": `import { say } from "../lib/vocabulary";
+      "src/Stories.src/config.ts": config(["lib", "ch1"], "start.ts"),
+      "src/Stories.src/lib/vocabulary.ts": WORDS_LIB,
+      "src/Stories.src/ch1/start.ts": `import { say } from "../lib/vocabulary";
 
 export default function start(): void {
   say("步骤 {ext.demoquest.step}");
@@ -230,13 +230,13 @@ export default function start(): void {
 describe("类型面生成器 · 故意错误（fail-closed 且诊断可定位）", () => {
   it("图谱模块里调用 defineVars ⇒ 换道守卫报错并指路 config（声明通道唯一化）", async () => {
     const root = makeProject("bad-definevars", {
-      "Stories.src/config.ts": config(["lib", "ch1"]),
-      "Stories.src/lib/vocabulary.ts": WORDS_LIB,
-      "Stories.src/lib/vars.ts": `import { script } from "@lingfan-engine/editor";
+      "src/Stories.src/config.ts": config(["lib", "ch1"]),
+      "src/Stories.src/lib/vocabulary.ts": WORDS_LIB,
+      "src/Stories.src/lib/vars.ts": `import { script } from "@lingfan-engine/editor";
 const { defineVars } = script;
 export const vars = defineVars({ "player.hp": "num" });
 `,
-      "Stories.src/ch1/start.ts": `export default function start(): void {
+      "src/Stories.src/ch1/start.ts": `export default function start(): void {
 }
 `,
       "Resources/project.json": MANIFEST,
@@ -251,10 +251,10 @@ export const vars = defineVars({ "player.hp": "num" });
 
   it("config.vars 导出不是键集对象 ⇒ 拒绝构建（vars 键域不可知）", async () => {
     const root = makeProject("bad-vars-shape", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["lib", "ch1"]) + `export const vars = ["bag.size", "hp"];\n`,
-      "Stories.src/lib/vocabulary.ts": WORDS_LIB,
-      "Stories.src/ch1/start.ts": `export default function start(): void {
+      "src/Stories.src/lib/vocabulary.ts": WORDS_LIB,
+      "src/Stories.src/ch1/start.ts": `export default function start(): void {
 }
 `,
       "Resources/project.json": MANIFEST,
@@ -266,15 +266,15 @@ export const vars = defineVars({ "player.hp": "num" });
 
   it("列 id 非法（含不安全字符）⇒ 拒绝构建，不产类型面文件", async () => {
     const root = makeProject("bad-column", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `export default function start(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/start.ts": `export default function start(): void {
 }
 `,
       // 文件名含不安全段 ⇒ 列 id 由 default 函数名决定，这里用非法函数名触发。
       "Resources/project.json": MANIFEST,
     });
     writeFileSync(
-      join(root, "Stories.src/ch1/start.ts"),
+      join(root, "src/Stories.src/ch1/start.ts"),
       `export default function "bad/id"(): void {\n}\n`,
     );
     await expect(buildStories(root)).rejects.toThrow();
@@ -330,9 +330,9 @@ describe("类型面生成器 · 不变量断言", () => {
 
   it("幂等：二跑零差量（生成物已被产物段纳入差量写盘）", async () => {
     const files = {
-      "Stories.src/config.ts": config(["lib", "ch1"], "start.ts"),
-      "Stories.src/lib/vocabulary.ts": WORDS_LIB,
-      "Stories.src/ch1/start.ts": `export default function start(): void {\n}\n`,
+      "src/Stories.src/config.ts": config(["lib", "ch1"], "start.ts"),
+      "src/Stories.src/lib/vocabulary.ts": WORDS_LIB,
+      "src/Stories.src/ch1/start.ts": `export default function start(): void {\n}\n`,
       "Resources/project.json": MANIFEST,
     };
     const root = makeProject("idempotent", files);
@@ -433,10 +433,10 @@ describe("类型面生成器 · 边界条件", () => {
 
   it("多目录深层嵌套：列 id 一律取 default 函数名，与目录层级无关", async () => {
     const root = makeProject("nested-dirs", {
-      "Stories.src/config.ts": config(["lib", "ch1"], "start.ts"),
-      "Stories.src/lib/vocabulary.ts": WORDS_LIB,
-      "Stories.src/ch1/start.ts": `export default function start(): void {\n}\n`,
-      "Stories.src/ch1/deep/deeper/leaf.ts": `export default function leaf(): void {\n}\n`,
+      "src/Stories.src/config.ts": config(["lib", "ch1"], "start.ts"),
+      "src/Stories.src/lib/vocabulary.ts": WORDS_LIB,
+      "src/Stories.src/ch1/start.ts": `export default function start(): void {\n}\n`,
+      "src/Stories.src/ch1/deep/deeper/leaf.ts": `export default function leaf(): void {\n}\n`,
       "Resources/project.json": MANIFEST,
     });
     await buildStories(root);
@@ -450,9 +450,9 @@ describe("类型面生成器 · 边界条件", () => {
     // 文件在、结构在，但空注册表让派生类型退化为 string，作者正常写法不会被判红。
     // 本用例走完整 buildStories（不是直接调 renderTypegen），锚定的就是「盘上真有这个文件」。
     const root = makeProject("always-emit", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/lib/vocabulary.ts": WORDS_LIB,
-      "Stories.src/ch1/start.ts": `export default function start(): void {\n}\n`,
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/lib/vocabulary.ts": WORDS_LIB,
+      "src/Stories.src/ch1/start.ts": `export default function start(): void {\n}\n`,
       "Resources/project.json": MANIFEST,
     });
     const report = await buildStories(root);
@@ -495,9 +495,9 @@ describe("let/const 声明名进插值键注册表（键 only）", () => {
     // `const r = double(3)` 降糖成 op call 的 into（引擎无条件把 into 声明成
     // 调用方局部变量，`{r}` 是合法插值）。漏收任何一个都会让 IDE 误判红。
     const root = makeProject("decl-names", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/lib/vocabulary.ts": WORDS_LIB,
-      "Stories.src/ch1/start.ts": [
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/lib/vocabulary.ts": WORDS_LIB,
+      "src/Stories.src/ch1/start.ts": [
         `import { say } from "../lib/vocabulary";`,
         ``,
         `export function double(v: number): number {`,
@@ -521,14 +521,14 @@ describe("let/const 声明名进插值键注册表（键 only）", () => {
 
   it("声明名与 define 键同名：去重不报——注册表是键存在性域，遮蔽语义归运行期作用域链", async () => {
     const root = makeProject("decl-dedupe", {
-      "Stories.src/config.ts": [
+      "src/Stories.src/config.ts": [
         `export const folders = ["ch1"];`,
         `export const start = "start.ts";`,
         `define("n", 1);`,
         ``,
       ].join("\n"),
-      "Stories.src/lib/vocabulary.ts": WORDS_LIB,
-      "Stories.src/ch1/start.ts": [
+      "src/Stories.src/lib/vocabulary.ts": WORDS_LIB,
+      "src/Stories.src/ch1/start.ts": [
         `import { say } from "../lib/vocabulary";`,
         ``,
         `export default function start(): void {`,

@@ -10,8 +10,9 @@
  * - 身份键 = (face, name)、指纹 = 实现文本 trim：**同键同纹去重、同键异纹冲突**
  *   （fail-closed 带两处定位，不隐式覆盖）；
  * - face v1 恒 `guards`；`cell` 只认裸标识符调用（house style 解构导入）；
- * - **导入搬运按生成物位置重写相对说明符**：生成物在 `Stories.src/gen/`（比源文件
- *   深一层），`"./x"`/`"../x"` 必须换算到同一目标——越出 `Stories.src` 根 fail-closed。
+ * - **导入搬运按生成物位置重写相对说明符**：生成物目录通常与源根同级（默认布局
+ *   `src/gen/` 对 `src/Stories.src/`），`"./x"`/`"../x"` 由调用方给出的 `rootPrefix`
+ *   换算到同一目标——越出源根 fail-closed。
  */
 
 /** cell 声明提取失败（带 `origin` 定位：`相对路径:行`）——由调用方决定是否中断构建 */

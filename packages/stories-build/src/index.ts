@@ -74,3 +74,17 @@ export {
   scanFontRegistry,
   type FontEntry,
 } from "./fonts/index.ts";
+/** UI 名注册表（源根兄弟目录 `ui/<名>/` 扫描；构建期 uis 闸门的判据来源） */
+export {
+  UI_DIR_NAME,
+  scanUiRegistry,
+  uiNameSet,
+  type UiFileEntry,
+} from "./ui/index.ts";
+/** UI import 面静态校验（UI 不归构建管，越界依赖只能在这里拦） */
+export {
+  checkUiImports,
+  scanUiImports,
+  type UiImportRef,
+  type UiImportViolation,
+} from "./ui/index.ts";

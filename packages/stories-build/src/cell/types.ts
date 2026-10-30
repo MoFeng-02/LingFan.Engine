@@ -24,4 +24,14 @@ export interface FileImports {
 export interface ScanCellsOptions {
   /** 允许在内联实现里直接引用的全局名（缺省 = 标准全局白名单 16 项） */
   readonly globalWhitelist?: ReadonlySet<string>;
+  /**
+   * 生成物目录回到源根的相对前缀（缺省 `".."` = 生成物在源根内恰深一层）。
+   * 生成物挪到源根之外的同级目录时传 `"../Stories.src"` 这类值。
+   */
+  readonly rootPrefix?: string;
+  /**
+   * 判断某条 import 是否由别的通道处置（家例：UI 句柄导入）。命中的语句既不搬进
+   * 生成物、也不算问题——它压根不是生成注册物的运行期依赖，越界与否由那条通道自己判。
+   */
+  readonly isForeignImport?: (fromRel: string, specifier: string) => boolean;
 }

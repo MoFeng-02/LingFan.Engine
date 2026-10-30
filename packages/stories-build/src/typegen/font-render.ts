@@ -1,7 +1,7 @@
 /**
  * 字体名注册表的 ambient 类型面渲染器（`font` 全局常量字面量类型）。
  *
- * 输出 = `Stories.src/gen/font.gen.d.ts` 全文：`declare const font` 的键与值都取
+ * 输出 = `src/gen/font.gen.d.ts` 全文：`declare const font` 的键与值都取
  * 注册表字体名（引号键保非标识符名可用），未注册名在 TS 面即不存在——IDE 补全只给
  * 正名，改拼直接 TS2551。纯编译期声明，不注入运行时对象；模块自有 `font` 声明按
  * TS 遮蔽语义优先。空注册表产出 `Record<never, never>`：TS 里空对象字面量 `{}` 会

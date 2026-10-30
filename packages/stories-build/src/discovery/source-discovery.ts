@@ -2,6 +2,7 @@ import { join } from "node:path";
 import ts from "typescript";
 import {
   defaultStoriesBuildTexts,
+  GEN_PREFIX,
   walkFiles,
   type StoriesBuildTexts,
 } from "../shared/index.ts";
@@ -42,7 +43,7 @@ export async function discoverSources(
   // —— 探测域：全部 .ts（排除生成物目录；config.ts 只能是根级唯一根文件）——
   const probe: string[] = [];
   for (const rel of tree.keys()) {
-    if (!rel.endsWith(".ts") || rel.startsWith("gen/")) continue;
+    if (!rel.endsWith(".ts") || rel.startsWith(GEN_PREFIX)) continue;
     if (rel.endsWith(`/${CONFIG_FILE}`)) {
       throw new StoryBuildError(
         `${sourcesDirName}/${rel}——${CONFIG_FILE} 只能是根级唯一根文件，故事与模块源请放进 folders 声明的目录`,
@@ -132,10 +133,14 @@ function collectCoveredDirs(
   }
   if (config.folders.includes("*")) {
     for (const rel of tree.keys()) {
-      if (!rel.endsWith(".ts") || rel.startsWith("gen/") || rel === CONFIG_FILE)
+      if (
+        !rel.endsWith(".ts") ||
+        rel.startsWith(GEN_PREFIX) ||
+        rel === CONFIG_FILE
+      )
         continue;
       const dir = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
-      if (dir !== "" && !dir.startsWith("gen/")) dirs.add(dir);
+      if (dir !== "" && !dir.startsWith(GEN_PREFIX)) dirs.add(dir);
     }
   }
   return dirs;

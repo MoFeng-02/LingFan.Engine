@@ -12,6 +12,8 @@ export function scanCells(
   options: ScanCellsOptions = {},
 ): { errors: CellIssue[]; scan: CellScan } {
   const globalWhitelist = options.globalWhitelist ?? DEFAULT_GLOBAL_WHITELIST;
+  const rootPrefix = options.rootPrefix ?? "..";
+  const isForeignImport = options.isForeignImport;
   const issues: CellIssue[] = [];
   const byName = new Map<
     string,
@@ -21,7 +23,14 @@ export function scanCells(
   const seenImports = new Set<string>();
 
   for (const [relPath, text] of files) {
-    for (const found of scanFile(relPath, text, globalWhitelist, issues)) {
+    for (const found of scanFile(
+      relPath,
+      text,
+      globalWhitelist,
+      issues,
+      rootPrefix,
+      isForeignImport,
+    )) {
       const existing = byName.get(found.name);
       if (existing === undefined) {
         byName.set(found.name, {

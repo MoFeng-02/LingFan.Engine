@@ -1,5 +1,6 @@
 import {
   compareOrdinal,
+  normalizeUiNames,
   type CharacterDef,
   type Story,
   type StoryCommand,
@@ -10,6 +11,7 @@ import {
 } from "../../../shared/index.ts";
 import type { DiagBag, Graph } from "../graph.ts";
 import { compileFunction, partitionFunctions, tryFuncOp } from "./functions.ts";
+import { undeclaredMountUis } from "./mount-uis.ts";
 import {
   createBodyCtx,
   translateStatements,
@@ -65,6 +67,18 @@ export function compileStoryFile(
       );
     }
   }
+
+  // —— 列类型：`export const columnType = "ui"` 与 JSON 形态的 `type` 字段同义。
+  // 显式写 `game` 与不写等价，一律不带该字段——「缺省 game 不写」是序列化口径，
+  // 产物要跟手写 JSON 编译出来的字节一致，否则同一份故事两条路径产出两种文件。 ——
+  const declaredType =
+    mod.columnType === null ? undefined : mod.columnType.value;
+  const columnType = declaredType === "game" ? undefined : declaredType;
+
+  // —— 列级 UI 声明：模块扫描期已把 `import hub from ".../ui/hub/hub.vue"` 登记进
+  // `mod.uis`，这里只取名字集合（不回头扫 import 语句——那会让同一件事有第二个判定点）。
+  // 定序与去重交给契约层的唯一实现，保证同源同产物 ——
+  const columnUis = normalizeUiNames([...mod.uis.keys()]);
 
   const registry: FuncRegistry = { refs: new Map(), names: new Map() };
   const shared = {
@@ -178,6 +192,20 @@ export function compileStoryFile(
   }
   commands.push(...bodyCommands);
 
+  // —— 静态声明与动态挂载互锁：列体里 `mount` 的每个名字都必须在 `uis` 里 ——
+  // 静态那份来自导入语句，动态那份来自代码；不一致时宿主不会预加载，
+  // 界面要到第一次挂载才取，症状只是「闪一下」，所以在编译期判死。
+  const declared = new Set(columnUis);
+  for (const name of undeclaredMountUis(commands, declared)) {
+    diags.add(
+      rel,
+      sf,
+      storyName,
+      `mount("${name}") 引用了本列未导入的 UI——请在本列补一条默认导入，` +
+        `指向 \`../../ui/${name}/${name}.vue\`，否则产物缺这条静态声明`,
+    );
+  }
+
   const story: Story = {
     formatVersion: 1,
     id: columnId,
@@ -186,7 +214,9 @@ export function compileStoryFile(
       {
         id: columnId,
         kind: "flow",
+        ...(columnType !== undefined ? { type: columnType } : {}),
         ...(columnFont !== undefined ? { font: columnFont } : {}),
+        ...(columnUis.length > 0 ? { uis: columnUis } : {}),
         commands,
       },
     ],

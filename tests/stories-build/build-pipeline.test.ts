@@ -2,12 +2,12 @@
  * Stories.src 构建管线 v2（静态转译编译器）契约测试。
  *
  * 契约口径：
- * - 源侧只有 TS：Stories.src/config.ts 布局声明（folders/start）；各目录故事源以
+ * - 源侧只有 TS：src/Stories.src/config.ts 布局声明（folders/start）；各目录故事源以
  *   default 导出的具名 function 声明（一个故事 = 一个列 id）。
  * - 编译期静态转译：TS → 命令 JSON；故事源绝不加载执行（本文件也不 import 故事源）。
  * - report 口径：{ added, updated, removed, columns, extensions, functions, warnings }；
  *   旧 written 字段已废除。逻辑路径两个命名空间：资源根（Stories/…、project.json）
- *   与源根（Stories.src/gen/…）。
+ *   与源根（src/gen/…）。
  * - sourcePath 由源相对路径派生（Stories/<相对目录>/<名>.json），不再可声明。
  * - project.json：tsSource 标记、entry/defines 托管；其余键原值保真。
  *
@@ -42,6 +42,7 @@ import {
   scanCells,
 } from "@lingfan-engine/stories-build/cell";
 import type { StoriesCompiler } from "@lingfan-engine/stories-build";
+import { createUiChannel } from "../../packages/stories-build/src/compiler/story-compiler/graph/scan/ui-specifier.ts";
 
 const BASE = fileURLToPath(new URL("./.tmp-build/", import.meta.url));
 
@@ -95,7 +96,7 @@ ${body}
 const SYNTHETIC_STORY = story("start", `  say("欢迎来到灵泛");`);
 
 /** 过渡期注入缝：合成编译器（按 discovery 清单生成空列条目；可携带 defines）。
- * definesByFile 的键 = 相对 Stories.src/ 的 posix 路径（与 input.stories 同口径）。 */
+ * definesByFile 的键 = 相对 src/Stories.src/ 的 posix 路径（与 input.stories 同口径）。 */
 function syntheticCompiler(
   definesByFile?: Record<string, Record<string, unknown>>,
 ): StoriesCompiler {
@@ -124,24 +125,25 @@ function syntheticCompiler(
 describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量写盘）", () => {
   it("①⑤多目录 folders：首跑 added 计数 + sourcePath 镜像落点（源子目录 → 产物同名目录）", async () => {
     const root = makeProject("v2-happy", {
-      "Stories.src/config.ts": config(["common", "other"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
-      "Stories.src/common/tavern.ts": story("tavern", `  say("到了酒馆");`),
-      "Stories.src/other/market.ts": story("market", `  say("到了集市");`),
+      "src/Stories.src/config.ts": config(["common", "other"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/common/tavern.ts": story("tavern", `  say("到了酒馆");`),
+      "src/Stories.src/other/market.ts": story("market", `  say("到了集市");`),
       "Resources/project.json": MANIFEST,
     });
     const report = await buildStories(root);
     expect(report.columns).toBe(3);
     expect(report.storyId).toBe("start");
-    // 差量计数：3 个故事产物新增 + 四份类型面生成物 + 清单更新（tsSource 标记）
+    // 差量计数：3 个故事产物新增 + 五份生成物 + 清单更新（tsSource 标记）
     expect([...report.added].sort()).toEqual([
-      "Stories.src/gen/font.gen.d.ts",
-      "Stories.src/gen/script.gen.d.ts",
-      "Stories.src/gen/state.gen.d.ts",
-      "Stories.src/gen/stories.gen.d.ts",
       "Stories/common/start.json",
       "Stories/common/tavern.json",
       "Stories/other/market.json",
+      "src/gen/font.gen.d.ts",
+      "src/gen/script.gen.d.ts",
+      "src/gen/state.gen.d.ts",
+      "src/gen/stories.gen.d.ts",
+      "src/gen/ui_register.g.ts",
     ]);
     expect(report.updated).toEqual(["project.json"]);
     expect(report.removed).toEqual([]);
@@ -167,8 +169,8 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
 
   it("②幂等：二跑零差量（added/updated/removed 全空）", async () => {
     const root = makeProject("v2-idempotent", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
       "Resources/project.json": MANIFEST,
     });
     await buildStories(root);
@@ -180,14 +182,14 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
 
   it("①源文本变化 ⇒ 仅该列 updated（差量收敛）", async () => {
     const root = makeProject("v2-delta", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
-      "Stories.src/common/tavern.ts": story("tavern", `  say("到了酒馆");`),
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/common/tavern.ts": story("tavern", `  say("到了酒馆");`),
       "Resources/project.json": MANIFEST,
     });
     await buildStories(root);
     writeFileSync(
-      join(root, "Stories.src/common/tavern.ts"),
+      join(root, "src/Stories.src/common/tavern.ts"),
       story("tavern", `  say("酒馆改版了");`),
     );
     const report = await buildStories(root);
@@ -198,8 +200,8 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
 
   it("③陈旧产物清理：源里已删除的故事进 removed 并真实删盘", async () => {
     const root = makeProject("v2-stale", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
       "Resources/project.json": MANIFEST,
       // 陈旧产物：手写遗留 / 章节删除后的残留（源里已无对应故事）
       "Resources/Stories/legacy.json": `{"formatVersion":1,"id":"legacy","kind":"flow","commands":[]}`,
@@ -217,8 +219,8 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
 
   it("④清单托管：project.json 获得 tsSource 标记；entry 防御补齐；非托管键保真", async () => {
     const root = makeProject("v2-manifest", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
       "Resources/project.json": `{
         "formatVersion": 1,
         "name": "演示工程",
@@ -238,9 +240,12 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
 
   it('⑧"*" 兜底：folders:["*"] 覆盖全部子目录，故事全部编译', async () => {
     const root = makeProject("v2-star", {
-      "Stories.src/config.ts": config(["*"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
-      "Stories.src/chapter1/tavern.ts": story("tavern", `  say("到了酒馆");`),
+      "src/Stories.src/config.ts": config(["*"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/chapter1/tavern.ts": story(
+        "tavern",
+        `  say("到了酒馆");`,
+      ),
       "Resources/project.json": MANIFEST,
     });
     const report = await buildStories(root);
@@ -260,14 +265,14 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
     name: string,
     line: string,
   ): Record<string, string> => ({
-    [`Stories.src/${rel}/${name}.ts`]: story(name, `  ${line}`),
+    [`src/Stories.src/${rel}/${name}.ts`]: story(name, `  ${line}`),
   });
 
   it("folders 只声明顶层目录 ⇒ 任意深度后代都被覆盖（3 层 + 5 层兄弟分支）", async () => {
     // 用户场景：folders 声明的是「扫描目录」，目录内部还能再套 N 层；
     // 两个分支并列（scene1 / scene2），后者更深——覆盖判定必须与深度无关。
     const root = makeProject("nested-deep", {
-      "Stories.src/config.ts": config(["chapter1"]),
+      "src/Stories.src/config.ts": config(["chapter1"]),
       ...deep("chapter1/act1/scene1", "start", 'say("开场");'),
       ...deep("chapter1/act1/scene2/deep/deeper", "tavern", 'say("到了酒馆");'),
       "Resources/project.json": MANIFEST,
@@ -276,12 +281,13 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
     expect(report.columns).toBe(2);
     expect(report.storyId).toBe("start");
     expect([...report.added].sort()).toEqual([
-      "Stories.src/gen/font.gen.d.ts",
-      "Stories.src/gen/script.gen.d.ts",
-      "Stories.src/gen/state.gen.d.ts",
-      "Stories.src/gen/stories.gen.d.ts",
       "Stories/chapter1/act1/scene1/start.json",
       "Stories/chapter1/act1/scene2/deep/deeper/tavern.json",
+      "src/gen/font.gen.d.ts",
+      "src/gen/script.gen.d.ts",
+      "src/gen/state.gen.d.ts",
+      "src/gen/stories.gen.d.ts",
+      "src/gen/ui_register.g.ts",
     ]);
     // 不止读清单：深层产物必须真实落盘，且内容就是该故事的编译结果
     const startFile = JSON.parse(
@@ -323,18 +329,19 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
   it("folders 直接声明嵌套路径（chapter1/act1）⇒ 合法且生效", async () => {
     // 声明里带 "/" 是允许形态：按前缀覆盖该子树的任意深度后代
     const root = makeProject("nested-decl", {
-      "Stories.src/config.ts": config(["chapter1/act1"]),
+      "src/Stories.src/config.ts": config(["chapter1/act1"]),
       ...deep("chapter1/act1/scene1", "start", 'say("开场");'),
       "Resources/project.json": MANIFEST,
     });
     const report = await buildStories(root);
     expect(report.columns).toBe(1);
     expect([...report.added].sort()).toEqual([
-      "Stories.src/gen/font.gen.d.ts",
-      "Stories.src/gen/script.gen.d.ts",
-      "Stories.src/gen/state.gen.d.ts",
-      "Stories.src/gen/stories.gen.d.ts",
       "Stories/chapter1/act1/scene1/start.json",
+      "src/gen/font.gen.d.ts",
+      "src/gen/script.gen.d.ts",
+      "src/gen/state.gen.d.ts",
+      "src/gen/stories.gen.d.ts",
+      "src/gen/ui_register.g.ts",
     ]);
     expect(
       existsSync(
@@ -345,7 +352,7 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
 
   it("故意错误：start 文件名落在不同嵌套子目录 ⇒ 入口故事必须全局恰一（带两处定位）", async () => {
     const root = makeProject("nested-dup-start", {
-      "Stories.src/config.ts": config(["chapter1", "chapter2"]),
+      "src/Stories.src/config.ts": config(["chapter1", "chapter2"]),
       ...deep("chapter1/act1/scene1", "start", 'say("A");'),
       ...deep("chapter2/act2/scene1", "start", 'say("B");'),
       "Resources/project.json": MANIFEST,
@@ -359,7 +366,7 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
 
   it("故意错误：深层覆盖外的 default ⇒ 覆盖外拦截（覆盖判定穿透到任意深度）", async () => {
     const root = makeProject("nested-e07", {
-      "Stories.src/config.ts": config(["chapter1"]),
+      "src/Stories.src/config.ts": config(["chapter1"]),
       ...deep("chapter1/a/b/c", "start", 'say("开场");'),
       // 覆盖之外，但被套在很深的目录里——漏判的话这里会被静默删产物
       ...deep("other/x/y/z", "rogue", 'say("野故事");'),
@@ -374,7 +381,7 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
     // 反向锚：确认「覆盖」是精确前缀而非「同棵树就算」——act2 与 act1 是兄弟，
     // 声明 chapter1/act1 不得一并放行 chapter1/act2。
     const root = makeProject("nested-sibling-out", {
-      "Stories.src/config.ts": config(["chapter1/act1"]),
+      "src/Stories.src/config.ts": config(["chapter1/act1"]),
       ...deep("chapter1/act2/scene1", "start", 'say("开场");'),
       "Resources/project.json": MANIFEST,
     });
@@ -385,7 +392,7 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
 
   it("不变量/边界：深层产物二跑零差量，且深目录不被当作陈旧产物清理", async () => {
     const root = makeProject("nested-idempotent", {
-      "Stories.src/config.ts": config(["chapter1"]),
+      "src/Stories.src/config.ts": config(["chapter1"]),
       ...deep("chapter1/act1/scene1/deep", "start", 'say("开场");'),
       ...deep("chapter1/act1/scene1/deep/more", "tavern", 'say("酒馆");'),
       "Resources/project.json": MANIFEST,
@@ -412,7 +419,7 @@ describe("stories:build v2 · folders 目录内递归嵌套子目录（真实工
 describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦截）", () => {
   it("缺 config.ts ⇒ 布局声明指引（folders/start）", async () => {
     const root = makeProject("e02", {
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -422,9 +429,9 @@ describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦�
 
   it("根级多个 .ts ⇒ 根级唯一根文件是 config.ts", async () => {
     const root = makeProject("e03", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/extra.ts": `export const extra = 1;\n`,
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/extra.ts": `export const extra = 1;\n`,
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -434,9 +441,9 @@ describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦�
 
   it("start 零命中 ⇒ 带候选清单（按 basename 排序）", async () => {
     const root = makeProject("e04-miss", {
-      "Stories.src/config.ts": config(["common"], "main.ts"),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
-      "Stories.src/common/tavern.ts": story("tavern", `  say("到了酒馆");`),
+      "src/Stories.src/config.ts": config(["common"], "main.ts"),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/common/tavern.ts": story("tavern", `  say("到了酒馆");`),
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -446,9 +453,12 @@ describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦�
 
   it("start 双命中 ⇒ 入口故事必须全局恰一（带两处定位）", async () => {
     const root = makeProject("e04-dup", {
-      "Stories.src/config.ts": config(["common", "other"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
-      "Stories.src/other/start.ts": story("start", `  say("另一个 start");`),
+      "src/Stories.src/config.ts": config(["common", "other"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/other/start.ts": story(
+        "start",
+        `  say("另一个 start");`,
+      ),
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -458,8 +468,8 @@ describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦�
 
   it("start 命中文件无 default 导出 ⇒ 形态要求提示", async () => {
     const root = makeProject("e04-nonstory", {
-      "Stories.src/config.ts": config(["common"], "helpers.ts"),
-      "Stories.src/common/helpers.ts": `export const helper = 1;\n`,
+      "src/Stories.src/config.ts": config(["common"], "helpers.ts"),
+      "src/Stories.src/common/helpers.ts": `export const helper = 1;\n`,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -469,8 +479,8 @@ describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦�
 
   it("匿名 default ⇒ 无法确定列 id", async () => {
     const root = makeProject("e05", {
-      "Stories.src/config.ts": config(["common"], "main.ts"),
-      "Stories.src/common/main.ts": `export default function (): void {}\n`,
+      "src/Stories.src/config.ts": config(["common"], "main.ts"),
+      "src/Stories.src/common/main.ts": `export default function (): void {}\n`,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -480,9 +490,9 @@ describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦�
 
   it('E07 覆盖外 default ⇒ 全量管理删除警告，指向 folders 或 "*" 兜底', async () => {
     const root = makeProject("e07", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
-      "Stories.src/other/rogue.ts": story("rogue", `  say("野故事");`),
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/other/rogue.ts": story("rogue", `  say("野故事");`),
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -493,9 +503,9 @@ describe("stories:build v2 · fail-closed 布局与形态校验（写盘前拦�
 
 describe("stories:build v2 · defines 工程级收敛与冲突（注入编译器契约）", () => {
   const emptyStories = (): Record<string, string> => ({
-    "Stories.src/config.ts": config(["common"]),
-    "Stories.src/common/start.ts": `export default function start(): void {}\n`,
-    "Stories.src/common/tavern.ts": `export default function tavern(): void {}\n`,
+    "src/Stories.src/config.ts": config(["common"]),
+    "src/Stories.src/common/start.ts": `export default function start(): void {}\n`,
+    "src/Stories.src/common/tavern.ts": `export default function tavern(): void {}\n`,
   });
 
   it("跨文件同键异值 ⇒ fail-closed（先于清单读取，冲突即拦截）", async () => {
@@ -533,8 +543,8 @@ describe("stories:build v2 · defines 工程级收敛与冲突（注入编译器
 
   it("编译器诊断非空 ⇒ fail-closed 逐条 file:line:col（编排契约：注入编译器被采纳）", async () => {
     const root = makeProject("diag-fail", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
       "Resources/project.json": MANIFEST,
     });
     const broken: StoriesCompiler = {
@@ -542,7 +552,7 @@ describe("stories:build v2 · defines 工程级收敛与冲突（注入编译器
         stories: [],
         diags: [
           {
-            file: "Stories.src/common/start.ts",
+            file: "src/Stories.src/common/start.ts",
             line: 3,
             col: 1,
             message: "词汇层未知词 nope",
@@ -598,8 +608,8 @@ export default extension;
 
   it("扩展放行：清单声明 ⇒ report.extensions + 产物含扩展 op（含往返幂等）", async () => {
     const root = makeProject("ext-ok", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": extStory,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": extStory,
       "extensions/demo.ts": EXT_DEMO,
       "Resources/project.json": MANIFEST_EXT,
     });
@@ -619,8 +629,8 @@ export default extension;
 
   it("故意错误：用了扩展 op 但清单未声明 ⇒ 构建期拦截（带指针 + 零写盘）", async () => {
     const root = makeProject("ext-undeclared", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": extStory,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": extStory,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -631,8 +641,8 @@ export default extension;
 
   it("故意错误：extensions 声明非数组 ⇒ fail-closed", async () => {
     const root = makeProject("ext-not-array", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
       "Resources/project.json": `{
         "formatVersion": 1,
         "name": "演示工程",
@@ -646,8 +656,8 @@ export default extension;
 
   it("故意错误：声明条目为空字符串 ⇒ fail-closed", async () => {
     const root = makeProject("ext-empty-entry", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
       "extensions/demo.ts": EXT_DEMO,
       "Resources/project.json": `{
         "formatVersion": 1,
@@ -662,8 +672,8 @@ export default extension;
 
   it("故意错误：声明模块不存在 ⇒ 装载失败带说明符定位", async () => {
     const root = makeProject("ext-missing", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
       "Resources/project.json": `{
         "formatVersion": 1,
         "name": "演示工程",
@@ -677,8 +687,8 @@ export default extension;
 
   it("故意错误：声明模块默认导出不是 OpExtension ⇒ 形状校验拒绝（带说明符定位）", async () => {
     const root = makeProject("ext-shape", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
       "extensions/demo.ts": `export default 42;\n`,
       "Resources/project.json": MANIFEST_EXT,
     });
@@ -687,8 +697,8 @@ export default extension;
 
   it("边界：声明了扩展但故事未用（含无 ops 的状态型扩展）⇒ 放行", async () => {
     const root = makeProject("ext-unused", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
       "extensions/demo.ts": EXT_DEMO,
       "extensions/stateful.ts": EXT_STATEFUL,
       "Resources/project.json": `{
@@ -709,8 +719,8 @@ export default extension;
 
   it("边界：内建 op 故事 + 无扩展声明 ⇒ 行为零变化（零装载）", async () => {
     const root = makeProject("ext-builtin", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
       "Resources/project.json": MANIFEST,
     });
     const report = await buildStories(root);
@@ -738,13 +748,13 @@ export default function start(): void {
   const CELL_LIB = `export function helperGuard(ctx: unknown, args: unknown): void {}\n`;
 
   const genOf = (root: string): string =>
-    readFileSync(join(root, "Stories.src/gen/fun_register.g.ts"), "utf8");
+    readFileSync(join(root, "src/gen/fun_register.g.ts"), "utf8");
 
   it("拟态旅程：内联 + 导入引用 → 生成物（实现/重写说明符/类型扩充）→ 幂等零差量", async () => {
     const root = makeProject("cell-happy", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": CELL_STORY,
-      "Stories.src/common/tools.ts": CELL_LIB,
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": CELL_STORY,
+      "src/Stories.src/common/tools.ts": CELL_LIB,
       "Resources/project.json": MANIFEST,
     });
     const report = await buildStories(root);
@@ -757,9 +767,10 @@ export default function start(): void {
     expect(gen).toContain("export const guards: Record<string, GuardFn> = {");
     // 内联字面量原文落生成物
     expect(gen).toContain('"gold-non-negative": (ctx, args) => {');
-    // 导入引用 + 相对说明符按 gen/ 位置重写（common/ 下的 ./tools → ../common/tools）
+    // 导入引用 + 相对说明符按生成物位置重写：生成物在 src/gen/、源根在 src/Stories.src/，
+    // 故 common/ 下的 ./tools 要经源根回指（../Stories.src/common/tools）
     expect(gen).toContain('"helper-guard": helperGuard,');
-    expect(gen).toContain('from "../common/tools"');
+    expect(gen).toContain('from "../Stories.src/common/tools"');
     // 类型扩充（vue-router typed-routes 机制）
     expect(gen).toContain('declare module "@lingfan-engine/editor"');
     expect(gen).toContain('"gold-non-negative": 1;');
@@ -774,15 +785,15 @@ export default function start(): void {
   it('③去重：同名同实现写两处 ⇒ 合并为一条（"dup" 落两处：条目 + 类型扩充）', async () => {
     const impl = `cell("dup", (ctx, args) => { ctx.get("x"); });`;
     const root = makeProject("cell-dedupe", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": `import { script } from "@lingfan-engine/editor";
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": `import { script } from "@lingfan-engine/editor";
 const { cell, say } = script;
 export const a = ${impl}
 export default function start(): void {
   say("x");
 }
 `,
-      "Stories.src/lib/more.ts": `import { script } from "@lingfan-engine/editor";
+      "src/Stories.src/lib/more.ts": `import { script } from "@lingfan-engine/editor";
 const { cell } = script;
 export const b = ${impl}
 `,
@@ -796,15 +807,15 @@ export const b = ${impl}
 
   it("故意错误：同名不同实现 ⇒ fail-closed（带两处定位）", async () => {
     const root = makeProject("cell-conflict", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": `import { script } from "@lingfan-engine/editor";
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": `import { script } from "@lingfan-engine/editor";
 const { cell, say } = script;
 export const a = cell("dup", (ctx, args) => { ctx.get("x"); });
 export default function start(): void {
   say("x");
 }
 `,
-      "Stories.src/lib/more.ts": `import { script } from "@lingfan-engine/editor";
+      "src/Stories.src/lib/more.ts": `import { script } from "@lingfan-engine/editor";
 const { cell } = script;
 export const b = cell("dup", (ctx, args) => { ctx.get("y"); });
 `,
@@ -817,8 +828,8 @@ export const b = cell("dup", (ctx, args) => { ctx.get("y"); });
 
   it("故意错误：内联实现引用模块级本地 const ⇒ fail-closed（不做传递闭包）", async () => {
     const root = makeProject("cell-local-ref", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": `import { script } from "@lingfan-engine/editor";
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": `import { script } from "@lingfan-engine/editor";
 const { cell } = script;
 const 阈值 = 10;
 export const check = cell("check", (ctx, args) => { ctx.get(阈值); });
@@ -836,8 +847,8 @@ export default function start(): void {
 
   it("故意错误：故事用了未声明的守卫名 ⇒ 名字闸门 fail-closed（带指针）", async () => {
     const root = makeProject("cell-gate", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": story("start", `  guard("nope");`),
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": story("start", `  guard("nope");`),
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -847,8 +858,8 @@ export default function start(): void {
 
   it("故意错误：调用表达式（参数固化）= L2 ⇒ 显式不支持", async () => {
     const root = makeProject("cell-baked", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": `import { script } from "@lingfan-engine/editor";
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": `import { script } from "@lingfan-engine/editor";
 import { baked } from "./tools";
 const { cell } = script;
 export const a = cell("baked-entry", baked(1));
@@ -856,7 +867,7 @@ export default function start(): void {
   say("x");
 }
 `,
-      "Stories.src/common/tools.ts": `export const baked = (n: number) => (ctx: unknown, args: unknown): void => {};\n`,
+      "src/Stories.src/common/tools.ts": `export const baked = (n: number) => (ctx: unknown, args: unknown): void => {};\n`,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(/参数固化属 L2/);
@@ -864,14 +875,14 @@ export default function start(): void {
 
   it("③边界：无 cell 声明 + 无守卫引用 ⇒ 零生成；陈旧生成物清理", async () => {
     const root = makeProject("cell-absent", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": SYNTHETIC_STORY,
-      "Stories.src/gen/fun_register.g.ts": "/* 陈旧生成物 */",
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/gen/fun_register.g.ts": "/* 陈旧生成物 */",
       "Resources/project.json": MANIFEST,
     });
     const report = await buildStories(root);
     expect(report.functions).toEqual([]);
-    expect(report.removed).toContain("Stories.src/gen/fun_register.g.ts");
+    expect(report.removed).toContain("src/gen/fun_register.g.ts");
     expect(() => genOf(root)).toThrow();
   });
 
@@ -881,7 +892,7 @@ export default function start(): void {
     const realRoot = fileURLToPath(
       new URL("../../apps/playground", import.meta.url),
     );
-    const sourcesDir = join(realRoot, "Stories.src");
+    const sourcesDir = join(realRoot, "src", "Stories.src");
     const files = new Map<string, string>();
     const walk = (dir: string, rel = ""): void => {
       for (const name of readdirSync(dir).sort()) {
@@ -895,14 +906,20 @@ export default function start(): void {
       }
     };
     walk(sourcesDir);
-    const { errors, scan } = scanCells(files);
+    // 真实工程里 UI 导入是合法语句（由 UI 通道登记、不搬运）；cell 扫描器要被告知
+    // 这层边界，否则它按「越出源根」把 UI 导入判成不可搬运——与整链构建口径不一致。
+    const uiChannel = createUiChannel(sourcesDir);
+    const { errors, scan } = scanCells(files, {
+      isForeignImport: (_fromRel, spec) =>
+        uiChannel.classify(_fromRel, spec).kind !== "not-ui",
+    });
     expect(errors).toEqual([]);
     expect(scan.guards.map((g) => g.name)).toEqual([
       "gold-non-negative",
       "tour-open",
     ]);
     expect(renderFunRegister(scan)).toBe(
-      readFileSync(join(sourcesDir, "gen", "fun_register.g.ts"), "utf8"),
+      readFileSync(join(realRoot, "src", "gen", "fun_register.g.ts"), "utf8"),
     );
   });
 });
@@ -917,9 +934,9 @@ describe("stories:build v2 · 状态根名自定义（export declare const <根�
 
   it("发现：根名 s ⇒ set 键剥根为裸 player.gold（前缀只是源侧命名空间）", async () => {
     const root = makeProject("state-root-custom", {
-      "Stories.src/config.ts": config(["common"]) + stateValues,
-      "Stories.src/lib/state.ts": stateRoot("s"),
-      "Stories.src/common/start.ts": story(
+      "src/Stories.src/config.ts": config(["common"]) + stateValues,
+      "src/Stories.src/lib/state.ts": stateRoot("s"),
+      "src/Stories.src/common/start.ts": story(
         "start",
         `  s.player.gold += 20;\n  say("x");\n`,
       ),
@@ -937,9 +954,9 @@ describe("stories:build v2 · 状态根名自定义（export declare const <根�
 
   it("冲突：根名 say 与词汇层词函数同名 ⇒ fail-closed（带声明定位）", async () => {
     const root = makeProject("state-root-conflict", {
-      "Stories.src/config.ts": config(["common"]) + stateValues,
-      "Stories.src/lib/state.ts": stateRoot("say"),
-      "Stories.src/common/start.ts": story(
+      "src/Stories.src/config.ts": config(["common"]) + stateValues,
+      "src/Stories.src/lib/state.ts": stateRoot("say"),
+      "src/Stories.src/common/start.ts": story(
         "start",
         `  say.player.gold += 20;\n`,
       ),
@@ -952,8 +969,8 @@ describe("stories:build v2 · 状态根名自定义（export declare const <根�
 
   it("回退：无状态根声明 ⇒ 默认根 state 仍然生效（现状零迁移）", async () => {
     const root = makeProject("state-root-fallback", {
-      "Stories.src/config.ts": config(["common"]),
-      "Stories.src/common/start.ts": story(
+      "src/Stories.src/config.ts": config(["common"]),
+      "src/Stories.src/common/start.ts": story(
         "start",
         `  state.player.gold += 20;\n  say("x");\n`,
       ),

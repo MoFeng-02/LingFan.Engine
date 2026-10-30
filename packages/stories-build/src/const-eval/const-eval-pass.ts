@@ -7,6 +7,10 @@
  * `import type` 整句编译期擦除，不触发求值；副作用导入同样不触发（图谱层自有
  * fail-closed 诊断）。
  *
+ * 能展开成工程 `paths` 别名的说明符也不算 npm 值导入：别名指向的是工程内的文件，
+ * 由图谱层按普通模块连边。这里只问一次解析器（「有模式命中吗」），不判存在性与越界——
+ * 那两类错误由图谱层给出各自的诊断，本段提前拦会把别名笔误误报成 npm 导入。
+ *
  * fail-closed（一次报全部）：
  * - 故事文件含 node_modules 值导入 → 定向诊断（求值器只作用于纯模块；故事文件的
  *   default 函数导出必然不可序列化，npm 值请收敛为纯模块的导出 const 再相对导入）；
@@ -26,6 +30,7 @@ import {
   StoryBuildError,
   type StoriesBuildTexts,
 } from "../shared/index.ts";
+import { expandAlias, type PathsConfig } from "../pipeline/tsconfig-paths.ts";
 
 /** 词汇层两包不触发求值：editor 是词汇出口（图谱层按词/命名空间绑定），engine 不参与创作导入。 */
 const RESERVED_SPECS: ReadonlySet<string> = new Set([
@@ -39,7 +44,11 @@ interface NpmValueImport {
   col: number;
 }
 
-function findNpmValueImports(rel: string, text: string): NpmValueImport[] {
+function findNpmValueImports(
+  rel: string,
+  text: string,
+  paths: PathsConfig | null,
+): NpmValueImport[] {
   const sf = ts.createSourceFile(rel, text, ts.ScriptTarget.Latest, true);
   const hits: NpmValueImport[] = [];
   for (const stmt of sf.statements) {
@@ -47,6 +56,8 @@ function findNpmValueImports(rel: string, text: string): NpmValueImport[] {
     if (!ts.isStringLiteral(stmt.moduleSpecifier)) continue;
     const spec = stmt.moduleSpecifier.text;
     if (spec.startsWith(".") || RESERVED_SPECS.has(spec)) continue;
+    // 工程别名指向工程内文件，不是 npm 值：留给图谱层按普通模块连边。
+    if (paths !== null && expandAlias(paths, spec).length > 0) continue;
     const clause = stmt.importClause;
     if (clause === undefined) continue; // 副作用导入：不触发求值（图谱层自有诊断）
     if (clause.isTypeOnly) continue; // import type：编译期擦除，不在 npm 值导入约束内
@@ -63,7 +74,10 @@ function findNpmValueImports(rel: string, text: string): NpmValueImport[] {
   return hits;
 }
 
-/** 求值段：返回喂给编译器的 constValues（无触发文件 = 空对象，行为与未接入一致）。 */
+/**
+ * 求值段：返回喂给编译器的 constValues（无触发文件 = 空对象，行为与未接入一致）。
+ * `paths` 为工程 `tsconfig.json` 的别名配置——别名说明符指向工程内文件，不算 npm 值导入。
+ */
 export async function runConstEvalPass(
   sourcesDir: string,
   storyFiles: readonly string[],
@@ -71,6 +85,7 @@ export async function runConstEvalPass(
   sourcesDirName: string,
   texts: StoriesBuildTexts = defaultStoriesBuildTexts,
   timeoutMs?: number,
+  paths: PathsConfig | null = null,
 ): Promise<CompilerConstValues> {
   const storySet = new Set(storyFiles);
   const failures: string[] = [];
@@ -83,7 +98,7 @@ export async function runConstEvalPass(
     } catch {
       continue; // 文件消失等读取异常交由源发现/编译段按既有路径报错
     }
-    const hits = findNpmValueImports(rel, text);
+    const hits = findNpmValueImports(rel, text, paths);
     if (hits.length === 0) continue;
     if (storySet.has(rel)) {
       for (const hit of hits) {

@@ -2,7 +2,7 @@
  * config.ts 契约测试（config 化换道后的声明通道）。
  *
  * 契约口径：
- * `Stories.src/config.ts` 两种声明形态等价，单次求值一并取出，双形态混用 fail-closed：
+ * `src/Stories.src/config.ts` 两种声明形态等价，单次求值一并取出，双形态混用 fail-closed：
  *   - default 对象（推荐）：export default { folders, start, version?, vars?, state? }
  *     —— 强类型单出口（StoriesConfig 全局类型补全）；
  *   - named exports：export const folders/start/version/vars/state（兼容既有工程）。
@@ -76,17 +76,17 @@ function readDefines(root: string): Record<string, unknown> {
 }
 
 function readTypegen(root: string): string {
-  return readFileSync(join(root, "Stories.src/gen/stories.gen.d.ts"), "utf8");
+  return readFileSync(join(root, "src/gen/stories.gen.d.ts"), "utf8");
 }
 
 describe("config.ts 契约 · 四导出求值（拟态用户）", () => {
   it("folders/start/vars/state 全链：state 与 vars 键分别落 defines 与插值注册表", async () => {
     const root = makeProject("four-exports", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["ch1"]) +
         `export const vars = defineVars({ "bag.size": "num" });\n` +
         `export const state = { player: { gold: 100 } } as const;\n`,
-      "Stories.src/ch1/start.ts": story(
+      "src/Stories.src/ch1/start.ts": story(
         "start",
         `  state.player.gold += 20;\n  say("金币 {player.gold}，背包 {bag.size}");\n`,
       ),
@@ -104,12 +104,12 @@ describe("config.ts 契约 · 四导出求值（拟态用户）", () => {
 
   it(" Sex 枚举相对导入求值：descriptor 枚举 type/default 走同一降维文法（任务点④）", async () => {
     const root = makeProject("sex-enum", {
-      "Stories.src/lib/sex.ts": `export enum Sex {\n  Male = "male",\n  Female = "female",\n}\n`,
-      "Stories.src/config.ts":
+      "src/Stories.src/lib/sex.ts": `export enum Sex {\n  Male = "male",\n  Female = "female",\n}\n`,
+      "src/Stories.src/config.ts":
         config(["ch1"]) +
         `import { Sex } from "./lib/sex";\n` +
         `export const state = {\n  player: { sex: { type: Sex, default: Sex.Male } },\n} as const;\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await buildStories(root);
@@ -121,11 +121,11 @@ describe("config.ts 契约 · 四导出求值（拟态用户）", () => {
 describe("config.ts 契约 · 形态 B（define 累积）", () => {
   it("点路径与对象实参混用：合并树经同一降维文法落 defines", async () => {
     const root = makeProject("define-mixed", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["ch1"]) +
         `define("player.gold", 100);\n` +
         `define({ dice: { type: "number", default: 1 } });\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await buildStories(root);
@@ -134,13 +134,13 @@ describe("config.ts 契约 · 形态 B（define 累积）", () => {
 
   it("同键二次定义与形状冲突 ⇒ 一次报全部（fail-closed，不后写覆盖）", async () => {
     const root = makeProject("define-conflicts", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["ch1"]) +
         `define("a.b", 1);\n` +
         `define("a.b", 2);\n` +
         `define("c", 1);\n` +
         `define({ c: { d: 2 } });\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(/define 声明冲突（2 条）/);
@@ -154,8 +154,8 @@ describe("config.ts 契约 · 形态 B（define 累积）", () => {
 
   it("点路径含空段 ⇒ 拒（a..b、.a、a. 形态一律 fail-closed）", async () => {
     const root = makeProject("define-empty-segment", {
-      "Stories.src/config.ts": config(["ch1"]) + `define("a..b", 1);\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/config.ts": config(["ch1"]) + `define("a..b", 1);\n`,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(/点路径含空段/);
@@ -163,8 +163,8 @@ describe("config.ts 契约 · 形态 B（define 累积）", () => {
 
   it("对象字面量点键不拦在合并层 ⇒ 降维段 dotKeyError 统一守卫", async () => {
     const root = makeProject("define-dotted-key", {
-      "Stories.src/config.ts": config(["ch1"]) + `define({ "a.b": 1 });\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/config.ts": config(["ch1"]) + `define({ "a.b": 1 });\n`,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(/点路径键不支持/);
@@ -172,8 +172,8 @@ describe("config.ts 契约 · 形态 B（define 累积）", () => {
 
   it("define 值不可序列化 ⇒ 拒（值文法与 state 同规）", async () => {
     const root = makeProject("define-bad-value", {
-      "Stories.src/config.ts": config(["ch1"]) + `define("a", () => 1);\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/config.ts": config(["ch1"]) + `define("a", () => 1);\n`,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(/define\("a"\)/);
@@ -184,11 +184,11 @@ describe("config.ts 契约 · 形态 B（define 累积）", () => {
 describe("config.ts 契约 · 形态互斥与缺省（fail-closed / 边界）", () => {
   it("state 导出与 define() 并存 ⇒ 形态 A/B 二选一（同文件混用即报错）", async () => {
     const root = makeProject("ab-mutual", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["ch1"]) +
         `export const state = { player: { gold: 100 } } as const;\n` +
         `define("dice", 1);\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(/形态 A\/B 二选一/);
@@ -196,8 +196,8 @@ describe("config.ts 契约 · 形态互斥与缺省（fail-closed / 边界）", 
 
   it("皆缺省：只有 folders/start 也构建绿（空 schema 贡献合法）", async () => {
     const root = makeProject("bare-config", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     const report = await buildStories(root);
@@ -207,8 +207,8 @@ describe("config.ts 契约 · 形态互斥与缺省（fail-closed / 边界）", 
 
   it("缺少必需导出（folders）⇒ fail-closed 并说明契约", async () => {
     const root = makeProject("missing-folders", {
-      "Stories.src/config.ts": `export const start = "start.ts";\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/config.ts": `export const start = "start.ts";\n`,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(/缺少 folders 导出/);
@@ -219,9 +219,9 @@ describe("config.ts 契约 · 形态互斥与缺省（fail-closed / 边界）", 
 
   it("state 导出不是键集对象 ⇒ fail-closed（形态 A 值文法）", async () => {
     const root = makeProject("bad-state-shape", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["ch1"]) + `export const state = [1, 2];\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(/state 须为键集对象/);
@@ -231,14 +231,14 @@ describe("config.ts 契约 · 形态互斥与缺省（fail-closed / 边界）", 
 describe("config.ts 契约 · default 对象形态（强类型单出口）", () => {
   it("default 全链：folders/start/vars/state 与 named exports 等值落 defines 与插值注册表", async () => {
     const root = makeProject("default-form", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         `export default {\n` +
         `  folders: ["ch1"],\n` +
         `  start: "start.ts",\n` +
         `  vars: defineVars({ "bag.size": "num" }),\n` +
         `  state: { player: { gold: 100 } } as const,\n` +
         `} satisfies StoriesConfig;\n`,
-      "Stories.src/ch1/start.ts": story(
+      "src/Stories.src/ch1/start.ts": story(
         "start",
         `  state.player.gold += 20;\n  say("金币 {player.gold}，背包 {bag.size}");\n`,
       ),
@@ -252,13 +252,13 @@ describe("config.ts 契约 · default 对象形态（强类型单出口）", () 
 
   it("default + define() 累积正交：形态 B 与 default 对象并存", async () => {
     const root = makeProject("default-with-define", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         `export default {\n` +
         `  folders: ["ch1"],\n` +
         `  start: "start.ts",\n` +
         `};\n` +
         `define("player.gold", 100);\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     const report = await buildStories(root);
@@ -268,8 +268,8 @@ describe("config.ts 契约 · default 对象形态（强类型单出口）", () 
 
   it("default 缺 folders ⇒ fail-closed 并说明契约", async () => {
     const root = makeProject("default-missing-folders", {
-      "Stories.src/config.ts": `export default { start: "start.ts" };\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/config.ts": `export default { start: "start.ts" };\n`,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -279,8 +279,8 @@ describe("config.ts 契约 · default 对象形态（强类型单出口）", () 
 
   it("default 不是对象 ⇒ fail-closed", async () => {
     const root = makeProject("default-not-object", {
-      "Stories.src/config.ts": `export default "main.ts";\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/config.ts": `export default "main.ts";\n`,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -290,10 +290,10 @@ describe("config.ts 契约 · default 对象形态（强类型单出口）", () 
 
   it("default 与 named exports 混用 ⇒ fail-closed（二选一）", async () => {
     const root = makeProject("mixed-forms", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         `export default { folders: ["ch1"], start: "start.ts" };\n` +
         `export const vars = defineVars({ extra: "num" });\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -307,15 +307,15 @@ describe("config.ts 契约 · type 槽并集文法（成员槽位取并集，nul
 
   it("多元素数组 type 槽位 = 并集：default 落在成员值域内即合法（null 空值初值）", async () => {
     const root = makeProject("union-legal", {
-      "Stories.src/lib/sex.ts": SEX_LIB,
-      "Stories.src/config.ts":
+      "src/Stories.src/lib/sex.ts": SEX_LIB,
+      "src/Stories.src/config.ts":
         config(["ch1"]) +
         `import { Sex } from "./lib/sex";\n` +
         `define("hp", { type: ["number", Sex, null], default: null });\n` +
         `define("mood", { type: ["string", Sex], default: Sex.Female });\n` +
         `define("tags", { type: [["number", "string"]], default: [] });\n` +
         `define("team", { type: [Sex], default: [] });\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await buildStories(root);
@@ -328,12 +328,12 @@ describe("config.ts 契约 · type 槽并集文法（成员槽位取并集，nul
 
   it("形态 A 同文法：as const 元组并集 + null default 走同一降维", async () => {
     const root = makeProject("union-form-a", {
-      "Stories.src/lib/sex.ts": SEX_LIB,
-      "Stories.src/config.ts":
+      "src/Stories.src/lib/sex.ts": SEX_LIB,
+      "src/Stories.src/config.ts":
         config(["ch1"]) +
         `import { Sex } from "./lib/sex";\n` +
         `export const state = {\n  medal: { type: ["string", Sex, null] as const, default: null },\n} as const;\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await buildStories(root);
@@ -342,10 +342,10 @@ describe("config.ts 契约 · type 槽并集文法（成员槽位取并集，nul
 
   it("default 不在任何成员值域内 ⇒ fail-closed", async () => {
     const root = makeProject("union-bad-default", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["ch1"]) +
         `define("hp", { type: ["number", "string"], default: true });\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(
@@ -355,10 +355,10 @@ describe("config.ts 契约 · type 槽并集文法（成员槽位取并集，nul
 
   it("未知并集成员 ⇒ 一次报全部（fail-closed）", async () => {
     const root = makeProject("union-bad-member", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["ch1"]) +
         `define("hp", { type: ["number", true, { a: "x", b: null }, null], default: null });\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(/并集第 2 个成员无法识别/);
@@ -372,20 +372,16 @@ describe("config.ts 契约 · 回归", () => {
   it("state 降维诊断挂在 config.ts 定位（STATE_SCHEMA_REL 硬编码已退役）", async () => {
     // 裸数组拒（降维文法）+ 定位锚定：诊断文件必须是 config.ts，而不是旧 lib/state.ts。
     const root = makeProject("diag-location", {
-      "Stories.src/config.ts":
+      "src/Stories.src/config.ts":
         config(["ch1"]) + `export const state = { bag: ["sword"] };\n`,
-      "Stories.src/ch1/start.ts": START_STORY,
+      "src/Stories.src/ch1/start.ts": START_STORY,
       "Resources/project.json": MANIFEST,
     });
     await expect(buildStories(root)).rejects.toThrow(/数组值请用 descriptor/);
     await expect(buildStories(root)).rejects.toThrow(/config\.ts:1:1/);
     await expect(buildStories(root)).rejects.not.toThrow(/lib\/state\.ts/);
     // fail-closed：不产类型面文件。
-    expect(existsSync(join(root, "Stories.src/gen/stories.gen.d.ts"))).toBe(
-      false,
-    );
-    expect(existsSync(join(root, "Stories.src/gen/state.gen.d.ts"))).toBe(
-      false,
-    );
+    expect(existsSync(join(root, "src/gen/stories.gen.d.ts"))).toBe(false);
+    expect(existsSync(join(root, "src/gen/state.gen.d.ts"))).toBe(false);
   });
 });

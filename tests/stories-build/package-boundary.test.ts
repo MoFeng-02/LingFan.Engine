@@ -28,9 +28,20 @@ const PACKAGE_SOURCE_FILES = import.meta.glob(
   },
 ) as Record<string, string>;
 
-/** 全仓测试与宿主侧残留引用扫描面（源码域）；测试域单独一张 */
+/** 全仓测试与宿主侧残留引用扫描面（源码域）；测试域单独一张。
+ *
+ * 排除两类不归本扫描面的内容：
+ * - `Stories.src/` 是故事源（作者手写、另有自己的 tsconfig），不是宿主侧源码；
+ * - `gen/` 是构建生成物，路径由其生成器决定。
+ * 两者都在 `src/` 之下却不属于「谁还引用旧包路径」的问题域；纳入还会与并行的
+ * 探针用例抢同一批文件（探针写入后即删，eager glob 读取时可能扑空）。 */
 const WORKSPACE_SOURCE_FILES = import.meta.glob(
-  ["../../apps/*/src/**/*.{ts,vue}", "../../packages/*/src/**/*.ts"],
+  [
+    "../../apps/*/src/**/*.{ts,vue}",
+    "../../packages/*/src/**/*.ts",
+    "!../../apps/*/src/Stories.src/**",
+    "!../../apps/*/src/gen/**",
+  ],
   { eager: true, query: "?raw", import: "default" },
 ) as Record<string, string>;
 

@@ -80,8 +80,8 @@ function calls(commands: readonly Command[]): Command[] {
 describe("call into：语句级降糖（拟态旅程）", () => {
   it("const r = double(3) ⇒ call 带 into，且不再发 letVar 声明 r", async () => {
     const root = makeProject("statement", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": `${WORDS}export function double(v: number): number {
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": `${WORDS}export function double(v: number): number {
   return v * 2;
 }
 
@@ -109,12 +109,12 @@ export default function start(): void {
 
   it("别名直连：const r = dd(3) ⇒ target/refs 用声明名 double，func 落在声明文件", async () => {
     const root = makeProject("alias", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/lib.ts": `${WORDS}export function double(v: number): number {
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/lib.ts": `${WORDS}export function double(v: number): number {
   return v * 2;
 }
 `,
-      "Stories.src/ch1/start.ts": `${WORDS}import { double as dd } from "./lib";
+      "src/Stories.src/ch1/start.ts": `${WORDS}import { double as dd } from "./lib";
 
 export default function start(): void {
   const r = dd(3);
@@ -141,8 +141,8 @@ export default function start(): void {
 
   it("嵌套函数体内语句级取值：call into 落在内层 func body（帧各自结算）", async () => {
     const root = makeProject("nested", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
   function outer(): void {
     function inner(v: number): number {
       return v + 1;
@@ -167,8 +167,8 @@ export default function start(): void {
 
   it("实参在当前作用域求值、先于 into 名声明：const y = double(x) 读到的是外层 x", async () => {
     const root = makeProject("shadow", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": `${WORDS}export function double(v: number): number {
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": `${WORDS}export function double(v: number): number {
   return v * 2;
 }
 
@@ -191,8 +191,8 @@ export default function start(): void {
 describe("call into：故意错误 fail-closed", () => {
   it("表达式位取函数返回值 ⇒ 拒绝并指向语句级写法（插值与赋值右值两处）", async () => {
     const template = makeProject("bad-template", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": `${WORDS}export function double(v: number): number {
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": `${WORDS}export function double(v: number): number {
   return v * 2;
 }
 
@@ -207,8 +207,8 @@ export default function start(): void {
     );
 
     const rhs = makeProject("bad-rhs", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": `${WORDS}export function double(v: number): number {
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": `${WORDS}export function double(v: number): number {
   return v * 2;
 }
 
@@ -225,8 +225,8 @@ export default function start(): void {
 
   it("未知 callee 的语句级取值仍报未知调用目标（不降糖）", async () => {
     const root = makeProject("unknown-callee", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
   const x = ghost();
   say("x={x}");
 }
@@ -240,8 +240,8 @@ export default function start(): void {
 describe("return 带值与列体边界", () => {
   it('裸 return 与带值 return 逐字节：{op:"return"} / {op:"return", value}', async () => {
     const root = makeProject("return-forms", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": `${WORDS}export function bare(): void {
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": `${WORDS}export function bare(): void {
   return;
 }
 
@@ -275,8 +275,8 @@ export default function start(): void {
 
   it("列体顶层 return ⇒ 报错且不产该列（fail-closed）", async () => {
     const root = makeProject("top-return", {
-      "Stories.src/config.ts": config(["ch1"]),
-      "Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
+      "src/Stories.src/config.ts": config(["ch1"]),
+      "src/Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
   say("前");
   return;
 }

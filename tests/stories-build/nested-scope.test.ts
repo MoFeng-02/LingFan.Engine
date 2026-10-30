@@ -102,8 +102,8 @@ function runStory(
 }
 
 const PROBE_FILES = {
-  "Stories.src/config.ts": config(["ch1"], "start.ts"),
-  "Stories.src/ch1/start.ts": `${WORDS}function outer(a: string): void {
+  "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+  "src/Stories.src/ch1/start.ts": `${WORDS}function outer(a: string): void {
   function inner(): void {
     say(\`内层读到：\${a}\`);
   }
@@ -147,8 +147,8 @@ describe("嵌套函数作用域下传（回归）", () => {
 
   it("拟态旅程：列体 let 与同层互调（嵌套函数引用列级 let、兄弟函数互调）", async () => {
     const root = makeProject("let-and-siblings", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/start.ts": `${WORDS}export default function start(): void {
   let greeting = "你好";
   function shout(): void {
     say(\`\${greeting}，世界\`);
@@ -178,8 +178,8 @@ describe("嵌套函数作用域下传（回归）", () => {
 
   it("拟态旅程：跨两层深链（孙层读祖父参数，链路逐级下传）", async () => {
     const root = makeProject("deep-chain", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `${WORDS}function outer(tag: string): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/start.ts": `${WORDS}function outer(tag: string): void {
   function mid(): void {
     function leaf(): void {
       say(\`深处：\${tag}\`);
@@ -213,8 +213,8 @@ export default function start(): void {
 
   it("边界：内层 let 遮蔽外层参数 —— 本层赋值写本层，外层变量原样", async () => {
     const root = makeProject("shadow", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `${WORDS}function outer(label: string): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/start.ts": `${WORDS}function outer(label: string): void {
   function inner(): void {
     let label = "内层";
     label = "改写";
@@ -243,8 +243,8 @@ export default function start(): void {
 
   it("故意错误：内层给外层变量赋值 ⇒ fail-closed（运行期只会假写入）且零写盘", async () => {
     const root = makeProject("cross-write", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `${WORDS}function outer(count: number): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/start.ts": `${WORDS}function outer(count: number): void {
   function bump(): void {
     count = count + 1;
   }
@@ -268,8 +268,8 @@ export default function start(): void {
 
   it("既有文案锚定：本外层都未命中的赋值与读取仍走原诊断（不因新分支改写）", async () => {
     const bothMiss = makeProject("both-miss", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `${WORDS}function outer(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/start.ts": `${WORDS}function outer(): void {
   function bump(): void {
     ghost = 1;
   }
@@ -287,8 +287,8 @@ export default function start(): void {
     );
 
     const unknownRead = makeProject("unknown-read", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `${WORDS}function outer(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/start.ts": `${WORDS}function outer(): void {
   function peek(): void {
     say(\`\${ghost}\`);
   }
@@ -319,8 +319,8 @@ export default function start(): void {
 
   it("边界：嵌套函数声明而未被调用 ⇒ 照常发射 func 注册，引擎零错误跑完", async () => {
     const root = makeProject("uncalled", {
-      "Stories.src/config.ts": config(["ch1"], "start.ts"),
-      "Stories.src/ch1/start.ts": `${WORDS}function outer(): void {
+      "src/Stories.src/config.ts": config(["ch1"], "start.ts"),
+      "src/Stories.src/ch1/start.ts": `${WORDS}function outer(): void {
   function unused(): void {
     say("从未被调");
   }

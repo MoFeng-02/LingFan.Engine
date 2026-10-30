@@ -53,13 +53,19 @@ export function lineOf(sf: ts.SourceFile, node: ts.Node): number {
 }
 
 /**
- * 相对说明符重写：源文件（相对 Stories.src 的目录 `fromDir`）→ 生成物（`gen/`，恰深一层）。
- * 解析到 Stories.src 内的规范相对路径后加 `../` 前缀；越出根 = null（调用方 fail-closed）；
+ * 相对说明符重写：源文件（相对源根的目录 `fromDir`）→ 生成物所在目录。
+ *
+ * `rootPrefix` = 从生成物目录回到源根的相对路径（默认布局下 `"../Stories.src"`：
+ * 生成物在 `src/gen/`，源根在 `src/Stories.src/`，两者同级）。缺省 `".."` = 生成物
+ * 就在源根内一层（旧布局）。调用方按工程布局算好传进来，本函数不猜目录。
+ *
+ * 解析到源根内的规范相对路径后拼前缀；越出根 = null（调用方 fail-closed）；
  * 裸说明符（包名）原样。
  */
 export function adjustSpecifier(
   specifier: string,
   fromDir: string,
+  rootPrefix = "..",
 ): string | null {
   if (!specifier.startsWith("./") && !specifier.startsWith("../"))
     return specifier;
@@ -67,22 +73,24 @@ export function adjustSpecifier(
   for (const part of `${fromDir}/${specifier}`.split("/")) {
     if (part === "" || part === ".") continue;
     if (part === "..") {
-      if (segments.pop() === undefined) return null; // 越出 Stories.src 根
+      if (segments.pop() === undefined) return null; // 越出源根
       continue;
     }
     segments.push(part);
   }
   if (segments.length === 0) return null;
-  return `../${segments.join("/")}`;
+  return `${rootPrefix}/${segments.join("/")}`;
 }
 
-/** 文件顶层 import 声明 → 绑定名集 + 「按 gen/ 位置重写过」的语句文本 */
+/** 文件顶层 import 声明 → 绑定名集 + 「按生成物位置重写过」的语句文本 */
 export function collectFileImports(
   sf: ts.SourceFile,
   text: string,
   fromDir: string,
   issues: CellIssue[],
   relPath: string,
+  rootPrefix = "..",
+  isForeignImport?: (fromRel: string, specifier: string) => boolean,
 ): FileImports {
   const statements: Array<{ adjustedText: string; bindings: string[] }> = [];
   const bindingNames = new Set<string>();
@@ -101,11 +109,17 @@ export function collectFileImports(
       }
     }
     for (const binding of bindings) bindingNames.add(binding);
-    // 说明符重写（生成物在 gen/，比源文件深一层）
+    // `import type` 只进类型面，运行期不存在 ⇒ 不搬运、也不受源根沙箱约束
+    // （与编译图的导入扫描同一口径：`clause.isTypeOnly` 先放行）
+    if (clause?.isTypeOnly === true) continue;
+    // 说明符重写（生成物在源根之外的同级目录，比源文件深一层）
     const raw = statement.moduleSpecifier;
     let adjustedText = text.slice(statement.getStart(sf), statement.getEnd());
     if (ts.isStringLiteralLike(raw)) {
-      const adjusted = adjustSpecifier(raw.text, fromDir);
+      // 由别的通道处置的导入（如 UI 句柄）不搬进生成物，也不受源根沙箱约束：
+      // 生成注册物只需要 cell 实现文本，句柄是构建期事实，运行期不再需要那条语句。
+      if (isForeignImport?.(relPath, raw.text) === true) continue;
+      const adjusted = adjustSpecifier(raw.text, fromDir, rootPrefix);
       if (adjusted === null) {
         issues.push({
           message: `cell 所在文件 import "${raw.text}" 越出 Stories.src——生成物无法搬运该导入`,

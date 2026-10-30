@@ -14,5 +14,7 @@ export {
 export {
   assertKnownGuards,
   assertKnownOps,
+  assertKnownUis,
+  assertUiImports,
   type GateOptions,
 } from "./gates.ts";
