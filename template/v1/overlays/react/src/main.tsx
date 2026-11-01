@@ -20,8 +20,8 @@ import {
   type StageDom,
 } from "./host";
 import { STORIES } from "./stories";
+import { controlsStore } from "./controls";
 import { mountStore } from "./mounts";
-import { screenStore } from "./screen";
 import { App } from "./App.tsx";
 
 /**
@@ -84,9 +84,8 @@ if (dom !== undefined) {
     // UI 挂载落法由 React 接管：`#mounts` 的子节点归 `UiHost` 渲染，
     // 宿主再往里写节点就会与 React 的渲染树打架（所以不传 mountsContainer）
     onMounts: (raw) => mountStore.set(raw),
-    // 屏幕落法同样由 React 接管：启动界面是渲染树上的组件（`StartScreen`），
-    // 交给宿主自己造节点会与 React 的渲染树打架（所以不传原生形态的落法）
-    onScreen: (view) => screenStore.set(view),
+    // 操作句柄另走一条路：值进 mountStore（随存档），句柄进 controlsStore（不进快照）
+    onControls: (controls) => controlsStore.set(controls),
   }).catch((error: unknown) => {
     reportBootFailure(dom, error);
   });

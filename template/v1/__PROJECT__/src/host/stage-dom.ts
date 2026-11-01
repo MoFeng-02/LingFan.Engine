@@ -20,9 +20,9 @@ export function must<T extends HTMLElement>(selector: string): T {
 /**
  * 按选择器取**可选**节点：缺失返回 `null`，不抛。
  *
- * 只给「有则增强、无则退化成没有该功能」的节点用——目前三个：偏好面板的容器、
- * 整屏页面容器、UI 挂载层容器。它们和 `must()` 的区别是**契约强度**：页面结构由
- * 叠加层重写时（Vue / React / 小程序各自的 `App`），那份页面可以选择不提供这些槽位，
+ * 只给「有则增强、无则退化成没有该功能」的节点用——目前两个：偏好面板的容器与
+ * UI 挂载层容器。它们和 `must()` 的区别是**契约强度**：页面结构由叠加层重写时
+ * （Vue / React / 小程序各自的 `App`），那份页面可以选择不提供这些槽位，
  * 此时对应功能不启用，游戏照常跑；而 `must()` 守的节点缺一个就是装配错误，必须当场抛。
  */
 export function optional<T extends HTMLElement>(selector: string): T | null {

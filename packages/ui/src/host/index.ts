@@ -29,6 +29,7 @@ export {
   type FrameLoopOptions,
   type FrameSource,
 } from "./frame-loop";
+export { firstGameColumn } from "./entry";
 export {
   createLayerView,
   type LayerView,

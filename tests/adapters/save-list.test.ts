@@ -1,5 +1,5 @@
 /**
- * 启动界面「继续」按钮的存档面契约测试：`SavePort.list()` → 挑槽 → 按钮状态。
+ * 存档面契约测试：`SavePort.list()` → 挑槽 → 「继续」入口状态。
  *
  * 守的是三件在演示工程里看不出来的事：
  *
@@ -15,7 +15,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { SavePort, SlotSummary } from "@lingfan-engine/core";
-import { continueSlot, latestSave, screenViewOf } from "@lingfan-engine/ui";
+import { continueSlot, latestSave } from "@lingfan-engine/ui";
 
 /**
  * 按契约造的存档端口替身：内存表，`list()` 按**乱序**返回。
@@ -83,19 +83,5 @@ describe("SavePort.list() → 继续按钮", () => {
     // ② 挑不出槽 = slot 为 undefined（按钮据此 disabled）
     expect(continueSlot([], slots)).toEqual({ slot: undefined });
     expect(latestSave([], slots)).toBeUndefined();
-
-    // ③ 折成渲染输入后：slot 与 reason 互补——不可继续时 slot 无值、reason 有话说
-    const view = screenViewOf({
-      columnId: "",
-      columnType: "game",
-      title: "示例工程",
-      slots,
-      saves: [],
-      start: () => {},
-      load: () => {},
-    });
-    expect(view.screen).toBe("start");
-    expect(view.resume.slot).toBeUndefined();
-    expect(view.resume.reason).not.toBe("");
   });
 });

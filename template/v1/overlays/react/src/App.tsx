@@ -5,11 +5,7 @@
  *
  * 本组件**不碰引擎**：装配在 `src/main.tsx`（唯一组合根），交互监听由骨架的
  * `src/host/` 用原生事件绑定——React 在这里只负责把节点渲染出来。
- *
- * 启动界面也在本组件里，但**舞台节点不受它影响**：舞台是常驻的那一份，
- * 启动界面是叠在上面的一层（`StartScreen` 自己按屏幕态真挂假挂）。
  */
-import { StartScreen } from "./StartScreen.tsx";
 import { UiHost } from "./UiHost.tsx";
 
 export function App() {
@@ -39,8 +35,6 @@ export function App() {
       <div id="mounts">
         <UiHost />
       </div>
-      {/* 启动界面：叠在舞台之上、转场之下；舞台此时被静默但仍留在 DOM 上 */}
-      <StartScreen />
       <div id="transition"></div>
       <div id="error"></div>
     </div>

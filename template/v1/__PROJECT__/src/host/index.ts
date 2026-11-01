@@ -22,6 +22,7 @@ export {
   type DialogueViewOptions,
 } from "./dialogue-view";
 export { createHostEffects, type HostEffectsOptions } from "./effects";
+export { createHostControls } from "./controls";
 export {
   createNativeMountRenderer,
   resolveNativeFactory,
@@ -40,12 +41,6 @@ export {
   type HostBootOptions,
   type HostHandle,
 } from "./boot";
-export {
-  createScreenSwitch,
-  type ScreenSwitch,
-  type ScreenSwitchOptions,
-} from "./switch";
-export { createStartScreenElement } from "./screen/view";
 export {
   createPreferencesPanel,
   PREF_CHANNELS,

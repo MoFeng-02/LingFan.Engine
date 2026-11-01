@@ -76,21 +76,7 @@ export {
   type MountStore,
   type MountTable,
 } from "./mount";
-export {
-  continueSlot,
-  createScreenStore,
-  firstGameColumn,
-  hostScreenOf,
-  latestSave,
-  sameScreenView,
-  screenViewOf,
-  type ContinueHint,
-  type HostScreen,
-  type HostScreenInput,
-  type ScreenStore,
-  type ScreenView,
-  type ScreenViewInput,
-} from "./screen";
+export { continueSlot, latestSave } from "./save";
 export {
   createElementRegistry,
   createElementResourceResolver,
@@ -175,6 +161,7 @@ export {
   createLayerView,
   createStateView,
   createVisualEffects,
+  firstGameColumn,
   isDialogueSuppressed,
   isNvlActive,
   isTypingEnabled,

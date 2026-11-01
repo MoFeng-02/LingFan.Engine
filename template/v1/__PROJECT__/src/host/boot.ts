@@ -18,6 +18,7 @@ import {
   resolveAudioConfig,
   resolveLayerZ,
   type AudioPort,
+  type HostControls,
   type PreferencesPort,
   type ProjectFilesPort,
   type ResourcePort,
@@ -39,7 +40,6 @@ import {
   DEFAULT_TOAST_MS,
   createAudioRenderer,
   createVideoRenderer,
-  type ScreenView,
   type TypingSetting,
 } from "@lingfan-engine/ui";
 import { createErrorReporter, type StageDom } from "./stage-dom";
@@ -53,8 +53,8 @@ import { startHostFrameLoop } from "./frame-loop";
 import { wireInput } from "./input-map";
 import { installStoryFonts } from "./theme-fonts";
 import { createPreferencesPanel } from "./panels/preferences";
-import { createScreenSwitch } from "./switch";
 import { createNativeMountRenderer } from "./mount/index";
+import { createHostControls } from "./controls";
 
 /**
  * 装配输入：节点句柄表、资源根内的清单与故事表，以及两项可配置节律。
@@ -108,15 +108,13 @@ export interface HostBootOptions {
    */
   onMounts?: (raw: unknown) => void;
   /**
-   * 自己接管启动界面的落法（可选）：给了就不由宿主造节点，只把屏幕态交给它。
+   * 取走宿主控制面（可选）：整局暂停与恢复、媒体暂停与恢复、换栏、存读档、拆除。
    *
-   * 框架形态用这条——启动界面是渲染树上的组件，宿主再往同一个根节点写子节点
-   * 会与框架的渲染树打架。与原生形态互斥：不给则由宿主按 `#stage-root` 下的一层
-   * 不透明覆盖物落 DOM，并在其在场时把舞台各层置为 `inert`。
-   *
-   * 两样都不给会抛——「既不画也不说」等于启动界面凭空消失，那是缺陷不是降级。
+   * 与 `onMounts` 是两条通道：挂载 UI 的**值**走 `SYS.mounts`（存档随行、必须 JSON 安全），
+   * 操作**句柄**走这里（含函数、运行期注入、不进快照）。框架形态把它存进自己的容器
+   * 再发给挂载组件；原生形态由渲染器直接作为工厂的第二参传下去，不需要这条回调。
    */
-  onScreen?: (view: ScreenView) => void;
+  onControls?: (controls: HostControls) => void;
 }
 
 /**
@@ -253,6 +251,16 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     defaultCps: options.defaultCps ?? DEFAULT_TEXT_CPS,
   });
 
+  // —— 宿主控制面：引擎与媒体端口就绪后造一次，交出去（挂载 UI 与宿主菜单共用）——
+  // 取用函数每次都读当下实例：`videoPort` 在层级建立后才赋值，故先收窄成常量再交出。
+  const videoReady: VideoPort = videoPort;
+  const controls = createHostControls({
+    engine: () => engine,
+    audio: () => audioPort,
+    video: () => videoReady,
+  });
+  options.onControls?.(controls);
+
   // —— UI 挂载：`SYS.mounts` → 容器的子节点（不给容器 = mount 只改状态）——
   // 容器与表都由组合根给：宿主不造节点，也不猜 UI 长什么样（原生是工厂、框架是组件）。
   // 隐藏即真卸载（不是 display:none）：组件自己的定时器、订阅、媒体元素随拆除一起停。
@@ -265,6 +273,8 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
       : createNativeMountRenderer({
           container: options.mountsContainer,
           table: options.mountsTable ?? {},
+          // 值走 props、操作走 controls：原生形态没有响应式系统，工厂直接收下这两样
+          controls,
           reportError,
         });
   const onMounts =
@@ -314,19 +324,6 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     onMediaTick: () => audio.pollPosition(), // 媒体位置帧级回写
     onFrame: driveEffects,
   });
-  // —— 屏幕切换：进游戏前画启动界面，进列后还舞台 ——
-  // 判据是本列的类型而不是某个列名白名单：引擎不认识「启动界面」，它只说自己在哪列。
-  // 框架形态给 `onScreen` 自己画；不给就由本文件按原生形态造节点挂到舞台根下。
-  const screenSwitch = createScreenSwitch({
-    engine,
-    manifest,
-    // 入口列来自故事本身：写死名字换个工程就指到不存在的列
-    entry: story.entry,
-    savePort,
-    reportError,
-    dom: options.onScreen === undefined ? dom : undefined,
-    onView: options.onScreen,
-  });
   wireInput({ dom, engine, dialogue });
   wireSaveSlots(dom, engine);
 
@@ -340,8 +337,6 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     frameLoop.stop();
     // UI 先拆：它可能持有自己那套框架实例或定时器，晚拆会让卸载跑在引擎销毁之后
     nativeMounts?.dispose();
-    // 屏幕先拆：它订阅当前列，晚拆会让切屏跑在引擎销毁之后
-    screenSwitch.dispose();
     // 面板先拆：它订阅偏好层，偏好 dispose 之后再退订会漏掉末次回填
     prefsPanel?.destroy();
     audio.dispose();
