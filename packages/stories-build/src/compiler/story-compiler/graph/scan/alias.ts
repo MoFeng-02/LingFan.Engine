@@ -30,6 +30,13 @@ export interface AliasResolver {
    * 它们拿到绝对路径后按自己的根折算并判越界，不必让别名解析器猜第二套沙箱。
    */
   locateFile(specifier: string): string | undefined;
+  /**
+   * 只展开不探测：返回第一个候选的绝对路径，文件存不存在都不影响。
+   *
+   * 生成物在编译期还没落盘（它是这次构建的产物），但引用它的那条 import 仍然合法；
+   * 用存在性探测就会把「第一次构建」判成路径写错。
+   */
+  expandTarget(specifier: string): string | undefined;
 }
 
 export type AliasOutcome =
@@ -65,6 +72,9 @@ export function createAliasResolver(
     },
     locateFile(specifier): string | undefined {
       return locateIn(expandAlias(config, specifier));
+    },
+    expandTarget(specifier): string | undefined {
+      return expandAlias(config, specifier)[0];
     },
   };
 }

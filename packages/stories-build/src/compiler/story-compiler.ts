@@ -17,6 +17,7 @@ import {
   type CompileDiag,
   type CompiledStory,
   type Graph,
+  type UiRegistryEntry,
 } from "./story-compiler/index.ts";
 import type { CompilerConstValues } from "./compiler-contract.ts";
 import type { AliasResolver } from "./story-compiler/graph/scan/alias.ts";
@@ -44,6 +45,11 @@ export function compileStories(input: {
   readonly texts?: Partial<StoriesBuildTexts>;
   /** 工程 `tsconfig.json` 的 paths 解析器；缺省 = 只认相对路径 */
   readonly alias?: AliasResolver;
+  /**
+   * UI 名注册表（扫描 `ui/` 目录的产物）；缺省 = 空表。
+   * 由编排层扫描后注入，编译器自己不读 UI 目录。
+   */
+  readonly uiRegistry?: readonly UiRegistryEntry[];
 }): CompileStoriesResult {
   const texts: StoriesBuildTexts = {
     ...defaultStoriesBuildTexts,
@@ -57,6 +63,7 @@ export function compileStories(input: {
     input.constValues,
     texts,
     input.alias,
+    input.uiRegistry,
   );
   if (graph === null) return { stories: [], diags: diags.list() };
   const entry = resolveStart(graph, diags);

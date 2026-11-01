@@ -11,17 +11,17 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { compareOrdinal } from "@lingfan-engine/core";
-import { UI_EXTENSIONS } from "../compiler/story-compiler/graph/core.ts";
+import {
+  UI_DIR_NAME,
+  UI_EXTENSIONS,
+  type UiRegistryEntry,
+} from "../compiler/story-compiler/graph/core.ts";
 
-/** UI 根目录名（源根的兄弟目录，与故事源平级） */
-export const UI_DIR_NAME = "ui";
+// 目录名与条目形状的权威声明在图谱层 `core.ts`：UI 通道（导入期）与注册表
+// （扫描期）消费的是同一份事实，两边各写一份就会各自演化。这里只做转发。
+export { UI_DIR_NAME };
 
-export interface UiFileEntry {
-  /** UI 名（= 目录名 = 文件名去扩展名） */
-  readonly name: string;
-  /** 实现文件名（含扩展名），供诊断定位 */
-  readonly file: string;
-}
+export type UiFileEntry = UiRegistryEntry;
 
 /**
  * 扫描 UI 根目录产注册表；目录不存在或为空 = 空数组（合法，等价「本工程没有 UI」）。

@@ -129,6 +129,30 @@ export function uiExtensionOf(specifier: string): string | undefined {
   return UI_EXTENSIONS.find((ext) => lower.endsWith(ext));
 }
 
+/** UI 根目录名（源根的兄弟目录，与故事源平级） */
+export const UI_DIR_NAME = "ui";
+
+/**
+ * UI 注册表生成物的基名（不带扩展名）：生成物是 `<生成物目录>/<基名>.ts`，
+ * 故事源以**命名导入**从 `../../gen/ui_register.g` 取句柄（形如 `{ hub }`）。
+ *
+ * 它没有 UI 扩展名，因此不走 `uiExtensionOf` 那条判定——由 UI 通道单独认这一条形状。
+ */
+export const UI_REGISTER_BASENAME = "ui_register.g";
+
+/**
+ * UI 注册表条目：一个 UI 的名字与它的实现文件名。
+ *
+ * 声明在这里而不是 UI 注册表实现里，是因为图谱层（UI 通道）也要消费它，而
+ * 注册表实现反过来依赖本文件的 `UI_EXTENSIONS`——放实现里会成环。
+ */
+export interface UiRegistryEntry {
+  /** UI 名（= 目录名 = 文件名去扩展名） */
+  readonly name: string;
+  /** 实现文件名（含扩展名，如 `hub.vue`） */
+  readonly file: string;
+}
+
 export const WORD_NAMES: ReadonlySet<string> = new Set(
   Object.keys(script).filter(
     (k) => typeof (script as Record<string, unknown>)[k] === "function",

@@ -68,6 +68,7 @@ import {
 } from "./merge.ts";
 import { createAliasResolver } from "../compiler/story-compiler/graph/scan/alias.ts";
 import { createUiChannel } from "../compiler/story-compiler/graph/scan/ui-specifier.ts";
+import { UI_REGISTER_BASENAME } from "../compiler/story-compiler/graph/core.ts";
 
 /** 构建产物的目录名与生成物文件名（默认值 = 参考宿主的现状目录名） */
 export const DEFAULT_SOURCES_DIR = "src/Stories.src";
@@ -106,7 +107,7 @@ const SCRIPT_TYPEGEN_FILE = "script.gen.d.ts";
 /** font 字面量类型面文件名（字体名注册表的键=值收窄面，内容随注册表） */
 const FONT_TYPEGEN_FILE = "font.gen.d.ts";
 /** UI 注册表生成物文件名（宿主「名字→组件」表 + 故事源具名句柄 + 类型面，内容随注册表） */
-const UI_REGISTER_FILE = "ui_register.g.ts";
+const UI_REGISTER_FILE = `${UI_REGISTER_BASENAME}.ts`;
 
 /**
  * 编译 `root/Stories.src/` 下的 TS 源 → `root/Resources/`（纯编排，fs 全在参数 root 之下；
@@ -157,10 +158,6 @@ export async function buildStories(
   // 缺失或无 `paths` ⇒ `null`，退化为纯相对路径（宿主零配置也能跑）。
   const pathsConfig = loadPathsConfig(root);
 
-  // 别名解析器与 UI 通道都在这里一次造好：UI 文件住在源根的兄弟目录 `src/ui/`，
-  // 它的沙箱比模块导入宽一级，两个消费者（cell 搬运、故事编译）共用同一份判定。
-  const alias = createAliasResolver(pathsConfig, sourcesDir);
-  const uiChannel = createUiChannel(sourcesDir, alias);
   // UI 根与源根是兄弟目录：同一套「谁在哪」的推导只在这里做一次，
   // 扫描段与闸门文案都从这两个值出发。
   const uiDirName = UI_DIR_NAME;
@@ -169,7 +166,14 @@ export async function buildStories(
   // 生成物里一律写相对路径（不写别名）：别名是创作期便利，一旦进生成物就把宿主
   // 绑死在某个 tsconfig 上。默认布局下 `src/gen` 回指 `src/ui` 得 `"../ui"`。
   const uiRelFromGenerated = posix.relative(generatedRelRoot, uiRelRoot);
+  // 注册表只读文件系统、不依赖编译，故先于通道扫描：通道要用它回答「这条具名
+  // 导入指向哪个 UI 文件」，晚一步就查不到。
   const uiEntries = scanUiRegistry(uiRoot);
+
+  // 别名解析器与 UI 通道都在这里一次造好：UI 文件住在源根的兄弟目录 `src/ui/`，
+  // 它的沙箱比模块导入宽一级，两个消费者（cell 搬运、故事编译）共用同一份判定。
+  const alias = createAliasResolver(pathsConfig, sourcesDir);
+  const uiChannel = createUiChannel(sourcesDir, alias, uiEntries);
 
   // —— config.ts 单次求值：named exports 四导出（folders/start/vars/state）+ 形态 B
   // define 累积一并取出；布局校验（parseFolders/parseStart）、define 合并冲突与
@@ -271,6 +275,7 @@ export async function buildStories(
     fontNames,
     characters: moduleCharacters,
     alias,
+    uiRegistry: uiEntries,
     texts,
   });
   if (compiled.diags.length > 0) {

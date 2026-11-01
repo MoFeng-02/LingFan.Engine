@@ -8,6 +8,7 @@ export type {
   Graph,
   ModuleRecord,
   StoryConfig,
+  UiRegistryEntry,
 } from "./graph/index.ts";
 export {
   buildGraph,

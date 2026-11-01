@@ -15,7 +15,7 @@ import {
   COLUMN_TYPE_DECL,
   toPosix,
 } from "./core.ts";
-import type { Graph, ModuleRecord } from "./core.ts";
+import type { Graph, ModuleRecord, UiRegistryEntry } from "./core.ts";
 import { scanModule } from "./scan/module-scan.ts";
 import { discoverStateRoot } from "./state-root.ts";
 import {
@@ -32,6 +32,9 @@ import type { AliasResolver } from "./scan/alias.ts";
  *（读取/校验统一走 const-eval/config-eval），只消费 folders/start。
  *
  * `alias` 是工程 `tsconfig.json` 的 `paths` 解析器；缺省 = 只认相对路径。
+ *
+ * `uiRegistry` 是 UI 名注册表（扫描 `ui/` 目录的产物）；缺省 = 空表，此时命名导入
+ * 注册表会因查不到名字而报错——只有编排层知道 `ui/` 在哪，编译器自己不扫目录。
  */
 export function buildGraph(
   sourcesDir: string,
@@ -40,6 +43,7 @@ export function buildGraph(
   constValues?: CompilerConstValues,
   texts?: StoriesBuildTexts,
   alias?: AliasResolver,
+  uiRegistry?: readonly UiRegistryEntry[],
 ): Graph | null {
   const files = new Map<string, string>();
   for (const [rel, text] of walkFiles(sourcesDir)) {
@@ -110,7 +114,7 @@ export function buildGraph(
 
   // UI 沙箱根是源根的上一级（`src/`）：UI 目录与故事源树是兄弟，不是它的子目录。
   // 这一遍必须早于模块层常量扫描——`export const picked = hub` 折叠时要看得到 UI 绑定。
-  const uiChannel = createUiChannel(sourcesDir, alias);
+  const uiChannel = createUiChannel(sourcesDir, alias, uiRegistry);
   const uiTexts = texts ?? defaultStoriesBuildTexts;
   for (const record of records.values()) scanModule(record, diags);
   for (const record of records.values())

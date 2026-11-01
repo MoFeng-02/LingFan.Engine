@@ -58,6 +58,12 @@ export interface StoriesBuildTexts {
   uiFileName(name: string, file: string): string;
   /** UI 导入必须是 default 导入（graph/scan/imports） */
   uiDefaultImport(name: string): string;
+  /** UI 注册表里没有这个句柄名（graph/scan/ui-import） */
+  uiRegisterMissing(name: string): string;
+  /** UI 注册表不接受 default 导入与命名空间导入（graph/scan/ui-import） */
+  uiRegisterNoDefault(): string;
+  /** UI 注册表的副作用导入不取任何句柄（graph/scan/ui-import） */
+  uiRegisterSideEffect(): string;
   /** 列级 uis 指向了不存在的 UI 目录（pipeline/gates；detail = 已折叠的明细行集） */
   unknownUisGate(detail: string, sourcesDir: string, uiDirName: string): string;
   /** UI 文件的 import 面越界（ui/scan-imports；detail = 已折叠的明细行集） */
@@ -103,6 +109,12 @@ export const defaultStoriesBuildTexts: StoriesBuildTexts = {
     `UI 文件名必须等于目录名：\`ui/${name}/\` 下只能有 \`${name}.<扩展名>\`，收到 \`${file}\``,
   uiDefaultImport: (name) =>
     `UI 导入必须是 default 导入（import ${name} from ".../ui/${name}/${name}.vue"）——一个 UI 只导出一个句柄`,
+  uiRegisterMissing: (name) =>
+    `UI 注册表里没有 \`${name}\`——句柄名必须与 \`ui/<名>/\` 目录名一致`,
+  uiRegisterNoDefault: () =>
+    `UI 注册表没有默认导出，也没有命名空间导出：请用具名导入（import { 句柄名 } from ".../gen/ui_register.g"）`,
+  uiRegisterSideEffect: () =>
+    "UI 注册表的副作用导入不支持：它只提供句柄，请显式导入所需句柄",
   unknownUisGate: (detail, sourcesDir, uiDirName) =>
     `列级 uis 声明了源里不存在的 UI（宿主按名字预加载时会落空，界面要到挂载瞬间才出现）：\n${detail}\n` +
     `→ 在 ${sourcesDir} 的兄弟目录 \`${uiDirName}/<名>/\` 下放实现文件 \`<名>.vue|.tsx|.html|.ts\`，或从列里去掉该名字`,
