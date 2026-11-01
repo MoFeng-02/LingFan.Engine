@@ -14,6 +14,7 @@
  */
 import { createElement, useEffect, useMemo, useSyncExternalStore } from "react";
 import { missingMounts, selectMounts } from "@lingfan-engine/ui";
+import { controlsStore } from "./controls";
 import { mountStore, uis } from "./mounts";
 
 /** 生成物里没有的名字只报一次：按帧重渲染会把它刷成噪音，反而看不见真问题 */
@@ -24,6 +25,17 @@ export function UiHost() {
     mountStore.subscribe,
     mountStore.snapshot,
     mountStore.snapshot,
+  );
+  /**
+   * 操作句柄：来自组合根而不是故事值。
+   *
+   * 它与 `props` 分属两条通道——`props` 是故事命令写下的值（随存档、必须 JSON 安全），
+   * 句柄含函数、不进快照，所以单独订阅一格再作为 prop 发给每个挂载组件。
+   */
+  const controls = useSyncExternalStore(
+    controlsStore.subscribe,
+    controlsStore.snapshot,
+    controlsStore.snapshot,
   );
   const items = useMemo(() => selectMounts(raw, uis), [raw]);
 
@@ -43,6 +55,7 @@ export function UiHost() {
       createElement(item.component as never, {
         key: item.name,
         ...item.props,
+        controls,
       }),
     ),
   );

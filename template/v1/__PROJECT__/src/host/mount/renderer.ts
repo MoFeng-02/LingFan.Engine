@@ -18,14 +18,22 @@ import {
   visibleMounts,
   type MountPlan,
 } from "@lingfan-engine/ui";
+import type { HostControls } from "@lingfan-engine/core";
 import { resolveNativeFactory, type NativeUiInstance } from "./table";
 
-/** 渲染器输入：容器、生成物表、诊断出口 */
+/** 渲染器输入：容器、生成物表、控制面、诊断出口 */
 export interface NativeMountRendererOptions {
   /** 挂载容器：子节点就是当前可见的 UI（按挂载次序排列） */
   container: HTMLElement;
   /** 「名字 → 工厂」表（生成物 `uis`） */
   table: Readonly<Record<string, unknown>>;
+  /**
+   * 交给每个 UI 的操作句柄（暂停、换栏、存读档）。
+   *
+   * 与 `props` 分属两条通道：`props` 是故事值（存档随行、必须 JSON 安全），
+   * 这里这个含函数、运行期注入、不进快照，所以从选项走而不是塞进 props。
+   */
+  controls: HostControls;
   /** 诊断出口：挂不上、拆除失败都从这里出去，不吞 */
   reportError(message: string): void;
 }
@@ -80,7 +88,7 @@ export function createNativeMountRenderer(
     }
     let instance: NativeUiInstance;
     try {
-      instance = factory(mountProps(raw, name) ?? {});
+      instance = factory(mountProps(raw, name) ?? {}, options.controls);
     } catch (error) {
       options.reportError(`UI ${name} 挂载失败：${String(error)}`);
       return;

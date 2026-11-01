@@ -9,6 +9,7 @@
  * 作者把 `.vue` 写进原生工程而变成组件对象。那种情况必须 fail-closed 并说清原因，
  * 而不是让渲染器在 `factory is not a function` 上崩掉整屏。
  */
+import type { HostControls } from "@lingfan-engine/core";
 
 /** 一份已挂载的原生 UI：一个根节点 + 可选拆除钩子 */
 export interface NativeUiInstance {
@@ -18,9 +19,16 @@ export interface NativeUiInstance {
   dispose?(): void;
 }
 
-/** 原生形态的 UI：入参进，节点出 */
+/**
+ * 原生形态的 UI：入参进，节点出。
+ *
+ * 两个参数是两条不同的通道：`props` 是故事命令给出的值（JSON 安全、随快照存档），
+ * `controls` 是宿主给的操作句柄（含函数，不存档）。UI 要显示什么读前者，
+ * 要操作引擎（暂停、换栏、存读档）用后者。
+ */
 export type NativeUiFactory = (
   props: Readonly<Record<string, unknown>>,
+  controls: HostControls,
 ) => NativeUiInstance;
 
 /** 「名字 → 工厂」表（生成物 `uis` 的原生形态投影） */

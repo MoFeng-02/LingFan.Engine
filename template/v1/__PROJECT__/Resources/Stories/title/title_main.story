@@ -3,9 +3,9 @@
 // 一个文件里可以写多列（label / scene）；拆文件时把新文件加进 src/main.ts 的 STORIES 列表。
 
 // 标题界面：`type=ui` 的列不进历史、不进存档、不建检查点——它是界面，不是剧情。
-// 下面这些命令是**没有页面时的兜底**：宿主若按列 id 注册了整屏页面
-// （见 src/host/pages/title-page.ts 与各框架叠加层的 src/pages/），页面会盖在上面；
-// 没注册就照常按 op 渲染，开箱即跑。
+// 引擎对这类列只管一件事：按 op 渲染（say 出一句、menu 出一组选项），所以下面几条开箱即跑，
+// 视图上就是标题界面本身。想换成自己的视觉有两条路：常驻舞台的组件放 src/ui/ 并用 mount 控显隐；
+// 整屏的标题页/设置页属宿主应用，落 src/pages/ 一类宿主目录、由宿主自己切进切出。
 scene title_main type=ui
   say "欢迎来到 __PROJECT__。"
   say "在 Resources/Stories/ 下继续写你的故事；媒体放 Resources/{Audio,Images,Video}。"

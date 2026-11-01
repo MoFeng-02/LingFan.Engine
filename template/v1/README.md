@@ -22,7 +22,7 @@
 | 游玩界面禁选文本                                | 是                     | `body` 上 `user-select: none`；要提供复制就给部件加 `data-lf-selectable`        |
 | 历史面板与回溯 UI                               | 否                     | 引擎已具备（`historyView`/`rollbackTo`/`back`/`forward`），UI 见 playground     |
 | 玩家偏好（音量/文字速度面板）                   | 是                     | `src/host/panels/preferences.ts`，槽位 `#prefs` 可选；未接线 = 音量为 op 值     |
-| 界面列交给整屏页面渲染                          | 是（示范一页）         | `src/host/pages/**` + 槽位 `#page` 可选；未注册的列回落按 op 渲染               |
+| 界面列（`type=ui`）的渲染                       | 是                     | 按 op 渲染即开箱可跑；常驻界面可加 `src/ui/` 挂载（挂载层已接，生成物为空表）   |
 | I18N 供给（`Lang/{lang}/` 覆盖）                | 否                     | 未接 `i18nPort` = 原文直出（引擎契约缺省语义）                                  |
 | 对话框模板注册（`say template=`）               | 否                     | 未接 = 内建默认骨架                                                             |
 | 屏幕方向锁定（`shell.orientation`）             | 不适用                 | **纯 Web 形态没有方向 API**；该配置只在 Tauri 壳（playground）生效              |
@@ -108,11 +108,15 @@ __PROJECT__/
 ├── tsconfig.node.json    # Node 侧：vite.config.ts 与 vite.plugins.ts（要 node:fs 与 @types/node）
 ├── vite.config.ts        # publicDir: "Resources" ← 资源根即静态根
 ├── vite.plugins.ts       # 构建期扫描：故事清单与字体清单（虚拟模块，层只换插件数组）
-├── index.html            # RenderTargets 落地：stage/dialogue/choices/notifications/toolbar（+ 可选 #prefs / #page）
+├── index.html            # RenderTargets 落地：stage/dialogue/choices/notifications/toolbar（+ 可选 #prefs / #mounts）
 ├── src/main.ts           # 组合根：装配适配器 → 组装工程 → 建引擎 → 订阅渲染 + 帧驱动
-├── src/stories.ts        # 故事清单出口（转发 virtual:story-list；清单本身来自磁盘扫描）
-├── src/host/             # 宿主：装配、订阅、帧循环、输入映射、页面与面板（不认识 UI 框架）
-│   ├── pages/            #   整屏页面：registry / mount / hud / title-page
+├── src/stories/          # 故事清单出口（转发 virtual:story-list；清单本身来自磁盘扫描）
+├── src/mounts.ts         # 挂载表出口 + mountStore（框架形态从这里订阅挂载值）
+├── src/controls/         # 宿主控制面出口：挂载 UI 拿 pause/navigate/save/load 的地方
+├── src/gen/              # 构建生成物：清单、字体、守卫表、UI 注册表（手改会被覆盖）
+├── src/ui/               # 可挂载界面（`<名>/<名>.<扩展名>`，可缺省：没有就不生成注册表）
+├── src/host/             # 宿主：装配、订阅、帧循环、输入映射、挂载层与面板（不认识 UI 框架）
+│   ├── mount/            #   UI 挂载层（原生形态）：差量渲染器 + 工厂表契约
 │   └── panels/           #   玩家偏好面板（音量、静音、文字速度）
 ├── src/styles/stage.css  # 页面与层样式（换框架不动这份：叠加层共用同一张表）
 └── Resources/            # 故事工程根（自包含、可整体搬运）
@@ -128,24 +132,34 @@ __PROJECT__/
 
 故事里的资源路径**相对 `Resources/`**：`bgm "Audio/main.mp3"`、`video "Video/op.mp4"`。
 
-## 界面列与页面
+## 界面列：按 op 渲染，或换一套视觉
 
-`type=ui` 的列不进历史、不进存档、不建检查点——它是界面，不是剧情。这类列可以按 op 画，也可以交给
-一个整屏页面去画（Vue / React / 原生 DOM 都行）。
+`type=ui` 的列不进历史、不进存档、不建检查点——它是界面，不是剧情。引擎对这类列的认知只有这一条
+（判据看列的类型是不是 `game`），它不知道「页面」是什么，也不管界面长什么样。
 
-页面注册表在宿主里（`src/host/pages/registry.ts`），键是**列 id**，不是列的类型：引擎进到某一列，
-宿主就把那一列注册过的页面挂上去；没注册的列照常按 op 渲染——没有自定义界面是合理降级，不算错。
-骨架开箱注册了一个示范页（`src/host/pages/title-page.ts`，故事侧的 `title_main` 列）。
+所以开箱就是按 op 渲染：`say` 出一句、`menu` 出一组选项，和剧情列走同一条渲染路径。
 
-两条硬边界：
+想换一套视觉，有两条互相独立的路：
 
-- **读走 `StateReader`，写走命令面**（`navigate` / `choose` / `input` / `save` / `load`）。页面不碰状态键，
+- **对局内界面**——常驻在舞台上、跟着故事显隐的那类（状态栏、好感度条、地图角标）。组件放
+  `src/ui/<名>/<名>.<扩展名>`，故事源一行 `import` 拿到句柄，再用 `mount(名字, true/false)` 控显隐。
+  宿主不用改：挂载层已接好，组件表由构建期扫描产出，宿主只经 `src/mounts.ts` 取。详见文档站的
+  [挂载 UI 组件](https://mofeng-02.github.io/LingFan.Engine/guides/ui-mount/)。
+- **普通页面**——登录、大厅、存档选择、设置这类整屏界面。它们属宿主应用层，与引擎同级，引擎完全不参与：
+  落 `src/pages/` 或任何你觉得合适的宿主目录，切进切出由宿主自己用 `v-if` / 路由决定。判据只有一条——
+  引擎当前停在哪一列（`createStateReader(engine).currentColumnId()`，空串 = 还没开始跑）。详见文档站的
+  [普通页面与对局内界面](https://mofeng-02.github.io/LingFan.Engine/guides/pages/)。
+
+宿主给 `ui` 列画界面时守两条：
+
+- **读走 `StateReader`，写走命令面**（`navigate` / `choose` / `input` / `save` / `load`）。界面不碰状态键，
   也不自己造存档格式——绕过去就等于绕过了保留键守卫与快照一致性。
-- **切走即真销毁**。页面切换是完整界面替换：Vue 调 `app.unmount()`、React 调 `root.unmount()`、
+- **切走即真销毁**。换界面是完整替换：Vue 调 `app.unmount()`、React 调 `root.unmount()`、
   原生清空容器并解绑监听器。**卸载逻辑归宿主写，引擎不管也不检测。**
 
-HUD 是另一类（`src/host/pages/hud.ts`）：它挂在游戏画面之上、可隐藏但**不卸载**，因为玩家随时会再打开，
-重建会丢滚动位置与展开状态。`#page` 与 `#prefs` 都是**可选槽位**：不给就是整列按 op 渲染，不报错。
+`#prefs` 与 `#mounts` 都是**可选槽位**：不给就是这一层不接，故事照常跑、`mount` 命令只改状态不出现组件，
+都不报错。`#prefs` 接偏好面板（`src/host/panels/preferences.ts`），`#mounts` 接 UI 挂载层
+（`src/host/mount/`）。
 
 ## 打包分发
 

@@ -67,6 +67,7 @@ const SINGLE: Record<string, string> = {
   NotifyPayload: "packages/core/src/contracts/runtime/events.ts",
   MenuChoice: "packages/core/src/contracts/runtime/reader.ts",
   NvlMode: "packages/core/src/contracts/runtime/entities.ts",
+  HostControls: "packages/core/src/contracts/runtime/controls.ts",
   // 渲染层：帧循环与层 z 控制器各只留一份实现面
   FrameSource: "packages/ui/src/host/frame-loop.ts",
   FrameLoopOptions: "packages/ui/src/host/frame-loop.ts",

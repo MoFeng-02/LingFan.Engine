@@ -14,6 +14,8 @@
  */
 import { computed, onUnmounted, ref, watch } from "vue";
 import { missingMounts, selectMounts } from "@lingfan-engine/ui";
+import type { HostControls } from "@lingfan-engine/core";
+import { controlsStore } from "./controls";
 import { mountStore, uis } from "./mounts";
 
 /** 当前 `SYS.mounts` 原始值：订阅前先读一次快照（订阅不回放历史） */
@@ -22,6 +24,18 @@ const stop = mountStore.subscribe((next) => {
   raw.value = next;
 });
 onUnmounted(stop);
+
+/**
+ * 操作句柄：来自组合根而不是故事值。
+ *
+ * 它与 `props` 分属两条通道——`props` 是故事命令写下的值（随存档、必须 JSON 安全），
+ * 句柄含函数、不进快照，所以单独订阅一格再作为 prop 发给每个挂载组件。
+ */
+const controls = ref<HostControls | null>(controlsStore.snapshot());
+const stopControls = controlsStore.subscribe((next) => {
+  controls.value = next;
+});
+onUnmounted(stopControls);
 
 /** 这一帧该渲染的 UI：取不到组件的名字被跳过并单独上报 */
 const items = computed(() => selectMounts(raw.value, uis));
@@ -46,5 +60,6 @@ watch(missing, (names) => {
     v-for="item in items"
     :key="item.name"
     v-bind="item.props"
+    :controls="controls"
   />
 </template>
