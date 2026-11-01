@@ -62,6 +62,12 @@ function makeAudioPort(): { port: AudioPort; calls: string[] } {
       stop(channel: AudioChannel) {
         calls.push(`${channel}|stop`);
       },
+      pause(channel: AudioChannel) {
+        calls.push(`${channel}|pause`);
+      },
+      resume(channel: AudioChannel) {
+        calls.push(`${channel}|resume`);
+      },
       position() {
         return 0;
       },

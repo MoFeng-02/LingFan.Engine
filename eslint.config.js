@@ -75,10 +75,12 @@ export default defineConfigWithVueTs(
     name: "lingfan/allow-single-word-app",
     // 单文件组件名不满足「多词」约定：应用外壳（App.vue）与**路由页**——
     // 页面文件名即路由路径（由 pages.json 决定），组件名跟路由走，不由命名约定决定。
+    // 宿主的普通页面（`pages/start/start.vue`）同理：文件名即入口名，单名是规则要求。
     // `src/ui/**` 同理：UI 的绑定名由目录名决定（`ui/hub/hub.vue` 只能导成 `hub`），
     // 名字是构建期事实而非风格选择，单名在这里是规则要求。
     files: [
       "apps/playground/src/App.vue",
+      "apps/playground/src/pages/**/*.vue",
       "apps/editor/src/App.vue",
       "apps/miniprogram/src/pages/**/*.vue",
       "apps/*/src/ui/**/*.vue",
@@ -356,6 +358,11 @@ export default defineConfigWithVueTs(
       // （列名/工程名/槽名散落各处，只能扫盘枚举；且要报 文件:行号）。
       // 属测试期工具，不进浏览器产物
       "tests/template/no-hardcoded-names.test.ts",
+      // 屏幕域退场守卫：同理**递归遍历 template/ 、apps/ 与 packages/ui/src/ 的源文件**
+      // 做机械核对（判据对象是「这套符号不许出现在任何源文件里」，只能扫盘枚举；
+      // `?raw` 静态导入等于事先列白名单，新增文件自动漏检）。
+      // 属测试期工具，不进浏览器产物
+      "tests/template/no-screen-domain.test.ts",
     ],
     rules: {
       "no-restricted-imports": "off",

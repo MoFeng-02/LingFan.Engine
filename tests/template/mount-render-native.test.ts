@@ -9,6 +9,7 @@
  * ——`appendChild` / `removeChild` / `children` / `parentNode` / `childElementCount`。
  */
 import { describe, expect, it, vi } from "vitest";
+import type { HostControls } from "@lingfan-engine/core";
 import {
   createNativeMountRenderer,
   resolveNativeFactory,
@@ -50,12 +51,32 @@ function asContainer(node: FakeElement): HTMLElement {
   return node as unknown as HTMLElement;
 }
 
-/** 造一个记着「挂了什么入参、被拆过没有」的工厂 */
+/** 控制面替身：渲染器只负责把它原样转交，九方法这里全空实现 */
+function makeControls(): HostControls {
+  return {
+    pause: () => {},
+    resume: () => {},
+    paused: () => false,
+    pauseMedia: () => {},
+    resumeMedia: () => {},
+    navigate: () => {},
+    save: () => {},
+    load: () => {},
+    dispose: () => {},
+  };
+}
+
+/** 每个渲染器都得带一份控制面（它要被转交给工厂的第二参） */
+const controls = makeControls();
+
+/** 造一个记着「挂了什么入参、拿到哪份控制面、被拆过没有」的工厂 */
 function makeFactory(name: string) {
   const calls: Array<Readonly<Record<string, unknown>>> = [];
+  const handles: HostControls[] = [];
   const instances: Array<NativeUiInstance & { disposed: boolean }> = [];
-  const factory: NativeUiFactory = (props) => {
+  const factory: NativeUiFactory = (props, controls) => {
     calls.push(props);
+    handles.push(controls);
     const element = new FakeElement("section");
     const instance = {
       element: element as unknown as HTMLElement,
@@ -67,7 +88,7 @@ function makeFactory(name: string) {
     instances.push(instance);
     return instance;
   };
-  return { name, factory, calls, instances };
+  return { name, factory, calls, handles, instances };
 }
 
 describe("原生形态：显示与隐藏", () => {
@@ -78,6 +99,7 @@ describe("原生形态：显示与隐藏", () => {
       container: asContainer(container),
       table: { hub: hub.factory },
       reportError: () => {},
+      controls,
     });
 
     renderer.sync({ hub: { visible: true, props: {} } });
@@ -98,6 +120,7 @@ describe("原生形态：显示与隐藏", () => {
       container: asContainer(container),
       table: { hub: hub.factory, map: map.factory },
       reportError: () => {},
+      controls,
     });
 
     renderer.sync({
@@ -124,6 +147,7 @@ describe("原生形态：入参变化触发重挂", () => {
       container: asContainer(container),
       table: { hub: hub.factory },
       reportError: () => {},
+      controls,
     });
 
     renderer.sync({ hub: { visible: true, props: { scene: "inn" } } });
@@ -143,6 +167,7 @@ describe("原生形态：入参变化触发重挂", () => {
       container: asContainer(container),
       table: { hub: hub.factory },
       reportError: () => {},
+      controls,
     });
 
     renderer.sync({ hub: { visible: true, props: { a: 1, b: 2 } } });
@@ -159,6 +184,7 @@ describe("原生形态：取不到工厂时 fail-closed", () => {
       container: asContainer(container),
       table: {},
       reportError,
+      controls,
     });
 
     renderer.sync({ ghost: { visible: true, props: {} } });
@@ -176,6 +202,7 @@ describe("原生形态：取不到工厂时 fail-closed", () => {
       container: asContainer(container),
       table: { hub: {} },
       reportError,
+      controls,
     });
 
     renderer.sync({ hub: { visible: true, props: {} } });
@@ -194,6 +221,7 @@ describe("原生形态：取不到工厂时 fail-closed", () => {
         },
       },
       reportError,
+      controls,
     });
 
     expect(() =>
@@ -212,6 +240,7 @@ describe("原生形态：脏值与拆除", () => {
       container: asContainer(container),
       table: { hub: hub.factory },
       reportError: () => {},
+      controls,
     });
 
     renderer.sync({ hub: { visible: true, props: {} } });
@@ -228,6 +257,7 @@ describe("原生形态：脏值与拆除", () => {
       container: asContainer(container),
       table: { hub: hub.factory },
       reportError: () => {},
+      controls,
     });
 
     renderer.sync({ hub: { visible: true, props: {} } });
