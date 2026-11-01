@@ -87,7 +87,7 @@ Resources/Lang/en-US/main.json  → 不跳过（名字里有连字符和点，�
 
 新故事文件不需要登记。引擎不读文件系统——它拿到的是供给方交上来的一批文件内容，列举文件是供给方的事。
 
-桌面壳的供给方递归扫 `Stories/`，新增文件直接生效。模板与浏览器形态同理：`vite.plugins.ts` 在构建期递归扫描 `Resources/Stories/`，把结果作为 `virtual:story-list` 交给宿主，`src/stories.ts` 只是这份扫描结果的出口：
+桌面壳的供给方递归扫 `Stories/`，新增文件直接生效。模板与浏览器形态同理：`vite.plugins.ts` 在构建期递归扫描 `Resources/Stories/`，把结果作为 `virtual:story-list` 交给宿主，`src/stories/index.ts` 只是这份扫描结果的出口：
 
 ```ts
 export { STORIES } from "virtual:story-list";

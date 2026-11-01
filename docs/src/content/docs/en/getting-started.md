@@ -97,7 +97,7 @@ Refresh the page and the music should start when the first line appears.
 
 **The page is blank and the console shows a 404.** Your resource path is wrong. `bgm "Audio/theme.mp3"` maps to `Resources/Audio/theme.mp3`; paths are case-sensitive and cannot contain `..`.
 
-**You added a story file and the engine says it cannot find the column.** First check that the file really is under `Resources/Stories/` — anything you put there is picked up, because the list is produced by a build-time scan. There is no registration step and no list to hand-edit; `src/stories.ts` is only the exit for that scan:
+**You added a story file and the engine says it cannot find the column.** First check that the file really is under `Resources/Stories/` — anything you put there is picked up, because the list is produced by a build-time scan. There is no registration step and no list to hand-edit; `src/stories/index.ts` is only the exit for that scan:
 
 ```ts
 export { STORIES } from "virtual:story-list";

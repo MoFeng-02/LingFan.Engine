@@ -1,179 +1,183 @@
 ---
-title: 启动界面与渲染切换
-description: 进游戏前先画一个普通界面，点开始再切到舞台——判断依据只有列 id 与列类型，引擎不认识「启动界面」。
+title: 普通页面与对局内界面
+description: 登录、大厅、存档选择这些页面归宿主，引擎不参与；进游戏只是宿主切自己的界面并让引擎开始跑。判据只有一条——引擎当前在哪一列。
 ---
 
-进游戏前玩家先看到一屏标题和两个按钮，点「开始」才进故事。这一屏不是引擎里的某种特殊列，也不在任何注册表里——它就是宿主里的一个普通界面，用 `v-if` 叠在舞台上面。
+玩家打开游戏，先看到标题和「开始」「继续」两个按钮。这一屏和引擎没有关系：它是宿主应用里的一个普通页面，和引擎核心同级。点「开始」之后才有对局——宿主切到游戏界面，引擎从入口列开始跑。
 
-## 引擎只知道两件事
+这一页讲两件事：普通页面怎么和引擎共存，对局内的界面（舞台上的 `ui` 列与挂载组件）归谁管。
 
-引擎不提供「启动界面」这个概念。它只知道当前停在哪一列（列 id，还没开始跑时是空串），以及那一列是什么类型（`game` 或 `ui`）。「该不该画这一屏」是宿主的判断。
+## 引擎只在对局内存在
 
-判断收在 `@lingfan-engine/ui` 的 `hostScreenOf()` 里，只有两条：
-
-| 情形                              | 画什么   |
-| --------------------------------- | -------- |
-| 列 id 是空串（还没开始跑）        | 启动界面 |
-| 列类型不是 `game`（标题、设置……） | 启动界面 |
-| 其余                              | 舞台     |
-
-两条都要。只看类型的话，引擎开跑之前列 id 是空串、列类型缺省按 `game` 算，首帧就会被判成舞台，画面先黑一下再跳回启动界面。
-
-「进入游戏」就是 `navigate(入口列)`。入口列是 `project.json` 的 `entry`，它指向一个 `type=game` 的列；切过去之后列类型变成 `game`，判断自然翻面。
-
-## 舞台不卸载
-
-启动界面在场时，舞台**留在 DOM 上**，只是被让位：`#stage`、`#nvl`、`#dialogue`、`#choices`、`#notifications`、`#toolbar` 六层各加 `inert` 与 `aria-hidden="true"`，于是它们既接不到点击、也不进无障碍树。根节点不动——启动界面自己挂在根下，是它盖住了舞台。
-
-为什么不是「卸掉舞台、再挂回来」：舞台节点在装配期就一次性抓住了句柄，摘掉再挂等于换一批新节点，宿主手里那十几个句柄全部失效，之后所有对话与元素的写入都打到空气里。
-
-所以真挂载、真卸载的只有启动界面自己——`v-if` 天然保证这一点。原生形态没有框架帮忙，要自己清空容器。
-
-## 三种形态各写一份
-
-启动界面是宿主代码，不是引擎代码，因此每种形态各有一份实现，互不共用：
-
-| 形态  | 落点                      |
-| ----- | ------------------------- |
-| Vue   | `src/StartScreen.vue`     |
-| React | `src/StartScreen.tsx`     |
-| 原生  | `src/host/screen/view.ts` |
-
-它不该放进 `src/ui/<名>/`：那里的目录会被构建收进 UI 名字表，启动界面就变成一个能用 `mount` 挂载、也能被故事随手摘掉的组件，而它必须一直在。
-
-## 界面拿到什么
-
-宿主把屏幕态推给视图，视图只负责画。屏幕态长这样：
-
-| 字段            | 含义                                               |
-| --------------- | -------------------------------------------------- |
-| `screen`        | `"start"` 或 `"game"`，视图据此决定画不画          |
-| `title`         | 展示名，取自 `project.json` 的 `name`，缺省用 `id` |
-| `slots`         | 存档槽位名，取自 `shell.saves.slots`               |
-| `resume.slot`   | 「继续」要读的槽位名；没有可用存档时是 `undefined` |
-| `resume.reason` | 不可继续时给玩家看的一行提示；可继续时是空串       |
-| `start()`       | 进入游戏，跳到入口列                               |
-| `load(slot)`    | 读指定槽位                                         |
-
-命令也在屏幕态里，视图不必知道入口列从哪来、槽位叫什么。
-
-`resume.slot` 与 `resume.reason` 一一对应：可继续时 `reason` 是空串，不可继续时 `slot` 是 `undefined`。「继续」按钮据此 `disabled`，并把 `reason` 放到 `title` 上——按钮灰着但玩家知道为什么。
-
-## 宿主侧接线
-
-Vue 与 React 形态：组合根把每个新屏幕态交给 `screenStore`，视图自己订阅。
+引擎的公开面没有「页面」「屏幕」这类概念。它只回答一个问题：**当前停在哪一列**。
 
 ```ts
-// src/main.ts
-import { bootHost } from "./host";
-import { screenStore } from "./screen";
+import { createStateReader } from "@lingfan-engine/core";
 
-void bootHost({
-  dom,
-  manifestFile: "project.json",
-  stories: STORIES,
-  onScreen: (view) => screenStore.set(view),
-});
+const reader = createStateReader(engine);
+reader.currentColumnId(); // 空串 = 尚未进入任何列
 ```
 
-原生形态什么都不用传：不给 `onScreen` 时宿主自己在 `#stage-root` 下挂一层不透明覆盖物，并负责给六层写 `inert`。给了 `onScreen` 又给原生落法会冲突——两边都想造节点。
+空串只有一个含义：引擎还没有进入任何列，也就是还没开始跑。这就是「现在该显示普通页面」的全部判据——不需要额外的开关，也不需要宿主再包一层判断。
 
-`screenStore` 在 `src/screen.ts`，一行：
+`currentColumnType()` 回答的是另一件事：这一列是 `game` 还是 `ui`。它决定这一列**进不进历史与存档**，不决定该画哪一屏。两者别混用。
 
-```ts
-export const screenStore = createScreenStore();
-```
+## 普通页面是宿主代码
 
-它只是把屏幕态存起来并通知订阅者，不碰 DOM，三种形态共用。
-
-## 一个最小启动界面
-
-Vue 形态，`src/StartScreen.vue`：
+登录、大厅、存档选择、设置——这些页面不需要引擎存在就能显示，也不需要引擎知道它们存在。所以它们写在宿主自己的目录里，放哪都行：`src/pages/`、`src/views/` 都可以。`packages/ui` 不为它们提供任何封装。
 
 ```vue
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from "vue";
-import { screenStore } from "./screen";
+import { onUnmounted, ref } from "vue";
+import { createStateReader } from "@lingfan-engine/core";
 
-const view = ref(screenStore.snapshot());
-const stop = screenStore.subscribe((next) => {
-  view.value = next;
+const reader = createStateReader(engine);
+const started = ref(reader.currentColumnId() !== "");
+const stop = engine.onStateChanged(() => {
+  started.value = reader.currentColumnId() !== "";
 });
 onUnmounted(stop);
 
-const shown = computed(() => {
-  const current = view.value;
-  if (current === undefined || current.screen !== "start") return null;
-  const slot = current.resume.slot;
-  return {
-    title: current.title,
-    reason: current.resume.reason,
-    resumable: slot !== undefined,
-    resume: () => {
-      if (slot !== undefined) current.load(slot);
-    },
-    start: () => current.start(),
-  };
-});
+function enterGame(): void {
+  engine.start();
+}
 </script>
 
 <template>
-  <!-- 点击不外传：舞台根的点击是「推进对话」，落到这里会顺带跳一句 -->
-  <div v-if="shown !== null" class="screen-start" @click.stop>
-    <div class="screen-start__body">
-      <h1 class="screen-start__heading">{{ shown.title }}</h1>
-      <div class="screen-start__actions">
-        <button
-          type="button"
-          :disabled="!shown.resumable"
-          :title="shown.reason"
-          @click="shown.resume()"
-        >
-          继续
-        </button>
-        <button type="button" @click="shown.start()">开始</button>
-      </div>
-    </div>
-  </div>
+  <LoginPage v-if="!started" @done="enterGame" />
+  <GameRoot v-else />
 </template>
 ```
 
-React 形态的形状一样，取值换成 `useSyncExternalStore(screenStore.subscribe, screenStore.snapshot, screenStore.snapshot)`：并发渲染要求外部值按快照读，自己 `useState` + `useEffect` 会在首帧读到旧值。
+三点：
 
-三点值得注意：
+- **普通页面不需要让舞台让位。** 引擎还没开始跑，舞台上没有可交互的东西，所以不需要 `inert`、也不需要 `aria-hidden`——普通页面自己就是最上面那层。
+- **舞台的挂载时机要在装配之前定。** 装配期一次性抓死节点句柄（`#stage`、`#dialogue`、`#choices` 等每个 id 都必须存在）。要么一直挂着、让普通页面盖在上面，要么在装配前就用界面状态决定渲不渲染——不要在运行期摘了再挂，那是一批新节点，宿主手里的句柄全部失效，之后所有对话与元素的写入都打到空气里。
+- **进入游戏是宿主的动作。** 不是引擎切屏幕，是宿主切自己的界面状态，然后让引擎开始跑。
 
-- **点击要 `stopPropagation`。** 舞台根的点击是「推进对话」，事件冒上去会顺手跳掉一句台词。
-- **样式自己管。** 引擎不知道启动界面长什么样；层级只要低于转场遮罩，转场就还能盖在它上面。
-- **不要在界面里判断状态。** 能不能继续、标题是什么、跳到哪一列，全在屏幕态里；视图多做一次判断，就多一处和宿主不一致的可能。
+## 进入游戏
+
+「开始」在宿主侧翻译成两步：让引擎从入口列开始跑，必要时再跳到第一个能玩的列。
+
+```ts
+import { firstGameColumn } from "@lingfan-engine/ui";
+
+function enterGame(): void {
+  engine.start(); // 导航到 project.json 的 entry 列
+  const target = firstGameColumn(engine.columns(), entry);
+  if (target !== undefined) engine.navigate(target);
+}
+```
+
+`firstGameColumn()` 处理「入口列不是 `game` 列」的情况：入口列本身是 `game` 就直接用它，否则取列清单里第一个 `game` 列；整个工程没有 `game` 列时返回 `undefined`，按钮据此置灰。
+
+「继续」读最近写入的那个槽：
+
+```ts
+import { latestSave } from "@lingfan-engine/ui";
+
+const slots = slotIds(resolveSavesConfig(manifest).slots);
+const latest = latestSave(await savePort.list(), slots);
+if (latest !== undefined) engine.load(latest.slot);
+```
+
+没有可用存档时 `latest` 是 `undefined`——把按钮置灰，并在 `title` 上写一行提示，不要静默。
+
+## 对局内：舞台与界面列
+
+进游戏之后玩家看到的一切都在舞台上，分两种列：
+
+| 列类型         | 是什么                             | 进历史与存档 |
+| -------------- | ---------------------------------- | ------------ |
+| `game`（缺省） | 舞台：对话、元素、选择、视频       | 是           |
+| `ui`           | 对局内界面：菜单列、状态面板、挂载 | 否           |
+
+判定只有一处：`type` 是 `game` 的列参与历史与存档，`ui` 列不参与。引擎不知道「页面」是什么，`type` 只回答这一个问题。
 
 ## 界面列里写什么
 
-故事侧就是普通的 `ui` 列：
+`ui` 列里可以写普通命令，它们照常执行——它是舞台上的界面，不是被跳过的一屏：
 
 ```text
-label title_main:
-  say "欢迎来到我的故事。"
-  menu "接下来去哪里？"
-    "开始游戏" -> chapter_one
+scene pause_menu type=ui
+  say "要休息一下吗？"
+  menu "接下来做什么？"
+    "回到故事" -> chapter_one
 ```
 
 ```ts
 export const columnType = "ui";
 ```
 
-`ui` 列里的命令不是废的——启动界面只在该显示时显示，换一个没接这一屏的宿主，这一段照常按命令跑。所以把「开箱能玩」的最小流程写进 `ui` 列，是个不亏的习惯。
+`type` 只在非默认值时才写：不写 = `game`，写 `ui` 就是界面层。只有两个取值，界面内部是标题页还是设置页，用列 id 区分，不需要再分一层。
 
 `chapter_one` 不写类型就是 `game` 列：从它开始每一步都可回溯、可存档。
 
+## 挂载 UI 拿引擎操作通道
+
+`mount` 挂上去的组件（状态栏、侧边菜单）需要能操作引擎：暂停、存档、回标题。这条通道是 `HostControls`，由宿主在装配时注入，不走 `props`。
+
+```ts
+export interface HostControls {
+  pause(): void;
+  resume(): void;
+  paused(): boolean;
+  pauseMedia(channel?: AudioChannel): void;
+  resumeMedia(channel?: AudioChannel): void;
+  navigate(columnId: string): void;
+  save(slot: string): void;
+  load(slot: string): void;
+  dispose(): void;
+}
+```
+
+九方法，是 `StoryEngine` 的**收窄**：只暴露菜单需要的那几件事，跨形态也带得过去。它在运行期注入，不进状态、不进存档。
+
+`props` 与 `controls` 是两条不同的通道：
+
+|        | `props`                                            | `controls`         |
+| ------ | -------------------------------------------------- | ------------------ |
+| 从哪来 | `mount(hub, true, { scene: "forest" })` 的第三参数 | 宿主装配时造的对象 |
+| 存不存 | 存，随快照、存档、回溯走                           | 不存，运行期注入   |
+| 约束   | 必须 JSON 安全                                     | 任意对象，可含函数 |
+
+同一个组件两条都拿得到。记一句就够：`props` 进存档，`controls` 不进。
+
+Vue 形态下 `UiHost` 把 `controls` 作为 prop 传给每个挂载组件；原生形态下工厂函数拿第二个参数：
+
+```ts
+const instance = factory(props, controls);
+```
+
+## 暂停
+
+暂停是引擎的公开方法，宿主菜单和挂载 UI 都通过 `HostControls` 调到它：
+
+```ts
+engine.pause(); // 幂等
+engine.paused(); // true
+engine.resume(); // 幂等
+```
+
+`pause()` 做四件事：挂起正在跑的定时器并记下剩余毫秒、暂停 `bgm` / `ambient` / `voice` 三条常驻音频通道、暂停视频、把暂停标志写进状态。`se` 是一次性触发，不参与暂停。`resume()` 按剩余毫秒续起定时器，并按状态里的现状逐通道恢复媒体——已经被 `stop` 的通道不会自己响起来。
+
+暂停期间：
+
+- `advance()` / `choose()` 会被拒绝（`pause-active`），不是静默忽略——静默忽略会让玩家以为点击丢了。
+- `navigate()` / `save()` / `load()` / `dispose()` 照常可用。暂停时存档是正常需求，存的是暂停前那一刻的位置。
+
+只想停媒体、不冻结叙事时，用 `pauseMedia()` / `resumeMedia()`，不传通道就是全部常驻通道加视频。
+
 ## 现状与限制
 
-- **一屏只有一个。** 没有页面栈。要做「设置页返回上一页」，把上一个界面的列 id 记在自己手里，再 `navigate` 回去。
-- **不要引路由库。** 界面切换由列切换驱动，不是 URL。接一个路由进来，你得自己解决「URL 改了但引擎没跳」的双重真相。
-- **框架层零改动。** 引擎不认识启动界面，所以换 Vue、React 或纯原生只动宿主，`packages/*` 一行不改。
+- **一屏只有一个。** 没有页面栈。要做「设置页返回上一页」，把上一个页面记在宿主自己手里。
+- **不要引路由库。** 页面切换由宿主的界面状态驱动，不是 URL。接一个路由进来，你得自己解决「URL 改了但引擎没动」的双重真相。
+- **框架层零改动。** 普通页面是宿主代码，换 Vue、React 或纯原生只动宿主，`packages/*` 一行不改。
+- **普通页面不要放进 `src/ui/`。** 那里是 `mount` 的扫描面，放进去它就成了能被故事随手挂上摘下的组件。
 
 ## 相关
 
 - [故事与叙事流](/concepts/story/)：`type=ui` 与 `type=game` 的语义差别。
-- [挂载 UI 组件](/guides/ui-mount/)：叠在舞台上的常驻界面走另一条路。
-- [工程清单](/reference/manifest/)：`entry`、`name` 与 `shell.saves.slots` 的取值规则。
+- [挂载 UI 组件](/guides/ui-mount/)：`mount` 的目录约定、`uis` 声明与组件表。
+- [工程清单 project.json](/reference/manifest/)：`entry` 与 `shell.saves.slots` 的取值规则。
 - [存档系统](/concepts/saves/)：槽位名从哪来、存档里存了什么。

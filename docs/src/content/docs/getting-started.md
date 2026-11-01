@@ -93,7 +93,7 @@ label title_main:
 
 **页面一片空白，控制台报 404。** 资源路径写错了。`bgm "Audio/theme.mp3"` 对应 `Resources/Audio/theme.mp3`，大小写敏感，路径里不能有 `..`。
 
-**加了新故事文件，引擎说找不到列。** 先确认文件真的在 `Resources/Stories/` 下——放进去就会被扫到，清单由构建期递归扫描得出，不需要登记，也不用回来改任何名单。`src/stories.ts` 只是这份扫描结果的出口：
+**加了新故事文件，引擎说找不到列。** 先确认文件真的在 `Resources/Stories/` 下——放进去就会被扫到，清单由构建期递归扫描得出，不需要登记，也不用回来改任何名单。`src/stories/index.ts` 只是这份扫描结果的出口：
 
 ```ts
 export { STORIES } from "virtual:story-list";

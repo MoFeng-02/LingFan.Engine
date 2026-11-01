@@ -74,7 +74,7 @@ my-story/
 
 新故事文件放进 `Stories/` 就会被扫到，不需要登记——宿主侧没有一份要你手抄的名单：
 
-- **模板宿主（纯 Web 形态）**：构建期递归扫描 `Resources/Stories/`，结果经虚拟模块 `virtual:story-list` 交给宿主。`src/stories.ts` 只是出口：
+- **模板宿主（纯 Web 形态）**：构建期递归扫描 `Resources/Stories/`，结果经虚拟模块 `virtual:story-list` 交给宿主。`src/stories/index.ts` 只是出口：
 
   ```ts
   export { STORIES } from "virtual:story-list";

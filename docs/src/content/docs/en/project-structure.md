@@ -74,7 +74,7 @@ Put them anywhere inside `Stories/`, in whatever subdirectories you like. Column
 
 A new story file is picked up as soon as it lands in `Stories/` — there is no registration step, and no list for you to hand-maintain:
 
-- **Template host (pure-Web form)**: a build-time scan walks `Resources/Stories/` recursively and hands the result to the host through the virtual module `virtual:story-list`. `src/stories.ts` is only the exit:
+- **Template host (pure-Web form)**: a build-time scan walks `Resources/Stories/` recursively and hands the result to the host through the virtual module `virtual:story-list`. `src/stories/index.ts` is only the exit:
 
   ```ts
   export { STORIES } from "virtual:story-list";

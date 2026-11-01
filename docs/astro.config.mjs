@@ -183,8 +183,8 @@ export default defineConfig({
               link: "/guides/menu-input/",
             },
             {
-              label: "启动界面与渲染切换",
-              translations: { en: "Start Screen & Render Switching" },
+              label: "普通页面与对局内界面",
+              translations: { en: "Pages and In-Game UI" },
               link: "/guides/pages/",
             },
             {

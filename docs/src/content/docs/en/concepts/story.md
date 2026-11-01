@@ -103,7 +103,7 @@ scene status_panel type=ui
 
 Use them for title screens, pause menus and status panels so those transient screens never land in rollback history. Moving from a story column into one of these, the engine notes the progress from before the entry; a save made inside such a column stores the game position from before it, not the menu itself.
 
-`type` only needs writing when it is not the default: omitted means `game`, and `ui` marks an interface layer. There are **only two values** — whether an interface is a title screen or a settings page is expressed by its column id and the page registry (see [Pages and HUD](/en/guides/pages/)), not by another run-semantics type.
+`type` only needs writing when it is not the default: omitted means `game`, and `ui` marks an interface layer. There are **only two values** — whether an interface is a title screen or a settings page is distinguished by how its column id is named and by nothing else (see [Pages and In-Game UI](/en/guides/pages/)), not by another run-semantics type.
 
 ## Entry column
 

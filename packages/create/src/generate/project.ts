@@ -110,8 +110,8 @@ export function generateProject(options: GenerateOptions): GenerateResult {
  * 依次列出要合并的目录：骨架在前，框架层次之，故事源形态层再次，壳层最后。
  *
  * 顺序有实际后果，不是随便排的：
- * - 故事源形态层要晚于框架层——它替换 `src/stories.ts`，而各框架入口都从那里取表，
- *   晚于框架层才能覆盖到「框架层是否也带了自己的 stories.ts」这类情况；
+ * - 故事源形态层要晚于框架层——它替换 `src/stories/index.ts`，而各框架入口都从那里取表，
+ *   晚于框架层才能覆盖到「框架层是否也带了自己的 stories/index.ts」这类情况；
  * - 壳层最后——壳对工程形态有最终发言权（小程序壳会删掉浏览器宿主的 `src/host/`），
  *   让它压过其余各层才不会出现「壳删了、下层又写回来」。
  *

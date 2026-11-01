@@ -1,6 +1,6 @@
 ---
 title: 音频指令
-description: bgm、se、ambient、voice 四条通道与三条停止指令的签名、参数与常见错误。七条都不建立等待点。
+description: bgm、se、ambient、voice 四条通道、停止指令、音频实例与暂停恢复的签名、参数与常见错误。十三条都不建立等待点。
 ---
 
 import OpCard from "../../../../components/OpCard.astro";
@@ -416,6 +416,78 @@ say "雨大了起来——但曲子没有从头开始。"
 这是「实时调音」的正规入口。**不要**用 `audio_play` 重发来改音量：那会重设播放位置并打断淡入。
 
 给已停止的实例调音量会报错（先 `audio_play` 起播）；给不存在的实例调音量同样报错。
+:::
+
+</OpCard>
+
+### audio_pause
+
+<OpCard name="audio_pause" summary="把正在响的通道挂起，位置与播放器实例都留着。" rollback="full" since="0.3.0">
+
+```text
+audio_pause [通道]
+```
+
+**参数**
+
+| 参数   | 类型 | 必填 | 说明                                                       |
+| ------ | ---- | ---- | ---------------------------------------------------------- |
+| `通道` | text | 否   | `bgm` / `ambient` / `voice` 之一；不写则暂停全部常驻通道。 |
+
+**最小示例**
+
+```text
+bgm "Audio/theme.ogg"
+say "门外传来脚步声。"
+audio_pause
+say "声音被关在了门那边——曲子没有重来。"
+audio_resume
+say "门开了，曲子从刚才那一句继续。"
+```
+
+**常见错误**
+
+:::caution
+`se` 不参与暂停：一次性触发没有「从原位置继续」这回事，写了 `audio_pause se` 也不动作，不报错。
+
+只对正在播的通道生效。已 `stop` 的通道不会被记成暂停——恢复时它仍然安静，不会突然响起来。
+
+暂停与恢复成对写。只 `audio_pause` 不 `audio_resume` 会让通道一直挂着，读档回到暂停期间也一样挂着。
+:::
+
+</OpCard>
+
+### audio_resume
+
+<OpCard name="audio_resume" summary="让被挂起的通道从原来的位置接着响。" rollback="full" since="0.3.0">
+
+```text
+audio_resume [通道]
+```
+
+**参数**
+
+| 参数   | 类型 | 必填 | 说明                                                           |
+| ------ | ---- | ---- | -------------------------------------------------------------- |
+| `通道` | text | 否   | `bgm` / `ambient` / `voice` 之一；不写则恢复全部被挂起的通道。 |
+
+**最小示例**
+
+```text
+audio_pause bgm
+say "回忆里的这一段没有配乐。"
+audio_resume bgm
+say "回到现在，曲子从断开的地方续上。"
+```
+
+**常见错误**
+
+:::caution
+恢复是「接着响」而不是「重新播」：同一首曲子不会回到开头，位置、音量、循环都按暂停前那一刻。
+
+没被暂停过的通道不受影响；对已经 `stop` 的通道写 `audio_resume` 不会让它重新响。
+
+暂停期间若又用 `bgm` / `ambient` / `voice` 起播（换资源或 `restart=true`），那条通道按新的一次起播处理，暂停前的位置不再保留。
 :::
 
 </OpCard>
