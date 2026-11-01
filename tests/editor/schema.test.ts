@@ -228,6 +228,8 @@ const CANONICAL: Record<string, Record<string, unknown>> = {
   },
   audio_stop: { op: "audio_stop", inst: "rain" },
   audio_volume: { op: "audio_volume", inst: "rain", volume: 0.5 },
+  audio_pause: { op: "audio_pause", channel: "ambient" },
+  audio_resume: { op: "audio_resume", channel: "ambient" },
   video: { op: "video", resource: "Video/m1.mp4", volume: 0.8, loop: false },
   cutscene: {
     op: "cutscene",

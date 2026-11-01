@@ -11,6 +11,7 @@ import {
   type StoryCommand,
 } from "../../contracts/index.ts";
 import { interpolateText } from "../expr/index.ts";
+import { armWaitTimer } from "../internal/index.ts";
 import type { Frame, OpContext } from "../internal/index.ts";
 
 /** say 的已知负载字段；未知字段 fail-closed */
@@ -232,17 +233,7 @@ export function execWait(
   ctx.liveCheckpointed = true;
   ctx.autoSaveAtCheckpoint(); // wait 等待画面建立 = auto_save 消费点
   frame.index += 1;
-  ctx.pendingTimer = ctx.timerPort.set(
-    () => {
-      ctx.pendingTimer = null;
-      ctx.waitSkipable = false;
-      if (ctx.get(SYS.waiting) !== "wait") return; // dispose 等场景防御
-      ctx.setSystem(SYS.waiting, "none");
-      ctx.liveCheckpointed = false; // live 已越过该检查点
-      ctx.run();
-    },
-    Math.max(0, (cmd.seconds as number) * 1000),
-  );
+  armWaitTimer(ctx, Math.max(0, (cmd.seconds as number) * 1000));
 }
 
 /** NVL：进入/清屏/退出累积层；累积文本进核心状态（回溯/存档自动一致） */

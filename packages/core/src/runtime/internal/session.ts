@@ -18,6 +18,7 @@ import {
 } from "../../contracts/index.ts";
 import { mergeOverlayFiles } from "../i18n/index.ts";
 import { validSlot } from "./helpers.ts";
+import { pausedSession } from "./waiting.ts";
 import type { OpContext } from "./context.ts";
 
 /**
@@ -51,6 +52,10 @@ export function start(ctx: OpContext): void {
 export function advance(ctx: OpContext): void {
   if (!ctx.started) {
     ctx.fail("advance-invalid", "故事尚未启动");
+    return;
+  }
+  if (pausedSession(ctx)) {
+    ctx.fail("pause-active", "引擎处于暂停中，advance 被拒绝");
     return;
   }
   const waiting = ctx.get(SYS.waiting);
@@ -126,6 +131,10 @@ export function choose(ctx: OpContext, optionId: string): void {
       "choose-invalid",
       `choose 仅在菜单等待中有效（当前 __waiting=${String(ctx.get(SYS.waiting))}）`,
     );
+    return;
+  }
+  if (pausedSession(ctx)) {
+    ctx.fail("pause-active", "引擎处于暂停中，choose 被拒绝");
     return;
   }
   const targets = ctx.get(SYS.menuTargets);
@@ -279,6 +288,8 @@ export function dispose(ctx: OpContext): void {
   ctx.clearTimer();
   ctx.abortExternalTakeovers(); // 挂载 signal abort → 宿主卸载外部接管
   ctx.waitSkipable = false;
+  // 暂停标记随销毁一起退场：留下真值会让复用同一实例的宿主继续看到「暂停中」
+  if (pausedSession(ctx)) ctx.setSystem(SYS.paused, false);
 }
 
 /**

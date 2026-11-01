@@ -63,6 +63,13 @@ export const SYS = {
    */
   menuReturn: "__menu_return",
   /**
+   * 引擎级暂停标记（`pause()` 置真、`resume()` 清除）。
+   *
+   * **不进快照的可见状态**：与 `menuReturn` 同一口径——它是**引擎内部记账**，
+   * 读取档不依赖它（档里的进度就是暂停前那一刻）。
+   */
+  paused: "__paused",
+  /**
    * 实例级 z：单控件实例显式指定的层级（story 命令上的 `z`）。
    * 进 SSOT → 随快照 / 存档 / 回溯自动随行（重放到同一条命令即重新写入同一值）。
    * 宿主用 `resolveInstanceZ(层, 该值, 表)` 解析（实例 > 层默认 > 内建）；键不存在 = 未指定 = 层默认。
@@ -98,6 +105,18 @@ export const SYS = {
   audioInstances: "__audio_instances",
   /** 帧级键：UI 每帧回写，不进事件流 */
   bgmPosition: "__bgm_position",
+  /**
+   * **暂停前的播放态记账**：`通道 → 被暂停的那个 play 态`。
+   *
+   * `pause` 态本身不带资源（资源与位置在端口的播放器实例里），而 `audio_resume`
+   * 要把通道写回「该出声」的形态就必须知道放的是什么——这份记账就是那个来源。
+   * 进 SSOT ⇒ 随快照 / 存档 / 回溯随行：读档到暂停期间仍能恢复，回溯到暂停前
+   * 则连记账一起回到未暂停。
+   *
+   * 只在 `audio_pause` 写入、`audio_resume` 消费并删除；通道被 `stop` / 重新
+   * `play` 覆盖时残留项无人读取（`audio_resume` 只认 `pause` 态的通道）。
+   */
+  audioPaused: "__audio_paused",
   // 视频命令流（单通道）：状态入 SSOT → 快照随行
   video: "__video",
   /** video_skipable op 的持久开关（后续 video/cutscene 的缺省 skipable） */

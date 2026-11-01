@@ -66,6 +66,8 @@ export const PARAM_DIRECTION: Readonly<Record<string, ParamDirection>> = {
   [SYS.currentLanguage]: "readonly",
   [SYS.autoSave]: "readonly",
   [SYS.menuReturn]: "readonly",
+  /** 引擎级暂停标记：只由命令面 `pause()` / `resume()` 写，宿主只读 */
+  [SYS.paused]: "readonly",
   [SYS.minigame]: "readonly",
   [SYS.interaction]: "readonly",
   [SYS.typewriter]: "readonly",
@@ -94,6 +96,8 @@ export const PARAM_DIRECTION: Readonly<Record<string, ParamDirection>> = {
   [SYS.audioInstances]: "two-way",
   /** 背景乐播放位置：引擎回写、宿主可定位（读档后对齐） */
   [SYS.bgmPosition]: "two-way",
+  /** 暂停前播放态记账：命令写、`audio_resume` 读回；专用接缝 = `audio_pause` / `audio_resume` */
+  [SYS.audioPaused]: "two-way",
   /** 挂载 UI 表：命令写显隐与入参、宿主读后挂载/卸载组件；专用接缝 = `mount` op */
   [SYS.mounts]: "two-way",
 };

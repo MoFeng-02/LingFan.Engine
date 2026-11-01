@@ -165,6 +165,8 @@ describe("分类完备账：内建 op 全集必须被显式划分为等待 / 非
     "audio_play",
     "audio_stop",
     "audio_volume",
+    "audio_pause",
+    "audio_resume",
     "video",
     "seek_video",
     "pause_video",

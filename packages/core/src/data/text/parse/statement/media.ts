@@ -1,12 +1,13 @@
 /** media 族的读向解析。 */
 import { unquote } from "../../lexer.ts";
+import { isAudioChannel } from "../../../../shared/index.ts";
 import type { StoryCommand } from "../../../../contracts/index.ts";
 import type { StatementContext } from "../state.ts";
 
 /**
  * 解析本族的 op 行（`bgm` `se` `ambient` `voice` `stop_bgm` `stop_ambient` `stop_voice` `stop_se`
- * `audio_play` `audio_stop` `audio_volume` `video` `cutscene` `seek_video` `pause_video`
- * `resume_video` `stop_video` `video_skipable`）。
+ * `audio_play` `audio_stop` `audio_volume` `audio_pause` `audio_resume` `video` `cutscene`
+ * `seek_video` `pause_video` `resume_video` `stop_video` `video_skipable`）。
  *
  * 入参是分发骨架建好的 `StatementContext`（已切好的词表、定位前缀、issue 出口与警告通道）。
  * 只处理本族的 op，不匹配时落到末尾 `return null`，由骨架决定后续。
@@ -178,6 +179,18 @@ export function parseMediaStatement(c: StatementContext): StoryCommand | null {
     }
     case "pause_video":
       return { op: "pause_video" } as StoryCommand;
+    case "audio_pause":
+    case "audio_resume": {
+      // 位置参数可选：不写 channel = 全部常驻通道（se 除外），由执行期展开
+      const raw = tokens[0];
+      if (tokens.length > 1) return fail(`${op} 只接受一个 channel 参数`);
+      if (raw === undefined) return { op } as StoryCommand;
+      if (!isAudioChannel(raw))
+        return fail(
+          `${op} 的 channel 不合法：${raw}（须为 bgm / se / ambient / voice 之一）`,
+        );
+      return { op, channel: raw } as StoryCommand;
+    }
     case "resume_video":
       return { op: "resume_video" } as StoryCommand;
     case "stop_video":

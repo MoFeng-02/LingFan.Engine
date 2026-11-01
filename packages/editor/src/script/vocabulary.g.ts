@@ -18,7 +18,9 @@ export const VOCABULARY_OPS = [
   "array_pop",
   "array_push",
   "assert",
+  "audio_pause",
   "audio_play",
+  "audio_resume",
   "audio_stop",
   "audio_volume",
   "auto_save",
@@ -104,6 +106,8 @@ export const SCRIPT_COVERAGE: Readonly<Record<string, string>> = {
   audioPlay: "audio_play",
   audioStop: "audio_stop",
   audioVolume: "audio_volume",
+  audioPause: "audio_pause",
+  audioResume: "audio_resume",
   // —— elements.ts ——
   show: "show",
   hide: "hide",

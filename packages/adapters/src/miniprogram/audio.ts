@@ -31,6 +31,8 @@ interface Slot {
   url: string;
   /** 在跑的音量斜坡定时器句柄 */
   ramp?: ReturnType<typeof setTimeout>;
+  /** 暂停时记下的播放位置（秒）：这个平台没有可恢复暂停，恢复靠它 seek 回去 */
+  pausedAt?: number;
 }
 
 /** 音量夹到 [0, 1]：外部传入不合法时按边界值处理，而不是整段静音 */
@@ -114,9 +116,13 @@ export function createMiniprogramAudioPort(
       return;
     }
     // 换源或重播：常驻通道复用实例（避免重复解码），一次性通道新建（允许叠放）
-    if (current !== undefined) cancelRamp(current);
     const reused = persistent ? current : undefined;
     const slot: Slot = { ctx: reused?.ctx ?? createAudio(), url };
+    // 起播即作废暂停记账：之后 resume 不该把位置拉回上一次暂停点
+    if (reused !== undefined) {
+      cancelRamp(reused);
+      reused.pausedAt = undefined;
+    }
     // 复用实例才需要清掉上一次（同源重播靠它回到起点）；全新实例没什么可停的
     if (reused !== undefined) reused.ctx.stop();
     slot.ctx.src = url;
@@ -139,6 +145,8 @@ export function createMiniprogramAudioPort(
   function stop(channel: AudioChannel, fadeMs = 0): void {
     const slot = slots.get(channel);
     if (slot === undefined) return;
+    // 停止即作废暂停记账：停止之后没有「继续」这回事
+    slot.pausedAt = undefined;
     // 停完复位音量：下次淡入以满音量为基准（与 Web 实现同口径）
     const settle = (): void => {
       slot.ctx.stop();
@@ -156,6 +164,32 @@ export function createMiniprogramAudioPort(
     return slots.get(channel)?.ctx.currentTime ?? 0;
   }
 
+  /**
+   * 暂停通道。
+   *
+   * 这个平台的播放器没有 pause：只有 play / stop / seek。所以「暂停」用
+   * 「记下当前位置 + stop」模拟，`resume` 再 `play` + `seek` 回记录位置。
+   * 代价是恢复时有一次重新解码（不是无缝续播），语义上仍从原位置继续。
+   * `se` 是一次性触发，不参与暂停；未起播或已停止的通道是空操作。
+   */
+  function pause(channel: AudioChannel): void {
+    const slot = slots.get(channel);
+    if (slot === undefined) return;
+    cancelRamp(slot); // 在途斜坡作废：暂停后音量不该继续被坡改
+    slot.pausedAt = slot.ctx.currentTime ?? 0;
+    slot.ctx.stop();
+  }
+
+  /** 从暂停位置继续；未暂停（含未起播、已停止）是空操作 */
+  function resume(channel: AudioChannel): void {
+    const slot = slots.get(channel);
+    if (slot === undefined || slot.pausedAt === undefined) return;
+    const at = slot.pausedAt;
+    slot.pausedAt = undefined;
+    slot.ctx.play();
+    if (at > 0) slot.ctx.seek(at);
+  }
+
   function dispose(): void {
     for (const slot of slots.values()) destroySlot(slot);
     for (const slot of oneShots) destroySlot(slot);
@@ -163,5 +197,10 @@ export function createMiniprogramAudioPort(
     oneShots.clear();
   }
 
-  return { play, stop, position, dispose };
+  // 实例族（play/stop/setVolume/pause/resumeInstance）全部不实现：本平台的音频
+  // 上下文只有 play / stop / seek 三个动作面，没有 pause——暂停只能 stop + 记住位置
+  // 再 seek 回来。实例是作者可同时编排的多个声部，这种「伪暂停」逐个实例做会与
+  // 常驻通道的位置记账打架，收益不抵复杂度；实例族在契约里是可选能力，缺省即降级
+  // 为「实例不发声」，渲染层用 `?.` 静默跳过，不会因此卡住整段音频。
+  return { play, stop, pause, resume, position, dispose };
 }

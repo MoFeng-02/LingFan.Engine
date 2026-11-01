@@ -23,8 +23,23 @@ export const AUDIO_CHANNELS: readonly AudioChannel[] = [
 ];
 
 /**
- * 通道状态（SSOT 系统键值）：play = 播放或续播，stop = 停止（fadeMs 淡出）；null = 从未触碰。
- * `stop` 独立成形态，避免用哨兵资源名承载「停止」而丢失淡出参数。
+ * 常驻通道：跨命令持续存在的三条。
+ *
+ * `se` 是一次性音效，播完即弃——它没有「暂停后从原位置续播」的语义，因此不在其中。
+ * 「不指定通道就作用于全部常驻通道」这类批量语义（引擎的 `audio_pause` 不带通道、
+ * 宿主控制面的整局暂停与恢复）都读这张表，不各自写字面量。
+ */
+export const PERSISTENT_AUDIO_CHANNELS: readonly AudioChannel[] = [
+  "bgm",
+  "ambient",
+  "voice",
+];
+
+/**
+ * 通道状态（SSOT 系统键值）：play = 播放或续播，pause = 暂停（保留播放器与位置、不出声），
+ * stop = 停止（fadeMs 淡出）；null = 从未触碰。
+ * `stop` 独立成形态，避免用哨兵资源名承载「停止」而丢失淡出参数；
+ * `pause` 同样独立成形态——暂停不是「音量归零」，恢复时必须从原位置续播而不是从头播。
  */
 export type AudioChannelState =
   | {
@@ -43,6 +58,14 @@ export type AudioChannelState =
        * 本次写入的单调序号（se 每次触发 / restart 重播都递增，不进快照）：
        * 让「同一资源连续两次写入」也能被渲染层识别为两次独立事件。
        */
+      seq?: number;
+    }
+  | {
+      /**
+       * 暂停：不带资源，与视频命令的 `{ kind: "pause"; seq }` 同构。
+       * 恢复时由渲染层回到暂停前的位置续播，故这里不记位置（位置在播放器里）。
+       */
+      kind: "pause";
       seq?: number;
     }
   | {

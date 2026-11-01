@@ -12,6 +12,16 @@ import type { AudioChannel, AudioPlayOptions } from "./entities.ts";
 export interface AudioPort {
   play(channel: AudioChannel, url: string, options: AudioPlayOptions): void;
   stop(channel: AudioChannel, fadeMs?: number): void;
+  /**
+   * 暂停通道：保留播放器实例与播放位置，只是不出声。
+   * 通道已停止或从未播放时空操作（不建实例、不改状态）。
+   */
+  pause(channel: AudioChannel): void;
+  /**
+   * 从暂停位置继续播放；未暂停的空操作。
+   * 与 `play` 的区别：不从起点重播、不重建实例。
+   */
+  resume(channel: AudioChannel): void;
   /** 当前播放位置（秒）；未播放返回 0（帧级回写用） */
   position(channel: AudioChannel): number;
   dispose(): void;
@@ -41,6 +51,13 @@ export interface AudioPort {
    * 但那会重设位置、打断正在放的淡入。未实现的适配器只能靠下一次起播生效。
    */
   setVolumeInstance?(instanceId: string, volume: number): void;
+  /**
+   * 暂停一个实例：保留播放器与位置，不出声。
+   * 可选能力：未实现者由调用方按整通道 `pause` 降级。
+   */
+  pauseInstance?(instanceId: string): void;
+  /** 从暂停位置继续一个实例；未暂停的空操作。可选能力，同 `pauseInstance`。 */
+  resumeInstance?(instanceId: string): void;
 }
 
 // —— 视频（单通道命令流）：新 video 替换当前；Desktop/Mobile 同契约 ——

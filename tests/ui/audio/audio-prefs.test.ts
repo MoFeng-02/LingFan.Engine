@@ -52,6 +52,8 @@ function makePort(): { port: AudioPort; calls: Call[] } {
       play: (channel, url, options) =>
         calls.push({ kind: "play", channel, url, options }),
       stop: (channel) => calls.push({ kind: "stop", channel }),
+      pause: () => undefined,
+      resume: () => undefined,
       position: () => 0,
       dispose: () => undefined,
     },

@@ -64,6 +64,10 @@ export class EngineCore {
   protected started = false;
   /** 等待型命令的定时器句柄；换列、回溯、读档、热重载、销毁时必须清掉，否则会推进已失效的等待 */
   protected pendingTimer: TimerHandle | null = null;
+  /** 挂起定时器的到期时刻；`clear` 之后句柄再也问不出剩余量，只能靠它算 */
+  protected pendingTimerDueAt: number | null = null;
+  /** 暂停时挂起定时器的剩余毫秒；恢复按它续上原来的节奏，`null` = 无待续起定时器 */
+  protected pausedTimerRemainingMs: number | null = null;
   /** 定时器端口（wait/pause 的延迟回调来源；缺省 hostTimer = 宿主全局定时器） */
   protected readonly timerPort: TimerPort;
   /** 用户可见文案表（缺省 defaultEngineTexts；宿主经 EngineOptions.texts 部分覆盖） */

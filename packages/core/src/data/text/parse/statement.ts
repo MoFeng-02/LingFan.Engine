@@ -102,6 +102,8 @@ export function parseSimpleStatement(
     case "audio_play":
     case "audio_stop":
     case "audio_volume":
+    case "audio_pause":
+    case "audio_resume":
     case "video":
     case "cutscene":
     case "seek_video":

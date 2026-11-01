@@ -67,6 +67,8 @@ function makePort(): {
       play: (channel, url, options) =>
         calls.push({ kind: "play", channel, url, options }),
       stop: (channel, fadeMs) => calls.push({ kind: "stop", channel, fadeMs }),
+      pause: () => undefined,
+      resume: () => undefined,
       position: () => position,
       dispose: () => undefined,
     },

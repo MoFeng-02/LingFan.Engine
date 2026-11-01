@@ -10,12 +10,19 @@
 /** 定时器句柄（不透明）：由 {@link TimerPort.set} 返回，只能交回 {@link TimerPort.clear} */
 export type TimerHandle = { readonly brand: unique symbol };
 
-/** 定时器端口：延迟回调 + 取消。实现方保证句柄不可跨实例混用。 */
+/** 定时器端口：延迟回调 + 取消 + 时刻。实现方保证句柄不可跨实例混用。 */
 export interface TimerPort {
   /** 安排 `ms` 毫秒后回调 `fn`；返回取消句柄 */
   set(fn: () => void, ms: number): TimerHandle;
   /** 取消已安排的回调；句柄已触发或已取消时为空操作 */
   clear(handle: TimerHandle): void;
+  /**
+   * 当前时刻（毫秒时间轴，只需单调不减）。
+   *
+   * 暂停要把「还剩多少毫秒」算出来，没有时刻就只能丢掉剩余量从头计。
+   * 可选：不提供时核心退回宿主时钟（`Date.now()`），无 JS 运行时的宿主自行注入。
+   */
+  now?(): number;
 }
 
 /**

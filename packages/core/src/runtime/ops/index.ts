@@ -42,9 +42,13 @@ export {
 export {
   execAudio,
   execAudioInstance,
+  execAudioPause,
+  execAudioResume,
   execNotify,
   execVideo,
-} from "./media.ts";
+  pauseAudioInstances,
+  resumeAudioInstances,
+} from "./media/index.ts";
 export {
   execAnimate,
   execElementVisual,

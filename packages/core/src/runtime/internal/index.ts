@@ -31,7 +31,14 @@ export {
   setLanguage,
   start,
 } from "./session.ts";
-export { abortExternalTakeovers, clearTimer, input } from "./waiting.ts";
+export {
+  abortExternalTakeovers,
+  armWaitTimer,
+  clearTimer,
+  input,
+  nowMs,
+  pausedSession,
+} from "./waiting.ts";
 export {
   animationFinished,
   animations,

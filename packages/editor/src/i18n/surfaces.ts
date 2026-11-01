@@ -16,10 +16,10 @@ export const TRANSLATE_SURFACES: Readonly<Record<string, readonly string[]>> = {
   // 候选只翻显示文本；`value` 是要写进变量的原样值，**不进翻译面**（否则多语言下故事逻辑随语言漂移）
   input: ["prompt", "options[].text"],
   notify: ["text"],
-  // character.screen 仅入编辑器比对面（原文收集/键抽取），运行期**不翻**：引擎恰好 7 个
-  // translate 调用点（runtime/i18n/translate.ts:31、ops/dialog.ts:92/107/171/175、
-  // ops/interaction.ts:42、ops/media.ts:262），均不含 screen（说话人显示名解析产物
-  // 走 say 的 Translate 挂接，查表见 runtime/ops/dialog.ts execSay；docs concepts/i18n.md 同口径）。
+  // character.screen 仅入编辑器比对面（原文收集/键抽取），运行期**不翻**：引擎的
+  // translate 调用点分布在 runtime/i18n/translate.ts、ops/dialog.ts、ops/interaction.ts
+  // 与 ops/media/notify.ts，均不含 screen（说话人显示名解析产物走 say 的 Translate
+  // 挂接，查表见 runtime/ops/dialog.ts execSay；docs concepts/i18n.md 同口径）。
   character: ["screen"],
 };
 

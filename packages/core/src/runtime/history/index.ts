@@ -24,3 +24,4 @@ export {
   lastReplayableCursor,
   rollbackTo,
 } from "./rollback.ts";
+export type { HistoryViewEntry } from "./rollback.ts";

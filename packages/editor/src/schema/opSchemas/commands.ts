@@ -258,6 +258,15 @@ const audioVolumeSchema = z.strictObject({
   volume: Finite,
 });
 
+// channel 省略 = 全部常驻通道（se 除外），故是 optional 而非缺省成某个通道
+const audioPauseSchema = z.strictObject({
+  channel: audioChannelSchema.optional(),
+});
+
+const audioResumeSchema = z.strictObject({
+  channel: audioChannelSchema.optional(),
+});
+
 const videoSchema = z.strictObject({
   ...playFields,
   loop: z.boolean().optional(),
@@ -402,6 +411,8 @@ export {
   audioPlaySchema,
   audioStopSchema,
   audioVolumeSchema,
+  audioPauseSchema,
+  audioResumeSchema,
   videoSchema,
   cutsceneSchema,
   seekVideoSchema,

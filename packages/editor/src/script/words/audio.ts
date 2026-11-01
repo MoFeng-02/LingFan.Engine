@@ -191,3 +191,43 @@ export function audioVolume(
 ): CommandOf<"audio_volume"> {
   return { op: "audio_volume", inst, volume };
 }
+
+/** `audio_pause` / `audio_resume` 的可选项：目标通道（省略 = 全部常驻通道） */
+export type AudioPauseOptions = Omit<CommandOf<"audio_pause">, "op">;
+
+/**
+ * 暂停音频通道：保留播放器与播放位置，只是不出声；恢复从原位置继续。
+ *
+ * - 省略 `channel` = 全部常驻通道（`bgm` / `ambient` / `voice`）。
+ * - `se` 是一次性触发，暂停它没有可恢复的东西——显式传 `se` 不动作。
+ * - 只对正在播放的通道生效；已停止或从未播放的通道不受影响（连按两次只算一次）。
+ *
+ * @param opts 可选项，见 {@link AudioPauseOptions}。
+ * @returns `audio_pause` 故事命令。
+ * @example
+ * audioPause(); // 暂停全部常驻通道
+ * audioPause({ channel: "bgm" });
+ */
+export function audioPause(
+  opts?: AudioPauseOptions,
+): CommandOf<"audio_pause"> {
+  return { op: "audio_pause", ...opts };
+}
+
+/**
+ * 恢复被 {@link audioPause} 暂停的通道：从暂停位置续播，不从头播。
+ *
+ * 恢复用的是暂停前那个播放态（资源、音量、循环原样），因此不会重新起播、
+ * 也不会重设淡入。未处于暂停态的通道不动作。
+ *
+ * @param opts 可选项，见 {@link AudioPauseOptions}。
+ * @returns `audio_resume` 故事命令。
+ * @example
+ * audioResume(); // 恢复全部常驻通道
+ * audioResume({ channel: "ambient" });
+ */
+export function audioResume(
+  opts?: AudioPauseOptions,
+): CommandOf<"audio_resume"> {
+  return { op: "audio_resume", ...opts };
+}

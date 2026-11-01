@@ -183,6 +183,20 @@ export interface OpContext {
   started: boolean;
   waitSkipable: boolean;
   pendingTimer: TimerHandle | null;
+  /**
+   * 挂起定时器的到期时刻（毫秒时间轴）。
+   *
+   * 定时器一旦被 `clear` 就无法再问「还剩多久」，所以起定时器时把到期时刻记下来，
+   * 暂停时用它与当前时刻相减得到剩余量。`null` = 当前没有在跑的等待定时器。
+   */
+  pendingTimerDueAt: number | null;
+  /**
+   * 暂停时挂起定时器的剩余毫秒。
+   *
+   * 恢复要接着原来的节奏走，而不是从头再等一遍；`null` = 没有待续起的定时器
+   * （未暂停、定时器已到期、或导航/读档/回溯已把它丢弃）。
+   */
+  pausedTimerRemainingMs: number | null;
   inputStore: string | null;
   /** 清掉等待定时器 */
   clearTimer(): void;

@@ -83,6 +83,15 @@ export function generateMediaCommand(
     case "stop_video":
       out.push(`${pad}stop_video`);
       return;
+    case "audio_pause":
+    case "audio_resume":
+      // channel 省略即「全部常驻通道」，不能补默认值——写出来会变成只暂停某一个
+      out.push(
+        cmd.channel === undefined
+          ? `${pad}${cmd.op}`
+          : `${pad}${cmd.op} ${cmd.channel as string}`,
+      );
+      return;
     case "video_skipable":
       out.push(
         `${pad}video_skipable ${cmd.value === false ? "false" : "true"}`,

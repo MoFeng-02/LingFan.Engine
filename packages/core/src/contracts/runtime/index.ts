@@ -7,3 +7,4 @@ export * from "./entities.ts";
 export * from "./reader.ts";
 export * from "./column-summary.ts";
 export * from "./timer.ts";
+export * from "./controls.ts";

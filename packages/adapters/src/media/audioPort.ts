@@ -7,6 +7,10 @@
  * 浏览器自动播放策略拒绝时登记该通道，首次用户交互后重试（否则首曲静默丢失）。
  * 媒体源可经 `blobSource` 物化（Android WebView 的 Range 拦截缺陷绕过，见 blobSource 模块）：
  * URL 判等仍按**逻辑 URL**（物化不改变「同源不重设 src」的无缝续播语义）。
+ *
+ * 本文件只装**四通道**维度（叙事语义：这段是 BGM、这句是语音）。实例维度
+ * （作者的编排单元，可叠放）在 `audioInstances` 模块，斜坡调度在 `audioRamps` 模块——
+ * 三者共用同一条 rAF 与同一套音量夹取，故调度要向下注入而不是各起一条。
  */
 import type {
   AudioChannel,
@@ -14,25 +18,9 @@ import type {
   AudioPort,
 } from "@lingfan-engine/core";
 import { createBlobSource, type BlobSourceOptions } from "./blobSource";
-
-/** 位置写入容差（秒）：小于此不写 currentTime，避免每帧抖动 */
-const SEEK_EPSILON = 0.25;
-
-/** 一条在跑的淡入淡出：音量从 from 线性走到 to，start/ms 给出时间轴 */
-interface Ramp {
-  element: HTMLAudioElement;
-  from: number;
-  to: number;
-  start: number;
-  ms: number;
-  /** 斜坡走完后的收尾（音效停止时用来 pause；常驻通道靠 to===0 的既有约定） */
-  onDone?: () => void;
-}
-
-/** 音量夹到 [0, 1]：外部传入的音量不合法时按边界值处理，而不是整段静音 */
-function clamp(value: number): number {
-  return Math.min(1, Math.max(0, value));
-}
+import { SEEK_EPSILON, clamp } from "./audioRamp";
+import { createAudioInstances, type AudioInstances } from "./audioInstances";
+import { createAudioRampScheduler } from "./audioRamps";
 
 /** 音频端口的装配参数：诊断出口与可选的媒体源物化 */
 export interface WebAudioPortOptions {
@@ -63,24 +51,6 @@ export function createWebAudioPort(
   const urls = new Map<AudioChannel, string>();
   /** 各通道最近一次 play 的逻辑 URL：仅供 error 文案点名资源（元素与监听器常驻复用） */
   const errorUrls = new Map<AudioChannel, string>();
-  const ramps = new Map<AudioChannel, Ramp>();
-  /**
-   * 无名元素的斜坡（音效停止时的淡出）。
-   *
-   * 常驻通道的斜坡按通道键存在 `ramps` 里；音效没有通道键（每次触发都是新元素），
-   * 故单列一个数组。与 `ramps` 共用同一条 rAF。
-   */
-  const unnamedRamps: Ramp[] = [];
-  /** 实例元素：每个实例 id 一个（与四通道互不干扰，可任意叠放） */
-  const instanceElements = new Map<string, HTMLAudioElement>();
-  /** 实例的最远一次起播逻辑 URL：仅供 error 文案点名资源 */
-  const instanceUrls = new Map<string, string>();
-  /** 实例的淡入淡出坡（按实例 id 键；坡体借道 `unnamedRamps` 走同一条 rAF） */
-  const instanceRamps = new Map<string, Ramp>();
-  /** 每实例世代号：作废在途物化（停止 / 新起播取代后的迟到回填） */
-  const instanceGenerations = new Map<string, number>();
-  /** 被自动播放策略拒绝的实例：首次用户交互后重试 */
-  const blockedInstances = new Set<string>();
   /** 被自动播放策略拒绝的通道：首次用户交互后重试 */
   const blocked = new Set<AudioChannel>();
   const blobSource =
@@ -89,8 +59,9 @@ export function createWebAudioPort(
       : createBlobSource(portOptions.blobSource);
   /** 每通道世代号：作废在途物化（stop / 新 play 取代后的迟到回填） */
   const generations = new Map<AudioChannel, number>();
+  const ramps = createAudioRampScheduler();
   let gestureHandler: (() => void) | null = null;
-  let rafId = 0;
+  let instances: AudioInstances | null = null;
 
   /** 物化为可口喂元素的 URL（未配置物化 = 原样返回） */
   function resolveSource(url: string): Promise<string> {
@@ -111,74 +82,6 @@ export function createWebAudioPort(
     return next;
   }
 
-  function tick(now: number): void {
-    rafId = 0;
-    for (const [channel, ramp] of [...ramps]) {
-      const t = Math.min(1, (now - ramp.start) / ramp.ms);
-      ramp.element.volume = clamp(ramp.from + (ramp.to - ramp.from) * t);
-      if (t >= 1) {
-        ramps.delete(channel);
-        if (ramp.to === 0) ramp.element.pause();
-      }
-    }
-    for (let i = unnamedRamps.length - 1; i >= 0; i -= 1) {
-      const ramp = unnamedRamps[i]!;
-      const t = Math.min(1, (now - ramp.start) / ramp.ms);
-      ramp.element.volume = clamp(ramp.from + (ramp.to - ramp.from) * t);
-      if (t >= 1) {
-        unnamedRamps.splice(i, 1);
-        // 实例斜坡走完要出表，否则 setVolumeInstance 会去改一个已经死掉的坡
-        for (const [id, at] of instanceRamps) {
-          if (at === ramp) instanceRamps.delete(id);
-        }
-        ramp.onDone?.();
-      }
-    }
-    if (ramps.size > 0 || unnamedRamps.length > 0) {
-      rafId = requestAnimationFrame(tick);
-    }
-  }
-
-  function fade(
-    channel: AudioChannel,
-    element: HTMLAudioElement,
-    to: number,
-    ms: number,
-  ): void {
-    const target = clamp(to);
-    if (ms <= 0) {
-      ramps.delete(channel);
-      element.volume = target;
-      return;
-    }
-    ramps.set(channel, {
-      element,
-      from: element.volume,
-      to: target,
-      start: performance.now(),
-      ms,
-    });
-    if (rafId === 0) rafId = requestAnimationFrame(tick);
-  }
-
-  /** 无名元素的淡出（音效停止用）：走完调用 `onDone` */
-  function rampElement(
-    element: HTMLAudioElement,
-    to: number,
-    ms: number,
-    onDone: () => void,
-  ): void {
-    unnamedRamps.push({
-      element,
-      from: element.volume,
-      to: clamp(to),
-      start: performance.now(),
-      ms,
-      onDone,
-    });
-    if (rafId === 0) rafId = requestAnimationFrame(tick);
-  }
-
   function retryBlocked(): void {
     for (const channel of [...blocked]) {
       const element = elements.get(channel);
@@ -188,14 +91,7 @@ export function createWebAudioPort(
         () => undefined,
       );
     }
-    for (const instanceId of [...blockedInstances]) {
-      const element = instanceElements.get(instanceId);
-      if (element === undefined) continue;
-      void element.play().then(
-        () => blockedInstances.delete(instanceId),
-        () => undefined,
-      );
-    }
+    instances?.retryBlocked();
   }
 
   /** 首个用户交互（pointerdown/keydown）后重试被拒通道，然后解绑 */
@@ -221,7 +117,7 @@ export function createWebAudioPort(
   ): void {
     if (options.fadeMs > 0) {
       element.volume = 0;
-      fade(channel, element, options.volume, options.fadeMs);
+      ramps.fade(channel, element, options.volume, options.fadeMs);
     } else {
       element.volume = clamp(options.volume);
     }
@@ -286,7 +182,7 @@ export function createWebAudioPort(
     if (sameUrl && !options.restart) {
       // 无缝续播/更新：不重设 src（不打断解码与播放位置）
       element.loop = options.loop;
-      fade(channel, element, options.volume, options.fadeMs);
+      ramps.fade(channel, element, options.volume, options.fadeMs);
       if (Math.abs(element.currentTime - options.position) > SEEK_EPSILON) {
         element.currentTime = options.position;
       }
@@ -300,7 +196,7 @@ export function createWebAudioPort(
       return;
     }
     urls.set(channel, url);
-    ramps.delete(channel);
+    ramps.cancel(channel);
     blocked.delete(channel);
     const mine = bumpGeneration(channel);
     void resolveSource(url).then((source) => {
@@ -329,7 +225,7 @@ export function createWebAudioPort(
       shots.clear();
       for (const shot of playing) {
         if (fadeMs > 0) {
-          rampElement(shot, 0, fadeMs, () => shot.pause());
+          ramps.ramp(shot, 0, fadeMs, () => shot.pause());
           continue;
         }
         shot.pause();
@@ -342,10 +238,10 @@ export function createWebAudioPort(
     blocked.delete(channel);
     if (element === undefined) return;
     if (fadeMs > 0) {
-      fade(channel, element, 0, fadeMs); // 斜坡归零后在 tick 内 pause
+      ramps.fade(channel, element, 0, fadeMs); // 斜坡归零后在调度内 pause
       return;
     }
-    ramps.delete(channel);
+    ramps.cancel(channel);
     element.pause();
     element.volume = 1; // 复位：下次淡入以满音量为基准
   }
@@ -354,185 +250,61 @@ export function createWebAudioPort(
     return elements.get(channel)?.currentTime ?? 0;
   }
 
-  // —— 实例维度：每个 id 一个元素，与四通道互不干扰 ——
-
   /**
-   * 取实例元素（必要时创建）。
+   * 暂停通道：保留元素与播放位置，只是不出声。
    *
-   * 与常驻通道同一套 error 文案策略：元素复用、监听器只挂一次，
-   * 故报错时读 `instanceUrls` 的最新值才点得出是哪个资源。
+   * 与 `stop` 的分界——`stop` 会作废在途物化并复位音量（下次淡入以满音量为基准），
+   * 那是「这一段结束了」；`pause` 是「这段还没结束，先别出声」，所以不动世代号、
+   * 不动音量、不删 `urls`：恢复时同一个元素从 `currentTime` 继续，不重新解码。
+   *
+   * `se` 是一次性触发（每次一个独立元素，没有「第几个」的概念），不参与暂停；
+   * 通道未起播或已停止时是空操作（不建元素、不改任何记录）。
    */
-  function ensureInstance(instanceId: string, url: string): HTMLAudioElement {
-    let element = instanceElements.get(instanceId);
-    if (element === undefined) {
-      element = new Audio();
-      element.preload = "auto";
-      element.addEventListener("error", () => {
-        portOptions.onError?.(
-          `音频实例无法解码或缺失：${instanceUrls.get(instanceId) ?? url}（实例 ${instanceId}）`,
-        );
-      });
-      instanceElements.set(instanceId, element);
-    }
-    instanceUrls.set(instanceId, url);
-    return element;
-  }
-
-  function instanceGenerationOf(instanceId: string): number {
-    return instanceGenerations.get(instanceId) ?? 0;
-  }
-
-  function bumpInstanceGeneration(instanceId: string): number {
-    const next = instanceGenerationOf(instanceId) + 1;
-    instanceGenerations.set(instanceId, next);
-    return next;
+  function pause(channel: AudioChannel): void {
+    if (channel === "se") return;
+    const element = elements.get(channel);
+    if (element === undefined) return;
+    ramps.cancel(channel); // 在途淡入淡出作废：暂停后音量不该继续被坡改
+    element.pause();
   }
 
   /**
-   * 实例的淡入淡出：走无名斜坡（`unnamedRamps`），与音效停止共用一条 rAF。
+   * 从暂停位置继续：未暂停（含未起播、已停止）是空操作。
    *
-   * 为什么不塞进 `ramps`：那张表按**通道**键，一张通道表里放不下同通道的多个实例
-   * （后写的会覆盖前一个，前一个的音量就冻在半路）。实例按 id 键，故另表。
+   * 不走 `start`：`start` 会把音量重置成 `options.volume` 并可能触发淡入，
+   * 而恢复只是「继续」，音量与位置都该保持暂停前的样子。
    */
-  function instanceFade(
-    instanceId: string,
-    element: HTMLAudioElement,
-    to: number,
-    ms: number,
-  ): void {
-    const existing = instanceRamps.get(instanceId);
-    if (existing !== undefined) {
-      // 同实例连续改音量：把旧坡整个摘掉再从当前音量重新起坡——
-      // 只删映射不摘坡体的话，旧坡还会继续往旧目标推，两个坡互相打架。
-      const at = unnamedRamps.indexOf(existing);
-      if (at >= 0) unnamedRamps.splice(at, 1);
-      instanceRamps.delete(instanceId);
-    }
-    const target = clamp(to);
-    if (ms <= 0) {
-      element.volume = target;
-      return;
-    }
-    const ramp: Ramp = {
-      element,
-      from: element.volume,
-      to: target,
-      start: performance.now(),
-      ms,
-    };
-    instanceRamps.set(instanceId, ramp);
-    unnamedRamps.push(ramp);
-    if (rafId === 0) rafId = requestAnimationFrame(tick);
-  }
-
-  function playInstance(
-    instanceId: string,
-    url: string,
-    options: AudioPlayOptions,
-  ): void {
-    // 先取旧值再 ensureInstance：后者会把本次 url 写进 instanceUrls，
-    // 那之后比较「是不是同一个资源」就恒为真，换源会被当成更新而永不重设 src。
-    const previousUrl = instanceUrls.get(instanceId);
-    const element = ensureInstance(instanceId, url);
-    const sameUrl = previousUrl === url;
-    if (sameUrl && !options.restart) {
-      // 同实例 + 同资源：更新而非叠放（改音量/循环/位置，不打断解码）
-      element.loop = options.loop;
-      instanceFade(instanceId, element, options.volume, options.fadeMs);
-      if (Math.abs(element.currentTime - options.position) > SEEK_EPSILON) {
-        element.currentTime = options.position;
-      }
-      return;
-    }
-    if (sameUrl) {
-      element.loop = options.loop;
-      element.currentTime = options.position;
-      startInstance(instanceId, element, options);
-      return;
-    }
-    instanceUrls.set(instanceId, url);
-    instanceRamps.delete(instanceId);
-    blockedInstances.delete(instanceId);
-    const mine = bumpInstanceGeneration(instanceId);
-    void resolveSource(url).then((source) => {
-      if (instanceGenerationOf(instanceId) !== mine) return; // 已被停止 / 新起播取代
-      element.src = source;
-      element.loop = options.loop;
-      if (options.position > 0) {
-        element.addEventListener(
-          "loadedmetadata",
-          () => {
-            element.currentTime = options.position;
-          },
-          { once: true },
-        );
-      }
-      startInstance(instanceId, element, options);
-    });
-  }
-
-  function startInstance(
-    instanceId: string,
-    element: HTMLAudioElement,
-    options: AudioPlayOptions,
-  ): void {
-    if (options.fadeMs > 0) {
-      element.volume = 0;
-      instanceFade(instanceId, element, options.volume, options.fadeMs);
-    } else {
-      element.volume = clamp(options.volume);
-    }
+  function resume(channel: AudioChannel): void {
+    if (channel === "se") return;
+    const element = elements.get(channel);
+    if (element === undefined || !element.paused) return;
     void element.play().then(
-      () => blockedInstances.delete(instanceId),
+      () => blocked.delete(channel),
       () => {
-        // 实例被自动播放策略拒绝：同一套「首次用户交互后重试」
-        blockedInstances.add(instanceId);
+        blocked.add(channel);
         bindGestureRetry();
       },
     );
   }
 
-  function stopInstance(instanceId: string, fadeMs = 0): void {
-    const element = instanceElements.get(instanceId);
-    bumpInstanceGeneration(instanceId); // 作废在途物化：停止后不得再回填 src
-    instanceUrls.delete(instanceId);
-    blockedInstances.delete(instanceId);
-    const ramp = instanceRamps.get(instanceId);
-    if (ramp !== undefined) {
-      const at = unnamedRamps.indexOf(ramp);
-      if (at >= 0) unnamedRamps.splice(at, 1);
-      instanceRamps.delete(instanceId);
-    }
-    if (element === undefined) return;
-    if (fadeMs > 0) {
-      rampElement(element, 0, fadeMs, () => element.pause());
-      return;
-    }
-    element.pause();
-  }
-
-  function setVolumeInstance(instanceId: string, volume: number): void {
-    const element = instanceElements.get(instanceId);
-    if (element === undefined) return; // 未起播的实例没有元素可改
-    const ramp = instanceRamps.get(instanceId);
-    if (ramp !== undefined) {
-      // 斜坡进行中：改的是坡的终点，坡本身继续走完（不跳音量）
-      ramp.to = clamp(volume);
-      return;
-    }
-    element.volume = clamp(volume);
+  /** 实例维度按需构建：未用到实例能力的宿主不必付出这份状态 */
+  function instanceFace(): AudioInstances {
+    instances ??= createAudioInstances({
+      onError: portOptions.onError,
+      resolveSource,
+      ramps,
+      requestGestureRetry: bindGestureRetry,
+    });
+    return instances;
   }
 
   function dispose(): void {
-    if (rafId !== 0) cancelAnimationFrame(rafId);
-    rafId = 0;
+    ramps.dispose();
     if (gestureHandler !== null) {
       window.removeEventListener("pointerdown", gestureHandler);
       window.removeEventListener("keydown", gestureHandler);
       gestureHandler = null;
     }
-    ramps.clear();
-    unnamedRamps.length = 0;
     blocked.clear();
     for (const shot of shots) {
       shot.pause();
@@ -544,15 +316,8 @@ export function createWebAudioPort(
       element.removeAttribute("src");
     }
     elements.clear();
-    instanceRamps.clear();
-    blockedInstances.clear();
-    for (const element of instanceElements.values()) {
-      element.pause();
-      element.removeAttribute("src");
-    }
-    instanceElements.clear();
-    instanceUrls.clear();
-    instanceGenerations.clear();
+    instances?.dispose();
+    instances = null;
     urls.clear();
     errorUrls.clear();
     generations.clear();
@@ -562,10 +327,17 @@ export function createWebAudioPort(
   return {
     play,
     stop,
+    pause,
+    resume,
     position,
     dispose,
-    playInstance,
-    stopInstance,
-    setVolumeInstance,
+    playInstance: (instanceId, url, options) =>
+      instanceFace().play(instanceId, url, options),
+    stopInstance: (instanceId, fadeMs) =>
+      instanceFace().stop(instanceId, fadeMs),
+    setVolumeInstance: (instanceId, volume) =>
+      instanceFace().setVolume(instanceId, volume),
+    pauseInstance: (instanceId) => instanceFace().pause(instanceId),
+    resumeInstance: (instanceId) => instanceFace().resume(instanceId),
   };
 }

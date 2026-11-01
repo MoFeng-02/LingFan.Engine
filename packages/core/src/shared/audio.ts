@@ -32,8 +32,17 @@ export function isAudioInstanceId(value: unknown): value is string {
   return typeof value === "string" && AUDIO_INSTANCE_ID_PATTERN.test(value);
 }
 
+/**
+ * 通道状态判据：按 `kind` 分支判各自字段。
+ *
+ * 不能先统一要求 `fadeMs` 存在——`pause` 态不带淡出参数，那样会把合法的暂停
+ * 判成坏数据（读入 fail-closed 后暂停就丢了）。淡出只在 `play` / `stop` 分支里判。
+ */
 function isChannelState(value: unknown): value is AudioChannelState {
   if (!isPlainObject(value)) return false;
+  if (value.kind === "pause") {
+    return value.seq === undefined || isOptionalSeq(value.seq);
+  }
   if (typeof value.fadeMs !== "number" || !Number.isFinite(value.fadeMs)) {
     return false;
   }

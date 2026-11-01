@@ -118,6 +118,8 @@ export {
   audioPlay,
   audioStop,
   audioVolume,
+  audioPause,
+  audioResume,
   bgm,
   stopBgm,
   se,
@@ -130,6 +132,7 @@ export {
 export type {
   AudioPlayOptions,
   AudioStopOptions,
+  AudioPauseOptions,
   PlayOptions,
   BgmOptions,
   StopOptions,

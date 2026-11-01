@@ -124,7 +124,7 @@ export interface Story {
  *   纯修复与文档不进位。**禁止**从 git 提交数、时间戳或产物哈希派生——那会让产物
  *   不再可复现，破坏构建的「零差量」幂等守卫。
  */
-export const CAPABILITY_VERSION = "0.9.0";
+export const CAPABILITY_VERSION = "0.10.0";
 
 /** 工程清单（project.json）：结构化/原子化多文件工程的组装契约 */
 export interface ProjectManifest {

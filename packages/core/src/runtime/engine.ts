@@ -18,7 +18,6 @@ import type {
   SaveOptions,
 } from "../contracts/index.ts";
 import {
-  gameScopedKey,
   type ExtensionOpResult,
   type GameStateWriter,
   type InteractionResult,
@@ -36,8 +35,10 @@ import {
   historyLength,
   historyView,
   rollbackTo,
+  type HistoryViewEntry,
 } from "./history/index.ts";
 import { exportSave, importSave } from "./save/index.ts";
+import { pauseSession, resumeSession } from "./pause.ts";
 import { columnSummaries } from "./columns.ts";
 import {
   advance,
@@ -55,6 +56,7 @@ import {
   navigate,
   onEvent,
   onStateChanged,
+  pausedSession,
   reloadStory,
   reportMediaPosition,
   save,
@@ -65,7 +67,7 @@ import {
   videoFinished,
   type OpContext,
 } from "./internal/index.ts";
-import { EngineForwarders } from "./engine/index.ts";
+import { EngineForwarders, createGameState } from "./engine/index.ts";
 
 /**
  * 装配契约（构造选项与守卫）定义在契约层，此处按原路径转出，
@@ -170,6 +172,8 @@ export class StoryEngine extends EngineForwarders {
       this.eventListeners,
       this.started,
       this.pendingTimer,
+      this.pendingTimerDueAt,
+      this.pausedTimerRemainingMs,
       this.waitSkipable,
       this.timerPort,
       this.texts,
@@ -284,6 +288,23 @@ export class StoryEngine extends EngineForwarders {
   dispose(): void {
     dispose(this.ctx);
   }
+  /**
+   * 暂停：挂起等待定时器、让正在出声的媒体收声、记下暂停标记。
+   *
+   * 幂等。**不中断外部接管**（小游戏 / 玩法系统 / 扩展 op 等待保持挂载，只是不再收到推进输入），
+   * 否则再恢复就不是「接着玩」而是「重进」。暂停期间 `advance()` / `choose()` fail-closed。
+   */
+  pause(): void {
+    pauseSession(this.ctx);
+  }
+  /** 解除暂停：按剩余毫秒续上原来的等待，媒体按当前状态逐个恢复。未暂停时幂等空操作 */
+  resume(): void {
+    resumeSession(this.ctx);
+  }
+  /** 是否处于暂停中 */
+  paused(): boolean {
+    return pausedSession(this.ctx);
+  }
   /** 当前舞台上的元素实例列表，供宿主渲染 */
   elements(): ElementInstance[] {
     return elements(this.ctx);
@@ -313,17 +334,11 @@ export class StoryEngine extends EngineForwarders {
     return resolveExtensionOp(this.ctx, op, result);
   }
   /** 外部玩法系统的状态写入面：作用域化键与「是否触发观察事件」的四种组合 */
-  readonly gameState: GameStateWriter = {
-    set: (key: string, value: unknown): boolean =>
-      this.writeExternal(key, value, true),
-    setSilent: (key: string, value: unknown): boolean =>
-      this.writeExternal(key, value, false),
-    setScoped: (systemId: string, key: string, value: unknown): boolean =>
-      this.writeExternal(gameScopedKey(systemId, key), value, true, systemId),
-    setScopedSilent: (systemId: string, key: string, value: unknown): boolean =>
-      this.writeExternal(gameScopedKey(systemId, key), value, false, systemId),
-    get: (key: string): unknown => this.state.get(key),
-  };
+  readonly gameState: GameStateWriter = createGameState(
+    (key, value, emitChange, systemId) =>
+      this.writeExternal(key, value, emitChange, systemId),
+    (key) => this.state.get(key),
+  );
   /** 查角色定义（character op 注册；say 的 speaker 按它套样式） */
   getCharacter(key: string): CharacterDef | undefined {
     return getCharacter(this.ctx, key);
@@ -393,14 +408,7 @@ export class StoryEngine extends EngineForwarders {
     reloadStory(this.ctx, story);
   }
   /** 历史浏览视图：逐条给出序号、坐标、说话人与文本（nvl 另带多行） */
-  historyView(): Array<{
-    index: number;
-    coord: ColumnCoordinate;
-    speaker: string;
-    text: string;
-    nvl: boolean;
-    nvlLines: string[];
-  }> {
+  historyView(): HistoryViewEntry[] {
     return historyView(this.ctx);
   }
 }

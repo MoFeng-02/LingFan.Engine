@@ -46,7 +46,7 @@ function inUnitRange(value: unknown, fallback: number): number {
 }
 
 /**
- * 音频通道状态收窄：`stop` 只认淡出参数，`play` 缺资源或资源为空串即视为「无媒体」。
+ * 音频通道状态收窄：`stop` 只认淡出参数，`pause` 只认序号，`play` 缺资源或资源为空串即视为「无媒体」。
  *
  * `fadeMs` 非正数按 0（无淡出）算；`volume` 非有限数按 1 并钳到 0..1；
  * `autoStop` / `restart` 只在显式为 `true` 时保留（缺字段与 `false` 同义）；
@@ -67,6 +67,10 @@ function channelStateOf(value: unknown): AudioChannelState | null {
   const fade = finiteNumber(state.fadeMs);
   const fadeMs = fade !== null && fade > 0 ? fade : 0;
   if (state.kind === "stop") return { kind: "stop", fadeMs };
+  if (state.kind === "pause") {
+    const pauseSeq = finiteNumber(state.seq);
+    return { kind: "pause", ...(pauseSeq === null ? {} : { seq: pauseSeq }) };
+  }
   if (state.kind !== "play") return null;
   if (typeof state.resource !== "string" || state.resource === "") return null;
   const seq = finiteNumber(state.seq);

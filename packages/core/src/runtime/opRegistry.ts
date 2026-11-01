@@ -83,6 +83,8 @@ export const BUILTIN_OP_NAMES: ReadonlySet<string> = new Set([
   "audio_play",
   "audio_stop",
   "audio_volume",
+  "audio_pause",
+  "audio_resume",
   "video",
   "seek_video",
   "pause_video",

@@ -6,3 +6,4 @@
  */
 export { EngineCore } from "./state.ts";
 export { EngineForwarders } from "./forwarders.ts";
+export { createGameState } from "./game-state.ts";

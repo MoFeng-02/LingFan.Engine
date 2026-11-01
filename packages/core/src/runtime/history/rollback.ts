@@ -168,18 +168,23 @@ export function forward(ctx: OpContext): void {
 }
 
 /**
- * 历史面板数据（前端职责的可视化皮）：对话类检查点带说话者与文本；
- * NVL 检查点额外带 `nvl` 标记与**累积行快照**（nvlLines = 该时刻玩家已见的整块文本）——
- * 宿主按「段聚合」呈现（历史不灌水），回溯粒度不变（逐检查点仍全在 history 里）。
+ * 历史面板的一条记录：对话类检查点带说话者与文本；
+ * NVL 检查点额外带 `nvl` 标记与**累积行快照**（nvlLines = 该时刻玩家已见的整块文本）。
  */
-export function historyView(ctx: OpContext): Array<{
+export interface HistoryViewEntry {
   index: number;
   coord: ColumnCoordinate;
   speaker: string;
   text: string;
   nvl: boolean;
   nvlLines: string[];
-}> {
+}
+
+/**
+ * 历史面板数据（前端职责的可视化皮）：宿主按「段聚合」呈现（历史不灌水），
+ * 回溯粒度不变（逐检查点仍全在 history 里）。
+ */
+export function historyView(ctx: OpContext): HistoryViewEntry[] {
   return ctx.history.map((cp, index) => {
     const mode = cp.snapshot.state.find(([k]) => k === SYS.nvlMode)?.[1];
     const buffer = cp.snapshot.state.find(([k]) => k === SYS.nvlBuffer)?.[1];
