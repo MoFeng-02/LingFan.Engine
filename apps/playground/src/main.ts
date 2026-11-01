@@ -37,6 +37,7 @@ import {
   manifestOrientation,
   resolveAudioConfig,
   resolveLayerZ,
+  resolveProjectName,
   resolveSavesConfig,
   resolveStageConfig,
   type AudioConfig,
@@ -54,6 +55,7 @@ import {
   type Story,
 } from "@lingfan-engine/core";
 import demoQuestExtension from "../extensions/demo-quest";
+import { createMountStore } from "@lingfan-engine/ui";
 import App from "./App.vue";
 import {
   connectWsDevChannel,
@@ -68,6 +70,7 @@ import {
 } from "./boot";
 import { browserPlayAllowed } from "./boot/browserGuard";
 import { installStoryFonts } from "./host/assets/app-fonts";
+import { uis } from "./gen/ui_register.g";
 
 // 渲染诊断探针：`VITE_LFEN_DIAG=1` 构建时启用（白屏诊断用）；默认构建
 // 动态 import 被 tree-shake，产物零增重。独立于 boot——白屏时 boot 可能挂，探针必须无条件跑。
@@ -251,6 +254,9 @@ async function boot(): Promise<void> {
   // 字体展示资产：@font-face 注入 + 渲染层注册表（纯展示，boot 一次性装配）
   installStoryFonts();
 
+  // 挂载表：引擎写 SYS.mounts，宿主把值推进 store，页面据此渲染 #mounts 里的组件
+  const mountStore = createMountStore();
+
   const app = createApp(App, {
     story,
     host,
@@ -265,6 +271,12 @@ async function boot(): Promise<void> {
     extensions,
     createAudioPort,
     createVideoPort,
+    mounts: mountStore,
+    mountsTable: uis,
+    onMounts: (raw: unknown) => {
+      mountStore.set(raw);
+    },
+    projectTitle: resolveProjectName(manifest),
   });
   app.mount("#app");
 

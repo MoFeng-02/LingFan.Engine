@@ -12,10 +12,12 @@ import {
   StoryEngine,
   type AudioConfig,
   type AudioPort,
+  type HostControls,
   type HostInfo,
   type I18nPort,
   type LayerZTable,
   type OpExtension,
+  type OutboundPayload,
   type PlayerPreferences,
   type ResourcePort,
   type SavePort,
@@ -24,20 +26,25 @@ import {
   type Story,
   type VideoPort,
 } from "@lingfan-engine/core";
-import { createCommandRegistry, routesToNarrative } from "@lingfan-engine/ui";
 import {
+  createCommandRegistry,
+  routesToNarrative,
+  type MountSource,
+} from "@lingfan-engine/ui";
+import {
+  attachAppUiHooks,
   browserFrameSource,
-  createAppElementLayer,
   createAppEngineLife,
   createAppEvents,
   createAppFrame,
   createAppHistory,
   createAppLang,
-  createAppMedia,
   createAppNarrative,
   createAppPrefs,
+  createAppSession,
   createAppSlots,
   createAppStageFit,
+  createAppStageStack,
   createAppTemplates,
 } from "./host";
 import {
@@ -55,6 +62,7 @@ import {
   SettingsPanels,
   ToolbarPanel,
 } from "./App";
+import { PausePage, StartPage } from "./pages";
 
 // —— 核心层只写状态，UI 只经 ValueChanged 订阅渲染 ——
 // 工程与平台端口都由组合根（main.ts）装配注入：本组件只消费契约，不知道任何具体实现
@@ -86,6 +94,16 @@ const props = defineProps<{
     onError: (message: string) => void,
     readContainer?: () => HTMLElement | null,
   ) => VideoPort;
+  /** 操作通道（组合根造）：暂停/存读/导航都经由它，组件自己不直接点引擎命令 */
+  controls?: HostControls;
+  /** 挂载表读数：`SYS.mounts` 的当前值经它订阅，决定 `#mounts` 里该出现哪些组件 */
+  mounts: MountSource;
+  /** 生成物里的 UI 组件表（名字 → 组件） */
+  mountsTable: Readonly<Record<string, unknown>>;
+  /** 挂载表写入口：引擎报出新表时由这里推给 `mounts` */
+  onMounts: (raw: unknown) => void;
+  /** 工程标题（组合根从 project.json 解析）：启动页与暂停菜单共用 */
+  projectTitle: string;
 }>();
 
 /** 引擎实例：initEngine 建立订阅与媒体渲染器；restart 整体重建（取用句柄指向新实例） */
@@ -181,24 +199,19 @@ const handleExtensionMount = createExtensionMountHandler({
   overlay: extensionOverlay,
 });
 
-// —— 音视频渲染：端口由组合根注入（装配只见契约）；重启经单元格整体重建 ——
-/** 音视频装配：订阅引擎事件渲染媒体；restart 时按单元格整体重建，旧端口成对释放 */
-const media = createAppMedia({
+// —— 舞台栈：音视频渲染 + 元素层 + 操作通道（三者共用引擎句柄与错误横幅）——
+/**
+ * 视频层挂舞台根：整场缩放时它跟着缩（不能挂在 body 上按视口定位）。
+ * 操作通道的取用函数在这里闭合：restart 之后它仍指向新实例。
+ */
+const { media, controls: controlsFace } = createAppStageStack({
   props,
   getEngine: () => engine,
   error,
-  // 视频层挂舞台根：整场缩放时它跟着缩（不能挂在 body 上按视口定位）
-  readVideoContainer: () => stageEl.value,
-});
-
-// —— 元素层装配（元素表渲染 + 容器挂载后渲染监听）——
-createAppElementLayer({
   narrative,
   elementLayerEl,
-  props,
   commands,
-  error,
-  getEngine: () => engine,
+  readVideoContainer: () => stageEl.value,
 });
 
 // —— 提示条出口、叙事事件落点与舞台命令（打字机二段式、选项与输入转发）——
@@ -232,11 +245,7 @@ const { showHistory, historyBlocks, toggleHistory, rollbackToEntry } =
  * 分流顺序留在本组件（接线契约），每条分支做什么归 `@lingfan-engine/shell` 的事件域与
  * `host/mount/` 挂载分支。
  */
-function handleEvent({
-  payload,
-}: {
-  payload: import("@lingfan-engine/core").OutboundPayload;
-}): void {
+function handleEvent({ payload }: { payload: OutboundPayload }): void {
   if (payload.kind === "notify") {
     narrativeEvents.notify(payload.text, payload.notifyType, payload.duration);
   } else if (payload.kind === "minigame.mount") {
@@ -265,8 +274,9 @@ function handleEvent({
     // 扩展 op 等待接管：宿主展示关闭式覆盖层（本组件唯一的扩展演示接缝）
     handleExtensionMount(payload);
   } else if (payload.kind === "save.done") {
-    // 写档成功（失败走 engine.error 分支，不提示成功）
+    // 写档成功（失败走 engine.error 分支，不提示成功）；槽位变多，「继续」要能点到新的档
     narrativeEvents.saved(payload.slot);
+    void refreshResumeSlot();
   } else if (payload.kind === "load.done") {
     // 读档完成（引擎已重放到存档坐标）——清错误、同步渲染与媒体
     narrativeEvents.loaded(payload.slot);
@@ -288,25 +298,30 @@ function handleEvent({
 }
 
 // —— 引擎生命周期（构造/订阅接线/整体重建/订阅解除）——
-/** 引擎生命周期：首次构造并接线订阅、restart 整体重建、卸载时解除订阅 */
-const { initEngine, restart, unbind } = createAppEngineLife({
-  props,
-  getEngine: () => engine,
-  setEngine: (next) => {
-    engine = next;
-  },
-  media,
-  narrative,
-  currentLang,
-  error,
-  elementLayerEl,
-  typewriter,
-  zOf,
-  handleState,
-  handleEvent,
-  readMinigameHost: () => demoHostRef.value?.minigameHostEl ?? null,
-  readVideoContainer: () => stageEl.value,
-});
+/** 暂停态回写的落点：引擎可能早于会话装配就报出暂停态，这里留一个可换的目标 */
+const enginePausedSink: { apply?: (paused: boolean) => void } = {};
+/** 引擎生命周期：首次构造并接线订阅、进出对局、restart 整体重建、卸载时解除订阅 */
+const { initEngine, enterGame, continueGame, restart, unbind } =
+  createAppEngineLife({
+    props,
+    getEngine: () => engine,
+    setEngine: (next) => {
+      engine = next;
+    },
+    media,
+    narrative,
+    currentLang,
+    error,
+    elementLayerEl,
+    typewriter,
+    zOf,
+    handleState,
+    handleEvent,
+    readMinigameHost: () => demoHostRef.value?.minigameHostEl ?? null,
+    readVideoContainer: () => stageEl.value,
+    onMounts: props.onMounts,
+    onPaused: (value: boolean) => enginePausedSink.apply?.(value),
+  });
 
 initEngine();
 
@@ -339,6 +354,40 @@ function applyStageFit(): void {
   stageFit.apply();
 }
 
+// —— 对局会话（页面态 + 挂载投影 + 页面动作）——
+/** 会话装配：进没进对局、暂停与否、挂载表投影都由它持有；动作一律经操作通道转调引擎 */
+const {
+  inGame,
+  paused,
+  resumeSlot,
+  quickSlot,
+  mounted,
+  onStart,
+  onContinue,
+  togglePause,
+  syncPaused,
+  onResume,
+  onSave,
+  onLoad,
+  onHome,
+  onStageClickInGame,
+  refreshResumeSlot,
+  dispose: disposeSession,
+} = createAppSession({
+  controls: controlsFace,
+  mounts: props.mounts,
+  mountsTable: props.mountsTable,
+  saves: props.saves,
+  savePort: props.savePort,
+  enterGame,
+  continueGame,
+  advance: onStageClick,
+  applyStageFit,
+});
+
+// 会话就绪后接上引擎暂停态的落点：此后挂载 UI 或工具栏暂停，遮罩同样会出来
+enginePausedSink.apply = syncPaused;
+
 // —— 玩家偏好与键位映射（状态归核心层，面板只是 UI 皮）——
 /** 偏好面板能力：音量/静音/文字速度/方向/全屏视图、键位捕获与展示（状态归核心层） */
 const prefsFaces = createAppPrefs({
@@ -361,11 +410,22 @@ function onKeydown(e: KeyboardEvent): void {
   if (captureAction.value !== null) return; // 捕获中：capture 阶段监听器已处理
   // 域非对话（玩法接管/面板）或目标在控件内：叙事层不消费，连 advance 都不发
   if (!routesToNarrative(inputScope.current(), e.target)) return;
+  // 暂停中只认 Esc（收起暂停菜单），其余键位留给暂停菜单自己的按钮
+  if (paused.value) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      togglePause();
+    }
+    return;
+  }
   if (keyMatches("advance", DEFAULT_KEYMAP.advance, e)) {
     e.preventDefault();
     onStageClick();
   } else if (keyMatches("history", DEFAULT_KEYMAP.history, e)) {
     toggleHistory();
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    togglePause();
   }
 }
 
@@ -386,6 +446,8 @@ onMounted(() => {
   applyStageFit();
   window.addEventListener("resize", applyStageFit);
   window.addEventListener("orientationchange", applyStageFit);
+  // 启动页的「继续」要看有没有档：进游戏之前先读一次存档摘要
+  void refreshResumeSlot();
 });
 
 /**
@@ -400,16 +462,12 @@ const { slotPanel, slotViews, openSlotPanel, chooseSlot } = createAppSlots({
   getEngine: () => engine,
 });
 
-// 命令注册制示例：元素 `cmd="history"` / `cmd="prefs"` / `cmd="restart"` 由此分发
-// （未注册的 cmd 由 activateElement fail-closed 上报，不静默丢弃）
-commands.register("history", () => toggleHistory());
-commands.register("prefs", () => {
-  showPrefs.value = !showPrefs.value;
-});
-commands.register("restart", () => restart());
+// 调试标志与元素 `cmd` 的业务命令登记（history / prefs / restart 三支）
+attachAppUiHooks({ inGame, commands, toggleHistory, showPrefs, restart });
 
 onUnmounted(() => {
   unbind(); // 订阅解除（与 bindEngine 成对；先于媒体与引擎释放）
+  disposeSession(); // 挂载表订阅解除（与 setup 期的 subscribe 成对）
   prefs.dispose(); // 退订偏好变更（与构造期订阅成对）
   props.preferences.dispose(); // 补发未落盘的末次偏好修改（防抖尾结算）
   media.audioPort.dispose(); // 先停播
@@ -429,103 +487,136 @@ onUnmounted(() => {
   <div
     ref="stageViewportEl"
     class="stage-viewport"
-    @click="onStageClick"
+    @click="onStageClickInGame"
     @wheel="onWheel"
   >
-    <!-- 舞台（作者坐标系，基准像素）：只住元素层与扩展覆盖层——宽高与适配变换由适配装配写入 -->
-    <main ref="stageEl" class="stage">
-      <!-- 舞台内容层：舞台根的适配变换之外的另一层变换——震动偏移写这里，两层各写各的 -->
-      <div ref="stageShakeEl" class="stage-shake">
-        <!-- 舞台元素层：声明式空间层（z 由 shell.layers.stage 决定，默认 0 = 位于 video 之下） -->
-        <div
-          ref="elementLayerEl"
-          class="element-layer"
-          :style="{ zIndex: layerZ.stage }"
-        ></div>
-        <!-- 扩展 op 等待覆盖层：extension.mount 展示，「确认」即 resolveExtensionOp 解除（解除权在宿主） -->
-        <ExtensionOverlayCard
-          v-if="extensionOverlay !== null"
-          :overlay="extensionOverlay"
-          :z-of="zOf"
-          @confirm="resolveExtension"
+    <!-- 启动页：尚未进对局时只有它，舞台不在 DOM 里（引擎已构造但未启动） -->
+    <StartPage
+      v-if="!inGame"
+      :title="projectTitle"
+      :resume="resumeSlot"
+      @start="onStart"
+      @continue="onContinue"
+    />
+    <template v-else>
+      <!-- 舞台（作者坐标系，基准像素）：只住元素层与扩展覆盖层——宽高与适配变换由适配装配写入 -->
+      <main ref="stageEl" class="stage">
+        <!-- 舞台内容层：舞台根的适配变换之外的另一层变换——震动偏移写这里，两层各写各的 -->
+        <div ref="stageShakeEl" class="stage-shake">
+          <!-- 舞台元素层：声明式空间层（z 由 shell.layers.stage 决定，默认 0 = 位于 video 之下） -->
+          <div
+            ref="elementLayerEl"
+            class="element-layer"
+            :style="{ zIndex: layerZ.stage }"
+          ></div>
+          <!-- 扩展 op 等待覆盖层：extension.mount 展示，「确认」即 resolveExtensionOp 解除（解除权在宿主） -->
+          <ExtensionOverlayCard
+            v-if="extensionOverlay !== null"
+            :overlay="extensionOverlay"
+            :z-of="zOf"
+            @confirm="resolveExtension"
+          />
+        </div>
+      </main>
+      <!-- UI 层（窗口坐标系）：工具栏、通知、叙事面板与面板族——不随舞台缩放，随窗口自适应 -->
+      <div class="shell-ui">
+        <!-- 固定工具条：单条 flex 行（布局由构造保证不重叠；safe-area 适配移动端） -->
+        <ToolbarPanel
+          :layer-z="layerZ"
+          :available-langs="availableLangs"
+          :current-lang="currentLang"
+          @restart="restart"
+          @open-slot-panel="openSlotPanel"
+          @toggle-history="toggleHistory"
+          @toggle-prefs="showPrefs = !showPrefs"
+          @change-lang="changeLang"
         />
+        <!-- RenderTargets.overlay（notify toast）：列表状态与皮肤类经 NotificationLayer 落地 -->
+        <NotificationLayer
+          :notices="notifications"
+          :notify-view-of="notifyViewOf"
+          :z-of="zOf"
+        />
+        <!-- 叙事层四层（选择 / 输入 / 玩法挂载 / 对话）共用一个面板骨架 -->
+        <DialoguePanel
+          ref="dialoguePanelRef"
+          v-model:input-value="inputValue"
+          :z-of="zOf"
+          :in-menu="inMenu"
+          :choice-view="choiceView"
+          :menu-options="menuOptions"
+          :in-input="inInput"
+          :input-prompt="inputPrompt"
+          :input-candidates="inputCandidates"
+          :in-minigame="inMinigame"
+          :in-interaction="inInteraction"
+          :in-extension="inExtension"
+          :in-video="inVideo"
+          :dialog-hidden="dialogHidden"
+          :dialog-view="dialogView"
+          :nvl-mode="nvlMode"
+          :nvl-past-lines="nvlPastLines"
+          :nvl-typing-line="nvlTypingLine"
+          :shown-text="shownText"
+          :speaker-color="speakerColor"
+          :dialog-font="dialogFont"
+          :can-advance="canAdvance"
+          :in-wait="inWait"
+          @choose="choose"
+          @submit-input="submitInput"
+        >
+          <!-- 外部系统挂载点（小游戏与玩法系统共用同一容器） -->
+          <DemoHost ref="demoHostRef" />
+        </DialoguePanel>
+        <!-- 面板群：历史 / 偏好 / 槽位三张卡片共用一个面板族 -->
+        <SettingsPanels
+          :layer-z="layerZ"
+          :show-history="showHistory"
+          :history-blocks="historyBlocks"
+          :show-prefs="showPrefs"
+          :prefs-view="prefsView"
+          :pref-channels="PREF_CHANNELS"
+          :capture-action="captureAction"
+          :display-keys="displayKeys"
+          :slot-panel="slotPanel"
+          :slot-views="slotViews"
+          :host="host"
+          @rollback-to-entry="rollbackToEntry"
+          @set-pref-volume="setPrefVolume"
+          @set-pref-muted="setPrefMuted"
+          @set-pref-text-speed="setPrefTextSpeed"
+          @set-pref-orientation="setPrefOrientation"
+          @set-pref-fullscreen="setPrefFullscreen"
+          @start-capture="startCapture"
+          @reset-keybinding="resetKeybinding"
+          @choose-slot="chooseSlot"
+        />
+        <p v-if="error" class="error">{{ error }}</p>
       </div>
-    </main>
-    <!-- UI 层（窗口坐标系）：工具栏、通知、叙事面板与面板族——不随舞台缩放，随窗口自适应 -->
-    <div class="shell-ui">
-      <!-- 固定工具条：单条 flex 行（布局由构造保证不重叠；safe-area 适配移动端） -->
-      <ToolbarPanel
-        :layer-z="layerZ"
-        :available-langs="availableLangs"
-        :current-lang="currentLang"
-        @restart="restart"
-        @open-slot-panel="openSlotPanel"
-        @toggle-history="toggleHistory"
-        @toggle-prefs="showPrefs = !showPrefs"
-        @change-lang="changeLang"
+    </template>
+    <!-- 挂载层：引擎把「要显示哪些 UI」写在 SYS.mounts，组件由生成物表按名字查；
+       容器不吃事件，组件自身要交互时自己声明（与工具箱同一口径）。
+       它始终在 DOM 里（未进对局时是空的）：挂载表是引擎状态，宿主界面不该决定它在不在 -->
+    <div id="mounts" class="mounts">
+      <component
+        :is="item.component"
+        v-for="item in mounted"
+        :key="item.name"
+        v-bind="item.props"
+        :controls="controlsFace"
       />
-      <!-- RenderTargets.overlay（notify toast）：列表状态与皮肤类经 NotificationLayer 落地 -->
-      <NotificationLayer
-        :notices="notifications"
-        :notify-view-of="notifyViewOf"
-        :z-of="zOf"
-      />
-      <!-- 叙事层四层（选择 / 输入 / 玩法挂载 / 对话）共用一个面板骨架 -->
-      <DialoguePanel
-        ref="dialoguePanelRef"
-        v-model:input-value="inputValue"
-        :z-of="zOf"
-        :in-menu="inMenu"
-        :choice-view="choiceView"
-        :menu-options="menuOptions"
-        :in-input="inInput"
-        :input-prompt="inputPrompt"
-        :input-candidates="inputCandidates"
-        :in-minigame="inMinigame"
-        :in-interaction="inInteraction"
-        :in-extension="inExtension"
-        :in-video="inVideo"
-        :dialog-hidden="dialogHidden"
-        :dialog-view="dialogView"
-        :nvl-mode="nvlMode"
-        :nvl-past-lines="nvlPastLines"
-        :nvl-typing-line="nvlTypingLine"
-        :shown-text="shownText"
-        :speaker-color="speakerColor"
-        :dialog-font="dialogFont"
-        :can-advance="canAdvance"
-        :in-wait="inWait"
-        @choose="choose"
-        @submit-input="submitInput"
-      >
-        <!-- 外部系统挂载点（小游戏与玩法系统共用同一容器） -->
-        <DemoHost ref="demoHostRef" />
-      </DialoguePanel>
-      <!-- 面板群：历史 / 偏好 / 槽位三张卡片共用一个面板族 -->
-      <SettingsPanels
-        :layer-z="layerZ"
-        :show-history="showHistory"
-        :history-blocks="historyBlocks"
-        :show-prefs="showPrefs"
-        :prefs-view="prefsView"
-        :pref-channels="PREF_CHANNELS"
-        :capture-action="captureAction"
-        :display-keys="displayKeys"
-        :slot-panel="slotPanel"
-        :slot-views="slotViews"
-        :host="host"
-        @rollback-to-entry="rollbackToEntry"
-        @set-pref-volume="setPrefVolume"
-        @set-pref-muted="setPrefMuted"
-        @set-pref-text-speed="setPrefTextSpeed"
-        @set-pref-orientation="setPrefOrientation"
-        @set-pref-fullscreen="setPrefFullscreen"
-        @start-capture="startCapture"
-        @reset-keybinding="resetKeybinding"
-        @choose-slot="chooseSlot"
-      />
-      <p v-if="error" class="error">{{ error }}</p>
     </div>
+    <!-- 暂停菜单：舞台保持挂载（元素层与帧循环都抓着它的节点），由这层遮罩接管点击 -->
+    <PausePage
+      v-if="paused"
+      :title="projectTitle"
+      :can-load="resumeSlot !== ''"
+      :save-slot="quickSlot"
+      @resume="onResume"
+      @save="onSave"
+      @load="onLoad"
+      @home="onHome"
+    />
     <!-- 全屏转场遮罩：屏幕级效果（含留边在内恒在最上），透明度由帧驱动写入 -->
     <div ref="transitionEl" class="transition-overlay" aria-hidden="true"></div>
   </div>
@@ -638,6 +729,18 @@ textarea,
   width: min(100%, 960px);
   color: #f7768e;
   font-size: 0.75em;
+  pointer-events: auto;
+}
+
+/* 挂载层：整屏覆盖但不吃事件——容器让点击穿到舞台，组件要交互时自己恢复
+   （与模板骨架的 #mounts 同一口径）。层级在 UI 层之上、暂停菜单与转场之下。 */
+.mounts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mounts > * {
   pointer-events: auto;
 }
 </style>

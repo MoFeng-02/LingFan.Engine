@@ -16,6 +16,7 @@ export { createAppLang } from "./assets/app-lang";
 export { createAppTemplates } from "./narrative/wiring/app-templates";
 export { createAppMedia } from "./stage/media/app-media";
 export { createAppElementLayer } from "./stage/elements/app-element-layer";
+export { createAppStageStack } from "./stage/app-stage-stack";
 export { createAppEvents } from "./engine/app-events";
 export { createAppHistory } from "./panels/wiring/app-history";
 export { createAppEngineLife } from "./engine/app-engine";
@@ -24,6 +25,8 @@ export { browserFrameSource } from "./stage/frame/frame-loop";
 export { createAppStageFit } from "./stage/fit/app-stage-fit";
 export { createAppPrefs } from "./panels/wiring/app-prefs";
 export { createAppSlots } from "./panels/wiring/app-slots";
+export { attachAppUiHooks, createAppSession } from "./session";
+export { createHostControls } from "./controls";
 
 /** —— 面板类型（App/*.vue 消费）—— */
 export type {

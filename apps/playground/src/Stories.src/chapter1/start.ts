@@ -11,6 +11,7 @@ const {
   guard,
   input,
   menu,
+  mount,
   notify,
   nvl,
   option,
@@ -19,6 +20,7 @@ const {
   wait,
 } = script;
 
+import hub from "../../ui/hub/hub.vue";
 import { checkGold } from "../lib/guards";
 import { Sex, 地点 } from "../lib/enums";
 
@@ -30,6 +32,8 @@ function greet(who: string): void {
 export default function start(): void {
   character("灵泛", { name: "灵泛", color: "#7aa2f7" });
   bgm("Audio/crickets_night01.mp3", { volume: 0.4, fade: 1200 });
+  // 常驻状态栏：挂上就一直在，`props` 整份替换（再 mount 一次即换文案）
+  mount(hub, true, { label: "进度", value: "第一章" });
   state.player.gold += 20;
   state.player.sex = Sex.Male;
 

@@ -2,6 +2,9 @@
   "formatVersion": 1,
   "id": "start",
   "kind": "flow",
+  "uis": [
+    "hub"
+  ],
   "commands": [
     {
       "op": "func",
@@ -28,6 +31,15 @@
       "resource": "Audio/crickets_night01.mp3",
       "volume": 0.4,
       "fade": 1200
+    },
+    {
+      "op": "mount",
+      "name": "hub",
+      "visible": true,
+      "props": {
+        "label": "进度",
+        "value": "第一章"
+      }
     },
     {
       "op": "set",

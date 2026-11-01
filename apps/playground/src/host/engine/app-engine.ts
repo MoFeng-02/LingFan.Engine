@@ -10,6 +10,7 @@
 
 import { watch, type Ref } from "vue";
 import {
+  SYS,
   StoryEngine,
   type AudioConfig,
   type AudioPort,
@@ -68,12 +69,27 @@ export interface AppEngineLifeOptions {
   handleEvent: (event: { payload: OutboundPayload }) => void;
   /** 视频层的呈现容器（重启重建端口时同样注入：舞台根 → 视频层随舞台缩放） */
   readVideoContainer?: () => HTMLElement | null;
+  /**
+   * 挂载表出口：引擎写下 `SYS.mounts` 就把整表交给宿主。
+   * 订阅不回放历史，所以绑定时先主动喂一次当前值（空表就是空表）。
+   */
+  onMounts?: (raw: unknown) => void;
+  /**
+   * 暂停态出口：引擎写下 `SYS.paused` 就报一次。
+   * 挂载 UI 与工具栏都可能直接经操作通道暂停引擎，宿主页面据此同步自己的遮罩；
+   * 绑定时同样先喂当前值，避免页面与引擎在重启后各说各话。
+   */
+  onPaused?: (paused: boolean) => void;
 }
 
-/** 引擎生命周期能力：初始化接线、fail-closed 后整体重建、订阅解除 */
+/** 引擎生命周期能力：初始化接线、进出对局、fail-closed 后整体重建、订阅解除 */
 export interface AppEngineLife {
-  /** 组合根初始化：构造引擎、接上订阅与媒体渲染器、启动；热重载随 story 注入重入 */
+  /** 组合根初始化：构造引擎、接上订阅与媒体渲染器；不启动——进对局由宿主调 enterGame */
   initEngine: () => void;
+  /** 进对局：启动引擎（入口列）并可选跳到指定列；宿主在「开始」时调用 */
+  enterGame: (columnId?: string) => void;
+  /** 读档继续：从指定槽位恢复进度；宿主在「继续」时调用（须已进对局） */
+  continueGame: (slot: string) => void;
   /** fail-closed 停机（引擎报错后拒绝继续）的恢复入口：整体重建引擎 */
   restart: () => void;
   /** 订阅解除（重启与卸载共用；与 bindEngine 成对） */
@@ -99,6 +115,8 @@ export function createAppEngineLife(
     handleState,
     handleEvent,
     readVideoContainer,
+    onMounts,
+    onPaused,
   } = options;
   const {
     speaker,
@@ -123,14 +141,33 @@ export function createAppEngineLife(
   } = narrative;
   let offState: (() => void) | undefined;
   let offEvent: (() => void) | undefined;
+  let offMounts: (() => void) | undefined;
+  let offPaused: (() => void) | undefined;
   function bindEngine(e: StoryEngine): void {
     offState = e.onStateChanged(handleState);
     offEvent = e.onEvent(handleEvent);
+    // 挂载表单独一路：整表是一个值，订阅只认这一个键；先喂当前值再等后续写入
+    if (onMounts !== undefined) {
+      onMounts(e.get(SYS.mounts));
+      offMounts = e.onStateChanged(({ key, value }) => {
+        if (key === SYS.mounts) onMounts(value);
+      });
+    }
+    // 暂停态同理：谁按下暂停（Esc、挂载 UI、工具栏）引擎都只写这一个键，
+    // 宿主页面据此同步遮罩——页面态不从「是我按的」推断，只从引擎状态读
+    if (onPaused !== undefined) {
+      onPaused(e.get(SYS.paused) === true);
+      offPaused = e.onStateChanged(({ key, value }) => {
+        if (key === SYS.paused) onPaused(value === true);
+      });
+    }
   }
   /** 订阅解除（重启与卸载共用；与 bindEngine 成对） */
   function unbind(): void {
     offState?.();
     offEvent?.();
+    offMounts?.();
+    offPaused?.();
   }
   function initEngine(): void {
     // SavePort 注入引擎——存档编排（槽位校验/坐标/写读/错误出站）归核心层命令面，
@@ -148,10 +185,22 @@ export function createAppEngineLife(
     bindEngine(getEngine());
     media.audioRenderer = media.createRenderer();
     media.videoRenderer = media.createVideo();
-    getEngine().start();
     // 热重载：组合根重新组装后注入新 story → 保运行态（变量/历史）重入当前列
     // 监听 ref 本身（value 变化才触发；() => props.story 监听恒定 Ref 引用 = 永不触发）
     watch(props.story, (fresh) => getEngine().reloadStory(fresh));
+  }
+  /**
+   * 进对局：启动引擎（进入工程入口列），给了列 id 再跳过去。
+   * `start()` 本身已进入入口列，所以不传 columnId 时只有一次启动，不重复导航。
+   */
+  function enterGame(columnId?: string): void {
+    const engine = getEngine();
+    engine.start();
+    if (columnId !== undefined) engine.navigate(columnId);
+  }
+  /** 读档继续：从槽位恢复进度（须已进对局，否则命令面按「故事尚未启动」拒绝） */
+  function continueGame(slot: string): void {
+    getEngine().load(slot);
   }
   /**
    * fail-closed 停机（引擎报错后拒绝继续）的恢复入口：整体重建引擎。
@@ -210,5 +259,5 @@ export function createAppEngineLife(
     typewriter.set(null);
     getEngine().start();
   }
-  return { initEngine, restart, unbind };
+  return { initEngine, enterGame, continueGame, restart, unbind };
 }
