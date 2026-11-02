@@ -57,6 +57,8 @@ const dom: StageDom = {
   load: must<HTMLButtonElement>("#load"),
   transition: must("#transition"),
   error: must("#error"),
+  // 历史面板槽位（可选）：骨架 index.html 里有，缺了也不影响启动
+  history: optional("#history"),
   // 偏好面板槽位（可选）：骨架 index.html 里有，缺了也不影响启动
   prefs: optional("#prefs"),
   // UI 挂载层槽位（可选）：本层不给就 null，`mount` 命令只改状态、没有组件出现
@@ -82,6 +84,7 @@ async function boot(): Promise<void> {
     stories: STORIES,
     defaultCps: DEFAULT_TEXT_CPS,
     toastDurationMs: DEFAULT_TOAST_MS,
+    historyContainer: dom.history,
     prefsContainer: dom.prefs,
     // UI 挂载槽位：壳层用骨架的原生渲染器（本层不引框架，`#mounts` 的子节点由宿主写）
     mountsContainer: dom.mounts,

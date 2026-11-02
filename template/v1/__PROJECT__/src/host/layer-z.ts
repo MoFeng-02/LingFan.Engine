@@ -36,8 +36,10 @@ function writeLayerZ(dom: StageDom, layer: LayerId, z: number): void {
   } else if (layer === "choices") dom.choices.style.zIndex = value;
   else if (layer === "notifications") dom.notifications.style.zIndex = value;
   else if (layer === "toolbar") dom.toolbar.style.zIndex = value;
-  // 偏好面板槽位是可选节点：叠加层可以不给（那时面板本就没装），所以这里判空
-  else if (layer === "prefs") {
+  // 历史与偏好两个面板槽位都是可选节点：叠加层可以不给（那时面板本就没装），所以判空
+  else if (layer === "history") {
+    if (dom.history !== null) dom.history.style.zIndex = value;
+  } else if (layer === "prefs") {
     if (dom.prefs !== null) dom.prefs.style.zIndex = value;
   }
 }

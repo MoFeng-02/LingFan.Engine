@@ -27,6 +27,8 @@ import UiHost from "./UiHost.vue";
       <button id="save">存</button>
       <button id="load">读</button>
     </div>
+    <!-- 历史面板槽位：可选节点（本层不给也能跑，只是没有回看与回溯） -->
+    <div id="history"></div>
     <!-- 偏好面板槽位：可选节点（本层不给也能跑，只是没有音量/字速面板） -->
     <div id="prefs"></div>
     <!-- UI 挂载层：`mount` 命令显示/隐藏的组件挂在这里（可选节点，缺了只是没有 UI）。

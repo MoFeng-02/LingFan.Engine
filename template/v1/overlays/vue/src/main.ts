@@ -50,6 +50,8 @@ function readDom(): StageDom {
     error: must("#error"),
     // 偏好面板槽位（可选）：本层 App 没给就 null，面板不装、游戏照跑
     prefs: optional("#prefs"),
+    // 历史面板槽位（可选）：本层 App 没给就 null，没有「历史」按钮
+    history: optional("#history"),
     // UI 挂载层槽位（可选）：本层不给就 null，`mount` 命令只改状态、没有组件出现
     mounts: optional("#mounts"),
   };
@@ -75,6 +77,8 @@ if (dom !== undefined) {
     defaultCps: DEFAULT_TEXT_CPS,
     toastDurationMs: DEFAULT_TOAST_MS,
     prefsContainer: dom.prefs,
+    // 历史面板槽位：给了就有「历史」按钮与回溯
+    historyContainer: dom.history,
     // UI 挂载落法由 Vue 接管：`#mounts` 的子节点归 `UiHost` 渲染，
     // 宿主再往里写节点就会与 Vue 的渲染树打架（所以不传 mountsContainer）
     onMounts: (raw) => mountStore.set(raw),

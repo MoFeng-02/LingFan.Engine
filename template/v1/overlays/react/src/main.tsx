@@ -49,6 +49,8 @@ function readDom(): StageDom {
     load: must<HTMLButtonElement>("#load"),
     transition: must("#transition"),
     error: must("#error"),
+    // 历史面板槽位（可选）：本层 App 没给就 null，回看与回溯不装、游戏照跑
+    history: optional("#history"),
     // 偏好面板槽位（可选）：本层 App 没给就 null，面板不装、游戏照跑
     prefs: optional("#prefs"),
     // UI 挂载层槽位（可选）：本层不给就 null，`mount` 命令只改状态、没有组件出现
@@ -80,6 +82,7 @@ if (dom !== undefined) {
     stories: STORIES,
     defaultCps: DEFAULT_TEXT_CPS,
     toastDurationMs: DEFAULT_TOAST_MS,
+    historyContainer: dom.history,
     prefsContainer: dom.prefs,
     // UI 挂载落法由 React 接管：`#mounts` 的子节点归 `UiHost` 渲染，
     // 宿主再往里写节点就会与 React 的渲染树打架（所以不传 mountsContainer）

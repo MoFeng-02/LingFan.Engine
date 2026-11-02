@@ -53,6 +53,7 @@ import { startHostFrameLoop } from "./frame-loop";
 import { wireInput } from "./input-map";
 import { installStoryFonts } from "./theme-fonts";
 import { createPreferencesPanel } from "./panels/preferences";
+import { createHistoryPanel } from "./panels/history";
 import { createNativeMountRenderer } from "./mount/index";
 import { createHostControls } from "./controls";
 
@@ -83,6 +84,14 @@ export interface HostBootOptions {
    * 谁给容器谁负责它的 z 序与显隐；面板根自带 `data-ui-zone`（否则滚轮会连带回溯）。
    */
   prefsContainer?: HTMLElement | null;
+  /**
+   * 历史面板的挂载容器（可选）：给了就装配「已走过对话」的面板与回溯按钮，
+   * 不给就不装——与 `prefsContainer` 同口径（页面结构归组合根，宿主不造节点）。
+   *
+   * 面板点一条即 `engine.rollbackTo(检查点)`；回溯后媒体位置由本文件接的
+   * `onRollback` 显式对齐（引擎只回状态，不下发端口动作）。
+   */
+  historyContainer?: HTMLElement | null;
   /**
    * UI 挂载层容器（可选）：给了就按 `SYS.mounts` 把 `src/ui/` 下的 UI 挂进来。
    *
@@ -319,13 +328,29 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
         });
   prefsPanel?.mount();
 
+  // —— 历史面板：同样只有组合根给了容器才装 ——
+  // 数据整形在 `@lingfan-engine/shell`（块聚合），本面板只管画与点击；回溯后的媒体
+  // 对齐交回这里——`wireEngine` 的 `syncMedia` 同一件事，引擎不会替宿主跳播放位置。
+  const historyPanel =
+    options.historyContainer === undefined || options.historyContainer === null
+      ? null
+      : createHistoryPanel({
+          engine,
+          container: options.historyContainer,
+          onRollback: () => {
+            audio.sync();
+            video.sync();
+          },
+        });
+  historyPanel?.mount();
+
   const frameLoop = startHostFrameLoop({
     dialogue,
     onMediaTick: () => audio.pollPosition(), // 媒体位置帧级回写
     onFrame: driveEffects,
   });
   wireInput({ dom, engine, dialogue });
-  wireSaveSlots(dom, engine);
+  wireSaveSlots(dom, engine, manifest);
 
   engine.start();
 
@@ -339,6 +364,7 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     nativeMounts?.dispose();
     // 面板先拆：它订阅偏好层，偏好 dispose 之后再退订会漏掉末次回填
     prefsPanel?.destroy();
+    historyPanel?.destroy();
     audio.dispose();
     video.dispose();
     engine.dispose();

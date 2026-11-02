@@ -13,9 +13,10 @@
  *
  * 覆盖范围（本宿主**保证不卡死**：引擎能进入的每个等待态都有 UI 可推进）：
  *   dialogue / menu / input / wait / video / minigame（可见 fail-closed 提示）+
- *   舞台元素层 + 层级表（shell.layers）+ 存档（shell.saves.slots）。
- * 有意未做（属「少功能」而非「卡死」，见 README 边界表）：历史面板与回溯 UI、
- * 玩家偏好面板、I18N 供给、对话框模板注册、存档缩略图合成。
+ *   舞台元素层 + 层级表（shell.layers）+ 存档（shell.saves.slots）+
+ *   玩家偏好面板 + 历史面板与回溯（点一条即回到那个检查点）。
+ * 有意未做（属「少功能」而非「卡死」，见 README 边界表）：I18N 供给、
+ * 对话框模板注册、存档缩略图合成。
  */
 
 import { MANIFEST_FILE } from "@lingfan-engine/core";
@@ -56,6 +57,8 @@ const dom: StageDom = {
   transition: must("#transition"),
   error: must("#error"),
   prefs: optional("#prefs"),
+  // 历史面板槽位（可选）：本层不给就 null，没有「历史」按钮，其余照常
+  history: optional("#history"),
   // UI 挂载层槽位（可选）：本层不给就 null，`mount` 命令只改状态、没有组件出现
   mounts: optional("#mounts"),
 };
@@ -68,6 +71,8 @@ void bootHost({
   toastDurationMs: DEFAULT_TOAST_MS,
   // 偏好面板槽位：页面给了就装（`optional` 已消化「这层不给」的情况）
   prefsContainer: dom.prefs,
+  // 历史面板槽位：给了就有「历史」按钮与回溯（点一条即回到那个检查点）
+  historyContainer: dom.history,
   // UI 挂载槽位：给了就把 `mount` 命令控制显隐的组件挂进来
   mountsContainer: dom.mounts,
   // 「名字 → UI 工厂」表：来自生成物，键就是 `SYS.mounts` 里的名字

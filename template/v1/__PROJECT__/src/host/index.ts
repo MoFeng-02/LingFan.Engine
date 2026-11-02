@@ -14,6 +14,12 @@ export {
 } from "./stage-dom";
 export { createHostLayerZ, type HostLayerZOptions } from "./layer-z";
 export { fillSaveSlots, wireSaveSlots } from "./save-slots";
+export {
+  captureSaveThumbnail,
+  drawTextOverlay,
+  stripHtml,
+  type SaveThumbnailInput,
+} from "./thumbnails";
 export { createToast, type ToastOptions } from "./toast";
 export {
   createDialogueView,
@@ -48,3 +54,10 @@ export {
   type PreferencesPanelOptions,
   type PreferencesPanelView,
 } from "./panels/preferences";
+export {
+  createHistoryPanel,
+  type HistoryEngine,
+  type HistoryPanel,
+  type HistoryPanelOptions,
+  type HistoryPanelView,
+} from "./panels/history";

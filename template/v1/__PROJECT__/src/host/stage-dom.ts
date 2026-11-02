@@ -20,8 +20,8 @@ export function must<T extends HTMLElement>(selector: string): T {
 /**
  * 按选择器取**可选**节点：缺失返回 `null`，不抛。
  *
- * 只给「有则增强、无则退化成没有该功能」的节点用——目前两个：偏好面板的容器与
- * UI 挂载层容器。它们和 `must()` 的区别是**契约强度**：页面结构由叠加层重写时
+ * 只给「有则增强、无则退化成没有该功能」的节点用——目前三个：历史面板、偏好面板
+ * 与 UI 挂载层的容器。它们和 `must()` 的区别是**契约强度**：页面结构由叠加层重写时
  * （Vue / React / 小程序各自的 `App`），那份页面可以选择不提供这些槽位，
  * 此时对应功能不启用，游戏照常跑；而 `must()` 守的节点缺一个就是装配错误，必须当场抛。
  */
@@ -51,6 +51,14 @@ export interface StageDom {
   notifications: HTMLElement;
   /** 工具条：存档槽与存 / 读按钮 */
   toolbar: HTMLElement;
+  /**
+   * 历史面板槽位（**可选**：`null` = 本页面没给这个槽位）。
+   *
+   * 给了就有「历史」按钮与已走过对话的列表，点一条即回退到那个检查点；
+   * 不给则只是回看/回溯要另想办法，游戏照常跑——与 `prefs` 同属「有则增强」。
+   * 取用点：`optional("#history")`；`layer-z.ts` 写 `history` 层 z 时会判空。
+   */
+  history: HTMLElement | null;
   /**
    * 偏好面板槽位（**可选**：`null` = 本页面没给这个槽位）。
    *
