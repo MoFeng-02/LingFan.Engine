@@ -26,3 +26,7 @@ agent.md
 # 恢复纳入时删除本段并跑 `pnpm format`，重排范围以当次 `prettier --list-different` 为准。
 apps/editor/src/
 packages/editor/src/
+
+# 生成器验证工程的落地目录：内容是 `lingfan-create` 的产物（含框架层与壳层），
+# 排版由生成器与各层素材决定，不在本仓格式门禁范围内。
+CreateDemo/

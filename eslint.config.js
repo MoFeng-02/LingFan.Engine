@@ -66,6 +66,10 @@ export default defineConfigWithVueTs(
       // 搬运、类型面由收集结果拼装，缩进/风格由生成器负责——入库但免检
       // （.prettierignore 已同步）
       "**/src/gen/**",
+      // 生成器验证工程的落地目录：内容是 `lingfan-create` 的产物，各层自带
+      // tsconfig 与框架依赖（vue / @vitejs/plugin-vue 等），本仓没装那些包，
+      // 纳入检查只会得到必然的解析失败。与 tsconfig 的 include 口径一致（同样不含它）。
+      "CreateDemo/**",
     ],
   },
   pluginVue.configs["flat/essential"],
