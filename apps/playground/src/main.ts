@@ -70,6 +70,7 @@ import {
 } from "./boot";
 import { browserPlayAllowed } from "./boot/browserGuard";
 import { installStoryFonts } from "./host/assets/app-fonts";
+import { STORIES } from "./stories";
 import { uis } from "./gen/ui_register.g";
 
 // 渲染诊断探针：`VITE_LFEN_DIAG=1` 构建时启用（白屏诊断用）；默认构建
@@ -77,28 +78,6 @@ import { uis } from "./gen/ui_register.g";
 if (import.meta.env.VITE_LFEN_DIAG === "1") {
   void import("./diag").then((module) => module.startDiag());
 }
-
-/**
- * 浏览器形态的故事清单（Tauri 形态由 Rust `project_files` 枚举目录，不用此表）。
- * **新增故事文件必须同步此处**——否则该列在浏览器形态不存在（跳转报 unknown-column）；
- * 防漂移由 `tests/playground/project.test.ts` 的「本表 ↔ 磁盘文件」互锁测试守护。
- */
-const STORIES = [
-  "Stories/chapter1/inn.json",
-  "Stories/chapter1/start.json",
-  "Stories/chapter2/square.json",
-  "Stories/chapter2/stage-demo.json",
-  "Stories/chapter3/end.json",
-  "Stories/chapter3/ts-power.json",
-  "Stories/chapter4/tour-av.json",
-  "Stories/chapter4/tour-ext.json",
-  "Stories/chapter4/tour-flow.json",
-  "Stories/chapter4/tour-guard.json",
-  "Stories/chapter4/tour-save.json",
-  "Stories/chapter4/tour-stage.json",
-  "Stories/chapter4/tour-vars.json",
-  "Stories/chapter4/tour.json",
-];
 
 /** 入口引导：判定运行形态（构建期 mode + 运行期探测）→ 守卫 → 建引擎 → 挂载 UI；分层口径见函数内注释。 */
 async function boot(): Promise<void> {

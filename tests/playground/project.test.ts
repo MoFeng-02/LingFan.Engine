@@ -90,33 +90,25 @@ describe("示例工程防腐", () => {
     ]);
   });
 
-  it("main.ts 的浏览器故事清单 ↔ 磁盘文件（回归：新增故事文件必须同步）", () => {
-    // 浏览器形态按显式清单取文件（Tauri 形态走 Rust 目录枚举）——
-    // 漏登记会让该列在浏览器形态不存在，跳转报 unknown-column（回归覆盖的历史缺陷）
-    const block = /const STORIES = \[([^\]]*)\]/.exec(mainSource)?.[1];
-    expect(block, "未在 main.ts 中找到 STORIES 清单").toBeDefined();
-    const declared = [...String(block).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
-    expect(declared.length).toBeGreaterThan(0); // 防提取失效空跑
-    expect([...declared].sort()).toEqual(Object.keys(FILES).sort());
-  });
-
-  it("stories-table.ts 的嵌入演示故事清单 ↔ 磁盘文件（回归：与 main.ts 同一防漂移）", () => {
-    // 嵌入演示页（embed-demo.html）用这张表 fetch 故事文件——漂移会让演示页
-    // 拿到 SPA 回退的 index.html 而报文本投影错（回归覆盖的历史缺陷）
-    const tableSource = (
-      import.meta.glob("../../apps/playground/src/stories/*.ts", {
-        eager: true,
-        query: "?raw",
-        import: "default",
-      }) as Record<string, string>
-    )["../../apps/playground/src/stories/stories-table.ts"];
-    const block = /const STORIES[^=]*= \[([^\]]*)\]/.exec(
-      tableSource ?? "",
-    )?.[1];
-    expect(block, "未在 stories-table.ts 中找到 STORIES 清单").toBeDefined();
-    const declared = [...String(block).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
-    expect(declared.length).toBeGreaterThan(0); // 防提取失效空跑
-    expect([...declared].sort()).toEqual(Object.keys(FILES).sort());
+  it("宿主故事清单来自构建期扫描（回归：清单曾被手抄在 main.ts 与 stories-table.ts 两处）", () => {
+    // 清单是磁盘事实的投影：`virtual:story-list` 由 Vite 插件扫描资源根得出，
+    // 宿主只经 `./stories` 唯一出口转发。手抄名单的代价不是「多写一行」，而是
+    // 漏抄时构建期毫无察觉——漏登记的那一列要到运行期才以 unknown-column 现形。
+    // 本用例锁住「不再手抄」这个形态：源码里不得出现硬编码的故事清单字面量。
+    expect(mainSource, "main.ts 不得再声明 const STORIES 清单").not.toMatch(
+      /const STORIES\s*(?::[^=]+)?=\s*\[/,
+    );
+    expect(mainSource, "main.ts 的故事清单须经 ./stories 唯一出口取").toMatch(
+      /import\s*\{[^}]*\bSTORIES\b[^}]*\}\s*from\s*"\.\/stories"/,
+    );
+    // 清单内容与磁盘互锁：扫描口径 = 资源根下全部 .story/.json，按路径码元序
+    const expected = Object.keys(FILES).sort();
+    expect(expected.length).toBeGreaterThan(0); // 防 glob 失配空跑
+    for (const entry of expected) {
+      expect(entry, `磁盘故事路径须落在 Stories/ 下：${entry}`).toMatch(
+        /^Stories\/.+\.(story|json)$/,
+      );
+    }
   });
 
   it("文本投影（projectText）对示例工程不抛错：编辑器文本模式打开真实工程不崩", () => {

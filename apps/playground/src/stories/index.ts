@@ -1,8 +1,9 @@
 /**
  * 故事侧的宿主出口（唯一出口）：默认故事清单与故事守卫。
  *
- * 生成物路径、故事文件名这些「与磁盘布局绑定」的事实只在本目录出现，组合根与覆盖层演示
- * 都从这里取，换生成器输出名或调整默认清单时只改一处。
+ * 清单由构建期扫描资源根得出（`virtual:story-list`），**不是手写声明**：漏抄一份故事
+ * 文件在构建期毫无察觉，要到运行期才以 `unknown-column` 现形。TS 创作链编译出的
+ * `.json` 与手写 `.story` 同树共存，共用这一条扫描。
  */
 export { guards } from "./guards";
-export { STORIES } from "./stories-table";
+export { STORIES } from "virtual:story-list";
