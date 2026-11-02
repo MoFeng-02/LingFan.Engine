@@ -204,9 +204,12 @@ export abstract class EngineForwarders extends EngineCore {
   protected columnFrame(): Frame | undefined {
     return columnFrame(this.ctx);
   }
-  /** 内部转发 → ./internal：按坐标取执行帧（回溯重建用） */
-  protected columnFrameAt(coord: ColumnCoordinate): Frame {
-    return columnFrameAt(this.ctx, coord);
+  /** 内部转发 → ./internal：按坐标取执行帧（回溯重建用）；`scope` 给定时作为列级层内容 */
+  protected columnFrameAt(
+    coord: ColumnCoordinate,
+    scope?: readonly (readonly [string, unknown])[],
+  ): Frame {
+    return columnFrameAt(this.ctx, coord, scope);
   }
   /** 内部转发 → ./save：旧版本存档迁移；未注入迁移钩子时拒绝 */
   protected tryMigrateSave(data: SaveDataV1): SaveDataV1 | null {

@@ -7,7 +7,7 @@
  */
 import type { ColumnCoordinate, StoryCommand } from "./story/index.ts";
 
-/** 存档载荷 v1（块/列级作用域不进档——读档后按坐标确定性重放重建） */
+/** 存档载荷 v1（列级作用域随档；块级作用域由坐标重放重建） */
 export interface SaveDataV1 {
   formatVersion: 1;
   storyId: string;
@@ -16,6 +16,15 @@ export interface SaveDataV1 {
   /** 等待点命令坐标：读档时从该命令重放，重建等待画面 */
   coord: ColumnCoordinate;
   state: [string, unknown][];
+  /**
+   * 存档时刻的**列级**作用域变量（`let`/`local` 声明在列顶层的那一批）。
+   *
+   * 为什么必须随档：读档从 `coord` 重放，而列级声明都在 `coord` **之前**——
+   * 那些命令不会重跑，光靠重放重建不出来。块级（`if`/`while`/函数体里的）
+   * 不在这里：存档坐标会回退到块的控制命令，重放会重入块体从头执行，能重建。
+   * 旧档无此字段 = 空列级层。
+   */
+  scope?: [string, unknown][];
   rngState: number;
   functions: [string, { params: string[]; body: StoryCommand[] }][];
   /** 检查点序列随档，读档后可继续回溯 */
@@ -51,6 +60,14 @@ export interface SaveDataV1 {
     coord: ColumnCoordinate;
     state: [string, unknown][];
     rngState: number;
+    /**
+     * 该检查点所在列的列级作用域。
+     *
+     * 每个检查点各存一份：回溯到档内任意一步都要能恢复它那一刻的列级变量，
+     * 只存档尾那一份是不够的（回溯目标可以是档内任何一步）。
+     * 该检查点的列级层为空、或旧档无此字段 ⇒ 按空层重建。
+     */
+    scope?: [string, unknown][];
   }>;
 }
 

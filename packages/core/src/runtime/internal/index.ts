@@ -7,6 +7,7 @@ export {
   cloneFrame,
   GuardFailure,
   parseMenuReturn,
+  parseScopeEntries,
   sameCoord,
   snapshotText,
   validSlot,

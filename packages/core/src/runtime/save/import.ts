@@ -2,15 +2,26 @@
  * 存档导入。
  */
 import {
+  SESSION_STATE_KEYS,
   SYS,
   type ColumnCoordinate,
   type SaveDataV1,
 } from "../../contracts/index.ts";
-import type { OpContext } from "../internal/index.ts";
+import { parseScopeEntries, type OpContext } from "../internal/index.ts";
+
+/** 读档面的状态条目：会话态键一律丢弃（旧档里可能还留着，见 `SESSION_STATE_KEYS`） */
+function loadStateEntries(
+  entries: readonly (readonly [string, unknown])[],
+): [string, unknown][] {
+  return entries
+    .filter(([key]) => !SESSION_STATE_KEYS.has(key))
+    .map(([key, value]) => [key, value]);
+}
 
 /**
  * 读档——恢复全局态与历史，从存档坐标重放重建等待点。
- * 帧栈按坐标重建列帧；故事版本不匹配 fail-closed。
+ * 帧栈按坐标重建列帧；**列级作用域来自档内的 `scope`**（旧档无该字段 =
+ * 空列级层，行为与修复前一致）；块级作用域由坐标重放重建。故事版本不匹配 fail-closed。
  * 返回 false = 已拒绝（engine.error 事件已出站），调用方不得当作成功处理。
  */
 export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
@@ -160,18 +171,20 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
     pendingSay: ctx.pendingSay,
     liveCheckpointed: ctx.liveCheckpointed,
   };
-  ctx.state = new Map(data.state); // 垫底后的全量状态（扩展恢复 + 玩法系统 + defines 补齐）
+  ctx.state = new Map(loadStateEntries(data.state)); // 垫底后的全量状态（扩展恢复 + 玩法系统 + defines 补齐）
   ctx.rngState = data.rngState;
   ctx.functions = new Map(data.functions);
   // 角色表重置为构造期初值（模块层声明「进场即有」）：档不携带角色表，
   // 读档 = 会话重开，列内运行期覆盖不随档继承（与快照回溯面不同，档格式 v1 无此字段）
   ctx.characters = new Map();
+  // 档内检查点各自带一份列级作用域：回溯到档内任意一步时要能恢复那一步的
+  // 列级变量（旧档无 `scope` 字段 ⇒ 按空层重建，与修复前一致）。
   ctx.history = data.history.map((h) => ({
     coord: { ...h.coord },
     snapshot: {
-      state: h.state,
+      state: loadStateEntries(h.state),
       rngState: h.rngState,
-      frames: [ctx.columnFrameAt(h.coord)],
+      frames: [ctx.columnFrameAt(h.coord, parseScopeEntries(h.scope) ?? [])],
       coord: { ...h.coord },
       functions: data.functions,
       // 墓碑随检查点回溯：回滚到 undef 之前的检查点时删除记录同步回退
@@ -188,7 +201,9 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
       : Math.min(Math.max(data.cursor, 0), ctx.history.length - 1);
   ctx.started = true;
   ctx.pendingSay = null;
-  ctx.frames = [ctx.columnFrameAt(data.coord)];
+  ctx.frames = [
+    ctx.columnFrameAt(data.coord, parseScopeEntries(data.scope) ?? []),
+  ];
   ctx.coord = { ...data.coord };
   ctx.liveCheckpointed = true;
   if (!ctx.restoreSaveExtensions(data.extensions)) {

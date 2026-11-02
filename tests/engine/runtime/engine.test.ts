@@ -1579,7 +1579,7 @@ describe("回溯与历史", () => {
   });
 });
 
-describe("存档编排（块列不进档 / 历史随档）", () => {
+describe("存档编排（列级作用域随档 / 历史随档）", () => {
   function roundTripStory(): Harness {
     const story = parseStory({
       formatVersion: 1,
@@ -1677,7 +1677,7 @@ describe("存档编排（块列不进档 / 历史随档）", () => {
     expect(e2.get(SYS.currentDialogText)).toBe("二");
   });
 
-  it("块/列级作用域不进档——读档后列级 let 不可见", () => {
+  it("列级作用域随档——读档后列级 let 仍可见", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "d",
@@ -1704,9 +1704,9 @@ describe("存档编排（块列不进档 / 历史随档）", () => {
     const e2 = new StoryEngine(story);
     const h2 = instrument(e2);
     e2.importSave(JSON.parse(JSON.stringify(data)) as SaveDataV1);
-    e2.advance(); // end 解除 → 下一句引用 x → 列级作用域已随档丢弃
-    expect(e2.get(SYS.currentDialogText)).toBe("{x}"); // 插值保留原文
-    expect(hasError(h2.errors, "unknown-variable")).toBe(true);
+    e2.advance(); // end 解除 → 下一句引用 x → 列级作用域随档带回来了
+    expect(e2.get(SYS.currentDialogText)).toBe("5");
+    expect(hasError(h2.errors, "unknown-variable")).toBe(false);
   });
 
   it("版本/故事不匹配 → fail-closed", () => {

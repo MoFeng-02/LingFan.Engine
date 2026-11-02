@@ -59,6 +59,23 @@ export class Scope {
     return this.vars.has(name);
   }
 
+  /**
+   * 本层变量导出（存档用）：只取这一层，不沿父链。
+   *
+   * 存档只携带**列级**层——那一层在存档坐标之前就声明完了，重放不会回到那些命令，
+   * 只能靠这条通道带过去；块级层由重放重建（见 `columnFrameAt`）。
+   */
+  ownEntries(): [string, unknown][] {
+    return [...this.vars.entries()];
+  }
+
+  /** 用导出的本层变量重建单层作用域（`ownEntries` 的逆操作） */
+  static fromEntries(entries: readonly (readonly [string, unknown])[]): Scope {
+    const scope = new Scope(null);
+    for (const [k, v] of entries) scope.vars.set(k, v);
+    return scope;
+  }
+
   /** 深拷贝作用域链（03 历史检查点：帧栈快照需独立副本，回溯恢复后互不串扰） */
   static cloneDeep(source: Scope | null): Scope {
     if (source === null) return Scope.root();

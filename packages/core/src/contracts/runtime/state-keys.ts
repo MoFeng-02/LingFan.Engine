@@ -58,15 +58,16 @@ export const SYS = {
    * **用途：在菜单里按存档，存的是「菜单前的游戏进度」**。值形如
    * `{ coord: {columnId, index}, waiting: string }`，缺省 = 不在菜单中。
    *
-   * **不进快照的可见状态**：它是**引擎内部记账**，读取档不依赖它
-   * —— 档里存的坐标已经是菜单前那个。
+   * **属于会话态**（见 `SESSION_STATE_KEYS`）：进快照（回溯要用），
+   * **不进存档**——档里存的坐标已经是菜单前那个，带着它读档会让引擎
+   * 以为「仍在菜单里」。
    */
   menuReturn: "__menu_return",
   /**
    * 引擎级暂停标记（`pause()` 置真、`resume()` 清除）。
    *
-   * **不进快照的可见状态**：与 `menuReturn` 同一口径——它是**引擎内部记账**，
-   * 读取档不依赖它（档里的进度就是暂停前那一刻）。
+   * **属于会话态**：进快照，**不进存档**——档里的进度就是暂停前那一刻，
+   * 带着它读档会让引擎一开局就停在暂停中（`advance` 直接 `pause-active`）。
    */
   paused: "__paused",
   /**
@@ -176,3 +177,19 @@ export const SYS = {
 export const RESERVED_STATE_KEYS: ReadonlySet<string> = new Set(
   Object.values(SYS),
 );
+
+/**
+ * 会话态键：进快照（回溯要用），**不进存档**。
+ *
+ * 这些键描述的是「引擎此刻在干什么」而不是「故事进行到哪」——正停着、正停在菜单里、
+ * 正在重放。读档等于会话重开，带着它们会让引擎一开局就停在暂停中（`advance` 直接
+ * `pause-active`），或以为玩家仍在菜单里。
+ *
+ * 落点唯一：`runtime/save/export.ts` 的导出过滤（活状态与档内历史检查点都从这里过一遍）。
+ * 快照不经过滤——回溯要恢复的正是「当时的会话态」。
+ */
+export const SESSION_STATE_KEYS: ReadonlySet<string> = new Set([
+  SYS.paused,
+  SYS.menuReturn,
+  SYS.rollbackActive,
+]);

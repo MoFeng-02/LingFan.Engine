@@ -79,8 +79,11 @@ export interface OpContext {
   columnById(id: string): StoryColumn | undefined;
   /** 当前列帧（自栈顶向下第一个列帧） */
   columnFrame(): Frame | undefined;
-  /** 按坐标造一个「未执行」的列帧（读档重建用） */
-  columnFrameAt(coord: ColumnCoordinate): Frame;
+  /** 按坐标造一个「未执行」的列帧（读档/回溯重建用）；`scope` 给定时作为列级层内容 */
+  columnFrameAt(
+    coord: ColumnCoordinate,
+    scope?: readonly (readonly [string, unknown])[],
+  ): Frame;
   /** 进入一条列：重置帧栈、装载元素、记账菜单返回点 */
   enterColumn(columnId: string): boolean;
 

@@ -53,14 +53,24 @@ export function columnFrame(ctx: OpContext): Frame | undefined {
   return undefined;
 }
 
-/** 按坐标重建列帧（存档不进帧栈——块/列级作用域不进档，读档后确定性重放重建） */
-export function columnFrameAt(ctx: OpContext, coord: ColumnCoordinate): Frame {
+/**
+ * 按坐标重建列帧。
+ *
+ * 列级作用域由调用方给：读档时必须带上存档里的 `scope`（列级声明都在存档坐标
+ * 之前，重放不会回到那些命令）；回溯用检查点自带的帧栈，不走这里。
+ * 块级帧一律不重建——它们由重放重入块体重建。
+ */
+export function columnFrameAt(
+  ctx: OpContext,
+  coord: ColumnCoordinate,
+  scope?: readonly (readonly [string, unknown])[],
+): Frame {
   const column = ctx.columnById(coord.columnId)!;
   return {
     columnId: coord.columnId,
     commands: column.kind === "flow" ? column.commands! : (column.entry ?? []),
     index: coord.index,
-    scope: Scope.root(),
+    scope: scope === undefined ? Scope.root() : Scope.fromEntries(scope),
   };
 }
 

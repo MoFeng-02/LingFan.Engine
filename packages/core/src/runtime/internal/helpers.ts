@@ -68,6 +68,24 @@ export function parseMenuReturn(
   };
 }
 
+/**
+ * 解析存档里的列级作用域（`SaveDataV1.scope`）。
+ *
+ * **fail-closed**：形状不符 ⇒ 返回 `null`（调用方按空列级层处理，不中断读档——
+ * 旧档本来就没有这个字段，把它当错误会让存量档读不了）。
+ */
+export function parseScopeEntries(raw: unknown): [string, unknown][] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: [string, unknown][] = [];
+  for (const item of raw) {
+    if (!Array.isArray(item) || item.length !== 2) return null;
+    const [key, value] = item as [unknown, unknown];
+    if (typeof key !== "string" || key === "") return null;
+    out.push([key, value]);
+  }
+  return out;
+}
+
 /** 快照状态中的字符串键值（缺省/非字符串 = 空串） */
 export function snapshotText(cp: Checkpoint, key: string): string {
   const found = cp.snapshot.state.find(([k]) => k === key)?.[1];
