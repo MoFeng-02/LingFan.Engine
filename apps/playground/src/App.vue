@@ -197,6 +197,7 @@ const { inGame, paused, resumeSlot, quickSlot, mounted } = life;
 const { onStart, onContinue, togglePause, restart } = life;
 const { onResume, onSave, onLoad, onHome, onStageClickInGame } = life;
 const { refreshResumeSlot, teardown } = life;
+const { browsingSaves, resumeViews, toggleSaves, onPickSave } = life;
 // 会话就绪后接上「继续」槽位摘要的刷新落点：此后写档成功才会点到新增的档
 resumeSlotSink.apply = refreshResumeSlot;
 
@@ -267,8 +268,12 @@ onUnmounted(() => {
       v-if="!inGame"
       :title="projectTitle"
       :resume="resumeSlot"
+      :saves="resumeViews"
+      :browsing="browsingSaves"
       @start="onStart"
       @continue="onContinue"
+      @toggle-saves="toggleSaves"
+      @pick-save="onPickSave"
     />
     <template v-else>
       <!-- 舞台（作者坐标系，基准像素）：只住元素层与扩展覆盖层——宽高与适配变换由适配装配写入 -->

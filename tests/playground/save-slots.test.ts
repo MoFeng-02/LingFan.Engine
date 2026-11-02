@@ -9,13 +9,15 @@
  * ① 快捷槽是 `slotIds(saves.slots)[0]`，不是写死的 `"slot_1"`（改槽位数要跟着走）；
  * ② 「继续」的槽必须经 `slotIds` 过滤，历史遗留槽再新也不选；
  * ③ 读摘要失败与无档同一条路：清空、不抛、不留假槽名；
- * ④ 空槽名一律不动作——按钮的 `disabled` 是给人看的，挡板要在动作这一侧。
+ * ④ 空槽名一律不动作——按钮的 `disabled` 是给人看的，挡板要在动作这一侧；
+ * ⑤ 启动页的存档自选：展开现读一遍、收起不再读、选一个槽与「继续」同一条路径。
  *
  * 会话是纯页面态，直接 `createAppSession` 造一个；操作通道用记录调用的替身，
  * 断言的是「有没有把动作交给引擎、交了什么」，不是引擎做了什么。
  */
 import { describe, expect, it } from "vitest";
 import type { HostControls, SlotSummary } from "@lingfan-engine/core";
+import type { SlotView } from "@lingfan-engine/shell";
 import { createAppSession } from "../../apps/playground/src/host/session/app-session";
 
 /** 操作通道替身：只记名字与参数，`paused()` 恒 false（本文件不测暂停语义） */
@@ -50,6 +52,8 @@ interface SessionInput {
   /** `SavePort.list()` 的返回；`throwing` 为真时改为抛错 */
   summaries?: readonly SlotSummary[];
   throwing?: boolean;
+  /** 逐槽正文（槽名 → 存档文件正文）；缺省读回空串，等于每槽都没有标题与缩略图 */
+  meta?: Readonly<Record<string, string>>;
 }
 
 /** 造最小会话：返回会话与两个记录数组（操作通道调用、进对局次数） */
@@ -70,7 +74,7 @@ function createSession(input: SessionInput): {
     },
     savePort: {
       write: () => Promise.resolve(),
-      read: () => Promise.resolve(""),
+      read: (slot) => Promise.resolve(input.meta?.[slot] ?? ""),
       remove: () => Promise.resolve(),
       list: () =>
         input.throwing === true
@@ -185,6 +189,86 @@ describe("会话快照的存档槽位面", () => {
     expect(entered).toEqual(["enter", "continue:slot_2"]);
     expect(session.inGame.value).toBe(true);
     expect(session.paused.value).toBe(false);
+  });
+
+  it("刷新一次就把「继续」与存档列表一起填上", async () => {
+    const { session } = createSession({
+      slots: 3,
+      summaries: [summary("slot_1", 1_700_000_100_000)],
+      meta: {
+        slot_1: JSON.stringify({
+          title: "第一章",
+          screenshot: "data:image/png;base64,AA",
+        }),
+      },
+    });
+
+    // 首帧两者都空：还没读过端口
+    expect(session.resumeSlot.value).toBe("");
+    expect(session.resumeViews.value).toEqual([]);
+
+    await session.refreshResumeSlot();
+    // 「继续」可点与列表非空必须同真同假——它们是同一次刷新给出的两个投影
+    expect(session.resumeSlot.value).toBe("slot_1");
+    expect(session.browsingSaves.value).toBe(false);
+
+    const views: readonly SlotView[] = session.resumeViews.value;
+    // 槽位表按配置生成，三槽齐全（没存过的也要列出来，玩家才知道还有空位）
+    expect(views.map((view) => view.id)).toEqual([
+      "slot_1",
+      "slot_2",
+      "slot_3",
+    ]);
+    // 有档的那槽带标题与缩略图，空槽只带标签且标为空
+    expect(views[0]).toMatchObject({
+      empty: false,
+      title: "第一章",
+      screenshot: "data:image/png;base64,AA",
+    });
+    expect(views[1]).toMatchObject({ empty: true, label: "槽位 2" });
+  });
+
+  it("存档列表读失败仍列出配置内的槽位，只是都标成空", async () => {
+    const { session } = createSession({ slots: 3, throwing: true });
+    // 不抛：端口拒读不该让整页空掉，玩家仍要看到「这工程有三个槽、都是空的」
+    await expect(session.refreshResumeSlot()).resolves.toBeUndefined();
+    expect(session.resumeSlot.value).toBe("");
+    expect(session.resumeViews.value.map((view) => view.id)).toEqual([
+      "slot_1",
+      "slot_2",
+      "slot_3",
+    ]);
+    expect(session.resumeViews.value.every((view) => view.empty)).toBe(true);
+  });
+
+  it("展开与收起只切显隐，不重新读端口", () => {
+    const { session } = createSession({ slots: 3 });
+
+    session.toggleSaves();
+    expect(session.browsingSaves.value).toBe(true);
+    session.toggleSaves();
+    expect(session.browsingSaves.value).toBe(false);
+  });
+
+  it("选一个存档继续：收起列表，且与「继续」走同一条路径", () => {
+    const { session, entered } = createSession({ slots: 3 });
+    session.browsingSaves.value = true;
+
+    session.onPickSave("slot_2");
+    // 顺序与「继续」同一条契约：先起引擎，再按槽恢复
+    expect(entered).toEqual(["enter", "continue:slot_2"]);
+    expect(session.browsingSaves.value).toBe(false);
+    expect(session.inGame.value).toBe(true);
+  });
+
+  it("选空槽不动作：只是收起列表，不进对局也不碰引擎", () => {
+    const { session, entered } = createSession({ slots: 3 });
+    session.browsingSaves.value = true;
+
+    session.onPickSave("");
+    expect(entered).toEqual([]);
+    expect(session.inGame.value).toBe(false);
+    expect(session.browsingSaves.value).toBe(false);
   });
 
   it("回到标题：引擎留着（仍暂停）、页面退回启动页、暂停态清掉", () => {

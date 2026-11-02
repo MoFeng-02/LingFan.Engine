@@ -18,6 +18,7 @@ import {
   type MountSelection,
   type MountSource,
 } from "@lingfan-engine/ui";
+import { loadSlotViews, type SlotView } from "@lingfan-engine/shell";
 
 /** 装配入参：操作通道、挂载面、存档面与三个宿主动作 */
 export interface AppSessionOptions {
@@ -58,6 +59,14 @@ export interface AppSession {
   onHome: () => void;
   onStageClickInGame: () => void;
   refreshResumeSlot: () => Promise<void>;
+  /** 启动页的存档自选：是否展开了槽位列表 */
+  browsingSaves: Ref<boolean>;
+  /** 启动页的存档自选：逐槽视图（空表 = 还没读过/没有槽） */
+  resumeViews: Ref<readonly SlotView[]>;
+  /** 展开或收起存档自选（槽位数据由 `refreshResumeSlot` 负责，这里只管显隐） */
+  toggleSaves: () => void;
+  /** 选一个槽继续：收起列表并走与「继续」同一条路径 */
+  onPickSave: (slot: string) => void;
   dispose: () => void;
 }
 
@@ -69,6 +78,10 @@ export function createAppSession(options: AppSessionOptions): AppSession {
   const paused = ref(false);
   /** 可继续的槽位 id：空串 = 还没有存档 */
   const resumeSlot = ref("");
+  /** 启动页是否展开存档自选 */
+  const browsingSaves = ref(false);
+  /** 存档自选的逐槽视图：空表表示还没读过，或本工程没有槽位 */
+  const resumeViews = ref<readonly SlotView[]>([]);
 
   /** 进对局：置页面态 → 启动引擎（入口列）→ 舞台挂上后再量一次适配 */
   function onStart(): void {
@@ -144,7 +157,16 @@ export function createAppSession(options: AppSessionOptions): AppSession {
     inGame.value = false;
   }
 
-  /** 可继续槽位：从存档摘要里挑最新的一个（挑法只有一份，在 UI 域的 latestSave 里） */
+  /**
+   * 刷新「继续」与存档列表：两件事一起做，因为它们回答的是同一个问题——现在有哪些档。
+   *
+   * 拆成两次读是因为要的东西不同：可继续槽位只要摘要里最新的那一个（挑法只有一份，
+   * 在 UI 域的 `latestSave` 里），而列表要每槽的标题、缩略图与时间。同一次刷新里一起
+   * 填，才能保证「继续」可点与列表非空始终同真同假——分两次填会让其中一个落在后面。
+   *
+   * `loadSlotViews` 自己就把摘要读失败降级成「全是空槽」、单槽读失败只丢标题与缩略图，
+   * 它保证不抛，所以这里不再包一层 catch。
+   */
   async function refreshResumeSlot(): Promise<void> {
     const slots = slotIds(options.saves.slots);
     try {
@@ -153,6 +175,21 @@ export function createAppSession(options: AppSessionOptions): AppSession {
     } catch {
       resumeSlot.value = "";
     }
+    resumeViews.value = await loadSlotViews({
+      savePort: options.savePort,
+      slotIds: slots,
+    });
+  }
+
+  /** 启动页的存档自选：只收起/展开。槽位数据由 `refreshResumeSlot` 在写档、读档与首帧刷新 */
+  function toggleSaves(): void {
+    browsingSaves.value = !browsingSaves.value;
+  }
+
+  /** 选一个槽继续：收起列表，之后与「继续」完全同一条路径（含起引擎的顺序） */
+  function onPickSave(slot: string): void {
+    browsingSaves.value = false;
+    onContinue(slot);
   }
 
   /** 挂载表原始值：首帧取一次快照，之后由订阅推新（订阅不回放历史，首帧要主动喂） */
@@ -187,6 +224,10 @@ export function createAppSession(options: AppSessionOptions): AppSession {
     onHome,
     onStageClickInGame,
     refreshResumeSlot,
+    browsingSaves,
+    resumeViews,
+    toggleSaves,
+    onPickSave,
     dispose: stopMounts,
   };
 }
