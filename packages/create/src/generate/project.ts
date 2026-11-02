@@ -47,7 +47,7 @@ export interface GenerateOptions {
   /** 壳叠加层 id */
   readonly shell: string;
   /**
-   * 故事源形态叠加层 id；缺省 `story`（直接写故事文件）。
+   * 故事源形态叠加层 id；缺省 `ts`（TypeScript 源，编译成故事文件）。
    *
    * 可选是为了不破坏既有调用方——只关心框架与壳的代码不必为一个用不到的参数改签名。
    */
@@ -68,8 +68,15 @@ export interface GenerateResult {
   readonly sources: string;
 }
 
-/** 故事源形态的缺省 id：不叠加任何层，直接用骨架自带的故事文件 */
-export const DEFAULT_SOURCES = "story";
+/**
+ * 故事源形态的缺省 id：TypeScript 源（`src/Stories.src/` → 编译成故事文件）。
+ *
+ * 三种创作形态是**同一个架构的三条入口**，不是三档能力：手写 `.story`、`.json`、
+ * TS 源最终都落到资源根下的故事目录，引擎装载时只认那棵树的扫描结果。TS 只是
+ * 多一层「写起来更强」的创作面（类型补全、复用 TS 能力），编译产物与手写文件同构，
+ * 因此缺省取它不改变任何运行期语义——生成出来的工程开箱即是可扩展的那一种。
+ */
+export const DEFAULT_SOURCES = "ts";
 
 /**
  * 生成一个工程。
@@ -115,7 +122,7 @@ export function generateProject(options: GenerateOptions): GenerateResult {
  * - 壳层最后——壳对工程形态有最终发言权（小程序壳会删掉浏览器宿主的 `src/host/`），
  *   让它压过其余各层才不会出现「壳删了、下层又写回来」。
  *
- * 缺席的叠加层直接跳过——缺省项（`none` / `browser` / `story`）本就没有目录，
+ * 缺席的叠加层直接跳过——缺省项（`none` / `browser`）本就没有目录，
  * 这不是错误，只是「这一层什么都不加」。
  */
 export function layerBases(options: GenerateOptions): string[] {

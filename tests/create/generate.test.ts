@@ -132,7 +132,13 @@ describe("依赖名收集", () => {
         resolved: new Map<string, string>(),
       }),
     );
-    expect(names).toEqual(["@lingfan-engine/core", "vite", "vue"]);
+    // 缺省故事源形态是 ts，夹具里那一层声明的构建期依赖也在解析面内
+    expect(names).toEqual([
+      "@lingfan-engine/core",
+      "vite",
+      "vue",
+      "@lingfan-engine/stories-build",
+    ]);
   });
 });
 
@@ -161,7 +167,11 @@ describe("产物字节", () => {
       "@lingfan-engine/core": "^0.1.0",
       vue: "^9.9.9",
     });
-    expect(manifest.devDependencies).toEqual({ vite: "^8.0.0" });
+    // 缺省 ts 层声明的构建期依赖一并合入
+    expect(manifest.devDependencies).toEqual({
+      vite: "^8.0.0",
+      "@lingfan-engine/stories-build": "^0.1.0",
+    });
   });
 
   it("占位符在文本产物里全部替换", () => {
@@ -313,7 +323,10 @@ describe("层序与写盘", () => {
     ]);
   });
 
-  it("故事源形态缺省为 story，不改变既有调用方的层序", () => {
+  it("故事源形态缺省为 ts（TS 创作链），层序为骨架 → 框架 → 故事源 → 壳", () => {
+    // 三种创作形态是同一架构的三条入口，不是三档能力：TS 源编译成故事文件，
+    // 与手写 `.story` / `.json` 落在同一棵资源树。缺省取 TS 是因为它能力最强、
+    // 产物同构——不改变任何运行期语义。
     const root = makeTemplate("sources-default");
     expect(
       layerBases({
@@ -327,11 +340,14 @@ describe("层序与写盘", () => {
     ).toEqual([
       join(root, "__PROJECT__"),
       join(root, "overlays", "vue"),
+      join(root, "overlays", "ts"),
       join(root, "overlays", "browser"),
     ]);
   });
 
-  it("缺省项没有叠加层目录时只留骨架", () => {
+  it("没有叠加层目录的形态直接跳过，不占位", () => {
+    // `none`（骨架框架）与 `story`（手写故事文件）都是零改动形态：模板里没有
+    // 对应目录不是错误，只是「这一层什么都不加」。
     const root = makeTemplate("defaults");
     expect(
       layerBases({
@@ -340,6 +356,7 @@ describe("层序与写盘", () => {
         projectName: "story",
         framework: "none",
         shell: "browser",
+        sources: "story",
         resolved: new Map<string, string>(),
       }),
     ).toEqual([join(root, "__PROJECT__"), join(root, "overlays", "browser")]);

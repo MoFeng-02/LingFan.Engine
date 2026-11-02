@@ -16,6 +16,7 @@
 import { describe, expect, it } from "vitest";
 import templateMeta from "../../template/v1/template-meta.json?raw";
 import skeletonMain from "../../template/v1/__PROJECT__/src/main.ts?raw";
+import skeletonManifest from "../../template/v1/__PROJECT__/package.json?raw";
 import skeletonHtml from "../../template/v1/__PROJECT__/index.html?raw";
 
 /** `template-meta.json` 里声明的可选层 */
@@ -38,12 +39,13 @@ const ALL_OPTIONS = [
   ...(meta.shells ?? []),
 ];
 
-/** 每个维度的缺省项：缺省形态就是骨架本身，可以没有目录 */
-const DEFAULT_IDS = new Set(
-  [meta.frameworks?.[0], meta.sources?.[0], meta.shells?.[0]]
-    .map((option) => option?.id)
-    .filter((id): id is string => id !== undefined),
-);
+/**
+ * 可以没有叠加层目录的形态：它们的产物**就是骨架本身**，没有任何一行差异。
+ *
+ * 判据按「该层是否真的改变产物」而不是按排序位置认——缺省项换个顺序
+ * （比如故事源缺省从 `story` 改成 `ts`），不改变「零改动形态无需目录」这件事。
+ */
+const NO_DIRECTORY_OPTIONS = new Set(["none", "story", "browser"]);
 
 /** 叠加层全部文本，键 = 仓库相对路径 */
 const OVERLAY_SOURCES = import.meta.glob(
@@ -110,8 +112,8 @@ describe("模板叠加层：声明与素材一致", () => {
       // 缺省项可以没有目录：骨架本身就是它的形态（原生框架 / 故事文件 / 浏览器壳）
       if (files.length === 0) {
         expect(
-          DEFAULT_IDS.has(option.id),
-          `首项之外的层必须有目录：${option.id}`,
+          NO_DIRECTORY_OPTIONS.has(option.id),
+          `零改动形态之外的层必须有目录：${option.id}`,
         ).toBe(true);
         continue;
       }
@@ -339,7 +341,7 @@ describe("模板叠加层：不得改动骨架的交付形态", () => {
 describe("模板叠加层：故事源形态层只换故事素材", () => {
   const TS_FILES = overlayFiles("ts");
 
-  it("ts 层自带故事源与构建脚本，开箱就能跑 stories:build", () => {
+  it("ts 层自带构建脚本，开箱就能跑 stories:build", () => {
     const patch = TS_FILES.find(([path]) =>
       path.endsWith("/package.patch.json"),
     );
@@ -349,12 +351,32 @@ describe("模板叠加层：故事源形态层只换故事素材", () => {
       scripts?: Record<string, string>;
     };
     // 构建链是层内自带的：消费工程不该再自己装包、自己拼命令
-    expect(
-      parsed.devDependencies?.["@lingfan-engine/stories-build"],
-    ).toBeDefined();
     expect(parsed.devDependencies?.["@lingfan-engine/editor"]).toBeDefined();
     for (const script of ["stories:build", "stories:watch"]) {
       expect(parsed.scripts?.[script], `ts 层缺 ${script} 脚本`).toBeDefined();
+    }
+  });
+
+  it("构建期依赖只在骨架声明一次，层里不重复", () => {
+    // 骨架的 `vite.plugins.ts` 引 `@lingfan-engine/stories-build/host-plugins`，
+    // 所以骨架自己就得声明它；ts 层的构建命令用的也是同一个包。
+    // 两层各写一份版本号，升级时必然漏改一处——同一依赖只留骨架那处。
+    const skeleton = JSON.parse(skeletonManifest) as {
+      dependencies?: Record<string, string>;
+    };
+    expect(
+      skeleton.dependencies?.["@lingfan-engine/stories-build"],
+      "骨架必须声明 stories-build：它的 vite.plugins.ts 直接引该包",
+    ).toBeDefined();
+    for (const [path, source] of TS_FILES) {
+      if (!path.endsWith("/package.patch.json")) continue;
+      const parsed = JSON.parse(source) as {
+        devDependencies?: Record<string, string>;
+      };
+      expect(
+        parsed.devDependencies?.["@lingfan-engine/stories-build"],
+        `${path} 重复声明了 stories-build`,
+      ).toBeUndefined();
     }
   });
 
