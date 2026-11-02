@@ -2,8 +2,8 @@
  * audit-i18n · B7 fallback 页搜索结果可用性（真浏览器检索）
  */
 import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { createRequire } from "node:module";
+import { CHROME_CANDIDATES, PREVIEW, probePuppeteer } from "../shared/index.ts";
 import { manual, pass } from "./shared.ts";
 
 // --- B7-1 fallback 页搜索结果可用性（Pagefind 按 lang 分索引）
@@ -11,15 +11,9 @@ import { manual, pass } from "./shared.ts";
 // 这里做真浏览器检索：分别在 zh / en 真译页 / en fallback 页上开搜索，用中文词与英文词各查一次，
 // 记录命中数与首条结果，作为「已知风险的实际影响面」证据（不因此改判为失败）。
 {
-  const LF_AUDIT_HOME = process.env.LF_AUDIT_HOME ?? "E:/Temp/Windows/lf-audit";
-  const PREVIEW =
-    process.env.LF_PREVIEW ?? "http://127.0.0.1:4322/LingFan.Engine";
-  const chromePath = [
-    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-  ].find((p) => existsSync(p));
-  const puppeteerPath = join(LF_AUDIT_HOME, "package.json");
+  const pp = probePuppeteer();
+  const puppeteerPath = pp.anchor;
+  const chromePath = CHROME_CANDIDATES.find((p) => existsSync(p));
   let live = false;
   try {
     live = (await fetch(PREVIEW + "/", { signal: AbortSignal.timeout(4000) }))
@@ -29,7 +23,7 @@ import { manual, pass } from "./shared.ts";
   }
 
   let b = null;
-  if (existsSync(puppeteerPath) && chromePath && live) {
+  if (puppeteerPath && chromePath && live) {
     try {
       b = await createRequire(puppeteerPath)("puppeteer-core").launch({
         executablePath: chromePath,
@@ -90,8 +84,8 @@ import { manual, pass } from "./shared.ts";
       evidence,
     );
   } else {
-    const why = !existsSync(puppeteerPath)
-      ? `未找到 puppeteer-core（${LF_AUDIT_HOME}）`
+    const why = !puppeteerPath
+      ? pp.reason
       : !chromePath
         ? "未找到 Chrome/Edge"
         : !live

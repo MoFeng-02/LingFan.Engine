@@ -12,14 +12,12 @@ import {
   fail,
   manual,
   pass,
+  probePuppeteer,
 } from "./shared.ts";
 import { DEFAULT_HEXES } from "./checks-brand.ts";
 
 // --- H1-2 品牌标识 / 首页差异：浏览器检查（与 H1-1 的静态裁决互为佐证）
-const PUPPETEER_CANDIDATES = [
-  process.env.LF_AUDIT_HOME && join(process.env.LF_AUDIT_HOME, "package.json"),
-  join(LF_AUDIT_HOME, "package.json"),
-].filter(Boolean);
+const probe = probePuppeteer();
 const chromePath = CHROME_CANDIDATES.find((p) => existsSync(p));
 export const axePath = join(
   LF_AUDIT_HOME,
@@ -34,7 +32,7 @@ try {
 } catch {
   live = false;
 }
-const puppeteerPath = PUPPETEER_CANDIDATES.find((p) => existsSync(p));
+const puppeteerPath = probe.anchor;
 
 export let browser = null;
 let puppeteer = null;
@@ -52,7 +50,7 @@ if (puppeteerPath && chromePath && live) {
 }
 export const browserReady = !!browser;
 export const browserWhy = !puppeteerPath
-  ? `未找到 puppeteer-core（探测：${PUPPETEER_CANDIDATES.join(" | ")}）`
+  ? probe.reason
   : !chromePath
     ? `未找到 Chrome/Edge（探测：${CHROME_CANDIDATES.join(" | ")}）`
     : !live

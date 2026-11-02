@@ -6,10 +6,10 @@ import { createRequire } from "node:module";
 import {
   CHROME_CANDIDATES,
   PREVIEW,
-  PUPPETEER_CANDIDATES,
   fail,
   manual,
   pass,
+  probePuppeteer,
 } from "./shared.ts";
 
 const isAlive = async (url) => {
@@ -23,15 +23,16 @@ const isAlive = async (url) => {
     return false;
   }
 };
-const puppeteerPath = PUPPETEER_CANDIDATES.find((p) => existsSync(p));
+const probe = probePuppeteer();
+const puppeteerPath = probe.anchor;
 const chromePath = CHROME_CANDIDATES.find((p) => existsSync(p));
 export const live = await isAlive(PREVIEW + "/");
 
 if (!puppeteerPath || !chromePath || !live) {
   const why = !puppeteerPath
-    ? `未找到 puppeteer-core（探测：${PUPPETEER_CANDIDATES.join(" | ")}）`
+    ? probe.reason
     : !chromePath
-      ? "未找到本机 Chrome / Edge"
+      ? `未找到本机 Chrome / Edge（探测：${CHROME_CANDIDATES.join(" | ")}）`
       : `preview 未在 ${PREVIEW} 响应（先执行 cd docs && npx astro preview --port 4322）`;
   manual(
     "F1-1",

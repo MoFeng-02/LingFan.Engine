@@ -5,22 +5,22 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
+// 浏览器侧前置探测（puppeteer-core / Chrome / preview 地址）在 ../shared 里
+// 声明一次，这里只做转发，保持本目录检查模块的 import 面不变。
+export {
+  CHROME_CANDIDATES,
+  LF_AUDIT_HOME,
+  PREVIEW,
+  probePuppeteer,
+} from "../shared/index.ts";
+
 export const DIST = resolve(process.cwd(), "dist");
 export const DOCS = process.cwd();
 export const REPO = resolve(DOCS, "..");
 export const SITE_NAME = "灵泛引擎";
 export const SITE_NAME_EN = "LingFan Engine";
-export const PREVIEW =
-  process.env.LF_PREVIEW ?? "http://127.0.0.1:4322/LingFan.Engine";
 export const BASELINE_DIST =
   process.env.LF_BASELINE_DIST ?? "E:/Temp/Windows/lf-baseline/dist";
-export const LF_AUDIT_HOME =
-  process.env.LF_AUDIT_HOME ?? "E:/Temp/Windows/lf-audit";
-export const CHROME_CANDIDATES = [
-  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-  "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-];
 
 // ---------------------------------------------------------------- 判定框架
 export const results = [];

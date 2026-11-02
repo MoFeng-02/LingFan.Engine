@@ -4,22 +4,13 @@
  * 缺任一前置条件则退回 MANUAL 并写明原因（不静默判过）。
  */
 import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { createRequire } from "node:module";
+import { CHROME_CANDIDATES, PREVIEW, probePuppeteer } from "../shared/index.ts";
 import { fail, manual, pass } from "./shared.ts";
 
-const LF_AUDIT_HOME = process.env.LF_AUDIT_HOME ?? "E:/Temp/Windows/lf-audit";
-const PREVIEW =
-  process.env.LF_PREVIEW ?? "http://127.0.0.1:4322/LingFan.Engine";
-const CHROME_CANDIDATES = [
-  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-  "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-];
+const probe = probePuppeteer();
+const puppeteerPath = probe.anchor;
 const chromePath = CHROME_CANDIDATES.find((p) => existsSync(p));
-const puppeteerPath = [join(LF_AUDIT_HOME, "package.json")].find((p) =>
-  existsSync(p),
-);
 let live = false;
 try {
   live = (await fetch(PREVIEW + "/", { signal: AbortSignal.timeout(4000) })).ok;
@@ -123,7 +114,7 @@ if (kbBrowser) {
   }
 } else {
   const why = !puppeteerPath
-    ? `未找到 puppeteer-core（${LF_AUDIT_HOME}）`
+    ? probe.reason
     : !chromePath
       ? "未找到 Chrome/Edge"
       : !live
