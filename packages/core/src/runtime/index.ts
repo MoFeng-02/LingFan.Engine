@@ -3,12 +3,12 @@
  * 写入契约守卫 / op 注册表 / 等待声明表 / 扩展装载 / 表达式求值 / 状态读口）。
  *
  * 这是包出口（`src/index.ts`）取运行层符号的唯一入口——包出口不再逐个深入实现文件；
- * 运行层内部各模块之间仍按需直接引用（`./resolver` 属内部零件，不经此出口；
+ * 运行层内部各模块之间仍按需直接引用（`./expr/resolver.ts` 属表达式域内部零件；
  * `./scope` 供 `tests/engine/runtime/scope.test.ts` 的白盒用例经域出口取用）。
  */
 export { StoryEngine } from "./engine.ts";
 export type { EngineOptions, GuardContext, GuardFn } from "./engine.ts";
-export { columnSummaries } from "./columns.ts";
+export { columnSummaries } from "./engine/index.ts";
 export { isValidSayColor } from "./ops/index.ts";
 export { resolveHost } from "./host.ts";
 export { mergeOverlayFiles } from "./i18n/index.ts";
@@ -45,7 +45,7 @@ export type {
   StageFit,
   StageScalePolicy,
 } from "./shell.ts";
-export { findJsonValueError, jsonUnsafeReason } from "./stateContract.ts";
+export { findJsonValueError, jsonUnsafeReason } from "./state/index.ts";
 export { collectGuardNames, findMissingGuards } from "./guardNames.ts";
 export {
   BUILTIN_OP_NAMES,
@@ -58,7 +58,7 @@ export {
   WAITING_OPS,
   waitingStateOfOp,
   type WaitSpec,
-} from "./waitingOps.ts";
+} from "./session/index.ts";
 export {
   loadDeclaredExtensions,
   type ExtensionModuleLoader,

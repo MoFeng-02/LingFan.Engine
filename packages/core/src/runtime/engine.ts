@@ -38,8 +38,8 @@ import {
   type HistoryViewEntry,
 } from "./history/index.ts";
 import { exportSave, importSave } from "./save/index.ts";
-import { pauseSession, resumeSession } from "./pause.ts";
-import { columnSummaries } from "./columns.ts";
+import { pauseSession, resumeSession } from "./session/index.ts";
+import { columnSummaries } from "./engine/columns.ts";
 import {
   advance,
   animationFinished,

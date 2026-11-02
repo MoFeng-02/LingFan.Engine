@@ -21,7 +21,7 @@ import {
   type LoopState,
   type OpContext,
 } from "../internal/index.ts";
-import { findJsonValueError } from "../stateContract.ts";
+import { findJsonValueError } from "../state/stateContract.ts";
 
 /** if/elif/else：条件执行期求值；分支体 = 块帧 + 块级作用域 */
 export function execIf(

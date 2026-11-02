@@ -9,19 +9,19 @@
  * 恢复按暂停时记下的剩余毫秒续上原来的等待，媒体按**当前状态**逐个恢复——
  * 暂停期间被命令改成 stop 的通道不复活（留着一条「该出声却永远不出声」的通道更糟）。
  */
-import { SYS, type VideoCommand } from "../contracts/index.ts";
+import { SYS, type VideoCommand } from "../../contracts/index.ts";
 import {
   armWaitTimer,
   nowMs,
   pausedSession,
   type OpContext,
-} from "./internal/index.ts";
+} from "../internal/index.ts";
 import {
   execAudioPause,
   execAudioResume,
   pauseAudioInstances,
   resumeAudioInstances,
-} from "./ops/index.ts";
+} from "../ops/index.ts";
 
 /** 视频命令流里「正在播」的形态判定（暂停只对正在播的过场有意义） */
 function playingVideo(value: unknown): value is VideoCommand {

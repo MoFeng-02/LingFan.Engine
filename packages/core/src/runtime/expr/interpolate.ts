@@ -3,7 +3,7 @@
  *
  * 行内富文本标记原样透传给渲染层；插值失败保留原文片段并收集错误。
  */
-import type { NameResolver } from "../resolver.ts";
+import type { NameResolver } from "./resolver.ts";
 import { evaluateExpression } from "./evaluate.ts";
 import { ExpressionError, type ExprValue } from "./value.ts";
 

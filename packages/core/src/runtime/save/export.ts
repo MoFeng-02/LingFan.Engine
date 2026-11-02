@@ -7,7 +7,7 @@ import {
   type SaveDataV1,
 } from "../../contracts/index.ts";
 import { parseMenuReturn, type OpContext } from "../internal/index.ts";
-import { findJsonValueError } from "../stateContract.ts";
+import { findJsonValueError } from "../state/stateContract.ts";
 
 /**
  * 导出存档载荷。必须在等待点调用（列尾/未启动 fail-closed 拒绝）。

@@ -5,7 +5,7 @@
  * 游标把「只有这里能改 pos」收在一处；peek 在越界时钳到末尾的 eof，
  * 所以上层各层不必各自判边界。
  */
-import type { NameResolver } from "../../resolver.ts";
+import type { NameResolver } from "../resolver.ts";
 import type { Token } from "../lexer.ts";
 import { ExpressionError, type ExprValue } from "../value.ts";
 

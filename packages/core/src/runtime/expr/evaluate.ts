@@ -1,7 +1,7 @@
 /**
  * 求值入口：解析 + 求值一步完成（求值时机 = 执行到它的时刻）。
  */
-import type { NameResolver } from "../resolver.ts";
+import type { NameResolver } from "./resolver.ts";
 import { tokenize } from "./lexer.ts";
 import { Parser } from "./parser/index.ts";
 import { ExpressionError, type ExprValue } from "./value.ts";

@@ -63,7 +63,7 @@ import {
   restoreSaveExtensions,
   tryMigrateSave,
 } from "../save/index.ts";
-import { type NameResolver } from "../resolver.ts";
+import { type NameResolver } from "../expr/resolver.ts";
 import type {
   ColumnCoordinate,
   ElementInstance,

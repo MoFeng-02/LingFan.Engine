@@ -4,7 +4,7 @@
  * 内部按功能域归类，每个域有自己的出口，包出口只转发这些出口：
  * `contracts/`（契约，全量转发）、`runtime/index.ts`（执行器与运行期支撑）、
  * `data/index.ts`（故事文件解析·工程组装·文本投影·元素装载）。
- * 包出口不逐个深入实现文件；域内零件（`runtime/scope`、`runtime/resolver` 等）不经这里暴露。
+ * 包出口不逐个深入实现文件；域内零件（`runtime/scope`、`runtime/expr/resolver.ts` 等）不经这里暴露。
  */
 export * from "./contracts/index.ts";
 /**

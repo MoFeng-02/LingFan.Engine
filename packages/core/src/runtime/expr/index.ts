@@ -12,4 +12,4 @@ export {
 } from "./value.ts";
 export { evaluateExpression } from "./evaluate.ts";
 export { interpolateText, type TextInterpolation } from "./interpolate.ts";
-export type { NameResolver } from "../resolver.ts";
+export type { NameResolver } from "./resolver.ts";

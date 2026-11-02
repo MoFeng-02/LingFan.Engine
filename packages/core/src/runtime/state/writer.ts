@@ -6,7 +6,7 @@ import {
   RESERVED_STATE_KEYS,
 } from "../../contracts/index.ts";
 import type { OpContext } from "../internal/index.ts";
-import { findJsonValueError } from "../stateContract.ts";
+import { findJsonValueError } from "./stateContract.ts";
 
 /**
  * 全局层写入（作者 `set`/`define` / 小游戏奖励 / 数组族 op 的唯一汇聚点）。

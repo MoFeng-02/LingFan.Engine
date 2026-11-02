@@ -11,7 +11,7 @@ import {
   type StoryCommand,
 } from "../../contracts/index.ts";
 import { isMountTable, isUiName, UI_NAME_PATTERN } from "../../shared/index.ts";
-import { findJsonValueError } from "../stateContract.ts";
+import { findJsonValueError } from "../state/stateContract.ts";
 import type { OpContext } from "../internal/index.ts";
 
 /** `mount` 已知负载字段（未知字段 fail-closed） */

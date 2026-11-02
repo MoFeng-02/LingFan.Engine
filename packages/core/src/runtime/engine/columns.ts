@@ -10,9 +10,9 @@
  * 就会让「引擎认为的列类型」和「宿主认为的」分叉，而引擎那边毫不知情。
  * 冻结把这种改动静默变成立即报错（严格模式下赋值抛 TypeError）。
  */
-import { sceneTypeOf } from "../shared/guards.ts";
-import type { ColumnSummary } from "../contracts/runtime/column-summary.ts";
-import type { Story } from "../contracts/story/entities.ts";
+import { sceneTypeOf } from "../../shared/guards.ts";
+import type { ColumnSummary } from "../../contracts/runtime/column-summary.ts";
+import type { Story } from "../../contracts/story/entities.ts";
 
 /**
  * 造一份列摘要表（顺序与 `story.columns` 一致）。
