@@ -13,8 +13,12 @@ import viteConfig from "../../template/v1/__PROJECT__/vite.config.ts?raw";
 import indexHtml from "../../template/v1/__PROJECT__/index.html?raw";
 import templatePkg from "../../template/v1/__PROJECT__/package.json?raw";
 import storySource from "../../template/v1/__PROJECT__/Resources/Stories/title/title_main.story?raw";
-import type { ProjectManifest } from "@lingfan-engine/core";
-import { parseStory, parseTextStory } from "@lingfan-engine/core";
+import type { NameResolver, ProjectManifest } from "@lingfan-engine/core";
+import {
+  interpolateText,
+  parseStory,
+  parseTextStory,
+} from "@lingfan-engine/core";
 
 /** 模板宿主全部源码，键 = 仓库相对路径（前端不碰文件系统，改用打包器读取） */
 const SRC_SOURCES = import.meta.glob(
@@ -48,6 +52,35 @@ describe("template/v1 脚手架防腐", () => {
     expect(story.columns.map((c) => c.id)).toContain(manifest.entry);
     // 占位符必须原样保留（生成时整体替换）
     expect(manifest.id).toBe("__PROJECT__");
+  });
+
+  it("模板故事的全部文案都能过插值（回归：`{Audio,Images,Video}` 曾让首屏常挂红条）", () => {
+    // 故事文本里的 `{…}` 一律按表达式解析，只有行内标记白名单例外——
+    // 所以想表达「目录列举」不能借用花括号：`Resources/{Audio,Images,Video}`
+    // 会抛 `parse-error: 表达式存在多余内容：','`，开局就在 `#error` 上挂一条常驻错误条。
+    // 这里用「所有变量都命中」的解析器跑一遍，把解析错误与缺变量两种噪声分开：
+    // 变量是否存在是作者工程的事，语法能不能过是模板的事。
+    const alwaysFound: NameResolver = () => ({ found: true, value: "x" });
+    const story = parseTextStory(storySource, "title_main.story");
+    const texts: string[] = [];
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) {
+        for (const item of node) walk(item);
+        return;
+      }
+      if (node === null || typeof node !== "object") return;
+      for (const [key, value] of Object.entries(
+        node as Record<string, unknown>,
+      ))
+        if (key === "text" && typeof value === "string") texts.push(value);
+        else walk(value);
+    };
+    walk(story);
+    expect(texts.length).toBeGreaterThan(3); // 防提取失效空跑
+    for (const text of texts) {
+      const { errors } = interpolateText(text, alwaysFound);
+      expect(errors, `文案插值失败：${text}`).toEqual([]);
+    }
   });
 
   it("清单合 ProjectManifest 契约（组装器可接受）", () => {

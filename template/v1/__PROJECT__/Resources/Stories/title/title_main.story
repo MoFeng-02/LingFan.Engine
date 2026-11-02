@@ -8,7 +8,7 @@
 // 整屏的标题页/设置页属宿主应用，落 src/pages/ 一类宿主目录、由宿主自己切进切出。
 scene title_main type=ui
   say "欢迎来到 __PROJECT__。"
-  say "在 Resources/Stories/ 下继续写你的故事；媒体放 Resources/{Audio,Images,Video}。"
+  say "在 Resources/Stories/ 下继续写你的故事；媒体放 Resources/Audio、Resources/Images、Resources/Video。"
   menu "接下来去哪里？"
     "开始游戏" -> chapter1
     "看舞台元素" -> stage_demo
