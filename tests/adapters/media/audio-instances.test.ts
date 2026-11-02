@@ -5,13 +5,14 @@
  * 编排单元（两段环境音交叉、三段音效各调各的）。用通道承载实例会立刻撞两堵墙——
  * 通道键只有四个，且偏好按通道分档，塞进去就没法给「同一个通道的第二个声音」单独调音量。
  *
- * 这组守五件事：
+ * 这组守六件事：
  * 1. 三个方法都是**可选**能力：不实现的端口照样是合法 `AudioPort`（小程序形态即如此），
  *    调用方用 `?.` 容错——缺能力不能变成卡死；
  * 2. 实例之间互不干扰：改 A 的音量不动 B，停 A 不哑 B；
  * 3. 同 id 重复起播 = 更新（不叠放），不同 id = 各自独立（可叠放）；
  * 4. `setVolumeInstance` **不重播**：不重设 `src`、不动播放位置——拖滑块时才敢用它；
- * 5. 停掉的实例不再回填在途解析结果（物化是异步的，迟到的那一拍必须作废）。
+ * 5. 停掉的实例不再回填在途解析结果（物化是异步的，迟到的那一拍必须作废）；
+ * 6. 停掉的实例也不再被 `resumeInstance` 复活——恢复只对「暂停」生效，不对「已结束」生效。
  *
  * 断言打的是「端口真的对元素做了什么」（元素属性与事件），不是源码字符串。
  */
@@ -30,6 +31,8 @@ interface FakeAudio {
   listeners: Map<string, () => void>;
   paused: boolean;
   removed: boolean;
+  /** 累计 `play()` 次数：判断某次操作有没有真的把声音点起来 */
+  playCount: number;
   addEventListener(type: string, handler: () => void): void;
   removeAttribute(name: string): void;
   pause(): void;
@@ -46,6 +49,7 @@ function fakeAudio(): FakeAudio {
     listeners: new Map(),
     paused: false,
     removed: false,
+    playCount: 0,
     addEventListener(type, handler): void {
       element.listeners.set(type, handler);
     },
@@ -58,6 +62,7 @@ function fakeAudio(): FakeAudio {
     },
     play(): Promise<void> {
       element.paused = false;
+      element.playCount += 1;
       return Promise.resolve();
     },
   };
@@ -281,6 +286,60 @@ describe("音频端口 · 停掉后不许回填", () => {
     port.stopInstance?.("rain");
     await Promise.resolve();
     expect(created[0]?.src ?? "").toBe("");
+    port.dispose();
+  });
+});
+
+describe("音频端口 · 停掉的实例不再被恢复复活", () => {
+  it("stop 之后 resume 不复活：元素仍暂停、不重新起播、位置不回放", async () => {
+    const port = createWebAudioPort();
+    port.playInstance?.("rain", "http://x/rain.mp3", options);
+    await Promise.resolve();
+    const element = created[0]!;
+    element.currentTime = 6;
+    port.pauseInstance?.("rain");
+    port.stopInstance?.("rain");
+    port.resumeInstance?.("rain");
+    // stop 只把元素留在暂停态，光看 paused 分不出「用户暂停」与「这一段结束了」；
+    // 恢复必须同时看资源记录，否则会把已经停掉的那一段重新点起来。
+    expect(element.paused).toBe(true);
+    expect(element.playCount).toBe(1);
+    expect(element.currentTime).toBe(6);
+    port.dispose();
+  });
+
+  it("对照正例：正常暂停后 resume 照旧续播（判据不是「一律不恢复」）", async () => {
+    const port = createWebAudioPort();
+    port.playInstance?.("rain", "http://x/rain.mp3", options);
+    await Promise.resolve();
+    const element = created[0]!;
+    element.currentTime = 9;
+    port.setVolumeInstance?.("rain", 0.2);
+    port.pauseInstance?.("rain");
+    port.resumeInstance?.("rain");
+    expect(element.paused).toBe(false);
+    expect(element.playCount).toBe(2);
+    // 恢复不走 start：音量停在暂停前调过的那档，不被 options.volume 覆盖回去
+    expect(element.volume).toBe(0.2);
+    expect(element.currentTime).toBe(9);
+    expect(element.src).toBe("http://x/rain.mp3");
+    port.dispose();
+  });
+
+  it("重新起播过的实例又能正常暂停与恢复（判据看资源记录，不是一次性开关）", async () => {
+    const port = createWebAudioPort();
+    port.playInstance?.("rain", "http://x/rain.mp3", options);
+    await Promise.resolve();
+    const element = created[0]!;
+    port.stopInstance?.("rain");
+    port.playInstance?.("rain", "http://x/rain.mp3", options);
+    await Promise.resolve();
+    element.currentTime = 3;
+    port.pauseInstance?.("rain");
+    port.resumeInstance?.("rain");
+    expect(element.paused).toBe(false);
+    expect(element.playCount).toBe(3);
+    expect(element.currentTime).toBe(3);
     port.dispose();
   });
 });

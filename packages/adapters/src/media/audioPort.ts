@@ -273,11 +273,14 @@ export function createWebAudioPort(
    *
    * 不走 `start`：`start` 会把音量重置成 `options.volume` 并可能触发淡入，
    * 而恢复只是「继续」，音量与位置都该保持暂停前的样子。
+   *
+   * 空操作还要看 `urls`：`stop` 删掉这条记录后元素仍留在暂停态，只判 `paused`
+   * 会把「已经结束的那一段」重新点起来。`pause` 刻意不删，正常暂停恢复不受影响。
    */
   function resume(channel: AudioChannel): void {
     if (channel === "se") return;
     const element = elements.get(channel);
-    if (element === undefined || !element.paused) return;
+    if (element === undefined || !element.paused || !urls.has(channel)) return;
     void element.play().then(
       () => blocked.delete(channel),
       () => {

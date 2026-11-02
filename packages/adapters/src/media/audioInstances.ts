@@ -223,10 +223,15 @@ export function createAudioInstances(
     element.pause();
   }
 
-  /** 从暂停位置继续；未暂停（含未起播、已停止）是空操作 */
+  /**
+   * 从暂停位置继续；未暂停（含未起播、已停止）是空操作。还要看 `urls`：
+   * `stop` 删掉记录后元素仍留在暂停态，只判 `paused` 会把它重新点起来。
+   */
   function resume(instanceId: string): void {
     const element = elements.get(instanceId);
-    if (element === undefined || !element.paused) return;
+    if (element === undefined || !element.paused || !urls.has(instanceId)) {
+      return;
+    }
     void element.play().then(
       () => blocked.delete(instanceId),
       () => {
