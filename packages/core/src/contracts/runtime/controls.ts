@@ -13,6 +13,7 @@
  * 组件两样都拿得到：值走 `props`，操作走 `controls`。
  */
 import type { AudioChannel } from "../media/entities.ts";
+import type { SaveOptions } from "../save.ts";
 
 /** 宿主控制面：菜单与挂载 UI 共用的操作集合（两条路实现零差异） */
 export interface HostControls {
@@ -33,8 +34,14 @@ export interface HostControls {
   resumeMedia(channel?: AudioChannel): void;
   /** 跳到某一栏（与 `menu` 的选项同义：栏 id） */
   navigate(columnId: string): void;
-  /** 存档到某个槽位 */
-  save(slot: string): void;
+  /**
+   * 存档到某个槽位。
+   *
+   * `options.title` 是玩家给这一档起的名字，写进 `SaveDataV1.title`，槽位列表据此
+   * 显示；不传就是无名档（列表只显示槽位号）。缩略图同理走 `options.screenshot`，
+   * 由宿主合成后交给引擎——截图策略归宿主，引擎只负责把它存进档里。
+   */
+  save(slot: string, options?: SaveOptions): void;
   /** 从某个槽位读档 */
   load(slot: string): void;
   /** 拆掉宿主（等同宿主句柄的拆除；由持有者负责只调一次） */

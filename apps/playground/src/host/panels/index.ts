@@ -13,3 +13,4 @@ export type {
   PreferencesPanelOptions,
 } from "./views/index.ts";
 export { createPreferencesPanel } from "./views/index.ts";
+export { autoSaveTitle, resolveSaveTitle } from "./views/index.ts";

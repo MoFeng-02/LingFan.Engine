@@ -39,6 +39,8 @@ defineProps<{
   slotPanel: SlotPanelMode | null;
   /** 槽位视图（标题与缩略图随档存储） */
   slotViews: SlotView[];
+  /** 这次存档要用的名字草稿（留空 = 沿用该槽旧名 / 自动起名） */
+  saveTitleDraft: string;
   /** 宿主事实（os/form，只读展示） */
   host: HostInfo;
 }>();
@@ -54,6 +56,7 @@ const emit = defineEmits<{
   "start-capture": [action: KeymapAction];
   "reset-keybinding": [action: KeymapAction];
   "choose-slot": [view: SlotView];
+  "update-save-title": [event: Event];
 }>();
 </script>
 
@@ -215,6 +218,18 @@ const emit = defineEmits<{
     <p class="layer-prompt">
       {{ slotPanel === "save" ? "保存到槽位" : "读取槽位" }}
     </p>
+    <!-- 存档名：只给存档形态用。留空即沿用该槽原名（旧名也没有就自动起名），
+         填了就以填的为准；点槽位即写盘，名字是标签不是确认步骤。 -->
+    <label v-if="slotPanel === 'save'" class="slot-title-field">
+      <span class="slot-title-label">存档名</span>
+      <input
+        type="text"
+        class="slot-title-input"
+        :value="saveTitleDraft"
+        placeholder="留空则沿用原名或自动起名"
+        @input="emit('update-save-title', $event)"
+      />
+    </label>
     <div class="slot-grid">
       <button
         v-for="v in slotViews"
@@ -245,6 +260,36 @@ const emit = defineEmits<{
 
 .saves-panel {
   width: min(92%, 560px);
+}
+
+/* 存档名一行：标签与输入框同排，行高与槽位网格留白一致 */
+.slot-title-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.slot-title-label {
+  flex: 0 0 auto;
+  color: #a9b1d6;
+  font-size: 0.8em;
+}
+
+.slot-title-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid #4448;
+  border-radius: 8px;
+  background: #16161f;
+  color: #e6e6f0;
+  font-size: 0.8em;
+}
+
+.slot-title-input:focus {
+  border-color: #7aa2f7;
+  outline: none;
 }
 
 .slot-grid {

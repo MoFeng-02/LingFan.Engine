@@ -9,6 +9,7 @@ import {
   type AudioChannel,
   type AudioPort,
   type HostControls,
+  type SaveOptions,
   type StoryEngine,
   type VideoPort,
 } from "@lingfan-engine/core";
@@ -60,8 +61,8 @@ export function createHostControls(options: {
     navigate(columnId: string): void {
       engine().navigate(columnId);
     },
-    save(slot: string): void {
-      engine().save(slot);
+    save(slot: string, options?: SaveOptions): void {
+      engine().save(slot, options);
     },
     load(slot: string): void {
       engine().load(slot);

@@ -131,7 +131,12 @@ const { setPrefVolume, setPrefMuted, setPrefTextSpeed } = panels;
 const { setPrefOrientation, setPrefFullscreen, captureAction } = panels;
 const { keyMatches, startCapture, resetKeybinding, displayKeys } = panels;
 const { onCaptureKeydown, slotPanel, slotViews, openSlotPanel } = panels;
-const { chooseSlot } = panels;
+const { titleDraft, chooseSlot } = panels;
+
+/** 存档名草稿的写回：输入框只报事件，值落在槽位面板的草稿里 */
+function onSaveTitleInput(event: Event): void {
+  titleDraft.value = (event.target as HTMLInputElement | null)?.value ?? "";
+}
 
 // —— 事件分流、引擎生命周期、帧循环与对局会话 ——
 /** 写档成功后刷新「继续」槽位摘要的落点：会话装配晚于事件分流，故留一个可换的目标 */
@@ -357,6 +362,7 @@ onUnmounted(() => {
           :display-keys="displayKeys"
           :slot-panel="slotPanel"
           :slot-views="slotViews"
+          :save-title-draft="titleDraft"
           :host="host"
           @rollback-to-entry="rollbackToEntry"
           @set-pref-volume="setPrefVolume"
@@ -367,6 +373,7 @@ onUnmounted(() => {
           @start-capture="startCapture"
           @reset-keybinding="resetKeybinding"
           @choose-slot="chooseSlot"
+          @update-save-title="onSaveTitleInput"
         />
         <p v-if="error" class="error">{{ error }}</p>
       </div>
