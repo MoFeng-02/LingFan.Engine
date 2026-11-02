@@ -13,6 +13,7 @@
     "@lingfan-engine/adapters": "^0.1.0",
     "@lingfan-engine/core": "^0.1.0",
     "@lingfan-engine/shell": "^0.1.0",
+    "@lingfan-engine/stories-build": "^0.1.0",
     "@lingfan-engine/ui": "^0.1.0"
   },
   "devDependencies": {
