@@ -121,6 +121,28 @@
 
   --lf-logo-size: 2rem; /* 导航栏 logo 位 32px */
   --lf-logo-radius: var(--lf-radius-md);
+
+  /* ④ 独立路由外壳 --lf-d-*：演示页与英文 404 不挂 Starlight，
+     自带页头与配色，取值独立于上面的语义层；亮色在下一主题块重绑。 */
+  --lf-d-bg: #0f1117;
+  --lf-d-text: #c8d3f5;
+  --lf-d-heading: #e6ecff;
+  --lf-d-muted: #9aa5ce;
+  --lf-d-line: #2f3549;
+  --lf-d-line-strong: #3b4261;
+  --lf-d-accent: #7aa2f7;
+  --lf-d-panel: #161926;
+  --lf-d-panel-raise: #1e2438;
+  --lf-d-stage: #10131c;
+  --lf-d-stage-deep: #0d1017;
+  --lf-d-warn: #e0af68;
+  --lf-d-error: #f7768e;
+  --lf-d-error-tint: rgba(247, 118, 142, 0.12);
+  --lf-d-overlay: rgba(16, 19, 28, 0.9);
+  --lf-d-choice: rgba(26, 27, 38, 0.94);
+  --lf-d-choice-hover: rgba(41, 46, 66, 0.96);
+  --lf-d-input: rgba(16, 19, 28, 0.94);
+  --lf-d-shadow: rgba(0, 0, 0, 0.4);
 }
 
 /* 亮色 · 日光舞台：只重绑语义层，非颜色令牌与暗色共用 */
@@ -204,6 +226,27 @@
   --lf-shadow-sm: 0 1px 2px #24283b14;
   --lf-shadow-md: 0 4px 16px #24283b1f;
   --lf-shadow-lg: 0 12px 32px #24283b29;
+
+  /* ④ 独立路由外壳 · 日光：与上面同名重绑，亮暗一一对应 */
+  --lf-d-bg: #fbfbfd;
+  --lf-d-text: #2b3145;
+  --lf-d-heading: #1a1f33;
+  --lf-d-muted: #5b6478;
+  --lf-d-line: #d8dcea;
+  --lf-d-line-strong: #c3c9da;
+  --lf-d-accent: #3d63dd;
+  --lf-d-panel: #f0f2f8;
+  --lf-d-panel-raise: #e4e8f1;
+  --lf-d-stage: #eef0f6;
+  --lf-d-stage-deep: #e8ebf2;
+  --lf-d-warn: #8a5a1c;
+  --lf-d-error: #c4374f;
+  --lf-d-error-tint: rgba(196, 55, 79, 0.08);
+  --lf-d-overlay: rgba(255, 255, 255, 0.9);
+  --lf-d-choice: rgba(255, 255, 255, 0.94);
+  --lf-d-choice-hover: rgba(224, 229, 242, 0.96);
+  --lf-d-input: rgba(255, 255, 255, 0.95);
+  --lf-d-shadow: rgba(31, 36, 54, 0.12);
 }
 
 /* 动效偏好：把时长令牌压到瞬时，所有 transition 自动跟随，无需 !important */

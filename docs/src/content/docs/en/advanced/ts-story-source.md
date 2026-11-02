@@ -35,7 +35,7 @@ Wiring an existing project by hand comes down to the same pieces: `pnpm add -D @
 `src/Stories.src/config.ts` is the only `.ts` allowed at the root of that directory. It declares which directories take part in the build and which file is the entry point. The recommended shape is a default object — one strongly typed export; `satisfies StoriesConfig` gives you field completion and typo checking (`StoriesConfig` is a global type from the `@lingfan-engine/stories-build` authoring shim, no import needed):
 
 ```ts
-// apps/playground/src/Stories.src/config.ts
+// <your-project>/src/Stories.src/config.ts
 export default {
   folders: ["chapter1", "chapter2", "chapter3", "chapter4"],
   start: "start.ts",

@@ -199,8 +199,11 @@ withDefaults(
     <span v-if="value !== ''" class="hub__value">{{ value }}</span>
   </div>
 </template>
+```
 
-<style scoped>
+样式写在同一个 `.vue` 文件的 `scoped` 块里，框架给它加上局部作用域，只命中这个组件：
+
+```css
 .hub {
   display: inline-flex;
   align-items: center;
@@ -214,7 +217,6 @@ withDefaults(
   /* 只读界面：不吃舞台的点击 */
   pointer-events: none;
 }
-</style>
 ```
 
 内容靠 `props` 进来，故事侧这样传：

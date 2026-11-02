@@ -37,7 +37,7 @@ description: 在工程根的 src/ 下放 Stories.src/，用原生 TypeScript 写
 `src/Stories.src/config.ts` 是这个目录根级唯一允许的 `.ts`，声明哪些目录参与构建、哪个文件是入口。推荐用 default 对象形态——单一强类型出口，配合 `satisfies StoriesConfig` 获得字段补全与拼写检查（`StoriesConfig` 是全局类型，来自 `@lingfan-engine/stories-build` 的创作垫片，无需 import）：
 
 ```ts
-// apps/playground/src/Stories.src/config.ts
+// <你的工程>/src/Stories.src/config.ts
 export default {
   folders: ["chapter1", "chapter2", "chapter3", "chapter4"],
   start: "start.ts",

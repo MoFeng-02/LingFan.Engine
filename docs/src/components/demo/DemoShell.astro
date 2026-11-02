@@ -2,8 +2,8 @@
 // 独立路由页（内嵌演示页、英文 404）共用的自备外壳：
 // 不挂 Starlight 布局，自带 head（canonical、hreflang 三向、og）与页头导航，
 // 让这些页与文档站共享主题切换、语言切换与跳转正文等站点级行为。
-// 颜色全部收敛为 --lf-d-* 局部令牌，亮暗两套各定义一次；
-// 引用令牌的页面样式不再出现颜色字面量。
+// 颜色全部引用 src/styles/tokens.css 的 --lf-d-* 令牌（亮暗各定义一次），
+// 本组件只消费不定义，其页内样式不再出现颜色字面量。
 interface Props {
   lang: 'zh' | 'en';
   /** 本页规范路径（不含 base，含尾斜杠），如 demo/、en/demo/、en/404/ */
@@ -25,6 +25,9 @@ interface Props {
   };
 }
 const { lang, path, zhPath, title, description, t } = Astro.props;
+// 独立路由页不经过 Starlight 布局，customCss 不生效，故在此显式引入令牌层，
+// 让 --lf-d-* 与站点共用同一份定义。
+import "../../styles/tokens.css";
 const base = import.meta.env.BASE_URL;
 const SITE = Astro.site?.origin ?? '';
 const abs = (p: string) => `${SITE}${base}${p}`;
@@ -53,49 +56,10 @@ const enPath = lang === 'zh' ? `en/${path}` : path;
     <meta property="og:locale" content={lang === 'zh' ? 'zh-CN' : 'en'} />
     <meta name="twitter:card" content="summary_large_image" />
     <style is:global>
-      /* —— 页面外壳（独立路由页私有）—— */
-      :root {
-        --lf-d-bg: #0f1117;
-        --lf-d-text: #c8d3f5;
-        --lf-d-heading: #e6ecff;
-        --lf-d-muted: #9aa5ce;
-        --lf-d-line: #2f3549;
-        --lf-d-line-strong: #3b4261;
-        --lf-d-accent: #7aa2f7;
-        --lf-d-panel: #161926;
-        --lf-d-panel-raise: #1e2438;
-        --lf-d-stage: #10131c;
-        --lf-d-stage-deep: #0d1017;
-        --lf-d-warn: #e0af68;
-        --lf-d-error: #f7768e;
-        --lf-d-error-tint: rgba(247, 118, 142, 0.12);
-        --lf-d-overlay: rgba(16, 19, 28, 0.9);
-        --lf-d-choice: rgba(26, 27, 38, 0.94);
-        --lf-d-choice-hover: rgba(41, 46, 66, 0.96);
-        --lf-d-input: rgba(16, 19, 28, 0.94);
-        --lf-d-shadow: rgba(0, 0, 0, 0.4);
-      }
-      [data-theme='light'] {
-        --lf-d-bg: #fbfbfd;
-        --lf-d-text: #2b3145;
-        --lf-d-heading: #1a1f33;
-        --lf-d-muted: #5b6478;
-        --lf-d-line: #d8dcea;
-        --lf-d-line-strong: #c3c9da;
-        --lf-d-accent: #3d63dd;
-        --lf-d-panel: #f0f2f8;
-        --lf-d-panel-raise: #e4e8f1;
-        --lf-d-stage: #eef0f6;
-        --lf-d-stage-deep: #e8ebf2;
-        --lf-d-warn: #8a5a1c;
-        --lf-d-error: #c4374f;
-        --lf-d-error-tint: rgba(196, 55, 79, 0.08);
-        --lf-d-overlay: rgba(255, 255, 255, 0.9);
-        --lf-d-choice: rgba(255, 255, 255, 0.94);
-        --lf-d-choice-hover: rgba(224, 229, 242, 0.96);
-        --lf-d-input: rgba(255, 255, 255, 0.95);
-        --lf-d-shadow: rgba(31, 36, 54, 0.12);
-      }
+      /* —— 页面外壳（独立路由页私有）——
+         --lf-d-* 令牌定义在 src/styles/tokens.css（暗色在 :root，亮色在
+         :root[data-theme='light']），本组件只消费不定义；
+         这里只剩布局与结构性规则，无颜色字面量。 */
       * { box-sizing: border-box; }
       body {
         margin: 0;
