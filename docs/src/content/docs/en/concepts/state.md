@@ -1,6 +1,6 @@
 ---
 title: State & Variables
-description: Variables with set, let and local; collections with array and dict; text interpolation with {expr}. Globals follow saves and rollback; block-level ones do not.
+description: Variables with set, let and local; collections with array and dict; text interpolation with {expr}. Globals follow saves and rollback; column-level ones follow saves, block-level ones do not.
 ---
 
 Variables in a story land in one of two places: the **global layer** or the **current scope**. Keep that split straight and saves and rollback stop surprising you.
@@ -27,7 +27,7 @@ label title_main:
 
 Blocks are delimited by indentation — there is no closing keyword like `endif`. `hint` is declared inside the `if` block, so it is gone once the block ends; when that last `say` interpolates and cannot find `hint`, the engine emits the `unknown-variable` error on `engine.error`, renders the body as the original text (`{hint}`), and the story keeps waiting for the player's click — the error is neither silently swallowed nor does it halt the project.
 
-Block and column variables never enter saves and take no part in rollback; they die with their execution frame. Globals travel with snapshots, saves and rollback.
+Block and column variables die with their execution frame, but they relate to snapshots differently: **rollback** restores both (the scope is deep-copied into the snapshot); **saves** carry the column layer along and rebuild the block layer by replaying from the coordinate. Globals travel with snapshots, saves and rollback.
 
 ## Changing an existing value
 

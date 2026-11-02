@@ -1,6 +1,6 @@
 ---
 title: Save System
-description: "A save records the wait-point coordinate, global state, RNG seed and history. Unlike rollback, it replays from the coordinate and rebuilds the screen you saw."
+description: "A save records the wait-point coordinate, global state, column-level scope, RNG seed and history. Unlike rollback, it replays from the coordinate and rebuilds the screen you saw."
 ---
 
 Saves and rollback both go back in time, but they work differently. Rollback returns to a checkpoint in memory; a save writes a payload to disk, where it outlives the browser session.
@@ -56,6 +56,7 @@ An integer from 1 to 32, 6 by default. Slot ids are `slot_1` … `slot_N`; hosts
   functions: [...],
   cursor: 7,
   history: [...],
+  scope: [["a", 50]],   // column-level variables; absent when unused
   screenshot: "...",      // optional
   extensions: [{ id: "demo", stateVersion: 1 }]  // only when extensions were used
 }
@@ -64,9 +65,9 @@ An integer from 1 to 32, 6 by default. Slot ids are `slot_1` … `slot_N`; hosts
 A few things worth knowing:
 
 - `coord` points at the **position within a column that can rebuild that screen**. Loading does not paste a screenshot back; it replays from this coordinate, re-running the commands.
-- `state` is the global layer. Block and column variables never enter a save — they are re-declared by the same code after loading, so as long as their values are determined by code they end up correct.
+- `state` is the global layer. **Column variables do enter a save** (in the `scope` field): their declarations sit before the save coordinate, and replay never walks back to those commands, so they have to travel with the save. **Block variables do not**: a wait point inside a block has its coordinate rolled back to the block's control command, so replay re-enters the block body and re-declares them.
 - `rngState` is the RNG seed. Load the same save twice and `random` draws the same sequence.
-- `history` keeps only each checkpoint's coordinate, state and seed, not the frame stack — the frame stack is rebuilt from the coordinate.
+- `history` keeps only each checkpoint's coordinate, state and seed, not the frame stack — the frame stack is rebuilt from the coordinate. Those checkpoints carry no column scope either: a save stores the column scope of one coordinate only.
 - `extensions` appears only when the story actually used extensions. Without them the field is absent, so an engine with extensions installed still reads an extension-free save.
 
 Saving inside a `menu` or `ui` column stores **the game progress from before entering that menu**, not the menu itself. If no such progress exists, it reports `save-invalid`.
