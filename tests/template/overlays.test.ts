@@ -260,6 +260,55 @@ describe("模板叠加层：外围层只换端口与素材，不重画页面", (
   });
 });
 
+describe("模板叠加层：类型声明文件不得因覆盖而丢模块", () => {
+  /**
+   * 骨架的 `src/vite-env.d.ts` 是**整文件覆盖**而非合并：层里再放一份同名文件，
+   * 骨架那份就整个消失。曾经 vue / react 两层各补一份（为了 `.vue` / JSX 声明），
+   * 顺手把骨架的 `virtual:story-list` 一起丢了 —— 生成工程必然 `TS2307`，
+   * 而这是纯类型层缺陷，`vite dev` 照样能跑，只有 `typecheck` 会红。
+   *
+   * 判据：层里带 `src/vite-env.d.ts` 的，必须声明骨架那份声明过的全部虚拟模块。
+   */
+  const DECL_SOURCE = "../../template/v1/__PROJECT__/src/vite-env.d.ts";
+
+  /** 从声明文件里取出 `declare module "x"` 的模块 id 表 */
+  function declaredModules(source: string): string[] {
+    return [...source.matchAll(/declare module "([^"]+)"/g)].map((m) => m[1]!);
+  }
+
+  const skeletonDecl = (
+    import.meta.glob("../../template/v1/__PROJECT__/src/vite-env.d.ts", {
+      eager: true,
+      query: "?raw",
+      import: "default",
+    }) as Record<string, string>
+  )[DECL_SOURCE];
+
+  /** 自带同名声明文件的层 */
+  const overriddenDecls = Object.keys(OVERLAY_SOURCES)
+    .filter((path) => path.endsWith("/src/vite-env.d.ts"))
+    .sort();
+
+  it("骨架声明文件可被读取且确实声明了虚拟模块（防判据空跑）", () => {
+    expect(skeletonDecl).toBeDefined();
+    expect(declaredModules(skeletonDecl!).length).toBeGreaterThan(0);
+  });
+
+  it("覆盖骨架声明文件的层，必须把骨架的虚拟模块声明原样带上", () => {
+    const required = declaredModules(skeletonDecl!);
+    expect(overriddenDecls.length).toBeGreaterThan(0); // 当前 vue / react 两层会命中
+    for (const path of overriddenDecls) {
+      const declared = new Set(declaredModules(OVERLAY_SOURCES[path] ?? ""));
+      for (const moduleId of required) {
+        expect(
+          declared.has(moduleId),
+          `${path} 漏声明了 ${moduleId}（覆盖骨架声明文件时必须原样带上）`,
+        ).toBe(true);
+      }
+    }
+  });
+});
+
 describe("模板叠加层：不得改动骨架的交付形态", () => {
   it("资源根仍是无条件镜像，且不引入壳侧开关（纯 Web 就是浏览器交付正例）", () => {
     const configs = Object.keys(OVERLAY_SOURCES).filter((path) =>
