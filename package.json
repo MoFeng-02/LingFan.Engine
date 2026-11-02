@@ -27,6 +27,7 @@
   "devDependencies": {
     "@lingfan-engine/adapters": "workspace:*",
     "@lingfan-engine/core": "workspace:*",
+    "@lingfan-engine/shell": "workspace:*",
     "@lingfan-engine/stories-build": "workspace:*",
     "@lingfan-engine/ui": "workspace:*",
     "@types/node": "^26.6.3",

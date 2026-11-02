@@ -196,7 +196,7 @@ describe("template/v1 脚手架防腐", () => {
     expect(srcText).not.toMatch(/\.at\(/);
   });
 
-  it("模板声明引擎三包依赖（发布形态正确）", () => {
+  it("模板声明引擎四包依赖（发布形态正确）", () => {
     const pkg = JSON.parse(templatePkg) as {
       dependencies?: Record<string, string>;
     };
@@ -205,6 +205,8 @@ describe("template/v1 脚手架防腐", () => {
         "@lingfan-engine/core",
         "@lingfan-engine/adapters",
         "@lingfan-engine/ui",
+        // 历史面板的数据整形（块聚合）在 shell：宿主不自己再写一份聚合规则
+        "@lingfan-engine/shell",
       ]),
     );
   });
