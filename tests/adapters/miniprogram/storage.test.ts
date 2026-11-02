@@ -92,6 +92,23 @@ describe("createMiniprogramSavePort（明文档位）", () => {
     await expect(port.read("slot1")).rejects.toThrow("回档尝试被拒绝");
   });
 
+  it("高水位逐槽自管：一个槽位多存几次，不影响另一个槽位的计数与可读性", async () => {
+    const port = createMiniprogramSavePort(new FakeMiniprogramStorage());
+    await port.write("slot1", "一", "machine-bound");
+    await port.write("slot2", "二", "machine-bound");
+    // 后写的槽位不影响先写的：各自计数从 1 起
+    const afterBoth = await port.list();
+    expect(afterBoth.map((item) => [item.slot, item.saveCount])).toEqual([
+      ["slot1", 1],
+      ["slot2", 1],
+    ]);
+    // 反复覆盖 slot1 之后，slot2 仍然读得出来（全局计数会在这里把 slot2 判成回档）
+    await port.write("slot1", "一改", "machine-bound");
+    await port.write("slot1", "一改再改", "machine-bound");
+    await expect(port.read("slot2")).resolves.toBe("二");
+    await expect(port.read("slot1")).resolves.toBe("一改再改");
+  });
+
   it("list 只认命名空间前缀并跳过高水位键；remove 后列表清空（高水位不动）", async () => {
     const storage = new FakeMiniprogramStorage();
     const port = createMiniprogramSavePort(storage);
@@ -102,10 +119,17 @@ describe("createMiniprogramSavePort（明文档位）", () => {
     expect(listed[0]?.saveCount).toBe(1);
     await port.remove("slot1");
     await expect(port.list()).resolves.toEqual([]);
-    // 删档不回退高水位：下一档仍然递增
+    // 删档不回退该槽位自己的高水位：同一槽位再写仍然递增
+    await port.write("slot1", "payload-1b", "machine-bound");
+    const afterRecreate = await port.list();
+    expect(afterRecreate[0]?.saveCount).toBe(2);
+    // 另一个槽位从 1 起，不继承别人的历史
     await port.write("slot2", "payload-2", "machine-bound");
-    const afterRemove = await port.list();
-    expect(afterRemove[0]?.saveCount).toBe(2);
+    const afterOther = await port.list();
+    expect(afterOther.map((item) => [item.slot, item.saveCount])).toEqual([
+      ["slot1", 2],
+      ["slot2", 1],
+    ]);
   });
 
   it("自定义前缀：换命名空间后旧前缀的键读不到（迁移由宿主自管）", async () => {

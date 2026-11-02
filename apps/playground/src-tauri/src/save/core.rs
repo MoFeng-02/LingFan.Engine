@@ -7,7 +7,7 @@ use crate::crypto::gcm_seal;
 use crate::crypto::kek_from_keyring;
 use crate::crypto::random_bytes;
 use crate::save::envelope::{AAD_DEK_MACHINE_BOUND, AAD_PAYLOAD_PREFIX, CryptoMode, FORMAT_VERSION, MAGIC, parse_envelope};
-use crate::save::highwater::{HIGH_WATER_FILE, read_high_water, write_high_water};
+use crate::save::highwater::{HIGH_WATER_DIR, read_high_water, write_high_water};
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
@@ -49,7 +49,7 @@ impl std::fmt::Display for SaveError {
                 high_water,
             } => write!(
                 f,
-                "回档尝试被拒绝：档内 SaveCount={save_count} < 全局高水位 {high_water}"
+                "回档尝试被拒绝：档内 SaveCount={save_count} < 该槽位高水位 {high_water}"
             ),
         }
     }
@@ -84,9 +84,11 @@ pub(crate) fn save_path(base: &Path, slot: &str) -> PathBuf {
     saves_dir(base).join(format!("{slot}.lfs3"))
 }
 
-/// 高水位文件路径。
-pub(crate) fn high_water_path(base: &Path) -> PathBuf {
-    saves_dir(base).join(HIGH_WATER_FILE)
+/// 该槽位的高水位文件路径（`<app_data>/saves/__highwater__/<slot>.lfs3`）。
+pub(crate) fn high_water_path(base: &Path, slot: &str) -> PathBuf {
+    saves_dir(base)
+        .join(HIGH_WATER_DIR)
+        .join(format!("{slot}.lfs3"))
 }
 
 /// 写档 = 随机 DEK → payload 加密（AAD 绑槽）→ DEK 封装（KEK 或明文）→ 认领新高水位
@@ -98,7 +100,7 @@ pub fn write_save(
 ) -> Result<SlotSummary, SaveError> {
     validate_slot(slot)?;
     let kek = kek_from_keyring(KEK_SERVICE, KEK_USER).map_err(SaveError::Keyring)?;
-    let high_water = read_high_water(base, &kek)?;
+    let high_water = read_high_water(base, slot, &kek)?;
     let save_count = high_water + 1;
 
     let dek = random_bytes(32).map_err(SaveError::Crypto)?; // 每档独立随机 DEK
@@ -129,7 +131,7 @@ pub fn write_save(
 
     fs::create_dir_all(saves_dir(base)).map_err(|e| SaveError::Io(e.to_string()))?;
     fs::write(save_path(base, slot), &file).map_err(|e| SaveError::Io(e.to_string()))?;
-    write_high_water(base, &kek, save_count)?; // 写档即认领新高水位
+    write_high_water(base, slot, &kek, save_count)?; // 写档即认领该槽位的新高水位
     Ok(SlotSummary {
         slot: slot.to_string(),
         save_count,
@@ -156,7 +158,7 @@ pub fn read_save(base: &Path, slot: &str) -> Result<String, SaveError> {
     let aad = format!("{AAD_PAYLOAD_PREFIX}{slot}");
     let plaintext = gcm_open(&dek, &ciphertext, aad.as_bytes())
         .map_err(|e| SaveError::Crypto(format!("存档负载：{e}")))?;
-    let high_water = read_high_water(base, &kek)?;
+    let high_water = read_high_water(base, slot, &kek)?;
     if save_count < high_water {
         return Err(SaveError::RollbackDetected {
             save_count,
@@ -164,7 +166,7 @@ pub fn read_save(base: &Path, slot: &str) -> Result<String, SaveError> {
         });
     }
     if save_count > high_water {
-        write_high_water(base, &kek, save_count)?; // 读档成功后认领新高水位
+        write_high_water(base, slot, &kek, save_count)?; // 读档成功后认领该槽位的新高水位
     }
     String::from_utf8(plaintext).map_err(|_| SaveError::BadFormat("payload 非 UTF-8".into()))
 }
@@ -188,9 +190,14 @@ pub fn list_saves(base: &Path) -> Result<Vec<SlotSummary>, SaveError> {
     let mut out = Vec::new();
     let entries = fs::read_dir(&dir).map_err(|e| SaveError::Io(e.to_string()))?;
     for entry in entries {
-        let path = entry.map_err(|e| SaveError::Io(e.to_string()))?.path();
+        let entry = entry.map_err(|e| SaveError::Io(e.to_string()))?;
+        let path = entry.path();
+        // 高水位住在子目录里，跳过整个目录；非文件项（旧版遗留的同名文件等）也一并跳过。
+        if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+            continue;
+        }
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        if !name.ends_with(".lfs3") || name == HIGH_WATER_FILE {
+        if !name.ends_with(".lfs3") {
             continue;
         }
         let file = fs::read(&path).map_err(|e| SaveError::Io(e.to_string()))?;

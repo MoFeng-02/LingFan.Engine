@@ -164,3 +164,34 @@ fn delete_unknown_slot_fails() {
         Err(SaveError::UnknownSlot(_))
     ));
 }
+
+#[test]
+fn high_water_is_per_slot() {
+    // 高水位逐槽独立：写第二个槽不能让第一个槽变成「档内计数落后」
+    let base = test_base("hw-per-slot");
+    let first = write_save(&base, "slot_1", "一", CryptoMode::MachineBound).unwrap();
+    let second = write_save(&base, "slot_2", "二", CryptoMode::MachineBound).unwrap();
+    assert_eq!(first.save_count, 1, "首个槽位从 1 起");
+    assert_eq!(second.save_count, 1, "第二个槽位不该继承别人的计数");
+    // 两个槽位都能读——全局计数实现下 slot_1 会被判回档
+    assert_eq!(read_save(&base, "slot_1").unwrap(), "一");
+    assert_eq!(read_save(&base, "slot_2").unwrap(), "二");
+    // 覆盖 slot_1 两次后，slot_2 仍可读
+    write_save(&base, "slot_1", "一一", CryptoMode::MachineBound).unwrap();
+    write_save(&base, "slot_1", "一一一", CryptoMode::MachineBound).unwrap();
+    assert_eq!(read_save(&base, "slot_2").unwrap(), "二");
+    // 逐槽回档仍被拒：slot_1 的旧档放回
+    let stale = {
+        let base2 = test_base("hw-per-slot-stale");
+        write_save(&base2, "slot_1", "旧", CryptoMode::MachineBound).unwrap();
+        fs::read(save_path(&base2, "slot_1")).unwrap()
+    };
+    fs::write(save_path(&base, "slot_1"), &stale).unwrap();
+    assert!(matches!(
+        read_save(&base, "slot_1"),
+        Err(SaveError::RollbackDetected { .. })
+    ));
+    // 列表里不出现高水位目录
+    let slots: Vec<String> = list_saves(&base).unwrap().into_iter().map(|s| s.slot).collect();
+    assert_eq!(slots.len(), 2, "高水位目录不该被扫成槽位：{slots:?}");
+}

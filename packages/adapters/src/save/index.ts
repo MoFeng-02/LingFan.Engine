@@ -2,5 +2,6 @@
 export { createTauriSavePort } from "./tauri";
 export {
   createWebStorageSavePort,
+  type SyncStorageLike,
   type WebStorageSaveOptions,
 } from "./webStorage";
