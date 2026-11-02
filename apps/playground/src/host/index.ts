@@ -25,7 +25,16 @@ export { browserFrameSource } from "./stage/frame/frame-loop";
 export { createAppStageFit } from "./stage/fit/app-stage-fit";
 export { createAppPrefs } from "./panels/wiring/app-prefs";
 export { createAppSlots } from "./panels/wiring/app-slots";
-export { attachAppUiHooks, createAppSession } from "./session";
+export {
+  attachAppUiHooks,
+  createAppEventRouter,
+  createAppLifecycle,
+  createAppMounts,
+  createAppPanels,
+  createAppSession,
+  createAppStageView,
+} from "./session";
+export type { AppProps } from "./session";
 export { createHostControls } from "./controls";
 
 /** —— 面板类型（App/*.vue 消费）—— */

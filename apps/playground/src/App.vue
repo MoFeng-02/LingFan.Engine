@@ -6,54 +6,23 @@
  * 面板装配、演示工厂）都住在 `host/` 下，本组件负责把它们接到一起。
  * 平台端口与工程装配由组合根（`main.ts`）注入：本组件只消费契约，不知道任何具体实现。
  */
-import { onMounted, onUnmounted, ref, type Ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import {
   DEFAULT_KEYMAP,
   StoryEngine,
-  type AudioConfig,
-  type AudioPort,
-  type HostControls,
-  type HostInfo,
-  type I18nPort,
-  type LayerZTable,
-  type OpExtension,
   type OutboundPayload,
-  type PlayerPreferences,
-  type ResourcePort,
-  type SavePort,
-  type SavesConfig,
-  type StageConfig,
-  type Story,
-  type VideoPort,
 } from "@lingfan-engine/core";
+import { createCommandRegistry, routesToNarrative } from "@lingfan-engine/ui";
 import {
-  createCommandRegistry,
-  routesToNarrative,
-  type MountSource,
-} from "@lingfan-engine/ui";
-import {
-  attachAppUiHooks,
-  browserFrameSource,
-  createAppEngineLife,
-  createAppEvents,
-  createAppFrame,
-  createAppHistory,
-  createAppLang,
-  createAppNarrative,
-  createAppPrefs,
-  createAppSession,
-  createAppSlots,
+  createAppEventRouter,
+  createAppLifecycle,
+  createAppMounts,
+  createAppPanels,
   createAppStageFit,
-  createAppStageStack,
-  createAppTemplates,
+  createAppStageView,
+  type AppProps,
 } from "./host";
-import {
-  createExtensionMountHandler,
-  createMountRegistries,
-  handleInteractionMount,
-  handleMinigameMount,
-  type ExtensionOverlay,
-} from "./host/mount";
+import { handleInteractionMount } from "./host/mount";
 import {
   DemoHost,
   DialoguePanel,
@@ -67,87 +36,10 @@ import { PausePage, StartPage } from "./pages";
 // —— 核心层只写状态，UI 只经 ValueChanged 订阅渲染 ——
 // 工程与平台端口都由组合根（main.ts）装配注入：本组件只消费契约，不知道任何具体实现
 /** 注入契约：平台端口与工程事实由组合根以 props 供给，组件内只读不重赋值 */
-const props = defineProps<{
-  /** 热重载：宿主以 ref 包装供给（换 value = 注入新 Story），消费方显式 .value */
-  story: Ref<Story>;
-  /** 平台区分：宿主事实（os/form，组合根装配；只读，用于展示与按端分支） */
-  host: HostInfo;
-  /** 层级（z 序）：内建默认 × 工程覆盖（shell.layers），组合根解析后注入 */
-  layerZ: LayerZTable;
-  /** 存档壳配置：槽位数与缩略图参数（project.json shell.saves 可覆盖） */
-  saves: SavesConfig;
-  /** 舞台适配配置：设计基准像素与适配策略（project.json shell.stage 可覆盖） */
-  stage: StageConfig;
-  /** 工程默认音量（project.json shell.audio 可覆盖）：音量的第二级，偏好乘算在渲染层 */
-  audioConfig: AudioConfig;
-  savePort: SavePort;
-  resourcePort: ResourcePort;
-  /** I18N overlay 供给（可选：浏览器形态未装配 = 原文直出） */
-  i18nPort?: I18nPort;
-  /** 声明制扩展（组合根装载后注入；清单未声明 = 空数组） */
-  extensions: OpExtension[];
-  /** 玩家偏好（组合根装配：hydrate 后注入，与存档分离） */
-  preferences: PlayerPreferences;
-  /** 端口工厂而非实例：restart 重建音频/视频通道时保持「选择权在组合根」 */
-  createAudioPort: (onError: (message: string) => void) => AudioPort;
-  createVideoPort: (
-    onError: (message: string) => void,
-    readContainer?: () => HTMLElement | null,
-  ) => VideoPort;
-  /** 操作通道（组合根造）：暂停/存读/导航都经由它，组件自己不直接点引擎命令 */
-  controls?: HostControls;
-  /** 挂载表读数：`SYS.mounts` 的当前值经它订阅，决定 `#mounts` 里该出现哪些组件 */
-  mounts: MountSource;
-  /** 生成物里的 UI 组件表（名字 → 组件） */
-  mountsTable: Readonly<Record<string, unknown>>;
-  /** 挂载表写入口：引擎报出新表时由这里推给 `mounts` */
-  onMounts: (raw: unknown) => void;
-  /** 工程标题（组合根从 project.json 解析）：启动页与暂停菜单共用 */
-  projectTitle: string;
-}>();
+const props = defineProps<AppProps>();
 
 /** 引擎实例：initEngine 建立订阅与媒体渲染器；restart 整体重建（取用句柄指向新实例） */
 let engine: StoryEngine;
-
-// —— 视图状态：状态键 → 视图意图 → 响应式字段 ——
-// 解读规则来自共享的叙事状态域；这里注入宿主侧事实（层级键、角色配色、打字机重建）
-/** 叙事状态装配：订阅引擎状态并投影成视图字段；zOf 出层级 z 序，typewriter 出打字机 */
-const { narrative, zOf, typewriter } = createAppNarrative({
-  getEngine: () => engine,
-  layerZ: props.layerZ,
-  preferences: props.preferences,
-  applyVideoZ: (z) => {
-    media.videoPort.setZIndex?.(z);
-  },
-});
-/** 叙事视图状态：模板直接读这些字段，组件不再自持字段 */
-const {
-  inMenu,
-  inWait,
-  inInput,
-  inVideo,
-  inMinigame,
-  inInteraction,
-  inExtension,
-} = narrative;
-/** 对话层显隐与内容字段：面板开关、NVL 模式、菜单选项、输入提示与输入值 */
-const {
-  dialogHidden,
-  nvlMode,
-  menuOptions,
-  inputPrompt,
-  inputCandidates,
-  inputValue,
-} = narrative;
-/** 对话文本视效字段：打字机可见文本、说话人配色与推进许可 */
-const { shownText, speakerColor, dialogFont, canAdvance } = narrative;
-
-// —— 语言选择：可用语言 = Lang/ 目录扫描（供给侧 API）；切换 = setLanguage 按需载入 ——
-/** 语言能力：当前语言、可用语言清单与切换动作（切换按需载入语言包） */
-const { currentLang, availableLangs, changeLang } = createAppLang({
-  props,
-  getEngine: () => engine,
-});
 
 /** 错误横幅内容（元素、小游戏、事件分支的 fail-closed 上报都落这里） */
 const error = ref("");
@@ -155,19 +47,7 @@ const error = ref("");
 /** 舞台命令注册表：元素 cmd 属性的业务命令在此注册；未注册命令 fail-closed */
 const commands = createCommandRegistry();
 
-// —— 扩展 op 等待覆盖层（extension.mount 出站的宿主接管面）——
-/** 当前扩展等待的展示态（null = 无扩展等待）；解除权在宿主——覆盖层「确认」触发 resolve */
-const extensionOverlay = ref<ExtensionOverlay | null>(null);
-/** 扩展等待解除：清覆盖层与订阅后回填成功结果（信号已中止则以 abort 收尾为准，不回填） */
-function resolveExtension(): void {
-  const overlay = extensionOverlay.value;
-  if (overlay === null) return;
-  handleExtensionMount.abort();
-  extensionOverlay.value = null;
-  if (overlay.signal.aborted) return; // 中断竞态：以 abort 收尾为准
-  engine.resolveExtensionOp(overlay.op, { outcome: "success" });
-}
-
+// —— 模板 ref（DOM 容器与小游戏/对话面板的实例句柄，装配期只读取值）——
 /** 小游戏与玩法系统共用挂载点（DemoHost 组件；真元素经其暴露的 minigameHostEl 取用） */
 const demoHostRef = ref<InstanceType<typeof DemoHost> | null>(null);
 /** 舞台元素层容器（声明式空间层的挂载点） */
@@ -183,160 +63,33 @@ const transitionEl = ref<HTMLElement | null>(null);
 /** 对话面板实例（NVL 累积层滚动主体经其暴露） */
 const dialoguePanelRef = ref<InstanceType<typeof DialoguePanel> | null>(null);
 
-// —— 模板注册制与视图投影（对话框/选择层/通知层；NVL 累积层贴底监听随装配注册）——
-/** 模板视图装配：注册模板族并把叙事字段投影成骨架挂点数据 */
-const { choiceView, dialogView, notifyViewOf, nvlPastLines, nvlTypingLine } =
-  createAppTemplates({
-    narrative,
-    readNvlBody: () => dialoguePanelRef.value?.nvlBody ?? null,
-  });
+/** 小游戏/玩法系统的挂载点取用（未就绪时为空，挂载分支据此 fail-closed） */
+function readMinigameHost(): HTMLElement | null {
+  return demoHostRef.value?.minigameHostEl ?? null;
+}
 
-// —— 挂载注册表（小游戏 / 玩法系统 / 输入域）：演示工厂就地注册，未注册 fail-closed ——
-/** 挂载注册表与输入域：解析工厂 + 键位路由；演示类标记的写法由装配处持有 */
-const { minigames, interactions, inputScope } = createMountRegistries();
-/** 扩展挂载分支处理器：闭包持 abort 订阅解除（重放的新挂载顶掉旧订阅） */
-const handleExtensionMount = createExtensionMountHandler({
-  overlay: extensionOverlay,
-});
-
-// —— 舞台栈：音视频渲染 + 元素层 + 操作通道（三者共用引擎句柄与错误横幅）——
+// —— 舞台视图：叙事状态投影 + 音视频与元素层 + 事件与输入出口 ——
 /**
  * 视频层挂舞台根：整场缩放时它跟着缩（不能挂在 body 上按视口定位）。
  * 操作通道的取用函数在这里闭合：restart 之后它仍指向新实例。
  */
-const { media, controls: controlsFace } = createAppStageStack({
+const stageView = createAppStageView({
   props,
   getEngine: () => engine,
   error,
-  narrative,
   elementLayerEl,
   commands,
   readVideoContainer: () => stageEl.value,
 });
-
-// —— 提示条出口、叙事事件落点与舞台命令（打字机二段式、选项与输入转发）——
+/** 叙事视图状态（含层级 z、打字机句柄与媒体单元格；模板直接读这些字段） */
+const { narrative, typewriter, media, zOf, controls: controlsFace } = stageView;
 /** 事件与输入出口：通知条状态、叙事事件落点、状态同步与舞台输入转发 */
-const {
-  notifications,
-  narrativeEvents,
-  handleState,
-  syncFromEngine,
-  choose,
-  submitInput,
-  onStageClick,
-} = createAppEvents({
-  narrative,
-  media,
-  error,
-  getEngine: () => engine,
-  typewriter,
-});
-
-// —— 历史聚合（快照筛选 + NVL 块化 + 回溯收尾）——
-/** 历史面板能力：快照聚合视图、面板开关与按坐标回溯 */
-const { showHistory, historyBlocks, toggleHistory, rollbackToEntry } =
-  createAppHistory({
-    getEngine: () => engine,
-    syncFromEngine,
-  });
-
-/**
- * 事件落点：提示条、读档诊断与错误横幅。
- * 分流顺序留在本组件（接线契约），每条分支做什么归 `@lingfan-engine/shell` 的事件域与
- * `host/mount/` 挂载分支。
- */
-function handleEvent({ payload }: { payload: OutboundPayload }): void {
-  if (payload.kind === "notify") {
-    narrativeEvents.notify(payload.text, payload.notifyType, payload.duration);
-  } else if (payload.kind === "minigame.mount") {
-    // 宿主经注册表解析工厂挂载；未注册 fail-closed（不伪造完成，等待保持）
-    handleMinigameMount(payload, {
-      minigames,
-      readHost: () => demoHostRef.value?.minigameHostEl ?? null,
-      inMinigame,
-      error,
-      resolveMinigame: (result) => engine.resolveMinigame(result),
-      writer: engine.gameState,
-    });
-  } else if (payload.kind === "interaction.mount") {
-    // 外部玩法系统接管：宿主经注册表解析（未注册 = fail-closed，不伪造完成）
-    handleInteractionMount(payload, {
-      interactions,
-      readHost: () => demoHostRef.value?.minigameHostEl ?? null,
-      inInteraction,
-      inputScope,
-      error,
-      resolveInteraction: (system, result) =>
-        engine.resolveInteraction(system, result),
-      writer: engine.gameState,
-    });
-  } else if (payload.kind === "extension.mount") {
-    // 扩展 op 等待接管：宿主展示关闭式覆盖层（本组件唯一的扩展演示接缝）
-    handleExtensionMount(payload);
-  } else if (payload.kind === "save.done") {
-    // 写档成功（失败走 engine.error 分支，不提示成功）；槽位变多，「继续」要能点到新的档
-    narrativeEvents.saved(payload.slot);
-    void refreshResumeSlot();
-  } else if (payload.kind === "load.done") {
-    // 读档完成（引擎已重放到存档坐标）——清错误、同步渲染与媒体
-    narrativeEvents.loaded(payload.slot);
-  } else if (payload.kind === "rollback.done") {
-    narrativeEvents.rollbackDone(); // 回放完成解除输入锁并同步渲染
-  } else if (payload.kind === "load.notice") {
-    // 读档诊断（非致命，宿主应知情）：演示宿主以通知条展示
-    narrativeEvents.loadNotice(payload.text);
-  } else if (payload.kind === "character.missing") {
-    // 注销知情（非致命）：演示宿主以通知条提示，故事继续推进
-    narrativeEvents.notify(
-      `角色 ${payload.key} 未注册，跳过注销`,
-      "warning",
-      undefined,
-    );
-  } else {
-    narrativeEvents.failed(payload.code, payload.message);
-  }
-}
-
-// —— 引擎生命周期（构造/订阅接线/整体重建/订阅解除）——
-/** 暂停态回写的落点：引擎可能早于会话装配就报出暂停态，这里留一个可换的目标 */
-const enginePausedSink: { apply?: (paused: boolean) => void } = {};
-/** 引擎生命周期：首次构造并接线订阅、进出对局、restart 整体重建、卸载时解除订阅 */
-const { initEngine, enterGame, continueGame, restart, unbind } =
-  createAppEngineLife({
-    props,
-    getEngine: () => engine,
-    setEngine: (next) => {
-      engine = next;
-    },
-    media,
-    narrative,
-    currentLang,
-    error,
-    elementLayerEl,
-    typewriter,
-    zOf,
-    handleState,
-    handleEvent,
-    readMinigameHost: () => demoHostRef.value?.minigameHostEl ?? null,
-    readVideoContainer: () => stageEl.value,
-    onMounts: props.onMounts,
-    onPaused: (value: boolean) => enginePausedSink.apply?.(value),
-  });
-
-initEngine();
-
-// —— 帧驱动表现与共享帧循环（打字机推进 → 可见文本 → 媒体回写 → 表现）——
-/** 帧驱动：帧循环串起打字机推进、媒体回写与舞台表现（帧源由本宿主提供 rAF 实现） */
-const { frameLoop } = createAppFrame({
-  getEngine: () => engine,
-  frame: browserFrameSource(),
-  narrative,
-  media,
-  typewriter,
-  elementLayerEl,
-  transitionEl,
-  shakeEl: stageShakeEl,
-});
+const { notifications, narrativeEvents, handleState } = stageView;
+const { syncFromEngine, choose, submitInput, onStageClick } = stageView;
+const { inMenu, inWait, inInput, inVideo, inMinigame } = narrative;
+const { inInteraction, inExtension, dialogHidden, nvlMode } = narrative;
+const { menuOptions, inputPrompt, inputCandidates, inputValue } = narrative;
+const { shownText, speakerColor, dialogFont, canAdvance } = narrative;
 
 // —— 舞台适配（作者按基准像素写坐标，整场等比缩放套进外框）——
 /** 舞台适配：配置来自组合根（`project.json shell.stage` 解析结果），读数取外框容器的布局尺寸
@@ -354,56 +107,98 @@ function applyStageFit(): void {
   stageFit.apply();
 }
 
-// —— 对局会话（页面态 + 挂载投影 + 页面动作）——
-/** 会话装配：进没进对局、暂停与否、挂载表投影都由它持有；动作一律经操作通道转调引擎 */
-const {
-  inGame,
-  paused,
-  resumeSlot,
-  quickSlot,
-  mounted,
-  onStart,
-  onContinue,
-  togglePause,
-  syncPaused,
-  onResume,
-  onSave,
-  onLoad,
-  onHome,
-  onStageClickInGame,
-  refreshResumeSlot,
-  dispose: disposeSession,
-} = createAppSession({
-  controls: controlsFace,
-  mounts: props.mounts,
-  mountsTable: props.mountsTable,
-  saves: props.saves,
-  savePort: props.savePort,
-  enterGame,
-  continueGame,
-  advance: onStageClick,
-  applyStageFit,
-});
+// —— 挂载注册表（小游戏 / 玩法系统 / 输入域）：演示工厂就地注册，未注册 fail-closed ——
+/** 挂载注册表、输入域与扩展等待覆盖层的编排（解除动作由覆盖层的「确认」触发） */
+const mounts = createAppMounts({ getEngine: () => engine });
+const { inputScope, extensionOverlay, resolveExtension } = mounts;
 
-// 会话就绪后接上引擎暂停态的落点：此后挂载 UI 或工具栏暂停，遮罩同样会出来
-enginePausedSink.apply = syncPaused;
-
-// —— 玩家偏好与键位映射（状态归核心层，面板只是 UI 皮）——
-/** 偏好面板能力：音量/静音/文字速度/方向/全屏视图、键位捕获与展示（状态归核心层） */
-const prefsFaces = createAppPrefs({
-  preferences: props.preferences,
+// —— 面板与视图投影（语言、模板、历史、偏好键位、槽位）：状态归核心层，面板只是皮 ——
+/** 面板装配：语言选择、模板注册、历史聚合、偏好与键位、多槽位存取 */
+const panels = createAppPanels({
+  props,
+  getEngine: () => engine,
+  narrative,
+  readNvlBody: () => dialoguePanelRef.value?.nvlBody ?? null,
+  syncFromEngine,
+  stageEl,
   typewriter,
 });
-/** 面板显隐、偏好视图与音量通道清单 */
-const { showPrefs, prefsView, PREF_CHANNELS } = prefsFaces;
-/** 音量、静音与文字速度的写入口 */
-const { setPrefVolume, setPrefMuted, setPrefTextSpeed } = prefsFaces;
-/** 屏幕方向与全屏的写入口 */
-const { setPrefOrientation, setPrefFullscreen } = prefsFaces;
-/** 键位捕获状态、按键判定与捕获启动 */
-const { captureAction, keyMatches, startCapture } = prefsFaces;
-/** 键位重置、捕获期按键分流与键位展示文案 */
-const { resetKeybinding, onCaptureKeydown, displayKeys, prefs } = prefsFaces;
+const { currentLang, availableLangs, changeLang, choiceView } = panels;
+const { dialogView, notifyViewOf, nvlPastLines, nvlTypingLine } = panels;
+const { showHistory, historyBlocks, toggleHistory, rollbackToEntry } = panels;
+const { showPrefs, prefsView, PREF_CHANNELS, prefs } = panels;
+const { setPrefVolume, setPrefMuted, setPrefTextSpeed } = panels;
+const { setPrefOrientation, setPrefFullscreen, captureAction } = panels;
+const { keyMatches, startCapture, resetKeybinding, displayKeys } = panels;
+const { onCaptureKeydown, slotPanel, slotViews, openSlotPanel } = panels;
+const { chooseSlot } = panels;
+
+// —— 事件分流、引擎生命周期、帧循环与对局会话 ——
+/** 写档成功后刷新「继续」槽位摘要的落点：会话装配晚于事件分流，故留一个可换的目标 */
+const resumeSlotSink: { apply?: () => void } = {};
+/** 事件分流器：除玩法系统接管外，其余出站按种类落到提示条、挂载与错误横幅 */
+const { route } = createAppEventRouter({
+  narrative,
+  mounts,
+  narrativeEvents,
+  getEngine: () => engine,
+  error,
+  readMinigameHost,
+  refreshResumeSlot: () => resumeSlotSink.apply?.(),
+});
+
+/**
+ * 事件落点：外部玩法系统接管（挂载点与输入域都在本组件闭包里，分支体随装配留在这里），
+ * 其余种类一律转给分流器。分流链与分支体跨两个文件，合起来才是完整的接线契约。
+ */
+function handleEvent({ payload }: { payload: OutboundPayload }): void {
+  if (payload.kind === "interaction.mount") {
+    // 外部玩法系统接管：宿主经注册表解析（未注册 = fail-closed，不伪造完成）
+    handleInteractionMount(payload, {
+      interactions: mounts.interactions,
+      readHost: readMinigameHost,
+      inInteraction,
+      inputScope,
+      error,
+      resolveInteraction: (system, result) =>
+        engine.resolveInteraction(system, result),
+      writer: engine.gameState,
+    });
+    return;
+  }
+  route({ payload });
+}
+
+/**
+ * 引擎生命周期、帧驱动与对局会话：造引擎并接线 → 起帧循环 → 装会话 → 接暂停态落点 →
+ * 登记业务命令。`initEngine()` 在该装配内部立即执行，位置不可挪（见其文件头注释）。
+ */
+const life = createAppLifecycle({
+  props,
+  engine: {
+    get: () => engine,
+    set: (next) => {
+      engine = next;
+    },
+  },
+  view: { narrative, media, error, currentLang, zOf, typewriter },
+  wiring: { handleState, handleEvent, commands, prefs },
+  dom: { elementLayerEl, transitionEl, shakeEl: stageShakeEl },
+  actions: {
+    advance: onStageClick,
+    applyStageFit,
+    readMinigameHost,
+    readVideoContainer: () => stageEl.value,
+  },
+  session: { controls: controlsFace, toggleHistory, showPrefs },
+});
+/** 对局会话：进没进对局、暂停与否、挂载表投影与页面动作 */
+const { inGame, paused, resumeSlot, quickSlot, mounted } = life;
+const { onStart, onContinue, togglePause, restart } = life;
+const { onResume, onSave, onLoad, onHome, onStageClickInGame } = life;
+const { refreshResumeSlot, teardown } = life;
+// 会话就绪后接上「继续」槽位摘要的刷新落点：此后写档成功才会点到新增的档
+resumeSlotSink.apply = refreshResumeSlot;
 
 /** 叙事键判定：先问输入域（routesToNarrative），再问键位（keyMatches）——顺序是源级契约 */
 function onKeydown(e: KeyboardEvent): void {
@@ -450,31 +245,8 @@ onMounted(() => {
   void refreshResumeSlot();
 });
 
-/**
- * 多槽位：存/读共用槽位面板（槽位数与缩略图参数来自 shell.saves 配置）。
- * 打开时 list() + 逐槽 read() 取标题/缩略图（读取失败按空槽呈现，点选时再走引擎 fail-closed）。
- * 存 = 合成缩略图（canvas 卡片）+ engine.save(slot, { screenshot })；读 = engine.load(slot)。
- */
-const { slotPanel, slotViews, openSlotPanel, chooseSlot } = createAppSlots({
-  props,
-  dialogView,
-  stageEl,
-  getEngine: () => engine,
-});
-
-// 调试标志与元素 `cmd` 的业务命令登记（history / prefs / restart 三支）
-attachAppUiHooks({ inGame, commands, toggleHistory, showPrefs, restart });
-
 onUnmounted(() => {
-  unbind(); // 订阅解除（与 bindEngine 成对；先于媒体与引擎释放）
-  disposeSession(); // 挂载表订阅解除（与 setup 期的 subscribe 成对）
-  prefs.dispose(); // 退订偏好变更（与构造期订阅成对）
-  props.preferences.dispose(); // 补发未落盘的末次偏好修改（防抖尾结算）
-  media.audioPort.dispose(); // 先停播
-  media.videoPort.dispose();
-  media.audioRenderer?.dispose(); // 再释放已解析资源
-  engine.dispose(); // 清挂起的 wait 定时器
-  frameLoop.stop(); // 停 rAF 帧循环
+  teardown(); // 订阅解除 → 会话解除 → 偏好退订落盘 → 停播释放 → 引擎释放 → 停帧循环
   window.removeEventListener("keydown", onKeydown);
   window.removeEventListener("keydown", onCaptureKeydown, true);
   window.removeEventListener("resize", applyStageFit);
