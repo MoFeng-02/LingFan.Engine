@@ -1,4 +1,4 @@
-import { isPlainObject } from "../../shared/index.ts";
+import { compareOrdinal, isPlainObject } from "../../shared/index.ts";
 import {
   AUDIO_CHANNELS,
   isOrientationMode,
@@ -13,7 +13,7 @@ import {
   StoryFormatError,
 } from "../format/index.ts";
 import { ProjectAssemblyError } from "./error.ts";
-import { byPath, isDotPath, MANIFEST_FILE, STORIES_DIR } from "./naming.ts";
+import { isDotPath, MANIFEST_FILE, STORIES_DIR } from "./naming.ts";
 
 /**
  * 工程组装：project.json + Stories/** → Story。
@@ -38,7 +38,7 @@ export function synthesizeDegradedManifest(
   const ids: string[] = [];
   for (const path of [...storyTexts.keys()]
     .filter((p) => !isDotPath(p))
-    .sort(byPath)) {
+    .sort(compareOrdinal)) {
     try {
       const story = parseStoryFile(storyTexts.get(path) ?? "", path);
       for (const column of story.columns) ids.push(column.id);
@@ -166,7 +166,7 @@ export function assembleProject(
     ...((manifest.defines as Record<string, unknown> | undefined) ?? {}),
   };
 
-  for (const path of [...files.keys()].sort(byPath)) {
+  for (const path of [...files.keys()].sort(compareOrdinal)) {
     // **只处理 `Stories/` 下的文件**。
     //组装器**假定**调用方只喂故事文件，若喂了全量资源根就会组装失败：
     // `Lang/en-US/main.json`（译文表）等全被当故事解析

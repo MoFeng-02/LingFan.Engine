@@ -1,5 +1,5 @@
-import { isPlainObject } from "../../shared/index.ts";
-import { byPath, STORIES_DIR } from "./naming.ts";
+import { compareOrdinal, isPlainObject } from "../../shared/index.ts";
+import { STORIES_DIR } from "./naming.ts";
 import type { ProjectFileDiff } from "../../contracts/index.ts";
 
 /**
@@ -56,6 +56,6 @@ export function diffProjectFiles(
   }
   const deletes = [...previous.keys()]
     .filter((path) => path.startsWith(`${STORIES_DIR}/`) && !wanted.has(path))
-    .sort(byPath);
+    .sort(compareOrdinal);
   return { changes, deletes };
 }

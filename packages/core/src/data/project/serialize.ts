@@ -1,11 +1,6 @@
-import { isPlainObject } from "../../shared/index.ts";
+import { compareOrdinal, isPlainObject } from "../../shared/index.ts";
 import { ProjectSerializationError } from "./error.ts";
-import {
-  byPath,
-  MANIFEST_FILE,
-  STORIES_DIR,
-  isSafeFileNameSegment,
-} from "./naming.ts";
+import { MANIFEST_FILE, STORIES_DIR, isSafeFileNameSegment } from "./naming.ts";
 import { columnShapeDefect } from "../format/column.ts";
 import {
   CAPABILITY_VERSION,
@@ -122,7 +117,9 @@ function manifestText(story: Story, manifest: Record<string, unknown>): string {
 
 /** 按路径码元序重排文件表，让写回/比对顺序不随 Map 插入顺序漂移（结果可复现） */
 function sortByCodeUnit(files: Map<string, string>): Map<string, string> {
-  return new Map([...files.entries()].sort((a, b) => byPath(a[0], b[0])));
+  return new Map(
+    [...files.entries()].sort((a, b) => compareOrdinal(a[0], b[0])),
+  );
 }
 
 /**

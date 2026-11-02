@@ -1,4 +1,5 @@
-import { byPath, STORIES_DIR, isSafeFileNameSegment } from "./naming.ts";
+import { compareOrdinal } from "../../shared/index.ts";
+import { STORIES_DIR, isSafeFileNameSegment } from "./naming.ts";
 import {
   defaultEngineTexts,
   type EngineTexts,
@@ -84,7 +85,7 @@ export function detectWriteNormalization(
     }
   }
   return {
-    toConvert: toConvert.sort(byPath),
-    toRemove: toRemove.sort(byPath),
+    toConvert: toConvert.sort(compareOrdinal),
+    toRemove: toRemove.sort(compareOrdinal),
   };
 }

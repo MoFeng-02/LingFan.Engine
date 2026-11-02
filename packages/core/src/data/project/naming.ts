@@ -1,11 +1,9 @@
 /**
- * 工程文件的命名与路径判据：清单名、故事目录名、路径码元序、文件名安全段。
+ * 工程文件的命名与路径判据：清单名、故事目录名、文件名安全段。
  * 组装、写回、差量与冲突检测都依赖同一套判据，这里只声明一份。
+ *
+ * 路径排序不在这里：码元序比较器全仓只有 `shared/ordering.ts` 的 `compareOrdinal` 一处。
  */
-/** 确定性文件顺序（路径码元序）——defines 覆盖与列序不随 Map 构造顺序漂移 */
-export function byPath(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
 
 /** 清单文件名（清单必须在资源根内——dev/prod 同机制） */
 export const MANIFEST_FILE = "project.json";
