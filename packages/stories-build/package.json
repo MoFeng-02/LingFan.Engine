@@ -9,6 +9,7 @@
     "./authoring": "./src/authoring.d.ts",
     "./cell": "./src/cell/index.ts",
     "./cli": "./src/cli/cli.ts",
+    "./host-plugins": "./src/host-plugins/index.ts",
     "./watch": "./src/pipeline/watch.ts",
     "./watch-cli": "./src/cli/watch-cli.ts"
   },

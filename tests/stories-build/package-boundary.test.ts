@@ -102,6 +102,7 @@ const EXPECTED_EXPORTS = [
   "./authoring",
   "./cell",
   "./cli",
+  "./host-plugins",
   "./watch",
   "./watch-cli",
 ];

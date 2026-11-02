@@ -74,6 +74,12 @@ export {
   scanFontRegistry,
   type FontEntry,
 } from "./fonts/index.ts";
+/** 故事文件清单注册表（资源根下故事目录扫描；宿主 Vite 插件与构建期检查同源消费） */
+export {
+  scanStoryRegistry,
+  STORY_EXTENSIONS,
+  type StoryPath,
+} from "./story-list/index.ts";
 /** UI 名注册表（源根兄弟目录 `ui/<名>/` 扫描；构建期 uis 闸门的判据来源） */
 export {
   UI_DIR_NAME,
