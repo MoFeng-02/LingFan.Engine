@@ -17,28 +17,54 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** 提交类型 → 发布说明分节。未登记的类型归入「其他变更」，不丢弃。 */
+/**
+ * 提交类型 → 发布说明分节。
+ *
+ * 同一类改动有两种写法：约定的英文类型（`feat` / `fix` / `refactor`）与仓库里实际大量
+ * 使用的中文类型（`新增` / `修复` / `重构`）。两种都认——历史提交已经把语言写死了，
+ * 说明生成器不该要求作者回头改标题；只认英文的后果是所有中文标题的提交整条落进
+ * 「其他变更」，四节形同虚设。
+ *
+ * 未登记的类型归入「其他变更」，不丢弃。
+ */
 const SECTIONS = [
   {
     title: "新增",
-    types: ["feat"],
+    types: ["feat", "新增"],
   },
   {
     title: "优化",
-    types: ["refactor", "perf", "style", "test", "build"],
+    types: [
+      "refactor",
+      "perf",
+      "style",
+      "test",
+      "build",
+      "重构",
+      "测试",
+      "构建",
+    ],
   },
   {
     title: "修复",
-    types: ["fix"],
+    types: ["fix", "修复"],
   },
   {
     title: "其他变更",
-    types: [],
+    types: ["docs", "chore", "ci", "文档", "变更", "模板"],
   },
 ];
 
-/** 标题形如 `feat(发布面): 摘要`，范围可省略 */
-const SUBJECT_PATTERN = /^(\w+)(?:\(([^)]*)\))?!?:\s*(.+)$/;
+/** 已登记的类型集合：判定一个标题是不是约定式标题，只认这里有的类型 */
+const KNOWN_TYPES = new Set(SECTIONS.flatMap((section) => section.types));
+
+/**
+ * 标题形如 `feat(发布面): 摘要` 或 `修复(构建)：摘要`，范围可省略。
+ *
+ * 类型段限长、且不许空白与括号：中文标题里常有「移动端端到端修复：…」这种把整句话
+ * 当类型段写的标题，限长之后它们不会被误拆，整条原文照录。
+ */
+const SUBJECT_PATTERN = /^([^\s:：()]{1,12})(?:\(([^)]*)\))?!?\s*[:：]\s*(.+)$/;
 
 /** 正文里的裸分节标题：`新增`、`修复：` 单独占一行 */
 const BARE_SECTION_PATTERN = /^\s*(新增|优化|修复|其他变更)\s*[:：]?\s*$/;
@@ -97,10 +123,15 @@ export function readCommits({ from, to = "HEAD" } = {}) {
     });
 }
 
-/** 解析一条提交标题；不符合约定格式的按「其他变更」处理，原文照录 */
+/**
+ * 解析一条提交标题；不符合约定格式的按「其他变更」处理，原文照录。
+ *
+ * 类型段必须落在 `KNOWN_TYPES` 里才算约定式标题。这样「移动端端到端修复：…」这类把
+ * 整句话当类型段写的标题不会被拆成「类型 = 移动端」，读者也就不会丢掉「端到端」这半句。
+ */
 export function parseSubject(subject) {
   const matched = SUBJECT_PATTERN.exec(subject);
-  if (matched === null) {
+  if (matched === null || !KNOWN_TYPES.has(matched[1])) {
     return {
       type: undefined,
       scope: undefined,

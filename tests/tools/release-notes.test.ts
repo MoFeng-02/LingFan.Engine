@@ -58,6 +58,32 @@ describe("提交标题解析", () => {
     expect(parseSubject("feat(api)!: 换掉旧入口").type).toBe("feat");
   });
 
+  it("中文类型与全角冒号同样拆成三段", () => {
+    expect(parseSubject("修复(构建): host-plugins 子路径补垫片")).toEqual({
+      type: "修复",
+      scope: "构建",
+      summary: "host-plugins 子路径补垫片",
+      conventional: true,
+    });
+    expect(parseSubject("变更(模板)：模板版本抬到 1.8.1")).toEqual({
+      type: "变更",
+      scope: "模板",
+      summary: "模板版本抬到 1.8.1",
+      conventional: true,
+    });
+  });
+
+  // 把整句话当类型段写的标题在历史里真实存在。类型段必须落在已登记的类型里，
+  // 否则整句照录——拆成「类型 = 移动端」会丢掉后半句。
+  it("类型段未登记时整条照录，不按冒号硬拆", () => {
+    expect(parseSubject("移动端端到端修复：OpenOptions 显式 read")).toEqual({
+      type: undefined,
+      scope: undefined,
+      summary: "移动端端到端修复：OpenOptions 显式 read",
+      conventional: false,
+    });
+  });
+
   it("不符合约定的标题原文照录，不丢内容", () => {
     expect(parseSubject("随手改了点东西")).toEqual({
       type: undefined,
@@ -74,6 +100,14 @@ describe("提交类型归节", () => {
     expect(sectionOf("refactor")).toBe("优化");
     expect(sectionOf("perf")).toBe("优化");
     expect(sectionOf("fix")).toBe("修复");
+  });
+
+  it("中文类型与英文类型同等对待", () => {
+    expect(sectionOf("新增")).toBe("新增");
+    expect(sectionOf("重构")).toBe("优化");
+    expect(sectionOf("测试")).toBe("优化");
+    expect(sectionOf("构建")).toBe("优化");
+    expect(sectionOf("修复")).toBe("修复");
   });
 
   it("未登记的类型与空类型都不丢，落进其他变更", () => {
