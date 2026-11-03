@@ -10,11 +10,11 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
-    "@lingfan-engine/adapters": "^0.1.0",
-    "@lingfan-engine/core": "^0.1.0",
-    "@lingfan-engine/shell": "^0.1.0",
-    "@lingfan-engine/stories-build": "^0.1.0",
-    "@lingfan-engine/ui": "^0.1.0"
+    "@lingfan-engine/adapters": "^0.3.0",
+    "@lingfan-engine/core": "^0.3.0",
+    "@lingfan-engine/shell": "^0.3.0",
+    "@lingfan-engine/stories-build": "^0.3.0",
+    "@lingfan-engine/ui": "^0.3.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
