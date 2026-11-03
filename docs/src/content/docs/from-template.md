@@ -141,7 +141,7 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
 
 ```json
 {
-  "version": "1.8.0",
+  "version": "1.8.1",
   "minEngineVersion": "0.3.0",
   "placeholder": "__PROJECT__",
   "frameworks": [
