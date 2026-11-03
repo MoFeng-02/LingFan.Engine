@@ -110,8 +110,9 @@ export function parseColumn(
     }
     return null;
   }
-  // `type` 通过形状判定（接受两个取值 + 旧拼写 `menu`）后立即归一：
-  // 旧拼写只在读入瞬间存在，此后全链路只见 `game` / `ui`。
+  // `type` 已在上面按形状判定过（只接受 `game` / `ui`，其余含旧拼写 `menu` 一律
+  // fail-closed 报错），这里只做「缺席 = 不声明」与合法值的归一。归一仍然要调，
+  // 因为它是读侧兜底：非法值到不了这一步，但缺省与空值的收敛口径与它同一处。
   // 原拼写要不要留（编辑器展示「菜单」还是「界面」）由编辑器自己收，不进故事树。
   const type: SceneType | undefined =
     raw.type === undefined ? undefined : normalizeSceneType(raw.type);
