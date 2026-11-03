@@ -9,6 +9,7 @@
  * 本层只替换入口与组合根）。
  */
 import { createElement, StrictMode } from "react";
+import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { MANIFEST_FILE } from "@lingfan-engine/core";
 import { DEFAULT_TEXT_CPS, DEFAULT_TOAST_MS } from "@lingfan-engine/ui";
@@ -63,10 +64,19 @@ function mountApp(): StageDom | undefined {
   try {
     const container = document.querySelector("#app");
     if (container === null) throw new Error("宿主缺少节点：#app");
-    // StrictMode 只影响开发期的重复渲染提示，不改变侧建行为：引擎在下面单独启动
-    createRoot(container).render(
-      createElement(StrictMode, null, createElement(App)),
-    );
+    /**
+     * 必须同步提交后再读节点。
+     *
+     * `createRoot().render()` 是并发渲染，只保证「稍后」提交——紧接着 `readDom()`
+     * 读到的还是空容器，取节点当场就抛，页面停在白屏。
+     * `flushSync` 把这次渲染强制同步落地，读节点时才拿得到 `App` 渲染出的结构。
+     * StrictMode 只影响开发期的重复渲染提示，不改变侧建行为：引擎在下面单独启动。
+     */
+    flushSync(() => {
+      createRoot(container).render(
+        createElement(StrictMode, null, createElement(App)),
+      );
+    });
     return readDom();
   } catch (error) {
     console.error(error);

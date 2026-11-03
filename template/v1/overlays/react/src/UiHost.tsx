@@ -12,7 +12,13 @@
  *
  * 组件由 React 自己创建，所以挂载点的父子关系归 React——组合根不该再往这个容器里写节点。
  */
-import { createElement, useEffect, useMemo, useSyncExternalStore } from "react";
+import {
+  createElement,
+  Fragment,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
 import { missingMounts, selectMounts } from "@lingfan-engine/ui";
 import { controlsStore } from "./controls";
 import { mountStore, uis } from "./mounts";
@@ -49,7 +55,10 @@ export function UiHost() {
     }
   }, [raw]);
 
+  // 外层用 Fragment 而不是 null：`createElement(null, …)` 不是合法调用形态，
+  // 类型上也过不去（第一个参数只接受标签名或组件）。
   return createElement(
+    Fragment,
     null,
     ...items.map((item) =>
       createElement(item.component as never, {
