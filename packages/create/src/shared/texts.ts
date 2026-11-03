@@ -24,7 +24,7 @@ export const defaultCreateTexts = {
     "  -h, --help            显示本说明",
     "",
     "示例：",
-    "  npm create @lingfan-engine my-story -- --framework vanilla --shell browser",
+    "  npm create @lingfan-engine my-story -- --framework vue --shell browser",
     "  npm create @lingfan-engine my-story -- --sources ts",
   ].join("\n"),
   /** 交互问答的提示语 */

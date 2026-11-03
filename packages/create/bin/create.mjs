@@ -8,7 +8,7 @@
  * `src/cli/cli.ts`，也不该被迫装一整套构建链。垫片用本包自带依赖 `tsx` 装载真实 CLI，
  * 呈现与编排逻辑仍然只有一份。
  *
- * 用法：`npm create @lingfan-engine [工程名] [-- --framework vanilla --shell browser]`；
+ * 用法：`npm create @lingfan-engine [工程名] [-- --framework vue --shell browser]`；
  * 不带参数即进入交互问答。
  */
 import { tsImport } from "tsx/esm/api";

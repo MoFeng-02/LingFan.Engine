@@ -12,9 +12,11 @@ npm create @lingfan-engine my-story
 pnpm create @lingfan-engine my-story
 ```
 
-生成器问四件事：工程名、框架、壳、故事源形态。当前框架可选「原生（框架无关）」「Vue 3」「React」；壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」；故事源形态可选「故事文件（`.story`）」与「TypeScript 源（`src/Stories.src/`）」。
+生成器问四件事：工程名、框架、壳、故事源形态。当前框架可选「原生（框架无关）」「Vue 3」「React」；壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」；故事源形态可选「TypeScript 源（`src/Stories.src/`）」与「故事文件（`.story`）」。
 
-跳过问答、全部取缺省值（原生 + 故事文件 + 浏览器）：
+三种故事源形态是**同一套架构的三条入口**，不是三种能力：TS 源只是多了一层创作面（类型补全、重构、复用 TS 生态），构建时编译成与 `.story` 完全相同的产物。所以缺省是 TS 源——能力更强的那个不该被当成附加项。
+
+跳过问答、全部取缺省值（原生 + TypeScript 源 + 浏览器）：
 
 ```sh
 npm create @lingfan-engine my-story -- --yes
@@ -38,10 +40,10 @@ npm create @lingfan-engine my-story -- --sources ts
 
 故事源形态层决定故事从哪来，它与框架层、壳层正交：
 
-| 形态 | 故事从哪来                              | 改故事的姿势                                            |
-| ---- | --------------------------------------- | ------------------------------------------------------- |
-| 缺省 | `Resources/Stories/**/*.story`          | 直接改 `.story` 文本，保存即生效                        |
-| `ts` | `Resources/Stories/**/*.json`（生成物） | 改 `src/Stories.src/**/*.ts`，再跑 `pnpm stories:build` |
+| 形态      | 故事从哪来                              | 改故事的姿势                                            |
+| --------- | --------------------------------------- | ------------------------------------------------------- |
+| 缺省 `ts` | `Resources/Stories/**/*.json`（生成物） | 改 `src/Stories.src/**/*.ts`，再跑 `pnpm stories:build` |
+| `story`   | `Resources/Stories/**/*.story`          | 直接改 `.story` 文本，保存即生效                        |
 
 `ts` 形态会把骨架那份手写故事换成构建产物：层里声明了 `create.remove: ["Resources/Stories"]`，删掉骨架的 `.story`，再补上开箱可跑的生成物与三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）。两条注意：
 
@@ -63,7 +65,7 @@ npm create @lingfan-engine my-story -- --sources ts
 
 `template/v1/__PROJECT__/` 是框架无关的骨架，`template/v1/overlays/<id>/` 是叠加层。叠加规则：同路径文件覆盖骨架，根目录的 `*.patch.json` 深合并进 `package.json`。
 
-`template-meta.json` 的 `frameworks` / `sources` / `shells` 声明有哪些可选项，每项 `id` 对应一个叠加层目录；缺省项（`none` / `story` / `browser`）没有目录，表示这一层什么都不加。合并顺序固定为「骨架 → 框架 → 故事源 → 壳」：故事源要晚于框架层，才能把各框架入口里的故事表指向生成物；壳放最后，因为它对工程形态有最终发言权（小程序壳会删掉骨架的 `src/host`）。
+`template-meta.json` 的 `frameworks` / `sources` / `shells` 声明有哪些可选项，每项 `id` 对应一个叠加层目录；缺省项（`none` / `browser`）没有目录，表示这一层什么都不加（`sources` 的缺省 `ts` 则有自己的目录——它要删掉骨架的 `.story` 再补生成物）。合并顺序固定为「骨架 → 框架 → 故事源 → 壳」：故事源要晚于框架层，才能把各框架入口里的故事表指向生成物；壳放最后，因为它对工程形态有最终发言权（小程序壳会删掉骨架的 `src/host`）。
 
 `.gitignore` 在模板里存成不带点的 `gitignore`：npm 把包装进 `node_modules` 时会把包内的 `.gitignore` 改名成 `.npmignore`，按原名存会导致生成的工程既缺忽略规则又多个无用文件。
 
@@ -139,8 +141,8 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
 
 ```json
 {
-  "version": "1.7.0",
-  "minEngineVersion": "0.1.0",
+  "version": "1.8.0",
+  "minEngineVersion": "0.3.0",
   "placeholder": "__PROJECT__",
   "frameworks": [
     {
@@ -161,14 +163,14 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
   ],
   "sources": [
     {
-      "id": "story",
-      "label": "故事文件（.story）",
-      "hint": "直接写引擎自带的文本故事格式，改完保存即生效"
-    },
-    {
       "id": "ts",
       "label": "TypeScript 源（src/Stories.src）",
       "hint": "用 TS 写故事列：有类型补全与重构，构建时编译成故事文件"
+    },
+    {
+      "id": "story",
+      "label": "故事文件（.story）",
+      "hint": "直接写引擎自带的文本故事格式，改完保存即生效"
     }
   ],
   "shells": [
