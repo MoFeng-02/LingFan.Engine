@@ -99,6 +99,7 @@ const SINGLE: Record<string, string> = {
   PromptTexts: "packages/create/src/cli/prompts.ts",
   PromptIo: "packages/create/src/cli/prompts.ts",
   CreateTexts: "packages/create/src/shared/texts.ts",
+  Semver: "packages/create/src/shared/semver.ts",
 };
 
 /** 模板副本：项目模板是独立工程，与宿主各留一份是故意的 */

@@ -15,6 +15,7 @@ import {
   collectDependencyNames,
 } from "../generate/index.ts";
 import {
+  checkEngineCompatibility,
   readTemplateMeta,
   resolveTemplateRoot,
   resolveVersions,
@@ -217,6 +218,16 @@ async function generate(input: {
   const resolved = await resolveVersions(names);
   if (resolved.size === 0 && names.length > 0) {
     process.stderr.write(`${texts.warnVersionOffline}\n`);
+  }
+  // 版本判定在写盘之前：模板要求的引擎还没发布时，生成出来的工程装不上，
+  // 让它失败在「什么都没写」的时刻，而不是在别人的工程里第一次 pnpm dev 时。
+  const incompatible = checkEngineCompatibility(
+    input.meta.minEngineVersion,
+    resolved,
+  );
+  if (incompatible !== undefined) {
+    process.stderr.write(`${incompatible}\n`);
+    return 1;
   }
 
   process.stderr.write(`${texts.stageCopy}\n`);

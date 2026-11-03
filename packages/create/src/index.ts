@@ -25,6 +25,8 @@ export {
 } from "./overlay/index.ts";
 export type { MergedLayer, PendingFile } from "./overlay/index.ts";
 export {
+  checkEngineCompatibility,
+  ENGINE_SCOPE,
   applyResolvedVersions,
   fetchLatestVersion,
   overlayDirOf,
@@ -40,8 +42,13 @@ export type {
 } from "./registry/index.ts";
 export {
   caretRange,
+  compareSemver,
+  floorOfRange,
   isValidProjectName,
+  meetsMinimum,
+  parseSemver,
   suggestProjectName,
 } from "./shared/index.ts";
+export type { Semver } from "./shared/index.ts";
 export { defaultCreateTexts } from "./shared/index.ts";
 export type { CreateTexts } from "./shared/index.ts";
