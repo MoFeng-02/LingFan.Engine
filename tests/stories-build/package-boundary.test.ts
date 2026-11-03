@@ -69,10 +69,27 @@ const PACKAGE_MANIFEST_FILES = import.meta.glob(
   },
 ) as Record<string, string>;
 
+/** 包根下的 Node 装载垫片（不在 src/ 里，故上面那张源码 glob 收不到它） */
+const PACKAGE_ROOT_SHIMS = import.meta.glob(
+  "../../packages/stories-build/*.mjs",
+  {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  },
+) as Record<string, string>;
+
 const MANIFEST_KEYS = Object.keys(PACKAGE_MANIFEST_FILES);
 
+/** 条件导出：`types` 给 TypeScript，`default` 给 Node 运行时 */
+interface ConditionalExport {
+  types?: string;
+  default?: string;
+}
+
 interface PackageManifest {
-  exports?: Record<string, string>;
+  exports?: Record<string, string | ConditionalExport>;
+  files?: string[];
 }
 
 const PACKAGE_MANIFEST = JSON.parse(
@@ -218,10 +235,25 @@ describe("创作链编译包 · 边界与结构不变式", () => {
     // `/src/…` 做后缀比对——只去掉开头的点；再加前缀会得到 `/src/src/…`。
     const exportTargets = Object.values(PACKAGE_MANIFEST.exports ?? {});
     expect(exportTargets.length).toBe(EXPECTED_EXPORTS.length);
-    for (const target of exportTargets) {
-      expect(target.startsWith("./src/")).toBe(true);
-      const relative = target.replace(/^\./, "");
-      expect(PACKAGE_KEYS.some((key) => key.endsWith(relative))).toBe(true);
+    // 条件导出（{ types, default }）的两个条件都要各自成立：`types` 必须是包内真实的
+    // .ts（TypeScript 侧仍读源码声明），`default` 必须是包内真实的文件——它可能是包根
+    // 的 .mjs 装载垫片，那种落点不在 src/ 的源码 glob 里，改查包根垫片 glob。
+    for (const entry of exportTargets) {
+      const targets =
+        typeof entry === "string"
+          ? [entry]
+          : [entry.types, entry.default].filter(
+              (target): target is string => target !== undefined,
+            );
+      expect(targets.length).toBeGreaterThan(0);
+      for (const target of targets) {
+        expect(target.startsWith("./")).toBe(true);
+        const relative = target.slice(1);
+        const exists =
+          PACKAGE_KEYS.some((key) => key.endsWith(relative)) ||
+          Object.keys(PACKAGE_ROOT_SHIMS).some((key) => key.endsWith(relative));
+        expect(exists).toBe(true);
+      }
     }
 
     // CLI 自己必须走包的唯一出口，不得绕过出口面直接取实现叶子。
