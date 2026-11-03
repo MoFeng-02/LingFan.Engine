@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import { storyFontsVirtual, storyListVirtual } from "./vite.plugins";
+import { storyFontsVirtual, storyListVirtual } from "./vite.plugins.ts";
 
 /**
  * 脚手架工程的 Vite 配置：约定资源根、宿主端口与两个清单虚拟模块。

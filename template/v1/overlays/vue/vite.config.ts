@@ -9,7 +9,7 @@
  */
 import vue from "@vitejs/plugin-vue";
 import { defineConfig } from "vite";
-import { storyFontsVirtual, storyListVirtual } from "./vite.plugins";
+import { storyFontsVirtual, storyListVirtual } from "./vite.plugins.ts";
 
 /** 脚手架工程的 Vite 配置（Vue 形态） */
 export default defineConfig({

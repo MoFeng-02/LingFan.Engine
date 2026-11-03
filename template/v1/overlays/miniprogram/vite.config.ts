@@ -20,7 +20,7 @@ import uniModule, {
   type VitePluginUniOptions,
 } from "@dcloudio/vite-plugin-uni";
 import { defineConfig, type Plugin } from "vite";
-import { storyFontsVirtual, storyListVirtual } from "./vite.plugins";
+import { storyFontsVirtual, storyListVirtual } from "./vite.plugins.ts";
 
 type UniPluginFactory = (options?: VitePluginUniOptions) => Plugin[];
 
