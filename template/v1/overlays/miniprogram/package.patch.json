@@ -4,7 +4,7 @@
     "@dcloudio/uni-components": "3.0.0-4080720251210001",
     "@dcloudio/uni-h5": "3.0.0-4080720251210001",
     "@dcloudio/uni-mp-weixin": "3.0.0-4080720251210001",
-    "@lingfan-engine/shell": "^0.3.0",
+    "@lingfan-engine/shell": "^0.3.2",
     "vue": "3.4.21"
   },
   "devDependencies": {
