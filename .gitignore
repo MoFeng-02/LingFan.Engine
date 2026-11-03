@@ -55,6 +55,9 @@ apps/playground/src-tauri/gen/android/app/src/main/assets/Resources/
 
 # 脚手架包的模板快照：prepack 时从 template/v1 复制，构建产物不入版本库
 packages/create/template/
+# 上面那份快照的同步清单：记录上次复制了哪些文件，用来清掉本次已不存在的旧文件。
+# 它描述构建产物而不是源码，同样不入版本库。
+packages/create/.template-manifest.json
 
 # 生成器验证工程的落地目录：用来跑「生成 → install → dev」这条端到端链路。
 # 内容由 `lingfan-create` 生成，带 node_modules 与运行期存档，属本机验证产物而非仓库源码。
