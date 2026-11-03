@@ -29,8 +29,9 @@ packages/
 ├── stories-build/@lingfan-engine/stories-build  创作链编译：Stories.src → Resources/Stories
 └── create/       @lingfan-engine/create     工程生成器：npm create @lingfan-engine
 apps/
-├── playground/   @lingfan-engine/playground 参考宿主（Vue 3 + Tauri 2）= 模板的第一个实例
-└── editor/       @lingfan-engine/editor-app 编辑器界面：时间线、属性面板、诊断、JSON 视图
+├── playground/   @lingfan-engine/playground  参考宿主（Vue 3 + Tauri 2）= 模板的第一个实例
+├── editor/       @lingfan-engine/editor-app  编辑器界面：时间线、属性面板、诊断、JSON 视图
+└── miniprogram/  @lingfan-engine/miniprogram 小程序宿主（UniApp，Vue 3 SFC，微信等多端）
 template/v1/                          脚手架：新工程骨架（__PROJECT__）+ 可选叠加层（overlays/）
 tests/                                集中测试：按「包 → 功能域」归类，不与源码混放
 docs/                                 文档站源码（Astro + Starlight，中英双语）
@@ -96,4 +97,4 @@ pnpm editor     # 编辑器界面（Vite，默认 http://localhost:1425）
 
 本仓库全部代码以 Apache-2.0 许可发布，全文见根目录 `LICENSE`；`packages/` 下每个包各带一份副本，随包分发时自带许可声明。
 
-对外发布六个包：运行时侧 `@lingfan-engine/core`、`@lingfan-engine/adapters`、`@lingfan-engine/ui`、`@lingfan-engine/shell`，作者侧 `@lingfan-engine/editor`（op schema 与词函数）与 `@lingfan-engine/stories-build`（Stories.src 编译器，带 `lingfan-stories-build` / `lingfan-stories-watch` 两条命令）。两个应用与脚手架模板不单独声明许可。
+对外发布七个包：运行时侧 `@lingfan-engine/core`、`@lingfan-engine/adapters`、`@lingfan-engine/ui`、`@lingfan-engine/shell`，作者侧 `@lingfan-engine/editor`（op schema 与词函数）与 `@lingfan-engine/stories-build`（Stories.src 编译器，带 `lingfan-stories-build` / `lingfan-stories-watch` 两条命令），以及工程生成器 `@lingfan-engine/create`（`npm create @lingfan-engine`）。三个应用与脚手架模板不单独声明许可。
