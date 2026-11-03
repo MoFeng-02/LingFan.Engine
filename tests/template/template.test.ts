@@ -12,7 +12,8 @@ import projectJson from "../../template/v1/__PROJECT__/Resources/project.json?ra
 import viteConfig from "../../template/v1/__PROJECT__/vite.config.ts?raw";
 import indexHtml from "../../template/v1/__PROJECT__/index.html?raw";
 import templatePkg from "../../template/v1/__PROJECT__/package.json?raw";
-import storySource from "../../template/v1/__PROJECT__/Resources/Stories/title/title_main.story?raw";
+import storySource from "../../template/v1/overlays/story/Resources/Stories/title/title_main.story?raw";
+import skeletonStoryJson from "../../template/v1/__PROJECT__/Resources/Stories/title/title_main.json?raw";
 import type { NameResolver, ProjectManifest } from "@lingfan-engine/core";
 import {
   interpolateText,
@@ -44,7 +45,17 @@ function htmlIds(): string[] {
 }
 
 describe("template/v1 脚手架防腐", () => {
-  it("模板故事可被文本投影器解析，且入口列 = 清单 entry", () => {
+  it("骨架自带编译好的故事产物，且入口列 = 清单 entry", () => {
+    // 骨架缺省形态是 TS 源：`Resources/Stories/**/*.json` 是 `stories:build` 的产物，
+    // 开箱即跑（`pnpm dev` 不必先构建）。手写 `.story` 形态由 `overlays/story/` 叠加。
+    // 一个产物文件 = 一列，所以入口列只在本文件里；其余列各自成文件。
+    const story = parseStory(JSON.parse(skeletonStoryJson));
+    const manifest = JSON.parse(projectJson) as ProjectManifest;
+    expect(story.columns.map((c) => c.id)).toEqual([manifest.entry]);
+    expect(story.columns[0]?.id).toBe(manifest.entry);
+  });
+
+  it("故事文件形态的手写故事可被文本投影器解析，且入口列 = 清单 entry", () => {
     const story = parseTextStory(storySource, "title_main.story");
     const manifest = JSON.parse(projectJson) as ProjectManifest;
     expect(manifest.formatVersion).toBe(1);

@@ -1,0 +1,13 @@
+{
+  "create": {
+    "remove": [
+      "Resources/Stories",
+      "src/Stories.src",
+      "src/gen/font.gen.d.ts",
+      "src/gen/script.gen.d.ts",
+      "src/gen/state.gen.d.ts",
+      "src/gen/stories.gen.d.ts",
+      "tsconfig.stories.json"
+    ]
+  }
+}

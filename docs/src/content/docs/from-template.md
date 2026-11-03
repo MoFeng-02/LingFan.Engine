@@ -29,10 +29,10 @@ npm create @lingfan-engine my-story -- --framework vue --shell browser
 npm create @lingfan-engine my-story -- --framework react --shell browser
 npm create @lingfan-engine my-story -- --shell miniprogram
 npm create @lingfan-engine my-story -- --framework vue --shell tauri
-npm create @lingfan-engine my-story -- --sources ts
+npm create @lingfan-engine my-story -- --sources story
 ```
 
-生成后 `cd my-story && pnpm install && pnpm dev`。选了 TypeScript 源形态的，`pnpm dev` 之前先跑一次 `pnpm stories:build`（模板自带产物，改过源之后才需要）。
+生成后 `cd my-story && pnpm install && pnpm dev`。骨架自带编译好的故事产物，开箱即跑；改过 `src/Stories.src/` 之后才需要跑一次 `pnpm stories:build`（或开发时挂 `pnpm stories:watch`）。
 
 框架层只换页面结构与入口：`--framework vue` 把 `index.html` 换成挂载点、加 `src/App.vue` 与 Vue 版组合根，`--framework react` 换成 `src/App.tsx` 与 React 版组合根；两者都不动 `src/host/**`（装配、订阅、帧循环、输入映射）——引擎与适配器不认识任何 UI 框架。两种形态的样式表是同一份 `src/styles/stage.css`。
 
@@ -45,7 +45,7 @@ npm create @lingfan-engine my-story -- --sources ts
 | 缺省 `ts` | `Resources/Stories/**/*.json`（生成物） | 改 `src/Stories.src/**/*.ts`，再跑 `pnpm stories:build` |
 | `story`   | `Resources/Stories/**/*.story`          | 直接改 `.story` 文本，保存即生效                        |
 
-`ts` 形态会把骨架那份手写故事换成构建产物：层里声明了 `create.remove: ["Resources/Stories"]`，删掉骨架的 `.story`，再补上开箱可跑的生成物与三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）。两条注意：
+缺省形态的整条创作链在骨架里：`src/Stories.src/`、`src/gen/*.gen.d.ts`、`tsconfig.stories.json`、三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）与开箱可跑的产物都是骨架的一部分，生成时不需要叠加任何层。选 `story` 则是**反向叠加**：`overlays/story/` 用 `create.remove` 摘掉整条 TS 创作链，换上一份手写的 `Resources/Stories/title/title_main.story`。两条注意：
 
 - 产物目录 `Resources/Stories/**` 由构建**全量管理**——源里没有的列，构建会当成陈旧列删掉。所以别在产物目录里手改，改源。
 - 类型检查走独立的 `tsconfig.stories.json`，与框架层那份 `tsconfig.json` 分开：故事源有 `state` 等 ambient 全局，和页面代码的 DOM 类型面不该混在一个工程里。
@@ -65,33 +65,45 @@ npm create @lingfan-engine my-story -- --sources ts
 
 `template/v1/__PROJECT__/` 是框架无关的骨架，`template/v1/overlays/<id>/` 是叠加层。叠加规则：同路径文件覆盖骨架，根目录的 `*.patch.json` 深合并进 `package.json`。
 
-`template-meta.json` 的 `frameworks` / `sources` / `shells` 声明有哪些可选项，每项 `id` 对应一个叠加层目录；缺省项（`none` / `browser`）没有目录，表示这一层什么都不加（`sources` 的缺省 `ts` 则有自己的目录——它要删掉骨架的 `.story` 再补生成物）。合并顺序固定为「骨架 → 框架 → 故事源 → 壳」：故事源要晚于框架层，才能把各框架入口里的故事表指向生成物；壳放最后，因为它对工程形态有最终发言权（小程序壳会删掉骨架的 `src/host`）。
+`template-meta.json` 的 `frameworks` / `sources` / `shells` 声明有哪些可选项，每项 `id` 对应一个叠加层目录；缺省项（`none` / `ts` / `browser`）没有目录，表示这一层什么都不加——缺省故事源 `ts` 正是如此，整条创作链在骨架里。可选 `story` 反过来有目录：它要摘掉骨架的 TS 链、换上手写故事。合并顺序固定为「骨架 → 框架 → 故事源 → 壳」：故事源要晚于框架层，才能把各框架入口里的故事表指向产物；壳放最后，因为它对工程形态有最终发言权（小程序壳会删掉骨架的 `src/host`）。
 
 `.gitignore` 在模板里存成不带点的 `gitignore`：npm 把包装进 `node_modules` 时会把包内的 `.gitignore` 改名成 `.npmignore`，按原名存会导致生成的工程既缺忽略规则又多个无用文件。
 
 ## 示例故事
 
-`Resources/Stories/title/title_main.story` 是模板自带的示例（选了 `--sources ts` 的话，同一份内容在 `src/Stories.src/title/*.ts` 里），它把几件事都演了一遍：
+骨架自带的是 TS 源的示例：`src/Stories.src/title/*.ts` 里两列（`title_main` 与 `look_around`），编译成 `Resources/Stories/title/*.json` 随骨架一起交付。手写 `.story` 形态的那份示例在叠加层 `template/v1/overlays/story/Resources/Stories/title/title_main.story`，它把几件事都演了一遍：
 
 ```text
-label title_main:
+scene title_main type=ui
   say "欢迎来到 __PROJECT__。"
+  say "在 Resources/Stories/ 下继续写你的故事；媒体放 Resources/Audio、Resources/Images、Resources/Video。"
+  menu "接下来去哪里？"
+    "开始游戏" -> chapter1
+    "看舞台元素" -> stage_demo
+
+scene chapter1
   input "先问一句：你叫什么名字？" store="player.name"
   say "你好，{player.name}！"
+  say "这一列是 game 列：从这里开始，每一步都可回溯、可存档。"
   menu "接下来去哪里？"
     "看舞台元素" -> stage_demo
-    "重来一次" -> title_main
+    "回标题界面" -> title_main
 
 scene stage_demo
   panel x=5% y=10% width=90% zindex=10
-    text "scene 列 = 声明式空间层"
-  say "进入 scene 列：元素已整体装载。"
+    text "scene 列 = 声明式空间层：这些方块是元素，不是对话"
+    text "panel 是容器，子元素用更深缩进写"
+  say "进入 scene 列：元素已整体装载（回顾/读档会自动随行）。"
+  say "下一条会隐藏对话框，再下一条让它回来。"
   window hide
   say "（对话框已隐藏——点击继续）"
   window show
 ```
 
-看完可以直接清掉，改成你的故事。
+`type=ui` 的列不进历史、不进存档、不建检查点——它是界面，不是剧情；引擎对这类列只管按 op 渲染。
+缺省的 TS 形态下同样的三列写在 `src/Stories.src/title/*.ts`，产物是同名的 `.json`。
+
+换成自己的故事时，删掉这些示例列即可；产物目录由构建全量管理，改源比改产物可靠。
 
 ## 模板带了什么
 

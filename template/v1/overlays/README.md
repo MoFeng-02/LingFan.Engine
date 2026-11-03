@@ -2,25 +2,24 @@
 
 每个子目录是一层可选的工程内容，目录名就是 `template-meta.json` 里 `frameworks[]` / `sources[]` / `shells[]` 的 `id`。
 生成器按「骨架 → 框架层 → 故事源层 → 壳层」的顺序合并，同路径文件由后一层覆盖前一层。
+故事源层的两个 id 不对称：缺省 `ts` 没有目录（链在骨架里），可选 `story` 有目录（要摘掉那条链）。
 
 ## 缺省项没有目录
 
-`none`（框架无关）、`story`（故事文件）与 `browser`（浏览器）表示「这一层什么都不加」，所以这里看不到它们。
-缺目录不是错误，只是没有内容可叠。
+`none`（框架无关）、`ts`（TypeScript 源）与 `browser`（浏览器）表示「这一层什么都不加」，所以这里看不到它们。
+缺目录不是错误，只是没有内容可叠：缺省故事源形态的整条创作链（`src/Stories.src/`、`src/gen/*.gen.d.ts`、
+`tsconfig.stories.json`、三条 `stories:*` 脚本）都在骨架里，生成时不需要再叠任何东西。
 
 ## 现有层
 
-- `ts/` —— 故事源层，只换故事素材、不碰页面：新增 `src/Stories.src/`（`config.ts` + 两个示例列）、
-  构建产物 `Resources/Stories/title/*.json` 与 `src/gen/*.gen.d.ts`、独立的 `tsconfig.stories.json`。
-  故事源与类型面生成物都在 `src/` 下，两者都不进最终包：`src/Stories.src/**` 由 `tsconfig.json`
-  排除在类型检查之外，`src/gen/**` 只有 `fun_register.g.ts` 带运行期值。
-  故事里可以写工程 `tsconfig.json` 声明的任意别名（`@/ui/hub/hub.vue`、`@ui/...`），stories-build
-  会读那份 `paths` 自行解析——宿主不必配任何别名就能构建；若还想让 Vite / tsc 也认同一套别名，
-  在 `vite.config.ts` 里用正则 `find: /^@\//`（字符串 `"@"` 是前缀匹配，会把 `@lingfan-engine/*` 一起吞掉）。
-  `package.patch.json` 补 `@lingfan-engine/stories-build` / `@lingfan-engine/editor` 与三条脚本，
-  并用 `create.remove` 删掉骨架那份手写故事（产物目录由构建全量管理，两套并存会把 `.story` 当陈旧列清掉）。
-  故事清单不归本层管：骨架的 `vite.plugins.ts` 扫 `Resources/Stories/`，产物 `.json` 落在同一棵树里，
-  自动进清单——层不需要也不应该覆盖 `src/stories/index.ts`。
+- `story/` —— 故事源层，与缺省形态反向：只换故事素材、不碰页面。骨架缺省是 TS 创作链，这一层用
+  `create.remove` 把它整条摘掉（`src/Stories.src`、`src/gen/{font,script,state,stories}.gen.d.ts`、
+  `tsconfig.stories.json`），换上一份手写的 `Resources/Stories/title/title_main.story`，改完保存即生效。
+  `create.remove` 只认精确路径与目录子树，没有通配符，所以四份 `.gen.d.ts` 要逐个点名；它也只能删文件，
+  删不掉 `package.json` 里的键——骨架那三条 `stories:*` 脚本与 `@lingfan-engine/editor` 依赖会留在清单里
+  （`mergeManifest` 对依赖表是「新增或覆盖」，没有删除语义）。
+  故事清单不归本层管：骨架的 `vite.plugins.ts` 扫 `Resources/Stories/`，`.story` 与 `.json` 都进清单，
+  层不需要也不应该覆盖 `src/stories/index.ts`。
 - `vue/` —— 页面结构换成单文件组件：`index.html` 变成挂载点，新增 `src/App.vue` 与 Vue 版组合根，
   `package.patch.json` 补 `vue` / `@vitejs/plugin-vue` / `vue-tsc`，并把 `typecheck` 换成
   `vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json`。`src/host/**` 一行不改，

@@ -26,7 +26,9 @@ Reach for TypeScript when the story is long, when it has many branches and loops
 
 ## The template ships this chain
 
-Generating a project with `npm create @lingfan-engine` and choosing the `ts` source shape gives you `src/Stories.src/` (a `config.ts` plus example columns), three scripts (`stories:build` / `stories:watch` / `stories-typecheck`), `@lingfan-engine/stories-build` and `@lingfan-engine/editor` as dev dependencies, and an output that runs out of the box — `Resources/Stories/**` plus `Resources/project.json`. The skeleton's hand-written `.story` is deleted at the same time: the output directory manages its column set wholesale, so with both story sets present the first build would treat the `.story` as a stale column and remove it.
+This chain lives in the template skeleton, so every generated project starts with it: `src/Stories.src/` (a `config.ts` plus example columns), three scripts (`stories:build` / `stories:watch` / `stories-typecheck`), `@lingfan-engine/stories-build` and `@lingfan-engine/editor` as dev dependencies, and an output that runs out of the box — `Resources/Stories/**`. The default source shape is `ts`, so there is nothing extra to pick at generation time and no overlay to add.
+
+Choosing the `story` shape is the reverse overlay: `overlays/story/` uses `create.remove` to strip the whole TS chain (`src/Stories.src`, `src/gen/*.gen.d.ts`, `tsconfig.stories.json`) and drops in a hand-written `.story`. The output directory manages its column set wholesale, so with both story sets present the first build would treat the `.story` as a stale column and remove it — the two shapes never coexist.
 
 Wiring an existing project by hand comes down to the same pieces: `pnpm add -D @lingfan-engine/stories-build @lingfan-engine/editor`, write `src/Stories.src/config.ts`, then run the commands under "Building and output" below.
 
@@ -311,7 +313,7 @@ The command name passed to `extOp` only means something once the engine has actu
 
 ## Building and output
 
-A template-generated `ts` project carries three scripts:
+The template skeleton carries three scripts:
 
 ```powershell
 pnpm stories:build        # compile once

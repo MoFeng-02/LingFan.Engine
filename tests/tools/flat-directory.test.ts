@@ -18,7 +18,7 @@ const SOURCES = import.meta.glob(
     // 由 config.ts 的 folders 声明），自带 tsconfig、只归 stories-build 处理。往章节目录
     // 塞 index.ts 还会被故事发现当成一个新故事列，故不纳入平铺判据。
     "!../../apps/*/src/Stories.src/**",
-    "!../../template/v1/overlays/ts/src/Stories.src/**",
+    "!../../template/v1/__PROJECT__/src/Stories.src/**",
   ],
   { eager: false },
 );

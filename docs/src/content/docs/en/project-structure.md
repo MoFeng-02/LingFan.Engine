@@ -80,7 +80,7 @@ A new story file is picked up as soon as it lands in `Stories/` — there is no 
   export { STORIES } from "virtual:story-list";
   ```
 
-  The scan lives in `vite.plugins.ts`, and adding or removing a story file refreshes it during dev. In a project generated with `--sources ts`, the build output `.json` and handwritten `.story` files share the same tree and the same scan.
+  The scan lives in `vite.plugins.ts`, and adding or removing a story file refreshes it during dev. Under the default TS source shape the `.json` files are build output from `src/Stories.src/` and land in the same tree; a project generated with the story-file shape keeps handwritten `.story` files there instead — both shapes share this one scan.
 
 - **Desktop shell**: also collects every story file under `Resources/Stories/` recursively — drop one in and it is picked up; subdirectories double as chapter grouping.
 

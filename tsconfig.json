@@ -56,6 +56,8 @@
      src/gen 的其余生成物不在排除之列：它们是普通模块，宿主直接 import。 */
   "exclude": [
     "template/*/overlays/**",
+    "template/*/__PROJECT__/src/Stories.src/**",
+    "template/*/__PROJECT__/src/gen/stories.gen.d.ts",
     "apps/*/src/Stories.src/**",
     "apps/*/src/gen/stories.gen.d.ts",
     "packages/stories-build/src/authoring.d.ts"

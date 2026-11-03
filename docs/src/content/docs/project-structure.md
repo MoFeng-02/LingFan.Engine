@@ -80,7 +80,7 @@ my-story/
   export { STORIES } from "virtual:story-list";
   ```
 
-  扫描实现在 `vite.plugins.ts`，dev 下新增或删除故事文件会自动刷新。选 `--sources ts` 的工程，产物 `.json` 与手写 `.story` 落在同一棵树，共用这一条扫描。
+  扫描实现在 `vite.plugins.ts`，dev 下新增或删除故事文件会自动刷新。缺省的 TS 源形态下，`.json` 是 `src/Stories.src/` 的构建产物，落在同一棵树；选「故事文件」形态的工程则直接放手写 `.story`——两种形态共用这一条扫描。
 
 - **桌面壳**：同样递归收集 `Resources/Stories/` 下所有故事文件，放了就认；子目录就是章节分组。
 

@@ -1,6 +1,6 @@
 // __PROJECT__ 示例工程（文本形态 = JSON v1 的投影）
 // 资源路径相对项目资源根 Resources/：如 bgm "Audio/main.mp3"
-// 一个文件里可以写多列（label / scene）；拆文件时把新文件加进 src/main.ts 的 STORIES 列表。
+// 一个文件里可以写多列（label / scene）；拆文件直接放进 Resources/Stories/ 下，构建期扫描自动收录。
 
 // 标题界面：`type=ui` 的列不进历史、不进存档、不建检查点——它是界面，不是剧情。
 // 引擎对这类列只管一件事：按 op 渲染（say 出一句、menu 出一组选项），所以下面几条开箱即跑，

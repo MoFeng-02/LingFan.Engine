@@ -9,7 +9,13 @@
  * 夹具写在 `tests/create/.tmp-generate/` 下：模板样例自建，不依赖仓库里的真实模板
  * （真实模板会随第二批叠加层演进，把它写进断言等于每次改模板都要改测试）。
  */
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -48,7 +54,12 @@ function makeTemplate(name: string): string {
       {
         name: "__project__",
         dependencies: { "@lingfan-engine/core": "^0.1.0" },
-        devDependencies: { vite: "^8.0.0" },
+        // TS 创作链归骨架：缺省故事源形态就是「什么都不叠」，故构建期依赖写在这里
+        devDependencies: {
+          vite: "^8.0.0",
+          "@lingfan-engine/stories-build": "^0.1.0",
+          "@lingfan-engine/editor": "^0.1.0",
+        },
       },
       null,
       2,
@@ -63,9 +74,12 @@ function makeTemplate(name: string): string {
       dependencies: { vue: "^3.5.0" },
     }),
     "overlays/vue/src/App.vue": "<template>__PROJECT__</template>",
-    "overlays/ts/package.patch.json": JSON.stringify({
-      devDependencies: { "@lingfan-engine/stories-build": "^0.1.0" },
+    // 手写故事文件形态：叠在骨架上，摘掉骨架那条 TS 创作链
+    "overlays/story/package.patch.json": JSON.stringify({
+      create: { remove: ["Resources/Stories", "src/Stories.src"] },
     }),
+    "overlays/story/Resources/Stories/title/title_main.story":
+      'scene title_main type=ui\n  say "__PROJECT__"\n',
     "overlays/browser/vite.patch.ts": "// browser only __PROJECT__",
   };
   for (const [rel, text] of Object.entries(files)) {
@@ -132,12 +146,13 @@ describe("依赖名收集", () => {
         resolved: new Map<string, string>(),
       }),
     );
-    // 缺省故事源形态是 ts，夹具里那一层声明的构建期依赖也在解析面内
+    // 缺省故事源形态是 ts：整条创作链在骨架里，不叠任何故事源层
     expect(names).toEqual([
       "@lingfan-engine/core",
       "vite",
-      "vue",
       "@lingfan-engine/stories-build",
+      "@lingfan-engine/editor",
+      "vue",
     ]);
   });
 });
@@ -167,10 +182,11 @@ describe("产物字节", () => {
       "@lingfan-engine/core": "^0.1.0",
       vue: "^9.9.9",
     });
-    // 缺省 ts 层声明的构建期依赖一并合入
+    // 缺省 ts 形态：创作链在骨架里，构建期依赖随骨架一起合入
     expect(manifest.devDependencies).toEqual({
       vite: "^8.0.0",
       "@lingfan-engine/stories-build": "^0.1.0",
+      "@lingfan-engine/editor": "^0.1.0",
     });
   });
 
@@ -311,22 +327,22 @@ describe("层序与写盘", () => {
         targetBase: BASE,
         projectName: "story",
         framework: "vue",
-        sources: "ts",
+        sources: "story",
         shell: "browser",
         resolved: new Map<string, string>(),
       }),
     ).toEqual([
       join(root, "__PROJECT__"),
       join(root, "overlays", "vue"),
-      join(root, "overlays", "ts"),
+      join(root, "overlays", "story"),
       join(root, "overlays", "browser"),
     ]);
   });
 
-  it("故事源形态缺省为 ts（TS 创作链），层序为骨架 → 框架 → 故事源 → 壳", () => {
+  it("故事源形态缺省为 ts：骨架自带创作链，不叠故事源层", () => {
     // 三种创作形态是同一架构的三条入口，不是三档能力：TS 源编译成故事文件，
     // 与手写 `.story` / `.json` 落在同一棵资源树。缺省取 TS 是因为它能力最强、
-    // 产物同构——不改变任何运行期语义。
+    // 产物同构——不改变任何运行期语义。整条链在骨架里，所以 `ts` 是零改动形态。
     const root = makeTemplate("sources-default");
     expect(
       layerBases({
@@ -340,13 +356,12 @@ describe("层序与写盘", () => {
     ).toEqual([
       join(root, "__PROJECT__"),
       join(root, "overlays", "vue"),
-      join(root, "overlays", "ts"),
       join(root, "overlays", "browser"),
     ]);
   });
 
   it("没有叠加层目录的形态直接跳过，不占位", () => {
-    // `none`（骨架框架）与 `story`（手写故事文件）都是零改动形态：模板里没有
+    // `none`（骨架框架）与 `browser`（浏览器壳）都是零改动形态：模板里没有
     // 对应目录不是错误，只是「这一层什么都不加」。
     const root = makeTemplate("defaults");
     expect(
@@ -356,10 +371,29 @@ describe("层序与写盘", () => {
         projectName: "story",
         framework: "none",
         shell: "browser",
-        sources: "story",
         resolved: new Map<string, string>(),
       }),
     ).toEqual([join(root, "__PROJECT__"), join(root, "overlays", "browser")]);
+  });
+
+  it("故事文件形态摘掉骨架的 TS 创作链，换成手写故事", () => {
+    const root = makeTemplate("story-overlay");
+    const result = generateProject({
+      templateRoot: root,
+      targetBase: BASE,
+      projectName: "story",
+      framework: "none",
+      sources: "story",
+      shell: "browser",
+      resolved: new Map<string, string>(),
+    });
+    // 摘掉的路径不再出现在产物里
+    expect(existsSync(join(result.projectDir, "src/Stories.src"))).toBe(false);
+    expect(
+      existsSync(
+        join(result.projectDir, "Resources/Stories/title/title_main.story"),
+      ),
+    ).toBe(true);
   });
 
   it("目标目录已存在且非空时拒绝生成", () => {

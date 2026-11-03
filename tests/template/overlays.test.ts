@@ -18,6 +18,9 @@ import templateMeta from "../../template/v1/template-meta.json?raw";
 import skeletonMain from "../../template/v1/__PROJECT__/src/main.ts?raw";
 import skeletonManifest from "../../template/v1/__PROJECT__/package.json?raw";
 import skeletonHtml from "../../template/v1/__PROJECT__/index.html?raw";
+import skeletonStoriesConfig from "../../template/v1/__PROJECT__/src/Stories.src/config.ts?raw";
+import skeletonStoriesTsconfig from "../../template/v1/__PROJECT__/tsconfig.stories.json?raw";
+import skeletonStoryJson from "../../template/v1/__PROJECT__/Resources/Stories/title/title_main.json?raw";
 
 /** `template-meta.json` 里声明的可选层 */
 interface TemplateOption {
@@ -44,14 +47,28 @@ const ALL_OPTIONS = [
  *
  * 判据按「该层是否真的改变产物」而不是按排序位置认——缺省项换个顺序
  * （比如故事源缺省从 `story` 改成 `ts`），不改变「零改动形态无需目录」这件事。
+ *
+ * 故事源缺省是 `ts`：骨架自带整条 TS 创作链，所以 `ts` 是零改动形态；
+ * 反过来 `story` 要删掉那条链再补一份手写故事，因此它有目录。
  */
-const NO_DIRECTORY_OPTIONS = new Set(["none", "story", "browser"]);
+const NO_DIRECTORY_OPTIONS = new Set(["none", "ts", "browser"]);
 
 /** 叠加层全部文本，键 = 仓库相对路径 */
 const OVERLAY_SOURCES = import.meta.glob(
-  "../../template/v1/overlays/**/*.{ts,tsx,vue,html,json}",
+  "../../template/v1/overlays/**/*.{ts,tsx,vue,html,json,story}",
   { eager: true, query: "?raw", import: "default" },
 ) as Record<string, string>;
+
+/** 骨架全部文本：用来校验叠加层的 `create.remove` 只点名真实存在的骨架路径 */
+const SKELETON_SOURCES = import.meta.glob(
+  "../../template/v1/__PROJECT__/**/*.{ts,tsx,vue,html,json,story}",
+  { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
+
+/** 骨架路径表，键去掉了 `../../template/v1/__PROJECT__/` 前缀 */
+const SKELETON_PATHS = Object.keys(SKELETON_SOURCES)
+  .map((path) => path.slice("../../template/v1/__PROJECT__/".length))
+  .sort();
 
 /** 组合根文件名：各框架的语言后缀不同，判据按「入口名」而不是「后缀」认 */
 const ENTRY_NAMES = ["src/main.ts", "src/main.tsx"];
@@ -65,10 +82,10 @@ const VIEW_NAMES = ["App.vue", "App.tsx"];
  * 它们可以有组合根（换掉个别端口），但节点表必须与骨架同源。
  *
  * - `tauri`：只补 `src-tauri/` 与清单补丁；
- * - `ts`：故事源形态层，只把 `Resources/Stories/**` 换成 TS 编译链的产物，
- *   页面与装配一行不动。
+ * - `story`：故事文件形态层，只把 `Resources/Stories/**` 换成手写 `.story`
+ *   并摘掉骨架的 TS 创作链，页面与装配一行不动。
  */
-const PERIPHERAL_OPTIONS = new Set(["tauri", "ts"]);
+const PERIPHERAL_OPTIONS = new Set(["tauri", "story"]);
 
 /** 外围层里带原生平台桥的那一类：只有它们该声明平台依赖与命令行 */
 const DESKTOP_SHELL_OPTIONS = new Set(["tauri"]);
@@ -338,74 +355,121 @@ describe("模板叠加层：不得改动骨架的交付形态", () => {
   });
 });
 
-describe("模板叠加层：故事源形态层只换故事素材", () => {
-  const TS_FILES = overlayFiles("ts");
+describe("模板叠加层：TS 创作链归骨架，故事文件形态是叠加层", () => {
+  const STORY_FILES = overlayFiles("story");
+  const skeletonPkg = JSON.parse(skeletonManifest) as {
+    scripts?: Record<string, string>;
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
 
-  it("ts 层自带构建脚本，开箱就能跑 stories:build", () => {
-    const patch = TS_FILES.find(([path]) =>
-      path.endsWith("/package.patch.json"),
-    );
-    expect(patch, "ts 层缺 package.patch.json").toBeDefined();
-    const parsed = JSON.parse(patch![1]) as {
-      devDependencies?: Record<string, string>;
-      scripts?: Record<string, string>;
-    };
-    // 构建链是层内自带的：消费工程不该再自己装包、自己拼命令
-    expect(parsed.devDependencies?.["@lingfan-engine/editor"]).toBeDefined();
-    for (const script of ["stories:build", "stories:watch"]) {
-      expect(parsed.scripts?.[script], `ts 层缺 ${script} 脚本`).toBeDefined();
+  it("骨架自带三条创作脚本与创作期依赖，开箱就能跑 stories:build", () => {
+    // 缺省形态是 TypeScript 源：整条链必须在骨架里，消费工程不该再自己装包、自己拼命令
+    for (const script of [
+      "stories:build",
+      "stories:watch",
+      "stories-typecheck",
+    ]) {
+      expect(
+        skeletonPkg.scripts?.[script],
+        `骨架缺 ${script} 脚本`,
+      ).toBeDefined();
     }
-  });
-
-  it("构建期依赖只在骨架声明一次，层里不重复", () => {
-    // 骨架的 `vite.plugins.ts` 引 `@lingfan-engine/stories-build/host-plugins`，
-    // 所以骨架自己就得声明它；ts 层的构建命令用的也是同一个包。
-    // 两层各写一份版本号，升级时必然漏改一处——同一依赖只留骨架那处。
-    const skeleton = JSON.parse(skeletonManifest) as {
-      dependencies?: Record<string, string>;
-    };
     expect(
-      skeleton.dependencies?.["@lingfan-engine/stories-build"],
+      skeletonPkg.devDependencies?.["@lingfan-engine/editor"],
+      "骨架缺创作期依赖 editor（故事列的类型补全来自它）",
+    ).toBeDefined();
+    // 骨架的 `vite.plugins.ts` 引 `@lingfan-engine/stories-build/host-plugins`，
+    // 所以它落在 dependencies 而不是 devDependencies。
+    expect(
+      skeletonPkg.dependencies?.["@lingfan-engine/stories-build"],
       "骨架必须声明 stories-build：它的 vite.plugins.ts 直接引该包",
     ).toBeDefined();
-    for (const [path, source] of TS_FILES) {
-      if (!path.endsWith("/package.patch.json")) continue;
-      const parsed = JSON.parse(source) as {
-        devDependencies?: Record<string, string>;
-      };
-      expect(
-        parsed.devDependencies?.["@lingfan-engine/stories-build"],
-        `${path} 重复声明了 stories-build`,
-      ).toBeUndefined();
-    }
   });
 
-  it("ts 层用生成物接管故事目录：骨架那份手写故事必须先被删掉", () => {
-    // 产物由 stories:build 全量管理 Stories/**：留着骨架的 .story，
-    // 第一次构建就会把它当陈旧列删掉，使用者会以为文件「自己消失了」。
-    const patch = TS_FILES.find(([path]) =>
+  it("骨架自带整条 TS 创作链：源 + 生成物声明 + 独立类型检查工程 + 开箱产物", () => {
+    expect(skeletonStoriesConfig, "骨架缺 src/Stories.src/config.ts").toContain(
+      "defineVars",
+    );
+    // 四份 .gen.d.ts 是 ambient 全局：列名注册表、插值键、script/font、StoryState
+    for (const name of ["font", "script", "state", "stories"]) {
+      expect(
+        SKELETON_PATHS.includes(`src/gen/${name}.gen.d.ts`),
+        `骨架缺 src/gen/${name}.gen.d.ts`,
+      ).toBe(true);
+    }
+    // 故事源是独立 TS 工程：根 tsconfig 由框架/壳层决定，故事源只吃纯 tsc
+    expect(skeletonStoriesTsconfig, "骨架缺 tsconfig.stories.json").toContain(
+      "src/Stories.src",
+    );
+    // 开箱产物：构建前就能跑，否则生成出来的工程首屏没有故事
+    const produced = JSON.parse(skeletonStoryJson) as {
+      id?: string;
+      kind?: string;
+    };
+    expect(produced.id).toBe("title_main");
+    expect(produced.kind).toBe("flow");
+  });
+
+  it("story 层用手写故事接管故事目录，并摘掉骨架的 TS 链", () => {
+    // 两套创作形态并存会让使用者分不清改哪份；且产物目录是全量管理的，
+    // 留着 TS 链的生成物，第一次构建就会把 .story 当陈旧列清掉。
+    const patch = STORY_FILES.find(([path]) =>
       path.endsWith("/package.patch.json"),
     );
-    const parsed = JSON.parse(patch![1]) as { create?: { remove?: string[] } };
-    expect(parsed.create?.remove).toContain("Resources/Stories");
-    // 删除之后必须补上生成物，否则工程开箱没有任何可跑的故事
+    expect(patch, "story 层缺 package.patch.json").toBeDefined();
+    const parsed = JSON.parse(patch![1]) as {
+      create?: { remove?: string[] };
+      devDependencies?: Record<string, string>;
+    };
+    const removes = parsed.create?.remove ?? [];
+    expect(removes).toContain("Resources/Stories");
+    expect(removes).toContain("src/Stories.src");
+    expect(removes).toContain("tsconfig.stories.json");
+    for (const name of ["font", "script", "state", "stories"]) {
+      expect(removes, `story 层未摘掉 src/gen/${name}.gen.d.ts`).toContain(
+        `src/gen/${name}.gen.d.ts`,
+      );
+    }
+    // 删除清单不得指向不存在的骨架路径：写错一处就是「以为删了、其实还在」
+    for (const entry of removes) {
+      expect(
+        SKELETON_PATHS.some(
+          (path) => path === entry || path.startsWith(`${entry}/`),
+        ),
+        `story 层删了骨架里不存在的路径：${entry}`,
+      ).toBe(true);
+    }
+    // 删掉之后必须补上故事素材，否则工程开箱没有任何可跑的故事
     expect(
-      TS_FILES.some(([path]) => path.endsWith("Resources/project.json")),
-      "ts 层缺 Resources/project.json",
+      STORY_FILES.some(([path]) =>
+        path.endsWith("Resources/Stories/title/title_main.story"),
+      ),
+      "story 层缺手写故事",
     ).toBe(true);
+    // 构建期依赖只归骨架：层里再写一份版本号，升级时必然漏改一处
     expect(
-      TS_FILES.filter(([path]) => path.endsWith(".json")).length,
-      "ts 层缺故事生成物",
-    ).toBeGreaterThan(1);
+      parsed.devDependencies?.["@lingfan-engine/stories-build"],
+      "story 层不该声明 stories-build",
+    ).toBeUndefined();
   });
 
-  it("ts 层不覆盖故事表：清单由构建期扫描资源根得出，与创作形态无关", () => {
+  it("story 层不覆盖故事表：清单由构建期扫描资源根得出，与创作形态无关", () => {
     // 手写产物名单会让「加了列却忘了登记」在构建期无声通过、运行期才 unknown-column，
     // 所以清单是磁盘事实的投影（骨架 vite.plugins.ts 的 virtual:story-list）。
     // 创作形态只决定产物从哪来，不该再长出一个需要同步的第二事实来源。
     expect(
-      TS_FILES.some(([path]) => path.endsWith("/src/stories.ts")),
-      "ts 层不应带自己的 src/stories.ts",
+      STORY_FILES.some(([path]) => path.endsWith("/src/stories.ts")),
+      "story 层不应带自己的 src/stories.ts",
+    ).toBe(false);
+  });
+
+  it("story 层不覆盖工程清单：entry 与 id 由生成器与使用者决定", () => {
+    // 清单里的 id 是工程名占位符、entry 指向首列；层里覆盖一份就把生成器的
+    // 占位符替换与 id 规则整个绕过去了（历史 bug：层里的 id 曾写死成列名）。
+    expect(
+      STORY_FILES.some(([path]) => path.endsWith("Resources/project.json")),
+      "story 层不应覆盖 Resources/project.json",
     ).toBe(false);
   });
 });

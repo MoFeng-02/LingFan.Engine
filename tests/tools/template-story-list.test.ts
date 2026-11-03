@@ -46,8 +46,8 @@ describe("模板的故事清单来自磁盘扫描", () => {
   it("扫描结果就是资源根下的故事文件，路径相对资源根", () => {
     const stories = arrayOf(load(storyListVirtual(), "virtual:story-list"));
     expect(stories.length).toBeGreaterThan(0);
-    // 骨架自带一列手写故事；路径形态是「Stories/<章节>/<文件>」
-    expect(stories).toContain("Stories/title/title_main.story");
+    // 骨架自带一列编译好的故事（缺省形态是 TS 源）；路径形态是「Stories/<章节>/<文件>」
+    expect(stories).toContain("Stories/title/title_main.json");
     for (const path of stories) {
       expect(path.startsWith("Stories/"), `${path} 不在 Stories/ 下`).toBe(
         true,
