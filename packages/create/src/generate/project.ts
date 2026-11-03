@@ -220,6 +220,7 @@ function renderManifest(
   >;
   const withPatch =
     patch === undefined ? manifest : mergeManifest(manifest, patch);
+  applyUnset(withPatch, patch);
   delete withPatch[CREATE_FIELD];
   const pinned = new Set(pinnedNames(patch));
   for (const field of ["dependencies", "devDependencies"] as const) {
@@ -270,6 +271,38 @@ function mergeManifest(
  * 否则新工程的 `package.json` 里会多出一个 npm 不认识、读者也不懂的字段。
  */
 const CREATE_FIELD = "create";
+
+/**
+ * 把增量点名的清单键抹掉。
+ *
+ * `mergeManifest` 只合并键、不删键，所以 `scripts` 与 `devDependencies` 这类表
+ * 在叠加层里只能增不能减。可反向叠加层需要的正是减法：故事文件形态摘掉骨架的
+ * TS 创作链之后，配套的三条脚本与创作期依赖也应当一起消失，否则产物里留着
+ * 一个必然失败的命令。
+ *
+ * 形状与 `create.remove` 并列：外层是 `package.json` 的字段名，内层是要去掉的键名。
+ * 缺省项不必写它——缺省形态什么都不叠，本来就没有要减的东西。
+ */
+function applyUnset(
+  manifest: Record<string, unknown>,
+  patch: Readonly<Record<string, unknown>> | undefined,
+): void {
+  if (patch === undefined) return;
+  const section = patch[CREATE_FIELD];
+  if (!isPlainRecord(section)) return;
+  const unset = section.unset;
+  if (!isPlainRecord(unset)) return;
+  for (const [field, keys] of Object.entries(unset)) {
+    if (!Array.isArray(keys)) continue;
+    const table = manifest[field];
+    if (!isPlainRecord(table)) continue;
+    const next: Record<string, unknown> = { ...table };
+    for (const key of keys) {
+      if (typeof key === "string") delete next[key];
+    }
+    manifest[field] = next;
+  }
+}
 
 /**
  * 读叠加层声明的「不要跟最新版」的依赖名。

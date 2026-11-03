@@ -53,6 +53,11 @@ function makeTemplate(name: string): string {
     "__PROJECT__/package.json": JSON.stringify(
       {
         name: "__project__",
+        scripts: {
+          dev: "vite",
+          "stories:build": "lingfan-stories-build .",
+          "stories:watch": "lingfan-stories-watch .",
+        },
         dependencies: { "@lingfan-engine/core": "^0.1.0" },
         // TS 创作链归骨架：缺省故事源形态就是「什么都不叠」，故构建期依赖写在这里
         devDependencies: {
@@ -76,7 +81,13 @@ function makeTemplate(name: string): string {
     "overlays/vue/src/App.vue": "<template>__PROJECT__</template>",
     // 手写故事文件形态：叠在骨架上，摘掉骨架那条 TS 创作链
     "overlays/story/package.patch.json": JSON.stringify({
-      create: { remove: ["Resources/Stories", "src/Stories.src"] },
+      create: {
+        remove: ["Resources/Stories", "src/Stories.src"],
+        unset: {
+          scripts: ["stories:build", "stories:watch"],
+          devDependencies: ["@lingfan-engine/editor"],
+        },
+      },
     }),
     "overlays/story/Resources/Stories/title/title_main.story":
       'scene title_main type=ui\n  say "__PROJECT__"\n',
@@ -394,6 +405,35 @@ describe("层序与写盘", () => {
         join(result.projectDir, "Resources/Stories/title/title_main.story"),
       ),
     ).toBe(true);
+  });
+
+  it("故事文件形态连配套的脚本与创作期依赖一起摘掉", () => {
+    // 反向叠加层摘走 TS 创作链之后，配套命令与依赖必须一起消失：
+    // 留着一个指向已删除目录的 `stories:build`，使用者照文档跑一次就会失败。
+    const root = makeTemplate("story-unset");
+    const result = generateProject({
+      templateRoot: root,
+      targetBase: BASE,
+      projectName: "story",
+      framework: "none",
+      sources: "story",
+      shell: "browser",
+      resolved: new Map<string, string>(),
+    });
+    const manifest = JSON.parse(
+      readFileSync(join(result.projectDir, "package.json"), "utf8"),
+    ) as {
+      scripts?: Record<string, string>;
+      devDependencies: Record<string, string>;
+    };
+    expect(manifest.scripts?.["stories:build"]).toBeUndefined();
+    expect(manifest.scripts?.["stories:watch"]).toBeUndefined();
+    expect(manifest.devDependencies["@lingfan-engine/editor"]).toBeUndefined();
+    // 只摘点名的键：其余依赖原样保留
+    expect(manifest.devDependencies["@lingfan-engine/stories-build"]).toBe(
+      "^0.1.0",
+    );
+    expect(manifest.devDependencies.vite).toBe("^8.0.0");
   });
 
   it("目标目录已存在且非空时拒绝生成", () => {

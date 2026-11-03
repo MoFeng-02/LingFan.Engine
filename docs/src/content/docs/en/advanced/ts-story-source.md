@@ -28,7 +28,7 @@ Reach for TypeScript when the story is long, when it has many branches and loops
 
 This chain lives in the template skeleton, so every generated project starts with it: `src/Stories.src/` (a `config.ts` plus example columns), three scripts (`stories:build` / `stories:watch` / `stories-typecheck`), `@lingfan-engine/stories-build` and `@lingfan-engine/editor` as dev dependencies, and an output that runs out of the box — `Resources/Stories/**`. The default source shape is `ts`, so there is nothing extra to pick at generation time and no overlay to add.
 
-Choosing the `story` shape is the reverse overlay: `overlays/story/` uses `create.remove` to strip the whole TS chain (`src/Stories.src`, `src/gen/*.gen.d.ts`, `tsconfig.stories.json`) and drops in a hand-written `.story`. The output directory manages its column set wholesale, so with both story sets present the first build would treat the `.story` as a stale column and remove it — the two shapes never coexist.
+Choosing the `story` shape is the reverse overlay: `overlays/story/` uses `create.remove` to strip the whole TS chain (`src/Stories.src`, `src/gen/*.gen.d.ts`, `tsconfig.stories.json`) and `create.unset` to drop the three `stories:*` scripts and the `@lingfan-engine/editor` dependency that go with it, then drops in a hand-written `.story`. The output directory manages its column set wholesale, so with both story sets present the first build would treat the `.story` as a stale column and remove it — the two shapes never coexist.
 
 Wiring an existing project by hand comes down to the same pieces: `pnpm add -D @lingfan-engine/stories-build @lingfan-engine/editor`, write `src/Stories.src/config.ts`, then run the commands under "Building and output" below.
 

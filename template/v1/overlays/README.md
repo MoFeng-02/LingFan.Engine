@@ -15,9 +15,9 @@
 - `story/` —— 故事源层，与缺省形态反向：只换故事素材、不碰页面。骨架缺省是 TS 创作链，这一层用
   `create.remove` 把它整条摘掉（`src/Stories.src`、`src/gen/{font,script,state,stories}.gen.d.ts`、
   `tsconfig.stories.json`），换上一份手写的 `Resources/Stories/title/title_main.story`，改完保存即生效。
-  `create.remove` 只认精确路径与目录子树，没有通配符，所以四份 `.gen.d.ts` 要逐个点名；它也只能删文件，
-  删不掉 `package.json` 里的键——骨架那三条 `stories:*` 脚本与 `@lingfan-engine/editor` 依赖会留在清单里
-  （`mergeManifest` 对依赖表是「新增或覆盖」，没有删除语义）。
+  `create.remove` 只认精确路径与目录子树，没有通配符，所以四份 `.gen.d.ts` 要逐个点名。
+  骨架那三条 `stories:*` 脚本与 `@lingfan-engine/editor` 依赖由 `create.unset` 一并摘掉
+  （`mergeManifest` 对依赖表是「新增或覆盖」，删键要靠 `unset` 显式点名）。
   故事清单不归本层管：骨架的 `vite.plugins.ts` 扫 `Resources/Stories/`，`.story` 与 `.json` 都进清单，
   层不需要也不应该覆盖 `src/stories/index.ts`。
 - `vue/` —— 页面结构换成单文件组件：`index.html` 变成挂载点，新增 `src/App.vue` 与 Vue 版组合根，
@@ -68,9 +68,24 @@
   数组与标量整体取代——数组拼接会得到既非骨架也非叠加层的第三种值。
 - `create.remove`（写在同一份 `package.patch.json` 里）：字符串数组，点在它之前各层里的路径
   （文件或目录，目录写不带尾斜杠也行），本层写入前先删掉它们。用来清掉换形态后不再需要的骨架文件。
+- `create.unset`（写在同一份 `package.patch.json` 里）：对象，外层是 `package.json` 的字段名
+  （`scripts`、`devDependencies` 等），内层是要去掉的键名数组。`create.remove` 只能删文件，
+  清单里的键要靠它——比如反向叠加层摘掉 TS 创作链之后，配套的 `stories:*` 命令与创作期依赖
+  也应当一起消失，否则产物里留着一个指向已删除目录、必然失败的命令。
 
 ```json
 { "create": { "remove": ["src/host", "src/styles"] } }
+```
+
+```json
+{
+  "create": {
+    "unset": {
+      "scripts": ["stories:build"],
+      "devDependencies": ["@lingfan-engine/editor"]
+    }
+  }
+}
 ```
 
 新增依赖只写进 `package.patch.json`，不要复制整份 `package.json`：整份复制会让骨架后来加的字段

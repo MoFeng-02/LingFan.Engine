@@ -45,7 +45,7 @@ npm create @lingfan-engine my-story -- --sources story
 | 缺省 `ts` | `Resources/Stories/**/*.json`（生成物） | 改 `src/Stories.src/**/*.ts`，再跑 `pnpm stories:build` |
 | `story`   | `Resources/Stories/**/*.story`          | 直接改 `.story` 文本，保存即生效                        |
 
-缺省形态的整条创作链在骨架里：`src/Stories.src/`、`src/gen/*.gen.d.ts`、`tsconfig.stories.json`、三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）与开箱可跑的产物都是骨架的一部分，生成时不需要叠加任何层。选 `story` 则是**反向叠加**：`overlays/story/` 用 `create.remove` 摘掉整条 TS 创作链，换上一份手写的 `Resources/Stories/title/title_main.story`。两条注意：
+缺省形态的整条创作链在骨架里：`src/Stories.src/`、`src/gen/*.gen.d.ts`、`tsconfig.stories.json`、三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）与开箱可跑的产物都是骨架的一部分，生成时不需要叠加任何层。选 `story` 则是**反向叠加**：`overlays/story/` 用 `create.remove` 摘掉整条 TS 创作链的文件、用 `create.unset` 摘掉配套的三条脚本与 `@lingfan-engine/editor` 依赖，换上一份手写的 `Resources/Stories/title/title_main.story`。两条注意：
 
 - 产物目录 `Resources/Stories/**` 由构建**全量管理**——源里没有的列，构建会当成陈旧列删掉。所以别在产物目录里手改，改源。
 - 类型检查走独立的 `tsconfig.stories.json`，与框架层那份 `tsconfig.json` 分开：故事源有 `state` 等 ambient 全局，和页面代码的 DOM 类型面不该混在一个工程里。

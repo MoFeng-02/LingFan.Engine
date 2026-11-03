@@ -99,7 +99,7 @@ npm create @lingfan-engine my-story -- --sources story
 它们以 **TS 源码出口**（`exports: "./src/index.ts"`）发布——消费方由 Vite/TS 直接编译，**无中间构建步骤**，
 `pnpm install` 直接可用。骨架还声明两个创作期依赖（`@lingfan-engine/stories-build` 与
 `@lingfan-engine/editor`）——缺省故事源形态是 TS，这条链归骨架；选「故事文件」形态时
-`overlays/story/` 会把链上的文件摘掉（脚本与依赖条目本身留在清单里，见下文叠加层说明）。
+`overlays/story/` 会把链上的文件、脚本与依赖条目一并摘掉（见下文叠加层说明）。
 
 ## 工程结构（单资源根）
 

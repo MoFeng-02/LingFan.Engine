@@ -30,7 +30,7 @@ description: 在工程根的 src/ 下放 Stories.src/，用原生 TypeScript 写
 
 这条链在模板骨架里，任何形态的生成结果都先包含它：`src/Stories.src/`（`config.ts` + 示例列）、三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）、`@lingfan-engine/stories-build` 与 `@lingfan-engine/editor` 两个开发依赖，以及一份开箱可跑的产物 `Resources/Stories/**`。缺省故事源形态就是 `ts`，所以生成时不必额外选择，也不需要叠加层。
 
-选「故事文件（`.story`）」是反向叠加：`overlays/story/` 用 `create.remove` 摘掉整条 TS 链（`src/Stories.src`、`src/gen/*.gen.d.ts`、`tsconfig.stories.json`），换上一份手写 `.story`——产物目录对列集全量管理，两套故事并存时第一次构建就会把 `.story` 当陈旧列清理，所以两种形态不共存。
+选「故事文件（`.story`）」是反向叠加：`overlays/story/` 用 `create.remove` 摘掉整条 TS 链（`src/Stories.src`、`src/gen/*.gen.d.ts`、`tsconfig.stories.json`），再用 `create.unset` 摘掉配套的三条 `stories:*` 脚本与 `@lingfan-engine/editor` 依赖，换上一份手写 `.story`——产物目录对列集全量管理，两套故事并存时第一次构建就会把 `.story` 当陈旧列清理，所以两种形态不共存。
 
 已有工程手工接入，等价于补齐上面这些：`pnpm add -D @lingfan-engine/stories-build @lingfan-engine/editor`，写 `src/Stories.src/config.ts`，然后按后文「构建与产物」的命令跑。
 

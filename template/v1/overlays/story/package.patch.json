@@ -8,6 +8,10 @@
       "src/gen/state.gen.d.ts",
       "src/gen/stories.gen.d.ts",
       "tsconfig.stories.json"
-    ]
+    ],
+    "unset": {
+      "scripts": ["stories:build", "stories:watch", "stories-typecheck"],
+      "devDependencies": ["@lingfan-engine/editor"]
+    }
   }
 }

@@ -452,6 +452,25 @@ describe("模板叠加层：TS 创作链归骨架，故事文件形态是叠加�
       parsed.devDependencies?.["@lingfan-engine/stories-build"],
       "story 层不该声明 stories-build",
     ).toBeUndefined();
+    // 摘链之后配套的命令与创作期依赖必须一起消失，否则产物里留着一个必然失败的命令
+    const unset = (
+      parsed.create as { unset?: Record<string, string[]> } | undefined
+    )?.unset;
+    expect(unset?.scripts, "story 层未摘掉创作脚本").toEqual(
+      expect.arrayContaining(["stories:build", "stories:watch"]),
+    );
+    expect(unset?.devDependencies, "story 层未摘掉创作期依赖").toEqual(
+      expect.arrayContaining(["@lingfan-engine/editor"]),
+    );
+    // 摘掉的键必须真的存在于骨架清单里：写错一处就是「以为删了、其实还在」
+    for (const [field, keys] of Object.entries(unset ?? {})) {
+      for (const key of keys) {
+        expect(
+          skeletonPkg[field as "scripts" | "devDependencies"]?.[key],
+          `story 层摘了骨架里不存在的键：${field}.${key}`,
+        ).toBeDefined();
+      }
+    }
   });
 
   it("story 层不覆盖故事表：清单由构建期扫描资源根得出，与创作形态无关", () => {
