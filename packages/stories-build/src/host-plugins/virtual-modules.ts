@@ -27,20 +27,30 @@ export interface HostPlugin {
   readonly name: string;
   readonly resolveId: (id: string) => string | null;
   readonly load: (id: string) => string | null;
-  readonly configureServer?: (server: DevServerLike) => void;
+  /** 方法签名而非函数属性：理由同 `DevServerLike`，参数按双变才吃得下各版本 vite */
+  configureServer?(server: DevServerLike): void;
 }
 
-/** dev server 的最小结构面：只用到「加监听目录、作废模块、整页刷新」三件事 */
+/**
+ * dev server 的最小结构面：只用到「加监听目录、作废模块、整页刷新」三件事。
+ *
+ * 成员一律写成**方法签名**而不是函数属性。这不是风格问题：`strictFunctionTypes`
+ * 只对函数属性做参数逆变检查，方法签名按双变处理。写成属性时 `invalidateModule`
+ * 的参数会从 `unknown` 反向要求各版本 vite 的 `ModuleNode` 可赋给 `unknown`
+ * 之外的东西——vite 5 的 `(mod: ModuleNode, seen?, timestamp?, isHmr?)` 因此
+ * 判不成 `(mod: unknown) => void`，插件对象也就进不了它的 `plugins` 数组。
+ * 同一份结构面必须同时兼容 vite 5（小程序壳）与 vite 8（浏览器 / Tauri 壳）。
+ */
 export interface DevServerLike {
   readonly watcher: {
-    add: (paths: readonly string[]) => void;
-    on: (event: "add" | "unlink", listener: (file: string) => void) => void;
+    add(paths: readonly string[]): void;
+    on(event: "add" | "unlink", listener: (file: string) => void): void;
   };
   readonly moduleGraph: {
-    getModuleById: (id: string) => unknown;
-    invalidateModule: (mod: unknown) => void;
+    getModuleById(id: string): unknown;
+    invalidateModule(mod: unknown): void;
   };
-  readonly ws: { send: (payload: { type: "full-reload" }) => void };
+  readonly ws: { send(payload: { type: "full-reload" }): void };
 }
 
 /** 资源根定位选项 */
