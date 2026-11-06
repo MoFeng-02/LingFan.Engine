@@ -23,6 +23,7 @@ import {
   collectDependencyNames,
   generateProject,
   layerBases,
+  projectDirOf,
 } from "../../packages/create/src/generate/project.ts";
 import {
   mergeLayers,
@@ -503,5 +504,57 @@ describe("层序与写盘", () => {
     };
     generateProject(options);
     expect(() => generateProject(options)).toThrow(/已存在且非空/);
+  });
+
+  it("选 ignore 时保留目录里的其他文件，只覆盖同名文件", () => {
+    // 使用者的常见情形：目标目录里已经放过 README 或素材，只想补上模板的文件。
+    // 这时唯一能保证的是「模板里的路径被重写」，不能顺手删掉别人的东西。
+    const root = makeTemplate("occupied-ignore");
+    const options = {
+      templateRoot: root,
+      targetBase: BASE,
+      projectName: "story",
+      framework: "none",
+      shell: "browser",
+      resolved: new Map<string, string>(),
+    };
+    const dir = projectDirOf(options);
+    generateProject(options);
+    writeFileSync(join(dir, "notes.txt"), "keep me", "utf8");
+    writeFileSync(join(dir, "package.json"), "stale", "utf8");
+
+    const result = generateProject({ ...options, existing: "ignore" });
+
+    expect(result.projectDir).toBe(dir);
+    expect(readFileSync(join(dir, "notes.txt"), "utf8")).toBe("keep me");
+    // 同名文件按模板重写，不是继续沿用目录里那份
+    expect(readFileSync(join(dir, "package.json"), "utf8")).toContain(
+      "@lingfan-engine/core",
+    );
+  });
+
+  it("选 clear 时先清空目录里的内容再生成", () => {
+    const root = makeTemplate("occupied-clear");
+    const options = {
+      templateRoot: root,
+      targetBase: BASE,
+      projectName: "story",
+      framework: "none",
+      shell: "browser",
+      resolved: new Map<string, string>(),
+    };
+    const dir = projectDirOf(options);
+    generateProject(options);
+    writeFileSync(join(dir, "notes.txt"), "gone", "utf8");
+    mkdirSync(join(dir, "scripts"), { recursive: true });
+    writeFileSync(join(dir, "scripts", "old.mjs"), "gone", "utf8");
+
+    generateProject({ ...options, existing: "clear" });
+
+    expect(existsSync(join(dir, "notes.txt"))).toBe(false);
+    expect(existsSync(join(dir, "scripts", "old.mjs"))).toBe(false);
+    // 目录本身还在：调用方可能把 shell 的 cwd 放在里面
+    expect(existsSync(dir)).toBe(true);
+    expect(existsSync(join(dir, "package.json"))).toBe(true);
   });
 });

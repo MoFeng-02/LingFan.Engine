@@ -13,6 +13,9 @@ import {
   layerBases,
   generateProject,
   collectDependencyNames,
+  isOccupied,
+  projectDirOf,
+  type ExistingTarget,
 } from "../generate/index.ts";
 import {
   checkEngineCompatibility,
@@ -22,6 +25,7 @@ import {
   type TemplateMeta,
 } from "../registry/index.ts";
 import {
+  askExisting,
   askOption,
   askProjectName,
   createTerminalIo,
@@ -31,11 +35,13 @@ import {
 /** 解析后的命令行参数；缺席项为 undefined，交由问答或模板缺省值补 */
 export interface CreateArgs {
   readonly projectName?: string;
+  readonly template?: string;
   readonly framework?: string;
   readonly shell?: string;
   readonly sources?: string;
   readonly dir?: string;
   readonly install: boolean;
+  readonly existing?: ExistingTarget;
   readonly yes: boolean;
   readonly help: boolean;
 }
@@ -48,14 +54,19 @@ class ArgError extends Error {}
  *
  * 支持 `--flag value` 与 `--flag=value` 两种写法：前者是手敲的习惯，
  * 后者在脚本里拼接更省事，两者都认不需要额外成本。
+ *
+ * 依赖缺省**不**安装：装依赖是几十秒到几分钟的副作用，脚本里更希望它显式请求
+ * （`--install`）。旧脚本里的 `--no-install` 仍然认，等于什么都不做。
  */
 export function parseArgs(argv: readonly string[]): CreateArgs {
   let projectName: string | undefined;
+  let template: string | undefined;
   let framework: string | undefined;
   let shell: string | undefined;
   let sources: string | undefined;
   let dir: string | undefined;
-  let install = true;
+  let install = false;
+  let existing: ExistingTarget | undefined;
   let yes = false;
   let help = false;
 
@@ -72,6 +83,9 @@ export function parseArgs(argv: readonly string[]): CreateArgs {
       return next;
     };
     switch (flag) {
+      case "--template":
+        template = takeValue();
+        break;
       case "-f":
       case "--framework":
         framework = takeValue();
@@ -88,8 +102,14 @@ export function parseArgs(argv: readonly string[]): CreateArgs {
       case "--dir":
         dir = takeValue();
         break;
+      case "--install":
+        install = true;
+        break;
       case "--no-install":
         install = false;
+        break;
+      case "--overwrite":
+        existing = "clear";
         break;
       case "-y":
       case "--yes":
@@ -107,7 +127,18 @@ export function parseArgs(argv: readonly string[]): CreateArgs {
         projectName = flag;
     }
   }
-  return { projectName, framework, shell, sources, dir, install, yes, help };
+  return {
+    projectName,
+    template,
+    framework,
+    shell,
+    sources,
+    dir,
+    install,
+    existing,
+    yes,
+    help,
+  };
 }
 
 /** 拆出 `--flag=value`；无等号时第二项为 undefined */
@@ -153,9 +184,11 @@ export async function runCreateCli(argv: readonly string[]): Promise<number> {
   try {
     const projectName = await resolveName(args, promptTexts, io);
     if (projectName === undefined) return 1;
+    const preset = resolvePreset(args.template, meta);
+    if (preset === undefined) return 1;
     const framework = await resolveOption(
       "framework",
-      args.framework,
+      args.framework ?? preset.framework,
       meta,
       promptTexts,
       io,
@@ -163,20 +196,26 @@ export async function runCreateCli(argv: readonly string[]): Promise<number> {
     if (framework === undefined) return 1;
     const shell = await resolveOption(
       "shell",
-      args.shell,
+      args.shell ?? preset.shell,
       meta,
       promptTexts,
       io,
     );
     if (shell === undefined) return 1;
-    const sources = await resolveOption(
-      "sources",
-      args.sources,
-      meta,
-      promptTexts,
+    // 故事源不再提问：骨架自带整条 TS 创作链，它就是缺省形态。要手写 `.story`
+    // 的人在命令行给 `--sources story` 或用 `--template` 带上第三段即可。
+    const sources = args.sources ?? preset.sources ?? "ts";
+    if (!meta.sources.some((option) => option.id === sources)) {
+      process.stderr.write(`${texts.sourcesUnknown}：${sources}\n`);
+      return 1;
+    }
+    const existing = await resolveExisting({
+      args,
+      projectName,
       io,
-    );
-    if (sources === undefined) return 1;
+      texts: promptTexts,
+    });
+    if (existing === undefined) return 1;
     return await generate({
       args,
       meta,
@@ -185,10 +224,79 @@ export async function runCreateCli(argv: readonly string[]): Promise<number> {
       framework,
       shell,
       sources,
+      existing,
     });
   } finally {
     io?.close();
   }
+}
+
+/**
+ * 解析 `--template`：写作 `框架[-壳[-故事源]]`。
+ *
+ * 只做切分，合法性交给调用方——它已经要按模板声明校验一遍，这里再判一次
+ * 会得到两套口径，日后加形态容易漏改其一。
+ */
+function resolvePreset(
+  template: string | undefined,
+  meta: TemplateMeta,
+): { framework?: string; shell?: string; sources?: string } | undefined {
+  if (template === undefined) return {};
+  const parts = template.split("-").filter((part) => part !== "");
+  if (parts.length === 0 || parts.length > 3) {
+    process.stderr.write(
+      `${defaultCreateTexts.templateMalformed}：${template}\n`,
+    );
+    return undefined;
+  }
+  const [framework, shell, sources] = parts;
+  const known = (options: readonly { id: string }[], id: string): boolean =>
+    options.some((option) => option.id === id);
+  if (!known(meta.frameworks, framework)) {
+    process.stderr.write(
+      `${defaultCreateTexts.frameworkUnknown}：${framework}\n`,
+    );
+    return undefined;
+  }
+  if (shell !== undefined && !known(meta.shells, shell)) {
+    process.stderr.write(`${defaultCreateTexts.shellUnknown}：${shell}\n`);
+    return undefined;
+  }
+  if (sources !== undefined && !known(meta.sources, sources)) {
+    process.stderr.write(`${defaultCreateTexts.sourcesUnknown}：${sources}\n`);
+    return undefined;
+  }
+  return { framework, shell, sources };
+}
+
+/**
+ * 决定目标目录非空时怎么处置。
+ *
+ * 缺省是取消：覆盖别人的工程无法撤销，`--yes` 也不该替人做这个决定。
+ * `--overwrite` 是显式表态，交互模式下也会问一次。
+ */
+async function resolveExisting(input: {
+  readonly args: CreateArgs;
+  readonly projectName: string;
+  readonly io: Parameters<typeof askExisting>[0] | undefined;
+  readonly texts: PromptTexts & { readonly targetExists: string };
+}): Promise<ExistingTarget | undefined> {
+  const projectDir = projectDirOf({
+    targetBase: resolvePath(input.args.dir ?? process.cwd()),
+    projectName: input.projectName,
+  });
+  if (!isOccupied(projectDir)) return "cancel";
+  if (input.args.existing !== undefined) return input.args.existing;
+  if (input.io === undefined) {
+    process.stderr.write(`${input.texts.targetExists}：${projectDir}\n`);
+    return undefined;
+  }
+  const picked = await askExisting(input.io, input.texts);
+  if (picked === "cancel") {
+    process.stderr.write(`${input.texts.targetExists}：${projectDir}\n`);
+    return undefined;
+  }
+  return picked;
 }
 
 /** 生成一步：查版本 → 写文件 → 可选安装 → 打印后续步骤 */
@@ -200,6 +308,7 @@ async function generate(input: {
   readonly framework: string;
   readonly shell: string;
   readonly sources: string;
+  readonly existing: ExistingTarget;
 }): Promise<number> {
   const texts = defaultCreateTexts;
   const targetBase = resolvePath(input.args.dir ?? process.cwd());
@@ -233,7 +342,7 @@ async function generate(input: {
   process.stderr.write(`${texts.stageCopy}\n`);
   let result;
   try {
-    result = generateProject({ ...layout, resolved });
+    result = generateProject({ ...layout, existing: input.existing, resolved });
   } catch (error) {
     process.stderr.write(`${describe(error)}\n`);
     return 1;
@@ -278,36 +387,24 @@ async function resolveName(
 }
 
 /**
- * 解析框架/壳/故事源：必须真实存在对应的叠加层，否则报错。
+ * 解析框架/壳：值必须在模板声明的表里。
  *
- * 只校验「模板声明过」而不校验「目录存在」会放过一种情况：元数据写了 `vue`
- * 但仓库里没有 `overlays/vue`，生成出来的工程静默缺少该框架的文件。
+ * 表是唯一事实来源——元数据没声明的形态，叠加层目录未必存在，放过去会生成出
+ * 静默缺文件的工程。故事源不在这里判：它只剩「作者手写 `.story`」这一种偏离，
+ * 由调用方按同一张表查一次即可。
  */
 async function resolveOption(
-  kind: "framework" | "shell" | "sources",
+  kind: "framework" | "shell",
   value: string | undefined,
   meta: TemplateMeta,
-  texts: PromptTexts & { readonly overlayMissing: string },
+  texts: PromptTexts,
   io: Parameters<typeof askOption>[0] | undefined,
 ): Promise<string | undefined> {
-  const options =
-    kind === "framework"
-      ? meta.frameworks
-      : kind === "shell"
-        ? meta.shells
-        : meta.sources;
+  const options = kind === "framework" ? meta.frameworks : meta.shells;
   const invalidText =
-    kind === "framework"
-      ? texts.frameworkUnknown
-      : kind === "shell"
-        ? texts.shellUnknown
-        : texts.sourcesUnknown;
+    kind === "framework" ? texts.frameworkUnknown : texts.shellUnknown;
   const label =
-    kind === "framework"
-      ? texts.promptFramework
-      : kind === "shell"
-        ? texts.promptShell
-        : texts.promptSources;
+    kind === "framework" ? texts.promptFramework : texts.promptShell;
   const picked =
     value !== undefined || io === undefined
       ? (value ?? options[0]?.id)

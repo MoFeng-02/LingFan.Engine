@@ -41,9 +41,9 @@ npm create @lingfan-engine my-story
 pnpm create @lingfan-engine my-story
 ```
 
-生成器会问四件事：工程名、框架、故事源形态、壳。当前框架可选「原生（框架无关）」「Vue 3」「React」，
-故事源形态可选「故事文件（`.story`）」与「TypeScript 源（`Stories.src/`）」，
-壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」。全部取缺省值（原生 + TypeScript 源 + 浏览器）可以跳过问答：
+生成器会问三件事：工程名、框架、壳。当前框架可选「原生（框架无关）」「Vue 3」「React」，
+壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」。故事源形态不是问题——骨架自带整条 TS 创作链，
+它就是缺省形态；要手写 `.story` 文件用 `--sources story` 指定。全部取缺省值（原生 + TypeScript 源 + 浏览器）可以跳过问答：
 
 ```
 npm create @lingfan-engine my-story -- --yes
@@ -51,16 +51,20 @@ npm create @lingfan-engine my-story -- --yes
 
 生成后按提示 `cd my-story && pnpm install && pnpm dev`。骨架自带编译好的故事产物，开箱即跑；
 改过 `src/Stories.src/` 之后才需要跑一次 `pnpm stories:build`（或在开发时挂 `pnpm stories:watch`）。
+生成器默认不装依赖，想一步到位加 `--install`。
 
-想不开交互问答、直接指定框架与壳：
+想不开交互问答、一次指定形态（写作 `框架[-壳[-故事源]]`）：
 
 ```
-npm create @lingfan-engine my-story -- --framework vue --shell browser
-npm create @lingfan-engine my-story -- --framework react --shell browser
-npm create @lingfan-engine my-story -- --shell miniprogram
-npm create @lingfan-engine my-story -- --framework vue --shell tauri
-npm create @lingfan-engine my-story -- --sources story
+npm create @lingfan-engine my-story -- --template vue-browser
+npm create @lingfan-engine my-story -- --template react-browser
+npm create @lingfan-engine my-story -- --template none-miniprogram
+npm create @lingfan-engine my-story -- --template vue-tauri
+npm create @lingfan-engine my-story -- --template none-browser-story
 ```
+
+也可以逐项给：`--framework vue --shell browser`、`--shell miniprogram`、`--sources story`；两者冲突时逐项参数优先。
+目标目录非空时生成器会问怎么处置（保留现有文件 / 清空 / 取消），`--overwrite` 是「清空」的非交互写法。
 
 **框架层只换页面结构与入口，`src/host/**`（装配、订阅、帧循环、输入映射）一行不改，
 样式表仍是同一份 `src/styles/stage.css`**，所以换框架不影响游玩界面的外观口径，

@@ -7,10 +7,16 @@ export {
   collectDependencyNames,
   DEFAULT_SOURCES,
   generateProject,
+  isOccupied,
   layerBases,
+  projectDirOf,
   SKELETON_DIR,
 } from "./project.ts";
-export type { GenerateOptions, GenerateResult } from "./project.ts";
+export type {
+  ExistingTarget,
+  GenerateOptions,
+  GenerateResult,
+} from "./project.ts";
 export {
   isTextPath,
   PLACEHOLDERS,

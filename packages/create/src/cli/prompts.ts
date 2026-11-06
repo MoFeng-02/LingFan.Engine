@@ -1,8 +1,11 @@
 /**
  * 交互问答。
  *
- * 生成器要问四件事：工程名、框架、壳、故事源形态。四项都能用命令行参数预先给定——CI、
- * 脚本、或「我已经知道要什么」的人不该被问答拦住，因此问答只在参数缺席时发生。
+ * 生成器要问三件事：工程名、框架、壳。故事源形态不再是问题——骨架自带整条 TS
+ * 创作链，它就是缺省形态；要手艺写的 `.story` 用 `--sources story` 指定即可。
+ *
+ * 目标目录非空时另问一次怎么处置：那是覆盖别人的东西，必须由使用者当场表态，
+ * 不能拿缺省值糊过去（缺省是取消）。
  *
  * 实现只用 `node:readline` 的 promise 版：它随 Node 自带，不引第三方交互库。
  * 提问写 stderr 而不是 stdout，产物路径之类的结果才走 stdout，这样
@@ -11,18 +14,24 @@
 import { createInterface } from "node:readline/promises";
 import { isValidProjectName, suggestProjectName } from "../shared/index.ts";
 import type { TemplateOption } from "../registry/index.ts";
+import type { ExistingTarget } from "../generate/index.ts";
 
 /** 问答需要的一份文案；由调用方从共享文案表传入，便于测试替换 */
 export interface PromptTexts {
   readonly promptProjectName: string;
   readonly promptFramework: string;
   readonly promptShell: string;
-  readonly promptSources: string;
+  readonly promptExisting: string;
   readonly nameRequired: string;
   readonly nameInvalid: string;
   readonly frameworkUnknown: string;
   readonly shellUnknown: string;
-  readonly sourcesUnknown: string;
+  readonly existingIgnore: string;
+  readonly existingIgnoreHint: string;
+  readonly existingClear: string;
+  readonly existingClearHint: string;
+  readonly existingCancel: string;
+  readonly existingCancelHint: string;
 }
 
 /** 问答依赖的输入输出面；默认接真实终端，测试可换成脚本化实现 */
@@ -91,6 +100,44 @@ export async function askOption(
     const picked = pickOption(options, answer);
     if (picked !== undefined) return picked;
     process.stderr.write(`${invalidText}\n`);
+  }
+}
+
+/**
+ * 目标目录已存在且有内容时问怎么处置。
+ *
+ * 三项的顺序是「保留 → 清空 → 取消」，但**回车取的是取消**：前面的选项会改动
+ * 磁盘上的既有文件，回车只是「没想好」，不该替使用者做破坏性决定。
+ */
+export async function askExisting(
+  io: PromptIo,
+  texts: PromptTexts,
+): Promise<ExistingTarget> {
+  const options: readonly TemplateOption[] = [
+    {
+      id: "ignore",
+      label: texts.existingIgnore,
+      hint: texts.existingIgnoreHint,
+    },
+    { id: "clear", label: texts.existingClear, hint: texts.existingClearHint },
+    {
+      id: "cancel",
+      label: texts.existingCancel,
+      hint: texts.existingCancelHint,
+    },
+  ];
+  const lines = options
+    .map((option, index) => `  ${index + 1}. ${option.label} —— ${option.hint}`)
+    .join("\n");
+  process.stderr.write(`${texts.promptExisting}：\n${lines}\n`);
+  for (;;) {
+    const answer = (
+      await io.question(`选择（1-${options.length}，回车取消）：`)
+    ).trim();
+    if (answer === "") return "cancel";
+    const picked = pickOption(options, answer);
+    if (picked !== undefined) return picked as ExistingTarget;
+    process.stderr.write(`${texts.promptExisting}：${answer}\n`);
   }
 }
 

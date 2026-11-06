@@ -14,6 +14,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
@@ -34,6 +35,14 @@ import { restoreDotfile } from "./dotfiles.ts";
 /** 骨架目录名：占位符本身，也是模板里唯一随框架无关的目录 */
 export const SKELETON_DIR = "__PROJECT__";
 
+/**
+ * 目标目录已存在且非空时的处置方式。
+ *
+ * 三种都是使用者在生成前明确选过的，不可省略成「默认覆盖」：覆盖别人的工程
+ * 无法撤销，所以缺省仍是 `cancel`。
+ */
+export type ExistingTarget = "cancel" | "ignore" | "clear";
+
 /** 生成参数 */
 export interface GenerateOptions {
   /** 模板根目录（含 `template-meta.json` 与骨架目录） */
@@ -52,6 +61,8 @@ export interface GenerateOptions {
    * 可选是为了不破坏既有调用方——只关心框架与壳的代码不必为一个用不到的参数改签名。
    */
   readonly sources?: string;
+  /** 目标目录非空时怎么办；缺省 `cancel`（报错退出，不碰磁盘） */
+  readonly existing?: ExistingTarget;
   /** 引擎包的最新版本；缺席项沿用模板记录的值 */
   readonly resolved: ReadonlyMap<string, string>;
 }
@@ -81,14 +92,23 @@ export const DEFAULT_SOURCES = "ts";
 /**
  * 生成一个工程。
  *
- * 只会新建目录：目标已存在且非空时抛错，不做覆盖也不做增量合并——覆盖别人的工程
- * 无法撤销，宁可让使用者先自己删。
+ * 目标目录已存在且非空时按 `options.existing` 处置，缺省 `cancel`——覆盖别人的工程
+ * 无法撤销，所以静默覆盖不是可选项，必须由使用者先表态（见 `ExistingTarget`）。
  */
 export function generateProject(options: GenerateOptions): GenerateResult {
   const meta = readTemplateMeta(options.templateRoot);
-  const projectDir = join(options.targetBase, options.projectName);
-  if (isOccupied(projectDir)) {
+  const projectDir = projectDirOf(options);
+  const occupied = isOccupied(projectDir);
+  const existing = options.existing ?? "cancel";
+  if (occupied && existing === "cancel") {
     throw new Error(`目标目录已存在且非空：${projectDir}`);
+  }
+  if (occupied && existing === "clear") {
+    // 清空的是「目录里的内容」而不是目录本身：调用方可能已经把 shell 的 cwd
+    // 放在里面，删掉目录本身会让它指向一个不存在的 inode。
+    for (const entry of readdirSync(projectDir)) {
+      rmSync(join(projectDir, entry), { recursive: true, force: true });
+    }
   }
   const merged = mergeLayers(layerBases(options));
   const files = finalize(
@@ -140,8 +160,15 @@ export function layerBases(options: GenerateOptions): string[] {
   return bases;
 }
 
+/** 产物目录：`<targetBase>/<projectName>`；单独抽出来供 CLI 在写盘前提示用 */
+export function projectDirOf(
+  options: Pick<GenerateOptions, "targetBase" | "projectName">,
+): string {
+  return join(options.targetBase, options.projectName);
+}
+
 /** 目标目录是否已被占用：存在且含有内容即算占用，空目录可以复用 */
-function isOccupied(dir: string): boolean {
+export function isOccupied(dir: string): boolean {
   if (!existsSync(dir)) return false;
   return readdirSync(dir).length > 0;
 }
