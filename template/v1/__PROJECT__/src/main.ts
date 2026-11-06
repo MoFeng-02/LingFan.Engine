@@ -3,8 +3,8 @@
  *
  * 本宿主**不依赖任何 UI 框架**——这是「引擎框架无关」的活证明：渲染直接操作 DOM，
  * 换成 Vue / React / 其他只改本文件与 index.html，引擎与适配器零改动。
- * 形态：**纯 Web**（vite 静态根 `Resources/`）——Tauri 壳的装配（invoke / 资源加密 /
- * 方向锁定 / 宿主信息 / 热重载）见引擎仓库 `apps/playground` 的组合根。
+ * 页面结构与这里的节点解析始终成对：桌面壳只补 `src-tauri/`，不自带组合根，
+ * 故 `-f` 选什么框架都不影响「`must` 与 index.html 同源」这条前提。
  *
  * 本文件只做三件事，实现都在 `host/` 里：
  *   1. 解析页面节点（`must` 调用点集中在此，与 index.html 的 id 互锁一眼可见）；
@@ -23,6 +23,7 @@ import { MANIFEST_FILE } from "@lingfan-engine/core";
 import { DEFAULT_TEXT_CPS, DEFAULT_TOAST_MS } from "@lingfan-engine/ui";
 import {
   bootHost,
+  createNativePorts,
   must,
   optional,
   reportBootFailure,
@@ -69,6 +70,8 @@ void bootHost({
   stories: STORIES,
   defaultCps: DEFAULT_TEXT_CPS,
   toastDurationMs: DEFAULT_TOAST_MS,
+  // 桌面壳里换成原生存档端口；浏览器里返回 undefined，端口走 Web 缺省实现
+  ports: createNativePorts(),
   // 偏好面板槽位：页面给了就装（`optional` 已消化「这层不给」的情况）
   prefsContainer: dom.prefs,
   // 历史面板槽位：给了就有「历史」按钮与回溯（点一条即回到那个检查点）

@@ -20,7 +20,6 @@ import wiringSource from "../../template/v1/__PROJECT__/src/host/engine-wiring.t
 import skeletonMain from "../../template/v1/__PROJECT__/src/main.ts?raw";
 import vueMain from "../../template/v1/overlays/vue/src/main.ts?raw";
 import reactMain from "../../template/v1/overlays/react/src/main.tsx?raw";
-import tauriMain from "../../template/v1/overlays/tauri/src/main.ts?raw";
 import skeletonHtml from "../../template/v1/__PROJECT__/index.html?raw";
 
 /** 各形态的组合根（含骨架）：每份都得把 history 槽位递进宿主 */
@@ -28,7 +27,6 @@ const COMPOSITION_ROOTS: ReadonlyArray<readonly [string, string]> = [
   ["骨架 src/main.ts", skeletonMain],
   ["vue 叠加层", vueMain],
   ["react 叠加层", reactMain],
-  ["tauri 叠加层", tauriMain],
 ];
 
 describe("模板历史面板接线 · 装配层（源码互锁）", () => {
@@ -82,7 +80,7 @@ describe("模板历史面板接线 · 装配层（源码互锁）", () => {
 });
 
 describe("模板历史面板接线 · 组合根与页面结构", () => {
-  it("**四处组合根都把 history 槽位递进宿主**（漏一处 = 那个形态没有历史面板）", () => {
+  it("**三条组合根都把 history 槽位递进宿主**（漏一处 = 那个形态没有历史面板）", () => {
     for (const [label, source] of COMPOSITION_ROOTS) {
       expect(source, `${label}: 缺 historyContainer`).toContain(
         "historyContainer: dom.history",

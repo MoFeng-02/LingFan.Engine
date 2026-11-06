@@ -17,7 +17,8 @@
     "@lingfan-engine/core": "^0.3.2",
     "@lingfan-engine/shell": "^0.3.2",
     "@lingfan-engine/stories-build": "^0.3.2",
-    "@lingfan-engine/ui": "^0.3.2"
+    "@lingfan-engine/ui": "^0.3.2",
+    "@tauri-apps/api": "^2"
   },
   "devDependencies": {
     "@lingfan-engine/editor": "^0.3.2",

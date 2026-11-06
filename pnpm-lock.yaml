@@ -30,6 +30,9 @@ importers:
       '@lingfan-engine/ui':
         specifier: workspace:*
         version: link:packages/ui
+      '@tauri-apps/api':
+        specifier: ^2.12.1
+        version: 2.12.1
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.3

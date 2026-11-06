@@ -1,15 +1,15 @@
 # 桌面壳层（Tauri 2）
 
 这一层是**壳**，不是框架层：页面结构沿用骨架那一份，`index.html` 与 `vite.config.ts` 原样保留。
-加进来的只有工程根下的 `src-tauri/`、一份清单补丁，以及本层自己的组合根 `src/main.ts`——
-它覆盖骨架的同名文件，只把存档端口换成 Rust 实现。
+加进来的只有工程根下的 `src-tauri/` 和一份清单补丁——**不带组合根**：入口与页面结构
+永远归属框架层，否则 `-f vue` / `-f react` 时壳层的节点解析会与框架层渲染的页面错配。
+桥的装配在骨架 `src/host/native-ports.ts`，由各形态的组合根统一调用。
 
 ## 内容
 
 - `src-tauri/Cargo.toml`、`build.rs`、`tauri.conf.json`、`capabilities/default.json`
 - `src-tauri/src/`：`main.rs`（转发到库入口）、`lib.rs`（装配与命令注册）、`save.rs`、`preferences.rs`
-- `src/main.ts`：覆盖骨架的组合根，`ports.saves` 换成 `createTauriSavePort()`
-- `package.patch.json`：补 `@tauri-apps/api`（运行时）与 `@tauri-apps/cli`（命令行），加 `tauri` 脚本
+- `package.patch.json`：补 `@tauri-apps/cli`（命令行）与 `tauri` 脚本
 
 窗口 1280×720，标题取工程名；`frontendDist` 指向 `../dist`，开发期 `devUrl` 指向
 `http://localhost:1420`（与骨架 `vite.config.ts` 的 `server.port` 一致），所以 `beforeDevCommand`
@@ -45,7 +45,8 @@
 
 资源加密、媒体 HTTP 服务、zip 索引、工程写回、开发期 WS——这些在参考宿主里有实现，
 本层不带。要加密或媒体服务的工程自己加：能力以端口 + 适配器成对出现，
-壳层只负责把端口接到原生侧（插口是骨架的 `src/ports.ts` 与 `bootHost` 的 `ports` 选项）。
+壳层只负责把端口接到原生侧（插口是 `bootHost` 的 `ports` 选项，
+现有的原生存档端口见骨架 `src/host/native-ports.ts`）。
 
 ## 怎么用
 

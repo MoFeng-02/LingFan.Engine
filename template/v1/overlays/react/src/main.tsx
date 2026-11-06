@@ -15,6 +15,7 @@ import { MANIFEST_FILE } from "@lingfan-engine/core";
 import { DEFAULT_TEXT_CPS, DEFAULT_TOAST_MS } from "@lingfan-engine/ui";
 import {
   bootHost,
+  createNativePorts,
   must,
   optional,
   reportBootFailure,
@@ -92,6 +93,8 @@ if (dom !== undefined) {
     stories: STORIES,
     defaultCps: DEFAULT_TEXT_CPS,
     toastDurationMs: DEFAULT_TOAST_MS,
+    // 桌面壳里换成原生存档端口；浏览器里返回 undefined，端口走 Web 缺省实现
+    ports: createNativePorts(),
     historyContainer: dom.history,
     prefsContainer: dom.prefs,
     // UI 挂载落法由 React 接管：`#mounts` 的子节点归 `UiHost` 渲染，

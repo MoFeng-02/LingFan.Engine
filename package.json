@@ -30,6 +30,7 @@
     "@lingfan-engine/shell": "workspace:*",
     "@lingfan-engine/stories-build": "workspace:*",
     "@lingfan-engine/ui": "workspace:*",
+    "@tauri-apps/api": "^2.12.1",
     "@types/node": "^26.6.3",
     "@vue/eslint-config-typescript": "^14.9.0",
     "eslint": "^10.11.0",

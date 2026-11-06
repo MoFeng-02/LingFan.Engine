@@ -22,7 +22,6 @@ import handleSource from "../../template/v1/__PROJECT__/src/host/index.ts?raw";
 import skeletonMain from "../../template/v1/__PROJECT__/src/main.ts?raw";
 import vueMain from "../../template/v1/overlays/vue/src/main.ts?raw";
 import reactMain from "../../template/v1/overlays/react/src/main.tsx?raw";
-import tauriMain from "../../template/v1/overlays/tauri/src/main.ts?raw";
 
 /**
  * 截出源码里的一段块：从 `open` 起，到其后第一处顶格的 `}` 所在行**整行**止。
@@ -179,15 +178,14 @@ describe("宿主句柄 · 拆除顺序与幂等", () => {
 });
 
 describe("向后兼容 · 既有组合根一行不改", () => {
-  /** 四个组合根：骨架 + 三个叠加层（小程序壳不调 `bootHost`，另算） */
+  /** 三个组合根：骨架 + 两个框架叠加层（壳层不带组合根，小程序壳不调 `bootHost`） */
   const CALL_SITES = [
     ["骨架", skeletonMain, "void bootHost({"],
     ["vue", vueMain, "void bootHost({"],
     ["react", reactMain, "void bootHost({"],
-    ["tauri", tauriMain, "await bootHost({"],
   ] as const;
 
-  it("四处调用形态原样保留（`void` 三处 + `await` 一处）", () => {
+  it("调用形态原样保留（一律 `void`，不接返回值）", () => {
     for (const [name, source, call] of CALL_SITES) {
       expect(source, name).toContain(call);
     }
@@ -214,11 +212,6 @@ describe("向后兼容 · 既有组合根一行不改", () => {
       expect(source, name).toContain("reportBootFailure(dom, error)");
       expect(source, name).toContain(".catch((error: unknown) => {");
     }
-  });
-
-  it("`tauri` 的 `await` 在 `Promise<void>` 的 `boot()` 里（返回句柄不改变它）", () => {
-    expect(tauriMain).toContain("async function boot(): Promise<void>");
-    expect(tauriMain).toContain("await bootHost({");
   });
 
   it("组合根仍走 `./host` 出口取 `bootHost`（不深入 `host/boot`）", () => {

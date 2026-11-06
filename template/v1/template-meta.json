@@ -1,5 +1,5 @@
 {
-  "version": "1.9.0",
+  "version": "1.10.0",
   "minEngineVersion": "0.3.2",
   "placeholder": "__PROJECT__",
   "frameworks": [
@@ -33,7 +33,7 @@
     {
       "id": "tauri",
       "label": "桌面（Tauri 2）",
-      "hint": "给浏览器形态再加一个桌面壳：存档落到应用数据目录，其余不变"
+      "hint": "给同一份工程再加一个桌面壳：存档落到应用数据目录，页面结构不变"
     }
   ],
   "sources": [

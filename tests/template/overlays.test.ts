@@ -257,7 +257,29 @@ describe("模板叠加层：外围层只换端口与素材，不重画页面", (
     }
   });
 
-  it("桌面壳的清单补丁声明了运行时与命令行依赖", () => {
+  it("**外围壳层不自带组合根**：入口与页面结构永远归属框架层", () => {
+    // 壳层自带组合根时，它覆盖的是框架层的同名文件：`-f vue` / `-f react` 的
+    // index.html 只有 #app，而壳层组合根按骨架的 15 个节点取——启动当场抛。
+    // 桥的装配下沉到骨架的 src/host/，由各形态组合根统一调用。
+    for (const optionId of DESKTOP_SHELL_OPTIONS) {
+      const entries = overlayFiles(optionId)
+        .map(([path]) => path)
+        .filter((path) => ENTRY_NAMES.some((name) => path === name));
+      expect(entries, `${optionId} 层不应自带组合根`).toEqual([]);
+    }
+  });
+
+  it("桌面壳的清单补丁只声明命令行依赖，运行时依赖在骨架（各形态都装）", () => {
+    // `@tauri-apps/api` 的模块名出现在骨架的 `src/host/`（原生端口装配），
+    // 而骨架每个形态都要能独立装起来 —— 所以它必须声明在骨架清单里，
+    // 不能挂在壳层增量上（否则 `-s browser` 的工程 typecheck 就找不到模块）。
+    const skeletonPkg = JSON.parse(skeletonManifest) as {
+      dependencies?: Record<string, string>;
+    };
+    expect(
+      skeletonPkg.dependencies?.["@tauri-apps/api"],
+      "骨架清单缺 @tauri-apps/api（原生端口装配要用）",
+    ).toBeDefined();
     for (const optionId of DESKTOP_SHELL_OPTIONS) {
       const hit = overlayFiles(optionId).find(([path]) =>
         path.endsWith("/package.patch.json"),
@@ -267,10 +289,6 @@ describe("模板叠加层：外围层只换端口与素材，不重画页面", (
         dependencies?: Record<string, string>;
         devDependencies?: Record<string, string>;
       };
-      expect(
-        patch.dependencies?.["@tauri-apps/api"],
-        `${optionId} 层缺运行时依赖`,
-      ).toBeDefined();
       expect(
         patch.devDependencies?.["@tauri-apps/cli"],
         `${optionId} 层缺命令行依赖`,

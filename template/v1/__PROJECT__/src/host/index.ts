@@ -39,6 +39,7 @@ export {
   type NativeUiTable,
 } from "./mount/index";
 export { wireEngine, type HostWiringOptions } from "./engine-wiring";
+export { createNativePorts, isTauriHosted } from "./native-ports";
 export { startHostFrameLoop, type HostFrameLoopOptions } from "./frame-loop";
 export { wireInput, type HostInputOptions } from "./input-map";
 export {

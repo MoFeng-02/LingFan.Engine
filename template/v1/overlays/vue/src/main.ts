@@ -13,6 +13,7 @@ import { MANIFEST_FILE } from "@lingfan-engine/core";
 import { DEFAULT_TEXT_CPS, DEFAULT_TOAST_MS } from "@lingfan-engine/ui";
 import {
   bootHost,
+  createNativePorts,
   must,
   optional,
   reportBootFailure,
@@ -76,6 +77,8 @@ if (dom !== undefined) {
     stories: STORIES,
     defaultCps: DEFAULT_TEXT_CPS,
     toastDurationMs: DEFAULT_TOAST_MS,
+    // 桌面壳里换成原生存档端口；浏览器里返回 undefined，端口走 Web 缺省实现
+    ports: createNativePorts(),
     prefsContainer: dom.prefs,
     // 历史面板槽位：给了就有「历史」按钮与回溯
     historyContainer: dom.history,
