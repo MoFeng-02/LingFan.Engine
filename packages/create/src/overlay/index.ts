@@ -3,6 +3,7 @@ export {
   deepMerge,
   listFiles,
   mergeLayers,
+  pinnedNames,
   readLayer,
   PATCH_SUFFIX,
   type MergedLayer,

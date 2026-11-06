@@ -132,10 +132,33 @@ function isRemoved(path: string, removes: readonly string[]): boolean {
   );
 }
 
-/** 合并结果：文件表（后写覆盖先写）+ 合并后的工程清单增量 */
+/** 合并结果：文件表（后写覆盖先写）+ 合并后的工程清单增量 + 各层钉住的依赖名并集 */
 export interface MergedLayer {
   readonly files: readonly PendingFile[];
   readonly patch: Readonly<Record<string, unknown>> | undefined;
+  readonly pinned: readonly string[];
+}
+
+/**
+ * 读本层 `create.pinned` 点名的依赖名。
+ *
+ * 与 `removeList` 同理，必须**每层各读一次**：`pinned` 是数组，深合并时由后者整体
+ * 取代，两层各钉各的包，合并后只剩最后一层的名单——`vue` 钉了 `typescript`、
+ * `tauri` 钉了 `@tauri-apps/*`，后者在后就把前者的钉法抹掉，于是 `vue-tsc` 拿到
+ * 了它不兼容的 typescript 大版本，`typecheck` 直接崩。
+ *
+ * 与 `remove` 不同的是，钉住是**累加声明**（每个层都在说「这几个包别跟最新」），
+ * 所以合并语义是并集而不是逐层施加的动作。
+ */
+export function pinnedNames(
+  patch: Readonly<Record<string, unknown>> | undefined,
+): readonly string[] {
+  if (patch === undefined) return [];
+  const section = patch[CREATE_FIELD];
+  if (!isPlainObject(section)) return [];
+  const raw = section.pinned;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((item): item is string => typeof item === "string");
 }
 
 /**
@@ -149,6 +172,7 @@ export function mergeLayers(bases: readonly string[]): MergedLayer {
   const byPath = new Map<string, PendingFile>();
   let patch: Record<string, unknown> = {};
   let hasPatch = false;
+  const pinned = new Set<string>();
   for (const base of bases) {
     if (!existsSync(base)) continue;
     const layer = readLayer(base);
@@ -158,6 +182,7 @@ export function mergeLayers(bases: readonly string[]): MergedLayer {
       }
     }
     for (const file of layer.files) byPath.set(file.path, file);
+    for (const name of pinnedNames(layer.patch)) pinned.add(name);
     if (layer.patch) {
       patch = deepMerge(patch, layer.patch);
       hasPatch = true;
@@ -166,6 +191,7 @@ export function mergeLayers(bases: readonly string[]): MergedLayer {
   return {
     files: [...byPath.values()],
     patch: hasPatch ? patch : undefined,
+    pinned: [...pinned],
   };
 }
 

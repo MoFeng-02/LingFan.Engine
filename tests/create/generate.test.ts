@@ -23,8 +23,11 @@ import {
   collectDependencyNames,
   generateProject,
   layerBases,
-  pinnedNames,
 } from "../../packages/create/src/generate/project.ts";
+import {
+  mergeLayers,
+  pinnedNames,
+} from "../../packages/create/src/overlay/merge.ts";
 import { finalize } from "../../packages/create/src/generate/project.ts";
 import { restoreDotfile } from "../../packages/create/src/generate/dotfiles.ts";
 import {
@@ -252,6 +255,7 @@ describe("产物字节", () => {
     const finalized = finalize(
       [],
       undefined,
+      [],
       new Map(),
       "__PROJECT__",
       "story",
@@ -309,6 +313,57 @@ describe("钉住的依赖", () => {
     expect(pinnedNames(undefined)).toEqual([]);
     expect(pinnedNames({ dependencies: { vue: "^3" } })).toEqual([]);
     expect(pinnedNames({ create: { pinned: "vite" } })).toEqual([]);
+  });
+
+  it("多个叠加层各钉各的，并集全部生效", () => {
+    // 钉住是「累加声明」不是「覆盖声明」：每个叠加层只知道自己关心的那几个包，
+    // 框架层钉 typescript、壳层钉自己的工具链，两者必须同时生效。若按深合并
+    // 取后一层，先声明的钉法会被静默抹掉——上游兼容性约束丢了却没有任何报错。
+    const root = makeTemplate("pinned-union");
+    writeFileSync(
+      join(root, "overlays/vue/package.patch.json"),
+      JSON.stringify({
+        dependencies: { vue: "^3.5.0" },
+        create: { pinned: ["vite"] },
+      }),
+    );
+    writeFileSync(
+      join(root, "overlays/browser/package.patch.json"),
+      JSON.stringify({
+        create: { pinned: ["@lingfan-engine/core"] },
+      }),
+    );
+    const bases = layerBases({
+      templateRoot: root,
+      targetBase: BASE,
+      projectName: "story",
+      framework: "vue",
+      shell: "browser",
+      resolved: new Map<string, string>(),
+    });
+    expect(mergeLayers(bases).pinned).toEqual(["vite", "@lingfan-engine/core"]);
+    const result = generateProject({
+      templateRoot: root,
+      targetBase: BASE,
+      projectName: "story",
+      framework: "vue",
+      shell: "browser",
+      resolved: new Map<string, string>([
+        ["vue", "3.9.0"],
+        ["vite", "9.0.0"],
+        ["@lingfan-engine/core", "9.0.0"],
+      ]),
+    });
+    const manifest = JSON.parse(
+      readFileSync(join(result.projectDir, "package.json"), "utf8"),
+    ) as {
+      dependencies: Record<string, string>;
+      devDependencies: Record<string, string>;
+    };
+    // 两层各自钉住的包都保留模板区间，未被钉的照常解析到最新
+    expect(manifest.devDependencies.vite).toBe("^8.0.0");
+    expect(manifest.dependencies["@lingfan-engine/core"]).toBe("^0.1.0");
+    expect(manifest.dependencies.vue).toBe("^3.9.0");
   });
 });
 

@@ -94,6 +94,7 @@ export function generateProject(options: GenerateOptions): GenerateResult {
   const files = finalize(
     merged.files,
     merged.patch,
+    merged.pinned,
     options.resolved,
     meta.placeholder,
     options.projectName,
@@ -181,10 +182,14 @@ export function collectDependencyNames(bases: readonly string[]): string[] {
  *
  * 点文件还原必须在这里发生：模板里存的是躲开 npm 改名的普通名（见 `dotfiles.ts`），
  * 产物路径要写回带点的形态，占位符替换才按产物路径判文本/二进制。
+ *
+ * `pinned` 由合并层给出而不是在这里从 `patch` 里再读一次：`pinned` 是数组，
+ * 深合并后只剩最后一层的名单，必须用逐层取并集的结果（见 `overlay` 域）。
  */
 export function finalize(
   files: readonly PendingFile[],
   patch: Readonly<Record<string, unknown>> | undefined,
+  pinned: readonly string[],
   resolved: ReadonlyMap<string, string>,
   placeholder: string,
   projectName: string,
@@ -193,7 +198,7 @@ export function finalize(
     const path = restoreDotfile(file.path);
     const content =
       file.path === "package.json"
-        ? renderManifest(file.content, patch, resolved)
+        ? renderManifest(file.content, patch, pinned, resolved)
         : file.content;
     return {
       path,
@@ -212,6 +217,7 @@ export function finalize(
 function renderManifest(
   content: Buffer,
   patch: Readonly<Record<string, unknown>> | undefined,
+  pinned: readonly string[],
   resolved: ReadonlyMap<string, string>,
 ): Buffer {
   const manifest = JSON.parse(content.toString("utf8")) as Record<
@@ -222,13 +228,13 @@ function renderManifest(
     patch === undefined ? manifest : mergeManifest(manifest, patch);
   applyUnset(withPatch, patch);
   delete withPatch[CREATE_FIELD];
-  const pinned = new Set(pinnedNames(patch));
+  const pinnedSet = new Set(pinned);
   for (const field of ["dependencies", "devDependencies"] as const) {
     const table = withPatch[field];
     if (isStringMap(table)) {
       withPatch[field] = applyResolvedVersions(
         table,
-        withoutNames(resolved, pinned),
+        withoutNames(resolved, pinnedSet),
       );
     }
   }
@@ -282,8 +288,7 @@ const CREATE_FIELD = "create";
  *
  * 形状与 `create.remove` 并列：外层是 `package.json` 的字段名，内层是要去掉的键名。
  * 缺省项不必写它——缺省形态什么都不叠，本来就没有要减的东西。
- */
-function applyUnset(
+ */ function applyUnset(
   manifest: Record<string, unknown>,
   patch: Readonly<Record<string, unknown>> | undefined,
 ): void {
@@ -302,24 +307,6 @@ function applyUnset(
     }
     manifest[field] = next;
   }
-}
-
-/**
- * 读叠加层声明的「不要跟最新版」的依赖名。
- *
- * 存在的理由：模板希望依赖尽量新，但上游并非都兼容——`vue-tsc` 在 `typescript` 7 上
- * 会因 `./lib/tsc` 不再导出而直接崩，这类约束只有模板作者知道。钉住的包保留模板
- * 记录的版本区间，其余照常解析到最新。
- */
-export function pinnedNames(
-  patch: Readonly<Record<string, unknown>> | undefined,
-): string[] {
-  if (patch === undefined) return [];
-  const section = patch[CREATE_FIELD];
-  if (!isPlainRecord(section)) return [];
-  const pinned = section.pinned;
-  if (!Array.isArray(pinned)) return [];
-  return pinned.filter((item): item is string => typeof item === "string");
 }
 
 /** 只认普通对象：数组与 null 不算 */
