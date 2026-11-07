@@ -30,7 +30,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SECTIONS = [
   {
     title: "新增",
-    types: ["feat", "新增"],
+    types: ["feat", "新增", "功能"],
   },
   {
     title: "优化",
@@ -75,13 +75,27 @@ const MARKDOWN_SECTION_PATTERN = /^\s*#{1,6}\s+(.+?)\s*[:：]?\s*$/;
 /**
  * 正文里的自定分节标题：短、以冒号收尾，如 `重构：`。
  *
- * 限长是为了把标题与普通句子分开——正文里的说明常以句号收尾且远超这个长度，不会被误认。
- * 认出来但不在四节之内的标题落到「其他变更」，比整段正文被丢掉更接近事实。
+ * 只在一行独占一块、且下一块是列表时才认：正文里常有「两件用户反馈一起收：」这种
+ * 引导句，长得和标题一样，后面接的却是段落；认成标题会把整段落挪进别的节。
  */
 const COLON_SECTION_PATTERN = /^\s*([^\s:：#][^:：]{0,11})[:：]\s*$/;
 
 /** 正文里的列表条目 */
 const BODY_BULLET_PATTERN = /^\s*[-*]\s+(.*)$/;
+
+/** 空行：正文按它切成块，一块是一段，或一次「引导句 + 列表」 */
+const BLANK_LINE_PATTERN = /^\s*$/;
+
+/** 以冒号收尾的一段：它是引导句，内容在下一块的列表里 */
+const LEAD_IN_PATTERN = /[:：]\s*$/;
+
+/**
+ * 过程记录的开头词：`验证：`、`门禁：`、`回归：` 起头的段落写的是怎么验的。
+ *
+ * 发布说明记的是「改了什么、为什么改、对使用者有什么影响」；跑过多少文件多少例、
+ * 哪条门禁归零属于过程，读的人拿去也用不上。这类段落不进说明，提交正文里照旧留着。
+ */
+const PROCESS_NOTE_PATTERN = /^\s*(验证|门禁|测试|回归|自检|校验)\s*[:：]/;
 
 /** 一条提交在 git 输出里的字段分隔符与记录分隔符 */
 const FIELD_SEPARATOR = "\u001f";
@@ -150,12 +164,13 @@ export function parseSubject(subject) {
 /**
  * 把提交正文拆成「分节 → 条目」。
  *
- * 分节标题之下，列表条目各成一条，正文段落也各成一条；没有分节标题的正文全部落在空串
- * 这个键下，由调用方决定归到哪一节。正文常见的三种形态——分节加列表、只有列表、只有
- * 段落——都能取出条目，不会因为少写一个小圆点就整段丢掉。
+ * 一块是一条：正文按空行切块，一块要么是一段话，要么是「引导句 + 列表」，要么是
+ * 「分节标题 + 列表」。按行切会把一段折行的说明拆成好几条，读的人会以为那是几处改动。
  *
- * 条目常按 80 列折行，紧跟其后的普通行属于上一条，需要接回去。接缝处补一个空格的条件是
+ * 条目常按 80 列折行，块内的续行属于上一条，需要接回去。接缝处补一个空格的条件是
  * 「两侧任一以 ASCII 词字符结尾或开头」，中文之间不补——中文不需要空格分词，补了反而断开。
+ *
+ * 没有分节标题的正文全部落在空串这个键下，由调用方决定归到哪一节。
  */
 export function parseBodySections(body) {
   const sections = new Map();
@@ -166,45 +181,103 @@ export function parseBodySections(body) {
     return sections.get(key);
   };
 
+  const blocks = bodyBlocks(body);
   let current = "";
-  let hasItem = false;
-  let afterBlank = true;
-  for (const line of body.split("\n")) {
-    const heading = sectionHeading(line);
+  for (let index = 0; index < blocks.length; index += 1) {
+    const block = blocks[index];
+    const heading = headingOf(block, blocks[index + 1]);
     if (heading !== undefined) {
       current = heading;
-      itemsOf(current);
-      hasItem = false;
-      afterBlank = true;
-      continue;
-    }
-    if (line.trim() === "") {
-      afterBlank = true;
+      const rest = block.slice(1);
+      itemsOf(current).push(...blockItems(rest));
       continue;
     }
 
-    const items = itemsOf(current);
+    // 过程记录讲的是怎么验的，不是改了什么。发布说明里用不上，提交正文照旧留着。
+    if (PROCESS_NOTE_PATTERN.test(block[0])) continue;
+
+    const items = blockItems(block);
+
+    // 引导句独占一块、列表在下一块：合成一条，别让引导句自己成条。
+    const next = blocks[index + 1];
+    if (
+      items.length === 1 &&
+      LEAD_IN_PATTERN.test(items[0]) &&
+      isBulletBlock(next)
+    ) {
+      const sub = blockItems(next);
+      itemsOf(current).push(`${items[0]}${sub[0]}`, ...sub.slice(1));
+      index += 1;
+      continue;
+    }
+
+    itemsOf(current).push(...items);
+  }
+
+  // 只有标题没有内容的节不留：留着会让调用方以为这条提交有正文。
+  for (const [key, items] of sections) {
+    if (items.length === 0) sections.delete(key);
+  }
+  return sections;
+}
+
+/**
+ * 一块 → 条目：小圆点各起一条，缩进续行接回上一条；块首无小圆点的文字是引导句，
+ * 与首条合并（`同时对齐 create-vite 的创建体验：` + 第一个小圆点）。
+ */
+function blockItems(block) {
+  const items = [];
+  let lead = "";
+  for (const line of block) {
     const bullet = BODY_BULLET_PATTERN.exec(line);
     if (bullet !== null) {
       items.push(bullet[1].trim());
-      hasItem = true;
-      afterBlank = false;
       continue;
     }
-
     const text = line.trim();
-    if (!hasItem || afterBlank) {
-      items.push(text);
-      hasItem = true;
-      afterBlank = false;
+    if (items.length > 0)
+      items[items.length - 1] = joinLine(items[items.length - 1], text);
+    else lead = joinLine(lead, text);
+  }
+  if (lead !== "") {
+    if (items.length > 0) items[0] = `${lead}${items[0]}`;
+    else items.push(lead);
+  }
+  return items;
+}
+
+/** 空行切块：相邻的非空行属于同一块 */
+function bodyBlocks(body) {
+  const blocks = [];
+  let lines = [];
+  for (const line of body.split("\n")) {
+    if (BLANK_LINE_PATTERN.test(line)) {
+      if (lines.length > 0) {
+        blocks.push(lines);
+        lines = [];
+      }
       continue;
     }
-
-    const previous = items[items.length - 1];
-    const glue = /[\w`]$/.test(previous) || /^[\w`]/.test(text) ? " " : "";
-    items[items.length - 1] = `${previous}${glue}${text}`;
+    lines.push(line);
   }
-  return sections;
+  if (lines.length > 0) blocks.push(lines);
+  return blocks;
+}
+
+/** 块首是小圆点：整块是一次列表 */
+function isBulletBlock(block) {
+  return block !== undefined && block.length > 0 && isBulletLine(block[0]);
+}
+
+function isBulletLine(line) {
+  return BODY_BULLET_PATTERN.test(line);
+}
+
+/** 接续一行：只在需要分词时才补空格 */
+function joinLine(previous, text) {
+  if (previous === "") return text;
+  const glue = /[\w`]$/.test(previous) || /^[\w`]/.test(text) ? " " : "";
+  return `${previous}${glue}${text}`;
 }
 
 /**
@@ -212,25 +285,34 @@ export function parseBodySections(body) {
  *
  * 三种写法都认：裸标题（`修复`）、markdown 标题（`### 优化`）、自定标题（`重构：`）。
  * 自定的名字原样返回，由调用方决定它落到哪一节——认出来总比当成正文段落吞掉好。
+ *
+ * 冒号短句要看清后面跟的是什么：接列表才是标题，接段落就只是一句话的开头。
  */
-function sectionHeading(line) {
-  const bare = BARE_SECTION_PATTERN.exec(line);
+function headingOf(block, next) {
+  if (block === undefined || block.length === 0) return undefined;
+
+  const first = block[0];
+  const markdown = MARKDOWN_SECTION_PATTERN.exec(first);
+  if (markdown !== null) return normalizeTitle(markdown[1]);
+
+  const bare = BARE_SECTION_PATTERN.exec(first);
   if (bare !== null) return bare[1];
 
-  const markdown = MARKDOWN_SECTION_PATTERN.exec(line);
-  if (markdown !== null) {
-    const title = markdown[1].trim();
-    const known = BARE_SECTION_PATTERN.exec(title);
-    return known === null ? title : known[1];
-  }
-
-  const colon = COLON_SECTION_PATTERN.exec(line);
+  const colon = COLON_SECTION_PATTERN.exec(first);
   if (colon !== null) {
-    const title = colon[1].trim();
-    const known = BARE_SECTION_PATTERN.exec(title);
-    return known === null ? title : known[1];
+    const rest = block.slice(1);
+    const followedByList =
+      rest.length > 0 ? rest.every(isBulletLine) : isBulletBlock(next);
+    if (followedByList) return normalizeTitle(colon[1]);
   }
   return undefined;
+}
+
+/** 自定标题里若是四节之一，归一成四节的写法 */
+function normalizeTitle(raw) {
+  const title = raw.trim();
+  const known = BARE_SECTION_PATTERN.exec(title);
+  return known === null ? title : known[1];
 }
 
 /** 提交类型落在哪一节；未登记的类型归入最后一节 */

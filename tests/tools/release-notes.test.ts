@@ -104,6 +104,7 @@ describe("提交类型归节", () => {
 
   it("中文类型与英文类型同等对待", () => {
     expect(sectionOf("新增")).toBe("新增");
+    expect(sectionOf("功能")).toBe("新增");
     expect(sectionOf("重构")).toBe("优化");
     expect(sectionOf("测试")).toBe("优化");
     expect(sectionOf("构建")).toBe("优化");
@@ -225,6 +226,75 @@ describe("提交正文拆节", () => {
   it("空正文返回空表", () => {
     expect(parseBodySections("").size).toBe(0);
     expect(parseBodySections("   \n\n  ").size).toBe(0);
+  });
+
+  // 没有分节标题的正文最常见。按行切会让一整段折行的说明裂成好几条，读者会以为那是几处
+  // 独立的改动；一条改动被拆成三行半句，比漏写更误导人。块与块之间才是条目边界。
+  it("无分节标题的正文按段成条，一段只出一条", () => {
+    const body = [
+      "第一段说明为什么改，折行后",
+      "继续写在同一段里。",
+      "",
+      "第二段是另一处改动。",
+    ].join("\n");
+    expect(parseBodySections(body).get("")).toEqual([
+      "第一段说明为什么改，折行后继续写在同一段里。",
+      "第二段是另一处改动。",
+    ]);
+  });
+
+  // 验证数字、门禁结果讲的是怎么验的，不是改了什么。发布说明写读者关心的事，
+  // 过程记录留在提交正文里给复盘的人看。
+  it("过程记录整块不进说明", () => {
+    const body = [
+      "改了一处行为。",
+      "",
+      "验证：`pnpm exec vitest run` 295 文件 3385 例全绿。",
+      "",
+      "门禁：typecheck 0、eslint 0。",
+      "",
+      "回归：补了三条用例。",
+    ].join("\n");
+    expect(parseBodySections(body).get("")).toEqual(["改了一处行为。"]);
+  });
+
+  // 引导句独占一段、列表另起一段是常见写法。让引导句自己成一条，读者看到的是一条没说完
+  // 的话，后面的小圆点又各自成条、失去了归属。
+  it("引导句独占一段时与下一段首条合成一条", () => {
+    const body = [
+      "同时对齐 create-vite 的创建体验：",
+      "",
+      "- `--template` 一次指定框架",
+      "- 目录名省略时取当前目录",
+    ].join("\n");
+    expect(parseBodySections(body).get("")).toEqual([
+      "同时对齐 create-vite 的创建体验：`--template` 一次指定框架",
+      "目录名省略时取当前目录",
+    ]);
+  });
+
+  // 冒号短句与分节标题形态一样，区别只在后面跟什么。接列表才是标题，接段落就只是一句话
+  // 的开头——把它当标题会把后半段正文挪进一个凭空多出来的节。
+  it("冒号短句后接段落时不当成分节标题", () => {
+    const body = [
+      "两处都是「生成器替使用者做了他不想要的决定」。",
+      "",
+      "所以改成逐层并集。",
+    ].join("\n");
+    const sections = parseBodySections(body);
+    expect([...sections.keys()]).toEqual([""]);
+    expect(sections.get("")).toEqual([
+      "两处都是「生成器替使用者做了他不想要的决定」。",
+      "所以改成逐层并集。",
+    ]);
+  });
+
+  // 只写了标题没写内容的节要整节约掉：留着会让调用方以为这条提交有这一节的正文。
+  it("只有标题没有内容的节不出现", () => {
+    const body = ["新增：", "", "修复：", "- 修好了一处"].join("\n");
+    const sections = parseBodySections(body);
+    expect([...sections.keys()]).toEqual(["修复"]);
+    expect(sections.get("修复")).toEqual(["修好了一处"]);
   });
 });
 
