@@ -41,11 +41,11 @@ npm create @lingfan-engine my-story
    }
    ```
 
-3. 装依赖。模板依赖 `@lingfan-engine/core`、`@lingfan-engine/adapters`、`@lingfan-engine/ui`，这三个包已在 registry 上，`pnpm install` 直接可用。生成器还会在生成时查一次最新版本写进产物；手工复制时版本是模板里记录的那个，想跟最新就自己改。
+3. 装依赖。模板依赖 `@lingfan-engine/core`、`@lingfan-engine/adapters`、`@lingfan-engine/ui`，这三个包已在 registry 上，装即可（`npm install` / `pnpm install` / `yarn` / `bun install` 都行）。生成器还会在生成时查一次最新版本写进产物；手工复制时版本是模板里记录的那个，想跟最新就自己改。
 
    三个包以 TypeScript 源码出口发布，Vite 直接编译，不用先构建它们。
 
-   生成的工程自带一份 `pnpm-workspace.yaml`，里面只写 `allowBuilds`：pnpm 12 起「未批准的构建脚本」是硬错误 `ERR_PNPM_IGNORED_BUILDS`，会让整个安装失败。模板已批准 `esbuild`（Vite 与 UniApp 工具链都用它），并对不需要执行的 `core-js` 显式写 `false`——「知道了、故意不跑」与「未批准」是两回事。安装时若报别的包未批准，按提示加进这张表即可：
+   生成的工程自带一份 `pnpm-workspace.yaml`，里面只写 `allowBuilds`：pnpm 12 起「未批准的构建脚本」是硬错误 `ERR_PNPM_IGNORED_BUILDS`，会让整个安装失败。模板已批准 `esbuild`（Vite 与 UniApp 工具链都用它），并对不需要执行的 `core-js` 显式写 `false`——「知道了、故意不跑」与「未批准」是两回事。安装时若报别的包未批准，按提示加进这张表即可（这一节只对 pnpm 适用；用 npm / yarn / bun 时这份文件不参与，构建脚本照常执行）：
 
    ```yaml
    allowBuilds:
@@ -58,6 +58,8 @@ npm create @lingfan-engine my-story
 ```sh
 pnpm dev
 ```
+
+（用别的包管理器就换成 `npm run dev` / `yarn dev` / `bun run dev`。）
 
 Vite 默认监听 `1420` 端口。`vite.config.ts` 里写了 `strictPort: true`，端口被占用时它会直接报错退出，不会自动换端口。
 

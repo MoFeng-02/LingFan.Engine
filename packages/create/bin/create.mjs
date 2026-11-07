@@ -13,6 +13,6 @@
  */
 import { tsImport } from "tsx/esm/api";
 
-const { runCreateCli } = await tsImport("../src/cli/cli.ts", import.meta.url);
+const { runCreateCli } = await tsImport("../src/cli/index.ts", import.meta.url);
 const code = await runCreateCli(process.argv.slice(2));
 if (code !== 0) process.exit(code);

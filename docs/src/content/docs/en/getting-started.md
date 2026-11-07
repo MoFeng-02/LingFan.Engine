@@ -41,11 +41,11 @@ Generating by hand works too. The template lives at `template/v1/__PROJECT__/` i
    }
    ```
 
-3. Install dependencies. The template depends on `@lingfan-engine/core`, `@lingfan-engine/adapters` and `@lingfan-engine/ui`, all of which are on the registry, so `pnpm install` just works. The generator also queries the registry once at generation time and writes the latest versions into the output; when copying by hand the versions are the ones recorded in the template — bump them yourself if you want the newest.
+3. Install dependencies. The template depends on `@lingfan-engine/core`, `@lingfan-engine/adapters` and `@lingfan-engine/ui`, all of which are on the registry, so any package manager works (`npm install`, `pnpm install`, `yarn`, `bun install`). The generator also queries the registry once at generation time and writes the latest versions into the output; when copying by hand the versions are the ones recorded in the template — bump them yourself if you want the newest.
 
    All three packages publish TypeScript source entry points, so Vite compiles them directly and you never build them first.
 
-   If `pnpm install` fails with `ERR_PNPM_IGNORED_BUILDS`, that is pnpm declining to run dependencies' build scripts by default; since pnpm 12 it is a hard error that aborts the whole install. Generated projects ship a `pnpm-workspace.yaml` that only declares `allowBuilds`: `esbuild` is approved (Vite and the UniApp toolchain rely on it) and `core-js` is explicitly `false` — "known, deliberately skipped" is a different state from "not approved". If some other package is reported, add it to that table:
+   If `pnpm install` fails with `ERR_PNPM_IGNORED_BUILDS`, that is pnpm declining to run dependencies' build scripts by default; since pnpm 12 it is a hard error that aborts the whole install. Generated projects ship a `pnpm-workspace.yaml` that only declares `allowBuilds`: `esbuild` is approved (Vite and the UniApp toolchain rely on it) and `core-js` is explicitly `false` — "known, deliberately skipped" is a different state from "not approved". If some other package is reported, add it to that table (this section only applies to pnpm; with npm / yarn / bun the file is ignored and build scripts run as usual):
 
    ```yaml
    allowBuilds:
@@ -58,6 +58,8 @@ Generating by hand works too. The template lives at `template/v1/__PROJECT__/` i
 ```sh
 pnpm dev
 ```
+
+(With another package manager use `npm run dev`, `yarn dev` or `bun run dev`.)
 
 Vite listens on port `1420` by default. `vite.config.ts` sets `strictPort: true`, so if the port is taken it exits with an error instead of silently picking another one.
 

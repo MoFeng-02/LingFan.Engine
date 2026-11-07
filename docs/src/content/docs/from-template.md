@@ -36,7 +36,7 @@ npm create @lingfan-engine my-story -- --template none-browser-story
 
 也可以逐项给：`--framework vue --shell browser`、`--shell miniprogram`、`--sources story`。两者冲突时逐项参数优先。
 
-生成后 `cd my-story && pnpm install && pnpm dev`。生成器默认不装依赖，想一步到位加 `--install`。
+生成后按提示进目录、装依赖、跑起来。生成器默认不装依赖，想一步到位加 `--install`。
 
 框架层只换页面结构与入口：`--framework vue` 把 `index.html` 换成挂载点、加 `src/App.vue` 与 Vue 版组合根，`--framework react` 换成 `src/App.tsx` 与 React 版组合根；两者都不动 `src/host/**`（装配、订阅、帧循环、输入映射）——引擎与适配器不认识任何 UI 框架。两种形态的样式表是同一份 `src/styles/stage.css`。
 

@@ -49,7 +49,7 @@ pnpm create @lingfan-engine my-story
 npm create @lingfan-engine my-story -- --yes
 ```
 
-生成后按提示 `cd my-story && pnpm install && pnpm dev`。骨架自带编译好的故事产物，开箱即跑；
+生成后按提示进目录、装依赖、跑起来。生成器不指定包管理器——它按启动自己的那个（npm / pnpm / yarn / bun）给出命令，用哪个都行。骨架自带编译好的故事产物，开箱即跑；
 改过 `src/Stories.src/` 之后才需要跑一次 `pnpm stories:build`（或在开发时挂 `pnpm stories:watch`）。
 生成器默认不装依赖，想一步到位加 `--install`。
 

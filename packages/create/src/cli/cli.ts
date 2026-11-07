@@ -5,9 +5,8 @@
  * `generate` 域，「版本从哪来」在 `registry` 域。本文件只负责把这些串起来，
  * 并把失败转成人能读的提示与退出码——库代码一律抛异常，只有这里决定措辞。
  */
-import { spawn } from "node:child_process";
 import { resolve as resolvePath } from "node:path";
-import { defaultCreateTexts } from "../shared/index.ts";
+import { currentPackageManager, defaultCreateTexts } from "../shared/index.ts";
 import { isValidProjectName, suggestProjectName } from "../shared/index.ts";
 import {
   layerBases,
@@ -31,6 +30,7 @@ import {
   createTerminalIo,
   type PromptTexts,
 } from "./prompts.ts";
+import { installProject, renderNextSteps } from "./install.ts";
 
 /** 解析后的命令行参数；缺席项为 undefined，交由问答或模板缺省值补 */
 export interface CreateArgs {
@@ -311,6 +311,7 @@ async function generate(input: {
   readonly existing: ExistingTarget;
 }): Promise<number> {
   const texts = defaultCreateTexts;
+  const manager = currentPackageManager();
   const targetBase = resolvePath(input.args.dir ?? process.cwd());
   const layout = {
     templateRoot: input.templateRoot,
@@ -351,7 +352,7 @@ async function generate(input: {
   let installed = false;
   if (input.args.install) {
     process.stderr.write(`${texts.stageInstall}\n`);
-    installed = await install(result.projectDir);
+    installed = await installProject(result.projectDir, manager);
     if (!installed) process.stderr.write(`${texts.warnInstallFailed}\n`);
   }
 
@@ -362,7 +363,7 @@ async function generate(input: {
       `共 ${result.fileCount} 个文件，框架 ${result.framework}，壳 ${result.shell}，故事源 ${result.sources}`,
       "",
       installed ? "依赖已安装。" : "依赖未安装。",
-      texts.nextSteps.split("<name>").join(result.projectDir),
+      renderNextSteps(result.projectDir, manager, texts),
       "",
     ].join("\n"),
   );
@@ -414,24 +415,6 @@ async function resolveOption(
     return undefined;
   }
   return picked;
-}
-
-/**
- * 在工程目录里装依赖。
- *
- * 只有 pnpm：本仓与模板的工程都以 pnpm 为准（锁文件、workspace 协议改写都依赖它），
- * 换别的包管理器会生成第二份锁文件，日后发布还要再处理一遍。
- */
-async function install(dir: string): Promise<boolean> {
-  return await new Promise<boolean>((done) => {
-    const child = spawn("pnpm", ["install"], {
-      cwd: dir,
-      stdio: "inherit",
-      shell: process.platform === "win32",
-    });
-    child.on("error", () => done(false));
-    child.on("close", (code) => done(code === 0));
-  });
 }
 
 /** 把异常折成一行提示：只暴露信息，不暴露堆栈 */

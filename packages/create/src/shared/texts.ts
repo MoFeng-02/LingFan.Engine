@@ -13,7 +13,9 @@ export const defaultCreateTexts = {
     "用法：",
     "  npm create @lingfan-engine [工程名] [选项]",
     "  pnpm create @lingfan-engine [工程名] [选项]",
+    "  yarn create @lingfan-engine [工程名] [选项]",
     "",
+    "包管理器不限：生成后的安装命令与后续步骤按调用方自己的包管理器给出。",
     "选项：",
     "  --template <id>       一次性指定形态，写作 框架[-壳[-故事源]]，如 vue-tauri",
     "  -f, --framework <id>  框架（缺省取模板声明的默认值）",
@@ -56,11 +58,12 @@ export const defaultCreateTexts = {
   stageCopy: "写入工程文件…",
   stageInstall: "安装依赖…",
   doneTitle: "工程已生成",
-  nextSteps: ["cd <name>", "pnpm install", "pnpm dev"].join("\n"),
+  /** 生成后的三步提示；`<install>` / `<dev>` 由调用方按包管理器替换 */
+  nextSteps: ["cd <name>", "<install>", "<dev>"].join("\n"),
   /** 非致命提示 */
   warnVersionOffline:
     "无法查询 npm registry 上的最新版本，已沿用模板记录的版本",
-  warnInstallFailed: "依赖安装失败，请在工程目录内手动执行 pnpm install",
+  warnInstallFailed: "依赖安装失败，请在工程目录内手动安装依赖",
 } as const;
 
 export type CreateTexts = typeof defaultCreateTexts;
