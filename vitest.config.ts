@@ -40,5 +40,16 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     testTimeout: 15_000,
+    /**
+     * 排除仓内的工作副本目录。
+     *
+     * 工具可能在仓库里检出整份工作副本，副本自带一套测试。那些文件属于别处的
+     * 快照，与当前源码无关；不排除的话，裸跑 `vitest run` 会把它们一并收进来——
+     * 既重复跑一遍，又可能撞上快照自身的历史断言而变红，让本地结果与当前分支
+     * 的真实状态脱钩。
+     *
+     * 只排除这一个目录，其余仍按 vitest 的默认口径收集。
+     */
+    exclude: ["**/node_modules/**", "**/dist/**", "**/.agents/**"],
   },
 });
