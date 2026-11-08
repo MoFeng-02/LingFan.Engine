@@ -1,0 +1,31 @@
+{
+  /* 故事源的类型检查工程：与 playground 根 tsconfig.json 分开。
+     - 本文件由 stories-typecheck（纯 tsc）执行，只装故事源与生成物类型面；
+     - 根 tsconfig.json 归 vue-tsc（宿主 SFC），且显式排除 src/Stories.src/**——
+       原因见那份文件的注释：组件编译器会把 `*.vue` 解析成真实组件，压过
+       authoring 声明的 UiHandle 通配；
+     - scripts/** 经 tsx 运行，不进本检查。 */
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "skipLibCheck": true,
+    "types": ["vite/client"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  /* 两份都要进本工程：
+     - 故事源（作者手写的章节与 lib）；
+     - 生成物类型面（state/script/font/stories 四份 gen 声明）——它们是 ambient 全局，
+       不进程序就等于不存在，章节里裸写 script.bgm / state.player 会报未定义。 */
+  "include": ["src/Stories.src/**/*.ts", "src/gen/**/*.ts"]
+}

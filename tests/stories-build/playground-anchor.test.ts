@@ -295,7 +295,7 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
     { retry: 1, timeout: 60000 },
     async () => {
       const probePath = join(PLAYGROUND_ROOT, PROBE_REL);
-      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.json");
+      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.stories.json");
       const tscBin = fileURLToPath(
         new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
       );
@@ -323,7 +323,7 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
     { retry: 1, timeout: 60000 },
     async () => {
       const probePath = join(PLAYGROUND_ROOT, SCRIPT_PROBE_REL);
-      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.json");
+      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.stories.json");
       const tscBin = fileURLToPath(
         new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
       );
@@ -357,7 +357,7 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
       const fontFile = join(PLAYGROUND_ROOT, "Resources/Fonts/楷体.ttf");
       const fontGenPath = join(PLAYGROUND_ROOT, FONT_GEN_REL);
       const committedFont = readFileSync(fontGenPath, "utf8");
-      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.json");
+      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.stories.json");
       const tscBin = fileURLToPath(
         new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
       );
