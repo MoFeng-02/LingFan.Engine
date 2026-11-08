@@ -198,23 +198,37 @@ describe("stories:build v2 · 正常路径（布局声明 → 编译 → 差量�
     expect(report.removed).toEqual([]);
   });
 
-  it("③陈旧产物清理：源里已删除的故事进 removed 并真实删盘", async () => {
+  it("③陈旧产物清理：上一轮账内的旧产物进 removed 并真实删盘（首跑不删既有文件）", async () => {
     const root = makeProject("v2-stale", {
       "src/Stories.src/config.ts": config(["common"]),
       "src/Stories.src/common/start.ts": SYNTHETIC_STORY,
+      "src/Stories.src/common/tavern.ts": story("tavern", `  say("到了酒馆");`),
       "Resources/project.json": MANIFEST,
-      // 陈旧产物：手写遗留 / 章节删除后的残留（源里已无对应故事）
+      // 手写遗留：从未被本工具写过，因此首跑即使没有账也不会删它
       "Resources/Stories/legacy.json": `{"formatVersion":1,"id":"legacy","kind":"flow","commands":[]}`,
-      "Resources/Stories/old-chapter/ghost.json": `{"formatVersion":1,"columns":[]}`,
     });
-    const report = await buildStories(root);
-    expect(report.removed).toContain("Stories/legacy.json");
-    expect(report.removed).toContain("Stories/old-chapter/ghost.json");
-    expect(existsSync(join(root, "Resources/Stories/legacy.json"))).toBe(false);
-    expect(
-      existsSync(join(root, "Resources/Stories/old-chapter/ghost.json")),
-    ).toBe(false);
-    expect(report.added).toContain("Stories/common/start.json");
+    const first = await buildStories(root);
+    expect(first.removed).toEqual([]);
+    expect(existsSync(join(root, "Resources/Stories/legacy.json"))).toBe(true);
+    // 首跑的产物账记下本轮写出的列文件，下一轮据此判定陈旧
+    const ledger = JSON.parse(
+      readFileSync(join(root, ".lingfan/stories-build.json"), "utf8"),
+    ) as { products: string[] };
+    expect(ledger.products).toEqual([
+      "Stories/common/start.json",
+      "Stories/common/tavern.json",
+    ]);
+
+    rmSync(join(root, "src/Stories.src/common/tavern.ts"), { force: true });
+    const second = await buildStories(root);
+    expect(second.removed).toEqual(["Stories/common/tavern.json"]);
+    expect(existsSync(join(root, "Resources/Stories/common/tavern.json"))).toBe(
+      false,
+    );
+    expect(existsSync(join(root, "Resources/Stories/common/start.json"))).toBe(
+      true,
+    );
+    expect(existsSync(join(root, "Resources/Stories/legacy.json"))).toBe(true);
   });
 
   it("④清单托管：project.json 获得 tsSource 标记；entry 防御补齐；非托管键保真", async () => {

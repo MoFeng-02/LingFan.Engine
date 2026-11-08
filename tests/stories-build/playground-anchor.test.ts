@@ -48,16 +48,44 @@
  * 缺省的 testTimeout（vitest.config.ts）：它们显式抬到 60s——时限先到会把绿例判红并
  * 触发重试，真回归本就会红，放宽时限不动判定力。
  */
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildStories } from "@lingfan-engine/stories-build";
 
 const PLAYGROUND_ROOT = fileURLToPath(
   new URL("../../apps/playground/", import.meta.url),
 );
+/**
+ * 产物账落在真实工程根的 `.lingfan/` 下，每次构建都会被重写。本文件对真实工程做全链构建，
+ * 因此逐例快照账并还原：出仓态保持原样，测试不在工作区留下工具状态。
+ */
+const LEDGER_DIR = join(PLAYGROUND_ROOT, ".lingfan");
+const LEDGER_FILE = join(LEDGER_DIR, "stories-build.json");
+let ledgerBefore: string | undefined;
+
+beforeEach(() => {
+  ledgerBefore = existsSync(LEDGER_FILE)
+    ? readFileSync(LEDGER_FILE, "utf8")
+    : undefined;
+});
+
+afterEach(() => {
+  if (ledgerBefore === undefined) {
+    rmSync(LEDGER_DIR, { recursive: true, force: true });
+    return;
+  }
+  mkdirSync(LEDGER_DIR, { recursive: true });
+  writeFileSync(LEDGER_FILE, ledgerBefore);
+});
 /** report 里的逻辑路径是 posix 相对路径（与源根命名空间一致），保持正斜杠字面量 */
 const TYPEGEN_REL = "src/gen/stories.gen.d.ts";
 const STATE_GEN_REL = "src/gen/state.gen.d.ts";
