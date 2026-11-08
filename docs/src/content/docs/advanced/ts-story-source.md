@@ -313,6 +313,48 @@ export default function start(): void {
 
 `extOp` 调用的命令名要引擎侧真的注册过才有意义，否则空转。写 `extOp("http.get", …)` 而引擎没装这个 op，跟写其它未注册命令一样不会生效——新增 op 是引擎侧的事，见[扩展引擎](/concepts/extensions/)。
 
+## 挂界面
+
+故事源可以直接把界面挂到舞台上，用的还是词汇层那个 `mount`：
+
+```ts
+import { mount, script } from "@lingfan-engine/editor";
+
+import hint from "../../ui/hint/hint.vue";
+
+const { say } = script;
+
+export default function look_around(): void {
+  mount(hint, true, { text: "这一列挂了一条提示" });
+  say("你绕着走了一圈，什么也没发生。", "旁白");
+}
+```
+
+界面本体放在 `src/ui/<名>/<名>.<扩展名>`，三条硬规矩：
+
+- 目录名就是 UI 名（`src/ui/hint/` 的 UI 名是 `hint`）。
+- 文件名必须与目录名相同，扩展名取 `.vue` / `.tsx` / `.html` / `.ts` 之一。
+- 故事源用默认导入引用它，**绑定名必须等于目录名**（`import hint from …`），否则构建期拒绝。
+
+脚本形态要看框架层：Vue 用 `.vue`、React 用 `.tsx`，原生（框架无关）形态没有组件这个概念，`.ts` 里写一个返回 `{ element, dispose }` 的**工厂函数的默认导出**。
+
+`props` 是整份替换而不是逐字段合并——再 `mount` 一次就换掉全部入参；值必须 JSON 安全，因为它随快照存档。要暂停、跳转这类操作，用运行期注入的 `controls`，不要自己去拿引擎。
+
+模板骨架在 Vue 与 React 形态里各带了一个 `hint` 示例，打开 `src/Stories.src/title/look_around.ts` 就能看到挂载语句。
+
+### 两份 tsconfig 各管一段
+
+工程里有两个类型检查入口，别把它们混成一个：
+
+| 文件                    | 检查什么                                       | 由谁跑                   |
+| ----------------------- | ---------------------------------------------- | ------------------------ |
+| `tsconfig.json`         | `src/**` 的宿主页面与组件（`*.vue` / `*.tsx`） | `pnpm typecheck`         |
+| `tsconfig.stories.json` | `src/Stories.src/**` 的故事源                  | `pnpm stories-typecheck` |
+
+`tsconfig.json` 里排除了 `src/Stories.src/**`，这是有意的：组件编译器会把 `*.vue` / `*.tsx` 解析成真正的组件类型，而故事源里的 `import hint from "../../ui/hint/hint.vue"` 拿到的应该是**句柄**——两者撞在一起，`mount(hint, …)` 就会被判成型不匹配。故事源只需要纯 TypeScript 的类型，交给 `tsconfig.stories.json` 单独检查，两份都过才算干净。
+
+自己加 `src/Stories.src/` 之外的故事目录时，记得把新目录也加进 `tsconfig.stories.json` 的 `include`，否则那部分等于没有类型检查。
+
 ## 构建与产物
 
 模板骨架自带三条脚本：
