@@ -88,6 +88,10 @@ export default defineConfigWithVueTs(
       "apps/editor/src/App.vue",
       "apps/miniprogram/src/pages/**/*.vue",
       "apps/*/src/ui/**/*.vue",
+      // 模板骨架里的 UI 示例同理：目录名即 UI 名（`ui/hint/hint.vue` 只能导成 `hint`），
+      // 而模板会被复制成使用者的工程，命名约束在那里同样成立。
+      "template/*/overlays/*/src/ui/**/*.vue",
+      "packages/create/template/overlays/*/src/ui/**/*.vue",
     ],
     rules: {
       "vue/multi-word-component-names": "off",
