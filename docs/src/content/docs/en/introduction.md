@@ -7,22 +7,22 @@ LingFan Engine is a framework-agnostic TypeScript narrative engine. Stories are 
 
 ## One story file
 
-`Resources/Stories/title/title_main.story`:
+`Resources/Stories/demo/demo_intro.story`:
 
 ```text
-label title_main:
+label demo_intro:
   say "Welcome to my story."
   input "What's your name?" store="player.name"
   say "Hello, {player.name}!"
   menu "What next?"
     "Set off" -> chapter_one
-    "Again" -> title_main
+    "Again" -> demo_intro
 
 label chapter_one:
   say "Chapter one begins."
 ```
 
-`label` opens a column, and commands go inside it in order. `say` shows a line; `input` stops and waits for the player, storing what they type in `player.name`; `menu` offers choices that jump to other columns. This runs as-is inside a template project.
+`label` opens a column, and commands go inside it in order. `say` shows a line; `input` stops and waits for the player, storing what they type in `player.name`; `menu` offers choices that jump to other columns. Save this as a `.story` file under your project's `Resources/Stories/` and it runs — hand-written story files take effect on save, with no build step.
 
 ## What the engine does
 

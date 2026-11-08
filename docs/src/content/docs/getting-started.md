@@ -42,8 +42,7 @@ npm create @lingfan-engine my-story
   2. React —— 页面结构换成 JSX 组件，装配与宿主不变  互斥：Vue 3、小程序（UniApp）
   3. 桌面（Tauri 2） —— 给同一份工程再加一个桌面壳：存档落到应用数据目录，页面结构不变  互斥：小程序（UniApp）
   4. 小程序（UniApp） —— 页面层换成 UniApp Vue 3 单文件组件，宿主装配走小程序端口  互斥：Vue 3、React、桌面（Tauri 2）
-  5. 故事文件（.story） —— 直接写引擎自带的文本故事格式：叠在骨架上，摘掉 TS 创作链，改完保存即生效  互斥：无
-选择（1-5，可多选，空格或逗号分隔；回车 = 只用骨架（框架无关 + 浏览器 + TS 源））：1 3
+选择（1-4，可多选，空格或逗号分隔；回车 = 只用骨架（框架无关 + 浏览器））：1 3
 ```
 
 上面这组回答生成 Vue 3 页面 + 桌面壳。组合规则只有三条：
@@ -52,9 +51,9 @@ npm create @lingfan-engine my-story
 - 小程序（UniApp）自带 Vue 3 页面层，与 Vue 3、React、桌面壳都不能同时选。
 - 桌面壳叠在浏览器形态之上，与 Vue 3 或 React 都能组合。
 
-故事文件（`.story`）与任何一行都不冲突：它只决定故事从哪来，选上就把骨架的 TS 创作链换成手写文本故事。
+这一问只定页面结构与壳，不定故事怎么写。三种创作形态——TS 源（`src/Stories.src/`）、手写 `.story`、手写 `.json`——落在同一棵 `Resources/Stories/` 树上，构建时一起被扫描，可以混装在一个工程里，互不排斥。`--sources story`（或 `--template …-story`）只是额外附一份手写 `.story` 示例，不影响 TS 创作链的去留。
 
-回车跳过形态，得到骨架原生形态：框架无关 + 浏览器 + TypeScript 源。
+回车跳过形态，得到骨架原生形态：框架无关 + 浏览器。
 
 在脚本或 CI 里跑时，加 `--yes` 取全部缺省，或用 `--description` / `--framework` / `--shell` / `--sources` 逐项给，`--template 框架[-壳[-故事源]]` 是等价写法；细节见[从模板创建工程](/from-template/)。
 
@@ -99,26 +98,38 @@ Vite 默认监听 `1420` 端口。`vite.config.ts` 里写了 `strictPort: true`�
 
 ## 改一句对话
 
-打开 `Resources/Stories/title/title_main.story`，第一行是：
+故事的源在 `src/Stories.src/title/title_main.ts`，第一列长这样：
 
-```text
-label title_main:
-  say "欢迎来到 __PROJECT__。"
+```ts
+export default function title_main(): void {
+  say("这是用 TypeScript 写的故事列。", "旁白");
+  say("改完保存，在工程根跑 pnpm stories:build 就会重新生成故事文件。");
+  menu("接下来做什么？", [
+    option("四处看看", "look_around"),
+    option("重来一次", "title_main"),
+  ]);
+}
 ```
 
-把这句改掉，保存，然后刷新浏览器——`.story` 不走 Vite 的模块图，不会触发热更新，新内容在刷新后才出现。顺手把残留的 `__PROJECT__` 也换掉——它只是模板占位符。
+把第一句 `say` 的文字改掉，保存，在工程根跑一次 `pnpm stories:build`，再刷新浏览器。构建会把这一列编译成 `Resources/Stories/title/title_main.json`——引擎跑起来读的是那份产物，直接改 `.json` 会在下次构建时被覆盖，改源才可靠。
 
-再往下几行有一句 `input`，它把玩家输入存进 `player.name`，下一条 `say` 用 `{player.name}` 取出来。这是引擎最基本的两个动作：写状态、读状态。
+写状态、读状态是引擎最基本的两个动作：`input("你叫什么名字？", "player.name")` 停下来等玩家输入并存进 `player.name`，下一句 `say` 用 `{player.name}` 取出来。生成时选了 `--sources story` 的话，`Resources/Stories/manual/manual_intro.story` 里有一份手写示例把这两步写全了；手写的 `.story` 不走构建，保存即生效。
 
 ## 换一首 BGM
 
 1. 把音频文件放进 `Resources/Audio/`，比如 `Resources/Audio/theme.mp3`。
-2. 在故事里加一行：
+2. 在故事列里加一行。TS 源里是：
+
+   ```ts
+   bgm("Audio/theme.mp3", { volume: 0.6, loop: true });
+   say("音乐换了。");
+   ```
+
+   手写的 `.story` 里是同一件事的文本写法：
 
    ```text
-   label title_main:
-     bgm "Audio/theme.mp3" volume=0.6 loop=true
-     say "音乐换了。"
+   bgm "Audio/theme.mp3" volume=0.6 loop=true
+   say "音乐换了。"
    ```
 
 路径相对 `Resources/`，不带前导斜杠。`volume` 缺省是 1，`loop` 缺省是 `true`。
@@ -135,7 +146,7 @@ label title_main:
 export { STORIES } from "virtual:story-list";
 ```
 
-扫描与刷新在 `vite.plugins.ts` 里：dev 下新增或删除故事文件会自动作废清单并整页刷新。桌面壳走自己那套递归收集，效果一样。引擎侧两种形态一致：只组装 `Stories/` 下的文件，其余一律跳过。真报了找不到列，多半是文件名大小写不符，或者文件放在了 `Stories/` 之外。
+扫描与刷新在 `vite.plugins.ts` 里：dev 下新增或删除故事文件会自动作废清单并整页刷新。桌面壳走自己那套递归收集，效果一样。引擎侧对三种文件形态一视同仁：只组装 `Stories/` 下的文件，其余一律跳过。真报了找不到列，多半是文件名大小写不符，或者文件放在了 `Stories/` 之外。
 
 **端口 1420 被占用。** 改 `vite.config.ts` 里的 `server.port`。
 

@@ -22,13 +22,13 @@ your-project/
 
 ## When to use it
 
-Reach for TypeScript when the story is long, when it has many branches and loops, when you want the type system keeping your state keys honest, or when you want to pull a table of pure data out of an npm package. For changing two lines of dialogue, or a project already running fine on `.story`, there is no need to migrate — both paths produce the same output and the runtime knows nothing about TypeScript. To use it, pick `--sources ts` when creating a project from the template and the whole build chain is there; for an existing project, add one package and one `config.ts`.
+Reach for TypeScript when the story is long, when it has many branches and loops, when you want the type system keeping your state keys honest, or when you want to pull a table of pure data out of an npm package. For changing two lines of dialogue, or a project already running fine on `.story`, there is no need to migrate — both paths produce the same output and the runtime knows nothing about TypeScript. New projects ship this chain by default; for an existing project, add one package and one `config.ts`.
 
 ## The template ships this chain
 
-This chain lives in the template skeleton, so every generated project starts with it: `src/Stories.src/` (a `config.ts` plus example columns), three scripts (`stories:build` / `stories:watch` / `stories-typecheck`), `@lingfan-engine/stories-build` and `@lingfan-engine/editor` as dev dependencies, and an output that runs out of the box — `Resources/Stories/**`. The default source shape is `ts`, so there is nothing extra to pick at generation time and no overlay to add.
+This chain lives in the template skeleton, so every generated project includes it: `src/Stories.src/` (a `config.ts` plus example columns), three scripts (`stories:build` / `stories:watch` / `stories-typecheck`), `@lingfan-engine/stories-build` and `@lingfan-engine/editor` as dev dependencies, and an output that runs out of the box — `Resources/Stories/**`. It is always there; there is nothing extra to pick at generation time and no overlay to add.
 
-Choosing the `story` shape is the reverse overlay: `overlays/story/` uses `create.remove` to strip the whole TS chain (`src/Stories.src`, `src/gen/*.gen.d.ts`, `tsconfig.stories.json`) and `create.unset` to drop the three `stories:*` scripts and the `@lingfan-engine/editor` dependency that go with it, then drops in a hand-written `.story`. The output directory manages its column set wholesale, so with both story sets present the first build would treat the `.story` as a stale column and remove it — the two shapes never coexist.
+It does not compete with hand-written `.story` or hand-written `.json`: the three authoring forms live in the same `Resources/Stories/` tree and are scanned together at build time, so they can be mixed in one project. Generating with `--sources story` only adds a hand-written sample at `Resources/Stories/manual/manual_intro.story`; the TypeScript chain stays as it is.
 
 Wiring an existing project by hand comes down to the same pieces: `pnpm add -D @lingfan-engine/stories-build @lingfan-engine/editor`, write `src/Stories.src/config.ts`, then run the commands under "Building and output" below.
 
@@ -331,7 +331,7 @@ pnpm exec lingfan-stories-watch .      # persistent incremental
 
 The reference host `apps/playground` runs the same package commands, only through `tsx` so the build chain can be edited in place inside this repository.
 
-Output goes to `Resources/Stories/` with paths mirroring the source — `src/Stories.src/chapter1/start.ts` compiles to `Resources/Stories/chapter1/start.json`. A TypeScript source project manages its column set **wholesale**: a column the source no longer declares is deleted from the output directory, and every deletion is listed in the report.
+Output goes to `Resources/Stories/` with paths mirroring the source — `src/Stories.src/chapter1/start.ts` compiles to `Resources/Stories/chapter1/start.json`. The build maintains only the artifacts it wrote itself: a `.json` written last round and no longer produced is deleted, and every deletion is listed in the report. Hand-written `.story` and `.json` files are outside its scope and are never touched.
 
 Forgetting to add a new chapter to `folders` does not silently turn into a "stale deletion" — a `default` export found outside the covered set is an error.
 

@@ -65,10 +65,12 @@ Beyond those four there are a few optional fields you will rarely touch:
 
 ## Stories/
 
-Story files. Both forms can sit side by side:
+Story files. All three forms can sit side by side:
 
-- `.json` JSON v1 — what `.story` compiles to, and what TypeScript authoring compiles to. It is the only form the engine and the editor read.
-- `.story` text files — the handwritten DSL, compiled to `.json` by a tool.
+- `.json` JSON v1 — what the engine and the editor read. TypeScript authoring compiles to it as well.
+- `.story` text files — the handwritten DSL, parsed by the engine directly; saving is enough.
+
+A hand-written `.json` and a `.json` compiled from TypeScript sources are the same kind of file. The only difference is who wrote it: the build maintains nothing but its own output.
 
 Put them anywhere inside `Stories/`, in whatever subdirectories you like. Column ids are unique across the whole project. File names are unrelated to column ids; collisions are decided by column id.
 
@@ -80,13 +82,13 @@ A new story file is picked up as soon as it lands in `Stories/` — there is no 
   export { STORIES } from "virtual:story-list";
   ```
 
-  The scan lives in `vite.plugins.ts`, and adding or removing a story file refreshes it during dev. Under the default TS source shape the `.json` files are build output from `src/Stories.src/` and land in the same tree; a project generated with the story-file shape keeps handwritten `.story` files there instead — both shapes share this one scan.
+  The scan lives in `vite.plugins.ts`, and adding or removing a story file refreshes it during dev. `.json` compiled from TypeScript sources, hand-written `.story` and hand-written `.json` all land in this same tree and share this one scan.
 
 - **Desktop shell**: also collects every story file under `Resources/Stories/` recursively — drop one in and it is picked up; subdirectories double as chapter grouping.
 
-The engine side is the same for both forms: the assembler only processes files under `Stories/` and skips every other path. A file outside `Stories/` (or with a case mismatch) has no columns at all, so jumping to one of them fails to load with "target column does not exist".
+The engine side treats all three file forms the same: the assembler only processes files under `Stories/` and skips every other path. A file outside `Stories/` (or with a case mismatch) has no columns at all, so jumping to one of them fails to load with "target column does not exist".
 
-A project authored in TypeScript writes its output here, with paths mirroring the source files under `src/Stories.src/`. Such a project manages its column set wholesale at build time: a column the source no longer declares is deleted from the output directory. The editor treats that output as read-only, so change columns in the source. The test is whether the project root has `src/Stories.src/config.ts` — the files currently sitting in `Stories/` are irrelevant. See [TypeScript Authoring](/en/advanced/ts-story-source/).
+A project authored in TypeScript writes its output here, with paths mirroring the source files under `src/Stories.src/`. The build only maintains the `.json` files it wrote itself: those written last round and no longer produced are cleaned up, while hand-written `.story` and `.json` files are left alone. The editor treats that output as read-only, so change columns in the source. The test is whether the project root has `src/Stories.src/config.ts` — the files currently sitting in `Stories/` are irrelevant. See [TypeScript Authoring](/en/advanced/ts-story-source/).
 
 ## Audio/ Images/ Video/
 

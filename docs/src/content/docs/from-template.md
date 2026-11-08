@@ -16,24 +16,32 @@ pnpm create @lingfan-engine my-story
 
 形态是一次多选，编号如下：
 
-| 编号 | 形态                 | 选中后得到什么                                                           |
-| ---- | -------------------- | ------------------------------------------------------------------------ |
-| 1    | Vue 3                | 页面结构换成单文件组件，装配与宿主不变                                   |
-| 2    | React                | 页面结构换成 JSX 组件，装配与宿主不变                                    |
-| 3    | 桌面（Tauri 2）      | 在同一份工程上再加一个桌面壳：存档落到应用数据目录，页面结构不变         |
-| 4    | 小程序（UniApp）     | 页面层换成 UniApp Vue 3 单文件组件，宿主装配走小程序端口                 |
-| 5    | 故事文件（`.story`） | 叠在骨架上，摘掉 TS 创作链，直接写引擎自带的文本故事格式，改完保存即生效 |
+| 编号 | 形态             | 选中后得到什么                                                   |
+| ---- | ---------------- | ---------------------------------------------------------------- |
+| 1    | Vue 3            | 页面结构换成单文件组件，装配与宿主不变                           |
+| 2    | React            | 页面结构换成 JSX 组件，装配与宿主不变                            |
+| 3    | 桌面（Tauri 2）  | 在同一份工程上再加一个桌面壳：存档落到应用数据目录，页面结构不变 |
+| 4    | 小程序（UniApp） | 页面层换成 UniApp Vue 3 单文件组件，宿主装配走小程序端口         |
 
-按编号回答，空格或逗号分隔，例如 `1 3`。回车全部跳过，得到骨架原生形态：框架无关 + 浏览器 + TypeScript 源。
+按编号回答，空格或逗号分隔，例如 `1 3`。回车全部跳过，得到骨架原生形态：框架无关 + 浏览器。
 
 组合规则：
 
 - Vue 3 与 React 互斥：页面结构只能有一个所有者。
 - 小程序（UniApp）自带 Vue 页面层，与 Vue 3、React、桌面壳互斥。
 - 桌面壳叠在浏览器形态之上，与 Vue 3 或 React 组合都可以；单独选它也成立，得到原生页面 + 桌面壳。
-- 故事文件（`.story`）与上面任何一行都不冲突。
 
-两种故事源形态是**同一套架构的两条入口**，不是两种能力：TS 源只是多了一层创作面（类型补全、重构、复用 TS 生态），构建时编译成与 `.story` 完全相同的产物。所以缺省是 TS 源——能力更强的那个不该被当成附加项。
+这一问只定页面结构与壳，不问故事怎么写。故事有三种创作形态，落在同一棵 `Resources/Stories/` 树上，构建期一起被扫描，**可以混装在一个工程里**：
+
+| 创作形态      | 写在哪                         | 改完怎么生效 |
+| ------------- | ------------------------------ | ------------ |
+| TS 源         | `src/Stories.src/**/*.ts`      | 跑一次构建   |
+| 手写 `.story` | `Resources/Stories/**/*.story` | 保存即生效   |
+| 手写 `.json`  | `Resources/Stories/**/*.json`  | 保存即生效   |
+
+三者互不排斥：骨架自带的是 TS 源那一条链（类型补全、重构、复用 TS 生态，构建时编译成 `.json`），而手写的 `.story` 和 `.json` 随时可以往同一个 `Resources/Stories/` 里加，不需要拆掉 TS 链。唯一的硬约束是列 `id` 全工程唯一——不同文件里的列只要 id 不撞，就能共存。
+
+`--sources story`（以及 `--template …-story`）的含义因此是「额外附一份手写 `.story` 示例」，它不改变 TS 创作链的去留。
 
 生成后按提示进目录、装依赖、跑起来。生成器默认不装依赖，想一步到位加 `--install`。
 
@@ -45,7 +53,7 @@ pnpm create @lingfan-engine my-story
 npm create @lingfan-engine my-story --description "试菜单的小工程" --framework vue --shell tauri
 ```
 
-`--framework` 取 `none` / `vue` / `react`，`--shell` 取 `browser` / `tauri` / `miniprogram`，`--sources` 取 `ts` / `story`。任一维缺席取该维缺省值，参数模式不做互斥校验——组合由脚本自己负责。
+`--framework` 取 `none` / `vue` / `react`，`--shell` 取 `browser` / `tauri` / `miniprogram`。任一维缺席取该维缺省值，参数模式不做互斥校验——组合由脚本自己负责。`--sources` 取 `ts` / `story`：`story` 额外附一份手写 `.story` 示例，`ts` 就是骨架自带的样子。
 
 `--template` 是同一件事的紧凑写法，写作 `框架[-壳[-故事源]]`：
 
@@ -58,7 +66,7 @@ npm create @lingfan-engine my-story --template none-browser-story
 
 形态选择以问答为准，`--template` 留给既有脚本。
 
-全部取缺省值（原生 + 浏览器 + TypeScript 源）用 `--yes`，此时不再问任何问题。
+全部取缺省值（原生 + 浏览器，故事示例也不额外附带）用 `--yes`，此时不再问任何问题。
 
 > 上面这些示例按 pnpm / bun 的透传行为写。npm 会先按自己的配置项解析开关（`--yes` 就是一个），此时要在第一个选项前加分隔符 `--`：`npm create @lingfan-engine my-story -- --yes`。
 
@@ -66,19 +74,11 @@ npm create @lingfan-engine my-story --template none-browser-story
 
 壳层分两种：桌面壳只补一层桌面外壳，页面结构与宿主原样保留，所以它能叠在 Vue 3 或 React 之上；小程序壳换掉整套页面与宿主，页面结构由 `src/components/**` 承接，宿主装配在 `src/mp/**`（平台 API 只在一处出现），内容不进包体、按基址走工程接口。它的 `vite` 与 `vue` 是一组被 UniApp 插件钉死的版本，由叠加层声明保留，不参与「跟最新」。
 
-故事源形态层决定故事从哪来，它与框架层、壳层正交：
+故事怎么写与上面那一问无关——三种创作形态的取舍见前面的表，写法细节见 [TS 创作模式](/advanced/ts-story-source/)。混装时有三条通用注意：
 
-| 形态      | 故事从哪来                              | 改故事的姿势                                            |
-| --------- | --------------------------------------- | ------------------------------------------------------- |
-| 缺省 `ts` | `Resources/Stories/**/*.json`（生成物） | 改 `src/Stories.src/**/*.ts`，再跑 `pnpm stories:build` |
-| `story`   | `Resources/Stories/**/*.story`          | 直接改 `.story` 文本，保存即生效                        |
-
-缺省形态的整条创作链在骨架里：`src/Stories.src/`、`src/gen/*.gen.d.ts`、`tsconfig.stories.json`、三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）与开箱可跑的产物都是骨架的一部分，生成时不需要叠加任何层。选 `story` 则是**反向叠加**：`overlays/story/` 用 `create.remove` 摘掉整条 TS 创作链的文件、用 `create.unset` 摘掉配套的三条脚本与 `@lingfan-engine/editor` 依赖，换上一份手写的 `Resources/Stories/title/title_main.story`。两条注意：
-
-- 产物目录 `Resources/Stories/**` 由构建**全量管理**——源里没有的列，构建会当成陈旧列删掉。所以别在产物目录里手改，改源。
+- 列 `id` 全工程唯一：不同文件里的列只要 id 不撞，就能共存；撞了会在构建时报出冲突的两个来源。
+- 产物目录 `Resources/Stories/**` 里由构建写出的 `.json` 由构建自己维护——构建只清理它上一轮写过、这一轮不再产出的文件，你手写的 `.story` 与 `.json` 它不碰。所以改 TS 源比改它生成的 `.json` 可靠。
 - 类型检查走独立的 `tsconfig.stories.json`，与框架层那份 `tsconfig.json` 分开：故事源有 `state` 等 ambient 全局，和页面代码的 DOM 类型面不该混在一个工程里。
-
-两种形态的写法差异见 [TS 创作模式](/advanced/ts-story-source/)。
 
 工程名只允许小写字母、数字、`-`、`_`，不能以下划线或点开头——它同时进 `package.json` 的 `name`、`Resources/project.json` 的 `id` 与目录名，大写与点开头在 npm 侧非法。
 
@@ -93,31 +93,31 @@ npm create @lingfan-engine my-story --template none-browser-story
 
 `template/v1/__PROJECT__/` 是框架无关的骨架，`template/v1/overlays/<id>/` 是叠加层。叠加规则：同路径文件覆盖骨架，根目录的 `*.patch.json` 深合并进 `package.json`。
 
-`template-meta.json` 的 `frameworks` / `sources` / `shells` 声明有哪些可选项，每项 `id` 对应一个叠加层目录；缺省项（`none` / `ts` / `browser`）没有目录，表示这一层什么都不加——缺省故事源 `ts` 正是如此，整条创作链在骨架里。可选 `story` 反过来有目录：它要摘掉骨架的 TS 链、换上手写故事。合并顺序固定为「骨架 → 框架 → 故事源 → 壳」：故事源要晚于框架层，才能把各框架入口里的故事表指向产物；壳放最后，因为它对工程形态有最终发言权（小程序壳会删掉骨架的 `src/host`）。
+`template-meta.json` 的 `frameworks` / `shells` 声明有哪些可选项，每项 `id` 对应一个叠加层目录；缺省项（`none` / `browser`）没有目录，表示这一层什么都不加。`sources` 也留在清单里，但它不参与形态问答——它声明的是故事示例的附带方式：缺省 `ts` 没有目录（整条创作链本来就在骨架里），`story` 有目录，只额外附一份手写 `.story` 示例，不摘任何骨架文件。合并顺序固定为「骨架 → 框架 → 故事源 → 壳」：故事源晚于框架层，壳放最后，因为它对工程形态有最终发言权（小程序壳会删掉骨架的 `src/host`）。
 
 `.gitignore` 在模板里存成不带点的 `gitignore`：npm 把包装进 `node_modules` 时会把包内的 `.gitignore` 改名成 `.npmignore`，按原名存会导致生成的工程既缺忽略规则又多个无用文件。
 
 ## 示例故事
 
-骨架自带的是 TS 源的示例：`src/Stories.src/title/*.ts` 里两列（`title_main` 与 `look_around`），编译成 `Resources/Stories/title/*.json` 随骨架一起交付。手写 `.story` 形态的那份示例在叠加层 `template/v1/overlays/story/Resources/Stories/title/title_main.story`，它把几件事都演了一遍：
+骨架自带的是 TS 源的示例：`src/Stories.src/title/*.ts` 里两列（`title_main` 与 `look_around`），编译成 `Resources/Stories/title/*.json` 随骨架一起交付。`--sources story` 额外附的那份手写示例在 `Resources/Stories/manual/manual_intro.story`，列 id 全在 `manual_` 命名空间里，与骨架自带的两列不撞名，它把几件事都演了一遍：
 
 ```text
-scene title_main type=ui
-  say "欢迎来到 __PROJECT__。"
-  say "在 Resources/Stories/ 下继续写你的故事；媒体放 Resources/Audio、Resources/Images、Resources/Video。"
+scene manual_intro type=ui
+  say "这一段来自 Resources/Stories/manual/manual_intro.story。"
+  say "文本故事、手写 JSON、TS 源可以同时在 Resources/Stories/ 下混装；列 id 全工程唯一即可。"
   menu "接下来去哪里？"
-    "开始游戏" -> chapter1
-    "看舞台元素" -> stage_demo
+    "看对话与输入" -> manual_talk
+    "看舞台元素" -> manual_stage
 
-scene chapter1
+scene manual_talk
   input "先问一句：你叫什么名字？" store="player.name"
   say "你好，{player.name}！"
   say "这一列是 game 列：从这里开始，每一步都可回溯、可存档。"
   menu "接下来去哪里？"
-    "看舞台元素" -> stage_demo
-    "回标题界面" -> title_main
+    "看舞台元素" -> manual_stage
+    "回这一列开头" -> manual_talk
 
-scene stage_demo
+scene manual_stage
   panel x=5% y=10% width=90% zindex=10
     text "scene 列 = 声明式空间层：这些方块是元素，不是对话"
     text "panel 是容器，子元素用更深缩进写"
@@ -126,12 +126,13 @@ scene stage_demo
   window hide
   say "（对话框已隐藏——点击继续）"
   window show
+  say "对话框回来了。层级、存档槽位等工程配置见 README 的边界表。"
 ```
 
 `type=ui` 的列不进历史、不进存档、不建检查点——它是界面，不是剧情；引擎对这类列只管按 op 渲染。
-缺省的 TS 形态下同样的三列写在 `src/Stories.src/title/*.ts`，产物是同名的 `.json`。
+同样的三列改成 TS 写，就是 `src/Stories.src/title/*.ts` 里的形式，产物是同名的 `.json`——两种写法编出同一份运行期结构。
 
-换成自己的故事时，删掉这些示例列即可；产物目录由构建全量管理，改源比改产物可靠。
+换成自己的故事时，删掉这些示例列即可；也可以留着它们，在旁边加自己的文件。
 
 ## 模板带了什么
 
@@ -181,7 +182,7 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
 
 ```json
 {
-  "version": "1.11.0",
+  "version": "1.12.0",
   "minEngineVersion": "0.3.2",
   "placeholder": "__PROJECT__",
   "frameworks": [
@@ -230,14 +231,14 @@ pwsh -File pack-template.ps1 -SourceDir ./__PROJECT__ -OutputFile ./__PROJECT__.
     },
     {
       "id": "story",
-      "label": "故事文件（.story）",
-      "hint": "直接写引擎自带的文本故事格式：叠在骨架上，摘掉 TS 创作链，改完保存即生效"
+      "label": "附带手写故事示例",
+      "hint": "多放一份 .story 示例，与 TS 源共存，不摘任何东西"
     }
   ]
 }
 ```
 
-`frameworks` / `shells` / `sources` 各自的第一个元素是该维度的缺省值。`excludes` 声明这一层不能与哪些层共存，元素是层 `id`、可以跨维度引用；问答里的互斥提示与合法性判断都由它推导，不在别处维护白名单。互斥只写在一边也能生效，成对写是为了读的人一眼看得清。`minEngineVersion` 是模板要求的最低引擎版本，升级引擎之前先看这个值——模板可能用到了新引擎才有的能力。
+`frameworks` / `shells` / `sources` 各自的第一个元素是该维度的缺省值（`sources` 不参与形态问答，只决定要不要额外附故事示例）。`excludes` 声明这一层不能与哪些层共存，元素是层 `id`、可以跨维度引用；问答里的互斥提示与合法性判断都由它推导，不在别处维护白名单。互斥只写在一边也能生效，成对写是为了读的人一眼看得清。`minEngineVersion` 是模板要求的最低引擎版本，升级引擎之前先看这个值——模板可能用到了新引擎才有的能力。
 
 ## 下一步
 

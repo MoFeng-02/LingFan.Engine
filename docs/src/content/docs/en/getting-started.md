@@ -42,8 +42,7 @@ Shape is a multi-select answered by number, separated by spaces or commas. A ful
   2. React —— 页面结构换成 JSX 组件，装配与宿主不变  互斥：Vue 3、小程序（UniApp）
   3. 桌面（Tauri 2） —— 给同一份工程再加一个桌面壳：存档落到应用数据目录，页面结构不变  互斥：小程序（UniApp）
   4. 小程序（UniApp） —— 页面层换成 UniApp Vue 3 单文件组件，宿主装配走小程序端口  互斥：Vue 3、React、桌面（Tauri 2）
-  5. 故事文件（.story） —— 直接写引擎自带的文本故事格式：叠在骨架上，摘掉 TS 创作链，改完保存即生效  互斥：无
-选择（1-5，可多选，空格或逗号分隔；回车 = 只用骨架（框架无关 + 浏览器 + TS 源））：1 3
+选择（1-4，可多选，空格或逗号分隔；回车 = 只用骨架（框架无关 + 浏览器））：1 3
 ```
 
 That answer gives you Vue 3 pages inside a desktop shell. The combination rules are three:
@@ -52,9 +51,9 @@ That answer gives you Vue 3 pages inside a desktop shell. The combination rules 
 - The miniprogram (UniApp) shape brings its own Vue 3 page layer, so it conflicts with Vue 3, React and the desktop shell.
 - The desktop shell sits on top of the browser shape and combines with either Vue 3 or React.
 
-The story-file shape (`.story`) conflicts with nothing: it only decides where stories come from, replacing the skeleton's TypeScript authoring chain with hand-written text stories.
+This question only picks page structure and shell — not how stories are written. The three authoring forms — TypeScript sources (`src/Stories.src/`), hand-written `.story`, hand-written `.json` — live in the same `Resources/Stories/` tree and are scanned together at build time, so they can be mixed in one project and never exclude each other. `--sources story` (or `--template …-story`) just adds a hand-written `.story` sample on top; it does not decide whether the TypeScript authoring chain stays.
 
-Press Enter to skip the question and you get the skeleton's native shape: framework-agnostic + browser + TypeScript sources.
+Press Enter to skip the question and you get the skeleton's native shape: framework-agnostic + browser.
 
 In scripts and CI, pass `--yes` to take every default, or pin each part with `--description` / `--framework` / `--shell` / `--sources`. `--template framework[-shell[-sources]]` is the compact equivalent; see [Create from a Template](/from-template/).
 
@@ -99,28 +98,38 @@ Open the address it prints and you get one line of text. Click it, or press Spac
 
 ## Change a line of dialogue
 
-Open `Resources/Stories/title/title_main.story`. The first line is:
+The story source lives in `src/Stories.src/title/title_main.ts`. The first column looks like this:
 
-```text
-label title_main:
-  say "欢迎来到 __PROJECT__。"
+```ts
+export default function title_main(): void {
+  say("这是用 TypeScript 写的故事列。", "旁白");
+  say("改完保存，在工程根跑 pnpm stories:build 就会重新生成故事文件。");
+  menu("接下来做什么？", [
+    option("四处看看", "look_around"),
+    option("重来一次", "title_main"),
+  ]);
+}
 ```
 
-The template's sample text is Chinese, so the line in your file looks exactly like this.
+The template's sample text is Chinese, so the strings in your file look exactly like this. Edit the text of the first `say`, save, run `pnpm stories:build` in the project root, then refresh the page. The build compiles this column to `Resources/Stories/title/title_main.json` — that artifact is what the engine reads at runtime, so editing the `.json` directly gets overwritten by the next build. Edit the source.
 
-Edit that line and save. `.story` files do not go through Vite's module graph, so they do not hot-reload — the new text shows up only after you refresh the page. While you are in there, replace the leftover `__PROJECT__` too — it is only a template placeholder.
-
-A few lines further down sits an `input`, which stores what the player types in `player.name`; the next `say` reads it back with `{player.name}`. Those are the engine's two most basic moves: write state, read state.
+Writing state and reading it back are the engine's two most basic moves: `input("What's your name?", "player.name")` stops and stores what the player types in `player.name`, and the next `say` reads it back with `{player.name}`. If you generated the project with `--sources story`, `Resources/Stories/manual/manual_intro.story` contains a hand-written sample that does both; hand-written `.story` files skip the build and take effect on save.
 
 ## Swap in a BGM
 
 1. Drop an audio file into `Resources/Audio/`, say `Resources/Audio/theme.mp3`.
-2. Add a line to the story:
+2. Add a line to the story column. In a TypeScript source that is:
+
+   ```ts
+   bgm("Audio/theme.mp3", { volume: 0.6, loop: true });
+   say("Music changed.");
+   ```
+
+   The same thing written as text in a hand-written `.story` file:
 
    ```text
-   label title_main:
-     bgm "Audio/theme.mp3" volume=0.6 loop=true
-     say "Music changed."
+   bgm "Audio/theme.mp3" volume=0.6 loop=true
+   say "Music changed."
    ```
 
 Paths are relative to `Resources/` and carry no leading slash. `volume` defaults to 1 and `loop` defaults to `true`.
@@ -137,7 +146,7 @@ Refresh the page and the music should start when the first line appears.
 export { STORIES } from "virtual:story-list";
 ```
 
-The scan and its dev-time refresh live in `vite.plugins.ts`: adding or removing a story file invalidates the list and reloads the page. The desktop shell does its own recursive collection and behaves the same. The engine side treats both forms identically: it only assembles files under `Stories/` and skips everything else. If it still cannot find the column, the usual causes are a case mismatch in the file name, or the file sitting outside `Stories/`.
+The scan and its dev-time refresh live in `vite.plugins.ts`: adding or removing a story file invalidates the list and reloads the page. The desktop shell does its own recursive collection and behaves the same. The engine side treats all three file forms identically: it only assembles files under `Stories/` and skips everything else. If it still cannot find the column, the usual causes are a case mismatch in the file name, or the file sitting outside `Stories/`.
 
 **Port 1420 is taken.** Change `server.port` in `vite.config.ts`.
 

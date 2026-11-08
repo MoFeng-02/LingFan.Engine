@@ -7,22 +7,22 @@ description: 灵泛引擎 LingFan Engine 是框架无关的 TypeScript 叙事引
 
 ## 一个故事文件
 
-`Resources/Stories/title/title_main.story`：
+`Resources/Stories/demo/demo_intro.story`：
 
 ```text
-label title_main:
+label demo_intro:
   say "欢迎来到我的故事。"
   input "你叫什么名字？" store="player.name"
   say "你好，{player.name}！"
   menu "接下来做什么？"
     "出发" -> chapter_one
-    "再来一遍" -> title_main
+    "再来一遍" -> demo_intro
 
 label chapter_one:
   say "第一章开始了。"
 ```
 
-`label` 开一列，列里按顺序写命令。`say` 显示一句话；`input` 停下来等玩家输入，存进 `player.name`；`menu` 给出选项，跳到别的列。这段代码放进模板工程就能跑。
+`label` 开一列，列里按顺序写命令。`say` 显示一句话；`input` 停下来等玩家输入，存进 `player.name`；`menu` 给出选项，跳到别的列。这段代码存成 `.story` 文件放进工程的 `Resources/Stories/` 就能跑——手写的故事文件保存即生效，不用构建。
 
 ## 引擎做什么
 

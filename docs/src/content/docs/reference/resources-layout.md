@@ -9,8 +9,9 @@ description: 资源根里每个目录放什么、路径怎么写、大小写与�
 Resources/
 ├── project.json
 ├── Stories/
-│   ├── title/title_main.story
-│   └── chapter1/chapter1.story
+│   ├── title/title_main.json
+│   ├── title/look_around.json
+│   └── manual/manual_intro.story
 ├── Audio/
 ├── Images/
 ├── Video/

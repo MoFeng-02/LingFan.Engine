@@ -24,13 +24,13 @@ description: 在工程根的 src/ 下放 Stories.src/，用原生 TypeScript 写
 
 写长故事、有大量条件分支和循环、想用类型系统约束状态键、或者依赖某个 npm 包里的纯数据表时，TS 模式比手写文本省事。
 
-只想改两句台词、或者工程里已经有 `.story` 且跑得好，就不必迁移——两条路径的产物完全一样，运行期对 TS 零感知。真要用，[从模板创建工程](/from-template/)时选 `--sources ts` 就有整套现成的构建链；已有工程想接，装一个包、写一个 `config.ts` 即可。
+只想改两句台词、或者工程里已经有 `.story` 且跑得好，就不必迁移——两条路径的产物完全一样，运行期对 TS 零感知。真要用，新建工程时就已经带着整套构建链；已有工程想接，装一个包、写一个 `config.ts` 即可。
 
 ## 模板自带这条链
 
-这条链在模板骨架里，任何形态的生成结果都先包含它：`src/Stories.src/`（`config.ts` + 示例列）、三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）、`@lingfan-engine/stories-build` 与 `@lingfan-engine/editor` 两个开发依赖，以及一份开箱可跑的产物 `Resources/Stories/**`。缺省故事源形态就是 `ts`，所以生成时不必额外选择，也不需要叠加层。
+这条链在模板骨架里，任何形态的生成结果都包含它：`src/Stories.src/`（`config.ts` + 示例列）、三条脚本（`stories:build` / `stories:watch` / `stories-typecheck`）、`@lingfan-engine/stories-build` 与 `@lingfan-engine/editor` 两个开发依赖，以及一份开箱可跑的产物 `Resources/Stories/**`。它总是存在，不需要额外选择，也不需要叠加层。
 
-选「故事文件（`.story`）」是反向叠加：`overlays/story/` 用 `create.remove` 摘掉整条 TS 链（`src/Stories.src`、`src/gen/*.gen.d.ts`、`tsconfig.stories.json`），再用 `create.unset` 摘掉配套的三条 `stories:*` 脚本与 `@lingfan-engine/editor` 依赖，换上一份手写 `.story`——产物目录对列集全量管理，两套故事并存时第一次构建就会把 `.story` 当陈旧列清理，所以两种形态不共存。
+它和手写 `.story`、手写 `.json` 不是互斥选项：三种创作形态落在同一棵 `Resources/Stories/` 树上，构建期一起被扫描，可以混装在一个工程里。加 `--sources story` 生成工程时，只会额外交付一份位于 `Resources/Stories/manual/manual_intro.story` 的手写示例，TS 链原样保留。
 
 已有工程手工接入，等价于补齐上面这些：`pnpm add -D @lingfan-engine/stories-build @lingfan-engine/editor`，写 `src/Stories.src/config.ts`，然后按后文「构建与产物」的命令跑。
 
@@ -333,7 +333,7 @@ pnpm exec lingfan-stories-watch .      # 常驻增量
 
 参考宿主 `apps/playground` 用的是同一套包命令，只是脚本里以 `tsx` 直调源码，便于在仓库内改构建链。
 
-产物写到 `Resources/Stories/`，路径镜像源文件路径——`src/Stories.src/chapter1/start.ts` 编译成 `Resources/Stories/chapter1/start.json`。TS 源工程对列集是**全量管理**：源里没有的列，构建期从产物目录删掉，删除项逐条列在报告里。
+产物写到 `Resources/Stories/`，路径镜像源文件路径——`src/Stories.src/chapter1/start.ts` 编译成 `Resources/Stories/chapter1/start.json`。构建自己写出的产物由它自己维护：上一轮写过、这一轮不再产出的 `.json` 会被清掉，删除项逐条列在报告里。你手写的 `.story` 与 `.json` 不在它的管理范围内，构建不会碰。
 
 忘记把新章节加进 `folders` 不会静默变成「陈旧删除」——覆盖范围外发现 `default` 导出会直接报错。
 
