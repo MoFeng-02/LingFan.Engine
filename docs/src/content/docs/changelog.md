@@ -5,6 +5,18 @@ description: 灵泛引擎按版本记录的改动要点：每个版本新增了�
 
 按版本倒序记录改动要点。本页只留读者需要知道的部分——每条改动的完整说明与提交哈希在 GitHub Releases 对应版本页里，链接见各版本标题下方。
 
+## v0.3.6
+
+2026-11-08 · [完整说明与提交清单](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.3.6)
+
+### 修复
+
+- **生成工程类型检查把故事源误当组件**：Vue、React、小程序三种形态生成的工程，根 `tsconfig.json` 的检查面覆盖整个 `src/**`，而这份配置由组件编译器承担（Vue 认 `.vue`、React 认 `.tsx`）。于是故事源里 `import` 组件、把组件句柄传给 `mount()` 时，组件被解析成真实组件类型，盖过引擎声明的句柄通配，判成型不匹配——按文档写 UI 挂载的工程一跑 `typecheck` 就报错。现在三种形态的工程配置都把 `src/Stories.src/**` 排除在组件检查面之外，故事源由自己的 `tsconfig.stories.json` 用纯 `tsc` 检查，`stories-typecheck` 照常覆盖它；宿主页面仍在组件检查面内，改动宿主写错类型照样报错。
+
+### 其他变更
+
+- **模板版本**：`1.12.0` → `1.13.0`。模板内容有变（三种形态的工程 `tsconfig.json`），因此抬版本号；引擎版本线不受影响。
+
 ## v0.3.5
 
 2026-11-08 · [完整说明与提交清单](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.3.5)
