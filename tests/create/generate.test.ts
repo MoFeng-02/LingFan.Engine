@@ -12,6 +12,7 @@
 import {
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -83,7 +84,9 @@ function makeTemplate(name: string): string {
       dependencies: { vue: "^3.5.0" },
     }),
     "overlays/vue/src/App.vue": "<template>__PROJECT__</template>",
-    // 手写故事文件形态：叠在骨架上，摘掉骨架那条 TS 创作链
+    // 机制夹具：这里用 story 层演示「摘文件 + 摘清单键」，真实模板的 story 层
+    // 只做加法（另附一份手写示例、不摘任何骨架文件）。夹具测的是合并机制本身，
+    // 因此不随真实模板的语义调整而变。
     "overlays/story/package.patch.json": JSON.stringify({
       create: {
         remove: ["Resources/Stories", "src/Stories.src"],
@@ -443,7 +446,9 @@ describe("层序与写盘", () => {
     ).toEqual([join(root, "__PROJECT__"), join(root, "overlays", "browser")]);
   });
 
-  it("故事文件形态摘掉骨架的 TS 创作链，换成手写故事", () => {
+  it("叠加层可摘掉骨架里的文件", () => {
+    // 机制层面：`create.remove` 摘掉的路径不再出现在产物里，本层自己的文件照常落地。
+    // 夹具拿 story 层演示，真实模板的 story 层只做加法，摘除能力由别的层按需使用。
     const root = makeTemplate("story-overlay");
     const result = generateProject({
       templateRoot: root,
@@ -463,8 +468,8 @@ describe("层序与写盘", () => {
     ).toBe(true);
   });
 
-  it("故事文件形态连配套的脚本与创作期依赖一起摘掉", () => {
-    // 反向叠加层摘走 TS 创作链之后，配套命令与依赖必须一起消失：
+  it("摘除同时可摘清单里的脚本与依赖", () => {
+    // 反向叠加层摘走骨架的一部分之后，配套命令与依赖必须一起消失：
     // 留着一个指向已删除目录的 `stories:build`，使用者照文档跑一次就会失败。
     const root = makeTemplate("story-unset");
     const result = generateProject({
@@ -648,5 +653,43 @@ describe("描述写入两份清单", () => {
     expect((pkg.dependencies as Record<string, string>).vue).toBe("^3.5.0");
     expect(project.id).toBe("descr-shape");
     expect(project.name).toBe("descr-shape");
+  });
+});
+
+/**
+ * `makeTemplate()` 这份最小模板（骨架四个文件 + 框架层一个 + 故事源层一个
+ * + 壳层一个，`*.patch.json` 不进产物）生成出来的文件总数。
+ *
+ * 为什么值得钉死：这个数字是叠加层合并、`create.remove`、点文件名还原、
+ * 清单渲染共同作用的结果，任何一处行为漂移都会改它——而它恰好是使用者
+ * 第一眼能感知的东西（「生成了多少个文件」）。此前只能靠真跑矩阵人工核对。
+ */
+const SKELETON_MINIMAL_FILE_COUNT = 7;
+
+/** 递归数目录下的文件数（只数文件，不数目录） */
+function countFiles(dir: string): number {
+  let total = 0;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    total += entry.isDirectory() ? countFiles(path) : 1;
+  }
+  return total;
+}
+
+describe("产物文件数", () => {
+  it("最小模板的产物文件数固定", () => {
+    const root = makeTemplate("file-count");
+    const result = generateProject({
+      templateRoot: root,
+      targetBase: BASE,
+      projectName: "minimal-count",
+      framework: "vue",
+      sources: "story",
+      shell: "browser",
+      resolved: new Map<string, string>(),
+    });
+    // 两条口径互相印证：结果对象报的数就是磁盘上真正落下的文件数
+    expect(result.fileCount).toBe(SKELETON_MINIMAL_FILE_COUNT);
+    expect(countFiles(result.projectDir)).toBe(SKELETON_MINIMAL_FILE_COUNT);
   });
 });
