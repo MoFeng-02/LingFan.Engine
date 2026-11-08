@@ -5,6 +5,19 @@ description: 灵泛引擎按版本记录的改动要点：每个版本新增了�
 
 按版本倒序记录改动要点。本页只留读者需要知道的部分——每条改动的完整说明与提交哈希在 GitHub Releases 对应版本页里，链接见各版本标题下方。
 
+## v0.3.7
+
+2026-11-08 · [完整说明与提交清单](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.3.7)
+
+### 新增
+
+- **模板自带界面挂载示例**：Vue 与 React 两种形态生成出来的工程，`src/ui/hint/` 下各有一份提示条界面，`src/Stories.src/title/look_around.ts` 里用 `mount(hint, true, { text })` 把它挂上来。入口菜单选「四处看看」就能看到效果，改这份列即刻生效，不必先理解整套挂载链路。
+
+### 其他变更
+
+- **文档**：故事源一章补「挂界面」一节，讲清界面的目录名、文件名与导入绑定名三者同名这条硬规矩，`mount()` 的入参是整份替换且必须能存进快照，操作引擎走 `controls`；并补一节说明工程根 `tsconfig.json` 与 `tsconfig.stories.json` 各管哪一段——前者归组件编译器管宿主页面，后者用纯 `tsc` 管故事源。
+- **模板版本**：`1.13.0` → `1.14.0`。模板内容有变（两种形态各多一份界面示例），因此抬版本号；引擎版本线不受影响。
+
 ## v0.3.6
 
 2026-11-08 · [完整说明与提交清单](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.3.6)
