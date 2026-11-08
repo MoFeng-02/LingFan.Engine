@@ -134,6 +134,12 @@ export interface ProjectManifest {
   entry: string;
   /** 工程显示名（可选） */
   name?: string;
+  /**
+   * 工程简介（可选）：给玩家看的自由文本（创作者写给自己与读者的一句说明）。
+   * **不参与寻址**：定位靠 `id` 与目录名，标题解析只读 `name` / `id`；
+   * 描述是纯元信息，引擎不据此改变任何行为。
+   */
+  description?: string;
   /** 默认语言（I18N overlay 机制） */
   lang?: string;
   /**

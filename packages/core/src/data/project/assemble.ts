@@ -93,6 +93,14 @@ export function assembleProject(
   if (manifest.lang !== undefined && typeof manifest.lang !== "string") {
     issues.push("project.json: lang 必须为字符串");
   }
+  // 工程简介（给玩家看的自由文本）：只校验形状，内容不限语言与字符集。
+  // 空串合法（作者可能留空），不参与寻址，组装器也不回填进 Story。
+  if (
+    manifest.description !== undefined &&
+    typeof manifest.description !== "string"
+  ) {
+    issues.push("project.json: description 必须为字符串");
+  }
   // 故事版本（作者声明）：正整数；缺席 = 1（读侧 ?? 1 口径，组装器不补默认）
   if (
     manifest.version !== undefined &&
