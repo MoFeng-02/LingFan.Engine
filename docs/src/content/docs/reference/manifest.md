@@ -1,6 +1,6 @@
 ---
 title: 工程清单 project.json
-description: 清单字段逐条说明：formatVersion、capabilityVersion、id、entry、lang、shell.layers、shell.saves、shell.stage、shell.orientation、extensions、defines、resourceEncryption。
+description: 清单字段逐条说明：formatVersion、capabilityVersion、id、entry、description、lang、shell.layers、shell.saves、shell.stage、shell.orientation、extensions、defines、resourceEncryption。
 ---
 
 `Resources/project.json` 是工程的唯一清单。引擎启动时读它，校验不过整个工程打不开。
@@ -28,6 +28,7 @@ description: 清单字段逐条说明：formatVersion、capabilityVersion、id�
 | `id`                 | string   | 是   | 无      |
 | `entry`              | string   | 是   | 无      |
 | `name`               | string   | 否   | `id`    |
+| `description`        | string   | 否   | 无      |
 | `lang`               | string   | 否   | `zh-CN` |
 | `defines`            | object   | 否   | 空      |
 | `shell`              | object   | 否   | 见下    |
@@ -70,6 +71,14 @@ description: 清单字段逐条说明：formatVersion、capabilityVersion、id�
 ### name
 
 显示名，界面上用它。缺省时用 `id`。这个值**不参与翻译**，想要英文名得改清单。
+
+### description
+
+工程简介，给玩家看的一句话。写什么都行，语言与字符集不限；空串合法，写不写都不影响加载。
+
+它**不参与寻址**：定位靠 `id` 与目录名，标题解析只读 `name` 与 `id`。描述是纯元信息，引擎不据此改变任何行为——没有界面会因为它多显示或少显示什么。
+
+工程生成器问到的描述就写在这里，同一段文字同时写进 `package.json` 的 `description` 与 `Resources/project.json` 的 `description`。手写的清单同样可以自己加这个键。
 
 ### lang
 

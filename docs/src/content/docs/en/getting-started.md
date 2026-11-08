@@ -17,14 +17,46 @@ pnpm -v
 ## Generate a project
 
 ```sh
+npm create @lingfan-engine
+```
+
+`pnpm create @lingfan-engine` and `bun create @lingfan-engine` work the same way. yarn needs version 2 or later; on classic, write `yarn dlx create-@lingfan-engine`.
+
+The generator asks three things: project name, description, then shape. You can also pass the name on the command line:
+
+```sh
 npm create @lingfan-engine my-story
 ```
 
-`pnpm create @lingfan-engine my-story` works the same way. The generator asks for a project name plus a framework and a shell — the framework is plain (framework-agnostic), Vue 3 or React, and the shell is browser, miniprogram (UniApp) or desktop (Tauri 2). Pass `--yes` to take every default, or name the whole shape at once with `--template` (written `framework[-shell[-sources]]`, e.g. `--template vue-tauri`).
+The description may be left empty. If you fill it in, it goes into both `package.json` and `Resources/project.json` as `description`.
 
-The story source is not a question: the skeleton ships the full TypeScript authoring chain, so that is the default. To hand-write `.story` files, add `--sources story` or put it in the third segment of `--template`.
+Shape is a multi-select answered by number, separated by spaces or commas. A full exchange looks like this:
 
-A framework layer swaps only the page structure and the entry point: `src/host/**` stays untouched and both shapes share one stylesheet. A shell layer swaps the whole page and host (miniprogram) or adds a desktop shell on top (Tauri). The two stack, so `--template react-tauri` gives you React pages inside a desktop shell.
+```text
+灵泛叙事引擎 · 工程生成器
+
+工程名：my-story
+描述（可留空；会写进 package.json 与 Resources/project.json）：试菜单的小工程
+形态：
+  1. Vue 3 —— 页面结构换成单文件组件，装配与宿主不变  互斥：React、小程序（UniApp）
+  2. React —— 页面结构换成 JSX 组件，装配与宿主不变  互斥：Vue 3、小程序（UniApp）
+  3. 桌面（Tauri 2） —— 给同一份工程再加一个桌面壳：存档落到应用数据目录，页面结构不变  互斥：小程序（UniApp）
+  4. 小程序（UniApp） —— 页面层换成 UniApp Vue 3 单文件组件，宿主装配走小程序端口  互斥：Vue 3、React、桌面（Tauri 2）
+  5. 故事文件（.story） —— 直接写引擎自带的文本故事格式：叠在骨架上，摘掉 TS 创作链，改完保存即生效  互斥：无
+选择（1-5，可多选，空格或逗号分隔；回车 = 只用骨架（框架无关 + 浏览器 + TS 源））：1 3
+```
+
+That answer gives you Vue 3 pages inside a desktop shell. The combination rules are three:
+
+- Vue 3 and React are mutually exclusive — page structure can have only one owner.
+- The miniprogram (UniApp) shape brings its own Vue 3 page layer, so it conflicts with Vue 3, React and the desktop shell.
+- The desktop shell sits on top of the browser shape and combines with either Vue 3 or React.
+
+The story-file shape (`.story`) conflicts with nothing: it only decides where stories come from, replacing the skeleton's TypeScript authoring chain with hand-written text stories.
+
+Press Enter to skip the question and you get the skeleton's native shape: framework-agnostic + browser + TypeScript sources.
+
+In scripts and CI, pass `--yes` to take every default, or pin each part with `--description` / `--framework` / `--shell` / `--sources`. `--template framework[-shell[-sources]]` is the compact equivalent; see [Create from a Template](/from-template/).
 
 Generating by hand works too. The template lives at `template/v1/__PROJECT__/` in the engine repository.
 

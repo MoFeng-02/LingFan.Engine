@@ -17,14 +17,46 @@ pnpm -v
 ## 生成工程
 
 ```sh
+npm create @lingfan-engine
+```
+
+`pnpm create @lingfan-engine`、`bun create @lingfan-engine` 等价；yarn 需 2 及以上版本，classic 用 `yarn dlx create-@lingfan-engine`。
+
+生成器问三件事：工程名 → 描述 → 形态。工程名也可以直接写进命令：
+
+```sh
 npm create @lingfan-engine my-story
 ```
 
-也可以用 `pnpm create @lingfan-engine my-story`，两者等价。生成器会问工程名、框架与壳——框架可选「原生（框架无关）」「Vue 3」「React」，壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」；全部取缺省值加 `--yes`，或用 `--template` 一次性指定形态（写作 `框架[-壳[-故事源]]`，如 `--template vue-tauri`）。
+描述可以留空；填了会写进 `package.json` 的 `description` 与 `Resources/project.json` 的 `description`，两处是同一段文字。
 
-故事源不必选：骨架自带整条 TS 创作链，它就是缺省形态。要手写 `.story` 加 `--sources story` 或写进 `--template` 的第三段。
+形态是一次多选，按编号选，空格或逗号分隔。一次完整的问答长这样：
 
-框架层只换页面结构与入口：`src/host/**` 一行不改，样式表与骨架共用同一份，引擎与适配器不认识任何 UI 框架。壳层换的是整套页面与宿主（小程序）或只补桌面外壳（Tauri），两层可以叠：`--framework react --shell tauri` 得到 React 页面 + 桌面外壳。
+```text
+灵泛叙事引擎 · 工程生成器
+
+工程名：my-story
+描述（可留空；会写进 package.json 与 Resources/project.json）：试菜单的小工程
+形态：
+  1. Vue 3 —— 页面结构换成单文件组件，装配与宿主不变  互斥：React、小程序（UniApp）
+  2. React —— 页面结构换成 JSX 组件，装配与宿主不变  互斥：Vue 3、小程序（UniApp）
+  3. 桌面（Tauri 2） —— 给同一份工程再加一个桌面壳：存档落到应用数据目录，页面结构不变  互斥：小程序（UniApp）
+  4. 小程序（UniApp） —— 页面层换成 UniApp Vue 3 单文件组件，宿主装配走小程序端口  互斥：Vue 3、React、桌面（Tauri 2）
+  5. 故事文件（.story） —— 直接写引擎自带的文本故事格式：叠在骨架上，摘掉 TS 创作链，改完保存即生效  互斥：无
+选择（1-5，可多选，空格或逗号分隔；回车 = 只用骨架（框架无关 + 浏览器 + TS 源））：1 3
+```
+
+上面这组回答生成 Vue 3 页面 + 桌面壳。组合规则只有三条：
+
+- Vue 3 与 React 互斥，页面结构只能有一个所有者。
+- 小程序（UniApp）自带 Vue 3 页面层，与 Vue 3、React、桌面壳都不能同时选。
+- 桌面壳叠在浏览器形态之上，与 Vue 3 或 React 都能组合。
+
+故事文件（`.story`）与任何一行都不冲突：它只决定故事从哪来，选上就把骨架的 TS 创作链换成手写文本故事。
+
+回车跳过形态，得到骨架原生形态：框架无关 + 浏览器 + TypeScript 源。
+
+在脚本或 CI 里跑时，加 `--yes` 取全部缺省，或用 `--description` / `--framework` / `--shell` / `--sources` 逐项给，`--template 框架[-壳[-故事源]]` 是等价写法；细节见[从模板创建工程](/from-template/)。
 
 手工生成也可以：模板在引擎仓库的 `template/v1/__PROJECT__/`。
 
