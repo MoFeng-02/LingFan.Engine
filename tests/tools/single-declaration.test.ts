@@ -96,6 +96,7 @@ const SINGLE: Record<string, string> = {
   GenerateOptions: "packages/create/src/generate/project.ts",
   GenerateResult: "packages/create/src/generate/project.ts",
   CreateArgs: "packages/create/src/cli/cli.ts",
+  CreateAnswers: "packages/create/src/cli/answers.ts",
   PromptTexts: "packages/create/src/cli/prompts.ts",
   PromptIo: "packages/create/src/cli/prompts.ts",
   CreateTexts: "packages/create/src/shared/texts.ts",

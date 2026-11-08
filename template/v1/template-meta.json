@@ -1,5 +1,5 @@
 {
-  "version": "1.10.0",
+  "version": "1.11.0",
   "minEngineVersion": "0.3.2",
   "placeholder": "__PROJECT__",
   "frameworks": [
@@ -11,12 +11,14 @@
     {
       "id": "vue",
       "label": "Vue 3",
-      "hint": "页面结构换成单文件组件，装配与宿主不变"
+      "hint": "页面结构换成单文件组件，装配与宿主不变",
+      "excludes": ["react", "miniprogram"]
     },
     {
       "id": "react",
       "label": "React",
-      "hint": "页面结构换成 JSX 组件，装配与宿主不变"
+      "hint": "页面结构换成 JSX 组件，装配与宿主不变",
+      "excludes": ["vue", "miniprogram"]
     }
   ],
   "shells": [
@@ -26,14 +28,16 @@
       "hint": "只生成 Web 端工程，用 vite 起本地服务"
     },
     {
-      "id": "miniprogram",
-      "label": "小程序（UniApp）",
-      "hint": "页面层换成 UniApp Vue 3 单文件组件，宿主装配走小程序端口"
-    },
-    {
       "id": "tauri",
       "label": "桌面（Tauri 2）",
-      "hint": "给同一份工程再加一个桌面壳：存档落到应用数据目录，页面结构不变"
+      "hint": "给同一份工程再加一个桌面壳：存档落到应用数据目录，页面结构不变",
+      "excludes": ["miniprogram"]
+    },
+    {
+      "id": "miniprogram",
+      "label": "小程序（UniApp）",
+      "hint": "页面层换成 UniApp Vue 3 单文件组件，宿主装配走小程序端口",
+      "excludes": ["vue", "react", "tauri"]
     }
   ],
   "sources": [
@@ -48,5 +52,5 @@
       "hint": "直接写引擎自带的文本故事格式：叠在骨架上，摘掉 TS 创作链，改完保存即生效"
     }
   ],
-  "_comment": "模板版本唯一来源，独立于引擎版本：仅当 template/v1 内容真正变化时才手动 bump。placeholder 是目录/文件内的工程名占位符，生成时整体替换为工程名（对齐 _LingFanEngineTemplateTitle_ 占位符语义）。minEngineVersion 表示此模板要求的最低引擎版本——生成期会拿它跟 registry 上的实际版本比对，不达标即失败（离线查不到版本时跳过判定）。frameworks / shells / sources 决定生成器会问什么、能叠哪些层，各自首项为缺省值；每一项的 id 对应 template/v1/overlays/<id> 目录（缺省层可以没有目录——缺省故事源 `ts` 就是这样：整条创作链在骨架里，不需要叠加层）。合并顺序为「骨架 → 框架 → 故事源 → 壳」，同路径文件由后一层覆盖前一层。"
+  "_comment": "模板版本唯一来源，独立于引擎版本：仅当 template/v1 内容真正变化时才手动 bump。placeholder 是目录/文件内的工程名占位符，生成时整体替换为工程名（对齐 _LingFanEngineTemplateTitle_ 占位符语义）。minEngineVersion 表示此模板要求的最低引擎版本——生成期会拿它跟 registry 上的实际版本比对，不达标即失败（离线查不到版本时跳过判定）。frameworks / shells / sources 决定生成器会问什么、能叠哪些层，各自首项为缺省值；每一项的 id 对应 template/v1/overlays/<id> 目录（缺省层可以没有目录——缺省故事源 `ts` 就是这样：整条创作链在骨架里，不需要叠加层）。合并顺序为「骨架 → 框架 → 故事源 → 壳」，同路径文件由后一层覆盖前一层。excludes 声明该层与哪些层不能共存，元素是层 id、可以跨维度引用，生成器据此推导合法形态；只写单边即可生效，但成对声明能让读的人一眼看清——所以每一对互斥都在两边都写了。页面结构只能有一个所有者：两层都要写 src/main.* 或 src/App.* 时，必须在其中一方 excludes 里声明互斥，不得靠合并顺序决定谁活下来。"
 }

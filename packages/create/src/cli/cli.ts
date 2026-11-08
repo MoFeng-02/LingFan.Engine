@@ -1,40 +1,29 @@
 /**
  * 命令行入口。
  *
- * 分工：参数解析与流程编排在这里，「问什么」在 `prompts.ts`，「生成什么」在
- * `generate` 域，「版本从哪来」在 `registry` 域。本文件只负责把这些串起来，
+ * 分工：参数解析与流程编排在这里，「答案怎么合成」在 `answers.ts`，「问答怎么问」
+ * 在 `prompts.ts`，「生成怎么做」在 `stage.ts`。本文件只负责把这四段串成一次运行，
  * 并把失败转成人能读的提示与退出码——库代码一律抛异常，只有这里决定措辞。
+ *
+ * 三个问题的顺序（工程名 → 描述 → 形态）由 `answers.ts` 保证，本文件不介入。
  */
 import { resolve as resolvePath } from "node:path";
-import { currentPackageManager, defaultCreateTexts } from "../shared/index.ts";
-import { isValidProjectName, suggestProjectName } from "../shared/index.ts";
+import { defaultCreateTexts } from "../shared/index.ts";
 import {
-  layerBases,
-  generateProject,
-  collectDependencyNames,
   isOccupied,
   projectDirOf,
   type ExistingTarget,
 } from "../generate/index.ts";
-import {
-  checkEngineCompatibility,
-  readTemplateMeta,
-  resolveTemplateRoot,
-  resolveVersions,
-  type TemplateMeta,
-} from "../registry/index.ts";
-import {
-  askExisting,
-  askOption,
-  askProjectName,
-  createTerminalIo,
-  type PromptTexts,
-} from "./prompts.ts";
-import { installProject, renderNextSteps } from "./install.ts";
+import { readTemplateMeta, resolveTemplateRoot } from "../registry/index.ts";
+import { resolveAnswers } from "./answers.ts";
+import { askExisting, createTerminalIo, type PromptTexts } from "./prompts.ts";
+import { runStage } from "./stage.ts";
 
 /** 解析后的命令行参数；缺席项为 undefined，交由问答或模板缺省值补 */
 export interface CreateArgs {
   readonly projectName?: string;
+  /** 工程描述；写进两份清单，空串或缺席表示不写该字段 */
+  readonly description?: string;
   readonly template?: string;
   readonly framework?: string;
   readonly shell?: string;
@@ -60,6 +49,7 @@ class ArgError extends Error {}
  */
 export function parseArgs(argv: readonly string[]): CreateArgs {
   let projectName: string | undefined;
+  let description: string | undefined;
   let template: string | undefined;
   let framework: string | undefined;
   let shell: string | undefined;
@@ -83,6 +73,9 @@ export function parseArgs(argv: readonly string[]): CreateArgs {
       return next;
     };
     switch (flag) {
+      case "--description":
+        description = takeValue();
+        break;
       case "--template":
         template = takeValue();
         break;
@@ -129,6 +122,7 @@ export function parseArgs(argv: readonly string[]): CreateArgs {
   }
   return {
     projectName,
+    description,
     template,
     framework,
     shell,
@@ -179,94 +173,42 @@ export async function runCreateCli(argv: readonly string[]): Promise<number> {
   }
   const meta = readTemplateMeta(templateRoot);
 
-  const io = args.yes ? undefined : createTerminalIo();
-  const promptTexts = texts;
+  // 只有「允许提问且确实能问」时才建问答面：`--yes` 承诺一个问题都不问；
+  // 非交互终端（管道、CI、被重定向的 stdin）上没有回车可打，建出来只会挂在
+  // 等一个永远不来的输入上。没有问答面时由 `answers.ts` 判定并给出可用参数。
+  const interactive = !args.yes && process.stdin.isTTY === true;
+  const io = interactive ? createTerminalIo() : undefined;
   try {
-    const projectName = await resolveName(args, promptTexts, io);
-    if (projectName === undefined) return 1;
-    const preset = resolvePreset(args.template, meta);
-    if (preset === undefined) return 1;
-    const framework = await resolveOption(
-      "framework",
-      args.framework ?? preset.framework,
-      meta,
-      promptTexts,
-      io,
-    );
-    if (framework === undefined) return 1;
-    const shell = await resolveOption(
-      "shell",
-      args.shell ?? preset.shell,
-      meta,
-      promptTexts,
-      io,
-    );
-    if (shell === undefined) return 1;
-    // 故事源不再提问：骨架自带整条 TS 创作链，它就是缺省形态。要手写 `.story`
-    // 的人在命令行给 `--sources story` 或用 `--template` 带上第三段即可。
-    const sources = args.sources ?? preset.sources ?? "ts";
-    if (!meta.sources.some((option) => option.id === sources)) {
-      process.stderr.write(`${texts.sourcesUnknown}：${sources}\n`);
-      return 1;
-    }
-    const existing = await resolveExisting({
-      args,
-      projectName,
-      io,
-      texts: promptTexts,
-    });
-    if (existing === undefined) return 1;
-    return await generate({
+    const answers = await resolveAnswers({
       args,
       meta,
       templateRoot,
-      projectName,
-      framework,
-      shell,
-      sources,
+      io,
+      texts,
+    });
+    if (answers === undefined) return 1;
+    const existing = await resolveExisting({
+      args,
+      projectName: answers.projectName,
+      io,
+      texts,
+    });
+    if (existing === undefined) return 1;
+    return await runStage({
+      meta,
+      templateRoot,
+      dir: args.dir,
+      projectName: answers.projectName,
+      description: answers.description,
+      framework: answers.framework,
+      shell: answers.shell,
+      sources: answers.sources,
       existing,
+      install: args.install,
     });
   } finally {
     io?.close();
   }
-}
-
-/**
- * 解析 `--template`：写作 `框架[-壳[-故事源]]`。
- *
- * 只做切分，合法性交给调用方——它已经要按模板声明校验一遍，这里再判一次
- * 会得到两套口径，日后加形态容易漏改其一。
- */
-function resolvePreset(
-  template: string | undefined,
-  meta: TemplateMeta,
-): { framework?: string; shell?: string; sources?: string } | undefined {
-  if (template === undefined) return {};
-  const parts = template.split("-").filter((part) => part !== "");
-  if (parts.length === 0 || parts.length > 3) {
-    process.stderr.write(
-      `${defaultCreateTexts.templateMalformed}：${template}\n`,
-    );
-    return undefined;
-  }
-  const [framework, shell, sources] = parts;
-  const known = (options: readonly { id: string }[], id: string): boolean =>
-    options.some((option) => option.id === id);
-  if (!known(meta.frameworks, framework)) {
-    process.stderr.write(
-      `${defaultCreateTexts.frameworkUnknown}：${framework}\n`,
-    );
-    return undefined;
-  }
-  if (shell !== undefined && !known(meta.shells, shell)) {
-    process.stderr.write(`${defaultCreateTexts.shellUnknown}：${shell}\n`);
-    return undefined;
-  }
-  if (sources !== undefined && !known(meta.sources, sources)) {
-    process.stderr.write(`${defaultCreateTexts.sourcesUnknown}：${sources}\n`);
-    return undefined;
-  }
-  return { framework, shell, sources };
 }
 
 /**
@@ -297,127 +239,4 @@ async function resolveExisting(input: {
     return undefined;
   }
   return picked;
-}
-
-/** 生成一步：查版本 → 写文件 → 可选安装 → 打印后续步骤 */
-async function generate(input: {
-  readonly args: CreateArgs;
-  readonly meta: TemplateMeta;
-  readonly templateRoot: string;
-  readonly projectName: string;
-  readonly framework: string;
-  readonly shell: string;
-  readonly sources: string;
-  readonly existing: ExistingTarget;
-}): Promise<number> {
-  const texts = defaultCreateTexts;
-  const manager = currentPackageManager();
-  const targetBase = resolvePath(input.args.dir ?? process.cwd());
-  const layout = {
-    templateRoot: input.templateRoot,
-    targetBase,
-    projectName: input.projectName,
-    framework: input.framework,
-    shell: input.shell,
-    sources: input.sources,
-    resolved: new Map<string, string>(),
-  };
-
-  process.stderr.write(`${texts.stageResolve}\n`);
-  const names = collectDependencyNames(layerBases(layout));
-  const resolved = await resolveVersions(names);
-  if (resolved.size === 0 && names.length > 0) {
-    process.stderr.write(`${texts.warnVersionOffline}\n`);
-  }
-  // 版本判定在写盘之前：模板要求的引擎还没发布时，生成出来的工程装不上，
-  // 让它失败在「什么都没写」的时刻，而不是在别人的工程里第一次 pnpm dev 时。
-  const incompatible = checkEngineCompatibility(
-    input.meta.minEngineVersion,
-    resolved,
-  );
-  if (incompatible !== undefined) {
-    process.stderr.write(`${incompatible}\n`);
-    return 1;
-  }
-
-  process.stderr.write(`${texts.stageCopy}\n`);
-  let result;
-  try {
-    result = generateProject({ ...layout, existing: input.existing, resolved });
-  } catch (error) {
-    process.stderr.write(`${describe(error)}\n`);
-    return 1;
-  }
-
-  let installed = false;
-  if (input.args.install) {
-    process.stderr.write(`${texts.stageInstall}\n`);
-    installed = await installProject(result.projectDir, manager);
-    if (!installed) process.stderr.write(`${texts.warnInstallFailed}\n`);
-  }
-
-  process.stdout.write(
-    [
-      "",
-      `${texts.doneTitle}：${result.projectDir}`,
-      `共 ${result.fileCount} 个文件，框架 ${result.framework}，壳 ${result.shell}，故事源 ${result.sources}`,
-      "",
-      installed ? "依赖已安装。" : "依赖未安装。",
-      renderNextSteps(result.projectDir, manager, texts),
-      "",
-    ].join("\n"),
-  );
-  return 0;
-}
-
-/** 解析工程名：参数优先，参数非法即报错；交互模式打错会重问 */
-async function resolveName(
-  args: CreateArgs,
-  texts: PromptTexts & { readonly nameInvalid: string },
-  io: Parameters<typeof askProjectName>[0] | undefined,
-): Promise<string | undefined> {
-  if (args.projectName !== undefined) {
-    if (isValidProjectName(args.projectName)) return args.projectName;
-    process.stderr.write(`${texts.nameInvalid}：${args.projectName}\n`);
-    return undefined;
-  }
-  if (io === undefined) {
-    return suggestProjectName("");
-  }
-  return await askProjectName(io, texts, undefined);
-}
-
-/**
- * 解析框架/壳：值必须在模板声明的表里。
- *
- * 表是唯一事实来源——元数据没声明的形态，叠加层目录未必存在，放过去会生成出
- * 静默缺文件的工程。故事源不在这里判：它只剩「作者手写 `.story`」这一种偏离，
- * 由调用方按同一张表查一次即可。
- */
-async function resolveOption(
-  kind: "framework" | "shell",
-  value: string | undefined,
-  meta: TemplateMeta,
-  texts: PromptTexts,
-  io: Parameters<typeof askOption>[0] | undefined,
-): Promise<string | undefined> {
-  const options = kind === "framework" ? meta.frameworks : meta.shells;
-  const invalidText =
-    kind === "framework" ? texts.frameworkUnknown : texts.shellUnknown;
-  const label =
-    kind === "framework" ? texts.promptFramework : texts.promptShell;
-  const picked =
-    value !== undefined || io === undefined
-      ? (value ?? options[0]?.id)
-      : await askOption(io, label, options, undefined, invalidText);
-  if (picked === undefined || !options.some((item) => item.id === picked)) {
-    process.stderr.write(`${invalidText}：${String(picked)}\n`);
-    return undefined;
-  }
-  return picked;
-}
-
-/** 把异常折成一行提示：只暴露信息，不暴露堆栈 */
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

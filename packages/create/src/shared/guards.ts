@@ -66,6 +66,20 @@ export function suggestProjectName(input: string): string {
   return collapsed.length > 0 ? collapsed : "lingfan-story";
 }
 
+/** 描述的字符上限：`package.json#description` 在 npm 生态里的通行上限 */
+export const DESCRIPTION_MAX_LENGTH = 200;
+
+/**
+ * 把自由文本收敛成可写入清单的描述。
+ *
+ * 全空白视为空，返回空串——调用方据此决定「不写这个字段」，而不是写一个空串进去。
+ * 超长直接截断而不报错：描述不影响任何路径与命令，没有理由为一个输入框拦住生成。
+ * 不校验字符集：它是给人看的自由文本，不是标识符。
+ */
+export function normalizeDescription(input: string): string {
+  return input.trim().slice(0, DESCRIPTION_MAX_LENGTH).trim();
+}
+
 /**
  * 把用户输入的版本号归一成 `^x.y.z`。
  *

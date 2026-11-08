@@ -558,3 +558,95 @@ describe("层序与写盘", () => {
     expect(existsSync(join(dir, "package.json"))).toBe(true);
   });
 });
+
+/**
+ * 描述写两处：`package.json` 给开发者与 npm 工具链看，`Resources/project.json`
+ * 跟资源走、供运行时与构建期读。两处同源同值，是「一个变量写两处」而不是两套规则。
+ *
+ * 没有描述时两处都必须**不出现该键**，而不是写空串——空串会让「没填」与「填了个空」
+ * 没法区分，也会让缺省产物与旧版本逐字节不一致。
+ */
+describe("描述写入两份清单", () => {
+  /** 读产物里两份清单 */
+  function manifestsOf(projectDir: string): {
+    pkg: Record<string, unknown>;
+    project: Record<string, unknown>;
+  } {
+    return {
+      pkg: JSON.parse(
+        readFileSync(join(projectDir, "package.json"), "utf8"),
+      ) as Record<string, unknown>,
+      project: JSON.parse(
+        readFileSync(join(projectDir, "Resources/project.json"), "utf8"),
+      ) as Record<string, unknown>,
+    };
+  }
+
+  it("有描述时两处都写同一个值", () => {
+    const root = makeTemplate("desc-on");
+    const result = generateProject({
+      templateRoot: root,
+      targetBase: BASE,
+      projectName: "with-description",
+      description: "试菜单的小工程",
+      framework: "none",
+      shell: "browser",
+      resolved: new Map<string, string>(),
+    });
+    const { pkg, project } = manifestsOf(result.projectDir);
+    expect(pkg.description).toBe("试菜单的小工程");
+    expect(project.description).toBe("试菜单的小工程");
+  });
+
+  it("没有描述时两处都不出现该键", () => {
+    const root = makeTemplate("desc-off");
+    const result = generateProject({
+      templateRoot: root,
+      targetBase: BASE,
+      projectName: "without-description",
+      framework: "none",
+      shell: "browser",
+      resolved: new Map<string, string>(),
+    });
+    const { pkg, project } = manifestsOf(result.projectDir);
+    expect("description" in pkg).toBe(false);
+    expect("description" in project).toBe(false);
+  });
+
+  it("空串等同于没有描述", () => {
+    // 问答里「回车留空」拿到的就是空串；它必须与省略参数走同一条路径，
+    // 否则「空」会以两种形态出现在产物里。
+    const root = makeTemplate("desc-empty");
+    const result = generateProject({
+      templateRoot: root,
+      targetBase: BASE,
+      projectName: "empty-description",
+      description: "",
+      framework: "none",
+      shell: "browser",
+      resolved: new Map<string, string>(),
+    });
+    const { pkg, project } = manifestsOf(result.projectDir);
+    expect("description" in pkg).toBe(false);
+    expect("description" in project).toBe(false);
+  });
+
+  it("描述之外的键位与取值原样保留", () => {
+    const root = makeTemplate("desc-shape");
+    const result = generateProject({
+      templateRoot: root,
+      targetBase: BASE,
+      projectName: "descr-shape",
+      description: "带描述的产物",
+      framework: "vue",
+      shell: "browser",
+      resolved: new Map<string, string>(),
+    });
+    const { pkg, project } = manifestsOf(result.projectDir);
+    // 层补丁与占位符替换照旧生效：描述是「加一个键」，不是「重写清单」
+    expect(pkg.name).toBe("descr-shape");
+    expect((pkg.dependencies as Record<string, string>).vue).toBe("^3.5.0");
+    expect(project.id).toBe("descr-shape");
+    expect(project.name).toBe("descr-shape");
+  });
+});

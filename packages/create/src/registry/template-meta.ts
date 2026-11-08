@@ -41,6 +41,13 @@ export interface TemplateOption {
   readonly label: string;
   /** 一句话说明，交互问答里作为提示 */
   readonly hint: string;
+  /**
+   * 不能与本层共存的其他层 id；缺省视为空数组。
+   *
+   * 元素是**跨维度**的层 id（框架可以排斥壳），不是同一维度内的兄弟项。
+   * 单边声明即生效：只要一对层里有一方点名了另一方，这一对就是互斥的。
+   */
+  readonly excludes?: readonly string[];
 }
 
 /**
@@ -114,4 +121,67 @@ export function overlayDirOf(
 ): string | undefined {
   const dir = join(templateRoot, OVERLAY_DIR, optionId);
   return existsSync(dir) ? dir : undefined;
+}
+
+/**
+ * 这一层是否有自己的目录。
+ *
+ * 判据是磁盘事实而不是 id 白名单：新增一层只要建了目录就自动可选，删掉目录就自动
+ * 退出选项面，生成器不必跟着改。缺省项（`none`/`browser`/`ts`）没有目录，
+ * 因此永远不出现在「可以叠哪些层」的选项里。
+ */
+export function existsLayerDirectory(
+  templateRoot: string,
+  optionId: string,
+): boolean {
+  return existsSync(join(templateRoot, OVERLAY_DIR, optionId));
+}
+
+/**
+ * 列出可以叠加的层：有目录的那些。
+ *
+ * 顺序沿用元数据里的维度顺序「框架 → 壳 → 故事源」，与合并顺序（骨架 → 框架 →
+ * 故事源 → 壳）不同——选项面按使用者心里的粒度排，合并顺序按覆盖关系排。
+ * 三个维度用自己的元数据顺序，维度内保持声明顺序。
+ */
+export function selectableLayers(
+  templateRoot: string,
+  meta: TemplateMeta,
+): TemplateOption[] {
+  return [...meta.frameworks, ...meta.shells, ...meta.sources].filter(
+    (option) => existsLayerDirectory(templateRoot, option.id),
+  );
+}
+
+/** 一对互斥的层 id，按选项面出现顺序排列 */
+export type LayerConflict = readonly [string, string];
+
+/**
+ * 从选中的层里找出互斥对。
+ *
+ * 只看「选中集合里同时出现了互斥的两方」，不关心是哪一方先声明的：单边声明即生效，
+ * 因此两边都声明也不会被算成两对。返回的每一对都按选项面顺序排列，便于报错文本稳定。
+ */
+export function findConflicts(
+  selected: readonly string[],
+  options: readonly TemplateOption[],
+): LayerConflict[] {
+  const order = new Map(options.map((option, index) => [option.id, index]));
+  const chosen = new Set(selected);
+  const pairs: LayerConflict[] = [];
+  const seen = new Set<string>();
+  for (const option of options) {
+    if (!chosen.has(option.id)) continue;
+    for (const excluded of option.excludes ?? []) {
+      if (!chosen.has(excluded)) continue;
+      const key = [option.id, excluded].sort().join("\u0000");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const pair = [option.id, excluded].sort(
+        (left, right) => (order.get(left) ?? 0) - (order.get(right) ?? 0),
+      ) as [string, string];
+      pairs.push(pair);
+    }
+  }
+  return pairs;
 }

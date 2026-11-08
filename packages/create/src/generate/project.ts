@@ -61,6 +61,13 @@ export interface GenerateOptions {
    * 可选是为了不破坏既有调用方——只关心框架与壳的代码不必为一个用不到的参数改签名。
    */
   readonly sources?: string;
+  /**
+   * 工程描述；写进 `package.json` 与 `Resources/project.json` 两处。
+   *
+   * 缺省与空串都表示「没有描述」，两处清单里都不出现该键。这两种状态不做区分：
+   * 调用方要么知道有描述，要么什么都没说，第三种「有但是空」没有语义。
+   */
+  readonly description?: string;
   /** 目标目录非空时怎么办；缺省 `cancel`（报错退出，不碰磁盘） */
   readonly existing?: ExistingTarget;
   /** 引擎包的最新版本；缺席项沿用模板记录的值 */
@@ -111,13 +118,16 @@ export function generateProject(options: GenerateOptions): GenerateResult {
     }
   }
   const merged = mergeLayers(layerBases(options));
-  const files = finalize(
-    merged.files,
-    merged.patch,
-    merged.pinned,
-    options.resolved,
-    meta.placeholder,
-    options.projectName,
+  const files = applyDescription(
+    finalize(
+      merged.files,
+      merged.patch,
+      merged.pinned,
+      options.resolved,
+      meta.placeholder,
+      options.projectName,
+    ),
+    options.description ?? "",
   );
   mkdirSync(projectDir, { recursive: true });
   for (const file of files) {
@@ -233,6 +243,47 @@ export function finalize(
     };
   });
 }
+
+/**
+ * 把工程描述写进两份清单。
+ *
+ * 写两处是因为它们服务不同读者：`package.json` 是开发者与 npm 工具链的门面，
+ * `Resources/project.json` 跟资源一起走，运行时与构建期都读它。同源同值，
+ * 由同一个变量一次写入，不会出现两处说法不一致。
+ *
+ * 没有描述时**一个字节都不改**：模板里本就不写这个键，于是「没填描述」的产物
+ * 与引入描述之前逐字节一致，也不存在「空描述」这种中间状态。
+ */
+function applyDescription(
+  files: readonly PendingFile[],
+  description: string,
+): PendingFile[] {
+  if (description === "") return [...files];
+  return files.map((file) => {
+    if (!MANIFEST_WITH_DESCRIPTION.has(file.path)) return file;
+    const manifest = JSON.parse(file.content.toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+    return {
+      path: file.path,
+      content: Buffer.from(
+        `${JSON.stringify({ ...manifest, description }, null, 2)}\n`,
+        "utf8",
+      ),
+    };
+  });
+}
+
+/**
+ * 描述落点的产物路径。
+ *
+ * 用产物路径而不是模板路径判断：点文件还原已经发生，这里的取值就是最终写盘的名字。
+ */
+const MANIFEST_WITH_DESCRIPTION: ReadonlySet<string> = new Set([
+  "package.json",
+  "Resources/project.json",
+]);
 
 /**
  * 把增量与版本号写进 `package.json`。

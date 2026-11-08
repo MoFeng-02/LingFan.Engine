@@ -2,7 +2,9 @@
 export { defaultCreateTexts, type CreateTexts } from "./texts.ts";
 export {
   caretRange,
+  DESCRIPTION_MAX_LENGTH,
   isValidProjectName,
+  normalizeDescription,
   suggestProjectName,
 } from "./guards.ts";
 export {

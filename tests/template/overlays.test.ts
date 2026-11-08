@@ -27,6 +27,8 @@ interface TemplateOption {
   id: string;
   label: string;
   hint: string;
+  /** 与本层不能共存的层 id；缺省表示不排斥任何层 */
+  excludes?: string[];
 }
 
 const meta = JSON.parse(templateMeta) as {
@@ -508,5 +510,102 @@ describe("模板叠加层：TS 创作链归骨架，故事文件形态是叠加�
       STORY_FILES.some(([path]) => path.endsWith("Resources/project.json")),
       "story 层不应覆盖 Resources/project.json",
     ).toBe(false);
+  });
+});
+
+/**
+ * 互斥声明是形态问答的唯一依据：生成器不再维护合法形态白名单，它只读这里的
+ * `excludes` 反推「哪些组合不能同时选」。所以这份声明必须自身站得住——
+ * 指向不存在的 id 会让互斥静默失效，单边声明会让「先声明的一方赢了」变成
+ * 顺序的偶然产物，而页面结构两处都写就会在合并时互相覆盖。
+ */
+describe("模板叠加层：互斥声明", () => {
+  /** 声明过的全部 id，含没有目录的缺省项：`excludes` 是按 id 解析的，不分维度 */
+  const ALL_IDS = new Set(ALL_OPTIONS.map((option) => option.id));
+
+  /** 某层声明排斥的层 id 表 */
+  function excludesOf(optionId: string): string[] {
+    const option = ALL_OPTIONS.find((item) => item.id === optionId);
+    return option?.excludes ?? [];
+  }
+
+  /** 层目录里是否有页面结构的入口文件或视图文件 */
+  function ownsPageStructure(optionId: string): boolean {
+    return overlayFiles(optionId).some(([path]) => {
+      const rest = path.slice(`../../template/v1/overlays/${optionId}/`.length);
+      return (
+        rest.startsWith("src/main.") ||
+        rest.startsWith("src/App.") ||
+        /^src\/[^/]*\/App\.(vue|tsx)$/.test(rest)
+      );
+    });
+  }
+
+  it("excludes 里的每个 id 都是真实声明过的层", () => {
+    for (const option of ALL_OPTIONS) {
+      for (const excluded of option.excludes ?? []) {
+        expect(
+          ALL_IDS.has(excluded),
+          `${option.id} 排斥了未声明的层 ${excluded}`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("互斥是对称的：A 排斥 B，则 B 也排斥 A", () => {
+    for (const option of ALL_OPTIONS) {
+      for (const excluded of option.excludes ?? []) {
+        expect(
+          excludesOf(excluded),
+          `${excluded} 没有反向排斥 ${option.id}`,
+        ).toContain(option.id);
+      }
+    }
+  });
+
+  it("页面结构只能有一个所有者：两处都写入口文件的层必须互斥", () => {
+    const owners = ALL_OPTIONS.map((option) => option.id).filter(
+      ownsPageStructure,
+    );
+    expect(owners.length).toBeGreaterThan(1);
+    for (const left of owners) {
+      for (const right of owners) {
+        if (left === right) continue;
+        const declared =
+          excludesOf(left).includes(right) || excludesOf(right).includes(left);
+        expect(
+          declared,
+          `${left} 与 ${right} 都写页面结构，却没有在任一方声明互斥`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("已知的四对互斥逐条钉住", () => {
+    expect(excludesOf("vue")).toEqual(
+      expect.arrayContaining(["react", "miniprogram"]),
+    );
+    expect(excludesOf("react")).toEqual(
+      expect.arrayContaining(["vue", "miniprogram"]),
+    );
+    expect(excludesOf("tauri")).toEqual(
+      expect.arrayContaining(["miniprogram"]),
+    );
+    expect(excludesOf("miniprogram")).toEqual(
+      expect.arrayContaining(["vue", "react", "tauri"]),
+    );
+  });
+
+  it("故事文件层不排斥任何层：它可以叠在任一形态上", () => {
+    expect(excludesOf("story")).toEqual([]);
+  });
+
+  it("缺省项不参与互斥：它们没有目录，也不出现在形态选项面", () => {
+    for (const option of ALL_OPTIONS) {
+      if (!NO_DIRECTORY_OPTIONS.has(option.id)) continue;
+      expect(option.excludes ?? [], `${option.id} 不该声明 excludes`).toEqual(
+        [],
+      );
+    }
   });
 });

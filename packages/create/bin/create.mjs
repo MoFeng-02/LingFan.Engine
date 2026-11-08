@@ -8,8 +8,12 @@
  * `src/cli/cli.ts`，也不该被迫装一整套构建链。垫片用本包自带依赖 `tsx` 装载真实 CLI，
  * 呈现与编排逻辑仍然只有一份。
  *
- * 用法：`npm create @lingfan-engine [工程名] [-- --template vue-tauri]`；
- * 不带参数即进入交互问答。
+ * 用法：`npm create @lingfan-engine [工程名] [选项]`。不带参数即进入交互问答，
+ * 依次问工程名、描述与形态；形态是一次多选，可叠加的层由模板元数据的互斥声明
+ * 决定哪些组合合法。
+ *
+ * `--template <id>` 是旧的分维写法替代品，只在脚本用法（CI 里用参数跳过问答）
+ * 场景出现，帮助里列在末段。
  */
 import { tsImport } from "tsx/esm/api";
 
