@@ -15,5 +15,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
+  /* 故事源不吃本工程：它是独立的 TS 工程，由 tsconfig.stories.json 的纯 tsc 检查。
+     本文件要么是 vue-tsc（Vue 要 SFC 类型），要么带 jsx（React 要 .tsx）——
+     两者都会把故事源 import 的 *.vue / *.tsx 解析成真实组件，
+     盖过 authoring 声明的 UiHandle 通配，把 mount(句柄) 判成型不匹配。 */
+  "exclude": ["src/Stories.src/**"],
   "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]
 }

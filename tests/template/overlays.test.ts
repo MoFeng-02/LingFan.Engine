@@ -611,3 +611,54 @@ describe("模板叠加层：互斥声明", () => {
     }
   });
 });
+
+describe("模板叠加层：工程 tsconfig 不得把故事源收进组件检查面", () => {
+  /**
+   * 故事源是独立的 TS 工程（`tsconfig.stories.json`，纯 tsc）。它 `import X from
+   * ".../ui/X/X.vue"` 拿到的是 `UiHandle`，靠 `@lingfan-engine/stories-build/authoring`
+   * 的 ambient 通配折叠出来。
+   *
+   * 一旦故事源落进工程根 tsconfig 的检查面、而那份 tsconfig 又认得组件
+   * （Vue 的 `*.vue`、React 的 `*.tsx`），编译器会优先把模块解析成真实组件类型，
+   * 盖过 ambient 通配：`mount(hub)` 当场变成「DefineComponent 不能赋给 UiHandle」。
+   * 这个错误只在 `typecheck` 出现，`vite dev` 照样能跑，使用者往往直到写 UI 挂载时才撞上。
+   *
+   * 判据：任何带 `include` 覆盖 `src/**` 的层 tsconfig，都必须 `exclude` 故事源目录。
+   */
+  function storiesExcluded(source: string): boolean {
+    const match = source.match(/"exclude"\s*:\s*\[([^\]]*)\]/);
+    if (match === null) return false;
+    return match[1]!.includes("src/Stories.src/**");
+  }
+
+  const layerTsconfigs = Object.keys(OVERLAY_SOURCES)
+    .filter((path) => path.endsWith("/tsconfig.json"))
+    .sort();
+
+  it("带 tsconfig 的层都被收到判据里（防判据空跑）", () => {
+    expect(layerTsconfigs.length).toBeGreaterThan(0);
+  });
+
+  it("覆盖 src/** 的层 tsconfig 必须排除 src/Stories.src/**", () => {
+    for (const path of layerTsconfigs) {
+      const source = OVERLAY_SOURCES[path] ?? "";
+      expect(source, `${path} 该有 include`).toContain('"include"');
+      expect(
+        storiesExcluded(source),
+        `${path} 没有排除 src/Stories.src/**：故事源会被组件编译器接管，类型报错`,
+      ).toBe(true);
+    }
+  });
+
+  it("骨架的工程 tsconfig 不必排除：它只认 *.ts，故事源由它自己那份扛", () => {
+    const skeletonTsconfig = (
+      import.meta.glob("../../template/v1/__PROJECT__/tsconfig.json", {
+        eager: true,
+        query: "?raw",
+        import: "default",
+      }) as Record<string, string>
+    )["../../template/v1/__PROJECT__/tsconfig.json"];
+    expect(skeletonTsconfig).toBeDefined();
+    expect(skeletonTsconfig).not.toContain("src/**/*.vue");
+  });
+});
