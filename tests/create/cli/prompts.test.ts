@@ -151,12 +151,12 @@ describe("askLayers", () => {
 
   it("一直撞互斥时会一直重问，直到答出合法组合", async () => {
     const picked = await askLayers(
-      scriptedIo(["1 2", "2 4", "3 4", "5"]),
+      scriptedIo(["1 2", "2 4", "3 4", "4"]),
       texts,
       layers,
       layers,
     );
-    expect(picked).toEqual(["story"]);
+    expect(picked).toEqual(["miniprogram"]);
   });
 });
 

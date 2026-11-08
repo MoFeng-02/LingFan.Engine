@@ -58,7 +58,7 @@ export const defaultCreateTexts = {
   sourcesUnknown: "未知故事源形态",
   templateMalformed: "形态写法不对，应为 框架[-壳[-故事源]]",
   /** 形态多选 */
-  layersEmptyHint: "回车 = 只用骨架（框架无关 + 浏览器 + TS 源）",
+  layersEmptyHint: "回车 = 只用骨架（框架无关 + 浏览器）",
   layersInvalid: "没听懂这组编号，请用空格或逗号分隔的序号",
   layersConflict: "选中的层互相排斥",
   layersConflictHint: "重新选择（回车 = 全部缺省）",

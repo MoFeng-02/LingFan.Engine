@@ -1,5 +1,5 @@
 {
-  "version": "1.11.0",
+  "version": "1.12.0",
   "minEngineVersion": "0.3.2",
   "placeholder": "__PROJECT__",
   "frameworks": [
@@ -48,9 +48,9 @@
     },
     {
       "id": "story",
-      "label": "故事文件（.story）",
-      "hint": "直接写引擎自带的文本故事格式：叠在骨架上，摘掉 TS 创作链，改完保存即生效"
+      "label": "附带手写故事示例",
+      "hint": "多放一份 .story 示例，与 TS 源共存，不摘任何东西"
     }
   ],
-  "_comment": "模板版本唯一来源，独立于引擎版本：仅当 template/v1 内容真正变化时才手动 bump。placeholder 是目录/文件内的工程名占位符，生成时整体替换为工程名（对齐 _LingFanEngineTemplateTitle_ 占位符语义）。minEngineVersion 表示此模板要求的最低引擎版本——生成期会拿它跟 registry 上的实际版本比对，不达标即失败（离线查不到版本时跳过判定）。frameworks / shells / sources 决定生成器会问什么、能叠哪些层，各自首项为缺省值；每一项的 id 对应 template/v1/overlays/<id> 目录（缺省层可以没有目录——缺省故事源 `ts` 就是这样：整条创作链在骨架里，不需要叠加层）。合并顺序为「骨架 → 框架 → 故事源 → 壳」，同路径文件由后一层覆盖前一层。excludes 声明该层与哪些层不能共存，元素是层 id、可以跨维度引用，生成器据此推导合法形态；只写单边即可生效，但成对声明能让读的人一眼看清——所以每一对互斥都在两边都写了。页面结构只能有一个所有者：两层都要写 src/main.* 或 src/App.* 时，必须在其中一方 excludes 里声明互斥，不得靠合并顺序决定谁活下来。"
+  "_comment": "模板版本唯一来源，独立于引擎版本：仅当 template/v1 内容真正变化时才手动 bump。placeholder 是目录/文件内的工程名占位符，生成时整体替换为工程名（对齐 _LingFanEngineTemplateTitle_ 占位符语义）。minEngineVersion 表示此模板要求的最低引擎版本——生成期会拿它跟 registry 上的实际版本比对，不达标即失败（离线查不到版本时跳过判定）。frameworks / shells 决定生成器会问什么、能叠哪些层，各自首项为缺省值；每一项的 id 对应 template/v1/overlays/<id> 目录（缺省层可以没有目录——缺省的 none 与 browser 就是这样，不需要叠加层）。sources 不参与形态问答：TS 源、手写 .story、手写 .json 是同一棵 Resources/Stories/ 树上的三种文件形态，可以共存于一个工程，所以 story 层的目录只额外附一份手写示例、不摘任何骨架文件；缺省故事源 ts 同样没有目录。合并顺序为「骨架 → 框架 → 故事源 → 壳」，同路径文件由后一层覆盖前一层。excludes 声明该层与哪些层不能共存，元素是层 id、可以跨维度引用，生成器据此推导合法形态；只写单边即可生效，但成对声明能让读的人一眼看清——所以每一对互斥都在两边都写了。页面结构只能有一个所有者：两层都要写 src/main.* 或 src/App.* 时，必须在其中一方 excludes 里声明互斥，不得靠合并顺序决定谁活下来。"
 }

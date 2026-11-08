@@ -51,7 +51,8 @@ const ALL_OPTIONS = [
  * （比如故事源缺省从 `story` 改成 `ts`），不改变「零改动形态无需目录」这件事。
  *
  * 故事源缺省是 `ts`：骨架自带整条 TS 创作链，所以 `ts` 是零改动形态；
- * 反过来 `story` 要删掉那条链再补一份手写故事，因此它有目录。
+ * 反过来 `story` 有目录，但它的目录只额外附一份手写示例，不摘任何骨架文件
+ * （三种创作形态共存于同一棵 `Resources/Stories/` 树）。
  */
 const NO_DIRECTORY_OPTIONS = new Set(["none", "ts", "browser"]);
 
@@ -84,8 +85,8 @@ const VIEW_NAMES = ["App.vue", "App.tsx"];
  * 它们可以有组合根（换掉个别端口），但节点表必须与骨架同源。
  *
  * - `tauri`：只补 `src-tauri/` 与清单补丁；
- * - `story`：故事文件形态层，只把 `Resources/Stories/**` 换成手写 `.story`
- *   并摘掉骨架的 TS 创作链，页面与装配一行不动。
+ * - `story`：只额外附一份手写 `.story` 示例，与骨架的 TS 创作链并存，
+ *   页面、装配、故事目录一行不动。
  */
 const PERIPHERAL_OPTIONS = new Set(["tauri", "story"]);
 
@@ -375,7 +376,7 @@ describe("模板叠加层：不得改动骨架的交付形态", () => {
   });
 });
 
-describe("模板叠加层：TS 创作链归骨架，故事文件形态是叠加层", () => {
+describe("模板叠加层：TS 创作链归骨架，故事文件示例只做加法", () => {
   const STORY_FILES = overlayFiles("story");
   const skeletonPkg = JSON.parse(skeletonManifest) as {
     scripts?: Record<string, string>;
@@ -431,66 +432,67 @@ describe("模板叠加层：TS 创作链归骨架，故事文件形态是叠加�
     expect(produced.kind).toBe("flow");
   });
 
-  it("story 层用手写故事接管故事目录，并摘掉骨架的 TS 链", () => {
-    // 两套创作形态并存会让使用者分不清改哪份；且产物目录是全量管理的，
-    // 留着 TS 链的生成物，第一次构建就会把 .story 当陈旧列清掉。
+  it("story 层只做加法：不删文件、不改清单", () => {
+    // 三种创作形态（TS 源 / 手写 .story / 手写 .json）是同一棵 Resources/Stories/
+    // 树上的不同文件形态，可以共存。所以这一层只额外附一份手写示例，
+    // 既不该删骨架的 TS 创作链，也不该从清单里摘掉脚本或依赖。
     const patch = STORY_FILES.find(([path]) =>
       path.endsWith("/package.patch.json"),
     );
     expect(patch, "story 层缺 package.patch.json").toBeDefined();
-    const parsed = JSON.parse(patch![1]) as {
-      create?: { remove?: string[] };
+    const parsed = JSON.parse(patch![1] || "{}") as {
+      create?: { remove?: string[]; unset?: Record<string, string[]> };
       devDependencies?: Record<string, string>;
     };
-    const removes = parsed.create?.remove ?? [];
-    expect(removes).toContain("Resources/Stories");
-    expect(removes).toContain("src/Stories.src");
-    expect(removes).toContain("tsconfig.stories.json");
-    for (const name of ["font", "script", "state", "stories"]) {
-      expect(removes, `story 层未摘掉 src/gen/${name}.gen.d.ts`).toContain(
-        `src/gen/${name}.gen.d.ts`,
-      );
-    }
-    // 删除清单不得指向不存在的骨架路径：写错一处就是「以为删了、其实还在」
-    for (const entry of removes) {
-      expect(
-        SKELETON_PATHS.some(
-          (path) => path === entry || path.startsWith(`${entry}/`),
-        ),
-        `story 层删了骨架里不存在的路径：${entry}`,
-      ).toBe(true);
-    }
-    // 删掉之后必须补上故事素材，否则工程开箱没有任何可跑的故事
     expect(
-      STORY_FILES.some(([path]) =>
-        path.endsWith("Resources/Stories/title/title_main.story"),
-      ),
-      "story 层缺手写故事",
-    ).toBe(true);
+      parsed.create?.remove,
+      "story 层不该删除任何骨架文件",
+    ).toBeUndefined();
+    expect(
+      parsed.create?.unset,
+      "story 层不该摘掉骨架的脚本或依赖",
+    ).toBeUndefined();
     // 构建期依赖只归骨架：层里再写一份版本号，升级时必然漏改一处
     expect(
       parsed.devDependencies?.["@lingfan-engine/stories-build"],
       "story 层不该声明 stories-build",
     ).toBeUndefined();
-    // 摘链之后配套的命令与创作期依赖必须一起消失，否则产物里留着一个必然失败的命令
-    const unset = (
-      parsed.create as { unset?: Record<string, string[]> } | undefined
-    )?.unset;
-    expect(unset?.scripts, "story 层未摘掉创作脚本").toEqual(
-      expect.arrayContaining(["stories:build", "stories:watch"]),
-    );
-    expect(unset?.devDependencies, "story 层未摘掉创作期依赖").toEqual(
-      expect.arrayContaining(["@lingfan-engine/editor"]),
-    );
-    // 摘掉的键必须真的存在于骨架清单里：写错一处就是「以为删了、其实还在」
-    for (const [field, keys] of Object.entries(unset ?? {})) {
-      for (const key of keys) {
-        expect(
-          skeletonPkg[field as "scripts" | "devDependencies"]?.[key],
-          `story 层摘了骨架里不存在的键：${field}.${key}`,
-        ).toBeDefined();
+    // 加法必须真的加了东西：这一层存在就是为了给出一份可读可改的手写示例
+    const examples = STORY_FILES.filter(([path]) => path.endsWith(".story"));
+    expect(examples.length, "story 层缺手写示例").toBeGreaterThan(0);
+  });
+
+  it("手写示例的列 id 不与骨架产物撞名：全工程列 id 唯一是构建期硬约束", () => {
+    // 撞名的后果是构建期 fail-closed（columnId 重复），使用者会以为模板坏了。
+    // 判据取两侧磁盘事实：骨架 Resources/Stories/**/*.json 的 id 与示例列头声明的 id。
+    const skeletonIds = new Set<string>();
+    for (const [path, source] of Object.entries(SKELETON_SOURCES)) {
+      if (!path.includes("/Resources/Stories/") || !path.endsWith(".json")) {
+        continue;
+      }
+      const parsed = JSON.parse(source) as { id?: string };
+      if (typeof parsed.id === "string") {
+        skeletonIds.add(parsed.id);
       }
     }
+    expect(skeletonIds.size, "骨架没有故事列，判据失效").toBeGreaterThan(0);
+
+    const exampleIds = new Set<string>();
+    for (const [path, source] of STORY_FILES) {
+      if (!path.endsWith(".story")) {
+        continue;
+      }
+      for (const match of source.matchAll(/^(?:scene|label)\s+([\w-]+)/gm)) {
+        exampleIds.add(match[1]!);
+      }
+    }
+    expect(exampleIds.size, "示例没有声明任何列，判据失效").toBeGreaterThan(0);
+
+    const overlap = [...exampleIds].filter((id) => skeletonIds.has(id));
+    expect(
+      overlap,
+      `手写示例与骨架的列 id 撞名：${overlap.join("、")}`,
+    ).toEqual([]);
   });
 
   it("story 层不覆盖故事表：清单由构建期扫描资源根得出，与创作形态无关", () => {

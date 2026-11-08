@@ -3,6 +3,9 @@ dist
 pnpm-lock.yaml
 target
 
+# 并行工作树：多智能体协作时在仓内建 worktree，内容随会话生成、不属于本仓源码
+.agents
+
 # 构建生成物（stories:build 幂等产出——格式由生成器负责，人工排版会被覆盖）
 apps/playground/src/gen/
 # 同上：创作链编译产物（Resources/Stories/** + project.json，由 stories:build 差量写盘）

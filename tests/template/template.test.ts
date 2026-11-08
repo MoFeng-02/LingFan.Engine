@@ -12,7 +12,7 @@ import projectJson from "../../template/v1/__PROJECT__/Resources/project.json?ra
 import viteConfig from "../../template/v1/__PROJECT__/vite.config.ts?raw";
 import indexHtml from "../../template/v1/__PROJECT__/index.html?raw";
 import templatePkg from "../../template/v1/__PROJECT__/package.json?raw";
-import storySource from "../../template/v1/overlays/story/Resources/Stories/title/title_main.story?raw";
+import storySource from "../../template/v1/overlays/story/Resources/Stories/manual/manual_intro.story?raw";
 import skeletonStoryJson from "../../template/v1/__PROJECT__/Resources/Stories/title/title_main.json?raw";
 import type { NameResolver, ProjectManifest } from "@lingfan-engine/core";
 import {
@@ -47,7 +47,8 @@ function htmlIds(): string[] {
 describe("template/v1 脚手架防腐", () => {
   it("骨架自带编译好的故事产物，且入口列 = 清单 entry", () => {
     // 骨架缺省形态是 TS 源：`Resources/Stories/**/*.json` 是 `stories:build` 的产物，
-    // 开箱即跑（`pnpm dev` 不必先构建）。手写 `.story` 形态由 `overlays/story/` 叠加。
+    // 开箱即跑（`pnpm dev` 不必先构建）。手写 `.story` 由 `overlays/story/` 额外附一份示例，
+    // 与这条产物并存——三种创作形态在同一棵树上混装。
     // 一个产物文件 = 一列，所以入口列只在本文件里；其余列各自成文件。
     const story = parseStory(JSON.parse(skeletonStoryJson));
     const manifest = JSON.parse(projectJson) as ProjectManifest;
@@ -55,12 +56,19 @@ describe("template/v1 脚手架防腐", () => {
     expect(story.columns[0]?.id).toBe(manifest.entry);
   });
 
-  it("故事文件形态的手写故事可被文本投影器解析，且入口列 = 清单 entry", () => {
-    const story = parseTextStory(storySource, "title_main.story");
+  it("手写示例可被文本投影器解析，列 id 落在自己的命名空间", () => {
+    // 示例刻意不复用骨架的 `title_main` / `look_around`：列 id 全工程唯一是构建期
+    // 硬约束，撞名会让生成出来的工程立刻 fail-closed。
+    const story = parseTextStory(storySource, "manual_intro.story");
     const manifest = JSON.parse(projectJson) as ProjectManifest;
     expect(manifest.formatVersion).toBe(1);
     expect(manifest.entry).toBe("title_main");
-    expect(story.columns.map((c) => c.id)).toContain(manifest.entry);
+    const ids = story.columns.map((c) => c.id);
+    expect(ids.length).toBeGreaterThan(0);
+    for (const id of ids) {
+      expect(id.startsWith("manual_"), `示例列 id 越界：${id}`).toBe(true);
+    }
+    expect(ids).not.toContain(manifest.entry);
     // 占位符必须原样保留（生成时整体替换）
     expect(manifest.id).toBe("__PROJECT__");
   });
@@ -72,7 +80,7 @@ describe("template/v1 脚手架防腐", () => {
     // 这里用「所有变量都命中」的解析器跑一遍，把解析错误与缺变量两种噪声分开：
     // 变量是否存在是作者工程的事，语法能不能过是模板的事。
     const alwaysFound: NameResolver = () => ({ found: true, value: "x" });
-    const story = parseTextStory(storySource, "title_main.story");
+    const story = parseTextStory(storySource, "manual_intro.story");
     const texts: string[] = [];
     const walk = (node: unknown): void => {
       if (Array.isArray(node)) {

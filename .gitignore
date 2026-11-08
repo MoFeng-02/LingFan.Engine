@@ -21,6 +21,10 @@ target
 # 运行期产物：存档由 Rust 安全层落盘，不进版本库
 **/Resources/Saves/
 
+# 构建产物账：记录上一轮生成的产物清单，用于只清理构建自己写过的文件。
+# 仓内工程（apps/playground 等）与模板生成的工程同样适用，故用 ** 覆盖所有层级。
+**/.lingfan/
+
 # 超大测试素材（>100MB）：本地提供，不进版本库（lfenpack 打包测试用）
 apps/playground/Resources/Video/m2.mp4
 

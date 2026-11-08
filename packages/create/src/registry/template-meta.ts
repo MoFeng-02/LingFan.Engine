@@ -138,18 +138,21 @@ export function existsLayerDirectory(
 }
 
 /**
- * 列出可以叠加的层：有目录的那些。
+ * 列出可以在形态问答里勾选的层：框架与壳里有目录的那些。
  *
- * 顺序沿用元数据里的维度顺序「框架 → 壳 → 故事源」，与合并顺序（骨架 → 框架 →
- * 故事源 → 壳）不同——选项面按使用者心里的粒度排，合并顺序按覆盖关系排。
- * 三个维度用自己的元数据顺序，维度内保持声明顺序。
+ * 故事源不是可叠加的层：TS 源、手写 `.story`、手写 `.json` 是同一棵
+ * `Resources/Stories/` 树上的三种文件形态，本来就能共存于一个工程，勾选它没有
+ * 「叠一层」的含义，所以 `sources` 维度不参与问答，只在脚本参数面（`--sources`）保留。
+ *
+ * 顺序沿用元数据里的维度顺序「框架 → 壳」，与合并顺序（骨架 → 框架 → 故事源 →
+ * 壳）不同——选项面按使用者心里的粒度排，合并顺序按覆盖关系排；维度内保持声明顺序。
  */
 export function selectableLayers(
   templateRoot: string,
   meta: TemplateMeta,
 ): TemplateOption[] {
-  return [...meta.frameworks, ...meta.shells, ...meta.sources].filter(
-    (option) => existsLayerDirectory(templateRoot, option.id),
+  return [...meta.frameworks, ...meta.shells].filter((option) =>
+    existsLayerDirectory(templateRoot, option.id),
   );
 }
 

@@ -33,8 +33,10 @@ function indexOf(id: string): string {
 }
 
 describe("parseLayerAnswer", () => {
-  it("选项面按 框架 → 壳 → 故事源 拼接，且只留有目录的层", () => {
-    expect(ids).toEqual(["vue", "react", "tauri", "miniprogram", "story"]);
+  it("选项面按 框架 → 壳 拼接，且只留有目录的层", () => {
+    // 故事源不参与形态问答：三种创作形态共存于同一棵 Resources/Stories/ 树，
+    // 勾选它没有「叠一层」的含义，只在脚本参数面（--sources）保留。
+    expect(ids).toEqual(["vue", "react", "tauri", "miniprogram"]);
   });
 
   it("单个序号", () => {
@@ -72,8 +74,14 @@ describe("parseLayerAnswer", () => {
   });
 
   it("越界序号认不出", () => {
+    expect(parseLayerAnswer(layers, "5")).toBeUndefined();
     expect(parseLayerAnswer(layers, "6")).toBeUndefined();
     expect(parseLayerAnswer(layers, "0")).toBeUndefined();
+  });
+
+  it("不再出现在选项面的故事源，按序号与 id 都认不出", () => {
+    // 它仍有目录，但已退出形态问答；脚本面走 --sources，问答面不该静默接受它。
+    expect(parseLayerAnswer(layers, "story")).toBeUndefined();
   });
 
   it("非数字且不是已知 id 时认不出", () => {
@@ -88,7 +96,7 @@ describe("findLayerConflicts", () => {
 
   it("单层没有冲突", () => {
     expect(findLayerConflicts(["vue"], layers)).toEqual([]);
-    expect(findLayerConflicts(["story"], layers)).toEqual([]);
+    expect(findLayerConflicts(["miniprogram"], layers)).toEqual([]);
   });
 
   it("Vue 与 React 不能共存", () => {
@@ -117,7 +125,9 @@ describe("findLayerConflicts", () => {
     expect(findLayerConflicts(["vue", "tauri"], layers)).toEqual([]);
   });
 
-  it("故事文件可与任一层共存", () => {
+  it("故事源不再进选项面，因此也不参与互斥判定", () => {
+    // 脚本面仍可用 --sources story；问答面的层表里没有它，选中集合里出现它
+    // 只说明调用方传了层表之外的 id，不构成互斥对。
     expect(findLayerConflicts(["vue", "story"], layers)).toEqual([]);
     expect(findLayerConflicts(["miniprogram", "story"], layers)).toEqual([]);
   });
