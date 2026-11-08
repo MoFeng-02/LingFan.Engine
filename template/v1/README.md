@@ -41,29 +41,38 @@ npm create @lingfan-engine my-story
 pnpm create @lingfan-engine my-story
 ```
 
-生成器会问三件事：工程名、框架、壳。当前框架可选「原生（框架无关）」「Vue 3」「React」，
-壳可选「浏览器」「小程序（UniApp）」与「桌面（Tauri 2）」。故事源形态不是问题——骨架自带整条 TS 创作链，
-它就是缺省形态；要手写 `.story` 文件用 `--sources story` 指定。全部取缺省值（原生 + TypeScript 源 + 浏览器）可以跳过问答：
+生成器会问三件事：工程名、描述、形态。工程名写在命令行里就跳过这一问；描述可以留空，
+填了会同时写进 `package.json` 的 `description` 与 `Resources/project.json` 的 `description`。
 
-```
-npm create @lingfan-engine my-story -- --yes
-```
+形态是一次多选，按编号回答，空格或逗号分隔：
+
+| 编号 | 形态                 | 选中后得到什么                                                           |
+| ---- | -------------------- | ------------------------------------------------------------------------ |
+| 1    | Vue 3                | 页面结构换成单文件组件，装配与宿主不变                                   |
+| 2    | React                | 页面结构换成 JSX 组件，装配与宿主不变                                    |
+| 3    | 桌面（Tauri 2）      | 在同一份工程上再加一个桌面壳：存档落到应用数据目录，页面结构不变         |
+| 4    | 小程序（UniApp）     | 页面层换成 UniApp Vue 3 单文件组件，宿主装配走小程序端口                 |
+| 5    | 故事文件（`.story`） | 叠在骨架上，摘掉 TS 创作链，直接写引擎自带的文本故事格式，改完保存即生效 |
+
+Vue 3 与 React 互斥（页面结构只能有一个所有者）；小程序自带 Vue 页面层，与 Vue 3、React、
+桌面壳都互斥；桌面壳与 Vue 3 或 React 组合都可以。故事文件与任何一行都不冲突，只决定故事从哪来。
+回车全跳过即骨架原生形态：框架无关 + 浏览器 + TypeScript 源。
 
 生成后按提示进目录、装依赖、跑起来。生成器不指定包管理器——它按启动自己的那个（npm / pnpm / yarn / bun）给出命令，用哪个都行。骨架自带编译好的故事产物，开箱即跑；
 改过 `src/Stories.src/` 之后才需要跑一次 `pnpm stories:build`（或在开发时挂 `pnpm stories:watch`）。
 生成器默认不装依赖，想一步到位加 `--install`。
 
-想不开交互问答、一次指定形态（写作 `框架[-壳[-故事源]]`）：
+脚本里不想应答问答时，用参数跳过：
 
 ```
-npm create @lingfan-engine my-story -- --template vue-browser
-npm create @lingfan-engine my-story -- --template react-browser
-npm create @lingfan-engine my-story -- --template none-miniprogram
-npm create @lingfan-engine my-story -- --template vue-tauri
-npm create @lingfan-engine my-story -- --template none-browser-story
+npm create @lingfan-engine my-story --description "试菜单的小工程" --framework vue --shell tauri
+npm create @lingfan-engine my-story --yes
 ```
 
-也可以逐项给：`--framework vue --shell browser`、`--shell miniprogram`、`--sources story`；两者冲突时逐项参数优先。
+`--framework` 取 `none` / `vue` / `react`，`--shell` 取 `browser` / `tauri` / `miniprogram`，
+`--sources` 取 `ts` / `story`。`--template 框架[-壳[-故事源]]` 是等价写法，例如
+`--template vue-tauri`；形态选择以问答为准，这个参数留给既有脚本。
+（npm 会先解析自己的同名开关，用 npm 时要在选项前加 `--`，如 `npm create @lingfan-engine my-story -- --yes`。）
 目标目录非空时生成器会问怎么处置（保留现有文件 / 清空 / 取消），`--overwrite` 是「清空」的非交互写法。
 
 **框架层只换页面结构与入口，`src/host/**`（装配、订阅、帧循环、输入映射）一行不改，
@@ -72,8 +81,8 @@ npm create @lingfan-engine my-story -- --template none-browser-story
 加 `src/App.vue` 与 Vue 版组合根；选 React 是同一套做法换成 `src/App.tsx` 与 React 版组合根，
 外加 `tsconfig.json` 的 `jsx: react-jsx`。
 
-壳层与框架层可以叠加（先框架后壳）：`--framework react --shell tauri` 得到 React 页面 + 桌面外壳。
-小程序是例外——它自带 Vue 页面层，不与其他框架层叠加。
+**壳层分两种**：桌面壳只补一层桌面外壳，页面结构与宿主原样保留，所以能叠在 Vue 3 或 React 之上；
+小程序壳换掉整套页面与宿主，自带 Vue 页面层，因此不与其他框架层叠加。
 
 **故事源形态层与框架层、壳层正交**，只决定故事从哪来。缺省形态是 **TypeScript 源**，整条链在骨架里：
 改 `src/Stories.src/**/*.ts`，跑 `pnpm stories:build` 编译成 `Resources/Stories/**/*.json`。产物目录由构建
@@ -85,9 +94,8 @@ npm create @lingfan-engine my-story -- --template none-browser-story
 （`src/Stories.src`、`src/gen/*.gen.d.ts`、`tsconfig.stories.json`），换上一份手写的
 `Resources/Stories/title/title_main.story`，改完保存即生效。这条形态的产物目录里可以 `.story` 与 `.json` 混存。
 
-**壳层是换一整套页面与宿主**：小程序形态的页面结构由 `src/components/**` 承接，宿主装配在
+**小程序壳换的是一整套页面与宿主**：小程序形态的页面结构由 `src/components/**` 承接，宿主装配在
 `src/mp/**`（`uni.*` 只在 `src/mp/platform.ts` 出现一处），内容不进包体、走工程接口按基址取。
-因此它是壳而不是框架，与 `--framework` 不叠加：小程序已自带 Vue 页面层，框架取缺省值即可。
 它的 `vite` 与 `vue` 是一组钉住的版本（UniApp 插件对这些版本有硬约束），由
 `package.patch.json` 的 `create.pinned` 保住，不会被改写成「跟最新」。
 
