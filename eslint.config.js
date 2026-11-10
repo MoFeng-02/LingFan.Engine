@@ -35,6 +35,118 @@ const ASSET_GROUP = {
     "资源禁止构建期 import：经 ResourcePort 逻辑寻址，由平台适配器供数（可能是加密资源）",
 };
 
+/**
+ * 老 WebView 内建守卫的**单一来源**（基线 Safari 13.1+ / Chrome 85+）。
+ *
+ * 为什么是常量而不是各块各抄一份：flat config 按**规则名整体覆盖**，
+ * `lingfan/pure-layer-no-dom` 与 `lingfan/pure-layer-entry-reexport` 的文件域都比
+ * `lingfan/legacy-webview-compat` 窄，它们只要写了 `no-restricted-syntax`，前块这 16 条
+ * 就会在这些文件上整体作废。所以这两块必须**把自己的这份补全**。
+ *
+ * 而「补全」若靠逐字复制，规则演进时必然漂移——漏改一处就是静默失效，
+ * 正是要治的那类根。三处引用同一个常量，漂移在语法上就不可能发生。
+ * 生效面另有 tests/tools/pure-layer-dom.test.ts 的正面断言兜底。
+ */
+const LEGACY_WEBVIEW_SELECTORS = [
+  {
+    selector: "MemberExpression[property.name='at']",
+    message:
+      "Array/String.prototype.at 是 ES2022（Chrome 92+/Safari 15.4+），目标 WebView 含 Chrome 91——用 arr[arr.length - 1] 替代",
+  },
+  {
+    selector: "MemberExpression[property.name='findLast']",
+    message:
+      "Array.prototype.findLast 是 ES2023（Chrome 97+/Safari 15.4+），基线 Safari 13.1+/Chrome 85+ 不含——用手写倒序循环替代",
+  },
+  {
+    selector: "MemberExpression[property.name='findLastIndex']",
+    message:
+      "Array.prototype.findLastIndex 是 ES2023（Chrome 97+/Safari 15.4+），基线 Safari 13.1+/Chrome 85+ 不含——用手写倒序循环替代",
+  },
+  {
+    selector: "MemberExpression[property.name='toSorted']",
+    message:
+      "Array.prototype.toSorted 是 ES2023 change-array-by-copy（Chrome 110+/Safari 16.4+），基线不含——用 slice().sort() 替代",
+  },
+  {
+    selector: "MemberExpression[property.name='toReversed']",
+    message:
+      "Array.prototype.toReversed 是 ES2023 change-array-by-copy（Chrome 110+/Safari 16.4+），基线不含——用 slice().reverse() 替代",
+  },
+  {
+    selector: "MemberExpression[property.name='toSpliced']",
+    message:
+      "Array.prototype.toSpliced 是 ES2023 change-array-by-copy（Chrome 110+/Safari 16.4+），基线不含——用 slice() 后 splice 替代",
+  },
+  {
+    selector: "MemberExpression[property.name='with']",
+    message:
+      "Array.prototype.with 是 ES2023 change-array-by-copy（Chrome 110+/Safari 16.4+），基线不含——用 slice() 后赋值替代",
+  },
+  {
+    selector: "MemberExpression[property.name='isWellFormed']",
+    message:
+      "String.prototype.isWellFormed 是 ES2024（Chrome 111+/Safari 16.4+），基线不含——用显式孤立代理项检查替代",
+  },
+  {
+    selector: "MemberExpression[property.name='toWellFormed']",
+    message:
+      "String.prototype.toWellFormed 是 ES2024（Chrome 111+/Safari 16.4+），基线不含——用显式孤立代理项替换替代",
+  },
+  {
+    selector: "MemberExpression[object.name='Object'][property.name='hasOwn']",
+    message:
+      "Object.hasOwn 是 ES2022（Chrome 93+/Safari 15.4+），基线不含——用 Object.prototype.hasOwnProperty.call 替代",
+  },
+  {
+    selector: "MemberExpression[object.name='Promise'][property.name='any']",
+    message:
+      "Promise.any 是 ES2021（Chrome 85+ 但 Safari 15+），目标 WebView 含 Safari 13-15——用 Promise 链或手写聚合替代",
+  },
+  {
+    selector:
+      "MemberExpression[object.name='Array'][property.name='fromAsync']",
+    message:
+      "Array.fromAsync 是 ES2024（Chrome 121+/Safari 16.4+），基线不含——用 for 循环 push 替代",
+  },
+  {
+    selector: "MemberExpression[object.name='Object'][property.name='groupBy']",
+    message:
+      "Object.groupBy 是 ES2024（Chrome 117+/Safari 17.4+），基线不含——用 reduce 替代",
+  },
+  {
+    selector: "MemberExpression[object.name='Map'][property.name='groupBy']",
+    message:
+      "Map.groupBy 是 ES2024（Chrome 117+/Safari 17.4+），基线不含——用 reduce + Map 替代",
+  },
+  {
+    selector:
+      "MemberExpression[object.name='AbortSignal'][property.name='timeout']",
+    message:
+      "AbortSignal.timeout 需 Chrome 103+/Safari 16+，基线不含——用 AbortController + setTimeout 替代",
+  },
+  {
+    selector:
+      "MemberExpression[object.name='crypto'][property.name='randomUUID']",
+    message:
+      "crypto.randomUUID 需 Chrome 92+/Safari 15.4+，基线不含——用 crypto.getRandomValues 手写 UUID 替代",
+  },
+];
+
+/** 配套的 2 项全局禁用，同样单一来源（理由同上）。 */
+const LEGACY_WEBVIEW_GLOBALS = [
+  {
+    name: "structuredClone",
+    message:
+      "structuredClone 需 Chrome 98+/Safari 15.4+，基线 Safari 13.1+/Chrome 85+ 不含——用 JSON 往返或手写深拷贝替代",
+  },
+  {
+    name: "BigInt",
+    message:
+      "BigInt 全局需 Safari 14+，基线 Safari 13.1 不含（esbuild 同样拒绝 bigint 字面量）——避免 BigInt 值",
+  },
+];
+
 export default defineConfigWithVueTs(
   {
     name: "lingfan/files-to-lint",
@@ -209,107 +321,123 @@ export default defineConfigWithVueTs(
     // 语法层兼容由 vite build.target=safari13 负责（esbuild 不补内建方法，守卫在这里）。
     files: ["packages/**/*.ts", "apps/*/src/**/*.{ts,vue}"],
     rules: {
+      "no-restricted-syntax": ["error", ...LEGACY_WEBVIEW_SELECTORS],
+      "no-restricted-globals": ["error", ...LEGACY_WEBVIEW_GLOBALS],
+    },
+  },
+  {
+    name: "lingfan/pure-layer-no-dom",
+    // 纯层：渲染描述树（packages/ui）与宿主装配语义（packages/shell）都必须在
+    // 任何平台之外成立——否则小程序与未来 AOT 拿不到可用实现。DOM 只允许出现在
+    // packages/ui/src/dom/（DOM 物化器与覆盖层表面，目录头注释已声明该边界）。
+    //
+    // 注意：flat config 是**后块覆盖前块**：本块 files 比 lingfan/legacy-webview-compat
+    // 窄，若本块只配 DOM 项，老 WebView 内建守卫（16 条 MemberExpression 选择器 +
+    // structuredClone/BigInt）就会在 packages/ui 与 packages/shell 里**静默失效**
+    // 。故这里把前块的同名规则条目完整复制，再追加 15 项 DOM 全局与
+    // dom 目录的 import 拦截。重复是覆盖语义下的唯一正确做法。
+    // 防漂移由 tests/tools/pure-layer-dom.test.ts 兜底：该测试既断言本块带齐
+    // legacy 条目，也做一次真实 lintText 证明 structuredClone 仍被咬。
+    //
+    // `packages/core` 不在本块内：那里 `window` 是**叙事 op 名**
+    // （`runtime/ops/dispatch.ts` 的 `case "window"`）。将来若扩面必须先排掉这些。
+    files: ["packages/ui/src/**/*.ts", "packages/shell/src/**/*.ts"],
+    ignores: ["packages/ui/src/dom/**"],
+    rules: {
       "no-restricted-syntax": [
         "error",
+        // —— 16 条老 WebView 守卫经单一来源 LEGACY_WEBVIEW_SELECTORS 展开 ——
+        ...LEGACY_WEBVIEW_SELECTORS,
+        // —— 纯层追加：dom 实现目录不得被相对 import ——
+        // 类型位置（`x: HTMLElement`）不会被 no-restricted-globals 拦（那是
+        // TSTypeReference），故类型面的兜底交给体检测试。
         {
-          selector: "MemberExpression[property.name='at']",
+          selector: "ImportDeclaration[source.value=/^\\.\\/dom/]",
           message:
-            "Array/String.prototype.at 是 ES2022（Chrome 92+/Safari 15.4+），目标 WebView 含 Chrome 91——用 arr[arr.length - 1] 替代",
+            "纯层不得 import DOM 实现——RenderPort 由宿主注入（DOM 实现在 packages/ui/src/dom/）",
+        },
+        // 再导出与 import 等价：`export { x } from "./dom"` 会把 DOM 实现重新暴露给
+        // 下游，纯层的「零 DOM」在入口处就被绕开了。命名导出与 `export *` 是两种
+        // AST 形态，各配一条；缺一条就留一条无声的泄漏路径。
+        {
+          selector: "ExportNamedDeclaration[source.value=/^\\.\\/dom/]",
+          message: "纯层不得再导出 DOM 实现——DOM 层只在宿主组合根装配",
         },
         {
-          selector: "MemberExpression[property.name='findLast']",
-          message:
-            "Array.prototype.findLast 是 ES2023（Chrome 97+/Safari 15.4+），基线 Safari 13.1+/Chrome 85+ 不含——用手写倒序循环替代",
-        },
-        {
-          selector: "MemberExpression[property.name='findLastIndex']",
-          message:
-            "Array.prototype.findLastIndex 是 ES2023（Chrome 97+/Safari 15.4+），基线 Safari 13.1+/Chrome 85+ 不含——用手写倒序循环替代",
-        },
-        {
-          selector: "MemberExpression[property.name='toSorted']",
-          message:
-            "Array.prototype.toSorted 是 ES2023 change-array-by-copy（Chrome 110+/Safari 16.4+），基线不含——用 slice().sort() 替代",
-        },
-        {
-          selector: "MemberExpression[property.name='toReversed']",
-          message:
-            "Array.prototype.toReversed 是 ES2023 change-array-by-copy（Chrome 110+/Safari 16.4+），基线不含——用 slice().reverse() 替代",
-        },
-        {
-          selector: "MemberExpression[property.name='toSpliced']",
-          message:
-            "Array.prototype.toSpliced 是 ES2023 change-array-by-copy（Chrome 110+/Safari 16.4+），基线不含——用 slice() 后 splice 替代",
-        },
-        {
-          selector: "MemberExpression[property.name='with']",
-          message:
-            "Array.prototype.with 是 ES2023 change-array-by-copy（Chrome 110+/Safari 16.4+），基线不含——用 slice() 后赋值替代",
-        },
-        {
-          selector: "MemberExpression[property.name='isWellFormed']",
-          message:
-            "String.prototype.isWellFormed 是 ES2024（Chrome 111+/Safari 16.4+），基线不含——用显式孤立代理项检查替代",
-        },
-        {
-          selector: "MemberExpression[property.name='toWellFormed']",
-          message:
-            "String.prototype.toWellFormed 是 ES2024（Chrome 111+/Safari 16.4+），基线不含——用显式孤立代理项替换替代",
-        },
-        {
-          selector:
-            "MemberExpression[object.name='Object'][property.name='hasOwn']",
-          message:
-            "Object.hasOwn 是 ES2022（Chrome 93+/Safari 15.4+），基线不含——用 Object.prototype.hasOwnProperty.call 替代",
-        },
-        {
-          selector:
-            "MemberExpression[object.name='Promise'][property.name='any']",
-          message:
-            "Promise.any 是 ES2021（Chrome 85+ 但 Safari 15+），目标 WebView 含 Safari 13-15——用 Promise 链或手写聚合替代",
-        },
-        {
-          selector:
-            "MemberExpression[object.name='Array'][property.name='fromAsync']",
-          message:
-            "Array.fromAsync 是 ES2024（Chrome 121+/Safari 16.4+），基线不含——用 for 循环 push 替代",
-        },
-        {
-          selector:
-            "MemberExpression[object.name='Object'][property.name='groupBy']",
-          message:
-            "Object.groupBy 是 ES2024（Chrome 117+/Safari 17.4+），基线不含——用 reduce 替代",
-        },
-        {
-          selector:
-            "MemberExpression[object.name='Map'][property.name='groupBy']",
-          message:
-            "Map.groupBy 是 ES2024（Chrome 117+/Safari 17.4+），基线不含——用 reduce + Map 替代",
-        },
-        {
-          selector:
-            "MemberExpression[object.name='AbortSignal'][property.name='timeout']",
-          message:
-            "AbortSignal.timeout 需 Chrome 103+/Safari 16+，基线不含——用 AbortController + setTimeout 替代",
-        },
-        {
-          selector:
-            "MemberExpression[object.name='crypto'][property.name='randomUUID']",
-          message:
-            "crypto.randomUUID 需 Chrome 92+/Safari 15.4+，基线不含——用 crypto.getRandomValues 手写 UUID 替代",
+          selector: "ExportAllDeclaration[source.value=/^\\.\\/dom/]",
+          message: "纯层不得再导出 DOM 实现——DOM 层只在宿主组合根装配",
         },
       ],
       "no-restricted-globals": [
         "error",
+        // —— 2 项老 WebView 全局经单一来源 LEGACY_WEBVIEW_GLOBALS 展开 ——
+        ...LEGACY_WEBVIEW_GLOBALS,
+        // —— 纯层追加：DOM 值引用一律禁止 ——
         {
-          name: "structuredClone",
-          message:
-            "structuredClone 需 Chrome 98+/Safari 15.4+，基线 Safari 13.1+/Chrome 85+ 不含——用 JSON 往返或手写深拷贝替代",
+          name: "window",
+          message: "纯层不得引用 DOM 全局——平台动作以接口注入",
         },
+        { name: "document", message: "同上" },
+        { name: "navigator", message: "同上" },
         {
-          name: "BigInt",
+          name: "localStorage",
+          message: "同上；持久化走 PreferencesPort / SavePort",
+        },
+        { name: "sessionStorage", message: "同上" },
+        {
+          name: "HTMLElement",
           message:
-            "BigInt 全局需 Safari 14+，基线 Safari 13.1 不含（esbuild 同样拒绝 bigint 字面量）——避免 BigInt 值",
+            "纯层不得引用 DOM 类型——需要节点时用 RenderSpec / RenderPort",
+        },
+        { name: "Element", message: "同上" },
+        { name: "Node", message: "同上" },
+        { name: "HTMLDivElement", message: "同上" },
+        { name: "HTMLImageElement", message: "同上" },
+        { name: "HTMLVideoElement", message: "同上" },
+        {
+          name: "requestAnimationFrame",
+          message: "帧源以 FrameSource 接口注入",
+        },
+        { name: "cancelAnimationFrame", message: "同上" },
+        {
+          name: "ResizeObserver",
+          message: "尺寸变化由宿主监听后调 fitter.refresh()",
+        },
+        { name: "matchMedia", message: "同上" },
+      ],
+    },
+  },
+  {
+    name: "lingfan/pure-layer-entry-reexport",
+    // `packages/ui/src/index.ts` 是包根入口：`package.json` 只有一条 `exports`（"."），
+    // 宿主拿不到深路径，DOM 成品**只能**经这里取用（`packages/create` 的模板宿主即如此）。
+    // 所以入口允许再导出 dom 目录的成品——这也正是「DOM 层在宿主组合根装配」的取用点。
+    //
+    // 放开的面**只有出口那两条**：本块不写 `ExportNamedDeclaration` / `ExportAllDeclaration`
+    // 选择器，它们归 lingfan/pure-layer-no-dom 管、在本文件上被本块覆盖掉。
+    // 但 `no-restricted-syntax` 是**按规则名整体覆盖**的：本块一旦出现这条规则，
+    // 前面所有块对该规则名的配置就全部作废。所以下面必须把 lingfan/legacy-webview-compat
+    // 的 16 条 MemberExpression 选择器**逐字复制**进来，再补 dom 目录的 import 拦截——
+    // 否则入口文件上的老 WebView 内建守卫会静默失效（同一个覆盖陷阱，在入口层再犯一次）。
+    // 「本文件是纯再导出表、没有表达式可命中」不是理由：ESLint 不知道谁是再导出表。
+    //
+    // `no-restricted-globals`（structuredClone/BigInt + 15 项 DOM 全局）本块不重述：
+    // 不写即不被覆盖，仍由 lingfan/pure-layer-no-dom 生效。
+    // 生效面的防漂移由 tests/tools/pure-layer-dom.test.ts 正面断言兜底。
+    files: ["packages/ui/src/index.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        // —— 16 条老 WebView 守卫经单一来源 LEGACY_WEBVIEW_SELECTORS 展开 ——
+        ...LEGACY_WEBVIEW_SELECTORS,
+        // —— 入口沿用纯层的 dom import 拦截（与其 canonical 逐字相同）——
+        // —— 纯层追加：dom 实现目录不得被相对 import ——
+        // 类型位置（`x: HTMLElement`）不会被 no-restricted-globals 拦（那是
+        // TSTypeReference），故类型面的兜底交给体检测试。
+        {
+          selector: "ImportDeclaration[source.value=/^\\.\\/dom/]",
+          message:
+            "纯层不得 import DOM 实现——RenderPort 由宿主注入（DOM 实现在 packages/ui/src/dom/）",
         },
       ],
     },
@@ -371,6 +499,11 @@ export default defineConfigWithVueTs(
       // `?raw` 静态导入等于事先列白名单，新增文件自动漏检）。
       // 属测试期工具，不进浏览器产物
       "tests/template/no-screen-domain.test.ts",
+      // 舞台适配守卫要**读模板样式表**核对「响应式单位只许出现在 UI 层」；
+      // `?raw` 导入 `.css` 在 vitest（css:false）下被 stub 成空串，
+      // 断言会退化成「找不到」而不是「没写」⇒ 只能 readFileSync。
+      // 属测试期工具，不进浏览器产物
+      "tests/template/stage-fit.test.ts",
     ],
     rules: {
       "no-restricted-imports": "off",

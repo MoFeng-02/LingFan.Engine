@@ -13,8 +13,8 @@
  * 3. **打字机优先**：未打完时点击只让打字机瞬间完成，不碰 `advance`；
  * 4. **交互层截流**：选项 / 工具条 / 通知里的点击不冒泡成推进。
  *
- * 替身带冒泡：真实 DOM 里 `#choices` 是 `#stage-root` 的后代，点选项会先冒到
- * `dom.root` 的监听；替身必须复现这条路径，否则「截流」那条用例是空跑。
+ * 替身带冒泡：真实 DOM 里 `#choices` 是 `#stage-viewport` 的后代（经 `#shell-ui`），
+ * 点选项会先冒到 `dom.viewport` 的监听；替身必须复现这条路径，否则「截流」那条用例是空跑。
  *
  * 用 `vi.stubGlobal("document", …)` 造最小替身而不引 jsdom：`tests/template` 属前端域，
  * 禁 Node 导入，本仓其他前端域测试也是这个手法。
@@ -95,10 +95,10 @@ afterEach(() => {
 /** 造一套接线输入：只实现本模块真正调用到的面 */
 function harness(waiting: string, typingDone: boolean) {
   const calls: string[] = [];
-  const root = fakeElement();
-  const choices = fakeElement(root);
-  const toolbar = fakeElement(root);
-  const notifications = fakeElement(root);
+  const viewport = fakeElement();
+  const choices = fakeElement(viewport);
+  const toolbar = fakeElement(viewport);
+  const notifications = fakeElement(viewport);
 
   const engine = {
     get(key: string): unknown {
@@ -121,10 +121,15 @@ function harness(waiting: string, typingDone: boolean) {
     },
   } as unknown as DialogueView;
 
-  const dom = { root, choices, toolbar, notifications } as unknown as StageDom;
+  const dom = {
+    viewport,
+    choices,
+    toolbar,
+    notifications,
+  } as unknown as StageDom;
 
   wireInput({ dom, engine, dialogue });
-  return { calls, root, choices, toolbar, notifications };
+  return { calls, viewport, choices, toolbar, notifications };
 }
 
 /** 按空格键：走 document 上的 keydown 监听 */
@@ -143,16 +148,16 @@ function pressSpace(): void {
 describe("模板输入映射 · 舞台点击只在可推进等待态生效", () => {
   it("dialog / wait / video 三态：点击与空格都推进", () => {
     for (const waiting of ["dialog", "wait", "video"]) {
-      const { calls, root } = harness(waiting, true);
-      root.fire("click");
+      const { calls, viewport } = harness(waiting, true);
+      viewport.fire("click");
       pressSpace();
       expect(calls, waiting).toEqual(["advance", "advance"]);
     }
   });
 
   it("**菜单态点击不推进**（回归：曾无条件 advance，红字挂满屏且不消失）", () => {
-    const { calls, root } = harness("menu", true);
-    root.fire("click");
+    const { calls, viewport } = harness("menu", true);
+    viewport.fire("click");
     pressSpace();
     expect(calls).toEqual([]);
   });
@@ -165,16 +170,16 @@ describe("模板输入映射 · 舞台点击只在可推进等待态生效", () 
       "extension",
       "none",
     ]) {
-      const { calls, root } = harness(waiting, true);
-      root.fire("click");
+      const { calls, viewport } = harness(waiting, true);
+      viewport.fire("click");
       pressSpace();
       expect(calls, waiting).toEqual([]);
     }
   });
 
   it("打字机未打完：点击只让打字机瞬间完成，不碰 advance（任何等待态）", () => {
-    const { calls, root } = harness("dialog", false);
-    root.fire("click");
+    const { calls, viewport } = harness("dialog", false);
+    viewport.fire("click");
     expect(calls).toEqual(["click-typing"]);
   });
 

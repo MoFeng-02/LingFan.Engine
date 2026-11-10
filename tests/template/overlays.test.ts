@@ -21,6 +21,10 @@ import skeletonHtml from "../../template/v1/__PROJECT__/index.html?raw";
 import skeletonStoriesConfig from "../../template/v1/__PROJECT__/src/Stories.src/config.ts?raw";
 import skeletonStoriesTsconfig from "../../template/v1/__PROJECT__/tsconfig.stories.json?raw";
 import skeletonStoryJson from "../../template/v1/__PROJECT__/Resources/Stories/title/title_main.json?raw";
+import {
+  imageModeOf,
+  toMiniNode,
+} from "../../template/v1/overlays/miniprogram/src/mp/view.ts";
 
 /** `template-meta.json` 里声明的可选层 */
 interface TemplateOption {
@@ -660,5 +664,69 @@ describe("模板叠加层：工程 tsconfig 不得把故事源收进组件检查
     )["../../template/v1/__PROJECT__/tsconfig.json"];
     expect(skeletonTsconfig).toBeDefined();
     expect(skeletonTsconfig).not.toContain("src/**/*.vue");
+  });
+});
+
+describe("模板叠加层：小程序图片的填充方式", () => {
+  /**
+   * 小程序没有 `object-fit`：`<image>` 只有五个 `mode`，语义与 CSS 不完全对应。
+   * 元素层的填充词表在描述树里已折成 `object-fit`，所以小程序侧只能按那五个词反查。
+   *
+   * 缺口两条，都是平台事实而非取舍：`scale-down`（只缩不放）无法表达，退化为
+   * `aspectFit`——小图会被放大；`widthFix`（宽度固定、高度自适应）根本不是填充语义，
+   * 拿它当缺省会让没写填充的图按原始比例撑开，与元素层缺省 `cover` 的观感相反。
+   */
+  const FITS = [
+    ["fill", "scaleToFill"],
+    ["contain", "aspectFit"],
+    ["cover", "aspectFill"],
+    ["none", "center"],
+    ["scale-down", "aspectFit"],
+  ] as const;
+
+  it("五个填充词各自映射到平台的 mode", () => {
+    for (const [fit, mode] of FITS) {
+      expect(imageModeOf(fit), `${fit} 的 mode 不对`).toBe(mode);
+    }
+  });
+
+  it("未声明与写坏都落到缺省 mode（与元素层缺省 cover 同向）", () => {
+    expect(imageModeOf(undefined)).toBe("aspectFill");
+    expect(imageModeOf("")).toBe("aspectFill");
+    expect(imageModeOf("stretch")).toBe("aspectFill");
+  });
+
+  it("图像节点从描述样式的 object-fit 反查 mode", () => {
+    const node = toMiniNode(
+      {
+        kind: "image",
+        style: { objectFit: "contain" },
+        props: { src: "/a.png" },
+      },
+      "0",
+    );
+    expect(node.mode).toBe("aspectFit");
+    expect(node.src).toBe("/a.png");
+  });
+
+  it("图像节点没写填充时仍有 mode，不留空", () => {
+    expect(toMiniNode({ kind: "image" }, "0").mode).toBe("aspectFill");
+  });
+
+  it("非图像节点不带 mode：平台只有 <image> 认这个属性", () => {
+    expect(toMiniNode({ kind: "box" }, "0").mode).toBeUndefined();
+    expect(
+      toMiniNode({ kind: "media", style: { objectFit: "fill" } }, "0").mode,
+    ).toBeUndefined();
+  });
+
+  it("模板把 mode 绑到数据，不回退成硬编码", () => {
+    const path = Object.keys(OVERLAY_SOURCES).find((key) =>
+      key.endsWith("/miniprogram/src/components/NodeTree.vue"),
+    );
+    expect(path, "找不到小程序的节点模板").toBeDefined();
+    const source = OVERLAY_SOURCES[path!] ?? "";
+    expect(source).toMatch(/:mode="node\.mode/);
+    expect(source).not.toMatch(/mode="widthFix"/);
   });
 });
