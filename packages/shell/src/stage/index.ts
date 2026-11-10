@@ -2,6 +2,12 @@
 
 export { computeStageLayout, stageTransform } from "./layout.ts";
 export {
+  createStageFitter,
+  type StageFitter,
+  type StageFitterOptions,
+} from "./fitter.ts";
+export { createStagePort, type StageCssPortOptions } from "./css.ts";
+export {
   DEFAULT_STAGE_FIT,
   DEFAULT_STAGE_HEIGHT,
   DEFAULT_STAGE_WIDTH,
@@ -17,5 +23,6 @@ export type {
   StageFit,
   StageLayout,
   StageScalePolicy,
+  StageStyleTarget,
   StageViewport,
 } from "./types.ts";

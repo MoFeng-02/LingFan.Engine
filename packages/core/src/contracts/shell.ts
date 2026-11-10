@@ -1,5 +1,5 @@
 /**
- * 平台壳契约：屏幕方向、舞台层级（z 序）与存档壳配置。
+ * 平台壳契约：屏幕方向、舞台层级（z 序）、存档壳配置与舞台适配。
  *
  * 这些都不是叙事语义——引擎核心不解释、不参与回溯/存档，只提供契约类型；
  * 由组合根读工程默认与玩家偏好、装配给壳层实现（Android `Activity.requestedOrientation` /
@@ -186,3 +186,67 @@ export const DEFAULT_STAGE_CONFIG: StageConfig = {
   height: 720,
   fit: "contain",
 };
+
+/** 视口尺寸（宿主提供的逻辑像素尺寸；来源由宿主决定，契约只认这两个数） */
+export interface StageViewport {
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * 适配结果：把整场从作者坐标换算到屏幕坐标的**唯一事实源**。
+ *
+ * 宿主拿到它只做一件事——原样套到舞台容器上；缩放与偏移都是算好的数值，
+ * 宿主不自乘、不自加、不按自己的窗口比例再推一遍，否则同一场在不同壳上会算出
+ * 不同的坐标系。变换串（`transform` 文本）由便捷序列化器从这些数派生，派生规则
+ * 也只有一处，所以「先平移再缩放」的顺序不会在某个宿主里被写反。
+ */
+export interface StageLayout {
+  /** 实际生效的缩放策略（配置显式值优先，缺省取预设展开的结果） */
+  readonly policy: StageScalePolicy;
+  readonly scaleX: number;
+  readonly scaleY: number;
+  /** 设计基准宽高（作者坐标系） */
+  readonly width: number;
+  readonly height: number;
+  /** 缩放后的实际占位尺寸 */
+  readonly scaledWidth: number;
+  readonly scaledHeight: number;
+  /** 舞台内容左上角相对视口左上角的偏移（逻辑像素） */
+  readonly offsetX: number;
+  readonly offsetY: number;
+}
+
+/**
+ * 舞台适配的平台动作：宿主只提供这两件事，编排归引擎。
+ *
+ * 只放两个动作是刻意的——读一次视口、落一次布局，两端之间没有任何平台概念透出，
+ * 于是浏览器、小程序与未来的绘制后端能共用同一份编排：计算、等值跳过、退化保护
+ * 都在引擎侧，宿主换壳只换这两个动作的实现。这里不放订阅（`resize` 之类）：
+ * 注册与注销的时机、成对关系、生命周期在各平台语义不同，订阅归宿主，
+ * 编排件只暴露一次性的 `refresh()`。
+ */
+export interface StagePort {
+  /** 读当前可用视口（CSS px）。宿主自行决定来源：窗口、容器、系统信息 */
+  measure(): StageViewport;
+  /**
+   * 应用一次布局。平台各自解释：CSS 宿主写 `transform`；小程序写页面数据；
+   * 绘制后端用于矩阵。允许幂等重复调用；不允许在这里再做一次计算。
+   */
+  apply(layout: StageLayout): void;
+}
+
+/**
+ * 舞台容器的样式写入面：宿主传真实元素即可结构化满足，纯层不得出现 DOM 类型。
+ *
+ * 只声明舞台要用到的四个属性，是让「写样式」这件事在平台之外也能描述——
+ * 宿主侧传进来的是真实元素，引擎侧看到的是一个只读结构，两边共用同一份签名。
+ */
+export interface StageStyleTarget {
+  readonly style: {
+    width: string;
+    height: string;
+    transformOrigin: string;
+    transform: string;
+  };
+}

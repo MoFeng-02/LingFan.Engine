@@ -52,6 +52,8 @@ export { startHostFrameLoop, type HostFrameLoopOptions } from "./frame";
 /** 舞台适配：设计基准 + 策略 → 缩放与偏移，视口尺寸由宿主读 */
 export {
   computeStageLayout,
+  createStageFitter,
+  createStagePort,
   DEFAULT_STAGE_FIT,
   DEFAULT_STAGE_HEIGHT,
   DEFAULT_STAGE_WIDTH,
@@ -62,9 +64,13 @@ export {
   type StageAlign,
   type StageBaseline,
   type StageConfig,
+  type StageCssPortOptions,
   type StageFit,
+  type StageFitter,
+  type StageFitterOptions,
   type StageLayout,
   type StagePreset,
   type StageScalePolicy,
+  type StageStyleTarget,
   type StageViewport,
 } from "./stage";
