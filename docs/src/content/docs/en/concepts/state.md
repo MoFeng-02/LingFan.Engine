@@ -1,6 +1,6 @@
 ---
 title: State & Variables
-description: Variables with set, let and local; collections with array and dict; text interpolation with {expr}. Globals follow saves and rollback; column-level ones follow saves, block-level ones do not.
+description: Variables with set, let and local; collections with array and dict; text interpolation with {expr}. Globals follow saves and rollback, narrower scopes do not.
 ---
 
 Variables in a story land in one of two places: the **global layer** or the **current scope**. Keep that split straight and saves and rollback stop surprising you.

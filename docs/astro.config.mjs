@@ -193,6 +193,11 @@ export default defineConfig({
               link: "/guides/ui-mount/",
             },
             {
+              label: "屏幕适配",
+              translations: { en: "Screen Adaptation" },
+              link: "/guides/screen-adaptation/",
+            },
+            {
               label: "制作多语言工程",
               translations: { en: "Building a Multilingual Project" },
               link: "/guides/i18n/",

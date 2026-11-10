@@ -1,6 +1,6 @@
 ---
 title: Save System
-description: "A save records the wait-point coordinate, global state, column-level scope, RNG seed and history. Unlike rollback, it replays from the coordinate and rebuilds the screen you saw."
+description: A save records the wait-point coordinate, global state, column scope, RNG seed and history. Loading replays from that coordinate and rebuilds the screen.
 ---
 
 Saves and rollback both go back in time, but they work differently. Rollback returns to a checkpoint in memory; a save writes a payload to disk, where it outlives the browser session.

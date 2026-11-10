@@ -225,7 +225,7 @@ const stage = resolveStageConfig(manifest); // 内建缺省 × 工程覆盖
 
 套用时要分层：`transform` 只写在舞台根上，UI 挂在舞台之外的兄弟节点里（窗口坐标系）。把 UI 放进舞台根，窗口一变 UI 会被缩放同步放大一遍——等于跟着窗口二次变化。
 
-桌面壳（`apps/playground`）与脚手架自带的宿主都已接这一层，宿主侧的具体做法见[模板能力边界](/reference/template-boundaries/)。
+桌面壳（`apps/playground`）与脚手架自带的宿主都已接这一层，宿主侧的具体做法见[模板能力边界](/reference/template-boundaries/)。想从「我的游戏怎么同时适配手机和大屏」入手，看[屏幕适配](/guides/screen-adaptation/)。
 
 #### shell.orientation
 

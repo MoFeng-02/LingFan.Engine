@@ -1,6 +1,6 @@
 ---
 title: Pages and In-Game UI
-description: Login, lobby and save selection belong to the host, and the engine is not involved. Entering the game only means the host switches its own interface and lets the engine start running. The one criterion is which column the engine is on.
+description: Login, lobby and save selection belong to the host, not the engine. Entering the game means the host switches its interface and the engine runs from a column.
 ---
 
 A player opens the game and first sees a title with "Start" and "Continue" buttons. That screen has nothing to do with the engine: it is an ordinary page in the host application, a peer of the engine core. Only after "Start" is there a game — the host switches to the game interface and the engine begins running from the entry column.
