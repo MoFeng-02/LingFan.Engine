@@ -3,7 +3,7 @@
  * 行为契约（诊断族与缺省跳过口径）见 analyzeStory 的函数注释。
  */
 import type { Story } from "@lingfan-engine/core";
-import { ELEMENT_OPS_BLOCKED } from "@lingfan-engine/core";
+import { ELEMENT_FITS, ELEMENT_OPS_BLOCKED } from "@lingfan-engine/core";
 import type { AnalyzeOptions, Diagnostic, EditorTexts } from "../contracts/index.ts";
 import { escapePointerToken, resolveEditorTexts } from "../contracts/index.ts";
 import { UNIMPLEMENTED_ELEMENT_ATTRS } from "../schema/index.ts";
@@ -138,6 +138,22 @@ export function analyzeStory(
         severity: "warning",
         message: texts.unimplementedElementAttr(attr),
         pointer: `${pointer}/${escapePointerToken(attr)}`,
+      });
+    }
+    // stretch 取值不在中立词表内：三端渲染各自静默回退缺省填充方式，用户在编辑器里
+    // 看不到任何提示，只能到运行期发现「图片摆放不对」。值域与缺省值都取自契约词表
+    // （`ELEMENT_FITS` / `DEFAULT_ELEMENT_FIT`），此处不另立一份。
+    // 非字符串取值不在此判定：那是类型错误，由 invalid-element 负责。
+    const stretch = node.stretch;
+    if (
+      typeof stretch === "string" &&
+      !ELEMENT_FITS.some((fit) => fit === stretch)
+    ) {
+      out.push({
+        code: "invalid-element-fit",
+        severity: "warning",
+        message: texts.invalidElementFit(stretch),
+        pointer: `${pointer}/stretch`,
       });
     }
     // 点击动作序列里的**执行期必拒** op：编辑期即报，别等运行时才发现点不动。

@@ -15,6 +15,12 @@
  * DOM 侧直接交给 CSS，`left: 50%` 天然按父容器尺寸解析）。
  */
 
+import {
+  DEFAULT_ELEMENT_FIT,
+  ELEMENT_FITS,
+  type ElementFit,
+} from "@lingfan-engine/core";
+
 /** 数值 → css 长度（px）；字符串原样（支持 `50%` / `2em` / `center` 等） */
 function len(value: unknown): string | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return `${value}px`;
@@ -139,6 +145,72 @@ export function elementClassName(props: Record<string, unknown>): string {
   // `style` 是 `class` 的别名
   const raw = pick(props, "class", "style");
   return typeof raw === "string" ? raw : "";
+}
+
+/**
+ * 媒体填充的属性 → CSS 声明（img 侧与背景侧两列）。
+ *
+ * 两条独立函数而不是一条判别联合：调用点各自知道自己要哪一列（`<img>`/`<video>`
+ * 用 `object-fit`，`div` 的背景图用 `background-size` + `background-position`），
+ * 联合返回类型只会把判别工作推给每个调用方。
+ *
+ * 都不进 `elementStyle`：`object-fit` 对元素根节点（`div`）无效，
+ * 写进去只会是一句看着生效、实际被忽略的声明。
+ */
+export function fitObjectStyle(fit: ElementFit): string {
+  return objectFitOf(fit);
+}
+
+/**
+ * 背景侧的填充 → `background-size` / `background-position`。
+ *
+ * 平台事实：CSS 的 `background-size` 没有 `scale-down`（那是 `object-fit` 独有）。
+ * 所以 `scale-down` 在这里退化为 `auto`（原始尺寸）——小图不放大仍成立，
+ * 大图不再缩到装得下，这是 CSS 背景能表达的最接近语义，不是取舍留白。
+ */
+export function fitBackgroundStyle(fit: ElementFit): {
+  size: string;
+  position: string;
+} {
+  return { size: backgroundSizeOf(fit), position: "center" };
+}
+
+/** 词表 → `object-fit` 值（未知值按缺省词处理，不抛：属性来自作者数据） */
+function objectFitOf(fit: ElementFit): string {
+  switch (normalizeFit(fit)) {
+    case "contain":
+      return "contain";
+    case "fill":
+      return "fill";
+    case "none":
+      return "none";
+    case "scale-down":
+      return "scale-down";
+    default:
+      return "cover";
+  }
+}
+
+/** 词表 → `background-size` 值（`scale-down` 无对应词，退化为 `auto`） */
+function backgroundSizeOf(fit: ElementFit): string {
+  switch (normalizeFit(fit)) {
+    case "contain":
+      return "contain";
+    case "fill":
+      return "100% 100%";
+    case "none":
+    case "scale-down":
+      return "auto";
+    default:
+      return "cover";
+  }
+}
+
+/** 未知/缺失的填充方式回退缺省词（历史工程的自由字符串走这条路） */
+function normalizeFit(fit: ElementFit | undefined): ElementFit {
+  return fit !== undefined && ELEMENT_FITS.includes(fit)
+    ? fit
+    : DEFAULT_ELEMENT_FIT;
 }
 
 /** 图片类元素的资源路径（source 优先，src/path 兜底） */

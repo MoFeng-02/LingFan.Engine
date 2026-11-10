@@ -10,7 +10,13 @@ export {
   type ElementResourceResolver,
   type ElementResourceResolverOptions,
 } from "./resource";
-export { elementClassName, elementSource, elementStyle } from "./style";
+export {
+  elementClassName,
+  elementSource,
+  elementStyle,
+  fitBackgroundStyle,
+  fitObjectStyle,
+} from "./style";
 export { registerBuiltinElementRenderers } from "./renderers";
 export { renderElementTree, type ElementTreeRenderOptions } from "./render";
 export {

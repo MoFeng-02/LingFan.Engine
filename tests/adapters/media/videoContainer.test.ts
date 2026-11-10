@@ -6,6 +6,9 @@
  * 给了容器就挂进去并按容器定位、没给容器仍是铺满视口的既有行为、容器晚到也能改挂。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_ELEMENT_FIT, ELEMENT_FITS } from "@lingfan-engine/core";
+import type { ElementFit } from "@lingfan-engine/core";
+import { fitObjectStyle } from "@lingfan-engine/ui";
 import { createWebVideoPort } from "@lingfan-engine/adapters";
 
 /** 假 `<video>`：只留端口真会碰到的字段与方法 */
@@ -148,5 +151,56 @@ describe("视频端口呈现容器", () => {
     port.play("lfstream://stories/demo.mp4", playOnce);
     port.dispose();
     expect(stage.children).toHaveLength(0);
+  });
+});
+
+describe("视频端口填充方式", () => {
+  it("未注入 fit：按缺省词写 objectFit，且不再由初始 cssText 硬编码", () => {
+    const port = createWebVideoPort({});
+    port.play("lfstream://stories/demo.mp4", playOnce);
+    const video = body.children[0];
+    expect(video?.style.objectFit).toBe(DEFAULT_ELEMENT_FIT);
+    // 硬编码在 cssText 里的 object-fit 会让 fit 闭包说了不算，两处写法只能留一处
+    expect(video?.style.cssText).not.toContain("object-fit");
+  });
+
+  it("fit 闭包变了：下一次取用重挂时生效（与 readContainer 同一时机）", () => {
+    let fit: ElementFit = "contain";
+    const stage = fakeContainer();
+    const port = createWebVideoPort({
+      readContainer: () => asContainer(stage),
+      fit: () => fit,
+    });
+    port.play("lfstream://stories/demo.mp4", playOnce);
+    expect(stage.children[0]?.style.objectFit).toBe("contain");
+
+    fit = "fill";
+    port.play("lfstream://stories/demo.mp4", playOnce);
+    // 同一个元素：填充方式是重挂时重读的属性，不是造新播放器
+    expect(stage.children).toHaveLength(1);
+    expect(stage.children[0]?.style.objectFit).toBe("fill");
+  });
+
+  it("readContainer 返回 null：仍 fixed 铺满视口，objectFit 照写", () => {
+    const port = createWebVideoPort({
+      readContainer: () => null,
+      fit: () => "none",
+    });
+    port.play("lfstream://stories/demo.mp4", playOnce);
+    const video = body.children[0];
+    expect(video?.style.position).toBe("fixed");
+    expect(video?.style.objectFit).toBe("none");
+  });
+
+  it("逐词与 UI 侧 fitObjectStyle 同值：两处各写一份映射，值不许漂", () => {
+    // 适配器层不能 import UI 层（依赖方向），所以映射表是两份；这条测试就是那份守卫。
+    for (const fit of ELEMENT_FITS) {
+      body.children = [];
+      const port = createWebVideoPort({ fit: () => fit });
+      port.play("lfstream://stories/demo.mp4", playOnce);
+      expect(body.children[0]?.style.objectFit, `fit=${fit}`).toBe(
+        fitObjectStyle(fit),
+      );
+    }
   });
 });

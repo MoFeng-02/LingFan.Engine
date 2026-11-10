@@ -7,7 +7,7 @@ import type { EditorTexts } from "./texts.ts";
 export type DiagnosticSeverity = "error" | "warning";
 
 export interface Diagnostic {
-  /** 诊断码：unknown-op / unknown-field / missing-required / invalid-value / duplicate-column / missing-target / unknown-function / undefined-variable / missing-resource / missing-entry / invalid-structure / unused-translation / missing-translation / invalid-element / unimplemented-element-attr */
+  /** 诊断码：unknown-op / unknown-field / missing-required / invalid-value / duplicate-column / missing-target / unknown-function / undefined-variable / missing-resource / missing-entry / invalid-structure / unused-translation / missing-translation / invalid-element / unimplemented-element-attr / invalid-element-fit */
   code: string;
   severity: DiagnosticSeverity;
   message: string;

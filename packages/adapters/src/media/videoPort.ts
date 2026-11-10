@@ -5,8 +5,31 @@
  * - 自然播放结束经 onEnded 上报（cutscene 由它解除引擎等待）
  * - 浏览器自动播放策略拒绝时登记，首次用户交互后重试
  */
-import type { VideoPort } from "@lingfan-engine/core";
+import type { ElementFit, VideoPort } from "@lingfan-engine/core";
+import { DEFAULT_ELEMENT_FIT } from "@lingfan-engine/core";
 import { createBlobSource, type BlobSourceOptions } from "./blobSource";
+
+/**
+ * 填充方式 → `object-fit` 值。
+ *
+ * 与 `@lingfan-engine/ui` 的 `fitObjectStyle` 同源同值，但**不能直接 import**：
+ * 本包是适配器层，`@lingfan-engine/ui` 反过来依赖它之上的界面层，引用会让依赖方向倒置。
+ * 两处映射的一致性由 `tests/adapters/media/videoContainer.test.ts` 逐词比对守住。
+ */
+function objectFitOf(fit: ElementFit): string {
+  switch (fit) {
+    case "contain":
+      return "contain";
+    case "fill":
+      return "fill";
+    case "none":
+      return "none";
+    case "scale-down":
+      return "scale-down";
+    default:
+      return "cover";
+  }
+}
 
 /** 视频端口的装配参数：诊断出口、层 z 与可选的媒体源物化 */
 export interface WebVideoPortOptions {
@@ -20,6 +43,14 @@ export interface WebVideoPortOptions {
   /** 呈现容器（组合根注入）：给了就挂进它、按它定位（随它的变换一起缩放），
    *  返回 null 或缺省 = 铺满视口的既有行为 */
   readContainer?: () => HTMLElement | null;
+  /**
+   * 填充方式（组合根注入的惰性读数，缺省 `cover`）。
+   *
+   * 为什么是函数不是值：填充来自当前故事里 `video` 元素的 `stretch` 属性，
+   * 而元素表在运行期才确定、还会随换列变化；`readX: () => X` 的惰性读数与
+   * `readContainer` 同一模式。本包不认识元素树，所以由宿主从引擎状态里读。
+   */
+  fit?: () => ElementFit;
 }
 
 /** 播放参数（契约 VideoPort.play 的 options） */
@@ -62,8 +93,9 @@ export function createWebVideoPort(
       // CORS 匿名加载：存档缩略图 canvas 合成需可导出（lfstream 已带 ACAO:*）——先于 src
       element.crossOrigin = "anonymous";
       // 舞台层覆盖（RenderTargets.stage 之上的呈现层）；点击穿透：跳过走命令面
+      // 填充方式不写在这里：它随故事变化，由 attach 每次重挂时按 fit 闭包写入
       element.style.cssText =
-        "position:fixed;inset:0;width:100%;height:100%;object-fit:contain;" +
+        "position:fixed;inset:0;width:100%;height:100%;" +
         `background:#000;z-index:${zIndex};display:none;pointer-events:none;`;
       element.addEventListener("error", () => {
         // 只有真正的媒体错误才报（MediaError 非空）：WebView 会因内建默认封面加载失败
@@ -83,11 +115,15 @@ export function createWebVideoPort(
    * 挂到当前呈现容器：容器给了就按它定位（`absolute`），否则回落到铺满视口的既有行为。
    * 每次取用都重挂——容器可能晚于端口出现（舞台根挂载前 `readContainer()` 返回 null），
    * 挂错位置的表现是「视频不随舞台缩放」，比在端口里缓存容器更值得多这一次比对。
+   * 填充方式同理每次重读：`video` 元素的 `stretch` 可以是这一列刚写的。
    */
   function attach(video: HTMLVideoElement): void {
     const container = portOptions.readContainer?.() ?? null;
     const host = container ?? document.body;
     video.style.position = container === null ? "fixed" : "absolute";
+    video.style.objectFit = objectFitOf(
+      portOptions.fit?.() ?? DEFAULT_ELEMENT_FIT,
+    );
     // 已挂在别处（含容器换人）就搬过去：appendChild 对已在场的节点是移动到末尾
     if (video.parentElement !== host) host.appendChild(video);
   }

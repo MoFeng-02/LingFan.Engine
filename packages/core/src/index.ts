@@ -94,6 +94,8 @@ export {
  * - 元素形状校验：编辑器编辑期与运行期**同口径**。
  * 元素装载与寻址（`loadElements` / `findElements` / `removeElements`）是同一套元素形状知识的
  * 消费口，与校验函数一同公开，避免调用方另写一份结构假设。
+ * 元素填充读数（`elementFitOf` / `videoFitOf`）同理：三端宿主都要把同一份 `stretch` 语义
+ * 映射到各自的平台属性，读法只能有一处。
  * 文本投影警告（`drainTextProjectionWarnings`）取走并清空最近一次解析的警告：解析本身不因
  * 「语义暂未生效」失败，但这些警告不能丢，故给调用方一个显式取口。
  */
@@ -105,6 +107,7 @@ export {
   detectWriteNormalization,
   diffProjectFiles,
   drainTextProjectionWarnings,
+  elementFitOf,
   findElements,
   generateText,
   isSafeFileNameSegment,
@@ -127,6 +130,7 @@ export {
   TextFormatError,
   validateElement,
   validateElementNode,
+  videoFitOf,
   type FileStamp,
   type ProjectFileDiff,
   type SerializedProject,

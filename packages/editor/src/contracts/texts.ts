@@ -7,6 +7,8 @@
  *   禁止模块级可变全局或注册表 setter。
  */
 
+import { DEFAULT_ELEMENT_FIT, ELEMENT_FITS } from "@lingfan-engine/core";
+
 /** 编辑器集中文案表：每个方法对应一条已迁移的用户可见文案（方法名即文案身份）。 */
 export interface EditorTexts {
   /** diagnostics：columnId 重复（columnId 全局唯一）。 */
@@ -31,6 +33,8 @@ export interface EditorTexts {
   missingTranslationOriginal(original: string): string;
   /** diagnostics：元素属性已声明但无渲染语义。 */
   unimplementedElementAttr(attr: string): string;
+  /** diagnostics：元素 stretch 取值不在中立词表内（运行期回退缺省填充方式）。 */
+  invalidElementFit(value: string): string;
   /** diagnostics：元素动作序列里不可用的动作。 */
   elementOpsBlockedOp(op: string): string;
 
@@ -136,6 +140,10 @@ export const defaultEditorTexts: EditorTexts = {
   missingTranslationOriginal: (original) =>
     `原文未有任何译文：${original}（所有语言的 overlay 均未命中——运行期回退原文；专有名词等有意保留原文的可忽略）`,
   unimplementedElementAttr: (attr) => `元素属性 ${attr} 已声明但当前无渲染语义（写入不生效）`,
+  // 可选范围与缺省值都从契约词表拼出来：手写字面量列表会在词表扩充后与实况漂移，
+  // 而这条文案存在的意义正是「告诉用户合法取值是什么」。
+  invalidElementFit: (value) =>
+    `元素属性 stretch 的取值 ${value} 不在可选范围内（${ELEMENT_FITS.join("/")}），已按缺省 ${DEFAULT_ELEMENT_FIT} 处理`,
   elementOpsBlockedOp: (op) =>
     `元素动作序列里的 ${op} 不可用（等待/位置/存档类会打断当前叙事流）；跳列请用 nav 属性`,
 

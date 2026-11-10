@@ -11,6 +11,7 @@
 import type { FieldDescriptor, FieldKind } from "../contracts/index.ts";
 import {
   ELEMENT_ATTRIBUTES,
+  ELEMENT_FITS,
   ELEMENT_SPECIFIC_ATTRS,
   ELEMENT_TYPES,
 } from "@lingfan-engine/core";
@@ -81,15 +82,14 @@ export const UNIMPLEMENTED_ELEMENT_ATTRS: ReadonlySet<string> = new Set([
   "yoffset",
   "xanchor",
   "yanchor",
-  // 互锁建立时反向逮出的一条：`image`/`imagebutton`/`portrait` 有表单
-  // （「拉伸方式」）但 `packages/ui` 零消费——这类差集须从契约全集反推
-  // 才能逮出，互锁测试从此守着这个洞。
-  "stretch",
 ]);
 
 /** 属性 → 呈现语义（未列出者回退 `string`） */
 const ELEMENT_FIELD_META: Readonly<
-  Record<string, { label: string; kind: FieldKind }>
+  Record<
+    string,
+    { label: string; kind: FieldKind; enumValues?: readonly string[] }
+  >
 > = {
   id: { label: "元素 id", kind: "identifier" },
   name: { label: "分组名", kind: "identifier" },
@@ -159,7 +159,12 @@ const ELEMENT_FIELD_META: Readonly<
   max: { label: "最大值", kind: "number" },
   orientation: { label: "方向", kind: "string" },
   checked: { label: "已选中", kind: "boolean" },
-  stretch: { label: "拉伸方式", kind: "string" },
+  // 媒体填充方式：值域由契约的中立词表给定，三端各自映射（编辑器只出词表本身）
+  stretch: {
+    label: "拉伸方式",
+    kind: "enum",
+    enumValues: ELEMENT_FITS,
+  },
   scroll_h: { label: "允许横向滚动", kind: "boolean" },
   scroll_v: { label: "允许纵向滚动", kind: "boolean" },
   nav: { label: "跳转列", kind: "identifier" },
@@ -284,6 +289,9 @@ export function describeElement(
       key,
       label: ELEMENT_FIELD_META[key]?.label ?? key,
       kind: ELEMENT_FIELD_META[key]?.kind ?? "string",
+      ...(ELEMENT_FIELD_META[key]?.enumValues === undefined
+        ? {}
+        : { enumValues: ELEMENT_FIELD_META[key]?.enumValues }),
       // 元素属性一律可选（`type` 是结构字段，不在表单里编辑）
       required: false,
       hasDefault: false,

@@ -98,6 +98,41 @@ describe("show", () => {
     ).toBe(true);
     badField.engine.dispose();
   });
+
+  it("stretch 透传到普通元素（图像自己也要用填充方式）", () => {
+    const { engine, errors } = makeEngine([
+      { op: "show", target: "Images/hero.png", id: "hero", stretch: "contain" },
+    ]);
+    engine.start();
+    expect(elements(engine)[1]?.props.stretch).toBe("contain");
+    expect(errors).toHaveLength(0);
+    engine.dispose();
+  });
+
+  it("不写 stretch → 元素表不多出这个键（缺省由读者补，回溯不凭空造属性）", () => {
+    const { engine } = makeEngine([
+      { op: "show", target: "Images/hero.png", id: "hero" },
+    ]);
+    engine.start();
+    expect(elements(engine)[1]?.props).not.toHaveProperty("stretch");
+    engine.dispose();
+  });
+
+  it("stretch 与 background 同时给：背景元素照写", () => {
+    const { engine, errors } = makeEngine([
+      {
+        op: "show",
+        target: "Images/bg.png",
+        background: true,
+        stretch: "fill",
+      },
+    ]);
+    engine.start();
+    const background = elements(engine).find((e) => e.type === "background");
+    expect(background?.props.stretch).toBe("fill");
+    expect(errors).toHaveLength(0);
+    engine.dispose();
+  });
 });
 
 describe("hide", () => {

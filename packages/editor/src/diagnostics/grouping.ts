@@ -46,6 +46,7 @@ const CODE_LABELS: Readonly<Record<string, string>> = {
   "missing-translation": "缺译文",
   "invalid-element": "元素不合法",
   "unimplemented-element-attr": "元素属性未实现",
+  "invalid-element-fit": "元素拉伸方式不合法",
 };
 
 /** 组头显示的标签（未知码 ⇒ 原样回显，**不吞信息**） */

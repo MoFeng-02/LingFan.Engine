@@ -85,6 +85,8 @@ export {
   elementClassName,
   elementSource,
   elementStyle,
+  fitBackgroundStyle,
+  fitObjectStyle,
   hasElementInteraction,
   interpolateAnimation,
   isElementDisabled,

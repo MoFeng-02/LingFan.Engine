@@ -4,6 +4,7 @@
  * 未播放时不打扰呈现面、自然结束只通知当前那次 `play` 的回调。
  */
 import { describe, expect, it } from "vitest";
+import type { ElementFit } from "@lingfan-engine/core";
 import type { MiniprogramVideoSurfaceLike } from "@lingfan-engine/adapters";
 import { createMiniprogramVideoPort } from "@lingfan-engine/adapters";
 
@@ -14,6 +15,7 @@ class FakeVideoSurface implements MiniprogramVideoSurfaceLike {
     volume: number;
     loop: boolean;
     zIndex?: number;
+    objectFit?: string;
   }> = [];
   hideCount = 0;
   pauseCount = 0;
@@ -26,6 +28,7 @@ class FakeVideoSurface implements MiniprogramVideoSurfaceLike {
     volume: number;
     loop: boolean;
     zIndex?: number;
+    objectFit?: string;
   }): void {
     this.shows.push(request);
   }
@@ -62,7 +65,13 @@ describe("createMiniprogramVideoPort（推状态给呈现面）", () => {
     const port = createMiniprogramVideoPort(surface);
     port.play("usr/op.mp4", { volume: 3, loop: true });
     expect(surface.shows).toEqual([
-      { url: "usr/op.mp4", volume: 1, loop: true, zIndex: 5 },
+      {
+        url: "usr/op.mp4",
+        volume: 1,
+        loop: true,
+        zIndex: 5,
+        objectFit: "cover",
+      },
     ]);
   });
 
@@ -75,7 +84,26 @@ describe("createMiniprogramVideoPort（推状态给呈现面）", () => {
       volume: 0.4,
       loop: false,
       zIndex: 7,
+      objectFit: "cover",
     });
+  });
+
+  it("填充方式：fill / cover 直传，none 与 scale-down 退化为 contain（平台只有三值）", () => {
+    const cases: Array<[string, string]> = [
+      ["fill", "fill"],
+      ["cover", "cover"],
+      ["contain", "contain"],
+      ["none", "contain"],
+      ["scale-down", "contain"],
+    ];
+    for (const [fit, expected] of cases) {
+      const surface = new FakeVideoSurface();
+      const port = createMiniprogramVideoPort(surface, {
+        fit: () => fit as ElementFit,
+      });
+      port.play("usr/op.mp4", { volume: 1, loop: false });
+      expect(surface.shows[0]?.objectFit, `fit=${fit}`).toBe(expected);
+    }
   });
 
   it("没播过时 pause / resume / seek 不打扰呈现面", () => {

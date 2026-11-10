@@ -33,6 +33,7 @@ export {
   validateElement,
   validateElementNode,
 } from "./element.ts";
+export { elementFitOf, videoFitOf } from "./elementFit.ts";
 export {
   drainTextProjectionWarnings,
   generateText,

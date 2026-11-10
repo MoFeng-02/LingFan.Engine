@@ -5,6 +5,7 @@
  * 核心不碰 DOM。元素表 `SYS.elements` 是纯数据，随快照、存档、回溯自动随行。
  */
 import {
+  DEFAULT_ELEMENT_FIT,
   ELEMENT_ATTRIBUTES,
   SYS,
   type ElementInstance,
@@ -18,10 +19,19 @@ import type { OpContext } from "../../internal/index.ts";
  * `show.target` = 资源路径（落 `props.source`）。
  */
 const ELEMENT_OP_FIELDS: Record<string, ReadonlySet<string>> = {
-  show: new Set(["op", "target", "x", "y", "id", "name", "background"]),
+  show: new Set([
+    "op",
+    "target",
+    "x",
+    "y",
+    "id",
+    "name",
+    "background",
+    "stretch",
+  ]),
   hide: new Set(["op", "target"]),
-  background: new Set(["op", "resource"]),
-  bg_switch: new Set(["op", "resource"]),
+  background: new Set(["op", "resource", "stretch"]),
+  bg_switch: new Set(["op", "resource", "stretch"]),
   zindex: new Set(["op", "target", "value"]),
   style: new Set(["op", "target", "props"]),
   window: new Set(["op", "mode"]),
@@ -102,6 +112,9 @@ export function execElementVisual(ctx: OpContext, cmd: StoryCommand): boolean {
         typeof cmd.name === "string" && cmd.name !== "" ? cmd.name : undefined,
       x: cmd.x,
       y: cmd.y,
+      // 普通元素与背景元素都吃这份填充方式：image 走 `object-fit`，background 走
+      // `background-size`，video 由端口读出来喂给呈现层——三处语义同源
+      stretch: cmd.stretch,
     });
   }
 
@@ -173,7 +186,10 @@ export function execElementVisual(ctx: OpContext, cmd: StoryCommand): boolean {
     ctx.fail(`${cmd.op}-invalid`, `${cmd.op}.resource 必须为非空资源路径`);
     return false;
   }
-  return appendElement(ctx, current, resource, { isBackground: true });
+  return appendElement(ctx, current, resource, {
+    isBackground: true,
+    stretch: cmd.stretch,
+  });
 }
 
 /**
@@ -193,6 +209,10 @@ export function execWindow(ctx: OpContext, cmd: StoryCommand): boolean {
 /**
  * 追加元素到空间层（背景先清旧背景 + 固定底层序）。
  * `id` 缺省按**追加序**派生（确定性：同序重放得到同 id），显式 `id` 优先。
+ *
+ * 背景元素的框就是舞台：宽高显式写 `100%`。父容器 `#stage` 已是 `inset:0` 的
+ * 舞台层（且被 transform 缩放到作者坐标），`100%` 自动等于基准尺寸；留空则
+ * `div` 按内容塌缩，`background-image` 无处可铺。
  */
 function appendElement(
   ctx: OpContext,
@@ -204,6 +224,7 @@ function appendElement(
     name?: string;
     x?: unknown;
     y?: unknown;
+    stretch?: unknown;
   },
 ): boolean {
   const base = options.isBackground
@@ -213,9 +234,20 @@ function appendElement(
   if (options.isBackground) {
     props.x = 0;
     props.y = 0;
+    props.width = "100%";
+    props.height = "100%";
+    props.stretch =
+      typeof options.stretch === "string" && options.stretch !== ""
+        ? options.stretch
+        : DEFAULT_ELEMENT_FIT;
   } else {
     if (options.x !== undefined) props.x = options.x;
     if (options.y !== undefined) props.y = options.y;
+    // 普通元素只在作者显式写了才落键：缺省由读者（`elementFitOf` / 渲染层）补，
+    // 这样元素表忠实于作者数据，回溯与写回都不会凭空多出一个属性
+    if (typeof options.stretch === "string" && options.stretch !== "") {
+      props.stretch = options.stretch;
+    }
   }
   const element: ElementInstance = {
     id:

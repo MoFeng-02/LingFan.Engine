@@ -96,6 +96,36 @@ export const ELEMENT_TYPES = [
 /** 元素类型名（从 `ELEMENT_TYPES` 派生，是元素表与校验白名单的共同键） */
 export type ElementType = (typeof ELEMENT_TYPES)[number];
 
+/**
+ * 媒体填充方式：媒体内容在元素的框内怎么摆放（属性 `stretch` 的值域）。
+ *
+ * - `fill`：拉伸填满，不保比例——纯色底、渐变、可拉伸的边框图；
+ * - `contain`：等比装下留边——立绘、道具图这类不能被裁的内容；
+ * - `cover`：等比铺满、裁掉溢出——背景图最常见的意图；
+ * - `none`：原始尺寸居中，超出裁掉——像素画与图标；
+ * - `scale-down`：`none` 与 `contain` 取更小者——「图小于框就别放大」。
+ *
+ * 为什么不直接存 CSS 字符串：小程序没有 `object-fit`（只有 `<image>` 的 `mode`），
+ * 未来的 AOT 渲染要按词算绘制矩形，两者都需要一个中立词表各自映射；
+ * CSS 字符串则只能靠类型约束、没法在运行期枚举与校验。
+ *
+ * 缺省取 `cover`：叙事背景铺不满会露底色，观感断裂比裁边严重得多；
+ * 立绘类元素不依赖缺省——它们的框本来就按图的比例设。
+ */
+export type ElementFit = "fill" | "contain" | "cover" | "none" | "scale-down";
+
+/** 填充方式全集（属性校验与编辑器下拉的共同词表，顺序即呈现顺序） */
+export const ELEMENT_FITS: readonly ElementFit[] = [
+  "fill",
+  "contain",
+  "cover",
+  "none",
+  "scale-down",
+];
+
+/** 未声明 `stretch` 时的填充方式（见 `ElementFit` 的缺省理由） */
+export const DEFAULT_ELEMENT_FIT: ElementFit = "cover";
+
 /** 结构字段（非属性）：type 必填，id/name 为寻址标识，children 为容器嵌套 */
 export const ELEMENT_STRUCTURAL_FIELDS: ReadonlySet<string> = new Set([
   "type",
@@ -233,6 +263,12 @@ export const ELEMENT_SPECIFIC_ATTRS: Readonly<
     "disabled_source",
   ],
   portrait: ["stretch"],
+  // 背景元素的框就是舞台（宽高由引擎写成 100%），填充方式决定图怎么铺满这个框：
+  // `cover` 裁边、`contain` 留边、`fill` 拉伸，与图像元素同一份词表
+  background: ["stretch"],
+  // 视频元素在描述树里只是占位节点，真实 `<video>` 由视频端口直挂——
+  // 属性照常写在元素上，由组合根读出来喂给端口的 `fit` 闭包
+  video: ["stretch"],
   slider: ["min", "max", "orientation"],
   progressbar: ["min", "max"],
   bar: ["min", "max"],

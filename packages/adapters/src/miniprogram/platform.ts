@@ -46,6 +46,8 @@ export interface MiniprogramVideoSurfaceLike {
     volume: number;
     loop: boolean;
     zIndex?: number;
+    /** 填充方式（组件 `object-fit` 属性的值；只有 `contain`/`fill`/`cover` 三种） */
+    objectFit?: string;
   }): void;
   hide(): void;
   pause(): void;
