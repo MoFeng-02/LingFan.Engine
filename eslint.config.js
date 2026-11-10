@@ -504,6 +504,11 @@ export default defineConfigWithVueTs(
       // 断言会退化成「找不到」而不是「没写」⇒ 只能 readFileSync。
       // 属测试期工具，不进浏览器产物
       "tests/template/stage-fit.test.ts",
+      // 模板副本守卫要**先按发布链同一份脚本造出副本再逐字节比对**：
+      // 副本是 gitignore 的构建产物，干净检出里不存在，只读现成目录的话
+      // 本地绿、CI 必红。造副本要走子进程跑同步脚本，读文件要走 fs。
+      // 属测试期工具，不进浏览器产物
+      "tests/template/template-copies.test.ts",
     ],
     rules: {
       "no-restricted-imports": "off",
