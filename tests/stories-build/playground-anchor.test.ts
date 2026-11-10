@@ -133,6 +133,29 @@ const FONT_PROBE_POSITIVE = [
   "}",
   "",
 ].join("\n");
+/**
+ * vue-tsc 探针：故事源工程在**组件编译器**下必须零错。
+ *
+ * 纯 tsc 看故事源是绿的（组件编译器没有 SFC 解析能力，`*.vue` 默认导入落到
+ * authoring 声明的 `UiHandle` 通配上）。但编辑器（Volar）与 `vue-tsc` 会把 `*.vue`
+ * 解析成真实组件类型，优先级高于 ambient 通配，于是 `mount(句柄)` 变成
+ * 「DefineComponent 不能赋给 UiHandle」——用户在编辑器里红，仓库门禁却绿。
+ *
+ * 判据分两态：
+ * - 正态 = 当前工程零错（句柄从生成物具名导出取，绕开组件解析）；
+ * - 反态 = 注入一条 `*.vue` 默认导入的探针，vue-tsc 必须拒绝它。
+ * 只跑正态会假绿（vue-tsc 没装好或没解析到组件时同样零错），所以必须有反态兜住判别力。
+ */
+const VUE_TSC_PROBE_REL = "src/Stories.src/chapter1/vue-tsc-probe.ts";
+const VUE_TSC_PROBE_SOURCE = [
+  "/* 临时探针：*.vue 默认导入必须被 vue-tsc 拒绝（测试 finally 删除本文件） */",
+  'import hub from "../../ui/hub/hub.vue";',
+  'import { mount } from "@lingfan-engine/editor";',
+  "export function vueTscProbe(): void {",
+  '  mount(hub, true, { label: "x" });',
+  "}",
+  "",
+].join("\n");
 /** config 化过渡守卫：旧 config 契约的确定性失败（缺 folders 导出 / 文件缺失）。Stories.src 迁移完成后可删。 */
 function isConfigContractTransition(error: unknown): boolean {
   return (
@@ -391,6 +414,42 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
         if (readFileSync(fontGenPath, "utf8") !== committedFont) {
           writeFileSync(fontGenPath, committedFont);
         }
+      }
+    },
+  );
+
+  it(
+    "vue-tsc 探针：故事源工程在组件编译器下零错，*.vue 默认导入被拒绝",
+    { retry: 1, timeout: 60000 },
+    async () => {
+      const probePath = join(PLAYGROUND_ROOT, VUE_TSC_PROBE_REL);
+      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.stories.json");
+      const vueTscBin = fileURLToPath(
+        new URL("../../node_modules/vue-tsc/bin/vue-tsc.js", import.meta.url),
+      );
+      const runVueTsc = () =>
+        spawnSync(
+          process.execPath,
+          [vueTscBin, "--noEmit", "-p", tsconfigPath],
+          { encoding: "utf8" },
+        );
+      try {
+        // 正态：当前故事源工程在 vue-tsc 下零错（句柄走生成物具名导出）
+        const clean = runVueTsc();
+        expect(clean.error).toBeUndefined();
+        expect(
+          clean.stdout ?? "",
+          "故事源工程在 vue-tsc 下必须零错：编辑器用的就是这套组件解析",
+        ).toBe("");
+
+        // 反态：注入 *.vue 默认导入，vue-tsc 必须拒绝——判别力兜底，防「vue-tsc 没生效」假绿
+        writeFileSync(probePath, VUE_TSC_PROBE_SOURCE);
+        const bad = runVueTsc();
+        expect(bad.error).toBeUndefined();
+        expect(bad.status).not.toBe(0);
+        expect(bad.stdout ?? "").toContain("vue-tsc-probe.ts");
+      } finally {
+        rmSync(probePath, { force: true });
       }
     },
   );

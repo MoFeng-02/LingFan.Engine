@@ -667,6 +667,60 @@ describe("模板叠加层：工程 tsconfig 不得把故事源收进组件检查
   });
 });
 
+describe("模板叠加层：故事源的界面句柄不默认导入组件文件", () => {
+  /**
+   * 组件编译器（vue-tsc、编辑器的 Vue / TSX 语言服务）会把 `.vue` / `.tsx`
+   * 解析成真实组件类型，优先级高于 `authoring` 声明的 `UiHandle` 通配——
+   * 于是 `mount(句柄)` 变成「组件不能赋给句柄」。纯 tsc 没有组件解析能力，
+   * 看不出问题，所以这条只会在编辑器里红，仓库门禁却是绿的。
+   *
+   * 交付出去的工程由使用者自己开编辑器，不是使用者自己修类型。所以句柄必须
+   * 从构建生成物取（`src/gen/ui_register.g`），那条路径不经过组件解析。
+   *
+   * 判据落在源码文本上：叠加层交付的故事源不得默认导入组件文件。
+   */
+  const storySources = Object.keys(OVERLAY_SOURCES)
+    .filter((path) => path.includes("/src/Stories.src/"))
+    .sort();
+
+  it("带故事源的层都被收到判据里（防判据空跑）", () => {
+    expect(storySources.length).toBeGreaterThan(0);
+  });
+
+  it("故事源不得默认导入组件文件：句柄从生成物取", () => {
+    const offenders: string[] = [];
+    for (const path of storySources) {
+      const source = OVERLAY_SOURCES[path] ?? "";
+      const hit = /import\s+\w+\s+from\s+["'][^"']*\.(?:vue|tsx|html)["']/.exec(
+        source,
+      );
+      if (hit !== null) offenders.push(`${path}: ${hit[0]}`);
+    }
+    expect(
+      offenders,
+      `故事源默认导入组件文件：组件编译器会把它们解析成组件类型，mount(句柄) 在编辑器里报型不匹配。句柄请从 src/gen/ui_register.g 取：\n${offenders.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("层里交付的注册表含具名句柄：句柄有处可取", () => {
+    for (const path of storySources) {
+      const layer = path.slice(
+        "../../template/v1/overlays/".length,
+        path.indexOf("/src/Stories.src/"),
+      );
+      const registry =
+        OVERLAY_SOURCES[
+          `../../template/v1/overlays/${layer}/src/gen/ui_register.g.ts`
+        ];
+      expect(
+        registry,
+        `${layer} 的故事源取句柄，但层里没有交付注册表`,
+      ).toBeDefined();
+      expect(registry).toMatch(/export const \w+: UiHandle<"/);
+    }
+  });
+});
+
 describe("模板叠加层：小程序图片的填充方式", () => {
   /**
    * 小程序没有 `object-fit`：`<image>` 只有五个 `mode`，语义与 CSS 不完全对应。

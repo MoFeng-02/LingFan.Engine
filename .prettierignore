@@ -12,6 +12,8 @@ apps/playground/src/gen/
 apps/playground/Resources/
 # 同上：骨架自带一份空 UI 注册表基线，`stories:build` 会按 src/ui/ 重写它
 template/v1/__PROJECT__/src/gen/
+# 同上：叠加层交付一份注册表，让刚建好的工程就有具名句柄（`stories:build` 会重写它）
+template/v1/overlays/*/src/gen/
 # 同上：骨架自带的开箱产物（故事 JSON 与清单的 tsSource 标记都由 stories:build 写盘）
 template/v1/__PROJECT__/Resources/Stories/
 template/v1/__PROJECT__/Resources/project.json

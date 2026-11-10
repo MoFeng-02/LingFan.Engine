@@ -20,7 +20,7 @@ const {
   wait,
 } = script;
 
-import hub from "../../ui/hub/hub.vue";
+import { hub } from "../../gen/ui_register.g";
 import { checkGold } from "../lib/guards";
 import { Sex, 地点 } from "../lib/enums";
 
