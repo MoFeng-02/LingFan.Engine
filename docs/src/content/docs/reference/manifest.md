@@ -185,7 +185,7 @@ description: 清单字段逐条说明：formatVersion、capabilityVersion、id�
 
 `width` / `height` 是**设计基准**（作者坐标系的宽高）：面板、元素、字号都照这个坐标系写，换基准就等于整场换坐标系，样式表不用动。取值 160–16384（宽）与 90–16384（高），缺省 1280 × 720。
 
-内置基准八档（横竖屏各四档，枚举见 `@lingfan-engine/shell` 的 `STAGE_BASELINES`）：
+内置基准八档（横竖屏各四档，名字见 `@lingfan-engine/shell` 的 `STAGE_BASELINES`）：
 
 | 档位  | 横屏               | 竖屏        |
 | ----- | ------------------ | ----------- |
@@ -194,7 +194,7 @@ description: 清单字段逐条说明：formatVersion、capabilityVersion、id�
 | 2K    | 2560 × 1440        | 1440 × 2560 |
 | 4K    | 3840 × 2160        | 2160 × 3840 |
 
-低档竖屏另有一档 750 × 1334（设计稿常用）。预设只是编辑器下拉的现成选项，**任意正数尺寸都能填**——不在表里同样可用。
+低档竖屏另有一档 750 × 1334（较常见的竖屏基准）。这八档只是常用档的名字表，**任意落在区间内的尺寸都能填**——不在表里同样可用。
 
 `fit` 四选一：
 
@@ -225,7 +225,7 @@ const stage = resolveStageConfig(manifest); // 内建缺省 × 工程覆盖
 
 套用时要分层：`transform` 只写在舞台根上，UI 挂在舞台之外的兄弟节点里（窗口坐标系）。把 UI 放进舞台根，窗口一变 UI 会被缩放同步放大一遍——等于跟着窗口二次变化。
 
-`project.json shell.stage` 不是所有宿主都必须实现：脚手架自带的宿主是固定视口布局，还没接这一层（见[模板能力边界](/reference/template-boundaries/)）。桌面壳（`apps/playground`）已接。
+桌面壳（`apps/playground`）与脚手架自带的宿主都已接这一层，宿主侧的具体做法见[模板能力边界](/reference/template-boundaries/)。
 
 #### shell.orientation
 

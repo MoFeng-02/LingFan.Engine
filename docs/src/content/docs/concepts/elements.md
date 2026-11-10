@@ -72,11 +72,37 @@ scene stage_demo
 
 属性表覆盖位置（`x` `y` `margin`）、尺寸（`width` `height` `minWidth` `maxWidth`）、外观（`opacity` `rotation` `scale` `cornerRadius` `borderThickness`）、布局（`spacing` `direction` `columns` `rows` `col` `row` `colspan`）、对齐（`align` `halign`）等。`class` 和 `style` 两个属性把剩下的交给 CSS。
 
-契约里还声明了几个暂时没实现的属性：`xanchor` `yanchor` `xalign` `yalign` `valign` `xoffset` `yoffset` `stretch`。写上去不报错，但也不生效——编辑器不给你这些表单，诊断面板会报「元素属性 xanchor 已声明但当前无渲染语义（写入不生效）」。
+契约里还声明了几个暂时没实现的属性：`xanchor` `yanchor` `xalign` `yalign` `valign` `xoffset` `yoffset`。写上去不报错，但也不生效——编辑器不给你这些表单，诊断面板会报「元素属性 xanchor 已声明但当前无渲染语义（写入不生效）」。
 
 `order` 是另一回事：没写 `zindex` 时引擎拿它当叠放依据，见下面的叠放顺序。编辑器的诊断清单目前把它和上面那批放在一起，写 `order` 也会收到同样的 warning——这条是误报。
 
 拼错属性名不会静默忽略——构建时就报错。
+
+## 媒体填充
+
+图片、图片按钮、立绘、视频、背景五类元素共用一个属性 `stretch` 决定「图片和框不一样大时怎么办」。值只有五个，写成别的会回退到缺省值 `cover`：
+
+| 值           | 含义                                            |
+| ------------ | ----------------------------------------------- |
+| `fill`       | 两轴各自拉满，允许变形                          |
+| `contain`    | 等比缩放到完整显示，多出的方向留白              |
+| `cover`      | 等比缩放到铺满，超出的部分裁切（缺省）          |
+| `none`       | 不缩放，原始尺寸居中                            |
+| `scale-down` | 取 `none` 与 `contain` 里更小的那个，即只缩不放 |
+
+缺省取 `cover` 而不是 `contain`：叙事画面里留白露底色比裁掉边角更刺眼，作者没写就该是「铺满」。
+
+这五个词是中立词表，三端各自映射到自己的写法——引擎侧只存词，不存 CSS：
+
+| 端            | 表达方式                                                                                                    |
+| ------------- | ----------------------------------------------------------------------------------------------------------- |
+| 浏览器 / 桌面 | `<img>`、`<video>` 写 `object-fit`；背景元素写 `background-size` + `background-position`                    |
+| 小程序        | `<video>` 的 `object-fit` 只有 `contain` / `fill` / `cover`，所以 `none` 与 `scale-down` 都退化为 `contain` |
+| 编辑器        | 下拉框直接出这五个词                                                                                        |
+
+两端不逐字相同是平台事实，不是没做完：CSS 的 `background-size` 没有 `scale-down`（背景侧退化为 `auto`），小程序的 `object-fit` 只有三个值。写 `scale-down` 在小程序上看到的是 `contain` 的效果。
+
+背景元素还有个额外约定：它的框由引擎写成 `100% × 100%`（舞台那么大），作者不用自己写 `width` / `height`——背景本来就没有「内容尺寸」可依，留空会塌成零高度，图就铺不出来。
 
 ## 寻址：id 和 name
 
