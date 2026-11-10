@@ -42,7 +42,10 @@ import { uis } from "./mounts";
 
 /** 页面节点句柄表：每个 id 都必须存在于 index.html（缺一个 `must` 当场抛） */
 const dom: StageDom = {
-  root: must("#stage-root"),
+  viewport: must("#stage-viewport"),
+  stageRoot: must("#stage-root"),
+  shake: must("#stage-shake"),
+  shellUi: must("#shell-ui"),
   stage: must("#stage"),
   dialogue: must("#dialogue"),
   speaker: must("#speaker"),

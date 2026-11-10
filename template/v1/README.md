@@ -18,7 +18,7 @@
 | 层级（z 序，`shell.layers`）                    | 是                     | 各层 z 由 `resolveLayerZ` 解析后内联写入                                          |
 | 存档（`shell.saves.slots` 槽位数）              | 是                     | 存/读为命令面；缩略图见下行                                                       |
 | 存档缩略图（`shell.saves.thumbnail`）           | 是                     | `src/host/thumbnails.ts` 合成卡；尺寸/质量/是否带文本按工程配置，合成失败即无图存 |
-| 舞台适配（`shell.stage`）                       | 否                     | 模板按固定视口布局；要接就取 `resolveStageConfig` 结果再算 `computeStageLayout`   |
+| 舞台适配（`shell.stage`）                       | 是                     | `resolveStageConfig` 结果算变换写到舞台根；宿主 UI 留在窗口坐标系，不跟缩放       |
 | 游玩界面禁选文本                                | 是                     | `body` 上 `user-select: none`；要提供复制就给部件加 `data-lf-selectable`          |
 | 历史面板与回溯 UI                               | 是                     | `src/host/panels/history.ts`，槽位 `#history` 可选；点一条即回到那个检查点        |
 | 玩家偏好（音量/文字速度面板）                   | 是                     | `src/host/panels/preferences.ts`，槽位 `#prefs` 可选；未接线 = 音量为 op 值       |

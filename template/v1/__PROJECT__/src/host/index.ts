@@ -41,6 +41,7 @@ export {
 export { wireEngine, type HostWiringOptions } from "./engine-wiring";
 export { createNativePorts, isTauriHosted } from "./native-ports";
 export { startHostFrameLoop, type HostFrameLoopOptions } from "./frame-loop";
+export { wireStageFit, type StageFitWiring } from "./stage-fit";
 export { wireInput, type HostInputOptions } from "./input-map";
 export {
   bootHost,

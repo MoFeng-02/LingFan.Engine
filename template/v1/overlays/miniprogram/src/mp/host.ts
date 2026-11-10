@@ -15,19 +15,18 @@ import {
   PlayerPreferences,
   resolveAudioConfig,
   resolveSavesConfig,
+  resolveStageConfig,
   slotIds,
   StoryEngine,
+  videoFitOf,
   type SavesConfig,
+  type StageConfig,
   type Story,
 } from "@lingfan-engine/core";
 import { loadProject } from "@lingfan-engine/adapters";
 import {
   computeStageLayout,
-  DEFAULT_STAGE_FIT,
-  DEFAULT_STAGE_HEIGHT,
-  DEFAULT_STAGE_WIDTH,
   withSlotLabels,
-  type StageConfig,
   type StageLayout,
 } from "@lingfan-engine/shell";
 import {
@@ -67,13 +66,6 @@ import { stageStyle } from "./view.ts";
 
 /** 覆盖层字速（字符/秒） */
 const TEXT_SPEED = 30;
-
-/** 舞台基准与装入方式：1280×720 等比装入视口（换基准改这里即可） */
-const STAGE_CONFIG: StageConfig = {
-  width: DEFAULT_STAGE_WIDTH,
-  height: DEFAULT_STAGE_HEIGHT,
-  fit: DEFAULT_STAGE_FIT,
-};
 
 /** 页面数据补丁：覆盖层各层 + 视频状态 + 舞台尺寸串 + 错误横幅 */
 export type MiniprogramHostPatch = MiniprogramSurfacePatch & {
@@ -132,6 +124,8 @@ export async function startMiniprogramHost(
   // 装载（端口内 memo），这里再取一次不产生第二个请求。
   const manifest = await filesPort.manifest();
   const saves: SavesConfig = resolveSavesConfig(manifest);
+  // 舞台基准与装入方式同样来自清单（`shell.stage`，逐键覆盖内建缺省）
+  const stageConfig: StageConfig = resolveStageConfig(manifest);
 
   // 内容是包外的（故事走工程接口，改故事不必发版），守卫却在包里：装载完成先对名字，
   // 缺谁一次报全——错误停在起播之前，而不是播到那条命令才弹「未注册的守卫」。
@@ -145,7 +139,13 @@ export async function startMiniprogramHost(
   const videoSurface: MiniprogramVideoSurface = createMiniprogramVideoSurface({
     publish: (video) => deps.publish({ video }),
   });
-  const ports = createMiniprogramHostPorts({ videoSurface, projectBaseUrl });
+  const ports = createMiniprogramHostPorts({
+    videoSurface,
+    projectBaseUrl,
+    // 填充读当前列里的 video 元素：端口每次起播才求值，换列后自动跟随；
+    // 引擎紧接着才构造，闭包里晚绑定正是所需（提前求值会读到未初始化）
+    readFit: () => videoFitOf(engine.elements()),
+  });
   const engine = new StoryEngine(story, {
     // 工程默认音量（project.json shell.audio.volumes）：音量的第二级
     audioConfig: resolveAudioConfig(manifest),
@@ -205,11 +205,11 @@ export async function startMiniprogramHost(
     onView: (view) => surface.setNvl(view),
   });
 
-  let layout = computeStageLayout(readWindowSize(), STAGE_CONFIG);
+  let layout = computeStageLayout(readWindowSize(), stageConfig);
 
   /** 读一次视口、重算布局并下发（初始化与尺寸变化共用） */
   function resize(): void {
-    layout = computeStageLayout(readWindowSize(), STAGE_CONFIG);
+    layout = computeStageLayout(readWindowSize(), stageConfig);
     deps.publish({ stageBox: stageStyle(layout) });
   }
 

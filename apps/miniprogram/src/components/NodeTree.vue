@@ -12,13 +12,15 @@ defineProps<{ nodes: MiniNode[] }>();
 
 <template>
   <template v-for="node in nodes" :key="node.key">
+    <!-- 填充方式由数据侧按元素声明算好（平台只有几个 mode，缺口见 host/view.ts）；
+         缺这一项时按元素层的缺省填充走，不留空。 -->
     <image
       v-if="node.kind === 'image'"
       class="node node-image"
       :class="node.className"
       :style="node.style"
       :src="node.src"
-      mode="widthFix"
+      :mode="node.mode ?? 'aspectFill'"
     />
     <view
       v-else

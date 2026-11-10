@@ -49,7 +49,11 @@ import {
   type NarrativeOverlayView,
 } from "@lingfan-engine/ui";
 import dialoguePanelSource from "../../apps/playground/src/App/DialoguePanel.vue?raw";
-import { stageStyle } from "../../apps/miniprogram/src/host/view.ts";
+import {
+  imageModeOf,
+  stageStyle,
+  toMiniNode,
+} from "../../apps/miniprogram/src/host/view.ts";
 import manifestSource from "../../apps/miniprogram/src/manifest.json?raw";
 import pagesSource from "../../apps/miniprogram/src/pages.json?raw";
 import pageSource from "../../apps/miniprogram/src/pages/index/index.vue?raw";
@@ -58,6 +62,7 @@ import {
   loadHostSlotViews,
 } from "../../apps/miniprogram/src/host/slots.ts";
 import saveBarSource from "../../apps/miniprogram/src/components/SaveLoadBar.vue?raw";
+import nodeTreeSource from "../../apps/miniprogram/src/components/NodeTree.vue?raw";
 import projectManifestSource from "../../apps/miniprogram/project/project.json?raw";
 
 /** 宿主各模块源码：平台全局的收口边界靠它机械核对 */
@@ -197,6 +202,65 @@ describe("stageStyle（舞台盒的行内样式）", () => {
       `translate(${Math.round(layout.offsetX * 1000) / 1000}px`,
     );
     expect(style.length).toBeLessThan(96);
+  });
+});
+
+describe("图片填充（stretch → <image mode>）", () => {
+  /**
+   * 小程序没有 `object-fit`：`<image>` 只有五个 `mode`，语义与 CSS 不完全对应。
+   * 元素层已把填充词折成描述树里的 `object-fit`，这一侧只能按那五个词反查。
+   *
+   * `scale-down`（只缩不放）平台无法表达，退化为 `aspectFit`——小图会被放大；
+   * `widthFix`（宽度固定、高度自适应）不是填充语义，拿它当缺省会让没写填充的图
+   * 按原始比例撑开，与元素层缺省 `cover` 的观感相反。
+   */
+  const FITS = [
+    ["fill", "scaleToFill"],
+    ["contain", "aspectFit"],
+    ["cover", "aspectFill"],
+    ["none", "center"],
+    ["scale-down", "aspectFit"],
+  ] as const;
+
+  it("五个填充词各自映射到平台的 mode", () => {
+    for (const [fit, mode] of FITS) {
+      expect(imageModeOf(fit), `${fit} 的 mode 不对`).toBe(mode);
+    }
+  });
+
+  it("未声明与写坏都落到缺省 mode（与元素层缺省 cover 同向）", () => {
+    expect(imageModeOf(undefined)).toBe("aspectFill");
+    expect(imageModeOf("")).toBe("aspectFill");
+    expect(imageModeOf("stretch")).toBe("aspectFill");
+  });
+
+  it("图像节点从描述样式的 object-fit 反查 mode", () => {
+    const node = toMiniNode(
+      {
+        kind: "image",
+        style: { objectFit: "contain" },
+        props: { src: "/a.png" },
+      },
+      "0",
+    );
+    expect(node.mode).toBe("aspectFit");
+    expect(node.src).toBe("/a.png");
+  });
+
+  it("图像节点没写填充时仍有 mode，不留空", () => {
+    expect(toMiniNode({ kind: "image" }, "0").mode).toBe("aspectFill");
+  });
+
+  it("非图像节点不带 mode：平台只有 <image> 认这个属性", () => {
+    expect(toMiniNode({ kind: "box" }, "0").mode).toBeUndefined();
+    expect(
+      toMiniNode({ kind: "media", style: { objectFit: "fill" } }, "0").mode,
+    ).toBeUndefined();
+  });
+
+  it("模板把 mode 绑到数据，不回退成硬编码", () => {
+    expect(nodeTreeSource).toMatch(/:mode="node\.mode/);
+    expect(nodeTreeSource).not.toMatch(/mode="widthFix"/);
   });
 });
 
@@ -433,9 +497,11 @@ describe("媒体端口接线（音频实例与视频呈现面）", () => {
     expect(portsSource).toContain(
       "createMiniprogramAudioPort(createAudioContext)",
     );
+    // 视频填充读数由组合根注入：端口每次起播现取，换列后自动跟随
     expect(portsSource).toContain(
-      "createMiniprogramVideoPort(options.videoSurface)",
+      "createMiniprogramVideoPort(options.videoSurface, {",
     );
+    expect(portsSource).toContain("fit: options.readFit");
     // 渲染器：音频带偏好，视频播完交回引擎
     expect(hostSource).toContain("createAudioRenderer(");
     expect(hostSource).toContain("createVideoRenderer(");

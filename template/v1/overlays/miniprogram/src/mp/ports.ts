@@ -16,6 +16,7 @@ import {
 } from "@lingfan-engine/adapters";
 import type {
   AudioPort,
+  ElementFit,
   PreferencesPort,
   ResourcePort,
   SavePort,
@@ -46,6 +47,11 @@ export interface MiniprogramPortsOptions {
   videoSurface: MiniprogramVideoSurfaceLike;
   /** 工程基址（故事与资源都从它取）；缺省读运行期配置 */
   projectBaseUrl?: string;
+  /**
+   * 视频填充读数（可选）：端口在每次起播时求值，读的是当时列里的 video 元素，
+   * 换列或元素被替换后自动跟随。
+   */
+  readFit?: () => ElementFit;
 }
 
 /** 装配平台端口 */
@@ -61,7 +67,10 @@ export function createMiniprogramHostPorts(
     preferences: createMiniprogramPreferencesPort(storage),
     resources: createRemoteResourcePort(options.projectBaseUrl),
     audio: createMiniprogramAudioPort(createAudioContext),
-    video: createMiniprogramVideoPort(options.videoSurface),
+    // 填充读数每次起播现取：读的是当时列里的 video 元素，换列或元素被替换后自动跟随
+    video: createMiniprogramVideoPort(options.videoSurface, {
+      fit: options.readFit,
+    }),
   };
 }
 

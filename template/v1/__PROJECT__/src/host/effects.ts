@@ -57,11 +57,12 @@ export function createHostEffects(
       onTransitionDone: () => {
         dom.transition.style.display = "none";
       },
+      // 震动只写震动层的位移分量：缩放留在父层（舞台根），两层各写各的不互相覆盖
       onShakeFrame: (x, y) => {
-        dom.root.style.transform = `translate(${x}px, ${y}px)`;
+        dom.shake.style.transform = `translate(${x}px, ${y}px)`;
       },
       onShakeDone: () => {
-        dom.root.style.transform = "";
+        dom.shake.style.transform = "";
       },
     },
   });

@@ -2,7 +2,7 @@
  * 组合根（React 形态）：装配适配器 → 加载组装工程 → 建引擎 → 挂载展示层。
  *
  * 与骨架的差别只有「谁渲染页面结构」：这里先把 `App` 挂到 `#app`，再读节点句柄——
- * 引擎要的 15 个节点由 `App.tsx` 渲染出来，挂载前 `must` 只会抛。骨架的 `src/host/`
+ * 引擎要的 18 个节点由 `App.tsx` 渲染出来，挂载前 `must` 只会抛。骨架的 `src/host/`
  * 一行未改：它操作的是 `StageDom` 句柄表，不认识 React。
  *
  * 页面的层结构在 `src/App.tsx`，样式在 `src/styles/stage.css`（两者都来自模板骨架，
@@ -36,7 +36,10 @@ import { App } from "./App.tsx";
 /** 页面节点句柄表：每个 id 都必须由 `App.tsx` 渲染（缺一个 `must` 当场抛） */
 function readDom(): StageDom {
   return {
-    root: must("#stage-root"),
+    viewport: must("#stage-viewport"),
+    stageRoot: must("#stage-root"),
+    shake: must("#stage-shake"),
+    shellUi: must("#shell-ui"),
     stage: must("#stage"),
     dialogue: must("#dialogue"),
     speaker: must("#speaker"),

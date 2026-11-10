@@ -8,6 +8,7 @@
 import { type Ref } from "vue";
 import {
   type AudioPort,
+  type ElementFit,
   type HostControls,
   type PlayerPreferences,
   type ResourcePort,
@@ -30,6 +31,7 @@ export interface AppStageStackOptions {
     createVideoPort: (
       onError: (message: string) => void,
       readContainer?: () => HTMLElement | null,
+      readFit?: () => ElementFit,
     ) => VideoPort;
     /** 外部宿主注入的操作通道（缺省时由本装配造一份） */
     controls?: HostControls;

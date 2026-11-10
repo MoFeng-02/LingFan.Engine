@@ -1,6 +1,13 @@
 /* RenderTargets 的落地：stage / dialogue / choices / notifications / toolbar。
    **层级（z 序）不在这里写死**——由 src/main.ts 按「内建默认 × 工程覆盖
-   （project.json shell.layers）」解析后内联写入。 */
+   （project.json shell.layers）」解析后内联写入。
+
+   分层：一层一个坐标系，父子关系就是换算关系。
+   #stage-viewport 住窗口像素，视口尺寸与点击落点都找它；
+   #stage-root 住设计基准像素，适配把「基准 → 窗口」的缩放与偏移写成它的变换；
+   #stage-shake 与舞台同坐标，只多一层位移，屏幕震动只动这一层；
+   #shell-ui 住窗口像素且不进缩放——面板与文字按窗口折算，
+   舞台缩得再小它们也不会跟着缩（否则小窗口下字会小到看不清）。 */
 :root {
   color-scheme: dark;
 }
@@ -21,11 +28,24 @@ textarea,
   user-select: text;
   -webkit-user-select: text;
 }
-/* 舞台根：铺满视口；屏幕震动（shake）施加在它上面 */
-#stage-root {
+/* 舞台视口：铺满窗口并裁掉溢出——适配后舞台可能比窗口大，多出来的部分不该出现滚动条 */
+#stage-viewport {
   position: fixed;
   inset: 0;
   overflow: hidden;
+}
+/* 舞台根：尺寸与位置都由适配装配写，这里只给它一个可变换的定位盒 */
+#stage-root {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+/* 震动层：撑满舞台根；震动只改这一层的位移，缩放留在父层，两层互不覆盖 */
+#stage-shake {
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 /* 舞台元素层：容器不阻塞点击（可交互元素自身恢复 pointer-events） */
 #stage {
@@ -33,18 +53,51 @@ textarea,
   inset: 0;
   pointer-events: none;
 }
+/* UI 挂载层：`mount` 命令显示/隐藏的组件挂这里（见 src/host/mount/）。
+   隐藏 = 从渲染树移除，所以这里没有 display:none 的分支——容器空着就是没有 UI。
+   它住震动层而不是 UI 层：组件由故事作者按设计基准像素摆放，位置要随舞台一起缩与抖；
+   槽位本身不吃事件，只有里面的组件吃（与 #prefs 同一口径）。 */
+#mounts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#mounts > * {
+  pointer-events: auto;
+}
+/* 宿主 UI 层：铺满窗口但整层不吃指针事件——空白处的点击与滚轮要穿到舞台上推进对话。
+   层内的原生控件另有兜底（见本文件末尾），面板作者漏写容器时按钮也不会失活。
+   层内各层沿用各自的 absolute 定位：它们量的是窗口，不是舞台。 */
+#shell-ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+/* NVL 累积层：与对话层同域，铺成阅读区；可滚动，故自己吃指针事件 */
+#nvl {
+  position: absolute;
+  inset: clamp(12px, 3vw, 40px);
+  overflow: auto;
+  border: 1px solid #2a3140;
+  border-radius: 10px;
+  background: rgba(20, 24, 33, 0.94);
+  padding: 16px 20px;
+  line-height: 1.7;
+  pointer-events: auto;
+}
 /* 对话层 */
 #dialogue {
   position: absolute;
-  right: 24px;
-  bottom: 24px;
-  left: 24px;
+  right: calc(clamp(12px, 3vw, 40px) + env(safe-area-inset-right));
+  bottom: calc(clamp(12px, 3vw, 40px) + env(safe-area-inset-bottom));
+  left: calc(clamp(12px, 3vw, 40px) + env(safe-area-inset-left));
   box-sizing: border-box;
   border: 1px solid #2a3140;
   border-radius: 10px;
   background: rgba(20, 24, 33, 0.92);
-  padding: 16px 20px;
-  min-height: 96px;
+  padding: clamp(10px, 2.2vh, 22px) clamp(12px, 3vw, 40px);
+  min-height: clamp(72px, 14vh, 120px);
+  pointer-events: auto;
 }
 #speaker {
   color: #7aa2f7;
@@ -63,28 +116,18 @@ textarea,
   color: #6b7280;
   font-size: 12px;
 }
-/* NVL 累积层：与对话层同域，铺成阅读区 */
-#nvl {
-  position: absolute;
-  inset: 24px;
-  overflow: auto;
-  border: 1px solid #2a3140;
-  border-radius: 10px;
-  background: rgba(20, 24, 33, 0.94);
-  padding: 16px 20px;
-  line-height: 1.7;
-}
 /* 等待态层（各自渲染进 #choices） */
 #choices {
   position: absolute;
   top: 50%;
-  left: 24px;
+  left: calc(clamp(12px, 3vw, 40px) + env(safe-area-inset-left));
   display: flex;
   flex-direction: column;
   gap: 8px;
   align-items: flex-start;
   max-width: min(520px, calc(100% - 48px));
   transform: translateY(-50%);
+  pointer-events: auto;
 }
 #choices:empty {
   display: none;
@@ -120,11 +163,11 @@ textarea,
   color: #e0af68;
   padding: 8px 12px;
 }
-/* 通知 toast 层 */
+/* 通知 toast 层：提示条不可交互，容器保持穿透 */
 #notifications {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: calc(clamp(8px, 1.6vh, 16px) + env(safe-area-inset-top));
+  right: calc(clamp(8px, 1.6vh, 16px) + env(safe-area-inset-right));
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -140,12 +183,13 @@ textarea,
 /* 工具条（存/读）：槽位数来自 project.json shell.saves.slots */
 #toolbar {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: calc(clamp(8px, 1.6vh, 16px) + env(safe-area-inset-top));
+  left: calc(clamp(8px, 1.6vh, 16px) + env(safe-area-inset-left));
   display: flex;
   gap: 8px;
   align-items: center;
   font-size: 13px;
+  pointer-events: auto;
 }
 button,
 select,
@@ -262,19 +306,13 @@ button {
   color: #a9b1d6;
   font-variant-numeric: tabular-nums;
 }
-/* UI 挂载层：`mount` 命令显示/隐藏的组件挂这里（见 src/host/mount/）。
-   隐藏 = 从渲染树移除，所以这里没有 display:none 的分支——容器空着就是没有 UI。
-   槽位本身不吃事件，只有里面的组件吃：UI 覆盖整屏时不该顺带吃掉对话层的点击，
-   而组件要交互时自己声明（与 #prefs 同一口径）。 */
-#mounts {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-#mounts > * {
+/* 兜底网：UI 层整体穿透，层内的原生控件一律恢复——
+   面板作者漏写容器的 pointer-events 时，按钮与输入框不该跟着整层一起静默失活。 */
+#shell-ui :is(button, input, textarea, select):not(:disabled) {
   pointer-events: auto;
 }
-/* 全屏转场遮罩（transition）：屏幕级，恒在最上；透明度由帧驱动写入 */
+/* 全屏转场遮罩（transition）：屏幕级，恒在最上；透明度由帧驱动写入。
+   它盖的是整屏（含舞台与 UI 层），所以与两层平级而不是住进 UI 层。 */
 #transition {
   position: absolute;
   inset: 0;
@@ -287,9 +325,9 @@ button {
 /* 引擎错误横幅（fail-closed 可见，不静默） */
 #error {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  left: 12px;
+  top: calc(clamp(8px, 1.6vh, 16px) + env(safe-area-inset-top));
+  right: calc(clamp(8px, 1.6vh, 16px) + env(safe-area-inset-right));
+  left: calc(clamp(8px, 1.6vh, 16px) + env(safe-area-inset-left));
   display: none;
   border: 1px solid #f7768e88;
   border-radius: 6px;

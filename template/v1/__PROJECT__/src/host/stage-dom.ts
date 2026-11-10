@@ -31,10 +31,25 @@ export function optional<T extends HTMLElement>(selector: string): T | null {
 
 /** 常驻节点句柄表：装配期就要用到、且页面里始终存在的那些 */
 export interface StageDom {
-  /** 舞台根：屏幕震动施加位移的对象 */
-  root: HTMLElement;
+  /**
+   * 舞台视口：住窗口坐标系，铺满窗口。
+   *
+   * 视口尺寸与点击落点都从它来：舞台根会被缩放，量它会量到缩放后的尺寸；
+   * 点在舞台之外（等比装入留下的留边）也算命中视口，那一次点击本该推进对话。
+   */
+  viewport: HTMLElement;
+  /**
+   * 舞台根：住设计基准坐标系，宽高与变换由适配装配写入。
+   *
+   * 它是页面里唯一同时被缩放与平移的节点，上一层的震动位移不会改写它。
+   */
+  stageRoot: HTMLElement;
+  /** 震动层：屏幕震动只写这一层的位移（缩放留在舞台根，两层互不覆盖） */
+  shake: HTMLElement;
   /** 舞台：元素层容器，也是元素动画节点的查找范围 */
   stage: HTMLElement;
+  /** 宿主 UI 层：按窗口像素排布，不随舞台缩放 */
+  shellUi: HTMLElement;
   /** 对话层：说话人 / 正文 / 提示三件套的容器 */
   dialogue: HTMLElement;
   /** 说话人一行 */
@@ -62,7 +77,7 @@ export interface StageDom {
   /**
    * 偏好面板槽位（**可选**：`null` = 本页面没给这个槽位）。
    *
-   * 与上面 15 个 `must()` 节点的区别：那些是引擎渲染的落点，缺一个就是装配错误；
+   * 与上面那些 `must()` 节点的区别：那些是引擎渲染的落点，缺一个就是装配错误；
    * 这个只是「没有面板就没有音量/字速 UI」，游戏照常跑，所以按可选处理。
    * 取用点：`optional("#prefs")`；`layer-z.ts` 写 `prefs` 层 z 时会判空。
    */

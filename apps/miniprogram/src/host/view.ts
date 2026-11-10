@@ -24,8 +24,39 @@ export interface MiniNode {
   html?: string;
   /** 媒体地址（图与视频用） */
   src?: string;
+  /** 图像节点的填充方式（平台 `<image>` 的 `mode` 值）；非图像节点没有这一项 */
+  mode?: string;
   /** 子节点 */
   children?: MiniNode[];
+}
+
+/**
+ * 填充方式 → 平台 `<image>` 的 `mode`。
+ *
+ * 小程序没有 `object-fit`，`<image>` 只有 `scaleToFill` / `aspectFit` / `aspectFill` /
+ * `widthFix` / `heightFix` 五个词，语义也不完全对应。`none`（不缩放、居中、超出裁掉）用
+ * `center` 恰好对上；`scale-down`（只缩不放）平台无法表达，退化为 `aspectFit`——小图会被
+ * 放大，这是已知的语义缺口，不做补偿：按原始尺寸判该不该缩放要先异步取一次图片信息，
+ * 代价远高于收益。
+ *
+ * 入参是描述树里已经算好的 `object-fit` 值（与元素层的填充词表同一套词）。未写与写坏
+ * 走同一条路：都落到 `aspectFill`，与元素层缺省是 `cover` 保持一致。
+ */
+export function imageModeOf(fit: string | undefined): string {
+  switch (fit) {
+    case "fill":
+      return "scaleToFill";
+    case "contain":
+      return "aspectFit";
+    case "cover":
+      return "aspectFill";
+    case "none":
+      return "center";
+    case "scale-down":
+      return "aspectFit";
+    default:
+      return "aspectFill";
+  }
 }
 
 /** 把一棵描述树翻成节点树；`path` 是给子节点编键用的前缀 */
@@ -40,6 +71,7 @@ export function toMiniNode(spec: RenderSpec, path: string): MiniNode {
   if (spec.html !== undefined) node.html = spec.html;
   const src = spec.props?.["src"];
   if (typeof src === "string") node.src = src;
+  if (spec.kind === "image") node.mode = imageModeOf(spec.style?.["objectFit"]);
   const children = spec.children ?? [];
   if (children.length > 0) {
     node.children = children.map((child, index) =>

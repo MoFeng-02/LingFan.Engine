@@ -17,12 +17,15 @@ import {
   StoryEngine,
   resolveAudioConfig,
   resolveLayerZ,
+  resolveStageConfig,
+  videoFitOf,
   type AudioPort,
   type HostControls,
   type PreferencesPort,
   type ProjectFilesPort,
   type ResourcePort,
   type SavePort,
+  type StageConfig,
   type Story,
   type VideoPort,
 } from "@lingfan-engine/core";
@@ -50,6 +53,7 @@ import { createDialogueView } from "./dialogue-view";
 import { createHostEffects } from "./effects";
 import { wireEngine } from "./engine-wiring";
 import { startHostFrameLoop } from "./frame-loop";
+import { wireStageFit } from "./stage-fit";
 import { wireInput } from "./input-map";
 import { installStoryFonts } from "./theme-fonts";
 import { createPreferencesPanel } from "./panels/preferences";
@@ -72,6 +76,8 @@ export interface HostBootOptions {
   defaultCps?: number;
   /** 提示条驻留毫秒数；缺省 = 展示层给出的默认时长 */
   toastDurationMs?: number;
+  /** 舞台适配的显式覆盖（可选）：缺省时本文件按清单的 `shell.stage` 解析 */
+  stage?: StageConfig;
   /**
    * 端口覆盖：换平台形态时由组合根传入原生实现，装配顺序与接线一行不改。
    * 缺省走 Web 形态（静态资源根 + localStorage 存档 + fetch 取工程文件）。
@@ -224,9 +230,19 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
   });
   layers.apply();
 
+  // 层级与几何无关，先写省一次布局抖动；引擎一启动即渲染首帧，适配必须在那之前落笔
+  const stageFit = wireStageFit({
+    dom,
+    config: resolveStageConfig(manifest, options.stage),
+  });
   videoPort = createWebVideoPort({
     onError: reportError,
     zIndex: layerZ.video,
+    // 视频住震动层（与元素层同级，缩放已在父层生效）
+    readContainer: () => dom.shake,
+    // 填充读当前列的 video 元素：端口在挂载时才求值，换列或元素被替换后自动跟随；
+    // 引擎在端口之后构造，闭包里晚绑定正是所需（提前求值会读到未初始化）
+    fit: () => videoFitOf(engine.elements()),
   });
 
   // —— 存档壳配置：槽位（project.json 的 shell.saves.slots 可覆盖）——
@@ -354,12 +370,14 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
 
   engine.start();
 
-  // 拆除顺序与装配相反：先停帧（不再有回调进来），再释放订阅引擎的渲染器，最后销毁引擎
+  // 拆除顺序与装配相反：先停帧（不再有回调进来），再摘窗口监听与订阅引擎的渲染器，
+  // 最后销毁引擎；监听不摘，宿主在同一页面被重建时就是重复落笔
   let disposed = false;
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
     frameLoop.stop();
+    stageFit.dispose();
     // UI 先拆：它可能持有自己那套框架实例或定时器，晚拆会让卸载跑在引擎销毁之后
     nativeMounts?.dispose();
     // 面板先拆：它订阅偏好层，偏好 dispose 之后再退订会漏掉末次回填

@@ -9,6 +9,7 @@
 import { type Ref } from "vue";
 import {
   type AudioPort,
+  type ElementFit,
   type HostControls,
   type LayerZTable,
   type PlayerPreferences,
@@ -36,6 +37,7 @@ export interface AppStageViewOptions {
     createVideoPort: (
       onError: (message: string) => void,
       readContainer?: () => HTMLElement | null,
+      readFit?: () => ElementFit,
     ) => VideoPort;
     /** 外部宿主注入的操作通道（缺省时由舞台栈造一份） */
     controls?: HostControls;

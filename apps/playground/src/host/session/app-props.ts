@@ -10,6 +10,7 @@ import type { Ref } from "vue";
 import type {
   AudioConfig,
   AudioPort,
+  ElementFit,
   HostControls,
   HostInfo,
   I18nPort,
@@ -52,6 +53,7 @@ export interface AppProps {
   createVideoPort: (
     onError: (message: string) => void,
     readContainer?: () => HTMLElement | null,
+    readFit?: () => ElementFit,
   ) => VideoPort;
   /** 操作通道（组合根造）：暂停/存读/导航都经由它，组件自己不直接点引擎命令 */
   controls?: HostControls;

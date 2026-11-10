@@ -13,15 +13,15 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
-    "@lingfan-engine/adapters": "^0.3.2",
-    "@lingfan-engine/core": "^0.3.2",
-    "@lingfan-engine/shell": "^0.3.2",
-    "@lingfan-engine/stories-build": "^0.3.2",
-    "@lingfan-engine/ui": "^0.3.2",
+    "@lingfan-engine/adapters": "^0.4.0",
+    "@lingfan-engine/core": "^0.4.0",
+    "@lingfan-engine/shell": "^0.4.0",
+    "@lingfan-engine/stories-build": "^0.4.0",
+    "@lingfan-engine/ui": "^0.4.0",
     "@tauri-apps/api": "^2"
   },
   "devDependencies": {
-    "@lingfan-engine/editor": "^0.3.2",
+    "@lingfan-engine/editor": "^0.4.0",
     "@types/node": "^26.6.3",
     "typescript": "~6.0.3",
     "vite": "^8.0.16"

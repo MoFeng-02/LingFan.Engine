@@ -9,7 +9,9 @@
 
 import { type Ref } from "vue";
 import {
+  videoFitOf,
   type AudioPort,
+  type ElementFit,
   type PlayerPreferences,
   type ResourcePort,
   type StoryEngine,
@@ -32,6 +34,7 @@ export interface AppMediaOptions {
     createVideoPort: (
       onError: (message: string) => void,
       readContainer?: () => HTMLElement | null,
+      readFit?: () => ElementFit,
     ) => VideoPort;
   };
   /** 引擎句柄取用（渲染器挂接与视频完成回传；重启重建后指向新实例） */
@@ -69,7 +72,10 @@ export function createAppMedia(options: AppMediaOptions): AppMedia {
   }
   const media: AppMedia = {
     audioPort: props.createAudioPort(reportAudioError),
-    videoPort: props.createVideoPort(reportAudioError, readVideoContainer),
+    videoPort: props.createVideoPort(reportAudioError, readVideoContainer, () =>
+      // 填充读当前列里的 video 元素：端口每次挂载才求值，换列后自动跟随
+      videoFitOf(getEngine().elements()),
+    ),
     audioRenderer: null,
     videoRenderer: null,
     reportAudioError,

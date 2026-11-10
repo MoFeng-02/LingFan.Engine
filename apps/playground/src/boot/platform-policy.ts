@@ -12,7 +12,7 @@ import {
   createWebVideoPort,
   type BlobSourceOptions,
 } from "@lingfan-engine/adapters";
-import type { AudioPort, VideoPort } from "@lingfan-engine/core";
+import type { AudioPort, ElementFit, VideoPort } from "@lingfan-engine/core";
 
 /**
  * 媒体源物化上限（字节）：物化后整段驻留内存，故只承载小媒体（本工程 v1 媒体 ≤ 8 MiB）；
@@ -36,10 +36,13 @@ export interface MediaPortFactoriesOptions {
 export interface MediaPortFactories {
   /** 造音频端口（诊断出口逐次传入） */
   createAudioPort(onError: (message: string) => void): AudioPort;
-  /** 造视频端口（层 z 与物化配置由装配参数给定；呈现容器由消费方按当地事实注入） */
+  /**
+   * 造视频端口（层 z 与物化配置由装配参数给定；呈现容器与填充读数由消费方按当地事实注入）
+   */
   createVideoPort(
     onError: (message: string) => void,
     readContainer?: () => HTMLElement | null,
+    readFit?: () => ElementFit,
   ): VideoPort;
 }
 
@@ -61,12 +64,15 @@ export function createMediaPortFactories(
     createVideoPort(
       onError: (message: string) => void,
       readContainer?: () => HTMLElement | null,
+      readFit?: () => ElementFit,
     ): VideoPort {
       return createWebVideoPort({
         onError,
         zIndex: options.videoZIndex,
         blobSource,
         readContainer,
+        // 每次挂载现读：读的是当时列里的 video 元素，换列后自动跟随
+        fit: readFit,
       });
     },
   };

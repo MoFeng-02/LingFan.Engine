@@ -52,7 +52,9 @@ export function wireInput(options: HostInputOptions): void {
     engine.advance();
   }
 
-  dom.root.addEventListener("click", advance);
+  // 点击落在视口上而不是舞台上：等比装入留下的留边也该算命中（点空白处推进对话），
+  // 而舞台根被缩放后量到的只是内容区
+  dom.viewport.addEventListener("click", advance);
   for (const el of [dom.choices, dom.toolbar, dom.notifications]) {
     el.addEventListener("click", (event) => event.stopPropagation());
   }

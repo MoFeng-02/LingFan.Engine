@@ -1,6 +1,6 @@
 {
-  "version": "1.14.0",
-  "minEngineVersion": "0.3.2",
+  "version": "1.15.0",
+  "minEngineVersion": "0.4.0",
   "placeholder": "__PROJECT__",
   "frameworks": [
     {

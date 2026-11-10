@@ -12,8 +12,10 @@ import { watch, type Ref } from "vue";
 import {
   SYS,
   StoryEngine,
+  videoFitOf,
   type AudioConfig,
   type AudioPort,
+  type ElementFit,
   type I18nPort,
   type LayerId,
   type OpExtension,
@@ -41,6 +43,7 @@ export interface AppEngineLifeOptions {
     createVideoPort: (
       onError: (message: string) => void,
       readContainer?: () => HTMLElement | null,
+      readFit?: () => ElementFit,
     ) => VideoPort;
   };
   /** 引擎实例取用（装配层持有 `let engine`，重启重建后指向新实例） */
@@ -217,6 +220,8 @@ export function createAppEngineLife(
     media.videoPort = props.createVideoPort(
       media.reportAudioError,
       readVideoContainer,
+      // 填充读当前列里的 video 元素：端口每次挂载才求值，换列后自动跟随
+      () => videoFitOf(getEngine().elements()),
     );
     media.videoPort.setZIndex?.(zOf("video")); // 重建端口后补上当前实例 z
     getEngine().dispose();
