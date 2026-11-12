@@ -14,7 +14,14 @@
 import { describe, expect, it } from "vitest";
 
 const SOURCES = import.meta.glob(
-  ["../../packages/*/src/**/*.{ts,vue}", "../../apps/*/src/**/*.{ts,vue}"],
+  [
+    "../../packages/*/src/**/*.{ts,vue}",
+    "../../apps/*/src/**/*.{ts,vue}",
+    // 故事源是作者手写的创作目录（每章一个子目录，由工程 config.ts 声明），不是本仓的
+    // 模块代码；且真实工程锚点用例会在其中临时写入 tsc 探针文件再删除，纳入扫描面会让
+    // 收集与读取之间出现文件已消失的竞态。
+    "!../../apps/*/src/Stories.src/**",
+  ],
   { eager: true, query: "?raw", import: "default" },
 ) as Record<string, string>;
 
