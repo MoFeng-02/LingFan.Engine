@@ -65,4 +65,9 @@ export interface AppProps {
   onMounts: (raw: unknown) => void;
   /** 工程标题（组合根从 project.json 解析）：启动页与暂停菜单共用 */
   projectTitle: string;
+  /**
+   * 直达目标列 id（可选）：组合根从开发期环境变量读入，给定后跳过启动页直接进该列。
+   * 缺省 = 正常从启动页开始。
+   */
+  entry?: string;
 }

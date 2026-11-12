@@ -256,6 +256,8 @@ async function boot(): Promise<void> {
       mountStore.set(raw);
     },
     projectTitle: resolveProjectName(manifest),
+    // 直达目标列：开发编排脚本把章节 id 放进环境变量，这里读出来交给会话层
+    entry: import.meta.env.VITE_LFEN_ENTRY,
   });
   app.mount("#app");
 

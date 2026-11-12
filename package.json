@@ -8,7 +8,7 @@
     "dev": "pnpm --filter @lingfan-engine/playground dev",
     "build": "pnpm --filter @lingfan-engine/playground build",
     "preview": "pnpm --filter @lingfan-engine/playground preview",
-    "tauri": "pnpm --filter @lingfan-engine/playground exec tauri",
+    "tauri": "pnpm --filter @lingfan-engine/playground tauri",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

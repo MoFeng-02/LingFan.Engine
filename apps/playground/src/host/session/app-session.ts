@@ -32,8 +32,8 @@ export interface AppSessionOptions {
   saves: SavesConfig;
   /** 存档端口：「继续」要挑最新的一档，就得读槽位摘要 */
   savePort: SavePort;
-  /** 进对局：启动引擎并进入工程入口列 */
-  enterGame: () => void;
+  /** 进对局：启动引擎并进入工程入口列；给了列 id 则直达该列 */
+  enterGame: (columnId?: string) => void;
   /** 读档继续：按槽位恢复进度（须已进对局） */
   continueGame: (slot: string) => void;
   /** 舞台点击：转发给叙事层推进对话 */
@@ -50,6 +50,8 @@ export interface AppSession {
   quickSlot: ComputedRef<string>;
   mounted: ComputedRef<readonly MountSelection[]>;
   onStart: () => void;
+  /** 直达某列：跳过启动页直接进该列（开发期按章节调试用） */
+  onEnterColumn: (columnId: string) => void;
   onContinue: (slot: string) => void;
   togglePause: () => void;
   syncPaused: (paused: boolean) => void;
@@ -88,6 +90,18 @@ export function createAppSession(options: AppSessionOptions): AppSession {
     inGame.value = true;
     paused.value = false;
     options.enterGame();
+    void nextTick(() => options.applyStageFit());
+  }
+
+  /**
+   * 直达某列：置页面态 → 启动引擎 → 导航到目标列 → 舞台挂上后再量一次适配。
+   *
+   * 走的是与「开始」同一条启动路径，只是多带一个目标列：不读档、不显示启动页。
+   */
+  function onEnterColumn(columnId: string): void {
+    inGame.value = true;
+    paused.value = false;
+    options.enterGame(columnId);
     void nextTick(() => options.applyStageFit());
   }
 
@@ -215,6 +229,7 @@ export function createAppSession(options: AppSessionOptions): AppSession {
     quickSlot,
     mounted,
     onStart,
+    onEnterColumn,
     onContinue,
     togglePause,
     syncPaused,

@@ -5,14 +5,14 @@
   "type": "module",
   "description": "灵泛引擎参考宿主（Vue 3 + Vite + Tauri 2）——模板的第一个实例，也是全功能参考实现",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.mjs",
     "build": "vite build",
     "build:prepare": "node scripts/prepare-dist.mjs",
     "stories:build": "tsx ../../packages/stories-build/src/cli/cli.ts .",
     "stories:watch": "tsx ../../packages/stories-build/src/cli/watch-cli.ts .",
     "stories-typecheck": "tsc --noEmit -p tsconfig.stories.json",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "node scripts/tauri-dev.mjs"
   },
   "dependencies": {
     "@lingfan-engine/adapters": "workspace:*",

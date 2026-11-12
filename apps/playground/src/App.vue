@@ -199,7 +199,7 @@ const life = createAppLifecycle({
 });
 /** 对局会话：进没进对局、暂停与否、挂载表投影与页面动作 */
 const { inGame, paused, resumeSlot, quickSlot, mounted } = life;
-const { onStart, onContinue, togglePause, restart } = life;
+const { onStart, onEnterColumn, onContinue, togglePause, restart } = life;
 const { onResume, onSave, onLoad, onHome, onStageClickInGame } = life;
 const { refreshResumeSlot, teardown } = life;
 const { browsingSaves, resumeViews, toggleSaves, onPickSave } = life;
@@ -249,6 +249,9 @@ onMounted(() => {
   window.addEventListener("orientationchange", applyStageFit);
   // 启动页的「继续」要看有没有档：进游戏之前先读一次存档摘要
   void refreshResumeSlot();
+  // 直达目标列（开发期按章节调试）：跳过启动页直接进该列
+  if (props.entry !== undefined && props.entry !== "")
+    onEnterColumn(props.entry);
 });
 
 onUnmounted(() => {
