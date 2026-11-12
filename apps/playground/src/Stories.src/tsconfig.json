@@ -1,0 +1,11 @@
+{
+  /* 故事源自己的类型工程：让编辑器按「离文件最近的那份 tsconfig.json」选中它。
+     宿主工程（apps/playground/tsconfig.json）明确排除 src/Stories.src/**——
+     组件编译器会把 *.vue 解析成真组件、盖过创作垫片声明的 UI 句柄通配。代价是
+     编辑器若只认宿主工程，章节源就落进推断工程：state / defineVars / StoriesConfig
+     这些环境全局不在程序里，于是报「找不到名称 state」这类错，而类型检查本身是干净的。
+
+     这份工程继承工程根那份 stories 工程（stories-typecheck 用的就是它），
+     两边共用同一套 compilerOptions，编辑器与类型检查看的是同一份类型面。 */
+  "extends": "../../tsconfig.stories.json"
+}
