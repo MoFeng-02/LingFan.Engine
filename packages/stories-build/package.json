@@ -9,6 +9,10 @@
     "./authoring": "./src/authoring.d.ts",
     "./cell": "./src/cell/index.ts",
     "./cli": "./src/cli/cli.ts",
+    "./dev": {
+      "types": "./src/dev/index.ts",
+      "default": "./dev.mjs"
+    },
     "./host-plugins": {
       "types": "./src/host-plugins/index.ts",
       "default": "./host-plugins.mjs"
@@ -23,6 +27,7 @@
   "files": [
     "src",
     "bin",
+    "dev.mjs",
     "host-plugins.mjs",
     "!src/**/*.test.ts"
   ],

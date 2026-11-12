@@ -119,6 +119,7 @@ const EXPECTED_EXPORTS = [
   "./authoring",
   "./cell",
   "./cli",
+  "./dev",
   "./host-plugins",
   "./watch",
   "./watch-cli",
@@ -214,7 +215,7 @@ describe("创作链编译包 · 边界与结构不变式", () => {
     );
   });
 
-  it("包的出口面由实物 package.json 决定：恰为 ., ./authoring, ./cell, ./cli 四条且落点正确", () => {
+  it("包的出口面由实物 package.json 决定：恰为 EXPECTED_EXPORTS 那几条且落点正确", () => {
     // 实物断言：键集与值都来自真 manifest，不是合成字面量。
     expect(Object.keys(PACKAGE_MANIFEST.exports ?? {}).sort()).toEqual(
       EXPECTED_EXPORTS,
@@ -229,6 +230,13 @@ describe("创作链编译包 · 边界与结构不变式", () => {
     // CLI 必须是包的一等入口：模板工程只有 `pnpm add @lingfan-engine/stories-build` 这一条路，
     // 拿不到 ./cli 就只能写 monorepo 内部裸路径，包化对模板即失效。
     expect(PACKAGE_MANIFEST.exports?.["./cli"]).toBe("./src/cli/cli.ts");
+    // 直达开发链的子路径：参数解析与清单扫描的对外形状从这里取。
+    // 运行时落点是包根的 .mjs 装载垫片（Node 拒绝加载 node_modules 里的 .ts），
+    // 类型落点仍指向真实实现。
+    expect(PACKAGE_MANIFEST.exports?.["./dev"]).toEqual({
+      types: "./src/dev/index.ts",
+      default: "./dev.mjs",
+    });
 
     // 每条出口的落点都得在包内真实存在（键对值错同样是坏）。glob 键形如
     // `../../packages/stories-build/src/cli/cli.ts`，故把 exports 的 `./src/…` 换算成

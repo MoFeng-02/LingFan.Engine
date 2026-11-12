@@ -101,6 +101,15 @@ const SINGLE: Record<string, string> = {
   PromptIo: "packages/create/src/cli/prompts.ts",
   CreateTexts: "packages/create/src/shared/texts.ts",
   Semver: "packages/create/src/shared/semver.ts",
+  // 直达开发链：参数与清单的对外形状各只一份
+  DevArgs: "packages/stories-build/src/dev/args.ts",
+  DevArgsOptions: "packages/stories-build/src/dev/args.ts",
+  DevEntry: "packages/stories-build/src/dev/entries.ts",
+  DevEntries: "packages/stories-build/src/dev/entries.ts",
+  DevTarget: "packages/stories-build/src/dev/entries.ts",
+  DevTargetHit: "packages/stories-build/src/dev/entries.ts",
+  DevTargetMiss: "packages/stories-build/src/dev/entries.ts",
+  DevCommandResult: "packages/stories-build/src/dev/cli.ts",
 };
 
 /** 模板副本：项目模板是独立工程，与宿主各留一份是故意的 */
