@@ -57,3 +57,57 @@ jobs:
 
       - name: 运行时可达图检查
         run: pnpm audit:runtime
+
+  # 包管理器矩阵：脚手架产物在四家包管理器下都要装得起来、编译得过、打得出包。
+  #
+  # 产物链（生成器 → 模板 → 依赖安装 → 故事编译 → 打包）与包管理器强相关：
+  # 安装脚本的白名单机制、锁文件的写法、脚本命令的透传，各家都不一样。
+  # 只在产物层验（不碰仓内源码），因此装的是 registry 上已发布的包——
+  # 这条作业是长期护栏，不覆盖仓内尚未发布的改动。
+  package-manager-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        manager: [npm, pnpm, yarn, bun]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 准备包管理器
+        run: |
+          corepack enable
+          npm install -g bun
+          # npm 的安装脚本默认走白名单，不放行则 esbuild 的平台二进制装不上，
+          # 产物在 npm 这一格会编译失败。其它三家不认这个键，设了也无副作用。
+          echo "npm_config_allow_scripts=esbuild" >> "$GITHUB_ENV"
+
+      - name: 打出脚手架包
+        run: |
+          mkdir -p "$RUNNER_TEMP/tgz"
+          npm pack ./packages/create --pack-destination "$RUNNER_TEMP/tgz"
+
+      - name: 装上脚手架
+        run: npm install -g "$RUNNER_TEMP/tgz"/lingfan-engine-create-*.tgz
+
+      - name: 生成示例工程
+        run: |
+          mkdir -p "$RUNNER_TEMP/work"
+          cd "$RUNNER_TEMP/work"
+          lingfan-create demo --yes --dir .
+
+      - name: 安装依赖
+        working-directory: ${{ runner.temp }}/work/demo
+        run: ${{ matrix.manager }} install
+
+      - name: 编译故事
+        working-directory: ${{ runner.temp }}/work/demo
+        run: ${{ matrix.manager }} run stories:build
+
+      - name: 打包
+        working-directory: ${{ runner.temp }}/work/demo
+        run: ${{ matrix.manager }} run build
