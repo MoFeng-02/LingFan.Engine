@@ -91,6 +91,15 @@ pnpm format     # Prettier
 pnpm editor     # 编辑器界面（Vite，默认 http://localhost:1425）
 ```
 
+开发时想直接跳到故事里的某一列，跳过启动页：
+
+```bash
+pnpm dev --story-name inn   # 进 inn 列；取值是列 id，不是文件名
+pnpm dev --list-entries     # 列出工程里所有列 id
+```
+
+用 npm 时参数要带 `--` 分隔（`npm run dev -- --story-name inn`），原因见[跑某一列](https://mofeng-02.github.io/LingFan.Engine/guides/run-one-column/)。
+
 `pnpm build` 与 `tauri build` 用于打包。iOS 侧的编译与模拟器冒烟由 GitHub Actions 在 macOS runner 上跑。
 
 ## 许可
