@@ -1,6 +1,17 @@
 /// <reference types="vite/client" />
 
 /**
+ * 构建期注入的环境变量类型。
+ *
+ * 只声明真正用到的键：`VITE_LFEN_ENTRY` 是开发脚本下发的直达列 id，
+ * 缺省即不直达（组合根读到 undefined 时按普通启动处理）。
+ */
+interface ImportMetaEnv {
+  /** 直达列 id（列 id，不是文件名）；未发起直达时为 undefined */
+  readonly VITE_LFEN_ENTRY?: string;
+}
+
+/**
  * 字体清单的宿主侧声明（脚手架工程自带，与 vite.config 的虚拟模块对应）。
  */
 declare module "virtual:story-fonts" {

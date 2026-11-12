@@ -36,6 +36,6 @@
       "vite",
       "vue"
     ],
-    "remove": ["src/host", "src/styles"]
+    "remove": ["src/host", "src/styles", "scripts/dev.mjs"]
   }
 }

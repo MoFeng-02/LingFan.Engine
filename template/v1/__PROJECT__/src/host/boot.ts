@@ -130,6 +130,16 @@ export interface HostBootOptions {
    * 再发给挂载组件；原生形态由渲染器直接作为工厂的第二参传下去，不需要这条回调。
    */
   onControls?: (controls: HostControls) => void;
+  /**
+   * 直达列 id（可选）：给了就跳过入口列，直接进这一列。
+   *
+   * 取值是列 id（不是文件名）。开发期由 `scripts/dev.mjs` 从命令行收来，
+   * 经环境变量下发到组合根——宿主只认「要进哪一列」这一件事，不解析参数。
+   *
+   * 语义边界：入口列在跳转前已经执行过的部分（数值、角色声明、界面挂载）仍然生效，
+   * 丢掉的只有入口列第一句台词及其之后的命令。
+   */
+  entry?: string;
 }
 
 /**
@@ -369,6 +379,12 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
   wireSaveSlots(dom, engine, manifest);
 
   engine.start();
+
+  // 直达：入口列已经跑过（数值、角色、界面挂载这些副作用仍在），再跳到目标列。
+  // 引擎的 navigate 不经过流程控制命令，因此目标列的第一句话就是第一句台词。
+  if (options.entry !== undefined && options.entry !== "") {
+    engine.navigate(options.entry);
+  }
 
   // 拆除顺序与装配相反：先停帧（不再有回调进来），再摘窗口监听与订阅引擎的渲染器，
   // 最后销毁引擎；监听不摘，宿主在同一页面被重建时就是重复落笔

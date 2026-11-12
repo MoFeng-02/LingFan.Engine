@@ -96,6 +96,8 @@ if (dom !== undefined) {
     stories: STORIES,
     defaultCps: DEFAULT_TEXT_CPS,
     toastDurationMs: DEFAULT_TOAST_MS,
+    // 直达列 id：由开发脚本经环境变量下发，缺省即从入口列开始
+    entry: import.meta.env.VITE_LFEN_ENTRY,
     // 桌面壳里换成原生存档端口；浏览器里返回 undefined，端口走 Web 缺省实现
     ports: createNativePorts(),
     historyContainer: dom.history,

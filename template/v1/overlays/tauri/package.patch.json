@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "tauri": "tauri"
+    "tauri": "node scripts/tauri-dev.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"
