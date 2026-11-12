@@ -346,12 +346,15 @@ export default function look_around(): void {
 
 工程里有两个类型检查入口，别把它们混成一个：
 
-| 文件                    | 检查什么                                       | 由谁跑                   |
-| ----------------------- | ---------------------------------------------- | ------------------------ |
-| `tsconfig.json`         | `src/**` 的宿主页面与组件（`*.vue` / `*.tsx`） | `pnpm typecheck`         |
-| `tsconfig.stories.json` | `src/Stories.src/**` 的故事源                  | `pnpm stories-typecheck` |
+| 文件                            | 检查什么                                       | 由谁跑                   |
+| ------------------------------- | ---------------------------------------------- | ------------------------ |
+| `tsconfig.json`                 | `src/**` 的宿主页面与组件（`*.vue` / `*.tsx`） | `pnpm typecheck`         |
+| `tsconfig.stories.json`         | `src/Stories.src/**` 的故事源                  | `pnpm stories-typecheck` |
+| `src/Stories.src/tsconfig.json` | 同上（继承 `tsconfig.stories.json`）           | 编辑器自动选中           |
 
 `tsconfig.json` 里排除了 `src/Stories.src/**`，这是有意的：组件编译器会把 `*.vue` / `*.tsx` 解析成真正的组件类型，而故事源里的 `import hint from "../../ui/hint/hint.vue"` 拿到的应该是**句柄**——两者撞在一起，`mount(hint, …)` 就会被判成型不匹配。故事源只需要纯 TypeScript 的类型，交给 `tsconfig.stories.json` 单独检查，两份都过才算干净。
+
+`src/Stories.src/tsconfig.json` 是给编辑器认的：编辑器挑类型工程时按「离文件最近的那份 `tsconfig.json`」来，而宿主工程恰好把故事源排除在外，于是章节源会落进编辑器自己推断的工程——`state`、`defineVars`、`StoriesConfig` 这些环境全局不在里面，就会冒出「找不到名称 state」这类错，命令行类型检查却是干净的。这份就近工程继承 `tsconfig.stories.json`，两边共用同一套类型设置，编辑器与命令行看到的是同一份类型面。
 
 自己加 `src/Stories.src/` 之外的故事目录时，记得把新目录也加进 `tsconfig.stories.json` 的 `include`，否则那部分等于没有类型检查。
 

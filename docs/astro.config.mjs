@@ -208,6 +208,11 @@ export default defineConfig({
               link: "/guides/release/",
             },
             {
+              label: "跑某一列",
+              translations: { en: "Running One Column" },
+              link: "/guides/run-one-column/",
+            },
+            {
               label: "打包与加密发布",
               translations: { en: "Packaging & Encrypted Release" },
               link: "/guides/packaging/",
