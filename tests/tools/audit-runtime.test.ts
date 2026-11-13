@@ -81,6 +81,22 @@ describe("说明符分类", () => {
     expect(scanProcessUsage(stripComments(text))).toEqual([]);
   });
 
+  it("对象字段名不被当成导入说明符，真实导入照旧抽到", () => {
+    const text = [
+      'const edge = { "from": "living_room", to: "hall" };',
+      'import { x } from "./y.ts";',
+      'import "./side.ts";',
+      'const z = require("./z.ts");',
+    ].join("\n");
+    const specs = extractSpecifiers(text).map(
+      (item: { spec: string }) => item.spec,
+    );
+    expect(specs).not.toContain("living_room");
+    expect(specs).not.toContain(": ");
+    expect(specs.every((spec: string) => spec.startsWith("./"))).toBe(true);
+    expect([...specs].sort()).toEqual(["./side.ts", "./y.ts", "./z.ts"]);
+  });
+
   it("process 成员用法给出准确行号", () => {
     const hits = scanProcessUsage(
       'const a = 1;\nconst env = process.env.MODE ?? "";\n',
