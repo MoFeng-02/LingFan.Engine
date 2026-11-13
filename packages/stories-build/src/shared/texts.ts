@@ -117,7 +117,7 @@ export const defaultStoriesBuildTexts: StoriesBuildTexts = {
     "UI 注册表的副作用导入不支持：它只提供句柄，请显式导入所需句柄",
   unknownUisGate: (detail, sourcesDir, uiDirName) =>
     `列级 uis 声明了源里不存在的 UI（宿主按名字预加载时会落空，界面要到挂载瞬间才出现）：\n${detail}\n` +
-    `→ 在 ${sourcesDir} 的兄弟目录 \`${uiDirName}/<名>/\` 下放实现文件 \`<名>.vue|.tsx|.html|.ts\`，或从列里去掉该名字`,
+    `→ 在 ${sourcesDir} 的兄弟目录 \`${uiDirName}/<名>/\` 下放实现文件 \`<名>.vue|.tsx|.ts\`，或从列里去掉该名字`,
   uiImportGate: (detail, uiDirName) =>
     `UI 文件的 import 面越界（UI 不归构建管，越界依赖只能在这里拦）：\n${detail}\n` +
     `→ ${uiDirName}/** 下的文件只允许四类：相对路径引用 ${uiDirName}/ 内的文件、` +

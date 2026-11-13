@@ -213,20 +213,4 @@ describe("UI import 面 · 扫描器形态覆盖", () => {
       "@/gen/x",
     ]);
   });
-
-  it('`.html` 只扫 `type="module"` 的 script 块', () => {
-    const source = [
-      "<html><body>",
-      "<script>",
-      '  import { boot } from "@/host/boot";',
-      "</script>",
-      '<script type="module">',
-      '  import { uis } from "@/gen/x";',
-      "</script>",
-      "</body></html>",
-    ].join("\n");
-    const refs = scanUiImports(source, ".html");
-    expect(refs.map((ref) => ref.specifier)).toEqual(["@/gen/x"]);
-    expect(refs[0]?.line).toBe(6);
-  });
 });

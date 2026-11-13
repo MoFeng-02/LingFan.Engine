@@ -27,7 +27,7 @@ function collectNpmNames(
     spec === "@lingfan-engine/core"
   )
     return;
-  // UI 说明符带 `.vue`/`.tsx`/`.html` 这类扩展名（`.ts` 也只在 `ui/<名>/<名>.ts`
+  // UI 说明符带 `.vue`/`.tsx` 这类扩展名（`.ts` 也只在 `ui/<名>/<名>.ts`
   // 这一种形状上算 UI），它们由 UI 通道处置，不是 npm 包名——登记进来会让
   // 「npm 值导入只能出现在模块层 const」的检查误报。
   if (uiExtensionOf(spec) !== undefined) return;

@@ -13,7 +13,7 @@
  *   全局声明供 config.ts 书写与 tsc 通过。
  * - `StoriesConfig`：config.ts default 对象形态的类型（declare global，零 import 全局可用）；
  *   `satisfies StoriesConfig` 给 default 导出强校验与 IDE 键名补全。
- * - `*.vue` / `*.tsx` / `*.html`：UI 单文件的模块形状。故事源用一行 import
+ * - `*.vue` / `*.tsx`：UI 单文件的模块形状。故事源用一行 import
  *   （说明符指向 `ui/<名>/<名>.<扩展名>`）拿到句柄，编译器只记名字、不读文件；
  *   tsc 侧则要有人告诉它「这类文件导出一个 UiHandle」，否则每个 UI 导入都是一条
  *   TS2307。`.ts` UI 不需要这一段——它本来就是 TS 模块，类型由文件自己提供。
@@ -58,7 +58,7 @@ declare global {
   }
 
   /**
-   * UI 单文件通配模块：三种非 TS 扩展名各声明一次。
+   * UI 单文件通配模块：两种非 TS 扩展名各声明一次。
    *
    * 写成 `declare global { module "…" }` 而不是裸 `declare module "…"`：本文件是模块
    *（有 import/export），裸 `declare module` 在模块文件里是「模块增强」，找不到可增强
@@ -72,10 +72,6 @@ declare global {
     export default handle;
   }
   module "*.tsx" {
-    const handle: UiHandle;
-    export default handle;
-  }
-  module "*.html" {
     const handle: UiHandle;
     export default handle;
   }

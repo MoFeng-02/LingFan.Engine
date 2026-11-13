@@ -101,7 +101,7 @@ export function resolveImports(
       continue;
     }
     // UI 说明符已由 UI 通道处置（登记或诊断），这里只负责不再按模块解析它——
-    // 否则 `.vue`/`.tsx`/`.html` 会落到「不支持外部包」或「必须解析到相对 .ts 文件」。
+    // 否则 `.vue`/`.tsx` 会落到「不支持外部包」或「必须解析到相对 .ts 文件」。
     if (
       uiChannel !== undefined &&
       uiChannel.classify(rel, spec).kind !== "not-ui"

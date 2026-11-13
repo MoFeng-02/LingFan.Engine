@@ -47,8 +47,7 @@ const FRAMEWORK_PACKAGES: ReadonlySet<string> = new Set([
  * 从一份 UI 文件源码提取全部 import 引用。
  *
  * `ext` 决定解析方式：`.vue` 只扫 `<script>` / `<script setup>` 块（`<style>` 里的
- * `@import` 不管，它不是模块依赖）；`.html` 只扫 `<script type="module">` 块
- * （老式 `<script>` 不能 import）；`.tsx` / `.ts` 整份按 TS 处理。
+ * `@import` 不管，它不是模块依赖）；`.tsx` / `.ts` 整份按 TS 处理。
  *
  * 块内 import 的行号取原文件的行号：抽块时把块外内容替换成等量空格、保留换行，
  * 于是 AST 报出的位置与作者在编辑器里看到的一致。
@@ -56,10 +55,7 @@ const FRAMEWORK_PACKAGES: ReadonlySet<string> = new Set([
 export function scanUiImports(source: string, ext: string): UiImportRef[] {
   const extension = ext.toLowerCase();
   if (extension === ".vue") {
-    return refsIn(scriptSkeleton(source, false), "ui.vue");
-  }
-  if (extension === ".html") {
-    return refsIn(scriptSkeleton(source, true), "ui.html");
+    return refsIn(scriptSkeleton(source), "ui.vue");
   }
   return refsIn(source, extension === ".tsx" ? "ui.tsx" : "ui.ts");
 }
@@ -184,7 +180,7 @@ function resolveInSrc(file: string, specifier: string): string {
  * 只留 script 块内容，是为了不让模板里的 `<div>` 之类被 TS 当成类型断言解析，
  * 那会把语法树搅乱（虽然不吞语句，但没人愿意依赖这种巧合）。
  */
-function scriptSkeleton(source: string, moduleOnly: boolean): string {
+function scriptSkeleton(source: string): string {
   const lower = source.toLowerCase();
   const chars = source.split("");
   for (let index = 0; index < chars.length; index += 1) {
@@ -205,9 +201,7 @@ function scriptSkeleton(source: string, moduleOnly: boolean): string {
     if (close === -1) break;
     const closeEnd = source.indexOf(">", close);
     if (closeEnd === -1) break;
-    if (!moduleOnly || hasModuleType(source.slice(open, tagEnd + 1))) {
-      keep(tagEnd + 1, close);
-    }
+    keep(tagEnd + 1, close);
     cursor = closeEnd + 1;
   }
   return chars.join("");
@@ -225,15 +219,6 @@ function findTagStart(lower: string, from: number): number {
     index = lower.indexOf(needle, index + 1);
   }
   return -1;
-}
-
-/** 开标签是否带 `type="module"`（比较前去掉空白，`type = "module"` 同样认） */
-function hasModuleType(tag: string): boolean {
-  let compact = "";
-  for (const char of tag.toLowerCase()) {
-    if (!isSpace(char)) compact += char;
-  }
-  return compact.includes('type="module"') || compact.includes("type='module'");
 }
 
 /** 空白字符判定（不用正则：这里只比四个码元） */

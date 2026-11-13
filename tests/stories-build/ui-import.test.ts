@@ -20,7 +20,10 @@ import { buildStories } from "@lingfan-engine/stories-build";
 import { buildGraph } from "../../packages/stories-build/src/compiler/story-compiler/graph/build.ts";
 import { createAliasResolver } from "../../packages/stories-build/src/compiler/story-compiler/graph/scan/alias.ts";
 import { loadPathsConfig } from "../../packages/stories-build/src/pipeline/tsconfig-paths.ts";
-import { DiagBag } from "../../packages/stories-build/src/compiler/story-compiler/graph/core.ts";
+import {
+  DiagBag,
+  uiExtensionOf,
+} from "../../packages/stories-build/src/compiler/story-compiler/graph/core.ts";
 import type { Graph } from "../../packages/stories-build/src/compiler/story-compiler/graph/core.ts";
 
 const BASE = fileURLToPath(new URL("./.tmp-ui-import/", import.meta.url));
@@ -116,7 +119,7 @@ export default function start(): void {
     expect(graph.records.has("ui/panel/panel.tsx")).toBe(false);
   });
 
-  it(".html：同样走 UI 通道", () => {
+  it(".html：不再是 UI 通道形态——不进 UI 名单，按普通模块说明符 fail-closed", () => {
     const root = makeProject("ui-html", {
       "src/Stories.src/config.ts": CONFIG,
       "src/Stories.src/chapter1/start.ts": `${WORDS}import sheet from "../../ui/sheet/sheet.html";
@@ -128,9 +131,20 @@ export default function start(): void {
       "src/ui/sheet/sheet.html": "<div></div>\n",
     });
 
-    const graph = graphOf(root);
-    expect(uiNames(graph, "chapter1/start.ts")).toEqual(["sheet"]);
-    expect(graph.records.has("ui/sheet/sheet.html")).toBe(false);
+    expect(uiExtensionOf("../../ui/sheet/sheet.html")).toBeUndefined();
+
+    const diags = new DiagBag();
+    const graph = buildGraph(join(root, "src/Stories.src"), diags, {
+      folders: ["chapter1"],
+      start: "start.ts",
+    });
+    expect(diags.list().map((d) => d.message)).toEqual([
+      expect.stringMatching(/必须解析到相对 \.ts 文件/),
+    ]);
+    expect(graph).not.toBeNull();
+    const record = graph!.records.get("chapter1/start.ts")!;
+    expect([...record.uis.keys()]).toEqual([]);
+    expect(graph!.records.has("ui/sheet/sheet.html")).toBe(false);
   });
 
   it(".ts 落位合上 ui/<名>/<名>.ts 时走 UI，不进模块图", () => {

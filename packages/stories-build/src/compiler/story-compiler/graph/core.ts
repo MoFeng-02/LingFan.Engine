@@ -121,7 +121,7 @@ export const COLUMN_TYPE_DECL = "columnType";
  * 相对位置同时要落在 UI 目录下。`.ts` 是特例：故事源自己的 `.ts` 也是这个扩展名，
  * 所以 `.ts` 只有路径合上 `ui/<名>/<名>.ts` 且不在故事源树内时才当 UI，其余照常走模块图。
  */
-export const UI_EXTENSIONS = [".vue", ".tsx", ".html", ".ts"] as const;
+export const UI_EXTENSIONS = [".vue", ".tsx", ".ts"] as const;
 
 /** 说明符的 UI 扩展名（小写）；不是 UI 扩展名 ⇒ `undefined` */
 export function uiExtensionOf(specifier: string): string | undefined {
