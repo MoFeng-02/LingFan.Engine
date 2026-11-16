@@ -72,6 +72,9 @@ describe("示例工程防腐", () => {
     // 组装通过即断言了：columnId 唯一 + 文件名=章节名与列 id 解耦（真实工程形态）；
     // TS 源工程 v2 产物 = 一文件一列（sourcePath 镜像 Stories.src 布局），
     // 列序 = 文件路径码元序（组装器确定性排序）
+    // `goToLabel` 不在册：它是 `chapter1/start.ts` 里的 `export function`，
+    // label 通道只在被 `jump`/`navigate` 字面量引用时才替它产列，
+    // 当前工程里那处引用已被注释掉，因此它仍是纯模块。
     expect(story.columns.map((c) => c.id)).toEqual([
       "inn",
       "start",
@@ -87,6 +90,12 @@ describe("示例工程防腐", () => {
       "tour_stage",
       "tour_vars",
       "tour",
+      "desk_talk",
+      "hall",
+      "kitchen_talk",
+      "room_kitchen",
+      "room_study",
+      "world",
     ]);
   });
 

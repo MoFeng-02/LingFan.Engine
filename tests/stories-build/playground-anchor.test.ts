@@ -201,7 +201,10 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
         expect(report.updated).toEqual([]);
         expect(report.removed).toEqual([]);
         // 工程形状随锚点显式维护：列数变化必须伴随 gen 产物重建（列名注册表随之变化）
-        expect(report.columns).toBe(14);
+        // 20 = 20 个 default 导出列。`chapter1/start.ts` 里的 `export function goToLabel`
+        // 当前没有被 `jump`/`navigate` 字面量引用（那处调用被注释掉了），label 通道
+        // 不替它产列；要放回 21 就先恢复那处引用。
+        expect(report.columns).toBe(20);
         expect(readFileSync(typegenPath, "utf8")).toBe(committed);
         expect(readFileSync(stateGenPath, "utf8")).toBe(committedState);
         expect(readFileSync(scriptGenPath, "utf8")).toBe(committedScript);

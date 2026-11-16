@@ -43,6 +43,7 @@ import {
 } from "@lingfan-engine/stories-build/cell";
 import type { StoriesCompiler } from "@lingfan-engine/stories-build";
 import { createUiChannel } from "../../packages/stories-build/src/compiler/story-compiler/graph/scan/ui-specifier.ts";
+import { createSceneChannel } from "../../packages/stories-build/src/compiler/story-compiler/graph/scan/scene-specifier.ts";
 
 const BASE = fileURLToPath(new URL("./.tmp-build/", import.meta.url));
 
@@ -920,12 +921,16 @@ export default function start(): void {
       }
     };
     walk(sourcesDir);
-    // 真实工程里 UI 导入是合法语句（由 UI 通道登记、不搬运）；cell 扫描器要被告知
-    // 这层边界，否则它按「越出源根」把 UI 导入判成不可搬运——与整链构建口径不一致。
+    // 真实工程里 UI 与场景导入都是合法语句（由各自通道登记、不搬运）；cell 扫描器要
+    // 被告知这层边界，否则它按「越出源根」把组件导入判成不可搬运——与整链构建口径不一致。
+    // 两条通道必须一起照：真实构建走 `componentChannels.some(...)`，只镜像 UI 那条会让
+    // 场景句柄导入被误判成越界（红的是镜子，不是构建）。
     const uiChannel = createUiChannel(sourcesDir);
+    const sceneChannel = createSceneChannel(sourcesDir);
     const { errors, scan } = scanCells(files, {
       isForeignImport: (_fromRel, spec) =>
-        uiChannel.classify(_fromRel, spec).kind !== "not-ui",
+        uiChannel.classify(_fromRel, spec).kind !== "not-ui" ||
+        sceneChannel.classify(_fromRel, spec).kind !== "not-scene",
     });
     expect(errors).toEqual([]);
     expect(scan.guards.map((g) => g.name)).toEqual([
