@@ -23,9 +23,9 @@ export interface DirectEntry {
   readonly file: string;
 }
 
-/** 扫描名单的排除集：barrel 出口 + 两处非词汇词文件
- * （cells = 具名实现槽位、compile-time = 编译期构造，都不产词汇词）。 */
-const SKIP_FILES = new Set(["index.ts", "cells.ts", "compile-time.ts"]);
+/** 扫描名单的排除集：barrel 出口 + 具名实现槽位文件
+ * （cells 不产词汇词；编译期构造不在 words 域）。 */
+const SKIP_FILES = new Set(["index.ts", "cells.ts"]);
 
 /** 扫描名单规则（重建 CLI 与新鲜度测试共用，规则只有这一份） */
 export function selectWordSources(fileNames: readonly string[]): string[] {

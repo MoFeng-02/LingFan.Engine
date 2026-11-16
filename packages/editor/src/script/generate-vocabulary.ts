@@ -15,7 +15,7 @@ import { renderVocabulary, selectWordSources } from "./vocabulary-gen.ts";
 
 function rebuild(): void {
   const dir = path.dirname(fileURLToPath(import.meta.url));
-  const wordsDir = path.join(dir, "words");
+  const wordsDir = path.resolve(dir, "../../../core/src/script/words");
   const target = path.join(dir, "vocabulary.g.ts");
   const sources = selectWordSources(readdirSync(wordsDir)).map((file) => ({
     file,
