@@ -137,3 +137,34 @@ export {
   type TextProjection,
   type WriteNormalizationFinding,
 } from "./data/index.ts";
+/**
+ * Script 词汇层：引擎 op 的命令类型机制、负载声明与作者词函数。
+ * 列身体组件与非 JSON op 经 `script` 命名空间（或 `@lingfan-engine/core/script`
+ * 子路径）直接取用，无需经过 editor；editor 的词汇出口经转发链取同一声明。
+ *
+ * 注册表 interface 与句柄/字符串域类型必须经**包根**再导出一次：
+ * 生成物的 `declare module "@lingfan-engine/core"` 只认包根出口面，
+ * 缺这一层时模块增强静默落空（注册表恒为空表、收窄失效）。
+ */
+export * as script from "./script/index.ts";
+export type {
+  CommandOf,
+  ScriptCommand,
+  ScriptOpName,
+  ScriptValue,
+  StateScriptValue,
+} from "./script/index.ts";
+export type {
+  CellHandle,
+  ColumnNameRegistry,
+  GuardNameRegistry,
+  InterpolationKeyRegistry,
+  KnownColumnName,
+  KnownGuardName,
+  KnownInterpolationKey,
+  KnownSceneName,
+  KnownUiName,
+  SceneNameRegistry,
+  UiHandle,
+  UiNameRegistry,
+} from "./script/index.ts";

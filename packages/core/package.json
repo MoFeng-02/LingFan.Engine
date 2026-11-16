@@ -6,7 +6,8 @@
   "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts",
-    "./contracts": "./src/contracts/index.ts"
+    "./contracts": "./src/contracts/index.ts",
+    "./script": "./src/script/index.ts"
   },
   "files": [
     "src",
