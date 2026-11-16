@@ -15,6 +15,7 @@ import type {
   SaveDataV1,
   StateListener,
   Story,
+  StoryCommand,
   SaveOptions,
 } from "../contracts/index.ts";
 import {
@@ -27,6 +28,7 @@ import {
   resolveInteraction,
   resolveMinigame,
   runElementOps,
+  submitSceneOps,
 } from "./ops/index.ts";
 import {
   back,
@@ -320,6 +322,16 @@ export class StoryEngine extends EngineForwarders {
   /** 直接下发一批元素操作（外部玩法系统用，绕开脚本层）；返回是否全部执行成功（false = 已出站 engine.error 且状态已回滚） */
   runElementOps(ops: readonly Record<string, unknown>[]): boolean {
     return runElementOps(this.ctx, ops);
+  }
+  /**
+   * 提交一批命令给引擎执行（列身体等外部画面用，绕开脚本层）。
+   *
+   * 与 `runElementOps` 的区别：一是不要求当前有等待画面——列身体在进列那刻就可能没有
+   * 任何等待态（纯视觉房间）；二是允许 `say` 并停在对话等待态。其余语义一致：不建检查点、
+   * 整次拒绝位置类与存档类 op、失败整份回滚、返回是否全部执行成功。
+   */
+  submitSceneOps(ops: readonly StoryCommand[]): boolean {
+    return submitSceneOps(this.ctx, ops);
   }
   /** 上报小游戏结果，按挂起等待声明的成功/失败目标继续；没有挂起时返回 false */
   resolveMinigame(result: MinigameResult): boolean {

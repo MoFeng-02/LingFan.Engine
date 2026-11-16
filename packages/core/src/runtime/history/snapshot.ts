@@ -56,7 +56,21 @@ export function takeSnapshot(
 
 /** 恢复快照：写时复制不变量使 state 浅拷贝安全；waiting 归零后由重放重新建立等待 */
 export function restore(ctx: OpContext, cp: Checkpoint): void {
+  const before = ctx.state;
   ctx.state = new Map(cp.snapshot.state);
+  // 整表替换不产生逐键通知，而宿主的渲染面是订阅制：把「值真的变了」的键补报一遍。
+  // 不这样做，只订 SYS 键的宿主面（身体单槽、挂载表）会停在回溯前的画面——
+  // 对话/元素那几族因为宿主另有整表重读（`syncFromEngine`）才没暴露这个缺口。
+  // 快照存的是捕获时刻的引用，写时复制保证未改动的键仍是同一引用，故先按引用比。
+  for (const [key, value] of ctx.state) {
+    if (key === SYS.waiting) continue; // 下面 setSystem("none") 会报这一键
+    if (!Object.is(before.get(key), value)) ctx.emit(key, value, "system");
+  }
+  for (const key of before.keys()) {
+    if (key !== SYS.waiting && !ctx.state.has(key)) {
+      ctx.emit(key, undefined, "system");
+    }
+  }
   ctx.rngState = cp.snapshot.rngState;
   ctx.frames = cp.snapshot.frames.map(cloneFrame);
   ctx.coord = { ...cp.snapshot.coord };

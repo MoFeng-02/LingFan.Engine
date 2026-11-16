@@ -56,6 +56,7 @@ export {
   execTextTypewriter,
   execWindow,
   runElementOps,
+  submitSceneOps,
 } from "./element/index.ts";
 export {
   execAutoSaveOp,

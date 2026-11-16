@@ -11,6 +11,7 @@ import {
   type StoryColumn,
 } from "../../contracts/index.ts";
 import { loadElements } from "../../data/index.ts";
+import { loadBody } from "../body/index.ts";
 import type { ExprValue } from "../expr/index.ts";
 import { Scope } from "../scope.ts";
 import { parseMenuReturn } from "./helpers.ts";
@@ -19,6 +20,34 @@ import type { OpContext } from "./context.ts";
 
 /** 防死循环安全网：单个循环帧的迭代上限（fail-closed） */
 const LOOP_LIMIT = 10000;
+
+/**
+ * 清对话镜像：换了画面，上一句的文字、说话人与颜色都不该跟过去。
+ *
+ * 判据是「**真的有残留**」而不是「一律写一遍」：空串与 `false` 本来就是缺省
+ * 表示，无条件重写会让每次进列都多出几次 `ValueChanged`，而「键序列精确匹配」
+ * 那类测试正是靠键序列抓多余的写。这里因此只清非缺省值。
+ *
+ * 与 `navigate` 里的清屏互补而非重复：那边无条件清（导航语义 = 明确的换屏动作），
+ * 这边兜住不经过 `navigate` 的进列路径（`jump`、菜单选择、热重载重入）。
+ */
+function clearDialogMirror(ctx: OpContext): void {
+  const text = ctx.get(SYS.currentDialogText);
+  if (typeof text === "string" && text !== "") {
+    ctx.setSystem(SYS.currentDialogText, "");
+  }
+  const speaker = ctx.get(SYS.currentDialogSpeaker);
+  if (typeof speaker === "string" && speaker !== "") {
+    ctx.setSystem(SYS.currentDialogSpeaker, "");
+  }
+  const color = ctx.get(SYS.currentDialogColor);
+  if (typeof color === "string" && color !== "") {
+    ctx.setSystem(SYS.currentDialogColor, "");
+  }
+  if (ctx.get(SYS.dialogComplete) === true) {
+    ctx.setSystem(SYS.dialogComplete, false);
+  }
+}
 
 /** 按 id 取列定义；未命中返回 undefined，调用方决定是否 fail-closed */
 export function columnById(
@@ -70,6 +99,16 @@ export function enterColumn(ctx: OpContext, columnId: string): boolean {
       ? ctx.translateElements(loadElements(column.elements ?? [], columnId))
       : [],
   );
+  // 身体层：与元素层同理属于列——进列即对账，回溯/存档由快照整表还原。
+  // 列没有身体时这里删键（不写 `undefined`），「无身体」因此只有一种表示。
+  loadBody(ctx, column);
+  // 对话镜像：`navigate` 在调本函数前已清过，`jump` 直调本函数则没有——
+  // 同一份「换了画面」的事实因此有两条不同结果，上一句的文字会跟到新列里
+  // （组件身体/纯元素列既不等对话也不重画文本，残留就露出来）。
+  // 收口到这里：进列即清，与清理发生在哪条路径无关。
+  // **只在真有残留时才写**：空串是缺省值，无条件写会给每次进列都多几次
+  // `ValueChanged`（「键序列精确匹配」测试会正确地撞红）。
+  clearDialogMirror(ctx);
   ctx.frames = [
     {
       columnId,

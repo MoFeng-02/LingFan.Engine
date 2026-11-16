@@ -10,4 +10,4 @@ export {
   execScreenEffect,
   execTextTypewriter,
 } from "./animation.ts";
-export { runElementOps } from "./sequence.ts";
+export { runElementOps, submitSceneOps } from "./sequence.ts";
