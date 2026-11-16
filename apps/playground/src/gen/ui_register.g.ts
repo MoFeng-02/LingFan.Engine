@@ -11,7 +11,7 @@ export const uis: Record<string, unknown> = {
 export const hub: UiHandle<"hub"> = { face: "uis", name: "hub" };
 
 /** UI 名的构建期登记处：`mount("…")` 引用了未登记的名字会在类型期报错。 */
-declare module "@lingfan-engine/editor" {
+declare module "@lingfan-engine/core" {
   interface UiNameRegistry {
     "hub": 1;
   }

@@ -4,7 +4,7 @@
  * 一个文件三段导出，三个消费方各取一段：
  * 1. `scenes` —— 「名字 → 组件」表，宿主按 `SYS.body.name` 去查，查到就渲染成列的身体；
  * 2. 具名句柄 `kitchen` —— 故事源用 `export const body = kitchen` 指认身体；
- * 3. `declare module "@lingfan-engine/editor"` 的 `SceneNameRegistry` —— 类型面。
+ * 3. `declare module "@lingfan-engine/core"` 的 `SceneNameRegistry` —— 类型面。
  *
  * 与 `ui_register.g.ts` **物理隔离**：两张表各写一个文件、互不引用、互不合并。
  * 合并会让「挂在列上的叠加层」与「列自己的身体」共用一个名字空间，`mount("map")`
@@ -67,16 +67,15 @@ export function renderSceneRegister(
     }
   }
 
-  // 没有场景的工程到此为止：类型面登记处指向 `@lingfan-engine/editor`，
-  // 而只用 `.story` 故事源的工程没有这个依赖（它是故事源 TS 层带进来的），
-  // 空表里也没有任何名字可登记——多写一段只会让那种工程解析不到模块。
+  // 没有场景的工程到此为止：类型面登记处指向 `@lingfan-engine/core`，
+  // 空表里没有任何名字可登记——不必多写一段。
   if (entries.length === 0) return `${lines.join("\n")}\n`;
 
   lines.push("");
   lines.push(
     '/** 场景名的构建期登记处：`body: { name: "…" }` 引用了未登记的名字会在类型期报错。 */',
   );
-  lines.push('declare module "@lingfan-engine/editor" {');
+  lines.push('declare module "@lingfan-engine/core" {');
   lines.push("  interface SceneNameRegistry {");
   for (const entry of entries) {
     lines.push(`    ${JSON.stringify(entry.name)}: 1;`);

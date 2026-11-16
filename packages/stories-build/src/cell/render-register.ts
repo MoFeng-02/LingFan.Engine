@@ -22,7 +22,7 @@ export function renderFunRegister(scan: CellScan): string {
   lines.push(
     "/** 守卫名的构建期登记处：故事源 `guard(name)` 引用了未登记的名字会在类型期报错。 */",
   );
-  lines.push('declare module "@lingfan-engine/editor" {');
+  lines.push('declare module "@lingfan-engine/core" {');
   lines.push("  interface GuardNameRegistry {");
   for (const guardEntry of scan.guards) {
     lines.push(`    ${JSON.stringify(guardEntry.name)}: 1;`);

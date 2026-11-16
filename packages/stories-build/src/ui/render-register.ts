@@ -4,7 +4,7 @@
  * 一个文件三段导出，三个消费方各取一段：
  * 1. `uis` —— 「名字 → 组件」表，宿主按 `SYS.mounts` 的键去查，查到就渲染；
  * 2. 具名句柄 `hub` —— 故事源按具名导入直接用，不依赖 `*.vue` 的 ambient 声明；
- * 3. `declare module "@lingfan-engine/editor"` 的 `UiNameRegistry` —— 类型面，
+ * 3. `declare module "@lingfan-engine/core"` 的 `UiNameRegistry` —— 类型面，
  *    `mount("…")` 的字符串名字写错在类型期就红。
  *
  * 名字的唯一来源是 `ui/<名>/` 目录名（`scanUiRegistry`），生成物里不再归一、
@@ -68,16 +68,15 @@ export function renderUiRegister(
     }
   }
 
-  // 没有 UI 的工程到此为止：类型面登记处指向 `@lingfan-engine/editor`，
-  // 而只用 `.story` 故事源的工程没有这个依赖（它是故事源 TS 层带进来的），
-  // 空表里也没有任何名字可登记——多写一段只会让那种工程解析不到模块。
+  // 没有 UI 的工程到此为止：类型面登记处指向 `@lingfan-engine/core`，
+  // 空表里没有任何名字可登记——不必多写一段。
   if (entries.length === 0) return `${lines.join("\n")}\n`;
 
   lines.push("");
   lines.push(
     '/** UI 名的构建期登记处：`mount("…")` 引用了未登记的名字会在类型期报错。 */',
   );
-  lines.push('declare module "@lingfan-engine/editor" {');
+  lines.push('declare module "@lingfan-engine/core" {');
   lines.push("  interface UiNameRegistry {");
   for (const entry of entries) {
     lines.push(`    ${JSON.stringify(entry.name)}: 1;`);

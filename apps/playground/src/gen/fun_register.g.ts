@@ -15,7 +15,7 @@ export const guards: Record<string, GuardFn> = {
 };
 
 /** 守卫名的构建期登记处：故事源 `guard(name)` 引用了未登记的名字会在类型期报错。 */
-declare module "@lingfan-engine/editor" {
+declare module "@lingfan-engine/core" {
   interface GuardNameRegistry {
     "gold-non-negative": 1;
     "tour-open": 1;

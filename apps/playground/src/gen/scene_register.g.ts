@@ -17,7 +17,7 @@ export const room: UiHandle<"room"> = { face: "uis", name: "room" };
 export const worldmap: UiHandle<"worldmap"> = { face: "uis", name: "worldmap" };
 
 /** 场景名的构建期登记处：`body: { name: "…" }` 引用了未登记的名字会在类型期报错。 */
-declare module "@lingfan-engine/editor" {
+declare module "@lingfan-engine/core" {
   interface SceneNameRegistry {
     "hall": 1;
     "room": 1;
