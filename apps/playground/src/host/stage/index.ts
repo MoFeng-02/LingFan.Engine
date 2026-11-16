@@ -1,4 +1,4 @@
-/** 舞台层出口（唯一出口）：元素、帧、媒体与适配四族的叶子各归其子目录。 */
+/** 舞台层出口（唯一出口）：身体、元素、帧、媒体与适配五族的叶子各归其子目录。 */
 export type {
   ElementEnginePort,
   ElementLayer,
@@ -18,3 +18,10 @@ export type { HostFrameLoopOptions } from "./frame/index.ts";
 export { startHostFrameLoop } from "./frame/index.ts";
 export type { AppMedia, AppMediaOptions } from "./media/index.ts";
 export { createAppMedia } from "./media/index.ts";
+export type {
+  AppBodyLayer,
+  AppBodyLayerOptions,
+  BodyView,
+  SceneStageState,
+} from "./body/index.ts";
+export { createAppBodyLayer, createSceneEnv } from "./body/index.ts";

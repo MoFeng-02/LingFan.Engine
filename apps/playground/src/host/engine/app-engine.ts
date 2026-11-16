@@ -78,6 +78,12 @@ export interface AppEngineLifeOptions {
    */
   onMounts?: (raw: unknown) => void;
   /**
+   * 身体单槽出口：引擎写下 `SYS.body`（进列时的一次整值替换，无身体就是删键）就报一次。
+   * 与挂载表不同，这里只有一格——宿主要么画这一屏、要么什么都不画。
+   * 订阅不回放历史，绑定时同样先喂一次当前值；重启重建引擎后由重绑把订阅接上。
+   */
+  onBody?: (raw: unknown) => void;
+  /**
    * 暂停态出口：引擎写下 `SYS.paused` 就报一次。
    * 挂载 UI 与工具栏都可能直接经操作通道暂停引擎，宿主页面据此同步自己的遮罩；
    * 绑定时同样先喂当前值，避免页面与引擎在重启后各说各话。
@@ -119,6 +125,7 @@ export function createAppEngineLife(
     handleEvent,
     readVideoContainer,
     onMounts,
+    onBody,
     onPaused,
   } = options;
   const {
@@ -145,6 +152,7 @@ export function createAppEngineLife(
   let offState: (() => void) | undefined;
   let offEvent: (() => void) | undefined;
   let offMounts: (() => void) | undefined;
+  let offBody: (() => void) | undefined;
   let offPaused: (() => void) | undefined;
   function bindEngine(e: StoryEngine): void {
     offState = e.onStateChanged(handleState);
@@ -154,6 +162,14 @@ export function createAppEngineLife(
       onMounts(e.get(SYS.mounts));
       offMounts = e.onStateChanged(({ key, value }) => {
         if (key === SYS.mounts) onMounts(value);
+      });
+    }
+    // 身体单槽同理：进列时整值替换（无身体就是删除键），换列/回溯/读档都会重报一次；
+    // 宿主拿到的不是「变化」而是「此刻这一屏由谁画」，所以首帧也要主动喂当前值
+    if (onBody !== undefined) {
+      onBody(e.get(SYS.body));
+      offBody = e.onStateChanged(({ key, value }) => {
+        if (key === SYS.body) onBody(value);
       });
     }
     // 暂停态同理：谁按下暂停（Esc、挂载 UI、工具栏）引擎都只写这一个键，
@@ -170,6 +186,7 @@ export function createAppEngineLife(
     offState?.();
     offEvent?.();
     offMounts?.();
+    offBody?.();
     offPaused?.();
   }
   function initEngine(): void {

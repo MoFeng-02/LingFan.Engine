@@ -21,7 +21,10 @@
     "player.sex": "male",
     "player.name": "旅人",
     "dice": 1,
-    "supplies": []
+    "supplies": [],
+    "world.visited": [],
+    "world.lamp": 0,
+    "world.focus": ""
   },
   "capabilityVersion": "0.10.0"
 }

@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="mapSea" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#16232f"/>
+      <stop offset="0.55" stop-color="#1d3140"/>
+      <stop offset="1" stop-color="#101a24"/>
+    </linearGradient>
+    <radialGradient id="mapVignette" cx="0.5" cy="0.5" r="0.72">
+      <stop offset="0.55" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.55"/>
+    </radialGradient>
+    <linearGradient id="landNorth" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6e7a52"/>
+      <stop offset="1" stop-color="#4a5538"/>
+    </linearGradient>
+    <linearGradient id="landSouth" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7a6a48"/>
+      <stop offset="1" stop-color="#54492f"/>
+    </linearGradient>
+    <filter id="mapShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- 海 -->
+  <rect width="1280" height="720" fill="url(#mapSea)"/>
+
+  <!-- 海面细纹 -->
+  <g stroke="#3d5a72" stroke-width="2" opacity="0.35" fill="none">
+    <path d="M60 120q40-18 80 0t80 0"/>
+    <path d="M180 220q40-18 80 0t80 0"/>
+    <path d="M1000 140q40-18 80 0t80 0"/>
+    <path d="M1060 300q40-18 80 0t80 0"/>
+    <path d="M120 560q40-18 80 0t80 0"/>
+    <path d="M980 600q40-18 80 0t80 0"/>
+  </g>
+
+  <!-- 北岛（厨房区） -->
+  <g filter="url(#mapShadow)">
+    <path d="M250 128c70-28 150-22 210 8 44 22 62 62 44 96-18 34-74 52-140 50-66-2-124-22-146-56-20-32 4-78 32-98Z" fill="url(#landNorth)"/>
+    <path d="M250 128c70-28 150-22 210 8 44 22 62 62 44 96-18 34-74 52-140 50-66-2-124-22-146-56-20-32 4-78 32-98Z" fill="none" stroke="#8f9c6c" stroke-width="4" opacity="0.8"/>
+    <!-- 树林 -->
+    <g fill="#3d4a2e">
+      <path d="M280 160l16 30h-32Z"/><path d="M310 148l18 34h-36Z"/>
+      <path d="M344 168l14 26h-28Z"/><path d="M272 196l14 26h-28Z"/>
+      <path d="M384 186l14 26h-28Z"/>
+    </g>
+    <!-- 山脊 -->
+    <path d="M400 172l40-34 40 34-26 6-14 20-14-20Z" fill="#8b8f74" opacity="0.85"/>
+    <path d="M418 172l22-18 22 18Z" fill="#d8dcc4" opacity="0.9"/>
+  </g>
+
+  <!-- 南岛（书园区） -->
+  <g filter="url(#mapShadow)">
+    <path d="M760 400c86-24 176-16 226 24 40 32 34 78-14 102-56 28-160 30-224 4-58-24-64-70-30-98 12-10 28-24 42-32Z" fill="url(#landSouth)"/>
+    <path d="M760 400c86-24 176-16 226 24 40 32 34 78-14 102-56 28-160 30-224 4-58-24-64-70-30-98 12-10 28-24 42-32Z" fill="none" stroke="#a3906a" stroke-width="4" opacity="0.8"/>
+    <!-- 塔 -->
+    <g>
+      <path d="M950 420h56v96h-56Z" fill="#7d6a4a"/>
+      <path d="M942 420h72l-14-34h-44Z" fill="#9c8458"/>
+      <path d="M964 372h28v14h-28Z" fill="#c8b184"/>
+      <rect x="968" y="456" width="20" height="26" rx="3" fill="#3a3020"/>
+    </g>
+    <g fill="#3f4a2e">
+      <path d="M820 448l14 26h-28Z"/><path d="M856 462l16 30h-32Z"/><path d="M890 508l14 26h-28Z"/>
+    </g>
+  </g>
+
+  <!-- 中央大厅（陆桥/石台） -->
+  <g filter="url(#mapShadow)">
+    <path d="M556 268h180l36 62-36 62H556l-36-62Z" fill="#6a6552"/>
+    <path d="M556 268h180l36 62-36 62H556l-36-62Z" fill="none" stroke="#8f8a72" stroke-width="4"/>
+    <!-- 圆顶建筑 -->
+    <g>
+      <circle cx="646" cy="330" r="46" fill="#5b5744"/>
+      <path d="M600 330a46 46 0 0 1 92 0Z" fill="#8a856c"/>
+      <rect x="630" y="332" width="32" height="42" rx="4" fill="#332e22"/>
+      <circle cx="646" cy="286" r="8" fill="#c9a15d"/>
+    </g>
+    <!-- 通往两岛的路 -->
+    <path d="M540 322l-140-60 12-30 150 62Z" fill="#8c8567" opacity="0.55"/>
+    <path d="M740 350l90 60-18 26-92-60Z" fill="#8c8567" opacity="0.55"/>
+  </g>
+
+  <!-- 锁着的门（右侧禁地） -->
+  <g filter="url(#mapShadow)">
+    <path d="M1010 150c46-16 92-8 108 20 14 26-6 56-46 66-42 10-84 0-96-24-12-24 8-50 34-62Z" fill="#4a4238" opacity="0.95"/>
+    <path d="M1010 150c46-16 92-8 108 20 14 26-6 56-46 66-42 10-84 0-96-24-12-24 8-50 34-62Z" fill="none" stroke="#6b6155" stroke-width="3" stroke-dasharray="10 8"/>
+    <g transform="translate(1064 186)">
+      <rect x="-16" y="0" width="32" height="28" rx="4" fill="#8d97a1" opacity="0.8"/>
+      <path d="M-8 0v-9a8 8 0 0 1 16 0v9" fill="none" stroke="#8d97a1" stroke-width="4" opacity="0.8"/>
+    </g>
+  </g>
+
+  <!-- 罗盘 -->
+  <g transform="translate(1160 640)" opacity="0.75">
+    <circle r="46" fill="none" stroke="#8a856c" stroke-width="3"/>
+    <circle r="34" fill="none" stroke="#8a856c" stroke-width="1.5"/>
+    <path d="M0-34l10 34L0 22-10 0Z" fill="#c9a15d"/>
+    <path d="M0 34l-8-16h16Z" fill="#6b6552"/>
+  </g>
+
+  <!-- 图例边框 -->
+  <g opacity="0.6">
+    <rect x="28" y="28" width="1244" height="664" rx="10" fill="none" stroke="#8a856c" stroke-width="3"/>
+    <rect x="40" y="40" width="1220" height="640" rx="6" fill="none" stroke="#8a856c" stroke-width="1.5" stroke-dasharray="6 10"/>
+  </g>
+
+  <rect width="1280" height="720" fill="url(#mapVignette)"/>
+</svg>

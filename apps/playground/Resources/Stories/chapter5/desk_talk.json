@@ -1,0 +1,26 @@
+{
+  "formatVersion": 1,
+  "id": "desk_talk",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "say",
+      "text": "书页翻到一半，墨迹还湿着。",
+      "speaker": "研究者"
+    },
+    {
+      "op": "say",
+      "text": "……灯油该添了。",
+      "speaker": "研究者"
+    },
+    {
+      "op": "set",
+      "key": "game.world.lamp",
+      "value": 1
+    },
+    {
+      "op": "jump",
+      "target": "room_study"
+    }
+  ]
+}

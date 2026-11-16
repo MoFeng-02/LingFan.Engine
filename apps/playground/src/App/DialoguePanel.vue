@@ -158,9 +158,12 @@ const submitCandidate = (value: string): void => {
   >
     <slot />
   </section>
-  <!-- 对话层；menu/input 等待时让位 -->
+  <!-- 对话层：只在真的在等对话（或 wait 的短暂停）时在场。
+       判据必须是**正向**的「正在等对话」，不能写成「其他等待态都不在」——
+       后者在 `waiting === "none"` 时同样成立，于是每次换到不等对话的画面
+       （组件身体、纯元素列）都会把上一屏的对话文字重新露出来。 -->
   <section
-    v-show="!inMenu && !inInput && !inVideo && !dialogHidden"
+    v-show="(canAdvance || inWait) && !dialogHidden"
     class="dialogue"
     :style="{ zIndex: zOf('dialogue') }"
     :class="[nvlMode === 'active' ? 'nvl-mode' : dialogView.rootClass]"

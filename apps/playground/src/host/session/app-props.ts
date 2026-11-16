@@ -63,6 +63,11 @@ export interface AppProps {
   mountsTable: Readonly<Record<string, unknown>>;
   /** 挂载表写入口：引擎报出新表时由这里推给 `mounts` */
   onMounts: (raw: unknown) => void;
+  /**
+   * 生成物里的场景表（名字 → 组件）：`SYS.body.name` 就是这张表的键。
+   * 与 `mountsTable` 物理隔离——挂载表是叠加层、场景表是这一屏由谁画，两张表各写各的生成物。
+   */
+  scenesTable: Readonly<Record<string, unknown>>;
   /** 工程标题（组合根从 project.json 解析）：启动页与暂停菜单共用 */
   projectTitle: string;
   /**

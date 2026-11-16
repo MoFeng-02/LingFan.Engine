@@ -41,6 +41,10 @@
               "target": "tour_guard"
             },
             {
+              "text": "沙盒地图",
+              "target": "world"
+            },
+            {
               "text": "回主线菜单",
               "target": "start"
             },

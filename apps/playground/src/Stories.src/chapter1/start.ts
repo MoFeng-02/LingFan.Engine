@@ -18,6 +18,8 @@ const {
   say,
   se,
   wait,
+  jump,
+  navigate,
 } = script;
 
 import { hub } from "../../gen/ui_register.g";
@@ -29,6 +31,13 @@ function greet(who: string): void {
   say(`${who}，欢迎来到灵泛！12`, who);
 }
 
+export function goToLabel() {
+  say("我是用于被跳转到中间态而已，反正我最终是被编译者");
+  jump("end");
+  // 我也行
+  navigate("end");
+}
+
 export default function start(): void {
   character("灵泛", { name: "灵泛", color: "#7aa2f7" });
   bgm("Audio/crickets_night01.mp3", { volume: 0.4, fade: 1200 });
@@ -36,6 +45,8 @@ export default function start(): void {
   mount(hub, true, { label: "进度", value: "第一章" });
   state.player.gold += 20;
   state.player.sex = Sex.Male;
+
+  // jump("goToLabel");
 
   say("准备数值测试");
   let a = 100;
@@ -96,5 +107,6 @@ export default function start(): void {
     option("元素舞台", 地点.元素舞台),
     option("TS 能力", 地点.TS能力),
     option("词汇全席", "tour"),
+    option("沙盒地图（沙盒 demo）", "world"),
   ]);
 }

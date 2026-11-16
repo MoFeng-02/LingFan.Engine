@@ -3,8 +3,13 @@ export {};
 
 declare module "@lingfan-engine/editor" {
   interface ColumnNameRegistry {
+    "desk_talk": 1;
     "end": 1;
+    "hall": 1;
     "inn": 1;
+    "kitchen_talk": 1;
+    "room_kitchen": 1;
+    "room_study": 1;
     "square": 1;
     "stage_demo": 1;
     "start": 1;
@@ -17,6 +22,7 @@ declare module "@lingfan-engine/editor" {
     "tour_stage": 1;
     "tour_vars": 1;
     "ts_power": 1;
+    "world": 1;
   }
   interface InterpolationKeyRegistry {
     "a": 1;
@@ -25,6 +31,7 @@ declare module "@lingfan-engine/editor" {
     "c": 1;
     "click3": 1;
     "dice": 1;
+    "game.world.lamp": 1;
     "gear": 1;
     "item": 1;
     "journal.flag": 1;
@@ -38,6 +45,9 @@ declare module "@lingfan-engine/editor" {
     "thing": 1;
     "ticket": 1;
     "tour.open": 1;
+    "world.focus": 1;
+    "world.lamp": 1;
+    "world.visited": 1;
     [k: `ext.demoquest.${string}`]: 1;
   }
 }

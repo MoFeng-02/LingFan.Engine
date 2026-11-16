@@ -11,8 +11,11 @@
 import { Sex } from "./lib/enums";
 
 export default {
-  folders: ["chapter1", "chapter2", "chapter3", "chapter4"],
+  folders: ["chapter1", "chapter2", "chapter3", "chapter4", "chapter5"],
   start: "start.ts",
+  // 新增了状态键（world.*），版本必须跟着升：旧档的 storyVersion 对不上会整档拒绝，
+  // 而不是带着缺键的存档进新流程。
+  version: 2,
 
   // vars 只登记 state 树未覆盖的插值键：define 的键自动进 InterpolationKeyRegistry
   // （四源合并去重，类型由初始值/描述符推断），无需重复登记。
@@ -34,5 +37,13 @@ export default {
     },
     dice: { type: "number", default: 1 },
     supplies: { type: ["string"], default: [] },
+    // 沙盒地图的三格：去过哪些房间、灯亮着没有、地图上正看着哪一间。
+    // 组件实际读写的是 `game.world.*`（玩法系统写口只能落在那一段）；这里的同名声明
+    // 只给类型面与初始值，两套键互不覆盖，读不到时组件自己兜底。
+    world: {
+      visited: { type: ["string"], default: [] },
+      lamp: { type: "number", default: 0 },
+      focus: { type: "string", default: "" },
+    },
   },
 } satisfies StoriesConfig;

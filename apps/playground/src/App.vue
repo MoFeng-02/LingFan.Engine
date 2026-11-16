@@ -6,14 +6,23 @@
  * 面板装配、演示工厂）都住在 `host/` 下，本组件负责把它们接到一起。
  * 平台端口与工程装配由组合根（`main.ts`）注入：本组件只消费契约，不知道任何具体实现。
  */
-import { onMounted, onUnmounted, ref } from "vue";
+import {
+  computed,
+  onMounted,
+  onUnmounted,
+  ref,
+  shallowRef,
+  type Component,
+} from "vue";
 import {
   DEFAULT_KEYMAP,
   StoryEngine,
   type OutboundPayload,
 } from "@lingfan-engine/core";
+import { computeStageLayout } from "@lingfan-engine/shell";
 import { createCommandRegistry, routesToNarrative } from "@lingfan-engine/ui";
 import {
+  createAppBodyLayer,
   createAppEventRouter,
   createAppLifecycle,
   createAppMounts,
@@ -21,6 +30,7 @@ import {
   createAppStageFit,
   createAppStageView,
   type AppProps,
+  type SceneStageState,
 } from "./host";
 import { handleInteractionMount } from "./host/mount";
 import {
@@ -91,7 +101,32 @@ const { inInteraction, inExtension, dialogHidden, nvlMode } = narrative;
 const { menuOptions, inputPrompt, inputCandidates, inputValue } = narrative;
 const { shownText, speakerColor, dialogFont, canAdvance } = narrative;
 
+/**
+ * 等待期遮罩：引擎停在任一等待态（对话 / 菜单 / 输入 / wait / 视频 / 三族接管）时，
+ * 这一屏的交互权已经不在身体组件的按钮上了，身体层必须让开指针事件。
+ *
+ * 为什么不能靠 z 序：对话层只盖住底部条状区域，身体按钮露在它上面，
+ * 点一下既推进不了对话、又执行了按钮动作——一次点击两件事，玩家只会看见画面乱跳。
+ * 让开之后点击落到舞台外框（`onStageClickInGame`），与「点任意处推进对话」同一口径。
+ */
+const bodyBlocked = computed(
+  () =>
+    canAdvance.value ||
+    inMenu.value ||
+    inWait.value ||
+    inInput.value ||
+    inVideo.value ||
+    inMinigame.value ||
+    inInteraction.value ||
+    inExtension.value,
+);
+
 // —— 舞台适配（作者按基准像素写坐标，整场等比缩放套进外框）——
+/** 舞台读数：视口尺寸与由它算出的适配结果，两者必须来自同一次读数（身体层经 `env.stage()` 读这个） */
+const stageState = shallowRef<SceneStageState>({
+  viewport: { width: 0, height: 0 },
+  layout: computeStageLayout({ width: 0, height: 0 }, props.stage),
+});
 /** 舞台适配：配置来自组合根（`project.json shell.stage` 解析结果），读数取外框容器的布局尺寸
  *（不是舞台自身的 clientWidth——那已被变换放大过） */
 const stageFit = createAppStageFit({
@@ -104,8 +139,46 @@ const stageFit = createAppStageFit({
 });
 /** 外框尺寸变化（窗口缩放、旋转、软键盘收起）后重算一次：读数即时取，不依赖事件载荷 */
 function applyStageFit(): void {
-  stageFit.apply();
+  const layout = stageFit.apply();
+  // 舞台根尚未挂载时适配不写样式，读数也就无从谈起：保持上一次的值，别把热区对到 0×0
+  if (layout === null) return;
+  stageState.value = {
+    viewport: {
+      width: stageViewportEl.value?.clientWidth ?? 0,
+      height: stageViewportEl.value?.clientHeight ?? 0,
+    },
+    layout,
+  };
 }
+
+// —— 身体层（这一屏由谁画）：与元素层同层，身体在下、元素层在上 ——
+/** 这一屏的身体组件；没有身体的列保持 null——那是「整屏由对话面板与元素层承担」的正常形态 */
+const bodyView = shallowRef<Component | null>(null);
+/** 身体组件的重挂键：取名字而非 props，同名只走更新（本地状态不被清掉），换名才重挂 */
+const bodyKey = shallowRef("");
+/** 身体组件的入参：故事源写的 props 加宿主注入的 `env`（组件只经它读状态、下命令） */
+const bodyProps = shallowRef<Readonly<Record<string, unknown>>>({});
+/**
+ * 身体层装配：读 `SYS.body` 选出组件写进上面三个 ref，选不出来就把整层置空。
+ * 装配位置在生命周期之前——引擎一造好就会先报一次当前值，那时这三个 ref 必须已经存在。
+ */
+const bodyLayer = createAppBodyLayer({
+  table: props.scenesTable,
+  error,
+  getEngine: () => engine,
+  readStage: () => stageState.value,
+  onSelect: (view) => {
+    if (view === null) {
+      bodyView.value = null;
+      bodyKey.value = "";
+      bodyProps.value = {};
+      return;
+    }
+    bodyView.value = view.component as Component;
+    bodyKey.value = view.name;
+    bodyProps.value = view.props;
+  },
+});
 
 // —— 挂载注册表（小游戏 / 玩法系统 / 输入域）：演示工厂就地注册，未注册 fail-closed ——
 /** 挂载注册表、输入域与扩展等待覆盖层的编排（解除动作由覆盖层的「确认」触发） */
@@ -196,6 +269,10 @@ const life = createAppLifecycle({
     readVideoContainer: () => stageEl.value,
   },
   session: { controls: controlsFace, toggleHistory, showPrefs },
+  // 身体单槽的报告只当「该重读了」的信号：选谁由 createBodyLayer 自己从引擎里取
+  onBody: () => {
+    bodyLayer.render();
+  },
 });
 /** 对局会话：进没进对局、暂停与否、挂载表投影与页面动作 */
 const { inGame, paused, resumeSlot, quickSlot, mounted } = life;
@@ -256,6 +333,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   teardown(); // 订阅解除 → 会话解除 → 偏好退订落盘 → 停播释放 → 引擎释放 → 停帧循环
+  bodyLayer.dispose();
   window.removeEventListener("keydown", onKeydown);
   window.removeEventListener("keydown", onCaptureKeydown, true);
   window.removeEventListener("resize", applyStageFit);
@@ -288,6 +366,21 @@ onUnmounted(() => {
       <main ref="stageEl" class="stage">
         <!-- 舞台内容层：舞台根的适配变换之外的另一层变换——震动偏移写这里，两层各写各的 -->
         <div ref="stageShakeEl" class="stage-shake">
+          <!-- 身体层：这一屏由谁画。与元素层同层，身体在下、元素层在上（两层都随舞台缩放）。
+               等待期（对话/菜单/输入/wait/视频/接管）挂 `is-blocked` 让开指针事件——
+               否则点一下既推进不了对话、又触发了按钮，一次点击两件事。 -->
+          <div
+            class="body-layer"
+            :class="{ 'is-blocked': bodyBlocked }"
+            :style="{ zIndex: layerZ.stage }"
+          >
+            <component
+              :is="bodyView"
+              v-if="bodyView"
+              :key="bodyKey"
+              v-bind="bodyProps"
+            />
+          </div>
           <!-- 舞台元素层：声明式空间层（z 由 shell.layers.stage 决定，默认 0 = 位于 video 之下） -->
           <div
             ref="elementLayerEl"
@@ -474,6 +567,20 @@ textarea,
   width: 100%;
   height: 100%;
   padding: 22px 40px;
+}
+
+/* 身体层：这一屏的整屏组件铺满舞台内容区。容器不设 pointer-events: none——
+   身体就是这一屏的交互面，点击要落在组件自己身上，而不是穿透到舞台去翻页。 */
+.body-layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* 等待期：交互权在对话/菜单/接管层，身体按钮一律让开指针事件。
+   靠 `pointer-events` 而不是 `v-if` 卸下组件——遮罩不该改变组件身份，
+   否则每次说话都重挂一遍 Vue 实例，内部状态（展开的抽屉、输入草稿）全丢。 */
+.body-layer.is-blocked {
+  pointer-events: none;
 }
 
 /* 舞台元素层：容器不阻塞舞台点击（可交互元素自身恢复 pointer-events） */

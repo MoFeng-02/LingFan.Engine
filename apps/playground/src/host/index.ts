@@ -16,6 +16,7 @@ export { createAppLang } from "./assets/app-lang";
 export { createAppTemplates } from "./narrative/wiring/app-templates";
 export { createAppMedia } from "./stage/media/app-media";
 export { createAppElementLayer } from "./stage/elements/app-element-layer";
+export { createAppBodyLayer } from "./stage/body/app-body";
 export { createAppStageStack } from "./stage/app-stage-stack";
 export { createAppEvents } from "./engine/app-events";
 export { createAppHistory } from "./panels/wiring/app-history";
@@ -35,6 +36,7 @@ export {
   createAppStageView,
 } from "./session";
 export type { AppProps } from "./session";
+export type { SceneStageState } from "./stage/body/env";
 export { createHostControls } from "./controls";
 
 /** —— 面板类型（App/*.vue 消费）—— */

@@ -91,6 +91,12 @@ export interface AppLifecycleOptions {
   dom: AppLifecycleDom;
   actions: AppLifecycleActions;
   session: AppLifecycleSession;
+  /**
+   * 身体单槽出口：引擎写下 `SYS.body` 就报一次。
+   * 由组合根传入——身体层住在页面里（组件由 Vue 渲染树持有），不归会话也不归挂载表；
+   * 放在这里而不是 `props` 上，是因为它不属于组合根（`main.ts`）注入的宿主配置。
+   */
+  onBody?: (raw: unknown) => void;
 }
 
 /** 装配结果：引擎生命周期、帧循环句柄、对局会话与卸载动作 */
@@ -121,6 +127,7 @@ export function createAppLifecycle(options: AppLifecycleOptions): AppLifecycle {
     readMinigameHost: actions.readMinigameHost,
     readVideoContainer: actions.readVideoContainer,
     onMounts: props.onMounts,
+    onBody: options.onBody,
     onPaused: (value: boolean) => pausedSink.apply?.(value),
   });
   engineLife.initEngine();

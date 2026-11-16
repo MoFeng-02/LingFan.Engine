@@ -182,6 +182,8 @@ export default defineConfigWithVueTs(
       // tsconfig 与框架依赖（vue / @vitejs/plugin-vue 等），本仓没装那些包，
       // 纳入检查只会得到必然的解析失败。与 tsconfig 的 include 口径一致（同样不含它）。
       "CreateDemo/**",
+      // 用户自写示例：个人参考代码，非本仓交付源码，不纳入检查
+      "我自写示例/**",
     ],
   },
   pluginVue.configs["flat/essential"],
@@ -200,6 +202,9 @@ export default defineConfigWithVueTs(
       "apps/editor/src/App.vue",
       "apps/miniprogram/src/pages/**/*.vue",
       "apps/*/src/ui/**/*.vue",
+      // 场景组件同理：目录名即场景名（`scenes/worldmap/worldmap.vue` 只能登记成
+      // `worldmap`，身体列引用的就是这个名字），名字是构建期事实而非风格选择。
+      "apps/*/src/scenes/**/*.vue",
       // 模板骨架里的 UI 示例同理：目录名即 UI 名（`ui/hint/hint.vue` 只能导成 `hint`），
       // 而模板会被复制成使用者的工程，命名约束在那里同样成立。
       "template/*/overlays/*/src/ui/**/*.vue",

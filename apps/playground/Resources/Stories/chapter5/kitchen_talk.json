@@ -1,0 +1,26 @@
+{
+  "formatVersion": 1,
+  "id": "kitchen_talk",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "say",
+      "text": "灶上还温着一锅汤，灯却灭了。",
+      "speaker": "厨娘"
+    },
+    {
+      "op": "say",
+      "text": "……我把灯点上吧。",
+      "speaker": "厨娘"
+    },
+    {
+      "op": "set",
+      "key": "game.world.lamp",
+      "value": 1
+    },
+    {
+      "op": "jump",
+      "target": "room_kitchen"
+    }
+  ]
+}

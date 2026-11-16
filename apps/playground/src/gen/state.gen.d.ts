@@ -13,4 +13,9 @@ export type StoryState = {
     "sex": Sex;
   };
   "supplies": string[];
+  "world": {
+    "focus": string;
+    "lamp": number;
+    "visited": string[];
+  };
 };

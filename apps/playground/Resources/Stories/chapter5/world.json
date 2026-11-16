@@ -1,0 +1,9 @@
+{
+  "formatVersion": 1,
+  "id": "world",
+  "kind": "scene",
+  "body": {
+    "name": "worldmap"
+  },
+  "entry": []
+}

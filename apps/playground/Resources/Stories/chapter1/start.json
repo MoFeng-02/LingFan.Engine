@@ -291,6 +291,10 @@
         {
           "text": "词汇全席",
           "target": "tour"
+        },
+        {
+          "text": "沙盒地图（沙盒 demo）",
+          "target": "world"
         }
       ]
     }

@@ -72,6 +72,7 @@ import { browserPlayAllowed } from "./boot/browserGuard";
 import { installStoryFonts } from "./host/assets/app-fonts";
 import { STORIES } from "./stories";
 import { uis } from "./gen/ui_register.g";
+import { scenes } from "./gen/scene_register.g";
 
 // 渲染诊断探针：`VITE_LFEN_DIAG=1` 构建时启用（白屏诊断用）；默认构建
 // 动态 import 被 tree-shake，产物零增重。独立于 boot——白屏时 boot 可能挂，探针必须无条件跑。
@@ -252,6 +253,7 @@ async function boot(): Promise<void> {
     createVideoPort,
     mounts: mountStore,
     mountsTable: uis,
+    scenesTable: scenes,
     onMounts: (raw: unknown) => {
       mountStore.set(raw);
     },

@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3c4a58"/>
+      <stop offset="1" stop-color="#26313c"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b4a31"/>
+      <stop offset="1" stop-color="#43301f"/>
+    </linearGradient>
+    <linearGradient id="night" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#101a2b"/>
+      <stop offset="1" stop-color="#22344d"/>
+    </linearGradient>
+    <radialGradient id="lampGlow" cx="0.5" cy="0.25" r="0.75">
+      <stop offset="0" stop-color="#ffd9a0" stop-opacity="0.85"/>
+      <stop offset="0.45" stop-color="#ffb75e" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffb75e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="counter" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8b6b4a"/>
+      <stop offset="1" stop-color="#5b422b"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9aa6b2"/>
+      <stop offset="0.5" stop-color="#d3dbe3"/>
+      <stop offset="1" stop-color="#7d8894"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 墙与地板 -->
+  <rect width="1280" height="470" fill="url(#wall)"/>
+  <rect y="470" width="1280" height="250" fill="url(#floor)"/>
+  <g stroke="#2f2114" stroke-width="2" opacity="0.5">
+    <path d="M0 520H1280M0 580H1280M0 640H1280M0 700H1280"/>
+    <path d="M180 470V520M520 470V520M880 470V520M1120 520V580M360 580V640M760 580V640M1040 640V700"/>
+  </g>
+  <rect y="470" width="1280" height="10" fill="#20180f" opacity="0.6"/>
+
+  <!-- 窗（夜色） -->
+  <g>
+    <rect x="96" y="96" width="330" height="238" rx="6" fill="url(#night)"/>
+    <circle cx="350" cy="160" r="26" fill="#f4f0d8" opacity="0.92"/>
+    <circle cx="340" cy="152" r="22" fill="#22344d" opacity="0.9"/>
+    <g fill="#cfd9e6" opacity="0.9">
+      <circle cx="150" cy="140" r="2.5"/><circle cx="196" cy="118" r="2"/>
+      <circle cx="238" cy="168" r="2.2"/><circle cx="286" cy="126" r="1.8"/>
+      <circle cx="128" cy="212" r="2"/><circle cx="206" cy="240" r="1.6"/>
+      <circle cx="300" cy="220" r="2.4"/><circle cx="252" cy="286" r="1.8"/>
+    </g>
+    <rect x="96" y="96" width="330" height="238" rx="6" fill="none" stroke="#8a7a63" stroke-width="12"/>
+    <path d="M261 96V334M96 215H426" stroke="#8a7a63" stroke-width="10"/>
+    <rect x="84" y="330" width="354" height="16" rx="4" fill="#a08a6c"/>
+  </g>
+
+  <!-- 吊灯与光晕 -->
+  <ellipse cx="700" cy="470" rx="430" ry="330" fill="url(#lampGlow)"/>
+  <path d="M700 0V148" stroke="#2b2118" stroke-width="5"/>
+  <path d="M648 148H752L726 196H674Z" fill="#c9a15d"/>
+  <ellipse cx="700" cy="196" rx="26" ry="9" fill="#ffe6b0"/>
+
+  <!-- 灶台 -->
+  <g>
+    <rect x="596" y="386" width="208" height="26" rx="5" fill="url(#steel)"/>
+    <rect x="596" y="412" width="208" height="58" fill="#3a3f46"/>
+    <g fill="#23272c">
+      <circle cx="634" cy="399" r="12"/><circle cx="698" cy="399" r="12"/>
+    </g>
+    <g fill="#ff8b3d" opacity="0.85">
+      <circle cx="634" cy="399" r="5"/><circle cx="698" cy="399" r="5"/>
+    </g>
+    <!-- 锅 -->
+    <ellipse cx="666" cy="372" rx="62" ry="16" fill="#2c3238"/>
+    <rect x="604" y="330" width="124" height="44" rx="8" fill="#3c434b"/>
+    <ellipse cx="666" cy="330" rx="62" ry="15" fill="#5a636d"/>
+    <path d="M584 340H602M730 340H748" stroke="#4a525a" stroke-width="7" stroke-linecap="round"/>
+    <!-- 蒸汽 -->
+    <g stroke="#dfe6ee" stroke-width="4" fill="none" opacity="0.5" stroke-linecap="round">
+      <path d="M640 312c-12-18 10-26-2-44"/>
+      <path d="M672 308c-12-20 12-28 0-46"/>
+      <path d="M702 314c-10-16 9-24-1-40"/>
+    </g>
+  </g>
+
+  <!-- 料理台与水池 -->
+  <g>
+    <rect x="880" y="352" width="360" height="34" rx="6" fill="url(#counter)"/>
+    <rect x="880" y="386" width="360" height="140" fill="#3d2b1c"/>
+    <g stroke="#2b1e13" stroke-width="3">
+      <path d="M940 386V526M1010 386V526M1080 386V526M1150 386V526"/>
+    </g>
+    <g fill="#6b5136">
+      <rect x="902" y="410" width="60" height="8" rx="4"/>
+      <rect x="902" y="470" width="60" height="8" rx="4"/>
+      <rect x="1118" y="410" width="60" height="8" rx="4"/>
+    </g>
+    <!-- 水槽 -->
+    <rect x="960" y="358" width="180" height="24" rx="6" fill="#5f6a75"/>
+    <rect x="968" y="362" width="164" height="16" rx="4" fill="#2f363d"/>
+    <path d="M1050 358V318q0-14 16-14h26" stroke="#c4ccd4" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <circle cx="1094" cy="314" r="5" fill="#8d97a1"/>
+    <!-- 砧板与菜 -->
+    <g>
+      <rect x="884" y="336" width="120" height="16" rx="6" fill="#c99a5e"/>
+      <circle cx="916" cy="330" r="11" fill="#c0452f"/>
+      <circle cx="944" cy="330" r="9" fill="#7fa545"/>
+      <circle cx="968" cy="330" r="8" fill="#c0452f"/>
+    </g>
+  </g>
+
+  <!-- 墙上挂架 -->
+  <g>
+    <rect x="600" y="230" width="300" height="12" rx="5" fill="#6b5136"/>
+    <g fill="#8d97a1">
+      <path d="M626 242v52a14 14 0 0 0 28 0v-52Z" opacity="0.9"/>
+      <circle cx="640" cy="252" r="6" fill="#6b5136"/>
+      <path d="M672 242h34l-6 46h-22Z" fill="#aeb7c0"/>
+      <path d="M716 242v44h46v-44Z" fill="#9aa6b2"/>
+      <circle cx="739" cy="264" r="10" fill="#6b5136"/>
+      <path d="M780 242v40a12 12 0 0 0 24 0v-40Z" fill="#aeb7c0"/>
+    </g>
+  </g>
+
+  <!-- 地毯 -->
+  <g opacity="0.85">
+    <ellipse cx="500" cy="640" rx="260" ry="62" fill="#8d4a3a"/>
+    <ellipse cx="500" cy="640" rx="216" ry="48" fill="none" stroke="#d8b37c" stroke-width="4"/>
+    <ellipse cx="500" cy="640" rx="150" ry="30" fill="none" stroke="#d8b37c" stroke-width="3"/>
+  </g>
+
+  <!-- 前景暗角 -->
+  <rect width="1280" height="720" fill="none" stroke="#0d1116" stroke-width="60" opacity="0.35"/>
+</svg>

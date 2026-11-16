@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "id": "room_kitchen",
+  "kind": "scene",
+  "body": {
+    "name": "room",
+    "props": {
+      "title": "厨房",
+      "image": "Images/room-kitchen.svg",
+      "talkColumn": "kitchen_talk"
+    }
+  },
+  "entry": []
+}
