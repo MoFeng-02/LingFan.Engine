@@ -55,6 +55,8 @@ export const PARAM_DIRECTION: Readonly<Record<string, ParamDirection>> = {
   [SYS.dialogNoskip]: "readonly",
   [SYS.dialogVisible]: "readonly",
   [SYS.elements]: "readonly",
+  /** 当前列的身体：`enterColumn` 独占写，宿主只读（读了才知道渲染哪个组件） */
+  [SYS.body]: "readonly",
   [SYS.animations]: "readonly",
   [SYS.transition]: "readonly",
   [SYS.shake]: "readonly",

@@ -6,6 +6,7 @@ import {
   CAPABILITY_VERSION,
   normalizeSceneType,
   normalizeUiNames,
+  type ColumnBody,
   type SceneType,
   type SerializedProject,
   type Story,
@@ -45,6 +46,22 @@ function writeBackUis(column: StoryColumn): readonly string[] | undefined {
   return names.length === 0 ? undefined : names;
 }
 
+/**
+ * 落盘的列身体（**唯一写出点**）：`undefined` = 不写字段。
+ *
+ * 只写 `name` 与（非空时的）`props`：`props` 缺省与 `{}` 在运行期等价，
+ * 但文件里留着空对象会让「作者没传 props」与「作者显式传空」两种意图
+ * 在下一次保存时互换。`props` 在装载期已过 JSON 安全校验，这里不再验。
+ */
+function writeBackBody(column: StoryColumn): ColumnBody | undefined {
+  const body = column.body;
+  if (body === undefined) return undefined;
+  const props = body.props;
+  if (props === undefined) return { name: body.name };
+  if (Object.keys(props).length === 0) return { name: body.name };
+  return { name: body.name, props };
+}
+
 /** 单列原子文件文本：字段序固定（formatVersion, id, kind, type?, font?, uis?, commands|elements, entry?） */
 function columnFileText(column: StoryColumn): string {
   const ordered: Record<string, unknown> = {
@@ -63,10 +80,18 @@ function columnFileText(column: StoryColumn): string {
   // 宿主下次打开就少预加载（症状是界面闪一下才出现，很难归因到一次保存）。
   const uis = writeBackUis(column);
   if (uis !== undefined) ordered.uis = uis;
+  // 列身体同理：漏了会让保存把「这一屏由哪个组件画」抹掉，
+  // 下次打开时列变成空场景（不可逆）。
+  const body = writeBackBody(column);
+  if (body !== undefined) ordered.body = body;
   if (column.kind === "flow") {
     ordered.commands = column.commands ?? [];
   } else {
-    ordered.elements = column.elements ?? [];
+    // scene 列：`elements` 与 `body` 互斥，只有真声明了才写。
+    // 无脑补 `elements: []` 会让「只有 body 的列」在下次打开时变成
+    // 「两者同时声明」而被整次拒绝——保存把合法列写成非法列。
+    if (column.elements !== undefined) ordered.elements = column.elements;
+    else if (body === undefined) ordered.elements = [];
     if (column.entry !== undefined) ordered.entry = column.entry;
   }
   // `sourcePath` **刻意不写**（编辑期元数据：它描述「这个列来自哪个文件」，
@@ -249,9 +274,13 @@ function columnGroupFileText(
       // 字段不该跟着丢（`uis` 丢了宿主就少预加载，且不可逆）。
       const uis = writeBackUis(column);
       if (uis !== undefined) ordered.uis = uis;
+      const body = writeBackBody(column);
+      if (body !== undefined) ordered.body = body;
       if (column.kind === "flow") ordered.commands = column.commands ?? [];
       else {
-        ordered.elements = column.elements ?? [];
+        // 与单列形态同一条规则：只有 body 的列不补空 elements（否则重开即互斥冲突）。
+        if (column.elements !== undefined) ordered.elements = column.elements;
+        else if (body === undefined) ordered.elements = [];
         if (column.entry !== undefined) ordered.entry = column.entry;
       }
       return ordered;

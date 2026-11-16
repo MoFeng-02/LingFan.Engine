@@ -8,10 +8,13 @@
  */
 import { isPlainObject } from "../../shared/index.ts";
 import {
+  findJsonValueError,
+  isSceneName,
   isSceneType,
   isUiName,
   normalizeSceneType,
   normalizeUiNames,
+  type ColumnBody,
   type ElementNode,
   type SceneType,
   type StoryColumn,
@@ -36,7 +39,8 @@ export type ColumnShapeDefect =
   | { reason: "bad-kind"; received: unknown }
   | { reason: "bad-type"; received: unknown }
   | { reason: "flow-without-commands" }
-  | { reason: "scene-without-elements" };
+  | { reason: "scene-without-elements" }
+  | { reason: "body-conflict-elements" };
 
 /**
  * 列对象形状判定（缺省校验 `type`）。
@@ -67,8 +71,15 @@ export function columnShapeDefect(
       return { reason: "flow-without-commands" };
     return null;
   }
-  if (!Array.isArray(column.elements))
+  const hasElements = Array.isArray(column.elements);
+  // 身体与元素都是「列的整屏画面」：同时声明就是两个渲染器抢同一块画布，
+  // 而谁在上没有定义 ⇒ fail-closed（要叠一层用 `mount`，那条路的语义本来就是叠加）。
+  if (hasElements && column.body !== undefined) {
+    return { reason: "body-conflict-elements" };
+  }
+  if (!hasElements && column.body === undefined) {
     return { reason: "scene-without-elements" };
+  }
   return null;
 }
 
@@ -105,8 +116,14 @@ export function parseColumn(
       );
     } else if (shape.reason === "flow-without-commands") {
       issues.push(`${at}（flow）必须有 commands 数组`);
+    } else if (shape.reason === "body-conflict-elements") {
+      issues.push(
+        `${at} 不能同时声明 elements 与 body（二者互斥：elements 由引擎解释，body 由宿主渲染，叠加请用 mount）`,
+      );
     } else {
-      issues.push(`${at}（scene）必须有 elements 数组`);
+      issues.push(
+        `${at}（scene）必须有 elements 数组或 body 声明（二者至少一个）`,
+      );
     }
     return null;
   }
@@ -148,6 +165,43 @@ export function parseColumn(
     const normalized = normalizeUiNames(raw.uis as string[]);
     if (normalized.length > 0) uis = normalized;
   }
+  // 列身体：可选展示声明。`props` 原样写入 SYS.body、引擎不求值，所以这里只查
+  // 「形状对不对」与「JSON 安不安全」——含函数/undefined/循环引用的 props 会静默变形，
+  // 属数据损坏，必须在此拦下而不是等到渲染时。
+  let body: ColumnBody | undefined;
+  if (raw.body !== undefined) {
+    if (!isPlainObject(raw.body)) {
+      issues.push(`${at}.body 必须为对象`);
+      return null;
+    }
+    const name = raw.body.name;
+    if (!isSceneName(name)) {
+      issues.push(
+        `${at}.body.name 不是合法组件名：收到 ${JSON.stringify(name)}（小写字母开头，其后小写字母 / 数字 / \`_\` / \`-\`，总长 1..32）`,
+      );
+      return null;
+    }
+    const rawProps = raw.body.props;
+    if (rawProps !== undefined && !isPlainObject(rawProps)) {
+      issues.push(`${at}.body.props 必须为对象`);
+      return null;
+    }
+    if (rawProps !== undefined) {
+      const unsafe = findJsonValueError(rawProps, `${at}.body.props`);
+      if (unsafe !== null) {
+        issues.push(
+          `${at}.body.props 必须是 JSON 安全值（引擎会原样写入 SYS.body，不做求值）：${unsafe}`,
+        );
+        return null;
+      }
+    }
+    // props 缺省不带该键（不是空对象）：与 uis / font 的「未引用不写」同规则，
+    // 且让产物的摘要对比在热重载前后稳定。
+    body =
+      rawProps === undefined
+        ? { name }
+        : { name, props: rawProps as Record<string, unknown> };
+  }
   if (kind === "flow") {
     if (!Array.isArray(raw.commands)) {
       issues.push(`${at}（flow）必须有 commands 数组`);
@@ -157,12 +211,16 @@ export function parseColumn(
       validateCommand(cmd, `${at}.commands[${j}]`, issues);
     }
   } else {
-    if (!Array.isArray(raw.elements)) {
-      issues.push(`${at}（scene）必须有 elements 数组`);
+    if (!Array.isArray(raw.elements) && body === undefined) {
+      issues.push(
+        `${at}（scene）必须有 elements 数组或 body 声明（二者至少一个）`,
+      );
       return null;
     }
     const seenElementIds = new Set<string>();
-    for (const [j, node] of raw.elements.entries()) {
+    // 有身体的列可以不带 elements（两者互斥，形状判定已拦同时声明）。
+    const elements = Array.isArray(raw.elements) ? raw.elements : [];
+    for (const [j, node] of elements.entries()) {
       validateElement(node, `${at}.elements[${j}]`, issues);
       if (
         isPlainObject(node) &&
@@ -194,9 +252,12 @@ export function parseColumn(
     type,
     font,
     uis,
+    body,
     // `sourcePath` **刻意不解析**：它是编辑期记账（由组装器从实际文件路径回填），
     // 故事文件里不该有这个键——写进去也无效（防止自指：文件描述自己的位置）。
-    elements: raw.elements as ElementNode[] | undefined,
+    elements: Array.isArray(raw.elements)
+      ? (raw.elements as ElementNode[])
+      : undefined,
     entry: raw.entry as StoryCommand[] | undefined,
     commands: raw.commands as StoryCommand[] | undefined,
   };

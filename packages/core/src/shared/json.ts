@@ -17,6 +17,10 @@
  *   序列化边界兜底，快照期不做硬门禁）。
  *
  * 键侧（保留键）见 `contracts/runtime/state-keys.ts` 的 `RESERVED_STATE_KEYS`，守卫在 `engine.setGlobal`。
+ *
+ * 放在 `shared/` 而不是 `runtime/state/`：数据层（故事文件解析）也要在装载期校验 `body.props`
+ * 这类「原样写入状态」的值，而 `data/ → runtime/` 是反向依赖（`runtime/internal/frame-stack.ts`
+ * 已经依赖 `data/`）。`shared/` 是叶子，两边都能取。
  */
 
 /**

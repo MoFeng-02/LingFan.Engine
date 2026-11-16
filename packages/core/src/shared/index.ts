@@ -4,7 +4,9 @@
  */
 export * from "./audio.ts";
 export * from "./guards.ts";
+export * from "./json.ts";
 export * from "./mounts.ts";
 export * from "./numbers.ts";
 export * from "./ordering.ts";
+export * from "./scene-name.ts";
 export * from "./ui-name.ts";

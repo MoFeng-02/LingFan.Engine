@@ -9,4 +9,4 @@ export { rejectBadInstanceZ, setInstanceZ } from "./instance-z.ts";
 export { evalValue, readVariable, resolveName } from "./evaluate.ts";
 export { emitChange, emitErrorEvent, publishEvent } from "./notify.ts";
 export { createStateReader } from "./reader.ts";
-export { findJsonValueError, jsonUnsafeReason } from "./stateContract.ts";
+export { findJsonValueError, jsonUnsafeReason } from "../../shared/json.ts";

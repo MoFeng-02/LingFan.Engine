@@ -148,6 +148,15 @@ export const SYS = {
    */
   mounts: "__mounts",
   /**
+   * **当前列的身体**：`{ name: string; props?: Record<string, unknown> }`。
+   *
+   * 进列时由引擎写入（`column.body`）、列没有身体时删键。与 `mounts` 是两个通道：
+   * `mounts` 是叠加的 UI 组件表（可多个、可显隐），`body` 是「这一屏由谁画」的单槽。
+   *
+   * 整表是一个值 ⇒ 快照 / 存档 / 回溯零特判随行。
+   */
+  body: "__body",
+  /**
    * `window auto|show|hide`：对话框显隐三态（UI 层据此控制对话层可见性；
    * 叙事语义归核心层，DOM 操作归 UI）。
    */

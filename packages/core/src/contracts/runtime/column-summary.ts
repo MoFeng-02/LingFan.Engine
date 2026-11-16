@@ -21,4 +21,11 @@ export interface ColumnSummary {
   readonly type: SceneType;
   /** 内容形态：`scene` = 空间层（元素 + 入口命令）/ `flow` = 纯流程 */
   readonly kind: "scene" | "flow";
+  /**
+   * 列的**身体名**（没有身体时为 `undefined`）。
+   *
+   * 只交出名字，不交出 props：props 是运行期事实（在 `SYS.body` 里），
+   * 而列摘要描述的是**故事的静态形状**。宿主渲染某一屏时读 `SYS.body` 拿 props。
+   */
+  readonly body?: string;
 }

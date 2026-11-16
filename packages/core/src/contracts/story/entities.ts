@@ -6,6 +6,7 @@
  */
 import type { ProjectShellConfig } from "../shell.ts";
 import type { ElementNode } from "../element.ts";
+import type { ColumnBody } from "./body.ts";
 
 /**
  * 命令：已知 op 的负载由解析器/执行器窄化校验，未知字段/未知 op fail-closed。
@@ -81,6 +82,17 @@ export interface StoryColumn {
    * - **顺序确定**：按名字码点序去重，构建期即定序，消费方不必再排。
    */
   uis?: readonly string[];
+  /**
+   * **列的身体**（纯展示声明）：这一屏画面由哪个组件画。
+   *
+   * 语义要点：
+   * - **与 `elements` 互斥**：两者都是整屏画面，同时声明 ⇒ `body-conflict-elements`。
+   * - **静态声明是「告知」不是「加载」**：产物里只有名字，组件本体住 `src/scenes/**`，
+   *   由宿主按名字查注册表。引擎不读、不编译、不拷贝那些文件。
+   * - **随列切换与回溯**：进列时写入 `SYS.body`，因此随快照 / 存档 / 回溯自动换回正确的那一个。
+   * - **未声明不写**：没有身体的列不带该字段（与 `font` / `uis` 同规则）。
+   */
+  body?: ColumnBody;
   /** scene 专有：舞台元素声明（类型与属性全集 fail-closed）。
    *  进入列时由引擎装载为 `SYS.elements`（声明式空间层，不走命令流） */
   elements?: ElementNode[];

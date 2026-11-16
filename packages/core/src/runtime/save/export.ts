@@ -12,7 +12,7 @@ import {
   type Frame,
   type OpContext,
 } from "../internal/index.ts";
-import { findJsonValueError } from "../state/stateContract.ts";
+import { findJsonValueError } from "../../shared/json.ts";
 
 /** 存档面的状态条目：会话态键不写进档（读档 = 会话重开，见 `SESSION_STATE_KEYS`） */
 function saveStateEntries(
