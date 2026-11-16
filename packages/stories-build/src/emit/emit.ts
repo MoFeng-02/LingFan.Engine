@@ -31,6 +31,11 @@ export interface EmitOptions {
   readonly fontGen: { readonly rel: string; readonly content: string };
   /** UI 注册表生成物（ui_register.g.ts）：同规则的恒产出生成物（没有 UI 也恒产出） */
   readonly uiGen: { readonly rel: string; readonly content: string };
+  /**
+   * 场景注册表生成物。`content === null` 表示「本工程没有组件化列」：文件存在就删，
+   * 没有就什么都不做 —— 与守卫注册表同一条规则，不写空壳文件。
+   */
+  readonly sceneGen?: { readonly rel: string; readonly content: string | null };
 }
 
 /** 工具状态目录名（相对工程根）：工具的私有状态不属于资源契约，与 `Resources/` 分开放 */
@@ -46,7 +51,8 @@ const STORIES_PREFIX = `${STORIES_DIR}/`;
  *   产物账里、且不在本轮产物集里」——只有本工具自己写过的路径才可删，作者手写的
  *   `.story` / JSON 列文件从不出现在账里，因此构建不会碰它们；
  * - 生成物（`<sourcesDir>/<generatedDir>/fun_register.g.ts`、`stories.gen.d.ts`、
- *   `state.gen.d.ts`、`script.gen.d.ts`、`font.gen.d.ts`、`ui_register.g.ts`）同规则：零守卫时若存在则删除，否则内容不同才写。它们的逻辑路径与
+ *   `state.gen.d.ts`、`script.gen.d.ts`、`font.gen.d.ts`、`ui_register.g.ts`、
+ *   `scene_register.g.ts`）同规则：零守卫时若存在则删除，否则内容不同才写。它们的逻辑路径与
  *   `Stories/**` 不同命名空间，报告里以 `Stories.src/` 开头即生成物。
  * 返回值里的路径都是逻辑路径（相对资源根），供 CLI 直接打印。
  */
@@ -66,6 +72,7 @@ export function emitArtifacts(options: EmitOptions): {
     scriptGen,
     fontGen,
     uiGen,
+    sceneGen,
   } = options;
   const added: string[] = [];
   const updated: string[] = [];
@@ -151,6 +158,23 @@ export function emitArtifacts(options: EmitOptions): {
     added,
     updated,
   );
+  if (sceneGen !== undefined) {
+    if (sceneGen.content === null) {
+      const sceneTarget = join(root, sceneGen.rel);
+      if (existsSync(sceneTarget)) {
+        rmSync(sceneTarget, { force: true });
+        removed.push(sceneGen.rel);
+      }
+    } else {
+      writeConstantArtifact(
+        join(root, sceneGen.rel),
+        sceneGen.rel,
+        sceneGen.content,
+        added,
+        updated,
+      );
+    }
+  }
   // 账 = 本轮写进资源根的 `Stories/**` 产物集：下一轮据此判定哪些既有文件是「我的」。
   writeLedger(root, serialized.files.keys());
   return { added, updated, removed };

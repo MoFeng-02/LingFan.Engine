@@ -2,7 +2,10 @@ import { StoryBuildError } from "../shared/index.ts";
 import type { StoriesBuildTexts } from "../shared/index.ts";
 import type { StorySourceConfig } from "../config/story-config.ts";
 import type { AliasResolver } from "./story-compiler/graph/scan/alias.ts";
-import type { UiRegistryEntry } from "./story-compiler/graph/core.ts";
+import type {
+  SceneRegistryEntry,
+  UiRegistryEntry,
+} from "./story-compiler/graph/core.ts";
 
 /**
  * story-compiler 契约（编译器下游的唯一对接面）：
@@ -71,6 +74,12 @@ export interface StoriesCompiler {
      * 会因查不到名字而 fail-closed。由编排层扫描后注入，编译器自己不读 UI 目录。
      */
     readonly uiRegistry?: readonly UiRegistryEntry[];
+    /**
+     * 场景名注册表（扫描 `scenes/` 目录的产物）；缺省 = 空表，此时从
+     * `scene_register.g` 具名导入句柄会因查不到名字而 fail-closed。
+     * 与 `uiRegistry` 分开传：两张表互不相干，合并会混掉「叠加层」与「身体」。
+     */
+    readonly sceneRegistry?: readonly SceneRegistryEntry[];
   }): CompiledStories | Promise<CompiledStories>;
 }
 

@@ -2,7 +2,7 @@ import * as ts from "typescript";
 import { WORD_NAMES, GEN_PREFIX, toPosix } from "../core.ts";
 import type { ModuleRecord, DiagBag } from "../core.ts";
 import type { AliasResolver } from "./alias.ts";
-import type { UiChannel } from "./ui-specifier.ts";
+import type { ComponentChannel } from "./component-specifier.ts";
 
 function resolveModuleFile(rel: string, spec: string): string | null {
   const dirParts = toPosix(rel).split("/").slice(0, -1);
@@ -42,7 +42,7 @@ export function resolveImports(
   diags: DiagBag,
   editorPass: boolean,
   alias?: AliasResolver,
-  uiChannel?: UiChannel,
+  componentChannels: readonly ComponentChannel[] = [],
 ): void {
   const { sf, rel } = record;
   for (const imp of record.imports) {
@@ -100,11 +100,13 @@ export function resolveImports(
       diags.add(rel, sf, imp, "引擎包不参与创作导入：请使用词汇层词函数");
       continue;
     }
-    // UI 说明符已由 UI 通道处置（登记或诊断），这里只负责不再按模块解析它——
-    // 否则 `.vue`/`.tsx` 会落到「不支持外部包」或「必须解析到相对 .ts 文件」。
+    // 组件说明符已由各自的组件通道处置（登记或诊断），这里只负责不再按模块解析它——
+    // 否则 `.vue`/`.tsx` 会落到「不支持外部包」或「必须解析到相对 .ts 文件」，
+    // 而注册表说明符会撞上下面那条「gen/ 生成物不参与创作导入」。
     if (
-      uiChannel !== undefined &&
-      uiChannel.classify(rel, spec).kind !== "not-ui"
+      componentChannels.some(
+        (channel) => channel.classify(rel, spec).kind !== "not-component",
+      )
     )
       continue;
     let targetRel: string | null;

@@ -5,22 +5,30 @@
  */
 export type {
   Binding,
+  ColumnKind,
   CompileDiag,
   ConstValue,
   Graph,
   ModuleRecord,
+  SceneRegistryEntry,
   StoryConfig,
   UiRegistryEntry,
 } from "./graph.ts";
 export {
   buildGraph,
+  collectLabelRefs,
   DiagBag,
   foldConst,
   resolveStart,
+  SCENE_REGISTER_BASENAME,
   toPosix,
 } from "./graph.ts";
 export type { CompiledStory } from "./assemble.ts";
-export { compileStoryFile, createAssembleSession } from "./assemble.ts";
+export {
+  compileLabelColumns,
+  compileStoryFile,
+  createAssembleSession,
+} from "./assemble.ts";
 export type {
   FuncRegistry,
   Scope,

@@ -94,3 +94,10 @@ export {
   type UiImportRef,
   type UiImportViolation,
 } from "./ui/index.ts";
+/** 场景名注册表（源根兄弟目录 `scenes/<名>/` 扫描；列身体的判据来源） */
+export {
+  SCENE_DIR_NAME,
+  sceneNameSet,
+  scanSceneRegistry,
+  type SceneFileEntry,
+} from "./scene/index.ts";

@@ -247,7 +247,9 @@ export {
   type ColumnNameRegistry,
   type GuardNameRegistry,
   type InterpolationKeyRegistry,
+  type KnownSceneName,
   type KnownUiName,
+  type SceneNameRegistry,
   type UiNameRegistry,
 } from "./script/index.ts";
 

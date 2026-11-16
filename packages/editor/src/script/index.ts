@@ -52,7 +52,14 @@ export {
 } from "./words/index.ts";
 
 // —— 挂载 UI（句柄形状 + 挂载词）——
-export { mount, type KnownUiName, type UiHandle, type UiNameRegistry } from "./words/index.ts";
+export {
+  mount,
+  type KnownSceneName,
+  type KnownUiName,
+  type SceneNameRegistry,
+  type UiHandle,
+  type UiNameRegistry,
+} from "./words/index.ts";
 
 // —— 叙事 ——
 export {

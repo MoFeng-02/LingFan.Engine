@@ -1,6 +1,11 @@
 import * as ts from "typescript";
 import { foldConst } from "../fold.ts";
-import { WORD_NAMES } from "../core.ts";
+import {
+  WORD_NAMES,
+  COLUMN_BODY_DECL,
+  COLUMN_BODY_PROPS_DECL,
+  COLUMN_KIND_DECL,
+} from "../core.ts";
 import type { Binding, ConstValue, ModuleRecord, DiagBag } from "../core.ts";
 import {
   defaultStoriesBuildTexts,
@@ -134,6 +139,19 @@ export function scanConstStatement(
     bind(name, { kind: "opaque" });
     return;
   }
+  // 列身体声明（`export const body = kitchen`）不是常量：值是一个组件句柄，
+  // 由图谱层的列身体拾取器单独收口（要能指认「收到的是什么」才报得清楚）。
+  // 这里只登记成不透明绑定，免得它掉进下面「必须内联为可折叠标量」的兜底文案。
+  if (isColumnBodyDecl(name, exported)) {
+    bind(name, { kind: "opaque" });
+    return;
+  }
+  // 列身体 props（`export const bodyProps = {…}`）同理：它是一棵静态值树，
+  // 折叠交给 `foldJsonValue`，不参与标量折叠。
+  if (isColumnBodyPropsDecl(name, exported)) {
+    bind(name, { kind: "opaque" });
+    return;
+  }
   const initIdentBinding = ts.isIdentifier(init)
     ? record.bindings.get(init.text)
     : undefined;
@@ -177,15 +195,45 @@ export function scanConstStatement(
       diags.add(rel, sf, init, texts.constNpmReference());
       return;
     }
+    // 列形态声明有自己的取值口径：报「必须是可折叠标量」会盖掉真正的错误说法。
     diags.add(
       rel,
       sf,
       init,
-      "模块层 const 必须内联为可折叠标量（字面量/常量运算/字符串拼接/三元/枚举成员/其他 const）",
+      isColumnKindDecl(name, exported)
+        ? texts.columnKindLiteral()
+        : "模块层 const 必须内联为可折叠标量（字面量/常量运算/字符串拼接/三元/枚举成员/其他 const）",
     );
     return;
   }
   bind(name, { kind: "const", value });
+}
+
+/**
+ * 是否是列形态声明（保留导出名 + 导出）。
+ *
+ * 只认导出名：`columnKind` 是列级保留名，写在故事文件顶层就是声明。取值判定交给
+ * 拾取器（它要按字面量口径报「必须折叠为 scene 或 flow」），这里只负责不让它掉进
+ * 标量折叠的兜底文案。
+ */
+function isColumnKindDecl(name: string, exported: boolean): boolean {
+  return exported && name === COLUMN_KIND_DECL;
+}
+
+/**
+ * 是否是列身体声明（保留导出名 + 导出）。
+ *
+ * 只认导出名，不认别的同名局部常量：`body` / `bodyProps` 是列级保留名，写在模块顶层
+ * 就是声明；写成非导出则是笔误，按理也该报——但这里放过它，由列身体拾取器统一判定
+ * 「是不是故事文件、是不是从注册表导入的句柄」，两边都报会让同一个错出两条诊断。
+ */
+function isColumnBodyDecl(name: string, exported: boolean): boolean {
+  return exported && name === COLUMN_BODY_DECL;
+}
+
+/** 是否是列身体 props 声明（保留导出名 + 导出） */
+function isColumnBodyPropsDecl(name: string, exported: boolean): boolean {
+  return exported && name === COLUMN_BODY_PROPS_DECL;
 }
 
 function isConstScalar(value: unknown): value is ConstValue {

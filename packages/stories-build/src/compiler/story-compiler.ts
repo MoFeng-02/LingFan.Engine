@@ -1,3 +1,4 @@
+import type * as ts from "typescript";
 import {
   isSafeFileNameSegment,
   type CharacterDef,
@@ -10,6 +11,7 @@ import {
 } from "../shared/index.ts";
 import {
   buildGraph,
+  compileLabelColumns,
   compileStoryFile,
   createAssembleSession,
   DiagBag,
@@ -17,6 +19,7 @@ import {
   type CompileDiag,
   type CompiledStory,
   type Graph,
+  type SceneRegistryEntry,
   type UiRegistryEntry,
 } from "./story-compiler/index.ts";
 import type { CompilerConstValues } from "./compiler-contract.ts";
@@ -50,6 +53,11 @@ export function compileStories(input: {
    * 由编排层扫描后注入，编译器自己不读 UI 目录。
    */
   readonly uiRegistry?: readonly UiRegistryEntry[];
+  /**
+   * 场景名注册表（扫描 `scenes/` 目录的产物）；缺省 = 空表。
+   * 与 `uiRegistry` 分开传：前者是列身体，后者是叠加层，合并会混掉两种挂载语义。
+   */
+  readonly sceneRegistry?: readonly SceneRegistryEntry[];
 }): CompileStoriesResult {
   const texts: StoriesBuildTexts = {
     ...defaultStoriesBuildTexts,
@@ -64,6 +72,7 @@ export function compileStories(input: {
     texts,
     input.alias,
     input.uiRegistry,
+    input.sceneRegistry,
   );
   if (graph === null) return { stories: [], diags: diags.list() };
   const entry = resolveStart(graph, diags);
@@ -78,6 +87,10 @@ export function compileStories(input: {
     const compiled = compileStoryFile(session, graph, diags, rel);
     if (compiled !== undefined) stories.push(compiled);
   }
+  // 跳转目标补列：被 `jump("X")`／`navigate("X")` 指过却不是故事列的导出函数，
+  // 按需补成 `kind:"flow"` 列——名字因此进列名注册表，跳转才能逐句回退。
+  const known = new Set(stories.map((item) => item.columnId.toLowerCase()));
+  stories.push(...compileLabelColumns(session, graph, diags, known));
   checkColumnIds(graph, diags, stories, texts);
 
   const list = diags.list();
@@ -98,18 +111,15 @@ function checkColumnIds(
   const seen = new Map<string, string>();
   for (const item of stories) {
     const record = graph.records.get(item.sourceRelPath);
-    const storyName = record?.story?.node.name;
-    if (
-      record === undefined ||
-      record.story === null ||
-      storyName === undefined
-    )
-      continue;
+    if (record === undefined) continue;
+    // 列名要么来自故事文件的 default 导出函数，要么来自按需补列的导出函数；
+    // 两种来源都要过同一条 id 规则，只是报错落点不同（后者没有 default 声明）。
+    const pos: ts.Node = record.story?.node ?? record.sf;
     if (item.columnId === "" || !isSafeFileNameSegment(item.columnId)) {
       diags.add(
         record.rel,
         record.sf,
-        storyName,
+        pos,
         texts.columnIdUnsafe(item.columnId),
       );
       continue;
@@ -120,7 +130,7 @@ function checkColumnIds(
       diags.add(
         record.rel,
         record.sf,
-        storyName,
+        pos,
         texts.columnIdDuplicate(item.columnId, prev),
       );
       continue;

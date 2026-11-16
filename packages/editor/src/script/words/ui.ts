@@ -36,6 +36,23 @@ export type KnownUiName = keyof UiNameRegistry extends never
   : keyof UiNameRegistry & string;
 
 /**
+ * 列身体组件名注册表（类型扩充点）：生成物 `src/gen/scene_register.g.ts` 尾部
+ * `declare module "@lingfan-engine/editor"` 往本接口塞进每个组件名的字面量键 ⇒
+ * 故事源里写错组件名编译期即红。空表退化为普通 string。
+ *
+ * 与 {@link UiNameRegistry} 分开而不是合并：两者虽然都是「具名句柄」，但指向的
+ * 是两类文件（`src/ui/` 是可叠加的界面层，`src/scenes/` 是列身体），各自生成物
+ * 分别声明、互不污染——合表会让只用一个的工程在另一侧多出无关名字。
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- 类型扩充点：只有接口可被生成物 declare module 合并（type 别名不能），空体是有意形态
+export interface SceneNameRegistry {}
+
+/** 已声明组件名（有声明 = 字面量联合；空 = string） */
+export type KnownSceneName = keyof SceneNameRegistry extends never
+  ? string
+  : keyof SceneNameRegistry & string;
+
+/**
  * 挂载 / 卸载一个 UI 组件：`mount(hub, true)`、`mount(hub, false)`、
  * `mount(map, true, { scene: "forest" })`。
  *

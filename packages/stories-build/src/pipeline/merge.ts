@@ -53,6 +53,46 @@ export function readCompiledEntry(
   return { story, column: typedColumn };
 }
 
+/**
+ * 把编译器交回的条目按源文件分组，并合成一份工程级 `Story`。
+ *
+ * 与 `readCompiledEntry` 的分工：那边只把一个条目读成 `{story, column}`，这边决定
+ * 「同一源文件的多列怎么归组」「哪份 story 骨架当工程骨架」。工程骨架取入口故事
+ * （config.start 命中的那个），其余故事只贡献列——所以入口故事没产出列时整个工程
+ * 没有 id/entry 可写，直接 fail-closed。
+ *
+ * defines 与版本不在本函数里落：defines 要看全部来源做跨文件冲突判定（`mergeDefines`），
+ * 版本是作者在 config.ts 里的声明，两者都由调用方在拿到合并骨架后接上。
+ */
+export function mergeCompiledStories(
+  entries: readonly CompiledStoryEntry[],
+  sourcesDirName: string,
+  startSource: string,
+): {
+  readonly merged: Story;
+  readonly bySource: Map<string, { story: Story; columns: StoryColumn[] }>;
+} {
+  const bySource = new Map<string, { story: Story; columns: StoryColumn[] }>();
+  for (const entry of entries) {
+    const { story, column } = readCompiledEntry(entry, sourcesDirName);
+    const group = bySource.get(entry.sourceRelPath);
+    if (group === undefined) {
+      bySource.set(entry.sourceRelPath, { story, columns: [column] });
+    } else {
+      group.columns.push(column);
+    }
+  }
+  const startGroup = bySource.get(startSource);
+  if (startGroup === undefined) {
+    throw new StoryBuildError(
+      `${sourcesDirName}/${startSource}: 入口故事未产出任何列（compileStories 契约破坏）`,
+    );
+  }
+  const merged = startGroup.story;
+  merged.columns = [...bySource.values()].flatMap((group) => group.columns);
+  return { merged, bySource };
+}
+
 /** 形态 A（state 导出）与模块层 define 互斥时的失败文案：每条调用一行，带落点。 */
 export function raiseFormAConflict(
   sourcesDirName: string,

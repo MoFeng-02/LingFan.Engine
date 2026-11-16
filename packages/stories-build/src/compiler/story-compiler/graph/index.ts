@@ -6,16 +6,30 @@
  */
 export type {
   Binding,
+  ColumnKind,
   CompileDiag,
+  ComponentRecord,
+  ComponentRegistryEntry,
   ConstValue,
   Graph,
+  JsonObject,
+  JsonValue,
   ModuleRecord,
+  SceneRecord,
+  SceneRegistryEntry,
   StoryConfig,
   UiRecord,
   UiRegistryEntry,
 } from "./core.ts";
 export {
+  COLUMN_BODY_DECL,
+  COLUMN_BODY_PROPS_DECL,
+  COLUMN_FONT_DECL,
+  COLUMN_KIND_DECL,
+  COLUMN_TYPE_DECL,
   DiagBag,
+  SCENE_DIR_NAME,
+  SCENE_REGISTER_BASENAME,
   toPosix,
   UI_DIR_NAME,
   UI_EXTENSIONS,
@@ -24,5 +38,14 @@ export {
 } from "./core.ts";
 export { foldConst } from "./fold.ts";
 export { buildGraph, resolveStart } from "./build.ts";
+export { collectLabelRefs } from "./label-refs.ts";
+export type { LabelRef } from "./label-refs.ts";
 export { createUiChannel } from "./scan/ui-specifier.ts";
 export type { UiChannel, UiOutcome } from "./scan/ui-specifier.ts";
+export { createSceneChannel } from "./scan/scene-specifier.ts";
+export type { SceneChannel, SceneOutcome } from "./scan/scene-specifier.ts";
+export { createComponentChannel } from "./scan/component-specifier.ts";
+export type {
+  ComponentChannel,
+  ComponentOutcome,
+} from "./scan/component-specifier.ts";

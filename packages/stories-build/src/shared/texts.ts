@@ -68,6 +68,30 @@ export interface StoriesBuildTexts {
   unknownUisGate(detail: string, sourcesDir: string, uiDirName: string): string;
   /** UI 文件的 import 面越界（ui/scan-imports；detail = 已折叠的明细行集） */
   uiImportGate(detail: string, uiDirName: string): string;
+  /** 场景说明符落在 `src/scenes/` 之外（graph/scan/scene-import） */
+  sceneOutside(spec: string, sourceRootName: string): string;
+  /** 场景导入的绑定名与目录名不一致（graph/scan/scene-import） */
+  sceneBindingName(name: string, received: string): string;
+  /** 场景导入的文件名与目录名不一致（graph/scan/scene-import） */
+  sceneFileName(name: string, file: string): string;
+  /** 场景导入必须是 default 导入（graph/scan/scene-import） */
+  sceneDefaultImport(name: string): string;
+  /** 场景注册表里没有这个句柄名（graph/scan/scene-import） */
+  sceneRegisterMissing(name: string): string;
+  /** 场景注册表不接受 default 导入与命名空间导入（graph/scan/scene-import） */
+  sceneRegisterNoDefault(): string;
+  /** 场景注册表的副作用导入不取任何句柄（graph/scan/scene-import） */
+  sceneRegisterSideEffect(): string;
+  /** columnKind 的取值不是字面量（graph/build） */
+  columnKindLiteral(): string;
+  /** body 的值不是从场景注册表具名导入的句柄（graph/build） */
+  columnBodyHandle(received: string): string;
+  /** bodyProps 不是静态对象字面量（graph/build） */
+  columnBodyProps(): string;
+  /** columnKind 声明为 scene 却没给 body（graph/build） */
+  columnBodyMissing(): string;
+  /** jump/navigate 的字符串目标既不是列也不是导出函数（assemble/labels） */
+  labelTargetMissing(name: string): string;
 }
 
 /** 缺省文案：即 stories-build 的既有文案。 */
@@ -123,4 +147,30 @@ export const defaultStoriesBuildTexts: StoriesBuildTexts = {
     `→ ${uiDirName}/** 下的文件只允许四类：相对路径引用 ${uiDirName}/ 内的文件、` +
     `框架包（vue / react / react-dom / react/jsx-runtime）、` +
     `从 @lingfan-engine/core 取纯类型（import type）、别名 @/${uiDirName}/**`,
+  sceneOutside: (spec, sourceRootName) =>
+    `场景说明符 \`${spec}\` 必须解析到 ${sourceRootName} 的兄弟目录 \`scenes/<名>/<名>.<扩展名>\`` +
+    `（场景沙箱是源根的上一级，不是源根内部）`,
+  sceneBindingName: (name, received) =>
+    `场景导入的绑定名必须是目录名（import ${name} from ".../scenes/${name}/${name}.vue"），收到 \`${received}\``,
+  sceneFileName: (name, file) =>
+    `场景文件名必须等于目录名：\`scenes/${name}/\` 下只能有 \`${name}.<扩展名>\`，收到 \`${file}\``,
+  sceneDefaultImport: (name) =>
+    `场景导入必须是 default 导入（import ${name} from ".../scenes/${name}/${name}.vue"）——一个场景只导出一个句柄`,
+  sceneRegisterMissing: (name) =>
+    `场景注册表里没有 \`${name}\`——句柄名必须与 \`scenes/<名>/\` 目录名一致`,
+  sceneRegisterNoDefault: () =>
+    `场景注册表没有默认导出，也没有命名空间导出：请用具名导入（import { 句柄名 } from ".../gen/scene_register.g"）`,
+  sceneRegisterSideEffect: () =>
+    "场景注册表的副作用导入不支持：它只提供句柄，请显式导入所需句柄",
+  columnKindLiteral: () =>
+    'columnKind 必须折叠为 "scene" 或 "flow" 字面量（缺省即 flow，不必声明）',
+  columnBodyHandle: (received) =>
+    `body 必须是从 scene_register.g 具名导入的组件句柄（收到 \`${received}\`）`,
+  columnBodyProps: () =>
+    "bodyProps 必须是静态对象字面量（进 SYS.body 的值必须 JSON 安全，运行期不参与求值）",
+  columnBodyMissing: () =>
+    "columnKind 声明为 scene 时必须同时声明 body——组件化的列的身体来自组件，不是命令体",
+  labelTargetMissing: (name) =>
+    `jump/navigate 的目标 \`${name}\` 既不是故事列，也不是任何模块导出的函数` +
+    `——目标拼错或函数没写 export，构建期拦截（运行期跳转会落空）`,
 };

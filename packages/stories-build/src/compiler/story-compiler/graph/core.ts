@@ -36,6 +36,21 @@ export class DiagBag {
 
 export type ConstValue = string | number | boolean | null;
 
+/**
+ * 列种类：`scene`（身体由组件承载）或 `flow`（命令体承载）。
+ *
+ * 缺省即 `flow`——绝大多数列都不必声明，只有组件化的房间才写
+ * `export const columnKind = "scene"`。
+ */
+export type ColumnKind = "scene" | "flow";
+
+/** JSON 安全值：进 `SYS.body` 的 props 必须是这个形状，引擎不求值 */
+export type JsonValue =
+  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+/** JSON 安全对象（`bodyProps` 折叠后的落账形状） */
+export type JsonObject = { [key: string]: JsonValue };
+
 export type Binding =
   | { kind: "word"; name: string }
   | { kind: "namespace" }
@@ -51,22 +66,29 @@ export type Binding =
       members: ReadonlyMap<string, ConstValue>;
     }
   | { kind: "story"; file: string; name: string }
-  | { kind: "ui"; name: string };
+  | { kind: "ui"; name: string }
+  | { kind: "scene"; name: string };
 
 /**
- * 一次 UI 导入在模块记录里留下的痕迹：只有一个名字与一条相对路径。
+ * 一次组件导入在模块记录里留下的痕迹：只有一个名字与一条相对路径。
  *
- * 装配期靠 `name` 写列级 `uis` 声明，`relPath` 只用于生成/审计定位；UI 文件本身
- * 从不进图谱、不读内容——句柄是纯静态事实，运行期怎么挂载不归编译期管。
+ * 叠加层组件（`ui`）与列身体组件（`scenes`）共用这个形状：两者都是「名字 = 目录名」
+ * 的静态事实，文件本身从不进图谱、不读内容——运行期怎么渲染不归编译期管。
  */
-export interface UiRecord {
-  /** UI 名（= 目录名 = 绑定名 = 文件名去扩展名） */
+export interface ComponentRecord {
+  /** 组件名（= 目录名 = 绑定名 = 文件名去扩展名） */
   name: string;
-  /** UI 文件相对 `src/` 的 posix 路径（如 `ui/hub/hub.vue`） */
+  /** 组件文件相对 `src/` 的 posix 路径（如 `ui/hub/hub.vue`） */
   relPath: string;
   /** 触发这次登记的导入声明（诊断定位用） */
   node: ts.Node;
 }
+
+/** 一个 UI 导入的落账（形状与其余组件一致） */
+export type UiRecord = ComponentRecord;
+
+/** 一个场景（列身体）导入的落账（形状与其余组件一致） */
+export type SceneRecord = ComponentRecord;
 
 export interface ModuleRecord {
   rel: string;
@@ -85,8 +107,16 @@ export interface ModuleRecord {
   columnFont: { value: string; node: ts.Node } | null;
   /** 列类型声明（`export const columnType = "ui"`；仅故事文件合法，null = 未声明） */
   columnType: { value: SceneType; node: ts.Node } | null;
+  /** 列种类声明（`export const columnKind = "scene"`；null = 未声明，等价 flow） */
+  columnKind: { value: ColumnKind; node: ts.Node } | null;
+  /** 列身体组件声明（`export const body = kitchen`；null = 未声明） */
+  columnBody: { value: string; node: ts.Node } | null;
+  /** 列身体 props（`export const bodyProps = {…}`；null = 未声明） */
+  columnBodyProps: { value: JsonObject; node: ts.Node } | null;
   /** UI 导入登记：UI 名 → 记录。UI 文件不进图谱，这里只留名字与路径 */
   uis: Map<string, UiRecord>;
+  /** 场景（列身体）导入登记：形状与 `uis` 一致，两张表互不合并 */
+  scenes: Map<string, SceneRecord>;
 }
 
 export interface StoryConfig {
@@ -115,6 +145,28 @@ export const COLUMN_FONT_DECL = "columnFont";
 export const COLUMN_TYPE_DECL = "columnType";
 
 /**
+ * 列种类声明的保留导出名（`export const columnKind = "scene"`，仅故事文件顶层）。
+ *
+ * 缺省即 `flow`，所以绝大多数列不必写它；写了 `scene` 就必须同时给 `body`。
+ */
+export const COLUMN_KIND_DECL = "columnKind";
+
+/**
+ * 列身体声明的保留导出名（`export const body = kitchen`，仅故事文件顶层）。
+ *
+ * 值是**具名导入的组件句柄**，不是文件路径字符串——句柄与 `import kitchen from
+ * "../scenes/kitchen/kitchen.vue"` 折叠出同一个名字，两边共用一个判定。
+ */
+export const COLUMN_BODY_DECL = "body";
+
+/**
+ * 列身体 props 的保留导出名（`export const bodyProps = { … }`，仅故事文件顶层）。
+ *
+ * 必须是静态对象字面量：值是 JSON 安全的，引擎原样写进 `SYS.body`，运行期不求值。
+ */
+export const COLUMN_BODY_PROPS_DECL = "bodyProps";
+
+/**
  * UI 导入可用的文件扩展名（小写比对）。
  *
  * 只出现在 `src/ui/<名>/<名>.<扩展名>` 这一种形态里；扩展名本身不决定「这是不是 UI」——
@@ -132,6 +184,17 @@ export function uiExtensionOf(specifier: string): string | undefined {
 /** UI 根目录名（源根的兄弟目录，与故事源平级） */
 export const UI_DIR_NAME = "ui";
 
+/** 场景（列身体）根目录名（源根的兄弟目录，与故事源平级） */
+export const SCENE_DIR_NAME = "scenes";
+
+/**
+ * 场景注册表生成物的基名（不带扩展名）：生成物是 `<生成物目录>/<基名>.ts`，
+ * 故事源以**命名导入**从 `../../gen/scene_register.g` 取句柄（形如 `{ kitchen }`）。
+ *
+ * 与 UI 注册表分属两份生成物、两张表——合并会让挂载面与身体面互相串号。
+ */
+export const SCENE_REGISTER_BASENAME = "scene_register.g";
+
 /**
  * UI 注册表生成物的基名（不带扩展名）：生成物是 `<生成物目录>/<基名>.ts`，
  * 故事源以**命名导入**从 `../../gen/ui_register.g` 取句柄（形如 `{ hub }`）。
@@ -141,17 +204,25 @@ export const UI_DIR_NAME = "ui";
 export const UI_REGISTER_BASENAME = "ui_register.g";
 
 /**
- * UI 注册表条目：一个 UI 的名字与它的实现文件名。
+ * 组件注册表条目：一个组件的名字与它的实现文件名。
  *
- * 声明在这里而不是 UI 注册表实现里，是因为图谱层（UI 通道）也要消费它，而
+ * 声明在这里而不是注册表实现里，是因为图谱层（组件通道）也要消费它，而
  * 注册表实现反过来依赖本文件的 `UI_EXTENSIONS`——放实现里会成环。
+ *
+ * `ui` 与 `scenes` 两张表条目同形，分量只在表本身（谁在哪个目录里）。
  */
-export interface UiRegistryEntry {
-  /** UI 名（= 目录名 = 文件名去扩展名） */
+export interface ComponentRegistryEntry {
+  /** 组件名（= 目录名 = 文件名去扩展名） */
   readonly name: string;
   /** 实现文件名（含扩展名，如 `hub.vue`） */
   readonly file: string;
 }
+
+/** 一个 UI 的注册表条目（形状与其余组件一致） */
+export type UiRegistryEntry = ComponentRegistryEntry;
+
+/** 一个场景（列身体）的注册表条目（形状与其余组件一致） */
+export type SceneRegistryEntry = ComponentRegistryEntry;
 
 export const WORD_NAMES: ReadonlySet<string> = new Set(
   Object.keys(script).filter(

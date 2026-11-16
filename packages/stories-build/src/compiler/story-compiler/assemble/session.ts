@@ -2,6 +2,7 @@ import {
   compareOrdinal,
   normalizeUiNames,
   type CharacterDef,
+  type ColumnBody,
   type Story,
   type StoryCommand,
 } from "@lingfan-engine/core";
@@ -9,7 +10,8 @@ import {
   defaultStoriesBuildTexts,
   type StoriesBuildTexts,
 } from "../../../shared/index.ts";
-import type { DiagBag, Graph } from "../graph.ts";
+import type { ColumnKind, DiagBag, Graph } from "../graph.ts";
+import { expandClosure } from "./closure.ts";
 import { compileFunction, partitionFunctions, tryFuncOp } from "./functions.ts";
 import { undeclaredMountUis } from "./mount-uis.ts";
 import {
@@ -80,6 +82,25 @@ export function compileStoryFile(
   // 定序与去重交给契约层的唯一实现，保证同源同产物 ——
   const columnUis = normalizeUiNames([...mod.uis.keys()]);
 
+  // —— 列种类：不声明即 flow（零改动）。声明 scene 的列，身体来自组件句柄而不是命令体：
+  // 命令依旧翻译（它们是进列后要跑的那串），但落在 `entry` 上，且**不产出 `elements`**
+  // ——组件自己画整屏，空元素表只会与 `body` 撞成 `body-conflict-elements`。 ——
+  // 身体与 kind 正交：`scene` 列用组件画整屏，`flow` 列也可以带身体（典型用法是
+  // 「对话列声明与房间列相同的 body」——`loadBody` 的 `sameBody` 对账发现形状没变就
+  // 不写 `SYS.body`，宿主不重挂，换列而画面不动）。所以这里不按 kind 过滤：
+  // 只要声明了 `body` 就投影，免得 flow 列上的 `body` 被静默丢弃。
+  const kind: ColumnKind =
+    mod.columnKind === null ? "flow" : mod.columnKind.value;
+  const body: ColumnBody | undefined =
+    mod.columnBody !== null
+      ? {
+          name: mod.columnBody.value,
+          ...(mod.columnBodyProps !== null
+            ? { props: mod.columnBodyProps.value }
+            : {}),
+        }
+      : undefined;
+
   const registry: FuncRegistry = { refs: new Map(), names: new Map() };
   const shared = {
     mod,
@@ -118,22 +139,7 @@ export function compileStoryFile(
     nested.push(compiled);
   }
 
-  const closure = new Map<string, CompiledFunction>();
-  const worklist = [...registry.refs.keys()];
-  while (worklist.length > 0) {
-    const key = worklist.pop()!;
-    if (closure.has(key)) continue;
-    const sep = key.indexOf("#");
-    const file = key.slice(0, sep);
-    const fnName = key.slice(sep + 1);
-    const target = graph.records.get(file);
-    const decl = target?.functions.get(fnName);
-    if (target === undefined || decl === undefined) continue;
-    const compiled = compileFunction(session, graph, diags, file, [], decl, []);
-    if (compiled === undefined) continue;
-    closure.set(key, compiled);
-    worklist.push(...compiled.refs);
-  }
+  const closure = expandClosure(session, graph, diags, registry.refs.keys());
 
   const columnNames = new Map<
     string,
@@ -211,14 +217,25 @@ export function compileStoryFile(
     id: columnId,
     entry: columnId,
     columns: [
-      {
-        id: columnId,
-        kind: "flow",
-        ...(columnType !== undefined ? { type: columnType } : {}),
-        ...(columnFont !== undefined ? { font: columnFont } : {}),
-        ...(columnUis.length > 0 ? { uis: columnUis } : {}),
-        commands,
-      },
+      kind === "scene"
+        ? {
+            id: columnId,
+            kind,
+            ...(columnType !== undefined ? { type: columnType } : {}),
+            ...(columnFont !== undefined ? { font: columnFont } : {}),
+            ...(columnUis.length > 0 ? { uis: columnUis } : {}),
+            ...(body !== undefined ? { body } : {}),
+            entry: commands,
+          }
+        : {
+            id: columnId,
+            kind,
+            ...(columnType !== undefined ? { type: columnType } : {}),
+            ...(columnFont !== undefined ? { font: columnFont } : {}),
+            ...(columnUis.length > 0 ? { uis: columnUis } : {}),
+            ...(body !== undefined ? { body } : {}),
+            commands,
+          },
     ],
   };
   return { columnId, sourceRelPath: rel, story };

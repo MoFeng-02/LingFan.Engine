@@ -76,6 +76,7 @@ export {
   type MountStore,
   type MountTable,
 } from "./mount";
+export { selectBody, type BodySelection } from "./body";
 export { continueSlot, latestSave } from "./save";
 export {
   createElementRegistry,
