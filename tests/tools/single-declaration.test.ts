@@ -37,9 +37,9 @@ function stripComments(text: string): string {
     .replace(/(^|[^:"'`])\/\/[^\n]*/g, "$1");
 }
 
-/** 声明行：`type X =` / `interface X {` / `interface X extends` 三种后续形态才算 */
+/** 声明行：`type X =` / `type X<…> =` / `interface X {` / `interface X extends` / `interface X<…>` 后续形态才算 */
 const DECL_RE =
-  /^[ \t]*(?:export[ \t]+)?(?:declare[ \t]+)?(?:interface|type)[ \t]+([A-Za-z_$][\w$]*)[ \t]*(?:=[ \t]|extends\b|\{)/gm;
+  /^[ \t]*(?:export[ \t]+)?(?:declare[ \t]+)?(?:interface|type)[ \t]+([A-Za-z_$][\w$]*)[ \t]*(?:=[ \t]|extends\b|\{|<)/gm;
 
 /** 从「路径 → 源码」清单建立 概念名 → 声明文件清单（同文件重复声明只记一次） */
 function declaringFiles(
@@ -83,9 +83,15 @@ const SINGLE: Record<string, string> = {
   // 舞台适配：配置契约与布局数值都在引擎（宿主一律取解析与计算的结果）
   StageConfig: "packages/core/src/contracts/shell.ts",
   StageLayout: "packages/core/src/contracts/shell.ts",
+  // 词汇层命令类型：单一声明在引擎 script 子路径（编辑器侧只转出）
+  CommandOf: "packages/core/src/script/command.ts",
+  ScriptCommand: "packages/core/src/script/command.ts",
+  ScriptOpName: "packages/core/src/script/command.ts",
+  ScriptValue: "packages/core/src/script/payloads/shared.ts",
+  StateScriptValue: "packages/core/src/script/payloads/shared.ts",
   // 编辑器作者面：命令参数名与运行期状态名分开
-  NvlCommandMode: "packages/editor/src/script/words/narrative.ts",
-  MenuOptionSpec: "packages/editor/src/script/words/narrative.ts",
+  NvlCommandMode: "packages/core/src/script/words/narrative.ts",
+  MenuOptionSpec: "packages/core/src/script/words/narrative.ts",
   // 宿主侧：宿主专属形状带宿主前缀
   VueNarrativeState:
     "apps/playground/src/host/narrative/runtime/narrative-state.ts",

@@ -47,7 +47,7 @@ describe("ui_register.g.ts 渲染", () => {
       'export const hub: UiHandle<"hub"> = { face: "uis", name: "hub" };',
     );
     // 类型面：declare module 合并进词汇层的空接口
-    expect(text).toContain('declare module "@lingfan-engine/editor" {');
+    expect(text).toContain('declare module "@lingfan-engine/core" {');
     expect(text).toContain("  interface UiNameRegistry {");
     expect(text).toContain('    "hub": 1;');
     // 生成物以换行收尾（差量比较靠逐字节一致）
@@ -60,8 +60,7 @@ describe("ui_register.g.ts 渲染", () => {
     expect(text).toContain("};");
     // 没有 UI 就不该出现任何具名句柄导出（否则宿主读到一个不存在的组件）
     expect(text).not.toContain("UiHandle<");
-    // 类型面同理整段省略：空接口的 `declare module "@lingfan-engine/editor"` 会让
-    // 没有 editor 依赖的工程（骨架层就不带）解析不到模块，而它一个名字也登记不了
+    // 类型面同理整段省略：一段空登记处一个名字也登记不了——不必多写一段
     expect(text).not.toContain("UiNameRegistry");
   });
 

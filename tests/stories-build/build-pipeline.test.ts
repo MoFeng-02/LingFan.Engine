@@ -787,7 +787,7 @@ export default function start(): void {
     expect(gen).toContain('"helper-guard": helperGuard,');
     expect(gen).toContain('from "../Stories.src/common/tools"');
     // 类型扩充（vue-router typed-routes 机制）
-    expect(gen).toContain('declare module "@lingfan-engine/editor"');
+    expect(gen).toContain('declare module "@lingfan-engine/core"');
     expect(gen).toContain('"gold-non-negative": 1;');
     // 幂等：二次构建零差量（含生成物）
     const again = await buildStories(root);

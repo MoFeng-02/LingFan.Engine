@@ -57,7 +57,7 @@ describe("词汇层声明 · 生成物新鲜度（与重建 CLI 同一纯函数�
   it("vocabulary.g.ts 与「words 源 × OP_SCHEMA_MAP」重建产物逐字节一致", () => {
     // 改注册表/词条后未跑 generate-vocabulary ⇒ 此处红；重建后 ⇒ 绿
     const wordsDir = new URL(
-      "../../packages/editor/src/script/words/",
+      "../../packages/core/src/script/words/",
       import.meta.url,
     );
     const sources = selectWordSources(readdirSync(wordsDir)).map((file) => ({

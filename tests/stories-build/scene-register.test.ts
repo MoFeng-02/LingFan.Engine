@@ -13,7 +13,7 @@
  * - 同一次扫描必得同一份文本（差量写盘靠这个）；
  * - 名字含 `-` 时不生成具名句柄（不是合法标识符），只走 `scenes` 表与字符串形态。
  *
- * `SceneNameRegistry` 这一段只有在 `@lingfan-engine/editor` 里存在同名空接口时才对
+ * `SceneNameRegistry` 这一段只有在 `@lingfan-engine/core` 里存在同名空接口时才对
  * 消费端可见——最后一条用例用一次真实的 tsc 编译锁住「不是静默落空」。
  */
 import { execFileSync } from "node:child_process";
@@ -58,7 +58,7 @@ describe("scene_register.g.ts 渲染", () => {
       'export const kitchen: UiHandle<"kitchen"> = { face: "uis", name: "kitchen" };',
     );
     // 类型面：declare module 合并进词汇层的空接口
-    expect(text).toContain('declare module "@lingfan-engine/editor" {');
+    expect(text).toContain('declare module "@lingfan-engine/core" {');
     expect(text).toContain("  interface SceneNameRegistry {");
     expect(text).toContain('    "kitchen": 1;');
     // 生成物以换行收尾（差量比较靠逐字节一致）
@@ -71,8 +71,7 @@ describe("scene_register.g.ts 渲染", () => {
     expect(text).toContain("};");
     // 没有场景就不该出现任何具名句柄导出（否则宿主读到一个不存在的组件）
     expect(text).not.toContain("UiHandle<");
-    // 类型面同理整段省略：一段空登记处一个名字也登记不了，却会逼没有 editor
-    // 依赖的工程去解析这个模块
+    // 类型面同理整段省略：一段空登记处一个名字也登记不了——不必多写一段
     expect(text).not.toContain("SceneNameRegistry");
   });
 
@@ -243,7 +242,7 @@ describe("整链：构建产出 scene_register.g.ts", () => {
 
 describe("SceneNameRegistry 对消费端可见（不是静默落空）", () => {
   /**
-   * 一次真实编译：生成物里那段 `declare module` 只有在 `@lingfan-engine/editor`
+   * 一次真实编译：生成物里那段 `declare module` 只有在 `@lingfan-engine/core`
    * 存在同名空接口时才合并得进去。接口缺席时 `keyof SceneNameRegistry` 会
    * `TS2304`，登记表等于没写——这条用例就是防这个的。
    */

@@ -157,7 +157,7 @@ export default function start(): void {
       ),
     ).toBe(true);
     expect(text).toContain("export {};");
-    expect(text).toContain('declare module "@lingfan-engine/editor" {');
+    expect(text).toContain('declare module "@lingfan-engine/core" {');
 
     // 列名：两列都出现（来自编译产物列 id，不是文件名猜的）。
     expect(registryKeys(text, "ColumnNameRegistry")).toEqual([
