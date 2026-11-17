@@ -332,21 +332,28 @@ export default defineConfigWithVueTs(
   },
   {
     name: "lingfan/pure-layer-no-dom",
-    // 纯层：渲染描述树（packages/ui）与宿主装配语义（packages/shell）都必须在
-    // 任何平台之外成立——否则小程序与未来 AOT 拿不到可用实现。DOM 只允许出现在
-    // packages/ui/src/dom/（DOM 物化器与覆盖层表面，目录头注释已声明该边界）。
+    // 纯层：引擎语义（packages/core）、渲染描述树（packages/ui）与宿主装配语义
+    // （packages/shell）都必须在任何平台之外成立——否则小程序与未来 AOT 拿不到
+    // 可用实现。DOM 只允许出现在 packages/ui/src/dom/（DOM 物化器与覆盖层表面，
+    // 目录头注释已声明该边界）。
     //
     // 注意：flat config 是**后块覆盖前块**：本块 files 比 lingfan/legacy-webview-compat
     // 窄，若本块只配 DOM 项，老 WebView 内建守卫（16 条 MemberExpression 选择器 +
-    // structuredClone/BigInt）就会在 packages/ui 与 packages/shell 里**静默失效**
-    // 。故这里把前块的同名规则条目完整复制，再追加 15 项 DOM 全局与
+    // structuredClone/BigInt）就会在 packages/core、packages/ui 与 packages/shell
+    // 里**静默失效**。故这里把前块的同名规则条目完整复制，再追加 15 项 DOM 全局与
     // dom 目录的 import 拦截。重复是覆盖语义下的唯一正确做法。
     // 防漂移由 tests/tools/pure-layer-dom.test.ts 兜底：该测试既断言本块带齐
     // legacy 条目，也做一次真实 lintText 证明 structuredClone 仍被咬。
     //
-    // `packages/core` 不在本块内：那里 `window` 是**叙事 op 名**
-    // （`runtime/ops/dispatch.ts` 的 `case "window"`）。将来若扩面必须先排掉这些。
-    files: ["packages/ui/src/**/*.ts", "packages/shell/src/**/*.ts"],
+    // packages/core 也在本块内：core 的 `window` 是叙事 op 名，只以字符串字面量
+    // （`runtime/dispatch.ts` 的 `case "window"`）与对象键（`window:`）出现，
+    // 二者都不是全局值引用，no-restricted-globals 不会命中；体检测试的 window
+    // 判据只认取值形态，同样不命中。
+    files: [
+      "packages/ui/src/**/*.ts",
+      "packages/shell/src/**/*.ts",
+      "packages/core/src/**/*.ts",
+    ],
     ignores: ["packages/ui/src/dom/**"],
     rules: {
       "no-restricted-syntax": [

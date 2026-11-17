@@ -1,9 +1,9 @@
 /**
- * 纯层 DOM 体检：`packages/ui/src`（除 `src/dom/`）与 `packages/shell/src` 是
- * **渲染描述树与宿主装配语义**，二者都必须在任何平台之外成立——否则小程序与未来
- * AOT 拿不到可用实现。DOM 只允许出现在 `packages/ui/src/dom/`（DOM 物化器与覆盖层
- * 表面），这条边界在 `eslint.config.js` 的 `lingfan/pure-layer-no-dom` 块里是机器
- * 判据，在这里是**第二道体检**。
+ * 纯层 DOM 体检：`packages/core/src`（引擎语义）、`packages/ui/src`（除 `src/dom/`，
+ * 渲染描述树）与 `packages/shell/src`（宿主装配语义）都必须在任何平台之外成立——
+ * 否则小程序与未来 AOT 拿不到可用实现。DOM 只允许出现在 `packages/ui/src/dom/`
+ * （DOM 物化器与覆盖层表面），这条边界在 `eslint.config.js` 的
+ * `lingfan/pure-layer-no-dom` 块里是机器判据，在这里是**第二道体检**。
  *
  * 为什么两道都要：eslint 的 `no-restricted-globals` 只拦**值引用**，类型注解
  * （`foo: HTMLElement` 里的 `HTMLElement` 是 `TSTypeReference`）拦不住（`06` §2.2）；
@@ -38,6 +38,12 @@ const shellSources = import.meta.glob("../../packages/shell/src/**/*.ts", {
   import: "default",
 }) as Record<string, string>;
 
+const coreSources = import.meta.glob("../../packages/core/src/**/*.ts", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+}) as Record<string, string>;
+
 /**
  * 剥离器：把注释与字符串替换成空格，只留代码骨架。
  *
@@ -63,8 +69,9 @@ function stripToCodeSkeleton(source: string): string {
  *
  * `window` 只认**取值形态**（`window.` / `window[`）：`packages/ui/src/element/
  * renderers/register.ts` 里 `window:` 是元素类型表的**键名**（`window` 是本仓的
- * 叙事元素类型），裸词判据会把它误报成 DOM 触点。裸值形态（`useWindow(window)`）
- * 由 eslint 那道拦——两道判据覆盖不同形态，这是分工不是缺口。
+ * 叙事元素类型），裸词判据会把它误报成 DOM 触点。core 的 `window` 同样是叙事
+ * op 名（字符串字面量与对象键）：字符串先被剥掉，键名不匹配取值正则。裸值形态
+ * （`useWindow(window)`）由 eslint 那道拦——两道判据覆盖不同形态，这是分工不是缺口。
  * `cancelAnimationFrame` 与 `requestAnimationFrame` 同属帧源，一并列。
  */
 const DOM_VALUE_SYMBOLS: ReadonlyArray<{ label: string; re: RegExp }> = [
@@ -131,14 +138,16 @@ function allowlisted(path: string, symbol: string): boolean {
   return ALLOWLIST.some((e) => e.path === path && e.symbol === symbol);
 }
 
-/** 扫描面：ui（除 dom/）+ shell 的全部源码骨架 */
+/** 扫描面：core + ui（除 dom/）+ shell 的全部源码骨架 */
 const scannedFiles: ReadonlyArray<{ path: string; raw: string }> = [
+  ...Object.entries(coreSources).map(([k, v]) => ({ path: rel(k), raw: v })),
   ...Object.entries(uiSources).map(([k, v]) => ({ path: rel(k), raw: v })),
   ...Object.entries(shellSources).map(([k, v]) => ({ path: rel(k), raw: v })),
 ];
 
 describe("纯层 DOM 体检（源级扫描）", () => {
   it("扫描面非空（glob 失配时立刻失败，不许空转通过）", () => {
+    expect(Object.keys(coreSources).length).toBeGreaterThanOrEqual(150);
     expect(Object.keys(uiSources).length).toBeGreaterThanOrEqual(50);
     expect(Object.keys(shellSources).length).toBeGreaterThanOrEqual(10);
     // 负向模式生效：dom/ 目录确实不在扫描面里（它在磁盘上有 4 个文件）
@@ -177,6 +186,19 @@ describe("纯层 DOM 体检（源级扫描）", () => {
     expect(domHits("const t = 'a // b'; const h = HTMLElement;")).toEqual([
       "HTMLElement",
     ]);
+  });
+
+  it("core：零 DOM 触点（叙事 op 名是字符串/键名，不是 DOM 取值）", () => {
+    const offenders = scannedFiles
+      .filter((f) => f.path.startsWith("packages/core/src/"))
+      .map((f) => ({ path: f.path, hits: domHits(f.raw) }))
+      .filter((f) => f.hits.some((h) => !allowlisted(f.path, h)));
+
+    expect(
+      offenders,
+      "引擎核心层出现 DOM 触点：" +
+        offenders.map((f) => `${f.path} → ${f.hits.join("/")}`).join("；"),
+    ).toEqual([]);
   });
 
   it("ui：除 src/dom/ 外零 DOM 触点", () => {
@@ -277,8 +299,9 @@ describe("eslint 纯层判据（配置源结构）", () => {
     };
   }
 
-  it("纯层块在位，文件域含 ui/shell 且忽略 dom 目录", () => {
+  it("纯层块在位，文件域含 core/ui/shell 且忽略 dom 目录", () => {
     const { pure } = blockTexts();
+    expect(pure).toContain('"packages/core/src/**/*.ts"');
     expect(pure).toContain('"packages/ui/src/**/*.ts"');
     expect(pure).toContain('"packages/shell/src/**/*.ts"');
     expect(pure).toContain(`"${DOM_DIR}**"`);
@@ -403,6 +426,7 @@ describe("eslint 纯层判据（生效面）", () => {
   const ENTRY_FILE = "packages/ui/src/index.ts";
   const PURE_FILE = "packages/ui/src/element/style.ts";
   const DOM_FILE = "packages/ui/src/dom/materialize.ts";
+  const CORE_FILE = "packages/core/src/runtime/dispatch.ts";
 
   /** 16 条老 WebView 守卫：取自配置源的单一来源常量（见文件上部同名辅助） */
   // 这里复用模块级的 legacySelectors()，不再从 legacy 块切文本——
@@ -429,7 +453,7 @@ describe("eslint 纯层判据（生效面）", () => {
   const effective = new Map<string, string[]>();
 
   beforeAll(async () => {
-    for (const file of [ENTRY_FILE, PURE_FILE, DOM_FILE]) {
+    for (const file of [ENTRY_FILE, PURE_FILE, DOM_FILE, CORE_FILE]) {
       effective.set(file, await effectiveSyntax(file));
     }
   }, 120_000);
@@ -520,5 +544,72 @@ describe("eslint 纯层判据（生效面）", () => {
     for (const name of ["structuredClone", "BigInt"]) {
       expect(names, `入口缺少 ${name}`).toContain(name);
     }
+  }, 60_000);
+
+  it("core 文件：legacy 16 条与三条 dom 拦截齐全（扩面后守卫不静默失效）", () => {
+    const actual = syntaxOf(CORE_FILE);
+    const missing = legacySelectors().filter((s) => !actual.includes(s));
+    expect(missing, `core 文件上失效的守卫：${missing.join(" / ")}`).toEqual(
+      [],
+    );
+    for (const prefix of [
+      "ImportDeclaration",
+      "ExportNamedDeclaration",
+      "ExportAllDeclaration",
+    ]) {
+      expect(
+        actual.some((s) => s.startsWith(`${prefix}[source.value=`)),
+        `${CORE_FILE} 缺少 ${prefix} 的 dom 拦截`,
+      ).toBe(true);
+    }
+  });
+
+  it("core 文件的全局判据生效（17 项：2 老 WebView + 15 DOM）", async () => {
+    const eslint = new ESLint({
+      cwd: fileURLToPath(new URL("../..", import.meta.url)),
+    });
+    const config = await eslint.calculateConfigForFile(CORE_FILE);
+    const rule = config.rules?.["no-restricted-globals"];
+    expect(
+      Array.isArray(rule),
+      "core 文件没有生效的 no-restricted-globals",
+    ).toBe(true);
+    const names = (rule as unknown[])
+      .slice(1)
+      .map((g) => (typeof g === "string" ? g : (g as { name?: string }).name))
+      .filter(Boolean);
+    expect(names, `core 全局判据缺项：${names.join(",")}`).toHaveLength(17);
+    for (const name of ["window", "document", "structuredClone", "BigInt"]) {
+      expect(names, `core 缺少 ${name}`).toContain(name);
+    }
+  }, 60_000);
+
+  it("core 路径 lintText：DOM 值引用被咬，op 名形态（对象键/字符串）不误报", async () => {
+    const eslint = new ESLint({
+      cwd: fileURLToPath(new URL("../..", import.meta.url)),
+    });
+    const positive = await eslint.lintText(
+      "export const href = window.location.href;\n",
+      { filePath: "packages/core/src/__dom_probe__.ts" },
+    );
+    expect(
+      positive[0].messages.some((m) => m.ruleId === "no-restricted-globals"),
+      "core 上 window 值引用必须被 no-restricted-globals 咬住",
+    ).toBe(true);
+    const negative = await eslint.lintText(
+      [
+        'const payloadKeys = { window: ["op", "mode"] };',
+        "export function isWindowOp(op: string): boolean {",
+        '  return op === "window";',
+        "}",
+        "export const keys = payloadKeys;",
+        "",
+      ].join("\n"),
+      { filePath: "packages/core/src/__op_name_probe__.ts" },
+    );
+    expect(
+      negative[0].messages,
+      `op 名形态不该被误报：${JSON.stringify(negative[0].messages)}`,
+    ).toEqual([]);
   }, 60_000);
 });
