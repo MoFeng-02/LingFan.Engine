@@ -1,0 +1,4 @@
+# 本仓 prettier 采用 endOfLine=lf。Windows 的 core.autocrlf=true 会在 checkout 时把
+# 文本文件还原成 CRLF，既触发 prettier 格式门禁失败，又让 git status 出现行尾 phantom 改动。
+# README 由人工维护、发版时需暂存再还原，固定 LF 行尾，与提交态和格式门禁保持一致。
+README.md text eol=lf
