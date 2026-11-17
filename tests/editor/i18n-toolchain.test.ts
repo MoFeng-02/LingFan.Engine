@@ -272,16 +272,11 @@ describe("源码绊线：运行层的 translate 挂接点 ↔ 面表同口径", 
         ),
       ),
     );
-    // 逐一对应：cmd.text → say/notify.text；cmd.prompt → menu/input.prompt；
-    // o.text → menu.options[].text；speakerText → say.speaker / character.screen
-    // 的运行期解析产物；raw → 元素 text（translateElements，不表面表、走元素遍历）。
-    expect([...args].sort()).toEqual([
-      "cmd.prompt",
-      "cmd.text",
-      "o.text",
-      "raw",
-      "speakerText",
-    ]);
+    // 逐一对应（读口派生架构）：表面翻译已移 deriveValue 读口派生，写时挂接点
+    // （cmd.prompt / o.text / speakerText）消失是设计意图；运行层仅剩两处——
+    // cmd.text → notify 一次性事件（出站时翻译，非持久表面，刻意保留）；
+    // raw → 元素 text（translateElements 元素遍历助手，由读口派生调用）。
+    expect([...args].sort()).toEqual(["cmd.text", "raw"]);
   });
 });
 

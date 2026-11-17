@@ -233,7 +233,7 @@ describe("挂接点（say/menu/input/notify）", () => {
     h.dispose();
   });
 
-  it("元素文本也是翻译面：装载时翻译，进 SSOT 的即译文", async () => {
+  it("元素文本也是翻译面：装载存原文，读口派生译文", async () => {
     const port = new MemoryI18nPort().table("en", { 标题: "Title" });
     const engine = new StoryEngine(
       parseStory({
@@ -271,7 +271,7 @@ describe("挂接点（say/menu/input/notify）", () => {
 });
 
 describe("setLanguage", () => {
-  it("写系统键（ValueChanged scope=system 可观察）；当前画面不重放", async () => {
+  it("写系统键（ValueChanged scope=system 可观察）；当前画面立即生效", async () => {
     const port = new MemoryI18nPort().table("en", { 你好: "Hello" });
     const h = makeHarness([column("a", [say("你好")])], port);
     const changes: unknown[] = [];
@@ -283,8 +283,8 @@ describe("setLanguage", () => {
     await h.engine.setLanguage("en");
     expect(changes).toEqual(["en"]);
     expect(h.engine.get(SYS.currentLanguage)).toBe("en");
-    // 切换不重放当前画面（下次 Translate 生效）
-    expect(h.engine.get(SYS.currentDialogText)).toBe("你好");
+    // 切换立即生效：派生读口按新表重译当前画面（不重放、帧栈不动）
+    expect(h.engine.get(SYS.currentDialogText)).toBe("Hello");
     h.engine.advance();
     off();
     h.dispose();

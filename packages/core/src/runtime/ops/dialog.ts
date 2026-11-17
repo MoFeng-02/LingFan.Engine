@@ -10,7 +10,11 @@ import {
   type CharacterDef,
   type StoryCommand,
 } from "../../contracts/index.ts";
-import { interpolateText } from "../expr/index.ts";
+import {
+  captureSource,
+  recordInterpolation,
+  updateSources,
+} from "../i18n/index.ts";
 import { armWaitTimer } from "../internal/index.ts";
 import type { Frame, OpContext } from "../internal/index.ts";
 
@@ -94,28 +98,28 @@ export function execSay(ctx: OpContext, frame: Frame, cmd: StoryCommand): void {
     );
     return;
   }
-  // 先 Translate 后插值（overlay 键可含 {var} 占位符）+ {var:00} 格式化（仅文本命令）；
-  // 行内标记 {b}{p} 原样透传；失败保留原文 + error
-  // speaker 与 text 同语义插值——动态说话人（如 func 实参）经此获得真实名字；
-  // 说话人显示名同样走 Translate（翻译面覆盖所有展示文字）；
-  // 角色模板查表仍用插值后的原值。
-  const { text, errors } = interpolateText(
-    ctx.translate(cmd.text),
-    ctx.resolveName,
-    ctx.draw,
-  );
+  // 状态存原文 + 源：插值在原文模板上做，记录器捕获说话那一刻的实参；
+  // 切语言用捕获实参重插值（画面只有语言变，语义不变）。行内标记 {b}{p} 原样透传；
+  // 失败保留原文 + error。speaker 与 text 同语义插值——动态说话人（如 func 实参）
+  // 经此获得真实名字；角色模板查表仍用插值后的原值。
+  const { text, errors, source } = recordInterpolation(ctx, cmd.text);
   const speakerSrc = typeof cmd.speaker === "string" ? cmd.speaker : "";
-  const { text: speakerText, errors: speakerErrors } = interpolateText(
-    speakerSrc,
-    ctx.resolveName,
-    ctx.draw,
-  );
+  const {
+    text: speakerText,
+    errors: speakerErrors,
+    source: speakerSource,
+  } = recordInterpolation(ctx, speakerSrc);
   for (const e of [...errors, ...speakerErrors])
     ctx.fail(e.code, ctx.texts.interpolationFallback(e.message));
+  // 源先于表面键写入：出站派生读「当时」的源；无说话人清其源
+  updateSources(ctx, {
+    dialog: source,
+    speaker: speakerSrc === "" ? undefined : speakerSource,
+  });
 
   // 竞态防护：进入等待前清上一句残留的完成标记（防双击/快速点击跳句）
   ctx.setSystem(SYS.dialogComplete, false);
-  ctx.setSystem(SYS.currentDialogSpeaker, ctx.translate(speakerText));
+  ctx.setSystem(SYS.currentDialogSpeaker, speakerText);
   // 说话人颜色覆盖（`say color="#888"`）：每句都写——
   // 缺省写空串 ⇒ 上一句的覆盖不会残留（与 `currentDialogSpeaker` 同一口径）。
   // UI 读法：`覆盖值 || character.color`（覆盖优先于角色定义）。
@@ -147,7 +151,8 @@ export function execSay(ctx: OpContext, frame: Frame, cmd: StoryCommand): void {
   // NVL 激活时当前句追加进累积缓冲（新引用，观察者可感知；随状态快照走）
   // 重放期不追加——buffer 已由快照恢复，重放只重建当前对话键
   if (ctx.get(SYS.nvlMode) === "active" && !ctx.rollbackActive) {
-    const buffer = ctx.get(SYS.nvlBuffer);
+    // 内部累积读原始态（ctx.get 对派生键给译文，追加译文会造成二次翻译）
+    const buffer = ctx.state.get(SYS.nvlBuffer);
     ctx.setSystem(SYS.nvlBuffer, [
       ...(Array.isArray(buffer) ? (buffer as string[]) : []),
       text,
@@ -183,18 +188,24 @@ export function execMenu(
 ): void {
   if (ctx.rejectBadInstanceZ(cmd)) return; // 先拒非法 z（不动状态）
   const options = cmd.options as Array<{ text: string; target: string }>; // 解析器已验证结构
+  // 状态存原文 + 源（目标列名不翻译——menuTargets 原样）；源先于表面键写入/清除
+  const prompt = typeof cmd.prompt === "string" ? cmd.prompt : "";
+  updateSources(ctx, {
+    dialog: undefined,
+    speaker: undefined,
+    menu: {
+      prompt: prompt === "" ? undefined : captureSource(prompt),
+      options: options.map((o) => captureSource(o.text)),
+    },
+  });
   ctx.setSystem(SYS.currentDialogText, "");
   ctx.setSystem(SYS.currentDialogSpeaker, "");
   ctx.setSystem(SYS.currentDialogColor, ""); // 同清：避免上一句的颜色覆盖残留
   ctx.setSystem(SYS.dialogFont, ""); // 字体同清：换列/菜单后上一句字体不残留
-  // prompt/选项文案先 Translate（目标列名不翻译——menuTargets 原样）
-  ctx.setSystem(
-    SYS.menuPrompt,
-    typeof cmd.prompt === "string" ? ctx.translate(cmd.prompt) : "",
-  );
+  ctx.setSystem(SYS.menuPrompt, prompt);
   ctx.setSystem(
     SYS.menuOptions,
-    options.map((o) => ctx.translate(o.text)),
+    options.map((o) => o.text),
   );
   ctx.setSystem(
     SYS.menuTargets,

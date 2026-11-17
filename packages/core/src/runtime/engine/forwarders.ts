@@ -42,7 +42,12 @@ import {
   setSystem,
   writeExternal,
 } from "../state/index.ts";
-import { translate, translateElements } from "../i18n/index.ts";
+import {
+  clearSuspected,
+  deriveValue,
+  translate,
+  translateElements,
+} from "../i18n/index.ts";
 import {
   autoSaveAtCheckpoint,
   checkpointCoord,
@@ -102,6 +107,8 @@ export abstract class EngineForwarders extends EngineCore {
   }
   /** 内部转发 → ./state：写系统键（引擎自用，与用户键分开以便存档区分） */
   protected setSystem(key: string, value: unknown): void {
+    // 引擎重写即原文写入：清掉老存档残留的疑似译文标记，恢复正常派生
+    clearSuspected(this.ctx, key);
     setSystem(this.ctx, key, value);
   }
   /** 内部转发 → ./state：静默写入（不触发观察事件），返回是否真的写入 */
@@ -128,9 +135,13 @@ export abstract class EngineForwarders extends EngineCore {
   protected setInstanceZ(key: string, raw: unknown): void {
     setInstanceZ(this.ctx, key, raw);
   }
-  /** 内部转发 → ./state：把一次状态写入镜像成 ValueChanged */
+  /**
+   * 内部转发 → ./state：把一次状态写入镜像成 ValueChanged。
+   * 出站唯一漏斗：派生键在此经 core 派生给当前语言译文（出站/读口/投影三处同源之一），
+   * 状态里仍是原文；非派生键原值出站。
+   */
   protected emit(key: string, value: unknown, scope: string): void {
-    emitChange(this.ctx, key, value, scope);
+    emitChange(this.ctx, key, deriveValue(this.ctx, key, value), scope);
   }
   /** 内部转发 → ./state：发布对外事件 */
   protected emitEvent(payload: OutboundPayload): void {

@@ -16,13 +16,18 @@ import {
   type Story,
   type VideoCommand,
 } from "../../contracts/index.ts";
-import { mergeOverlayFiles } from "../i18n/index.ts";
+import {
+  emitDerivedSurfaces,
+  planOverlayMerge,
+  resetSuspected,
+  updateSources,
+} from "../i18n/index.ts";
 import { validSlot } from "./helpers.ts";
 import { pausedSession } from "./waiting.ts";
 import type { OpContext } from "./context.ts";
 
 /**
- * 启动故事：置启动标志、初始化两个恒有定义的系统键、把顶层 defines 无条件写进全局层，
+ * 启动故事：置启动标志、初始化三个恒有定义的系统键、把顶层 defines 无条件写进全局层，
  * 再导航到入口列并开始解释执行。
  * 重复启动 fail-closed（不重置任何状态），入口列缺失时由 `enterColumn` 负责上报。
  */
@@ -36,6 +41,9 @@ export function start(ctx: OpContext): void {
   ctx.state.set(SYS.nvlMode, "none");
   // 当前语言从 start 起恒有定义（空串 = 默认语言/原文直出）
   ctx.state.set(SYS.currentLanguage, "");
+  // 翻译源从 start 起恒有定义（静默；新档恒有该键，老存档检测据此键缺失判定）
+  ctx.state.set(SYS.i18nSources, {});
+  resetSuspected(ctx);
   // 顶层 defines 无条件 Set（全局层 = SSOT Map）
   for (const [key, value] of Object.entries(ctx.story.defines ?? {})) {
     ctx.setGlobal(key, value);
@@ -174,6 +182,8 @@ export function navigate(ctx: OpContext, columnId: string): void {
   ctx.waitSkipable = false;
   ctx.liveCheckpointed = false;
   ctx.setSystem(SYS.waiting, "none");
+  // 源先于表面键清除：出站派生读「当时」的源，残留旧源会把清屏值译回非空
+  updateSources(ctx, { dialog: undefined, speaker: undefined });
   ctx.setSystem(SYS.currentDialogText, ""); // 清旧对话镜像（导航清屏）
   ctx.setSystem(SYS.currentDialogSpeaker, "");
   ctx.setSystem(SYS.currentDialogColor, ""); // 同清：避免上一句的颜色覆盖残留
@@ -249,10 +259,18 @@ export function load(ctx: OpContext, slot: string): boolean {
   return true;
 }
 
+/** 每引擎一份语言请求序号（后写胜：只有最新请求允许换表与出站） */
+const languageRequestSeq = new WeakMap<OpContext, number>();
+
 /**
- * 切换当前语言：整表重建（清缓存再载入），只写系统键，**当前画面不重放**，下次取译文时生效。
+ * 切换当前语言（七步）：校验 lang → 供给 loadOverlayFiles → 写 SYS.currentLanguage
+ * → 重译可见表面 → 重译元素（递归 children）→ 重译 NVL → 出站派生键。
+ * 重译不写状态、不重放：状态存原文，出站经派生漏斗给新语言译文；换表与重译出站
+ * 在同一同步块内（中间无 await），宿主不会看到「新表旧值」的中间态。
  * 空串表示默认语言（原文直出）；未装配端口时同样只记语言状态，供界面观察。
  * 供给失败 fail-closed：保持原语言与译文表不变，只出站错误。
+ * 并发请求后写胜（递增序号守卫）：过期请求静默丢弃——不出错不出站（正常竞争非失败）。
+ * 幂等：同语言且译文表已装配时重复设置不供给、不写、不出站（但仍使更早挂起请求失效）。
  * 可在启动前调用（标题画面选语言），状态的写入与译文装配都不依赖启动态。
  */
 export async function setLanguage(ctx: OpContext, lang: string): Promise<void> {
@@ -263,21 +281,38 @@ export async function setLanguage(ctx: OpContext, lang: string): Promise<void> {
     );
     return;
   }
-  if (lang === "" || ctx.i18nPort === undefined) {
-    // 默认语言或未装配端口：无译文表 = 原文直出（缺省；语言状态照记供 UI 观察）
+  // 序号先递增：幂等早退也是一次「最新意图」，必须使更早的挂起供给失效
+  // （否则 en→ja 挂起中再设 en 会被早退跳过，ja 落地后反胜，违反后写胜）
+  const seq = (languageRequestSeq.get(ctx) ?? 0) + 1;
+  languageRequestSeq.set(ctx, seq);
+  // 幂等早退：语言相同且表状态一致 ⇒ 不重复供给、不重复出站
+  const port = ctx.i18nPort;
+  const wantsDefault = lang === "" || port === undefined;
+  const assembled = wantsDefault ? ctx.overlay === null : ctx.overlay !== null;
+  if (ctx.state.get(SYS.currentLanguage) === lang && assembled) return;
+  if (wantsDefault) {
+    // 默认语言或未装配端口：无译文表 = 原文直出（同步路径）；
+    // 序号已递增，更早的挂起供给 resolving 时同样被丢弃
     ctx.overlay = null;
     ctx.setSystem(SYS.currentLanguage, lang);
+    emitDerivedSurfaces(ctx);
     return;
   }
   let files: I18nOverlayFile[];
   try {
-    files = await ctx.i18nPort.loadOverlayFiles(lang);
+    files = await port.loadOverlayFiles(lang);
   } catch (e: unknown) {
+    // 已有更新请求：本次失败不再代表当前意图，静默丢弃（fail-closed 只报最新请求）
+    if (seq !== languageRequestSeq.get(ctx)) return;
     ctx.fail("i18n-overlay-failed", ctx.texts.i18nLoadFailed(lang, String(e)));
     return;
   }
-  ctx.overlay = mergeOverlayFiles(files); // 整表重建 = 清缓存再载入
+  if (seq !== languageRequestSeq.get(ctx)) return; // 被更新请求丢弃：不出错不出站
+  // 同一同步块（步骤 3–7）：换表 → 写语言键 → 可见表面/元素/NVL 重译出站。
+  // 合并走 planOverlayMerge：与编辑器/CLI 共用同一合并规则声明点。
+  ctx.overlay = planOverlayMerge(files).entries;
   ctx.setSystem(SYS.currentLanguage, lang);
+  emitDerivedSurfaces(ctx);
 }
 
 /**

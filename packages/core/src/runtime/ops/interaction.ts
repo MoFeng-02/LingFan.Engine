@@ -13,6 +13,7 @@ import {
   type OutboundPayload,
   type StoryCommand,
 } from "../../contracts/index.ts";
+import { captureSource, updateSources } from "../i18n/index.ts";
 import type { Frame, OpContext } from "../internal/index.ts";
 import { writeExternal } from "../state/index.ts";
 
@@ -29,9 +30,9 @@ const INTERACTION_FIELDS = new Set([
 /**
  * input（prompt + store，可选 options 候选）→ 进入 input 等待。
  *
- * 候选值 `{ text, value }[]`：`text` 走翻译表（显示），`value` 原样进状态（玩家点选后
- * 由命令面按普通输入提交）。没有候选时也写一个空数组，**不能跳过**——否则上一次输入
- * 留下的候选会被这一轮读到（状态是跨命令持久的）。
+ * 候选值 `{ text, value }[]`：`text` 状态存原文、显示经派生读口翻译，`value` 原样进状态
+ * （玩家点选后由命令面按普通输入提交）。没有候选时也写一个空数组，**不能跳过**——
+ * 否则上一次输入留下的候选会被这一轮读到（状态是跨命令持久的）。
  */
 export function execInput(
   ctx: OpContext,
@@ -39,20 +40,25 @@ export function execInput(
   cmd: StoryCommand,
 ): void {
   if (ctx.rejectBadInstanceZ(cmd)) return; // 先拒非法 z（不动状态）
+  // 状态存原文 + 源；源先于表面键写入/清除（出站派生读「当时」的源）
+  const prompt = typeof cmd.prompt === "string" ? cmd.prompt : "";
+  const optionList = Array.isArray(cmd.options)
+    ? (cmd.options as Array<{ text: string; value: string }>)
+    : [];
+  updateSources(ctx, {
+    dialog: undefined,
+    speaker: undefined,
+    input: {
+      prompt: prompt === "" ? undefined : captureSource(prompt),
+      candidates: optionList.map((o) => captureSource(o.text)),
+    },
+  });
   // 输入态清对话残留（与 menu 同语义）
   ctx.setSystem(SYS.currentDialogText, "");
   ctx.setSystem(SYS.currentDialogSpeaker, "");
   ctx.setSystem(SYS.currentDialogColor, ""); // 同清：避免上一句的颜色覆盖残留
-  ctx.setSystem(
-    SYS.inputPrompt,
-    typeof cmd.prompt === "string" ? ctx.translate(cmd.prompt) : "",
-  );
-  const candidates = Array.isArray(cmd.options)
-    ? (cmd.options as Array<{ text: string; value: string }>).map((o) => ({
-        text: ctx.translate(o.text),
-        value: o.value,
-      }))
-    : [];
+  ctx.setSystem(SYS.inputPrompt, prompt);
+  const candidates = optionList.map((o) => ({ text: o.text, value: o.value }));
   ctx.setSystem(SYS.inputOptions, candidates);
   ctx.inputStore = cmd.store as string;
   ctx.setInstanceZ(SYS.choicesZ, cmd.z); // 输入形态的实例 z（choices 层）

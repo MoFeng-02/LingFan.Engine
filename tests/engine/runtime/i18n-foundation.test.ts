@@ -61,12 +61,14 @@ function makeEngine(
 }
 
 /**
- * 派生用最小执行器剖面：deriveValue 只碰 overlay / translate / translateElements
- * 三个契约成员；查表与元素翻译接真实现，保证测的是真翻译路径而不是替身语义。
+ * 派生用最小执行器剖面：deriveValue 只碰 overlay / translate / translateElements / state
+ * 四个契约成员；查表与元素翻译接真实现，保证测的是真翻译路径而不是替身语义。
+ * state 为空 Map ⇒ 无插值源，对话/说话人表面回退对状态值直译。
  */
 function deriveCtx(table: Record<string, string> | null): OpContext {
   const ctx: OpContext = {
     overlay: table === null ? null : new Map(Object.entries(table)),
+    state: new Map<string, unknown>(),
     translate: (original: string) => translate(ctx, original),
     translateElements: (instances: readonly ElementInstance[]) =>
       translateElements(ctx, instances),
@@ -113,13 +115,13 @@ describe("engine.translate · 公共读口", () => {
     engine.dispose();
   });
 
-  it("写入时翻译：落状态值保持写入时译文，translate 读口按当前语言查表", async () => {
+  it("状态存原文：get 读口按当前语言派生译文，translate 读口按当前语言查表", async () => {
     const port = new MemoryI18nPort().table("en", { 你好: "Hello" });
     const engine = makeEngine([{ op: "say", text: "你好" }], port);
     engine.start();
     await engine.setLanguage("en");
-    // say 在默认语言下写入，落状态值是写入时的原文；切语言不重译已写入的状态
-    expect(engine.get(SYS.currentDialogText)).toBe("你好");
+    // say 把原文写入状态；切语言后 get 读口按当前语言派生译文（状态本身仍是原文）
+    expect(engine.get(SYS.currentDialogText)).toBe("Hello");
     expect(engine.translate("你好")).toBe("Hello");
     engine.dispose();
   });
@@ -137,8 +139,8 @@ describe("engine.translate · 公共读口", () => {
     expect(engine.interpolate(engine.translate("你好 {name}"))).toBe(
       "Hello 世界",
     );
-    // 状态在默认语言下写入，保持写入时的插值结果；当前语言展示值由读口侧译+插值得到
-    expect(engine.get(SYS.currentDialogText)).toBe("你好 世界");
+    // 状态存原文插值成品；切语言后 get 读口用捕获实参重译+重插值，得到当前语言展示值
+    expect(engine.get(SYS.currentDialogText)).toBe("Hello 世界");
     engine.dispose();
   });
 

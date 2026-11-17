@@ -19,6 +19,7 @@ import type {
   SaveOptions,
 } from "../contracts/index.ts";
 import {
+  SYS,
   type ExtensionOpResult,
   type GameStateWriter,
   type InteractionResult,
@@ -70,7 +71,12 @@ import {
   type OpContext,
 } from "./internal/index.ts";
 import { EngineForwarders, createGameState } from "./engine/index.ts";
-import { translate } from "./i18n/index.ts";
+import {
+  deriveValue,
+  markLegacySurfaces,
+  resetSuspected,
+  translate,
+} from "./i18n/index.ts";
 
 /**
  * 装配契约（构造选项与守卫）定义在契约层，此处按原路径转出，
@@ -237,9 +243,13 @@ export class StoryEngine extends EngineForwarders {
   onEvent(listener: EventListener): () => void {
     return onEvent(this.ctx, listener);
   }
-  /** 读 SSOT 里的当前值；从未写过的键返回 undefined。只读，不触发观察事件 */
+  /**
+   * 读 SSOT 里的当前值；从未写过的键返回 undefined。只读，不触发观察事件。
+   * 派生键给当前语言译文（出站/读口/投影三处同源之一）：状态里是原文，展示值读时派生；
+   * StateReader 经此读口取数，宿主渲染层零查表。
+   */
   get(key: string): unknown {
-    return this.state.get(key);
+    return deriveValue(this.ctx, key, this.state.get(key));
   }
 
   // —— 列清单 ——
@@ -396,9 +406,22 @@ export class StoryEngine extends EngineForwarders {
   exportSave(): SaveDataV1 | null {
     return exportSave(this.ctx);
   }
-  /** 从存档数据恢复进度；旧版本先走迁移钩子，迁移不了返回 false */
+  /**
+   * 从存档数据恢复进度；旧版本先走迁移钩子，迁移不了返回 false。
+   * 老存档（无源键）读入后对残留译文表面打疑似译文标记（内存，不改存档格式）；
+   * 检测必须先于恢复——读档重放会写入源键，事后检测会失真。
+   * 坏载荷（state 非数组）不打标记，交由 importSave 校验统一拒绝，保持 fail-closed。
+   */
   importSave(data: SaveDataV1): boolean {
-    return importSave(this.ctx, data);
+    const legacy =
+      Array.isArray(data.state) &&
+      !data.state.some(([key]) => key === SYS.i18nSources);
+    const ok = importSave(this.ctx, data);
+    if (ok) {
+      if (legacy) markLegacySurfaces(this.ctx);
+      else resetSuspected(this.ctx);
+    }
+    return ok;
   }
   /** 回溯到历史检查点：给下标表示第几个，给坐标表示取该坐标之前最近的检查点（非精确定位；找不到即报错） */
   rollbackTo(target: number | ColumnCoordinate): void {

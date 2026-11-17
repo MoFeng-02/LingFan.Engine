@@ -6,7 +6,17 @@ import {
   isReplayableColumn,
   type ColumnCoordinate,
 } from "../../contracts/index.ts";
-import { snapshotText, type Frame, type OpContext } from "../internal/index.ts";
+import {
+  asSources,
+  deriveCheckpointValue,
+  type I18nSources,
+} from "../i18n/index.ts";
+import {
+  snapshotText,
+  type Checkpoint,
+  type Frame,
+  type OpContext,
+} from "../internal/index.ts";
 import { Scope } from "../scope.ts";
 import { restore } from "./snapshot.ts";
 
@@ -193,19 +203,36 @@ export interface HistoryViewEntry {
 /**
  * 历史面板数据（前端职责的可视化皮）：宿主按「段聚合」呈现（历史不灌水），
  * 回溯粒度不变（逐检查点仍全在 history 里）。
+ * 快照存原文：每条记录按该检查点自己捕获的源 + 当前译文表派生（切语言后
+ * 历史面板同步生效）；老快照无源降级原文直出。派生只在 core。
  */
 export function historyView(ctx: OpContext): HistoryViewEntry[] {
   return ctx.history.map((cp, index) => {
     const mode = cp.snapshot.state.find(([k]) => k === SYS.nvlMode)?.[1];
     const buffer = cp.snapshot.state.find(([k]) => k === SYS.nvlBuffer)?.[1];
+    const sources = asSources(
+      cp.snapshot.state.find(([k]) => k === SYS.i18nSources)?.[1],
+    );
+    const lines = deriveCheckpointValue(ctx, sources, SYS.nvlBuffer, buffer);
     return {
       index,
       coord: { ...cp.coord },
-      speaker: snapshotText(cp, SYS.currentDialogSpeaker),
-      text: snapshotText(cp, SYS.currentDialogText),
+      speaker: checkpointText(ctx, sources, cp, SYS.currentDialogSpeaker),
+      text: checkpointText(ctx, sources, cp, SYS.currentDialogText),
       nvl: mode === "active",
       nvlLines:
-        mode === "active" && Array.isArray(buffer) ? (buffer as string[]) : [],
+        mode === "active" && Array.isArray(lines) ? lines.map(String) : [],
     };
   });
+}
+
+/** 历史条目文本：检查点原值经 core 派生得当前语言译文（非字符串形状降级空串） */
+function checkpointText(
+  ctx: OpContext,
+  sources: I18nSources,
+  cp: Checkpoint,
+  key: string,
+): string {
+  const value = deriveCheckpointValue(ctx, sources, key, snapshotText(cp, key));
+  return typeof value === "string" ? value : "";
 }

@@ -13,6 +13,7 @@ import {
 import { loadElements } from "../../data/index.ts";
 import { loadBody } from "../body/index.ts";
 import type { ExprValue } from "../expr/index.ts";
+import { updateSources } from "../i18n/index.ts";
 import { Scope } from "../scope.ts";
 import { parseMenuReturn } from "./helpers.ts";
 import type { Frame, LoopState } from "./frame.ts";
@@ -32,12 +33,15 @@ const LOOP_LIMIT = 10000;
  * 这边兜住不经过 `navigate` 的进列路径（`jump`、菜单选择、热重载重入）。
  */
 function clearDialogMirror(ctx: OpContext): void {
-  const text = ctx.get(SYS.currentDialogText);
+  // 内部清屏判断读原始态（ctx.get 对派生键给译文，判残留要用原文）
+  const text = ctx.state.get(SYS.currentDialogText);
   if (typeof text === "string" && text !== "") {
+    updateSources(ctx, { dialog: undefined }); // 源先于键清：出站派生不读旧源
     ctx.setSystem(SYS.currentDialogText, "");
   }
-  const speaker = ctx.get(SYS.currentDialogSpeaker);
+  const speaker = ctx.state.get(SYS.currentDialogSpeaker);
   if (typeof speaker === "string" && speaker !== "") {
+    updateSources(ctx, { speaker: undefined });
     ctx.setSystem(SYS.currentDialogSpeaker, "");
   }
   const color = ctx.get(SYS.currentDialogColor);
@@ -93,10 +97,11 @@ export function enterColumn(ctx: OpContext, columnId: string): boolean {
   }
   // 空间层：scene 列的元素是**声明式装载**（不进命令流），entry 才是进入后
   // 按序执行的命令流；列切换整体替换 __elements（空间层属于列），回溯由快照还原。
+  // 元素存原文：译文只在派生读口产生（装载时翻译会把译文写进快照，切语言无法重译）。
   ctx.setSystem(
     SYS.elements,
     column.kind === "scene"
-      ? ctx.translateElements(loadElements(column.elements ?? [], columnId))
+      ? loadElements(column.elements ?? [], columnId)
       : [],
   );
   // 身体层：与元素层同理属于列——进列即对账，回溯/存档由快照整表还原。

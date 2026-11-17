@@ -16,6 +16,7 @@
 import {
   INSTANCE_Z_KEYS,
   SYS,
+  createStateReader,
   type ElementInstance,
   type InputCandidate,
 } from "@lingfan-engine/core";
@@ -259,8 +260,8 @@ export function createNarrativeState(
       nvlMode.value = typeof nm === "string" ? nm : "none";
       const nb = read(SYS.nvlBuffer);
       nvlBuffer.value = Array.isArray(nb) ? (nb as string[]) : [];
-      const els = read(SYS.elements);
-      elements.value = Array.isArray(els) ? (els as ElementInstance[]) : [];
+      // 元素经 core 读口取派生译文：read 即 engine.get，读口对派生键统一翻译
+      elements.value = createStateReader({ get: read }).elements();
       const dt = read(SYS.dialogTemplate);
       dialogTemplateName.value = typeof dt === "string" ? dt : null;
       const df = read(SYS.dialogFont);
