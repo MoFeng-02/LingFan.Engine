@@ -22,11 +22,21 @@ import {
 import {
   analyzeStory,
   extractStoryKeys,
+  findLayoutConflicts,
+  formatI18nDiagnostics,
+  formatLayoutConflicts,
   formatTranslationReport,
+  formatUnmarkedTexts,
   indexStory,
   planOverlaySkeleton,
   reconcileTranslations,
+  type UnmarkedHostText,
 } from "@lingfan-engine/editor";
+// 扫描器属构建期 scan/ 域（包根不值转发，防 typescript 进运行期出口图），白盒走域出口
+import {
+  findUnmarkedHostTexts,
+  scanHostSource,
+} from "../../packages/editor/src/scan/index.ts";
 
 /** 引擎运行层全部源码，键 = 仓库相对路径（前端不碰文件系统，改用打包器读取） */
 const ENGINE_RUNTIME_SOURCES = import.meta.glob(
@@ -518,5 +528,52 @@ describe("缺译诊断：originals − overlay 并集（与 unused-translation �
     expect(
       diagnostics.filter((d) => d.code === "unused-translation"),
     ).toHaveLength(1);
+  });
+});
+
+/* ———————————————— 三类诊断数据（孤儿键 / 宿主未标记 / 布局冲突） ———————————————— */
+
+describe("三类诊断数据（各出一例）", () => {
+  it("孤儿键：overlay 有、源无 → 多译节显式列出（与 unused-translation 同口径）", () => {
+    const report = reconcileTranslations(["甲"], { en: ["甲", "孤儿"] });
+    expect(report.unused).toEqual(["孤儿"]);
+    expect(formatTranslationReport(report)).toContain("  - 孤儿");
+  });
+
+  it("宿主未标记：未包 t() 的中文不进键集合，只进诊断（含定位）", () => {
+    const source = `const label = "未标记文案";\nconst ok = t("已标记");`;
+    const scan = scanHostSource(source, "src/host/main.ts");
+    expect(scan.keys).toEqual(["已标记"]);
+    const sites = findUnmarkedHostTexts(source, "src/host/main.ts");
+    expect(sites).toEqual([{ line: 1, column: 15, text: "未标记文案" }]);
+    const unmarked: UnmarkedHostText[] = sites.map((site) => ({
+      file: "src/host/main.ts",
+      ...site,
+    }));
+    const text = formatUnmarkedTexts(unmarked);
+    expect(text).toContain("宿主未标记文案 1 条");
+    expect(text).toContain("src/host/main.ts:1:15 未标记文案");
+  });
+
+  it("布局冲突：同键跨文件取值不一 → 显式报告；同键同值不算冲突", () => {
+    const files: I18nOverlayFile[] = [
+      { path: "main.json", entries: { 你好: "Hello", 一致: "Same" } },
+      { path: "host/main.json", entries: { 你好: "Hi", 一致: "Same" } },
+    ];
+    const conflicts = findLayoutConflicts(files);
+    expect(conflicts).toEqual([
+      {
+        key: "你好",
+        sites: [
+          { path: "host/main.json", value: "Hi" },
+          { path: "main.json", value: "Hello" },
+        ],
+      },
+    ]);
+    const text = formatI18nDiagnostics({ unmarked: [], conflicts });
+    expect(text).toContain("宿主未标记文案 0 条");
+    expect(text).toContain("布局冲突 1 处");
+    expect(formatLayoutConflicts(conflicts)).toContain("你好");
+    expect(formatLayoutConflicts([])).toContain("布局冲突 0 处");
   });
 });

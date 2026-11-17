@@ -6,14 +6,20 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "bin": {
+    "lingfan-i18n": "./bin/lingfan-i18n.mjs"
+  },
   "files": [
     "src",
+    "bin",
     "!src/**/*.test.ts",
     "!src/script/generate-vocabulary.ts"
   ],
   "sideEffects": false,
   "dependencies": {
     "@lingfan-engine/core": "workspace:^",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
     "zod": "^4.6.5"
   },
   "license": "Apache-2.0",

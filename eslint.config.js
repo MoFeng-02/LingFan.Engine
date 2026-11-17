@@ -493,6 +493,12 @@ export default defineConfigWithVueTs(
       // 词汇层声明重建 CLI：读 words 源 + 注册表键，差量写生成物（Node 侧生成工具；
       // 渲染是纯函数 vocabulary-gen，本文件只做 IO 与主模块守卫）
       "packages/editor/src/script/generate-vocabulary.ts",
+      // i18n 创作期 CLI 的 IO 接线层：读 Lang/ 与源码、写骨架（Node 侧创作期工具；
+      // 逻辑在 i18n/** 纯函数、编排在 cli/i18n-cli.ts（零 node:* 导入留在守卫内），
+      // 本文件只做 IO，不进浏览器产物）
+      "packages/editor/src/cli/i18n-io.ts",
+      // i18n CLI 测试：测试期工具夹具读写/跑 CLI（tmp 目录造工程形态），不进浏览器产物
+      "tests/editor/i18n-cli.test.ts",
       // 禁选守卫需要**读模板样式表**做机械核对；模板样式已从 index.html 抽成独立
       // `.css`，而 `?raw` 导入 `.css` 在 vitest（css:false）下同样被 stub 成空串
       // ⇒ 只能 readFileSync。属测试期工具，不进浏览器产物

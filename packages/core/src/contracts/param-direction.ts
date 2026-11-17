@@ -66,6 +66,8 @@ export const PARAM_DIRECTION: Readonly<Record<string, ParamDirection>> = {
   [SYS.nvlBuffer]: "readonly",
   [SYS.rollbackActive]: "readonly",
   [SYS.currentLanguage]: "readonly",
+  /** 表面翻译源结构：引擎捕获写入，宿主只读 */
+  [SYS.i18nSources]: "readonly",
   [SYS.autoSave]: "readonly",
   [SYS.menuReturn]: "readonly",
   /** 引擎级暂停标记：只由命令面 `pause()` / `resume()` 写，宿主只读 */

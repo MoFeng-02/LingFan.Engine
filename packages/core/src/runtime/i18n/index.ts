@@ -4,5 +4,13 @@
  * 执行器与运行层内部模块从这里取国际化成员；子层各文件之间仍按需直接引用。
  * 这里只做转发，不放任何实现。
  */
-export { mergeOverlayFiles } from "./overlay.ts";
+export { mergeOverlayFiles, planOverlayMerge } from "./overlay.ts";
 export { translate, translateElements } from "./translate.ts";
+export { I18N_DERIVED_KEYS, deriveValue } from "./derive.ts";
+export {
+  captureSource,
+  readSources,
+  writeSources,
+  type I18nSources,
+  type I18nTextSource,
+} from "./sources.ts";

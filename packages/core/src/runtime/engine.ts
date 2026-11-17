@@ -70,6 +70,7 @@ import {
   type OpContext,
 } from "./internal/index.ts";
 import { EngineForwarders, createGameState } from "./engine/index.ts";
+import { translate } from "./i18n/index.ts";
 
 /**
  * 装配契约（构造选项与守卫）定义在契约层，此处按原路径转出，
@@ -318,6 +319,10 @@ export class StoryEngine extends EngineForwarders {
   /** 文本插值：替换 `{var}` 占位符；不查译文表（译文替换在命令层调用点，先 translate 后插值） */
   interpolate(source: string): string {
     return interpolate(this.ctx, source);
+  }
+  /** 翻译单条文本：查当前语言译文表（原文 → 译文），与命令层翻译走同一查表；未装配译文表或未命中回退原文，空串直返 */
+  translate(text: string): string {
+    return translate(this.ctx, text);
   }
   /** 直接下发一批元素操作（外部玩法系统用，绕开脚本层）；返回是否全部执行成功（false = 已出站 engine.error 且状态已回滚） */
   runElementOps(ops: readonly Record<string, unknown>[]): boolean {

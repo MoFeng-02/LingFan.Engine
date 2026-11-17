@@ -2,27 +2,26 @@
  * i18n 工具链 · overlay 骨架生成。
  *
  * 给定语言与分组策略，产出**文件内容**（原文 → 既有译文或占位）；落盘归调用方
- * （编辑器保存 / CLI），本模块保持纯函数（不碰平台 API）。合并语义与运行期
- * `mergeOverlayFiles` 对齐（main.json 兜底 + 其余按供给序覆盖）⇒ 骨架喂回合并后
- * 键集合与 `extractStoryKeys` 输出**双向一致**（互锁测试锁定）。
+ * （编辑器保存 / CLI），本模块保持纯函数（不碰平台 API）。文件分组委托
+ * `planOverlayPlacement`（落位唯一声明点，故事键 + 宿主键统一落位）；合并语义与
+ * 运行期 `mergeOverlayFiles` 对齐 ⇒ 骨架喂回合并后键集合与抽取输出**双向一致**
+ * （互锁测试锁定）。
  *
- * 布局覆盖 overlay 形态：「平铺」= 条目即键值平面（三形态共用）；
- * 单大文件 `Lang/{lang}.json`、目录 `Lang/{lang}/main.json`、按故事分类
- * `Lang/{lang}/{章节子目录}/{故事}.json`——**per-story 镜像 `Stories/` 的递归目录**
- * （章节子目录更好区分归类；`.json` / `.json.enc`
- * 双识别归运行期供给，骨架产明文）。**增量模式**：命中的既有译文原样保留（含空串
- * 译文——运行期「命中即用」语义），绝不覆盖。
+ * **增量判据**：键存在即保留（含空串译文——运行期「命中即用」语义），绝不覆盖；
+ * 孤儿键（既有有、源无）默认保留、只由对账报告，`prune` 显式开启才删除。
+ * 新键按 `placeholder` 占位。同输入逐字节确定（幂等：连跑两次第二次零改动）。
  */
 
-import type { EditorTexts } from "../contracts/index.ts";
-import { resolveEditorTexts } from "../contracts/index.ts";
-import { isSafeFileNameSegment } from "@lingfan-engine/core";
+import {
+  planOverlayPlacement,
+  type PlacementOptions,
+} from "./plan.ts";
 
 /** 占位策略：original = 原文占位（未翻译时画面可读，翻译工作表语义）；empty = 空串（运行期命中即隐句） */
 export type SkeletonPlaceholder = "original" | "empty";
 
-/** 骨架布局：single = `Lang/{lang}.json`；main = `Lang/{lang}/main.json`；per-story = 镜像 Stories/ 递归目录 */
-export type SkeletonLayout = "single" | "main" | "per-story";
+// 布局类型声明点在落位层（plan.ts）；这里只转发，保持既有 `from "./skeleton.ts"` 取用不断
+export type { SkeletonLayout } from "./plan.ts";
 
 export interface OverlaySkeletonFile {
   /** 相对资源根的 overlay 路径 */
@@ -33,48 +32,29 @@ export interface OverlaySkeletonFile {
   content: string;
 }
 
-/** overlay 根目录名（与运行期 Lang/ 供给面同源；单一出处供路径模板与测试共用） */
-export const LANG_DIR = "Lang";
-
-export interface SkeletonOptions {
-  lang: string;
-  layout: SkeletonLayout;
-  /**
-   * 故事 → 该故事的原文键（`extractStoryKeys` 输出；键序不要求，产出内会排序）。
-   * **键 = 故事文件相对 `Stories/` 的路径（不含扩展名）**，如 `chapter1/tavern`——
-   * per-story 布局按它镜像 `Stories/` 递归目录（平铺工程的键 = 故事 id，语义一致）。
-   */
-  storyKeys: ReadonlyMap<string, readonly string[]>;
+export interface SkeletonOptions extends PlacementOptions {
   /** 增量模式：该语言已存在的 overlay（路径 → 条目）；命中的键保留原值 */
   existing?: ReadonlyMap<string, Record<string, string>>;
   placeholder?: SkeletonPlaceholder;
-  /** 集中文案表注入（缺省 defaultEditorTexts） */
-  texts?: Partial<EditorTexts>;
+  /** 显式删除孤儿键（默认 false = 保留只报告）；被删键清单用 prunedOverlayKeys 列出 */
+  prune?: boolean;
 }
 
 /**
- * 产出骨架文件列表。fail-closed：`lang` / 故事 id 不合法即抛——骨架路径要能落进
- * `Lang/` 而不越界（与故事文件名同一安全口径 `isSafeFileNameSegment`）。
+ * 产出骨架文件列表。fail-closed：`lang` / 故事路径 / 宿主路径不合法即抛
+ * （校验在 `planOverlayPlacement`，骨架路径不越界）。
  */
 export function planOverlaySkeleton(
   options: SkeletonOptions,
 ): OverlaySkeletonFile[] {
-  const {
-    lang,
-    layout,
-    storyKeys,
-    existing,
-    placeholder = "original",
-  } = options;
-  const t: EditorTexts = resolveEditorTexts(options.texts);
-  if (typeof lang !== "string" || !isSafeFileNameSegment(lang)) {
-    throw new Error(t.invalidLangCode(String(lang)));
-  }
-  const build = (
-    path: string,
-    keys: readonly string[],
-  ): OverlaySkeletonFile => {
-    const prior = existing?.get(path) ?? {};
+  const { existing, placeholder = "original", prune = false } = options;
+  return planOverlayPlacement(options).map((group) => {
+    const prior = existing?.get(group.path) ?? {};
+    const keys = new Set(group.keys);
+    // 孤儿键默认保留（只报告不删）；prune 显式开启才从产物移除
+    if (!prune) {
+      for (const key of Object.keys(prior)) keys.add(key);
+    }
     const entries: Record<string, string> = {};
     for (const key of [...keys].sort()) {
       // 既有条目原样保留（含空串译文）；`undefined` = 未命中 → 占位
@@ -82,31 +62,10 @@ export function planOverlaySkeleton(
       entries[key] =
         typeof kept === "string" ? kept : placeholder === "empty" ? "" : key;
     }
-    return { path, entries, content: `${JSON.stringify(entries, null, 2)}\n` };
-  };
-  if (layout === "single" || layout === "main") {
-    const union = new Set<string>();
-    for (const keys of storyKeys.values()) {
-      for (const key of keys) union.add(key);
-    }
-    const path =
-      layout === "single"
-        ? `${LANG_DIR}/${lang}.json`
-        : `${LANG_DIR}/${lang}/main.json`;
-    return [build(path, [...union])];
-  }
-  // per-story：镜像 `Stories/` 的递归目录——
-  // 键 = 故事相对 `Stories/` 的路径（不含扩展名）；**段级**安全校验防路径越界。
-  const files: OverlaySkeletonFile[] = [];
-  for (const [storyPath, keys] of storyKeys) {
-    const segments = storyPath.split("/");
-    if (
-      storyPath === "" ||
-      segments.some((segment) => !isSafeFileNameSegment(segment))
-    ) {
-      throw new Error(t.invalidStoryPath(storyPath));
-    }
-    files.push(build(`${LANG_DIR}/${lang}/${storyPath}.json`, keys));
-  }
-  return files;
+    return {
+      path: group.path,
+      entries,
+      content: `${JSON.stringify(entries, null, 2)}\n`,
+    };
+  });
 }

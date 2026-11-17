@@ -11,7 +11,7 @@ export type { EngineOptions, GuardContext, GuardFn } from "./engine.ts";
 export { columnSummaries } from "./engine/index.ts";
 export { isValidSayColor } from "./ops/index.ts";
 export { resolveHost } from "./host.ts";
-export { mergeOverlayFiles } from "./i18n/index.ts";
+export { mergeOverlayFiles, planOverlayMerge } from "./i18n/index.ts";
 export { PlayerPreferences } from "./preferences.ts";
 export { createStateReader } from "./state/index.ts";
 export { Scope } from "./scope.ts";

@@ -47,6 +47,13 @@ export const SYS = {
   rollbackActive: "__rollback_active",
   /** I18N 当前语言（setLanguage 命令写入，空串 = 默认语言/原文直出） */
   currentLanguage: "__current_language",
+  /**
+   * I18N 翻译源（命令捕获时写入）：`{ dialog?, speaker?, menu?, input? }`，
+   * 各表面为 `{ key, values? }`——key 是原文（译文表查表键），values 是捕获时
+   * 插值占位符的实参。展示文字读时由源派生；切语言只重建译文表，不改源。
+   * 随快照/存档/回溯随行；老存档无此键读出为空（该表面切语言保持原样）。
+   */
+  i18nSources: "__i18n_sources",
   /** auto_save 开关（auto_save op 写入：检查点建立时消费） */
   autoSave: "__auto_save",
   nvlMode: "__nvl_mode",
