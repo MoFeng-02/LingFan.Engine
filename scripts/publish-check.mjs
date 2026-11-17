@@ -108,14 +108,31 @@ function readTarball(cwd, file, innerPath) {
   });
 }
 
+/** tar -tzf 列表 → 条目数组：兼容 CRLF/LF 行尾，去掉空行（Windows GNU tar 输出 CRLF） */
+export function parseTarListing(stdout) {
+  return stdout.split(/\r?\n/).filter((line) => line !== "");
+}
+
 function listTarball(cwd, file) {
-  return execFileSync("tar", ["-tzf", file], {
-    cwd,
-    maxBuffer: 16 * 1024 * 1024,
-  })
-    .toString("utf8")
-    .split("\n")
-    .filter((line) => line !== "");
+  return parseTarListing(
+    execFileSync("tar", ["-tzf", file], {
+      cwd,
+      maxBuffer: 16 * 1024 * 1024,
+    }).toString("utf8"),
+  );
+}
+
+/** 递归收集 exports 的全部字符串目标：条件对象取各分支、数组取各 fallback；null 表示屏蔽，跳过 */
+export function collectExportTargets(exports) {
+  const targets = [];
+  const walk = (node) => {
+    if (typeof node === "string") targets.push(node);
+    else if (Array.isArray(node)) node.forEach(walk);
+    else if (node && typeof node === "object")
+      Object.values(node).forEach(walk);
+  };
+  walk(exports);
+  return targets;
 }
 
 /**
@@ -186,6 +203,24 @@ export function checkPackage({ name, manifest, entries, repoVersion }) {
 
   if (!entries.some((entry) => /^package\/src\/index\.ts$/.test(entry))) {
     failures.push(`${name}: 包内缺少 src/index.ts，exports 指向的入口不存在`);
+  }
+
+  // exports 各子路径的目标都必须在包内：files 漏掉一个，消费方的深路径 import
+  // 发布后就悬空。条件对象/数组的全部字符串目标都要求在内（比运行期「首个可用
+  // 分支」更严）；null 是屏蔽导出，跳过。主入口检查是历史锚，保留不合并。
+  const exportsMap =
+    typeof manifest.exports === "string"
+      ? { ".": manifest.exports }
+      : (manifest.exports ?? {});
+  for (const [subpath, node] of Object.entries(exportsMap)) {
+    for (const target of collectExportTargets(node)) {
+      const entry = `package/${target.replace(/^\.\//, "")}`;
+      if (!entries.includes(entry)) {
+        failures.push(
+          `${name}: exports 子路径 ${subpath} 指向的 ${target} 不在包内（${entry}）`,
+        );
+      }
+    }
   }
 
   return failures;
