@@ -96,11 +96,8 @@ function issueToDiagnostic(
       op,
     };
   }
-  const received = (issue as { received?: unknown }).received;
-  if (
-    issue.code === "invalid_type" &&
-    (received === undefined || received === "undefined")
-  ) {
+  // input 为 undefined 即字段缺失（zod v4 对缺失字段以 undefined 输入报类型错）
+  if (issue.code === "invalid_type" && issue.input === undefined) {
     return {
       code: "missing-required",
       severity: "error",
@@ -176,7 +173,7 @@ export function validateCommand(
     ...(cmd as Record<string, unknown>),
   };
   delete payload.op;
-  const result = schema.safeParse(payload);
+  const result = schema.safeParse(payload, { reportInput: true });
   if (result.success) return [];
   return result.error.issues.map((issue) =>
     issueToDiagnostic(issue, pointer, op, t),
