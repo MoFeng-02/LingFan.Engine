@@ -53,6 +53,12 @@ apps/playground/src-tauri/gen/android/app/src/main/assets/Resources/
 /.agent-teams
 /.mnemon
 
+# 多智能体工作区与临时探针：本机环境产物，不入版本库
+/.agents/
+
+# 用户自写示例：个人参考代码，非仓库交付源码（eslint/prettier 门禁亦已排除）
+/我自写示例/
+
 # 测试运行产物：json reporter 的落盘目录（谁跑谁生成，不入版本库）
 /.vitest
 /apps/playground/Resources/Fonts/private_fonts
