@@ -12,6 +12,7 @@
 import { createApp, ref } from "vue";
 import {
   createBrowserFullscreenApplier,
+  createFetchI18nPort,
   createFetchProjectFilesPort,
   createHostPort,
   createNoopOrientationPort,
@@ -70,7 +71,7 @@ import {
 } from "./boot";
 import { browserPlayAllowed } from "./boot/browserGuard";
 import { installStoryFonts } from "./host/assets/app-fonts";
-import { STORIES } from "./stories";
+import { LANGS, STORIES } from "./stories";
 import { uis } from "./gen/ui_register.g";
 import { scenes } from "./gen/scene_register.g";
 
@@ -190,11 +191,12 @@ async function boot(): Promise<void> {
     mediaBlobSourceMaxBytes,
     videoZIndex: layerZ.video,
   });
-  // I18N 装配：Tauri 形态走 Rust overlay 供给（按需加载）；浏览器形态暂无
-  // 静态根供给（未注入 = 原文直出，引擎契约缺省语义）
-  const i18nPort: I18nPort | undefined = useNative
+  // I18N 装配：Tauri 形态走 Rust overlay 供给（按需加载）；浏览器形态走静态根
+  // fetch 供给——语言与文件表来自构建期 Lang/ 扫描（virtual:lang-list），不手抄。
+  // Lang/ 缺席 = 空清单：端口仍可装配，listLanguages 只报默认语言、选择器不出现。
+  const i18nPort: I18nPort = useNative
     ? createTauriI18nPort()
-    : undefined;
+    : createFetchI18nPort({ langs: LANGS });
   // 玩家偏好（与存档分离）：boot 时载入上次退出状态，滑块改动防抖落盘
   const preferencesPort: PreferencesPort = useNative
     ? createTauriPreferencesPort()

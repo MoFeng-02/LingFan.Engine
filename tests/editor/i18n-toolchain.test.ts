@@ -572,3 +572,60 @@ describe("三类诊断数据（各出一例）", () => {
     expect(formatLayoutConflicts([])).toContain("布局冲突 0 处");
   });
 });
+
+/* ———————————————— 三类诊断 → 体检面板接线（analyzeStory 可选供给） ———————————————— */
+
+describe("三类诊断接线：analyzeStory 可选供给 → 体检诊断", () => {
+  it("孤儿键：overlayKeys 供给 → unused-translation（警告，全局不可定位）", () => {
+    const diagnostics = analyzeStory(fixtureStory(), {
+      overlayKeys: new Set(["你好", "孤儿键"]),
+    });
+    const unused = diagnostics.filter((d) => d.code === "unused-translation");
+    expect(unused).toHaveLength(1);
+    expect(unused[0]?.severity).toBe("warning");
+    expect(unused[0]?.pointer).toBe("");
+    expect(unused[0]?.message).toContain("孤儿键");
+  });
+
+  it("宿主未标记：unmarkedHostTexts 供给 → unmarked-host-text（逐条带定位）", () => {
+    const diagnostics = analyzeStory(fixtureStory(), {
+      unmarkedHostTexts: [
+        { file: "src/host/main.ts", line: 3, column: 15, text: "未标记文案" },
+      ],
+    });
+    const unmarked = diagnostics.filter((d) => d.code === "unmarked-host-text");
+    expect(unmarked).toHaveLength(1);
+    expect(unmarked[0]?.severity).toBe("warning");
+    expect(unmarked[0]?.pointer).toBe("");
+    expect(unmarked[0]?.message).toContain("未标记文案");
+    expect(unmarked[0]?.message).toContain("src/host/main.ts:3:15");
+  });
+
+  it("布局冲突：layoutConflicts 供给 → layout-conflict（逐键带各文件取值）", () => {
+    const diagnostics = analyzeStory(fixtureStory(), {
+      layoutConflicts: [
+        {
+          key: "你好",
+          sites: [
+            { path: "Lang/en/main.json", value: "Hello" },
+            { path: "Lang/en/host/main.json", value: "Hi" },
+          ],
+        },
+      ],
+    });
+    const conflicts = diagnostics.filter((d) => d.code === "layout-conflict");
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.severity).toBe("warning");
+    expect(conflicts[0]?.pointer).toBe("");
+    expect(conflicts[0]?.message).toContain("你好");
+    expect(conflicts[0]?.message).toContain("Lang/en/main.json = Hello");
+    expect(conflicts[0]?.message).toContain("Lang/en/host/main.json = Hi");
+  });
+
+  it("供给缺席 ⇒ 三类新诊断族全部跳过（不臆造「零问题」也不误报）", () => {
+    const codes = analyzeStory(fixtureStory()).map((d) => d.code);
+    expect(codes).not.toContain("unmarked-host-text");
+    expect(codes).not.toContain("layout-conflict");
+    expect(codes).not.toContain("unused-translation");
+  });
+});

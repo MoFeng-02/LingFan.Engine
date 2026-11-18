@@ -7,7 +7,7 @@ import type { EditorTexts } from "./texts.ts";
 export type DiagnosticSeverity = "error" | "warning";
 
 export interface Diagnostic {
-  /** 诊断码：unknown-op / unknown-field / missing-required / invalid-value / duplicate-column / missing-target / unknown-function / undefined-variable / missing-resource / missing-entry / invalid-structure / unused-translation / missing-translation / invalid-element / unimplemented-element-attr / invalid-element-fit */
+  /** 诊断码：unknown-op / unknown-field / missing-required / invalid-value / duplicate-column / missing-target / unknown-function / undefined-variable / missing-resource / missing-entry / invalid-structure / unused-translation / missing-translation / unmarked-host-text / layout-conflict / invalid-element / unimplemented-element-attr / invalid-element-fit */
   code: string;
   severity: DiagnosticSeverity;
   message: string;
@@ -57,6 +57,25 @@ export interface AnalyzeOptions {
   resourceFiles?: ReadonlySet<string>;
   /** overlay 译文键集合（Lang/{lang} 合并后）→ 未使用翻译键诊断（翻译缺口检查器） */
   overlayKeys?: ReadonlySet<string>;
+  /**
+   * 宿主源码里未标记的静态文案（含 CJK 未包 t()）→ unmarked-host-text。
+   * 结构内联而非 import 供给侧类型：契约层不依赖平台契约（core DiagnosticSupply
+   * 同形状字段可直接喂入）；行列均 1 基。缺席 = 该诊断族跳过（浏览器形态扫不了源码）。
+   */
+  unmarkedHostTexts?: readonly {
+    readonly file: string;
+    readonly line: number;
+    readonly column: number;
+    readonly text: string;
+  }[];
+  /**
+   * 布局冲突：同一语言内同键出现在 ≥2 个 overlay 文件且取值 ≥2 种 → layout-conflict。
+   * `sites.path` 为含语言段的真实逻辑路径。缺席 = 该诊断族跳过。
+   */
+  layoutConflicts?: readonly {
+    readonly key: string;
+    readonly sites: readonly { readonly path: string; readonly value: string }[];
+  }[];
   /** 集中文案表注入（缺省 defaultEditorTexts，即编辑器的既有文案） */
   texts?: Partial<EditorTexts>;
 }

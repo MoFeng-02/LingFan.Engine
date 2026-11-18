@@ -593,3 +593,115 @@ describe("故事形态：单列原子编译产物经 parseStoryFile 正规化", 
     expect(union.size).toBeGreaterThan(0);
   });
 });
+
+/* ———————————————— 别名清单显式配置（Q18：flag > 工程清单 > 缺省 t） ———————————————— */
+
+const ALIAS_SOURCE =
+  'export const title = tr("别名键");\nexport const raw = "未标记文案";\n';
+
+/** 带别名宿主的工程：tr 未登记时「别名键」按未标记报（缺省只认 t） */
+async function aliasProject(): Promise<void> {
+  await write("Resources/Stories/chapter1/start.json", STORY);
+  await write("src/host/main.ts", ALIAS_SOURCE);
+}
+
+describe("别名清单：--functions flag 与工程清单 i18n.functions", () => {
+  it("缺省只认 t：tr 里的中文按未标记报，不隐式猜测别名", async () => {
+    await aliasProject();
+    const cap = capture();
+    const code = await runI18nCli(["scan", root, "--json"], cap.output);
+    expect(code).toBe(0);
+    const parsed = JSON.parse(cap.lines.join("\n")) as ScanJson;
+    expect(parsed.hostKeys).toEqual({});
+    expect(parsed.unmarked.map((u) => u.text)).toEqual([
+      "别名键",
+      "未标记文案",
+    ]);
+  });
+
+  it("--functions=t,tr：tr 收进键集合，未标记只剩真裸文案", async () => {
+    await aliasProject();
+    const cap = capture();
+    const code = await runI18nCli(
+      ["scan", root, "--functions=t,tr", "--json"],
+      cap.output,
+    );
+    expect(code).toBe(0);
+    const parsed = JSON.parse(cap.lines.join("\n")) as ScanJson;
+    expect(parsed.hostKeys).toEqual({ "src/host/main.ts": ["别名键"] });
+    expect(parsed.unmarked.map((u) => u.text)).toEqual(["未标记文案"]);
+  });
+
+  it("工程清单 i18n.functions 被读取（无 flag 也生效）", async () => {
+    await aliasProject();
+    await write(
+      "Resources/project.json",
+      JSON.stringify({ name: "p", i18n: { functions: ["tr"] } }),
+    );
+    const cap = capture();
+    const code = await runI18nCli(["scan", root, "--json"], cap.output);
+    expect(code).toBe(0);
+    const parsed = JSON.parse(cap.lines.join("\n")) as ScanJson;
+    expect(parsed.hostKeys).toEqual({ "src/host/main.ts": ["别名键"] });
+  });
+
+  it("flag 优先于清单：清单只登记 tr，flag 只登记 t ⇒ tr 按未标记报", async () => {
+    await aliasProject();
+    await write(
+      "Resources/project.json",
+      JSON.stringify({ i18n: { functions: ["tr"] } }),
+    );
+    const cap = capture();
+    const code = await runI18nCli(
+      ["scan", root, "--functions=t", "--json"],
+      cap.output,
+    );
+    expect(code).toBe(0);
+    const parsed = JSON.parse(cap.lines.join("\n")) as ScanJson;
+    expect(parsed.hostKeys).toEqual({});
+    expect(parsed.unmarked.map((u) => u.text)).toContain("别名键");
+  });
+
+  it("清单空数组 fail-closed：exit 1 + 可读报错（扫描器唯一文案源）", async () => {
+    await aliasProject();
+    await write(
+      "Resources/project.json",
+      JSON.stringify({ i18n: { functions: [] } }),
+    );
+    const cap = capture();
+    const code = await runI18nCli(["scan", root], cap.output);
+    expect(code).toBe(1);
+    expect(cap.errors.join("\n")).toContain("别名清单不能为空");
+  });
+
+  it("flag 空段 fail-closed：--functions=t, 含空名 ⇒ exit 1", async () => {
+    await aliasProject();
+    const cap = capture();
+    const code = await runI18nCli(["scan", root, "--functions=t,"], cap.output);
+    expect(code).toBe(1);
+    expect(cap.errors.join("\n")).toContain("别名清单含空函数名");
+  });
+
+  it("清单形状错误 fail-closed：functions 非字符串数组 ⇒ exit 1 + 点名 i18n.functions", async () => {
+    await aliasProject();
+    await write(
+      "Resources/project.json",
+      JSON.stringify({ i18n: { functions: "t,tr" } }),
+    );
+    const cap = capture();
+    const code = await runI18nCli(["scan", root], cap.output);
+    expect(code).toBe(1);
+    expect(cap.errors.join("\n")).toContain("i18n.functions 必须是字符串数组");
+  });
+
+  it("check 联动：登记别名后未标记仍在 ⇒ fail-on=any 非零退出", async () => {
+    await aliasProject();
+    const cap = capture();
+    const code = await runI18nCli(
+      ["check", root, "--functions=t,tr", "--fail-on=any"],
+      cap.output,
+    );
+    expect(code).toBe(1);
+    expect(cap.lines.join("\n")).toContain("宿主未标记文案 1 条");
+  });
+});

@@ -31,6 +31,10 @@ export interface EditorTexts {
   unusedTranslationKey(key: string): string;
   /** diagnostics：原文未有任何译文。 */
   missingTranslationOriginal(original: string): string;
+  /** diagnostics：宿主源码含 CJK 的静态文案未包 t()（行列 1 基）。 */
+  unmarkedHostText(file: string, line: number, column: number, text: string): string;
+  /** diagnostics：同键在同语言多个 overlay 文件取值不一（写胜静默遮蔽）。 */
+  layoutConflictKey(key: string, sites: string): string;
   /** diagnostics：元素属性已声明但无渲染语义。 */
   unimplementedElementAttr(attr: string): string;
   /** diagnostics：元素 stretch 取值不在中立词表内（运行期回退缺省填充方式）。 */
@@ -139,6 +143,10 @@ export const defaultEditorTexts: EditorTexts = {
     `未使用的译文键：${key}（say / menu / input / notify 四个翻译面均未命中原文——该键运行期不会生效；若这段文字只用于元素文本或宿主界面，本条可忽略）`,
   missingTranslationOriginal: (original) =>
     `原文未有任何译文：${original}（所有语言的 overlay 均未命中——运行期回退原文；专有名词等有意保留原文的可忽略）`,
+  unmarkedHostText: (file, line, column, text) =>
+    `宿主未标记文案：${text}（${file}:${line}:${column} 含中文但未包 t()——不进键集合，玩家永远看到这一份写死的文字；请包 t() 或改用译文键）`,
+  layoutConflictKey: (key, sites) =>
+    `布局冲突：${key}（同语言多文件取值不一，合并后写胜会静默遮蔽：${sites}；请统一取值或清理多余文件）`,
   unimplementedElementAttr: (attr) => `元素属性 ${attr} 已声明但当前无渲染语义（写入不生效）`,
   // 可选范围与缺省值都从契约词表拼出来：手写字面量列表会在词表扩充后与实况漂移，
   // 而这条文案存在的意义正是「告诉用户合法取值是什么」。

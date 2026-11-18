@@ -14,6 +14,39 @@ import type { LastProjectEntry, OpenedProject } from "../contracts";
 import type { DialogPort } from "../domain";
 import type { EditorSaveState } from "./useEditorSave";
 
+/**
+ * 语言摘要投影（纯函数，零 IO）：供给 → 每语言真实文件路径表。
+ * 新口径优先（overlayFilesByLang：per-story 逐文件、single `Lang/{lang}.json`
+ * 原样）；供给方未升级时回落旧的单文件假设（`Lang/{lang}/main.json`）——双轨并存。
+ * 供给缺席（未打开工程）= 空列表。语言与文件都按码元序稳定排序，键集排序成数组。
+ */
+export function projectLangSummaries(
+  supply: DiagnosticSupply | undefined,
+): readonly LangSummary[] {
+  if (supply === undefined) return [];
+  const filesByLang = supply.overlayFilesByLang;
+  if (filesByLang !== undefined) {
+    return [...filesByLang.entries()]
+      .map(([lang, files]) => ({
+        lang,
+        files: new Map(
+          [...files.entries()]
+            .sort(([a], [b]) => (a < b ? -1 : 1))
+            .map(([path, keys]) => [path, [...keys].sort()]),
+        ),
+      }))
+      .sort((a, b) => (a.lang < b.lang ? -1 : 1));
+  }
+  return [...supply.overlayKeysByLang.entries()]
+    .map(([lang, keys]) => ({
+      lang,
+      files: new Map<string, readonly string[]>([
+        [`Lang/${lang}/main.json`, [...keys].sort()],
+      ]),
+    }))
+    .sort((a, b) => (a.lang < b.lang ? -1 : 1));
+}
+
 export interface I18nWorkbenchDeps {
   story: ShallowRef<Story>;
   projectTree: Ref<Story | undefined>;
@@ -49,19 +82,9 @@ export function useI18nWorkbench(deps: I18nWorkbenchDeps) {
     extractStoryKeys(projectTree.value ?? story.value),
   );
   /** 各语言键集合（由供给侧的分语言视图投影；`Lang/` 不存在 = 空） */
-  const i18nLangs = computed<readonly LangSummary[]>(() => {
-    const byLang = diagnosticSupply.value?.overlayKeysByLang;
-    if (byLang === undefined) return [];
-    return [...byLang.entries()]
-      .map(([lang, keys]) => ({
-        lang,
-        // 单文件形态用语言码本身作路径键（`Lang/{lang}.json`）；目录形态用 `main.json`
-        files: new Map<string, readonly string[]>([
-          [`Lang/${lang}/main.json`, [...keys].sort()],
-        ]),
-      }))
-      .sort((a, b) => (a.lang < b.lang ? -1 : 1));
-  });
+  const i18nLangs = computed<readonly LangSummary[]>(() =>
+    projectLangSummaries(diagnosticSupply.value),
+  );
 
   /**
    * 骨架生成（本地化工作台「新建语言」）：委托纯函数产出文件内容，落盘走**既有**写回端口。

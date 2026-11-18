@@ -13,7 +13,8 @@
  * 比例同源、绝对尺寸按 750 宽度折算。
  */
 import { onReady, onUnload } from "@dcloudio/uni-app";
-import { ref } from "vue";
+import { DEFAULT_LANG } from "@lingfan-engine/core";
+import { computed, ref } from "vue";
 import ChoiceLayer from "../../components/ChoiceLayer.vue";
 import DialogueLayer from "../../components/DialogueLayer.vue";
 import NoticeLayer from "../../components/NoticeLayer.vue";
@@ -51,9 +52,14 @@ const inputValue = ref("");
 /** 存读面板模式与逐槽视图：null = 收起（只留入口条） */
 const slotMode = ref<SlotPanelMode | null>(null);
 const slotViews = ref<SlotView[]>([]);
+/** 当前语言：空串 = 默认语言（原文直出）。门面 cell 不是 Vue 响应式，镜像进 ref */
+const currentLang = ref("");
+/** 可选语言清单（门面缺省只含默认语言，端口清单异步补齐后同步） */
+const langs = ref<string[]>([DEFAULT_LANG]);
 
 let host: MiniprogramHostHandle | null = null;
 let stopResizeWatch: (() => void) | null = null;
+let stopLangWatch: (() => void) | null = null;
 
 /** 把一次补丁写进页面状态：字段缺省即不动（`null` 是「清空」而不是「不动」） */
 function applyPatch(patch: MiniprogramHostPatch): void {
@@ -74,12 +80,52 @@ function layerZ(layer: string): number {
   return layers.value[layer] ?? 0;
 }
 
+/** 语言选择器当前项：空串（默认）映射到清单里的默认语言码 */
+const langIndex = computed(() => {
+  const shown = currentLang.value === "" ? DEFAULT_LANG : currentLang.value;
+  const index = langs.value.indexOf(shown);
+  return index < 0 ? 0 : index;
+});
+
+/** 把门面的语言状态镜像进页面响应式（清单补齐后也要重取一次） */
+function syncLang(): void {
+  const current = host;
+  if (current === null) return;
+  currentLang.value = current.i18n.currentLang.value;
+  langs.value = [...current.i18n.availableLangs];
+}
+
+/** 静态文案翻译：读 currentLang 建立响应式依赖，切语言后模板自动重渲 */
+function translate(text: string): string {
+  const current = host;
+  // 默认语言原文直出（不查表）；引擎未起时也直出
+  if (current === null || currentLang.value === "") return text;
+  return current.i18n.t(text);
+}
+
+/** 语言选择：默认语言映射回空串（引擎的「原文直出」语义），其余按语言码切换 */
+function onLangChange(event: { detail: { value: string | number } }): void {
+  const current = host;
+  const lang = langs.value[Number(event.detail.value)];
+  if (current === null || lang === undefined) return;
+  void current.i18n
+    .changeLang(lang === DEFAULT_LANG ? "" : lang)
+    .catch((cause: unknown) => {
+      error.value = String(cause);
+    });
+}
+
 /** 启动宿主：取画布（拿不到就退回定时器帧源），接上数据发布口与尺寸变化监听 */
 async function boot(): Promise<void> {
   try {
     const canvas = await queryCanvasNode(CANVAS_SELECTOR);
     const started = await startMiniprogramHost({ canvas, publish: applyPatch });
     host = started;
+    syncLang();
+    // 语言出站（含清单异步补齐前的首次切换）：镜像回页面，模板里的 t() 依赖随之重算
+    stopLangWatch = started.i18n.subscribe(() => {
+      syncLang();
+    });
     stopResizeWatch = watchWindowResize(() => {
       started.resize();
     });
@@ -93,6 +139,8 @@ onReady(() => {
 });
 
 onUnload(() => {
+  stopLangWatch?.();
+  stopLangWatch = null;
   stopResizeWatch?.();
   stopResizeWatch = null;
   host?.dispose();
@@ -222,10 +270,23 @@ defineOptions({ name: "PageIndex" });
       <SaveLoadBar
         :mode="slotMode"
         :views="slotViews"
+        :translate="translate"
         @open="openSlots"
         @choose="onChooseSlot"
         @close="closeSlots"
       />
+      <!-- 语言选择器：清单来自构建期扫描（门面的 availableLangs），默认语言=原文直出 -->
+      <picker
+        class="lang-picker"
+        mode="selector"
+        :range="langs"
+        :value="langIndex"
+        @change="onLangChange"
+      >
+        <view class="lang-value">{{
+          currentLang === "" ? DEFAULT_LANG : currentLang
+        }}</view>
+      </picker>
     </view>
   </view>
 </template>
@@ -274,6 +335,24 @@ defineOptions({ name: "PageIndex" });
   top: 0;
   width: 100%;
   pointer-events: none;
+}
+
+/* 语言选择器：右上角落位（左上是存读入口，右上通知层不吃点击、不冲突） */
+.lang-picker {
+  position: absolute;
+  right: 24rpx;
+  top: 24rpx;
+  pointer-events: auto;
+}
+
+.lang-value {
+  padding: 12rpx 28rpx;
+  border: 2rpx solid rgba(122, 162, 247, 0.4);
+  border-radius: 16rpx;
+  background: rgba(30, 30, 46, 0.72);
+  color: #e6e6f0;
+  font-size: 26rpx;
+  text-align: center;
 }
 
 /* 失败横幅：压在一切之上，只读 */

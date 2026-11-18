@@ -21,6 +21,7 @@ import {
   videoFitOf,
   type AudioPort,
   type HostControls,
+  type I18nPort,
   type PreferencesPort,
   type ProjectFilesPort,
   type ResourcePort,
@@ -37,7 +38,9 @@ import {
   createWebStorageSavePort,
   createWebVideoPort,
   loadProject,
+  type I18nLangEntry,
 } from "@lingfan-engine/adapters";
+import { createHostI18n, type HostI18n } from "@lingfan-engine/shell";
 import {
   DEFAULT_TEXT_CPS,
   DEFAULT_TOAST_MS,
@@ -60,6 +63,7 @@ import { createPreferencesPanel } from "./panels/preferences";
 import { createHistoryPanel } from "./panels/history";
 import { createNativeMountRenderer } from "./mount/index";
 import { createHostControls } from "./controls";
+import { createHostI18nPort, wireHostI18n } from "./i18n";
 
 /**
  * 装配输入：节点句柄表、资源根内的清单与故事表，以及两项可配置节律。
@@ -72,6 +76,11 @@ export interface HostBootOptions {
   manifestFile: string;
   /** 故事文件的逻辑路径表（相对资源根；新增故事必须同步此表） */
   stories: readonly string[];
+  /**
+   * 语言清单（可选）：构建期扫描 `Resources/Lang/` 的产物（`virtual:lang-list`）。
+   * 缺省空清单 = 只有默认语言原文直出；给了则语言选择器与 `setLanguage` 按需取件。
+   */
+  langs?: readonly I18nLangEntry[];
   /** 故事未声明字速时的兜底（可见字符 / 秒）；缺省 = 展示层给出的默认字速 */
   defaultCps?: number;
   /** 提示条驻留毫秒数；缺省 = 展示层给出的默认时长 */
@@ -155,6 +164,11 @@ export interface BootPortOverrides {
   saves?: SavePort;
   /** 玩家偏好持久化（缺省走 localStorage；桌面壳换 app_data JSON 文件） */
   preferences?: PreferencesPort;
+  /**
+   * 译文供给（缺省走 Web fetch：`Lang/` 是 publicDir 静态资源，桌面 WebView 同样可取）。
+   * 桌面壳**不换**这个端口——Rust 侧未注册 i18n 命令，接 Tauri 端口会 invoke 失败。
+   */
+  i18n?: I18nPort;
 }
 
 /**
@@ -182,6 +196,14 @@ export interface HostHandle {
   readonly engine: StoryEngine;
   /** 玩家偏好（已 hydrate；读写与订阅都走它）。同为 `readonly`：换实例等于丢掉既有订阅 */
   readonly preferences: PlayerPreferences;
+  /**
+   * 宿主语言门面（shell `createHostI18n` 的产物，绑同一个引擎实例）。
+   *
+   * `currentLang` / `availableLangs` 现读、`t()` 查表、`changeLang()` 切换、
+   * `subscribe()` 订阅语言变更。页面语言选择器已由装配内部接好（`dom.lang` 给了的话）；
+   * 需要代码切换或读当前语言的宿主用这个门面，不另建第二个。
+   */
+  readonly i18n: HostI18n;
   /**
    * 拆除本宿主：按依赖反序释放渲染器，再销毁引擎。
    *
@@ -220,6 +242,10 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     options.ports?.resources ?? createStaticResourcePort();
   const audioPort: AudioPort = createWebAudioPort({ onError: reportError });
   const savePort: SavePort = options.ports?.saves ?? createWebStorageSavePort();
+  // 译文供给端口先于引擎（引擎构造要吃它，setLanguage 按需取件）。
+  // 浏览器与桌面壳同走 Web fetch：Lang/ 是 publicDir 静态资源，WebView 同样可取。
+  const i18nPort: I18nPort =
+    options.ports?.i18n ?? createHostI18nPort(options.langs ?? []);
 
   // —— 玩家偏好：独立于存档的整局设置（音量 / 静音 / 字速）——
   // hydrate 失败 = 默认值起航（端口实现负责吞掉畸形数据，绝不因偏好坏掉挡住启动）
@@ -263,8 +289,12 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
   const engine = new StoryEngine(story, {
     historyLimit: 200,
     savePort,
+    i18nPort,
     audioConfig: resolveAudioConfig(manifest),
   });
+  // 语言门面绑同一个引擎实例：t() 查表、changeLang() 切换、subscribe() 订阅语言变更。
+  // 静态文案的查表函数交给各视图（缺省恒等 = 原文直出，不接 i18n 行为不变）。
+  const i18n = createHostI18n(engine, { i18nPort });
   const audio = createAudioRenderer(engine, audioPort, resourcePort, {
     onError: reportError,
     // 偏好接线：通道音量 = op 音量 × 通道偏好，偏好变化即时重规划（不重头播）
@@ -284,6 +314,7 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     dom,
     engine,
     defaultCps: options.defaultCps ?? DEFAULT_TEXT_CPS,
+    translate: i18n.t,
   });
 
   // —— 宿主控制面：引擎与媒体端口就绪后造一次，交出去（挂载 UI 与宿主菜单共用）——
@@ -339,6 +370,8 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     gameState: engine.gameState,
     // UI 挂载落点：没容器也不接管就不订阅（`mount` 命令照常改状态，只是没有组件出现）
     mounts: onMounts,
+    // 存读档回执前缀走查表（宿主字面量）；notify 正文与诊断不在此二次查表
+    translate: i18n.t,
   });
 
   const driveEffects = createHostEffects({ dom, engine });
@@ -351,6 +384,7 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
       : createPreferencesPanel({
           preferences,
           container: options.prefsContainer,
+          translate: i18n.t,
         });
   prefsPanel?.mount();
 
@@ -367,8 +401,20 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
             audio.sync();
             video.sync();
           },
+          translate: i18n.t,
         });
   historyPanel?.mount();
+
+  // —— 语言接线：选择器 + 宿主静态文案重画（门面与视图都已就绪）——
+  // 故事内容的重译由引擎派生键自动出站，这里只管宿主自己的字面量。
+  const i18nWiring = wireHostI18n({
+    dom,
+    i18n,
+    i18nPort,
+    dialogue,
+    prefsPanel: prefsPanel ?? undefined,
+    historyPanel: historyPanel ?? undefined,
+  });
 
   const frameLoop = startHostFrameLoop({
     dialogue,
@@ -399,6 +445,8 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     // 面板先拆：它订阅偏好层，偏好 dispose 之后再退订会漏掉末次回填
     prefsPanel?.destroy();
     historyPanel?.destroy();
+    // 语言接线先于渲染器拆：退订门面与选择器事件，切语言回调不再打到将死的视图
+    i18nWiring.dispose();
     audio.dispose();
     video.dispose();
     engine.dispose();
@@ -406,5 +454,5 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     preferences.dispose();
   };
 
-  return { engine, preferences, dispose };
+  return { engine, preferences, i18n, dispose };
 }

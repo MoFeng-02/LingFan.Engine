@@ -116,7 +116,9 @@ describe("模板偏好接线 · 装配层（源码互锁）", () => {
 
   it("宿主句柄带出偏好，且拆除时最后收尾（补发防抖窗内未落盘的末次修改）", () => {
     expect(handleSource).toContain("preferences");
-    expect(bootSource).toContain("return { engine, preferences, dispose }");
+    expect(bootSource).toContain(
+      "return { engine, preferences, i18n, dispose }",
+    );
     // dispose 里 preferences 必须排在 engine.dispose 之后：引擎已停，没人再改它
     const disposeBlock = bootSource.slice(bootSource.indexOf("const dispose"));
     expect(disposeBlock.indexOf("preferences.dispose()")).toBeGreaterThan(

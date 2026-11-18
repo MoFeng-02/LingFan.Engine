@@ -1,5 +1,5 @@
 /**
- * **宿主句柄**：`bootHost` 交出的那三样东西，以及它与既有组合根的向后兼容。
+ * **宿主句柄**：`bootHost` 交出的那几样东西，以及它与既有组合根的向后兼容。
  *
  * 为什么是源码互锁而不是单元测试：`bootHost` 要 fetch、localStorage、VideoPort 全套，
  * 跑不起来；而这里要守的恰恰是**装配层的形状**——句柄里有谁、引擎是不是同一个实例、
@@ -8,7 +8,8 @@
  *
  * 三件事分开验：
  * 1. **句柄形状**：返回类型是 `Promise<HostHandle>`，字段齐（`engine` / `preferences` /
- *    `dispose`），并且 `preferences` 必有（本宿主恒定接线偏好层，调用方不必判空）；
+ *    `i18n` / `dispose`），并且 `preferences` 与 `i18n` 必有（本宿主恒定接线偏好层与
+ *    语言门面，调用方不必判空）；
  * 2. **同一实例**：`boot.ts` 只有一处 `new StoryEngine(`——单构造点 + 按名返回，
  *    句柄里那个 `engine` 不可能是第二个引擎；拆除按依赖反序且幂等；
  * 3. **向后兼容**：既有组合根一行不改——不取返回值的写法照旧编译通过（不出现
@@ -41,7 +42,9 @@ function block(source: string, open: string): string {
 /** 拆除段：幂等标志与函数体连着看（标志声明在函数外，只取函数体会漏掉它） */
 const DISPOSE_BLOCK = (() => {
   const start = bootSource.indexOf("let disposed = false;");
-  const end = bootSource.indexOf("return { engine, preferences, dispose };");
+  const end = bootSource.indexOf(
+    "return { engine, preferences, i18n, dispose };",
+  );
   return start < 0 || end < 0 ? "" : bootSource.slice(start, end);
 })();
 /** 句柄接口体 */
@@ -54,10 +57,11 @@ describe("宿主句柄 · 形状", () => {
     );
   });
 
-  it("**三字段齐**：`engine` / `preferences` / `dispose`", () => {
+  it("**四字段齐**：`engine` / `preferences` / `i18n` / `dispose`", () => {
     expect(HANDLE_BLOCK).not.toBe("");
     expect(HANDLE_BLOCK).toContain("engine: StoryEngine;");
     expect(HANDLE_BLOCK).toContain("preferences: PlayerPreferences;");
+    expect(HANDLE_BLOCK).toContain("i18n: HostI18n;");
     expect(HANDLE_BLOCK).toContain("dispose(): void;");
   });
 
@@ -66,14 +70,23 @@ describe("宿主句柄 · 形状", () => {
     expect(HANDLE_BLOCK).not.toContain("preferences: PlayerPreferences |");
   });
 
+  it("**`i18n` 必有**（语言门面恒接线；不接端口 = 原文直出，也是有效状态）", () => {
+    expect(HANDLE_BLOCK).not.toContain("i18n?:");
+    expect(HANDLE_BLOCK).not.toContain("i18n: HostI18n |");
+    // 类型取自 shell 包，不在模板里再造一个门面窄接口
+    expect(HANDLE_BLOCK).not.toContain("i18n: {");
+  });
+
   it("`engine` 类型取自引擎包，不是本地再造的窄接口", () => {
     // 宽化成 `{ start(): void }` 之类会让宿主拿不到 `columns()` / `on()` / `gameState`
     expect(HANDLE_BLOCK).toContain("engine: StoryEngine;");
     expect(HANDLE_BLOCK).not.toContain("engine: {");
   });
 
-  it("**返回值里三项按名交出**（不是新造对象、不是包装）", () => {
-    expect(bootSource).toContain("return { engine, preferences, dispose };");
+  it("**返回值里各项按名交出**（不是新造对象、不是包装）", () => {
+    expect(bootSource).toContain(
+      "return { engine, preferences, i18n, dispose };",
+    );
   });
 
   it("`host/index.ts` 同步转发 `HostHandle` 类型与 `bootHost`", () => {
@@ -124,6 +137,7 @@ describe("宿主句柄 · 句柄里的引擎就是宿主内部那个", () => {
     // 宿主自己改 `handle.engine = ...` 会把引擎换成第二个实例；`readonly` 挡住它
     expect(HANDLE_BLOCK).toContain("readonly engine: StoryEngine;");
     expect(HANDLE_BLOCK).toContain("readonly preferences: PlayerPreferences;");
+    expect(HANDLE_BLOCK).toContain("readonly i18n: HostI18n;");
   });
 });
 

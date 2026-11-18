@@ -17,6 +17,8 @@ export {
 } from "./injection-keys";
 export {
   type HostCapabilities,
+  type HostScanRequest,
+  type HostScanResult,
   type PackRequest,
   type PackResult,
   type WatchStatus,

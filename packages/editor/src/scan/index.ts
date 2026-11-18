@@ -8,6 +8,7 @@
 
 export {
   findUnmarkedHostTexts,
+  functionNamesOf,
   isScannableSourcePath,
   scanHostSource,
   type AstScanOptions,

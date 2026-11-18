@@ -49,6 +49,12 @@ export interface DialogueViewOptions {
   engine: DialogueEngine;
   /** 故事未声明字速时的兜底（可见字符 / 秒）；缺省 = 展示层给出的默认字速 */
   defaultCps?: number;
+  /**
+   * 宿主静态文案查表（可选）：缺省恒等 = 原文直出（不接 i18n 时行为与旧版全同）。
+   * 只包**宿主自己的字面量**（确定 / 等待提示）；故事内容（菜单、输入提示、候选）
+   * 由引擎派生给译文，这里不再二次查表。
+   */
+  translate?: (text: string) => string;
 }
 
 /** 对话视图句柄：状态键的每条意图各有一个落点，另有两个帧循环用的钩子 */
@@ -80,6 +86,7 @@ export interface DialogueView {
 export function createDialogueView(options: DialogueViewOptions): DialogueView {
   const { dom, engine } = options;
   const defaultCps = options.defaultCps ?? DEFAULT_TEXT_CPS;
+  const t = options.translate ?? ((text: string): string => text);
 
   /** 当前打字机；整句直出时为 null */
   let typewriter: Typewriter | null = null;
@@ -158,7 +165,7 @@ export function createDialogueView(options: DialogueViewOptions): DialogueView {
       input.maxLength = 20;
       const ok = document.createElement("button");
       ok.type = "submit";
-      ok.textContent = "确定";
+      ok.textContent = t("确定");
       row.append(input, ok);
       row.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -194,8 +201,8 @@ export function createDialogueView(options: DialogueViewOptions): DialogueView {
       note.className = "note";
       note.textContent =
         waiting === "video"
-          ? "视频播放中……（点击或空格跳过）"
-          : "等待中……（点击或空格跳过）";
+          ? t("视频播放中……（点击或空格跳过）")
+          : t("等待中……（点击或空格跳过）");
       dom.choices.append(note);
     } else if (waiting === "minigame") {
       const banner = document.createElement("p");

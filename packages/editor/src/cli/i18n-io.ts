@@ -11,6 +11,7 @@ import { promises as fsp } from "node:fs";
 import path from "node:path";
 import type { I18nOverlayFile } from "@lingfan-engine/core";
 import { parseStoryFile } from "@lingfan-engine/core";
+import { resolveI18nFunctions } from "../authoring/index.ts";
 import {
   extractStoryKeys,
   LANG_DIR,
@@ -20,6 +21,7 @@ import {
 } from "../i18n/index.ts";
 import {
   findUnmarkedHostTexts,
+  functionNamesOf,
   isScannableSourcePath,
   scanHostSource,
   type DynamicCallSite,
@@ -85,17 +87,18 @@ async function loadHostScan(
   root: string,
   scanDir: string,
   all: boolean,
+  functions: readonly string[] | undefined,
 ): Promise<HostScan> {
   const scan: HostScan = { hostKeys: new Map(), dynamic: [], unmarked: [] };
   for (const rel of await listFiles(path.join(root, scanDir))) {
     if (!isScannableSourcePath(rel)) continue;
     const file = `${scanDir}/${rel}`;
     const text = await fsp.readFile(path.join(root, scanDir, rel), "utf8");
-    const result = scanHostSource(text, file, { all });
+    const result = scanHostSource(text, file, { all, functions });
     // 无键的源文件不建宿主分组（避免产出空 overlay 文件）
     if (result.keys.length > 0) scan.hostKeys.set(file, result.keys);
     for (const site of result.dynamic) scan.dynamic.push({ file, ...site });
-    for (const site of findUnmarkedHostTexts(text, file)) {
+    for (const site of findUnmarkedHostTexts(text, file, { functions })) {
       scan.unmarked.push({ file, ...site });
     }
   }
@@ -170,21 +173,40 @@ export interface CliContext {
   sources: string[];
 }
 
+/** 读资源根的工程清单（缺席 = 未配置，返回 undefined；坏 JSON 显式抛错不静默） */
+async function loadManifest(resourcesRoot: string): Promise<unknown> {
+  const text = await readTextIfExists(path.join(resourcesRoot, "project.json"));
+  if (text === undefined) return undefined;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch (error) {
+    throw new Error(
+      `project.json 不是合法 JSON：${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 /** 装载一次工程上下文（故事键 + 宿主扫描 + 原文并集），四个子命令共用 */
 export async function loadContext(args: I18nCliArgs): Promise<CliContext> {
   const root = path.resolve(args.root);
   const resourcesDir = args.resourcesDir ?? "Resources";
   const storiesDir = args.storiesDir ?? `${resourcesDir}/Stories`;
   const scanDir = (args.scanDir ?? "src").replace(/\\/g, "/");
+  const resourcesRoot = path.join(root, resourcesDir);
+  // 别名清单优先级：--functions 显式 flag > 工程清单 i18n.functions > 扫描器缺省 ["t"]。
+  // 装载时先验一次（functionNamesOf）：零源文件工程也要在配置错误处 fail-closed。
+  const functions =
+    args.functions ?? resolveI18nFunctions(await loadManifest(resourcesRoot));
+  functionNamesOf({ functions });
   const storyKeys = await loadStoryKeys(path.join(root, storiesDir));
-  const host = await loadHostScan(root, scanDir, args.all);
+  const host = await loadHostScan(root, scanDir, args.all, functions);
   const union = new Set<string>();
   for (const keys of storyKeys.values()) for (const key of keys) union.add(key);
   for (const keys of host.hostKeys.values()) {
     for (const key of keys) union.add(key);
   }
   return {
-    resourcesRoot: path.join(root, resourcesDir),
+    resourcesRoot,
     storyKeys,
     host,
     sources: [...union].sort(),

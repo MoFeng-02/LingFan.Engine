@@ -1,9 +1,10 @@
 /**
  * 本地服务宿主（**Node 侧**：唯一碰 `node:` 内置模块与进程的地方）。
  *
- * 职责极窄 —— 只做四件事：
+ * 职责极窄 —— 只做五件事：
  * ① 起一个**仅回环**的 HTTP 服务（端口交给内核分配，每次启动随机 token 入路径）；
  * ② 提供 `ping`（能力探测）；`{token}/open`（外部打开）；`{token}/list`（枚举工程文件）；
+ *    `{token}/scan-host`（扫宿主未标记文案：诊断数据，不是任意文件读）；
  * ③ 安全判据全部委托 `./security`（纯函数，可测）——本文件只做 IO 与进程；
  * ④ **不做目录浏览服务**、不提供任意文件读。
  *
@@ -16,18 +17,38 @@
 import { spawn } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import { randomBytes } from "node:crypto";
-import { readdirSync, statSync, watch } from "node:fs";
-import { join, relative, resolve, sep } from "node:path";
+import {
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  statSync,
+  watch,
+} from "node:fs";
+import { basename, join, relative, resolve, sep } from "node:path";
+// 创作期专属子路径出口（包根不转发：运行期可达图不触 typescript）——
+// Node 宿主与 CLI 同域，扫描口径与 `lingfan-i18n check` 完全一致
+import {
+  findUnmarkedHostTexts,
+  functionNamesOf,
+  isScannableSourcePath,
+} from "@lingfan-engine/editor/scan";
+import { resolveI18nFunctions } from "@lingfan-engine/editor/authoring";
+import { MANIFEST_FILE, RESOURCES_DIR } from "@lingfan-engine/core";
 import {
   canOpenExternal,
   isInsideRoot,
   packRequestOf,
+  scanProjectOf,
   shouldReloadOn,
   tokenHex,
   tokenMatches,
   WATCH_IGNORED_DIRS,
 } from "./security";
-import type { HostCapabilities, PackResult } from "../src/contracts";
+import type {
+  HostCapabilities,
+  HostScanResult,
+  PackResult,
+} from "../src/contracts";
 
 const TOKEN_BYTES = 16;
 /** 单次请求体上限（外部打开只发路径，不发内容 ⇒ 极小） */
@@ -83,9 +104,12 @@ const EDITORS: readonly { cmd: string; args: (file: string) => string[] }[] = [
 /** 监听端口：开发期固定（Vite 代理要指向它）；`0` = 内核分配（生产期用） */
 const PORT = Number(process.env.LFEN_EDITOR_HOST_PORT ?? 14250);
 
-export async function startHost(
-  root: string,
-): Promise<{ server: Server; capabilities: HostCapabilities }> {
+export async function startHost(root: string): Promise<{
+  server: Server;
+  /** 释放监视句柄（进程退出前调；`persistent:false` 时不调也能退） */
+  closeWatcher: () => void;
+  capabilities: HostCapabilities;
+}> {
   const token = tokenHex(randomBytes(TOKEN_BYTES));
   // 监视源根（dev 工具；失败不阻断服务启动 ⇒ 降级为「无热重载」）
   const watcher = startWatcher(root);
@@ -192,6 +216,11 @@ async function handle(
       watching: ctx.watcher.watching,
       root: ctx.root,
     });
+    return;
+  }
+  if (action === "scan-host") {
+    const body = await readBody(req as never);
+    json(res, 200, scanHost(body, ctx.root));
     return;
   }
   json(res, 404, { error: "not found" });
@@ -455,6 +484,96 @@ function listFiles(root: string): string[] {
   };
   walk(root, "", 0);
   return out.sort();
+}
+
+/**
+ * 扫宿主未标记文案（诊断供给，**不是任意文件读**）：
+ * 请求只带工程根目录名（单段），宿主在自己的根下找同名目录——
+ * 宿主根本身就是该工程时直接命中，多工程父目录时按名定位；找不到 ⇒ 明确拒绝，不猜路径。
+ * 扫描口径与 `lingfan-i18n check` 完全一致：src/ 下可扫 .ts、
+ * 别名清单 = 清单 i18n.functions > 扫描器缺省，装载先验 fail-closed。
+ * 任何失败（目录不在 / 清单坏 / 别名错 / 读不到）都折成 `{ok:false,reason}`——
+ * 浏览器侧把它当「供给缺席」降级，体检面板该节不显示，不影响其余诊断。
+ */
+function scanHost(body: string, root: string): HostScanResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return { ok: false, reason: "请求体不是合法 JSON" };
+  }
+  const verdict = scanProjectOf(parsed);
+  if (!verdict.ok) return { ok: false, reason: verdict.reason };
+  // 宿主根即该工程（常见形态）⇒ 直接命中；否则在根下找同名子目录
+  const projectRoot =
+    basename(root) === verdict.relative ? root : join(root, verdict.relative);
+  // 字符串判据不等于防符号链接 ⇒ realpath 复核真实路径仍在宿主根内
+  let realProject: string;
+  try {
+    realProject = realpathSync(projectRoot);
+  } catch {
+    return { ok: false, reason: `工程目录不存在：${verdict.relative}` };
+  }
+  const realRoot = resolve(root);
+  if (!realProject.startsWith(realRoot + sep) && realProject !== realRoot) {
+    return { ok: false, reason: "工程目录解析后越出宿主根（疑似符号链接）" };
+  }
+  const srcDir = join(realProject, "src");
+  try {
+    if (!statSync(srcDir).isDirectory()) {
+      return { ok: false, reason: "工程缺少 src/ 宿主源码目录" };
+    }
+  } catch {
+    return { ok: false, reason: "工程缺少 src/ 宿主源码目录" };
+  }
+  // 别名清单：读清单 → 形状校验 → 装载先验（与 CLI loadContext 同序同文案）
+  let functions: readonly string[] | undefined;
+  try {
+    const manifestPath = join(realProject, RESOURCES_DIR, MANIFEST_FILE);
+    let manifestText: string | undefined;
+    try {
+      manifestText = readFileSync(manifestPath, "utf8");
+    } catch {
+      manifestText = undefined; // 清单缺席 = 未配置（与 CLI 同语义）
+    }
+    if (manifestText !== undefined) {
+      let manifest: unknown;
+      try {
+        manifest = JSON.parse(manifestText);
+      } catch (error) {
+        throw new Error(
+          `project.json 不是合法 JSON：${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+      functions = resolveI18nFunctions(manifest);
+    }
+    functionNamesOf({ functions });
+  } catch (error) {
+    return {
+      ok: false,
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
+  const unmarked: {
+    file: string;
+    line: number;
+    column: number;
+    text: string;
+  }[] = [];
+  for (const rel of listFiles(srcDir)) {
+    if (!isScannableSourcePath(rel)) continue;
+    let text: string;
+    try {
+      text = readFileSync(join(srcDir, rel), "utf8");
+    } catch {
+      continue; // 单文件读不到（权限/竞态）跳过，不让整次扫描失败
+    }
+    const file = `src/${rel}`;
+    for (const site of findUnmarkedHostTexts(text, file, { functions })) {
+      unmarked.push({ file, ...site });
+    }
+  }
+  return { ok: true, unmarked };
 }
 
 /** 外部打开：白名单判据 + realpath 复核 + 只 spawn 已知编辑器 */

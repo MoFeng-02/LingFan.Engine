@@ -97,6 +97,11 @@ export interface AppLifecycleOptions {
    * 放在这里而不是 `props` 上，是因为它不属于组合根（`main.ts`）注入的宿主配置。
    */
   onBody?: (raw: unknown) => void;
+  /**
+   * 引擎（重）绑定钩子：透传给引擎生命周期（init 与 restart 两路都回调）。
+   * 语言门面的订阅跟着引擎实例走，由组合根把重绑动作经这里接进来。
+   */
+  onBindEngine?: () => void;
 }
 
 /** 装配结果：引擎生命周期、帧循环句柄、对局会话与卸载动作 */
@@ -129,6 +134,7 @@ export function createAppLifecycle(options: AppLifecycleOptions): AppLifecycle {
     onMounts: props.onMounts,
     onBody: options.onBody,
     onPaused: (value: boolean) => pausedSink.apply?.(value),
+    onBindEngine: options.onBindEngine,
   });
   engineLife.initEngine();
   const { frameLoop } = createAppFrame({

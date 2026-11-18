@@ -243,9 +243,14 @@ const diagnostics = computed(() => {
     ? analyzeStory(tree)
     : analyzeStory(tree, {
         // 只喂 `analyzeStory` 契约认的字段 —— 供给侧还有 `overlayKeysByLang`
-        //   （本地化工作台用），**不是判据输入**，多传会被类型门拦下。
+        //   / `overlayFilesByLang`（本地化工作台用），**不是判据输入**，多传会被类型门拦下。
         resourceFiles: supply.resourceFiles,
         overlayKeys: supply.overlayKeys,
+        // 新诊断族（可选供给；缺席 = 跳过）：布局冲突由供给方装载时算好；
+        //   宿主未标记文案由组合根经 Node 宿主 scan-host 端点代扫补入
+        //   （浏览器拿不到资源根外的源码；无宿主 = 字段缺席 = 该节不显示）。
+        unmarkedHostTexts: supply.unmarkedHostTexts,
+        layoutConflicts: supply.layoutConflicts,
       });
 });
 const errorCount = computed(
@@ -665,6 +670,8 @@ function onImportFile(event: Event): void {
           :resource-port="ports.resourcePort.value"
           :first-scene-column-id="firstSceneColumnId"
           :save-text-resource="saveTextResource"
+          :i18n-sources="i18nSources"
+          :i18n-conflicts="diagnosticSupply?.layoutConflicts"
           @empty-action="onEmptyAction"
         />
 
@@ -677,6 +684,8 @@ function onImportFile(event: Event): void {
           :diagnostics="diagnostics"
           :i18n-sources="i18nSources"
           :i18n-langs="i18nLangs"
+          :i18n-unmarked="diagnosticSupply?.unmarkedHostTexts"
+          :i18n-conflicts="diagnosticSupply?.layoutConflicts"
           :local-host-available="localHostAvailable"
           :packing="packing"
           :send="sendPackRequest"

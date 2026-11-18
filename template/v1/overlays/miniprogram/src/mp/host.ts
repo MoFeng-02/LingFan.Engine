@@ -23,10 +23,12 @@ import {
   type StageConfig,
   type Story,
 } from "@lingfan-engine/core";
-import { loadProject } from "@lingfan-engine/adapters";
+import { createHttpI18nPort, loadProject } from "@lingfan-engine/adapters";
 import {
   computeStageLayout,
+  createHostI18n,
   withSlotLabels,
+  type HostI18n,
   type StageLayout,
 } from "@lingfan-engine/shell";
 import {
@@ -63,6 +65,9 @@ import {
   type MiniprogramVideoSurface,
 } from "./video-surface.ts";
 import { stageStyle } from "./view.ts";
+// 语言清单来自构建期扫描 Resources/Lang/（虚拟模块声明在骨架 src/vite-env.d.ts，
+// 生成工程两份清单同源）。小程序包体不装内容：译文与故事一样走工程接口的 HTTP 取件。
+import { LANGS } from "virtual:lang-list";
 
 /** 覆盖层字速（字符/秒） */
 const TEXT_SPEED = 30;
@@ -87,6 +92,8 @@ export interface MiniprogramHostDeps {
 /** 宿主句柄：页面用它做重算、媒体回传、销毁与调试观测 */
 export interface MiniprogramHostHandle {
   engine: StoryEngine;
+  /** 宿主语言门面：页面用它读当前语言/语言清单、t() 静态文案、切换语言 */
+  i18n: HostI18n;
   overlay: NarrativeOverlay;
   ports: MiniprogramHostPorts;
   /** 当前舞台布局（视口 + 基准算出的缩放与偏移） */
@@ -146,14 +153,24 @@ export async function startMiniprogramHost(
     // 引擎紧接着才构造，闭包里晚绑定正是所需（提前求值会读到未初始化）
     readFit: () => videoFitOf(engine.elements()),
   });
+  // 译文供给与故事同源：Lang/ 走同一个工程基址，用 uni.request 包装的 HttpFetch 取件
+  //（小程序没有全局 fetch）。端口先于引擎：setLanguage 按需经它加载 overlay。
+  const i18nPort = createHttpI18nPort({
+    langs: LANGS,
+    root: projectBaseUrl,
+    fetch: createRequestFetch(),
+  });
   const engine = new StoryEngine(story, {
     // 工程默认音量（project.json shell.audio.volumes）：音量的第二级
     audioConfig: resolveAudioConfig(manifest),
     savePort: ports.save,
+    i18nPort,
     texts: withSlotLabels(defaultEngineTexts),
     // 守卫实现由宿主随代码带上：故事 JSON 只写名字（装载期已校验名字齐全）
     guards,
   });
+  // 语言门面绑同一个引擎：t()/changeLang 直转，currentLang 现读引擎状态
+  const i18n = createHostI18n(engine, { i18nPort });
 
   // 玩家偏好在渲染器之前水合：首帧起用的就是上次的音量，不必等下一次用户操作
   const preferences = new PlayerPreferences(ports.preferences);
@@ -234,6 +251,7 @@ export async function startMiniprogramHost(
 
   return {
     engine,
+    i18n,
     overlay,
     ports,
     saves,

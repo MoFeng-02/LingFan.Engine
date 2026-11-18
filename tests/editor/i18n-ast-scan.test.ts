@@ -173,6 +173,26 @@ describe("findUnmarkedHostTexts · 未标记静态文案检测", () => {
       { line: 3, column: 11, text: "未标记" },
     ]);
   });
+
+  it("未标记与动态调用共存：动态调用不吞未标记；未登记别名不豁免", () => {
+    const text = [
+      "const a = t(key);",
+      'const b = tr("别名已标记");',
+      'const c = "未标记";',
+    ].join("\n");
+    const options = { functions: ["t", "tr"] };
+    const scan = scanHostSource(text, FILE, options);
+    expect(scan.keys).toEqual(["别名已标记"]);
+    expect(scan.dynamic).toEqual([{ line: 1, column: 11, callee: "t" }]);
+    expect(findUnmarkedHostTexts(text, FILE, options)).toEqual([
+      { line: 3, column: 11, text: "未标记" },
+    ]);
+    // 别名未登记（缺省只认 t）⇒ tr 里的中文按未标记报，不隐式猜测
+    expect(findUnmarkedHostTexts(text, FILE)).toEqual([
+      { line: 2, column: 14, text: "别名已标记" },
+      { line: 3, column: 11, text: "未标记" },
+    ]);
+  });
 });
 
 describe("isScannableSourcePath · 扫描范围谓词", () => {

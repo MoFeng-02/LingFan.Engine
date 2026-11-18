@@ -93,6 +93,7 @@ export function createNarrativeOverlay(
   const choicesDeps: ChoicesViewDeps = {
     templates: options.choiceTemplates,
     texts: options.choiceTexts,
+    translate: options.choiceTranslate,
   };
   const notifyDeps: NotifyViewDeps = { templates: options.notifyTemplates };
 

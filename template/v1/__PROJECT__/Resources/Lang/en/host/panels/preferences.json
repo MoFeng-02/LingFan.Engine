@@ -1,0 +1,9 @@
+{
+  "BGM": "BGM",
+  "音效": "SFX",
+  "环境": "Ambient",
+  "语音": "Voice",
+  "静音": "Mute",
+  "文字速度": "Text speed",
+  "字/秒": "chars/s"
+}

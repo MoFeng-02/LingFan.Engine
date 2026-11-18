@@ -20,3 +20,15 @@ declare module "virtual:story-list" {
    */
   export const STORIES: readonly string[];
 }
+
+declare module "virtual:lang-list" {
+  /** 语言清单条目（构建期扫描资源根 Lang/ 得出；files 为相对资源根的 overlay 逻辑路径） */
+  export interface LangListEntry {
+    /** 语言码（Lang/ 下的目录名或单文件名去扩展名） */
+    readonly lang: string;
+    /** 该语言的 overlay 文件清单（按路径码元序） */
+    readonly files: readonly string[];
+  }
+  /** 语言清单（Lang/ 缺席 = 空清单；浏览器形态的 I18N 供给由此装配） */
+  export const LANGS: readonly LangListEntry[];
+}

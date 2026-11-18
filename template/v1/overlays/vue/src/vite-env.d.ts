@@ -36,6 +36,20 @@ declare module "virtual:story-list" {
   export const STORIES: readonly string[];
 }
 
+/**
+ * 语言清单的宿主侧声明：构建期扫描 `Resources/Lang/` 得到的语言与 overlay 文件表
+ * （目录形态或单文件形态；语言码与文件均按码元序）。
+ */
+declare module "virtual:lang-list" {
+  /** 语言清单条目：lang = 语言码，files = 该语言的 overlay 逻辑路径（相对资源根） */
+  export interface I18nLangEntry {
+    lang: string;
+    files: readonly string[];
+  }
+  /** 按语言码码元序排列的语言清单 */
+  export const LANGS: readonly I18nLangEntry[];
+}
+
 /** 单文件组件的模块声明：`vue-tsc` 之外的工具读到 `.vue` 时不至于整片报错 */
 declare module "*.vue" {
   import type { DefineComponent } from "vue";

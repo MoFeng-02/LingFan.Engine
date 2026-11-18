@@ -19,7 +19,13 @@ export interface ChoicesRenderInput {
   inputCandidates?: readonly { text: string; value: string }[];
 }
 
-/** 选择层文案（宿主可覆盖；缺省实现即内建文案） */
+/**
+ * 选择层文案（宿主可覆盖；缺省实现即内建文案）。
+ *
+ * @deprecated 玩家可见文案的本地化已迁往译文 overlay：请注入 `ChoicesViewDeps.translate`
+ * （引擎查表，命中即用译文），整句译文写在 `Lang/{lang}/` 里。本表暂保留作
+ * 未命中时的回落与宿主改写入口，将在后续版本移除；不要再用它承载新译文。
+ */
 export interface ChoicesTexts {
   /** 输入提交按钮的显示文本 */
   inputSubmit: string;
@@ -32,8 +38,18 @@ export interface ChoicesTexts {
 export interface ChoicesViewDeps {
   /** 模板注册表（不传 = 内建模板） */
   templates?: ChoiceTemplateRegistry;
-  /** 文案覆盖（不传 = 内建缺省） */
+  /**
+   * 文案覆盖（不传 = 内建缺省）。
+   * @deprecated 译文请写进 overlay 并经 `translate` 注入（见 `ChoicesTexts` 说明）；
+   * 本键仅作未命中回落与宿主改写入口，将在后续版本移除。
+   */
   texts?: Partial<ChoicesTexts>;
+  /**
+   * 译文查表（本地化入口）：装配好的按钮文案先经它查当前语言译文，命中即用译文；
+   * 未命中时引擎返回原文，自然回落到缺省文案（或 `texts` 覆盖句）。
+   * 通常注入 `engine.translate`。不传 = 不查表，行为与旧版相同。
+   */
+  translate?(text: string): string;
 }
 
 /** 内建文案：不传 texts 时的缺省值 */
@@ -52,6 +68,8 @@ export function choicesLayerView(
 ): ChoicesLayerView | null {
   if (input.waiting === "input") {
     const texts: ChoicesTexts = { ...DEFAULT_CHOICES_TEXTS, ...deps.texts };
+    // 双轨：译文优先，未命中（引擎返回原文）即回落缺省文案/宿主覆盖句
+    const translate = deps.translate ?? ((text: string): string => text);
     // 候选与输入框并存：玩家可以点候选，也可以自己打字（两者走同一个提交出口）
     const candidates = (input.inputCandidates ?? []).map((item) => ({
       label: item.text,
@@ -63,7 +81,7 @@ export function choicesLayerView(
       options: [],
       input: {
         prompt: input.inputPrompt,
-        submitText: texts.inputSubmit,
+        submitText: translate(texts.inputSubmit),
         candidates,
       },
     };

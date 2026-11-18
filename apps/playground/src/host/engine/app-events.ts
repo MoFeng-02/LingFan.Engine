@@ -55,7 +55,12 @@ export function createAppEvents(options: AppEventsOptions): AppEvents {
   const { narrative, media, error, getEngine, typewriter } = options;
   const { canAdvance, inWait, inVideo, inputValue, shownText } = narrative;
   /** 提示条出口：驻留与摘除归共享的宿主层，这里把响应式列表落点交给它 */
-  const notices = createNotices({ items: ref<Notice[]>([]) });
+  // 玩家可见整句（存/读/回溯完成）先经引擎查当前语言 overlay，未命中回落缺省模板；
+  // 翻译经 getEngine 现取（装配期引擎未建也安全，调用发生在事件出站时）
+  const notices = createNotices({
+    items: ref<Notice[]>([]),
+    translate: (text) => getEngine().translate(text),
+  });
   /** 提示条列表（模板 v-for 读它） */
   const notifications = notices.items;
   /** 回放或读档后，渲染状态与引擎对齐（回溯/读档重写了对话与 NVL 系统键） */

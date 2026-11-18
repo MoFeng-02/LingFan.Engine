@@ -6,10 +6,10 @@
  * vite 与 vue，靠包管理器的隔离安装各用各的——版本写在 `package.patch.json` 里，
  * 并列入 `create.pinned`，生成器才不会把它改写成 `^最新`。
  *
- * 清单扫描不再在本层另写一份：字体清单与故事清单都取自骨架的 `./vite.plugins`
+ * 清单扫描不再在本层另写一份：字体清单、故事清单与语言清单都取自骨架的 `./vite.plugins`
  * （实现属 `@lingfan-engine/stories-build`，与 `stories:build` 同源）。层与层之间
- * 只差插件数组，扫描规则一处维护——小程序形态同样需要故事清单，否则它只能装载
- * 骨架里手写的那几列。
+ * 只差插件数组，扫描规则一处维护——小程序形态同样需要故事与语言清单，否则它只能装载
+ * 骨架里手写的那几列、也看不到工程里的译文语言。
  *
  * `publicDir` 仍是无条件的 `Resources`：开发期的 H5 形态与骨架共用同一个资源根。
  * `copyPublicDir: false` 是有意的——小程序包体里不装故事与素材（故事走工程接口
@@ -20,7 +20,11 @@ import uniModule, {
   type VitePluginUniOptions,
 } from "@dcloudio/vite-plugin-uni";
 import { defineConfig, type Plugin } from "vite";
-import { storyFontsVirtual, storyListVirtual } from "./vite.plugins.ts";
+import {
+  langListVirtual,
+  storyFontsVirtual,
+  storyListVirtual,
+} from "./vite.plugins.ts";
 
 type UniPluginFactory = (options?: VitePluginUniOptions) => Plugin[];
 
@@ -44,5 +48,5 @@ export default defineConfig({
     port: 1420,
     strictPort: true,
   },
-  plugins: [uni(), storyFontsVirtual(), storyListVirtual()],
+  plugins: [uni(), storyFontsVirtual(), storyListVirtual(), langListVirtual()],
 });

@@ -80,6 +80,12 @@ export {
   STORY_EXTENSIONS,
   type StoryPath,
 } from "./story-list/index.ts";
+/** 语言清单注册表（资源根下 Lang/ 扫描；宿主 Vite 插件与运行期 Web 供给同源消费） */
+export {
+  scanLangRegistry,
+  LANG_EXTENSIONS,
+  type LangRegistryEntry,
+} from "./lang-list/index.ts";
 /** UI 名注册表（源根兄弟目录 `ui/<名>/` 扫描；构建期 uis 闸门的判据来源） */
 export {
   UI_DIR_NAME,

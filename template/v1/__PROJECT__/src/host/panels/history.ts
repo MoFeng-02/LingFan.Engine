@@ -49,6 +49,12 @@ export interface HistoryPanelOptions {
    * 只带坐标，播放器不会自己跳回去。与 `wireEngine` 的 `syncMedia` 是同一件事。
    */
   onRollback?(): void;
+  /**
+   * 宿主静态文案查表（可选）：缺省恒等 = 原文直出（不接 i18n 时行为与旧版全同）。
+   * 只包按钮文案（历史 / 关闭历史）；块里的说话人与正文是故事内容，
+   * 由引擎派生给译文，不在此二次查表。
+   */
+  translate?: (text: string) => string;
 }
 
 /** 历史面板出口 */
@@ -75,6 +81,7 @@ export interface HistoryPanel {
  */
 export function createHistoryPanel(options: HistoryPanelOptions): HistoryPanel {
   const { engine, container } = options;
+  const t = options.translate ?? ((text: string): string => text);
 
   /** 非 null = 已挂载；同时充当容器根节点句柄 */
   let root: HTMLElement | null = null;
@@ -125,7 +132,7 @@ export function createHistoryPanel(options: HistoryPanelOptions): HistoryPanel {
   function applyOpen(): void {
     if (list !== null) list.style.display = openState ? "" : "none";
     if (toggleButton !== null)
-      toggleButton.textContent = openState ? "关闭历史" : "历史";
+      toggleButton.textContent = openState ? t("关闭历史") : t("历史");
   }
 
   function open(): void {
@@ -162,7 +169,7 @@ export function createHistoryPanel(options: HistoryPanelOptions): HistoryPanel {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "history-toggle";
-    button.textContent = "历史";
+    button.textContent = t("历史");
     button.addEventListener("click", () => {
       toggle();
     });

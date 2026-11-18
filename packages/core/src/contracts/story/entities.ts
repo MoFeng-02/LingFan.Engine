@@ -184,6 +184,18 @@ export interface ProjectManifest {
   capabilityVersion?: number | string;
 }
 
+/**
+ * 默认语言码（I18N 契约的缺省语言）：
+ *
+ * - **是什么**：供给端口 `I18nPort.listLanguages` 恒含且居首的语言；宿主语言门面
+ *   未接供给时的缺省列表也是 `[DEFAULT_LANG]`。空串状态表示「默认语言原文直出」，
+ *   与本码是两个口径（状态空串 ↔ 展示默认语言）。
+ * - **为什么在此声明**：宿主门面与 Web/HTTP 适配器都要按同一缺省语言归一列表，
+ *   各写一份 `"zh-CN"` 字面量会各自演化（改一处另一处悄悄过期）——契约缺省语义
+ *   归契约层，一处声明，消费方引用（与 `LANG_DIR`、`CAPABILITY_VERSION` 同类处置）。
+ */
+export const DEFAULT_LANG = "zh-CN";
+
 /** overlay 译文文件：overlay 根内相对路径（`/` 分隔；`main.json` = 全局兜底，最先合并）
  *  → 原文→译文映射。非字符串值 = 文件整体无效（供给侧跳过）。 */
 export interface I18nOverlayFile {

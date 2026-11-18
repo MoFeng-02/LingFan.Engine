@@ -8,14 +8,19 @@
 import type { LayerZTable } from "@lingfan-engine/core";
 import type { SlotPanelMode } from "../host";
 
-defineProps<{
+const props = defineProps<{
   /** 层级（z 序）：工具条取 `toolbar` 层 */
   layerZ: LayerZTable;
   /** 已扫描到的可用语言；不足两种时选择器不出现 */
   availableLangs: string[];
   /** 当前语言（空串 = 跟随默认） */
   currentLang: string;
+  /** 宿主静态文案查表（门面 t：未命中原样返回；不传 = 原文直出） */
+  t?: (text: string) => string;
 }>();
+
+/** 静态文案本地化：经门面查当前语言译文；未注入翻译时保持原文（旧行为） */
+const t = (text: string): string => props.t?.(text) ?? text;
 
 /** 事件出口：重启 / 打开槽位面板 / 历史 / 偏好 / 语言切换逐项上抛，父层负责落地。 */
 const emit = defineEmits<{
@@ -33,8 +38,8 @@ const emit = defineEmits<{
     <button
       class="restart"
       type="button"
-      title="重新开始"
-      aria-label="重新开始"
+      :title="t('重新开始')"
+      :aria-label="t('重新开始')"
       @click.stop="emit('restart')"
     >
       ↻
@@ -42,25 +47,25 @@ const emit = defineEmits<{
     <div class="save-load">
       <button
         type="button"
-        title="保存到槽位"
+        :title="t('保存到槽位')"
         @click.stop="emit('open-slot-panel', 'save')"
       >
-        存
+        {{ t("存") }}
       </button>
       <button
         type="button"
-        title="读取槽位"
+        :title="t('读取槽位')"
         @click.stop="emit('open-slot-panel', 'load')"
       >
-        读
+        {{ t("读") }}
       </button>
     </div>
     <!-- 历史面板开关（H 键） -->
     <button
       class="history-toggle"
       type="button"
-      title="历史（H）"
-      aria-label="历史面板"
+      :title="t('历史（H）')"
+      :aria-label="t('历史面板')"
       @click.stop="emit('toggle-history')"
     >
       ☰
@@ -69,8 +74,8 @@ const emit = defineEmits<{
     <button
       class="history-toggle"
       type="button"
-      title="设置"
-      aria-label="设置面板"
+      :title="t('设置')"
+      :aria-label="t('设置面板')"
       @click.stop="emit('toggle-prefs')"
     >
       ⚙
@@ -80,13 +85,13 @@ const emit = defineEmits<{
       v-if="availableLangs.length > 1"
       class="lang-select"
       :value="currentLang"
-      title="语言"
+      :title="t('语言')"
       @click.stop
       @change.stop="
         emit('change-lang', ($event.target as HTMLSelectElement).value)
       "
     >
-      <option value="">默认</option>
+      <option value="">{{ t("默认") }}</option>
       <option v-for="lang in availableLangs" :key="lang" :value="lang">
         {{ lang }}
       </option>

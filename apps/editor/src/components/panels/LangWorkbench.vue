@@ -20,7 +20,9 @@ import {
   coverageWeightedPercentOf,
   coverageStateOf,
   workbenchOverview,
+  type LayoutConflict,
   type SkeletonLayoutChoice,
+  type UnmarkedHostText,
 } from "@lingfan-engine/editor";
 // 取自具体模块而非聚合出口 `../app`：`app/index.ts` 反向依赖本组件（取 `LangSummary`
 // 类型），从聚合出口取件会形成 import 环。
@@ -39,6 +41,10 @@ const props = defineProps<{
   sources: readonly string[];
   /** 各语言的键集合（宿主枚举 `Lang/**` 得出） */
   langs: readonly LangSummary[];
+  /** 宿主未标记文案（可选供给；缺席 = 不展示该区，浏览器形态扫不了源码） */
+  unmarked?: readonly UnmarkedHostText[];
+  /** 布局冲突（可选供给；缺席 = 不展示该区） */
+  conflicts?: readonly LayoutConflict[];
 }>();
 
 const emit = defineEmits<{
@@ -180,6 +186,44 @@ function open(lang: string): void {
       与诊断面板的「未使用的译文键」同源。
     </p>
 
+    <!-- 三类新诊断的另两类（多译已在上方逐语言展示；缺席供给 = 整区不渲染） -->
+    <section
+      v-if="(unmarked?.length ?? 0) > 0"
+      class="wb-diag"
+      data-kind="unmarked"
+    >
+      <h3 class="wb-diag-title">
+        宿主未标记文案 {{ unmarked?.length ?? 0 }} 条（含中文但未包 t()）
+      </h3>
+      <ul class="wb-diag-list">
+        <li v-for="(site, i) in unmarked" :key="i" class="wb-diag-item">
+          <span class="wb-diag-loc">{{ site.file }}:{{ site.line }}:{{ site.column }}</span>
+          <span class="wb-key">{{ site.text }}</span>
+        </li>
+      </ul>
+    </section>
+    <section
+      v-if="(conflicts?.length ?? 0) > 0"
+      class="wb-diag"
+      data-kind="conflict"
+    >
+      <h3 class="wb-diag-title">
+        布局冲突 {{ conflicts?.length ?? 0 }} 处（同键多文件取值不一，写胜会静默遮蔽）
+      </h3>
+      <ul class="wb-diag-list">
+        <li v-for="conflict in conflicts" :key="conflict.key" class="wb-diag-item">
+          <span class="wb-key">{{ conflict.key }}</span>
+          <button
+            class="mini"
+            title="打开第一处冲突文件"
+            @click="conflict.sites[0] && emit('open', conflict.sites[0].path)"
+          >
+            查看
+          </button>
+        </li>
+      </ul>
+    </section>
+
     <!-- 骨架生成 -->
     <section class="wb-gen">
       <h3 class="wb-gen-title">新建语言</h3>
@@ -308,6 +352,34 @@ function open(lang: string): void {
   margin: 6px 0 0;
   font-size: var(--lf-font-sm);
   color: var(--lf-warning);
+}
+.wb-diag {
+  padding-top: 8px;
+  border-top: 1px solid var(--lf-border-subtle);
+}
+.wb-diag-title {
+  margin: 0 0 6px;
+  font-size: var(--lf-font-sm);
+  color: var(--lf-warning);
+}
+.wb-diag-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wb-diag-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wb-diag-loc {
+  font-family: var(--lf-font-mono);
+  font-size: var(--lf-font-sm);
+  color: var(--lf-text-hint);
+  white-space: nowrap;
 }
 .wb-gen {
   padding-top: 10px;

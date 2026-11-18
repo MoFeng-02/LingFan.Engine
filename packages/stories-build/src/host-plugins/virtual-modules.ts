@@ -1,26 +1,30 @@
 /**
- * 宿主构建期的清单虚拟模块：字体清单与故事清单。
+ * 宿主构建期的清单虚拟模块：字体清单、故事清单与语言清单。
  *
- * 两个清单都是**磁盘事实的投影**，不是需要作者维护的声明文件。让作者手抄名单的代价
+ * 清单都是**磁盘事实的投影**，不是需要作者维护的声明文件。让作者手抄名单的代价
  * 不是「多写一行」，而是漏抄时构建期毫无察觉——漏登记的那一列要到运行期才以
  * `unknown-column` 现形。
  *
- * 资源根与故事目录名都取 `@lingfan-engine/core` 的一处声明（`RESOURCES_DIR` /
- * `STORIES_DIR`），且都可由调用方覆盖：工程把资源根搬到别处时改配置，不改扫描逻辑。
+ * 资源根、故事目录名与语言目录名都取 `@lingfan-engine/core` 的一处声明
+ * （`RESOURCES_DIR` / `STORIES_DIR` / `LANG_DIR`），且都可由调用方覆盖：
+ * 工程把资源根搬到别处时改配置，不改扫描逻辑。
  *
  * 本模块只依赖 `node:*` 与引擎常量，**不 import vite**——插件对象按结构类型返回，
  * 宿主自带的 vite 版本决定实际类型，这里不引入版本约束。
  */
 import { fileURLToPath } from "node:url";
 import { join, resolve } from "node:path";
-import { RESOURCES_DIR, STORIES_DIR } from "@lingfan-engine/core";
+import { LANG_DIR, RESOURCES_DIR, STORIES_DIR } from "@lingfan-engine/core";
 import { scanFontRegistry } from "../fonts/font-registry.ts";
 import { scanStoryRegistry } from "../story-list/story-registry.ts";
+import { scanLangRegistry } from "../lang-list/lang-registry.ts";
 
 /** 虚拟模块 id：字体清单 */
 export const STORY_FONTS_MODULE_ID = "virtual:story-fonts";
 /** 虚拟模块 id：故事清单 */
 export const STORY_LIST_MODULE_ID = "virtual:story-list";
+/** 虚拟模块 id：语言清单 */
+export const LANG_LIST_MODULE_ID = "virtual:lang-list";
 
 /** 宿主构建插件的最小结构面（vite 的 `Plugin` 与其它打包器同名成员兼容） */
 export interface HostPlugin {
@@ -144,5 +148,28 @@ export function storyListVirtual(
     () =>
       `export const STORIES = ${JSON.stringify(scanStoryRegistry(storiesDir))};`,
     [storiesDir],
+  );
+}
+
+/**
+ * 语言清单虚拟模块：扫描资源根下的 `Lang/` 目录得出语言码与每语言的 overlay 文件表。
+ *
+ * 运行期 Web 供给（adapters `createFetchI18nPort` / `createHttpI18nPort`）按这份
+ * 清单取件，不再扫目录；目录形态与单文件降级判据与 Rust 供给同口径（扫描器里声明）。
+ *
+ * @param options 资源根覆盖；缺省取调用方模块同级的 `<RESOURCES_DIR>`
+ * @param moduleUrl 调用方模块的 `import.meta.url`（决定缺省资源根位置）
+ */
+export function langListVirtual(
+  options: ResourceRootOptions = {},
+  moduleUrl: string,
+): HostPlugin {
+  const resourcesDir = options.resourcesDir ?? defaultResourcesDir(moduleUrl);
+  const langDir = join(resourcesDir, LANG_DIR);
+  return virtualModule(
+    "lang-list",
+    LANG_LIST_MODULE_ID,
+    () => `export const LANGS = ${JSON.stringify(scanLangRegistry(langDir))};`,
+    [langDir],
   );
 }

@@ -38,10 +38,13 @@ export function App() {
         <div id="choices"></div>
         <div id="notifications"></div>
         <div id="toolbar">
-          <span>存档</span>
+          <span id="save-label">存档</span>
           <select id="slot"></select>
           <button id="save">存</button>
           <button id="load">读</button>
+          {/* 语言选择器（可选节点）：选项由宿主按构建期语言清单填充。
+              工具条文案是静态节点（无响应式绑定），宿主经句柄直接重画，不与 React 渲染树打架 */}
+          <select id="lang"></select>
         </div>
         {/* 历史面板槽位：可选节点（本层不给也能跑，只是没有回看与回溯） */}
         <div id="history"></div>

@@ -23,13 +23,13 @@
 | 历史面板与回溯 UI                               | 是                     | `src/host/panels/history.ts`，槽位 `#history` 可选；点一条即回到那个检查点        |
 | 玩家偏好（音量/文字速度面板）                   | 是                     | `src/host/panels/preferences.ts`，槽位 `#prefs` 可选；未接线 = 音量为 op 值       |
 | 界面列（`type=ui`）的渲染                       | 是                     | 按 op 渲染即开箱可跑；常驻界面可加 `src/ui/` 挂载（挂载层已接，生成物为空表）     |
-| I18N 供给（`Lang/{lang}/` 覆盖）                | 否                     | 未接 `i18nPort` = 原文直出（引擎契约缺省语义）                                    |
+| I18N 供给（`Lang/{lang}/` 覆盖）                | 是                     | 接 `i18nPort`（Web fetch / 小程序 HTTP）+ 语言选择器；样例 `Lang/en/` 开箱可切    |
 | 对话框模板注册（`say template=`）               | 否                     | 未接 = 内建默认骨架                                                               |
 | 屏幕方向锁定（`shell.orientation`）             | 不适用                 | **纯 Web 形态没有方向 API**；该配置只在 Tauri 壳（playground）生效                |
 | 资源加密 / 热重载 / 宿主信息                    | 不适用                 | 都是 Tauri 壳能力，见 playground 的组合根                                         |
 
 > 「否」行均指**模板宿主未接**，不代表引擎没有该能力——引擎能力面以 `apps/playground` 为准
-> （I18N / 对话框模板在引擎侧均已具备，仅模板未接线）。
+> （对话框模板在引擎侧已具备，仅模板未接线）。
 
 > 想升级为全功能实现，看引擎仓库的 `apps/playground`（它同时是模板的第一个实例）：
 > 把 `src/main.ts` 换成 Vue/React/原生任意一种都行——**引擎与适配器零改动**。
@@ -60,6 +60,10 @@ Vue 3 与 React 互斥（页面结构只能有一个所有者）；小程序自�
 生成后按提示进目录、装依赖、跑起来。生成器不指定包管理器——它按启动自己的那个（npm / pnpm / yarn / bun）给出命令，用哪个都行。骨架自带编译好的故事产物，开箱即跑；
 改过 `src/Stories.src/` 之后才需要跑一次 `pnpm stories:build`（或在开发时挂 `pnpm stories:watch`）。
 生成器默认不装依赖，想一步到位加 `--install`。
+
+装完 `pnpm dev` 就能切语言：工具栏右侧的语言选择器列出 `Resources/Lang/` 下的语言
+（骨架自带 `Lang/en/` 样例，含宿主文案与两列故事的译文），默认语言 = 原文直出。
+小程序形态的语言选择器在页面右上角，译文与故事同源、按工程基址走 HTTP 取件。
 
 脚本里不想应答问答时，用参数跳过：
 
@@ -121,7 +125,7 @@ npm create @lingfan-engine my-story --yes
 
 ## 依赖接入（引擎包）
 
-模板依赖三个引擎包：`@lingfan-engine/core`（核心）、`@lingfan-engine/adapters`（预设适配器）、`@lingfan-engine/ui`（参考展示层）。
+模板依赖四个引擎包：`@lingfan-engine/core`（核心）、`@lingfan-engine/adapters`（预设适配器）、`@lingfan-engine/ui`（参考展示层）、`@lingfan-engine/shell`（宿主语言门面等框架无关件）。
 它们以 **TS 源码出口**（`exports: "./src/index.ts"`）发布——消费方由 Vite/TS 直接编译，**无中间构建步骤**，
 `pnpm install` 直接可用。骨架还声明两个创作期依赖（`@lingfan-engine/stories-build` 与
 `@lingfan-engine/editor`）——TS 创作链归骨架，任何形态的生成结果都带着它；
@@ -138,10 +142,11 @@ __PROJECT__/
 ├── tsconfig.node.json    # Node 侧：vite.config.ts 与 vite.plugins.ts（要 node:fs 与 @types/node）
 ├── tsconfig.stories.json # 故事源独立工程：查 src/Stories.src/ 与 src/gen/ 的类型面（纯 tsc，不带页面 DOM 类型面）
 ├── vite.config.ts        # publicDir: "Resources" ← 资源根即静态根
-├── vite.plugins.ts       # 构建期扫描：故事清单与字体清单（虚拟模块，层只换插件数组）
+├── vite.plugins.ts       # 构建期扫描：故事清单、字体清单与语言清单（虚拟模块，层只换插件数组）
 ├── index.html            # RenderTargets 落地：stage/dialogue/choices/notifications/toolbar（+ 可选 #prefs / #mounts）
 ├── src/main.ts           # 组合根：装配适配器 → 组装工程 → 建引擎 → 订阅渲染 + 帧驱动
 ├── src/stories/          # 故事清单出口（转发 virtual:story-list；清单本身来自磁盘扫描）
+├── src/langs/            # 语言清单出口（转发 virtual:lang-list；清单本身来自磁盘扫描）
 ├── src/mounts.ts         # 挂载表出口 + mountStore（框架形态从这里订阅挂载值）
 ├── src/controls/         # 宿主控制面出口：挂载 UI 拿 pause/navigate/save/load 的地方
 ├── src/Stories.src/      # 故事源（TS 创作链）：config.ts 声明章节与入口，一函数 = 一列
@@ -155,7 +160,7 @@ __PROJECT__/
     ├── project.json      #   工程清单：id/name/entry/lang/formatVersion
     ├── Stories/          #   故事（构建写的 .json 与手写的 .story/.json 可混存）
     ├── Audio/  Images/  Video/
-    ├── Lang/{lang}/      #   I18N overlay
+    ├── Lang/{lang}/      #   I18N overlay（样例 Lang/en/：host/ 宿主文案 + 故事镜像目录）
     └── Saves/            #   运行期产物（不入 git）
 ```
 

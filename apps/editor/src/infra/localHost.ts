@@ -7,7 +7,12 @@
  * 端点形状与 `server/host.ts` 对齐：`GET /__editor_host__/ping`。
  * 前端**不假设**宿主在：探测失败一律当「无宿主」，不抛错、不重试刷屏。
  */
-import type { PackRequest, PackResult, WatchStatus } from "../contracts";
+import type {
+  HostScanResult,
+  PackRequest,
+  PackResult,
+  WatchStatus,
+} from "../contracts";
 
 /** 宿主端点（探测结果）；`baseUrl` 为 `undefined` 表示无宿主 */
 export interface LocalHostEndpoint {
@@ -145,6 +150,69 @@ export async function listHostFiles(
     return Array.isArray(files)
       ? (files.filter((f): f is string => typeof f === "string") as string[])
       : undefined;
+  } catch {
+    return undefined; // 无宿主 / 出错 ⇒ "没有这个能力"（不是错误）
+  }
+}
+
+/* ——— 宿主未标记文案扫描（诊断供给；浏览器扫不了源码 ⇒ 委托 Node 宿主代扫） ——— */
+
+/**
+ * 请宿主扫一次宿主源码的未标记文案（POST `scan-host`，请求只带工程根目录名）。
+ *
+ * 返回 `undefined` = **能力缺席**（宿主不在 / 端点不认识 / 网络错）——不是错误，
+ * 组合根据此不填 `unmarkedHostTexts`，体检面板该节不显示（与供给缺席跳过对齐）。
+ * `ok:false` 的拒绝（目录不在 / 清单坏 / 别名错）原样透传 reason，同样不填字段。
+ */
+export async function fetchHostScan(
+  host: LocalHostEndpoint,
+  project: string,
+  fetchImpl: typeof fetch = globalThis.fetch,
+): Promise<HostScanResult | undefined> {
+  try {
+    const res = await fetchImpl(
+      `${host.baseUrl}/__editor_host__/${host.token}/scan-host`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ project }),
+      },
+    );
+    if (!res.ok) return undefined;
+    const body: unknown = await res.json();
+    if (typeof body !== "object" || body === null || !("ok" in body))
+      return undefined;
+    const o = body as { ok?: unknown; reason?: unknown; unmarked?: unknown };
+    if (typeof o.ok !== "boolean") return undefined;
+    if (!o.ok) {
+      return {
+        ok: false,
+        ...(typeof o.reason === "string" ? { reason: o.reason } : {}),
+      };
+    }
+    // 逐条窄化：坐标必须是数字、文案与路径必须是字符串（坏条目整条丢弃）
+    const sites: { file: string; line: number; column: number; text: string }[] =
+      [];
+    if (Array.isArray(o.unmarked)) {
+      for (const item of o.unmarked) {
+        if (typeof item !== "object" || item === null) continue;
+        const s = item as {
+          file?: unknown;
+          line?: unknown;
+          column?: unknown;
+          text?: unknown;
+        };
+        if (
+          typeof s.file === "string" &&
+          typeof s.line === "number" &&
+          typeof s.column === "number" &&
+          typeof s.text === "string"
+        ) {
+          sites.push({ file: s.file, line: s.line, column: s.column, text: s.text });
+        }
+      }
+    }
+    return { ok: true, unmarked: sites };
   } catch {
     return undefined; // 无宿主 / 出错 ⇒ "没有这个能力"（不是错误）
   }

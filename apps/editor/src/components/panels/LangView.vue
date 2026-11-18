@@ -19,6 +19,7 @@ import {
   renameTranslationRow,
   serializeTranslationTable,
   setTranslationValue,
+  type LayoutConflict,
   type TranslationRow,
 } from "@lingfan-engine/editor";
 import { useDialog } from "../../app/dialogInjection";
@@ -28,6 +29,10 @@ const props = defineProps<{
   path: string;
   /** 原始文本（宿主读好的 JSON 文本） */
   source: string;
+  /** 原文键全集（可选供给；提供时标出孤儿键——缺席 = 不判，不误报） */
+  sources?: readonly string[];
+  /** 布局冲突全集（可选供给；只展示涉及本文件的条目） */
+  conflicts?: readonly LayoutConflict[];
 }>();
 
 const emit = defineEmits<{
@@ -62,6 +67,22 @@ watch(
 const dirty = computed(() => isTableDirty(rows.value, baseRows.value));
 const missingCount = computed(
   () => rows.value.filter((r) => r.text === "").length,
+);
+
+/** 孤儿键（本表有、原文全集没有）；供给缺席 = 空集，不判不误报 */
+const orphanKeys = computed<ReadonlySet<string>>(() => {
+  if (props.sources === undefined) return new Set<string>();
+  const sources = new Set(props.sources);
+  return new Set(
+    rows.value.map((r) => r.key).filter((key) => !sources.has(key)),
+  );
+});
+
+/** 涉及本文件的布局冲突（sites.path 精确等于本表逻辑路径） */
+const localConflicts = computed<readonly LayoutConflict[]>(() =>
+  (props.conflicts ?? []).filter((conflict) =>
+    conflict.sites.some((site) => site.path === props.path),
+  ),
 );
 
 function emitText(): string {
@@ -157,6 +178,17 @@ function onValueInput(key: string, text: string): void {
       </button>
     </header>
 
+    <p v-if="orphanKeys.size > 0" class="orphan-hint">
+      孤儿键 {{ orphanKeys.size }} 个（原文已无对应文本，运行期不会生效）——
+      与诊断面板的「未使用的译文键」同源。
+    </p>
+    <p v-if="localConflicts.length > 0" class="conflict-hint">
+      布局冲突 {{ localConflicts.length }} 处：{{
+        localConflicts.map((c) => c.key).join("、")
+      }}
+      —— 同键在其它译文文件取值不一，合并后写胜会静默遮蔽。
+    </p>
+
     <p v-if="!parsed.ok" class="error">{{ parsed.error }}</p>
     <p v-else-if="rows.length === 0" class="empty">
       该译文表为空文件——点「+行」添加第一个键。
@@ -196,6 +228,12 @@ function onValueInput(key: string, text: string): void {
             </template>
             <template v-else>
               <span :title="row.key">{{ row.key }}</span>
+              <span
+                v-if="orphanKeys.has(row.key)"
+                class="orphan-badge"
+                title="孤儿键：原文已无对应文本，运行期不会生效"
+                >孤儿</span
+              >
             </template>
           </td>
           <td>
@@ -269,6 +307,20 @@ function onValueInput(key: string, text: string): void {
 .error {
   color: var(--lf-danger);
   font-size: var(--lf-font-md);
+}
+.orphan-hint,
+.conflict-hint {
+  margin: 0;
+  font-size: var(--lf-font-sm);
+  color: var(--lf-warning);
+}
+.orphan-badge {
+  margin-left: 6px;
+  padding: 0 4px;
+  font-size: var(--lf-font-sm);
+  color: var(--lf-warning);
+  border: 1px solid var(--lf-warning);
+  border-radius: var(--lf-radius-sm);
 }
 .empty {
   color: var(--lf-text-hint);

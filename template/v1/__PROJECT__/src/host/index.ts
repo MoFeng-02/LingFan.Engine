@@ -63,3 +63,9 @@ export {
   type HistoryPanelOptions,
   type HistoryPanelView,
 } from "./panels/history";
+export {
+  createHostI18nPort,
+  wireHostI18n,
+  type HostI18nWiring,
+  type HostI18nWiringOptions,
+} from "./i18n";

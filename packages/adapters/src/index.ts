@@ -80,7 +80,15 @@ export {
   TauriBridgeError,
   type TauriBridge,
 } from "./platform";
-export { createTauriI18nPort, type TauriOverlayFile } from "./i18n";
+export {
+  createFetchI18nPort,
+  createHttpI18nPort,
+  createTauriI18nPort,
+  type FetchI18nOptions,
+  type HttpI18nOptions,
+  type I18nLangEntry,
+  type TauriOverlayFile,
+} from "./i18n";
 export {
   createTauriPreferencesPort,
   createWebStoragePreferencesPort,

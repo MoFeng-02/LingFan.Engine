@@ -20,6 +20,13 @@ export const STORIES_DIR = "Stories";
 export const RESOURCES_DIR = "Resources";
 
 /**
+ * overlay 根目录名（相对资源根）：`Lang/{lang}/**` 目录形态与 `Lang/{lang}.json`
+ * 单文件形态都住在它下面。编辑器落位层与平台诊断供给方共用这一份声明——
+ * 改名只改这里，两侧路径模板不会错位。
+ */
+export const LANG_DIR = "Lang";
+
+/**
  * 点文件/点目录判据（`.gitkeep` / `.gitignore` …）—— **任何一段**以 `.` 开头即是。
  *
  * 为什么按「段」而不是整路径：工程里有 `Live2D/.gitkeep`、

@@ -44,6 +44,8 @@ const CODE_LABELS: Readonly<Record<string, string>> = {
   "invalid-structure": "结构不合法",
   "unused-translation": "未使用的译文键",
   "missing-translation": "缺译文",
+  "unmarked-host-text": "宿主未标记文案",
+  "layout-conflict": "布局冲突",
   "invalid-element": "元素不合法",
   "unimplemented-element-attr": "元素属性未实现",
   "invalid-element-fit": "元素拉伸方式不合法",

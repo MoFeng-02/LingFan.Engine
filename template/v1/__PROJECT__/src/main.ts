@@ -15,8 +15,9 @@
  *   dialogue / menu / input / wait / video / minigame（可见 fail-closed 提示）+
  *   舞台元素层 + 层级表（shell.layers）+ 存档（shell.saves.slots）+
  *   玩家偏好面板 + 历史面板与回溯（点一条即回到那个检查点）。
- * 有意未做（属「少功能」而非「卡死」，见 README 边界表）：I18N 供给、
- * 对话框模板注册、存档缩略图合成。
+ * I18N 已接线：语言清单来自构建期扫描（`virtual:lang-list`），译文供给走 Web fetch，
+ * 页面语言选择器（`#lang`）与宿主静态文案随门面切换；故事内容由引擎派生重译。
+ * 有意未做（属「少功能」而非「卡死」，见 README 边界表）：对话框模板注册。
  */
 
 import { MANIFEST_FILE } from "@lingfan-engine/core";
@@ -30,6 +31,7 @@ import {
   type StageDom,
 } from "./host";
 import { STORIES } from "./stories";
+import { LANGS } from "./langs";
 import { uis } from "./mounts";
 
 /**
@@ -58,6 +60,10 @@ const dom: StageDom = {
   slot: must<HTMLSelectElement>("#slot"),
   save: must<HTMLButtonElement>("#save"),
   load: must<HTMLButtonElement>("#load"),
+  // 语言选择器（可选）：页面给了就有语言下拉，不给则语言只能由代码切换
+  lang: optional<HTMLSelectElement>("#lang"),
+  // 工具条「存档」标签（可选）：给了就随语言切换重画
+  saveLabel: optional("#save-label"),
   transition: must("#transition"),
   error: must("#error"),
   prefs: optional("#prefs"),
@@ -71,6 +77,8 @@ void bootHost({
   dom,
   manifestFile: MANIFEST_FILE,
   stories: STORIES,
+  // 语言清单：构建期扫描 Resources/Lang/ 的产物（加语言目录不必改名单）
+  langs: LANGS,
   defaultCps: DEFAULT_TEXT_CPS,
   toastDurationMs: DEFAULT_TOAST_MS,
   // 直达列 id：由开发脚本经环境变量下发，缺省即从入口列开始

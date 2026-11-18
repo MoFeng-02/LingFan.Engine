@@ -1,14 +1,21 @@
 /**
  * 宿主编排层出口（唯一出口）：平台无关的宿主装配逻辑收在一处。
  *
- * 各域各管一段：cell 是跨层传值的最小接口；notices 是提示条编排；events 是
- * 叙事事件落点；panel 是面板数据整形；state 是引擎状态键 → 视图状态的投影；
+ * 各域各管一段：cell 是跨层传值的最小接口；i18n 是宿主语言门面；notices 是提示条编排；
+ * events 是叙事事件落点；panel 是面板数据整形；state 是引擎状态键 → 视图状态的投影；
  * frame 是宿主帧循环装配；stage 是舞台适配计算（视口 → 缩放与偏移）。平台宿主
  * （浏览器/Tauri/小程序）从这里取编排逻辑，各自提供状态单元、帧源、视口尺寸与渲染层。
  */
 
 /** 响应式最小接口：`Cell`/`ReadonlyCell` */
 export type { Cell, ReadonlyCell } from "./cell";
+/** 宿主语言门面：查译文 / 切语言 / 语言列表 / 变更订阅 */
+export {
+  createHostI18n,
+  type HostI18n,
+  type HostI18nEngine,
+  type HostI18nOptions,
+} from "./i18n";
 /** 提示条编排 */
 export {
   createNotices,

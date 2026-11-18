@@ -54,4 +54,38 @@ export interface DiagnosticSupply {
    * 键 = 语言码（目录形态 `Lang/{lang}/**` 取 `{lang}`；单文件 `Lang/{lang}.json` 取文件名）。
    */
   overlayKeysByLang: ReadonlyMap<string, ReadonlySet<string>>;
+  /**
+   * **按语言分组**的 overlay 文件表（本地化工作台反映真实 per-story 布局用）。
+   *
+   * 语言码 → overlay 真实逻辑路径（相对资源根，原样：单文件形态就是 `Lang/{lang}.json`）
+   * → 该文件的译文键集。解析失败的文件（坏 JSON / 根非对象 / 非字符串值）整文件跳过
+   * 不进表；有效但零键的文件仍出现（空键集）——工作台要看见文件本身的存在。
+   * 可选字段：供给方缺席时消费方按旧口径（单文件假设）回落，双轨并存。
+   */
+  overlayFilesByLang?: ReadonlyMap<
+    string,
+    ReadonlyMap<string, ReadonlySet<string>>
+  >;
+  /**
+   * 布局冲突：同一语言内同键出现在 ≥2 个文件且取值 ≥2 种（跨语言不比）。
+   * 全部语言合并一张列表；`sites.path` 为含语言段的真实逻辑路径。
+   * 解析失败的文件不参与。可选字段：供给方缺席 = 该诊断族跳过。
+   */
+  layoutConflicts?: readonly {
+    readonly key: string;
+    readonly sites: readonly {
+      readonly path: string;
+      readonly value: string;
+    }[];
+  }[];
+  /**
+   * 宿主源码里未标记的静态文案（含 CJK 未包 t()）。仅能读源码的供给方
+   * （Node/CLI 形态）可填；浏览器形态扫不了源码 ⇒ 缺席 = 该诊断族跳过。
+   */
+  unmarkedHostTexts?: readonly {
+    readonly file: string;
+    readonly line: number;
+    readonly column: number;
+    readonly text: string;
+  }[];
 }

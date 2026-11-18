@@ -96,6 +96,21 @@ export interface StageDom {
   save: HTMLButtonElement;
   /** 读按钮 */
   load: HTMLButtonElement;
+  /**
+   * 语言选择器（**可选**：`null` = 本页面没给这个节点）。
+   *
+   * 给了就有语言下拉：选项来自构建期语言清单，切换经门面 `changeLang`；
+   * 不给则语言只能由代码切换（`handle.i18n.changeLang`），游戏照常跑。
+   * 取用点：`optional<HTMLSelectElement>("#lang")`；接线在 `host/i18n.ts`。
+   */
+  lang?: HTMLSelectElement | null;
+  /**
+   * 工具条「存档」标签（**可选**：`null` = 页面没给这个 span 或未标 id）。
+   *
+   * 给了就随语言切换重画（宿主静态文案）；不给只是这一个词不翻译。
+   * 取用点：`optional("#save-label")`。
+   */
+  saveLabel?: HTMLElement | null;
   /** 全屏转场遮罩 */
   transition: HTMLElement;
   /** 引擎错误横幅 */

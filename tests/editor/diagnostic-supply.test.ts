@@ -24,7 +24,7 @@ import {
   getAtPointer,
   type AnalyzeOptions,
 } from "@lingfan-engine/editor";
-import type { Story } from "@lingfan-engine/core";
+import type { DiagnosticSupply, Story } from "@lingfan-engine/core";
 
 type Tree = { [name: string]: Tree | string };
 
@@ -78,7 +78,7 @@ function projectTree(parts: {
 /** 组合根同构链：文件表 → 组装故事 + 诊断供给侧 */
 async function openProject(
   tree: Tree,
-): Promise<{ story: Story; supply: Omit<Required<AnalyzeOptions>, "texts"> }> {
+): Promise<{ story: Story; supply: DiagnosticSupply }> {
   const source = await createFileListFileSource(filesUnder("Resources", tree));
   const story = await loadProject(createSourceProjectFilesPort(source));
   return { story, supply: await loadDiagnosticSupply(source) };

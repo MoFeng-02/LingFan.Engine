@@ -7,3 +7,6 @@
  */
 export { guards } from "./guards";
 export { STORIES } from "virtual:story-list";
+// 语言清单同源同理：构建期扫描资源根 Lang/（`virtual:lang-list`），浏览器形态的
+// I18N 供给（createFetchI18nPort）由此装配，不手抄语言与文件表。
+export { LANGS } from "virtual:lang-list";

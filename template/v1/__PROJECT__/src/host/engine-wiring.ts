@@ -101,11 +101,18 @@ export interface HostWiringOptions {
    * 不给则 `mount` 命令只改状态，没有任何组件出现——降级是「少功能」，不是错误。
    */
   mounts?: (raw: unknown) => void;
+  /**
+   * 宿主静态文案查表（可选）：缺省恒等 = 原文直出（不接 i18n 时行为与旧版全同）。
+   * 只包**宿主自己的字面量**（存 / 读档回执前缀）；`notify` 的正文与诊断文案
+   * 分别来自故事内容与注入表，不在此二次查表。
+   */
+  translate?: (text: string) => string;
 }
 
 /** 接线状态订阅、元素层与出站事件 */
 export function wireEngine(options: HostWiringOptions): void {
   const { dom, engine, layers, dialogue, resources, reportError } = options;
+  const t = options.translate ?? ((text: string): string => text);
 
   // —— 舞台元素层：注册内建渲染器，装配命令表与资源解析 ——
   const elementRegistry = createElementRegistry();
@@ -266,10 +273,10 @@ export function wireEngine(options: HostWiringOptions): void {
         dialogue.setMinigame(payload.game);
         return;
       case "save.done":
-        options.toast(`已保存到 ${payload.slot}`);
+        options.toast(`${t("已保存到")} ${payload.slot}`);
         return;
       case "load.done":
-        options.toast(`已读取 ${payload.slot}`);
+        options.toast(`${t("已读取")} ${payload.slot}`);
         options.syncMedia();
         return;
       default:

@@ -45,6 +45,12 @@ export interface PreferencesPanelOptions {
   preferences: PlayerPreferences;
   /** 面板根节点（由调用方给，本模块不自己 append 到 body） */
   container: HTMLElement;
+  /**
+   * 宿主静态文案查表（可选）：缺省恒等 = 原文直出（不接 i18n 时行为与旧版全同）。
+   * 通道名 / 静音 / 文字速度 / 字速单位都是宿主自己的字面量，走查表；
+   * 数值读数是数据，不查表。
+   */
+  translate?: (text: string) => string;
 }
 
 /** 偏好面板出口 */
@@ -82,6 +88,7 @@ export function createPreferencesPanel(
 ): PreferencesPanel {
   const preferences = options.preferences;
   const container = options.container;
+  const t = options.translate ?? ((text: string): string => text);
 
   /** 非 null = 已挂载；同时充当退订句柄（挂载判定与退订成对，避免重复订阅） */
   let off: (() => void) | null = null;
@@ -115,7 +122,7 @@ export function createPreferencesPanel(
       textSpeedInput.value = String(snapshot.textSpeed);
     }
     if (textSpeedReadout !== null) {
-      textSpeedReadout.textContent = `${Math.round(snapshot.textSpeed)} 字/秒`;
+      textSpeedReadout.textContent = `${Math.round(snapshot.textSpeed)} ${t("字/秒")}`;
     }
   }
 
@@ -136,6 +143,24 @@ export function createPreferencesPanel(
     return wrapper;
   }
 
+  /**
+   * 通道展示名：字面量写在这里而不是查 `entry.label`——i18n 扫描器只认
+   * 字面量首参，`t(entry.label)` 是动态调用，键收不进 overlay 清单。
+   * `PREF_CHANNELS` 的 `label` 保留原文，作缺省（不接 i18n）时的展示值。
+   */
+  function channelLabel(channel: AudioChannel): string {
+    switch (channel) {
+      case "bgm":
+        return t("BGM");
+      case "se":
+        return t("音效");
+      case "ambient":
+        return t("环境");
+      case "voice":
+        return t("语音");
+    }
+  }
+
   function buildVolumeRows(root: HTMLElement): void {
     for (const entry of PREF_CHANNELS) {
       const input = document.createElement("input");
@@ -151,7 +176,7 @@ export function createPreferencesPanel(
       });
       const readout = document.createElement("span");
       readout.className = "prefs-value";
-      root.appendChild(row(entry.label, input, readout));
+      root.appendChild(row(channelLabel(entry.channel), input, readout));
       volumeRows.push({ channel: entry.channel, input, readout });
     }
   }
@@ -164,7 +189,7 @@ export function createPreferencesPanel(
     input.addEventListener("change", () => {
       preferences.setMuted(input.checked);
     });
-    root.appendChild(row("静音", input));
+    root.appendChild(row(t("静音"), input));
     mutedInput = input;
   }
 
@@ -181,7 +206,7 @@ export function createPreferencesPanel(
     });
     const readout = document.createElement("span");
     readout.className = "prefs-value";
-    root.appendChild(row("文字速度", input, readout));
+    root.appendChild(row(t("文字速度"), input, readout));
     textSpeedInput = input;
     textSpeedReadout = readout;
   }

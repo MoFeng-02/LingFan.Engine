@@ -19,6 +19,8 @@ const props = defineProps<{
   mode: SlotPanelMode | null;
   /** 逐槽视图（打开面板时由页面拉取） */
   views: SlotView[];
+  /** 宿主静态文案翻译（语言门面的 t）：不给则原文直出 */
+  translate?: (text: string) => string;
 }>();
 
 const emit = defineEmits<{
@@ -30,6 +32,11 @@ const emit = defineEmits<{
   close: [];
 }>();
 
+/** 静态文案翻译：只包宿主字面量（槽位标题/时间是故事内容，不二次查表） */
+function t(text: string): string {
+  return props.translate?.(text) ?? text;
+}
+
 /** 槽位能否点：判据与桌面面板同一份 */
 function pickable(view: SlotView): boolean {
   return canChooseSlot(view, props.mode);
@@ -37,9 +44,9 @@ function pickable(view: SlotView): boolean {
 
 /** 槽位上的一行说明：有档给标题，没档写「空槽」 */
 function slotHint(view: SlotView): string {
-  if (view.empty) return "空槽";
+  if (view.empty) return t("空槽");
   const title = (view.title ?? "").trim();
-  return title === "" ? "已有存档" : title;
+  return title === "" ? t("已有存档") : title;
 }
 
 /** 点槽位：不可点（读档模式的空槽）就什么都不做 */
@@ -51,13 +58,13 @@ function pick(view: SlotView): void {
 <template>
   <view class="save-load">
     <view class="entries">
-      <view class="entry" @tap.stop="emit('open', 'save')">存</view>
-      <view class="entry" @tap.stop="emit('open', 'load')">读</view>
+      <view class="entry" @tap.stop="emit('open', 'save')">{{ t("存") }}</view>
+      <view class="entry" @tap.stop="emit('open', 'load')">{{ t("读") }}</view>
     </view>
 
     <view v-if="mode" class="sheet">
       <view class="sheet-title">{{
-        mode === "save" ? "写入存档" : "读取存档"
+        mode === "save" ? t("写入存档") : t("读取存档")
       }}</view>
       <view class="slots">
         <view
@@ -71,7 +78,7 @@ function pick(view: SlotView): void {
           <view class="slot-hint">{{ slotHint(view) }}</view>
         </view>
       </view>
-      <view class="close" @tap.stop="emit('close')">关闭</view>
+      <view class="close" @tap.stop="emit('close')">{{ t("关闭") }}</view>
     </view>
   </view>
 </template>

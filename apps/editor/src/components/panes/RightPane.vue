@@ -4,7 +4,7 @@
  * 自 App.vue 抽出的装配组件：纯模板转发，不持有业务状态（tab 归属由
  * `v-model:right-tab` 上抛组合根，行为与原内联模板完全一致）。
  */
-import type { Diagnostic } from "@lingfan-engine/editor";
+import type { Diagnostic, LayoutConflict, UnmarkedHostText } from "@lingfan-engine/editor";
 import type { Story } from "@lingfan-engine/core";
 import type { PackRequest, PackResult } from "../../contracts";
 import { MAX_RIGHT_WIDTH, MIN_RIGHT_WIDTH } from "../../infra";
@@ -32,6 +32,9 @@ const props = defineProps<{
   diagnostics: Diagnostic[];
   i18nSources: readonly string[];
   i18nLangs: readonly LangSummary[];
+  /** 三类新诊断的另两类（可选供给，透传给工作台；缺席 = 不展示） */
+  i18nUnmarked?: readonly UnmarkedHostText[];
+  i18nConflicts?: readonly LayoutConflict[];
   localHostAvailable: boolean;
   packing: boolean;
   send: (request: PackRequest) => Promise<PackResult>;
@@ -127,6 +130,8 @@ function select(tab: RightTab): void {
       v-show="props.rightTab === 'i18n'"
       :sources="props.i18nSources"
       :langs="props.i18nLangs"
+      :unmarked="props.i18nUnmarked"
+      :conflicts="props.i18nConflicts"
       @open="(path: string) => emit('open-resource', path)"
       @generate="(request) => emit('generate', request)"
     />

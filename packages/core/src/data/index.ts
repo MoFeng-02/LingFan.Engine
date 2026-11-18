@@ -14,6 +14,7 @@ export {
   ProjectAssemblyError,
   diffProjectFiles,
   isSafeFileNameSegment,
+  LANG_DIR,
   MANIFEST_FILE,
   ProjectSerializationError,
   RESOURCES_DIR,

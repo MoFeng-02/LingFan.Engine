@@ -16,6 +16,7 @@ import {
   type Story,
 } from "@lingfan-engine/core";
 import {
+  createFetchI18nPort,
   createFetchProjectFilesPort,
   createStaticResourcePort,
   loadProject,
@@ -28,7 +29,7 @@ import {
 } from "@lingfan-engine/ui";
 // 默认故事清单与守卫都从故事侧出口取：生成物路径与清单形态只在那一个目录里出现，
 // 覆盖层演示与组合根共用同一份（换生成器输出名或调整默认清单时只改一处）。
-import { STORIES, guards } from "../stories";
+import { LANGS, STORIES, guards } from "../stories";
 
 /**
  * 覆盖层字速（字符/秒）：演示用固定值，正式宿主按玩家偏好注入。
@@ -89,8 +90,10 @@ async function main(): Promise<void> {
   const story: Story = await loadProject(filesPort);
 
   // ② 建引擎（平台端口按形态注入；嵌入场景通常还有宿主的存档端口）
+  // I18N 供给与组合根同源：构建期 Lang/ 扫描清单 → 静态根 fetch 端口
   const engine = new StoryEngine(story, {
     audioConfig: resolveAudioConfig(manifest),
+    i18nPort: createFetchI18nPort({ langs: LANGS }),
     guards,
   });
   const resourcePort = createStaticResourcePort();
@@ -110,6 +113,8 @@ async function main(): Promise<void> {
     engine,
     textSpeed: OVERLAY_TEXT_SPEED,
     resolveResource: elementResources.resolveForElement,
+    // 输入提示按钮等宿主整句先查当前语言 overlay，未命中回落缺省（双轨口径）
+    choiceTranslate: (text) => engine.translate(text),
     onError: report,
   });
 

@@ -52,3 +52,26 @@ export interface WatchStatus {
   /** 被监视的根（仅供显示） */
   readonly root?: string;
 }
+
+/**
+ * 宿主未标记文案扫描请求：浏览器侧只报「已打开的是哪个工程」（资源根目录名），
+ * 源码枚举/读取/AST 扫描全在 Node 宿主侧完成——浏览器不持有宿主源码，
+ * 也不把构建期扫描器（typescript）拖进前端产物。
+ */
+export interface HostScanRequest {
+  /** 已打开工程的根目录名（与 ProjectFileSource.name 同源；宿主校验它在自己的根下） */
+  readonly project: string;
+}
+
+/** 宿主未标记文案扫描结果（失败 = ok:false + 如实原因；界面按「供给缺席」降级） */
+export interface HostScanResult {
+  readonly ok: boolean;
+  readonly reason?: string;
+  /** 未标记文案位点（file 相对工程根；line/column 1 基）；ok:false 时缺席 */
+  readonly unmarked?: readonly {
+    readonly file: string;
+    readonly line: number;
+    readonly column: number;
+    readonly text: string;
+  }[];
+}

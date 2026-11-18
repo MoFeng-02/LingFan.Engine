@@ -58,7 +58,13 @@ import {
 import "./styles/tokens.css";
 import App from "./App.vue";
 import { assembleColumnWrite } from "./domain";
-import { createBrowserStorage, downloadJsonFile } from "./infra";
+import {
+  createBrowserStorage,
+  detectLocalHost,
+  downloadJsonFile,
+  fetchHostScan,
+  type LocalHostEndpoint,
+} from "./infra";
 import { sampleStory } from "./shared";
 import type {
   LastProjectEntry,
@@ -72,6 +78,17 @@ let layerZ: LayerZTable = DEFAULT_LAYER_Z;
 /** 只读取径（目录 input 快照）的保存提示——须说明怎么才能保存 */
 const READONLY_SNAPSHOT_HINT =
   "当前是只读文件快照（目录 input 取径）：请用 Chrome/Edge 的「打开工程」选择目录以启用保存";
+
+/**
+ * 本地宿主探测缓存（懒探测一次）：宿主未标记文案扫描要 Node 代扫
+ * （浏览器拿不到资源根之外的宿主源码，也不该在浏览器跑 AST）。
+ * 探测失败 = 无宿主 = 正常浏览器形态，缓存 undefined 不再重试刷屏。
+ */
+let hostProbe: Promise<LocalHostEndpoint | undefined> | undefined;
+function probeHostOnce(): Promise<LocalHostEndpoint | undefined> {
+  hostProbe ??= detectLocalHost();
+  return hostProbe;
+}
 
 /**
  * 「记住上次工程」：打开成功的目录句柄持久化到 IndexedDB，
@@ -207,7 +224,20 @@ async function loadFromSource(
   const manifest = await filesPort.manifest(); // 层级表要在引擎建起来前解析
   const story = await loadProject(filesPort); // 解析/组装归引擎纯函数（唯一解析点）
   // 诊断供给侧：一次枚举算出资源文件集 + overlay 键并集（两类取径同源）
-  const diagnosticSupply = await loadDiagnosticSupply(source);
+  let diagnosticSupply = await loadDiagnosticSupply(source);
+  // 宿主未标记文案：Node 宿主在 ⇒ 代扫 src/ 补进供给；不在 ⇒ 字段缺席，
+  // 体检面板该节不显示（能力探测式降级，与其余诊断互不影响）。
+  // FSA 句柄与目录快照两条取径都经此唯一装载路径 ⇒ 一处接线全覆盖。
+  const host = await probeHostOnce();
+  if (host !== undefined) {
+    const scan = await fetchHostScan(host, source.name);
+    if (scan?.ok && scan.unmarked !== undefined) {
+      diagnosticSupply = {
+        ...diagnosticSupply,
+        unmarkedHostTexts: scan.unmarked,
+      };
+    }
+  }
   layerZ = resolveLayerZ(manifest);
   // 降级回执：缺清单 = 合成清单已参与组装，事实显式上交界面（状态栏告知）
   const degraded = (await filesPort.degraded?.()) ?? undefined;

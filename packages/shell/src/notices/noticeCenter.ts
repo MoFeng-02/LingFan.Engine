@@ -26,7 +26,7 @@ import type { Cell } from "../cell";
 import { defaultSlotLabel } from "../panel/slots";
 
 /**
- * 提示文案缺省模板：宿主可用文案选项逐句覆盖（本地化/改写均走这里）。
+ * 提示文案缺省模板：译文未命中时的回落句（本地化正路在译文 overlay，经 `translate` 查表）。
  *
  * 槽位名一律经 `labelFor` 渲染，缺省与槽位面板同源（`defaultSlotLabel`）——
  * 玩家在面板上点的是「槽位 1」，提示条就不该说 `slot_1`。
@@ -43,7 +43,13 @@ function defaultTexts(labelFor: (id: string) => string): Required<NoticeTexts> {
   };
 }
 
-/** 可覆盖的提示文案（逐句可选；未给的句子用缺省模板） */
+/**
+ * 可覆盖的提示文案（逐句可选；未给的句子用缺省模板）。
+ *
+ * @deprecated 玩家可见文案的本地化已迁往译文 overlay：请注入 `NoticeOptions.translate`
+ * （引擎查表，命中即用译文），整句译文写在 `Lang/{lang}/` 里。本表暂保留作
+ * 未命中时的回落与宿主改写入口，将在后续版本移除；不要再用它承载新译文。
+ */
 export interface NoticeTexts {
   /** 存档完成（参数 = 槽位 id） */
   saved?(slot: string): string;
@@ -80,7 +86,17 @@ export interface NoticeOptions {
    * 应与 `SlotPanelOptions.labelFor` 传同一个函数，好让两处叫法一致。
    */
   labelFor?(id: string): string;
-  /** 可覆盖的提示文案（本地化/改写入口）；缺省 = 内置中文缺省模板 */
+  /**
+   * 译文查表（本地化入口）：装配好的整句先经它查当前语言译文，命中即用译文；
+   * 未命中时引擎返回原文，自然回落到本模块的缺省模板（或 `texts` 覆盖句）。
+   * 通常注入 `engine.translate`（或宿主语言门面的 `t`）。不传 = 不查表，行为与旧版相同。
+   */
+  translate?(text: string): string;
+  /**
+   * 可覆盖的提示文案；缺省 = 内置中文缺省模板。
+   * @deprecated 译文请写进 overlay 并经 `translate` 注入（见 `NoticeTexts` 说明）；
+   * 本键仅作未命中回落与宿主改写入口，将在后续版本移除。
+   */
   texts?: NoticeTexts;
 }
 
@@ -124,6 +140,8 @@ export function createNotices(options: NoticeOptions = {}): Notices {
     ...defaultTexts(options.labelFor ?? defaultSlotLabel),
     ...options.texts,
   };
+  // 双轨：译文优先，未命中（引擎返回原文）即回落缺省模板/宿主覆盖句
+  const translate = options.translate ?? ((text: string): string => text);
   const timer: TimerPort = options.timer ?? hostTimer;
 
   let seq = 0;
@@ -154,13 +172,13 @@ export function createNotices(options: NoticeOptions = {}): Notices {
       push(text, tone, durationMs);
     },
     saved(slot: string): void {
-      push(texts.saved(slot), "info", toastDurationMs);
+      push(translate(texts.saved(slot)), "info", toastDurationMs);
     },
     loaded(slot: string): void {
-      push(texts.loaded(slot), "info", loadToastDurationMs);
+      push(translate(texts.loaded(slot)), "info", loadToastDurationMs);
     },
     rollbackDone(): void {
-      push(texts.rollbackDone(), "info", rollbackNoticeDurationMs);
+      push(translate(texts.rollbackDone()), "info", rollbackNoticeDurationMs);
     },
     loadNotice(text: string): void {
       push(text, "warning", rollbackNoticeDurationMs);

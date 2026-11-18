@@ -30,6 +30,12 @@ export interface I18nCliArgs {
   prune: boolean;
   /** 扫描收全部非空字面量（默认只收含 CJK） */
   all: boolean;
+  /**
+   * 宿主 t() 别名清单（显式配置，不隐式猜测）：`--functions=t,tr` 逗号分隔。
+   * 缺省 = 未指定 ⇒ IO 层回落工程清单 `i18n.functions`，再回落 ["t"]。
+   * 空段原样保留（含空名 fail-closed，判定在 ast-scan 唯一文案源）。
+   */
+  functions?: readonly string[];
   scanDir?: string;
   storiesDir?: string;
   resourcesDir?: string;
@@ -52,6 +58,7 @@ const VALUE_FLAGS = [
   ["--lang", "lang"],
   ["--placeholder", "placeholder"],
   ["--fail-on", "failOn"],
+  ["--functions", "functions"],
   ["--scan-dir", "scanDir"],
   ["--stories-dir", "storiesDir"],
   ["--resources-dir", "resourcesDir"],
@@ -153,6 +160,9 @@ export function parseI18nArgs(
         : oneOf("--fail-on", values.failOn, FAIL_ONS),
     prune: flags.prune === true,
     all: flags.all === true,
+    ...(values.functions === undefined
+      ? {}
+      : { functions: values.functions.split(",") }),
     ...(values.scanDir === undefined ? {} : { scanDir: values.scanDir }),
     ...(values.storiesDir === undefined ? {} : { storiesDir: values.storiesDir }),
     ...(values.resourcesDir === undefined

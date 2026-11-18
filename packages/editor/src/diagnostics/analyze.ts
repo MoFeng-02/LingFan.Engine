@@ -14,7 +14,8 @@ import { indexStory } from "./symbols.ts";
 
 /**
  * 编辑期诊断集（结构校验 + 语义诊断，一律带 JSON Pointer）。
- * resourceFiles / overlayKeys 缺省时对应诊断族跳过（供给侧数据未接入不误报）。
+ * resourceFiles / overlayKeys / unmarkedHostTexts / layoutConflicts 缺省时对应诊断族跳过
+ * （供给侧数据未接入不误报）。
  * `texts`（可选）= 集中文案表注入（缺省 defaultEditorTexts）。
  */
 export function analyzeStory(
@@ -126,6 +127,27 @@ export function analyzeStory(
         }
       }
     }
+  }
+  // 宿主未标记文案 / 布局冲突（供给侧可选字段；缺席 = 该诊断族跳过，不制造噪声）。
+  // 两者都不指向 Story 树内位置（宿主源码 / overlay 文件）⇒ pointer 为空（全局诊断）。
+  for (const site of options.unmarkedHostTexts ?? []) {
+    out.push({
+      code: "unmarked-host-text",
+      severity: "warning",
+      message: texts.unmarkedHostText(site.file, site.line, site.column, site.text),
+      pointer: "",
+    });
+  }
+  for (const conflict of options.layoutConflicts ?? []) {
+    out.push({
+      code: "layout-conflict",
+      severity: "warning",
+      message: texts.layoutConflictKey(
+        conflict.key,
+        conflict.sites.map((site) => `${site.path} = ${site.value}`).join("；"),
+      ),
+      pointer: "",
+    });
   }
   // 未实现属性清单：已声明但**当前无渲染语义**的元素属性（写了不生效且静默）→ warning。
   // 指针精确到该属性；清单与表单下架同源（`UNIMPLEMENTED_ELEMENT_ATTRS`），避免两份事实。

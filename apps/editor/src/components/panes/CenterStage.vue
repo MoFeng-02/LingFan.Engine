@@ -5,6 +5,7 @@
  * 上抛组合根，行为与原内联模板完全一致（含各分派注释）。
  */
 import type { ResourcePort, Story } from "@lingfan-engine/core";
+import type { LayoutConflict } from "@lingfan-engine/editor";
 import { type EmptyAction, type ResourceViewSpec } from "../../domain";
 import { NodeGraph, StageEditor, StepLayout, StoryTimeline } from "../stage";
 import { JsonResourceView, LangView, MediaView, ReadOnlyView } from "../panels";
@@ -39,6 +40,9 @@ const props = defineProps<{
   firstSceneColumnId: string | null;
   /** 译文表/清单保存（透传 `useResourcePreview` 的 `saveTextResource`） */
   saveTextResource: (path: string, text: string) => void;
+  /** 译文表的孤儿键/布局冲突判据（可选供给；缺席 = 不判，不误报） */
+  i18nSources?: readonly string[];
+  i18nConflicts?: readonly LayoutConflict[];
 }>();
 
 const emit = defineEmits<{
@@ -68,6 +72,8 @@ const emit = defineEmits<{
     :key="props.activePath"
     :path="props.activePath"
     :source="props.activeSource"
+    :sources="props.i18nSources"
+    :conflicts="props.i18nConflicts"
     @save="props.saveTextResource"
   />
   <JsonResourceView

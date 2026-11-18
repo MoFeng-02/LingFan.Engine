@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import process from "node:process";
 import {
+  langListVirtual,
   storyFontsVirtual,
   storyListVirtual,
 } from "@lingfan-engine/stories-build/host-plugins";
@@ -13,7 +14,7 @@ const host = process.env.TAURI_DEV_HOST;
 // `vite dev` 恒放行（开发模式便利，也是「浏览器复用宿主能力」场景的前提）。
 const isBrowserGame = process.env.VITE_LFEN_BROWSER_GAME === "1";
 
-// 两个清单插件（字体 + 故事）的实现属 @lingfan-engine/stories-build，与 stories:build 同源。
+// 三个清单插件（字体 + 故事 + 语言）的实现属 @lingfan-engine/stories-build，与 stories:build 同源。
 // 本文件只声明「资源根在哪」：缺省 = 本配置文件同级的 `<RESOURCES_DIR>`，换工程布局时改传参
 // 不改扫描规则。故事清单不手抄——`Resources/Stories/` 下的 `.story` 与 `.json`（TS 创作链
 // 产物）同树共存，一条扫描一并收下，创作形态不改变清单来源。
@@ -24,6 +25,7 @@ export default defineConfig(({ command }) => ({
     vue(),
     storyFontsVirtual({}, import.meta.url),
     storyListVirtual({}, import.meta.url),
+    langListVirtual({}, import.meta.url),
   ],
 
   // 应用资源根 = 本示例工程的 Resources/（**不是**引擎资产）：

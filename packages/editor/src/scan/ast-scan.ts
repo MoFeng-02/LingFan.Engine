@@ -61,8 +61,12 @@ function calleeNameOf(expression: ts.Expression): string | undefined {
   return undefined;
 }
 
-/** 别名清单校验（键扫描与未标记检测共用）：空清单/含空名 fail-closed 抛错 */
-function functionNamesOf(options: AstScanOptions): Set<string> {
+/**
+ * 别名清单校验（键扫描与未标记检测共用）：空清单/含空名 fail-closed 抛错。
+ * 导出给 CLI IO 层在装载上下文时先验一次——零源文件工程也要在配置错误处报错，
+ * 而不是静默扫出空集。
+ */
+export function functionNamesOf(options: AstScanOptions): Set<string> {
   const functions = options.functions ?? ["t"];
   if (functions.length === 0) {
     throw new Error("i18n.functions 别名清单不能为空（至少登记一个函数名，如 t）");

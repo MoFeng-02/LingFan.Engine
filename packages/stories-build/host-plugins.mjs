@@ -14,7 +14,9 @@ import { tsImport } from "tsx/esm/api";
 
 const mod = await tsImport("./src/host-plugins/index.ts", import.meta.url);
 
+export const LANG_LIST_MODULE_ID = mod.LANG_LIST_MODULE_ID;
 export const STORY_FONTS_MODULE_ID = mod.STORY_FONTS_MODULE_ID;
 export const STORY_LIST_MODULE_ID = mod.STORY_LIST_MODULE_ID;
+export const langListVirtual = mod.langListVirtual;
 export const storyFontsVirtual = mod.storyFontsVirtual;
 export const storyListVirtual = mod.storyListVirtual;

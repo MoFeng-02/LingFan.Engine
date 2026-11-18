@@ -147,3 +147,38 @@ describe("parseI18nArgs · 枚举与必填校验", () => {
     expect(parseI18nArgs(["check"], CTX).lang).toBeUndefined();
   });
 });
+
+describe("--functions · 别名清单显式配置（Q18：不隐式猜测）", () => {
+  it('缺省不携带 functions（回落交给 IO 层读清单，再回落 ["t"]）', () => {
+    expect(parseI18nArgs(["scan"], CTX).functions).toBeUndefined();
+  });
+
+  it("双形态：--functions=t,tr 与 --functions t,tr 等价，逗号分隔", () => {
+    expect(parseI18nArgs(["scan", "--functions=t,tr"], CTX).functions).toEqual([
+      "t",
+      "tr",
+    ]);
+    expect(
+      parseI18nArgs(["scan", "--functions", "t,tr"], CTX).functions,
+    ).toEqual(["t", "tr"]);
+  });
+
+  it("逗号空段原样保留（空名 fail-closed 判定在扫描器，不在参数层吞掉）", () => {
+    expect(parseI18nArgs(["scan", "--functions=t,"], CTX).functions).toEqual([
+      "t",
+      "",
+    ]);
+  });
+
+  it("空内联值（--functions=）属缺值：参数层 fail-closed（照 stories-build CLI 模型）", () => {
+    expect(() => parseI18nArgs(["scan", "--functions="], CTX)).toThrow(
+      /--functions 需要一个值/,
+    );
+  });
+
+  it("缺值报错（与其他值 flag 同文案）", () => {
+    expect(() => parseI18nArgs(["scan", "--functions"], CTX)).toThrow(
+      /--functions 需要一个值/,
+    );
+  });
+});

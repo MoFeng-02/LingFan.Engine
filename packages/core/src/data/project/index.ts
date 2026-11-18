@@ -15,6 +15,7 @@ export type {
 export { ProjectAssemblyError, ProjectSerializationError } from "./error.ts";
 export {
   isSafeFileNameSegment,
+  LANG_DIR,
   MANIFEST_FILE,
   RESOURCES_DIR,
   STORIES_DIR,

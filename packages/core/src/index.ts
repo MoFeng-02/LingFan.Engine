@@ -113,6 +113,7 @@ export {
   generateText,
   isSafeFileNameSegment,
   isSingleColumnFile,
+  LANG_DIR,
   loadElements,
   MANIFEST_FILE,
   parseStory,

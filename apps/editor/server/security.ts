@@ -232,6 +232,29 @@ export function packRequestOf(raw: unknown): PackVerdict {
   };
 }
 
+/* ——— 宿主未标记文案扫描（scan-host）判据 ——— */
+
+/**
+ * 扫描请求里的工程名是否合法（**单段目录名**）：浏览器只报「打开的是哪个工程」，
+ * 宿主在自己的根下找同名目录——多段路径/穿越/绝对路径一律拒绝，
+ * 端点不接受任意路径输入（与「不做目录浏览、不提供任意文件读」同一边界）。
+ */
+export function scanProjectOf(raw: unknown): PathVerdict {
+  if (typeof raw !== "object" || raw === null || !("project" in raw)) {
+    return { ok: false, reason: "请求体缺少 project（工程根目录名）" };
+  }
+  const project = (raw as { project: unknown }).project;
+  if (typeof project !== "string") {
+    return { ok: false, reason: "project 必须是字符串（工程根目录名）" };
+  }
+  const normalized = normalizeRelativePath(project);
+  if (!normalized.ok) return normalized;
+  if (normalized.relative.includes("/")) {
+    return { ok: false, reason: "project 必须是单段目录名（不接受路径）" };
+  }
+  return { ok: true, relative: normalized.relative };
+}
+
 /* ——— 热重载（文件监视）判据 ——— */
 
 /** 是否应因该次文件变更**重载**（纯函数，可测） */

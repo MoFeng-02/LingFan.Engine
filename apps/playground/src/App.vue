@@ -196,7 +196,8 @@ const panels = createAppPanels({
   stageEl,
   typewriter,
 });
-const { currentLang, availableLangs, changeLang, choiceView } = panels;
+const { currentLang, availableLangs, changeLang, t, bindLang, choiceView } =
+  panels;
 const { dialogView, notifyViewOf, nvlPastLines, nvlTypingLine } = panels;
 const { showHistory, historyBlocks, toggleHistory, rollbackToEntry } = panels;
 const { showPrefs, prefsView, PREF_CHANNELS, prefs } = panels;
@@ -273,6 +274,8 @@ const life = createAppLifecycle({
   onBody: () => {
     bodyLayer.render();
   },
+  // 语言门面的订阅跟着引擎实例走：init/restart 两路绑定完成后重绑并同步显示态
+  onBindEngine: bindLang,
 });
 /** 对局会话：进没进对局、暂停与否、挂载表投影与页面动作 */
 const { inGame, paused, resumeSlot, quickSlot, mounted } = life;
@@ -403,6 +406,7 @@ onUnmounted(() => {
           :layer-z="layerZ"
           :available-langs="availableLangs"
           :current-lang="currentLang"
+          :t="t"
           @restart="restart"
           @open-slot-panel="openSlotPanel"
           @toggle-history="toggleHistory"

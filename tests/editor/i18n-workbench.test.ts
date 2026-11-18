@@ -6,6 +6,7 @@
  * ② **多译键不进分子**（译文有、原文无的残留键不是"翻译了原文"）。
  */
 import { describe, expect, it } from "vitest";
+import type { DiagnosticSupply } from "@lingfan-engine/core";
 import {
   coverageLabelOf,
   coveragePercentOf,
@@ -14,6 +15,8 @@ import {
   langCoverage,
   workbenchOverview,
 } from "../../packages/editor/src/i18n/coverage";
+// 投影是纯函数（零 vue/零 IO）：直接测供给 → 语言摘要，不装配 composable
+import { projectLangSummaries } from "../../apps/editor/src/app/useI18nWorkbench";
 
 describe("单语言覆盖率", () => {
   it("基本比率：交集计入分子，多译键不进分子", () => {
@@ -138,5 +141,92 @@ describe("骨架分组（键 = 故事相对路径，不含扩展名）", () => {
 
   it("空输入 ⇒ 空 Map（不抛）", () => {
     expect(groupKeysByStory(new Map()).size).toBe(0);
+  });
+});
+
+/* ———————————————— 语言摘要 · 供给侧真实文件布局（双轨回落） ———————————————— */
+
+function supplyOf(partial: Partial<DiagnosticSupply>): DiagnosticSupply {
+  return {
+    resourceFiles: new Set(),
+    overlayKeys: new Set(),
+    overlayKeysByLang: new Map(),
+    ...partial,
+  };
+}
+
+describe("语言摘要 · 真实每语言文件表（overlayFilesByLang 优先，旧口径回落）", () => {
+  it("per-story 布局：逐文件真实路径原样呈现，不再硬猜 main.json", () => {
+    const langs = projectLangSummaries(
+      supplyOf({
+        overlayFilesByLang: new Map([
+          [
+            "en",
+            new Map([
+              ["Lang/en/chapter1/start.json", new Set(["世界", "你好"])],
+              ["Lang/en/host/main.json", new Set(["宿主键"])],
+            ]),
+          ],
+        ]),
+      }),
+    );
+    expect(langs).toHaveLength(1);
+    expect([...langs[0].files.keys()]).toEqual([
+      "Lang/en/chapter1/start.json",
+      "Lang/en/host/main.json",
+    ]);
+    expect(langs[0].files.get("Lang/en/chapter1/start.json")).toEqual([
+      "世界",
+      "你好",
+    ]);
+  });
+
+  it("single 布局：Lang/{lang}.json 路径原样（不归一成 main.json）", () => {
+    const langs = projectLangSummaries(
+      supplyOf({
+        overlayFilesByLang: new Map([
+          ["ja", new Map([["Lang/ja.json", new Set(["你好"])]])],
+        ]),
+      }),
+    );
+    expect([...langs[0].files.keys()]).toEqual(["Lang/ja.json"]);
+  });
+
+  it("有效零键文件进表（空键集）；语言与文件都稳定排序", () => {
+    const langs = projectLangSummaries(
+      supplyOf({
+        overlayFilesByLang: new Map([
+          ["zh", new Map([["Lang/zh/b.json", new Set<string>()]])],
+          [
+            "en",
+            new Map([
+              ["Lang/en/z.json", new Set(["b"])],
+              ["Lang/en/a.json", new Set(["a"])],
+            ]),
+          ],
+        ]),
+      }),
+    );
+    expect(langs.map((l) => l.lang)).toEqual(["en", "zh"]);
+    expect([...langs[0].files.keys()]).toEqual([
+      "Lang/en/a.json",
+      "Lang/en/z.json",
+    ]);
+    expect(langs[1].files.get("Lang/zh/b.json")).toEqual([]);
+  });
+
+  it("旧口径回落：供给方未升级（无 overlayFilesByLang）⇒ 单文件假设投影", () => {
+    const langs = projectLangSummaries(
+      supplyOf({
+        overlayKeysByLang: new Map([["en", new Set(["世界", "你好"])]]),
+      }),
+    );
+    expect(langs).toHaveLength(1);
+    expect([...langs[0].files.keys()]).toEqual(["Lang/en/main.json"]);
+    expect(langs[0].files.get("Lang/en/main.json")).toEqual(["世界", "你好"]);
+  });
+
+  it("供给缺席（未打开工程）⇒ 空列表，不报错", () => {
+    expect(projectLangSummaries(undefined)).toEqual([]);
   });
 });

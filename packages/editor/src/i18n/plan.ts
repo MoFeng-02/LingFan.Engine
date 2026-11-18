@@ -12,13 +12,17 @@
  */
 
 import type { I18nOverlayFile } from "@lingfan-engine/core";
-import { isSafeFileNameSegment, planOverlayMerge } from "@lingfan-engine/core";
+import {
+  isSafeFileNameSegment,
+  LANG_DIR,
+  planOverlayMerge,
+} from "@lingfan-engine/core";
 import type { EditorTexts } from "../contracts/index.ts";
 import { resolveEditorTexts } from "../contracts/index.ts";
 import { hostOverlayFile } from "./host-keys.ts";
 
-/** overlay 根目录名（与运行期 Lang/ 供给面同源；单一出处供路径模板与测试共用） */
-export const LANG_DIR = "Lang";
+/** overlay 根目录名——单一声明点在 core `naming.ts`，这里只转发保持既有出口面 */
+export { LANG_DIR };
 
 /**
  * 骨架布局：single = `Lang/{lang}.json`；main = `Lang/{lang}/main.json`；

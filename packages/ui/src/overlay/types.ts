@@ -66,8 +66,18 @@ export interface NarrativeOverlayOptions {
   dialogueTemplates?: DialogueTemplateRegistry;
   /** 选择模板注册表（不传 = 内建） */
   choiceTemplates?: ChoiceTemplateRegistry;
-  /** 选择层文案覆盖（输入提交按钮等；不传 = 内建缺省） */
+  /**
+   * 选择层文案覆盖（输入提交按钮等；不传 = 内建缺省）。
+   * @deprecated 译文请写进 overlay 并经 `choiceTranslate` 注入；本键仅作
+   * 未命中回落与宿主改写入口，将在后续版本移除。
+   */
   choiceTexts?: Partial<ChoicesTexts>;
+  /**
+   * 选择层文案的译文查表（本地化入口）：按钮文案先查当前语言译文，
+   * 未命中回落缺省文案/`choiceTexts` 覆盖句。通常注入 `engine.translate`。
+   * 不传 = 不查表，行为与旧版相同。
+   */
+  choiceTranslate?(text: string): string;
   /** 通知模板注册表（不传 = 内建） */
   notifyTemplates?: NotifyTemplateRegistry;
   /** 元素渲染器注册表（不传 = 内建全集） */

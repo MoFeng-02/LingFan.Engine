@@ -89,6 +89,11 @@ export interface AppEngineLifeOptions {
    * 绑定时同样先喂当前值，避免页面与引擎在重启后各说各话。
    */
   onPaused?: (paused: boolean) => void;
+  /**
+   * 引擎（重）绑定钩子：initEngine 与 restart 两条路都在订阅接好后回调一次。
+   * 语言门面的订阅要跟着引擎实例走（restart 换实例），宿主据此重绑并同步显示态。
+   */
+  onBindEngine?: () => void;
 }
 
 /** 引擎生命周期能力：初始化接线、进出对局、fail-closed 后整体重建、订阅解除 */
@@ -127,6 +132,7 @@ export function createAppEngineLife(
     onMounts,
     onBody,
     onPaused,
+    onBindEngine,
   } = options;
   const {
     speaker,
@@ -180,6 +186,8 @@ export function createAppEngineLife(
         if (key === SYS.paused) onPaused(value === true);
       });
     }
+    // 绑定完成通知：语言门面等「跟着引擎实例走」的宿主订阅在这里重绑
+    onBindEngine?.();
   }
   /** 订阅解除（重启与卸载共用；与 bindEngine 成对） */
   function unbind(): void {
