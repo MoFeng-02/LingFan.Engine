@@ -202,9 +202,12 @@ describe("语言选择器 · 节点、句柄与接线", () => {
     expect(i18nSource).toContain("select.value = lang;");
     expect(i18nSource).toContain("applyStaticTexts();");
     expect(i18nSource).toContain("dialogue.setMenuChanged();");
-    // 面板重挂载重画行标签；dispose 退订并解绑
+    // 偏好面板重挂载重画行标签；历史面板就地重画保留展开态；dispose 退订并解绑
     expect(i18nSource).toContain("prefsPanel?.mount();");
-    expect(i18nSource).toContain("historyPanel?.mount();");
+    expect(i18nSource).toContain("historyPanel?.refresh();");
+    // 历史面板切语言不重挂载（重挂载会丢展开态）：i18n 接线里不得出现它的 destroy/mount
+    expect(i18nSource).not.toContain("historyPanel?.destroy();");
+    expect(i18nSource).not.toContain("historyPanel?.mount();");
     expect(i18nSource).toContain("unsubscribe();");
     expect(i18nSource).toContain('removeEventListener("change", onChange)');
   });

@@ -16,10 +16,10 @@ export function translate(ctx: OpContext, original: string): string {
 }
 
 /**
- * 翻译面覆盖所有展示文字：元素展示文字（`text` 属性）
- * 在**装载时**翻译——进 SSOT 的即译文（随快照/存档/回溯随行）；切换语言后当前画面不重翻
- * （与 menu 挂接同语义：下次 Translate 生效），再次进列重新装载时生效。递归 children。
- * 无 `text` 的元素原样返回（引用不变，不触发无谓的 ValueChanged 噪声之外的对象复制）。
+ * 翻译面覆盖所有展示文字：元素展示文字（`text` 属性）以**原文**存进 SSOT，
+ * 本函数由读时派生（`derive.ts` 的 `SYS.elements` 读口）调用，按当前语言把原文译成展示值。
+ * 因此切换语言后当前画面随即重新派生重译，无需重新装载；快照/存档/回溯随行的都是原文。
+ * 递归 children；无 `text` 的元素只递归子级、不改 props。
  */
 export function translateElements(
   ctx: OpContext,

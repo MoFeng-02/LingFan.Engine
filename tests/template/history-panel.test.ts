@@ -39,6 +39,8 @@ interface FakeNode {
   dataset: Record<string, string>;
   /** 内联样式：本模块只用 `display` 控制列表显隐 */
   style: Record<string, string>;
+  /** 列表滚动位置：refresh 重建块内容后要复原（真实 DOM 清空子节点会把它复位归零） */
+  scrollTop: number;
   children: FakeNode[];
   textContent: string;
   /** 控件面（button 的 type 会在模块里被写成 "button"） */
@@ -58,6 +60,7 @@ function createFakeNode(tag: string): FakeNode {
     style: {} as Record<string, string>,
     children: [] as FakeNode[],
     type: "",
+    scrollTop: 0,
     appendChild(child: FakeNode): FakeNode {
       node.children.push(child);
       return child;
@@ -86,7 +89,10 @@ function createFakeNode(tag: string): FakeNode {
     get: () => text,
     set: (next: string) => {
       text = next;
-      if (next === "") node.children.length = 0;
+      if (next === "") {
+        node.children.length = 0;
+        node.scrollTop = 0; // 真实 DOM 清空子节点后滚动高度归零，scrollTop 随之复位
+      }
     },
   });
 
@@ -403,5 +409,110 @@ describe("历史面板生命周期", () => {
     // 旧节点的监听仍会触发 rollbackTo（DOM 已摘，真实浏览器不会点到）；
     // 这里锁的是「destroy 之后面板自身状态复位」而不是「旧节点监听被摘」
     expect(h.panel.view().open).toBe(false);
+  });
+});
+
+// ---------- ④ 就地重画（语言切换保留展开态） ----------
+
+describe("历史面板就地重画（refresh）", () => {
+  /** 造一个译文随语言变的面板：lang 闭包模拟门面 t() 的当前语言 */
+  function setupI18n(initial: readonly HistoryEntry[]) {
+    let lang = "zh";
+    let history = initial;
+    const container = createFakeNode("div");
+    const panel = createHistoryPanel({
+      engine: { historyView: () => history, rollbackTo: () => {} },
+      container: container as unknown as HTMLElement,
+      translate: (text) => (lang === "zh" ? text : `[en]${text}`),
+    });
+    return {
+      container,
+      panel,
+      setLang: (next: string) => {
+        lang = next;
+      },
+      setHistory: (next: readonly HistoryEntry[]) => {
+        history = next;
+      },
+    };
+  }
+
+  it("**展开态切语言后仍展开**：refresh 不复位 openState，列表照常显示", () => {
+    const h = setupI18n([entry(0, "旁白", "一句")]);
+    h.panel.mount();
+    h.panel.open();
+    expect(h.panel.view().open).toBe(true);
+    h.setLang("en");
+    h.panel.refresh();
+    expect(h.panel.view().open).toBe(true);
+    expect(blockList(h.container).style.display).toBe("");
+  });
+
+  it("**收起态切语言后仍收起**：refresh 不把收起的面板展开", () => {
+    const h = setupI18n([entry(0, "旁白", "一句")]);
+    h.panel.mount(); // 默认收起
+    h.setLang("en");
+    h.panel.refresh();
+    expect(h.panel.view().open).toBe(false);
+    expect(blockList(h.container).style.display).toBe("none");
+  });
+
+  it("**按钮文案随语言重查**：展开态 refresh 后按钮译成新语言", () => {
+    const h = setupI18n([entry(0, "旁白", "一句")]);
+    h.panel.mount();
+    h.panel.open();
+    expect(toggleButton(h.container).textContent).toBe("关闭历史");
+    h.setLang("en");
+    h.panel.refresh();
+    expect(toggleButton(h.container).textContent).toBe("[en]关闭历史");
+  });
+
+  it("**块内容现读引擎历史重译**：refresh 后块项反映新语言译文（不残留旧块）", () => {
+    const h = setupI18n([entry(0, "旁白", "原文")]);
+    h.panel.mount();
+    h.panel.open();
+    // 引擎切语言后历史派生译文（这里以新历史条目模拟引擎读时派生结果）
+    h.setHistory([
+      entry(0, "旁白", "[en]原文"),
+      entry(1, "旁白", "[en]第二句"),
+    ]);
+    h.panel.refresh();
+    const texts = findAll(h.container, (node) =>
+      node.className.includes("history-text"),
+    );
+    expect(texts.map((node) => node.textContent)).toEqual([
+      "[en]原文",
+      "[en]第二句",
+    ]);
+    expect(items(h.container)).toHaveLength(2);
+  });
+
+  it("**保留列表滚动位置**：refresh 重建块内容后 scrollTop 复原", () => {
+    const h = setupI18n([entry(0, "旁白", "一句")]);
+    h.panel.mount();
+    h.panel.open();
+    blockList(h.container).scrollTop = 42;
+    h.panel.refresh();
+    expect(blockList(h.container).scrollTop).toBe(42);
+  });
+
+  it("**未挂载 refresh 无操作不抛**（无控件可画）", () => {
+    const h = setupI18n([entry(0, "旁白", "一句")]);
+    expect(() => h.panel.refresh()).not.toThrow();
+    expect(h.container.children).toEqual([]);
+  });
+
+  it("**refresh 不叠控件**：多次 refresh 仍只有一个面板根与开关", () => {
+    const h = setupI18n([entry(0, "旁白", "一句")]);
+    h.panel.mount();
+    h.panel.open();
+    h.panel.refresh();
+    h.panel.refresh();
+    expect(
+      findAll(h.container, (node) => node.className === "history-panel"),
+    ).toHaveLength(1);
+    expect(
+      findAll(h.container, (node) => node.className === "history-toggle"),
+    ).toHaveLength(1);
   });
 });

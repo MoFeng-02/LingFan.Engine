@@ -18,6 +18,8 @@ const SOURCES = import.meta.glob(
     "../../packages/*/src/**/*.{ts,vue}",
     "../../apps/*/src/**/*.{ts,vue}",
     "../../template/*/__PROJECT__/src/**/*.{ts,vue}",
+    // 叠加层组合根也在单一声明判据面内（vue/react/tauri/story 各形态的 src）
+    "../../template/*/overlays/*/src/**/*.{ts,vue,tsx}",
     "!../../apps/*/src/Stories.src/**",
     "!../../template/*/__PROJECT__/src/Stories.src/**",
   ],

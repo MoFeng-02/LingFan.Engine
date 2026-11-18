@@ -73,6 +73,8 @@ export interface HistoryPanel {
   mount(): void;
   /** 卸载：清空容器并断开引用；之后可再次 `mount()` */
   destroy(): void;
+  /** 语言切换后就地重画：保留展开态与列表滚动位置，重译块内容与按钮文案（未挂载则无操作） */
+  refresh(): void;
 }
 
 /**
@@ -196,5 +198,18 @@ export function createHistoryPanel(options: HistoryPanelOptions): HistoryPanel {
     openState = false;
   }
 
-  return { view, open, close, toggle, rollbackTo, mount, destroy };
+  /**
+   * 语言切换后就地重画：块内容现读引擎历史（已按当前语言派生译文），按钮文案经 t() 重查。
+   * 不重建控件、不复位 openState——展开态与列表滚动位置都保留（切语言不该把展开的面板收起，
+   * 也不该把收起的面板展开）。未挂载时无控件可画，直接返回。
+   */
+  function refresh(): void {
+    if (root === null) return;
+    const scrollTop = list?.scrollTop ?? 0;
+    renderBlocks();
+    applyOpen();
+    if (list !== null) list.scrollTop = scrollTop;
+  }
+
+  return { view, open, close, toggle, rollbackTo, mount, destroy, refresh };
 }

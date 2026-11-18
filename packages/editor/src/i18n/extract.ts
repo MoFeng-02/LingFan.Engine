@@ -28,7 +28,7 @@ export function extractStoryKeys(story: Story): string[] {
       }
     }
   });
-  // 元素展示文字（运行期 translateElements 同口径：装载时 Translate，递归 children）
+  // 元素展示文字（运行期 translateElements 同口径：读时派生 Translate，递归 children）
   walkStoryElements(story, (node) => {
     if (!isPlainObject(node)) return;
     const text = node.text;

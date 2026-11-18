@@ -43,7 +43,7 @@ export interface HostI18nWiringOptions {
   dialogue: DialogueView;
   /** 偏好面板（可缺省）：切语言后重挂载，通道名与行标签随之重画 */
   prefsPanel?: PreferencesPanel;
-  /** 历史面板（可缺省）：切语言后重挂载（收起态重来，按钮文案随之重画） */
+  /** 历史面板（可缺省）：切语言后就地重画（保留展开态与滚动位置，按钮文案随之重画） */
   historyPanel?: HistoryPanel;
 }
 
@@ -114,12 +114,11 @@ export function wireHostI18n(options: HostI18nWiringOptions): HostI18nWiring {
     // 选项区整体重建：确定钮 / 等待提示是宿主字面量，重建时经 t() 重查；
     // 菜单与输入提示是故事内容，引擎已派生重译，这里只是重新取一遍
     dialogue.setMenuChanged();
-    // 面板重挂载 = 用新语言重建全部行标签（幂等：destroy 后可再 mount）。
-    // 历史面板随之回到收起态——切换语言是低频操作，收起比保留旧语言的展开列表简单
+    // 偏好面板重挂载 = 用新语言重建全部行标签（幂等：destroy 后可再 mount；它无展开态可丢）。
     prefsPanel?.destroy();
     prefsPanel?.mount();
-    historyPanel?.destroy();
-    historyPanel?.mount();
+    // 历史面板就地重画：保留展开态与滚动位置，只重译块内容与按钮文案（不重挂载、不收起到默认）
+    historyPanel?.refresh();
   });
 
   return {
