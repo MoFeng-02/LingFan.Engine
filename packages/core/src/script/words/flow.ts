@@ -12,7 +12,12 @@
 import type { StoryCommand } from "../../contracts/story/entities.ts";
 import type { CommandOf } from "../command.ts";
 import type { ScriptValue } from "../payloads/shared.ts";
-import type { CellHandle, KnownColumnName, KnownGuardName } from "./cells.ts";
+import type {
+  CellHandle,
+  KnownColumnName,
+  KnownFuncName,
+  KnownGuardName,
+} from "./cells.ts";
 
 export type Stmt = StoryCommand;
 
@@ -120,7 +125,8 @@ export function func(
  * 调用 {@link func} 注册的子过程（或跳到普通流程列）：实参逐项求值后
  * 按位绑定给形参，过程体跑完（或 {@link ret}）后回到调用点继续。
  * 参数个数对不上报错停机。
- * @param target 子过程名或目标列名。
+ * @param target 子过程名或目标列名（生成物存在时收窄为「已知函数名 ∪ 已知列名」
+ *   字面量联合，与运行期 call 先查 func 表、再查 flow 列的目标域一致；写错即红）。
  * @param args 实参列表（字面量或 `"{expr}"` 表达式串，按位绑定）。
  * @param into 结果绑定名：被调过程 {@link ret} 带值返回时，把返回值
  *   声明为调用方作用域里的这个局部变量；过程正常跑完没有 ret 带值时绑定为
@@ -131,7 +137,7 @@ export function func(
  * call("greet", ["阿岚"], "greeting");
  */
 export function call(
-  target: string,
+  target: KnownColumnName | KnownFuncName,
   args?: readonly ScriptValue[],
   into?: string,
 ): CommandOf<"call"> {

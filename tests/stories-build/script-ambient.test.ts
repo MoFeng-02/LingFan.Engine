@@ -47,11 +47,11 @@ const SCRIPT_GEN = "src/gen/script.gen.d.ts";
 
 const AMBIENT_BODY = `  script.bgm("loop.ogg");
   script.wait(30);
-  script.menu("下一站？", [script.option("A", "b")]);`;
+  script.menu("下一站？", [script.option("A", "start")]);`;
 
 const DESTRUCTURE_BODY = `  bgm("loop.ogg");
   wait(30);
-  menu("下一站？", [option("A", "b")]);`;
+  menu("下一站？", [option("A", "start")]);`;
 
 const story = (head: string, body: string): string =>
   `${head}\nexport default function start(): void {\n${body}\n}\n`;

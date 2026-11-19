@@ -285,6 +285,7 @@ describe("类型面生成器 · 不变量断言", () => {
   it("同输入逐字节同输出（键序打乱不影响产物）", () => {
     const a = renderTypegen({
       columns: ["b", "a", "c"],
+      funcNames: [],
       schemaKeys: ["z", "a"],
       defineKeys: ["m"],
       declaredNames: ["x"],
@@ -292,6 +293,7 @@ describe("类型面生成器 · 不变量断言", () => {
     });
     const b = renderTypegen({
       columns: ["c", "a", "b"],
+      funcNames: [],
       schemaKeys: ["a", "z"],
       defineKeys: ["m"],
       declaredNames: ["x"],
@@ -303,6 +305,7 @@ describe("类型面生成器 · 不变量断言", () => {
   it("重复键收敛为一条（合并去重后排序）", () => {
     const text = renderTypegen({
       columns: ["start", "start"],
+      funcNames: [],
       schemaKeys: ["player.gold", "player.gold"],
       defineKeys: ["player.gold"],
       declaredNames: ["player.gold"],
@@ -317,6 +320,7 @@ describe("类型面生成器 · 不变量断言", () => {
   it("生成物恒以换行收尾、恒含模块壳与两段接口（空集也不例外）", () => {
     const text = renderTypegen({
       columns: [],
+      funcNames: [],
       schemaKeys: [],
       defineKeys: [],
       declaredNames: [],
@@ -385,6 +389,7 @@ describe("类型面生成器 · 边界条件", () => {
   it("空列集：产出空注册表而非报错（不拿空表把作者写法判红）", async () => {
     const text = renderTypegen({
       columns: [],
+      funcNames: [],
       schemaKeys: [],
       defineKeys: [],
       declaredNames: [],
@@ -402,6 +407,7 @@ describe("类型面生成器 · 边界条件", () => {
     );
     const text = renderTypegen({
       columns,
+      funcNames: [],
       schemaKeys: [],
       defineKeys: [],
       declaredNames: [],
@@ -418,6 +424,7 @@ describe("类型面生成器 · 边界条件", () => {
     const longName = `col_${"x".repeat(500)}`;
     const text = renderTypegen({
       columns: [longName],
+      funcNames: [],
       schemaKeys: [],
       defineKeys: ['weird"key\\with\\slashes'],
       declaredNames: ["中文键"],

@@ -5,7 +5,7 @@
  * 经包根再导出后才可被合并；本文件必须带 `export {};`（没有它就是全局脚本，
  * `declare module` 会整体覆盖该模块而不是合并，包出口会被抹掉）。
  *
- * 空集合也照常产出两个空接口：文件在、结构在，但派生类型退化为 `string`——
+ * 空集合也照常产出空接口：文件在、结构在，但派生类型退化为 `string`——
  * 不拿空注册表把作者的正常写法判红。
  */
 import type { TypegenInput } from "./types.ts";
@@ -54,6 +54,8 @@ export function renderTypegen(input: TypegenInput): string {
   lines.push("");
   lines.push('declare module "@lingfan-engine/core" {');
   renderRegistry(lines, "ColumnNameRegistry", input.columns);
+  // 函数名域：func op 的子过程名。与列名域并集 = call 的目标域（func 表 ∪ flow 列）。
+  renderRegistry(lines, "FuncNameRegistry", input.funcNames);
 
   // 插值键域 = state 键、config.vars 键、产物声明名、扩展 id 模式四源并集（合并去重后再排序；
   // defineKeys 现取自 config.ts 的 vars 导出——config 化换道后图谱层不再扫 defineVars）

@@ -353,7 +353,14 @@ describe("label 列 · 三条判据", () => {
     // 只有 start：没有 jump("farewell")，纯模块不产列
     expect(report.columns).toBe(1);
     const typegen = readFileSync(join(root, TYPEGEN), "utf8");
-    expect(typegen).not.toContain('"farewell": 1;');
+    // 列名域只装真列与按需补出的 label 列。farewell 被直呼，是函数名域的成员
+    // （func 表），不进列名域；unusedHelper 没人找它，两个域都不进。
+    const columnRegistry = typegen.slice(
+      typegen.indexOf("interface ColumnNameRegistry {"),
+      typegen.indexOf("interface FuncNameRegistry {"),
+    );
+    expect(columnRegistry).not.toContain('"farewell": 1;');
+    expect(columnRegistry).not.toContain('"unusedHelper": 1;');
     expect(typegen).not.toContain('"unusedHelper": 1;');
   });
 
@@ -487,5 +494,57 @@ describe("label 列 · 与列形态正交", () => {
     expect(columns.get("start")?.body).toEqual({ name: "kitchen" });
     expect(columns.get("goToLabel")?.kind).toBe("flow");
     expect(says(columns.get("goToLabel"))).toEqual(["从场景跳过来"]);
+  });
+});
+
+describe("label 列 · 收集面对齐收窄面", () => {
+  it("label-option-target-supplements-column：option 目标指向 export function ⇒ 补 flow 列进列名域", async () => {
+    const root = project(
+      "option-target",
+      [
+        'import { script } from "@lingfan-engine/editor";',
+        "const { say, menu, option } = script;",
+        "",
+        "export function bonus(): void {",
+        '  say("奖励关");',
+        "}",
+        "",
+        "export default function start(): void {",
+        '  menu("去不去奖励关？", [option("去", "bonus")]);',
+        "}",
+        "",
+      ].join("\n"),
+    );
+    const report = await buildStories(root);
+    // start + bonus：option 的目标位与 jump 一样承载列目标，被指到就补列
+    expect(report.columns).toBe(2);
+    const columns = columnsOf(root);
+    expect(columns.get("bonus")?.kind).toBe("flow");
+    expect(says(columns.get("bonus"))).toEqual(["奖励关"]);
+    const typegen = readFileSync(join(root, TYPEGEN), "utf8");
+    expect(typegen).toContain('"bonus": 1;');
+  });
+
+  it("label-navigate-scene-target-supplements-column：navigate 第二参指向 export function ⇒ 补列", async () => {
+    const root = project(
+      "navigate-scene-target",
+      [
+        WORDS,
+        "export function sceneTarget(): void {",
+        '  say("导航落点");',
+        "}",
+        "",
+        "export default function start(): void {",
+        '  navigate("start", "sceneTarget");',
+        "}",
+        "",
+      ].join("\n"),
+    );
+    await buildStories(root);
+    const columns = columnsOf(root);
+    expect(columns.get("sceneTarget")?.kind).toBe("flow");
+    expect(says(columns.get("sceneTarget"))).toEqual(["导航落点"]);
+    const typegen = readFileSync(join(root, TYPEGEN), "utf8");
+    expect(typegen).toContain('"sceneTarget": 1;');
   });
 });

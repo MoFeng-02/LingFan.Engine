@@ -47,7 +47,15 @@ export type KnownUiName = keyof UiNameRegistry extends never
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- 类型扩充点：只有接口可被生成物 declare module 合并（type 别名不能），空体是有意形态
 export interface SceneNameRegistry {}
 
-/** 已声明组件名（有声明 = 字面量联合；空 = string） */
+/**
+ * 已声明列身体组件名（有声明 = 字面量联合；空 = string）。
+ *
+ * **有意预留，当前生产词签名零消费**：列身体的类型安全走 `UiHandle` 具名句柄
+ * （`import body from "…/scene.vue"` 直接拿到句柄）加编译期对场景绑定的校验，
+ * 不经过本类型。保留它是给将来的字符串面身体 API / 跨场景导航留好收窄位——
+ * 届时把对应形参接成 `KnownSceneName` 即可（纯只增），并非待清理的死代码。
+ * 生成物与类型探针照常产出，确保这条预留路径始终可用。
+ */
 export type KnownSceneName = keyof SceneNameRegistry extends never
   ? string
   : keyof SceneNameRegistry & string;

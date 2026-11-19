@@ -17,7 +17,13 @@
  * 消费端可见——最后一条用例用一次真实的 tsc 编译锁住「不是静默落空」。
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -325,4 +331,47 @@ describe("SceneNameRegistry 对消费端可见（不是静默落空）", () => {
     expect(result.text).not.toMatch(/TS2304/);
     expect(result.status).not.toBe(0);
   }, 120_000);
+});
+
+describe("SceneNameRegistry 明示预留 · 身体句柄路径 intact", () => {
+  const wordsDir = fileURLToPath(
+    new URL("../../packages/core/src/script/words", import.meta.url),
+  );
+  const uiSource = (): string => readFileSync(join(wordsDir, "ui.ts"), "utf8");
+
+  it("scene-name-registry-reserved-doc：KnownSceneName 注释明示预留，生产词签名零消费", () => {
+    const ui = uiSource();
+    // 定义处注释把「有意预留 / 当前零消费 / 非死代码」说清楚，避免被当死代码清掉
+    expect(ui).toContain("有意预留");
+    expect(ui).toContain("零消费");
+    expect(ui).toContain("并非待清理的死代码");
+    // 生产词签名里没有把 KnownSceneName 接成形参（`: KnownSceneName`）——预留位尚未启用
+    let paramUses = 0;
+    for (const item of readdirSync(wordsDir, { withFileTypes: true })) {
+      if (!item.isFile() || !item.name.endsWith(".ts")) continue;
+      const text = readFileSync(join(wordsDir, item.name), "utf8");
+      paramUses += (text.match(/:\s*KnownSceneName\b/g) ?? []).length;
+    }
+    expect(paramUses).toBe(0);
+  });
+
+  it("body-handle-path-intact：列身体走 UiHandle 句柄 + 场景绑定校验，未引入字符串身体 API", () => {
+    // 生成物照常产出 UiHandle 具名句柄（身体作者面的规范路径）
+    const text = renderSceneRegister([entry("kitchen")], "../scenes");
+    expect(text).toContain('UiHandle<"kitchen">');
+    // 编译期对场景绑定的判别仍在：body 初始化器必须绑到 kind==="scene" 的句柄
+    const columnDecls = readFileSync(
+      fileURLToPath(
+        new URL(
+          "../../packages/stories-build/src/compiler/story-compiler/graph/column-decls.ts",
+          import.meta.url,
+        ),
+      ),
+      "utf8",
+    );
+    expect(columnDecls).toContain('binding?.kind !== "scene"');
+    // mount 仍走句柄/名字，没有把 KnownSceneName 接成字符串身体形参（只增不启用）
+    expect(uiSource()).toContain("handle: UiHandle<N> | KnownUiName");
+    expect(uiSource()).not.toMatch(/:\s*KnownSceneName\b/);
+  });
 });

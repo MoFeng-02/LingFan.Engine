@@ -49,43 +49,53 @@ function readDeclaredName(op: unknown): string | undefined {
 }
 
 /**
- * 递归收集一段命令流里的声明名：
- * 控制流（if/while/for/switch/when）把名字藏在 body/then/else/cases 里，
- * `func` 自带 body、`call` 带 args 与 into 绑定名，都要照走；
- * `minigame.reward[].key` 是奖励发到哪个变量。
+ * 递归走一段命令流，对每个 op 节点调用 `visit` 提取名字：
+ * 控制流（if/while/for/switch/when）把内容藏在 body/then/else/cases 里，
+ * `func` 自带 body、`call` 带 args，都要照走。`options`/`reward` 不是命令数组，跳过；
+ * `cases` 是 `[{ when, body }]`，单独走进每支的 body。
+ *
+ * 声明名与函数名共用这一个走法（同一套递归机制），各自只换「从节点读哪个名字」的
+ * 提取器——避免两套各走各的、日后控制流形态变了只改一处漏一处。
  */
-function collectFromCommands(
+function walkCommands(
   commands: readonly unknown[],
-  into: Set<string>,
+  visit: (command: Record<string, unknown>) => void,
 ): void {
   for (const command of commands) {
     if (!isRecord(command)) continue;
 
-    const declared = readDeclaredName(command);
-    if (declared !== undefined) into.add(declared);
+    visit(command);
 
     // 容器字段：值为命令数组的（body/then/else 等）
     for (const [field, value] of Object.entries(command)) {
       if (!Array.isArray(value)) continue;
       if (field === "options" || field === "cases" || field === "reward")
         continue;
-      collectFromCommands(value, into);
+      walkCommands(value, visit);
     }
 
     // cases：[{ when: string; body: Command[] }]
     if (Array.isArray(command.cases)) {
       for (const item of command.cases) {
         if (!isRecord(item)) continue;
-        if (Array.isArray(item.body)) collectFromCommands(item.body, into);
+        if (Array.isArray(item.body)) walkCommands(item.body, visit);
       }
     }
+  }
+}
 
-    // reward：[{ key: string; amount: number }]——奖励发到哪个变量也属插值键域
-    if (Array.isArray(command.reward)) {
-      for (const item of command.reward) {
-        if (!isRecord(item)) continue;
-        if (typeof item.key === "string" && item.key !== "") into.add(item.key);
-      }
+/** 声明名提取器：op 的声明名字段 + minigame.reward[].key（奖励发到哪个变量也属插值键域） */
+function visitDeclaredName(
+  command: Record<string, unknown>,
+  into: Set<string>,
+): void {
+  const declared = readDeclaredName(command);
+  if (declared !== undefined) into.add(declared);
+
+  if (Array.isArray(command.reward)) {
+    for (const item of command.reward) {
+      if (!isRecord(item)) continue;
+      if (typeof item.key === "string" && item.key !== "") into.add(item.key);
     }
   }
 }
@@ -101,7 +111,38 @@ export function collectDeclaredNames(
   for (const column of columns) {
     const commands = column.commands;
     if (!Array.isArray(commands)) continue;
-    collectFromCommands(commands, names);
+    walkCommands(commands, (command) => visitDeclaredName(command, names));
+  }
+  return [...names].sort();
+}
+
+/** 读一个 func op 的子过程名；非 func、字段缺失或非字符串都忽略 */
+function readFuncName(op: unknown): string | undefined {
+  if (!isRecord(op)) return undefined;
+  if (op.op !== "func") return undefined;
+  const value = op.name;
+  return typeof value === "string" && value !== "" ? value : undefined;
+}
+
+/**
+ * 从编译产物的列集合里收集所有子过程名（func op 的 name 字段）。
+ *
+ * 这些名字进 `FuncNameRegistry`，与列名域（`ColumnNameRegistry`）并集构成 `call`
+ * 的目标域——运行期 call 先查 func 表、再查 flow 列，类型面照同一份产物收集，
+ * 两侧始终一致。补列出来的 label 是 flow 列（在列名域），func 名在这里，各归其位。
+ * 排序去重后返回，与声明名收集同口径。
+ */
+export function collectFuncNames(
+  columns: readonly { readonly commands?: readonly unknown[] }[],
+): string[] {
+  const names = new Set<string>();
+  for (const column of columns) {
+    const commands = column.commands;
+    if (!Array.isArray(commands)) continue;
+    walkCommands(commands, (command) => {
+      const name = readFuncName(command);
+      if (name !== undefined) names.add(name);
+    });
   }
   return [...names].sort();
 }

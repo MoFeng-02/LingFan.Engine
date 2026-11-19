@@ -53,7 +53,7 @@ const { say, menu, option } = script;
 
 export default function start(): void {
   say("开场");
-  menu("去哪", [option("左边", "left.ts")]);
+  menu("去哪", [option("左边", "left")]);
 }
 `;
 

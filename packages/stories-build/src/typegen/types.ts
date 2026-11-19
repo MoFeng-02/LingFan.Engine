@@ -10,6 +10,8 @@
 export interface TypegenInput {
   /** 列 id：default 导出函数名，jump/option target 的值域 */
   readonly columns: readonly string[];
+  /** 产物 op 流里出现过的子过程名（func op 的 name）：call 的函数名目标域 */
+  readonly funcNames: readonly string[];
   /** config 状态（形态 A state / 形态 B define 合并树）降维后的扁平点路径键 */
   readonly schemaKeys: readonly string[];
   /** config.vars（config.ts 的 vars 导出键集对象）登记的变量键 */

@@ -159,9 +159,11 @@ export type {
 export type {
   CellHandle,
   ColumnNameRegistry,
+  FuncNameRegistry,
   GuardNameRegistry,
   InterpolationKeyRegistry,
   KnownColumnName,
+  KnownFuncName,
   KnownGuardName,
   KnownInterpolationKey,
   KnownSceneName,

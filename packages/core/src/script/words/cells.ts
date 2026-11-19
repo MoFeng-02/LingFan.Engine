@@ -44,6 +44,23 @@ export type KnownColumnName = keyof ColumnNameRegistry extends never
   : keyof ColumnNameRegistry & string;
 
 /**
+ * 函数名注册表（类型扩充点）：构建期生成的 `src/gen/stories.gen.d.ts`
+ * 往本接口塞进每个 func 名的字面量键 ⇒ `call("…")` 的子过程目标获得补全、写错即红。
+ * 空表退化为普通 string。
+ *
+ * 与 {@link ColumnNameRegistry} 分工：列名域装 flow 列（含按需补出的 label 列），
+ * 函数名域装 func 表里的子过程名；二者并集恰是 `call` 的完整目标域
+ * （运行期先查 func 表、再查 flow 列），不重叠语义、也不遗漏任一合法目标。
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- 类型扩充点：只有接口可被生成物 declare module 合并（type 别名不能），空体是有意形态
+export interface FuncNameRegistry {}
+
+/** 已声明函数名（有声明 = 字面量联合；空 = string） */
+export type KnownFuncName = keyof FuncNameRegistry extends never
+  ? string
+  : keyof FuncNameRegistry & string;
+
+/**
  * 插值键注册表（类型扩充点）：生成物塞进工程内所有能当 `{…}` 键的名字——
  * state schema 展平键、defineVars 登记变量、产物 op 流里的声明名，
  * 以及扩展命名空间前缀（生成物写成 `ext.<id>.${string}` 的字面量类型）。

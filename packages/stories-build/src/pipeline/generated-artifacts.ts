@@ -3,6 +3,7 @@ import type { FontEntry } from "../fonts/index.ts";
 import { renderFontTypegen } from "../typegen/index.ts";
 import {
   collectDeclaredNames,
+  collectFuncNames,
   renderScriptTypegen,
   renderStateTypegen,
   renderTypegen,
@@ -80,6 +81,7 @@ export function renderGeneratedArtifacts(
   return {
     typegenContent: renderTypegen({
       columns: columns.map((column) => column.id),
+      funcNames: collectFuncNames(columns),
       schemaKeys: input.schemaKeys,
       defineKeys: input.defineKeys,
       declaredNames: collectDeclaredNames(columns),

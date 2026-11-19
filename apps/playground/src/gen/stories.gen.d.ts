@@ -24,6 +24,11 @@ declare module "@lingfan-engine/core" {
     "ts_power": 1;
     "world": 1;
   }
+  interface FuncNameRegistry {
+    "farewell": 1;
+    "greet": 1;
+    "stationsMenu": 1;
+  }
   interface InterpolationKeyRegistry {
     "a": 1;
     "b": 1;
