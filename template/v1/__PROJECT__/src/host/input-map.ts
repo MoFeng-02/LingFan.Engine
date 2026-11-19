@@ -1,68 +1,146 @@
 /**
- * 输入映射：点击与键盘（空格 / 回车）都汇到同一个 `advance`。
+ * 模板输入映射：把玩家的点击 / 按键 / 滚轮翻译成引擎动作。
  *
- * 「点击能否推进」按等待态判定：只有对话 / 可跳过的等待 / 可跳过的过场这三态把点击
- * 映射成 `advance`；菜单、输入、小游戏等交互等待期**不映射**——那些状态的推进出口是
- * 各自的选择与提交，舞台空白处的点击不该被解释成「继续」。
+ * 三条纪律在这里成面：
+ * - **键位读偏好**：推进 / 历史键逐次现读玩家改绑（`preferences.keybinding`），缺席落回内建默认；
+ *   不在构造期抄成闭包常量，否则改绑后不生效。
+ * - **域路由**：点击 / 滚轮 / 按键先经 `routesToNarrative`——只有「对话域 + 非控件目标」才归叙事，
+ *   于是 `data-ui-zone` 里的面板控件、输入框自己消费事件，不会被推进键穿透。
+ * - **单一收尾**：所有监听挂在同一个 `AbortController` 上，拆除时一次 `abort()` 全退，
+ *   不在多处分别 `removeEventListener`（那样容易漏退一条，推进键就此永久失效）。
  *
- * 这层判定不能省：引擎对非对话等待的 `advance` 是 fail-closed（发 `advance-invalid`
- * 并写进错误条），而错误条一旦出现就不会自己消失——玩家在菜单上多点两下舞台就会看到
- * 一条红字。是否可跳过（`wait` / `video` 的 skipable）仍归引擎裁决，这里只按等待态
- * 放行，不放行就什么也不做。
- *
- * 两处刻意的不推进：交互层（选项 / 工具条 / 通知）内的点击不推进故事（元素可交互节点
- * 在渲染器内自行 `stopPropagation`，这里再兜一层），输入框内的空格 / 回车不吞键
- * （那是玩家在打字）。
+ * 菜单 / 输入 / 玩法等「非对话等待」中推进无效（`ADVANCEABLE_WAITING` 白名单）；
+ * 打字机未打完时推进键先补完当前句，再下一次才推进剧情。
  */
-
-import { SYS, type StoryEngine } from "@lingfan-engine/core";
+import {
+  DEFAULT_KEYMAP,
+  SYS,
+  type PlayerPreferences,
+  type StoryEngine,
+} from "@lingfan-engine/core";
+import {
+  createInputScopeState,
+  matchesKeybinding,
+  routesToNarrative,
+  type InputScopeState,
+} from "@lingfan-engine/ui";
 import type { StageDom } from "./stage-dom";
 import type { DialogueView } from "./dialogue-view";
 
-/** 输入映射的输入：节点句柄表、引擎推进面与对话视图 */
+/** 输入接线的输入 */
 export interface HostInputOptions {
-  /** 常驻节点句柄表 */
   dom: StageDom;
-  /** 引擎：推进命令面的落地 */
   engine: StoryEngine;
-  /** 对话视图：打字机未打完时先让打字机瞬间完成 */
   dialogue: DialogueView;
+  /** 玩家偏好：推进 / 历史键逐次现读改绑；缺省用内建默认键位 */
+  preferences?: PlayerPreferences;
+  /** 输入域：缺省对话域；玩法接管时由宿主切到 world / ui，叙事键随之让位 */
+  inputScope?: InputScopeState;
+  /** 历史键（默认 h）触发的面板开合 */
+  onHistory?: () => void;
+  /** Esc 触发的关面板 */
+  onClosePanels?: () => void;
+  /** Ctrl / Cmd + S 快速存档 */
+  onQuickSave?: () => void;
+  /** Ctrl / Cmd + L 快速读档 */
+  onQuickLoad?: () => void;
 }
 
-/** 把点击映射成 `advance` 的等待态：对话、可跳过的等待、可跳过的过场 */
-const ADVANCEABLE_WAITING: ReadonlySet<unknown> = new Set([
-  "dialog",
-  "wait",
-  "video",
-]);
+/** 允许「推进」的等待态：对话 / 显式等待 / 视频。菜单 / 输入 / 玩法等不在内，推进无效 */
+const ADVANCEABLE_WAITING = new Set(["dialog", "wait", "video"]);
 
-/** 接线点击与键盘 */
-export function wireInput(options: HostInputOptions): void {
+/**
+ * 接好输入监听，返回拆除函数（一次 `abort()` 退掉全部监听）。
+ */
+export function wireInput(options: HostInputOptions): () => void {
   const { dom, engine, dialogue } = options;
+  const scope = options.inputScope ?? createInputScopeState();
+  const controller = new AbortController();
+  const { signal } = controller;
 
-  /** 二段式推进：打字未完 → 瞬间完成 / 越过停顿；否则推进故事 */
   function advance(): void {
     const typewriter = dialogue.readTypewriter();
     if (typewriter !== null && !typewriter.done) {
       typewriter.click();
       return;
     }
-    // 非可推进等待态直接返回：引擎会 fail-closed 并在错误条上留一条永不消失的红字
-    if (!ADVANCEABLE_WAITING.has(engine.get(SYS.waiting))) return;
-    engine.advance();
+    const waiting = engine.get(SYS.waiting);
+    if (typeof waiting === "string" && ADVANCEABLE_WAITING.has(waiting)) {
+      engine.advance();
+    }
   }
 
-  // 点击落在视口上而不是舞台上：等比装入留下的留边也该算命中（点空白处推进对话），
-  // 而舞台根被缩放后量到的只是内容区
-  dom.viewport.addEventListener("click", advance);
-  for (const el of [dom.choices, dom.toolbar, dom.notifications]) {
-    el.addEventListener("click", (event) => event.stopPropagation());
-  }
-  document.addEventListener("keydown", (event) => {
-    if (event.key === " " || event.key === "Enter") {
-      if (event.target instanceof HTMLInputElement) return; // 输入框内不吞键
-      event.preventDefault();
+  // 点击推进：只在对话域且目标不是面板控件 / 输入框
+  dom.viewport.addEventListener(
+    "click",
+    (event) => {
+      if (!routesToNarrative(scope.current(), event.target)) return;
       advance();
-    }
-  });
+    },
+    { signal },
+  );
+
+  // 交互层自己消费点击，不冒泡到舞台触发推进
+  for (const node of [dom.choices, dom.toolbar, dom.notifications]) {
+    node.addEventListener("click", (event) => event.stopPropagation(), {
+      signal,
+    });
+  }
+
+  // 滚轮：上滚回溯、下滚前进（同样先经域路由）
+  dom.viewport.addEventListener(
+    "wheel",
+    (event) => {
+      if (!routesToNarrative(scope.current(), event.target)) return;
+      if (event.deltaY < 0) engine.back();
+      else if (event.deltaY > 0) engine.forward();
+    },
+    { signal },
+  );
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (!routesToNarrative(scope.current(), event.target)) return;
+
+      // Ctrl / Cmd + S / L 快速存读：先于推进键判定，避免被 advance 吞掉
+      if (event.ctrlKey || event.metaKey) {
+        const key = event.key.toLowerCase();
+        if (key === "s" && options.onQuickSave !== undefined) {
+          event.preventDefault();
+          options.onQuickSave();
+          return;
+        }
+        if (key === "l" && options.onQuickLoad !== undefined) {
+          event.preventDefault();
+          options.onQuickLoad();
+          return;
+        }
+      }
+
+      if (
+        matchesKeybinding(
+          options.preferences?.keybinding("advance"),
+          DEFAULT_KEYMAP.advance,
+          event,
+        )
+      ) {
+        event.preventDefault();
+        advance();
+      } else if (
+        matchesKeybinding(
+          options.preferences?.keybinding("history"),
+          DEFAULT_KEYMAP.history,
+          event,
+        )
+      ) {
+        options.onHistory?.();
+      } else if (event.key === "Escape") {
+        options.onClosePanels?.();
+      }
+    },
+    { signal },
+  );
+
+  return () => controller.abort();
 }

@@ -69,6 +69,7 @@ function createSession(): ReturnType<typeof createAppSession> {
       pauseMedia: () => undefined,
       resumeMedia: () => undefined,
       navigate: () => undefined,
+      submit: () => true,
       save: () => undefined,
       load: () => undefined,
       dispose: () => undefined,

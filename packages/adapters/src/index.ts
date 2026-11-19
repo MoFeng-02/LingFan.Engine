@@ -98,8 +98,13 @@ export {
   createTauriOrientationPort,
   createBrowserFullscreenApplier,
   createTauriFullscreenApplier,
+  createFullscreenPolicy,
+  createOrientationPolicy,
   type FullscreenApplier,
+  type FullscreenPolicy,
+  type FullscreenPolicyOptions,
   type FullscreenWindowLike,
+  type OrientationPolicyOptions,
 } from "./shell";
 export {
   connectWsBridge,

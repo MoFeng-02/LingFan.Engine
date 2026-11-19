@@ -14,6 +14,7 @@
  */
 import type { AudioChannel } from "../media/entities.ts";
 import type { SaveOptions } from "../save.ts";
+import type { StoryCommand } from "../story/index.ts";
 
 /** 宿主控制面：菜单与挂载 UI 共用的操作集合（两条路实现零差异） */
 export interface HostControls {
@@ -34,6 +35,15 @@ export interface HostControls {
   resumeMedia(channel?: AudioChannel): void;
   /** 跳到某一栏（与 `menu` 的选项同义：栏 id） */
   navigate(columnId: string): void;
+  /**
+   * 代组件提交一批故事命令（与 body 通道的 `SceneEnv.submit` 同源同口径）：
+   * 组合根直接转发引擎的场景提交入口，不另建检查点、不做第二份实现。
+   *
+   * 整批要么全部生效要么原样拒绝（返回 `false`，状态不动）；存档类命令
+   * （load 等会整局换状态的）在批内即整批拒绝——组件不该替玩家读档。
+   * 命令本身仍是纯数据：函数走本控制面的方法，不走 `props`。
+   */
+  submit(ops: readonly StoryCommand[]): boolean;
   /**
    * 存档到某个槽位。
    *

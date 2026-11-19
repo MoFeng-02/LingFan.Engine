@@ -51,7 +51,7 @@ function asContainer(node: FakeElement): HTMLElement {
   return node as unknown as HTMLElement;
 }
 
-/** 控制面替身：渲染器只负责把它原样转交，九方法这里全空实现 */
+/** 控制面替身：渲染器只负责把它原样转交，全部方法这里空实现 */
 function makeControls(): HostControls {
   return {
     pause: () => {},
@@ -60,6 +60,7 @@ function makeControls(): HostControls {
     pauseMedia: () => {},
     resumeMedia: () => {},
     navigate: () => {},
+    submit: () => true,
     save: () => {},
     load: () => {},
     dispose: () => {},

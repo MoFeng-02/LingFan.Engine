@@ -3,6 +3,7 @@ export {};
 
 declare module "@lingfan-engine/core" {
   interface ColumnNameRegistry {
+    "hello_body": 1;
     "look_around": 1;
     "title_main": 1;
   }

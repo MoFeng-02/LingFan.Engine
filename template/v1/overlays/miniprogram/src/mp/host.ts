@@ -16,8 +16,10 @@ import {
   resolveAudioConfig,
   resolveSavesConfig,
   resolveStageConfig,
+  resolveTextSpeed,
   slotIds,
   StoryEngine,
+  SYS,
   videoFitOf,
   type SavesConfig,
   type StageConfig,
@@ -38,6 +40,7 @@ import {
   createVideoRenderer,
   type AudioRenderer,
   type NarrativeOverlay,
+  type TypingSetting,
   type VideoRenderer,
 } from "@lingfan-engine/ui";
 import { createHostFrameSource } from "./frame.ts";
@@ -69,7 +72,7 @@ import { stageStyle } from "./view.ts";
 // 生成工程两份清单同源）。小程序包体不装内容：译文与故事一样走工程接口的 HTTP 取件。
 import { LANGS } from "virtual:lang-list";
 
-/** 覆盖层字速（字符/秒） */
+/** 覆盖层字速兜底（字符/秒）：偏好与故事都没给合法值时用 */
 const TEXT_SPEED = 30;
 
 /** 页面数据补丁：覆盖层各层 + 视频状态 + 舞台尺寸串 + 错误横幅 */
@@ -96,6 +99,11 @@ export interface MiniprogramHostHandle {
   i18n: HostI18n;
   overlay: NarrativeOverlay;
   ports: MiniprogramHostPorts;
+  /**
+   * 玩家偏好（已 hydrate）：设置面板读写音量/静音/字速都走它，不另建第二个实例。
+   * 偏好独立于存档（机器级），面板改它即时生效并经端口防抖落盘。
+   */
+  preferences: PlayerPreferences;
   /** 当前舞台布局（视口 + 基准算出的缩放与偏移） */
   layout(): StageLayout;
   /** 视口尺寸变化后重算布局并下发 */
@@ -196,6 +204,8 @@ export async function startMiniprogramHost(
       onError: reportError,
       // 组合根职责：cutscene 播完 → 引擎解除 video 等待
       onVideoFinished: () => engine.videoFinished(),
+      // 视频音量同样乘玩家偏好（与音频同口径）：静音/调音量对两类媒体一致生效
+      preferences,
     },
   );
 
@@ -213,7 +223,15 @@ export async function startMiniprogramHost(
   const overlay: NarrativeOverlay = createNarrativeOverlay({
     surface,
     engine,
-    textSpeed: TEXT_SPEED,
+    // 字速读偏好（与音频/视频同口径）：偏好 > 故事 > 内建兜底，归属由 textSpeedSource
+    // 声明；现读口让滑杆改偏好后下一句即生效。偏好已水合，首帧起用的就是上次的字速。
+    readTextSpeed: () =>
+      resolveTextSpeed({
+        player: preferences.textSpeed,
+        source: preferences.textSpeedSource,
+        story: (engine.get(SYS.typewriter) as TypingSetting | undefined)?.speed,
+        fallback: TEXT_SPEED,
+      }),
     resolveResource: elementResources.resolveForElement,
     onError: reportError,
     // 覆盖层的帧循环一直在跑：音频播放位置借它逐帧回写（与打字机同一条时间线）
@@ -254,6 +272,7 @@ export async function startMiniprogramHost(
     i18n,
     overlay,
     ports,
+    preferences,
     saves,
     slotIds: slotIds(saves.slots),
     layout: () => layout,

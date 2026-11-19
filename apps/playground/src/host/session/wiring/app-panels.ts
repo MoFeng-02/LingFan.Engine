@@ -57,6 +57,7 @@ export function createAppPanels(options: AppPanelsOptions): AppPanels {
   const history = createAppHistory({ getEngine, syncFromEngine });
   const prefs = createAppPrefs({
     preferences: props.preferences,
+    getEngine,
     typewriter: options.typewriter,
   });
   const slots = createAppSlots({

@@ -8,3 +8,10 @@ export {
   createTauriFullscreenApplier,
 } from "./fullscreen";
 export type { FullscreenApplier, FullscreenWindowLike } from "./fullscreen";
+export {
+  createFullscreenPolicy,
+  createOrientationPolicy,
+  type FullscreenPolicy,
+  type FullscreenPolicyOptions,
+  type OrientationPolicyOptions,
+} from "./policy";

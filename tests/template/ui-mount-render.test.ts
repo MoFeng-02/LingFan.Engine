@@ -74,6 +74,7 @@ function makeControls(): HostControls {
     pauseMedia: () => {},
     resumeMedia: () => {},
     navigate: () => {},
+    submit: () => true,
     save: () => {},
     load: () => {},
     dispose: () => {},

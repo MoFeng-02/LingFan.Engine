@@ -4,7 +4,7 @@
  * invoke 可注入（缺省取 Tauri 桥接域的缺省实现）：测试以契约替身注入。
  */
 import type { OrientationMode, OrientationPort } from "@lingfan-engine/core";
-import { defaultInvoke, type TauriInvoke } from "../platform";
+import { defaultInvoke, invokeRust, type TauriInvoke } from "../platform";
 
 /**
  * Tauri 形态（Desktop + Mobile 同一命令面）：`set_orientation` 由 Rust 侧决定实现——
@@ -15,7 +15,7 @@ export function createTauriOrientationPort(
 ): OrientationPort {
   return {
     async apply(mode: OrientationMode): Promise<boolean> {
-      return await invoke<boolean>("set_orientation", { mode });
+      return await invokeRust<boolean>(invoke, "set_orientation", { mode });
     },
   };
 }

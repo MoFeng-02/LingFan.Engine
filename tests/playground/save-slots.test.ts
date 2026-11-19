@@ -33,6 +33,10 @@ function createControls(): {
     pauseMedia: () => calls.push("pauseMedia"),
     resumeMedia: () => calls.push("resumeMedia"),
     navigate: (columnId) => calls.push(`navigate:${columnId}`),
+    submit: (ops) => {
+      calls.push(`submit:${ops.length}`);
+      return true;
+    },
     save: (slot) => calls.push(`save:${slot}`),
     load: (slot) => calls.push(`load:${slot}`),
     dispose: () => calls.push("dispose"),

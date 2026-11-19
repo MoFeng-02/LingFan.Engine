@@ -10,6 +10,7 @@
  * 键名显示（`displayKeys`）与匹配同一处，避免「显示的是这个、匹配的是那个」。
  */
 import { ref, type Ref } from "vue";
+import { matchesKeybinding } from "@lingfan-engine/ui";
 import type {
   KeymapAction,
   PlayerKeymap,
@@ -59,9 +60,7 @@ export function createKeybindingPanel(
       fallback: readonly string[],
       event: KeyboardEvent,
     ): boolean {
-      const override = options.readKeymap()?.[action];
-      const pressed = event.key.toLowerCase();
-      return (override ?? fallback).some((k) => k.toLowerCase() === pressed);
+      return matchesKeybinding(options.readKeymap()?.[action], fallback, event);
     },
     startCapture(action: KeymapAction): void {
       captureAction.value = action;

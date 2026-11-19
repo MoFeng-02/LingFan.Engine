@@ -13,7 +13,7 @@
  *
  * 覆盖范围（本宿主**保证不卡死**：引擎能进入的每个等待态都有 UI 可推进）：
  *   dialogue / menu / input / wait / video / minigame（可见 fail-closed 提示）+
- *   舞台元素层 + 层级表（shell.layers）+ 存档（shell.saves.slots）+
+ *   舞台元素层 + 列身体（组件即这一屏）+ 层级表（shell.layers）+ 存档（shell.saves.slots）+
  *   玩家偏好面板 + 历史面板与回溯（点一条即回到那个检查点）。
  * I18N 已接线：语言清单来自构建期扫描（`virtual:lang-list`），译文供给走 Web fetch，
  * 页面语言选择器（`#lang`）与宿主静态文案随门面切换；故事内容由引擎派生重译。
@@ -33,6 +33,7 @@ import {
 import { STORIES } from "./stories";
 import { LANGS } from "./langs";
 import { uis } from "./mounts";
+import { scenes } from "./scenes";
 
 /**
  * 工程清单与故事文件：**都在应用资源根 `Resources/` 内**。
@@ -60,6 +61,7 @@ const dom: StageDom = {
   slot: must<HTMLSelectElement>("#slot"),
   save: must<HTMLButtonElement>("#save"),
   load: must<HTMLButtonElement>("#load"),
+  continue: optional<HTMLButtonElement>("#continue"),
   // 语言选择器（可选）：页面给了就有语言下拉，不给则语言只能由代码切换
   lang: optional<HTMLSelectElement>("#lang"),
   // 工具条「存档」标签（可选）：给了就随语言切换重画
@@ -71,6 +73,10 @@ const dom: StageDom = {
   history: optional("#history"),
   // UI 挂载层槽位（可选）：本层不给就 null，`mount` 命令只改状态、没有组件出现
   mounts: optional("#mounts"),
+  // 列身体槽位（可选）：本层不给就 null，`body` 只改状态、没有组件出现
+  body: optional("#body"),
+  // 小游戏挂载点（可选）：本层不给就 null，小游戏无处挂载（等待保持，可回溯离开）
+  minigame: optional("#minigame"),
 };
 
 void bootHost({
@@ -93,6 +99,10 @@ void bootHost({
   mountsContainer: dom.mounts,
   // 「名字 → UI 工厂」表：来自生成物，键就是 `SYS.mounts` 里的名字
   mountsTable: uis,
+  // 列身体槽位：给了就把这一列的身体组件渲染进来（一列一个）
+  bodyContainer: dom.body,
+  // 「名字 → 身体组件」表：来自生成物，键就是 `SYS.body` 里的名字
+  scenesTable: scenes,
 }).catch((error: unknown) => {
   reportBootFailure(dom, error);
 });

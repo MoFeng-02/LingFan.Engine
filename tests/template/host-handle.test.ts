@@ -121,9 +121,9 @@ describe("宿主句柄 · 句柄里的引擎就是宿主内部那个", () => {
     // 音频与视频都从 `engine` 起，因此它们的 dispose 必须在 engine.dispose() 之前
     expect(bootSource).toContain("createAudioRenderer(engine");
     expect(bootSource).toContain("createVideoRenderer(engine");
-    // 接线与输入映射也挂在同一个变量上
+    // 接线与输入映射也挂在同一个变量上（选项表随宿主能力增长，只锁核心三件 dom/engine/dialogue）
     expect(bootSource).toContain("wireEngine({");
-    expect(bootSource).toContain("wireInput({ dom, engine, dialogue });");
+    expect(bootSource).toMatch(/wireInput\(\{\s*dom,\s*engine,\s*dialogue,/);
   });
 
   it("`engine.start()` 只在末尾调一次（句柄交出时故事已在跑）", () => {

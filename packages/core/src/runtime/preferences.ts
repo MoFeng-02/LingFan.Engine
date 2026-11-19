@@ -12,6 +12,7 @@ import type {
   PlayerKeymap,
   PlayerPrefsData,
   PreferencesPort,
+  TextSpeedSource,
   TimerHandle,
   TimerPort,
 } from "../contracts/index.ts";
@@ -100,6 +101,14 @@ function sanitize(raw: unknown): PlayerPrefsData {
   ) {
     data.textSpeed = Math.max(1, source.textSpeed);
   }
+  // 字速归属：只认两个显式取值；非法/缺席都保持键不存在——缺省（玩家覆盖故事）
+  // 与显式声明是两种意图，补默认键会把「没说过」篡改成「说过」
+  if (
+    source.textSpeedSource === "story" ||
+    source.textSpeedSource === "player"
+  ) {
+    data.textSpeedSource = source.textSpeedSource;
+  }
   // 方向偏好：合法三态才采纳；非法值 = 未设置（跟随工程默认，绝不翻译成非法方向）
   if (isOrientationMode(source.orientation))
     data.orientation = source.orientation;
@@ -110,6 +119,41 @@ function sanitize(raw: unknown): PlayerPrefsData {
   if (typeof source.fullscreen === "boolean")
     data.fullscreen = source.fullscreen;
   return data;
+}
+
+/** 字速解析的输入：玩家偏好值与归属声明、故事声明值、内建兜底 */
+export interface TextSpeedResolution {
+  /** 玩家偏好字速（字符/秒；偏好层已保证 ≥1，这里仍做防御校验）；缺省 = 未接偏好层 */
+  player?: number;
+  /** 字速归属声明；缺省 = 玩家偏好覆盖故事设置（既有行为） */
+  source?: TextSpeedSource;
+  /** 故事 `text_typewriter` 声明的字速；未声明或非法时缺席 */
+  story?: number;
+  /** 内建兜底字速（玩家与故事都没给合法值时用） */
+  fallback: number;
+}
+
+/**
+ * 字速三级链的单一解析口径（纯函数，宿主只消费不另写）：
+ * - 显式 "story"：锁作者声明——故事给了合法值就用它，否则内建兜底；玩家滑杆
+ *   仍记住偏好值，但不作用于当前故事。
+ * - 缺省或显式 "player"：玩家偏好 > 故事声明 > 内建兜底（缺省保持既有覆盖行为）。
+ *
+ * 合法值口径：有限正数；玩家值另夹下限 1（0 会让打字机永远推不完）。
+ * 偏好与存档分离：回溯/读档不改偏好，所以同一台机器上字速整局稳定。
+ */
+export function resolveTextSpeed(input: TextSpeedResolution): number {
+  const story = input.story;
+  const storyValid =
+    typeof story === "number" && Number.isFinite(story) && story > 0;
+  if (input.source === "story") {
+    return storyValid ? story : input.fallback;
+  }
+  const player = input.player;
+  if (typeof player === "number" && Number.isFinite(player) && player > 0) {
+    return Math.max(1, player);
+  }
+  return storyValid ? story : input.fallback;
 }
 
 /**
@@ -161,6 +205,9 @@ export class PlayerPreferences {
     if (this.data.orientation !== undefined) {
       snap.orientation = this.data.orientation;
     }
+    if (this.data.textSpeedSource !== undefined) {
+      snap.textSpeedSource = this.data.textSpeedSource;
+    }
     if (this.data.keymap !== undefined) {
       // 新数组引用（嵌套隔离——UI 改写不得穿透偏好状态）
       const keymap: PlayerKeymap = {};
@@ -186,6 +233,26 @@ export class PlayerPreferences {
   /** 文本显示速度（单位口径由渲染层解释）；下限 1，非法写入被忽略 */
   get textSpeed(): number {
     return this.data.textSpeed;
+  }
+
+  /** 字速归属（undefined = 未声明，玩家偏好覆盖故事设置；见 TextSpeedSource） */
+  get textSpeedSource(): TextSpeedSource | undefined {
+    return this.data.textSpeedSource;
+  }
+
+  /** 设置字速归属（只认 "story"/"player"，其余忽略——fail-closed 不抛出） */
+  setTextSpeedSource(source: TextSpeedSource): void {
+    if (source !== "story" && source !== "player") return;
+    if (this.data.textSpeedSource === source) return;
+    this.update({ ...this.data, textSpeedSource: source });
+  }
+
+  /** 清除字速归属 = 回到缺省行为（玩家偏好覆盖故事设置） */
+  clearTextSpeedSource(): void {
+    if (this.data.textSpeedSource === undefined) return;
+    const next: PlayerPrefsData = { ...this.data };
+    delete next.textSpeedSource;
+    this.update(next);
   }
 
   /** 方向偏好（undefined = 未设置，跟随工程默认/auto；壳应用由组合根负责） */

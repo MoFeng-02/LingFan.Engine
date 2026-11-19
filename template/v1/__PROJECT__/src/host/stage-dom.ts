@@ -20,8 +20,8 @@ export function must<T extends HTMLElement>(selector: string): T {
 /**
  * 按选择器取**可选**节点：缺失返回 `null`，不抛。
  *
- * 只给「有则增强、无则退化成没有该功能」的节点用——目前三个：历史面板、偏好面板
- * 与 UI 挂载层的容器。它们和 `must()` 的区别是**契约强度**：页面结构由叠加层重写时
+ * 只给「有则增强、无则退化成没有该功能」的节点用——历史面板、偏好面板、UI 挂载层
+ * 与列身体的容器。它们和 `must()` 的区别是**契约强度**：页面结构由叠加层重写时
  * （Vue / React / 小程序各自的 `App`），那份页面可以选择不提供这些槽位，
  * 此时对应功能不启用，游戏照常跑；而 `must()` 守的节点缺一个就是装配错误，必须当场抛。
  */
@@ -90,12 +90,35 @@ export interface StageDom {
    * 与 `prefs` 同属「有则增强」的槽位：取用点 `optional("#mounts")`。
    */
   mounts: HTMLElement | null;
+  /**
+   * 列身体容器（**可选**：`null` = 本页面不给列身体留槽位）。
+   *
+   * 给了就按 `SYS.body` 把 `src/scenes/` 下的身体组件渲染进来（一列一个身体），
+   * 不给则 `body` 只改状态、没有组件出现——与 `mounts` 同属「有则增强」的槽位。
+   * 取用点：`optional("#body")`；它住在震动层内，随舞台一起缩放与震动。
+   */
+  body: HTMLElement | null;
+  /**
+   * 小游戏挂载点（**可选**：`null` = 本页面不给小游戏留槽位）。
+   *
+   * 给了就把 `minigame.mount` 解析出的工厂画进来（引擎让出控制权 → 外部跑 → 回填 → 继续）；
+   * 不给则小游戏无处挂载，挂载分支静默返回（等待保持，可回溯/导航离开）。
+   * 取用点：`optional("#minigame")`；它住在震动层内，随舞台一起缩放与震动。
+   */
+  minigame: HTMLElement | null;
   /** 存档槽下拉 */
   slot: HTMLSelectElement;
   /** 存按钮 */
   save: HTMLButtonElement;
   /** 读按钮 */
   load: HTMLButtonElement;
+  /**
+   * 续玩入口（**可选**：`null` = 页面没给这个按钮）。
+   *
+   * 给了就有「继续」：读最近一次存档接着玩，无可续档时禁用；不给则续玩不启用，
+   * 游戏照常跑（存读档仍走槽位下拉）。取用点：`optional<HTMLButtonElement>("#continue")`。
+   */
+  continue?: HTMLButtonElement | null;
   /**
    * 语言选择器（**可选**：`null` = 本页面没给这个节点）。
    *

@@ -60,7 +60,19 @@ export {
   type VideoRenderer,
   type VideoRendererOptions,
 } from "./video";
-export { createMinigameRegistry, type MinigameRegistry } from "./minigame";
+export {
+  abortSignalOf,
+  createMinigameRegistry,
+  handleMinigameMount,
+  type MinigameMountDeps,
+  type MinigameRegistry,
+} from "./minigame";
+export {
+  createExtensionMountHandler,
+  type ExtensionMountDeps,
+  type ExtensionMountHandler,
+  type ExtensionOverlay,
+} from "./extension";
 export {
   createMountStore,
   missingMounts,
@@ -76,7 +88,20 @@ export {
   type MountStore,
   type MountTable,
 } from "./mount";
-export { selectBody, type BodySelection } from "./body";
+export {
+  createBodyLayer,
+  createBodyStore,
+  createSceneEnv,
+  selectBody,
+  type BodyLayer,
+  type BodyLayerOptions,
+  type BodySelection,
+  type BodySource,
+  type BodyStore,
+  type BodyView,
+  type SceneEnvOptions,
+  type SceneStageState,
+} from "./body";
 export { continueSlot, latestSave } from "./save";
 export {
   createElementRegistry,
@@ -134,10 +159,12 @@ export {
   createInputScopeState,
   isGameInputTarget,
   isInputScope,
+  matchesKeybinding,
   routesToNarrative,
   type ClosestLike,
   type InputScope,
   type InputScopeState,
+  type KeyLike,
 } from "./input";
 export {
   createNarrativeOverlay,

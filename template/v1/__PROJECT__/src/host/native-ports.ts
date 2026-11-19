@@ -14,7 +14,11 @@
  * 没有它时也装得上。非壳形态直接返回 `undefined`，动态导入一次都不会发生。
  */
 import {
+  createTauriFullscreenApplier,
+  createTauriOrientationPort,
+  createTauriPreferencesPort,
   createTauriSavePort,
+  type FullscreenWindowLike,
   type TauriInvoke,
 } from "@lingfan-engine/adapters";
 import type { BootPortOverrides } from "./boot";
@@ -25,11 +29,11 @@ export function isTauriHosted(): boolean {
 }
 
 /**
- * 惰性 invoke：首次真正调用存档命令时才装载 `@tauri-apps/api/core`。
+ * 惰性 invoke：首次真正调用原生命令时才装载 `@tauri-apps/api/core`。
  *
- * 不在启动路径上 await 是刻意的——存档端口是同步构造的，而装载要等模块解析；
+ * 不在启动路径上 await 是刻意的——这些端口是同步构造的，而装载要等模块解析；
  * 把等待推迟到第一次读写，启动时序与浏览器形态完全一致。装载失败会原样抛给
- * 调用方，由存档流程的既有错误处理呈现，不会变成静默失败。
+ * 调用方，由相应流程的既有错误处理呈现，不会变成静默失败。
  */
 function createLazyInvoke(): TauriInvoke {
   let loading: Promise<TauriInvoke> | undefined;
@@ -45,12 +49,36 @@ function createLazyInvoke(): TauriInvoke {
 }
 
 /**
+ * 惰性窗口句柄：首次真正切全屏时才装载 `@tauri-apps/api/window`。
+ *
+ * 与 {@link createLazyInvoke} 同口径——同步构造、装载推迟到第一次调用，启动时序
+ * 与浏览器形态一致。用的是 Tauri 内置窗口命令（`setFullscreen`），不需要壳侧
+ * 另注册 Rust 命令。装载或调用失败原样抛给应用器，由它按尽力而为吞掉。
+ */
+function createLazyWindow(): FullscreenWindowLike {
+  return {
+    async setFullscreen(on: boolean): Promise<void> {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      await getCurrentWindow().setFullscreen(on);
+    },
+  };
+}
+
+/**
  * 按运行时事实给出端口覆盖；非桌面壳形态返回 `undefined`。
  *
- * 现在只换存档（`localStorage` 落在 WebView 数据目录，清缓存、换账户、重装都会
- * 带走存档）。其余端口沿用 `bootHost` 的 Web 缺省实现，随需要再加。
+ * 换存档与玩家偏好：`localStorage` 落在 WebView 数据目录，清缓存、换账户、重装都会
+ * 带走它们，桌面壳改落 Rust 侧 app_data 的 JSON 文件。方向锁与全屏换 Tauri 窗口
+ * 命令（浏览器没有方向锁 API、全屏需手势，桌面壳尽力而为）。其余端口沿用
+ * `bootHost` 的 Web 缺省实现，随需要再加。
  */
 export function createNativePorts(): BootPortOverrides | undefined {
   if (!isTauriHosted()) return undefined;
-  return { saves: createTauriSavePort(createLazyInvoke()) };
+  const invoke = createLazyInvoke();
+  return {
+    saves: createTauriSavePort(invoke),
+    preferences: createTauriPreferencesPort(invoke),
+    orientationPort: createTauriOrientationPort(invoke),
+    fullscreenApplier: createTauriFullscreenApplier(createLazyWindow()),
+  };
 }

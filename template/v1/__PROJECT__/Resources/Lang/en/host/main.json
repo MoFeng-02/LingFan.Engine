@@ -12,5 +12,8 @@
   "写入存档": "Save game",
   "读取存档": "Load game",
   "空槽": "Empty slot",
-  "已有存档": "Saved game"
+  "已有存档": "Saved game",
+  "输入": "Input",
+  "完成": "Done",
+  "完成扩展等待": "Finish extension wait"
 }

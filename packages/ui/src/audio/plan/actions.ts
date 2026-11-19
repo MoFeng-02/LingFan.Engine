@@ -150,12 +150,13 @@ export function planAudioActions(
 }
 
 /**
- * 实例差量：只翻 play ↔ pause 这一对。
+ * 实例差量：与通道同构的完整生命周期，只是按 id 判定、没有 bgm 的位置/定位维度。
  *
- * 引擎暂停会把在播实例写成 `pause` 态（暂停前的 play 态记在 `SYS.audioPaused`），
- * 恢复时再写回 play 态——两次都是整表替换，渲染层看到的就是这一对变迁。
- * 实例的起播与收声不在这里：那是实例命令面（`audio_play` / `audio_stop`）的职责，
- * 两边都下发会重复。按 id 排序遍历，保证动作序列确定（与实例表的排序口径一致）。
+ * 实例是作者的编排单元（数量不定、各自独立叠放），起播/换资源/重播/音量更新/收声
+ * 都在这里规划——命令面（`audio_play` / `audio_stop` / `audio_volume`）只写状态、不调端口，
+ * 把状态落成声音是渲染层的职责，不存在「两边都下发」的重复。
+ * 引擎暂停把在播实例写成 `pause` 态、恢复写回 play 态，这一对变迁同样在这里翻。
+ * 按 id 排序遍历，保证动作序列确定（与实例表的排序口径一致）。
  */
 function planInstanceActions(prev: AudioView, next: AudioView): AudioAction[] {
   const actions: AudioAction[] = [];
@@ -168,16 +169,75 @@ function planInstanceActions(prev: AudioView, next: AudioView): AudioAction[] {
     const before = prev.instances[instanceId];
     const after = next.instances[instanceId];
     if (after !== undefined && after.kind === "pause") {
+      // 暂停：只有「正在出声」才需要收声；本来就是暂停/停止的实例无动作
       if (before !== undefined && before.kind === "play") {
         actions.push({ type: "pauseInstance", instanceId });
       }
       continue;
     }
-    if (after !== undefined && after.kind === "play") {
-      if (before !== undefined && before.kind === "pause") {
-        // 与通道同构：resume 而不是 play——play 会从头起播，暂停的意义是保住位置
-        actions.push({ type: "resumeInstance", instanceId });
+    if (after === undefined || after.kind !== "play") {
+      // 消失或转 stop：在播/暂停中的实例都要收声（暂停中的不收会一直占着播放器）
+      if (
+        before !== undefined &&
+        (before.kind === "play" || before.kind === "pause")
+      ) {
+        actions.push({
+          type: "stopInstance",
+          instanceId,
+          fadeMs:
+            after !== undefined && after.kind === "stop" ? after.fadeMs : 0,
+        });
       }
+      continue;
+    }
+    if (before !== undefined && before.kind === "pause") {
+      // 与通道同构：resume 而不是 play——play 会从头起播，暂停的意义是保住位置
+      actions.push({ type: "resumeInstance", instanceId });
+      continue;
+    }
+    const sameResource =
+      before !== undefined &&
+      before.kind === "play" &&
+      before.resource === after.resource;
+    if (!sameResource) {
+      actions.push({
+        type: "playInstance",
+        instanceId,
+        resource: after.resource,
+        volume: after.volume,
+        loop: after.loop,
+        position: 0,
+        fadeMs: after.fadeMs,
+        restart: true,
+      });
+      continue;
+    }
+    // 同资源：显式重播优先于增量更新（seq 变化 = 这是一次新的重播请求）
+    if (after.restart === true && after.seq !== before.seq) {
+      actions.push({
+        type: "playInstance",
+        instanceId,
+        resource: after.resource,
+        volume: after.volume,
+        loop: after.loop,
+        position: 0,
+        fadeMs: after.fadeMs,
+        restart: true,
+      });
+      continue;
+    }
+    if (before.volume !== after.volume || before.loop !== after.loop) {
+      // 仅音量/循环变化 → 更新而非重播（audio_volume 的「调音量不重播」口径）
+      actions.push({
+        type: "playInstance",
+        instanceId,
+        resource: after.resource,
+        volume: after.volume,
+        loop: after.loop,
+        position: 0,
+        fadeMs: after.fadeMs,
+        restart: false,
+      });
     }
   }
   return actions;

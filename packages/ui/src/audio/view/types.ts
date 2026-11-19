@@ -9,7 +9,7 @@ import type { AudioChannel, AudioChannelState } from "@lingfan-engine/core";
 /**
  * 渲染视图：四通道状态 + 实例状态 + bgm 播放位置（帧级键直读，不进事件流）。
  *
- * 实例表按 id 收进视图（`instanceId → 状态`），只取三态里的 kind 与 seq 做差量；
+ * 实例表按 id 收进视图（`instanceId → 状态`），音量已按归属通道乘过玩家偏好；
  * 通道与实例是两张表，各自独立判定，互不代偿。
  */
 export interface AudioView {
@@ -38,4 +38,16 @@ export type AudioAction =
   | { type: "pause"; channel: AudioChannel }
   | { type: "resume"; channel: AudioChannel }
   | { type: "pauseInstance"; instanceId: string }
-  | { type: "resumeInstance"; instanceId: string };
+  | { type: "resumeInstance"; instanceId: string }
+  | {
+      type: "playInstance";
+      instanceId: string;
+      resource: string;
+      volume: number;
+      loop: boolean;
+      position: number;
+      fadeMs: number;
+      /** true = 回到 position 重播；false = 同资源无缝续播/更新（音量更新不重播） */
+      restart: boolean;
+    }
+  | { type: "stopInstance"; instanceId: string; fadeMs: number };

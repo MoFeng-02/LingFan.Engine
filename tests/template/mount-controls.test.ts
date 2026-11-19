@@ -36,7 +36,7 @@ class FakeElement {
   }
 }
 
-/** 控制面替身：九方法全空实现，判据只认「同一个对象被交下去」 */
+/** 控制面替身：全部方法空实现，判据只认「同一个对象被交下去」 */
 const controls: HostControls = {
   pause: () => {},
   resume: () => {},
@@ -44,6 +44,7 @@ const controls: HostControls = {
   pauseMedia: () => {},
   resumeMedia: () => {},
   navigate: () => {},
+  submit: () => true,
   save: () => {},
   load: () => {},
   dispose: () => {},

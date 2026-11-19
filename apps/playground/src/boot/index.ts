@@ -32,11 +32,11 @@ export {
   type MediaPortFactories,
   type MediaPortFactoriesOptions,
 } from "./platform-policy";
-/** 方向与全屏：偏好变化 → 平台调用的去重状态机（状态在各自闭包内） */
+/** 方向与全屏：偏好变化 → 平台调用的去重状态机（策略单一声明在适配器域，这里转发） */
 export {
   createFullscreenPolicy,
   createOrientationPolicy,
   type FullscreenPolicy,
   type FullscreenPolicyOptions,
   type OrientationPolicyOptions,
-} from "./orientation";
+} from "@lingfan-engine/adapters";

@@ -1,8 +1,11 @@
 /**
  * 身体层的宿主侧装配：把引擎、组件表、错误条与舞台读数接成一个身体层。
  *
+ * 选择与环境装配都在 `@lingfan-engine/ui`（单一事实源），这里只做宿主适配：
+ * 把 Vue 的错误横幅引用包成普通回调，再把「选出来的是什么」交给组合根。
+ *
  * 与元素层的差别在落点上：元素层自己往容器里渲染（容器由模板 ref 提供），身体层
- * 不碰 DOM——组件由 Vue 的渲染树持有，所以这里只把「选出来的是什么」回调给组合根，
+ * 不碰 DOM——组件由 Vue 的渲染树持有，所以这里只把结果回调给组合根，
  * 由模板里的 `<component :is>` 承载。因此本文件没有 `containerEl` 入参：没有容器，
  * 只有回调。
  *
@@ -11,9 +14,12 @@
  */
 import type { Ref } from "vue";
 import type { SceneEnv, StoryEngine } from "@lingfan-engine/core";
-
-import { createBodyLayer, type BodyView } from "./body.ts";
-import { createSceneEnv, type SceneStageState } from "./env.ts";
+import {
+  createBodyLayer,
+  createSceneEnv,
+  type BodyView,
+  type SceneStageState,
+} from "@lingfan-engine/ui";
 
 /** 装配入参 */
 export interface AppBodyLayerOptions {
@@ -43,7 +49,15 @@ export interface AppBodyLayer {
 export function createAppBodyLayer(options: AppBodyLayerOptions): AppBodyLayer {
   const { table, error, getEngine, readStage, onSelect } = options;
   const env = createSceneEnv({ getEngine, readStage });
-  const layer = createBodyLayer({ table, env, error, getEngine, onSelect });
+  const layer = createBodyLayer({
+    table,
+    env,
+    onError: (message) => {
+      error.value = message;
+    },
+    getEngine,
+    onSelect,
+  });
   return {
     env,
     render: (): void => {

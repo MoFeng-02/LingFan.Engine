@@ -2,6 +2,7 @@
   "formatVersion": 1,
   "id": "title_main",
   "kind": "flow",
+  "type": "ui",
   "commands": [
     {
       "op": "say",
@@ -19,6 +20,10 @@
         {
           "text": "四处看看",
           "target": "look_around"
+        },
+        {
+          "text": "组件身体示例",
+          "target": "hello_body"
         },
         {
           "text": "重来一次",

@@ -24,6 +24,7 @@ export default function title_main(): void {
   say("改完保存，在工程根跑 pnpm stories:build 就会重新生成故事文件。");
   menu("接下来做什么？", [
     option("四处看看", "look_around"),
+    option("组件身体示例", "hello_body"),
     option("重来一次", "title_main"),
   ]);
 }

@@ -10,3 +10,4 @@ export {
   type InputScope,
   type InputScopeState,
 } from "./scope";
+export { matchesKeybinding, type KeyLike } from "./keymap";

@@ -60,6 +60,12 @@ export interface NarrativeOverlayOptions {
   onFrame?: (dtSeconds: number) => void;
   /** 打字速度（字符/秒；缺省 30，与内建默认一致） */
   textSpeed?: number;
+  /**
+   * 字速现读口（可选）：给了就在每句重建打字机时取当下值，而不是构造时的定值——
+   * 玩家改字速偏好后下一句即生效。宿主把「偏好 > 故事 > 兜底」三级链解析成一个数
+   * 经此注入（解析口径在引擎侧单一声明，宿主只消费）。不给则用 `textSpeed` 定值。
+   */
+  readTextSpeed?: () => number;
   /** 渲染投影变化通知（宿主可作状态指示；每帧打字推进也会触发） */
   onView?: (view: NarrativeOverlayView) => void;
   /** 对话模板注册表（不传 = 内建） */

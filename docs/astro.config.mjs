@@ -193,6 +193,11 @@ export default defineConfig({
               link: "/guides/ui-mount/",
             },
             {
+              label: "列身体：用组件画一整屏",
+              translations: { en: "Column Body: Paint a Whole Screen" },
+              link: "/guides/body-column/",
+            },
+            {
               label: "屏幕适配",
               translations: { en: "Screen Adaptation" },
               link: "/guides/screen-adaptation/",

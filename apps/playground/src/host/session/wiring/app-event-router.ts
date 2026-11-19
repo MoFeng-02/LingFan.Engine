@@ -65,6 +65,11 @@ export function createAppEventRouter(
       handleMinigameMount(payload, {
         minigames: mounts.minigames,
         readHost: options.readMinigameHost,
+        teardownHost: (raw) => {
+          const host = raw as HTMLElement;
+          host.innerHTML = "";
+          host.classList.remove("minigame-demo");
+        },
         inMinigame,
         error,
         resolveMinigame: (result) => getEngine().resolveMinigame(result),

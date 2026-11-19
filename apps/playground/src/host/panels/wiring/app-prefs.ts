@@ -8,7 +8,13 @@
  */
 
 import { ref, type Ref } from "vue";
-import type { PlayerPreferences } from "@lingfan-engine/core";
+import {
+  SYS,
+  resolveTextSpeed,
+  type PlayerPreferences,
+  type StoryEngine,
+} from "@lingfan-engine/core";
+import { DEFAULT_TEXT_CPS, type TypingSetting } from "@lingfan-engine/ui";
 import {
   createKeybindingPanel,
   type KeybindingPanel,
@@ -19,10 +25,12 @@ import {
 } from "../views/preferences-panel";
 import type { TypewriterHandle } from "../../narrative/wiring/app-narrative";
 
-/** 装配入参：玩家偏好与打字机句柄（字速即时生效落点） */
+/** 装配入参：玩家偏好、引擎句柄与打字机句柄（字速即时生效落点） */
 export interface AppPrefsOptions {
   /** 玩家偏好（组合根装配：hydrate 后注入，与存档分离） */
   preferences: PlayerPreferences;
+  /** 引擎句柄取用（读故事级打字机设置，字速三级链的「故事」一级） */
+  getEngine: () => StoryEngine;
   /** 打字机共享句柄（字速即时生效的落点） */
   typewriter: TypewriterHandle;
 }
@@ -63,13 +71,22 @@ export interface AppPrefs {
 
 /** 装配偏好与键位面板：状态归核心层，这里只出视图镜像与写入口 */
 export function createAppPrefs(options: AppPrefsOptions): AppPrefs {
-  const { preferences, typewriter } = options;
+  const { preferences, getEngine, typewriter } = options;
   const showPrefs = ref(false);
   const prefs = createPreferencesPanel({
     preferences,
     onChanged: () => {
-      // 速度偏好即时生效于当前句（SetTextSpeed；下句重建自然取新值）
-      typewriter.get()?.setSpeed(preferences.textSpeed);
+      // 字速即时生效于当前句：与每句重建同走三级链（偏好 > 故事 > 兜底）。
+      // 归属为 story 时滑杆只改偏好、不覆盖当前句的作者字速（解析口径单一事实源）。
+      const setting = getEngine().get(SYS.typewriter) as
+        TypingSetting | undefined;
+      const cps = resolveTextSpeed({
+        player: preferences.textSpeed,
+        source: preferences.textSpeedSource,
+        story: setting?.speed,
+        fallback: DEFAULT_TEXT_CPS,
+      });
+      typewriter.get()?.setSpeed(cps);
     },
   });
   const keys = createKeybindingPanel({

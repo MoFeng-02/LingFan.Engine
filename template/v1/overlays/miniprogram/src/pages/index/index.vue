@@ -13,12 +13,13 @@
  * 比例同源、绝对尺寸按 750 宽度折算。
  */
 import { onReady, onUnload } from "@dcloudio/uni-app";
-import { DEFAULT_LANG } from "@lingfan-engine/core";
+import { DEFAULT_LANG, type PlayerPreferences } from "@lingfan-engine/core";
 import { computed, ref } from "vue";
 import ChoiceLayer from "../../components/ChoiceLayer.vue";
 import DialogueLayer from "../../components/DialogueLayer.vue";
 import NoticeLayer from "../../components/NoticeLayer.vue";
 import SaveLoadBar from "../../components/SaveLoadBar.vue";
+import SettingsPanel from "../../components/SettingsPanel.vue";
 import StageView from "../../components/StageView.vue";
 import {
   chooseHostSlot,
@@ -56,6 +57,10 @@ const slotViews = ref<SlotView[]>([]);
 const currentLang = ref("");
 /** 可选语言清单（门面缺省只含默认语言，端口清单异步补齐后同步） */
 const langs = ref<string[]>([DEFAULT_LANG]);
+/** 玩家偏好实例：装配完成后交给设置面板（此前为 null，面板不展开） */
+const prefs = ref<PlayerPreferences | null>(null);
+/** 设置面板是否展开 */
+const settingsOpen = ref(false);
 
 let host: MiniprogramHostHandle | null = null;
 let stopResizeWatch: (() => void) | null = null;
@@ -121,6 +126,8 @@ async function boot(): Promise<void> {
     const canvas = await queryCanvasNode(CANVAS_SELECTOR);
     const started = await startMiniprogramHost({ canvas, publish: applyPatch });
     host = started;
+    // 偏好实例交给设置面板：读写音量/静音/字速都经它（机器级，独立于存档）
+    prefs.value = started.preferences;
     syncLang();
     // 语言出站（含清单异步补齐前的首次切换）：镜像回页面，模板里的 t() 依赖随之重算
     stopLangWatch = started.i18n.subscribe(() => {
@@ -274,6 +281,14 @@ defineOptions({ name: "PageIndex" });
         @open="openSlots"
         @choose="onChooseSlot"
         @close="closeSlots"
+      />
+      <!-- 设置面板：音量/静音/字速，读写经偏好层；入口在存读条下方顺延 -->
+      <SettingsPanel
+        :preferences="prefs"
+        :open="settingsOpen"
+        :translate="translate"
+        @open="settingsOpen = true"
+        @close="settingsOpen = false"
       />
       <!-- 语言选择器：清单来自构建期扫描（门面的 availableLangs），默认语言=原文直出 -->
       <picker

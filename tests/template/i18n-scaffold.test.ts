@@ -19,6 +19,7 @@ import dialogueSource from "../../template/v1/__PROJECT__/src/host/dialogue-view
 import wiringSource from "../../template/v1/__PROJECT__/src/host/engine-wiring.ts?raw";
 import prefsSource from "../../template/v1/__PROJECT__/src/host/panels/preferences.ts?raw";
 import historySource from "../../template/v1/__PROJECT__/src/host/panels/history.ts?raw";
+import extensionOverlaySource from "../../template/v1/__PROJECT__/src/host/extension-overlay.ts?raw";
 import skeletonMain from "../../template/v1/__PROJECT__/src/main.ts?raw";
 import langsIndex from "../../template/v1/__PROJECT__/src/langs/index.ts?raw";
 import indexHtml from "../../template/v1/__PROJECT__/index.html?raw";
@@ -226,21 +227,22 @@ describe("语言选择器 · 节点、句柄与接线", () => {
 });
 
 describe("玩家文案 t() · 只包宿主字面量，故事内容不二次查表", () => {
-  it("四个视图/面板都收可选 translate（缺省恒等 = 原文直出）", () => {
+  it("五个视图/面板都收可选 translate（缺省恒等 = 原文直出）", () => {
     for (const [name, source] of [
       ["dialogue-view", dialogueSource],
       ["engine-wiring", wiringSource],
       ["preferences", prefsSource],
       ["history", historySource],
+      ["extension-overlay", extensionOverlaySource],
     ] as const) {
       expect(source, name).toContain("translate?: (text: string) => string;");
       expect(source, name).toContain(
         "options.translate ?? ((text: string): string => text)",
       );
     }
-    // boot 把门面的 t 交给四处（同一张表）
+    // boot 把门面的 t 交给五处（同一张表）
     const injections = bootSource.match(/translate: i18n\.t,/g) ?? [];
-    expect(injections).toHaveLength(4);
+    expect(injections).toHaveLength(5);
   });
 
   it("对话视图：确定钮与两条等待提示包 t()，minigame 诊断不迁", () => {
@@ -329,6 +331,7 @@ describe("样例键覆盖 · t() 字面量都能在 Lang/en 里查到", () => {
       ["history", historySource],
       ["i18n", i18nSource],
       ["SaveLoadBar", mpBar],
+      ["extension-overlay", extensionOverlaySource],
     ] as const) {
       for (const match of source.matchAll(/\bt\("([^"]+)"\)/g)) {
         expect(

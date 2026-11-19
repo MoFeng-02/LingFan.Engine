@@ -83,7 +83,11 @@ export function createNarrativeOverlay(
     reader,
     engine,
     layerZ: layerZController,
-    textSpeed,
+    // 字速现读：给了 readTextSpeed 就每句重建打字机时取当下值（改偏好下一句即生效），
+    // 否则用构造时的定值。投影器每句重建时读它，getter 即可，不必另接订阅。
+    get textSpeed(): number {
+      return options.readTextSpeed?.() ?? textSpeed;
+    },
   });
 
   const dialogueDeps: DialogueViewDeps = {

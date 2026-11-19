@@ -64,6 +64,7 @@ export {
   resolveProjectName,
   resolveSavesConfig,
   resolveStageConfig,
+  resolveTextSpeed,
   slotIds,
   StoryEngine,
   WAITING_OPS,
@@ -85,6 +86,7 @@ export {
   type StageConfig,
   type StageFit,
   type StageScalePolicy,
+  type TextSpeedResolution,
   type WaitSpec,
 } from "./runtime/index.ts";
 /**

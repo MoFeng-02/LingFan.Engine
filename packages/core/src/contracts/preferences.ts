@@ -21,6 +21,16 @@ export interface PlayerKeymap {
 }
 
 /**
+ * 字速归属声明：作者的 `text_typewriter` 命令与玩家滑杆谁说了算。
+ *
+ * 三态刻意区分「缺省」与「显式」：缺省（字段缺席）保持既有行为——玩家偏好覆盖
+ * 故事设置，兼容已发布的偏好文件；显式 "story" 把字速锁在作者声明上，玩家滑杆
+ * 仍会记住偏好值但不作用于当前故事；显式 "player" 与缺省同效，但意图已写明。
+ * 信任边界（hydrate）对非法取值**忽略该键**而不是补默认——缺省≠显式。
+ */
+export type TextSpeedSource = "story" | "player";
+
+/**
  * 玩家偏好的持久化快照：音量、静音、打字机速度、屏幕方向、键位与全屏。
  *
  * 与存档**分离**——偏好是「玩的人怎么用这台机器」，跨存档共享；
@@ -34,6 +44,11 @@ export interface PlayerPrefsData {
   muted: boolean;
   /** 打字机速度（字符/秒，≥1；SetTextSpeed 玩家偏好可覆盖） */
   textSpeed: number;
+  /**
+   * 字速归属（可选，见 {@link TextSpeedSource}）：缺省 = 玩家偏好覆盖故事设置
+   * （既有行为）；"story" = 锁作者声明；"player" = 玩家偏好赢。
+   */
+  textSpeedSource?: TextSpeedSource;
   /** 屏幕方向偏好（缺省 = 未设置，跟随工程默认；与存档分离） */
   orientation?: OrientationMode;
   /** 键位覆盖（缺省动作 = 内建默认键位） */

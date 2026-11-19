@@ -5,10 +5,13 @@
  * 两种偏好都是「尽力而为」：平台忽略、无壳形态或缺少用户手势都不算错误——方向只记诊断，
  * 全屏静默（偏好已持久化，下次有手势的切换生效）。去重的意义在于：偏好里的音量、
  * 字速、键位等任意一项变化都会触发监听，方向与全屏只在**自身取值真的变了**时才落壳。
+ *
+ * 策略编排的是本包的方向端口与全屏应用器，取值来源（玩家偏好/工程默认）由组合根注入，
+ * 因此浏览器、桌面与小程序宿主共用这一份，不各写一套去重逻辑。
  */
-import type { FullscreenApplier } from "@lingfan-engine/adapters";
 import type { OrientationMode, OrientationPort } from "@lingfan-engine/core";
 import { resolveOrientationMode } from "@lingfan-engine/core";
+import type { FullscreenApplier } from "./fullscreen.ts";
 
 /** 方向落壳策略的装配参数：端口与两个取值来源都以具名注入（缺省语义由调用方给定） */
 export interface OrientationPolicyOptions {

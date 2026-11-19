@@ -36,7 +36,7 @@ export {
   createAppStageView,
 } from "./session";
 export type { AppProps } from "./session";
-export type { SceneStageState } from "./stage/body/env";
+export type { SceneStageState } from "@lingfan-engine/ui";
 export { createHostControls } from "./controls";
 
 /** —— 面板类型（App/*.vue 消费）—— */

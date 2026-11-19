@@ -18,8 +18,13 @@
         <!-- 震动层：屏幕震动只改这一层的位移，缩放留在父层，两层互不覆盖。
              挂载层也住这里——组件坐标由作者按设计基准摆放，必须随舞台一起缩与抖。 -->
         <div id="stage-shake">
+          <!-- 列身体：这一屏由组件来画（一列一个）。身体在下、元素层在上，
+               两者同层随舞台缩放与震动；没有身体的列这里就是空的。 -->
+          <div id="body"></div>
           <div id="stage"></div>
           <div id="mounts"></div>
+          <!-- 小游戏挂载点：引擎让出控制权时把外部小游戏画进来，随舞台缩放与震动。 -->
+          <div id="minigame"></div>
         </div>
       </div>
       <!-- 宿主 UI 层：按窗口像素排布，不随舞台缩放（否则小窗口下字会小到看不清） -->
@@ -27,24 +32,28 @@
         <div id="nvl"></div>
         <div id="dialogue">
           <div id="speaker"></div>
-          <div id="text">加载中……</div>
+          <!-- 台词逐字更新：aria-live 让读屏在新句到达时播报，而不是只盯着焦点 -->
+          <div id="text" aria-live="polite">加载中……</div>
           <div id="hint"></div>
         </div>
         <div id="choices"></div>
         <div id="notifications"></div>
         <div id="toolbar">
-          <span id="save-label">存档</span>
-          <select id="slot"></select>
-          <button id="save">存</button>
-          <button id="load">读</button>
+          <!-- 续玩入口：读最近一次存档接着玩；没有可续的档时禁用（启动与写档后刷新） -->
+          <button id="continue" aria-label="继续上次存档" disabled>继续</button>
+          <label id="save-label" for="slot">存档</label>
+          <select id="slot" aria-label="存档槽位"></select>
+          <button id="save" aria-label="存档">存</button>
+          <button id="load" aria-label="读档">读</button>
           <!-- 语言选择器（可选节点）：选项由宿主按构建期语言清单填充 -->
-          <select id="lang"></select>
+          <select id="lang" aria-label="语言"></select>
         </div>
         <!-- 历史面板槽位：可选节点（缺了游戏照跑，只是回看已走过的对话要另想办法） -->
         <div id="history"></div>
         <!-- 偏好面板槽位：可选节点（缺了游戏照跑，只是没有音量/字速面板） -->
         <div id="prefs"></div>
-        <div id="error"></div>
+        <!-- 错误条：断言式播报，装配失败/运行期错误第一时间被读屏念出 -->
+        <div id="error" role="alert" aria-live="assertive"></div>
       </div>
       <!-- 转场遮罩：盖住整屏（含舞台与 UI 层），故与两个层平级而不是住在 UI 层里 -->
       <div id="transition"></div>

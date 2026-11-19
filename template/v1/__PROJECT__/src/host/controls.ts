@@ -13,6 +13,7 @@ import {
   type AudioPort,
   type HostControls,
   type SaveOptions,
+  type StoryCommand,
   type StoryEngine,
   type VideoPort,
 } from "@lingfan-engine/core";
@@ -63,6 +64,10 @@ export function createHostControls(options: {
     },
     navigate(columnId: string): void {
       engine().navigate(columnId);
+    },
+    submit(ops: readonly StoryCommand[]): boolean {
+      // 与 body 通道同源：直接转发引擎的场景提交入口，不另建检查点、不做第二份实现
+      return engine().submitSceneOps(ops);
     },
     save(slot: string, options?: SaveOptions): void {
       engine().save(slot, options);

@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import type {
   AudioChannel,
   AudioPort,
+  StoryCommand,
   StoryEngine,
   VideoPort,
 } from "@lingfan-engine/core";
@@ -30,6 +31,11 @@ function makeEngine() {
     },
     navigate(columnId: string): void {
       calls.push(`navigate:${columnId}`);
+    },
+    submitSceneOps(ops: readonly StoryCommand[]): boolean {
+      calls.push(`submit:${ops.map((op) => op.op).join(",")}`);
+      // 替身只记转调形状；load 拒收的真实判据在引擎层测试（见 mount-controls-submit）
+      return ops.every((op) => op.op !== "load");
     },
     save(slot: string): void {
       calls.push(`save:${slot}`);
@@ -196,5 +202,34 @@ describe("取用函数形态：重建后仍指向新实例", () => {
     controls.pause();
 
     expect(rebuilt.calls).toEqual(["pause"]);
+  });
+});
+
+describe("submit 与 body 通道同源（组合根转发引擎场景提交入口）", () => {
+  it("submit 原样转给 submitSceneOps，不另建第二份实现", () => {
+    const { controls, engine, audio, video } = makeHarness();
+    const ops: StoryCommand[] = [
+      { op: "say", text: "来自挂载组件" },
+      { op: "menu", options: [{ text: "继续", target: "next" }] },
+    ];
+
+    expect(controls.submit(ops)).toBe(true);
+
+    // 只调引擎的场景提交入口一次，op 名原样带下去；不碰媒体端口
+    expect(engine.calls).toEqual(["submit:say,menu"]);
+    expect(audio.calls).toEqual([]);
+    expect(video.calls).toEqual([]);
+  });
+
+  it("submitSceneOps 的拒收结果原样带回（含 load 整批拒）", () => {
+    const { controls, engine } = makeHarness();
+
+    const ok = controls.submit([
+      { op: "say", text: "不该生效" },
+      { op: "load", slot: "slot_1" },
+    ]);
+
+    expect(ok).toBe(false);
+    expect(engine.calls).toEqual(["submit:say,load"]);
   });
 });

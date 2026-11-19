@@ -1,0 +1,18 @@
+{
+  "formatVersion": 1,
+  "id": "hello_body",
+  "kind": "scene",
+  "body": {
+    "name": "hello",
+    "props": {
+      "greeting": "你好，旅人"
+    }
+  },
+  "entry": [
+    {
+      "op": "say",
+      "text": "这一屏由组件来画：点「点名」会把次数写进引擎，回溯也带得走。",
+      "speaker": "旁白"
+    }
+  ]
+}

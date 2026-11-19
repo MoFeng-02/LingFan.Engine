@@ -12,7 +12,11 @@ export { columnSummaries } from "./engine/index.ts";
 export { isValidSayColor } from "./ops/index.ts";
 export { resolveHost } from "./host.ts";
 export { mergeOverlayFiles, planOverlayMerge } from "./i18n/index.ts";
-export { PlayerPreferences } from "./preferences.ts";
+export {
+  PlayerPreferences,
+  resolveTextSpeed,
+  type TextSpeedResolution,
+} from "./preferences.ts";
 export { createStateReader } from "./state/index.ts";
 export { Scope } from "./scope.ts";
 export {

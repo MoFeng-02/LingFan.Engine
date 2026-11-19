@@ -67,20 +67,31 @@ function captureThumbnail(
   }
 }
 
-/** 接线存 / 读按钮：槽位取下拉当前选中值 */
+/** 存读动作：工具栏按钮与快速存读键（Ctrl+S / Ctrl+L）共用同一对，槽位都取下拉当前选中值 */
+export interface SlotActions {
+  save(): void;
+  load(): void;
+}
+
+/** 接线存 / 读按钮并返回同一对动作，供快速存读键复用（不另写一份存读逻辑） */
 export function wireSaveSlots(
   dom: StageDom,
   engine: StoryEngine,
   manifest: unknown,
-): void {
-  dom.save.addEventListener("click", () => {
-    const screenshot = captureThumbnail(engine, manifest);
-    engine.save(
-      dom.slot.value,
-      screenshot === undefined ? undefined : { screenshot },
-    );
-  });
-  dom.load.addEventListener("click", () => {
-    engine.load(dom.slot.value);
-  });
+): SlotActions {
+  const actions: SlotActions = {
+    save(): void {
+      const screenshot = captureThumbnail(engine, manifest);
+      engine.save(
+        dom.slot.value,
+        screenshot === undefined ? undefined : { screenshot },
+      );
+    },
+    load(): void {
+      engine.load(dom.slot.value);
+    },
+  };
+  dom.save.addEventListener("click", () => actions.save());
+  dom.load.addEventListener("click", () => actions.load());
+  return actions;
 }

@@ -14,12 +14,20 @@ import {
   createStagePort,
   type StageConfig,
 } from "@lingfan-engine/shell";
+import type { SceneStageState } from "@lingfan-engine/ui";
 import type { StageDom } from "./stage-dom";
 
 /** 接线句柄：`refresh` 供宿主在必要时主动重量一次，`dispose` 摘掉监听 */
 export interface StageFitWiring {
   /** 立刻按当前视口重算并落笔（尺寸没变时不重复写样式） */
   refresh(): void;
+  /**
+   * 读当前舞台几何（视口尺寸 + 布局）：列身体的环境经 `stage()` 取它。
+   *
+   * 视口读外框客户区（不是被缩放的舞台根），布局取适配层当前算出的那份——
+   * 组件按设计基准摆放，拿到的是「窗口多大、设计基准怎么装进去」两个事实。
+   */
+  readStage(): SceneStageState;
   /** 摘掉窗口监听（可重复调用） */
   dispose(): void;
 }
@@ -58,6 +66,13 @@ export function wireStageFit(options: {
   let disposed = false;
   return {
     refresh,
+    readStage: (): SceneStageState => ({
+      viewport: {
+        width: dom.viewport.clientWidth,
+        height: dom.viewport.clientHeight,
+      },
+      layout: fitter.layout(),
+    }),
     dispose: (): void => {
       if (disposed) return;
       disposed = true;

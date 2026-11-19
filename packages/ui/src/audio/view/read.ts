@@ -18,6 +18,14 @@ import type { AudioView } from "./types.ts";
 
 /** 有效音量合成末端：op 音量 × 通道偏好（prefs 缺省/偏好 1 = 原样，不复制对象） */
 function withPrefs(
+  state: AudioChannelState,
+  pref: number | undefined,
+): AudioChannelState;
+function withPrefs(
+  state: AudioChannelState | null,
+  pref: number | undefined,
+): AudioChannelState | null;
+function withPrefs(
   state: AudioChannelState | null,
   pref: number | undefined,
 ): AudioChannelState | null {
@@ -30,18 +38,25 @@ function withPrefs(
  * 实例状态快照：形状不合按空表处理（与引擎侧同一判据，不重复做校验）。
  *
  * 实例不在类型化读口里——`StateReader` 只有四通道维度，实例表是「整表一个值」的
- * 通用系统键，这里用引擎的通用读口取回后按契约判据收窄。实例音量不乘玩家偏好：
- * 偏好按通道分档，实例的音量在命令面已按归属通道解析过一次。
+ * 通用系统键，这里用引擎的通用读口取回后按契约判据收窄。实例音量按**归属通道**乘
+ * 玩家偏好：偏好归口由状态里的 `channel` 决定，读侧乘的是同一个 `effectiveVolume`，
+ * 与四通道同口径——命令面只写状态、拿不到宿主偏好，乘算只能在这里做一次。
  */
 function readInstanceStates(
   engine: StoryEngine,
+  prefs: PlayerPreferences | undefined,
 ): Readonly<Record<string, AudioChannelState>> {
   const table = engine.get(SYS.audioInstances);
   if (!isAudioInstanceTable(table)) return {};
   const states: Record<string, AudioChannelState> = {};
   for (const id of Object.keys(table).sort()) {
     const entry = table[id];
-    if (entry !== undefined) states[id] = entry.state;
+    if (entry !== undefined) {
+      states[id] = withPrefs(
+        entry.state,
+        prefs?.effectiveVolume(entry.channel),
+      );
+    }
   }
   return states;
 }
@@ -63,7 +78,7 @@ export function readAudioView(
       prefs?.effectiveVolume("voice"),
     ),
     se: withPrefs(reader.audioChannel("se"), prefs?.effectiveVolume("se")),
-    instances: readInstanceStates(engine),
+    instances: readInstanceStates(engine, prefs),
     bgmPosition: reader.mediaPosition(),
   };
 }

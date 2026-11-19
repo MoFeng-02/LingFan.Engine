@@ -10,12 +10,18 @@
 import {
   SYS,
   instanceZLayer,
+  resolveTextSpeed,
   type LayerId,
   type LayerZTable,
   type PlayerPreferences,
   type StoryEngine,
 } from "@lingfan-engine/core";
-import { Typewriter } from "@lingfan-engine/ui";
+import {
+  DEFAULT_TEXT_CPS,
+  Typewriter,
+  isTypingEnabled,
+  type TypingSetting,
+} from "@lingfan-engine/ui";
 import { createNarrativeState } from "@lingfan-engine/shell";
 import { createHostLayerZController } from "../runtime/layer-z";
 import { vueCells } from "../runtime/vue-cells";
@@ -53,14 +59,18 @@ export interface AppNarrative {
 export function createAppNarrative(options: AppNarrativeOptions): AppNarrative {
   const { getEngine, layerZ, applyVideoZ, preferences } = options;
   let typewriter: Typewriter | null = null;
+  /** 故事级打字机设置（`text_typewriter` 命令）：字速三级链的「故事」一级 */
+  function readTypingSetting(): TypingSetting | undefined {
+    return getEngine().get(SYS.typewriter) as TypingSetting | undefined;
+  }
   // —— 视图状态：状态键 → 视图意图 → 响应式字段 ——
   // 解读规则来自共享的 shell 叙事状态域；这里只注入宿主侧事实（层级键、角色配色、打字机重建）
   // Vue 响应式单元经 vueCells 注入：ref/computed 结构上就是 Cell，零包装直传
   const narrative = createNarrativeState({
     cells: vueCells,
     resolveLayer: (key) => instanceZLayer(key),
-    // 本宿主不提供故事级打字机设置：字速一律取玩家偏好
-    readTypingSetting: () => undefined,
+    // 故事级打字机设置实装：字速与「整句直出」都认它（与另两宿主同口径）
+    readTypingSetting,
     readCharacterColor: (name) => getEngine().getCharacter(name)?.color ?? null,
     readColorOverride: () => {
       const value = getEngine().get(SYS.currentDialogColor);
@@ -73,8 +83,20 @@ export function createAppNarrative(options: AppNarrativeOptions): AppNarrative {
       zController.restore(z);
     },
     onDialogText: (line) => {
-      // 打字速度 = 玩家偏好（SetTextSpeed 语义；每句重建取最新值）
-      typewriter = new Typewriter(line, preferences.textSpeed);
+      // 字速三级链：偏好 > 故事 > 内建兜底（归属由偏好 textSpeedSource 声明，每句现读）。
+      // enabled=false 整句直出（typewriter=null，帧循环与点击都按 null 走直出分支）。
+      const setting = readTypingSetting();
+      if (!isTypingEnabled(setting)) {
+        typewriter = null;
+        return;
+      }
+      const cps = resolveTextSpeed({
+        player: preferences.textSpeed,
+        source: preferences.textSpeedSource,
+        story: setting?.speed,
+        fallback: DEFAULT_TEXT_CPS,
+      });
+      typewriter = new Typewriter(line, cps);
     },
   });
   /**

@@ -28,11 +28,14 @@ import {
   createElementResourceResolver,
   createDomRenderPort,
   createStateView,
+  handleMinigameMount,
   registerBuiltinElementRenderers,
   renderElementTree,
   resolveElementAction,
   routeElementValueChange,
+  type ExtensionMountHandler,
   type LayerView,
+  type MinigameRegistry,
   type StateIntent,
   type TypingSetting,
 } from "@lingfan-engine/ui";
@@ -102,11 +105,33 @@ export interface HostWiringOptions {
    */
   mounts?: (raw: unknown) => void;
   /**
+   * 列身体渲染入口（可选）：`SYS.body` 的每次变化都会调它一次。
+   *
+   * 与挂载同属「值从哪来」的共同接线，但身体是**一列一个**的单槽：回调不带值，
+   * 渲染器自己读 `SYS.body` 选组件（选择逻辑在展示层的身体层，三形态共用）。
+   * 不给则 `body` 只改状态，没有组件出现——降级是「少功能」，不是错误。
+   */
+  body?: () => void;
+  /**
+   * 小游戏注册表（可选）：`minigame.mount` 经它解析工厂真挂载（未注册 fail-closed）。
+   *
+   * 不给则退回一条可见的 fail-closed 提示（不伪造完成，等待保持）——与「模板不带注册表」
+   * 的旧降级同一口径。给了就把小游戏画进 `dom.minigame`，结果经 `engine.resolveMinigame` 回填。
+   */
+  minigames?: MinigameRegistry;
+  /**
+   * 扩展等待覆盖层处理器（可选）：`extension.mount` 交给它展示「确认即解除」的挂起画面。
+   * 不给则扩展等待没有可见界面（等待保持，可回溯/导航离开）。
+   */
+  extensionMount?: ExtensionMountHandler;
+  /**
    * 宿主静态文案查表（可选）：缺省恒等 = 原文直出（不接 i18n 时行为与旧版全同）。
    * 只包**宿主自己的字面量**（存 / 读档回执前缀）；`notify` 的正文与诊断文案
    * 分别来自故事内容与注入表，不在此二次查表。
    */
   translate?: (text: string) => string;
+  /** 写档成功回执（可选）：续玩入口据此重算可续槽位；不给则只提示不刷新 */
+  onSaveDone?: () => void;
 }
 
 /** 接线状态订阅、元素层与出站事件 */
@@ -259,7 +284,28 @@ export function wireEngine(options: HostWiringOptions): void {
     });
   }
 
-  /** 出站事件：致命错误 / 提示 / 小游戏挂载 / 存档回执 */
+  // 列身体同一路数：`SYS.body` 也不在状态分发器的键表里（单槽选择归展示层的身体层）。
+  // 首帧主动喂一次，之后每次 `SYS.body` 变化调渲染入口——订阅与退订都收在这一处。
+  const onBody = options.body;
+  if (onBody !== undefined) {
+    onBody();
+    engine.onStateChanged(({ key }) => {
+      if (key === SYS.body) onBody();
+    });
+  }
+
+  // 小游戏挂载分支的两个值格：可见性本宿主无独立玩法层（复位即可），错误经诊断出口上报。
+  const minigameVisible = { value: false };
+  const minigameError = {
+    get value(): string {
+      return "";
+    },
+    set value(message: string) {
+      if (message !== "") reportError(message);
+    },
+  };
+
+  /** 出站事件：致命错误 / 提示 / 小游戏与扩展挂载 / 存档回执 */
   function applyEvent(payload: OutboundPayload): void {
     switch (payload.kind) {
       case "engine.error":
@@ -270,10 +316,29 @@ export function wireEngine(options: HostWiringOptions): void {
         options.toast(payload.text);
         return;
       case "minigame.mount":
-        dialogue.setMinigame(payload.game);
+        // 有注册表就真挂载（解析工厂 → 订阅中止 → 回填）；没有则退回可见 fail-closed 提示
+        if (options.minigames !== undefined) {
+          handleMinigameMount(payload, {
+            minigames: options.minigames,
+            readHost: () => dom.minigame,
+            teardownHost: (host) => {
+              (host as HTMLElement).innerHTML = "";
+            },
+            inMinigame: minigameVisible,
+            error: minigameError,
+            resolveMinigame: (result) => engine.resolveMinigame(result),
+            writer: engine.gameState,
+          });
+        } else {
+          dialogue.setMinigame(payload.game);
+        }
+        return;
+      case "extension.mount":
+        options.extensionMount?.(payload);
         return;
       case "save.done":
         options.toast(`${t("已保存到")} ${payload.slot}`);
+        options.onSaveDone?.();
         return;
       case "load.done":
         options.toast(`${t("已读取")} ${payload.slot}`);

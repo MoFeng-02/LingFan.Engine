@@ -24,6 +24,9 @@ import type { AudioRenderer, AudioRendererOptions } from "./types.ts";
  */
 type PlayAction = Extract<AudioAction, { type: "play" }>;
 
+/** `AudioAction` 中 playInstance 分支的别名（与 `PlayAction` 同口径，按实例 id 执行） */
+type PlayInstanceAction = Extract<AudioAction, { type: "playInstance" }>;
+
 /**
  * 造一个音频渲染器并立即订阅四条通道的音频状态（构造末尾先自同步一次）。
  *
@@ -54,9 +57,21 @@ export function createAudioRenderer(
   );
   /** 每通道动作代际：异步解析落地时若已被更新动作/停止取代，丢弃该次播放（防错播） */
   const generations = new Map<AudioChannel, number>();
+  /**
+   * 每实例动作代际：实例各自独立叠放，同一通道可挂多个实例，代际必须按 id 分，
+   * 不能借用通道代际（否则停一个实例会作废同通道其它实例的在途解析）。
+   */
+  const instanceGenerations = new Map<string, number>();
 
   function invalidate(channel: AudioChannel): void {
     generations.set(channel, (generations.get(channel) ?? 0) + 1);
+  }
+
+  function invalidateInstance(instanceId: string): void {
+    instanceGenerations.set(
+      instanceId,
+      (instanceGenerations.get(instanceId) ?? 0) + 1,
+    );
   }
 
   async function resolveUrl(resource: string): Promise<string | null> {
@@ -85,6 +100,24 @@ export function createAudioRenderer(
     });
   }
 
+  async function playInstanceAction(action: PlayInstanceAction): Promise<void> {
+    // 实例是持久编排单元（不像通道级 se 那样一次性叠放），按 id 代际取消迟到的旧解析
+    invalidateInstance(action.instanceId);
+    const generation = instanceGenerations.get(action.instanceId);
+    const url = await resolveUrl(action.resource);
+    if (url === null) return;
+    if (instanceGenerations.get(action.instanceId) !== generation) return;
+    // 端口未实现实例起播就静默跳过：实例族是可选能力（小程序平台不实现），
+    // 缺它退化为「实例不出声」，不能因此整段音频停摆或反复报错
+    port.playInstance?.(action.instanceId, url, {
+      volume: action.volume,
+      loop: action.loop,
+      position: action.position,
+      fadeMs: action.fadeMs,
+      restart: action.restart,
+    });
+  }
+
   function apply(actions: AudioAction[]): void {
     for (const action of actions) {
       if (action.type === "stop") {
@@ -104,11 +137,21 @@ export function createAudioRenderer(
       if (action.type === "pauseInstance") {
         // 端口未实现实例暂停就静默跳过：实例族是可选能力，缺它退化为
         // 「实例不随引擎暂停」，不能因此整段音频停摆或反复报错
+        invalidateInstance(action.instanceId); // 在途解析落地会立刻出声，暂停同样作废
         port.pauseInstance?.(action.instanceId);
         continue;
       }
       if (action.type === "resumeInstance") {
         port.resumeInstance?.(action.instanceId);
+        continue;
+      }
+      if (action.type === "stopInstance") {
+        invalidateInstance(action.instanceId); // 停止使在途解析作废
+        port.stopInstance?.(action.instanceId, action.fadeMs);
+        continue;
+      }
+      if (action.type === "playInstance") {
+        void playInstanceAction(action);
         continue;
       }
       void playAction(action);
@@ -145,6 +188,7 @@ export function createAudioRenderer(
       for (const url of urls.values()) resources.release(url);
       urls.clear();
       generations.clear();
+      instanceGenerations.clear();
     },
   };
 }

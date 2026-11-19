@@ -15,6 +15,7 @@ import {
   SYS,
   PlayerPreferences,
   StoryEngine,
+  manifestOrientation,
   resolveAudioConfig,
   resolveLayerZ,
   resolveStageConfig,
@@ -22,6 +23,7 @@ import {
   type AudioPort,
   type HostControls,
   type I18nPort,
+  type OrientationPort,
   type PreferencesPort,
   type ProjectFilesPort,
   type ResourcePort,
@@ -31,13 +33,18 @@ import {
   type VideoPort,
 } from "@lingfan-engine/core";
 import {
+  createBrowserFullscreenApplier,
   createFetchProjectFilesPort,
+  createFullscreenPolicy,
+  createNoopOrientationPort,
+  createOrientationPolicy,
   createStaticResourcePort,
   createWebAudioPort,
   createWebStoragePreferencesPort,
   createWebStorageSavePort,
   createWebVideoPort,
   loadProject,
+  type FullscreenApplier,
   type I18nLangEntry,
 } from "@lingfan-engine/adapters";
 import { createHostI18n, type HostI18n } from "@lingfan-engine/shell";
@@ -45,7 +52,10 @@ import {
   DEFAULT_TEXT_CPS,
   DEFAULT_TOAST_MS,
   createAudioRenderer,
+  createInputScopeState,
+  createMinigameRegistry,
   createVideoRenderer,
+  type BodyView,
   type TypingSetting,
 } from "@lingfan-engine/ui";
 import { createErrorReporter, type StageDom } from "./stage-dom";
@@ -62,8 +72,14 @@ import { installStoryFonts } from "./theme-fonts";
 import { createPreferencesPanel } from "./panels/preferences";
 import { createHistoryPanel } from "./panels/history";
 import { createNativeMountRenderer } from "./mount/index";
+import { wireBodyLayer } from "./stage-body";
 import { createHostControls } from "./controls";
 import { createHostI18nPort, wireHostI18n } from "./i18n";
+import { templateExtensions } from "./extensions";
+import { registerTemplateMinigames, templateMinigames } from "./minigame-demo";
+import { createExtensionOverlay } from "./extension-overlay";
+import { createTemplateDialogueTemplates } from "./dialogue-templates";
+import { createResumePage } from "./resume-page";
 
 /**
  * 装配输入：节点句柄表、资源根内的清单与故事表，以及两项可配置节律。
@@ -132,6 +148,26 @@ export interface HostBootOptions {
    */
   onMounts?: (raw: unknown) => void;
   /**
+   * 列身体容器（可选）：给了就按 `SYS.body` 把 `src/scenes/` 下的身体组件渲染进来。
+   *
+   * 与 `mountsContainer` 同口径：容器由组合根提供并常驻（宿主不新建也不摘除它），
+   * 身体表来自生成物 `src/gen/scene_register.g.ts`。一列一个身体，换列即整份重挂。
+   */
+  bodyContainer?: HTMLElement | null;
+  /**
+   * 「名字 → 身体组件」表（可选）：缺省空表，即 `body` 只改状态、没有组件出现。
+   *
+   * 表由组合根从生成物取（`./scenes` 是那份生成物在 `src/**` 里的唯一引用点）：
+   * 各框架形态的身体是组件对象、原生形态是工厂函数，所以这张表**由形态自己给**。
+   */
+  scenesTable?: Readonly<Record<string, unknown>>;
+  /**
+   * 自己接管列身体的落法（可选）：给了就不建原生渲染器，只把选出的身体视图交给它。
+   * 框架形态用这条——身体的父子关系归框架管。与 `bodyContainer` 互斥（给了回调走框架落法）。
+   * 两样都不给即 `body` 命令只改状态。视图为 `null` 表示当前列没有身体。
+   */
+  onBody?: (view: BodyView | null) => void;
+  /**
    * 取走宿主控制面（可选）：整局暂停与恢复、媒体暂停与恢复、换栏、存读档、拆除。
    *
    * 与 `onMounts` 是两条通道：挂载 UI 的**值**走 `SYS.mounts`（存档随行、必须 JSON 安全），
@@ -169,6 +205,16 @@ export interface BootPortOverrides {
    * 桌面壳**不换**这个端口——Rust 侧未注册 i18n 命令，接 Tauri 端口会 invoke 失败。
    */
   i18n?: I18nPort;
+  /**
+   * 屏幕方向锁（缺省 noop：浏览器没有方向锁 API，应用了也不生效，只记诊断不报错）。
+   * 桌面壳换成 Tauri 端口（经窗口命令尽力而为）。优先级与去重归策略闭包，端口只管应用。
+   */
+  orientationPort?: OrientationPort;
+  /**
+   * 全屏切换（缺省走浏览器 Fullscreen API：需用户手势，启动期那次通常被浏览器忽略，
+   * 属平台限制不是错误）。桌面壳换成 Tauri 窗口命令。尽力而为，失败只记诊断。
+   */
+  fullscreenApplier?: FullscreenApplier;
 }
 
 /**
@@ -254,6 +300,29 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
   );
   await preferences.hydrate();
 
+  // —— 屏幕方向与全屏：偏好水合后立即应用，早于首帧内容绘制 ——
+  // 优先级（玩家显式 > 工程 shell.orientation > auto）与同值去重都在策略闭包里，
+  // 宿主只负责「启动应用一次 + 偏好变化再应用」。平台不支持时端口返回未生效，
+  // 策略只记诊断不抛错——方向锁与全屏都是尽力而为，不该挡住启动。
+  const applyOrientation = createOrientationPolicy({
+    orientationPort:
+      options.ports?.orientationPort ?? createNoopOrientationPort(),
+    preference: () => preferences.orientation,
+    manifestDefault: () => manifestOrientation(manifest),
+  });
+  applyOrientation();
+  const offOrientation = preferences.onChange(applyOrientation);
+
+  const fullscreenApplier =
+    options.ports?.fullscreenApplier ?? createBrowserFullscreenApplier();
+  const fullscreenPolicy = createFullscreenPolicy({
+    applier: fullscreenApplier,
+    preference: () => preferences.fullscreen,
+  });
+  // 启动那次按偏好初值应用（浏览器无手势会被忽略，属平台限制）；此后随偏好切换。
+  void fullscreenApplier.apply(fullscreenPolicy.initial);
+  const offFullscreen = preferences.onChange(() => fullscreenPolicy.apply());
+
   // —— 层级（z 序）：内建默认 × 工程覆盖（project.json 的 shell.layers）——
   const layerZ = resolveLayerZ(manifest);
   // 视频端口的 z 在端口内部（与 DOM 层不同），故端口晚于首次落 DOM 建立，
@@ -286,11 +355,17 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
 
   // 工程默认音量：shell.audio.volumes 是音量的第二级（命令没写 volume 时取它），
   // 玩家偏好仍是最外层乘算——两者不同层，缺了它「工程统一音量」就只能靠每条命令手写。
+  // 小游戏注册表：宿主按名字取用工厂（渲染层不内建任何小游戏）；脚手架自带一个示例。
+  const minigames = createMinigameRegistry();
+  registerTemplateMinigames(minigames);
   const engine = new StoryEngine(story, {
     historyLimit: 200,
     savePort,
     i18nPort,
     audioConfig: resolveAudioConfig(manifest),
+    // 自定义 op 扩展与小游戏注册声明进引擎构造（注册期查重 / 进存档依赖标记）
+    extensions: templateExtensions,
+    minigames: templateMinigames,
   });
   // 语言门面绑同一个引擎实例：t() 查表、changeLang() 切换、subscribe() 订阅语言变更。
   // 静态文案的查表函数交给各视图（缺省恒等 = 原文直出，不接 i18n 行为不变）。
@@ -314,6 +389,17 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     dom,
     engine,
     defaultCps: options.defaultCps ?? DEFAULT_TEXT_CPS,
+    preferences,
+    // 对话框模板：bubble 默认 + 示例 center；模板名三级优先级由核心解析，未知名回退默认
+    templates: createTemplateDialogueTemplates(),
+    translate: i18n.t,
+  });
+
+  // 扩展等待覆盖层：`extension.mount` 的「确认即解除」画面，住宿主 UI 层（窗口像素）。
+  // 展示态编排共用展示层一份；这里只把它画进容器，确认经引擎解除等待。
+  const extensionMount = createExtensionOverlay({
+    container: dom.shellUi,
+    resolveExtensionOp: (op, result) => engine.resolveExtensionOp(op, result),
     translate: i18n.t,
   });
 
@@ -349,6 +435,19 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
       ? undefined
       : (raw: unknown) => nativeMounts.sync(raw));
 
+  // —— 列身体：`SYS.body` → 这一屏渲染谁（不给容器也不接管 = body 只改状态）——
+  // 选择与环境在展示层的身体层（三形态共用）；本处只装配。舞台几何经适配层读面注入，
+  // 组件不自己监听 resize。框架形态自己接管落法（`onBody`），原生形态单槽整份重挂。
+  const body = wireBodyLayer({
+    getEngine: () => engine,
+    readStage: () => stageFit.readStage(),
+    table: options.scenesTable ?? {},
+    controls,
+    reportError,
+    container: options.bodyContainer,
+    onBody: options.onBody,
+  });
+
   wireEngine({
     dom,
     engine,
@@ -370,8 +469,17 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     gameState: engine.gameState,
     // UI 挂载落点：没容器也不接管就不订阅（`mount` 命令照常改状态，只是没有组件出现）
     mounts: onMounts,
+    // 列身体渲染入口：没容器也不接管就不订阅（`body` 照常改状态，只是没有组件出现）
+    body: body === null ? undefined : (): void => body.render(),
+    // 小游戏注册表与扩展等待覆盖层：`minigame.mount` / `extension.mount` 的落点
+    minigames,
+    extensionMount,
     // 存读档回执前缀走查表（宿主字面量）；notify 正文与诊断不在此二次查表
     translate: i18n.t,
+    // 写档成功：续玩入口重算可续槽位（槽位变多，「继续」要能点到新的档）
+    onSaveDone: () => {
+      void resumePage?.refresh();
+    },
   });
 
   const driveEffects = createHostEffects({ dom, engine });
@@ -421,10 +529,35 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     onMediaTick: () => audio.pollPosition(), // 媒体位置帧级回写
     onFrame: driveEffects,
   });
-  wireInput({ dom, engine, dialogue });
-  wireSaveSlots(dom, engine, manifest);
+  const slotActions = wireSaveSlots(dom, engine, manifest);
+  // 续玩入口：页面给了「继续」按钮才装（读最近一档接着玩）；写档成功后重算可续槽位。
+  const resumePage =
+    dom.continue === undefined || dom.continue === null
+      ? null
+      : createResumePage({
+          button: dom.continue,
+          savePort,
+          manifest,
+          load: (slot) => {
+            engine.load(slot);
+          },
+        });
+  const inputScope = createInputScopeState();
+  const disposeInput = wireInput({
+    dom,
+    engine,
+    dialogue,
+    preferences,
+    inputScope,
+    onHistory: () => historyPanel?.toggle(),
+    onClosePanels: () => historyPanel?.close(),
+    onQuickSave: slotActions.save,
+    onQuickLoad: slotActions.load,
+  });
 
   engine.start();
+  // 启动即刷新可续槽位：有旧档「继续」就能点，没有则禁用（不阻断启动）
+  void resumePage?.refresh();
 
   // 直达：入口列已经跑过（数值、角色、界面挂载这些副作用仍在），再跳到目标列。
   // 引擎的 navigate 不经过流程控制命令，因此目标列的第一句话就是第一句台词。
@@ -440,8 +573,21 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     disposed = true;
     frameLoop.stop();
     stageFit.dispose();
+    // 输入监听与窗口监听同口径早退：拆除后不再把按键 / 点击翻译成引擎动作
+    disposeInput();
+    // 续玩入口退订点击（拆除后不再读档）
+    resumePage?.dispose();
     // UI 先拆：它可能持有自己那套框架实例或定时器，晚拆会让卸载跑在引擎销毁之后
     nativeMounts?.dispose();
+    // 身体同口径先拆：组件自己的订阅与局部状态随拆除钩子停掉
+    body?.dispose();
+    // 扩展等待覆盖层撤销中止订阅（展示态随引擎销毁清空，不再回填）
+    extensionMount.abort();
+    // 对话视图也订阅偏好（字速滑杆即时生效），与面板同口径先于偏好拆除退订
+    dialogue.dispose();
+    // 方向与全屏策略也订阅偏好，先于偏好拆除退订（拆除后不再往平台落笔）
+    offOrientation();
+    offFullscreen();
     // 面板先拆：它订阅偏好层，偏好 dispose 之后再退订会漏掉末次回填
     prefsPanel?.destroy();
     historyPanel?.destroy();
