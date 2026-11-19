@@ -348,6 +348,7 @@ export {
   audioVolume,
   audioPause,
   audioResume,
+  audioSeek,
   se,
   seekVideo,
   set,

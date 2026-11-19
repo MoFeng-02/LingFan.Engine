@@ -4,14 +4,16 @@
  */
 import type { CommandOf } from "../command.ts";
 
-/** video / cutscene 共用的可选项：volume 音量、loop 循环、z 视频层层级 */
+/** video / cutscene 共用的可选项：volume 音量、loop 循环、restart 重播、z 视频层层级 */
 export type VideoOptions = Omit<CommandOf<"video">, "op" | "resource">;
 
 /**
  * 播放视频（非阻塞）：画面切到视频层，故事**立即继续**执行下一句，
  * 视频在背景里继续播。
+ *
+ * 同资源重写默认无缝续播（保留播放位置）；换资源或 `restart: true` 才从头重播。
  * @param resource 视频资源路径。
- * @param opts 可选项：volume 音量、loop 循环、z 层级。
+ * @param opts 可选项：volume 音量、loop 循环、restart 重播、z 层级。
  * @returns `video` 故事命令。
  * @example
  * video("video/opening.mp4");
@@ -32,8 +34,11 @@ export type CutsceneOptions = Omit<CommandOf<"cutscene">, "op" | "resource">;
  * 可跳过性：显式传 `skipable` 优先；否则用 {@link videoSkipable} 的全局
  * 开关；两者都未设置时缺省可跳过。
  *
+ * 过场是阻塞呈现：每次调用都从头起播（等待播完才继续），`restart` 字段
+ * 接受但语义上恒为重播。
+ *
  * @param resource 视频资源路径。
- * @param opts 可选项：volume 音量、loop 循环、skipable 可点击跳过、z 层级。
+ * @param opts 可选项：volume 音量、loop 循环、skipable 可点击跳过、restart 重播、z 层级。
  * @returns `cutscene` 故事命令。
  * @example
  * cutscene("video/intro.mp4", { skipable: true });

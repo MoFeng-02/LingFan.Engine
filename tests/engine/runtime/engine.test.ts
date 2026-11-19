@@ -2163,22 +2163,33 @@ describe("视频族（video/cutscene/seek/pause/resume/stop/skipable）", () => 
     dispose();
   });
 
-  it("对抗性：非法 resource/seconds、未知字段 → fail-closed", () => {
-    const cases: Array<{ cmd: object; code: string }> = [
-      { cmd: { op: "video", resource: "" }, code: "video-invalid-resource" },
+  it("对抗性：必填/类型/值域非法 → 装载期整文件拒绝", () => {
+    const loadCases: Array<{ cmd: object; issue: RegExp }> = [
+      {
+        cmd: { op: "video", resource: "" },
+        issue: /resource 必须为非空字符串/,
+      },
       {
         cmd: { op: "cutscene", resource: 9 },
-        code: "cutscene-invalid-resource",
+        issue: /resource 必须为非空字符串/,
       },
       {
         cmd: { op: "video", resource: "a", volume: "大" },
-        code: "video-invalid-volume",
+        issue: /volume 必须为有限数字/,
       },
       {
         cmd: { op: "seek_video", seconds: -1 },
-        code: "seek_video-invalid-seconds",
+        issue: /seconds 必须为非负有限数/,
       },
-      { cmd: { op: "seek_video" }, code: "seek_video-invalid-seconds" },
+      { cmd: { op: "seek_video" }, issue: /seconds 必须为非负有限数/ },
+    ];
+    for (const { cmd, issue } of loadCases) {
+      expect(() => makeEngine([cmd])).toThrow(issue);
+    }
+  });
+
+  it("对抗性：未知字段 → 运行期 fail-closed（字段面归执行器）", () => {
+    const cases: Array<{ cmd: object; code: string }> = [
       {
         cmd: { op: "video", resource: "a", 音量: 1 },
         code: "video-unknown-field",

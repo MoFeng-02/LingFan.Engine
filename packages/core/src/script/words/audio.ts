@@ -176,7 +176,8 @@ export function audioStop(
 }
 
 /**
- * 只改一个音频实例的音量：不动播放位置、不重播。
+ * 只改音量：不动播放位置、不重播。目标可以是实例（`inst`）或通道
+ * （`channel`，op 面二选一）；本词只暴露实例形态。
  *
  * 这是「实时调音」的正规入口——拖动滑块时不要用 {@link audioPlay} 重发，
  * 那会重设位置并打断淡入。
@@ -192,13 +193,17 @@ export function audioVolume(
   return { op: "audio_volume", inst, volume };
 }
 
-/** `audio_pause` / `audio_resume` 的可选项：目标通道（省略 = 全部常驻通道） */
+/**
+ * `audio_pause` / `audio_resume` 的可选项：`channel` 单通道 / `inst` 单实例
+ * （互斥，恰好给一个）；都省略 = 全部常驻通道。
+ */
 export type AudioPauseOptions = Omit<CommandOf<"audio_pause">, "op">;
 
 /**
  * 暂停音频通道：保留播放器与播放位置，只是不出声；恢复从原位置继续。
  *
  * - 省略 `channel` = 全部常驻通道（`bgm` / `ambient` / `voice`）。
+ * - 给 `inst` = 只暂停那一个实例（与 `channel` 互斥）。
  * - `se` 是一次性触发，暂停它没有可恢复的东西——显式传 `se` 不动作。
  * - 只对正在播放的通道生效；已停止或从未播放的通道不受影响（连按两次只算一次）。
  *
@@ -207,6 +212,7 @@ export type AudioPauseOptions = Omit<CommandOf<"audio_pause">, "op">;
  * @example
  * audioPause(); // 暂停全部常驻通道
  * audioPause({ channel: "bgm" });
+ * audioPause({ inst: "rain" });
  */
 export function audioPause(opts?: AudioPauseOptions): CommandOf<"audio_pause"> {
   return { op: "audio_pause", ...opts };
@@ -223,9 +229,32 @@ export function audioPause(opts?: AudioPauseOptions): CommandOf<"audio_pause"> {
  * @example
  * audioResume(); // 恢复全部常驻通道
  * audioResume({ channel: "ambient" });
+ * audioResume({ inst: "rain" });
  */
 export function audioResume(
   opts?: AudioPauseOptions,
 ): CommandOf<"audio_resume"> {
   return { op: "audio_resume", ...opts };
+}
+
+/**
+ * 把一路音频定位到第 `seconds` 秒（立即生效，故事继续）：目标可以是
+ * 实例（`{ inst }`）或通道（`{ channel }`），二选一。
+ *
+ * - 定位保留当前资源与音量，只移动播放位置；位置随快照/存档/回溯走。
+ * - `se` 是一次性触发，没有可定位的持久播放——显式传 `se` 不动作。
+ * - 只对正在播放的目标生效；已停止的目标拒绝（fail-closed）。
+ *
+ * @param target 定位目标：`{ inst: 实例 id }` 或 `{ channel: 通道 }`。
+ * @param seconds 目标时刻（秒，非负）。
+ * @returns `audio_seek` 故事命令。
+ * @example
+ * audioSeek({ channel: "bgm" }, 30);
+ * audioSeek({ inst: "rain" }, 12.5);
+ */
+export function audioSeek(
+  target: { inst: string } | { channel: "bgm" | "se" | "ambient" | "voice" },
+  seconds: number,
+): CommandOf<"audio_seek"> {
+  return { op: "audio_seek", ...target, seconds };
 }

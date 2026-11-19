@@ -44,6 +44,7 @@ export {
   execAudioInstance,
   execAudioPause,
   execAudioResume,
+  execAudioSeek,
   execNotify,
   execVideo,
   pauseAudioInstances,

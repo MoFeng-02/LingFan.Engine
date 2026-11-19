@@ -73,6 +73,7 @@ const LOCKED_SCHEMAS = [
   "audioVolumeSchema",
   "audioPauseSchema",
   "audioResumeSchema",
+  "audioSeekSchema",
   "videoSchema",
   "cutsceneSchema",
   "seekVideoSchema",
@@ -132,7 +133,7 @@ describe("脊柱互锁 · satisfies 施工完整性", () => {
     expect(entries).toHaveLength(1);
     const source = entries[0];
     const count = source.split("satisfies z.ZodType<").length - 1;
-    expect(LOCKED_SCHEMAS).toHaveLength(62);
+    expect(LOCKED_SCHEMAS).toHaveLength(63);
     expect(count).toBe(LOCKED_SCHEMAS.length);
   });
 
@@ -154,10 +155,10 @@ describe("脊柱互锁 · op 名集", () => {
     void ec;
   });
 
-  it("完备性桥 + 运行期键集：VOCABULARY_OPS ≡ OP_SCHEMAS ≡ 73", () => {
-    expect(_allOps).toHaveLength(73);
+  it("完备性桥 + 运行期键集：VOCABULARY_OPS ≡ OP_SCHEMAS ≡ 74", () => {
+    expect(_allOps).toHaveLength(74);
     expect(new Set(VOCABULARY_OPS)).toEqual(new Set(Object.keys(OP_SCHEMAS)));
-    expect(Object.keys(OP_SCHEMAS)).toHaveLength(73);
+    expect(Object.keys(OP_SCHEMAS)).toHaveLength(74);
   });
 });
 

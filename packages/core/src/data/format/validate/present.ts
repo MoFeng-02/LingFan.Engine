@@ -3,10 +3,10 @@
  * 只判本族 op 的必填与类型，未知字段不在此拒绝（编辑期 schema 负责）。
  */
 import { requireNonEmptyString } from "../guards.ts";
-import { isPlainObject } from "../../../shared/index.ts";
+import { isPlainObject, isUiName } from "../../../shared/index.ts";
 
 /**
- * 校验本族 op 的负载（12 个 op：`show` `hide` `background` `bg_switch` `zindex` `style` `window` `animate` `animate_block` `transition` `shake` `text_typewriter`）。
+ * 校验本族 op 的负载（13 个 op：`show` `hide` `background` `bg_switch` `zindex` `style` `window` `animate` `animate_block` `transition` `shake` `text_typewriter` `mount`）。
  *
  * 入参由分发骨架给出：`cmd` 已收窄为非空 op 的对象，`at` 是报错定位前缀，`issues` 是收集器。
  * 无返回值，问题通过 `issues` 交付；不匹配的 op 直接落到函数末尾，等于放行（结构从简）。
@@ -85,6 +85,22 @@ export function validatePresentCommand(
       }
       if (cmd.enabled === undefined && cmd.speed === undefined) {
         issues.push(`${at} 至少需要 enabled 或 speed`);
+      }
+      break;
+    case "mount":
+      requireNonEmptyString(cmd.name, `${at}.name`, issues);
+      if (
+        typeof cmd.name === "string" &&
+        cmd.name.length > 0 &&
+        !isUiName(cmd.name)
+      ) {
+        issues.push(`${at}.name 必须为短 id（小写字母开头，字母/数字/_/-）`);
+      }
+      if (typeof cmd.visible !== "boolean") {
+        issues.push(`${at}.visible 必须为布尔`);
+      }
+      if (cmd.props !== undefined && !isPlainObject(cmd.props)) {
+        issues.push(`${at}.props 必须为对象`);
       }
       break;
   }

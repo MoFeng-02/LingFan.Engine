@@ -137,24 +137,16 @@ describe("mount · fail-closed", () => {
     dispose();
   });
 
-  it("非法 UI 名被拒（名字同时是产物键与目录名，形态必须统一）", () => {
-    const { engine, errors, dispose } = makeEngine([
-      { op: "mount", name: "Hub", visible: true },
-      TAIL,
-    ]);
-    expect(errorCodes(errors)).toContain("mount-invalid-name");
-    expect(tableOf(engine)).toEqual({});
-    dispose();
+  it("非法 UI 名 → 装载期整文件拒绝（名字同时是产物键与目录名，形态必须统一）", () => {
+    expect(() =>
+      makeEngine([{ op: "mount", name: "Hub", visible: true }, TAIL]),
+    ).toThrow("name 必须为短 id");
   });
 
-  it('非布尔 visible 被拒（字符串 "true" 不是 true）', () => {
-    const { engine, errors, dispose } = makeEngine([
-      { op: "mount", name: "hub", visible: "true" },
-      TAIL,
-    ]);
-    expect(errorCodes(errors)).toContain("mount-invalid-visible");
-    expect(tableOf(engine)).toEqual({});
-    dispose();
+  it('非布尔 visible → 装载期整文件拒绝（字符串 "true" 不是 true）', () => {
+    expect(() =>
+      makeEngine([{ op: "mount", name: "hub", visible: "true" }, TAIL]),
+    ).toThrow("visible 必须为布尔");
   });
 });
 

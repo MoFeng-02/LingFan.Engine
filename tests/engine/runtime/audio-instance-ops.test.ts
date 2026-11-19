@@ -202,38 +202,38 @@ describe("音频实例 · audio_play", () => {
     dispose();
   });
 
-  it("实例 id 非法 fail-closed 且指明形态（不静默建一个怪名字的实例）", () => {
-    const { engine, errors, dispose } = makeEngine([
-      { op: "audio_play", inst: "Rain", channel: "ambient", resource: "a.ogg" },
-      TAIL,
-    ]);
-    expect(errorCodes(errors)).toContain("audio_play-invalid-instance");
-    expect(Object.keys(tableOf(engine))).toEqual([]);
-    // 错误文案要把形态写出来，否则作者只能靠猜
-    const detail = errors
-      .map((e) => (e.payload.kind === "engine.error" ? e.payload.message : ""))
-      .join("\n");
-    expect(detail).toContain(AUDIO_INSTANCE_ID_PATTERN.source);
-    dispose();
+  it("实例 id 非法 → 装载期整文件拒绝且指明形态（不静默建一个怪名字的实例）", () => {
+    // 装载期拒绝：整份故事打不开，实例表根本不会建立。
+    // 诊断要把形态写出来，否则作者只能靠猜。
+    expect(() =>
+      makeEngine([
+        {
+          op: "audio_play",
+          inst: "Rain",
+          channel: "ambient",
+          resource: "a.ogg",
+        },
+        TAIL,
+      ]),
+    ).toThrow(AUDIO_INSTANCE_ID_PATTERN.source);
   });
 
-  it("通道非法 fail-closed（通道决定偏好归口，不能猜）", () => {
-    const { engine, errors, dispose } = makeEngine([
-      { op: "audio_play", inst: "rain", channel: "music", resource: "a.ogg" },
-      TAIL,
-    ]);
-    expect(errorCodes(errors)).toContain("audio_play-invalid-channel");
-    expect(Object.keys(tableOf(engine))).toEqual([]);
-    dispose();
+  it("通道非法 → 装载期整文件拒绝（通道决定偏好归口，不能猜）", () => {
+    expect(() =>
+      makeEngine([
+        { op: "audio_play", inst: "rain", channel: "music", resource: "a.ogg" },
+        TAIL,
+      ]),
+    ).toThrow("channel 必须为 bgm");
   });
 
-  it("资源为空 fail-closed", () => {
-    const { errors, dispose } = makeEngine([
-      { op: "audio_play", inst: "rain", channel: "ambient", resource: "" },
-      TAIL,
-    ]);
-    expect(errorCodes(errors)).toContain("audio_play-invalid-resource");
-    dispose();
+  it("资源为空 → 装载期整文件拒绝", () => {
+    expect(() =>
+      makeEngine([
+        { op: "audio_play", inst: "rain", channel: "ambient", resource: "" },
+        TAIL,
+      ]),
+    ).toThrow("resource 必须为非空字符串");
   });
 
   it("未知字段 fail-closed（字段表即白名单）", () => {
@@ -363,14 +363,19 @@ describe("音频实例 · audio_volume", () => {
     dispose();
   });
 
-  it("缺 volume fail-closed", () => {
-    const { errors, dispose } = makeEngine([
-      { op: "audio_play", inst: "rain", channel: "ambient", resource: "r.ogg" },
-      { op: "audio_volume", inst: "rain" },
-      TAIL,
-    ]);
-    expect(errorCodes(errors)).toContain("audio_volume-missing-volume");
-    dispose();
+  it("缺 volume → 装载期整文件拒绝", () => {
+    expect(() =>
+      makeEngine([
+        {
+          op: "audio_play",
+          inst: "rain",
+          channel: "ambient",
+          resource: "r.ogg",
+        },
+        { op: "audio_volume", inst: "rain" },
+        TAIL,
+      ]),
+    ).toThrow("volume 必须为有限数字");
   });
 
   it("给已停止的实例调音量 fail-closed（先起播再调）", () => {

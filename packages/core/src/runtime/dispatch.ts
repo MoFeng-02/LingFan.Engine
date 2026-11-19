@@ -16,6 +16,7 @@ import {
   execAudioInstance,
   execAudioPause,
   execAudioResume,
+  execAudioSeek,
   execAutoSaveOp,
   execCall,
   execCharacter,
@@ -239,11 +240,11 @@ export function runDispatch(ctx: OpContext): void {
         frame.index += 1;
         continue;
       case "nvl":
-        execNvl(ctx, cmd);
+        if (!execNvl(ctx, cmd)) return;
         frame.index += 1;
         continue;
       case "character":
-        execCharacter(ctx, cmd);
+        if (!execCharacter(ctx, cmd)) return;
         frame.index += 1;
         continue;
       case "uncharacter":
@@ -273,6 +274,10 @@ export function runDispatch(ctx: OpContext): void {
         continue;
       case "audio_resume":
         if (!execAudioResume(ctx, cmd)) return;
+        frame.index += 1;
+        continue;
+      case "audio_seek":
+        if (!execAudioSeek(ctx, cmd)) return;
         frame.index += 1;
         continue;
       case "video":

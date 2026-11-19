@@ -6,7 +6,7 @@ import type { StatementContext } from "../state.ts";
 
 /**
  * 解析本族的 op 行（`bgm` `se` `ambient` `voice` `stop_bgm` `stop_ambient` `stop_voice` `stop_se`
- * `audio_play` `audio_stop` `audio_volume` `audio_pause` `audio_resume` `video` `cutscene`
+ * `audio_play` `audio_stop` `audio_volume` `audio_pause` `audio_resume` `audio_seek` `video` `cutscene`
  * `seek_video` `pause_video` `resume_video` `stop_video` `video_skipable`）。
  *
  * 入参是分发骨架建好的 `StatementContext`（已切好的词表、定位前缀、issue 出口与警告通道）。
@@ -126,21 +126,78 @@ export function parseMediaStatement(c: StatementContext): StoryCommand | null {
       return cmd;
     }
     case "audio_volume": {
-      const inst = tokens[0];
-      let volume: number | undefined;
-      for (const token of tokens.slice(1)) {
+      const cmd: StoryCommand = { op: "audio_volume" };
+      // 首 token 带等号 = 纯 key=value 形态（channel=… / inst=… volume=…）；
+      // 否则首 token 是位置实例 id（兼容旧写法）
+      const positional = tokens[0] !== undefined && !tokens[0].includes("=");
+      if (positional) cmd.inst = tokens[0];
+      for (const token of positional ? tokens.slice(1) : tokens) {
         const eq = token.indexOf("=");
         const key = eq < 0 ? token : token.slice(0, eq);
         const raw = eq < 0 ? "" : token.slice(eq + 1);
-        if (key !== "volume") return fail(`audio_volume 未知参数：${token}`);
-        const num = Number(raw);
-        if (eq < 0 || raw === "" || Number.isNaN(num))
-          return fail("audio_volume 的 volume 需要数字");
-        volume = num;
+        if (key === "volume") {
+          const num = Number(raw);
+          if (eq < 0 || raw === "" || Number.isNaN(num))
+            return fail("audio_volume 的 volume 需要数字");
+          cmd.volume = num;
+        } else if (key === "channel") {
+          if (eq < 0 || !isAudioChannel(raw))
+            return fail(
+              `audio_volume 的 channel 不合法：${raw}（须为 bgm / se / ambient / voice 之一）`,
+            );
+          cmd.channel = raw;
+        } else if (key === "inst") {
+          if (eq < 0 || raw === "")
+            return fail("audio_volume 的 inst 需要实例 id");
+          cmd.inst = raw;
+        } else {
+          return fail(`audio_volume 未知参数：${token}`);
+        }
       }
-      if (inst === undefined) return fail("audio_volume 需要实例 id");
-      if (volume === undefined) return fail("audio_volume 需要 volume");
-      return { op: "audio_volume", inst, volume };
+      if (cmd.inst !== undefined && cmd.channel !== undefined)
+        return fail("audio_volume 的 inst 与 channel 互斥（恰好给一个）");
+      if (cmd.inst === undefined && cmd.channel === undefined)
+        return fail("audio_volume 需要 inst 或 channel");
+      if (cmd.volume === undefined) return fail("audio_volume 需要 volume");
+      return cmd;
+    }
+    case "audio_seek": {
+      const cmd: StoryCommand = { op: "audio_seek" };
+      let seconds: number | undefined;
+      for (const token of tokens) {
+        const eq = token.indexOf("=");
+        if (eq < 0) {
+          // 唯一的无等号位置参数是目标秒数
+          if (seconds !== undefined)
+            return fail(`audio_seek 只有一个秒数位置参数：${token}`);
+          const num = Number(token);
+          if (token === "" || Number.isNaN(num))
+            return fail("audio_seek 需要数字秒数");
+          seconds = num;
+          continue;
+        }
+        const key = token.slice(0, eq);
+        const raw = token.slice(eq + 1);
+        if (key === "inst") {
+          if (raw === "") return fail("audio_seek 的 inst 需要实例 id");
+          cmd.inst = raw;
+        } else if (key === "channel") {
+          if (!isAudioChannel(raw))
+            return fail(
+              `audio_seek 的 channel 不合法：${raw}（须为 bgm / se / ambient / voice 之一）`,
+            );
+          cmd.channel = raw;
+        } else {
+          return fail(`audio_seek 未知参数：${token}`);
+        }
+      }
+      if (seconds === undefined) return fail("audio_seek 需要秒数");
+      if (cmd.inst !== undefined && cmd.channel !== undefined)
+        return fail("audio_seek 的 inst 与 channel 互斥（恰好给一个）");
+      if (cmd.inst === undefined && cmd.channel === undefined)
+        return fail("audio_seek 需要 inst 或 channel");
+      cmd.seconds = seconds;
+      return cmd;
     }
     // 视频族：resource 位置参数（video/cutscene）；seek_video 为秒数
     case "video":
@@ -158,7 +215,7 @@ export function parseMediaStatement(c: StatementContext): StoryCommand | null {
           if (eq < 0 || raw === "" || Number.isNaN(num))
             return fail(`${op} 的 volume 需要数字`);
           cmd.volume = num;
-        } else if (key === "loop" || key === "skipable") {
+        } else if (key === "loop" || key === "skipable" || key === "restart") {
           if (raw !== "true" && raw !== "false")
             return fail(`${op} 的 ${key} 需要 true|false`);
           cmd[key] = raw === "true";
@@ -181,15 +238,38 @@ export function parseMediaStatement(c: StatementContext): StoryCommand | null {
       return { op: "pause_video" } as StoryCommand;
     case "audio_pause":
     case "audio_resume": {
-      // 位置参数可选：不写 channel = 全部常驻通道（se 除外），由执行期展开
-      const raw = tokens[0];
-      if (tokens.length > 1) return fail(`${op} 只接受一个 channel 参数`);
-      if (raw === undefined) return { op } as StoryCommand;
-      if (!isAudioChannel(raw))
-        return fail(
-          `${op} 的 channel 不合法：${raw}（须为 bgm / se / ambient / voice 之一）`,
-        );
-      return { op, channel: raw } as StoryCommand;
+      // 位置参数 = channel（兼容旧写法）；inst=… 点名单实例；都不写 = 全部常驻通道
+      const cmd: StoryCommand = { op };
+      for (const token of tokens) {
+        const eq = token.indexOf("=");
+        if (eq < 0) {
+          if (cmd.channel !== undefined || cmd.inst !== undefined)
+            return fail(`${op} 只接受一个目标参数`);
+          if (!isAudioChannel(token))
+            return fail(
+              `${op} 的 channel 不合法：${token}（须为 bgm / se / ambient / voice 之一）`,
+            );
+          cmd.channel = token;
+          continue;
+        }
+        const key = token.slice(0, eq);
+        const raw = token.slice(eq + 1);
+        if (key === "inst") {
+          if (raw === "") return fail(`${op} 的 inst 需要实例 id`);
+          cmd.inst = raw;
+        } else if (key === "channel") {
+          if (!isAudioChannel(raw))
+            return fail(
+              `${op} 的 channel 不合法：${raw}（须为 bgm / se / ambient / voice 之一）`,
+            );
+          cmd.channel = raw;
+        } else {
+          return fail(`${op} 未知参数：${token}`);
+        }
+      }
+      if (cmd.inst !== undefined && cmd.channel !== undefined)
+        return fail(`${op} 的 inst 与 channel 互斥（恰好给一个）`);
+      return cmd;
     }
     case "resume_video":
       return { op: "resume_video" } as StoryCommand;

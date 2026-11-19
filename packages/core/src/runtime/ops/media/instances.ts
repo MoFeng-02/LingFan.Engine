@@ -4,6 +4,9 @@
  * 实例与四通道**并存**，不是替换：通道是叙事语义（bgm / se / ambient / voice，
  * 各有一档玩家偏好），实例是作者的编排单元（数量不定、名字自起、各自独立叠放）。
  * 实例靠状态里的 `channel` 决定偏好归口，读侧乘的是同一个 `effectiveVolume`。
+ *
+ * `audio_volume` 同时服务两种目标（`inst` 或 `channel` 恰好给一个）：
+ * 实例改实例表，通道改通道态——同一概念（调音量不重播）一处实现。
  */
 import {
   AUDIO_INSTANCE_ID_PATTERN,
@@ -20,11 +23,13 @@ import {
 } from "../../../contracts/index.ts";
 import type { OpContext } from "../../internal/index.ts";
 import {
+  AUDIO_CHANNEL_KEY,
   AUDIO_FIELDS,
   audioFade,
   audioVolume,
   isPlayState,
   readPausedPlayStates,
+  resolveAudioTarget,
 } from "./shared.ts";
 
 /**
@@ -34,16 +39,16 @@ import {
  * 两者共用一张记账表时不能拿裸 id 当键：通道恢复会读到某个同名实例的播放态，
  * 把别人的资源写回自己的通道。
  */
-const PAUSE_KEY_PREFIX = "inst:";
+export const PAUSE_KEY_PREFIX = "inst:";
 
 /** 读实例表：形状不合（外部改坏）按空表处理，不让一条脏值卡死整个音频域 */
-function instanceTableOf(ctx: OpContext): AudioInstanceTable {
+export function instanceTableOf(ctx: OpContext): AudioInstanceTable {
   const value = ctx.get(SYS.audioInstances);
   return isAudioInstanceTable(value) ? value : {};
 }
 
 /** 整表新建后写回：**不得原地改** `table[id].state`，否则回溯会拿到被污染的值 */
-function writeInstance(
+export function writeInstance(
   ctx: OpContext,
   table: AudioInstanceTable,
   instanceId: string,
@@ -64,7 +69,8 @@ function writeInstance(
  *
  * 三个 op 的分工：`audio_play` 创建或更新；`audio_stop` 停一个（缺 `inst` = 停全部）；
  * `audio_volume` **只改音量，不重播也不递增 seq**——音量的变化由值比较感知，
- * 递增序号会让渲染层误判成一次重播，把正在放的那一轨打断。
+ * 递增序号会让渲染层误判成一次重播，把正在放的那一轨打断。目标可以是实例
+ * （`inst`）或常驻通道（`channel`），恰好给一个；两种目标同一条纪律。
  */
 export function execAudioInstance(ctx: OpContext, cmd: StoryCommand): boolean {
   const known = AUDIO_FIELDS[cmd.op]!;
@@ -78,7 +84,7 @@ export function execAudioInstance(ctx: OpContext, cmd: StoryCommand): boolean {
   }
   const table = instanceTableOf(ctx);
   if (cmd.op === "audio_stop") return stopInstance(ctx, table, cmd);
-  if (cmd.op === "audio_volume") return setInstanceVolume(ctx, table, cmd);
+  if (cmd.op === "audio_volume") return setMediaVolume(ctx, table, cmd);
   return playInstance(ctx, table, cmd);
 }
 
@@ -204,45 +210,71 @@ function stopInstance(
   return true;
 }
 
-/** `audio_volume`：只改音量（双向闭环入口），不重播、不递增 seq */
-function setInstanceVolume(
+/**
+ * `audio_volume`：只改音量（双向闭环入口），不重播、不递增 seq。
+ *
+ * 目标二选一：`inst` 改实例表里那一轨，`channel` 改常驻通道态。
+ * `se` 通道是一次性触发，没有可持续调节的音量态——显式 targeting 它时
+ * 静默不动作（与 `audio_pause` 对 `se` 同一口径）。
+ */
+function setMediaVolume(
   ctx: OpContext,
   table: AudioInstanceTable,
   cmd: StoryCommand,
 ): boolean {
-  const instanceId = cmd.inst;
-  if (!isAudioInstanceId(instanceId)) {
-    ctx.fail(
-      "audio_volume-invalid-instance",
-      `audio_volume 的 inst 不合法：${JSON.stringify(instanceId)}（须匹配 ${AUDIO_INSTANCE_ID_PATTERN.source}）`,
+  const target = resolveAudioTarget(ctx, cmd);
+  if (target === null) return false;
+  if ("inst" in target) {
+    const instanceId = target.inst;
+    const previous = table[instanceId];
+    if (previous === undefined) {
+      ctx.fail(
+        "audio_volume-unknown-instance",
+        `audio_volume 找不到实例 ${instanceId}（当前实例：${Object.keys(table).join(", ") || "无"}）`,
+      );
+      return false;
+    }
+    if (cmd.volume === undefined) {
+      ctx.fail("audio_volume-missing-volume", "audio_volume 需要 volume");
+      return false;
+    }
+    if (previous.state.kind !== "play") {
+      ctx.fail(
+        "audio_volume-instance-stopped",
+        `实例 ${instanceId} 当前是停止状态：先 audio_play 起播再调音量`,
+      );
+      return false;
+    }
+    const volume = audioVolume(
+      ctx,
+      cmd.volume,
+      "audio_volume",
+      previous.channel,
     );
-    return false;
+    if (volume === null) return false;
+    writeInstance(ctx, table, instanceId, previous.channel, {
+      ...previous.state,
+      volume,
+    });
+    return true;
   }
-  const previous = table[instanceId];
-  if (previous === undefined) {
-    ctx.fail(
-      "audio_volume-unknown-instance",
-      `audio_volume 找不到实例 ${instanceId}（当前实例：${Object.keys(table).join(", ") || "无"}）`,
-    );
-    return false;
-  }
+  if (target.channel === "se") return true;
   if (cmd.volume === undefined) {
     ctx.fail("audio_volume-missing-volume", "audio_volume 需要 volume");
     return false;
   }
-  if (previous.state.kind !== "play") {
+  const key = AUDIO_CHANNEL_KEY[target.channel]!;
+  const previous = ctx.get(key);
+  if (!isPlayState(previous)) {
     ctx.fail(
-      "audio_volume-instance-stopped",
-      `实例 ${instanceId} 当前是停止状态：先 audio_play 起播再调音量`,
+      "audio_volume-channel-stopped",
+      `通道 ${target.channel} 当前不在播放：先起播再调音量`,
     );
     return false;
   }
-  const volume = audioVolume(ctx, cmd.volume, "audio_volume", previous.channel);
+  const volume = audioVolume(ctx, cmd.volume, "audio_volume", target.channel);
   if (volume === null) return false;
-  writeInstance(ctx, table, instanceId, previous.channel, {
-    ...previous.state,
-    volume,
-  });
+  ctx.setSystem(key, { ...previous, volume });
   return true;
 }
 
@@ -254,7 +286,8 @@ function setInstanceVolume(
  * 记账与通道共用同一张表（同一概念一处声明），实例键加 `inst:` 前缀区分归属。
  *
  * 不经 op、直接改状态：这是引擎级暂停的内部步骤，不产生命令面的语义
- * （作者手写的 `audio_pause` 只作用于四通道，暂停态仍由同一把「引擎已暂停」的闸门拦住推进）。
+ * （作者手写的 `audio_pause` 作用于四通道或单个实例，这里一次暂停全部；
+ * 暂停态仍由同一把「引擎已暂停」的闸门拦住推进）。
  */
 export function pauseAudioInstances(ctx: OpContext): void {
   const table = instanceTableOf(ctx);

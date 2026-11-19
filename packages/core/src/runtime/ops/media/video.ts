@@ -7,12 +7,12 @@ import {
   type VideoCommand,
 } from "../../../contracts/index.ts";
 import type { Frame, OpContext } from "../../internal/index.ts";
-import { audioVolume } from "./shared.ts";
+import { audioVolume, mediaSeconds } from "./shared.ts";
 
 /** 视频族已知负载字段（未知字段 fail-closed） */
 const VIDEO_FIELDS: Record<string, ReadonlySet<string>> = {
-  video: new Set(["op", "resource", "volume", "loop", "z"]),
-  cutscene: new Set(["op", "resource", "volume", "skipable", "z"]),
+  video: new Set(["op", "resource", "volume", "loop", "restart", "z"]),
+  cutscene: new Set(["op", "resource", "volume", "skipable", "restart", "z"]),
   seek_video: new Set(["op", "seconds"]),
   pause_video: new Set(["op"]),
   resume_video: new Set(["op"]),
@@ -24,6 +24,9 @@ const VIDEO_FIELDS: Record<string, ReadonlySet<string>> = {
  * 视频族：核心只写命令流（`__video`，seq 单调），渲染器按序执行。
  * - `video` = 非阻塞播放（故事继续）；`cutscene` = 阻塞过场（等待建立时提交检查点，
  *   同 menu/wait/input；ended/跳过解除）。
+ * - 同资源重写默认无缝续播（沿用旧 seq，渲染器不打断当前画面）；`restart=true`
+ *   才领新序号从头重播——与音频通道族同口径。`cutscene` 例外：每次过场都是一次
+ *   新的阻塞呈现，渲染器要重新登记 ended 回调来解除等待，所以恒领新序号。
  * - `seek_video`/`pause_video`/`resume_video`/`stop_video` 为离散命令；
  *   `video_skipable` 设后续 video/cutscene 的缺省 skipable。
  */
@@ -42,8 +45,6 @@ export function execVideo(
     );
     return false;
   }
-  ctx.videoSeq += 1;
-  const seq = ctx.videoSeq;
   if (cmd.op === "video" || cmd.op === "cutscene") {
     if (ctx.rejectBadInstanceZ(cmd)) return false; // 先拒非法 z（不动状态）
     ctx.setInstanceZ(SYS.videoZ, cmd.z); // 视频层实例 z（宿主解析后交 VideoPort.setZIndex）
@@ -61,6 +62,25 @@ export function execVideo(
       cutscene && cmd.skipable !== undefined
         ? cmd.skipable === true
         : ctx.get(SYS.videoSkipable) !== false;
+    const previous = ctx.get(SYS.video) as VideoCommand | undefined;
+    const sameTrack =
+      !cutscene &&
+      cmd.restart !== true &&
+      previous?.kind === "play" &&
+      previous.resource === cmd.resource;
+    let seq: number;
+    if (
+      sameTrack &&
+      previous !== undefined &&
+      previous.kind === "play" &&
+      typeof previous.seq === "number"
+    ) {
+      // 同资源续播：沿用旧序号，渲染器据此判定「还是那一轨」，不打断当前画面
+      seq = previous.seq;
+    } else {
+      ctx.videoSeq += 1;
+      seq = ctx.videoSeq;
+    }
     ctx.setSystem(SYS.video, {
       kind: "play",
       resource: cmd.resource,
@@ -80,19 +100,11 @@ export function execVideo(
     }
     return true;
   }
+  ctx.videoSeq += 1;
+  const seq = ctx.videoSeq;
   if (cmd.op === "seek_video") {
-    const seconds = cmd.seconds;
-    if (
-      typeof seconds !== "number" ||
-      !Number.isFinite(seconds) ||
-      seconds < 0
-    ) {
-      ctx.fail(
-        "seek_video-invalid-seconds",
-        "seek_video 需要非负有限数字（秒）",
-      );
-      return false;
-    }
+    const seconds = mediaSeconds(ctx, cmd.seconds, cmd.op);
+    if (seconds === null) return false;
     ctx.setSystem(SYS.video, {
       kind: "seek",
       seconds,
@@ -112,7 +124,14 @@ export function execVideo(
     ctx.setSystem(SYS.video, { kind: "stop", seq } satisfies VideoCommand);
     return true;
   }
-  // video_skipable
-  ctx.setSystem(SYS.videoSkipable, cmd.value !== false);
+  // video_skipable：布尔严格——非布尔值拒绝，不做「非 false 一律 true」的宽松 coercion
+  if (typeof cmd.value !== "boolean") {
+    ctx.fail(
+      "video_skipable-invalid-value",
+      "video_skipable 的 value 必须是布尔值（true / false）",
+    );
+    return false;
+  }
+  ctx.setSystem(SYS.videoSkipable, cmd.value);
   return true;
 }

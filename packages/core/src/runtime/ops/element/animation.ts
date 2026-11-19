@@ -11,6 +11,7 @@ import {
   type StoryCommand,
 } from "../../../contracts/index.ts";
 import type { OpContext } from "../../internal/index.ts";
+import { isPlainObject } from "../../../shared/index.ts";
 
 /** `animate_block` 可承载的属性（与既有实现的属性集一致） */
 const ANIMATE_BLOCK_PROPS: readonly string[] = [
@@ -166,7 +167,12 @@ export function execTextTypewriter(ctx: OpContext, cmd: StoryCommand): boolean {
     );
     return false;
   }
-  const next: Record<string, unknown> = {};
+  // 合并写：只更新本次给出的字段，其余原样保留——只写 speed 不该把已有的
+  // enabled 抹掉（整对象替换会丢开关）。旧值形状不合（外部改坏）按空底处理。
+  const current = ctx.get(SYS.typewriter);
+  const next: Record<string, unknown> = isPlainObject(current)
+    ? { ...current }
+    : {};
   if (enabled !== undefined) next.enabled = enabled;
   if (speed !== undefined) next.speed = speed;
   ctx.setSystem(SYS.typewriter, next);

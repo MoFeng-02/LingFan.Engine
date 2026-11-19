@@ -95,6 +95,7 @@ export function generateCommand(
     case "audio_volume":
     case "audio_pause":
     case "audio_resume":
+    case "audio_seek":
     case "video":
     case "cutscene":
     case "seek_video":

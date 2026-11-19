@@ -13,6 +13,7 @@ import {
   type StoryCommand,
 } from "../../../contracts/index.ts";
 import type { OpContext } from "../../internal/index.ts";
+import { pauseInstanceById, resumeInstanceById } from "./control.ts";
 import {
   AUDIO_CHANNEL_KEY,
   AUDIO_FIELDS,
@@ -148,6 +149,9 @@ function pauseTargets(
 /**
  * `audio_pause`：把常驻通道从 play 改成 pause，播放器实例与位置留给端口。
  *
+ * 目标：不传 = 全部常驻通道；`channel` = 单通道；`inst` = 单实例
+ * （与 `channel` 互斥，实例路径在 control.ts，记账同一张表）。
+ *
  * 三条纪律：
  * - 只暂停 play 态——`stop` / 从未播放的通道不写，否则「从未触碰」会变成「暂停」，
  *   恢复时无实例可续，stop 的淡出参数也跟着丢；
@@ -165,6 +169,16 @@ export function execAudioPause(ctx: OpContext, cmd: StoryCommand): boolean {
       `${cmd.op} 未知负载字段：${unknown.join(", ")}`,
     );
     return false;
+  }
+  if (cmd.inst !== undefined) {
+    if (cmd.channel !== undefined) {
+      ctx.fail(
+        `${cmd.op}-target-conflict`,
+        `${cmd.op} 的 inst 与 channel 互斥（恰好给一个）`,
+      );
+      return false;
+    }
+    return pauseInstanceById(ctx, cmd);
   }
   const channels = pauseTargets(ctx, cmd);
   if (channels === null) return false;
@@ -189,6 +203,9 @@ export function execAudioPause(ctx: OpContext, cmd: StoryCommand): boolean {
 /**
  * `audio_resume`：把 pause 态的通道写回暂停前的 play 态。
  *
+ * 目标与 `audio_pause` 对称：不传 = 全部常驻通道；`channel` = 单通道；
+ * `inst` = 单实例（与 `channel` 互斥，实例路径在 control.ts）。
+ *
  * 写回的是**同一个 play 态**（资源 / 音量 / 循环 / 淡出参数原样），所以渲染层
  * 看到的是「pause → 同资源 play」，走 `resume` 而不是重新 `play`——从暂停位置续播，
  * 不从头播。`play` / `stop` 态的通道不动作（幂等）。
@@ -206,6 +223,16 @@ export function execAudioResume(ctx: OpContext, cmd: StoryCommand): boolean {
       `${cmd.op} 未知负载字段：${unknown.join(", ")}`,
     );
     return false;
+  }
+  if (cmd.inst !== undefined) {
+    if (cmd.channel !== undefined) {
+      ctx.fail(
+        `${cmd.op}-target-conflict`,
+        `${cmd.op} 的 inst 与 channel 互斥（恰好给一个）`,
+      );
+      return false;
+    }
+    return resumeInstanceById(ctx, cmd);
   }
   const channels = pauseTargets(ctx, cmd);
   if (channels === null) return false;

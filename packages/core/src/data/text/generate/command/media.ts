@@ -5,8 +5,8 @@ import type { GenerateContext } from "../context.ts";
 
 /**
  * 投影本族的 op 行（`bgm` `se` `ambient` `voice` `stop_bgm` `stop_ambient` `stop_voice` `stop_se`
- * `audio_play` `audio_stop` `audio_volume` `video` `cutscene` `seek_video` `pause_video`
- * `resume_video` `stop_video` `video_skipable`）。
+ * `audio_play` `audio_stop` `audio_volume` `audio_pause` `audio_resume` `audio_seek` `video` `cutscene`
+ * `seek_video` `pause_video` `resume_video` `stop_video` `video_skipable`）。
  *
  * 入参是分发骨架建好的 `GenerateContext`：`pad` 是本行缩进前缀（块体逐层加深），
  * `out` 是输出缓冲，投影出的行直接推入，不留空行。
@@ -59,7 +59,19 @@ export function generateMediaCommand(
       return;
     }
     case "audio_volume":
-      out.push(`${pad}audio_volume ${cmd.inst as string} volume=${cmd.volume}`);
+      // 实例目标用位置写法（兼容旧投影）；通道目标用 key=value
+      out.push(
+        cmd.inst !== undefined
+          ? `${pad}audio_volume ${cmd.inst as string} volume=${cmd.volume}`
+          : `${pad}audio_volume channel=${cmd.channel as string} volume=${cmd.volume}`,
+      );
+      return;
+    case "audio_seek":
+      out.push(
+        cmd.inst !== undefined
+          ? `${pad}audio_seek ${cmd.seconds} inst=${cmd.inst as string}`
+          : `${pad}audio_seek ${cmd.seconds} channel=${cmd.channel as string}`,
+      );
       return;
     case "video":
     case "cutscene": {
@@ -67,6 +79,7 @@ export function generateMediaCommand(
       if (cmd.volume !== undefined) line += ` volume=${cmd.volume}`;
       if (cmd.loop !== undefined) line += ` loop=${cmd.loop}`;
       if (cmd.skipable !== undefined) line += ` skipable=${cmd.skipable}`;
+      if (cmd.restart !== undefined) line += ` restart=${cmd.restart}`;
       line += instanceZText(cmd);
       out.push(line);
       return;
@@ -85,12 +98,17 @@ export function generateMediaCommand(
       return;
     case "audio_pause":
     case "audio_resume":
-      // channel 省略即「全部常驻通道」，不能补默认值——写出来会变成只暂停某一个
-      out.push(
-        cmd.channel === undefined
-          ? `${pad}${cmd.op}`
-          : `${pad}${cmd.op} ${cmd.channel as string}`,
-      );
+      // channel 省略即「全部常驻通道」，不能补默认值——写出来会变成只暂停某一个；
+      // inst 目标用 key=value（与 channel 互斥）
+      if (cmd.inst !== undefined) {
+        out.push(`${pad}${cmd.op} inst=${cmd.inst as string}`);
+      } else {
+        out.push(
+          cmd.channel === undefined
+            ? `${pad}${cmd.op}`
+            : `${pad}${cmd.op} ${cmd.channel as string}`,
+        );
+      }
       return;
     case "video_skipable":
       out.push(

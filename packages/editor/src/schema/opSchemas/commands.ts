@@ -14,6 +14,7 @@ import type {
   AssignOpPayload,
   AudioChannelOpPayload,
   AudioPlayOpPayload,
+  AudioSeekOpPayload,
   AudioStopOpPayload,
   AudioVolumeOpPayload,
   AutoSaveOpPayload,
@@ -319,28 +320,58 @@ const audioStopSchema = z.strictObject({
   fade: Fade.optional(),
 }) satisfies z.ZodType<AudioStopOpPayload>;
 
-const audioVolumeSchema = z.strictObject({
-  inst: AudioInstanceId,
-  volume: Finite,
-}) satisfies z.ZodType<AudioVolumeOpPayload>;
+// 目标恰好给一个：inst = 单实例；channel = 单通道（se 无持久态，执行期空操作）
+const audioVolumeSchema = z
+  .strictObject({
+    inst: AudioInstanceId.optional(),
+    channel: audioChannelSchema.optional(),
+    volume: Finite,
+  })
+  .refine((v) => (v.inst === undefined) !== (v.channel === undefined), {
+    message: "inst 与 channel 互斥（恰好给一个）",
+  }) satisfies z.ZodType<AudioVolumeOpPayload>;
 
-// channel 省略 = 全部常驻通道（se 除外），故是 optional 而非缺省成某个通道
-const audioPauseSchema = z.strictObject({
-  channel: audioChannelSchema.optional(),
-}) satisfies z.ZodType<AudioChannelOpPayload>;
+// channel 省略 = 全部常驻通道（se 除外），故是 optional 而非缺省成某个通道；
+// inst 与 channel 互斥：给了 inst 就只作用单个实例
+const audioPauseSchema = z
+  .strictObject({
+    channel: audioChannelSchema.optional(),
+    inst: AudioInstanceId.optional(),
+  })
+  .refine((v) => !(v.inst !== undefined && v.channel !== undefined), {
+    message: "inst 与 channel 互斥（恰好给一个）",
+  }) satisfies z.ZodType<AudioChannelOpPayload>;
 
-const audioResumeSchema = z.strictObject({
-  channel: audioChannelSchema.optional(),
-}) satisfies z.ZodType<AudioChannelOpPayload>;
+const audioResumeSchema = z
+  .strictObject({
+    channel: audioChannelSchema.optional(),
+    inst: AudioInstanceId.optional(),
+  })
+  .refine((v) => !(v.inst !== undefined && v.channel !== undefined), {
+    message: "inst 与 channel 互斥（恰好给一个）",
+  }) satisfies z.ZodType<AudioChannelOpPayload>;
+
+// 定位目标恰好给一个；seconds 非负有限；se 无定位语义（执行期空操作）
+const audioSeekSchema = z
+  .strictObject({
+    inst: AudioInstanceId.optional(),
+    channel: audioChannelSchema.optional(),
+    seconds: z.number().finite().min(0),
+  })
+  .refine((v) => (v.inst === undefined) !== (v.channel === undefined), {
+    message: "inst 与 channel 互斥（恰好给一个）",
+  }) satisfies z.ZodType<AudioSeekOpPayload>;
 
 const videoSchema = z.strictObject({
   ...playFields,
   loop: z.boolean().optional(),
+  restart: z.boolean().optional(),
   z: InstanceZ, // video 层实例 z
 }) satisfies z.ZodType<VideoOpPayload>;
 const cutsceneSchema = z.strictObject({
   ...playFields,
   skipable: z.boolean().optional(),
+  restart: z.boolean().optional(),
   z: InstanceZ, // video 层实例 z
 }) satisfies z.ZodType<CutsceneOpPayload>;
 const seekVideoSchema = z.strictObject({
@@ -479,6 +510,7 @@ export {
   audioVolumeSchema,
   audioPauseSchema,
   audioResumeSchema,
+  audioSeekSchema,
   videoSchema,
   cutsceneSchema,
   seekVideoSchema,

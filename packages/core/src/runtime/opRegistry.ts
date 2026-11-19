@@ -85,6 +85,7 @@ export const BUILTIN_OP_NAMES: ReadonlySet<string> = new Set([
   "audio_volume",
   "audio_pause",
   "audio_resume",
+  "audio_seek",
   "video",
   "seek_video",
   "pause_video",
@@ -138,6 +139,7 @@ export function buildOpRegistry(
     seenExtensions.add(extension.id);
     if (
       typeof extension.stateVersion !== "number" ||
+      !Number.isInteger(extension.stateVersion) ||
       extension.stateVersion < 1
     ) {
       throw new Error(

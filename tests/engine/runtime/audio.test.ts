@@ -296,15 +296,23 @@ describe("媒体位置随快照", () => {
     ).toBe(true);
   });
 
-  it("stop_se 非法淡出参数 fail-closed", () => {
-    const { engine, errors } = makeEngine([
-      { op: "stop_se", fade: {} },
-      { op: "say", text: "x" },
-    ]);
-    engine.start();
-    expect(
-      errors.some((e) => JSON.stringify(e).includes("stop_se-invalid-fade")),
-    ).toBe(true);
+  it("stop_se 非法淡出参数 → 装载期整文件拒绝", () => {
+    expect(() =>
+      parseStory({
+        formatVersion: 1,
+        id: "audio",
+        columns: [
+          {
+            id: "start",
+            kind: "flow",
+            commands: [
+              { op: "stop_se", fade: {} },
+              { op: "say", text: "x" },
+            ],
+          },
+        ],
+      }),
+    ).toThrow(/fade 必须为非负有限数/);
   });
 
   it('stop_bgm 停背景乐并把播放位置归零（既有实现 `bgm ""` 语义的显式化）', () => {
@@ -456,48 +464,74 @@ describe("显式重播 restart（同曲默认无缝续播）", () => {
   });
 });
 
-describe("对抗性注入（fail-closed；拒绝后音频状态保持原样）", () => {
-  const cases: Array<{ name: string; cmd: object; code: string }> = [
+describe("对抗性注入（fail-closed）", () => {
+  // 必填 / 类型 / 值域非法 → 装载期整文件拒绝（parse 层 fail-closed）。
+  // 即便前面有一条合法命令，非法命令也会让整份故事打不开——状态根本不会建立，
+  // 比「执行到一半才报错」更早、更彻底（无半恢复）。
+  const loadCases: Array<{ name: string; cmd: object; issue: RegExp }> = [
     {
       name: "resource 非字符串",
       cmd: { op: "bgm", resource: 42 },
-      code: "bgm-invalid-resource",
+      issue: /resource 必须为非空字符串/,
     },
     {
       name: "resource 空串",
       cmd: { op: "se", resource: "" },
-      code: "se-invalid-resource",
+      issue: /resource 必须为非空字符串/,
     },
     {
       name: "resource 缺失",
       cmd: { op: "ambient" },
-      code: "ambient-invalid-resource",
+      issue: /resource 必须为非空字符串/,
     },
     {
       name: "volume 字符串",
       cmd: { op: "bgm", resource: "a", volume: "大" },
-      code: "bgm-invalid-volume",
+      issue: /volume 必须为有限数字/,
     },
     {
       name: "volume NaN",
       cmd: { op: "ambient", resource: "a", volume: NaN },
-      code: "ambient-invalid-volume",
+      issue: /volume 必须为有限数字/,
     },
     {
       name: "volume Infinity",
       cmd: { op: "voice", resource: "a", volume: Infinity },
-      code: "voice-invalid-volume",
+      issue: /volume 必须为有限数字/,
     },
     {
       name: "fade 负数",
       cmd: { op: "stop_ambient", fade: -5 },
-      code: "stop_ambient-invalid-fade",
+      issue: /fade 必须为非负有限数/,
     },
     {
       name: "fade 非数字",
       cmd: { op: "stop_voice", fade: {} },
-      code: "stop_voice-invalid-fade",
+      issue: /fade 必须为非负有限数/,
     },
+  ];
+
+  for (const { name, cmd, issue } of loadCases) {
+    it(`${name} → 装载期整文件拒绝`, () => {
+      expect(() =>
+        parseStory({
+          formatVersion: 1,
+          id: "audio",
+          columns: [
+            {
+              id: "start",
+              kind: "flow",
+              commands: [{ op: "bgm", resource: "keep.mp3" }, cmd],
+            },
+          ],
+        }),
+      ).toThrow(issue);
+    });
+  }
+
+  // 未知字段 → 运行期执行器拒绝（parse 层不判未知字段，三层校验分工）。
+  // 拒绝后：前一条合法命令的媒体状态保持原样，且未推进到 say（fail-closed 停机）。
+  const runtimeCases: Array<{ name: string; cmd: object; code: string }> = [
     {
       name: "未知字段（幽灵音量键）",
       cmd: { op: "bgm", resource: "a", 音量: 1 },
@@ -530,7 +564,7 @@ describe("对抗性注入（fail-closed；拒绝后音频状态保持原样）",
     },
   ];
 
-  for (const { name, cmd, code } of cases) {
+  for (const { name, cmd, code } of runtimeCases) {
     it(`${name} → fail-closed 且音频状态不变`, () => {
       const { engine, errors } = makeEngine([
         { op: "bgm", resource: "keep.mp3" },
@@ -539,7 +573,6 @@ describe("对抗性注入（fail-closed；拒绝后音频状态保持原样）",
       ]);
       engine.start();
       expect(hasError(errors, code)).toBe(true);
-      // 拒绝后：前一条合法命令的媒体状态保持原样，且未推进到 say（fail-closed 停机）
       expect(channel(engine, SYS.audioBgm)).toMatchObject({
         resource: "keep.mp3",
       });
@@ -548,15 +581,23 @@ describe("对抗性注入（fail-closed；拒绝后音频状态保持原样）",
     });
   }
 
-  it("首条即非法：音频键全未写入（无半恢复）", () => {
-    const { engine, errors } = makeEngine([
-      { op: "bgm", resource: 0 },
-      { op: "say", text: "x" },
-    ]);
-    const before = audioKeys(engine);
-    engine.start();
-    expect(hasError(errors, "bgm-invalid-resource")).toBe(true);
-    expect(audioKeys(engine)).toEqual(before);
+  it("首条即非法：装载期整文件拒绝（无半恢复）", () => {
+    expect(() =>
+      parseStory({
+        formatVersion: 1,
+        id: "audio",
+        columns: [
+          {
+            id: "start",
+            kind: "flow",
+            commands: [
+              { op: "bgm", resource: 0 },
+              { op: "say", text: "x" },
+            ],
+          },
+        ],
+      }),
+    ).toThrow(/resource 必须为非空字符串/);
   });
 });
 

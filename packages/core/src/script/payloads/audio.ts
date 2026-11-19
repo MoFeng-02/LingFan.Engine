@@ -52,15 +52,34 @@ export type AudioStopOpPayload = {
   fade?: number;
 };
 
-/** audio_volume：只改一个实例的音量（不动播放位置） */
+/**
+ * audio_volume：只改音量（不动播放位置、不重播）。
+ * inst 与 channel 恰好给一个：inst 改单轨，channel 改整条通道。
+ */
 export type AudioVolumeOpPayload = {
-  inst: string;
+  inst?: string;
+  channel?: AudioChannel;
   volume: number;
 };
 
-/** audio_pause / audio_resume 共用：channel 省略 = 全部常驻通道（se 除外） */
+/**
+ * audio_pause / audio_resume 共用：
+ * 给 inst 只暂停 / 恢复那一轨；否则 channel 省略 = 全部常驻通道（se 除外）。
+ * inst 与 channel 互斥（同时给 = 目标歧义，运行期拒绝）。
+ */
 export type AudioChannelOpPayload = {
   channel?: AudioChannel;
+  inst?: string;
+};
+
+/**
+ * audio_seek：把音频定位到第 seconds 秒（不重播、不改音量）。
+ * inst 与 channel 恰好给一个；se 是一次性音效，无定位语义（执行期空操作）。
+ */
+export type AudioSeekOpPayload = {
+  inst?: string;
+  channel?: AudioChannel;
+  seconds: number;
 };
 
 export interface AudioPayloadMap {
@@ -77,4 +96,5 @@ export interface AudioPayloadMap {
   audio_volume: AudioVolumeOpPayload;
   audio_pause: AudioChannelOpPayload;
   audio_resume: AudioChannelOpPayload;
+  audio_seek: AudioSeekOpPayload;
 }

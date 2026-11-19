@@ -247,9 +247,26 @@ export function execWait(
   armWaitTimer(ctx, Math.max(0, (cmd.seconds as number) * 1000));
 }
 
+/** nvl 已知负载字段（未知字段 fail-closed） */
+const NVL_FIELDS = new Set(["op", "mode"]);
+/** nvl mode 合法值：未知值拒绝，不静默当 enter（作者写错不该被吞掉） */
+const NVL_MODES = new Set(["enter", "auto", "clear", "exit"]);
+
 /** NVL：进入/清屏/退出累积层；累积文本进核心状态（回溯/存档自动一致） */
-export function execNvl(ctx: OpContext, cmd: StoryCommand): void {
-  const mode = typeof cmd.mode === "string" ? cmd.mode : "enter";
+export function execNvl(ctx: OpContext, cmd: StoryCommand): boolean {
+  const unknown = Object.keys(cmd).filter((k) => !NVL_FIELDS.has(k));
+  if (unknown.length > 0) {
+    ctx.fail("nvl-unknown-field", `nvl 未知负载字段：${unknown.join(", ")}`);
+    return false;
+  }
+  const mode = cmd.mode === undefined ? "enter" : cmd.mode;
+  if (typeof mode !== "string" || !NVL_MODES.has(mode)) {
+    ctx.fail(
+      "nvl-invalid-mode",
+      `nvl 的 mode 不合法：${JSON.stringify(cmd.mode)}（须为 enter / auto / clear / exit 之一）`,
+    );
+    return false;
+  }
   switch (mode) {
     case "clear":
       // 清屏保留窗口：累积清空，NVL 仍激活
@@ -264,19 +281,57 @@ export function execNvl(ctx: OpContext, cmd: StoryCommand): void {
       // enter / auto：进入累积层
       ctx.setSystem(SYS.nvlMode, "active");
   }
+  return true;
 }
 
+/** character 已知负载字段（未知字段 fail-closed） */
+const CHARACTER_FIELDS = new Set([
+  "op",
+  "key",
+  "name",
+  "color",
+  "size",
+  "font",
+  "textColor",
+  "screen",
+]);
+/** character 可选字符串字段：给了就必须是字符串（静默忽略会丢作者意图） */
+const CHARACTER_STRING_FIELDS = [
+  "name",
+  "color",
+  "size",
+  "font",
+  "textColor",
+  "screen",
+] as const;
+
 /** character：注册/更新角色定义（可覆盖更新） */
-export function execCharacter(ctx: OpContext, cmd: StoryCommand): void {
-  const key = cmd.key as string;
+export function execCharacter(ctx: OpContext, cmd: StoryCommand): boolean {
+  const unknown = Object.keys(cmd).filter((k) => !CHARACTER_FIELDS.has(k));
+  if (unknown.length > 0) {
+    ctx.fail(
+      "character-unknown-field",
+      `character 未知负载字段：${unknown.join(", ")}`,
+    );
+    return false;
+  }
+  const key = cmd.key;
+  if (typeof key !== "string" || key === "") {
+    ctx.fail("character-invalid-key", "character 需要非空 key 字符串");
+    return false;
+  }
   const def: CharacterDef = { key };
-  if (typeof cmd.name === "string") def.name = cmd.name;
-  if (typeof cmd.color === "string") def.color = cmd.color;
-  if (typeof cmd.size === "string") def.size = cmd.size;
-  if (typeof cmd.font === "string") def.font = cmd.font;
-  if (typeof cmd.textColor === "string") def.textColor = cmd.textColor;
-  if (typeof cmd.screen === "string") def.screen = cmd.screen;
+  for (const field of CHARACTER_STRING_FIELDS) {
+    const value = cmd[field];
+    if (value === undefined) continue;
+    if (typeof value !== "string") {
+      ctx.fail("character-invalid-field", `character 的 ${field} 必须是字符串`);
+      return false;
+    }
+    def[field] = value;
+  }
   ctx.characters.set(key, def);
+  return true;
 }
 
 /**

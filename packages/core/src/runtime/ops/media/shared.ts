@@ -7,8 +7,11 @@
  */
 import {
   SYS,
+  isAudioChannel,
+  isAudioInstanceId,
   type AudioChannel,
   type AudioChannelState,
+  type StoryCommand,
 } from "../../../contracts/index.ts";
 import type { OpContext } from "../../internal/index.ts";
 
@@ -33,9 +36,10 @@ export const AUDIO_FIELDS: Record<string, ReadonlySet<string>> = {
     "restart",
   ]),
   audio_stop: new Set(["op", "inst", "fade"]),
-  audio_volume: new Set(["op", "inst", "volume"]),
-  audio_pause: new Set(["op", "channel"]),
-  audio_resume: new Set(["op", "channel"]),
+  audio_volume: new Set(["op", "inst", "channel", "volume"]),
+  audio_pause: new Set(["op", "channel", "inst"]),
+  audio_resume: new Set(["op", "channel", "inst"]),
+  audio_seek: new Set(["op", "inst", "channel", "seconds"]),
 };
 
 /** 停止类 op → 目标常驻通道系统键 */
@@ -96,6 +100,67 @@ export function audioFade(
   return raw;
 }
 
+/** 定位秒数窄化（audio_seek / seek_video 共用）：必须为非负有限数字 */
+export function mediaSeconds(
+  ctx: OpContext,
+  raw: unknown,
+  op: string,
+): number | null {
+  if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) {
+    ctx.fail(`${op}-invalid-seconds`, `${op} 的 seconds 必须是非负有限数字`);
+    return null;
+  }
+  return raw;
+}
+
+/**
+ * 双目标解析（audio_volume / audio_seek）：inst 与 channel 恰好给一个。
+ *
+ * 两个都给 = 目标歧义（改哪一轨？），两个都不给 = 没有目标——都 fail-closed，
+ * 不猜「缺省作用于全部」：音量与定位是精确操作，批量语义只属于暂停 / 恢复。
+ * 返回 null 表示已 fail，调用方直接返回 false（状态原样）。
+ */
+export function resolveAudioTarget(
+  ctx: OpContext,
+  cmd: StoryCommand,
+): { inst: string } | { channel: AudioChannel } | null {
+  const op = cmd.op;
+  const inst = cmd.inst;
+  const channel = cmd.channel;
+  if (inst !== undefined && channel !== undefined) {
+    ctx.fail(
+      `${op}-target-conflict`,
+      `${op} 的 inst 与 channel 互斥（恰好给一个）`,
+    );
+    return null;
+  }
+  if (inst === undefined && channel === undefined) {
+    ctx.fail(
+      `${op}-missing-target`,
+      `${op} 需要 inst 或 channel（恰好给一个）`,
+    );
+    return null;
+  }
+  if (inst !== undefined) {
+    if (!isAudioInstanceId(inst)) {
+      ctx.fail(
+        `${op}-invalid-instance`,
+        `${op} 的 inst 不合法：${String(inst)}`,
+      );
+      return null;
+    }
+    return { inst };
+  }
+  if (!isAudioChannel(channel)) {
+    ctx.fail(
+      `${op}-invalid-channel`,
+      `${op} 的 channel 不合法：${String(channel)}`,
+    );
+    return null;
+  }
+  return { channel };
+}
+
 /**
  * 播放态判定：暂停记账只记录「有东西可续播」的状态。
  *
@@ -103,7 +168,9 @@ export function audioFade(
  * 形状严格比对——记账表随快照 / 存档随行，读回来的可能是被外部改坏的值，把非 play
  * 态当成 play 态会让恢复写回一条没有资源的播放态。
  */
-export function isPlayState(value: unknown): value is AudioChannelState {
+export function isPlayState(
+  value: unknown,
+): value is Extract<AudioChannelState, { kind: "play" }> {
   if (value === null || typeof value !== "object") return false;
   const state = value as { kind?: unknown; resource?: unknown };
   return state.kind === "play" && typeof state.resource === "string";

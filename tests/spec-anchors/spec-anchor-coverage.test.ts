@@ -76,6 +76,8 @@ function landedAnchorIds(specIds: string[]): Set<string> {
  * 白名单外只报告不阻塞（渐进收紧，新落地一条就搬进来一条）。
  */
 const ENFORCED_ANCHORS = [
+  "audio-instance-params",
+  "channel-volume-seek",
   "custom-op-state-persist",
   "ext-op-wait-abort",
   "ext-op-wait-checkpoint",
@@ -83,9 +85,19 @@ const ENFORCED_ANCHORS = [
   "ext-op-wait-replay",
   "ext-op-wait-resolve",
   "ext-op-wait-steps",
+  "five-sources-equal",
+  "media-family-symmetry",
+  "media-state-snapshot",
   "op-registry-builtin-parity",
+  "parse-23ops-roundtrip",
   "prefs-fullscreen",
   "prefs-keymap",
+  "stateversion-integer-reject",
+  "strict-params-fail-closed",
+  "typewriter-atomic-write",
+  "typewriter-frame-keys-not-events",
+  "typewriter-two-stage",
+  "video-same-resource-resume",
 ] as const;
 
 /**

@@ -50,12 +50,6 @@ function channel(engine: StoryEngine, key: string): AudioChannelState | null {
   return (engine.get(key) ?? null) as AudioChannelState | null;
 }
 
-function hasError(errors: OutboundEvent[], code: string): boolean {
-  return errors.some(
-    (e) => e.payload.kind === "engine.error" && e.payload.code === code,
-  );
-}
-
 describe("audio_pause / audio_resume 执行语义", () => {
   it("audio_pause bgm：play 态变 pause 态并领序号", () => {
     const { engine, dispose } = makeEngine([
@@ -175,21 +169,13 @@ describe("audio_pause / audio_resume 执行语义", () => {
     }
   });
 
-  it("非法 channel → audio_pause-invalid-channel，且状态不变", () => {
-    const { engine, errors, dispose } = makeEngine([
-      { op: "bgm", resource: "a.mp3" },
-      { op: "audio_pause", channel: "bgm2" },
-      { op: "say", text: "尾" },
-    ]);
-    try {
-      engine.start();
-      expect(hasError(errors, "audio_pause-invalid-channel")).toBe(true);
-      expect(channel(engine, SYS.audioBgm)).toMatchObject({
-        kind: "play",
-        resource: "a.mp3",
-      });
-    } finally {
-      dispose();
-    }
+  it("非法 channel → 装载期整文件拒绝（通道名是封闭集合，不能猜）", () => {
+    expect(() =>
+      makeEngine([
+        { op: "bgm", resource: "a.mp3" },
+        { op: "audio_pause", channel: "bgm2" },
+        { op: "say", text: "尾" },
+      ]),
+    ).toThrow("channel 必须为 bgm");
   });
 });

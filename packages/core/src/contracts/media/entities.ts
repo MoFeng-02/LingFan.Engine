@@ -55,6 +55,11 @@ export type AudioChannelState =
       /** 显式重播：同曲重写默认无缝续播（seek），restart=true 才回到起点 */
       restart?: boolean;
       /**
+       * 显式定位（秒）：`audio_seek` 写入后随状态进快照与存档，
+       * 回溯 / 读档时渲染层据此回到对应位置。缺省 = 不定位（从当前位置继续）。
+       */
+      position?: number;
+      /**
        * 本次写入的单调序号（se 每次触发 / restart 重播都递增，不进快照）：
        * 让「同一资源连续两次写入」也能被渲染层识别为两次独立事件。
        */

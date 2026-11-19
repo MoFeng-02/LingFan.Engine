@@ -9,20 +9,24 @@
  */
 import type { EmptyOpPayload } from "./shared.ts";
 
-/** video：非阻塞播放（loop 循环 / z 视频层层级） */
+/** video：非阻塞播放（loop 循环 / z 视频层层级 / restart 显式重播） */
 export type VideoOpPayload = {
   resource: string;
   volume?: number;
   loop?: boolean;
   z?: number;
+  /** 同资源重写默认无缝续播；restart=true 才回到起点重播（与音频族同口径） */
+  restart?: boolean;
 };
 
-/** cutscene：阻塞过场（skipable 可点击跳过 / z 视频层层级） */
+/** cutscene：阻塞过场（skipable 可点击跳过 / z 视频层层级 / restart 显式重播） */
 export type CutsceneOpPayload = {
   resource: string;
   volume?: number;
   skipable?: boolean;
   z?: number;
+  /** 同资源重写默认无缝续播；restart=true 才回到起点重播（与音频族同口径） */
+  restart?: boolean;
 };
 
 /** seek_video：把当前视频跳转到第 seconds 秒 */

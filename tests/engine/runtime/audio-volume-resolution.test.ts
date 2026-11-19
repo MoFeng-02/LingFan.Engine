@@ -75,14 +75,6 @@ function channelOf(engine: StoryEngine, key: string): AudioChannelState | null {
   return (engine.get(key) ?? null) as AudioChannelState | null;
 }
 
-function errorCodes(errors: OutboundEvent[]): string[] {
-  const codes: string[] = [];
-  for (const event of errors) {
-    if (event.payload.kind === "engine.error") codes.push(event.payload.code);
-  }
-  return codes;
-}
-
 describe("音量三级解析 · 取值链", () => {
   it("命令没写 volume 就取工程默认（不是内建 1）", () => {
     const { engine, dispose } = makeEngine(
@@ -270,18 +262,17 @@ describe("音量三级解析 · 与渲染层的分工", () => {
     dispose();
   });
 
-  it("非法显式音量 fail-closed 且状态不变（默认值也不接管）", () => {
+  it("非法显式音量 → 装载期整文件拒绝（默认值也不接管）", () => {
     // 写坏的那一条不许被「工程默认」悄悄救活：显式值非法 = 作者的错，
-    // 报错并保持状态原样（通道仍是 null），不能拿默认值顶上装作没事。
-    const { engine, errors, dispose } = makeEngine(
-      [
-        { op: "bgm", resource: "a.mp3", volume: "loud" },
-        { op: "say", text: "第一句" },
-      ],
-      config({ bgm: 0.5 }),
-    );
-    expect(errorCodes(errors)).toContain("bgm-invalid-volume");
-    expect(channelOf(engine, "__audio_bgm")).toBeNull();
-    dispose();
+    // 装载期就拒绝整份故事，不能拿默认值顶上装作没事。
+    expect(() =>
+      makeEngine(
+        [
+          { op: "bgm", resource: "a.mp3", volume: "loud" },
+          { op: "say", text: "第一句" },
+        ],
+        config({ bgm: 0.5 }),
+      ),
+    ).toThrow("volume 必须为有限数字");
   });
 });

@@ -88,7 +88,7 @@ describe("行为反例：不建立等待的 op 跑完必须不出等待态", () 
   const NON_WAITING_PROBES: Record<string, object> = {
     set: { op: "set", key: "n", value: 1 },
     notify: { op: "notify", text: "提示" },
-    nvl: { op: "nvl", mode: "active" },
+    nvl: { op: "nvl", mode: "enter" },
     video: { op: "video", resource: "Video/m1.mp4" },
     mount: { op: "mount", name: "hub", visible: true },
     jump: { op: "jump", target: "tail" },
@@ -167,6 +167,7 @@ describe("分类完备账：内建 op 全集必须被显式划分为等待 / 非
     "audio_volume",
     "audio_pause",
     "audio_resume",
+    "audio_seek",
     "video",
     "seek_video",
     "pause_video",

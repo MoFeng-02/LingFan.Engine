@@ -100,16 +100,15 @@ describe("fail-closed", () => {
     h.dispose();
   });
 
-  it("character.screen 非字符串忽略（宽松收窄，注册不受影响）", () => {
-    const h = makeHarness([
-      column("a", [
-        { op: "character", key: "a", screen: 123 },
-        say("x", { speaker: "a" }),
+  it("character.screen 非字符串 → 装载期整文件拒绝（不再静默忽略）", () => {
+    expect(() =>
+      makeHarness([
+        column("a", [
+          { op: "character", key: "a", screen: 123 },
+          say("x", { speaker: "a" }),
+        ]),
       ]),
-    ]);
-    h.engine.start();
-    expect(h.engine.get(SYS.dialogTemplate)).toBeNull();
-    h.dispose();
+    ).toThrow("screen 必须为字符串");
   });
 });
 

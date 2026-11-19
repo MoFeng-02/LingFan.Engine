@@ -38,7 +38,7 @@ function validateInputOptions(
 }
 
 /**
- * 校验本族 op 的负载（7 个 op：`say` `assert` `guard` `notify` `wait` `pause` `input`）。
+ * 校验本族 op 的负载（8 个 op：`say` `assert` `guard` `notify` `wait` `pause` `input` `nvl`）。
  *
  * 入参由分发骨架给出：`cmd` 已收窄为非空 op 的对象，`at` 是报错定位前缀，`issues` 是收集器。
  * 无返回值，问题通过 `issues` 交付；不匹配的 op 直接落到函数末尾，等于放行（结构从简）。
@@ -92,6 +92,17 @@ export function validateDialogCommand(
       requireNonEmptyString(cmd.store, `${at}.store`, issues);
       validateInputOptions(cmd.options, `${at}.options`, issues);
       validateInstanceZ(cmd, at, issues); // input 的实例 z（choices 层）
+      break;
+    case "nvl":
+      if (
+        cmd.mode !== undefined &&
+        cmd.mode !== "enter" &&
+        cmd.mode !== "auto" &&
+        cmd.mode !== "clear" &&
+        cmd.mode !== "exit"
+      ) {
+        issues.push(`${at}.mode 必须为 "enter" | "auto" | "clear" | "exit"`);
+      }
       break;
   }
 }

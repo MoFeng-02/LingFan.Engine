@@ -1,6 +1,6 @@
 ---
 title: 音频指令
-description: bgm、se、ambient、voice 四条通道、停止指令、音频实例与暂停恢复的签名、参数与常见错误。十三条都不建立等待点。
+description: bgm、se、ambient、voice 四条通道、停止指令、音频实例与暂停恢复定位的签名、参数与常见错误。十四条都不建立等待点。
 ---
 
 import OpCard from "../../../../components/OpCard.astro";
@@ -388,18 +388,22 @@ say "剩下的一切声音都停了。"
 
 ### audio_volume
 
-<OpCard name="audio_volume" summary="只改一个音频实例的音量，不重播、不动位置。" rollback="full" since="0.3.0">
+<OpCard name="audio_volume" summary="只改音量，不重播、不动位置。目标是实例或通道，二选一。" rollback="full" since="0.3.0">
 
 ```text
 audio_volume <实例 id> volume=0..1
+audio_volume channel=<通道> volume=0..1
 ```
 
 **参数**
 
-| 参数     | 类型   | 必填 | 说明            |
-| -------- | ------ | ---- | --------------- |
-| 实例 id  | text   | 是   | 目标实例。      |
-| `volume` | number | 是   | 0–1，越界钳制。 |
+| 参数      | 类型   | 必填   | 说明                                    |
+| --------- | ------ | ------ | --------------------------------------- |
+| `inst`    | text   | 二选一 | 目标实例 id（文本形态可写成位置参数）。 |
+| `channel` | text   | 二选一 | 目标通道：`bgm` / `ambient` / `voice`。 |
+| `volume`  | number | 是     | 0–1，越界钳制。                         |
+
+`inst` 与 `channel` 恰好给一个：都写或都不写都拒绝。`se` 没有持久播放态，`channel=se` 不动作。
 
 **最小示例**
 
@@ -408,24 +412,26 @@ audio_play rain ambient "Audio/rain.ogg" volume=0.2
 say "雨很小。"
 audio_volume rain volume=0.9
 say "雨大了起来——但曲子没有从头开始。"
+audio_volume channel=bgm volume=0.4
 ```
 
 **常见错误**
 
 :::caution
-这是「实时调音」的正规入口。**不要**用 `audio_play` 重发来改音量：那会重设播放位置并打断淡入。
+这是「实时调音」的正规入口。**不要**用 `audio_play` 或 `bgm` 重发来改音量：那会重设播放位置并打断淡入。
 
-给已停止的实例调音量会报错（先 `audio_play` 起播）；给不存在的实例调音量同样报错。
+给已停止的实例或通道调音量会报错（先起播）；给不存在的实例调音量同样报错。
 :::
 
 </OpCard>
 
 ### audio_pause
 
-<OpCard name="audio_pause" summary="把正在响的通道挂起，位置与播放器实例都留着。" rollback="full" since="0.3.0">
+<OpCard name="audio_pause" summary="把正在响的通道或实例挂起，位置与播放器都留着。" rollback="full" since="0.3.0">
 
 ```text
 audio_pause [通道]
+audio_pause inst=<实例 id>
 ```
 
 **参数**
@@ -433,6 +439,7 @@ audio_pause [通道]
 | 参数   | 类型 | 必填 | 说明                                                       |
 | ------ | ---- | ---- | ---------------------------------------------------------- |
 | `通道` | text | 否   | `bgm` / `ambient` / `voice` 之一；不写则暂停全部常驻通道。 |
+| `inst` | text | 否   | 只暂停这一个实例。与通道互斥，不能同时给。                 |
 
 **最小示例**
 
@@ -450,19 +457,20 @@ say "门开了，曲子从刚才那一句继续。"
 :::caution
 `se` 不参与暂停：一次性触发没有「从原位置继续」这回事，写了 `audio_pause se` 也不动作，不报错。
 
-只对正在播的通道生效。已 `stop` 的通道不会被记成暂停——恢复时它仍然安静，不会突然响起来。
+只对正在播的通道或实例生效。已 `stop` 的不会被记成暂停——恢复时它仍然安静，不会突然响起来。
 
-暂停与恢复成对写。只 `audio_pause` 不 `audio_resume` 会让通道一直挂着，读档回到暂停期间也一样挂着。
+`inst` 与通道二选一：`audio_pause bgm inst=rain` 会被拒绝。暂停与恢复成对写，只 `audio_pause` 不 `audio_resume` 会让目标一直挂着，读档回到暂停期间也一样挂着。
 :::
 
 </OpCard>
 
 ### audio_resume
 
-<OpCard name="audio_resume" summary="让被挂起的通道从原来的位置接着响。" rollback="full" since="0.3.0">
+<OpCard name="audio_resume" summary="让被挂起的通道或实例从原来的位置接着响。" rollback="full" since="0.3.0">
 
 ```text
 audio_resume [通道]
+audio_resume inst=<实例 id>
 ```
 
 **参数**
@@ -470,6 +478,7 @@ audio_resume [通道]
 | 参数   | 类型 | 必填 | 说明                                                           |
 | ------ | ---- | ---- | -------------------------------------------------------------- |
 | `通道` | text | 否   | `bgm` / `ambient` / `voice` 之一；不写则恢复全部被挂起的通道。 |
+| `inst` | text | 否   | 只恢复这一个实例。与通道互斥，不能同时给。                     |
 
 **最小示例**
 
@@ -485,9 +494,49 @@ say "回到现在，曲子从断开的地方续上。"
 :::caution
 恢复是「接着响」而不是「重新播」：同一首曲子不会回到开头，位置、音量、循环都按暂停前那一刻。
 
-没被暂停过的通道不受影响；对已经 `stop` 的通道写 `audio_resume` 不会让它重新响。
+没被暂停过的通道或实例不受影响；对已经 `stop` 的目标写 `audio_resume` 不会让它重新响。
 
-暂停期间若又用 `bgm` / `ambient` / `voice` 起播（换资源或 `restart=true`），那条通道按新的一次起播处理，暂停前的位置不再保留。
+暂停期间若又用 `bgm` / `ambient` / `voice` / `audio_play` 起播（换资源或 `restart=true`），那个目标按新的一次起播处理，暂停前的位置不再保留。
+:::
+
+</OpCard>
+
+### audio_seek
+
+<OpCard name="audio_seek" summary="把正在响的通道或实例定位到指定秒数，不重播、不改音量。" rollback="full" since="0.7.0">
+
+```text
+audio_seek <秒数> inst=<实例 id>
+audio_seek <秒数> channel=<通道>
+```
+
+**参数**
+
+| 参数      | 类型   | 必填   | 说明                                       |
+| --------- | ------ | ------ | ------------------------------------------ |
+| `seconds` | number | 是     | 目标秒数，非负有限数（文本形态位置参数）。 |
+| `inst`    | text   | 二选一 | 目标实例 id。                              |
+| `channel` | text   | 二选一 | 目标通道：`bgm` / `ambient` / `voice`。    |
+
+`inst` 与 `channel` 恰好给一个。`se` 没有定位语义，`channel=se` 不动作。
+
+**最小示例**
+
+```text
+bgm "Audio/theme.ogg"
+say "倒回到副歌前。"
+audio_seek 42 channel=bgm
+say "曲子从第 42 秒接着走，音量没变。"
+```
+
+**常见错误**
+
+:::caution
+定位是「移动播放位置」，不是重播：资源、音量、循环都保持原样，只有位置变了。想要从头重播用 `restart=true` 重发 `bgm` / `audio_play`。
+
+只对正在播（`play`）的目标生效；对已 `stop` 或未起播的目标定位会报错（先起播）。给不存在的实例定位同样报错。
+
+定位后的位置随快照与存档走：回溯或读档回到定位之后，曲子从定位处续播，不会跳回开头。
 :::
 
 </OpCard>

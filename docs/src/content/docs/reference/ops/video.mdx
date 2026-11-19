@@ -20,6 +20,7 @@ import OpCard from "../../../../components/OpCard.astro";
 ```text
 video "Video/op.mp4"
 video "Video/op.mp4" volume=0.8 loop=true
+video "Video/op.mp4" restart
 ```
 
 **参数**
@@ -29,6 +30,7 @@ video "Video/op.mp4" volume=0.8 loop=true
 | `resource` | string  | 必填。相对资源根的路径      |
 | `volume`   | number  | 可选，缺省 1。越界钳到 0..1 |
 | `loop`     | boolean | 可选，缺省 `false`          |
+| `restart`  | boolean | 可选。同资源重写时从头重播  |
 | `z`        | number  | 可选。视频层的实例 z        |
 
 **最小示例**
@@ -45,6 +47,8 @@ stop_video
 `video` **不建立等待点**。它开始播放就立刻往下走，所以后面必须紧跟 `say`、`wait` 之类会停下来的命令，否则故事会在视频刚开始时冲过去。
 
 `loop` 缺省是 `false`——和 `bgm` 的缺省相反。想要循环播必须显式写 `loop=true`。
+
+**同一资源再写一遍默认无缝续播**（和音频族同口径）：序号不变，宿主不重新起播。想从头重播写 `restart`（或换资源），序号加一，宿主据此重播。
 
 播放位置和暂停状态都是宿主的责任。引擎只发命令，不记录「现在播到第几秒」。
 
@@ -66,12 +70,13 @@ cutscene "Video/logo.mp4" skipable=false
 
 **参数**
 
-| 字段       | 类型    | 说明                          |
-| ---------- | ------- | ----------------------------- |
-| `resource` | string  | 必填                          |
-| `volume`   | number  | 可选，缺省 1                  |
-| `skipable` | boolean | 可选。缺省看 `video_skipable` |
-| `z`        | number  | 可选                          |
+| 字段       | 类型    | 说明                                 |
+| ---------- | ------- | ------------------------------------ |
+| `resource` | string  | 必填                                 |
+| `volume`   | number  | 可选，缺省 1                         |
+| `skipable` | boolean | 可选。缺省看 `video_skipable`        |
+| `restart`  | boolean | 可选。过场恒从头起播，此字段不改语义 |
+| `z`        | number  | 可选                                 |
 
 **最小示例**
 
@@ -85,6 +90,8 @@ label chapter_two:
 
 :::caution
 `cutscene` 是等待点，也是检查点。玩家回退会退到过场**之前**——检查点在过场建立那一刻就提交了，重放不会再放一遍。
+
+过场是阻塞呈现：每次调用都从头起播（序号恒递增），即使资源与上一条相同。`restart` 字段被接受但不改这个语义——这和 `video` 的「同资源默认续播」不同。
 
 `skipable` 的判定顺序是：`cutscene` 自己写的参数 > `video_skipable` 设的持久开关 > 缺省可跳。所以 `cutscene skipable=false` 是「这一段必须看完」，跟之前设过什么无关。
 

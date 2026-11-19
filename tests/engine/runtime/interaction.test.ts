@@ -195,7 +195,22 @@ describe("interaction · 故意错误（fail-closed）", () => {
   });
 
   it("非法系统标识（负载级）拒绝且不建立等待", () => {
-    const cases = ["", "Walk", "带中文", "../etc", "1abc"];
+    // 空串在装载期就被拒（system 必填非空）；形态非法的标识由执行器在运行期拒。
+    expect(() =>
+      parseStory({
+        formatVersion: 1,
+        id: "demo",
+        columns: [
+          {
+            id: "s",
+            kind: "flow",
+            commands: [{ op: "interaction", system: "" }],
+          },
+        ],
+      }),
+    ).toThrow("system 必须为非空字符串");
+
+    const cases = ["Walk", "带中文", "../etc", "1abc"];
     for (const system of cases) {
       const engine = new StoryEngine(
         parseStory({

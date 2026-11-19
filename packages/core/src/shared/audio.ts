@@ -60,6 +60,10 @@ function isChannelState(value: unknown): value is AudioChannelState {
     fadeMs >= 0 &&
     (value.autoStop === undefined || typeof value.autoStop === "boolean") &&
     (value.restart === undefined || typeof value.restart === "boolean") &&
+    (value.position === undefined ||
+      (typeof value.position === "number" &&
+        Number.isFinite(value.position) &&
+        value.position >= 0)) &&
     (value.seq === undefined || isOptionalSeq(value.seq))
   );
 }
