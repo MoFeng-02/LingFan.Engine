@@ -15,3 +15,9 @@ export {
   type TauriInvoke,
   type TauriListen,
 } from "./tauri-invoke";
+export {
+  invokeRust,
+  parseRustError,
+  RUST_ERROR_MESSAGES,
+  RustCommandError,
+} from "./rust-error";

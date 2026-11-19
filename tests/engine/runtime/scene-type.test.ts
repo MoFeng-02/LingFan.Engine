@@ -470,13 +470,15 @@ describe("场景类型 · 单一判定点互锁（引擎守卫与编辑器分组
       expect(owners[0], name).toContain("/shared/");
     }
 
-    // 契约层只声明类型：出现函数关键字就说明实现又混回来了
+    // 契约层只声明类型：出现函数关键字就说明实现又混回来了。
+    // 字符串字面量是数据不是实现（如错误码 "unknown-function"），先剥除再扫描，避免误报。
     const contracts = Object.entries(ENGINE_SOURCES).filter(([file]) =>
       file.includes("/contracts/"),
     );
     expect(contracts.length).toBeGreaterThan(0);
     for (const [file, src] of contracts) {
-      expect(src, file).not.toMatch(/\bfunction\b/);
+      const stripped = src.replace(/"[^"]*"|'[^']*'|`[^`]*`/g, '""');
+      expect(stripped, file).not.toMatch(/\bfunction\b/);
     }
   });
 });

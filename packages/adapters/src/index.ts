@@ -77,6 +77,10 @@ export {
 // 字面量说明符让浏览器/小程序构建期解析失败，变量说明符让产物残留裸名、WebView 运行期抛错。
 export {
   installTauriBridge,
+  invokeRust,
+  parseRustError,
+  RUST_ERROR_MESSAGES,
+  RustCommandError,
   TauriBridgeError,
   type TauriBridge,
 } from "./platform";

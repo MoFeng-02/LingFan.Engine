@@ -78,6 +78,11 @@ export const defaultCreateTexts = {
   doneTitle: "工程已生成",
   /** 生成后的三步提示；`<install>` / `<dev>` 由调用方按包管理器替换 */
   nextSteps: ["cd <name>", "<install>", "<dev>"].join("\n"),
+  /** 桌面壳（tauri）生成后的安全口径提示：存档是明文参考实现，交付安全需自带加密层 */
+  shellTauriNotice: [
+    "安全提示：模板桌面壳存档为明文参考实现（不加密、无防回档）。",
+    "交付安全需自带 Rust 加密层；K1–K8 安全全栈见参考宿主 playground。",
+  ].join("\n"),
   /** 非致命提示 */
   warnVersionOffline:
     "无法查询 npm registry 上的最新版本，已沿用模板记录的版本",

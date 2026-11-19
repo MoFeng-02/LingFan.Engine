@@ -12,6 +12,7 @@ import type { ProjectFilesPort } from "@lingfan-engine/core";
 import {
   defaultInvoke,
   defaultListen,
+  invokeRust,
   type TauriInvoke,
   type TauriListen,
 } from "../platform";
@@ -32,7 +33,7 @@ export function createTauriProjectFilesPort(
 ): ProjectFilesPort {
   let loaded: Promise<TauriProjectFiles> | null = null;
   const load = (): Promise<TauriProjectFiles> => {
-    loaded ??= invoke<TauriProjectFiles>("project_files");
+    loaded ??= invokeRust<TauriProjectFiles>(invoke, "project_files");
     return loaded;
   };
   return {
@@ -63,6 +64,6 @@ export async function watchTauriProjectFiles(
   invoke: TauriInvoke = defaultInvoke,
 ): Promise<StoryWatcher> {
   const unlisten = await listen("story-changed", onChange);
-  await invoke("watch_project_files");
+  await invokeRust(invoke, "watch_project_files");
   return { stop: () => void unlisten() };
 }

@@ -48,9 +48,13 @@ function listSourceFiles(root) {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       if (SKIP.has(entry.name)) continue;
       const full = join(dir, entry.name);
+      const rel = relative(root, full).split(sep).join("/");
+      // Tauri 构建生成物（ACL/capability schema 与编译产物）由 cargo 现场生成，
+      // 不是模板源码，不进包；只挡 src-tauri 下的 gen/target，src/gen 注册表照常交付
+      if (entry.isDirectory() && /(^|\/)src-tauri\/(gen|target)$/.test(rel))
+        continue;
       if (entry.isDirectory()) walk(full);
-      else if (entry.isFile())
-        found.push(relative(root, full).split(sep).join("/"));
+      else if (entry.isFile()) found.push(rel);
     }
   };
   walk(root);

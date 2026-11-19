@@ -8,7 +8,7 @@
 ## 内容
 
 - `src-tauri/Cargo.toml`、`build.rs`、`tauri.conf.json`、`capabilities/default.json`
-- `src-tauri/src/`：`main.rs`（转发到库入口）、`lib.rs`（装配与命令注册）、`save.rs`、`preferences.rs`
+- `src-tauri/src/`：`main.rs`（转发到库入口）、`lib.rs`（装配与命令注册）、`save.rs`、`preferences.rs`、`orientation.rs`
 - `package.patch.json`：补 `@tauri-apps/cli`（命令行）与 `tauri` 脚本
 
 窗口 1280×720，标题取工程名；`frontendDist` 指向 `../dist`，开发期 `devUrl` 指向
@@ -20,7 +20,13 @@
 ### 存档换成文件
 
 `save_write` / `save_read` / `save_delete` / `save_list`，一槽一文件落在应用数据目录的 `saves/` 下，
-写临时文件再改名，避免半截 JSON 覆盖好档；槽位名只放行字母数字与 `-` `_`，挡住 `..` 这类逃逸路径。
+写临时文件再改名，避免半截 JSON 覆盖好档；槽位名只放行字母数字与 `-` `_`，长度 1–64，挡住 `..` 这类逃逸路径。
+错误以 `{ code, detail }` 结构化返回（`invalid-slot` / `io` / `bad-format`），前端适配器按码映射可读文案。
+
+**安全口径（显式降格）**：本层存档是**明文 JSON 参考实现**——不加密、无防回档高水位、不加密资源。
+K1–K8 安全全栈（密钥托管 / 每档独立密钥 / 槽位绑定 / 高水位防回档等）只在参考宿主 playground 实现；
+需要交付安全的工程必须自带 Rust 加密层，不要把本层存档当作安全实现。明文不等于无校验：
+槽位校验、原子写、结构化错误照常执行。
 
 为什么换：WebView 的 `localStorage` 落在系统给这个应用分配的 WebView 数据目录里，清缓存、换系统账户、
 重装都会带走存档；桌面工程的存档应当是可指路径上的文件。
@@ -47,6 +53,27 @@
 本层不带。要加密或媒体服务的工程自己加：能力以端口 + 适配器成对出现，
 壳层只负责把端口接到原生侧（插口是 `bootHost` 的 `ports` 选项，
 现有的原生存档端口见骨架 `src/host/native-ports.ts`）。
+
+## 安全口径
+
+### CSP
+
+`tauri.conf.json` 的 `app.security.csp` 设为最小权限策略，逐条理由：
+
+- `script-src 'self'`：只放行本应用构建产物里的脚本。构建产物是预编译的，不需要 `unsafe-eval`；
+  Tauri 会自动为它注入的 IPC 脚本补 nonce/hash，无需手工放行。
+- `style-src 'self' 'unsafe-inline'`：引擎运行期会给元素写内联样式（位置 / 层级 / 过渡），
+  必须放行内联样式；这只影响样式边界，不放开脚本。
+- `connect-src 'self' ipc: http://ipc.localhost`：同源请求（工程文件 / 故事数据）加 Tauri IPC 的两种形态。
+- `img-src` / `media-src` / `font-src`：同源加 `data:`（存档缩略图、内嵌字体）与 `blob:`（媒体对象 URL）。
+- `object-src 'none'`、`base-uri 'self'`：关掉插件对象与 base 标签劫持。
+
+### Isolation 模式：不启用
+
+Tauri 的 Isolation Pattern 在前端与 IPC 之间加一层隔离 iframe，代价是多一层消息往返与构建复杂度。
+本层命令面最小（存档 / 偏好 / 屏幕方向），页面不加载第三方不可信内容，
+`capabilities/default.json` 只授 `core:default`，CSP 已锁死外联——启用 Isolation 的边际收益低，
+故不启用；接入自带安全层或引入不可信内容时再评估。
 
 ## 怎么用
 

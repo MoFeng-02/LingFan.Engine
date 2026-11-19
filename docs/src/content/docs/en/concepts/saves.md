@@ -110,6 +110,8 @@ So the question "is a save safe" is answered at the platform layer:
 
 To distribute saves across machines, switching `mode` to `portable` is not enough — the port implementation also has to actually produce machine-independent ciphertext. On the engine side that one parameter is all it takes; the rest is the platform layer.
 
+One more posture to state plainly: **the desktop shell that ships with the scaffold template stores saves as plaintext JSON — a reference implementation**. No encryption, no anti-rollback high-water mark, and resources are not encrypted either. The full security stack described above (keys in the platform layer, anti-rollback in the platform layer — the security spec's K1–K8) is implemented only in the reference host, playground. A project generated from the scaffold that needs to ship secure must bring its own Rust encryption layer, or wait for the security stack to be crate-ified and wire it in. Plaintext does not mean unvalidated: slot names are still checked against the 1–64 alphanumeric rule, and an illegal name is refused with state left untouched.
+
 ## Loading
 
 ```ts

@@ -7,7 +7,7 @@
  * 协议段与路径编码归 Rust（平台差异不落前端），前端只做路径规范化与负载校验。
  */
 import type { ResourcePort } from "@lingfan-engine/core";
-import { defaultInvoke, type TauriInvoke } from "../platform";
+import { defaultInvoke, invokeRust, type TauriInvoke } from "../platform";
 import { normalizeResourceId } from "./resourcePort";
 
 /** Rust `resource_url` 返回形状：明文资源的自定义协议 URL */
@@ -27,7 +27,7 @@ export function createTauriResourcePort(
   return {
     async resolve(id: string): Promise<string> {
       const path = normalizeResourceId(id);
-      const raw = await invoke<string>("resource_url", { path });
+      const raw = await invokeRust<string>(invoke, "resource_url", { path });
       let payload: UrlPayload;
       try {
         payload = JSON.parse(raw) as UrlPayload;

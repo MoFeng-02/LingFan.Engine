@@ -3,6 +3,7 @@
  * 实现按用途分文件，消费方只从这里取。
  */
 export * from "./audio.ts";
+export * from "./errors.ts";
 export * from "./guards.ts";
 export * from "./json.ts";
 export * from "./mounts.ts";

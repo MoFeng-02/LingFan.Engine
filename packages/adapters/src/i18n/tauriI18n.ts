@@ -6,7 +6,7 @@
  * listLanguages = Rust `list_i18n_languages`。
  */
 import type { I18nOverlayFile, I18nPort } from "@lingfan-engine/core";
-import { defaultInvoke, type TauriInvoke } from "../platform";
+import { defaultInvoke, invokeRust, type TauriInvoke } from "../platform";
 
 /** Rust `load_i18n_overlay` 命令负载：overlay 内相对路径 → 原文→译文映射 */
 export interface TauriOverlayFile {
@@ -24,13 +24,15 @@ export function createTauriI18nPort(
 ): I18nPort {
   return {
     async loadOverlayFiles(lang: string): Promise<I18nOverlayFile[]> {
-      const files = await invoke<TauriOverlayFile[]>("load_i18n_overlay", {
-        lang,
-      });
+      const files = await invokeRust<TauriOverlayFile[]>(
+        invoke,
+        "load_i18n_overlay",
+        { lang },
+      );
       return files.map((f) => ({ path: f.path, entries: { ...f.entries } }));
     },
     async listLanguages(): Promise<string[]> {
-      return invoke<string[]>("list_i18n_languages");
+      return invokeRust<string[]>(invoke, "list_i18n_languages");
     },
   };
 }

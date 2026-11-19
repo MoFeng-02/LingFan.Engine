@@ -5,7 +5,7 @@
  * invoke 可注入（缺省取 Tauri 桥接域的缺省实现）：测试以契约替身注入。
  */
 import type { PlayerPrefsData, PreferencesPort } from "@lingfan-engine/core";
-import { defaultInvoke, type TauriInvoke } from "../platform";
+import { defaultInvoke, invokeRust, type TauriInvoke } from "../platform";
 
 /**
  * 造一个偏好端口（桌面/移动原生）：读调 Rust `preferences_read`，写调 `preferences_write`
@@ -17,10 +17,15 @@ export function createTauriPreferencesPort(
 ): PreferencesPort {
   return {
     async load(): Promise<PlayerPrefsData | null> {
-      return (await invoke<PlayerPrefsData | null>("preferences_read")) ?? null;
+      return (
+        (await invokeRust<PlayerPrefsData | null>(
+          invoke,
+          "preferences_read",
+        )) ?? null
+      );
     },
     async save(data: PlayerPrefsData): Promise<void> {
-      await invoke("preferences_write", { prefs: data });
+      await invokeRust(invoke, "preferences_write", { prefs: data });
     },
   };
 }

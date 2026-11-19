@@ -25,7 +25,7 @@ import {
   type ProjectWriteReport,
   type ProjectWriterPort,
 } from "@lingfan-engine/core";
-import { defaultInvoke, type TauriInvoke } from "../platform";
+import { defaultInvoke, invokeRust, type TauriInvoke } from "../platform";
 
 /** 原生写回端口的装配参数（测试可注入 invoke 替身，不连 Tauri 运行时） */
 export interface TauriProjectWriterOptions {
@@ -64,7 +64,7 @@ async function readStamps(
   root: string,
   paths: readonly string[],
 ): Promise<Map<string, FileStamp>> {
-  const payload = (await invoke("stamp_project_files", {
+  const payload = (await invokeRust(invoke, "stamp_project_files", {
     root,
     paths: [...paths],
   })) as unknown;
@@ -117,7 +117,7 @@ export async function createTauriProjectWriter(
         throw new Error(conflictMessage(conflicted));
       }
       const payload = normalizeReport(
-        await invoke("apply_project_files", {
+        await invokeRust(invoke, "apply_project_files", {
           root,
           changes: [...changes].map(([path, text]) => ({ path, text })),
           deletes: [...deletes],

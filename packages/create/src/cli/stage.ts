@@ -93,17 +93,20 @@ export async function runStage(options: StageOptions): Promise<number> {
     if (!installed) process.stderr.write(`${texts.warnInstallFailed}\n`);
   }
 
-  process.stdout.write(
-    [
-      "",
-      `${texts.doneTitle}：${result.projectDir}`,
-      `共 ${result.fileCount} 个文件，框架 ${result.framework}，壳 ${result.shell}，故事源 ${result.sources}`,
-      "",
-      installed ? "依赖已安装。" : "依赖未安装。",
-      renderNextSteps(result.projectDir, manager, texts),
-      "",
-    ].join("\n"),
-  );
+  const lines = [
+    "",
+    `${texts.doneTitle}：${result.projectDir}`,
+    `共 ${result.fileCount} 个文件，框架 ${result.framework}，壳 ${result.shell}，故事源 ${result.sources}`,
+    "",
+    installed ? "依赖已安装。" : "依赖未安装。",
+    renderNextSteps(result.projectDir, manager, texts),
+  ];
+  // 桌面壳存档是明文参考实现，生成后必须把安全口径讲清楚，避免被当作安全实现交付
+  if (result.shell === "tauri") {
+    lines.push("", texts.shellTauriNotice);
+  }
+  lines.push("");
+  process.stdout.write(lines.join("\n"));
   return 0;
 }
 

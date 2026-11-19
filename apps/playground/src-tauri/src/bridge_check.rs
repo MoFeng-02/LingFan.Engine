@@ -13,9 +13,13 @@
 //!    插件不得回流」（该插件已退役；其 Rust 契约与 Kotlin 实现成对演进，两侧失配无编译期信号）
 //! 6. iOS 方向落地的 objc2 契约（选择器名 / UIKit 掩码常量 / 平台直调不回流插件）——
 //!    iOS cfg 分支在本机（Windows）不参与编译，源断言是当前唯一能自动检查它的手段
+//! 7. 错误码互锁：Rust 结构化错误（serde tag="code"）的每个错误码必须被 TS 消费——
+//!    既在契约层错误码目录内，也在适配器「错误码→可读文案」映射表内（本 crate 全部
+//!    错误枚举 + 模板壳存档错误）；错误码过边界不被消费会蒸发成字符串，分支不可区分
 //!
 //! TS 侧编组行为已由契约替身测试覆盖（tests/adapters/**），本模块只补跨边界字符串契约；
-//! 局限注明：invoke 泛型提取不支持嵌套尖括号（当前代码库无此形态）。
+//! 局限注明：invoke 泛型提取不支持嵌套尖括号（当前代码库无此形态）；
+//! `invokeRust(invoke, "cmd")` 包装形态与裸 invoke 一并识别（命令名在第二实参）。
 
 #[cfg(test)]
 mod tests {
@@ -75,6 +79,11 @@ mod tests {
                     continue;
                 }
                 if path.extension().and_then(|e| e.to_str()) == Some("rs") {
+                    // 本文件是纯测试代码：搜索字面量与合成样本不属于命令/错误面，
+                    // 纳入会让互锁扫描自匹配（提取器把自己的 needle 当成真实枚举）
+                    if path.file_name().and_then(|n| n.to_str()) == Some("bridge_check.rs") {
+                        continue;
+                    }
                     out.push(path);
                 }
             }
@@ -88,7 +97,8 @@ mod tests {
         out
     }
 
-    /// src/**/*.rs 全文拼接（命令签名检索；bridge_check.rs 自身无命令定义）
+    /// src/**/*.rs 全文拼接（命令签名/错误枚举检索；bridge_check.rs 自身被排除，
+    /// 它的搜索字面量与合成样本不是真实契约面）
     fn rust_sources_text() -> String {
         let mut out = String::new();
         for path in rust_source_paths() {
@@ -100,12 +110,18 @@ mod tests {
         out
     }
 
-    /// 提取 TS `invoke<...>("cmd")` / `invoke("cmd")` 的命令名（泛型不含嵌套尖括号）
+    /// 提取 TS `invoke<...>("cmd")` / `invoke("cmd")` / `invokeRust(invoke, "cmd")`
+    /// 的命令名（泛型不含嵌套尖括号；包装形态的命令名在第二实参）
     fn ts_invoke_commands(ts_text: &str) -> BTreeSet<String> {
         let mut found = BTreeSet::new();
         let mut rest = ts_text;
         while let Some(pos) = rest.find("invoke") {
             rest = &rest[pos + "invoke".len()..];
+            // invokeRust 包装：第一实参是 invoke 函数本身，命令名在其后
+            let wrapped = rest.starts_with("Rust");
+            if wrapped {
+                rest = &rest["Rust".len()..];
+            }
             let after_generic = if rest.starts_with('<') {
                 match rest.find('>') {
                     Some(end) => &rest[end + 1..],
@@ -118,7 +134,14 @@ mod tests {
             if !after_paren.starts_with('(') {
                 continue; // `invoke:` 参数默认值等非调用形态
             }
-            let head = after_paren[1..].trim_start();
+            let mut head = after_paren[1..].trim_start();
+            if wrapped {
+                // 跳过第一实参（invoke 引用）到逗号
+                match head.find(',') {
+                    Some(comma) => head = head[comma + 1..].trim_start(),
+                    None => continue,
+                }
+            }
             if let Some(name) = head.strip_prefix('"') {
                 if let Some(end) = name.find('"') {
                     found.insert(name[..end].to_string());
@@ -315,24 +338,245 @@ mod tests {
         );
     }
 
+    /// 提取 Rust 结构化错误枚举（serde tag="code"）的全部错误码。
+    /// 守卫：每个 variant 必须带 `#[serde(rename = "...")]`，variant 数与 rename 数
+    /// 必须相等——新增 variant 漏写 rename 时序列化码名会漂移，必须在此暴露而非静默漏检。
+    fn error_enum_codes(rust_text: &str) -> BTreeSet<String> {
+        let mut codes = BTreeSet::new();
+        let mut rest = rust_text;
+        while let Some(pos) = rest.find("#[serde(tag = \"code\"") {
+            rest = &rest[pos..];
+            let open = rest.find('{').expect("错误枚举体未找到");
+            // 花括号深度计数到枚举体闭合（struct variant 的内层花括号一并计入）
+            let mut depth = 0usize;
+            let mut end = None;
+            for (i, c) in rest[open..].char_indices() {
+                match c {
+                    '{' => depth += 1,
+                    '}' => {
+                        depth -= 1;
+                        if depth == 0 {
+                            end = Some(open + i);
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            let end = end.expect("错误枚举体花括号未闭合");
+            let body = &rest[open + 1..end];
+            // variant 行 = 恰 4 空格缩进 + 大写开头标识符（字段/属性/注释缩进更深或以符号开头）
+            let variants = body
+                .lines()
+                .filter(|line| {
+                    let t = line.trim_start();
+                    line.starts_with("    ")
+                        && !line.starts_with("     ")
+                        && t.chars().next().map(|c| c.is_ascii_uppercase()).unwrap_or(false)
+                })
+                .count();
+            let mut renames = 0usize;
+            let mut scan = body;
+            while let Some(rpos) = scan.find("rename = \"") {
+                scan = &scan[rpos + "rename = \"".len()..];
+                if let Some(qend) = scan.find('"') {
+                    codes.insert(scan[..qend].to_string());
+                    renames += 1;
+                }
+            }
+            assert!(
+                variants > 0 && variants == renames,
+                "错误枚举 variant 数（{variants}）与 serde rename 数（{renames}）不一致：\
+                 新增 variant 漏写 rename 会让错误码静默漂移"
+            );
+            rest = &rest[end + 1..];
+        }
+        codes
+    }
+
+    /// TS 错误码目录（ENGINE_ERROR_CODES 数组）→ 码集合（跳过注释行）
+    fn ts_catalog_codes(ts_text: &str) -> BTreeSet<String> {
+        let start = ts_text
+            .find("const ENGINE_ERROR_CODES")
+            .expect("TS 错误码目录 ENGINE_ERROR_CODES 缺失");
+        let after = &ts_text[start..];
+        let open = after.find('[').expect("错误码目录数组未找到");
+        let close = after.find("] as const").expect("错误码目录数组未闭合");
+        let mut codes = BTreeSet::new();
+        for line in after[open..close].lines() {
+            let t = line.trim();
+            if t.starts_with("//") {
+                continue;
+            }
+            let mut scan = t;
+            while let Some(q) = scan.find('"') {
+                scan = &scan[q + 1..];
+                if let Some(end) = scan.find('"') {
+                    let code = &scan[..end];
+                    if !code.is_empty()
+                        && code.chars().all(|c| {
+                            c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_'
+                        })
+                    {
+                        codes.insert(code.to_string());
+                    }
+                    scan = &scan[end..];
+                }
+            }
+        }
+        codes
+    }
+
+    /// 适配器「错误码→可读文案」映射表（RUST_ERROR_MESSAGES）→ 键集合
+    fn ts_mapping_keys(ts_text: &str) -> BTreeSet<String> {
+        let start = ts_text
+            .find("const RUST_ERROR_MESSAGES")
+            .expect("适配器错误码映射表 RUST_ERROR_MESSAGES 缺失");
+        let after = &ts_text[start..];
+        let open = after.find('{').expect("映射表对象未找到");
+        let close = after.find("} as const").expect("映射表对象未闭合");
+        after[open + 1..close]
+            .lines()
+            .filter_map(|line| {
+                let t = line.trim();
+                if t.is_empty() || t.starts_with("//") || t.starts_with('*') || t.starts_with("/*")
+                {
+                    return None;
+                }
+                let key = t.split(':').next()?.trim().trim_matches('"');
+                (!key.is_empty()).then(|| key.to_string())
+            })
+            .collect()
+    }
+
+    /// 规则 ⑦检测核心：Rust 错误码 −（目录 ∩ 映射表）= 未被 TS 消费的错误码
+    fn unconsumed_error_codes(
+        rust_codes: &BTreeSet<String>,
+        catalog: &BTreeSet<String>,
+        mapping: &BTreeSet<String>,
+    ) -> Vec<String> {
+        rust_codes
+            .iter()
+            .filter(|code| !catalog.contains(*code) || !mapping.contains(*code))
+            .cloned()
+            .collect()
+    }
+
+    #[test]
+    fn rust_error_codes_are_consumed_by_ts() {
+        // 规则 ⑦：Rust 结构化错误码必须被 TS 消费——既在契约层错误码目录内，
+        // 也在适配器「错误码→可读文案」映射表内。覆盖本 crate 全部错误枚举 +
+        // 模板壳存档错误（模板是独立 crate，读源码做跨 crate 互锁）。
+        let mut rust_codes = error_enum_codes(&rust_sources_text());
+        let template_save = crate_dir()
+            .join("../../../template/v1/overlays/tauri/src-tauri/src/save.rs");
+        let template_text = fs::read_to_string(&template_save)
+            .unwrap_or_else(|e| panic!("读 {} 失败：{e}", template_save.display()));
+        rust_codes.extend(error_enum_codes(&template_text));
+        assert!(
+            rust_codes.len() >= 25,
+            "错误码提取疑似失效（仅 {} 个：{rust_codes:?}）——枚举形态变更需同步本测试",
+            rust_codes.len()
+        );
+
+        let errors_ts = fs::read_to_string(
+            crate_dir().join("../../../packages/core/src/contracts/runtime/errors.ts"),
+        )
+        .expect("读 contracts/runtime/errors.ts");
+        let rust_error_ts = fs::read_to_string(
+            crate_dir().join("../../../packages/adapters/src/platform/rust-error.ts"),
+        )
+        .expect("读 adapters platform/rust-error.ts");
+        let catalog = ts_catalog_codes(&errors_ts);
+        let mapping = ts_mapping_keys(&rust_error_ts);
+        assert!(
+            catalog.len() >= 200,
+            "错误码目录提取疑似失效（仅 {} 个）",
+            catalog.len()
+        );
+        assert!(
+            mapping.len() >= 25,
+            "映射表提取疑似失效（仅 {} 个）",
+            mapping.len()
+        );
+
+        let unconsumed = unconsumed_error_codes(&rust_codes, &catalog, &mapping);
+        assert!(
+            unconsumed.is_empty(),
+            "Rust 错误码未被 TS 消费（缺目录或缺映射表）：{unconsumed:?}"
+        );
+    }
+
+    #[test]
+    fn bridge_check_catches_unconsumed_error_codes() {
+        // 规则 ⑦的反向用例（合成输入）：缺目录码 / 缺映射键都必须被检出；
+        // 真实源面的持续覆盖由 rust_error_codes_are_consumed_by_ts 提供
+        let rust = r#"#[serde(tag = "code", content = "detail")]
+pub enum DemoError {
+    #[serde(rename = "known-code")]
+    Known(String),
+    #[serde(rename = "ghost-code")]
+    Ghost(String),
+}
+"#;
+        let codes = error_enum_codes(rust);
+        assert!(codes.contains("known-code") && codes.contains("ghost-code"));
+
+        let catalog_ts = "export const ENGINE_ERROR_CODES = [\n  \"known-code\",\n] as const;";
+        let catalog = ts_catalog_codes(catalog_ts);
+        let mapping_ts =
+            "const RUST_ERROR_MESSAGES = {\n  \"known-code\": \"已知\",\n} as const satisfies X;";
+        let mapping = ts_mapping_keys(mapping_ts);
+        // ghost-code 缺目录也缺映射 → 精确命中
+        assert_eq!(
+            unconsumed_error_codes(&codes, &catalog, &mapping),
+            vec!["ghost-code".to_string()]
+        );
+        // 目录齐全但映射缺键 → 同样命中（文案消费也是互锁的一半）
+        let full_catalog: BTreeSet<String> =
+            ["known-code".to_string(), "ghost-code".to_string()].into_iter().collect();
+        assert_eq!(
+            unconsumed_error_codes(&codes, &full_catalog, &mapping),
+            vec!["ghost-code".to_string()]
+        );
+
+        // variant 漏写 rename → 提取守卫必须报错（防静默漏检）
+        let bad = r#"#[serde(tag = "code")]
+pub enum BadError {
+    #[serde(rename = "x")]
+    X(String),
+    Y(String),
+}
+"#;
+        let guarded = std::panic::catch_unwind(|| error_enum_codes(bad));
+        assert!(guarded.is_err(), "variant 缺 rename 应被提取守卫暴露");
+    }
+
     #[test]
     fn bridge_check_catches_unregistered_and_bodyless() {
         // 互锁检测逻辑自身的反向用例（合成输入）——
         // 「新增命令漏注册」「注册缺真身」必须被检出；真实源面的持续覆盖由上方两测试提供
         let ts = r#"const x = await invoke<string>("ghost_cmd");
-const y = await invoke("real_cmd", { foo: 1 });"#;
+const y = await invoke("real_cmd", { foo: 1 });
+const z = await invokeRust(invoke, "wrapped_cmd", { foo: 1 });"#;
         let lib = r#"
         .invoke_handler(tauri::generate_handler![
             real_cmd,
             other_cmd,
+            wrapped_cmd,
         ])
 "#;
         // 规则 ①：TS 调用面含 ghost_cmd，注册面没有 → 未注册差集精确命中
+        // （invokeRust 包装形态与裸 invoke 一并提取）
         let (used, unregistered) = unregistered_ts_commands(&[ts.to_string()], lib);
-        assert!(used.contains("ghost_cmd") && used.contains("real_cmd"));
+        assert!(
+            used.contains("ghost_cmd")
+                && used.contains("real_cmd")
+                && used.contains("wrapped_cmd")
+        );
         assert_eq!(unregistered, vec!["ghost_cmd".to_string()]);
         // 规则 ②：other_cmd 已注册但源码无 pub fn 真身 → 缺真身差集精确命中
-        let rust = "pub fn real_cmd() {}";
+        let rust = "pub fn real_cmd() {} pub fn wrapped_cmd() {}";
         let missing = missing_command_bodies(rust, lib);
         assert_eq!(missing, vec!["other_cmd".to_string()]);
     }

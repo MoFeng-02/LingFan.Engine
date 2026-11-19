@@ -51,6 +51,10 @@ function listFiles(root: string): Map<string, Buffer> {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const rel = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
       const full = join(dir, entry.name);
+      // Tauri 构建生成物（cargo 现场生成的 ACL schema / 编译产物）不是模板源码，
+      // 同步脚本按同位规则把它们挡在包外；这里同样排除，两棵树才比的是同一份源码
+      if (entry.isDirectory() && /(^|\/)src-tauri\/(gen|target)$/.test(rel))
+        continue;
       if (entry.isDirectory()) walk(full, rel);
       else if (entry.isFile()) out.set(rel, readFileSync(full));
     }
