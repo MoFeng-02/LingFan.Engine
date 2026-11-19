@@ -37,6 +37,14 @@ export function start(ctx: OpContext): void {
     return;
   }
   ctx.started = true;
+  // 历史容量非法降级的诊断（装配期备好串）：start 时如实发出，宿主据此修正工程配置
+  if (ctx.historyLimitNotice !== null) {
+    ctx.emitEvent({
+      kind: "engine.error",
+      code: "history-limit-invalid",
+      message: ctx.historyLimitNotice,
+    });
+  }
   // NVL 模式从 start 起恒有定义（静默初始化——事件流只承载离散变化）
   ctx.state.set(SYS.nvlMode, "none");
   // 当前语言从 start 起恒有定义（空串 = 默认语言/原文直出）

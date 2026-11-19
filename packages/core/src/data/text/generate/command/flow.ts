@@ -52,6 +52,12 @@ export function generateFlowCommand(
     case "continue":
       out.push(`${pad}continue`);
       return;
+    case "block_rollback":
+      out.push(`${pad}block_rollback`);
+      return;
+    case "fix_rollback":
+      out.push(`${pad}fix_rollback`);
+      return;
     case "minigame": {
       // reward 键值数组以字典字面量投影（键序 = 条目序，与解析端 Object.entries 对称）
       let line = `${pad}minigame ${quoteForText(cmd.game as string)}`;

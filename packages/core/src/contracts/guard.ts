@@ -16,6 +16,15 @@ import type { EngineTexts } from "./messages.ts";
 export interface EngineOptions {
   /** 历史容量上限（默认 200），超限淘汰最旧 */
   historyLimit?: number;
+  /**
+   * 回退总开关（缺省 true = 可回溯，现行为不变）。
+   *
+   * false = 不可回溯叙事：`back()`/`forward()`/`rollbackTo()` 一律 fail-closed 拒绝
+   * （状态原样），检查点不再建立（历史不增长）。**存读档照常**——存档记的是「故事
+   * 进行到哪」，与「能否往回走」是两件事；关闭回退不改回溯语义，只是把这条路关上。
+   * op 级临时锁定另见 `SYS.rollbackLocked`（block_rollback / fix_rollback）。
+   */
+  rollbackEnabled?: boolean;
   /** 确定性随机：初始 rng 种子（缺省按当前时间） */
   rngSeed?: number;
   /** 存档编排端口（save/load/auto_save/save_delete 等 op 与命令面 save/load 的依赖；缺省 = 存档类 op fail-closed） */

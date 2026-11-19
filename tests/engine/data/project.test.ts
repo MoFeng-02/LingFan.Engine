@@ -216,6 +216,24 @@ describe("assembleProject", () => {
     }
   });
 
+  it("清单 shell.historyLimit：正整数接受，非法值整次拒绝（fail-closed）", () => {
+    const files = new Map([["Stories/start.json", singleColumn("start")]]);
+    for (const historyLimit of [1, 50, 200]) {
+      const story = assembleProject(
+        { ...manifest, shell: { historyLimit } },
+        new Map([["Stories/start.json", singleColumn("start")]]),
+      );
+      expect(story.entry).toBe("start");
+    }
+    for (const bad of [0, -3, 1.5, NaN, Infinity, "50", null]) {
+      expect(
+        issuesOf(() =>
+          assembleProject({ ...manifest, shell: { historyLimit: bad } }, files),
+        ).join("\\n"),
+      ).toMatch(/shell\.historyLimit/);
+    }
+  });
+
   it("坏文件整批拒绝且带文件定位", () => {
     const files = new Map<string, unknown>([
       ["Stories/bad.json", { formatVersion: 2 }],

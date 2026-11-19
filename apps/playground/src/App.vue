@@ -283,6 +283,13 @@ const { onStart, onEnterColumn, onContinue, togglePause, restart } = life;
 const { onResume, onSave, onLoad, onHome, onStageClickInGame } = life;
 const { refreshResumeSlot, teardown } = life;
 const { browsingSaves, resumeViews, toggleSaves, onPickSave } = life;
+// 回退可用性读引擎唯一读面（工程总开关 × op 级锁定）；借叙事态的响应式触发重算，
+// 锁定/解锁随 op 即时反映到历史块按钮——控件不另算一份，引擎 back/forward/rollbackTo 自身也 fail-closed
+const rollbackAvailable = computed(() => {
+  void shownText.value;
+  void canAdvance.value;
+  return engine.rollbackAvailable();
+});
 // 会话就绪后接上「继续」槽位摘要的刷新落点：此后写档成功才会点到新增的档
 resumeSlotSink.apply = refreshResumeSlot;
 
@@ -314,6 +321,8 @@ function onKeydown(e: KeyboardEvent): void {
  *  仅在游戏域生效——面板/控件内的滚动归控件自己消费，不触发游戏回溯 */
 function onWheel(event: WheelEvent): void {
   if (!routesToNarrative(inputScope.current(), event.target)) return;
+  // 回退控件守卫：工程关闭回退或 op 级锁定时滚轮不回退（读引擎唯一读面）
+  if (!engine.rollbackAvailable()) return;
   if (event.deltaY < 0) engine.back();
   else if (event.deltaY > 0) engine.forward();
 }
@@ -455,6 +464,7 @@ onUnmounted(() => {
           :layer-z="layerZ"
           :show-history="showHistory"
           :history-blocks="historyBlocks"
+          :rollback-available="rollbackAvailable"
           :show-prefs="showPrefs"
           :prefs-view="prefsView"
           :pref-channels="PREF_CHANNELS"

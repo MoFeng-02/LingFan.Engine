@@ -66,6 +66,7 @@ export {
   execSaveOp,
 } from "./save.ts";
 export { execMount } from "./ui.ts";
+export { execRollbackLock } from "./rollback.ts";
 export {
   abortInteraction,
   execInput,

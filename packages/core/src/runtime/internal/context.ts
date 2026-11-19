@@ -115,6 +115,10 @@ export interface OpContext {
   /** 光标：时间线上最后归档的检查点位置（回溯后落后于末尾） */
   cursor: number;
   readonly historyLimit: number;
+  /** 回退总开关（装配期定死；false = back/forward/rollbackTo 拒绝且不建检查点） */
+  readonly rollbackEnabled: boolean;
+  /** 历史容量非法降级的诊断串（null = 无需诊断）；start 时经 engine.error 如实发出 */
+  readonly historyLimitNotice: string | null;
   /** 当前 live 画面是否已入档（menu/wait/input 展示中为真；say 刚上屏为假） */
   liveCheckpointed: boolean;
   /** 重放期标记 */

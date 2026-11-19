@@ -17,6 +17,7 @@ import {
   StoryEngine,
   manifestOrientation,
   resolveAudioConfig,
+  resolveHistoryLimit,
   resolveLayerZ,
   resolveStageConfig,
   videoFitOf,
@@ -359,7 +360,8 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
   const minigames = createMinigameRegistry();
   registerTemplateMinigames(minigames);
   const engine = new StoryEngine(story, {
-    historyLimit: 200,
+    // 作者级历史容量（shell.historyLimit）；缺声明交引擎内建默认 200，非法值组装期已拒。
+    historyLimit: resolveHistoryLimit(manifest),
     savePort,
     i18nPort,
     audioConfig: resolveAudioConfig(manifest),

@@ -68,6 +68,8 @@ export function parseSimpleStatement(
     case "return":
     case "break":
     case "continue":
+    case "block_rollback":
+    case "fix_rollback":
     case "minigame":
     case "character":
     case "uncharacter":

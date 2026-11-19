@@ -29,6 +29,7 @@ export {
   LAYER_IDS,
   manifestOrientation,
   resolveAudioConfig,
+  resolveHistoryLimit,
   resolveInstanceZ,
   resolveLayerZ,
   resolveOrientationMode,

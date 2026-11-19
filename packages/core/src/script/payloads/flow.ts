@@ -140,4 +140,7 @@ export interface FlowPayloadMap {
   /** 空负载：CommandOf 特判产 { op: K }，不收任何字段 */
   break: EmptyOpPayload;
   continue: EmptyOpPayload;
+  /** 回退控制：op 级临时锁定/解锁回退，无参数（写 SYS.rollbackLocked） */
+  block_rollback: EmptyOpPayload;
+  fix_rollback: EmptyOpPayload;
 }

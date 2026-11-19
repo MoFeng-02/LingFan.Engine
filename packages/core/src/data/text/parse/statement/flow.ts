@@ -48,6 +48,10 @@ export function parseFlowStatement(c: StatementContext): StoryCommand | null {
       return { op: "break" } as StoryCommand;
     case "continue":
       return { op: "continue" } as StoryCommand;
+    case "block_rollback":
+      return { op: "block_rollback" } as StoryCommand;
+    case "fix_rollback":
+      return { op: "fix_rollback" } as StoryCommand;
     case "minigame": {
       // `minigame "game" [on_success "col"] [on_fail "col"] [config {…}] [reward {…}]`
       // reward 键值数组以字典字面量投影（键序即条目序）；config 值为标量/{expr} 字面量

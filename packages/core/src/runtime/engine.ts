@@ -141,6 +141,8 @@ export class StoryEngine extends EngineForwarders {
       this.restore,
       this.autoSaveAtCheckpoint,
       this.historyLimit,
+      this.rollbackEnabled,
+      this.historyLimitNotice,
       this.history,
       this.cursor,
       this.liveCheckpointed,
@@ -442,6 +444,14 @@ export class StoryEngine extends EngineForwarders {
   /** 历史前进一格；已到末尾或分岔后前向被截断时 fail-closed 报 no-forward */
   forward(): void {
     forward(this.ctx);
+  }
+  /**
+   * 当前是否允许回退（宿主回退控件的唯一读面）：工程总开关 rollbackEnabled 打开，
+   * 且未被 op 级临时锁定（SYS.rollbackLocked）。宿主据此隐藏/禁用回退入口与滚轮回退，
+   * 不另算一份；引擎 back/forward/rollbackTo 自身也 fail-closed 拒，二者同源。
+   */
+  rollbackAvailable(): boolean {
+    return this.rollbackEnabled && this.get(SYS.rollbackLocked) !== true;
   }
   /** 热重载：原子替换故事定义，后续推进基于新定义 */
   reloadStory(story: Story): void {

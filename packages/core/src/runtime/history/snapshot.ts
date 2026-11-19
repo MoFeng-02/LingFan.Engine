@@ -100,6 +100,9 @@ export function restore(ctx: OpContext, cp: Checkpoint): void {
  * 的列（menu/ui）**不建检查点**——菜单/弹窗是「覆盖」，不是玩家经历的一步。
  */
 export function commitCheckpoint(ctx: OpContext, cp: Checkpoint): void {
+  // 不可回溯形态不建检查点（历史不增长）——关闭回退即关掉这条路的存档点，
+  // 与「菜单/界面是覆盖层不构成一步」同口径；存读档走 autoSaveAtCheckpoint，不受影响。
+  if (!ctx.rollbackEnabled) return;
   // 非 game 场景不进历史（menu/ui 是覆盖层，不构成可回溯的一步）
   if (!ctx.isCurrentColumnReplayable()) return;
   const current = ctx.history[ctx.cursor];

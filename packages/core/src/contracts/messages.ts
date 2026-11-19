@@ -20,6 +20,8 @@ export interface EngineTexts {
   i18nLoadFailed(lang: string, error: string): string;
   /** 循环迭代超上限，已中断（防死循环安全网） */
   loopLimitExceeded(limit: number): string;
+  /** 历史容量上限非法（NaN/非正整数），已降级到内建默认（装配期诊断） */
+  historyLimitInvalid(value: string): string;
   /** 自动存档写入失败（auto 槽） */
   autoSaveWriteFailed(error: string): string;
   /** 当前不在等待点，无法存档 */
@@ -34,6 +36,8 @@ export interface EngineTexts {
   saveMigrateFailed(saveVersion: number, currentVersion: number): string;
   /** 存档状态已迁移（load.notice 通知串） */
   saveMigrated(from: number, to: number): string;
+  /** 旧档历史检查点无法迁移，已截断（load.notice 诚实告知；存读档本身照常） */
+  saveHistoryTruncated(count: number): string;
   /** 存档格式版本不支持（tryMigrateSave 的可操作拒绝） */
   saveFormatVersionUnsupported(fromVersion: string): string;
   /** 存档格式迁移成功（load.notice 通知串） */
@@ -90,6 +94,8 @@ export const defaultEngineTexts: EngineTexts = {
     `载入 ${lang} 译文 overlay 失败（保持原语言）：${error}`,
   loopLimitExceeded: (limit) =>
     `循环迭代超过 ${limit} 次上限，已中断（防死循环安全网）`,
+  historyLimitInvalid: (value) =>
+    `历史容量上限非法（${value}）：须为正整数，已降级到默认 200。请修正工程配置`,
   autoSaveWriteFailed: (error) => `自动存档写入失败：${error}`,
   saveNotAtWaitPoint: () => `当前不在等待点，无法存档`,
   saveUnsafeValue: (value) => `状态含不可序列化值，存档被拒：${value}`,
@@ -100,6 +106,8 @@ export const defaultEngineTexts: EngineTexts = {
     `migrateState 钩子无法把存档从故事版本 v${saveVersion} 迁移到 v${currentVersion}，存档被拒绝`,
   saveMigrated: (from, to) =>
     `存档状态已从故事版本 v${from} 迁移到 v${to}（migrateState）`,
+  saveHistoryTruncated: (count) =>
+    `旧档有 ${count} 个历史检查点无法迁移到当前故事版本，已截断（存档进度本身不受影响）`,
   saveFormatVersionUnsupported: (fromVersion) =>
     `存档格式版本不支持：档为 v${fromVersion}，引擎为 v1。请用创建该存档的引擎版本打开，或在构造引擎时提供 migrateSave 钩子完成版本迁移`,
   saveFormatMigrated: (fromVersion) =>

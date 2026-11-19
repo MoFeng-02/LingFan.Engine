@@ -348,6 +348,29 @@ export function continueLoop(): CommandOf<"continue"> {
   return { op: "continue" };
 }
 
+/**
+ * 锁定回退：故事进行中临时关闭回退（back / forward / 回溯一律拒绝），
+ * 直到 `fixRollback()` 解锁。适合一段不许倒回的演出。只关回退这条路，
+ * 存读档照常；锁定是会话态，不随存档继承。
+ * @returns `block_rollback` 故事命令。
+ * @example
+ * blockRollback(); // 演出开始，禁止回退
+ */
+export function blockRollback(): CommandOf<"block_rollback"> {
+  return { op: "block_rollback" };
+}
+
+/**
+ * 解锁回退：解除 `blockRollback()` 的临时锁定，恢复回退能力。
+ * 工程级 `rollbackEnabled=false` 是总开关，本命令解不了（那是装配期的事）。
+ * @returns `fix_rollback` 故事命令。
+ * @example
+ * fixRollback(); // 演出结束，恢复回退
+ */
+export function fixRollback(): CommandOf<"fix_rollback"> {
+  return { op: "fix_rollback" };
+}
+
 // —— 运行期守卫与断言 ——
 
 /**

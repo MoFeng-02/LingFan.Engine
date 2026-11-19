@@ -155,10 +155,10 @@ describe("脊柱互锁 · op 名集", () => {
     void ec;
   });
 
-  it("完备性桥 + 运行期键集：VOCABULARY_OPS ≡ OP_SCHEMAS ≡ 74", () => {
-    expect(_allOps).toHaveLength(74);
+  it("完备性桥 + 运行期键集：VOCABULARY_OPS ≡ OP_SCHEMAS ≡ 76", () => {
+    expect(_allOps).toHaveLength(76);
     expect(new Set(VOCABULARY_OPS)).toEqual(new Set(Object.keys(OP_SCHEMAS)));
-    expect(Object.keys(OP_SCHEMAS)).toHaveLength(74);
+    expect(Object.keys(OP_SCHEMAS)).toHaveLength(76);
   });
 });
 

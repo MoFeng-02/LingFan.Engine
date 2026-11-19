@@ -180,7 +180,8 @@ describe("扩展 op 等待 · 互锁", () => {
     // mount：UI 挂载显隐分支（写 SYS.mounts）——指纹随之更新
     // audio_pause / audio_resume：可恢复暂停独立分支 ——指纹随之更新
     // audio_seek：通道/实例定位独立分支；nvl / character 收紧为 fail-closed 布尔返回 ——指纹随之更新
-    expect(fnv1a(slice)).toBe(786665685);
+    // block_rollback / fix_rollback：op 级回退锁定/解锁分支（写 SYS.rollbackLocked）——指纹随之更新
+    expect(fnv1a(slice)).toBe(545314016);
     // 中断入口三路齐备：小游戏 / 玩法系统 / 扩展 op（少一路 = 回溯后旧接管还在跑）
     const takeover = waitingSource.slice(
       waitingSource.indexOf("export function abortExternalTakeovers"),

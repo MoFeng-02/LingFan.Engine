@@ -25,6 +25,8 @@ defineProps<{
   showHistory: boolean;
   /** 历史条目经连续累积行聚合后的呈现块 */
   historyBlocks: HistoryBlock[];
+  /** 当前是否允许回退（工程总开关 × op 级锁定，引擎唯一读面）：关闭时历史块禁用 */
+  rollbackAvailable: boolean;
   /** 偏好面板是否展开 */
   showPrefs: boolean;
   /** 偏好快照的响应式镜像（模板读它，才会在偏好变化时重渲染） */
@@ -73,7 +75,11 @@ const emit = defineEmits<{
       <li
         v-for="block in historyBlocks"
         :key="block.key"
-        @click.stop="emit('rollback-to-entry', block.index)"
+        :class="{ 'is-disabled': !rollbackAvailable }"
+        :aria-disabled="!rollbackAvailable"
+        @click.stop="
+          rollbackAvailable && emit('rollback-to-entry', block.index)
+        "
       >
         <span v-if="block.speaker" class="history-speaker"
           >{{ block.speaker }}：</span
@@ -373,6 +379,16 @@ const emit = defineEmits<{
 
 .history-panel li:hover {
   background: #26263a;
+}
+
+/* 回退被工程总开关或 op 级锁定关掉时：历史块不可点，视觉降灰（引擎自身也 fail-closed） */
+.history-panel li.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.history-panel li.is-disabled:hover {
+  background: transparent;
 }
 
 .history-speaker {

@@ -114,6 +114,8 @@ const DYNAMIC_FAMILIES: ReadonlyArray<{
       "bg_switch",
       "zindex",
       "style",
+      "block_rollback",
+      "fix_rollback",
     ],
   },
   { suffix: "-target-not-found", ops: ["animate", "animate_block"] },

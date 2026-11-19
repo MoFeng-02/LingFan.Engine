@@ -41,6 +41,7 @@ import {
   execNvl,
   execRandom,
   execReturn,
+  execRollbackLock,
   execSaveDeleteOp,
   execSaveOp,
   execSay,
@@ -333,6 +334,12 @@ export function runDispatch(ctx: OpContext): void {
       case "mount":
         // 挂载 UI 显隐：写 SYS.mounts（宿主据此挂载/卸载渲染树上的组件）
         if (!execMount(ctx, cmd)) return;
+        frame.index += 1;
+        continue;
+      case "block_rollback":
+      case "fix_rollback":
+        // op 级回退临时锁定/解锁：写 SYS.rollbackLocked（会话态，不进存档）
+        if (!execRollbackLock(ctx, cmd)) return;
         frame.index += 1;
         continue;
       default:

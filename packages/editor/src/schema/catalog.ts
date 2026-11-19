@@ -63,6 +63,8 @@ export const OP_META: readonly OpMeta[] = [
   { op: "continue", label: "下一轮循环", group: "flow" },
   { op: "assert", label: "断言校验", group: "flow" },
   { op: "guard", label: "守卫校验", group: "flow" },
+  { op: "block_rollback", label: "锁定回退", group: "flow" },
+  { op: "fix_rollback", label: "解锁回退", group: "flow" },
   { op: "set", label: "赋值", group: "variables" },
   { op: "define", label: "全局定义", group: "variables" },
   { op: "let", label: "块级变量", group: "variables" },

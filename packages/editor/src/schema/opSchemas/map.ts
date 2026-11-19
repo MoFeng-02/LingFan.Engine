@@ -144,6 +144,9 @@ export const OP_SCHEMA_MAP = {
   text_typewriter: textTypewriterSchema,
   // 挂载 UI
   mount: mountSchema,
+  // 回退控制（op 级临时锁定/解锁，无参数）
+  block_rollback: emptySchema,
+  fix_rollback: emptySchema,
 };
 
 /** 运行期查找面（与 `OP_SCHEMA_MAP` 同一对象，键集恒等）；新增 op 自动可用 */

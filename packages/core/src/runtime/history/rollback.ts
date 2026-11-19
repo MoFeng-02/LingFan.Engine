@@ -85,6 +85,32 @@ export function columnFrameAt(
 }
 
 /**
+ * 回退闸（工程级总开关 + op 级临时锁定）：任一关闭即 fail-closed 拒绝，状态原样。
+ *
+ * 不可回溯 = 关闭回退这条路，不是改回溯语义——可回溯形态的菜单重选 / 重放 / 竞态三防
+ * 等硬规则照常适用。守卫置于任何状态改动（含 flushPendingCheckpoint）之前，拒绝即原样。
+ * 工程级 `rollbackEnabled` 装配期定死；op 级 `SYS.rollbackLocked` 由 block_rollback /
+ * fix_rollback 临时锁解（会话态，不进存档）。
+ */
+function rollbackBlocked(ctx: OpContext): boolean {
+  if (!ctx.rollbackEnabled) {
+    ctx.fail(
+      "rollback-disabled",
+      "工程关闭了回退（rollbackEnabled=false），不可回退",
+    );
+    return true;
+  }
+  if (ctx.get(SYS.rollbackLocked) === true) {
+    ctx.fail(
+      "rollback-locked",
+      "回退已被临时锁定（block_rollback），解锁后方可回退",
+    );
+    return true;
+  }
+  return false;
+}
+
+/**
  * 回溯三步：找目标检查点 → 恢复快照 → 重放到该等待点。
  * target = 检查点下标或坐标（取坐标之前最近的检查点）。
  */
@@ -92,6 +118,7 @@ export function rollbackTo(
   ctx: OpContext,
   target: number | ColumnCoordinate,
 ): void {
+  if (rollbackBlocked(ctx)) return;
   if (!ctx.started) {
     ctx.fail("rollback-invalid", "故事尚未启动");
     return;
@@ -161,6 +188,7 @@ export function historyCursor(ctx: OpContext): number {
  * 再按 live 是否已入档决定目标；未启动、重放中或已到最早保留点一律 fail-closed。
  */
 export function back(ctx: OpContext): void {
+  if (rollbackBlocked(ctx)) return;
   if (!ctx.started || ctx.rollbackActive) {
     ctx.fail("rollback-invalid", "当前不可回退");
     return;
@@ -176,6 +204,7 @@ export function back(ctx: OpContext): void {
 
 /** 滚轮下：沿未截断时间线 rollforward（分岔后旧前向已截断） */
 export function forward(ctx: OpContext): void {
+  if (rollbackBlocked(ctx)) return;
   if (!ctx.started || ctx.rollbackActive) {
     ctx.fail("rollback-invalid", "当前不可前进");
     return;

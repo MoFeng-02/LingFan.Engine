@@ -353,6 +353,124 @@ describe("storyVersion 与 migrateState", () => {
   });
 });
 
+describe("历史检查点迁移（每个检查点走同一迁移管线）", () => {
+  /** 带历史检查点的旧档：当前态可迁移，检查点各自独立迁移 */
+  function saveWithHistory(
+    history: { index: number; state: [string, unknown][] }[],
+  ): string {
+    return legacySave({
+      coord: { columnId: "a", index: 0 },
+      state: [["mp", 7]],
+      history: history.map((h) => ({
+        coord: { columnId: "a", index: h.index },
+        state: h.state,
+        rngState: 1,
+      })),
+    });
+  }
+
+  const threeSays = [column("a", [say("A"), say("B"), say("C")])];
+
+  it("每个检查点状态独立迁移到当前版本（改名 mp→hp 落到历史）", () => {
+    const h = makeHarness(threeSays, {
+      version: 2,
+      migrateState: (state, from) =>
+        from.storyVersion === 0 ? { hp: state.mp } : null,
+    });
+    h.port.seed(
+      "s1",
+      saveWithHistory([
+        { index: 0, state: [["mp", 3]] },
+        { index: 1, state: [["mp", 5]] },
+      ]),
+    );
+    expect(loadSlot(h, "s1")).toBe(true);
+    return vi
+      .waitFor(() => {
+        expect(h.engine.get("hp")).toBe(7); // 当前态迁移
+        expect(h.engine.historyLength()).toBe(2); // 检查点全保留
+        h.engine.back(); // 回到最近检查点（mp=5 → hp=5）
+        expect(h.engine.get("hp")).toBe(5);
+        expect(h.errors).not.toContain("save-migrate-failed");
+      })
+      .finally(() => h.dispose());
+  });
+
+  it("迁不动的检查点单独截断 + load.notice，可迁移的保留，读档成功", () => {
+    const h = makeHarness(threeSays, {
+      version: 2,
+      migrateState: (state, from) =>
+        from.storyVersion === 0
+          ? state.broken === true
+            ? null
+            : { hp: state.mp }
+          : null,
+    });
+    h.port.seed(
+      "s1",
+      saveWithHistory([
+        { index: 0, state: [["mp", 3]] },
+        {
+          index: 1,
+          state: [
+            ["mp", 5],
+            ["broken", true],
+          ],
+        }, // 迁不动 → 截断
+        { index: 2, state: [["mp", 9]] },
+      ]),
+    );
+    expect(loadSlot(h, "s1")).toBe(true);
+    return vi
+      .waitFor(() => {
+        expect(h.engine.historyLength()).toBe(2); // 3 个里截掉 1 个
+        expect(h.notices.some((t) => t.includes("截断"))).toBe(true);
+        expect(h.errors).not.toContain("save-migrate-failed"); // 整档不拒
+        expect(h.engine.get("hp")).toBe(7); // 当前态不受影响
+      })
+      .finally(() => h.dispose());
+  });
+
+  it("全部检查点迁不动 → 历史清空 + 截断计数，存档进度本身不受影响", () => {
+    const h = makeHarness(threeSays, {
+      version: 2,
+      migrateState: (state, from) =>
+        from.storyVersion === 0
+          ? state.broken === true
+            ? null
+            : { hp: state.mp }
+          : null,
+    });
+    h.port.seed(
+      "s1",
+      saveWithHistory([
+        {
+          index: 0,
+          state: [
+            ["mp", 3],
+            ["broken", true],
+          ],
+        },
+        {
+          index: 1,
+          state: [
+            ["mp", 5],
+            ["broken", true],
+          ],
+        },
+      ]),
+    );
+    expect(loadSlot(h, "s1")).toBe(true);
+    return vi
+      .waitFor(() => {
+        expect(h.engine.historyLength()).toBe(0); // 全截断
+        expect(h.notices.some((t) => t.includes("2"))).toBe(true); // 计数 2
+        expect(h.engine.get("hp")).toBe(7); // 进度仍在
+      })
+      .finally(() => h.dispose());
+  });
+});
+
 describe("玩法系统版本化", () => {
   it("resolveMinigame 回填状态 → minigames 依赖标记随档落盘", async () => {
     const h = makeHarness(

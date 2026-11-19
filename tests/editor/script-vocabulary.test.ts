@@ -316,6 +316,8 @@ describe("词汇层 · 全 builder 可解析守卫（形状漂移零容忍）", 
     ["shake", script.shake({ intensity: 5 })],
     ["textTypewriter", script.textTypewriter({ enabled: false })],
     ["mount", script.mount("hub", true, { scene: "inn" })],
+    ["blockRollback", script.blockRollback()],
+    ["fixRollback", script.fixRollback()],
   ];
 
   it("direct builder 数 = OP_SCHEMAS 数（采样表不漏不越）", () => {

@@ -127,6 +127,37 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
         kind: "load.notice",
         text: ctx.texts.saveMigrated(saveVersion, currentVersion),
       });
+      // 历史检查点与当前态走同一迁移管线：每个检查点的状态独立迁移到当前故事版本。
+      // 迁不动的检查点（hook 返回 null / 宿主违约抛错）单独截断丢弃——它已无法用于
+      // 回溯，留着只会让回退落到一份与当前版本不一致的旧状态。可迁移的照常保留，
+      // 游标在读档恢复时按新历史长度钳制（见下方 cursor 装配），不会越界。
+      const migratedHistory: typeof data.history = [];
+      let truncated = 0;
+      for (const checkpoint of data.history) {
+        let checkpointState: Record<string, unknown> | null;
+        try {
+          checkpointState = hook(Object.fromEntries(checkpoint.state), {
+            storyVersion: saveVersion,
+          });
+        } catch {
+          checkpointState = null; // 宿主违约（不抛约束）→ 视同该检查点无法迁移
+        }
+        if (checkpointState === null) {
+          truncated += 1;
+          continue;
+        }
+        migratedHistory.push({
+          ...checkpoint,
+          state: Object.entries(checkpointState),
+        });
+      }
+      data = { ...data, history: migratedHistory };
+      if (truncated > 0) {
+        ctx.emitEvent({
+          kind: "load.notice",
+          text: ctx.texts.saveHistoryTruncated(truncated),
+        });
+      }
     }
   }
   // 扩展依赖校验（fail-closed 整档预校验；migrate 在进入恢复流程前完成）

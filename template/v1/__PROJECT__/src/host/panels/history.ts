@@ -28,6 +28,8 @@ export interface HistoryEngine {
   historyView(): readonly HistoryEntry[];
   /** 回溯到第 index 个检查点 */
   rollbackTo(target: number): void;
+  /** 当前是否允许回退（工程总开关 × op 级锁定，引擎唯一读面） */
+  rollbackAvailable(): boolean;
 }
 
 /** 面板当前应显示的视图值（纯数据，测试断言这一层） */
@@ -107,6 +109,8 @@ export function createHistoryPanel(options: HistoryPanelOptions): HistoryPanel {
       const item = document.createElement("button");
       item.type = "button";
       item.className = "history-item";
+      // 回退控件守卫：工程关闭回退或 op 级锁定时禁用块按钮（读引擎唯一读面）
+      item.disabled = !engine.rollbackAvailable();
       // 回溯目标是**块尾**检查点，标在节点上便于宿主排查与测试取证
       item.dataset.index = String(block.index);
       if (block.speaker !== "") {

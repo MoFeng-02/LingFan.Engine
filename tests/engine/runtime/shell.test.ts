@@ -10,6 +10,7 @@ import {
   DEFAULT_STAGE_CONFIG,
   LAYER_IDS,
   manifestOrientation,
+  resolveHistoryLimit,
   resolveInstanceZ,
   resolveLayerZ,
   resolveOrientationMode,
@@ -234,6 +235,33 @@ describe("manifestOrientation（清单信任边界）", () => {
       { shell: { orientation: "Landscape" } },
     ]) {
       expect(manifestOrientation(bad)).toBeUndefined();
+    }
+  });
+});
+
+describe("resolveHistoryLimit（作者级历史容量：清单信任边界）", () => {
+  it("正整数声明原样读出；缺段/缺字段 = undefined（交引擎内建默认）", () => {
+    expect(resolveHistoryLimit({ shell: { historyLimit: 50 } })).toBe(50);
+    expect(resolveHistoryLimit({ shell: { historyLimit: 1 } })).toBe(1);
+    expect(resolveHistoryLimit({ shell: {} })).toBeUndefined();
+    expect(resolveHistoryLimit({ id: "demo" })).toBeUndefined();
+    expect(resolveHistoryLimit(null)).toBeUndefined();
+  });
+
+  it("非法值一律视为未声明（不猜测、不抛错）：非数/非整数/≤0/坏形状", () => {
+    for (const bad of [
+      { shell: null },
+      { shell: [] },
+      { shell: "50" },
+      { shell: { historyLimit: 0 } },
+      { shell: { historyLimit: -3 } },
+      { shell: { historyLimit: 1.5 } },
+      { shell: { historyLimit: NaN } },
+      { shell: { historyLimit: Infinity } },
+      { shell: { historyLimit: "50" } },
+      { shell: { historyLimit: null } },
+    ]) {
+      expect(resolveHistoryLimit(bad)).toBeUndefined();
     }
   });
 });

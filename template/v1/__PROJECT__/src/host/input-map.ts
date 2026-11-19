@@ -92,6 +92,8 @@ export function wireInput(options: HostInputOptions): () => void {
     "wheel",
     (event) => {
       if (!routesToNarrative(scope.current(), event.target)) return;
+      // 回退控件守卫：工程关闭回退或 op 级锁定时滚轮不回退（读引擎唯一读面，不另算一份）
+      if (!engine.rollbackAvailable()) return;
       if (event.deltaY < 0) engine.back();
       else if (event.deltaY > 0) engine.forward();
     },

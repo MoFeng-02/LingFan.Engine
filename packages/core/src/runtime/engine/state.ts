@@ -38,6 +38,7 @@ import {
   buildOpRegistry,
   type RegisteredOp,
 } from "../opRegistry.ts";
+import { clampHistoryLimit } from "./history-limit.ts";
 import type { Frame, Checkpoint, OpContext } from "../internal/index.ts";
 
 export class EngineCore {
@@ -86,6 +87,10 @@ export class EngineCore {
   // —— 回溯与历史 ——
   /** 历史检查点上限（构造期定死）；超出后从最旧端丢弃，所以可回溯深度有限 */
   protected readonly historyLimit: number;
+  /** 历史容量上限非法被降级的诊断串（null = 合法/缺省，无需诊断）；start 时如实发出 */
+  protected readonly historyLimitNotice: string | null;
+  /** 回退总开关（装配期定死；false = 不可回溯：回退拒绝且不建检查点，存读档照常） */
+  protected readonly rollbackEnabled: boolean;
   /** 已归档的检查点序列，下标 0 最旧；与 `cursor` 配合表达「看到第几个」 */
   protected history: Checkpoint[] = [];
   /** 光标 = 当前时间线上最后归档的检查点（回溯后落后于 length-1；rollforward 用） */
@@ -188,14 +193,21 @@ export class EngineCore {
    */
   constructor(story: Story, options?: EngineOptions) {
     this.story = story;
-    this.historyLimit = options?.historyLimit ?? 200;
+    this.texts = { ...defaultEngineTexts, ...options?.texts };
+    // 历史容量装配期校验：非法降级到默认并备好诊断串（start 时发出，不静默吞）
+    const historyLimit = clampHistoryLimit(options?.historyLimit);
+    this.historyLimit = historyLimit.limit;
+    this.historyLimitNotice = historyLimit.degraded
+      ? this.texts.historyLimitInvalid(String(options?.historyLimit))
+      : null;
+    // 回退总开关缺省 true = 现行为不变；false = 不可回溯叙事（关闭回退，不改回溯语义）
+    this.rollbackEnabled = options?.rollbackEnabled ?? true;
     this.rngState = (options?.rngSeed ?? Date.now()) | 0;
     this.savePort = options?.savePort;
     this.saveMode = options?.saveMode ?? "machine-bound";
     this.audioConfig = options?.audioConfig ?? DEFAULT_AUDIO_CONFIG;
     this.i18nPort = options?.i18nPort;
     this.timerPort = options?.timerPort ?? hostTimer;
-    this.texts = { ...defaultEngineTexts, ...options?.texts };
     const extensions = options?.extensions ?? [];
     this.extensionOps = buildOpRegistry(extensions);
     this.extensionById = new Map(extensions.map((e) => [e.id, e]));

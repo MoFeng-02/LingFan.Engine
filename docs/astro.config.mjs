@@ -198,6 +198,11 @@ export default defineConfig({
               link: "/guides/body-column/",
             },
             {
+              label: "不可回溯叙事",
+              translations: { en: "Irreversible Narrative" },
+              link: "/guides/irreversible-narrative/",
+            },
+            {
               label: "屏幕适配",
               translations: { en: "Screen Adaptation" },
               link: "/guides/screen-adaptation/",

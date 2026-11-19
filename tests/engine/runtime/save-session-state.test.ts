@@ -189,9 +189,14 @@ describe("会话态键不进存档", () => {
     }
   });
 
-  it("会话态键集合只含那三个键（其余 `__` 键照旧随档）", () => {
+  it("会话态键集合只含那四个键（其余 `__` 键照旧随档）", () => {
     expect([...SESSION_STATE_KEYS].sort()).toEqual(
-      [SYS.paused, SYS.menuReturn, SYS.rollbackActive].sort(),
+      [
+        SYS.paused,
+        SYS.menuReturn,
+        SYS.rollbackActive,
+        SYS.rollbackLocked,
+      ].sort(),
     );
     // 反例：音频暂停记账是故事态（读档到暂停期间仍要能恢复），必须随档
     expect(SESSION_STATE_KEYS.has(SYS.audioPaused)).toBe(false);

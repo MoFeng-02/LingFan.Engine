@@ -108,6 +108,8 @@ export const BUILTIN_OP_NAMES: ReadonlySet<string> = new Set([
   "shake",
   "text_typewriter",
   "mount",
+  "block_rollback",
+  "fix_rollback",
 ]);
 
 /** op 名须匹配扩展短 id 形态（小写字母开头、1..32 位），保证注册表键空间可控 */

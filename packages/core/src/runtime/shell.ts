@@ -365,6 +365,25 @@ export function manifestOrientation(
 }
 
 /**
+ * 读作者级历史容量上限（`shell.historyLimit`）：正整数才返回，缺声明/非法 = undefined。
+ *
+ * 为什么返回 undefined 而不是默认值：默认值（200）是引擎的内建回落点，由装配层
+ * `clampHistoryLimit` 统一持有——这里只负责「作者有没有显式声明一个合法上限」，
+ * 让组合根按「宿主显式 > 工程 shell > 内建默认」的优先级链装配，不在两处各写一份默认。
+ * 畸形值在组装期已 fail-closed（assemble.ts），这里的宽松只是不让解析函数自己抛。
+ */
+export function resolveHistoryLimit(manifest: unknown): number | undefined {
+  if (manifest === null || typeof manifest !== "object") return undefined;
+  const shell = (manifest as { shell?: unknown }).shell;
+  if (shell === null || typeof shell !== "object") return undefined;
+  const limit = (shell as { historyLimit?: unknown }).historyLimit;
+  if (typeof limit === "number" && Number.isInteger(limit) && limit > 0) {
+    return limit;
+  }
+  return undefined;
+}
+
+/**
  * 方向优先级链解析（组合根据此装配壳端口；纯函数可测）：
  * **玩家显式偏好 > 工程默认 > auto**——玩家显式选 auto（跟随系统）优先于作者默认。
  */

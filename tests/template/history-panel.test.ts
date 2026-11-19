@@ -196,6 +196,7 @@ function setup(initial: readonly HistoryEntry[] = []): Harness {
       rollbackTo: (target: number) => {
         rolledTo.push(target);
       },
+      rollbackAvailable: () => true,
     },
     container: container as unknown as HTMLElement,
     onRollback: () => {
@@ -421,7 +422,11 @@ describe("历史面板就地重画（refresh）", () => {
     let history = initial;
     const container = createFakeNode("div");
     const panel = createHistoryPanel({
-      engine: { historyView: () => history, rollbackTo: () => {} },
+      engine: {
+        historyView: () => history,
+        rollbackTo: () => {},
+        rollbackAvailable: () => true,
+      },
       container: container as unknown as HTMLElement,
       translate: (text) => (lang === "zh" ? text : `[en]${text}`),
     });
@@ -514,5 +519,67 @@ describe("历史面板就地重画（refresh）", () => {
     expect(
       findAll(h.container, (node) => node.className === "history-toggle"),
     ).toHaveLength(1);
+  });
+});
+
+// ---------- ④ 回退控件守卫 ----------
+
+describe("历史面板回退守卫（读引擎唯一读面）", () => {
+  /** 自建面板：available 可变，验证块按钮 disabled 跟随引擎读面而非面板自算 */
+  function guardSetup(available: () => boolean) {
+    const history = [entry(0, "旁白", "第一句"), entry(1, "旁白", "第二句")];
+    const container = createFakeNode("div");
+    const panel = createHistoryPanel({
+      engine: {
+        historyView: () => history,
+        rollbackTo: () => {},
+        rollbackAvailable: available,
+      },
+      container: container as unknown as HTMLElement,
+    });
+    panel.mount();
+    panel.open();
+    return { container, panel };
+  }
+
+  it("可回退时块按钮启用", () => {
+    const { container } = guardSetup(() => true);
+    const items = findAll(
+      container,
+      (node) => node.className === "history-item",
+    );
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) {
+      expect((item as unknown as { disabled: boolean }).disabled).toBe(false);
+    }
+  });
+
+  it("工程关闭回退 / op 级锁定时块按钮禁用（rollbackAvailable=false）", () => {
+    const { container } = guardSetup(() => false);
+    const items = findAll(
+      container,
+      (node) => node.className === "history-item",
+    );
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) {
+      expect((item as unknown as { disabled: boolean }).disabled).toBe(true);
+    }
+  });
+
+  it("锁定解除后 refresh 重渲染即恢复启用", () => {
+    let available = false;
+    const { container, panel } = guardSetup(() => available);
+    expect(
+      findAll(container, (node) => node.className === "history-item").every(
+        (node) => (node as unknown as { disabled: boolean }).disabled === true,
+      ),
+    ).toBe(true);
+    available = true;
+    panel.refresh();
+    expect(
+      findAll(container, (node) => node.className === "history-item").every(
+        (node) => (node as unknown as { disabled: boolean }).disabled === false,
+      ),
+    ).toBe(true);
   });
 });

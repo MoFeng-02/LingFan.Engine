@@ -107,6 +107,7 @@ function harness(
     advance,
     back,
     forward,
+    rollbackAvailable: () => true,
   };
   const dialogue = { readTypewriter: () => null } as unknown as DialogueView;
   const viewport = new FakeElement();

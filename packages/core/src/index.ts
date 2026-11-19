@@ -57,6 +57,7 @@ export {
   planOverlayMerge,
   PlayerPreferences,
   resolveAudioConfig,
+  resolveHistoryLimit,
   resolveHost,
   resolveInstanceZ,
   resolveLayerZ,

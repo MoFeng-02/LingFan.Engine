@@ -282,6 +282,72 @@ foreach "who" in "names"
 
 </OpCard>
 
+### block_rollback
+
+<OpCard name="block_rollback" summary="临时锁定回退，直到 fix_rollback 解锁。" rollback="none" since="0.7.0">
+
+**签名**
+
+```text
+block_rollback
+```
+
+**参数**
+
+无。
+
+**最小示例**
+
+```text
+say "关键抉择已定，这一段不能反悔。"
+block_rollback
+say "后果开始显现……"
+fix_rollback
+```
+
+**常见错误**
+
+:::caution
+锁定期间玩家按回退（`back`/`forward`/`rollbackTo`）一律被拒，报 `rollback-locked`「回退已被临时锁定」，画面与状态原样不动。
+
+这是**会话级临时锁**，只锁回退动作，不影响存读档；写 `fix_rollback` 即解锁。它和工程级总开关 `rollbackEnabled`（装配时决定整局可否回退）是两回事。
+:::
+
+</OpCard>
+
+### fix_rollback
+
+<OpCard name="fix_rollback" summary="解除 block_rollback 设下的回退临时锁。" rollback="none" since="0.7.0">
+
+**签名**
+
+```text
+fix_rollback
+```
+
+**参数**
+
+无。
+
+**最小示例**
+
+```text
+block_rollback
+say "这一段不能反悔。"
+fix_rollback
+say "现在可以回退了。"
+```
+
+**常见错误**
+
+:::caution
+没有先 `block_rollback` 时写 `fix_rollback` 不报错——它只是把锁清成未锁定，幂等无害。
+
+它解的是 op 级临时锁；若工程装配时 `rollbackEnabled=false`，回退仍被工程级总开关拒绝（`rollback-disabled`），`fix_rollback` 解不开。
+:::
+
+</OpCard>
+
 ### assert
 
 <OpCard name="assert" summary="条件不成立就停机报错。" rollback="none" since="0.1.0">

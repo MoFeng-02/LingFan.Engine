@@ -30,7 +30,9 @@ export function validateFlowCommand(
       break;
     case "break":
     case "continue":
-      break; // 无参数
+    case "block_rollback":
+    case "fix_rollback":
+      break; // 无参数（未知负载字段在运行期 fail-closed）
     case "call":
       requireNonEmptyString(cmd.target, `${at}.target`, issues);
       if (cmd.args !== undefined && !Array.isArray(cmd.args)) {

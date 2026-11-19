@@ -45,6 +45,14 @@ export const SYS = {
    */
   inputOptions: "__input_options",
   rollbackActive: "__rollback_active",
+  /**
+   * op 级回退临时锁定（block_rollback 置 true / fix_rollback 解除）。
+   *
+   * 与工程级 `rollbackEnabled` 的区别：那是装配期定死的总开关，这是故事进行中由
+   * 命令临时锁/解的闸（例如一段演出期间不许回退）。会话态：进快照（回溯要恢复当时
+   * 的锁定状态）但**不进存档**——读档等于会话重开，锁定不应跨档继承。
+   */
+  rollbackLocked: "__rollback_locked",
   /** I18N 当前语言（setLanguage 命令写入，空串 = 默认语言/原文直出） */
   currentLanguage: "__current_language",
   /**
@@ -208,4 +216,5 @@ export const SESSION_STATE_KEYS: ReadonlySet<string> = new Set([
   SYS.paused,
   SYS.menuReturn,
   SYS.rollbackActive,
+  SYS.rollbackLocked,
 ]);

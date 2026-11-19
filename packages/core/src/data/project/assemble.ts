@@ -129,12 +129,26 @@ export function assembleProject(
     } else {
       const shell = manifest.shell as {
         orientation?: unknown;
+        historyLimit?: unknown;
         audio?: unknown;
       };
       const orientation = shell.orientation;
       if (orientation !== undefined && !isOrientationMode(orientation)) {
         issues.push(
           `project.json: shell.orientation 必须为 auto|portrait|landscape，收到 ${JSON.stringify(orientation)}`,
+        );
+      }
+      // 作者级历史容量上限：只认正整数（缺省由引擎取内建默认）。非法即组装期拒绝，
+      // 与运行期 clampHistoryLimit 的降级诊断同口径——这里 fail-fast 让作者构建时就看到错。
+      const historyLimit = shell.historyLimit;
+      if (
+        historyLimit !== undefined &&
+        (typeof historyLimit !== "number" ||
+          !Number.isInteger(historyLimit) ||
+          historyLimit <= 0)
+      ) {
+        issues.push(
+          `project.json: shell.historyLimit 必须为正整数，收到 ${JSON.stringify(historyLimit)}`,
         );
       }
       // 工程默认音量：形状错即拒绝；逐个通道只认有限数字（越界钳制，不拒绝）。
