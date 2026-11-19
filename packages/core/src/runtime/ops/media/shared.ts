@@ -7,12 +7,11 @@
  */
 import {
   SYS,
-  isAudioChannel,
-  isAudioInstanceId,
   type AudioChannel,
   type AudioChannelState,
   type StoryCommand,
 } from "../../../contracts/index.ts";
+import { isAudioChannel, isAudioInstanceId } from "../../../shared/index.ts";
 import type { OpContext } from "../../internal/index.ts";
 
 /** 音频 op 已知负载字段（未知字段 fail-closed） */

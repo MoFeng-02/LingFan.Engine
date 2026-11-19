@@ -1457,7 +1457,7 @@ describe("回溯与历史", () => {
     h.dispose();
   });
 
-  it("容量淘汰：超限淘汰最旧", () => {
+  it("容量淘汰：超限淘汰最旧（history-capacity-eviction）", () => {
     const story = parseStory({
       formatVersion: 1,
       id: "d",

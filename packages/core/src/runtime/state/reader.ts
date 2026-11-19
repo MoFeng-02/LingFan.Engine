@@ -11,7 +11,6 @@
  */
 import {
   SYS,
-  sceneTypeOf,
   type AudioChannel,
   type AudioChannelState,
   type ElementInstance,
@@ -24,6 +23,7 @@ import {
   type StateSource,
   type VideoCommand,
 } from "../../contracts/index.ts";
+import { sceneTypeOf } from "../../shared/index.ts";
 import { INSTANCE_Z_KEYS } from "../shell.ts";
 
 /** 音频通道 ↔ 状态键（通道口径与 `AudioPort` 一致；键名归契约层的 `SYS`） */

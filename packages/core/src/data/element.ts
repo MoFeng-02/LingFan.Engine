@@ -13,11 +13,10 @@ import {
   ELEMENT_ATTRIBUTES,
   ELEMENT_CONTAINER_TYPES,
   ELEMENT_STRUCTURAL_FIELDS,
-  isElementType,
   type ElementInstance,
   type ElementNode,
 } from "../contracts/index.ts";
-import { isPlainObject } from "../shared/index.ts";
+import { isElementType, isPlainObject } from "../shared/index.ts";
 
 /** 可选标识字段校验（缺省合法；存在则必须为非空字符串） */
 function validateOptionalName(

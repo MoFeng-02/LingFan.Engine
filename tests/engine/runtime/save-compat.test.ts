@@ -119,7 +119,7 @@ function makePlainSave(): { data: SaveDataV1; raw: Record<string, unknown> } {
   };
 }
 
-describe("存档扩展依赖标记", () => {
+describe("存档扩展依赖标记（save-extension-dependency）", () => {
   it("执行过扩展的存档带依赖标记；同扩展引擎读档成功", () => {
     const { data } = makeMarkedSave();
     expect(data.extensions).toEqual([{ id: "demo", stateVersion: 1 }]);

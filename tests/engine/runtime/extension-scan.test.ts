@@ -72,7 +72,7 @@ function storyWith(commands: object[]): Story {
   } as Story;
 }
 
-describe("声明制扩展装载", () => {
+describe("声明制扩展装载（op-extension-scan）", () => {
   it("未声明 = 零副作用：装载器一次不触（声明缺席与空数组同义）", async () => {
     const importModule = vi.fn(demoLoader);
     expect(await loadDeclaredExtensions(undefined, importModule)).toEqual([]);

@@ -8,18 +8,20 @@
  */
 import { isPlainObject } from "../../shared/index.ts";
 import {
-  findJsonValueError,
-  isSceneName,
-  isSceneType,
-  isUiName,
-  normalizeSceneType,
-  normalizeUiNames,
   type ColumnBody,
   type ElementNode,
   type SceneType,
   type StoryColumn,
   type StoryCommand,
 } from "../../contracts/index.ts";
+import {
+  findJsonValueError,
+  isSceneName,
+  isSceneType,
+  isUiName,
+  normalizeSceneType,
+  normalizeUiNames,
+} from "../../shared/index.ts";
 import { validateElement } from "../element.ts";
 import { validateCommand } from "./validate.ts";
 

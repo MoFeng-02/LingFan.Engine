@@ -98,24 +98,28 @@ export function restore(ctx: OpContext, cp: Checkpoint): void {
  *
  * **场景类型守卫**：`type !== "game"`
  * 的列（menu/ui）**不建检查点**——菜单/弹窗是「覆盖」，不是玩家经历的一步。
+ *
+ * 返回是否**真的提交了**：被守卫丢弃（回退关闭 / 非 game 列）返回 false，
+ * 任何一种入档（原位替换 / cursor 前移 / 中间插入 / 截断追加）返回 true。
+ * 调用方据此决定是否把当前画面标记为「已入档」，丢弃时不得置位。
  */
-export function commitCheckpoint(ctx: OpContext, cp: Checkpoint): void {
+export function commitCheckpoint(ctx: OpContext, cp: Checkpoint): boolean {
   // 不可回溯形态不建检查点（历史不增长）——关闭回退即关掉这条路的存档点，
   // 与「菜单/界面是覆盖层不构成一步」同口径；存读档走 autoSaveAtCheckpoint，不受影响。
-  if (!ctx.rollbackEnabled) return;
+  if (!ctx.rollbackEnabled) return false;
   // 非 game 场景不进历史（menu/ui 是覆盖层，不构成可回溯的一步）
-  if (!ctx.isCurrentColumnReplayable()) return;
+  if (!ctx.isCurrentColumnReplayable()) return false;
   const current = ctx.history[ctx.cursor];
   if (current !== undefined && sameCoord(current.coord, cp.coord)) {
     ctx.history[ctx.cursor] = cp;
-    return;
+    return true;
   }
   if (ctx.cursor < ctx.history.length - 1) {
     const next = ctx.history[ctx.cursor + 1]!;
     if (sameCoord(next.coord, cp.coord)) {
       ctx.cursor += 1;
       ctx.history[ctx.cursor] = cp;
-      return;
+      return true;
     }
     const previous = ctx.history[ctx.cursor]!;
     const sameColumn =
@@ -129,7 +133,7 @@ export function commitCheckpoint(ctx: OpContext, cp: Checkpoint): void {
       // 残缺历史自愈：重放重入的中间等待点（如 input）插入时间线，前向保留
       ctx.history.splice(ctx.cursor + 1, 0, cp);
       ctx.cursor += 1;
-      return;
+      return true;
     }
     ctx.history.length = ctx.cursor + 1; // 开辟新时间线，旧前向作废
   }
@@ -141,6 +145,7 @@ export function commitCheckpoint(ctx: OpContext, cp: Checkpoint): void {
   }
   ctx.history.push(cp);
   ctx.cursor = ctx.history.length - 1;
+  return true;
 }
 
 /**
@@ -184,11 +189,18 @@ export function autoSaveAtCheckpoint(ctx: OpContext): void {
 /**
  * 补交规则：离开当前画面（回退/跳转）前，把已上屏未入档的 say 检查点补交入档。
  * 玩家所见画面即有效历史——入档后 forward 才能回到「离开时的位置」（否则回退后前进无路）。
+ *
+ * 返回是否**真的入档了**：待提交检查点被守卫丢弃（非 game 列 / 回退关闭）时返回 false，
+ * 且**不置** `liveCheckpointed`——「已入档」标记只能反映真实提交，丢弃却置位会让
+ * 回退误以为当前画面在历史里（ui 历史恒空时当下无害，口径必须先正确）。
+ * 待提交检查点消费即清（无论提交与否），不留半提交残留。
  */
-export function flushPendingCheckpoint(ctx: OpContext): void {
+export function flushPendingCheckpoint(ctx: OpContext): boolean {
   if (ctx.pendingSay !== null) {
-    ctx.commitCheckpoint(ctx.pendingSay);
+    const committed = ctx.commitCheckpoint(ctx.pendingSay);
     ctx.pendingSay = null;
-    ctx.liveCheckpointed = true;
+    if (committed) ctx.liveCheckpointed = true;
+    return committed;
   }
+  return false;
 }

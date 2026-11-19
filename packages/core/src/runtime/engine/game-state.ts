@@ -5,7 +5,8 @@
  * 两个入参是引擎侧的两条既有通道（外部写入 + 只读取值），这里只做组合，
  * 不复制键校验与值契约——那两条规则的唯一实现在 `../state/writer.ts`。
  */
-import { gameScopedKey, type GameStateWriter } from "../../contracts/index.ts";
+import { type GameStateWriter } from "../../contracts/index.ts";
+import { gameScopedKey } from "../../shared/index.ts";
 
 export function createGameState(
   write: (

@@ -9,12 +9,12 @@
 import {
   AUDIO_INSTANCE_ID_PATTERN,
   SYS,
-  isAudioInstanceId,
   type AudioChannelState,
   type AudioInstanceTable,
   type AudioInstanceState,
   type StoryCommand,
 } from "../../../contracts/index.ts";
+import { isAudioInstanceId } from "../../../shared/index.ts";
 import type { OpContext } from "../../internal/index.ts";
 import {
   AUDIO_CHANNEL_KEY,

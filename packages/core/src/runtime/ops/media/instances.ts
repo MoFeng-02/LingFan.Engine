@@ -12,15 +12,17 @@ import {
   AUDIO_INSTANCE_ID_PATTERN,
   MAX_AUDIO_INSTANCES,
   SYS,
-  isAudioChannel,
-  isAudioInstanceId,
-  isAudioInstanceTable,
   type AudioChannel,
   type AudioChannelState,
   type AudioInstanceTable,
   type AudioInstanceState,
   type StoryCommand,
 } from "../../../contracts/index.ts";
+import {
+  isAudioChannel,
+  isAudioInstanceId,
+  isAudioInstanceTable,
+} from "../../../shared/index.ts";
 import type { OpContext } from "../../internal/index.ts";
 import {
   AUDIO_CHANNEL_KEY,

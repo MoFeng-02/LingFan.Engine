@@ -1,11 +1,8 @@
 /**
  * 历史回溯：游标移动、可达性判定与历史视图。
  */
-import {
-  SYS,
-  isReplayableColumn,
-  type ColumnCoordinate,
-} from "../../contracts/index.ts";
+import { SYS, type ColumnCoordinate } from "../../contracts/index.ts";
+import { isReplayableColumn } from "../../shared/index.ts";
 import {
   asSources,
   deriveCheckpointValue,

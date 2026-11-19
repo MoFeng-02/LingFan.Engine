@@ -1,11 +1,11 @@
 import { compareOrdinal, isPlainObject } from "../../shared/index.ts";
 import {
   AUDIO_CHANNELS,
-  isOrientationMode,
   type DegradedOpen,
   type Story,
   type StoryColumn,
 } from "../../contracts/index.ts";
+import { isOrientationMode } from "../../shared/index.ts";
 import {
   isSingleColumnFile,
   parseStory,

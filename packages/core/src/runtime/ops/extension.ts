@@ -16,12 +16,12 @@
  */
 import {
   SYS,
-  gameScopedKey,
   type ExtensionOpResult,
   type OutboundEvent,
   type OutboundPayload,
   type StoryCommand,
 } from "../../contracts/index.ts";
+import { gameScopedKey } from "../../shared/index.ts";
 import type { Frame, OpContext } from "../internal/index.ts";
 import { writeExternal } from "../state/index.ts";
 import { runRegisteredOp, type RegisteredOp } from "../opRegistry.ts";

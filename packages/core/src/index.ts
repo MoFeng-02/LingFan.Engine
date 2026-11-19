@@ -8,6 +8,13 @@
  */
 export * from "./contracts/index.ts";
 /**
+ * 通用判定层（shared）：把 `unknown` 收窄成契约类型的守卫与小工具。
+ * 契约层只声明类型、零实现依赖，判定实现因此住在 shared；包根在这里**正向**转发它们，
+ * 宿主与测试经 `@lingfan-engine/core` 即可取用（isElementType / isEngineErrorCode 等）。
+ * 这是包根→shared 的向下出口，不是 contracts→shared 的回边：契约出口不转发实现。
+ */
+export * from "./shared/index.ts";
+/**
  * 运行层：执行器与运行期支撑 —— 宿主信息解析、文本国际化、玩家偏好、壳配置解析、写入契约守卫、
  * op 注册表、等待声明表、声明制扩展装载、表达式求值。
  *

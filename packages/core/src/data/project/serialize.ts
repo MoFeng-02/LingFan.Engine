@@ -4,14 +4,13 @@ import { MANIFEST_FILE, STORIES_DIR, isSafeFileNameSegment } from "./naming.ts";
 import { columnShapeDefect } from "../format/column.ts";
 import {
   CAPABILITY_VERSION,
-  normalizeSceneType,
-  normalizeUiNames,
   type ColumnBody,
   type SceneType,
   type SerializedProject,
   type Story,
   type StoryColumn,
 } from "../../contracts/index.ts";
+import { normalizeSceneType, normalizeUiNames } from "../../shared/index.ts";
 
 /**
  * 工程写回：Story → 多文件工程（组装的逆过程）。

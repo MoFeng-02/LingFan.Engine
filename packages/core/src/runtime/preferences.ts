@@ -20,8 +20,8 @@ import {
   DEFAULT_PLAYER_PREFS,
   KEYMAP_ACTIONS,
   hostTimer,
-  isOrientationMode,
 } from "../contracts/index.ts";
+import { isOrientationMode } from "../shared/index.ts";
 import { clamp01 } from "../shared/index.ts";
 
 /** 偏好变更回调；收到的是快照副本，调用方改写它不会穿透到内部状态 */

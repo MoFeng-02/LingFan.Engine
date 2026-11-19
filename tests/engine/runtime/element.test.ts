@@ -49,7 +49,7 @@ function elements(engine: StoryEngine): ElementInstance[] {
   return Array.isArray(value) ? (value as ElementInstance[]) : [];
 }
 
-describe("进入列装载空间层", () => {
+describe("进入列装载空间层（element-elements-loads-per-column）", () => {
   it("start 后 __elements = 该列声明；entry 照常执行且无 unknown-op", () => {
     const { engine, errors } = makeEngine();
     engine.start();
@@ -70,7 +70,7 @@ describe("进入列装载空间层", () => {
   });
 });
 
-describe("元素随快照/回溯", () => {
+describe("元素随快照/回溯（element-snapshot-roundtrip）", () => {
   it("回溯到 scene 列 → 元素随快照还原", () => {
     const { engine } = makeEngine();
     engine.start();

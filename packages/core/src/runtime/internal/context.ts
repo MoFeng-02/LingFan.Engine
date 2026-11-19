@@ -129,10 +129,10 @@ export interface OpContext {
   takeSnapshot(coord: ColumnCoordinate): Checkpoint;
   /** 当前等待点应归档的坐标（块帧回退到所属列帧的位置） */
   checkpointCoord(waitingFrame: Frame): ColumnCoordinate;
-  /** 提交检查点：同坐标原位替换，否则追加并按上限裁剪 */
-  commitCheckpoint(cp: Checkpoint): void;
-  /** 把待提交的 say 检查点入档（离开当前画面时调用） */
-  flushPendingCheckpoint(): void;
+  /** 提交检查点：同坐标原位替换，否则追加并按上限裁剪；返回是否真提交（守卫丢弃=false） */
+  commitCheckpoint(cp: Checkpoint): boolean;
+  /** 把待提交的 say 检查点入档（离开当前画面时调用）；返回是否真入档（丢弃=false） */
+  flushPendingCheckpoint(): boolean;
   /** 等待画面建立时的自动存档消费点 */
   autoSaveAtCheckpoint(): void;
   /** 当前列是否可重放（决定回溯能否落回该处） */

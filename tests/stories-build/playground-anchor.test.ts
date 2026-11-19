@@ -41,18 +41,20 @@
  * 契约错误，不是环境竞态）；Stories.src 迁移完成后错误消失、守卫自动失效，届时可删除 isConfigContractTransition。
  *
  * 写盘机制细节（差量判定、陈旧清理、report 计数）由 build-pipeline.test.ts 在最小工程
- * 覆盖；本文件不重复，只锚真实工程的整链终态。测试对工程根的写入仅限故障恢复路径：
- * 断言失败时把锚定的产物恢复为入库字节，不让测试自身污染工作区。
+ * 覆盖；本文件不重复，只锚真实工程的整链终态。
  *
- * 并行加固：本文件是全仓唯一对真实工程工作区做「读-改-写」的测试，vitest 跨文件
- * 并行下与其他读工程产物的用例存在 I/O 竞态窗口（偶发一败、单跑/复跑恒绿）——
- * 两例 retry 1 吸收环境性竞态；真回归两次必红，不会被吞。（文件内两例本就串行执行）
- * 四个 tsc 探针各自 spawnSync 拉起一次或两次 tsc --noEmit，全量并行运行时单次耗时可远超全仓
- * 缺省的 testTimeout（vitest.config.ts）：它们显式抬到 60s——时限先到会把绿例判红并
- * 触发重试，真回归本就会红，放宽时限不动判定力。
+ * 并行隔离（临时副本）：本文件是全仓唯一对真实工程做「读-改-写」的测试。所有构建与
+ * 探针都落在真实工程的**临时副本**上——真实工程树全程只读（锚定的入库字节从这里取），
+ * 并行读真实工程的用例（story-source-project 的就近工程比对、build-pipeline 的重提取）
+ * 看到的永远是稳定的入库态，不再有「别人正在落探针」的 I/O 竞态窗口。副本放在 tests/
+ * 下，node_modules 经仓根解析（与最小工程同口径）；只拷构建输入（src / extensions /
+ * Resources 的 Lang·Stories·project.json·空 Fonts 目录），不拷媒体二进制（Audio/Images/
+ * Video）与私有字体——它们不是类型面构建的输入。每例独立副本，afterEach 整体清除，
+ * 不在工作区留下工具状态。retry 1 只吸收重载下的 CPU 争用超时（I/O 竞态已由隔离消除），
+ * 真回归两次必红，不会被吞。tsc 探针显式抬到 60s 时限（全量并行下单次 tsc 可能远超缺省）。
  */
 import {
-  existsSync,
+  cpSync,
   mkdirSync,
   readFileSync,
   rmSync,
@@ -61,33 +63,66 @@ import {
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildStories } from "@lingfan-engine/stories-build";
 
 const PLAYGROUND_ROOT = fileURLToPath(
   new URL("../../apps/playground/", import.meta.url),
 );
-/**
- * 产物账落在真实工程根的 `.lingfan/` 下，每次构建都会被重写。本文件对真实工程做全链构建，
- * 因此逐例快照账并还原：出仓态保持原样，测试不在工作区留下工具状态。
- */
-const LEDGER_DIR = join(PLAYGROUND_ROOT, ".lingfan");
-const LEDGER_FILE = join(LEDGER_DIR, "stories-build.json");
-let ledgerBefore: string | undefined;
+/** 临时副本根（tests/ 下，node_modules 经仓根解析）；每例一个独立子目录。 */
+const TEMP_BASE = fileURLToPath(
+  new URL("./.tmp-playground-anchor/", import.meta.url),
+);
+/** 仓根 tsconfig（绝对路径）：副本的宿主 tsconfig 经它继承 compilerOptions/paths。 */
+const REPO_TSCONFIG = fileURLToPath(
+  new URL("../../tsconfig.json", import.meta.url),
+);
+let root: string;
+let tempSeq = 0;
+
+/** 从真实工程拷一份构建输入到副本（真实树只读，锚定字节也从真实树取）。 */
+function copyInput(rel: string): void {
+  cpSync(join(PLAYGROUND_ROOT, rel), join(root, rel), { recursive: true });
+}
 
 beforeEach(() => {
-  ledgerBefore = existsSync(LEDGER_FILE)
-    ? readFileSync(LEDGER_FILE, "utf8")
-    : undefined;
+  root = join(TEMP_BASE, `case-${tempSeq++}`);
+  mkdirSync(root, { recursive: true });
+  copyInput("src");
+  copyInput("extensions");
+  // 宿主 tsconfig：真实工程的 extends 是相对仓根的（../../tsconfig.json），拷进副本会
+  // 指向不存在的路径（扩展 .ts 经 Node 转换时按文件位置向上找 tsconfig，继承链断则
+  // TSCONFIG_ERROR）。这里生成一份等价配置，extends 用仓根绝对路径——compilerOptions
+  // 与 paths 仍由仓根 tsconfig 提供（paths 相对声明者解析，落点不变），include/exclude
+  // 与真实工程逐字一致。
+  writeFileSync(
+    join(root, "tsconfig.json"),
+    `${JSON.stringify(
+      {
+        extends: REPO_TSCONFIG,
+        include: ["src/**/*.ts", "src/**/*.vue"],
+        exclude: ["src/Stories.src/**"],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  copyInput("tsconfig.stories.json");
+  copyInput("package.json");
+  // 字体注册表只扫 Fonts 顶层文件名：空目录 = 空注册表（与入库的封闭空类型一致），
+  // 私有字体子目录与媒体二进制都不是构建输入，不拷。
+  mkdirSync(join(root, "Resources/Fonts"), { recursive: true });
+  copyInput("Resources/Lang");
+  copyInput("Resources/Stories");
+  copyInput("Resources/project.json");
 });
 
 afterEach(() => {
-  if (ledgerBefore === undefined) {
-    rmSync(LEDGER_DIR, { recursive: true, force: true });
-    return;
-  }
-  mkdirSync(LEDGER_DIR, { recursive: true });
-  writeFileSync(LEDGER_FILE, ledgerBefore);
+  rmSync(root, { recursive: true, force: true });
+});
+
+afterAll(() => {
+  rmSync(TEMP_BASE, { recursive: true, force: true });
 });
 /** report 里的逻辑路径是 posix 相对路径（与源根命名空间一致），保持正斜杠字面量 */
 const TYPEGEN_REL = "src/gen/stories.gen.d.ts";
@@ -215,80 +250,79 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
     "全链构建零差量：入库类型面产物与当轮计算产物逐字节一致",
     { retry: 1 },
     async (ctx) => {
-      const typegenPath = join(PLAYGROUND_ROOT, TYPEGEN_REL);
-      const stateGenPath = join(PLAYGROUND_ROOT, STATE_GEN_REL);
-      const scriptGenPath = join(PLAYGROUND_ROOT, SCRIPT_GEN_REL);
-      const fontGenPath = join(PLAYGROUND_ROOT, FONT_GEN_REL);
-      const uiGenPath = join(PLAYGROUND_ROOT, UI_GEN_REL);
-      const committed = readFileSync(typegenPath, "utf8");
-      const committedState = readFileSync(stateGenPath, "utf8");
-      const committedScript = readFileSync(scriptGenPath, "utf8");
-      const committedFont = readFileSync(fontGenPath, "utf8");
-      const committedUi = readFileSync(uiGenPath, "utf8");
+      // 锚定字节取自真实工程（只读）；构建落在临时副本上，真实树不被改写。
+      const committed = readFileSync(
+        join(PLAYGROUND_ROOT, TYPEGEN_REL),
+        "utf8",
+      );
+      const committedState = readFileSync(
+        join(PLAYGROUND_ROOT, STATE_GEN_REL),
+        "utf8",
+      );
+      const committedScript = readFileSync(
+        join(PLAYGROUND_ROOT, SCRIPT_GEN_REL),
+        "utf8",
+      );
+      const committedFont = readFileSync(
+        join(PLAYGROUND_ROOT, FONT_GEN_REL),
+        "utf8",
+      );
+      const committedUi = readFileSync(
+        join(PLAYGROUND_ROOT, UI_GEN_REL),
+        "utf8",
+      );
+      let report;
       try {
-        let report;
-        try {
-          report = await buildStories(PLAYGROUND_ROOT);
-        } catch (error) {
-          if (isConfigContractTransition(error)) ctx.skip();
-          throw error;
-        }
-        expect(report.added).toEqual([]);
-        expect(report.updated).toEqual([]);
-        expect(report.removed).toEqual([]);
-        // 工程形状随锚点显式维护：列数变化必须伴随 gen 产物重建（列名注册表随之变化）
-        // 20 = 20 个 default 导出列。`chapter1/start.ts` 里的 `export function goToLabel`
-        // 当前没有被 `jump`/`navigate` 字面量引用（那处调用被注释掉了），label 通道
-        // 不替它产列；要放回 21 就先恢复那处引用。
-        expect(report.columns).toBe(20);
-        expect(readFileSync(typegenPath, "utf8")).toBe(committed);
-        expect(readFileSync(stateGenPath, "utf8")).toBe(committedState);
-        expect(readFileSync(scriptGenPath, "utf8")).toBe(committedScript);
-        expect(readFileSync(fontGenPath, "utf8")).toBe(committedFont);
-        expect(readFileSync(uiGenPath, "utf8")).toBe(committedUi);
-        // state 类型面形状锚：精确到枚举引用（Sex 走 import type），不得退化为宽 any
-        expect(committedState).toContain("export type StoryState = {");
-        expect(committedState).toContain(
-          'import type { Sex } from "../Stories.src/lib/enums";',
-        );
-        expect(committedState).toContain('"sex": Sex;');
-        // 插值键注册表的 let 声明名形状锚：ticket 只经 let 词调用声明（无 vars/state 同名双源），
-        // 它在注册表里即证明源级声明名通道在真实工程也通。
-        expect(committed).toContain('"ticket": 1;');
-        // script ambient 声明形状锚：单条 declare 指向 editor 根出口的 script 命名空间
-        expect(committedScript).toContain(
-          'declare const script: typeof import("@lingfan-engine/editor").script;',
-        );
-        // 字体类型面形状锚：工程未放字体文件 = 封闭空类型（非宽 Record<string, string>，
-        // 退化会放弃拼错保护）；键 = 值 = 注册表字体名的契约由下方新鲜度用例与 font 探针覆盖
-        expect(committedFont).toContain(
-          "declare const font: Record<never, never>;",
-        );
-        // UI 注册表三段导出：宿主查表用的「名字→组件」、故事源具名句柄、类型面登记处。
-        // 任一段被删都意味着有消费方拿不到入口——宿主挂不上、作者写不出句柄、
-        // 拼错名字不再被类型拦。
-        expect(committedUi).toContain('"hub": hubView,');
-        expect(committedUi).toContain(
-          'export const hub: UiHandle<"hub"> = { face: "uis", name: "hub" };',
-        );
-        expect(committedUi).toContain('"hub": 1;');
-      } finally {
-        if (readFileSync(typegenPath, "utf8") !== committed) {
-          writeFileSync(typegenPath, committed);
-        }
-        if (readFileSync(stateGenPath, "utf8") !== committedState) {
-          writeFileSync(stateGenPath, committedState);
-        }
-        if (readFileSync(scriptGenPath, "utf8") !== committedScript) {
-          writeFileSync(scriptGenPath, committedScript);
-        }
-        if (readFileSync(fontGenPath, "utf8") !== committedFont) {
-          writeFileSync(fontGenPath, committedFont);
-        }
-        if (readFileSync(uiGenPath, "utf8") !== committedUi) {
-          writeFileSync(uiGenPath, committedUi);
-        }
+        report = await buildStories(root);
+      } catch (error) {
+        if (isConfigContractTransition(error)) ctx.skip();
+        throw error;
       }
+      expect(report.added).toEqual([]);
+      expect(report.updated).toEqual([]);
+      expect(report.removed).toEqual([]);
+      // 工程形状随锚点显式维护：列数变化必须伴随 gen 产物重建（列名注册表随之变化）
+      // 20 = 20 个 default 导出列。`chapter1/start.ts` 里的 `export function goToLabel`
+      // 当前没有被 `jump`/`navigate` 字面量引用（那处调用被注释掉了），label 通道
+      // 不替它产列；要放回 21 就先恢复那处引用。
+      expect(report.columns).toBe(20);
+      expect(readFileSync(join(root, TYPEGEN_REL), "utf8")).toBe(committed);
+      expect(readFileSync(join(root, STATE_GEN_REL), "utf8")).toBe(
+        committedState,
+      );
+      expect(readFileSync(join(root, SCRIPT_GEN_REL), "utf8")).toBe(
+        committedScript,
+      );
+      expect(readFileSync(join(root, FONT_GEN_REL), "utf8")).toBe(
+        committedFont,
+      );
+      expect(readFileSync(join(root, UI_GEN_REL), "utf8")).toBe(committedUi);
+      // state 类型面形状锚：精确到枚举引用（Sex 走 import type），不得退化为宽 any
+      expect(committedState).toContain("export type StoryState = {");
+      expect(committedState).toContain(
+        'import type { Sex } from "../Stories.src/lib/enums";',
+      );
+      expect(committedState).toContain('"sex": Sex;');
+      // 插值键注册表的 let 声明名形状锚：ticket 只经 let 词调用声明（无 vars/state 同名双源），
+      // 它在注册表里即证明源级声明名通道在真实工程也通。
+      expect(committed).toContain('"ticket": 1;');
+      // script ambient 声明形状锚：单条 declare 指向 editor 根出口的 script 命名空间
+      expect(committedScript).toContain(
+        'declare const script: typeof import("@lingfan-engine/editor").script;',
+      );
+      // 字体类型面形状锚：工程未放字体文件 = 封闭空类型（非宽 Record<string, string>，
+      // 退化会放弃拼错保护）；键 = 值 = 注册表字体名的契约由下方新鲜度用例与 font 探针覆盖
+      expect(committedFont).toContain(
+        "declare const font: Record<never, never>;",
+      );
+      // UI 注册表三段导出：宿主查表用的「名字→组件」、故事源具名句柄、类型面登记处。
+      // 任一段被删都意味着有消费方拿不到入口——宿主挂不上、作者写不出句柄、
+      // 拼错名字不再被类型拦。
+      expect(committedUi).toContain('"hub": hubView,');
+      expect(committedUi).toContain(
+        'export const hub: UiHandle<"hub"> = { face: "uis", name: "hub" };',
+      );
+      expect(committedUi).toContain('"hub": 1;');
     },
   );
 
@@ -296,24 +330,21 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
     "手改生成物：构建重写回入库字节（修复路径证明锚点非空转）",
     { retry: 1 },
     async (ctx) => {
-      const typegenPath = join(PLAYGROUND_ROOT, TYPEGEN_REL);
-      const committed = readFileSync(typegenPath, "utf8");
+      const committed = readFileSync(
+        join(PLAYGROUND_ROOT, TYPEGEN_REL),
+        "utf8",
+      );
+      const typegenPath = join(root, TYPEGEN_REL);
+      writeFileSync(typegenPath, `${committed}\n/* 手改的冗余行 */\n`);
+      let report;
       try {
-        writeFileSync(typegenPath, `${committed}\n/* 手改的冗余行 */\n`);
-        let report;
-        try {
-          report = await buildStories(PLAYGROUND_ROOT);
-        } catch (error) {
-          if (isConfigContractTransition(error)) ctx.skip();
-          throw error;
-        }
-        expect(report.updated).toContain(TYPEGEN_REL);
-        expect(readFileSync(typegenPath, "utf8")).toBe(committed);
-      } finally {
-        if (readFileSync(typegenPath, "utf8") !== committed) {
-          writeFileSync(typegenPath, committed);
-        }
+        report = await buildStories(root);
+      } catch (error) {
+        if (isConfigContractTransition(error)) ctx.skip();
+        throw error;
       }
+      expect(report.updated).toContain(TYPEGEN_REL);
+      expect(readFileSync(typegenPath, "utf8")).toBe(committed);
     },
   );
 
@@ -321,34 +352,30 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
     "font.gen 新鲜度：字体文件落盘→键=值入类型面，删文件重构建→恢复封闭空类型",
     { retry: 1 },
     async (ctx) => {
-      const fontGenPath = join(PLAYGROUND_ROOT, FONT_GEN_REL);
-      const fontFile = join(PLAYGROUND_ROOT, "Resources/Fonts/楷体.ttf");
-      const committedFont = readFileSync(fontGenPath, "utf8");
+      const fontGenPath = join(root, FONT_GEN_REL);
+      const fontFile = join(root, "Resources/Fonts/楷体.ttf");
+      const committedFont = readFileSync(
+        join(PLAYGROUND_ROOT, FONT_GEN_REL),
+        "utf8",
+      );
+      // 桩字体文件：注册表只认文件名（去扩展名），内容不参与扫描——真实字体二进制不入仓
+      writeStubFont(fontFile);
+      let report;
       try {
-        // 桩字体文件：注册表只认文件名（去扩展名），内容不参与扫描——真实字体二进制不入仓
-        writeStubFont(fontFile);
-        let report;
-        try {
-          report = await buildStories(PLAYGROUND_ROOT);
-        } catch (error) {
-          if (isConfigContractTransition(error)) ctx.skip();
-          throw error;
-        }
-        expect(report.updated).toContain(FONT_GEN_REL);
-        expect(readFileSync(fontGenPath, "utf8")).toContain(
-          'readonly "楷体": "楷体";',
-        );
-
-        rmSync(fontFile, { force: true });
-        report = await buildStories(PLAYGROUND_ROOT);
-        expect(report.updated).toContain(FONT_GEN_REL);
-        expect(readFileSync(fontGenPath, "utf8")).toBe(committedFont);
-      } finally {
-        rmSync(fontFile, { force: true });
-        if (readFileSync(fontGenPath, "utf8") !== committedFont) {
-          writeFileSync(fontGenPath, committedFont);
-        }
+        report = await buildStories(root);
+      } catch (error) {
+        if (isConfigContractTransition(error)) ctx.skip();
+        throw error;
       }
+      expect(report.updated).toContain(FONT_GEN_REL);
+      expect(readFileSync(fontGenPath, "utf8")).toContain(
+        'readonly "楷体": "楷体";',
+      );
+
+      rmSync(fontFile, { force: true });
+      report = await buildStories(root);
+      expect(report.updated).toContain(FONT_GEN_REL);
+      expect(readFileSync(fontGenPath, "utf8")).toBe(committedFont);
     },
   );
 
@@ -356,8 +383,8 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
     "tsc 负例探针：state 上的错误类型被 stories-typecheck 拒绝（精确类型面非宽垫片）",
     { retry: 1, timeout: 60000 },
     async () => {
-      const probePath = join(PLAYGROUND_ROOT, PROBE_REL);
-      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.stories.json");
+      const probePath = join(root, PROBE_REL);
+      const tsconfigPath = join(root, "tsconfig.stories.json");
       const tscBin = fileURLToPath(
         new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
       );
@@ -384,8 +411,8 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
     "script ambient 探针：错键 script.bgmX 被 tsc 拒绝，正确键 script.bgm 放行",
     { retry: 1, timeout: 60000 },
     async () => {
-      const probePath = join(PLAYGROUND_ROOT, SCRIPT_PROBE_REL);
-      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.stories.json");
+      const probePath = join(root, SCRIPT_PROBE_REL);
+      const tsconfigPath = join(root, "tsconfig.stories.json");
       const tscBin = fileURLToPath(
         new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
       );
@@ -415,8 +442,8 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
     "注册表收窄探针：五处未注册名被拒，逐行抑制后全绿（合并静默失效则两态反转）",
     { retry: 1, timeout: 60000 },
     async () => {
-      const probePath = join(PLAYGROUND_ROOT, REGISTRY_PROBE_REL);
-      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.stories.json");
+      const probePath = join(root, REGISTRY_PROBE_REL);
+      const tsconfigPath = join(root, "tsconfig.stories.json");
       const tscBin = fileURLToPath(
         new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
       );
@@ -447,11 +474,9 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
     "font ambient 探针：未注册名 font.缺省字体 被 tsc 拒绝，注册名 font.楷体 放行",
     { retry: 1, timeout: 60000 },
     async (ctx) => {
-      const probePath = join(PLAYGROUND_ROOT, FONT_PROBE_REL);
-      const fontFile = join(PLAYGROUND_ROOT, "Resources/Fonts/楷体.ttf");
-      const fontGenPath = join(PLAYGROUND_ROOT, FONT_GEN_REL);
-      const committedFont = readFileSync(fontGenPath, "utf8");
-      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.stories.json");
+      const probePath = join(root, FONT_PROBE_REL);
+      const fontFile = join(root, "Resources/Fonts/楷体.ttf");
+      const tsconfigPath = join(root, "tsconfig.stories.json");
       const tscBin = fileURLToPath(
         new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
       );
@@ -460,10 +485,10 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
           encoding: "utf8",
         });
       try {
-        // 探针需要非空注册表：落桩字体并重建类型面（finally 恢复封闭空类型）
+        // 探针需要非空注册表：落桩字体并重建类型面（副本用完即清，入库态不受影响）
         writeStubFont(fontFile);
         try {
-          await buildStories(PLAYGROUND_ROOT);
+          await buildStories(root);
         } catch (error) {
           if (isConfigContractTransition(error)) ctx.skip();
           throw error;
@@ -482,9 +507,6 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
       } finally {
         rmSync(probePath, { force: true });
         rmSync(fontFile, { force: true });
-        if (readFileSync(fontGenPath, "utf8") !== committedFont) {
-          writeFileSync(fontGenPath, committedFont);
-        }
       }
     },
   );
@@ -493,8 +515,8 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
     "vue-tsc 探针：故事源工程在组件编译器下零错，*.vue 默认导入被拒绝",
     { retry: 1, timeout: 60000 },
     async () => {
-      const probePath = join(PLAYGROUND_ROOT, VUE_TSC_PROBE_REL);
-      const tsconfigPath = join(PLAYGROUND_ROOT, "tsconfig.stories.json");
+      const probePath = join(root, VUE_TSC_PROBE_REL);
+      const tsconfigPath = join(root, "tsconfig.stories.json");
       const vueTscBin = fileURLToPath(
         new URL("../../node_modules/vue-tsc/bin/vue-tsc.js", import.meta.url),
       );

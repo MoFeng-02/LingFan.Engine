@@ -64,7 +64,7 @@ describe("animate", () => {
     engine.dispose();
   });
 
-  it("播毕回调：终值写回元素 props 并出队（回溯看到的是终态）", () => {
+  it("播毕回调：终值写回元素 props 并出队（element-animate-frame，回溯看到的是终态）", () => {
     const { engine } = makeEngine([
       { op: "animate", target: "title", property: "opacity", value: 0.8 },
     ]);

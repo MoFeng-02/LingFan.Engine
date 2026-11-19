@@ -23,6 +23,7 @@
 import { ELEMENT_OPS_BLOCKED, SYS } from "../../../contracts/index.ts";
 import type { EventListener, StoryCommand } from "../../../contracts/index.ts";
 import type { OpContext } from "../../internal/index.ts";
+import { abortExternalTakeovers } from "../../internal/index.ts";
 import { Scope } from "../../scope.ts";
 
 /** 提交模式：决定等待态要求与「停在等待态」的判定 */
@@ -158,6 +159,10 @@ export function runCommandBlock(
   if (mode === "scene" && !failed) {
     // `scene` 的三种正常收场：继续等、真换列、跑完
     if (leftColumn) {
+      // 换列收尾与 enterColumn 同一入口（单一收尾，禁另写一份）：真换列时中断外部接管。
+      // 换列经 enterColumn 已收口过一次，这里是同一函数的幂等再调用，确保「离开原列」
+      // 这一事实无论走哪条路径都经过同一个中断收尾，不会漏掉挂载信号。
+      abortExternalTakeovers(ctx);
       // 新列的帧栈是它自己的，原列的已随换列销毁；状态与坐标保持新列的样子
       ctx.frames = remaining;
       return true;

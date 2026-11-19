@@ -15,7 +15,6 @@ import {
   DEFAULT_LAYER_Z,
   DEFAULT_SAVES_CONFIG,
   DEFAULT_STAGE_CONFIG,
-  isOrientationMode,
   LAYER_IDS,
   SYS,
   type AudioChannel,
@@ -29,6 +28,7 @@ import {
   type StageFit,
   type StageScalePolicy,
 } from "../contracts/index.ts";
+import { isOrientationMode } from "../shared/index.ts";
 
 /**
  * 层级与存档壳的契约类型定义在契约层（`contracts/shell.ts`），

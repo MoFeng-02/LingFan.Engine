@@ -7,10 +7,10 @@ import { parseValueLiteral } from "../literals.ts";
 import { ELEMENT_OP_CONFLICTS, parseElementLine } from "./element.ts";
 import { parseSimpleStatement } from "./statement.ts";
 import {
-  isElementType,
   type ElementNode,
   type StoryCommand,
 } from "../../../contracts/index.ts";
+import { isElementType } from "../../../shared/index.ts";
 import type { ParseState } from "./state.ts";
 
 /** 带块体的语句在 parseCommands 内联处理；此处仅单行语句分发 */

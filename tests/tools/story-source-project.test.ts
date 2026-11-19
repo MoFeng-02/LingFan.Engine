@@ -17,10 +17,10 @@
  *   程序一致才说明编辑器与门禁看的是同一份类型面。
  *
  * 并发口径：真实工程的回归锚点（`tests/stories-build/playground-anchor.test.ts`）
- * 会在故事源目录里临时落几个探针文件，其中一个是**故意写错类型**的负例探针。
- * 本判据扫的正是那棵树，两边并行时既可能多看到一个探针文件、也可能撞上那个
- * 故意报错的探针——那不是回归，是别人正在施工。故：文件清单比对先滤掉探针，
- * 诊断只允许落在探针上；用例带重试，与锚点文件同口径。
+ * 的构建与探针都落在真实工程的**临时副本**上，真实故事源树全程只读、永远是稳定的
+ * 入库态——本判据扫的那棵树不会再被别人落探针，文件清单与诊断都按原样比对，无需
+ * 任何探针豁免。用例带重试只吸收重载下的 CPU 争用超时（I/O 竞态已由副本隔离消除），
+ * 真回归两次必红，不会被吞。
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -37,9 +37,6 @@ const TARGETS = [
   { id: "playground", root: "apps/playground" },
   { id: "模板骨架", root: "template/v1/__PROJECT__" },
 ] as const;
-
-/** 回归锚点临时落的探针文件：文件名以 `-probe.ts` 结尾 */
-const PROBE_FILE = /-probe\.ts$/;
 
 /** 就近工程路径（相对仓根） */
 function nearestConfig(root: string): string {
@@ -101,18 +98,16 @@ describe("故事源的就近工程：编辑器与类型检查看同一份类型�
         expect(stories.status, `stories 工程编译失败：${stories.output}`).toBe(
           0,
         );
-        // 报错只允许落在别人正在落的探针上——那不是本工程的问题
-        const offenders = errorLines(nearest.output).filter(
-          (line) => !PROBE_FILE.test(line),
-        );
+        // 真实树稳定（锚点写临时副本），诊断按原样比对：任何报错都是真回归
+        const offenders = errorLines(nearest.output);
         expect(
           offenders,
           `${target.id} 的就近工程报错：${offenders.join("\n")}`,
         ).toEqual([]);
         expect(
-          nearest.files.filter((file) => !PROBE_FILE.test(file)),
+          nearest.files,
           `${target.id} 的就近工程与 stories 工程纳入的文件集合不同：编辑器与门禁看的不是同一份类型面`,
-        ).toEqual(stories.files.filter((file) => !PROBE_FILE.test(file)));
+        ).toEqual(stories.files);
       }
     },
   );

@@ -251,17 +251,17 @@ export abstract class EngineForwarders extends EngineCore {
   protected restore(cp: Checkpoint): void {
     restore(this.ctx, cp);
   }
-  /** 内部转发 → ./history：把检查点归档进历史（未回溯且超出上限时从最旧端丢弃） */
-  protected commitCheckpoint(cp: Checkpoint): void {
-    commitCheckpoint(this.ctx, cp);
+  /** 内部转发 → ./history：把检查点归档进历史（未回溯且超出上限时从最旧端丢弃）；返回是否真提交 */
+  protected commitCheckpoint(cp: Checkpoint): boolean {
+    return commitCheckpoint(this.ctx, cp);
   }
   /** 内部转发 → ./history：检查点处的自动存档 */
   protected autoSaveAtCheckpoint(): void {
     autoSaveAtCheckpoint(this.ctx);
   }
-  /** 内部转发 → ./history：提交挂起的检查点（等玩家看过的画面解除等待后才入档） */
-  protected flushPendingCheckpoint(): void {
-    flushPendingCheckpoint(this.ctx);
+  /** 内部转发 → ./history：提交挂起的检查点（等玩家看过的画面解除等待后才入档）；返回是否真入档 */
+  protected flushPendingCheckpoint(): boolean {
+    return flushPendingCheckpoint(this.ctx);
   }
   /** 内部转发 → ./internal：取一个确定性随机数 [0,1)（mulberry32，状态进快照，重放序列一致） */
   protected draw(): number {

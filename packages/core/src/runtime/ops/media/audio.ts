@@ -7,11 +7,11 @@
  */
 import {
   SYS,
-  isAudioChannel,
   type AudioChannel,
   type AudioChannelState,
   type StoryCommand,
 } from "../../../contracts/index.ts";
+import { isAudioChannel } from "../../../shared/index.ts";
 import type { OpContext } from "../../internal/index.ts";
 import { pauseInstanceById, resumeInstanceById } from "./control.ts";
 import {

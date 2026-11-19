@@ -19,20 +19,20 @@ function issuesOf(node: unknown): string[] {
   return issues;
 }
 
-describe("validateElement（fail-closed）", () => {
+describe("validateElement（fail-closed，element-registry-fail-closed）", () => {
   it("36 类型内且属性合法 → 通过", () => {
     expect(
       issuesOf({ type: "text", text: "甲", x: "50%", color: "#fff" }),
     ).toEqual([]);
   });
 
-  it("未知类型 → 拒绝", () => {
+  it("未知类型 → 拒绝（element-unknown-type-rejected）", () => {
     const issues = issuesOf({ type: "teleporter" });
     expect(issues).toHaveLength(1);
     expect(issues[0]).toContain("36 种元素类型");
   });
 
-  it("未知属性 → 拒绝", () => {
+  it("未知属性 → 拒绝（element-unknown-attr-rejected）", () => {
     const issues = issuesOf({ type: "image", source: "a.png", hack: 1 });
     expect(issues).toHaveLength(1);
     expect(issues[0]).toContain("hack");
@@ -50,7 +50,7 @@ describe("validateElement（fail-closed）", () => {
     );
   });
 
-  it("children 仅容器可带，且递归校验", () => {
+  it("children 仅容器可带，且递归校验（element-children-nesting）", () => {
     expect(issuesOf({ type: "text", children: [] })[0]).toContain(
       "仅容器类型可带",
     );
@@ -76,7 +76,7 @@ describe("loadElements（装载与派生）", () => {
     expect(els[1]?.id).toBe("named");
   });
 
-  it("z 三级：zindex > order > 到达序", () => {
+  it("z 三级：zindex > order > 到达序（element-z-three-levels）", () => {
     const els = loadElements(
       [
         { type: "text" },

@@ -3,7 +3,8 @@
  * 与语句 op 同名的元素类型只能显式写 `element` 前缀（见 ELEMENT_OP_CONFLICTS）。
  */
 import { unquote } from "../lexer.ts";
-import { isElementType, type ElementNode } from "../../../contracts/index.ts";
+import { type ElementNode } from "../../../contracts/index.ts";
+import { isElementType } from "../../../shared/index.ts";
 
 // ====== 元素行（scene 列内）：`类型 "内容" key=value …` ======
 

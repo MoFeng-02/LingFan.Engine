@@ -6,10 +6,10 @@
  */
 import {
   SYS,
-  isReplayableColumn,
   type StoryCommand,
   type StoryColumn,
 } from "../../contracts/index.ts";
+import { isReplayableColumn } from "../../shared/index.ts";
 import { loadElements } from "../../data/index.ts";
 import { loadBody } from "../body/index.ts";
 import type { ExprValue } from "../expr/index.ts";
@@ -18,6 +18,7 @@ import { Scope } from "../scope.ts";
 import { parseMenuReturn } from "./helpers.ts";
 import type { Frame, LoopState } from "./frame.ts";
 import type { OpContext } from "./context.ts";
+import { abortExternalTakeovers } from "./waiting.ts";
 
 /** 防死循环安全网：单个循环帧的迭代上限（fail-closed） */
 const LOOP_LIMIT = 10000;
@@ -68,6 +69,11 @@ export function enterColumn(ctx: OpContext, columnId: string): boolean {
     ctx.fail("unknown-column", `目标列不存在：${columnId}`);
     return false;
   }
+  // 换列即中断全部外部接管（小游戏/玩法/扩展 op 的挂载信号）：`jump` 直调本函数，
+  // 不经过 `navigate` 那条已带中断的路径，若不在这里收口，旧列的接管信号会存活到新列。
+  // 收敛到单一收尾函数（与 leftColumn 分支同一入口）：分两处各写一份迟早漏掉一边，
+  // 表现为「换列后旧系统还在跑、推进键永久失效」。对已自行收尾的完成转列是幂等空操作。
+  abortExternalTakeovers(ctx);
   // 场景类型分流：
   // 进入 menu/ui 列 ⇒ 记下**进入前**的可回溯坐标与等待态（`__menu_return`），
   // 供「在菜单里存档」时还原成菜单前的游戏进度（Ren'Py Esc 菜单存档语义）。

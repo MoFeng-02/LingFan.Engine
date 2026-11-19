@@ -7,12 +7,12 @@
 import {
   GAME_SYSTEM_ID_PATTERN,
   SYS,
-  gameScopedKey,
   type MinigameResult,
   type OutboundEvent,
   type OutboundPayload,
   type StoryCommand,
 } from "../../contracts/index.ts";
+import { gameScopedKey } from "../../shared/index.ts";
 import { ExpressionError } from "../expr/index.ts";
 import type { Frame, OpContext } from "../internal/index.ts";
 import { writeExternal } from "../state/index.ts";

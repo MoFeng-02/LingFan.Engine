@@ -53,7 +53,7 @@ function storyWith(commands: object[]): Story {
   } as Story;
 }
 
-describe("自定义 op 文本投影", () => {
+describe("自定义 op 文本投影（custom-op-text-projection）", () => {
   it("json → dsl → json 往返深等", () => {
     const story = storyWith([
       { op: "say", text: "开局" },

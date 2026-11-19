@@ -17,6 +17,3 @@ export * from "./messages.ts";
 export * from "./text.ts";
 export * from "./project.ts";
 export * from "./scene-env.ts";
-
-// 判定函数实现位于 shared：此处转发，保持既有导入路径可用。
-export * from "../shared/index.ts";
