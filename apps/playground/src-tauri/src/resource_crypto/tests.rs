@@ -528,6 +528,71 @@ fn stream_decrypt_to_cache_round_trip_and_idempotent() {
 }
 
 #[test]
+fn plaintext_lru_evict_zeroize() {
+    // v2 明文 LRU 逐出清零：明文块以 Zeroizing 持有（逐出/替换/销毁 drop 即清零）
+    use crate::resource_crypto::block_cache::{V2BlockCache, V2CacheKey};
+    let key = |i: u64| V2CacheKey {
+        enc: PathBuf::from("m.mp4.enc"),
+        logical: "Video/m.mp4".to_string(),
+        index: i,
+        key_fp: 42,
+    };
+    // 上限 20 字节：每块 10 字节，放三块必逐出最旧
+    let mut cache = V2BlockCache::new(20);
+    cache.put(key(0), vec![0u8; 10]);
+    cache.put(key(1), vec![1u8; 10]);
+    assert!(cache.get(&key(0)).is_some());
+    cache.put(key(2), vec![2u8; 10]); // 超上限 → 逐出最久未用（key(1)，因 key(0) 刚被 get 刷新）
+    assert!(cache.bytes <= cache.cap_bytes, "逐出后须回到上限内");
+    assert!(cache.get(&key(1)).is_none(), "最久未用块应被逐出");
+    assert!(cache.get(&key(2)).is_some());
+    // 源面：明文块以 Zeroizing 持有（内存卫生单一声明）
+    let src = include_str!("block_cache.rs");
+    assert!(
+        src.contains("Zeroizing<Vec<u8>>") && src.contains("Zeroizing::new(plain)"),
+        "v2 明文 LRU 须以 Zeroizing 持有（逐出清零）"
+    );
+}
+
+#[test]
+fn tmp_stream_perm_0600() {
+    // v1 流缓存 0600 折中：目录 0700 / 文件 0600（闭合 Linux 世界可读），明文缓冲用后清零
+    let base = temp_base("lf3-stream-perm");
+    let root = base.join("res");
+    let app_data = base.join("data");
+    fs::create_dir_all(root.join("Video")).unwrap();
+    let plain = b"perm-check".to_vec();
+    fs::write(
+        root.join("Video/m2.mp4.enc"),
+        encrypt_lfen2(&plain, KEY, "Video/m2.mp4").unwrap(),
+    )
+    .unwrap();
+    let name = stream_decrypt_to_cache(&StdFs, &root, &app_data, KEY, "Video/m2.mp4").unwrap();
+    let dir = tmp_stream_dir(&app_data);
+    let cached = dir.join(&name);
+    assert_eq!(fs::read(&cached).unwrap(), plain);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let file_mode = fs::metadata(&cached).unwrap().permissions().mode() & 0o777;
+        let dir_mode = fs::metadata(&dir).unwrap().permissions().mode() & 0o777;
+        assert_eq!(file_mode, 0o600, "v1 流缓存文件须 0600（仅属主）");
+        assert_eq!(dir_mode, 0o700, "v1 流缓存目录须 0700");
+    }
+    // 源面：0600 折中决策 + 属主权限收紧 + 明文缓冲 Zeroizing（内存 LRU 评估后取折中）
+    let src = include_str!("stream/cache.rs");
+    assert!(
+        src.contains("restrict_owner_only") && src.contains("0o600") && src.contains("0o700"),
+        "v1 流缓存须收紧属主权限"
+    );
+    assert!(
+        src.contains("Zeroizing::new(decrypt_resource_bytes") && src.contains("0600 折中"),
+        "明文缓冲用后清零 + 0600 折中决策须在场"
+    );
+    fs::remove_dir_all(&base).ok();
+}
+
+#[test]
 fn lfen2_v2_round_trip_and_tail_chunk() {
     // 尾块短块合法；块对齐/跨块/后缀 Range 全形态回读 == 源明文；全量解密等价
     let base = temp_base("lf3-v2-rt");

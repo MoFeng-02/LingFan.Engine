@@ -1,9 +1,11 @@
 //! 文件读取原语（通用底座）：可 seek 的读取抽象与「文件内区间」包装。
 //!
 //! 本模块只描述**字节来源的形状**，不含任何资源/加密语义——桌面整文件、Android APK 内
-//! 区间、加密资源分块链都建立在这一层之上。
+//! 区间、加密资源分块链都建立在这一层之上。原子写（tmp+rename）亦属通用文件卫生，
+//! 无加密语义，故落此层供存档/高水位/偏好/持久化共用（单一声明）。
 
 use std::io::{Read, Seek, SeekFrom};
+use std::path::{Path, PathBuf};
 
 /// Read + Seek 组合别名：资源读取的统一文件原语（v2 分块按需解密依赖 seek）。
 pub trait SeekRead: Read + Seek {}
@@ -15,6 +17,36 @@ pub fn seek_len(f: &mut dyn SeekRead) -> std::io::Result<u64> {
     let len = f.seek(SeekFrom::End(0))?;
     f.seek(SeekFrom::Start(restored))?;
     Ok(len)
+}
+
+/// 同目录唯一临时文件路径（隐藏前缀 + 进程 id + 进程内序号，避免并发碰撞）。
+fn unique_tmp_path(path: &Path) -> PathBuf {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static SEQ: AtomicU64 = AtomicU64::new(0);
+    let n = SEQ.fetch_add(1, Ordering::Relaxed);
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "file".to_string());
+    path.with_file_name(format!(".{name}.tmp-{}-{n}", std::process::id()))
+}
+
+/// 原子写（单一声明）：同目录唯一临时文件写入后 `rename` 覆盖目标——
+/// 崩溃/断电不留半档（rename 是原子操作，目标要么旧内容要么新内容）。
+/// 供存档/高水位/偏好/持久化共用，禁各写一份。失败清理临时文件，目标保持原样（fail-closed）。
+pub fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let tmp = unique_tmp_path(path);
+    let result = (|| {
+        std::fs::write(&tmp, bytes)?;
+        std::fs::rename(&tmp, path)
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+    result
 }
 
 /// 区间文件包装：把 `Read`/`Seek` 的坐标原点与 EOF 一并限制在底层文件的 `[base, base + len)` 段。

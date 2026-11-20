@@ -10,6 +10,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::sync::OnceLock;
+use zeroize::Zeroizing;
 
 /// v2 块明文有界 LRU 缓存：吸收相邻 Range 的重复解密——同块二次请求零解密直取。
 /// 键 = （密文路径, 逻辑路径, 块号, DEK 指纹）四元组：路径参与键防跨资源串味
@@ -26,10 +27,11 @@ pub(crate) struct V2CacheKey {
 }
 
 /// 有界 LRU 缓存：按块保存已解密明文，容量以字节计。
+/// 明文块以 [`Zeroizing`] 持有——逐出/替换/缓存销毁 drop 即清零（内存卫生，抬高提取成本）。
 pub(crate) struct V2BlockCache {
     pub(crate) cap_bytes: u64,
     pub(crate) bytes: u64,
-    pub(crate) entries: HashMap<V2CacheKey, Vec<u8>>,
+    pub(crate) entries: HashMap<V2CacheKey, Zeroizing<Vec<u8>>>,
     pub(crate) recency: VecDeque<V2CacheKey>,
     pub(crate) hits: u64,
     pub(crate) misses: u64,
@@ -56,10 +58,11 @@ impl V2BlockCache {
         }
         self.hits += 1;
         self.touch(key);
-        self.entries.get(key).cloned()
+        self.entries.get(key).map(|plain| plain.to_vec())
     }
 
     /// 存入块明文，超容量时按最久未用顺序逐出，直到回到上限内。
+    /// 逐出/替换的旧明文块经 [`Zeroizing`] drop 清零（不留可恢复的明文残影）。
     pub(crate) fn put(&mut self, key: V2CacheKey, plain: Vec<u8>) {
         // 禁用（cap=0）或单块超上限：不缓存，解密路径照常（仅失去加速）
         if self.cap_bytes == 0 || plain.len() as u64 > self.cap_bytes {
@@ -69,13 +72,14 @@ impl V2BlockCache {
             self.recency.push_front(key.clone());
             self.bytes += plain.len() as u64;
         }
-        self.entries.insert(key, plain);
+        self.entries.insert(key, Zeroizing::new(plain));
         while self.bytes > self.cap_bytes {
             let Some(victim) = self.recency.pop_back() else {
                 break;
             };
             if let Some(v) = self.entries.remove(&victim) {
                 self.bytes -= v.len() as u64;
+                // v（Zeroizing）在此 drop → 明文块清零
             }
         }
     }

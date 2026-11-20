@@ -11,14 +11,34 @@ use aes_gcm::aead::{Aead, AeadInOut, Payload};
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use base64::engine::general_purpose::STANDARD as B64;
 use base64::Engine as _;
+use std::time::{Duration, Instant};
+use zeroize::Zeroizing;
 
 /// OS 凭据条目的服务名（与 [`KEK_USER`] 一起定位本机唯一的那条 KEK 凭据）。
 pub(crate) const KEK_SERVICE: &str = "lingfanengine";
 /// OS 凭据条目内的用户名；服务名相同而用户名不同即为另一条凭据。
 pub(crate) const KEK_USER: &str = "kek";
 
-/// 进程内 KEK 缓存：命中即直接返回，后续加解密不再访问系统凭据库。
-static KEK_CACHE: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+/// iOS Keychain 访问策略：`WhenUnlockedThisDeviceOnly`——解锁后可用、**仅限本设备**。
+/// 关键取舍：ThisDeviceOnly 的项不随 iOS 加密备份迁移到新设备，切断「备份密码已知即离线
+/// 解密 KEK/存档」的备份链（存档本就机器绑定，换机不携 KEK 是合理一致取舍；换机需重新激活）。
+/// 经 keyring-core 的 entry modifier 下发（apple protected store 的 `access-policy` 修饰键），
+/// 而非 store 配置——store 配置只接受 access-group/cloud-sync。
+#[cfg(target_os = "ios")]
+const IOS_ACCESS_POLICY: &str = "when-unlocked-this-device-only";
+
+/// KEK 缓存 TTL：折中系统凭据库 IPC 频率与明文 KEK 常驻窗口——到期按需重取，
+/// 缩短明文密钥在进程内存的停留时间（内存卫生抬高提取成本，非绝对防护）。
+const KEK_CACHE_TTL: Duration = Duration::from_secs(60);
+
+/// KEK 缓存条目：主副本（[`Zeroizing`] 逐出即清零）+ 取用时刻（短 TTL 判定）。
+struct KekCacheEntry {
+    kek: Zeroizing<Vec<u8>>,
+    fetched: Instant,
+}
+
+/// 进程内 KEK 短 TTL 缓存：命中且未到期直接返回副本；到期重取并替换（旧主副本 drop 清零）。
+static KEK_CACHE: std::sync::Mutex<Option<KekCacheEntry>> = std::sync::Mutex::new(None);
 /// 首次取 KEK 的进程内互斥：缓存未命中时只放一个线程去生成并写入凭据，其余线程等它完成后读缓存。
 static KEK_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
@@ -46,6 +66,11 @@ fn ensure_credential_store() -> Result<(), String> {
         }
         #[cfg(target_os = "android")]
         {
+            // 诚实限制：上游 android-native-keyring-store 1.0 的配置面只暴露 name/filename/divider，
+            // 密钥生成恒 setUserAuthenticationRequired(false) 且无 StrongBox 绑定（entry modifier 亦被拒）。
+            // 故 KEK 落**软件 Keystore**（非硬件 StrongBox 隔离）：防同用户 casual 读取，但 root/同用户
+            // 边界内仍可提取——不虚假承诺硬件级隔离。StrongBox/认证绑定 opt-in 需自管 Keystore
+            // （Android-only JNI KeyGenParameterSpec），另行排期、真机验证；默认保持软件 Keystore 现状。
             let store = android_native_keyring_store::Store::new()
                 .map_err(|e| format!("Android 凭据 store 创建失败：{e}"))?;
             keyring_core::set_default_store(store);
@@ -60,41 +85,74 @@ fn ensure_credential_store() -> Result<(), String> {
     .clone()
 }
 
-/// 取凭据条目（先确保平台 store 已装配）
+/// 取凭据条目（先确保平台 store 已装配）。
+/// iOS 经 entry modifier 下发 ThisDeviceOnly 访问策略（见 [`IOS_ACCESS_POLICY`]）；
+/// 其余平台用默认条目（桌面 DPAPI/Keychain/libsecret、Android 软件 Keystore）。
 fn credential_entry(service: &str, user: &str) -> Result<keyring_core::Entry, String> {
     ensure_credential_store()?;
-    keyring_core::Entry::new(service, user).map_err(|e| e.to_string())
+    #[cfg(target_os = "ios")]
+    {
+        let mut modifiers = std::collections::HashMap::new();
+        modifiers.insert("access-policy", IOS_ACCESS_POLICY);
+        keyring_core::Entry::new_with_modifiers(service, user, &modifiers)
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "ios"))]
+    {
+        keyring_core::Entry::new(service, user).map_err(|e| e.to_string())
+    }
 }
 
 /// KEK 首次生成后写入 OS 凭据，零明文密钥落盘。
-/// 进程内互斥 + 缓存：消除首次运行多线程并发创建 KEK 的覆盖竞争。
-pub(crate) fn kek_from_keyring(service: &str, user: &str) -> Result<Vec<u8>, String> {
-    if let Some(cached) = KEK_CACHE.get() {
-        return Ok(cached.clone());
+/// 进程内互斥 + 短 TTL 缓存：消除首次运行多线程并发创建 KEK 的覆盖竞争；缓存到期按需重取，
+/// 缩短明文 KEK 常驻窗口。返回 [`Zeroizing`] 副本——调用方用毕 drop 即清零（内存卫生）。
+pub(crate) fn kek_from_keyring(
+    service: &str,
+    user: &str,
+) -> Result<Zeroizing<Vec<u8>>, String> {
+    // 短 TTL 命中：未到期直接返回副本（副本 Zeroizing，用后清零）。
+    if let Some(entry) = KEK_CACHE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .as_ref()
+    {
+        if entry.fetched.elapsed() < KEK_CACHE_TTL {
+            return Ok(Zeroizing::new(entry.kek.to_vec()));
+        }
     }
     let _guard = KEK_LOCK
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if let Some(cached) = KEK_CACHE.get() {
-        return Ok(cached.clone());
+    // 双检：等锁期间可能已被其他线程刷新缓存。
+    if let Some(entry) = KEK_CACHE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .as_ref()
+    {
+        if entry.fetched.elapsed() < KEK_CACHE_TTL {
+            return Ok(Zeroizing::new(entry.kek.to_vec()));
+        }
     }
     let entry = credential_entry(service, user)?;
-    let kek = match entry.get_password() {
-        Ok(b64) => B64
-            .decode(b64.as_bytes())
-            .map_err(|e| format!("KEK 解码失败：{e}"))?,
+    let kek: Zeroizing<Vec<u8>> = match entry.get_password() {
+        Ok(b64) => Zeroizing::new(
+            B64.decode(b64.as_bytes())
+                .map_err(|e| format!("KEK 解码失败：{e}"))?,
+        ),
         Err(keyring_core::Error::NoEntry) => {
-            let generated = random_bytes(32)?;
+            let generated = Zeroizing::new(random_bytes(32)?);
             entry
-                .set_password(&B64.encode(&generated))
+                .set_password(&B64.encode(generated.as_slice()))
                 .map_err(|e| e.to_string())?;
             generated
         }
         Err(e) => return Err(e.to_string()),
     };
-    KEK_CACHE
-        .set(kek.clone())
-        .map_err(|_| "KEK 缓存冲突".to_string())?;
+    // 替换缓存：旧条目 drop → 旧主副本 Zeroizing 清零；新主副本独立持有。
+    *KEK_CACHE.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(KekCacheEntry {
+        kek: Zeroizing::new(kek.to_vec()),
+        fetched: Instant::now(),
+    });
     Ok(kek)
 }
 
@@ -194,5 +252,57 @@ mod tests {
         let mut sealed2 = gcm_seal(&key, b"secret", b"aad").unwrap();
         sealed2[20] ^= 0xFF; // 篡改密文体
         assert!(gcm_open_in_place(&key, sealed2, b"aad").is_err());
+    }
+
+    #[test]
+    fn ios_keychain_this_device_only() {
+        // iOS Keychain 访问策略 = WhenUnlockedThisDeviceOnly（断备份迁移）：配置经 entry modifier
+        // 下发（apple protected store 的 access-policy 修饰键），源面守卫钉死策略值与下发路径。
+        // 只取生产段（mod tests 之前）：测试自身的断言串不计入，守卫才可被「改回默认策略」证伪。
+        let src = include_str!("crypto.rs");
+        let prod = src.split("mod tests").next().unwrap_or(src);
+        assert!(
+            prod.contains("when-unlocked-this-device-only"),
+            "iOS 访问策略须为 ThisDeviceOnly（断备份链）"
+        );
+        assert!(
+            prod.contains("new_with_modifiers") && prod.contains("\"access-policy\""),
+            "iOS 策略须经 keyring-core entry modifier 下发"
+        );
+    }
+
+    #[test]
+    fn kek_zeroize_on_drop_and_cache_short_ttl() {
+        // KEK 取用副本是 Zeroizing（drop 即清零）；短 TTL 内两次取同 KEK（缓存命中，非随机重生）。
+        let a: Zeroizing<Vec<u8>> = kek_from_keyring(KEK_SERVICE, KEK_USER).unwrap();
+        let b: Zeroizing<Vec<u8>> = kek_from_keyring(KEK_SERVICE, KEK_USER).unwrap();
+        assert_eq!(a, b);
+        assert_eq!(a.len(), 32);
+        // TTL 是有限短窗口（非永久常驻）：源面守卫钉死短 TTL 常量与到期重取逻辑（只取生产段）。
+        let src = include_str!("crypto.rs");
+        let prod = src.split("mod tests").next().unwrap_or(src);
+        assert!(prod.contains("KEK_CACHE_TTL"), "KEK 缓存须有短 TTL");
+        assert!(
+            prod.contains("entry.fetched.elapsed() < KEK_CACHE_TTL"),
+            "KEK 缓存须按 TTL 到期重取"
+        );
+        assert!(KEK_CACHE_TTL.as_secs() > 0 && KEK_CACHE_TTL.as_secs() <= 300);
+    }
+
+    #[test]
+    fn android_keystore_strongbox_opt_in_limitation_registered() {
+        // Android StrongBox/认证绑定 opt-in 的限制登记守卫：上游 crate 配置面不暴露 StrongBox/
+        // 认证绑定，诚实声明软件 Keystore 现状 + 自管 Keystore 另行排期（不虚假承诺硬件隔离）。
+        // 只取生产段（mod tests 之前）：测试自身的断言串不计入，守卫才可被「删诚实声明」证伪。
+        let src = include_str!("crypto.rs");
+        let prod = src.split("mod tests").next().unwrap_or(src);
+        assert!(
+            prod.contains("软件 Keystore") && prod.contains("StrongBox") && prod.contains("另行排期"),
+            "crypto.rs android 分支须诚实登记软件 Keystore 限制与自管 Keystore 另行排期"
+        );
+        assert!(
+            prod.contains("android_native_keyring_store::Store::new()"),
+            "Android 默认保持软件 Keystore 现状（fallback）"
+        );
     }
 }

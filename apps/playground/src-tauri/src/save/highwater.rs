@@ -40,8 +40,6 @@ pub(crate) fn write_high_water(
 ) -> Result<(), SaveError> {
     let sealed = gcm_seal(kek, &count.to_be_bytes(), AAD_HIGH_WATER).map_err(SaveError::Crypto)?;
     let path = high_water_path(base, slot);
-    if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir).map_err(|e| SaveError::Io(e.to_string()))?;
-    }
-    fs::write(path, &sealed).map_err(|e| SaveError::Io(e.to_string()))
+    // 原子写（tmp+rename，单一声明 crate::fs::atomic_write）：崩溃不留半档高水位
+    crate::fs::atomic_write(&path, &sealed).map_err(|e| SaveError::Io(e.to_string()))
 }

@@ -40,14 +40,11 @@ pub fn read_prefs_file(path: &Path) -> Result<Option<serde_json::Value>, Prefere
     Ok(Some(value))
 }
 
-/// 写入偏好（覆盖式；目录不存在则建）
+/// 写入偏好（覆盖式；目录不存在则建；原子写 tmp+rename 崩溃不留半档）
 pub fn write_prefs_file(path: &Path, prefs: &serde_json::Value) -> Result<(), PreferencesError> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| PreferencesError::Io(e.to_string()))?;
-    }
     let text = serde_json::to_string_pretty(prefs)
         .map_err(|e| PreferencesError::BadJson(e.to_string()))?;
-    fs::write(path, text).map_err(|e| PreferencesError::Io(e.to_string()))
+    crate::fs::atomic_write(path, text.as_bytes()).map_err(|e| PreferencesError::Io(e.to_string()))
 }
 
 fn prefs_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, PreferencesError> {

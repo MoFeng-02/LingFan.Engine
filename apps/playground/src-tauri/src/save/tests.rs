@@ -195,3 +195,88 @@ fn high_water_is_per_slot() {
     let slots: Vec<String> = list_saves(&base).unwrap().into_iter().map(|s| s.slot).collect();
     assert_eq!(slots.len(), 2, "高水位目录不该被扫成槽位：{slots:?}");
 }
+
+#[test]
+fn save_atomic_write_tmp_rename() {
+    // 原子写（tmp+rename）：覆盖式写入、无残留临时文件、四处共用单一声明
+    let base = test_base("atomic");
+    let target = base.join("nested").join("data.bin");
+    crate::fs::atomic_write(&target, b"first").unwrap();
+    assert_eq!(fs::read(&target).unwrap(), b"first");
+    crate::fs::atomic_write(&target, b"second-longer").unwrap();
+    assert_eq!(fs::read(&target).unwrap(), b"second-longer");
+    let leftovers: Vec<_> = fs::read_dir(target.parent().unwrap())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_name().to_string_lossy().contains(".tmp-"))
+        .collect();
+    assert!(leftovers.is_empty(), "原子写不应残留临时文件：{leftovers:?}");
+    // 单一声明：fs.rs 定义，存档/高水位/偏好/持久化四处共用（禁各写一份）
+    let fs_src = include_str!("../fs.rs");
+    assert!(fs_src.contains("pub fn atomic_write") && fs_src.contains("rename"));
+    for src in [
+        include_str!("core.rs"),
+        include_str!("highwater.rs"),
+        include_str!("../preferences.rs"),
+        include_str!("../persistent.rs"),
+    ] {
+        assert!(
+            src.contains("crate::fs::atomic_write"),
+            "写盘须经原子写单一声明 crate::fs::atomic_write"
+        );
+    }
+}
+
+#[test]
+fn lfs3_v2_header_authenticated() {
+    // v2 头部认证：篡改 save_count/timestamp（回档相关字段）即 GCM 认证拒绝
+    use crate::save::envelope::FORMAT_VERSION_V2;
+    let base = test_base("v2hdr");
+    write_save(&base, "slot_1", "secret", CryptoMode::MachineBound).unwrap();
+    let file = fs::read(save_path(&base, "slot_1")).unwrap();
+    assert_eq!(
+        u16::from_be_bytes([file[4], file[5]]),
+        FORMAT_VERSION_V2,
+        "写档应为 v2 头部认证格式"
+    );
+    let mut tampered_count = file.clone();
+    tampered_count[7] ^= 0xFF; // save_count 首字节
+    fs::write(save_path(&base, "slot_1"), &tampered_count).unwrap();
+    assert!(
+        matches!(read_save(&base, "slot_1"), Err(SaveError::Crypto(_))),
+        "v2 篡改 save_count 须认证拒绝（防绕过回档检测）"
+    );
+    let mut tampered_ts = file.clone();
+    tampered_ts[15] ^= 0xFF; // timestamp 首字节
+    fs::write(save_path(&base, "slot_1"), &tampered_ts).unwrap();
+    assert!(
+        matches!(read_save(&base, "slot_1"), Err(SaveError::Crypto(_))),
+        "v2 篡改 timestamp 须认证拒绝"
+    );
+}
+
+#[test]
+fn lfs3_v1_compat_read() {
+    // 兼容读 v1：手工构造头部未认证的旧档（legacy AAD 仅绑槽），read_save 仍可读
+    use crate::crypto::{gcm_seal, random_bytes};
+    use crate::save::envelope::{AAD_PAYLOAD_PREFIX, FORMAT_VERSION, MAGIC};
+    let base = test_base("v1compat");
+    let dek = random_bytes(32).unwrap();
+    let payload = "legacy-v1";
+    let aad = format!("{AAD_PAYLOAD_PREFIX}slot_1");
+    let ciphertext = gcm_seal(&dek, payload.as_bytes(), aad.as_bytes()).unwrap();
+    let save_count: u64 = 1;
+    let timestamp: u64 = 1_700_000_000_000;
+    let mut file = Vec::new();
+    file.extend_from_slice(MAGIC);
+    file.extend_from_slice(&FORMAT_VERSION.to_be_bytes()); // v1
+    file.push(CryptoMode::Portable.code());
+    file.extend_from_slice(&save_count.to_be_bytes());
+    file.extend_from_slice(&timestamp.to_be_bytes());
+    file.extend_from_slice(&(dek.len() as u32).to_be_bytes());
+    file.extend_from_slice(&dek);
+    file.extend_from_slice(&ciphertext);
+    fs::create_dir_all(saves_dir(&base)).unwrap();
+    fs::write(save_path(&base, "slot_1"), &file).unwrap();
+    assert_eq!(read_save(&base, "slot_1").unwrap(), payload, "v1 旧档须兼容读");
+}

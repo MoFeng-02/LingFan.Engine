@@ -6,10 +6,18 @@ use crate::save::core::{SaveError};
 pub(crate) const MAGIC: &[u8; 4] = b"LFS3";
 
 /// 信封格式版本（第 5-6 字节，大端）；未知版本按格式错误拒绝，避免误读旧档。
+/// v1 = 头部未认证（兼容读旧档）；v2 = 头部认证（mode/save_count/timestamp 纳 AAD）。
 pub(crate) const FORMAT_VERSION: u16 = 1;
+
+/// LFS3 v2：头部字段（mode/save_count/timestamp）纳入负载 AAD 认证——
+/// 篡改回档相关头部字段即 GCM 认证失败（fail-closed）。格式只增，v1 仍兼容读。
+pub(crate) const FORMAT_VERSION_V2: u16 = 2;
 
 /// 负载 AAD 前缀，与槽名拼接后参与认证：换槽改名即解密失败，防张冠李戴。
 pub(crate) const AAD_PAYLOAD_PREFIX: &str = "LFS3:payload:";
+
+/// v2 负载 AAD 前缀（域分离 v1）： additionally 绑 mode/save_count/timestamp 头部字段。
+pub(crate) const AAD_PAYLOAD_PREFIX_V2: &str = "LFS3:payload-v2:";
 
 /// 机器绑定模式下 KEK 封装 DEK 的 AAD，与负载 AAD 域分离——两者密文不可互换。
 pub(crate) const AAD_DEK_MACHINE_BOUND: &[u8] = b"LFS3:dek:machine-bound";
@@ -57,10 +65,30 @@ impl CryptoMode {
     }
 }
 
-/// LFS3 信封解析产物：模式、save_count、timestamp、nonce、密文体
-type EnvelopeParts = (CryptoMode, u64, u64, Vec<u8>, Vec<u8>);
+/// LFS3 信封解析产物：版本、模式、save_count、timestamp、DEK 段、密文体
+type EnvelopeParts = (u16, CryptoMode, u64, u64, Vec<u8>, Vec<u8>);
 
-/// 解析 LFS3 信封头部，返回模式、计数、时间戳、DEK 段与密文体。
+/// 负载 AAD（按版本）：v1 仅绑槽名（头部未认证，兼容旧档）；
+/// v2  additionally 绑 mode/save_count/timestamp——头部篡改即认证失败（防回档检测被绕过）。
+pub(crate) fn payload_aad(
+    version: u16,
+    slot: &str,
+    mode: CryptoMode,
+    save_count: u64,
+    timestamp: u64,
+) -> Vec<u8> {
+    if version >= FORMAT_VERSION_V2 {
+        let mut aad = format!("{AAD_PAYLOAD_PREFIX_V2}{slot}").into_bytes();
+        aad.push(mode.code());
+        aad.extend_from_slice(&save_count.to_be_bytes());
+        aad.extend_from_slice(&timestamp.to_be_bytes());
+        aad
+    } else {
+        format!("{AAD_PAYLOAD_PREFIX}{slot}").into_bytes()
+    }
+}
+
+/// 解析 LFS3 信封头部，返回版本、模式、计数、时间戳、DEK 段与密文体（兼容 v1/v2）。
 pub(crate) fn parse_envelope(file: &[u8]) -> Result<EnvelopeParts, SaveError> {
     const HEADER: usize = 4 + 2 + 1 + 8 + 8 + 4;
     if file.len() < HEADER {
@@ -70,7 +98,7 @@ pub(crate) fn parse_envelope(file: &[u8]) -> Result<EnvelopeParts, SaveError> {
         return Err(SaveError::BadFormat("魔数不符（非 LFS3）".into()));
     }
     let version = u16::from_be_bytes([file[4], file[5]]);
-    if version != FORMAT_VERSION {
+    if version != FORMAT_VERSION && version != FORMAT_VERSION_V2 {
         return Err(SaveError::BadFormat(format!("格式版本不支持：{version}")));
     }
     let mode = CryptoMode::from_code(file[6])?;
@@ -82,5 +110,5 @@ pub(crate) fn parse_envelope(file: &[u8]) -> Result<EnvelopeParts, SaveError> {
     }
     let dek_part = file[HEADER..HEADER + dek_len].to_vec();
     let ciphertext = file[HEADER + dek_len..].to_vec();
-    Ok((mode, save_count, timestamp, dek_part, ciphertext))
+    Ok((version, mode, save_count, timestamp, dek_part, ciphertext))
 }

@@ -6,7 +6,7 @@ use crate::crypto::gcm_open;
 use crate::crypto::gcm_seal;
 use crate::crypto::kek_from_keyring;
 use crate::crypto::random_bytes;
-use crate::save::envelope::{AAD_DEK_MACHINE_BOUND, AAD_PAYLOAD_PREFIX, CryptoMode, FORMAT_VERSION, MAGIC, parse_envelope};
+use crate::save::envelope::{AAD_DEK_MACHINE_BOUND, CryptoMode, FORMAT_VERSION_V2, MAGIC, parse_envelope, payload_aad};
 use crate::save::highwater::{HIGH_WATER_DIR, read_high_water, write_high_water};
 use serde::Serialize;
 use std::fs;
@@ -104,9 +104,14 @@ pub fn write_save(
     let save_count = high_water + 1;
 
     let dek = random_bytes(32).map_err(SaveError::Crypto)?; // 每档独立随机 DEK
-    let aad = format!("{AAD_PAYLOAD_PREFIX}{slot}");
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| SaveError::Io(e.to_string()))?
+        .as_millis() as u64;
+    // v2 头部认证：mode/save_count/timestamp 纳负载 AAD（篡改回档相关字段即认证失败）
+    let aad = payload_aad(FORMAT_VERSION_V2, slot, mode, save_count, timestamp);
     let ciphertext =
-        gcm_seal(&dek, payload.as_bytes(), aad.as_bytes()).map_err(SaveError::Crypto)?;
+        gcm_seal(&dek, payload.as_bytes(), &aad).map_err(SaveError::Crypto)?;
     let dek_part = match mode {
         // MachineBound = KEK 封装（跨机不可解）；Portable = DEK 明文进档（仅存档可分享）
         CryptoMode::MachineBound => {
@@ -115,13 +120,9 @@ pub fn write_save(
         CryptoMode::Portable => dek,
     };
 
-    let timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|e| SaveError::Io(e.to_string()))?
-        .as_millis() as u64;
     let mut file = Vec::new();
     file.extend_from_slice(MAGIC);
-    file.extend_from_slice(&FORMAT_VERSION.to_be_bytes());
+    file.extend_from_slice(&FORMAT_VERSION_V2.to_be_bytes());
     file.push(mode.code());
     file.extend_from_slice(&save_count.to_be_bytes());
     file.extend_from_slice(&timestamp.to_be_bytes());
@@ -129,8 +130,9 @@ pub fn write_save(
     file.extend_from_slice(&dek_part);
     file.extend_from_slice(&ciphertext);
 
-    fs::create_dir_all(saves_dir(base)).map_err(|e| SaveError::Io(e.to_string()))?;
-    fs::write(save_path(base, slot), &file).map_err(|e| SaveError::Io(e.to_string()))?;
+    // 原子写（tmp+rename，单一声明 crate::fs::atomic_write）：崩溃不留半档
+    crate::fs::atomic_write(&save_path(base, slot), &file)
+        .map_err(|e| SaveError::Io(e.to_string()))?;
     write_high_water(base, slot, &kek, save_count)?; // 写档即认领该槽位的新高水位
     Ok(SlotSummary {
         slot: slot.to_string(),
@@ -148,15 +150,16 @@ pub fn read_save(base: &Path, slot: &str) -> Result<String, SaveError> {
         return Err(SaveError::UnknownSlot(slot.to_string()));
     }
     let file = fs::read(&path).map_err(|e| SaveError::Io(e.to_string()))?;
-    let (mode, save_count, _timestamp, dek_part, ciphertext) = parse_envelope(&file)?;
+    let (version, mode, save_count, timestamp, dek_part, ciphertext) = parse_envelope(&file)?;
     let kek = kek_from_keyring(KEK_SERVICE, KEK_USER).map_err(SaveError::Keyring)?;
     let dek = match mode {
         CryptoMode::MachineBound => gcm_open(&kek, &dek_part, AAD_DEK_MACHINE_BOUND)
             .map_err(|e| SaveError::Crypto(format!("DEK 解封：{e}")))?,
         CryptoMode::Portable => dek_part,
     };
-    let aad = format!("{AAD_PAYLOAD_PREFIX}{slot}");
-    let plaintext = gcm_open(&dek, &ciphertext, aad.as_bytes())
+    // v1 兼容读（头部未认证）；v2 头部认证（篡改 mode/save_count/timestamp 即失败）
+    let aad = payload_aad(version, slot, mode, save_count, timestamp);
+    let plaintext = gcm_open(&dek, &ciphertext, &aad)
         .map_err(|e| SaveError::Crypto(format!("存档负载：{e}")))?;
     let high_water = read_high_water(base, slot, &kek)?;
     if save_count < high_water {
@@ -201,7 +204,7 @@ pub fn list_saves(base: &Path) -> Result<Vec<SlotSummary>, SaveError> {
             continue;
         }
         let file = fs::read(&path).map_err(|e| SaveError::Io(e.to_string()))?;
-        let (mode, save_count, timestamp, _dek, _ct) = parse_envelope(&file)?;
+        let (_version, mode, save_count, timestamp, _dek, _ct) = parse_envelope(&file)?;
         out.push(SlotSummary {
             slot: name.trim_end_matches(".lfs3").to_string(),
             save_count,

@@ -24,7 +24,10 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-aes-gcm = "0.11.1"
+# zeroize 特性：密钥类型（Aes256Gcm 密钥调度）_drop 时清零，配合 KEK/明文缓存的内存卫生。
+aes-gcm = { version = "0.11.1", features = ["zeroize"] }
+# 显式清零原语：KEK 缓存主副本/取用副本、明文 LRU 逐出块用后清零（抬高内存提取成本，非绝对防护）。
+zeroize = "1.9"
 keyring = "4.2.0"
 # 凭据访问统一走 keyring-core（keyring 的 v1 facade 编译期拒绝 iOS/Android，见 crypto.rs 说明）；
 # 桌面亦经它取条目——由 keyring 的 v1 装配把平台 store 设为默认（无额外成本，keyring 本就依赖它）
