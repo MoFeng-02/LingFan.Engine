@@ -11,6 +11,7 @@ pub mod host;
 pub mod http;
 pub mod media_http;
 pub mod paths;
+pub mod persistent;
 pub mod preferences;
 pub mod project_files;
 pub mod project_writer;
@@ -61,6 +62,8 @@ pub fn run() {
             project_writer::stamp_project_files,
             preferences::preferences_read,
             preferences::preferences_write,
+            persistent::persistent_read,
+            persistent::persistent_write,
             resource_crypto::decrypt_resource,
             resource_crypto::decrypt_story,
             resource_plain::resource_url,

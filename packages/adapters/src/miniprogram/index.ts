@@ -14,6 +14,7 @@ export {
   createMiniprogramFrameSource,
   type MiniprogramFrameSource,
 } from "./frame.ts";
+export { createMiniprogramPersistentPort } from "./persistent.ts";
 export { createMiniprogramPreferencesPort } from "./preferences.ts";
 export {
   createMiniprogramResourcePort,

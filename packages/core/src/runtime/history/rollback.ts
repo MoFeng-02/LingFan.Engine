@@ -152,6 +152,9 @@ export function rollbackTo(
   }
   restore(ctx, ctx.history[index]!);
   ctx.cursor = index;
+  // 回溯 = 会话倒带：skip/auto 模式不跨回溯残留（重放期本就禁自动推进）
+  ctx.autoOn = false;
+  ctx.skipOn = false;
   // 重放期输入锁 + 完成后解除并广播
   ctx.rollbackActive = true;
   ctx.setSystem(SYS.rollbackActive, true);

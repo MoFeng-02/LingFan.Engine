@@ -28,6 +28,8 @@ import type {
   MinigameRegistration,
   OpExtension,
   OutboundPayload,
+  PersistentData,
+  PersistentPort,
   SaveDataV1,
   SaveMode,
   SavePort,
@@ -148,6 +150,14 @@ export interface OpContext {
   /** 用户可见文案表（构造期从 EngineOptions 装配；缺省 defaultEngineTexts） */
   texts: EngineTexts;
   saveMode: SaveMode;
+  /** 机器级持久数据端口（缺省 = 已读记录仅本次会话内存有效，不落盘） */
+  persistentPort: PersistentPort | undefined;
+  /** 机器级持久数据（已读记录）：跨存档共享，不进 SSOT/快照/存档；hydratePersistent 加载合并 */
+  persistent: PersistentData;
+  /** 自动播放模式（会话态，不进快照/存档）；start/load/回溯即清 */
+  autoOn: boolean;
+  /** 快进模式（会话态，不进快照/存档）；start/load/回溯即清 */
+  skipOn: boolean;
   readonly usedExtensions: Set<string>;
   readonly extensionById: ReadonlyMap<string, OpExtension>;
   readonly migrateSaveHook: ((data: unknown) => SaveDataV1 | null) | undefined;

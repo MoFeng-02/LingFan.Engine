@@ -38,3 +38,55 @@ describe("matchesKeybinding", () => {
     expect(matchesKeybinding(["a", "b"], [], { key: "c" })).toBe(false);
   });
 });
+
+describe("matchesKeybinding 组合键（[mod+]<key>）", () => {
+  it("ctrl+s 命中按住 Ctrl 的 s，不命中裸 s", () => {
+    expect(matchesKeybinding(["ctrl+s"], [], { key: "s", ctrlKey: true })).toBe(
+      true,
+    );
+    expect(matchesKeybinding(["ctrl+s"], [], { key: "s" })).toBe(false);
+  });
+
+  it("纯键不命中带修饰键的按下（多余修饰键不算）", () => {
+    expect(matchesKeybinding(["s"], [], { key: "s", ctrlKey: true })).toBe(
+      false,
+    );
+    expect(matchesKeybinding(["s"], [], { key: "s" })).toBe(true);
+  });
+
+  it("组合键大小写不敏感（Ctrl+S / CTRL+s）", () => {
+    expect(matchesKeybinding(["Ctrl+S"], [], { key: "S", ctrlKey: true })).toBe(
+      true,
+    );
+    expect(matchesKeybinding(["CTRL+s"], [], { key: "s", ctrlKey: true })).toBe(
+      true,
+    );
+  });
+
+  it("多修饰键须全匹配（shift+alt+a）", () => {
+    expect(
+      matchesKeybinding(["shift+alt+a"], [], {
+        key: "a",
+        shiftKey: true,
+        altKey: true,
+      }),
+    ).toBe(true);
+    expect(
+      matchesKeybinding(["shift+alt+a"], [], { key: "a", shiftKey: true }),
+    ).toBe(false);
+  });
+
+  it("修饰键本身可作绑定（skip 按住 Control）", () => {
+    expect(matchesKeybinding(["Control"], [], { key: "Control" })).toBe(true);
+    expect(matchesKeybinding(["Control"], [], { key: "Shift" })).toBe(false);
+  });
+
+  it("meta（Cmd）组合键", () => {
+    expect(matchesKeybinding(["meta+s"], [], { key: "s", metaKey: true })).toBe(
+      true,
+    );
+    expect(matchesKeybinding(["meta+s"], [], { key: "s", ctrlKey: true })).toBe(
+      false,
+    );
+  });
+});

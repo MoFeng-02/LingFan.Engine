@@ -21,16 +21,24 @@ export {
 } from "./frame-stack.ts";
 export {
   advance,
+  advanceAutomated,
+  autoActive,
   choose,
   dispose,
+  hydratePersistentData,
+  isSeenCoord,
   load,
   navigate,
   onEvent,
   onStateChanged,
   reloadStory,
   save,
+  setAuto,
   setLanguage,
+  setSkip,
+  skipActive,
   start,
+  stopAutomatedModes,
 } from "./session.ts";
 export {
   abortExternalTakeovers,

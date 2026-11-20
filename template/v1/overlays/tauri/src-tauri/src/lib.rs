@@ -7,6 +7,7 @@
 //! 新增命令时在对应域的模块里实现，再到 `invoke_handler` 里点名——Tauri 不做按模块自动收集。
 
 mod orientation;
+mod persistent;
 mod preferences;
 mod save;
 
@@ -22,6 +23,8 @@ pub fn run() {
             save::save_list,
             preferences::preferences_read,
             preferences::preferences_write,
+            persistent::persistent_read,
+            persistent::persistent_write,
             orientation::set_orientation,
         ])
         .run(tauri::generate_context!())

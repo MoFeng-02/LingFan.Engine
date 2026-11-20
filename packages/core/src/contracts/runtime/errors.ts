@@ -130,6 +130,10 @@ export const ENGINE_ERROR_CODES = [
   "save_delete-invalid",
   "save_delete-unknown-field",
 
+  // —— 机器级持久数据（已读记录等，独立于存档）——
+  "persistent-read-failed",
+  "persistent-write-failed",
+
   // —— 扩展 / 玩法 / 交互 / 小游戏 ——
   "element-ops-blocked-op",
   "element-ops-interrupted",

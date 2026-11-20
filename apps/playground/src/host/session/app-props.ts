@@ -16,6 +16,7 @@ import type {
   I18nPort,
   LayerZTable,
   OpExtension,
+  PersistentPort,
   PlayerPreferences,
   ResourcePort,
   SavePort,
@@ -41,6 +42,8 @@ export interface AppProps {
   /** 工程默认音量（project.json shell.audio 可覆盖）：音量的第二级，偏好乘算在渲染层 */
   audioConfig: AudioConfig;
   savePort: SavePort;
+  /** 机器级持久数据端口（已读记录跨存档共享；组合根装配，与偏好/存档分离） */
+  persistentPort: PersistentPort;
   resourcePort: ResourcePort;
   /** I18N overlay 供给（可选：浏览器形态未装配 = 原文直出） */
   i18nPort?: I18nPort;

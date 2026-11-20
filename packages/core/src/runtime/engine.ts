@@ -45,16 +45,20 @@ import { pauseSession, resumeSession } from "./session/index.ts";
 import { columnSummaries } from "./engine/columns.ts";
 import {
   advance,
+  advanceAutomated,
   animationFinished,
   animations,
+  autoActive,
   choose,
   dispose,
   elements,
   findElements,
   getCharacter,
   getCharacters,
+  hydratePersistentData,
   input,
   interpolate,
+  isSeenCoord,
   load,
   navigate,
   onEvent,
@@ -63,8 +67,11 @@ import {
   reloadStory,
   reportMediaPosition,
   save,
+  setAuto,
   setLanguage,
+  setSkip,
   shakeFinished,
+  skipActive,
   start,
   transitionFinished,
   videoFinished,
@@ -196,6 +203,11 @@ export class StoryEngine extends EngineForwarders {
       this.videoSeq,
       this.savePort,
       this.saveMode,
+      // 机器级持久数据与 skip/auto 会话模式（只经 ctx 被迁出的自由函数读写）
+      this.persistentPort,
+      this.persistent,
+      this.autoOn,
+      this.skipOn,
       // 工程级配置（非状态）
       this.audioConfig,
       this.i18nPort,
@@ -278,6 +290,44 @@ export class StoryEngine extends EngineForwarders {
   /** 推进到下一个玩家可见状态（宿主「继续」入口）：仅对话等待、可跳过的 wait、可跳过的视频播放有效，其余 fail-closed 发 advance-invalid */
   advance(): void {
     advance(this.ctx);
+  }
+  /**
+   * 自动播放模式开关（会话态，不进快照/存档）。与快进互斥。
+   * 延时节奏由宿主按偏好 autoDelayMs 装配（打字机完成后延时 advanceAutomated）。
+   */
+  auto(on: boolean): void {
+    setAuto(this.ctx, on);
+  }
+  /**
+   * 快进模式开关（会话态，不进快照/存档）。与自动互斥。
+   * 快进节奏由宿主按偏好 skipDelayMs 装配（按住持续 advanceAutomated）。
+   */
+  skip(on: boolean): void {
+    setSkip(this.ctx, on);
+  }
+  /** 当前是否处于自动播放模式 */
+  autoActive(): boolean {
+    return autoActive(this.ctx);
+  }
+  /** 当前是否处于快进模式 */
+  skipActive(): boolean {
+    return skipActive(this.ctx);
+  }
+  /**
+   * skip/auto 驱动的 guarded 推进：走与玩家点击同一条推进接缝（检查点时机不变），
+   * 叠加回溯期/ui 列/noskip/未读停闸门，任一命中即停模式返回 false。
+   * skipUnseenOnly 由宿主按偏好传入。玩家手动 advance 不受这些闸门限制。
+   */
+  advanceAutomated(options?: { skipUnseenOnly?: boolean }): boolean {
+    return advanceAutomated(this.ctx, options);
+  }
+  /** 查询某坐标是否已读（机器级已读记录，跨存档共享） */
+  isSeen(coord: ColumnCoordinate): boolean {
+    return isSeenCoord(this.ctx, coord);
+  }
+  /** 从持久端口加载已读记录并合并进内存（逐项降级，读取失败按空白降级不挡启动） */
+  async hydratePersistent(): Promise<void> {
+    return hydratePersistentData(this.ctx);
   }
   /** 提交选项答案；选项挂起期间有效，optionId 取自 choices 事件载荷 */
   choose(optionId: string): void {

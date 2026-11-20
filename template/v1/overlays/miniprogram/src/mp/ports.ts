@@ -8,6 +8,7 @@
  */
 import {
   createMiniprogramAudioPort,
+  createMiniprogramPersistentPort,
   createMiniprogramPreferencesPort,
   createMiniprogramSavePort,
   createMiniprogramVideoPort,
@@ -17,6 +18,7 @@ import {
 import type {
   AudioPort,
   ElementFit,
+  PersistentPort,
   PreferencesPort,
   ResourcePort,
   SavePort,
@@ -34,6 +36,8 @@ const SAVE_HIGH_WATER_KEY = "lingfan-miniprogram:highwater";
 export interface MiniprogramHostPorts {
   save: SavePort;
   preferences: PreferencesPort;
+  /** 机器级持久数据（已读记录跨存档共享，与偏好/存档同存储面分键） */
+  persistent: PersistentPort;
   resources: ResourcePort;
   /** 音频端口：四条通道共用一套实例管理（实例由平台造） */
   audio: AudioPort;
@@ -65,6 +69,7 @@ export function createMiniprogramHostPorts(
       highWaterKey: SAVE_HIGH_WATER_KEY,
     }),
     preferences: createMiniprogramPreferencesPort(storage),
+    persistent: createMiniprogramPersistentPort(storage),
     resources: createRemoteResourcePort(options.projectBaseUrl),
     audio: createMiniprogramAudioPort(createAudioContext),
     // 填充读数每次起播现取：读的是当时列里的 video 元素，换列或元素被替换后自动跟随

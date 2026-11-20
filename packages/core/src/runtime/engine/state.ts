@@ -18,6 +18,8 @@ import type {
   I18nPort,
   MinigameRegistration,
   OpExtension,
+  PersistentData,
+  PersistentPort,
   SaveMode,
   SavePort,
   StateListener,
@@ -33,6 +35,7 @@ import {
   defaultEngineTexts,
   hostTimer,
 } from "../../contracts/index.ts";
+import { emptyPersistent } from "../persistent.ts";
 import {
   buildMinigameRegistry,
   buildOpRegistry,
@@ -150,6 +153,17 @@ export class EngineCore {
   protected savePort: SavePort | undefined;
   /** 存档模式：决定存档可否跨设备读取，也决定 DEK 封装方式（本机绑定 = 用 OS 凭据封存；可携带 = 明文随档）；构造期注入，运行期不变 */
   protected saveMode: SaveMode;
+  /** 机器级持久数据端口（组合根注入；缺省 = 已读记录仅本次会话内存有效，不落盘） */
+  protected persistentPort: PersistentPort | undefined;
+  /**
+   * 机器级持久数据（已读记录）：跨存档共享的游戏事实，**不进 SSOT/快照/存档**。
+   * 与偏好/存档分通道——损坏隔离、删档不清；`hydratePersistent()` 从端口加载并合并。
+   */
+  protected persistent: PersistentData = emptyPersistent();
+  /** 自动播放模式（会话态，不进快照/存档）：宿主按 autoDelayMs 驱动 advanceAutomated；start/load/回溯即清 */
+  protected autoOn = false;
+  /** 快进模式（会话态，不进快照/存档）：宿主按 skipDelayMs 驱动 advanceAutomated；start/load/回溯即清 */
+  protected skipOn = false;
   /** 工程默认音量（非状态：来自 project.json，不进存档 / 不进快照 / 不进回溯） */
   protected audioConfig: AudioConfig;
   /** save op 的一次性存档声明：载荷在下一玩家所见等待画面落档（coord = 等待点） */
@@ -205,6 +219,7 @@ export class EngineCore {
     this.rngState = (options?.rngSeed ?? Date.now()) | 0;
     this.savePort = options?.savePort;
     this.saveMode = options?.saveMode ?? "machine-bound";
+    this.persistentPort = options?.persistentPort;
     this.audioConfig = options?.audioConfig ?? DEFAULT_AUDIO_CONFIG;
     this.i18nPort = options?.i18nPort;
     this.timerPort = options?.timerPort ?? hostTimer;

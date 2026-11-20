@@ -2,8 +2,8 @@
  * 模板输入映射：把玩家的点击 / 按键 / 滚轮翻译成引擎动作。
  *
  * 三条纪律在这里成面：
- * - **键位读偏好**：推进 / 历史键逐次现读玩家改绑（`preferences.keybinding`），缺席落回内建默认；
- *   不在构造期抄成闭包常量，否则改绑后不生效。
+ * - **键位读偏好**：各动作键逐次现读玩家改绑（`preferences.keybinding`），缺席落回内建默认；
+ *   不在构造期抄成闭包常量，否则改绑后不生效。组合键 `[mod+]<key>` 由匹配器解析。
  * - **域路由**：点击 / 滚轮 / 按键先经 `routesToNarrative`——只有「对话域 + 非控件目标」才归叙事，
  *   于是 `data-ui-zone` 里的面板控件、输入框自己消费事件，不会被推进键穿透。
  * - **单一收尾**：所有监听挂在同一个 `AbortController` 上，拆除时一次 `abort()` 全退，
@@ -11,6 +11,11 @@
  *
  * 菜单 / 输入 / 玩法等「非对话等待」中推进无效（`ADVANCEABLE_WAITING` 白名单）；
  * 打字机未打完时推进键先补完当前句，再下一次才推进剧情。
+ *
+ * 快进（skip）= 按住键持续：按下起一个按 `skipDelayMs` 节奏的 `advanceAutomated` 循环，
+ * 松开 / 守卫命中（noskip、未读停、回溯期、ui 列）即停。自动（auto）= 偏好 `autoEnabled`
+ * 开启后，打字机打完按 `autoDelayMs` 延时自动推进。两者都走引擎 guarded 推进接缝，
+ * 检查点时机与玩家点击一致；节奏装配在宿主（引擎只管模式旗标与守卫）。
  */
 import {
   DEFAULT_KEYMAP,
@@ -19,6 +24,7 @@ import {
   type StoryEngine,
 } from "@lingfan-engine/core";
 import {
+  createAutomatedAdvanceLoop,
   createInputScopeState,
   matchesKeybinding,
   routesToNarrative,
@@ -32,7 +38,7 @@ export interface HostInputOptions {
   dom: StageDom;
   engine: StoryEngine;
   dialogue: DialogueView;
-  /** 玩家偏好：推进 / 历史键逐次现读改绑；缺省用内建默认键位 */
+  /** 玩家偏好：各动作键逐次现读改绑 + skip/auto 节奏；缺省用内建默认键位 */
   preferences?: PlayerPreferences;
   /** 输入域：缺省对话域；玩法接管时由宿主切到 world / ui，叙事键随之让位 */
   inputScope?: InputScopeState;
@@ -40,17 +46,19 @@ export interface HostInputOptions {
   onHistory?: () => void;
   /** Esc 触发的关面板 */
   onClosePanels?: () => void;
-  /** Ctrl / Cmd + S 快速存档 */
+  /** 快速存档键（默认 Ctrl+S）触发 */
   onQuickSave?: () => void;
-  /** Ctrl / Cmd + L 快速读档 */
+  /** 快速读档键（默认 Ctrl+L）触发 */
   onQuickLoad?: () => void;
+  /** 隐藏 HUD 键触发的切换（无内建键，改绑面板可配） */
+  onHideUI?: () => void;
 }
 
 /** 允许「推进」的等待态：对话 / 显式等待 / 视频。菜单 / 输入 / 玩法等不在内，推进无效 */
 const ADVANCEABLE_WAITING = new Set(["dialog", "wait", "video"]);
 
 /**
- * 接好输入监听，返回拆除函数（一次 `abort()` 退掉全部监听）。
+ * 接好输入监听，返回拆除函数（一次 `abort()` 退掉全部监听与节奏循环）。
  */
 export function wireInput(options: HostInputOptions): () => void {
   const { dom, engine, dialogue } = options;
@@ -69,6 +77,13 @@ export function wireInput(options: HostInputOptions): () => void {
       engine.advance();
     }
   }
+
+  // —— 快进 / 自动节奏循环（共用展示层单一实现；引擎只管模式旗标与守卫）——
+  const loop = createAutomatedAdvanceLoop({
+    getEngine: () => engine,
+    readTypewriter: () => dialogue.readTypewriter(),
+    preferences: options.preferences,
+  });
 
   // 点击推进：只在对话域且目标不是面板控件 / 输入框
   dom.viewport.addEventListener(
@@ -105,19 +120,43 @@ export function wireInput(options: HostInputOptions): () => void {
     (event) => {
       if (!routesToNarrative(scope.current(), event.target)) return;
 
-      // Ctrl / Cmd + S / L 快速存读：先于推进键判定，避免被 advance 吞掉
-      if (event.ctrlKey || event.metaKey) {
-        const key = event.key.toLowerCase();
-        if (key === "s" && options.onQuickSave !== undefined) {
-          event.preventDefault();
-          options.onQuickSave();
-          return;
-        }
-        if (key === "l" && options.onQuickLoad !== undefined) {
-          event.preventDefault();
-          options.onQuickLoad();
-          return;
-        }
+      // 快速存读（组合键，默认 Ctrl+S/L）：先于推进键判定，避免被 advance 吞掉
+      if (
+        matchesKeybinding(
+          options.preferences?.keybinding("quickSave"),
+          DEFAULT_KEYMAP.quickSave,
+          event,
+        ) &&
+        options.onQuickSave !== undefined
+      ) {
+        event.preventDefault();
+        options.onQuickSave();
+        return;
+      }
+      if (
+        matchesKeybinding(
+          options.preferences?.keybinding("quickLoad"),
+          DEFAULT_KEYMAP.quickLoad,
+          event,
+        ) &&
+        options.onQuickLoad !== undefined
+      ) {
+        event.preventDefault();
+        options.onQuickLoad();
+        return;
+      }
+
+      // 快进按住持续（默认 Ctrl）：首次按下起循环，重复键不重起
+      if (
+        !event.repeat &&
+        matchesKeybinding(
+          options.preferences?.keybinding("skip"),
+          DEFAULT_KEYMAP.skip,
+          event,
+        )
+      ) {
+        loop.startSkip();
+        return;
       }
 
       if (
@@ -137,6 +176,22 @@ export function wireInput(options: HostInputOptions): () => void {
         )
       ) {
         options.onHistory?.();
+      } else if (
+        matchesKeybinding(
+          options.preferences?.keybinding("rollback"),
+          DEFAULT_KEYMAP.rollback,
+          event,
+        )
+      ) {
+        if (engine.rollbackAvailable()) engine.back();
+      } else if (
+        matchesKeybinding(
+          options.preferences?.keybinding("hideUI"),
+          DEFAULT_KEYMAP.hideUI,
+          event,
+        )
+      ) {
+        options.onHideUI?.();
       } else if (event.key === "Escape") {
         options.onClosePanels?.();
       }
@@ -144,5 +199,33 @@ export function wireInput(options: HostInputOptions): () => void {
     { signal },
   );
 
-  return () => controller.abort();
+  // 快进松开即停（与 keydown 的按住持续配对）
+  document.addEventListener(
+    "keyup",
+    (event) => {
+      if (
+        matchesKeybinding(
+          options.preferences?.keybinding("skip"),
+          DEFAULT_KEYMAP.skip,
+          event,
+        )
+      ) {
+        loop.stopSkip();
+      }
+    },
+    { signal },
+  );
+
+  // 自动播放：偏好开启即起循环（关闭由循环自检停）
+  if (options.preferences?.autoEnabled === true) loop.startAuto();
+  const offAutoPrefs = options.preferences?.onChange(() => {
+    if (options.preferences?.autoEnabled === true) loop.startAuto();
+    else loop.stopAuto();
+  });
+
+  return () => {
+    controller.abort();
+    loop.dispose();
+    offAutoPrefs?.();
+  };
 }

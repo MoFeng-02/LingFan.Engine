@@ -68,6 +68,17 @@ const emit = defineEmits<{
   "choose-slot": [view: SlotView];
   "update-save-title": [event: Event];
 }>();
+
+/** 键位行：各动作一行（改绑 / 恢复默认），标签面向玩家；组合键由捕获侧拼串 */
+const keymapRows: ReadonlyArray<{ action: KeymapAction; label: string }> = [
+  { action: "advance", label: "推进键" },
+  { action: "history", label: "历史键" },
+  { action: "rollback", label: "回退键" },
+  { action: "quickSave", label: "快速存档" },
+  { action: "quickLoad", label: "快速读档" },
+  { action: "skip", label: "快进键（按住）" },
+  { action: "hideUI", label: "隐藏界面" },
+];
 </script>
 
 <template>
@@ -165,46 +176,26 @@ const emit = defineEmits<{
         <option value="landscape">横屏</option>
       </select>
     </label>
-    <div class="prefs-row">
-      <span class="prefs-label">推进键</span>
+    <div v-for="k in keymapRows" :key="k.action" class="prefs-row">
+      <span class="prefs-label">{{ k.label }}</span>
       <button
         type="button"
         class="prefs-key"
-        :class="{ capturing: captureAction === 'advance' }"
-        @click.stop="emit('start-capture', 'advance')"
+        :class="{ capturing: captureAction === k.action }"
+        @click.stop="emit('start-capture', k.action)"
       >
         {{
-          captureAction === "advance"
+          captureAction === k.action
             ? "按任意键（Esc 取消）"
-            : displayKeys(prefsView.keymap?.advance ?? DEFAULT_KEYMAP.advance)
+            : displayKeys(
+                prefsView.keymap?.[k.action] ?? DEFAULT_KEYMAP[k.action],
+              )
         }}
       </button>
       <button
         type="button"
         class="prefs-key-reset"
-        @click.stop="emit('reset-keybinding', 'advance')"
-      >
-        默认
-      </button>
-    </div>
-    <div class="prefs-row">
-      <span class="prefs-label">历史键</span>
-      <button
-        type="button"
-        class="prefs-key"
-        :class="{ capturing: captureAction === 'history' }"
-        @click.stop="emit('start-capture', 'history')"
-      >
-        {{
-          captureAction === "history"
-            ? "按任意键（Esc 取消）"
-            : displayKeys(prefsView.keymap?.history ?? DEFAULT_KEYMAP.history)
-        }}
-      </button>
-      <button
-        type="button"
-        class="prefs-key-reset"
-        @click.stop="emit('reset-keybinding', 'history')"
+        @click.stop="emit('reset-keybinding', k.action)"
       >
         默认
       </button>

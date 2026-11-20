@@ -3,7 +3,11 @@
  * 响应式镜像。可选字段「缺省 = 键不存在」原样保留（三态信号不丢）；嵌套的键位
  * 数组与窗口尺寸另建引用，UI 改写快照不会穿透回偏好状态。
  */
-import type { PlayerKeymap, PlayerPrefsData } from "../../contracts/index.ts";
+import {
+  KEYMAP_ACTIONS,
+  type PlayerKeymap,
+  type PlayerPrefsData,
+} from "../../contracts/index.ts";
 
 /** 由偏好真值投影出一份隔离的只读快照（新引用，可选键缺席原样保留） */
 export function snapshotPrefs(data: PlayerPrefsData): PlayerPrefsData {
@@ -18,10 +22,10 @@ export function snapshotPrefs(data: PlayerPrefsData): PlayerPrefsData {
     snap.textSpeedSource = data.textSpeedSource;
   if (data.keymap !== undefined) {
     const keymap: PlayerKeymap = {};
-    if (data.keymap.advance !== undefined)
-      keymap.advance = [...data.keymap.advance];
-    if (data.keymap.history !== undefined)
-      keymap.history = [...data.keymap.history];
+    for (const action of KEYMAP_ACTIONS) {
+      const keys = data.keymap[action];
+      if (keys !== undefined) keymap[action] = [...keys];
+    }
     snap.keymap = keymap;
   }
   if (data.fullscreen !== undefined) snap.fullscreen = data.fullscreen;

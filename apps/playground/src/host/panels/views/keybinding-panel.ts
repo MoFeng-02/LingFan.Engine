@@ -46,6 +46,24 @@ export interface KeybindingPanel {
 }
 
 /**
+ * 把一次按键拼成组合键串 `[mod+]<key>`（与匹配器同一语法）。
+ * 修饰键本身被按下（如单独按 Ctrl 绑「快进按住」）只记该键，不叠前缀；
+ * 其余键把当前按住的修饰键拼成前缀（ctrl/shift/alt/meta 固定序）。
+ */
+function captureCombo(event: KeyboardEvent): string {
+  const key = event.key;
+  if (key === "Control" || key === "Shift" || key === "Alt" || key === "Meta") {
+    return key;
+  }
+  const mods: string[] = [];
+  if (event.ctrlKey) mods.push("ctrl");
+  if (event.shiftKey) mods.push("shift");
+  if (event.altKey) mods.push("alt");
+  if (event.metaKey) mods.push("meta");
+  return mods.length === 0 ? key : `${mods.join("+")}+${key}`;
+}
+
+/**
  * 创建键位面板。`handleCaptureKey` 是稳定引用，可直接用于注册与摘除监听。
  */
 export function createKeybindingPanel(
@@ -76,7 +94,7 @@ export function createKeybindingPanel(
       captureAction.value = null;
       // Esc 只用于退出捕获：改绑成 Esc 会让「取消」与「绑定」撞车
       if (event.key === "Escape") return;
-      options.preferences.setKeybinding(action, [event.key]);
+      options.preferences.setKeybinding(action, [captureCombo(event)]);
     },
     displayKeys(keys: readonly string[]): string {
       return keys

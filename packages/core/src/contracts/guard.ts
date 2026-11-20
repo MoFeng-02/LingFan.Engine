@@ -8,6 +8,7 @@ import type { AudioConfig } from "./shell.ts";
 import type { OpExtension } from "./extension.ts";
 import type { MinigameRegistration } from "./minigame.ts";
 import type { SaveDataV1, SaveMode, SavePort } from "./save.ts";
+import type { PersistentPort } from "./persistent.ts";
 import type { I18nPort } from "./story/index.ts";
 import type { TimerPort } from "./runtime/timer.ts";
 import type { EngineTexts } from "./messages.ts";
@@ -31,6 +32,12 @@ export interface EngineOptions {
   savePort?: SavePort;
   /** 存档模式（缺省 machine-bound；与 Rust 层同缺省） */
   saveMode?: SaveMode;
+  /**
+   * 机器级持久数据端口（已读记录等跨存档共享的游戏事实；缺省 = 不持久化，
+   * 已读记录仅本次会话内存有效）。与存档/偏好分通道：本层不进 SSOT/快照/存档，
+   * 损坏隔离、删档不清。宿主组合根注入对应平台适配器（Tauri/WebStorage/小程序）。
+   */
+  persistentPort?: PersistentPort;
   /**
    * 工程默认音量（`project.json` 的 `shell.audio`，宿主经 `resolveAudioConfig` 解析后注入）。
    *

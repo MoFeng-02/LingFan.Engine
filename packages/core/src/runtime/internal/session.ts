@@ -8,8 +8,10 @@
 import {
   SYS,
   type AudioChannelState,
+  type ColumnCoordinate,
   type EventListener,
   type I18nOverlayFile,
+  type PersistentData,
   type SaveDataV1,
   type SaveOptions,
   type StateListener,
@@ -22,6 +24,12 @@ import {
   resetSuspected,
   updateSources,
 } from "../i18n/index.ts";
+import {
+  hydratePersistent,
+  isSeen,
+  markSeen,
+  mergeSeen,
+} from "../persistent.ts";
 import { validSlot } from "./helpers.ts";
 import { pausedSession } from "./waiting.ts";
 import type { OpContext } from "./context.ts";
@@ -37,6 +45,8 @@ export function start(ctx: OpContext): void {
     return;
   }
   ctx.started = true;
+  // skip/auto 是会话态：启动即清，不跨会话残留
+  stopAutomatedModes(ctx);
   // 历史容量非法降级的诊断（装配期备好串）：start 时如实发出，宿主据此修正工程配置
   if (ctx.historyLimitNotice !== null) {
     ctx.emitEvent({
@@ -84,6 +94,9 @@ export function advance(ctx: OpContext): void {
     // say 的检查点在等待解除后提交（快照已在上屏时捕获 = 玩家所见画面）
     if (ctx.pendingSay !== null && !ctx.rollbackActive) {
       ctx.commitCheckpoint(ctx.pendingSay);
+      // 玩家真实推进过这句 → 记「已读」（机器级持久，跨存档共享）。
+      // 重放期不记：重放只读，不污染玩家已读事实（skip 未读停的判据）。
+      markSeenCoord(ctx, ctx.pendingSay.coord);
     }
     ctx.pendingSay = null;
     ctx.liveCheckpointed = false; // live 已越过检查点（后续等待点在 run 中自行改写）
@@ -259,7 +272,11 @@ export function load(ctx: OpContext, slot: string): boolean {
     .then((raw) => {
       const data = JSON.parse(raw) as SaveDataV1;
       // 校验失败由 importSave 发 engine.error 并返回 false（此时不发完成信号）
-      if (ctx.importSave(data)) ctx.emitEvent({ kind: "load.done", slot });
+      if (ctx.importSave(data)) {
+        // 读档 = 会话重开：skip/auto 模式不跨档残留
+        stopAutomatedModes(ctx);
+        ctx.emitEvent({ kind: "load.done", slot });
+      }
     })
     .catch((e: unknown) => {
       ctx.fail("load-failed", ctx.texts.loadReadFailed(slot, String(e)));
@@ -391,4 +408,143 @@ export function onEvent(ctx: OpContext, listener: EventListener): () => void {
   return () => {
     ctx.eventListeners.delete(listener);
   };
+}
+
+// —— 机器级持久数据（已读记录）与 skip/auto 会话模式 ——
+
+/**
+ * 记一句「已读」并落盘：玩家真实推进过该句才记（重放期不记）。
+ * 已读记录是机器级游戏事实，跨存档共享、不进快照/存档；落盘失败经
+ * engine.error 可观测（不吞），内存已读标记不受落盘成败影响。
+ */
+function markSeenCoord(ctx: OpContext, coord: ColumnCoordinate): void {
+  const nextSeen = markSeen(ctx.persistent.seen, coord);
+  if (nextSeen === ctx.persistent.seen) return; // 已读，无变化不重复写盘
+  ctx.persistent = { ...ctx.persistent, seen: nextSeen };
+  const port = ctx.persistentPort;
+  if (port === undefined) return;
+  void port.save(ctx.persistent).catch((e: unknown) => {
+    ctx.fail("persistent-write-failed", `已读记录落盘失败：${String(e)}`);
+  });
+}
+
+/** 查询某坐标是否已读（skip「未读停」与宿主已读标记的判据）。 */
+export function isSeenCoord(ctx: OpContext, coord: ColumnCoordinate): boolean {
+  return isSeen(ctx.persistent.seen, coord);
+}
+
+/**
+ * 从持久端口加载已读记录并合并进内存：逐项降级（坏数据回空白，不伪造已读）。
+ * 合并而非覆盖——加载期间玩家可能已推进，内存已读与落盘已读都不丢。
+ * 读取失败按空白降级并经 engine.error 可观测，不挡启动。
+ */
+export async function hydratePersistentData(ctx: OpContext): Promise<void> {
+  const port = ctx.persistentPort;
+  if (port === undefined) return;
+  let loaded: PersistentData | null;
+  try {
+    loaded = await port.load();
+  } catch (e: unknown) {
+    ctx.fail(
+      "persistent-read-failed",
+      `已读记录读取失败，按空白降级：${String(e)}`,
+    );
+    return;
+  }
+  const hydrated = hydratePersistent(loaded);
+  ctx.persistent = {
+    v: 1,
+    seen: mergeSeen(ctx.persistent.seen, hydrated.seen),
+  };
+}
+
+/** 清掉 skip/auto 会话模式（读档/回溯/启动时调用，模式不跨会话残留）。 */
+export function stopAutomatedModes(ctx: OpContext): void {
+  ctx.autoOn = false;
+  ctx.skipOn = false;
+}
+
+/**
+ * 自动播放模式开关（会话态，不进快照/存档）。与快进互斥：开自动即关快进。
+ * 延时节奏由宿主按偏好 autoDelayMs 装配（打字机完成后延时推进），引擎只管模式与守卫。
+ */
+export function setAuto(ctx: OpContext, on: boolean): void {
+  if (on) {
+    ctx.skipOn = false;
+    ctx.autoOn = true;
+  } else {
+    ctx.autoOn = false;
+  }
+}
+
+/**
+ * 快进模式开关（会话态，不进快照/存档）。与自动互斥：开快进即关自动。
+ * 快进节奏由宿主按偏好 skipDelayMs 装配（按住持续），引擎只管模式与守卫。
+ */
+export function setSkip(ctx: OpContext, on: boolean): void {
+  if (on) {
+    ctx.autoOn = false;
+    ctx.skipOn = true;
+  } else {
+    ctx.skipOn = false;
+  }
+}
+
+/** 当前是否处于自动播放模式。 */
+export function autoActive(ctx: OpContext): boolean {
+  return ctx.autoOn;
+}
+
+/** 当前是否处于快进模式。 */
+export function skipActive(ctx: OpContext): boolean {
+  return ctx.skipOn;
+}
+
+/**
+ * skip/auto 驱动的 guarded 推进：走与玩家点击同一条推进接缝（检查点时机不变），
+ * 但叠加 skip/auto 专属闸门，任一命中即停模式并返回 false（宿主据此收起模式）：
+ * - 回溯期禁推进（重放只读，不改写历史）；
+ * - ui 列（界面场景）不执行 skip/auto；
+ * - noskip 硬闸门：本句 say.noskip=true 强制不可跳过（故事级 > 玩家级）；
+ * - skip「未读停」：skipUnseenOnly 且当前句未读 → 停（Ren'Py 同口径）。
+ * 返回是否真的推进了一步。玩家手动 advance 不受这些闸门限制（noskip 只拦 skip/auto）。
+ */
+export function advanceAutomated(
+  ctx: OpContext,
+  options?: { skipUnseenOnly?: boolean },
+): boolean {
+  if (!ctx.autoOn && !ctx.skipOn) return false;
+  if (ctx.rollbackActive) {
+    stopAutomatedModes(ctx);
+    return false;
+  }
+  const column = ctx.columnById(ctx.coord.columnId);
+  if (column?.type === "ui") {
+    stopAutomatedModes(ctx);
+    return false;
+  }
+  if (ctx.get(SYS.waiting) === "dialog") {
+    if (ctx.get(SYS.dialogNoskip) === true) {
+      stopAutomatedModes(ctx);
+      return false;
+    }
+    if (
+      ctx.skipOn &&
+      options?.skipUnseenOnly === true &&
+      ctx.pendingSay !== null &&
+      !isSeen(ctx.persistent.seen, ctx.pendingSay.coord)
+    ) {
+      stopAutomatedModes(ctx);
+      return false;
+    }
+  }
+  // 只在可推进的等待态推进（对话 / 显式等待 / 视频）；菜单 / 输入 / 玩法等让位停模式，
+  // 避免 advance 在非推进态发 advance-invalid 刷屏
+  const waiting = ctx.get(SYS.waiting);
+  if (waiting !== "dialog" && waiting !== "wait" && waiting !== "video") {
+    stopAutomatedModes(ctx);
+    return false;
+  }
+  advance(ctx);
+  return true;
 }

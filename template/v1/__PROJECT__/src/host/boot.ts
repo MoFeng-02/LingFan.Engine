@@ -26,6 +26,7 @@ import {
   type HostControls,
   type I18nPort,
   type OrientationPort,
+  type PersistentPort,
   type PreferencesPort,
   type ProjectFilesPort,
   type ResourcePort,
@@ -42,6 +43,7 @@ import {
   createOrientationPolicy,
   createStaticResourcePort,
   createWebAudioPort,
+  createWebStoragePersistentPort,
   createWebStoragePreferencesPort,
   createWebStorageSavePort,
   createWebVideoPort,
@@ -204,6 +206,8 @@ export interface BootPortOverrides {
   saves?: SavePort;
   /** 玩家偏好持久化（缺省走 localStorage；桌面壳换 app_data JSON 文件） */
   preferences?: PreferencesPort;
+  /** 机器级持久数据（已读记录等，跨存档共享；缺省 localStorage，桌面壳换 app_data JSON） */
+  persistent?: PersistentPort;
   /**
    * 译文供给（缺省走 Web fetch：`Lang/` 是 publicDir 静态资源，桌面 WebView 同样可取）。
    * 桌面壳**不换**这个端口——Rust 侧未注册 i18n 命令，接 Tauri 端口会 invoke 失败。
@@ -368,11 +372,16 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     historyLimit: resolveHistoryLimit(manifest),
     savePort,
     i18nPort,
+    // 机器级持久数据端口（已读记录跨存档共享）；缺省 localStorage，桌面壳经 ports.persistent 换 Rust
+    persistentPort:
+      options.ports?.persistent ?? createWebStoragePersistentPort(),
     audioConfig: resolveAudioConfig(manifest),
     // 自定义 op 扩展与小游戏注册声明进引擎构造（注册期查重 / 进存档依赖标记）
     extensions: templateExtensions,
     minigames: templateMinigames,
   });
+  // 机器级持久数据水合（已读记录）：独立于偏好/存档，损坏隔离不挡启动；与偏好水合同口径
+  await engine.hydratePersistent();
   // 语言门面绑同一个引擎实例：t() 查表、changeLang() 切换、subscribe() 订阅语言变更。
   // 静态文案的查表函数交给各视图（缺省恒等 = 原文直出，不接 i18n 行为不变）。
   const i18n = createHostI18n(engine, { i18nPort });

@@ -98,6 +98,10 @@ export {
   createWebStoragePreferencesPort,
 } from "./preferences";
 export {
+  createTauriPersistentPort,
+  createWebStoragePersistentPort,
+} from "./persistent";
+export {
   createNoopOrientationPort,
   createTauriOrientationPort,
   createBrowserFullscreenApplier,
@@ -129,6 +133,7 @@ export {
 export {
   createMiniprogramAudioPort,
   createMiniprogramFrameSource,
+  createMiniprogramPersistentPort,
   createMiniprogramPreferencesPort,
   createMiniprogramResourcePort,
   createMiniprogramSavePort,

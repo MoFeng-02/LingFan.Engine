@@ -19,6 +19,16 @@ export interface PlayerKeymap {
   advance?: string[];
   /** 历史面板键覆盖 */
   history?: string[];
+  /** 回溯键覆盖（滚轮是既有触发，键位为可选补充；tap 单次） */
+  rollback?: string[];
+  /** 快速存档键覆盖（组合键如 "ctrl+s"；tap 单次） */
+  quickSave?: string[];
+  /** 快速读档键覆盖（组合键如 "ctrl+l"；tap 单次） */
+  quickLoad?: string[];
+  /** 快进键覆盖（hold 按住持续；可绑修饰键本身如 "Control"） */
+  skip?: string[];
+  /** 隐藏 HUD 键覆盖（tap 单次切换） */
+  hideUI?: string[];
 }
 
 /**
@@ -141,14 +151,31 @@ export const LANGUAGE_MAX = 32;
 /** 默认字体名长度上限 */
 export const FONT_FAMILY_MAX = 64;
 
-/** 内建默认键位（键位覆盖缺席时生效；与既有宿主行为一致：Space/Enter=推进、H=历史） */
+/**
+ * 内建默认键位（键位覆盖缺席时生效；与既有宿主行为一致：Space/Enter=推进、H=历史、
+ * Ctrl+S/L 与 Cmd+S/L=快速存读档、按住 Ctrl=快进）。回溯走滚轮、隐藏 HUD 无内建键（改绑面板可配）。
+ * 组合键 `[mod+]<key>` 大小写不敏感；修饰键本身可作键（skip 绑 Control 按住持续）。
+ */
 export const DEFAULT_KEYMAP: Required<PlayerKeymap> = {
   advance: [" ", "Enter"],
   history: ["h"],
+  rollback: [],
+  quickSave: ["ctrl+s", "meta+s"],
+  quickLoad: ["ctrl+l", "meta+l"],
+  skip: ["Control"],
+  hideUI: [],
 };
 
 /** 键位动作全集（键位覆盖的合法键） */
-export const KEYMAP_ACTIONS = ["advance", "history"] as const;
+export const KEYMAP_ACTIONS = [
+  "advance",
+  "history",
+  "rollback",
+  "quickSave",
+  "quickLoad",
+  "skip",
+  "hideUI",
+] as const;
 /** 键位动作的合法取值（从 `KEYMAP_ACTIONS` 派生，两者不会脱节） */
 export type KeymapAction = (typeof KEYMAP_ACTIONS)[number];
 

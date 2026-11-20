@@ -17,6 +17,7 @@ import {
   createTauriFullscreenApplier,
   createTauriOrientationPort,
   createTauriPreferencesPort,
+  createTauriPersistentPort,
   createTauriSavePort,
   type FullscreenWindowLike,
   type TauriInvoke,
@@ -78,6 +79,7 @@ export function createNativePorts(): BootPortOverrides | undefined {
   return {
     saves: createTauriSavePort(invoke),
     preferences: createTauriPreferencesPort(invoke),
+    persistent: createTauriPersistentPort(invoke),
     orientationPort: createTauriOrientationPort(invoke),
     fullscreenApplier: createTauriFullscreenApplier(createLazyWindow()),
   };

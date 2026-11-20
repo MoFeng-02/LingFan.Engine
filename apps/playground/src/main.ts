@@ -22,11 +22,13 @@ import {
   createTauriI18nPort,
   readTauriPlatform,
   createTauriPreferencesPort,
+  createTauriPersistentPort,
   createTauriProjectFilesPort,
   createTauriResourcePort,
   createTauriOrientationPort,
   createTauriSavePort,
   createWebStoragePreferencesPort,
+  createWebStoragePersistentPort,
   createWebStorageSavePort,
   loadProject,
   watchTauriProjectFiles,
@@ -47,6 +49,7 @@ import {
   type LayerZTable,
   type OpExtension,
   type OrientationPort,
+  type PersistentPort,
   type PreferencesPort,
   type ProjectFilesPort,
   type ResourcePort,
@@ -203,6 +206,10 @@ async function boot(): Promise<void> {
     : createWebStoragePreferencesPort();
   const preferences = new PlayerPreferences(preferencesPort);
   await preferences.hydrate();
+  // 机器级持久数据端口（已读记录跨存档共享）：与偏好同模式按端分支，水合归引擎装配
+  const persistentPort: PersistentPort = useNative
+    ? createTauriPersistentPort()
+    : createWebStoragePersistentPort();
 
   // 屏幕方向装配：工程默认（project.json shell.orientation）× 玩家偏好 →
   // 壳端口。**落壳归组合根**（组件不碰平台桥接）：启动即应用一次（早于内容绘制，
@@ -247,6 +254,7 @@ async function boot(): Promise<void> {
     stage,
     audioConfig,
     savePort,
+    persistentPort,
     resourcePort,
     i18nPort,
     preferences,

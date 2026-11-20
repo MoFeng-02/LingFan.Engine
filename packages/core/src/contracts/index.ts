@@ -6,6 +6,7 @@ export * from "./save.ts";
 export * from "./platform/index.ts";
 export * from "./host.ts";
 export * from "./preferences.ts";
+export * from "./persistent.ts";
 export * from "./minigame.ts";
 export * from "./shell.ts";
 export * from "./element.ts";

@@ -12,6 +12,7 @@ import {
   onUnmounted,
   ref,
   shallowRef,
+  watch,
   type Component,
 } from "vue";
 import {
@@ -20,7 +21,11 @@ import {
   type OutboundPayload,
 } from "@lingfan-engine/core";
 import { computeStageLayout } from "@lingfan-engine/shell";
-import { createCommandRegistry, routesToNarrative } from "@lingfan-engine/ui";
+import {
+  createAutomatedAdvanceLoop,
+  createCommandRegistry,
+  routesToNarrative,
+} from "@lingfan-engine/ui";
 import {
   createAppBodyLayer,
   createAppEventRouter,
@@ -293,6 +298,29 @@ const rollbackAvailable = computed(() => {
 // 会话就绪后接上「继续」槽位摘要的刷新落点：此后写档成功才会点到新增的档
 resumeSlotSink.apply = refreshResumeSlot;
 
+// hideUI：宿主级界面隐藏开关（新键位动作，无内建键，改绑后可用）——收起对话 HUD
+const uiHidden = ref(false);
+// skip/auto 节奏循环（展示层单一实现）：引擎/打字机/偏好都以读面注入，重启换实例仍跟得上
+const automatedLoop = createAutomatedAdvanceLoop({
+  getEngine: () => engine,
+  readTypewriter: () => typewriter.get(),
+  preferences: props.preferences,
+});
+/** 松开快进键即停（按住才持续） */
+function onKeyup(e: KeyboardEvent): void {
+  if (inGame.value && keyMatches("skip", DEFAULT_KEYMAP.skip, e)) {
+    automatedLoop.stopSkip();
+  }
+}
+/** 自动播放只在「进了对局 + 偏好开启」时起：偏好改动与进/退对局都即时跟 */
+function syncAuto(): void {
+  if (inGame.value && props.preferences.autoEnabled) automatedLoop.startAuto();
+  else automatedLoop.stopAuto();
+}
+const offAutoPrefs = props.preferences.onChange(syncAuto);
+watch(inGame, syncAuto);
+syncAuto();
+
 /** 叙事键判定：先问输入域（routesToNarrative），再问键位（keyMatches）——顺序是源级契约 */
 function onKeydown(e: KeyboardEvent): void {
   if (captureAction.value !== null) return; // 捕获中：capture 阶段监听器已处理
@@ -306,11 +334,36 @@ function onKeydown(e: KeyboardEvent): void {
     }
     return;
   }
+  // 快速存/读档（组合键，先于推进键判定，免得 ctrl+s 里的 s 被当推进）
+  if (inGame.value && keyMatches("quickSave", DEFAULT_KEYMAP.quickSave, e)) {
+    e.preventDefault();
+    onSave(quickSlot.value);
+    return;
+  }
+  if (inGame.value && keyMatches("quickLoad", DEFAULT_KEYMAP.quickLoad, e)) {
+    e.preventDefault();
+    onLoad(quickSlot.value);
+    return;
+  }
+  // 快进（按住）：起节奏循环，keyup 停；repeat 不重复起
+  if (inGame.value && !e.repeat && keyMatches("skip", DEFAULT_KEYMAP.skip, e)) {
+    e.preventDefault();
+    automatedLoop.startSkip();
+    return;
+  }
   if (keyMatches("advance", DEFAULT_KEYMAP.advance, e)) {
     e.preventDefault();
     onStageClick();
   } else if (keyMatches("history", DEFAULT_KEYMAP.history, e)) {
     toggleHistory();
+  } else if (
+    inGame.value &&
+    keyMatches("rollback", DEFAULT_KEYMAP.rollback, e)
+  ) {
+    // 回退控件守卫：工程关闭回退或 op 级锁定时不回退（读引擎唯一读面）
+    if (engine.rollbackAvailable()) engine.back();
+  } else if (inGame.value && keyMatches("hideUI", DEFAULT_KEYMAP.hideUI, e)) {
+    uiHidden.value = !uiHidden.value;
   } else if (e.key === "Escape") {
     e.preventDefault();
     togglePause();
@@ -331,6 +384,7 @@ function onWheel(event: WheelEvent): void {
 // 不随模块求值残留。捕获监听走 capture 阶段，优先于普通键位处理。
 onMounted(() => {
   window.addEventListener("keydown", onKeydown);
+  window.addEventListener("keyup", onKeyup);
   window.addEventListener("keydown", onCaptureKeydown, true);
   // 舞台适配：挂载后才量得到外框尺寸；窗口变化与方向切换都要重算
   applyStageFit();
@@ -346,7 +400,10 @@ onMounted(() => {
 onUnmounted(() => {
   teardown(); // 订阅解除 → 会话解除 → 偏好退订落盘 → 停播释放 → 引擎释放 → 停帧循环
   bodyLayer.dispose();
+  automatedLoop.dispose(); // 停 skip/auto 节奏循环
+  offAutoPrefs(); // 退自动播放偏好订阅
   window.removeEventListener("keydown", onKeydown);
+  window.removeEventListener("keyup", onKeyup);
   window.removeEventListener("keydown", onCaptureKeydown, true);
   window.removeEventListener("resize", applyStageFit);
   window.removeEventListener("orientationchange", applyStageFit);
@@ -443,7 +500,7 @@ onUnmounted(() => {
           :in-interaction="inInteraction"
           :in-extension="inExtension"
           :in-video="inVideo"
-          :dialog-hidden="dialogHidden"
+          :dialog-hidden="dialogHidden || uiHidden"
           :dialog-view="dialogView"
           :nvl-mode="nvlMode"
           :nvl-past-lines="nvlPastLines"

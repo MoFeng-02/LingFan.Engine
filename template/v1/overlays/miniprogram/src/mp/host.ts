@@ -174,11 +174,14 @@ export async function startMiniprogramHost(
     // 工程默认音量（project.json shell.audio.volumes）：音量的第二级
     audioConfig: resolveAudioConfig(manifest),
     savePort: ports.save,
+    persistentPort: ports.persistent,
     i18nPort,
     texts: withSlotLabels(defaultEngineTexts),
     // 守卫实现由宿主随代码带上：故事 JSON 只写名字（装载期已校验名字齐全）
     guards,
   });
+  // 机器级持久数据水合（已读记录）：独立于偏好/存档，损坏隔离不挡启动
+  await engine.hydratePersistent();
   // 语言门面绑同一个引擎：t()/changeLang 直转，currentLang 现读引擎状态
   const i18n = createHostI18n(engine, { i18nPort });
 

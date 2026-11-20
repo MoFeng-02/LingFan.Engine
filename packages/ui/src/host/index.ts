@@ -15,6 +15,12 @@ export {
   DEFAULT_TOAST_MS,
 } from "./duration";
 export {
+  createAutomatedAdvanceLoop,
+  type AutomatedAdvanceLoop,
+  type AutomatedAdvanceOptions,
+  type TypewriterReader,
+} from "./automated-advance";
+export {
   createVisualEffects,
   resolveAnimatedStyle,
   type AnimatedStyle,

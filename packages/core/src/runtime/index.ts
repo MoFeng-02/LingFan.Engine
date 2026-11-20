@@ -22,6 +22,13 @@ export {
   type LanguageResolution,
   type PreferencesOptions,
 } from "./preferences/index.ts";
+export {
+  hydratePersistent,
+  isSeen,
+  markSeen,
+  mergeSeen,
+  emptyPersistent,
+} from "./persistent.ts";
 export { createStateReader } from "./state/index.ts";
 export { Scope } from "./scope.ts";
 export {

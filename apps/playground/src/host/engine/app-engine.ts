@@ -21,6 +21,7 @@ import {
   type LayerId,
   type OpExtension,
   type OutboundPayload,
+  type PersistentPort,
   type SavePort,
   type Story,
   type VideoPort,
@@ -39,6 +40,7 @@ export interface AppEngineLifeOptions {
     audioConfig: AudioConfig;
     i18nPort?: I18nPort;
     savePort: SavePort;
+    persistentPort: PersistentPort;
     extensions: OpExtension[];
     createAudioPort: (onError: (message: string) => void) => AudioPort;
     createVideoPort: (
@@ -219,12 +221,15 @@ export function createAppEngineLife(
         audioConfig: props.audioConfig,
         i18nPort: props.i18nPort,
         savePort: props.savePort,
+        persistentPort: props.persistentPort,
         guards: engineGuards,
         extensions: props.extensions,
         texts: playgroundEngineTexts,
       }),
     );
     bindEngine(getEngine());
+    // 机器级持久数据水合（已读记录）：独立于偏好/存档，损坏隔离不挡启动
+    void getEngine().hydratePersistent();
     media.audioRenderer = media.createRenderer();
     media.videoRenderer = media.createVideo();
     // 热重载：组合根重新组装后注入新 story → 保运行态（变量/历史）重入当前列
@@ -283,12 +288,15 @@ export function createAppEngineLife(
         audioConfig: props.audioConfig,
         i18nPort: props.i18nPort,
         savePort: props.savePort,
+        persistentPort: props.persistentPort,
         guards: engineGuards,
         extensions: props.extensions,
         texts: playgroundEngineTexts,
       }),
     );
     bindEngine(getEngine());
+    // 机器级持久数据水合（已读记录）：独立于偏好/存档，损坏隔离不挡启动
+    void getEngine().hydratePersistent();
     media.audioRenderer = media.createRenderer();
     media.videoRenderer = media.createVideo();
     speaker.value = "";
