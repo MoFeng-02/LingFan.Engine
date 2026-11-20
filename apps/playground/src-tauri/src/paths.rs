@@ -65,7 +65,7 @@ impl SegmentRule {
     }
 }
 
-/// 两族调用点共有的骨架：空路径、首字符 `/`、含 `\`、含空段或 `.`/`..` 段。
+/// 两族调用点共有的骨架：空路径、绝对形态（首字符 `/`、含反斜杠、含 `:` 盘符、平台根）、含 `\`、含空段或 `.`/`..` 段。
 ///
 /// 各调用点在骨架之外**各自增减**两条判据——资源逻辑路径允许控制字符（最终由段字符集拒），
 /// 写回路径额外拒控制字符、但允许 `.` 出现在段内。骨架只有一份，故两族规则不会各自漂移。
@@ -73,7 +73,15 @@ fn trusted_relative_path(path: &str) -> Result<(), PathRuleError> {
     if path.is_empty() {
         return Err(PathRuleError::Empty);
     }
-    if path.starts_with('/') || path.contains('\\') {
+    // 绝对形态一律拒：首字符 `/`、含 `\`、含 `:`（Windows 盘符 `C:`/`C:\`、UNC `\\?\`、
+    // 设备路径），以及平台判定的根（`Path::has_root`）。逻辑路径是资源根下的相对段，
+    // 任何带根/盘符前缀的形态都会让 `root.join(path)` 逃逸到任意盘/任意目录，故在共用
+    // 骨架里一次性拒死（资源读与写回两族同受益，合法相对段不含 `:` 不受影响）。
+    if path.starts_with('/')
+        || path.contains('\\')
+        || path.contains(':')
+        || Path::new(path).has_root()
+    {
         return Err(PathRuleError::Absolute);
     }
     if path
@@ -163,6 +171,32 @@ mod tests {
             assert!(
                 validate_resource_path(bad).is_err(),
                 "{bad:?} 应被资源逻辑路径边界拒绝"
+            );
+        }
+    }
+
+    #[test]
+    fn resource_path_drive_letter_rejected() {
+        // resource-path-drive-letter-rejected：盘符 / 根前缀形态一律拒（防 root.join 逃逸任意盘）。
+        // 合法相对段不受影响。
+        assert!(validate_resource_path("Video/m2.mp4").is_ok());
+        assert!(validate_resource_path("Lang/en/main.json").is_ok());
+        for bad in [
+            "C:/Windows/win.ini",
+            "C:\\Windows\\win.ini",
+            "C:foo",
+            "D:/secret.json",
+            "\\\\?\\C:\\Windows\\win.ini",
+            "\\\\server\\share\\x.json",
+            "/etc/passwd",
+        ] {
+            assert!(
+                validate_resource_path(bad).is_err(),
+                "{bad:?} 盘符/根前缀应被资源路径边界拒绝"
+            );
+            assert!(
+                validate_write_like_path(bad).is_err(),
+                "{bad:?} 盘符/根前缀应被写回路径边界拒绝"
             );
         }
     }

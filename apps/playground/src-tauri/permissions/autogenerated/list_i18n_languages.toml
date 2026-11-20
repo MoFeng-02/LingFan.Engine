@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-list-i18n-languages"
+description = "Enables the list_i18n_languages command without any pre-configured scope."
+commands.allow = ["list_i18n_languages"]
+
+[[permission]]
+identifier = "deny-list-i18n-languages"
+description = "Denies the list_i18n_languages command without any pre-configured scope."
+commands.deny = ["list_i18n_languages"]

@@ -1,7 +1,7 @@
 //! 文件指纹读取：存在性、修改时间与大小，用于并发修改检测。
 
 use crate::project_writer::apply::{resolve_under_root};
-use crate::project_writer::whitelist::{ProjectWriterError, validate_write_path};
+use crate::project_writer::whitelist::{ProjectWriterError, bound_root, validate_write_path};
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
@@ -27,12 +27,23 @@ pub struct ProjectStamps {
 /// `serializeProject` 的文件集）；mtime 转换失败的文件按 0 处理（仍参与 size 比对）。
 #[tauri::command]
 pub fn stamp_project_files(
+    app: tauri::AppHandle,
     root: String,
     paths: Vec<String>,
 ) -> Result<ProjectStamps, ProjectWriterError> {
-    let root_path = Path::new(&root);
+    let root_path = bound_root(&app, &root)?;
+    stamp_under_root(&root_path, paths)
+}
+
+/// 指纹核心（根已绑定）：白名单校验 + 存在性/mtime/size 采集。与命令分离便于行为测试。
+pub(crate) fn stamp_under_root(
+    root_path: &Path,
+    paths: Vec<String>,
+) -> Result<ProjectStamps, ProjectWriterError> {
     if !root_path.is_dir() {
-        return Err(ProjectWriterError::Root(root));
+        return Err(ProjectWriterError::Root(
+            root_path.to_string_lossy().into_owned(),
+        ));
     }
     let mut stamps = Vec::new();
     for path in &paths {

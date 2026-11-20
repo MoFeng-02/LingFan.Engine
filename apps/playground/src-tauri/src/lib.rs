@@ -31,6 +31,12 @@ mod bridge_check;
 /// 应用入口：装配插件与命令注册，随后进入 Tauri 事件循环（不返回）。
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 资源密钥来源：组合根构建期选择默认适配器（包内 seed，casual 级）。
+    // 未来更强 provider（在线激活 / 白盒 / 许可证绑定）替换这一行即可，crypto 核心零改动。
+    resource_crypto::key_source::install_key_source(Box::new(
+        resource_crypto::key_source::PackSeedSource,
+    ));
+
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         // 移动端供给：fs 插件 = asset:// 读取原语（Rust 侧经 FsExt 取可 seek fd）。

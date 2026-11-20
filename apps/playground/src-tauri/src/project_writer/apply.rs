@@ -1,6 +1,6 @@
 //! 按差量写回工程文件：先写列文件、后写清单，最后删除陈旧文件。
 
-use crate::project_writer::whitelist::{MANIFEST_FILE, ProjectWriterError, STORIES_DIR, validate_delete_path, validate_write_path};
+use crate::project_writer::whitelist::{MANIFEST_FILE, ProjectWriterError, STORIES_DIR, bound_root, validate_delete_path, validate_write_path};
 use serde::Deserialize;
 use serde::Serialize;
 use std::fs;
@@ -26,16 +26,30 @@ pub(crate) fn resolve_under_root(root: &Path, logical: &str) -> PathBuf {
     root.join(logical.replace('/', std::path::MAIN_SEPARATOR_STR))
 }
 
-/// Tauri 命令：按差量写回工程。任一路径非法 → 整批拒绝、零写入（fail-closed）。
+/// Tauri 命令：按差量写回工程。根经绑定校验（release 绑资源根）、任一路径非法 →
+/// 整批拒绝、零写入（fail-closed）。`app` 由 Tauri 注入，用于定位本宿主资源根。
 #[tauri::command]
 pub fn apply_project_files(
+    app: tauri::AppHandle,
     root: String,
     changes: Vec<ProjectFileChange>,
     deletes: Vec<String>,
 ) -> Result<ProjectWriteReport, ProjectWriterError> {
-    let root_path = Path::new(&root);
+    let root_path = bound_root(&app, &root)?;
+    apply_under_root(&root_path, changes, deletes)
+}
+
+/// 写回核心（根已绑定）：校验先行 → 建 `Stories/` → 写列文件 → 写清单（提交点）→ 删陈旧。
+/// 与命令分离便于行为测试直接以真实目录驱动核心逻辑（无需构造 AppHandle）。
+pub(crate) fn apply_under_root(
+    root_path: &Path,
+    changes: Vec<ProjectFileChange>,
+    deletes: Vec<String>,
+) -> Result<ProjectWriteReport, ProjectWriterError> {
     if !root_path.is_dir() {
-        return Err(ProjectWriterError::Root(root));
+        return Err(ProjectWriterError::Root(
+            root_path.to_string_lossy().into_owned(),
+        ));
     }
     // 校验先行：任一非法 → 整批拒绝（零写入 / 零删除）
     for change in &changes {

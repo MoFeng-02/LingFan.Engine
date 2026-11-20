@@ -16,6 +16,11 @@
 //! 7. 错误码互锁：Rust 结构化错误（serde tag="code"）的每个错误码必须被 TS 消费——
 //!    既在契约层错误码目录内，也在适配器「错误码→可读文案」映射表内（本 crate 全部
 //!    错误枚举 + 模板壳存档错误）；错误码过边界不被消费会蒸发成字符串，分支不可区分
+//! 8. ACL 权限清单互锁：app 自定义命令的权限清单（build.rs `COMMANDS` → AppManifest
+//!    生成 `allow-<slug>`）必须与 lib.rs 注册面逐一对应，且 capabilities 显式放行每个
+//!    命令——未列命令默认拒绝，「Capabilities 默认拒绝」口径在 ACL 层真正成立
+//! 9. 写回根绑定：project_writer 写回/指纹命令签名须注入 `app` 并经 `bound_root`
+//!    （release 绑定本宿主资源根，debug 保留编辑器任意工程目录）——不信任前端传入的根
 //!
 //! TS 侧编组行为已由契约替身测试覆盖（tests/adapters/**），本模块只补跨边界字符串契约；
 //! 局限注明：invoke 泛型提取不支持嵌套尖括号（当前代码库无此形态）；
@@ -240,6 +245,69 @@ mod tests {
             .into_iter()
             .filter(|cmd| !rust_text.contains(&format!("pub fn {cmd}(")))
             .collect()
+    }
+
+    /// build.rs `const COMMANDS` 清单 → 命令名集合（ACL 权限清单的生成输入）。
+    fn build_manifest_commands(build_text: &str) -> BTreeSet<String> {
+        let start = build_text
+            .find("const COMMANDS")
+            .expect("build.rs 缺 COMMANDS 清单");
+        let body = &build_text[start..];
+        // 跳过类型标注 `&[&str]`：取 `=` 之后的值数组。
+        let eq = body.find('=').expect("COMMANDS 缺赋值");
+        let after_eq = &body[eq..];
+        let open = after_eq.find('[').expect("COMMANDS 列表未开");
+        let close = after_eq[open..].find(']').expect("COMMANDS 列表未闭合") + open;
+        after_eq[open + 1..close]
+            .split(',')
+            .filter_map(|part| {
+                let name = part.trim().trim_matches('"');
+                (!name.is_empty()
+                    && name
+                        .chars()
+                        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_'))
+                .then(|| name.to_string())
+            })
+            .collect()
+    }
+
+    /// 命令名 → ACL 权限标识 slug（tauri-build：下划线转连字符，`allow-<slug>`）。
+    fn permission_slug(cmd: &str) -> String {
+        cmd.replace('_', "-")
+    }
+
+    /// capabilities/default.json 的 permissions 数组 → 字符串集合。
+    fn capability_permissions(cap_text: &str) -> BTreeSet<String> {
+        let start = cap_text
+            .find("\"permissions\"")
+            .expect("capabilities 缺 permissions");
+        let body = &cap_text[start..];
+        let open = body.find('[').expect("permissions 数组未开");
+        let close = body[open..].find(']').expect("permissions 数组未闭合") + open;
+        body[open + 1..close]
+            .split(',')
+            .filter_map(|part| {
+                let name = part.trim().trim_matches('"');
+                (!name.is_empty()).then(|| name.to_string())
+            })
+            .collect()
+    }
+
+    /// 规则 ⑧检测核心：注册面与 ACL 清单/能力的双向覆盖缺口。
+    /// 返回（清单漏注册的命令, 清单多出的命令, 能力未显式放行的命令）。
+    fn acl_coverage_gaps(
+        registered: &BTreeSet<String>,
+        manifest: &BTreeSet<String>,
+        permissions: &BTreeSet<String>,
+    ) -> (Vec<String>, Vec<String>, Vec<String>) {
+        let manifest_missing: Vec<_> = registered.difference(manifest).cloned().collect();
+        let manifest_extra: Vec<_> = manifest.difference(registered).cloned().collect();
+        let cap_missing: Vec<_> = registered
+            .iter()
+            .filter(|cmd| !permissions.contains(&format!("allow-{}", permission_slug(cmd))))
+            .cloned()
+            .collect();
+        (manifest_missing, manifest_extra, cap_missing)
     }
 
     #[test]
@@ -624,6 +692,125 @@ const z = await invokeRust(invoke, "wrapped_cmd", { foo: 1 });"#;
     /// 为什么仍需测试：JNI 调用是**纯字符串契约**（类方法名 `setRequestedOrientation`、
     /// 签名 `(I)V`、`ActivityInfo` 常量），编译期完全不校验——方法名拼错要到运行期才暴露。
     /// 这些字面量在桌面测试运行下也只能靠源断言（Android cfg 分支桌面编译不到）。
+    #[test]
+    fn acl_manifest_and_capabilities_cover_registered_commands() {
+        // 规则 ⑧：app 自定义命令的 ACL 权限清单（build.rs COMMANDS）与注册面逐一对应，
+        // 且 capabilities 显式放行每个命令（allow-<slug>）——未列默认拒绝，口径在 ACL 层成立。
+        let registered = registered_commands(&lib_rs_text());
+        let build_text = fs::read_to_string(crate_dir().join("build.rs")).unwrap();
+        let manifest = build_manifest_commands(&build_text);
+        let cap_text =
+            fs::read_to_string(crate_dir().join("capabilities/default.json")).unwrap();
+        let permissions = capability_permissions(&cap_text);
+        let (missing, extra, cap_missing) =
+            acl_coverage_gaps(&registered, &manifest, &permissions);
+        assert!(missing.is_empty(), "ACL 清单漏注册命令：{missing:?}");
+        assert!(extra.is_empty(), "ACL 清单多出未注册命令：{extra:?}");
+        assert!(
+            cap_missing.is_empty(),
+            "capabilities 未显式放行命令：{cap_missing:?}"
+        );
+        assert!(registered.len() >= 20, "注册命令面意外缩水");
+        // build.rs 确经 AppManifest 生成权限（而非仅 tauri_build::build()）。
+        assert!(
+            build_text.contains("app_manifest") && build_text.contains(".commands(COMMANDS)"),
+            "build.rs 须经 AppManifest 生成 app 命令权限清单"
+        );
+    }
+
+    #[test]
+    fn bridge_check_catches_acl_coverage_gaps() {
+        // 合成反向用例：清单漏命令 / 多命令 / 能力未放行 各精确命中。
+        let registered: BTreeSet<String> =
+            ["save_read", "save_write"].into_iter().map(String::from).collect();
+        let manifest: BTreeSet<String> =
+            ["save_read", "ghost_cmd"].into_iter().map(String::from).collect();
+        let permissions: BTreeSet<String> =
+            ["core:default", "allow-save-read"].into_iter().map(String::from).collect();
+        let (missing, extra, cap_missing) =
+            acl_coverage_gaps(&registered, &manifest, &permissions);
+        assert_eq!(missing, vec!["save_write".to_string()]);
+        assert_eq!(extra, vec!["ghost_cmd".to_string()]);
+        assert_eq!(cap_missing, vec!["save_write".to_string()]);
+        // slug 化：下划线转连字符（与 tauri-build 生成口径一致）。
+        assert_eq!(permission_slug("decrypt_resource"), "decrypt-resource");
+    }
+
+    #[test]
+    fn project_writer_commands_bind_root_via_app() {
+        // 规则 ⑨：写回/指纹命令经 app 注入绑定根（release 绑资源根）——签名须含 app 参数，
+        // 且命令体经 bound_root（不信任前端传入的根）。盘符拒绝由 paths 测试钉死。
+        let sources = rust_sources_text();
+        for cmd in ["apply_project_files", "stamp_project_files"] {
+            let needle = format!("pub fn {cmd}(");
+            let start = sources.find(&needle).unwrap_or_else(|| panic!("缺 {cmd}"));
+            let sig = &sources[start..start + 200];
+            assert!(
+                sig.contains("app: tauri::AppHandle"),
+                "{cmd} 须注入 app 以绑定写回根"
+            );
+        }
+        assert!(
+            sources.contains("bound_root(&app, &root)"),
+            "写回/指纹命令须经 bound_root 绑定根"
+        );
+        let wl = rust_source_tree_text("project_writer");
+        assert!(
+            wl.contains("#[cfg(not(debug_assertions))]")
+                && wl.contains("locate_resource_root(app)"),
+            "release 形态须绑定资源根"
+        );
+    }
+
+    #[test]
+    fn acl_app_manifest_generates_command_permissions() {
+        // acl-app-manifest-constrains-commands：tauri-build 已为每个注册命令生成
+        // allow-/deny- 权限文件（permissions/autogenerated/<命令>.toml）——清单真实落盘。
+        let registered = registered_commands(&lib_rs_text());
+        let dir = crate_dir().join("permissions/autogenerated");
+        for cmd in &registered {
+            let file = dir.join(format!("{cmd}.toml"));
+            let text = fs::read_to_string(&file)
+                .unwrap_or_else(|_| panic!("缺命令权限文件：{}", file.display()));
+            assert!(
+                text.contains(&format!("identifier = \"allow-{}\"", permission_slug(cmd))),
+                "{cmd} 权限文件须含 allow-<slug> 标识"
+            );
+            assert!(text.contains(&format!("commands.allow = [\"{cmd}\"]")));
+        }
+    }
+
+    #[test]
+    fn playground_csp_present_and_allows_protocol_source() {
+        // playground-csp-present + csp-allows-protocol-source：CSP 非 null、default-src 收紧、
+        // 无 unsafe-eval；script-src 容许加密发布的 lfstream 协议源（与 prepare-dist 改写协同）。
+        let conf = fs::read_to_string(crate_dir().join("tauri.conf.json")).unwrap();
+        let csp_start = conf.find("\"csp\"").expect("tauri.conf 缺 csp");
+        let after = &conf[csp_start..];
+        let val_start = after.find(':').unwrap() + 1;
+        let rest = after[val_start..].trim_start();
+        assert!(rest.starts_with('"'), "CSP 须为非 null 的字符串策略");
+        let end = rest[1..].find('"').unwrap() + 1;
+        let csp = &rest[1..end];
+        assert!(csp.contains("default-src 'self'"), "default-src 须收紧到 self");
+        assert!(!csp.contains("unsafe-eval"), "不得放开 unsafe-eval");
+        assert!(csp.contains("object-src 'none'"), "须禁 object");
+        let script = csp
+            .split(';')
+            .find(|d| d.trim().starts_with("script-src"))
+            .expect("缺 script-src 指令");
+        assert!(script.contains("'self'"));
+        // 两种协议基座（macOS/Linux 原生 scheme + Windows/Android http 虚拟 host）均容许。
+        assert!(
+            script.contains("lfstream://localhost"),
+            "script-src 须容许 lfstream 协议源脚本"
+        );
+        assert!(
+            script.contains("http://lfstream.localhost"),
+            "script-src 须容许 http 虚拟 host 协议源脚本"
+        );
+    }
+
     #[test]
     fn android_jni_string_contracts_match_platform_api() {
         let shell_rs = rust_source_tree_text("shell");

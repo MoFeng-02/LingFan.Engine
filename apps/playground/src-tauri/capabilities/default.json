@@ -6,6 +6,26 @@
   "permissions": [
     "core:default",
     "core:window:allow-set-fullscreen",
-    "opener:default"
+    "opener:default",
+    "allow-project-files",
+    "allow-watch-project-files",
+    "allow-load-i18n-overlay",
+    "allow-list-i18n-languages",
+    "allow-apply-project-files",
+    "allow-stamp-project-files",
+    "allow-preferences-read",
+    "allow-preferences-write",
+    "allow-persistent-read",
+    "allow-persistent-write",
+    "allow-decrypt-resource",
+    "allow-decrypt-story",
+    "allow-resource-url",
+    "allow-save-write",
+    "allow-save-read",
+    "allow-save-list",
+    "allow-save-delete",
+    "allow-set-orientation",
+    "allow-lfen-diag",
+    "allow-host-platform"
   ]
 }

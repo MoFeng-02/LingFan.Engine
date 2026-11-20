@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-lfen-diag"
+description = "Enables the lfen_diag command without any pre-configured scope."
+commands.allow = ["lfen_diag"]
+
+[[permission]]
+identifier = "deny-lfen-diag"
+description = "Denies the lfen_diag command without any pre-configured scope."
+commands.deny = ["lfen_diag"]

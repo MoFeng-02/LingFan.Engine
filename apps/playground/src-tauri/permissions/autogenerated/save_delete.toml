@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-save-delete"
+description = "Enables the save_delete command without any pre-configured scope."
+commands.allow = ["save_delete"]
+
+[[permission]]
+identifier = "deny-save-delete"
+description = "Denies the save_delete command without any pre-configured scope."
+commands.deny = ["save_delete"]

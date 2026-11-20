@@ -4,9 +4,10 @@
 //! 永不先删后写：失败时磁盘最坏只是「多出文件」，工程仍可加载。
 //!
 //! 与浏览器侧的分工差异：FSA 句柄自带根目录与权限，这里根路径由前端显式传入
-//! （Tauri dialog 选目录所得）；因此**纵深防御**在 Rust 侧独立成立——逻辑路径
+//! （Tauri dialog 选目录所得）；因此**纵深防御**在 Rust 侧独立成立——根绑定
+//! （release 形态绑定本宿主资源根，debug 保留编辑器任意工程目录工作流）、逻辑路径
 //! 白名单（写入 = `Stories/**` 或 `project.json`；删除 = 仅 `Stories/**`）、
-//! 拒绝 `..` / 反斜杠 / 空段，不信任前端。任一路径非法 → **整批拒绝、零写入**。
+//! 拒绝 `..` / 反斜杠 / 盘符 / 空段，不信任前端。任一非法 → **整批拒绝、零写入**。
 //! 差量计算归 TS（`diffProjectFiles`，格式知识单点）；本命令只按差量落盘。
 //!
 //!
@@ -36,6 +37,13 @@ pub use whitelist::ProjectWriterError;
 pub use apply::apply_project_files;
 /// Tauri 命令：批量读取文件基线指纹。
 pub use stamp::stamp_project_files;
+/// 核心逻辑与根绑定判据：仅行为测试直接驱动（命令经 whitelist::bound_root 各自引用）。
+#[cfg(test)]
+pub(crate) use apply::apply_under_root;
+#[cfg(test)]
+pub(crate) use stamp::stamp_under_root;
+#[cfg(test)]
+pub(crate) use whitelist::same_canonical_root;
 
 /// 命令宏：与命令函数同路径解析，转发到本域实现。
 pub(crate) use apply::{__cmd__apply_project_files, __tauri_command_name_apply_project_files};

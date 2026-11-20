@@ -19,7 +19,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self' lfstream://localhost http://lfstream.localhost; style-src 'self' 'unsafe-inline' lfstream://localhost http://lfstream.localhost; img-src 'self' data: blob: lfstream://localhost http://lfstream.localhost; media-src 'self' blob: lfstream://localhost http://lfstream.localhost; font-src 'self' data: lfstream://localhost http://lfstream.localhost; connect-src 'self' ipc: http://ipc.localhost lfstream://localhost http://lfstream.localhost; object-src 'none'; base-uri 'self'"
     }
   },
   "bundle": {

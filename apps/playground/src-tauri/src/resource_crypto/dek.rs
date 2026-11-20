@@ -1,29 +1,22 @@
-//! 资源 DEK 的 KEK 信封管理：seed 导入、密钥读取与预取，以及故事文本解密。
+//! 资源 DEK 取用入口（薄委托）+ 故事文本解密。
+//!
+//! 密钥获取策略经可插拔接缝（`key_source`）由组合根选择，本文件只委托、不写死策略；
+//! crypto 核心只消费 DEK 字节。默认适配器 = 包内 seed（casual 级，见安全规约「三-1」）。
 
-use crate::crypto::KEK_SERVICE;
-use crate::crypto::KEK_USER;
-use crate::crypto::gcm_open;
-use crate::crypto::gcm_seal;
-use crate::crypto::kek_from_keyring;
 use crate::crypto::random_bytes;
 use crate::fs::seek_len;
 use crate::paths::app_data;
 use crate::paths::resource_root;
 use crate::resource_crypto::error::{ResourceCryptoError, io};
-use crate::resource_crypto::format::{decrypt_resource_bytes};
+use crate::resource_crypto::format::decrypt_resource_bytes;
+use crate::resource_crypto::key_source;
+use crate::resource_crypto::key_source::DEK_LEN;
 use crate::resource_fs::ResourceFs;
-use std::fs;
 use std::path::Path;
 
-const DEK_LEN: usize = 32;
-
-/// 资源密钥信封文件（app data 内，KEK 封装）
-pub(crate) const DEK_ENVELOPE: &str = "resources.dek.lfk2";
-
-/// 构建产物：包内原始 DEK（首次运行导入后转信封；只读资源根不删——分发窗口边界已知）
-pub(crate) const DEK_SEED: &str = "__key__.seed";
-
-const AAD_RESOURCE_DEK: &[u8] = b"LFK2:resource-dek";
+// 常量单一声明在 key_source；此处转发保持既有导入路径（pack/run.rs 经 dek::DEK_SEED 引用）。
+pub(crate) use crate::resource_crypto::key_source::DEK_ENVELOPE;
+pub(crate) use crate::resource_crypto::key_source::DEK_SEED;
 
 /// IPC 单次回传上限：仅限**文本供给路径**（故事/overlay——故事文件受组装器约束天然小于此）。
 /// 媒体资源不走 IPC（流式解密统一到临时缓存，此护栏对其不再适用）。
@@ -34,48 +27,20 @@ pub(crate) fn generate_resource_seed() -> Result<Vec<u8>, ResourceCryptoError> {
     random_bytes(DEK_LEN).map_err(ResourceCryptoError::Crypto)
 }
 
-/// 运行时资源 DEK（**seed 优先**——包根 seed 为权威 DEK 源）：
-/// 每次启动若包内有 seed，幂等重导入（重加密写信封）——**包更新 = 新 seed 自动跟随**
-/// （否则旧信封 DEK 永远解不开新包，升级即坏）；无 seed（运行时产出形态）
-/// 回退信封；两者皆无 = MissingKey。运行态信封 KEK 封装，零明文密钥落盘。
-/// seed 读取经资源文件系统抽象（Android = asset 内）；信封在 app_data 真实路径走 std::fs。
+/// 运行时资源 DEK：委托组合根选定的密钥来源（默认 `PackSeedSource`，seed 优先 → 信封回退）。
+/// 签名保持不变兼容调用方；策略可插拔，核心不关心来源。seed 读取经资源文件系统抽象
+/// （Android = asset 内）；信封在 app_data 真实路径走 std::fs。
 pub(crate) fn resource_dek(
     app_data: &Path,
     resource_root: &Path,
     resfs: &dyn ResourceFs,
 ) -> Result<Vec<u8>, ResourceCryptoError> {
-    let envelope = app_data.join(DEK_ENVELOPE);
-    let seed_path = resource_root.join(DEK_SEED);
-    if resfs.is_file(&seed_path) {
-        let dek = resfs.read(&seed_path).map_err(io)?;
-        if dek.len() != DEK_LEN {
-            return Err(ResourceCryptoError::Crypto(
-                "seed 长度不符（须 32 字节）".into(),
-            ));
-        }
-        let kek = kek_from_keyring(KEK_SERVICE, KEK_USER).map_err(ResourceCryptoError::Crypto)?;
-        let sealed = gcm_seal(&kek, &dek, AAD_RESOURCE_DEK).map_err(ResourceCryptoError::Crypto)?;
-        // 信封幂等维护：内容一致则不重写（减少磁盘写）
-        let need_write = match fs::read(&envelope) {
-            Ok(old) => old != sealed,
-            Err(_) => true,
-        };
-        if need_write {
-            fs::write(&envelope, &sealed).map_err(io)?;
-        }
-        return Ok(dek);
-    }
-    if envelope.is_file() {
-        let sealed = fs::read(&envelope).map_err(io)?;
-        let kek = kek_from_keyring(KEK_SERVICE, KEK_USER).map_err(ResourceCryptoError::Crypto)?;
-        let plain = gcm_open(&kek, &sealed, AAD_RESOURCE_DEK)
-            .map_err(|e| ResourceCryptoError::Crypto(format!("资源 DEK 信封解封：{e}")))?;
-        if plain.len() != DEK_LEN {
-            return Err(ResourceCryptoError::Crypto("资源 DEK 长度不符".into()));
-        }
-        return Ok(plain);
-    }
-    Err(ResourceCryptoError::MissingKey)
+    key_source::resource_dek_with(
+        key_source::current_key_source(),
+        app_data,
+        resource_root,
+        resfs,
+    )
 }
 
 /// 读取并解密单个加密资源（`逻辑路径` → `逻辑路径.enc`；明文文件不落回——fail-closed）

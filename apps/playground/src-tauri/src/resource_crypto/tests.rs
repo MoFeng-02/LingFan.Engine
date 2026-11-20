@@ -8,6 +8,8 @@ use std::fs;
 use std::path::PathBuf;
 use super::*;
 use crate::resource_fs::StdFs;
+use key_source::ResourceKeySource;
+use std::path::Path;
 
 const KEY: &[u8; 32] = b"0123456789abcdef0123456789abcdef";
 
@@ -894,4 +896,164 @@ fn seed_import_writes_envelope() {
         Err(ResourceCryptoError::MissingKey)
     ));
     fs::remove_dir_all(&base).ok();
+}
+
+// —— 资源密钥可插拔接缝（key_source）回归 ——
+
+fn dek_temp_base(tag: &str) -> PathBuf {
+    let base = std::env::temp_dir().join(format!(
+        "lf3-{tag}-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    fs::create_dir_all(&base).unwrap();
+    base
+}
+
+/// 可替换性替身：返回固定 DEK，证明接缝委托给传入适配器而非写死策略。
+struct FixedKeySource(Vec<u8>);
+impl key_source::ResourceKeySource for FixedKeySource {
+    fn acquire(
+        &self,
+        _ctx: &key_source::KeyAcquireContext<'_>,
+    ) -> Result<Vec<u8>, ResourceCryptoError> {
+        Ok(self.0.clone())
+    }
+}
+
+#[test]
+fn pack_seed_default_behavior_preserved() {
+    // 默认适配器 PackSeedSource 的行为 == resource_dek（seed 优先 → 信封回退 → MissingKey）。
+    let base = dek_temp_base("ks-default");
+    let root = base.join("res");
+    fs::create_dir_all(&root).unwrap();
+    let seed = generate_resource_seed().unwrap();
+    fs::write(root.join(DEK_SEED), &seed).unwrap();
+    let ctx = key_source::KeyAcquireContext {
+        app_data: &base,
+        resource_root: &root,
+        resfs: &StdFs,
+    };
+    // 直接经默认适配器取 == 经 resource_dek 取（同一策略）。
+    let via_adapter = key_source::PackSeedSource.acquire(&ctx).unwrap();
+    let via_entry = resource_dek(&base, &root, &StdFs).unwrap();
+    assert_eq!(via_adapter, seed);
+    assert_eq!(via_entry, seed);
+    // seed 删除 → 信封回退仍取原 DEK。
+    fs::remove_file(root.join(DEK_SEED)).unwrap();
+    assert_eq!(key_source::PackSeedSource.acquire(&ctx).unwrap(), seed);
+    // 两者皆无 → MissingKey。
+    fs::remove_file(base.join(DEK_ENVELOPE)).unwrap();
+    assert!(matches!(
+        key_source::PackSeedSource.acquire(&ctx),
+        Err(ResourceCryptoError::MissingKey)
+    ));
+    fs::remove_dir_all(&base).ok();
+}
+
+#[test]
+fn key_source_seam_delegates_to_adapter() {
+    // resource-key-source-port：核心经接缝委托给任意适配器（注入固定源 → 取其 DEK，非写死）。
+    let base = dek_temp_base("ks-seam");
+    let root = base.join("res");
+    fs::create_dir_all(&root).unwrap();
+    let fixed = vec![7u8; 32];
+    let got = key_source::resource_dek_with(&FixedKeySource(fixed.clone()), &base, &root, &StdFs)
+        .unwrap();
+    assert_eq!(got, fixed);
+    // 默认未安装时 current_key_source 回退 PackSeedSource（行为与默认适配器一致）。
+    let seed = generate_resource_seed().unwrap();
+    fs::write(root.join(DEK_SEED), &seed).unwrap();
+    assert_eq!(
+        key_source::current_key_source()
+            .acquire(&key_source::KeyAcquireContext {
+                app_data: &base,
+                resource_root: &root,
+                resfs: &StdFs,
+            })
+            .unwrap(),
+        seed
+    );
+    fs::remove_dir_all(&base).ok();
+}
+
+#[test]
+fn key_source_composition_root_select() {
+    // key-source-composition-root-select：组合根 lib.rs 构建期安装默认适配器；
+    // resource_dek 薄委托经 current_key_source（不写死 PackSeedSource）。源级守卫。
+    let lib = include_str!("../lib.rs");
+    assert!(
+        lib.contains("install_key_source(Box::new(")
+            && lib.contains("key_source::PackSeedSource"),
+        "组合根须在 run() 构建期安装默认密钥来源适配器"
+    );
+    let dek = include_str!("dek.rs");
+    assert!(
+        dek.contains("key_source::current_key_source()")
+            && dek.contains("key_source::resource_dek_with("),
+        "resource_dek 须经接缝委托当前密钥来源，不得写死具体策略"
+    );
+}
+
+#[test]
+fn envelope_seal_short_circuit() {
+    // envelope-seal-short-circuit：seed 指纹一致 → 跳过重复 seal + 写盘（信封字节稳定）。
+    let base = dek_temp_base("ks-shortcircuit");
+    let root = base.join("res");
+    fs::create_dir_all(&root).unwrap();
+    let seed = generate_resource_seed().unwrap();
+    fs::write(root.join(DEK_SEED), &seed).unwrap();
+    let envelope = base.join(DEK_ENVELOPE);
+    // 首启封信封。
+    assert_eq!(resource_dek(&base, &root, &StdFs).unwrap(), seed);
+    let first = fs::read(&envelope).unwrap();
+    assert!(base.join("resources.dek.lfk2.fp").is_file());
+    // 同 seed 再取 → 短路：信封字节不变（若每请求重 seal，随机 nonce 必使字节变化）。
+    for _ in 0..3 {
+        assert_eq!(resource_dek(&base, &root, &StdFs).unwrap(), seed);
+        assert_eq!(fs::read(&envelope).unwrap(), first, "seed 未变信封不应重封");
+    }
+    // 包更新：seed 换新 → 指纹不符 → 重封（信封字节变化），DEK 跟随新 seed。
+    let new_seed = generate_resource_seed().unwrap();
+    fs::write(root.join(DEK_SEED), &new_seed).unwrap();
+    assert_eq!(resource_dek(&base, &root, &StdFs).unwrap(), new_seed);
+    assert_ne!(fs::read(&envelope).unwrap(), first, "新 seed 须重封信封");
+    fs::remove_dir_all(&base).ok();
+}
+
+#[test]
+fn resource_casual_honest_claim() {
+    // resource-casual-honest-claim：资源层口径诚实标 casual 级，不再宣称 seed 跨机不可解。
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../..")
+        .canonicalize()
+        .unwrap();
+    // docs（tracked，恒在）：encryption / packaging 须含 casual 诚实口径。
+    for rel in [
+        "docs/src/content/docs/concepts/encryption.md",
+        "docs/src/content/docs/guides/packaging.md",
+    ] {
+        let text = fs::read_to_string(repo_root.join(rel)).unwrap();
+        assert!(text.contains("casual"), "{rel} 须明示资源加密 casual 级口径");
+        assert!(
+            text.contains("不承诺无法提取") || text.contains("抬高成本"),
+            "{rel} 须诚实声明根本限制"
+        );
+    }
+}
+
+#[test]
+fn save_machine_bound_unchanged() {
+    // save-machine-bound-unchanged：存档 LFS3 机器绑定链不受资源接缝影响（口径分离）。
+    // 存档链行为由 save::tests 钉死（round_trip_machine_bound / high_water_rejects_rollback 等）；
+    // 此处源级守卫：资源密钥入口不耦合存档链（不引入 save 模块依赖）。
+    let dek = include_str!("dek.rs");
+    assert!(!dek.contains("crate::save"), "资源密钥入口不得耦合存档链");
+    let pack_seed = include_str!("key_source/pack_seed.rs");
+    assert!(
+        !pack_seed.contains("crate::save"),
+        "默认密钥适配器不得耦合存档链"
+    );
 }

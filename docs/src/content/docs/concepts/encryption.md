@@ -37,6 +37,14 @@ const url = await resourcePort.resolve("Audio/main.mp3");
 - 解析失败必须抛错，不返回一个坏地址。调用方 fail-closed，宁可不播也不播错。
 - 密文形态下磁盘上没有可直引的资源文件，所以引擎里禁止把资源写成静态直引，一切资源都走 `resolve()`。故事里只能写逻辑路径。
 
+## 资源加密的诚实口径（casual 级）
+
+参考宿主 playground 的资源加密是 **casual 级**，不是「跨机不可解」：包根有一份明文 `__key__.seed`，它就是资源 DEK。解包拿到 seed 就能离线解密全资源，**不需要目标机的密钥**——KEK 信封只是运行期缓存，不构成跨机屏障。这一层防的是 casual 拷贝（随手复制资源目录打不开），并保住「包更新 = 新 seed 自动跟随」。对持包者只能抬高成本，**不承诺无法提取**（运行时内存提取、截屏录屏根本不可防）。
+
+密钥获取策略是**可插拔接缝**：安全层定义 `ResourceKeySource` 端口，crypto 核心只消费 DEK 字节，具体策略由组合根构建期选择默认适配器（包内 seed）。要交付强 DRM，自选更强 provider（在线激活 / 白盒 / 许可证绑定）或自带在线激活——换组合根那一行即可，crypto 核心零改动。
+
+**存档口径不同**：存档 LFS3 是每档随机 DEK + KEK 封装 + 高水位防回档，默认 MachineBound（跨机不可解）。资源 casual 与存档 MachineBound 是两套独立口径，别混说。
+
 ## 译文解密归供给侧
 
 `i18nPort.loadOverlayFiles(lang)` 返回的是「路径 + 条目」，没有「明文还是密文」这个字段——它不该由引擎判断。`Lang/en/main.json` 和 `Lang/en/main.json.enc` 对引擎是同一件事：供给方交上来的条目。

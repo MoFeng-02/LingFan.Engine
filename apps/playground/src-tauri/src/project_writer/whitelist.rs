@@ -1,6 +1,7 @@
-//! 路径白名单与错误类型：写回面与删除面各自的可写范围判定。
+//! 路径白名单与错误类型：写回面与删除面各自的可写范围判定，以及写回根绑定。
 
 use serde::Serialize;
+use std::path::{Path, PathBuf};
 
 /// 工程清单文件名（写回面的提交点，也是唯一可写的非 Stories 路径）。
 pub(crate) const MANIFEST_FILE: &str = "project.json";
@@ -67,4 +68,43 @@ pub(crate) fn validate_delete_path(path: &str) -> Result<(), ProjectWriterError>
         return Err(ProjectWriterError::BadDelete(path.into()));
     }
     Ok(())
+}
+
+/// 两根是否同一物理目录（canonicalize 后相等）。纯函数：解析符号链接/相对段后比对，
+/// 任一根无法规范化（不存在/无权限）即判不同——fail-closed，不放行未确证的根。
+pub(crate) fn same_canonical_root(a: &Path, b: &Path) -> bool {
+    match (a.canonicalize(), b.canonicalize()) {
+        (Ok(x), Ok(y)) => x == y,
+        _ => false,
+    }
+}
+
+/// 写回根绑定（纵深防御，不信任前端传入的根）：
+/// - 根必须是真实目录，否则 fail-closed（`Root`）。
+/// - **release 形态**进一步绑定到本宿主资源根（`locate_resource_root`，canonicalize 相等）：
+///   桌面安装形态的写回只落在打包资源根，杜绝 WebView 传任意根写删全用户文件系统。
+/// - **debug 形态**保留编辑器「dialog 选任意工程目录」工作流（任意真实目录），不绑定资源根。
+///
+/// 非法根一律 `Root` 拒绝、状态原样（调用方在绑定通过前不做任何写删）。
+pub(crate) fn bound_root(
+    app: &tauri::AppHandle,
+    root: &str,
+) -> Result<PathBuf, ProjectWriterError> {
+    let root_path = Path::new(root);
+    if !root_path.is_dir() {
+        return Err(ProjectWriterError::Root(root.into()));
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let resource_root = crate::project_files::locate_resource_root(app);
+        if !same_canonical_root(root_path, &resource_root) {
+            return Err(ProjectWriterError::Root(root.into()));
+        }
+    }
+    #[cfg(debug_assertions)]
+    {
+        // 编辑器开发工作流：dialog 选定的工程目录可不同于资源根，仅校验真实目录。
+        let _ = app;
+    }
+    Ok(root_path.to_path_buf())
 }

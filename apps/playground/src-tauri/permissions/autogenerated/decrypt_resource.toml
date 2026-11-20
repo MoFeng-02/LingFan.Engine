@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-decrypt-resource"
+description = "Enables the decrypt_resource command without any pre-configured scope."
+commands.allow = ["decrypt_resource"]
+
+[[permission]]
+identifier = "deny-decrypt-resource"
+description = "Denies the decrypt_resource command without any pre-configured scope."
+commands.deny = ["decrypt_resource"]

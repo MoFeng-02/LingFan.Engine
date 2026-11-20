@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-stamp-project-files"
+description = "Enables the stamp_project_files command without any pre-configured scope."
+commands.allow = ["stamp_project_files"]
+
+[[permission]]
+identifier = "deny-stamp-project-files"
+description = "Denies the stamp_project_files command without any pre-configured scope."
+commands.deny = ["stamp_project_files"]
