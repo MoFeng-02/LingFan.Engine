@@ -76,7 +76,8 @@ export interface SceneEnv {
   /**
    * 提交一批命令给引擎执行（`say` / `set` / `if` / `while` / `call` …）。
    *
-   * 语义与 `engine.submitSceneOps` 一致：不建检查点、整次拒绝存档类命令、
+   * 语义与 `engine.submitSceneOps` 一致：不建检查点、除 `load` 外全部命令放行
+   * （`load` 会整份导入存档、重建坐标与历史，提交它的组件已不存在）、
    * 失败整份回滚、返回是否全部执行成功。
    *
    * 停在等待态（`say` / `menu` / `wait` / 接管族）不算失败：画面仍是当前列身体，

@@ -394,8 +394,9 @@ export class StoryEngine extends EngineForwarders {
    * 提交一批命令给引擎执行（列身体等外部画面用，绕开脚本层）。
    *
    * 与 `runElementOps` 的区别：一是不要求当前有等待画面——列身体在进列那刻就可能没有
-   * 任何等待态（纯视觉房间）；二是允许 `say` 并停在对话等待态。其余语义一致：不建检查点、
-   * 整次拒绝位置类与存档类 op、失败整份回滚、返回是否全部执行成功。
+   * 任何等待态（纯视觉房间）；二是允许 `say` 并停在对话等待态；三是拒绝清单更宽——
+   * 只拒 `load`（它会整份导入存档、重建坐标 / 历史 / 帧栈，提交它的组件已不存在），
+   * 其余 op 全部放行。不建检查点、失败整份回滚、返回是否全部执行成功。
    */
   submitSceneOps(ops: readonly StoryCommand[]): boolean {
     return submitSceneOps(this.ctx, ops);

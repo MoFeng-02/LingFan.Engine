@@ -1,6 +1,6 @@
 ---
 title: A framework-agnostic narrative engine
-description: Framework-agnostic TypeScript narrative engine. Stories as text or JSON; 66 built-in ops cover flow, state, rollback and saves; no UI framework in the core.
+description: Framework-agnostic TypeScript narrative engine. Stories as text or JSON; 76 built-in ops cover flow, state, rollback and saves; no UI framework in the core.
 template: splash
 hero:
   title: The core runs the rules, the platform handles safety, looks are yours
@@ -35,7 +35,7 @@ LingFan Engine treats the story and the picture as two separate problems. A stor
     The text form is a projection of JSON v1, and one project may mix both file
     types.
   </Card>
-  <Card title="66 built-in ops" icon="list-format">
+  <Card title="76 built-in ops" icon="list-format">
     From `say` and `menu` to `save`, `bgm`, `video` and `minigame`, catalogued
     across nine domains in the reference. A misspelled op name is not skipped
     silently — the engine stops on `unknown-op` and tells you which instruction
@@ -85,6 +85,18 @@ LingFan Engine treats the story and the picture as two separate problems. A stor
 </Steps>
 
 To build your own project from scratch, see [Create from a Template](/from-template/); for the arguments each op takes, see the [Op Reference](/en/reference/ops/).
+
+## Translation status
+
+The Chinese site is canonical and more complete. Besides this landing page, these pages exist in English today:
+
+- **Start here:** [Introduction](/en/introduction/), [Getting started](/en/getting-started/), [Project structure](/en/project-structure/)
+- **Concepts:** [Story](/en/concepts/story/), [State](/en/concepts/state/), [Saves](/en/concepts/saves/), [I18n](/en/concepts/i18n/)
+- **Guides:** [Body columns](/en/guides/body-column/), [I18n](/en/guides/i18n/), [Irreversible narrative](/en/guides/irreversible-narrative/), [Pages](/en/guides/pages/), [Screen adaptation](/en/guides/screen-adaptation/)
+- **Advanced:** [TS story source](/en/advanced/ts-story-source/)
+- **Reference:** [Op Reference](/en/reference/ops/)
+
+The other 25 Chinese pages have no English translation yet; a link to them takes you to the Chinese original. They are: `changelog`; `concepts/elements`, `concepts/encryption`, `concepts/extensions`, `concepts/minigame`, `concepts/rollback`; `from-template`; `guides/dialogue`, `guides/menu-input`, `guides/packaging`, `guides/release`, `guides/run-one-column`, `guides/ui-mount`; `reference/manifest`, `reference/resources-layout`, `reference/template-boundaries`; and the nine op domain pages `reference/ops/{audio, conditions, data, dialogue, flow, interaction, saves, stage, video}`.
 
 ## Source
 

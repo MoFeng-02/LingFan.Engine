@@ -24,7 +24,7 @@ export interface UiHandle<N extends string = string> {
 
 /**
  * UI 名注册表（类型扩充点）：生成物 `src/gen/ui_register.g.ts` 尾部
- * `declare module "@lingfan-engine/editor"` 往本接口塞进每个 UI 名的字面量键 ⇒
+ * `declare module "@lingfan-engine/core"` 往本接口塞进每个 UI 名的字面量键 ⇒
  * {@link mount} 的名字参数获得补全与写错即红。空表退化为普通 string。
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- 类型扩充点：只有接口可被生成物 declare module 合并（type 别名不能），空体是有意形态
@@ -37,7 +37,7 @@ export type KnownUiName = keyof UiNameRegistry extends never
 
 /**
  * 列身体组件名注册表（类型扩充点）：生成物 `src/gen/scene_register.g.ts` 尾部
- * `declare module "@lingfan-engine/editor"` 往本接口塞进每个组件名的字面量键 ⇒
+ * `declare module "@lingfan-engine/core"` 往本接口塞进每个组件名的字面量键 ⇒
  * 故事源里写错组件名编译期即红。空表退化为普通 string。
  *
  * 与 {@link UiNameRegistry} 分开而不是合并：两者虽然都是「具名句柄」，但指向的

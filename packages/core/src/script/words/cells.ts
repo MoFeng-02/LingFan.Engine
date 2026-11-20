@@ -17,7 +17,7 @@ export interface CellHandle<N extends string = string> {
 }
 
 /**
- * 守卫名注册表（类型扩充点）：生成物尾部 `declare module "@lingfan-engine/editor"`
+ * 守卫名注册表（类型扩充点）：生成物尾部 `declare module "@lingfan-engine/core"`
  * 往本接口塞进每个已声明守卫名的字面量键 ⇒ `guard("…")` 的名字参数获得
  * 补全与写错即红（vue-router typed-routes 同机制）。
  * 空表 = `KnownGuardName` 退化为普通 string——不空注册表吓跑作者。

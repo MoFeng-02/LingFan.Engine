@@ -50,7 +50,7 @@ scene stage_demo
 
 `video` 不停——它开始播放，故事继续往下走。需要「播完再继续」用 `cutscene`。
 
-`jump`、`navigate`、`call`、`return` 也不停，它们是控制转移：换到别处继续执行。扩展 op 同样不产生等待点。
+`jump`、`navigate`、`call`、`return` 也不停，它们是控制转移：换到别处继续执行。扩展 op 默认执行成功即步进；在注册定义里声明 `wait: true` 的扩展 op 会建立等待点（等待态 `extension`），由宿主回填结果解除——和内建等待点一样，它同时是检查点坐标。未声明 `wait` 却返回等待的扩展 op 会被判失败，不会悄悄挂起。
 
 ## 跳转
 

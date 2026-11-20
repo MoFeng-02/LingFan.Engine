@@ -101,16 +101,18 @@ const SCENE_REGISTER_FILE = `${SCENE_REGISTER_BASENAME}.ts`;
  * 编译 `root/Stories.src/` 下的 TS 源 → `root/Resources/`（纯编排，fs 全在参数 root 之下；
  * 测试用临时工程根直测，CLI 主守卫传真实根）。
  *
- * 十四段串行：config.ts 单次求值（named exports 四导出 folders/start/vars/state +
- * 形态 B define 累积，读取/校验统一在此）→ 源发现（folders 多目录 + start 全局恰一）
+ * 十四段串行：config.ts 单次求值（五键 folders/start/version/vars/state，两形态：
+ * default 对象优先 / named exports 兜底、混用即拒；vars/state 走 define 累积，
+ * 读取/校验统一在此）→ 源发现（folders 多目录 + start 全局恰一）
  * → cell 扫描 → 编译期求值（node_modules 值导入的模块整体求值，导出常量喂给
  * 编译器内联）→ 模块层构建期 define 收集汇入（顶层 define 语句与 config 树同源合并，
  * 互斥/冲突 fail-closed）与 state 降维（config.state/define 合并树走同一降维文法
  * 扁平化为 defines）→ 字体名注册表扫描（Resources/Fonts 文件名去扩展名，编译期字体
- * 引用检查对照源）→ story-compiler 编译（诊断非空 fail-closed）→ parseStory 校验兜底 →
+ * 引用检查对照源）→ story-compiler 编译（诊断非空 fail-closed）→
  * 列归一与 sourcePath 回填（源文件路径 = 产物路径）→ 工程合并（id/entry 取 start 故事，
  * defines 冲突 fail-closed）→ 清单读取 → 扩展装载 → op/守卫闸门 → 编译与往返自检
- * → 差量写盘 → 生成物与警告收集。交错的顺序本身即契约（前置段的失败文案要先于
+ * （compileStory 序列化 + assertRoundTrip 回读组装，Story 形状契约在此兜底，
+ * parseStory 不单独上链）→ 差量写盘 → 生成物与警告收集。交错的顺序本身即契约（前置段的失败文案要先于
  * 后置段发出），调整即改变可观测行为。
  */
 export async function buildStories(

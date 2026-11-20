@@ -50,7 +50,7 @@ The engine stops at these commands and waits for the player:
 
 `video` does not stop — playback starts and the story keeps going. When you need "play to the end, then continue", use `cutscene`.
 
-`jump`, `navigate`, `call` and `return` do not stop either; they transfer control, continuing execution somewhere else. Extension ops produce no wait points either.
+`jump`, `navigate`, `call` and `return` do not stop either; they transfer control, continuing execution somewhere else. By default an extension op steps forward on success; an extension op that declares `wait: true` in its registration does create a wait point (waiting state `extension`), resolved when the host fills in the result — like built-in wait points, it is also a checkpoint coordinate. An extension op that returns a wait without declaring `wait` fails instead of quietly hanging.
 
 ## Jumps
 

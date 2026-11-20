@@ -15,7 +15,7 @@ import type { StoryCommand } from "../../contracts/story/entities.ts";
  * @param payload 扩展负载（原样透传，形状由扩展自定）。
  * @returns 扩展故事命令。
  * @example
- * extOp("weather:set", { sky: "rain" });
+ * extOp("weather_set", { sky: "rain" });
  */
 export function extOp(
   op: string,
