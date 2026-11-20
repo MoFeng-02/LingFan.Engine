@@ -172,6 +172,12 @@ export class EngineCore {
   protected i18nPort: I18nPort | undefined;
   /** 当前语言译文表（原文 → 译文）；由 `setLanguage()` 整表重建 */
   protected overlay: Map<string, string> | null = null;
+  /**
+   * 译文表源语言标签：记录 `overlay` 当前是哪门语言的表（空串 = 默认语言/原文直出）。
+   * 由 `setLanguage()` 装配译文表时同步写入，使「overlay 是当前语言的表」这一不变量自明，
+   * 幂等判据据此自检（语言标签相同但表源语言不同 ⇒ 重建而非早退）。会话态，不进快照/存档。
+   */
+  protected overlayLanguage = "";
   /** 扩展 op 注册表（构造期校验装配；查找序 = 内建 → 扩展 → unknown-op） */
   protected readonly extensionOps: Map<string, RegisteredOp>;
   /** 扩展声明索引（id → 声明：存档依赖校验 / migrate / restore 用） */

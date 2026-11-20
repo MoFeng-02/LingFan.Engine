@@ -273,6 +273,8 @@ export interface OpContext {
   i18nPort: I18nPort | undefined;
   /** 当前语言译文表（null = 原文直出） */
   overlay: Map<string, string> | null;
+  /** 译文表源语言标签（overlay 是哪门语言的表；空串 = 默认语言）；setLanguage 装配时同步写入 */
+  overlayLanguage: string;
   /** 取译文（未命中回退原文） */
   translate(original: string): string;
   /** 递归翻译元素展示文字 */

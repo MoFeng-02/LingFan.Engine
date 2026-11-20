@@ -160,6 +160,7 @@ export class StoryEngine extends EngineForwarders {
       // 存档编排
       this.pendingSave,
       this.overlay,
+      this.overlayLanguage,
       this.extensionById,
       this.migrateSaveHook,
       this.tryMigrateSave,

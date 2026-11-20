@@ -295,7 +295,8 @@ const languageRequestSeq = new WeakMap<OpContext, number>();
  * 空串表示默认语言（原文直出）；未装配端口时同样只记语言状态，供界面观察。
  * 供给失败 fail-closed：保持原语言与译文表不变，只出站错误。
  * 并发请求后写胜（递增序号守卫）：过期请求静默丢弃——不出错不出站（正常竞争非失败）。
- * 幂等：同语言且译文表已装配时重复设置不供给、不写、不出站（但仍使更早挂起请求失效）。
+ * 幂等：译文表源语言相同且表已装配时重复设置不供给、不写、不出站（但仍使更早挂起请求失效）；
+ * 判据验表的源语言标签 overlayLanguage——语言标签相同但表不是这门语言时自检重建。
  * 可在启动前调用（标题画面选语言），状态的写入与译文装配都不依赖启动态。
  */
 export async function setLanguage(ctx: OpContext, lang: string): Promise<void> {
@@ -310,15 +311,18 @@ export async function setLanguage(ctx: OpContext, lang: string): Promise<void> {
   // （否则 en→ja 挂起中再设 en 会被早退跳过，ja 落地后反胜，违反后写胜）
   const seq = (languageRequestSeq.get(ctx) ?? 0) + 1;
   languageRequestSeq.set(ctx, seq);
-  // 幂等早退：语言相同且表状态一致 ⇒ 不重复供给、不重复出站
+  // 幂等早退：译文表源语言相同且表状态一致 ⇒ 不重复供给、不重复出站。
+  // 判据比 overlayLanguage（表的实际源语言）而非 currentLanguage：回溯后两者可刻意不等
+  // （重放按当前语言），显式切语言须据表源语言自检——语言标签相同但表不是这门语言时重建。
   const port = ctx.i18nPort;
   const wantsDefault = lang === "" || port === undefined;
   const assembled = wantsDefault ? ctx.overlay === null : ctx.overlay !== null;
-  if (ctx.state.get(SYS.currentLanguage) === lang && assembled) return;
+  if (ctx.overlayLanguage === lang && assembled) return;
   if (wantsDefault) {
     // 默认语言或未装配端口：无译文表 = 原文直出（同步路径）；
     // 序号已递增，更早的挂起供给 resolving 时同样被丢弃
     ctx.overlay = null;
+    ctx.overlayLanguage = lang;
     ctx.setSystem(SYS.currentLanguage, lang);
     emitDerivedSurfaces(ctx);
     return;
@@ -336,6 +340,7 @@ export async function setLanguage(ctx: OpContext, lang: string): Promise<void> {
   // 同一同步块（步骤 3–7）：换表 → 写语言键 → 可见表面/元素/NVL 重译出站。
   // 合并走 planOverlayMerge：与编辑器/CLI 共用同一合并规则声明点。
   ctx.overlay = planOverlayMerge(files).entries;
+  ctx.overlayLanguage = lang;
   ctx.setSystem(SYS.currentLanguage, lang);
   emitDerivedSurfaces(ctx);
 }
