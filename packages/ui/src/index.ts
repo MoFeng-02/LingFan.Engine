@@ -89,6 +89,7 @@ export {
   type MountTable,
 } from "./mount";
 export {
+  bodyCapabilitiesOf,
   createBodyLayer,
   createBodyStore,
   createSceneEnv,

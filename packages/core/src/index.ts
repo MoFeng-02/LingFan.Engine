@@ -61,6 +61,7 @@ export {
   loadDeclaredExtensions,
   manifestOrientation,
   mergeOverlayFiles,
+  missingHostCapabilities,
   planOverlayMerge,
   PlayerPreferences,
   resolveAudioConfig,

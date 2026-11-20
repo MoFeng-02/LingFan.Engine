@@ -20,5 +20,8 @@ const uni: UniPluginFactory =
   (uniModule as unknown as UniPluginFactory);
 
 export default defineConfig({
+  // 移动端兼容：H5 形态跑老 WebView，语法目标 safari13（基线 Safari 13.1+/Chrome 85+）。
+  // esbuild 只转语法不补内建方法——内建由 eslint 守卫兜底。
+  build: { target: "safari13" },
   plugins: [uni()],
 });

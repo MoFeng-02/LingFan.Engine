@@ -25,6 +25,10 @@ import {
   imageModeOf,
   toMiniNode,
 } from "../../template/v1/overlays/miniprogram/src/mp/view.ts";
+import {
+  createMiniprogramVideoSurface,
+  type MiniprogramVideoData,
+} from "../../template/v1/overlays/miniprogram/src/mp/video-surface.ts";
 
 /** `template-meta.json` 里声明的可选层 */
 interface TemplateOption {
@@ -782,5 +786,133 @@ describe("模板叠加层：小程序图片的填充方式", () => {
     const source = OVERLAY_SOURCES[path!] ?? "";
     expect(source).toMatch(/:mode="node\.mode/);
     expect(source).not.toMatch(/mode="widthFix"/);
+  });
+});
+
+describe("模板叠加层：小程序视频 stretch 与层 z（mp-video-stretch-real-size / mp-video-z-index）", () => {
+  /** 取小程序宿主某模块源码（页面/组合根/呈现面） */
+  function mpSource(suffix: string): string {
+    const path = Object.keys(OVERLAY_SOURCES).find((key) =>
+      key.endsWith(`/miniprogram/${suffix}`),
+    );
+    expect(path, `找不到小程序的 ${suffix}`).toBeDefined();
+    return OVERLAY_SOURCES[path!] ?? "";
+  }
+
+  it("呈现面把 objectFit 真实读数落页面数据（非恒量），缺省回 cover", () => {
+    const patches: MiniprogramVideoData[] = [];
+    const surface = createMiniprogramVideoSurface({
+      publish: (video) => patches.push(video),
+    });
+    surface.show({
+      url: "a.webm",
+      volume: 1,
+      loop: false,
+      objectFit: "contain",
+    });
+    expect(patches.at(-1)?.objectFit).toBe("contain");
+    surface.show({ url: "b.webm", volume: 1, loop: false, objectFit: "fill" });
+    expect(patches.at(-1)?.objectFit).toBe("fill");
+    surface.show({ url: "c.webm", volume: 1, loop: false });
+    expect(patches.at(-1)?.objectFit).toBe("cover");
+  });
+
+  it("呈现面 setZIndex 改页面数据层级 z，可见时重发、隐藏时沿用", () => {
+    const patches: MiniprogramVideoData[] = [];
+    const surface = createMiniprogramVideoSurface({
+      publish: (video) => patches.push(video),
+    });
+    surface.show({ url: "a.webm", volume: 1, loop: false, zIndex: 100 });
+    surface.setZIndex?.(42);
+    expect(patches.at(-1)?.zIndex).toBe(42);
+    surface.hide();
+    const count = patches.length;
+    surface.setZIndex?.(7);
+    expect(patches.length).toBe(count);
+    surface.show({ url: "b.webm", volume: 1, loop: false });
+    expect(patches.at(-1)?.zIndex).toBe(7);
+  });
+
+  it("页面把 object-fit 与视频 z 绑到组件（数据面 → 组件，不再静默丢弃/误读键）", () => {
+    const page = mpSource("src/pages/index/index.vue");
+    expect(page).toContain(':object-fit="video.objectFit"');
+    expect(page).toContain(':style="{ zIndex: video.zIndex }"');
+    // 旧断链：页面误读 layers['video']（控制器下发的是 transition）恒 0，已纠正
+    expect(page).not.toContain("layerZ('video')");
+  });
+
+  it("组合根经 onVideoZ 把视频层 z 接 VideoPort.setZIndex（与 Web 同口径）", () => {
+    const host = mpSource("src/mp/host.ts");
+    expect(host).toContain("onVideoZ: (z) => ports.video.setZIndex?.(z)");
+    expect(host).toContain("layerZ: resolveLayerZ(manifest)");
+  });
+});
+
+describe("模板叠加层：小程序挂载能力与 mount 显式诊断（mount-mp-fail-closed）", () => {
+  function mpHostSource(): string {
+    const path = Object.keys(OVERLAY_SOURCES).find((key) =>
+      key.endsWith("/miniprogram/src/mp/host.ts"),
+    );
+    expect(path, "找不到小程序组合根 host.ts").toBeDefined();
+    return OVERLAY_SOURCES[path!] ?? "";
+  }
+
+  it("宿主声明受限能力集：不含 mount/body（无渲染通道，capabilities-pure-data）", () => {
+    const host = mpHostSource();
+    const decl = host.match(/const MP_HOST_CAPABILITIES[^=]*=\s*\[([^\]]*)\]/);
+    expect(decl).not.toBeNull();
+    const caps = decl?.[1] ?? "";
+    expect(caps).toContain('"video"');
+    expect(caps).not.toContain('"mount"');
+    expect(caps).not.toContain('"body"');
+  });
+
+  it("mount 不再静默降级：订阅 SYS.mounts，挂可见 mount 即 reportError 显式诊断", () => {
+    const host = mpHostSource();
+    expect(host).toContain("engine.onStateChanged");
+    expect(host).toContain("change.key !== SYS.mounts");
+    expect(host).toContain("visibleMounts(change.value)");
+    expect(host).toMatch(/reportError\([\s\S]*?mount[\s\S]*?\)/);
+    expect(host).toContain("已挂载但不会被渲染");
+    expect(host).toContain("stopMountDiag()");
+  });
+});
+
+describe("模板叠加层：小程序交付物消费 Lang overlay（mp-host-i18n）", () => {
+  function mpFile(suffix: string): string {
+    const path = Object.keys(OVERLAY_SOURCES).find((key) =>
+      key.endsWith(`/miniprogram/${suffix}`),
+    );
+    expect(path, `找不到小程序的 ${suffix}`).toBeDefined();
+    return OVERLAY_SOURCES[path!] ?? "";
+  }
+
+  it("组合根接译文供给与语言门面（createHttpI18nPort + createHostI18n）", () => {
+    const host = mpFile("src/mp/host.ts");
+    expect(host).toContain("createHttpI18nPort");
+    expect(host).toContain("createHostI18n(engine, { i18nPort })");
+    // 译文端口先于引擎注入：setLanguage 按需经它加载 overlay
+    expect(host).toContain("i18nPort,");
+    expect(host).toContain("langs: LANGS");
+  });
+
+  it("偏好语言种子 + 读档后按引擎当前语言加载 overlay + 门面交页面", () => {
+    const host = mpFile("src/mp/host.ts");
+    expect(host).toContain("const seedLang = preferences.language");
+    expect(host).toContain("i18n.changeLang(seedLang)");
+    expect(host).toContain("engine.setLanguage(");
+    expect(host).toContain("SYS.currentLanguage");
+    // 语言门面随宿主句柄交出（页面据此 t()/changeLang/subscribe）
+    expect(host).toContain("i18n: HostI18n");
+  });
+
+  it("页面消费语言门面：静态文案 translate + 语言选择器 + 当前语言响应式", () => {
+    const page = mpFile("src/pages/index/index.vue");
+    expect(page).toContain("function translate(text: string)");
+    expect(page).toContain("current.i18n.t(text)");
+    expect(page).toContain('class="lang-picker"');
+    expect(page).toContain("const currentLang = ref(");
+    expect(page).toContain(".changeLang(code)");
+    expect(page).toContain("started.i18n.subscribe(");
   });
 });

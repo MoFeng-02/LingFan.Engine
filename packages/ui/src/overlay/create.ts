@@ -74,7 +74,11 @@ export function createNarrativeOverlay(
   const elements = options.elementRegistry ?? createBuiltinElementRegistry();
   const textSpeed = options.textSpeed ?? DEFAULT_TEXT_CPS;
 
-  const layerZController = createLayerZController(surface, layerZ);
+  const layerZController = createLayerZController(
+    surface,
+    layerZ,
+    options.onVideoZ,
+  );
   // 表面可能由宿主先建（那时还不知道本实例的层默认表）：构造末尾统一下发一次，
   // 此后层默认表与本实例一致；下发幂等，不产生渲染目标。
   layerZController.apply();

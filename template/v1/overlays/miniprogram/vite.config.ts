@@ -42,6 +42,9 @@ export default defineConfig({
   build: {
     // 包体不装故事与素材：它们由工程接口与资源端口在运行期取
     copyPublicDir: false,
+    // 移动端兼容：H5 形态跑老 WebView，语法目标 safari13（基线 Safari 13.1+/Chrome 85+）。
+    // esbuild 只转语法不补内建方法——内建由 eslint 守卫兜底。
+    target: "safari13",
   },
   server: {
     // 与骨架同一个端口：两种形态的本地约定一致，切换形态不必改文档与脚本

@@ -12,8 +12,14 @@
  * 也不抛错（一个笔误会黑掉整屏），而是经 `onError` 上报给宿主，本屏不渲染身体。
  * 上报口是普通回调而不是某个框架的响应式引用——写错误条还是打控制台归宿主决定。
  */
-import { SYS, type SceneEnv, type StoryEngine } from "@lingfan-engine/core";
-import { selectBody } from "./selection.ts";
+import {
+  missingHostCapabilities,
+  SYS,
+  type HostCapability,
+  type SceneEnv,
+  type StoryEngine,
+} from "@lingfan-engine/core";
+import { bodyCapabilitiesOf, selectBody } from "./selection.ts";
 
 /** 一个可直接铺进渲染树的身体：组件、它的名字（用于 `:key`）、合并后的入参 */
 export interface BodyView {
@@ -37,6 +43,12 @@ export interface BodyLayerOptions {
   getEngine: () => StoryEngine;
   /** 选出/清空这一屏的身体时回调；宿主据此更新渲染树 */
   onSelect: (view: BodyView | null) => void;
+  /**
+   * 宿主声明的能力集（纯数据）。给了它就在装配层比对组件所需能力：组件声明了所需能力
+   * 而宿主没声明对应能力时 fail-closed（诊断 + 不渲染）。不给 = 不做能力比对（既有宿主
+   * 与未声明所需能力的组件行为不变）。
+   */
+  hostCapabilities?: readonly HostCapability[];
 }
 
 /** 身体层句柄 */
@@ -54,7 +66,8 @@ export interface BodyLayer {
  * 去重比较：把「结果相同就不回调」写成引用比较，反而会在状态往返后留下旧身体。
  */
 export function createBodyLayer(options: BodyLayerOptions): BodyLayer {
-  const { table, env, onError, getEngine, onSelect } = options;
+  const { table, env, onError, getEngine, onSelect, hostCapabilities } =
+    options;
   let disposed = false;
 
   function render(): void {
@@ -67,6 +80,21 @@ export function createBodyLayer(options: BodyLayerOptions): BodyLayer {
     if (selection === null) {
       onSelect(null);
       return;
+    }
+    // 装配先比对：组件声明了所需能力、宿主却没声明对应能力时不渲染（fail-closed），
+    // 而不是把组件交给一个画不出它的宿主静默降级。宿主未给能力集时不比对（行为不变）。
+    if (hostCapabilities !== undefined) {
+      const missing = missingHostCapabilities(
+        bodyCapabilitiesOf(selection.component),
+        hostCapabilities,
+      );
+      if (missing.length > 0) {
+        onError(
+          `身体组件 ${selection.name} 所需宿主能力未满足：${missing.join("、")}（fail-closed：本宿主未声明这些能力，组件不渲染）`,
+        );
+        onSelect(null);
+        return;
+      }
     }
     onSelect({
       name: selection.name,

@@ -324,7 +324,13 @@ export default defineConfigWithVueTs(
     // 只拦基线之后的内建方法/全局（Chrome 92+ 一族 + Safari 15 才有的 Promise.any），
     // 命中即老 WebView TypeError → 模块执行中断 → #app 空 → 白屏。
     // 语法层兼容由 vite build.target=safari13 负责（esbuild 不补内建方法，守卫在这里）。
-    files: ["packages/**/*.ts", "apps/*/src/**/*.{ts,vue}"],
+    // 模板源码（template/**/src，含小程序 overlay）与参考宿主同跑老 WebView，一并纳入：
+    // 脚手架交付物若用了基线之后的内建，用户工程一跑就白屏，故守卫必须覆盖到模板。
+    files: [
+      "packages/**/*.ts",
+      "apps/*/src/**/*.{ts,vue}",
+      "template/**/src/**/*.{ts,vue}",
+    ],
     rules: {
       "no-restricted-syntax": ["error", ...LEGACY_WEBVIEW_SELECTORS],
       "no-restricted-globals": ["error", ...LEGACY_WEBVIEW_GLOBALS],

@@ -14,6 +14,7 @@
 import {
   SYS,
   DEFAULT_LANG,
+  HOST_CAPABILITY_VALUES,
   PlayerPreferences,
   StoryEngine,
   manifestOrientation,
@@ -468,6 +469,9 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     reportError,
     container: options.bodyContainer,
     onBody: options.onBody,
+    // 桌面/浏览器宿主各能力通道齐全（mount/body/视频/音频/存档/文案都有落法）：声明全量，
+    // 身体组件声明的所需能力在此恒满足，能力比对不会误伤既有组件（合法输入结果不变）。
+    hostCapabilities: HOST_CAPABILITY_VALUES,
   });
 
   wireEngine({

@@ -446,6 +446,8 @@ describe("媒体端口接线（音频实例与视频呈现面）", () => {
         visible: true,
         volume: 0.5,
         loop: true,
+        objectFit: "cover",
+        zIndex: 0,
       },
     ]);
   });
@@ -460,6 +462,8 @@ describe("媒体端口接线（音频实例与视频呈现面）", () => {
       visible: false,
       volume: 0,
       loop: false,
+      objectFit: "cover",
+      zIndex: 0,
     });
   });
 
@@ -488,8 +492,53 @@ describe("媒体端口接线（音频实例与视频呈现面）", () => {
     expect(VIDEO_COMPONENT_ID).toBe("stage-video");
     expect(pageSource).toContain(`id="${VIDEO_COMPONENT_ID}"`);
     expect(pageSource).toContain('@ended="onVideoEnded"');
-    expect(pageSource).toContain("layerStyle('video')");
     expect(pageSource).toContain("host?.videoEnded()");
+  });
+
+  it("stretch 喂真实读数：objectFit 随 show 落页面数据，页面绑 object-fit（mp-video-stretch-real-size）", () => {
+    const { patches, publish } = collectPatches();
+    const surface = createMiniprogramVideoSurface({ publish });
+    // 端口对当前列 video 元素 stretch 的读数经 show 传入（非默认/常量）
+    surface.show({
+      url: "a.webm",
+      volume: 1,
+      loop: false,
+      objectFit: "contain",
+    });
+    expect(patches.at(-1)?.objectFit).toBe("contain");
+    surface.show({ url: "b.webm", volume: 1, loop: false, objectFit: "fill" });
+    expect(patches.at(-1)?.objectFit).toBe("fill");
+    // 缺省回 cover（与元素层缺省一致）
+    surface.show({ url: "c.webm", volume: 1, loop: false });
+    expect(patches.at(-1)?.objectFit).toBe("cover");
+    // 页面把 objectFit 绑到组件 object-fit 属性（数据面 → 组件，不再静默丢弃）
+    expect(pageSource).toContain(':object-fit="video.objectFit"');
+  });
+
+  it("视频层 z 走页面数据：setZIndex 改 z 重发，页面绑 video.zIndex（mp-video-z-index）", () => {
+    const { patches, publish } = collectPatches();
+    const surface = createMiniprogramVideoSurface({ publish });
+    surface.show({ url: "a.webm", volume: 1, loop: false, zIndex: 100 });
+    expect(patches.at(-1)?.zIndex).toBe(100);
+    // 运行期实例 z 命令经端口 setZIndex 到此：可见时重发页面数据
+    surface.setZIndex?.(42);
+    expect(patches.at(-1)?.zIndex).toBe(42);
+    expect(patches.at(-1)?.visible).toBe(true);
+    // 隐藏时改 z 不重发（组件不占位），但下次起播沿用新 z
+    surface.hide();
+    const before = patches.length;
+    surface.setZIndex?.(7);
+    expect(patches.length).toBe(before);
+    surface.show({ url: "b.webm", volume: 1, loop: false });
+    expect(patches.at(-1)?.zIndex).toBe(7);
+    // 页面把视频 z 绑到 video.zIndex（端口驱动的页面数据层级，非误读 layers['video']）
+    expect(pageSource).toContain(':style="{ zIndex: video.zIndex }"');
+  });
+
+  it("视频层 z 与 Web 同口径：组合根经 onVideoZ 接 VideoPort.setZIndex（mp-video-web-consistency）", () => {
+    // 组合根把覆盖层控制器的视频 z 出口接到视频端口（与 Web createLayerView.onVideoZ 同名钩子）
+    expect(hostSource).toContain("onVideoZ: (z) => ports.video.setZIndex?.(z)");
+    expect(hostSource).toContain("layerZ: resolveLayerZ(manifest)");
   });
 
   it("组合根把两个渲染器都接上，并在帧源里回写音频位置、销毁时一并收场", () => {
@@ -514,6 +563,37 @@ describe("媒体端口接线（音频实例与视频呈现面）", () => {
     expect(hostSource).toMatch(
       /dispose: \(\) => \{[\s\S]*audio\.dispose\(\);[\s\S]*video\.dispose\(\);/,
     );
+  });
+});
+
+describe("挂载能力声明与 mount 显式诊断（mount-mp-fail-closed）", () => {
+  it("小程序宿主声明受限能力集：不含 mount/body（无渲染通道）", () => {
+    expect(hostSource).toContain("const MP_HOST_CAPABILITIES");
+    // 能力集是装配期数据声明：mount/body 在小程序没有落法，不声明＝不支持
+    const decl = hostSource.match(
+      /const MP_HOST_CAPABILITIES[^=]*=\s*\[([^\]]*)\]/,
+    );
+    expect(decl).not.toBeNull();
+    const caps = decl?.[1] ?? "";
+    expect(caps).toContain('"video"');
+    expect(caps).toContain('"audio"');
+    expect(caps).not.toContain('"mount"');
+    expect(caps).not.toContain('"body"');
+  });
+
+  it("mount 不再静默降级：订阅 SYS.mounts，挂可见 mount 即 reportError 显式诊断", () => {
+    // 订阅状态变更，只在 SYS.mounts 这一键上判可见挂载
+    expect(hostSource).toContain("engine.onStateChanged");
+    expect(hostSource).toContain("change.key !== SYS.mounts");
+    expect(hostSource).toContain("visibleMounts(change.value)");
+    // 非静默：诊断经 reportError 出口（→ deps.publish({error})），不是只改状态不吭声
+    expect(hostSource).toMatch(/reportError\([\s\S]*?mount[\s\S]*?\)/);
+    expect(hostSource).toContain("已挂载但不会被渲染");
+  });
+
+  it("诊断防刷屏：挂载清空复位，卸载退订", () => {
+    expect(hostSource).toContain("mountDiagActive = false");
+    expect(hostSource).toContain("stopMountDiag()");
   });
 });
 

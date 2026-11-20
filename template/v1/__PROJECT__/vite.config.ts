@@ -19,5 +19,9 @@ export default defineConfig({
   // 宿主端口与 Tauri 约定一致；换平台壳时只改这里
   server: { port: 1420, strictPort: true },
 
+  // 移动端兼容：构建语法目标 safari13（老 WebView 基线 Safari 13.1+/Chrome 85+ 可解析）。
+  // esbuild 只转语法不补内建方法（如 Array.prototype.at）——内建由 eslint 守卫兜底。
+  build: { target: "safari13" },
+
   plugins: [storyFontsVirtual(), storyListVirtual(), langListVirtual()],
 });

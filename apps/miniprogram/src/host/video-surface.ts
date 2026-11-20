@@ -5,6 +5,12 @@
  * 播放中的暂停、续播、定位靠 `uni.createVideoContext(id)` 的控制柄；自然播完由页面
  * 把组件的 `bindended` 转进本面的 `notifyEnded`，端口据此解除引擎的 video 等待。
  *
+ * 填充与层 z 也走页面数据：小程序渲染层就是 WebView，`video` 组件支持 `object-fit`
+ * 与 `z-index`，只是没有 DOM 可写，故由本面把 `objectFit` / `zIndex` 落进页面数据、
+ * 页面绑到组件行内属性（与 Web 端口写元素 `style.objectFit` / `style.zIndex` 同口径）。
+ * `objectFit` 来自端口对当前列 video 元素 `stretch` 的真实读数（非常量）；`zIndex` 构造期
+ * 随 `show` 下发、运行期经 `setZIndex` 改（实例级 z 命令）。
+ *
  * 控制柄按需取：组件还没渲染时取柄会抛错，此时动作直接丢弃（下一次动作再取），
  * 不让一次时序问题炸掉整个宿主。
  */
@@ -21,6 +27,10 @@ export interface MiniprogramVideoData {
   /** 0..1 */
   volume: number;
   loop: boolean;
+  /** 填充方式（组件 `object-fit` 属性值；只有 `contain`/`fill`/`cover` 三种） */
+  objectFit: string;
+  /** 层 z（组件行内 `z-index`；页面数据层级，非 DOM） */
+  zIndex: number;
 }
 
 /** 视频组件的 id：页面模板与呈现面必须一致 */
@@ -38,12 +48,14 @@ export interface MiniprogramVideoSurface extends MiniprogramVideoSurfaceLike {
   notifyEnded(): void;
 }
 
-/** 免于无人观看的视频状态（隐藏时页面数据归零） */
+/** 免于无人观看的视频状态（隐藏时页面数据归零；层 z 保留以便下次起播沿用） */
 const HIDDEN: MiniprogramVideoData = {
   url: "",
   visible: false,
   volume: 0,
   loop: false,
+  objectFit: "cover",
+  zIndex: 0,
 };
 
 /** 造一个视频呈现面 */
@@ -54,6 +66,8 @@ export function createMiniprogramVideoSurface(
   let ended: (() => void) | null = null;
   /** 当前是否有片在屏（控制柄只在可见时有意义） */
   let visible = false;
+  /** 当前页面数据（`setZIndex` 改 z 时按它重发，保留填充等其余字段） */
+  let current: MiniprogramVideoData = { ...HIDDEN };
   /** 控制柄（懒取；取失败不缓存，下次再试） */
   let context: UniVideoContext | null = null;
 
@@ -71,16 +85,21 @@ export function createMiniprogramVideoSurface(
   return {
     show(request): void {
       visible = true;
-      deps.publish({
+      current = {
         url: request.url,
         visible: true,
         volume: request.volume,
         loop: request.loop,
-      });
+        // 填充是端口对当前列 video 元素 stretch 的真实读数；缺省回 cover（与元素层一致）
+        objectFit: request.objectFit ?? "cover",
+        zIndex: request.zIndex ?? current.zIndex,
+      };
+      deps.publish({ ...current });
     },
     hide(): void {
       visible = false;
-      deps.publish({ ...HIDDEN });
+      current = { ...HIDDEN, zIndex: current.zIndex };
+      deps.publish({ ...current });
     },
     pause(): void {
       if (!visible) return;
@@ -99,6 +118,11 @@ export function createMiniprogramVideoSurface(
     },
     notifyEnded(): void {
       ended?.();
+    },
+    setZIndex(z): void {
+      current = { ...current, zIndex: z };
+      // 只在可见时重发（隐藏时组件不占位，z 无意义；下次 show 会带上当前 z）
+      if (visible) deps.publish({ ...current });
     },
   };
 }

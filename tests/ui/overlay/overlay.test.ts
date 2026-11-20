@@ -7,7 +7,7 @@
  * 卸载彻底（退订 + 清 DOM + 停帧）；模板缺失回退默认（fail-soft）。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SYS } from "@lingfan-engine/core";
+import { DEFAULT_LAYER_Z, SYS } from "@lingfan-engine/core";
 import {
   createDomOverlaySurface,
   createNarrativeOverlay,
@@ -348,6 +348,31 @@ describe("状态投影：只经 ValueChanged 渲染", () => {
     const { engine, surface } = build();
     engine.emit(SYS.dialogueZ, 42);
     expect((surface.nodes.dialogue as unknown as FakeEl).style.zIndex).toBe(
+      "42",
+    );
+  });
+
+  it("视频层 z 经 onVideoZ 出口下发：构造期层默认、实例覆盖、取消回默认（mp-video-z-index）", () => {
+    const videoZ: number[] = [];
+    const { engine } = build({
+      layerZ: { ...DEFAULT_LAYER_Z, video: 100 },
+      onVideoZ: (z: number) => videoZ.push(z),
+    });
+    // 构造末尾统一下发一次：视频层走层默认 100
+    expect(videoZ.at(-1)).toBe(100);
+    // 实例级 z 命令（SYS.videoZ）经投影器收纳 → 控制器重算 → onVideoZ 出口
+    engine.emit(SYS.videoZ, 42);
+    expect(videoZ.at(-1)).toBe(42);
+    // 取消覆盖（undefined）回层默认
+    engine.emit(SYS.videoZ, undefined);
+    expect(videoZ.at(-1)).toBe(100);
+  });
+
+  it("不传 onVideoZ 时视频层只走覆盖层下发（旧行为不变，契约只增）", () => {
+    const { engine, surface } = build();
+    engine.emit(SYS.videoZ, 42);
+    // transition 挂载点（视频层在覆盖层词表里的名字）仍收到 z
+    expect((surface.nodes.transition as unknown as FakeEl).style.zIndex).toBe(
       "42",
     );
   });

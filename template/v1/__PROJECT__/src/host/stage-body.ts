@@ -16,7 +16,12 @@ import {
   type BodyView,
   type SceneStageState,
 } from "@lingfan-engine/ui";
-import type { HostControls, SceneEnv, StoryEngine } from "@lingfan-engine/core";
+import type {
+  HostCapability,
+  HostControls,
+  SceneEnv,
+  StoryEngine,
+} from "@lingfan-engine/core";
 import { resolveNativeFactory, type NativeUiInstance } from "./mount/table";
 
 /** 接线输入：引擎与舞台读面、生成物表、控制面、诊断出口，以及二选一的落法 */
@@ -35,6 +40,11 @@ export interface BodyWiringOptions {
   container?: HTMLElement | null;
   /** 框架形态的落法（可选）：给了就只交视图，不建原生渲染器 */
   onBody?: (view: BodyView | null) => void;
+  /**
+   * 宿主能力集（可选）：给了就在装配层比对身体组件声明的所需能力，缺能力 fail-closed
+   * （诊断 + 不渲染）；不给即不比对（行为与既往一致）。桌面/浏览器宿主声明全量能力。
+   */
+  hostCapabilities?: readonly HostCapability[];
 }
 
 /** 接线句柄：环境（供需要它的消费方）、渲染入口、拆除 */
@@ -54,7 +64,14 @@ export interface BodyWiring {
  * 与挂载层同一处退订，避免订阅散落在多个文件里漏掉注销。
  */
 export function wireBodyLayer(options: BodyWiringOptions): BodyWiring | null {
-  const { getEngine, readStage, table, controls, reportError } = options;
+  const {
+    getEngine,
+    readStage,
+    table,
+    controls,
+    reportError,
+    hostCapabilities,
+  } = options;
   const env = createSceneEnv({ getEngine, readStage });
 
   // 框架形态：只把视图交给组合根，渲染树归框架管
@@ -66,6 +83,7 @@ export function wireBodyLayer(options: BodyWiringOptions): BodyWiring | null {
       onError: reportError,
       getEngine,
       onSelect: onBody,
+      hostCapabilities,
     });
     return {
       env,
@@ -135,6 +153,7 @@ export function wireBodyLayer(options: BodyWiringOptions): BodyWiring | null {
     onError: reportError,
     getEngine,
     onSelect: applyNative,
+    hostCapabilities,
   });
   return {
     env,

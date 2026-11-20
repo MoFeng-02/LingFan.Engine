@@ -118,6 +118,12 @@ export interface NarrativeOverlayOptions {
   readElementFitDefault?: () => ElementFit | undefined;
   /** 错误上报（引擎错误、未注册类型/命令；缺省 = 控制台） */
   onError?: (message: string) => void;
+  /**
+   * 视频层 z 的端口出口（与宿主模板 `createLayerView` 的同名钩子同口径）。
+   * 视频组件的 z 由视频端口承载（Web 写元素 `style.zIndex`、小程序写页面数据层级），
+   * 宿主把解析后的视频 z 经此交给 `VideoPort.setZIndex`；不传 = 视频层只走覆盖层下发。
+   */
+  onVideoZ?: (z: number) => void;
 }
 
 /**

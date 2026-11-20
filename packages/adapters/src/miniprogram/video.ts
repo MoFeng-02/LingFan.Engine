@@ -2,8 +2,9 @@
  * 视频端口适配器（小程序）：小程序的 `video` 是声明式组件，宿主实现呈现面（建节点、绑 `bindended`），
  * 本包只推状态。与 Web 实现（`../media/videoPort.ts`）对齐的语义：
  * 新 `play` 替换当前；`stop` 停并隐藏；自然结束经 `onEnded` 上报（cutscene 由它解除引擎等待）。
- * 小程序原生 `video` 组件不受 `z-index` 控制，因此**不实现** `VideoPort.setZIndex` 这个可选能力：
- * 层 z 取构造期值，随 `show` 一起交给呈现面（缺省 5 = 旧行为）。
+ * 层 z 与 Web 端口同口径走 `setZIndex`：小程序渲染层就是 WebView，`video` 组件可用 `z-index`，
+ * 只是没有 DOM、z 走页面数据层级（呈现面把 z 落到组件行内样式）。构造期 z 随 `show` 一起下发，
+ * 运行期实例 z 命令经 `setZIndex` 改当前值并推呈现面（呈现面未实现该可选方法时保持构造期值）。
  */
 import type { ElementFit, VideoPort } from "@lingfan-engine/core";
 import { DEFAULT_ELEMENT_FIT } from "@lingfan-engine/core";
@@ -54,7 +55,7 @@ export function createMiniprogramVideoPort(
   surface: MiniprogramVideoSurfaceLike,
   options: MiniprogramVideoOptions = {},
 ): VideoPort {
-  const zIndex = options.zIndex ?? 5;
+  let zIndex = options.zIndex ?? 5;
   let endedHandler: (() => void) | null = null;
   let visible = false;
   // 结束回调由呈现面注册一次（组件 `bindended` 转发），每次 play 换的是上面这个处理器
@@ -92,6 +93,11 @@ export function createMiniprogramVideoPort(
       endedHandler = null;
       visible = false;
       surface.hide();
+    },
+    setZIndex(z): void {
+      zIndex = z;
+      // 呈现面把 z 落到页面数据层级（小程序无 DOM）；未实现该可选方法时保持构造期值
+      surface.setZIndex?.(z);
     },
   };
 }

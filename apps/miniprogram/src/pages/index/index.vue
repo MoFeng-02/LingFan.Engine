@@ -191,7 +191,8 @@ function closeSlots(): void {
       :controls="false"
       :show-center-play-btn="false"
       :enable-progress-gesture="false"
-      :style="layerStyle('video')"
+      :object-fit="video.objectFit"
+      :style="{ zIndex: video.zIndex }"
       @ended="onVideoEnded"
     />
 

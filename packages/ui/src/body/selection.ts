@@ -16,7 +16,44 @@
  *   静默跳过是这里最坏的选项——作者写了 body 却没看见组件，无从下手；抛错则会让
  *   一个笔误黑掉整屏。上报口由宿主注入，写错误条还是打控制台归宿主决定。
  */
-import { isPlainObject } from "@lingfan-engine/core";
+import {
+  HOST_CAPABILITY_VALUES,
+  isPlainObject,
+  type HostCapability,
+} from "@lingfan-engine/core";
+
+/**
+ * 读组件声明的所需能力（组件级需求声明，纯数据）。
+ *
+ * 组件（Vue/React 组件对象或原生工厂函数）可在自身上挂一个静态 `capabilities` 数组，
+ * 声明这一屏需要宿主提供哪些通道（如 `["video"]`）。这里只读这份声明、按契约能力清单
+ * 过滤合法值——不探测组件内部、不碰 DOM。未声明（或声明不是数组）一律按「无所需能力」
+ * 处理，既有组件因此不受能力比对影响（契约只增、合法输入结果不变）。
+ */
+export function bodyCapabilitiesOf(
+  component: unknown,
+): readonly HostCapability[] {
+  if (
+    component === null ||
+    (typeof component !== "object" && typeof component !== "function")
+  ) {
+    return [];
+  }
+  const declared = (component as { capabilities?: unknown }).capabilities;
+  if (!Array.isArray(declared)) return [];
+  const valid = new Set<string>(HOST_CAPABILITY_VALUES);
+  const result: HostCapability[] = [];
+  for (const value of declared) {
+    if (
+      typeof value === "string" &&
+      valid.has(value) &&
+      !result.includes(value as HostCapability)
+    ) {
+      result.push(value as HostCapability);
+    }
+  }
+  return result;
+}
 
 /** 一条可渲染的身体：名字、组件本身、完整入参 */
 export interface BodySelection {

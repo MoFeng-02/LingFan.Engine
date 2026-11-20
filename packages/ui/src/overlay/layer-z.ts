@@ -38,10 +38,16 @@ export function setLayerOverride(
  *
  * `layerZ` 是工程级的层默认表，控制器只在其上加一层「实例显式指定」的覆盖；
  * 覆盖表逐实例持有，所以两个覆盖层不会互相改 z。下发是幂等的，重复调无副作用。
+ *
+ * `onVideoZ` 是视频层 z 的端口出口（与宿主模板 `createLayerView` 的同名钩子同口径）：
+ * 视频层在覆盖层词表里叫 `transition`，但视频组件的 z 由视频端口承载（Web 写元素
+ * `style.zIndex`、小程序写页面数据层级），不经覆盖层端口下发。给了这个钩子，控制器
+ * 在每次 `apply()` 把解析后的视频 z 交给它；不给则视频层只走 `transition` 下发（旧行为）。
  */
 export function createLayerZController(
   surface: OverlaySurface,
   layerZ: LayerZTable,
+  onVideoZ?: (z: number) => void,
 ): LayerZController {
   const controller: LayerZController = {
     overrides: {},
@@ -63,10 +69,9 @@ export function createLayerZController(
         "takeover",
         resolveInstanceZ("minigame", z.minigame, layerZ),
       );
-      surface.setLayerZ(
-        "transition",
-        resolveInstanceZ("video", z.video, layerZ),
-      );
+      const videoZ = resolveInstanceZ("video", z.video, layerZ);
+      surface.setLayerZ("transition", videoZ);
+      onVideoZ?.(videoZ);
     },
   };
   return controller;

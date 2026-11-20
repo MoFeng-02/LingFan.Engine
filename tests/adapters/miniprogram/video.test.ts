@@ -21,6 +21,7 @@ class FakeVideoSurface implements MiniprogramVideoSurfaceLike {
   pauseCount = 0;
   resumeCount = 0;
   readonly seeks: number[] = [];
+  readonly zIndices: number[] = [];
   #ended: (() => void) | null = null;
 
   show(request: {
@@ -56,6 +57,10 @@ class FakeVideoSurface implements MiniprogramVideoSurfaceLike {
   /** 测试钩子：模拟组件播完 */
   fireEnded(): void {
     this.#ended?.();
+  }
+
+  setZIndex(z: number): void {
+    this.zIndices.push(z);
   }
 }
 
@@ -174,5 +179,31 @@ describe("createMiniprogramVideoPort（推状态给呈现面）", () => {
     port.play("usr/op.mp4", { volume: 1, loop: false });
     port.dispose();
     expect(surface.hideCount).toBe(1);
+  });
+
+  it("setZIndex：运行期改 z 推呈现面，且后续 show 沿用新 z（mp-video-z-index）", () => {
+    const surface = new FakeVideoSurface();
+    const port = createMiniprogramVideoPort(surface, { zIndex: 100 });
+    port.play("usr/op.mp4", { volume: 1, loop: false });
+    expect(surface.shows[0]?.zIndex).toBe(100);
+    port.setZIndex?.(42);
+    expect(surface.zIndices).toEqual([42]);
+    // 改 z 后再起播：构造期值已被覆盖，show 带的是新 z
+    port.play("usr/next.mp4", { volume: 1, loop: false });
+    expect(surface.shows[1]?.zIndex).toBe(42);
+  });
+
+  it("setZIndex：呈现面未实现该可选方法时不抛（保持构造期 z，调用方 ?. 容错）", () => {
+    // 只实现必需方法的呈现面（无 setZIndex）：端口 setZIndex 仍可调，不炸宿主
+    const minimal: MiniprogramVideoSurfaceLike = {
+      show: () => {},
+      hide: () => {},
+      pause: () => {},
+      resume: () => {},
+      seek: () => {},
+      onEnded: () => {},
+    };
+    const port = createMiniprogramVideoPort(minimal, { zIndex: 9 });
+    expect(() => port.setZIndex?.(3)).not.toThrow();
   });
 });

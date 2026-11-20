@@ -55,6 +55,12 @@ export interface MiniprogramVideoSurfaceLike {
   seek(seconds: number): void;
   /** 注册自然播放结束回调（组件的 `bindended` 转发）；后注册替换先注册 */
   onEnded(callback: () => void): void;
+  /**
+   * 运行期改视频层 z（实例级 z 命令经 `VideoPort.setZIndex` 到此）。
+   * 小程序渲染层就是 WebView，`video` 组件可用 `z-index`，但走页面数据层级而非 DOM；
+   * 可选：未实现者保持构造期 z（调用方 `?.` 容错，与 Web 端口同口径）。
+   */
+  setZIndex?(z: number): void;
 }
 
 /** 帧面（`canvas.requestAnimationFrame` 形态；小程序侧还有全局 rAF，由宿主决定注入哪个） */

@@ -280,7 +280,8 @@ defineOptions({ name: "PageIndex" });
       :controls="false"
       :show-center-play-btn="false"
       :enable-progress-gesture="false"
-      :style="{ zIndex: layerZ('video') }"
+      :object-fit="video.objectFit"
+      :style="{ zIndex: video.zIndex }"
       @ended="onVideoEnded"
     />
 

@@ -6,24 +6,34 @@
  * 问 Rust 走 Tauri 桥接域的缺省实现，本文件不直连 Tauri 运行时。
  */
 import { resolveHost } from "@lingfan-engine/core";
-import type { HostInfo, HostPort } from "@lingfan-engine/core";
+import type { HostCapability, HostInfo, HostPort } from "@lingfan-engine/core";
 import { defaultInvoke } from "../platform";
 
 /** 宿主端口的供值：组合根把「编译目标平台」交进来，适配器只负责解析与缓存 */
 export interface HostPortOptions {
   /** 编译目标平台（缺省 = 浏览器/无壳形态 → unknown·desktop，显式未知不猜） */
   platform: string | undefined;
+  /**
+   * 宿主能力集（可选只增）：组合根按本宿主实际渲染/平台通道**声明**（纯数据，非探测）。
+   * 缺省 = 宿主未声明能力（`HostInfo.capabilities` 留空）；给了就随宿主事实一并返回。
+   */
+  capabilities?: readonly HostCapability[];
 }
 
 /**
  * 造一个宿主端口：首次 `get()` 解析出结果后缓存，之后一直复用同一份。
- * 宿主事实在进程生命周期内不变，因此无需失效逻辑。
+ * 宿主事实在进程生命周期内不变，因此无需失效逻辑。能力集是装配期声明，同样不变。
  */
 export function createHostPort(options: HostPortOptions): HostPort {
   let cached: HostInfo | undefined;
   return {
     get(): HostInfo {
-      cached ??= resolveHost(options.platform);
+      cached ??= {
+        ...resolveHost(options.platform),
+        ...(options.capabilities !== undefined
+          ? { capabilities: options.capabilities }
+          : {}),
+      };
       return cached;
     },
   };

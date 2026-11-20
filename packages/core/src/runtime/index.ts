@@ -10,7 +10,7 @@ export { StoryEngine } from "./engine.ts";
 export type { EngineOptions, GuardContext, GuardFn } from "./engine.ts";
 export { columnSummaries } from "./engine/index.ts";
 export { isValidSayColor } from "./ops/index.ts";
-export { resolveHost } from "./host.ts";
+export { missingHostCapabilities, resolveHost } from "./host.ts";
 export { mergeOverlayFiles, planOverlayMerge } from "./i18n/index.ts";
 export {
   PlayerPreferences,

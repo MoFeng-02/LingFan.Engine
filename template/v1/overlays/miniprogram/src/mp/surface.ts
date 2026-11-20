@@ -9,8 +9,9 @@
  * `nvlMode`/`nvlLines`/`lineHtml`），在这里翻成「已打完行 + 打字中一行」的 HTML。
  * 可见性仍归对话层（NVL 只是对话容器的另一种内容形态，与桌面面板同口径）。
  *
- * 层级 z 与 DOM 侧的差别：WXML 没有 z-index 概念，层序由节点顺序决定。这里仍把 z 收下
- * 并下发，由页面按 z 排层（DOM 宿主用 z-index 落地，语义不变）。
+ * 层级 z：小程序渲染层就是 WebView，`z-index` 可用，只是没有 DOM 可写——这里把各层 z
+ * 收进页面数据（`layers`），由页面绑到行内 `z-index`（与 DOM 宿主写元素 `style.zIndex`
+ * 同口径）。视频层 z 不走本面：它由视频端口经页面数据层级单独承载（见 video-surface）。
  */
 import type {
   ChoicesLayerView,

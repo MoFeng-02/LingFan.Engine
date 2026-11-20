@@ -15,6 +15,7 @@ import {
   findMissingGuards,
   PlayerPreferences,
   resolveAudioConfig,
+  resolveLayerZ,
   resolveSavesConfig,
   resolveStageConfig,
   resolveTextSpeed,
@@ -22,6 +23,7 @@ import {
   StoryEngine,
   SYS,
   videoFitOf,
+  type HostCapability,
   type SavesConfig,
   type StageConfig,
   type Story,
@@ -39,6 +41,7 @@ import {
   createElementResourceResolver,
   createNarrativeOverlay,
   createVideoRenderer,
+  visibleMounts,
   type AudioRenderer,
   type NarrativeOverlay,
   type TypingSetting,
@@ -75,6 +78,18 @@ import { LANGS } from "virtual:lang-list";
 
 /** 覆盖层字速兜底（字符/秒）：偏好与故事都没给合法值时用 */
 const TEXT_SPEED = 30;
+
+/**
+ * 小程序宿主能力集（装配期声明，纯数据，非运行时探测）：视频/音频/存档/文案有渲染通道；
+ * 叠加 UI 挂载（mount）与列身体（body）没有对应渲染通道，故不声明——不声明即不支持，
+ * 故事用到 mount 时由下方诊断显式报出，而不是静默只改状态。
+ */
+const MP_HOST_CAPABILITIES: readonly HostCapability[] = [
+  "video",
+  "audio",
+  "storage",
+  "i18n",
+];
 
 /** 页面数据补丁：覆盖层各层 + 视频状态 + 舞台尺寸串 + 错误横幅 */
 export type MiniprogramHostPatch = MiniprogramSurfacePatch & {
@@ -228,6 +243,11 @@ export async function startMiniprogramHost(
   const overlay: NarrativeOverlay = createNarrativeOverlay({
     surface,
     engine,
+    // 工程层默认表（project.json shell.layers）：实例 z 三级解析的第二级（实例显式 > 工程层 > 内建）
+    layerZ: resolveLayerZ(manifest),
+    // 视频层 z 走视频端口（与 Web 宿主 createLayerView.onVideoZ 同口径）：小程序无 DOM，
+    // 端口把 z 落进页面数据层级；实例级 z 命令经投影器收纳后由此下发到 video 组件
+    onVideoZ: (z) => ports.video.setZIndex?.(z),
     // 字速读偏好（与音频/视频同口径）：偏好 > 故事 > 内建兜底，归属由 textSpeedSource
     // 声明；现读口让滑杆改偏好后下一句即生效。偏好已水合，首帧起用的就是上次的字速。
     readTextSpeed: () =>
@@ -294,6 +314,25 @@ export async function startMiniprogramHost(
     overlay.sync();
   });
 
+  // mount 不支持要显式诊断（不静默降级）：故事挂了可见 mount 而本宿主没有 mount 渲染通道时，
+  // 把「这些挂载点不会被渲染」整句报给诊断口。能力声明是单一事实源——声明了 mount 的宿主
+  // 自行渲染、不诊断；可见集合清空后复位，避免每次状态变更重复刷屏。
+  const mountSupported = MP_HOST_CAPABILITIES.includes("mount");
+  let mountDiagActive = false;
+  const stopMountDiag = engine.onStateChanged((change) => {
+    if (mountSupported || change.key !== SYS.mounts) return;
+    const mounted = visibleMounts(change.value);
+    if (mounted.length === 0) {
+      mountDiagActive = false;
+      return;
+    }
+    if (mountDiagActive) return;
+    mountDiagActive = true;
+    reportError(
+      `小程序宿主不支持叠加 UI 挂载（mount）：${mounted.join("、")} 已挂载但不会被渲染（需在支持 mount 的宿主运行，或改用覆盖层内置通道）`,
+    );
+  });
+
   return {
     engine,
     i18n,
@@ -311,6 +350,7 @@ export async function startMiniprogramHost(
     dispose: () => {
       stopLoadEvents();
       stopFitPrefs();
+      stopMountDiag();
       overlay.dispose();
       audio.dispose();
       video.dispose();

@@ -6,8 +6,13 @@
  * 引擎用最小替身——本层只读 `SYS.body` 一个键，替身足以暴露转错键的错。
  */
 import { describe, expect, it, vi } from "vitest";
-import { SYS, type SceneEnv, type StoryEngine } from "@lingfan-engine/core";
-import { createBodyLayer } from "@lingfan-engine/ui";
+import {
+  HOST_CAPABILITY_VALUES,
+  SYS,
+  type SceneEnv,
+  type StoryEngine,
+} from "@lingfan-engine/core";
+import { bodyCapabilitiesOf, createBodyLayer } from "@lingfan-engine/ui";
 
 /** 只读本层用到的那一个键；其余键交 undefined */
 function stubEngine(body: unknown): StoryEngine {
@@ -146,5 +151,113 @@ describe("createBodyLayer：不去重、处置后静默", () => {
     layer.dispose();
     layer.render();
     expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
+describe("createBodyLayer：宿主能力比对（body-capability-check）", () => {
+  it("组件声明所需能力，宿主缺这些能力 → fail-closed 诊断 + 不渲染", () => {
+    const onSelect = vi.fn();
+    const onError = vi.fn();
+    const component = { setup: true, capabilities: ["mount", "body"] };
+    const layer = createBodyLayer({
+      table: { kitchen: component },
+      env: ENV,
+      onError,
+      getEngine: () => stubEngine({ name: "kitchen" }),
+      onSelect,
+      hostCapabilities: ["video", "audio", "storage", "i18n"],
+    });
+    layer.render();
+    expect(onSelect).toHaveBeenCalledWith(null);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).toContain("kitchen");
+    expect(onError.mock.calls[0][0]).toContain("mount");
+    expect(onError.mock.calls[0][0]).toContain("body");
+  });
+
+  it("宿主全量能力 → 组件所需恒满足，照常渲染", () => {
+    const onSelect = vi.fn();
+    const onError = vi.fn();
+    const component = { setup: true, capabilities: ["mount", "body"] };
+    const layer = createBodyLayer({
+      table: { kitchen: component },
+      env: ENV,
+      onError,
+      getEngine: () => stubEngine({ name: "kitchen" }),
+      onSelect,
+      hostCapabilities: HOST_CAPABILITY_VALUES,
+    });
+    layer.render();
+    expect(onError).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect.mock.calls[0][0].component).toBe(component);
+  });
+
+  it("组件未声明所需能力 → 不受比对影响，照常渲染", () => {
+    const onSelect = vi.fn();
+    const onError = vi.fn();
+    const layer = createBodyLayer({
+      table: { kitchen: { setup: true } },
+      env: ENV,
+      onError,
+      getEngine: () => stubEngine({ name: "kitchen" }),
+      onSelect,
+      hostCapabilities: ["video"],
+    });
+    layer.render();
+    expect(onError).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("不给 hostCapabilities → 不比对（既有行为不变）", () => {
+    const onSelect = vi.fn();
+    const onError = vi.fn();
+    const component = { setup: true, capabilities: ["mount"] };
+    const layer = createBodyLayer({
+      table: { kitchen: component },
+      env: ENV,
+      onError,
+      getEngine: () => stubEngine({ name: "kitchen" }),
+      onSelect,
+    });
+    layer.render();
+    expect(onError).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("宿主未声明任何能力（空集）→ 组件声明所需即缺，fail-closed", () => {
+    const onSelect = vi.fn();
+    const onError = vi.fn();
+    const component = { setup: true, capabilities: ["i18n"] };
+    const layer = createBodyLayer({
+      table: { kitchen: component },
+      env: ENV,
+      onError,
+      getEngine: () => stubEngine({ name: "kitchen" }),
+      onSelect,
+      hostCapabilities: [],
+    });
+    layer.render();
+    expect(onSelect).toHaveBeenCalledWith(null);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).toContain("i18n");
+  });
+});
+
+describe("bodyCapabilitiesOf：读组件静态能力声明（capabilities-pure-data）", () => {
+  it("读合法能力数组、去重、过滤词表外的值", () => {
+    expect(
+      bodyCapabilitiesOf({
+        capabilities: ["mount", "mount", "video", "ghost"],
+      }),
+    ).toEqual(["mount", "video"]);
+  });
+
+  it("未声明 / 非数组 / 非对象组件 → 无所需（空集）", () => {
+    expect(bodyCapabilitiesOf({})).toEqual([]);
+    expect(bodyCapabilitiesOf({ capabilities: "mount" })).toEqual([]);
+    expect(bodyCapabilitiesOf(null)).toEqual([]);
+    expect(bodyCapabilitiesOf(undefined)).toEqual([]);
+    expect(bodyCapabilitiesOf("kitchen")).toEqual([]);
   });
 });
