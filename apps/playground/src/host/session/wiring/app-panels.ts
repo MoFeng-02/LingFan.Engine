@@ -53,6 +53,7 @@ export function createAppPanels(options: AppPanelsOptions): AppPanels {
   const templates = createAppTemplates({
     narrative,
     readNvlBody: options.readNvlBody,
+    readNvlPageSize: () => props.preferences.nvlPageSize,
   });
   const history = createAppHistory({ getEngine, syncFromEngine });
   const prefs = createAppPrefs({

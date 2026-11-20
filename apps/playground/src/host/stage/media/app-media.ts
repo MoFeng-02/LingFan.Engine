@@ -73,8 +73,9 @@ export function createAppMedia(options: AppMediaOptions): AppMedia {
   const media: AppMedia = {
     audioPort: props.createAudioPort(reportAudioError),
     videoPort: props.createVideoPort(reportAudioError, readVideoContainer, () =>
-      // 填充读当前列里的 video 元素：端口每次挂载才求值，换列后自动跟随
-      videoFitOf(getEngine().elements()),
+      // 填充读当前列里的 video 元素：端口每次挂载才求值，换列后自动跟随；
+      // 玩家默认槽注入（op 显式声明赢）
+      videoFitOf(getEngine().elements(), props.preferences.elementFit),
     ),
     audioRenderer: null,
     videoRenderer: null,
@@ -98,6 +99,8 @@ export function createAppMedia(options: AppMediaOptions): AppMedia {
         {
           onError: reportAudioError,
           onVideoFinished: () => getEngine().videoFinished(), // 组合根职责：播完 → 引擎命令
+          // 视频音量同样乘玩家偏好（与音频同口径）：静音/调音量对两类媒体一致生效
+          preferences: props.preferences,
         },
       );
     },

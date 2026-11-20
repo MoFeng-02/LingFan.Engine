@@ -215,7 +215,22 @@ export function wireEngine(options: HostWiringOptions): void {
       activate: activateElement,
       onElementValueChange: writeElementValue,
       resolveResource: elementResources.resolveForElement,
+      elementFitDefault: options.preferences?.elementFit,
       onUnknownType: (type) => reportError(`元素类型未注册：${type}`),
+    });
+  }
+
+  // 玩家默认填充槽变化 → 重渲元素树。偏好层广播的是整份快照，这里只对 elementFit
+  // 这一键做差量：音量 / 字速等改动不该触发元素重渲。op 显式声明的 stretch 不受影响，
+  // 重渲只改作者没声明填充方式的那些元素的默认槽。
+  const fitPrefs = options.preferences;
+  if (fitPrefs !== undefined) {
+    let lastFit = fitPrefs.elementFit;
+    fitPrefs.onChange(() => {
+      const next = fitPrefs.elementFit;
+      if (next === lastFit) return;
+      lastFit = next;
+      renderElements();
     });
   }
 
@@ -343,6 +358,9 @@ export function wireEngine(options: HostWiringOptions): void {
       case "load.done":
         options.toast(`${t("已读取")} ${payload.slot}`);
         options.syncMedia();
+        // 存档语言赢：读档把译文表置空（import 失效 overlay），这里按档内语言重建。
+        // overlay=null 时 setLanguage 不命中幂等早退，译文表按档内语言重新装配。
+        void engine.setLanguage(String(engine.get(SYS.currentLanguage) ?? ""));
         return;
       default:
         return;

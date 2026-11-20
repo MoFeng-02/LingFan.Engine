@@ -27,24 +27,23 @@ function instance(
 describe("elementFitOf", () => {
   it("五个词原样读出（词表内不做映射）", () => {
     for (const fit of ELEMENT_FITS) {
-      expect(elementFitOf({ stretch: fit }), fit).toBe(fit);
+      expect(elementFitOf(fit), fit).toBe(fit);
     }
   });
 
   it("未写 stretch → 缺省词", () => {
-    expect(elementFitOf({})).toBe(DEFAULT_ELEMENT_FIT);
-    expect(elementFitOf({ source: "Images/a.png" })).toBe(DEFAULT_ELEMENT_FIT);
+    expect(elementFitOf(undefined)).toBe(DEFAULT_ELEMENT_FIT);
   });
 
   it("词表外的字符串 → 缺省词（不透传未知串，三端才有一致的兜底）", () => {
     for (const raw of ["COVER", "object-fit", "fill ", "", "stretch"]) {
-      expect(elementFitOf({ stretch: raw }), raw).toBe(DEFAULT_ELEMENT_FIT);
+      expect(elementFitOf(raw), raw).toBe(DEFAULT_ELEMENT_FIT);
     }
   });
 
   it("非字符串 → 缺省词（属性值来自作者数据，不抛）", () => {
     for (const raw of [1, true, null, undefined, {}, []]) {
-      expect(elementFitOf({ stretch: raw })).toBe(DEFAULT_ELEMENT_FIT);
+      expect(elementFitOf(raw)).toBe(DEFAULT_ELEMENT_FIT);
     }
   });
 });

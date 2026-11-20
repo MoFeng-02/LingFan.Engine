@@ -15,8 +15,13 @@ export { mergeOverlayFiles, planOverlayMerge } from "./i18n/index.ts";
 export {
   PlayerPreferences,
   resolveTextSpeed,
+  resolveReducedMotion,
+  resolveLanguage,
   type TextSpeedResolution,
-} from "./preferences.ts";
+  type ReducedMotionResolution,
+  type LanguageResolution,
+  type PreferencesOptions,
+} from "./preferences/index.ts";
 export { createStateReader } from "./state/index.ts";
 export { Scope } from "./scope.ts";
 export {

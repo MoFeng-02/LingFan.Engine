@@ -453,6 +453,7 @@ onUnmounted(() => {
           :dialog-font="dialogFont"
           :can-advance="canAdvance"
           :in-wait="inWait"
+          :preferences="props.preferences"
           @choose="choose"
           @submit-input="submitInput"
         >
@@ -467,6 +468,7 @@ onUnmounted(() => {
           :rollback-available="rollbackAvailable"
           :show-prefs="showPrefs"
           :prefs-view="prefsView"
+          :prefs="prefs"
           :pref-channels="PREF_CHANNELS"
           :capture-action="captureAction"
           :display-keys="displayKeys"

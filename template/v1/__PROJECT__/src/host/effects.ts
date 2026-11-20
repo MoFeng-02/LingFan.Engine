@@ -8,7 +8,12 @@
  * 元素也永远到不了终值——终值是引擎在播毕后写回元素属性的。
  */
 
-import { SYS, type StoryEngine } from "@lingfan-engine/core";
+import {
+  resolveReducedMotion,
+  SYS,
+  type PlayerPreferences,
+  type StoryEngine,
+} from "@lingfan-engine/core";
 import { createVisualEffects, resolveAnimatedStyle } from "@lingfan-engine/ui";
 import type { StageDom } from "./stage-dom";
 
@@ -18,13 +23,20 @@ export interface HostEffectsOptions {
   dom: StageDom;
   /** 引擎：动画队列、转场与震动的启动键、三个播毕交回 */
   engine: StoryEngine;
+  /** 玩家偏好（可选）：转场/动画时长倍率、震动强度倍率、减少动态，逐帧现读 */
+  preferences?: PlayerPreferences;
+  /**
+   * 系统「减弱动效」读面（可选）：宿主测 `prefers-reduced-motion` 媒体查询注入。
+   * 玩家未显式设置时跟随系统；逐帧现读，系统设置变化即时生效。
+   */
+  readSystemReducedMotion?: () => boolean;
 }
 
 /** 造本宿主的逐帧驱动函数：宿主每帧调用一次，传入距上一帧的秒数 */
 export function createHostEffects(
   options: HostEffectsOptions,
 ): (dt: number) => void {
-  const { dom, engine } = options;
+  const { dom, engine, preferences, readSystemReducedMotion } = options;
   return createVisualEffects({
     source: {
       animations: () => engine.animations(),
@@ -37,6 +49,21 @@ export function createHostEffects(
       transitionFinished: () => engine.transitionFinished(),
       shakeFinished: () => engine.shakeFinished(),
     },
+    // 玩家运动偏好：只乘算时长/强度、开关减少动态，不改引擎描述值（SSOT 仍是作者的）
+    motion:
+      preferences === undefined
+        ? undefined
+        : {
+            transitionSpeed: () => preferences.transitionSpeed,
+            shakeScale: () => preferences.shakeScale,
+            // 三态合成：玩家显式 true/false 覆盖系统；玩家未设置（undefined）跟随系统
+            // 媒体查询。不再把 undefined 塌缩成 false 跳过系统层（无障碍「跟随系统」语义）。
+            reducedMotion: () =>
+              resolveReducedMotion({
+                player: preferences.reducedMotion,
+                system: readSystemReducedMotion?.(),
+              }),
+          },
     animation: {
       // 动画节点在舞台层里按 data-lf-id 找（元素渲染器写入的定位锚）
       onAnimatedProperty: (target, property, value) => {

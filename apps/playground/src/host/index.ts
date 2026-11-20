@@ -38,6 +38,7 @@ export {
 export type { AppProps } from "./session";
 export type { SceneStageState } from "@lingfan-engine/ui";
 export { createHostControls } from "./controls";
+export type { PreferencesPanel } from "./panels";
 
 /** —— 面板类型（App/*.vue 消费）—— */
 export type {

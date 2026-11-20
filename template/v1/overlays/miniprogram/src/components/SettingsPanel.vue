@@ -17,6 +17,7 @@ import {
   type PlayerPreferences,
 } from "@lingfan-engine/core";
 import { onUnmounted, ref, watch } from "vue";
+import SettingsExtras from "./SettingsExtras.vue";
 
 const props = defineProps<{
   /** 玩家偏好实例：宿主装配完成前为 null（面板此时不展开） */
@@ -156,6 +157,9 @@ function onTextSpeed(event: { detail: { value: number } }): void {
         />
         <view class="row-value">{{ textSpeed }}</view>
       </view>
+
+      <!-- 扩展偏好控件组（主音量/文本/显示 + 缓办禁用占位）：独立组件 -->
+      <SettingsExtras :preferences="preferences" :translate="translate" />
 
       <view class="close" aria-label="关闭设置面板" @tap.stop="emit('close')">
         {{ t("关闭") }}

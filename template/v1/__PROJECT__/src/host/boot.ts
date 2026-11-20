@@ -13,6 +13,7 @@
 
 import {
   SYS,
+  DEFAULT_LANG,
   PlayerPreferences,
   StoryEngine,
   manifestOrientation,
@@ -52,9 +53,11 @@ import { createHostI18n, type HostI18n } from "@lingfan-engine/shell";
 import {
   DEFAULT_TEXT_CPS,
   DEFAULT_TOAST_MS,
+  applyDialogueAppearance,
   createAudioRenderer,
   createInputScopeState,
   createMinigameRegistry,
+  createReducedMotionQuery,
   createVideoRenderer,
   type BodyView,
   type TypingSetting,
@@ -347,8 +350,9 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     // 视频住震动层（与元素层同级，缩放已在父层生效）
     readContainer: () => dom.shake,
     // 填充读当前列的 video 元素：端口在挂载时才求值，换列或元素被替换后自动跟随；
-    // 引擎在端口之后构造，闭包里晚绑定正是所需（提前求值会读到未初始化）
-    fit: () => videoFitOf(engine.elements()),
+    // 引擎在端口之后构造，闭包里晚绑定正是所需（提前求值会读到未初始化）。
+    // 玩家默认填充槽（preferences.elementFit）只填作者没声明 stretch 的默认，op 显式赢。
+    fit: () => videoFitOf(engine.elements(), preferences.elementFit),
   });
 
   // —— 存档壳配置：槽位（project.json 的 shell.saves.slots 可覆盖）——
@@ -396,6 +400,13 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     templates: createTemplateDialogueTemplates(),
     translate: i18n.t,
   });
+
+  // 对话框外观偏好 → CSS 变量投影（透明度/字号/高度/位置）：装配即投一次，
+  // 偏好改动即时重投（设置面板滑杆 live）；变量名以展示层导出的常量为单一声明。
+  const stopDialogueAppearance = applyDialogueAppearance(
+    dom.dialogue,
+    preferences,
+  );
 
   // 扩展等待覆盖层：`extension.mount` 的「确认即解除」画面，住宿主 UI 层（窗口像素）。
   // 展示态编排共用展示层一份；这里只把它画进容器，确认经引擎解除等待。
@@ -484,7 +495,15 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     },
   });
 
-  const driveEffects = createHostEffects({ dom, engine });
+  // 系统「减弱动效」测量：玩家未显式设置时跟随系统媒体查询（三态合成在表现层）。
+  // 测量与订阅收尾归本组合根（dispose 拆除），表现层只逐帧现读有效值。
+  const reducedMotionQuery = createReducedMotionQuery();
+  const driveEffects = createHostEffects({
+    dom,
+    engine,
+    preferences,
+    readSystemReducedMotion: () => reducedMotionQuery.matches(),
+  });
 
   // —— 偏好面板：只有组合根给了容器才装（页面结构归组合根，宿主不造节点）——
   // 面板只读写偏好层，不碰引擎与存档；`destroy` 在拆除时退订并清空容器。
@@ -524,6 +543,7 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     dialogue,
     prefsPanel: prefsPanel ?? undefined,
     historyPanel: historyPanel ?? undefined,
+    preferences,
   });
 
   const frameLoop = startHostFrameLoop({
@@ -558,6 +578,12 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
   });
 
   engine.start();
+  // 语言会话启动种子：新会话按玩家偏好语言起播；偏好只是种子，读档时档内
+  // 语言会覆盖它（存档语言赢，见 load.done 重建）。默认语言不播种子（原文直出）。
+  const seedLang = preferences.language;
+  if (seedLang !== undefined && seedLang !== "" && seedLang !== DEFAULT_LANG) {
+    void i18n.changeLang(seedLang).catch(() => undefined);
+  }
   // 启动即刷新可续槽位：有旧档「继续」就能点，没有则禁用（不阻断启动）
   void resumePage?.refresh();
 
@@ -587,6 +613,10 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     extensionMount.abort();
     // 对话视图也订阅偏好（字速滑杆即时生效），与面板同口径先于偏好拆除退订
     dialogue.dispose();
+    // 对话框外观投影同样订阅偏好，先于偏好拆除退订
+    stopDialogueAppearance();
+    // 系统减弱动效媒体监听收尾（拆除后不再读系统设置）
+    reducedMotionQuery.dispose();
     // 方向与全屏策略也订阅偏好，先于偏好拆除退订（拆除后不再往平台落笔）
     offOrientation();
     offFullscreen();

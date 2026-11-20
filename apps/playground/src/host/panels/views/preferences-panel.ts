@@ -9,6 +9,8 @@
 import { ref, type Ref } from "vue";
 import type {
   AudioChannel,
+  DialoguePosition,
+  ElementFit,
   OrientationMode,
   PlayerPreferences,
   PlayerPrefsData,
@@ -49,6 +51,28 @@ export interface PreferencesPanel {
   setOrientation(event: Event): void;
   /** 全屏开关 */
   setFullscreen(event: Event): void;
+  /** 主音量滑杆（渲染层经 effectiveVolume 自动乘入） */
+  setMasterVolume(event: Event): void;
+  /** 即时显示文本开关 */
+  setInstantText(event: Event): void;
+  /** NVL 每页行数滑杆 */
+  setNvlPageSize(event: Event): void;
+  /** 转场速度倍率滑杆 */
+  setTransitionSpeed(event: Event): void;
+  /** 抖动强度滑杆 */
+  setShakeScale(event: Event): void;
+  /** 减弱动效下拉（空值 = 清除 = 跟随系统） */
+  setReducedMotion(event: Event): void;
+  /** 字号倍率滑杆 */
+  setFontScale(event: Event): void;
+  /** 对话框不透明度滑杆 */
+  setDialogueOpacity(event: Event): void;
+  /** 对话框位置下拉（空值 = 清除 = 跟随作者样式） */
+  setDialoguePosition(event: Event): void;
+  /** 对话框高度倍率滑杆 */
+  setDialogueHeightScale(event: Event): void;
+  /** 元素填充默认下拉（空值 = 清除 = 跟随内建） */
+  setElementFit(event: Event): void;
   /** 退订偏好变更（组件卸载期调用，与构造成对） */
   dispose(): void;
 }
@@ -93,6 +117,68 @@ export function createPreferencesPanel(
     },
     setFullscreen(event: Event): void {
       preferences.setFullscreen((event.target as HTMLInputElement).checked);
+    },
+    setMasterVolume(event: Event): void {
+      preferences.setMasterVolume(
+        Number((event.target as HTMLInputElement).value),
+      );
+    },
+    setInstantText(event: Event): void {
+      preferences.setInstantText((event.target as HTMLInputElement).checked);
+    },
+    setNvlPageSize(event: Event): void {
+      preferences.setNvlPageSize(
+        Number((event.target as HTMLInputElement).value),
+      );
+    },
+    setTransitionSpeed(event: Event): void {
+      preferences.setTransitionSpeed(
+        Number((event.target as HTMLInputElement).value),
+      );
+    },
+    setShakeScale(event: Event): void {
+      preferences.setShakeScale(
+        Number((event.target as HTMLInputElement).value),
+      );
+    },
+    setReducedMotion(event: Event): void {
+      const value = (event.target as HTMLSelectElement).value;
+      if (value === "") {
+        preferences.clearReducedMotion();
+        return;
+      }
+      preferences.setReducedMotion(value === "on");
+    },
+    setFontScale(event: Event): void {
+      preferences.setFontScale(
+        Number((event.target as HTMLInputElement).value),
+      );
+    },
+    setDialogueOpacity(event: Event): void {
+      preferences.setDialogueOpacity(
+        Number((event.target as HTMLInputElement).value),
+      );
+    },
+    setDialoguePosition(event: Event): void {
+      const value = (event.target as HTMLSelectElement).value;
+      if (value === "") {
+        preferences.clearDialoguePosition();
+        return;
+      }
+      preferences.setDialoguePosition(value as DialoguePosition);
+    },
+    setDialogueHeightScale(event: Event): void {
+      preferences.setDialogueHeightScale(
+        Number((event.target as HTMLInputElement).value),
+      );
+    },
+    setElementFit(event: Event): void {
+      const value = (event.target as HTMLSelectElement).value;
+      if (value === "") {
+        preferences.clearElementFit();
+        return;
+      }
+      preferences.setElementFit(value as ElementFit);
     },
     dispose(): void {
       off();

@@ -1,8 +1,10 @@
 /**
- * 偏好面板（纯 DOM）：四通道音量 + 静音 + 文字速度。
+ * 偏好面板（纯 DOM）：四通道音量 + 静音 + 文字速度，以及主音量/文本/显示扩展组。
  *
  * 读写一律经 `PlayerPreferences`——钳制、非法值忽略都在偏好层，本模块只做两件事：
  * 把偏好快照画到控件上，把控件事件翻译成偏好写入。所以换掉这套原生 DOM 不影响偏好语义。
+ * 扩展组（主音量/即时文本/NVL 页容量/转场/抖动/减弱动效/字号/对话框外观/元素填充，
+ * 及缓办字段禁用占位）在 `preferences-display`，行构件共用 `preferences-dom`。
  *
  * 用法：调用方给一个容器（通常来自 `index.html`），`mount()` 建控件并订阅偏好变化，
  * `destroy()` 清空容器并退订。原生 DOM 没有框架卸载钩子，解绑必须自己成对做，
@@ -14,6 +16,11 @@
  */
 
 import type { AudioChannel, PlayerPreferences } from "@lingfan-engine/core";
+import { prefsRow, sliderValue } from "./preferences-dom";
+import {
+  buildPreferenceExtras,
+  type PreferenceExtras,
+} from "./preferences-display";
 
 /** 音量通道与显示名；顺序即面板行序 */
 export const PREF_CHANNELS: ReadonlyArray<{
@@ -71,15 +78,6 @@ interface VolumeRow {
 }
 
 /**
- * 读滑杆数值：空串按无效处理。
- * `Number("")` 是 0，直接写会把通道误调到静音；返回 NaN 时偏好层忽略该次写入。
- */
-function sliderValue(input: HTMLInputElement): number {
-  const raw = input.value;
-  return raw === "" ? Number.NaN : Number(raw);
-}
-
-/**
  * 创建偏好面板。构造只持有端口，不碰 DOM——`mount()` 才建控件，
  * 因此未挂载的面板可以安全地只调 `view()`（视图计算与 DOM 解耦）。
  */
@@ -96,6 +94,7 @@ export function createPreferencesPanel(
   let mutedInput: HTMLInputElement | null = null;
   let textSpeedInput: HTMLInputElement | null = null;
   let textSpeedReadout: HTMLElement | null = null;
+  let extras: PreferenceExtras | null = null;
 
   function view(): PreferencesPanelView {
     const snapshot = preferences.snapshot();
@@ -124,23 +123,7 @@ export function createPreferencesPanel(
     if (textSpeedReadout !== null) {
       textSpeedReadout.textContent = `${Math.round(snapshot.textSpeed)} ${t("字/秒")}`;
     }
-  }
-
-  /** 一行 = 标签 + 控件 +（可选）数值读数 */
-  function row(
-    labelText: string,
-    control: HTMLElement,
-    readout?: HTMLElement,
-  ): HTMLElement {
-    const wrapper = document.createElement("label");
-    wrapper.className = "prefs-row";
-    const label = document.createElement("span");
-    label.className = "prefs-label";
-    label.textContent = labelText;
-    wrapper.appendChild(label);
-    wrapper.appendChild(control);
-    if (readout !== undefined) wrapper.appendChild(readout);
-    return wrapper;
+    if (extras !== null) extras.sync();
   }
 
   /**
@@ -176,7 +159,7 @@ export function createPreferencesPanel(
       });
       const readout = document.createElement("span");
       readout.className = "prefs-value";
-      root.appendChild(row(channelLabel(entry.channel), input, readout));
+      root.appendChild(prefsRow(channelLabel(entry.channel), input, readout));
       volumeRows.push({ channel: entry.channel, input, readout });
     }
   }
@@ -189,7 +172,7 @@ export function createPreferencesPanel(
     input.addEventListener("change", () => {
       preferences.setMuted(input.checked);
     });
-    root.appendChild(row(t("静音"), input));
+    root.appendChild(prefsRow(t("静音"), input));
     mutedInput = input;
   }
 
@@ -206,7 +189,7 @@ export function createPreferencesPanel(
     });
     const readout = document.createElement("span");
     readout.className = "prefs-value";
-    root.appendChild(row(t("文字速度"), input, readout));
+    root.appendChild(prefsRow(t("文字速度"), input, readout));
     textSpeedInput = input;
     textSpeedReadout = readout;
   }
@@ -220,6 +203,7 @@ export function createPreferencesPanel(
     buildVolumeRows(root);
     buildMutedRow(root);
     buildTextSpeedRow(root);
+    extras = buildPreferenceExtras(root, preferences, t);
     container.appendChild(root);
     sync(); // 先按当前偏好铺初值，再订阅——避免挂载瞬间被一次多余通知重画
     off = preferences.onChange(sync);
@@ -235,6 +219,7 @@ export function createPreferencesPanel(
     mutedInput = null;
     textSpeedInput = null;
     textSpeedReadout = null;
+    extras = null;
   }
 
   return { view, mount, destroy };

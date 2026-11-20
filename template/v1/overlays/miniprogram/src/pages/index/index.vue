@@ -14,6 +14,11 @@
  */
 import { onReady, onUnload } from "@dcloudio/uni-app";
 import { DEFAULT_LANG, type PlayerPreferences } from "@lingfan-engine/core";
+import {
+  DIALOGUE_FONT_SCALE_VAR,
+  DIALOGUE_HEIGHT_SCALE_VAR,
+  DIALOGUE_OPACITY_VAR,
+} from "@lingfan-engine/ui";
 import { computed, ref } from "vue";
 import ChoiceLayer from "../../components/ChoiceLayer.vue";
 import DialogueLayer from "../../components/DialogueLayer.vue";
@@ -61,10 +66,33 @@ const langs = ref<string[]>([DEFAULT_LANG]);
 const prefs = ref<PlayerPreferences | null>(null);
 /** 设置面板是否展开 */
 const settingsOpen = ref(false);
+/** 对话框外观偏好的响应式投影（CSS 变量 + 位置）：偏好改动经 onChange 重投，模板绑它 */
+const dialogueAppearance = ref<{
+  style: Record<string, string>;
+  position: string;
+}>({ style: {}, position: "" });
 
 let host: MiniprogramHostHandle | null = null;
 let stopResizeWatch: (() => void) | null = null;
 let stopLangWatch: (() => void) | null = null;
+let stopAppearanceWatch: (() => void) | null = null;
+
+/** 读偏好投影对话框外观：三态字段未设置则不写对应变量（样式回退内建外观） */
+function refreshDialogueAppearance(): void {
+  const p = prefs.value;
+  if (p === null) {
+    dialogueAppearance.value = { style: {}, position: "" };
+    return;
+  }
+  const style: Record<string, string> = {
+    [DIALOGUE_FONT_SCALE_VAR]: String(p.fontScale),
+  };
+  if (p.dialogueOpacity !== undefined)
+    style[DIALOGUE_OPACITY_VAR] = String(p.dialogueOpacity);
+  if (p.dialogueHeightScale !== undefined)
+    style[DIALOGUE_HEIGHT_SCALE_VAR] = String(p.dialogueHeightScale);
+  dialogueAppearance.value = { style, position: p.dialoguePosition ?? "" };
+}
 
 /** 把一次补丁写进页面状态：字段缺省即不动（`null` 是「清空」而不是「不动」） */
 function applyPatch(patch: MiniprogramHostPatch): void {
@@ -113,8 +141,14 @@ function onLangChange(event: { detail: { value: string | number } }): void {
   const current = host;
   const lang = langs.value[Number(event.detail.value)];
   if (current === null || lang === undefined) return;
+  const code = lang === DEFAULT_LANG ? "" : lang;
   void current.i18n
-    .changeLang(lang === DEFAULT_LANG ? "" : lang)
+    .changeLang(code)
+    .then(() => {
+      // 切换记住：成功落定后写回偏好作下次会话启动种子（默认语言 = 清空种子）
+      if (code === "") current.preferences.clearLanguage();
+      else current.preferences.setLanguage(code);
+    })
     .catch((cause: unknown) => {
       error.value = String(cause);
     });
@@ -128,6 +162,11 @@ async function boot(): Promise<void> {
     host = started;
     // 偏好实例交给设置面板：读写音量/静音/字速都经它（机器级，独立于存档）
     prefs.value = started.preferences;
+    // 对话框外观投影：装配即投一次，偏好改动（设置面板）即时重投
+    refreshDialogueAppearance();
+    stopAppearanceWatch = started.preferences.onChange(() => {
+      refreshDialogueAppearance();
+    });
     syncLang();
     // 语言出站（含清单异步补齐前的首次切换）：镜像回页面，模板里的 t() 依赖随之重算
     stopLangWatch = started.i18n.subscribe(() => {
@@ -150,6 +189,8 @@ onUnload(() => {
   stopLangWatch = null;
   stopResizeWatch?.();
   stopResizeWatch = null;
+  stopAppearanceWatch?.();
+  stopAppearanceWatch = null;
   host?.dispose();
   host = null;
 });
@@ -249,6 +290,7 @@ defineOptions({ name: "PageIndex" });
       :dialogue="dialogue"
       :nvl="nvl"
       :z-index="layerZ('dialogue')"
+      :appearance="dialogueAppearance"
       @advance="onAdvance"
     />
 

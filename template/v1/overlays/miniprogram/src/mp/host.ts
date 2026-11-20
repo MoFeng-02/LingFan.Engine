@@ -10,6 +10,7 @@
  * 本文件是组合根：允许它同时知道引擎、展示层与平台，别处不允许这样横跨。
  */
 import {
+  DEFAULT_LANG,
   defaultEngineTexts,
   findMissingGuards,
   PlayerPreferences,
@@ -158,8 +159,9 @@ export async function startMiniprogramHost(
     videoSurface,
     projectBaseUrl,
     // 填充读当前列里的 video 元素：端口每次起播才求值，换列后自动跟随；
-    // 引擎紧接着才构造，闭包里晚绑定正是所需（提前求值会读到未初始化）
-    readFit: () => videoFitOf(engine.elements()),
+    // 引擎紧接着才构造，闭包里晚绑定正是所需（提前求值会读到未初始化）。
+    // 玩家默认填充槽（preferences.elementFit）只填作者没声明 stretch 的默认，op 显式赢。
+    readFit: () => videoFitOf(engine.elements(), preferences.elementFit),
   });
   // 译文供给与故事同源：Lang/ 走同一个工程基址，用 uni.request 包装的 HttpFetch 取件
   //（小程序没有全局 fetch）。端口先于引擎：setLanguage 按需经它加载 overlay。
@@ -232,7 +234,12 @@ export async function startMiniprogramHost(
         story: (engine.get(SYS.typewriter) as TypingSetting | undefined)?.speed,
         fallback: TEXT_SPEED,
       }),
+    // 整句直出与 NVL 分页读偏好（现读，改偏好下一句/下一次投影即生效）
+    readInstantText: () => preferences.instantText,
+    readNvlPageSize: () => preferences.nvlPageSize,
     resolveResource: elementResources.resolveForElement,
+    // 玩家默认填充槽（elementFit 偏好）：op 显式 stretch 赢，玩家只填默认槽；现读跟上改动
+    readElementFitDefault: () => preferences.elementFit,
     onError: reportError,
     // 覆盖层的帧循环一直在跑：音频播放位置借它逐帧回写（与打字机同一条时间线）
     onFrame: () => audio.pollPosition(),
@@ -250,6 +257,11 @@ export async function startMiniprogramHost(
 
   resize();
   engine.start();
+  // 语言会话启动种子：新会话按偏好语言起播；读档时档内语言覆盖它（存档语言赢）。
+  const seedLang = preferences.language;
+  if (seedLang !== undefined && seedLang !== "" && seedLang !== DEFAULT_LANG) {
+    void i18n.changeLang(seedLang).catch(() => undefined);
+  }
 
   /** 媒体与投影对齐：读档/回溯后音频、视频与 NVL 要跟引擎状态重新对齐 */
   function syncMedia(): void {
@@ -265,6 +277,18 @@ export async function startMiniprogramHost(
     if (event.payload.kind !== "load.done") return;
     overlay.sync();
     syncMedia();
+    // 存档语言赢：读档把译文表置空（import 失效 overlay），按档内语言重建。
+    void engine.setLanguage(String(engine.get(SYS.currentLanguage) ?? ""));
+  });
+
+  // 玩家默认填充槽改动 → 元素层全量重渲。偏好不是引擎状态，不会驱动投影的变化量，
+  // 故这里差量订阅 elementFit 键、主动补一次 sync（音量/字速等其余键改动不触发）。
+  let lastFit = preferences.elementFit;
+  const stopFitPrefs = preferences.onChange(() => {
+    const next = preferences.elementFit;
+    if (next === lastFit) return;
+    lastFit = next;
+    overlay.sync();
   });
 
   return {
@@ -283,6 +307,7 @@ export async function startMiniprogramHost(
     loadGame: (slot) => engine.load(slot),
     dispose: () => {
       stopLoadEvents();
+      stopFitPrefs();
       overlay.dispose();
       audio.dispose();
       video.dispose();

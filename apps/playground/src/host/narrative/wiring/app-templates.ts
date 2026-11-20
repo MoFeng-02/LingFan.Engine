@@ -17,6 +17,7 @@ import {
   createChoiceTemplateRegistry,
   createDialogueTemplateRegistry,
   createNotifyTemplateRegistry,
+  nvlPageLines,
   renderDialogueLine,
   toNotifyTone,
   type ChoiceTemplateView,
@@ -31,6 +32,8 @@ export interface AppTemplatesOptions {
   narrative: VueNarrativeState;
   /** NVL 累积层滚动主体取用（对话面板暴露的容器；新句落定后贴底） */
   readNvlBody: () => HTMLElement | null;
+  /** NVL 显示分页现读口（可选）：只窗口最近 N 行上屏，缓冲全量不丢；缺省不分页 */
+  readNvlPageSize?: () => number | undefined;
 }
 
 /** 模板视图能力：选择层/对话框/通知条视图与 NVL 行文本（模板直读） */
@@ -49,7 +52,7 @@ export interface AppTemplates {
 
 /** 装配模板视图：注册对话框模板族，投影叙事字段为模板骨架挂点数据 */
 export function createAppTemplates(options: AppTemplatesOptions): AppTemplates {
-  const { readNvlBody } = options;
+  const { readNvlBody, readNvlPageSize } = options;
   const {
     menuPrompt,
     menuOptions,
@@ -119,13 +122,17 @@ export function createAppTemplates(options: AppTemplatesOptions): AppTemplates {
       canAdvance: canAdvance.value,
     });
   });
+  // 显示分页只窗口最近 nvlPageSize 行；缓冲全量仍在引擎（回溯/读档可还原整段）
+  const nvlWindow = computed(() =>
+    nvlPageLines(nvlBuffer.value, readNvlPageSize?.()),
+  );
   const nvlPastLines = computed(() =>
-    nvlBuffer.value
+    nvlWindow.value
       .slice(0, -1)
       .map((line) => renderDialogueLine({ text: line }).html),
   );
   const nvlTypingLine = computed(
-    () => nvlBuffer.value[nvlBuffer.value.length - 1] ?? "",
+    () => nvlWindow.value[nvlWindow.value.length - 1] ?? "",
   );
   watch(nvlBuffer, () => {
     void nextTick(() => {

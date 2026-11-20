@@ -13,6 +13,7 @@
  * 门面与选择器在引擎之后接线（门面现读引擎状态，订阅引擎出站）。
  */
 import { DEFAULT_LANG, type I18nPort } from "@lingfan-engine/core";
+import type { PlayerPreferences } from "@lingfan-engine/core";
 import {
   createFetchI18nPort,
   type I18nLangEntry,
@@ -45,6 +46,11 @@ export interface HostI18nWiringOptions {
   prefsPanel?: PreferencesPanel;
   /** 历史面板（可缺省）：切语言后就地重画（保留展开态与滚动位置，按钮文案随之重画） */
   historyPanel?: HistoryPanel;
+  /**
+   * 玩家偏好（可缺省）：语言「切换记住」的落点——玩家经选择器切语言成功后写回偏好，
+   * 作下次会话启动种子（默认语言 = 清空种子）。缺省则不记住（行为同旧版）。
+   */
+  preferences?: PlayerPreferences;
 }
 
 /** 语言接线句柄：dispose 退订门面与选择器事件（幂等由装配处保证只调一次） */
@@ -60,7 +66,15 @@ export interface HostI18nWiring {
  * 其余语言按码直选；选项标签用语言码本身（它是数据，不是要翻译的文案）。
  */
 export function wireHostI18n(options: HostI18nWiringOptions): HostI18nWiring {
-  const { dom, i18n, i18nPort, dialogue, prefsPanel, historyPanel } = options;
+  const {
+    dom,
+    i18n,
+    i18nPort,
+    dialogue,
+    prefsPanel,
+    historyPanel,
+    preferences,
+  } = options;
   const t = i18n.t;
 
   /** 宿主静态文案落 DOM：工具条三件 + 存档标签（页面初始「加载中……」只在装配时译一次） */
@@ -100,10 +114,20 @@ export function wireHostI18n(options: HostI18nWiringOptions): HostI18nWiring {
   const select = dom.lang ?? null;
   const onChange = (): void => {
     if (select === null) return;
-    void i18n.changeLang(select.value).catch((error: unknown) => {
-      // fail-closed：引擎保持原语言并报错，这里把原因写进错误条供排查
-      dom.error.textContent = `切换语言失败：${String(error)}`;
-    });
+    const lang = select.value;
+    void i18n.changeLang(lang).then(
+      () => {
+        // 切换记住：玩家选的语言写回偏好，作下次会话启动种子。默认语言（空串 =
+        // 原文直出）= 清空种子；其余按码记住。只在切换成功后写，失败不污染偏好。
+        if (preferences === undefined) return;
+        if (lang === "") preferences.clearLanguage();
+        else preferences.setLanguage(lang);
+      },
+      (error: unknown) => {
+        // fail-closed：引擎保持原语言并报错，这里把原因写进错误条供排查
+        dom.error.textContent = `切换语言失败：${String(error)}`;
+      },
+    );
   };
   select?.addEventListener("change", onChange);
 

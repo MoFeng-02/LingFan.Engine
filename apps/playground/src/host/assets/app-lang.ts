@@ -13,15 +13,21 @@
  */
 
 import { ref, type Ref } from "vue";
-import type { I18nPort, StoryEngine } from "@lingfan-engine/core";
+import type {
+  I18nPort,
+  PlayerPreferences,
+  StoryEngine,
+} from "@lingfan-engine/core";
 import { createHostI18n } from "@lingfan-engine/shell";
 
 /** 装配入参：I18N 供给（可选）与引擎句柄取用 */
 export interface AppLangOptions {
-  /** 组合根注入的宿主属性（只读消费 `i18nPort`） */
+  /** 组合根注入的宿主属性（只读消费 `i18nPort` / `preferences`） */
   props: {
     /** I18N overlay 供给（可选：未装配 = 原文直出、选择器不出现） */
     i18nPort?: I18nPort;
+    /** 玩家偏好（可选）：语言「切换记住」落点，缺省则不记住 */
+    preferences?: PlayerPreferences;
   };
   /** 引擎句柄取用（切换与显示态读取；重启重建后指向新实例） */
   getEngine: () => StoryEngine;
@@ -85,6 +91,12 @@ export function createAppLang(options: AppLangOptions): AppLang {
   async function changeLang(lang: string): Promise<void> {
     await facade.changeLang(lang);
     currentLang.value = facade.currentLang.value;
+    // 切换记住：成功落定后写回偏好作下次会话启动种子（默认语言空串 = 清空种子）。
+    const preferences = props.preferences;
+    if (preferences !== undefined) {
+      if (lang === "") preferences.clearLanguage();
+      else preferences.setLanguage(lang);
+    }
   }
   return { currentLang, availableLangs, t, changeLang, bindLang };
 }

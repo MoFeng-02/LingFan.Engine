@@ -94,10 +94,25 @@ textarea,
   box-sizing: border-box;
   border: 1px solid #2a3140;
   border-radius: 10px;
-  background: rgba(20, 24, 33, 0.92);
+  /* 外观偏好经 CSS 变量投影（applyDialogueAppearance）：透明度乘底色 alpha、
+     高度倍率乘最小高度；变量缺省回退内建外观（0.92 / 1） */
+  background: rgba(20, 24, 33, calc(0.92 * var(--lf-dialogue-opacity, 1)));
   padding: clamp(10px, 2.2vh, 22px) clamp(12px, 3vw, 40px);
-  min-height: clamp(72px, 14vh, 120px);
+  min-height: calc(
+    clamp(72px, 14vh, 120px) * var(--lf-dialogue-height-scale, 1)
+  );
   pointer-events: auto;
+}
+/* 对话框位置偏好（data-lf-dialogue-position）：缺省 bottom 即上面的定位；
+   top 换顶对齐、center 垂直居中，均让出 bottom */
+#dialogue[data-lf-dialogue-position="top"] {
+  top: calc(clamp(12px, 3vw, 40px) + env(safe-area-inset-top));
+  bottom: auto;
+}
+#dialogue[data-lf-dialogue-position="center"] {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
 }
 #speaker {
   color: #7aa2f7;
@@ -107,6 +122,8 @@ textarea,
 #text {
   line-height: 1.7;
   white-space: pre-wrap;
+  /* 字号倍率偏好（--lf-dialogue-font-scale）：乘继承字号，缺省 1 不变 */
+  font-size: calc(1em * var(--lf-dialogue-font-scale, 1));
   /* 项目默认字体档：theme-fonts setProperty(--lf-story-font) 装配；未声明时
      变量无效，属性落到继承值（等价不设），逐句声明的字体以内联样式覆盖 */
   font-family: var(--lf-story-font);

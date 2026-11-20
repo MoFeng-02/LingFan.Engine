@@ -84,9 +84,10 @@ export function createAppNarrative(options: AppNarrativeOptions): AppNarrative {
     },
     onDialogText: (line) => {
       // 字速三级链：偏好 > 故事 > 内建兜底（归属由偏好 textSpeedSource 声明，每句现读）。
-      // enabled=false 整句直出（typewriter=null，帧循环与点击都按 null 走直出分支）。
+      // enabled=false 整句直出（typewriter=null，帧循环与点击都按 null 走直出分支）；
+      // 玩家 instantText 偏好同样整句直出（无障碍/效率），只关显示速度不改推进语义。
       const setting = readTypingSetting();
-      if (!isTypingEnabled(setting)) {
+      if (!isTypingEnabled(setting) || preferences.instantText) {
         typewriter = null;
         return;
       }

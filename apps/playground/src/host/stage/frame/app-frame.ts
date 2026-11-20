@@ -7,7 +7,12 @@
  */
 
 import { type Ref } from "vue";
-import { SYS, type StoryEngine } from "@lingfan-engine/core";
+import {
+  resolveReducedMotion,
+  SYS,
+  type PlayerPreferences,
+  type StoryEngine,
+} from "@lingfan-engine/core";
 import { type FrameSource } from "@lingfan-engine/ui";
 import { startHostFrameLoop as startLoop } from "@lingfan-engine/shell";
 import { createHostEffects } from "../elements/effects";
@@ -33,6 +38,13 @@ export interface AppFrameOptions {
   transitionEl: Ref<HTMLElement | null>;
   /** 震动落点（内容层容器：偏移写它的 transform，别写套着适配变换的舞台根） */
   shakeEl: Ref<HTMLElement | null>;
+  /** 玩家偏好（可选）：转场/动画时长倍率、震动强度倍率、减少动态，逐帧现读 */
+  preferences?: PlayerPreferences;
+  /**
+   * 系统「减弱动效」读面（可选）：宿主测 `prefers-reduced-motion` 媒体查询注入。
+   * 玩家未显式设置时跟随系统；逐帧现读，系统设置变化即时生效。
+   */
+  readSystemReducedMotion?: () => boolean;
 }
 
 /** 帧驱动能力：可停止的 rAF 帧循环句柄 */
@@ -52,6 +64,8 @@ export function createAppFrame(options: AppFrameOptions): AppFrame {
     elementLayerEl,
     transitionEl,
     shakeEl,
+    preferences,
+    readSystemReducedMotion,
   } = options;
   const { text, shownText } = narrative;
   // —— 帧驱动表现：元素动画 / 全屏转场 / 屏幕震动 ——
@@ -82,6 +96,21 @@ export function createAppFrame(options: AppFrameOptions): AppFrame {
     readElementHost: () => elementLayerEl.value,
     readOverlay: () => transitionEl.value,
     readStage: () => shakeEl.value,
+    // 玩家运动偏好：只乘算时长/强度、开关减少动态，不改引擎描述值（SSOT 仍是作者的）
+    motion:
+      preferences === undefined
+        ? undefined
+        : {
+            transitionSpeed: () => preferences.transitionSpeed,
+            shakeScale: () => preferences.shakeScale,
+            // 三态合成：玩家显式 true/false 覆盖系统；玩家未设置（undefined）跟随系统
+            // 媒体查询。不再把 undefined 塌缩成 false 跳过系统层（无障碍「跟随系统」语义）。
+            reducedMotion: () =>
+              resolveReducedMotion({
+                player: preferences.reducedMotion,
+                system: readSystemReducedMotion?.(),
+              }),
+          },
   });
   // —— 共享帧循环驱动打字机（帧源由组合根注入，本文件不认平台帧 API）——
   // 帧内顺序（推进打字机 → 上交可见文本 → 媒体位置回写 → 帧驱动表现）。

@@ -22,6 +22,7 @@ import type {
   StoryEngine,
 } from "@lingfan-engine/core";
 import type { createCommandRegistry } from "@lingfan-engine/ui";
+import { createReducedMotionQuery } from "@lingfan-engine/ui";
 import {
   createAppEngineLife,
   type AppEngineLife,
@@ -131,12 +132,17 @@ export function createAppLifecycle(options: AppLifecycleOptions): AppLifecycle {
     handleEvent: wiring.handleEvent,
     readMinigameHost: actions.readMinigameHost,
     readVideoContainer: actions.readVideoContainer,
+    readElementFitDefault: () => props.preferences.elementFit,
+    readLanguageSeed: () => props.preferences.language,
     onMounts: props.onMounts,
     onBody: options.onBody,
     onPaused: (value: boolean) => pausedSink.apply?.(value),
     onBindEngine: options.onBindEngine,
   });
   engineLife.initEngine();
+  // 系统「减弱动效」测量：玩家未显式设置时跟随系统媒体查询（三态合成在表现层）。
+  // 测量与订阅收尾归本组合根（teardown 拆除），表现层只逐帧现读有效值。
+  const reducedMotionQuery = createReducedMotionQuery();
   const { frameLoop } = createAppFrame({
     getEngine: engine.get,
     frame: browserFrameSource(),
@@ -146,6 +152,8 @@ export function createAppLifecycle(options: AppLifecycleOptions): AppLifecycle {
     elementLayerEl: dom.elementLayerEl,
     transitionEl: dom.transitionEl,
     shakeEl: dom.shakeEl,
+    preferences: props.preferences,
+    readSystemReducedMotion: () => reducedMotionQuery.matches(),
   });
   const session = createAppSession({
     controls: shell.controls,
@@ -179,6 +187,7 @@ export function createAppLifecycle(options: AppLifecycleOptions): AppLifecycle {
     media.audioRenderer?.dispose(); // 再释放已解析资源
     engine.get().dispose(); // 清挂起的 wait 定时器
     frameLoop.stop(); // 停 rAF 帧循环
+    reducedMotionQuery.dispose(); // 系统减弱动效媒体监听收尾
   }
   return { ...engineLife, frameLoop, ...session, teardown };
 }

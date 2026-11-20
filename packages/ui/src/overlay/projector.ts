@@ -17,6 +17,7 @@ import type {
 } from "@lingfan-engine/core";
 import { renderDialogueLine } from "../dialogue/textView";
 import { Typewriter } from "../dialogue/typewriter";
+import { nvlPageLines } from "../host/state-view";
 import { setLayerOverride } from "./layer-z";
 import type { LayerZController } from "./layer-z";
 import type { NarrativeOverlayView } from "./types";
@@ -92,6 +93,10 @@ export function createProjector(deps: {
   engine: StoryEngine;
   layerZ: LayerZController;
   textSpeed: number;
+  /** 玩家整句直出偏好：true 时不建打字机（无障碍/效率），逐句重建时现读 */
+  instantText?: boolean;
+  /** NVL 显示分页：只窗口最近 N 行上屏，缓冲全量不丢；缺省不分页 */
+  nvlPageSize?: number;
 }): Projector {
   const { reader, engine } = deps;
 
@@ -136,6 +141,12 @@ export function createProjector(deps: {
    * 派生值不依赖事件到达顺序，重算幂等。
    */
   function resetTypewriter(): void {
+    // 玩家整句直出：不建打字机，正文直接全量上屏（与故事 enabled=false 同效）
+    if (deps.instantText === true) {
+      state.typewriter = null;
+      state.shownText = state.text;
+      return;
+    }
     state.typewriter = new Typewriter(state.text, deps.textSpeed);
     state.shownText = state.typewriter.visible;
   }
@@ -258,7 +269,7 @@ export function createProjector(deps: {
       menuOptions: state.menuOptions,
       inputPrompt: state.inputPrompt,
       nvlMode: state.nvlMode,
-      nvlLines: state.nvlBuffer,
+      nvlLines: nvlPageLines(state.nvlBuffer, deps.nvlPageSize),
       hasElements: state.elementList.length > 0,
     };
   }

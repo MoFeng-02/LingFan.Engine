@@ -198,7 +198,10 @@ describe("语言选择器 · 节点、句柄与接线", () => {
   });
 
   it("选择器 change → changeLang；门面出站 → 回写选中值并重画静态文案", () => {
-    expect(i18nSource).toContain("i18n.changeLang(select.value)");
+    // 先捕获当下选中值再异步切语言：记住的是「实际应用的语言」，
+    // 不是 then 回调时选择器可能已被玩家改成的新值。
+    expect(i18nSource).toContain("const lang = select.value;");
+    expect(i18nSource).toContain("i18n.changeLang(lang)");
     expect(i18nSource).toContain("i18n.subscribe((lang) => {");
     expect(i18nSource).toContain("select.value = lang;");
     expect(i18nSource).toContain("applyStaticTexts();");
@@ -211,6 +214,15 @@ describe("语言选择器 · 节点、句柄与接线", () => {
     expect(i18nSource).not.toContain("historyPanel?.mount();");
     expect(i18nSource).toContain("unsubscribe();");
     expect(i18nSource).toContain('removeEventListener("change", onChange)');
+  });
+
+  it("语言切换记住进偏好：成功落定后写 language，默认语言清空", () => {
+    // 切换成功才记住；默认语言（空串）清除偏好键，让下次会话回故事默认。
+    expect(i18nSource).toContain("preferences.clearLanguage();");
+    expect(i18nSource).toContain("preferences.setLanguage(lang);");
+    expect(i18nSource).toContain(
+      'if (lang === "") preferences.clearLanguage();',
+    );
   });
 
   it("小程序页面响应式读门面：currentLang/availableLangs 镜像进 ref，picker 切换", () => {

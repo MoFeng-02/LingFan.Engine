@@ -12,7 +12,11 @@
  */
 
 import type { Ref } from "vue";
-import type { OutboundPayload, StoryEngine } from "@lingfan-engine/core";
+import {
+  SYS,
+  type OutboundPayload,
+  type StoryEngine,
+} from "@lingfan-engine/core";
 import type { NarrativeEvents } from "@lingfan-engine/shell";
 import { handleMinigameMount, type ExtensionMountHandler } from "../../mount";
 import type { VueNarrativeState } from "../../narrative/runtime/narrative-state";
@@ -85,6 +89,10 @@ export function createAppEventRouter(
     } else if (payload.kind === "load.done") {
       // 读档完成（引擎已重放到存档坐标）——清错误、同步渲染与媒体
       narrativeEvents.loaded(payload.slot);
+      // 存档语言赢：读档把译文表置空（import 失效 overlay），按档内语言重建。
+      void getEngine().setLanguage(
+        String(getEngine().get(SYS.currentLanguage) ?? ""),
+      );
     } else if (payload.kind === "rollback.done") {
       narrativeEvents.rollbackDone(); // 回放完成解除输入锁并同步渲染
     } else if (payload.kind === "load.notice") {

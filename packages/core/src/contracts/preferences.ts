@@ -3,6 +3,7 @@
  * 独立持久化（系统配置语义）。载荷为纯数据（v1 起版本化），信任边界在
  * PlayerPreferences.hydrate（逐字段校验降级），端口只做搬运。
  */
+import type { ElementFit } from "./element.ts";
 import type { AudioChannel } from "./media/index.ts";
 import type { OrientationMode } from "./shell.ts";
 
@@ -31,10 +32,12 @@ export interface PlayerKeymap {
 export type TextSpeedSource = "story" | "player";
 
 /**
- * 玩家偏好的持久化快照：音量、静音、打字机速度、屏幕方向、键位与全屏。
+ * 玩家偏好的持久化快照：音量、静音、打字机速度、屏幕方向、键位、全屏，
+ * 以及音频主音量、文本节奏、显示外观、元素填充默认槽、窗口尺寸与语言等机器级设置。
  *
  * 与存档**分离**——偏好是「玩的人怎么用这台机器」，跨存档共享；
  * 因此它不进存档文件，由 `PreferencesPort` 单独落盘，缺失字段按各自注释的缺省处理。
+ * 可选字段一律「缺省 ≠ 显式」：缺席表示跟随（系统/作者/内建），显式写入才是覆盖。
  */
 export interface PlayerPrefsData {
   v: 1;
@@ -55,7 +58,88 @@ export interface PlayerPrefsData {
   keymap?: PlayerKeymap;
   /** 全屏偏好（缺省 = 未设置 = 窗口化；宿主尽力而为应用） */
   fullscreen?: boolean;
+
+  /** 主音量（0..1，缺省 = 1）：有效音量 = op 音量 × 通道偏好 × 主音量，静音再归零 */
+  masterVolume?: number;
+
+  /** 即时文本（缺省 = false）：true 时整句直出、跳过打字机；不改变故事的跳过权限 */
+  instantText?: boolean;
+  /** 自动播放每句停留时长（毫秒，缺省 = 1500；消费归自动播放功能） */
+  autoDelayMs?: number;
+  /** 自动播放开关（缺省 = false；消费归自动播放功能） */
+  autoEnabled?: boolean;
+  /** 快进每句停留时长（毫秒，缺省 = 50；消费归快进功能） */
+  skipDelayMs?: number;
+  /** 仅快进已读文本（缺省 = false；消费归快进功能，已读追踪属故事状态而非偏好） */
+  skipUnseenOnly?: boolean;
+  /** 打字音效开关（缺省 = false）：核心只发打字事件、音效资源归宿主；无资源时开关禁用 */
+  typeSound?: boolean;
+
+  /** 转场速度倍率（0.1..10，缺省 = 1）：乘在故事声明的转场时长上，相对节奏保留 */
+  transitionSpeed?: number;
+  /** 抖动强度倍率（0..1，缺省 = 1）：0 = 关闭抖动（无障碍诉求） */
+  shakeScale?: number;
+  /**
+   * 减弱动效（可选，三态）：缺省 = 跟随系统「减弱动态效果」；显式 true/false 覆盖系统。
+   * 生效时转场瞬时完成、抖动归零、元素动画直达终值（故事终值不变）。
+   */
+  reducedMotion?: boolean;
+  /** 故事文本字号倍率（0.5..3，缺省 = 1）：只缩放显示，不改舞台逻辑尺寸 */
+  fontScale?: number;
+  /** 对话框不透明度（0..1，缺省 = 跟随作者样式；显式写入即覆盖） */
+  dialogueOpacity?: number;
+  /** 对话框位置（缺省 = 跟随作者样式；闭合词表，见 {@link DialoguePosition}） */
+  dialoguePosition?: DialoguePosition;
+  /** 对话框高度倍率（0.5..2，缺省 = 跟随作者样式） */
+  dialogueHeightScale?: number;
+  /**
+   * 默认字体（缺省 = 跟随工程默认字体）：只填「作者没指定」的默认槽——
+   * 逐句 `say.font` / 角色字体显式声明优先于它（作者演出意图）。
+   * 字体是否可用由宿主装配期按字体注册表校验，非法值不静默套用。
+   */
+  fontFamily?: string;
+  /** NVL 每页行数（正整数 1..200，缺省 = 不分页全量滚动）：只分页显示，绝不截断故事缓冲 */
+  nvlPageSize?: number;
+  /**
+   * 元素填充默认槽（可选，三态）：缺省 = 内建 cover。
+   * 优先级 **op 显式 stretch > 玩家默认槽 > 内建 cover**——与屏幕方向「玩家赢」有意不同：
+   * 填充承载玩法语义（立绘不能被裁），作者显式声明必须赢，玩家只填作者没指定的缺省。
+   */
+  elementFit?: ElementFit;
+  /** 窗口尺寸（缺省 = 跟随壳初始尺寸）：仅桌面壳尽力而为应用，浏览器静默忽略 */
+  windowSize?: WindowSize;
+
+  /**
+   * 语言偏好（可选，三态）：缺省 = 不干预。仅作**新会话启动种子**——
+   * 读档时存档里的语言赢（语言是故事事实）；会话中切换语言会记住到本字段（机器级）。
+   */
+  language?: string;
 }
+
+/** 窗口尺寸（整数像素；宽 320..16384、高 200..16384，非法整体丢弃不部分采纳） */
+export interface WindowSize {
+  width: number;
+  height: number;
+}
+
+/** 对话框位置闭合词表（底部 / 顶部 / 居中；宿主映射到布局，非法值回退作者样式） */
+export const DIALOGUE_POSITIONS = ["bottom", "top", "center"] as const;
+/** 对话框位置合法取值（从 `DIALOGUE_POSITIONS` 派生） */
+export type DialoguePosition = (typeof DIALOGUE_POSITIONS)[number];
+
+/** 数值偏好的值域（sanitize 与 setter 共用，单一事实源；越界钳制、非有限数丢弃） */
+export const TRANSITION_SPEED_RANGE = { min: 0.1, max: 10 } as const;
+export const FONT_SCALE_RANGE = { min: 0.5, max: 3 } as const;
+export const DIALOGUE_HEIGHT_SCALE_RANGE = { min: 0.5, max: 2 } as const;
+export const NVL_PAGE_SIZE_RANGE = { min: 1, max: 200 } as const;
+export const AUTO_DELAY_MS_RANGE = { min: 0, max: 60000 } as const;
+export const SKIP_DELAY_MS_RANGE = { min: 0, max: 5000 } as const;
+export const WINDOW_WIDTH_RANGE = { min: 320, max: 16384 } as const;
+export const WINDOW_HEIGHT_RANGE = { min: 200, max: 16384 } as const;
+/** 语言标签长度上限（BCP-47 风格字符串，如 zh-CN / en） */
+export const LANGUAGE_MAX = 32;
+/** 默认字体名长度上限 */
+export const FONT_FAMILY_MAX = 64;
 
 /** 内建默认键位（键位覆盖缺席时生效；与既有宿主行为一致：Space/Enter=推进、H=历史） */
 export const DEFAULT_KEYMAP: Required<PlayerKeymap> = {

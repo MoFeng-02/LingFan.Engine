@@ -202,6 +202,8 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
     pendingSay: ctx.pendingSay,
     liveCheckpointed: ctx.liveCheckpointed,
   };
+  // 读档前的语言（overlay 即按它装配）：用于判定读档是否换了语言
+  const langBefore = backup.state.get(SYS.currentLanguage);
   ctx.state = new Map(loadStateEntries(data.state)); // 垫底后的全量状态（扩展恢复 + 玩法系统 + defines 补齐）
   ctx.rngState = data.rngState;
   ctx.functions = new Map(data.functions);
@@ -261,6 +263,12 @@ export function importSave(ctx: OpContext, data: SaveDataV1): boolean {
   ctx.deleted.clear();
   for (const key of data.deleted ?? []) ctx.deleted.add(key);
   ctx.setSystem(SYS.waiting, "none");
+  // 读档换了语言才失效译文表（overlay）：overlay 只由 setLanguage 按某语言装配，
+  // 档内语言随状态恢复（currentLanguage 非会话键）。若读档语言 ≠ 读档前语言，旧表已
+  // 失效——置空后宿主 load.done 补调 setLanguage(档内语言) 不命中幂等早退，按档内
+  // 语言重建（存档语言赢）。同语言读档则保留现成译文表（引擎级 importSave 自洽，
+  // 不必依赖宿主补调）。放在 restore 成功之后：整档拒绝的回退路径不触碰 overlay。
+  if (ctx.state.get(SYS.currentLanguage) !== langBefore) ctx.overlay = null;
   ctx.run(); // 确定性重放：从存档命令重建等待画面（同坐标提交由 commitCheckpoint 原位替换）
   return true;
 }

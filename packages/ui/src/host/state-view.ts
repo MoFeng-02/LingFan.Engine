@@ -183,6 +183,26 @@ export function isNvlActive(mode: string, lines: readonly string[]): boolean {
 }
 
 /**
+ * NVL 显示分页：只取**最近 pageSize 行**上屏，缓冲本身一行不丢。
+ * `SYS.nvlBuffer` 是全量 SSOT（回溯/读档要能还原整段），分页只是显示层的窗口——
+ * 玩家调「一页看几行」不改故事累积了多少行。pageSize 缺省/非正整数 = 不分页（全量上屏）。
+ */
+export function nvlPageLines(
+  lines: readonly string[],
+  pageSize: number | undefined,
+): readonly string[] {
+  if (
+    typeof pageSize !== "number" ||
+    !Number.isInteger(pageSize) ||
+    pageSize <= 0 ||
+    lines.length <= pageSize
+  ) {
+    return lines;
+  }
+  return lines.slice(lines.length - pageSize);
+}
+
+/**
  * 对话层是否让位。三个让位条件互相独立：
  * NVL 接管、故事显式隐藏、以及视频等待期——视频要占满舞台，压不住底部对话框会很难看。
  */

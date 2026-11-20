@@ -21,6 +21,7 @@ export {
   type AnimationHost,
   type EffectSource,
   type EffectSurfaceHost,
+  type MotionPreferences,
   type VisualEffectsOptions,
 } from "./effects";
 export {
@@ -40,6 +41,7 @@ export {
   isDialogueSuppressed,
   isNvlActive,
   isTypingEnabled,
+  nvlPageLines,
   resolveTypingCps,
   type StateIntent,
   type StateKeyTable,

@@ -104,12 +104,28 @@ export interface EffectSurfaceHost {
   onShakeDone(): void;
 }
 
+/**
+ * 玩家运动偏好（注入端口，逐帧现读）：转场/动画时长倍率、震动强度倍率、减少动态。
+ * 全部是**乘算/开关**，不改引擎里的描述值（SSOT 仍是作者写的时长与强度）——
+ * 玩家只是调「演多快、晃多狠、要不要动」，不改「演什么」。缺省不注入 = 原样播放。
+ */
+export interface MotionPreferences {
+  /** 转场与元素动画的时长倍率：>1 更快（时长除以它），默认 1 */
+  transitionSpeed(): number;
+  /** 屏幕震动的强度倍率：默认 1 */
+  shakeScale(): number;
+  /** 减少动态：true 时转场/动画直达终值、震动幅度归零（无障碍） */
+  reducedMotion(): boolean;
+}
+
 /** 逐帧驱动函数的输入：三段各自的事实来源与 DOM 触点 */
 export interface VisualEffectsOptions {
   /** 引擎侧事实与播毕交回 */
   source: EffectSource;
   animation: AnimationHost;
   surface: EffectSurfaceHost;
+  /** 玩家运动偏好（可选）：不注入则按描述原样播放 */
+  motion?: MotionPreferences;
 }
 
 /**
@@ -121,20 +137,27 @@ export interface VisualEffectsOptions {
 export function createVisualEffects(
   options: VisualEffectsOptions,
 ): (dt: number) => void {
-  const { source, animation, surface } = options;
+  const { source, animation, surface, motion } = options;
   /** seq → 已播秒数 */
   const animatedElapsed = new Map<number, number>();
   let transitionElapsed = 0;
   let shakeClock = 0;
 
   return (dt: number): void => {
+    // 玩家运动偏好逐帧现读（改偏好下一帧即生效）；缺省 = 原样播放
+    const speed = motion?.transitionSpeed() ?? 1;
+    const shakeScale = motion?.shakeScale() ?? 1;
+    const reduced = motion?.reducedMotion() ?? false;
+
     // ① 元素动画：累计 elapsed → 插值写 DOM → 播毕交回引擎（终值写回元素属性）
     const animations = source.animations();
     if (animations.length > 0) {
       for (const spec of animations) {
         const elapsed = (animatedElapsed.get(spec.seq) ?? 0) + dt;
         animatedElapsed.set(spec.seq, elapsed);
-        const { value, done } = interpolateAnimation(spec, elapsed);
+        // 时长倍率：elapsed 乘 speed 等价于把时长除以 speed；减少动态直达终值
+        const scaled = reduced ? spec.duration : elapsed * speed;
+        const { value, done } = interpolateAnimation(spec, scaled);
         animation.onAnimatedProperty(spec.target, spec.property, value);
         if (done) {
           animatedElapsed.delete(spec.seq);
@@ -147,8 +170,13 @@ export function createVisualEffects(
     const transition = source.transition();
     if (transition != null) {
       transitionElapsed += dt;
-      const progress =
-        transition.duration > 0 ? transitionElapsed / transition.duration : 1;
+      // 时长倍率 + 减少动态（时长归零 = 直达播毕）；speed 恒正（契约值域），防 0 兜底
+      const duration = reduced
+        ? 0
+        : speed > 0
+          ? transition.duration / speed
+          : transition.duration;
+      const progress = duration > 0 ? transitionElapsed / duration : 1;
       surface.onTransitionFrame(transitionOpacity(progress));
       if (progress >= 1) {
         transitionElapsed = 0;
@@ -162,7 +190,9 @@ export function createVisualEffects(
     if (shake != null) {
       shakeClock += dt;
       const progress = shake.duration > 0 ? shakeClock / shake.duration : 1;
-      const { x, y } = shakeOffset(shake.intensity, progress, shakeClock);
+      // 强度倍率 + 减少动态（幅度归零 = 无可见位移，仍按时长收尾）
+      const intensity = reduced ? 0 : shake.intensity * shakeScale;
+      const { x, y } = shakeOffset(intensity, progress, shakeClock);
       surface.onShakeFrame(x, y);
       if (progress >= 1) {
         shakeClock = 0;

@@ -52,6 +52,8 @@ export function createAppElementLayer(options: AppElementLayerOptions): void {
       interpolate: (source) => getEngine().interpolate(source),
     },
     commands,
+    // 玩家默认填充槽：逐帧现读偏好，只填作者没声明 stretch 的默认，op 显式声明赢
+    readElementFitDefault: () => props.preferences.elementFit,
     /**
      * 回写落点：音量走偏好（`setVolume` 内部 clamp01 并触发音频重规划），
      * 玩法状态走 `game.<系统>.<键>`（保留键与 JSON 安全由引擎写入契约把关）。
@@ -77,6 +79,18 @@ export function createAppElementLayer(options: AppElementLayerOptions): void {
   watch(elements, () => {
     void nextTick(() => {
       elementLayer.render(); // 容器挂载后再渲染（首帧容器可能尚未就绪）
+    });
+  });
+
+  // 玩家默认填充槽变化 → 重渲元素树。偏好层广播整份快照，这里只对 elementFit 做差量，
+  // 音量 / 字速等改动不触发元素重渲。op 显式声明的 stretch 不受影响。
+  let lastFit = props.preferences.elementFit;
+  props.preferences.onChange(() => {
+    const next = props.preferences.elementFit;
+    if (next === lastFit) return;
+    lastFit = next;
+    void nextTick(() => {
+      elementLayer.render();
     });
   });
 }

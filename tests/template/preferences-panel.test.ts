@@ -300,16 +300,18 @@ describe("偏好面板控件（挂载 / 回填 / 回写）", () => {
       String(DEFAULT_PLAYER_PREFS.textSpeed),
     );
 
-    // 行标签顺序 = 通道展示序在前、两个单项在后（面板可读性的最低保证）
+    // 行标签顺序 = 通道展示序在前、两个单项在后（面板可读性的最低保证）；
+    // 其后是扩展组（主音量/文本/显示/缓办禁用占位），这里只锁前六行序 + 确有扩展。
     const labels = findAll(
       h.container,
       (node) => node.className === "prefs-label",
     );
-    expect(labels.map((node) => node.textContent)).toEqual([
+    expect(labels.slice(0, 6).map((node) => node.textContent)).toEqual([
       ...PREF_CHANNELS.map((entry) => entry.label),
       "静音",
       "文字速度",
     ]);
+    expect(labels.length).toBeGreaterThan(6);
   });
 
   it("**偏好变化后控件被回填**（订阅生效，不只是 view() 现读）", () => {

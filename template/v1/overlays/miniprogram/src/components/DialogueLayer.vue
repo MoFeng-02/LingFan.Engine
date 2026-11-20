@@ -21,6 +21,8 @@ defineProps<{
   nvl: MiniprogramNvlData | null;
   /** 层序（核心下发的 z 表） */
   zIndex: number;
+  /** 对话框外观偏好投影（CSS 变量 + 位置）：页面读偏好响应式下发 */
+  appearance: { style: Record<string, string>; position: string };
 }>();
 
 const emit = defineEmits<{ advance: [] }>();
@@ -33,8 +35,11 @@ function onAdvance(): void {
 <template>
   <view
     class="layer dialogue"
-    :class="nvl ? 'nvl-mode' : dialogue.rootClass"
-    :style="{ zIndex }"
+    :class="[
+      nvl ? 'nvl-mode' : dialogue.rootClass,
+      appearance.position ? `lf-pos-${appearance.position}` : '',
+    ]"
+    :style="[{ zIndex }, appearance.style]"
     @tap="onAdvance"
   >
     <!-- NVL 形态：累积行自上而下一行行铺开，最后一行是正在打字的当前行 -->
@@ -85,13 +90,26 @@ function onAdvance(): void {
   left: 24rpx;
   right: 24rpx;
   width: auto;
-  min-height: 16%;
+  /* 外观偏好经 CSS 变量投影（页面读偏好下发）：透明度乘底色 alpha、高度倍率乘
+     最小高度；变量缺省回退内建外观（0.8 / 1） */
+  min-height: calc(16% * var(--lf-dialogue-height-scale, 1));
   padding: 32rpx 40rpx;
   box-sizing: border-box;
   border: 2rpx solid rgba(68, 68, 68, 0.27);
   border-radius: 24rpx;
-  background: rgba(30, 30, 46, 0.8);
+  background: rgba(30, 30, 46, calc(0.8 * var(--lf-dialogue-opacity, 1)));
   color: #e6e6f0;
+}
+
+/* 对话框位置偏好：缺省贴底；top 换顶对齐、center 垂直居中（均让出 bottom） */
+.dialogue.lf-pos-top {
+  top: 24rpx;
+  bottom: auto;
+}
+.dialogue.lf-pos-center {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
 }
 
 /* NVL 累积层形态：容器抬升为阅读区（累积文本自上而下滚动） */
@@ -119,7 +137,8 @@ function onAdvance(): void {
 
 .text {
   margin: 0;
-  font-size: 34rpx;
+  /* 字号倍率偏好（--lf-dialogue-font-scale）：乘基准字号，缺省 1 不变 */
+  font-size: calc(34rpx * var(--lf-dialogue-font-scale, 1));
   line-height: 1.7;
   white-space: pre-wrap;
 }

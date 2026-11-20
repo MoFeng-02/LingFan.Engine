@@ -16,6 +16,7 @@ import {
   createVisualEffects,
   resolveAnimatedStyle,
   type EffectSource,
+  type MotionPreferences,
 } from "@lingfan-engine/ui";
 
 /** 本宿主帧驱动需要的注入点；引擎侧效果源由调用方按契约提供 */
@@ -29,6 +30,8 @@ export interface HostEffectsOptions {
   /** 震动落点：偏移写它的 transform；返回 null 表示震动整段跳过。
       必须是内容层容器——舞台根那层的 transform 归适配装配，写上去会把整场缩放抹掉。 */
   readStage(): HTMLElement | null;
+  /** 玩家运动偏好（可选）：转场/动画时长倍率、震动强度倍率、减少动态，逐帧现读 */
+  motion?: MotionPreferences;
 }
 
 /**
@@ -118,6 +121,7 @@ export function createHostEffects(
         stage.style.transform = "";
       },
     },
+    motion: options.motion,
   });
 
   return (dt) => {

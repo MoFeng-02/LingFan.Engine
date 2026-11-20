@@ -8,7 +8,7 @@
  * - 元素表每次渲染都现读，节点每次现查（`findNode`），不做缓存——元素表随时可被整体重建，
  *   缓存会读到已从 DOM 上摘掉的旧节点。
  */
-import { type ElementInstance } from "@lingfan-engine/core";
+import { type ElementFit, type ElementInstance } from "@lingfan-engine/core";
 import {
   type CommandRegistry,
   type ElementResourceResolver,
@@ -51,6 +51,11 @@ export interface ElementLayerOptions {
    * 所以真正的落地由组合根注入偏好与玩法写入面）。
    */
   writeback?: ElementWritebackPorts;
+  /**
+   * 玩家默认填充槽读面（偏好 `elementFit`）：逐帧现读，只填作者没声明 `stretch` 的默认，
+   * op 显式声明赢。不传 = 无玩家默认槽（回内建 cover）。读法单一声明在核心 `elementFitOf`。
+   */
+  readElementFitDefault?: () => ElementFit | undefined;
   /** 错误上报（落到错误横幅） */
   reportError(message: string): void;
 }
@@ -138,6 +143,7 @@ export function createElementLayer(options: ElementLayerOptions): ElementLayer {
               routeElementValueChange(element, value, writeback);
             },
       resolveResource: resources.resolveForElement,
+      elementFitDefault: options.readElementFitDefault?.(),
       onUnknownType: (type) => {
         reportError(`元素类型未注册：${type}（fail-closed：不伪造渲染）`);
       },

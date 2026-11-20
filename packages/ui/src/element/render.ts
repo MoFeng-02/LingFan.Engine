@@ -7,7 +7,7 @@
  * 幂等：每次调用整体重建（元素数量有限；避免增量 diff 的复杂度，
  * 帧级高频状态另有其道，见帧驱动文档）。
  */
-import type { ElementInstance } from "@lingfan-engine/core";
+import type { ElementFit, ElementInstance } from "@lingfan-engine/core";
 import type { ElementRegistry } from "./registry";
 import type { RenderPort, RenderSpec } from "./spec";
 
@@ -29,6 +29,11 @@ export interface ElementTreeRenderOptions {
   evalDisable?: (expression: string) => boolean | null;
   /** 资源解析（source/src/path → URL） */
   resolveResource?: (path: string) => string | undefined;
+  /**
+   * 玩家默认填充槽（偏好 `elementFit`）：透传给渲染器，只填作者没声明 `stretch` 的默认，
+   * op 显式声明永远赢。不传 = 无玩家默认槽（回内建 cover）。
+   */
+  elementFitDefault?: ElementFit;
   /**
    * 控件值变化回写（`slider` 等带值控件用）：渲染器只上报「哪个元素变成了什么值」，
    * 落点由宿主决定（偏好 / 作用域状态 / 命名命令）。不传 = 控件可操作但值不落地。
@@ -72,6 +77,7 @@ export function renderElementTree(options: ElementTreeRenderOptions): void {
       activate: options.activate,
       evalDisable: options.evalDisable,
       resolveResource: options.resolveResource,
+      elementFitDefault: options.elementFitDefault,
       onElementValueChange: options.onElementValueChange,
     });
     // 舞台内叠放序（两级叠放：元素之间在 stage 容器内独立比较）覆盖作者声明，

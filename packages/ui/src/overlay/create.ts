@@ -88,6 +88,13 @@ export function createNarrativeOverlay(
     get textSpeed(): number {
       return options.readTextSpeed?.() ?? textSpeed;
     },
+    // 整句直出与 NVL 分页同样现读：改偏好下一句/下一次投影即生效
+    get instantText(): boolean {
+      return options.readInstantText?.() ?? false;
+    },
+    get nvlPageSize(): number | undefined {
+      return options.readNvlPageSize?.();
+    },
   });
 
   const dialogueDeps: DialogueViewDeps = {
@@ -107,6 +114,7 @@ export function createNarrativeOverlay(
     engine,
     commands: options.commands,
     resolveResource: options.resolveResource,
+    readElementFitDefault: options.readElementFitDefault,
     report,
   });
 

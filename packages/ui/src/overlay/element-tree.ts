@@ -5,7 +5,11 @@
  * 交互激活（nav / ops / cmd 三条语义）、`disabled` 表达式求值、未注册类型上报。
  * 求值一律经引擎的插值入口，本层不解析表达式语法——语法归核心层。
  */
-import type { ElementInstance, StoryEngine } from "@lingfan-engine/core";
+import type {
+  ElementFit,
+  ElementInstance,
+  StoryEngine,
+} from "@lingfan-engine/core";
 import { resolveElementAction } from "../element/interaction";
 import { renderElementTree } from "../element/render";
 import type { ElementRegistry } from "../element/registry";
@@ -31,6 +35,12 @@ export interface ElementTreeDeps {
   commands?: Map<string, ElementCommandHandler>;
   /** 资源解析（元素 source/src/path → URL） */
   resolveResource?: (path: string) => string | undefined;
+  /**
+   * 玩家默认填充槽读面（偏好 `elementFit`）：只填作者没声明 `stretch` 的默认，op 显式声明赢。
+   * 用读面而非定值——装配输入只捕获一次，每次渲染现读才能跟上偏好改动。
+   * 不传 = 无玩家默认槽（回内建 cover）。读法单一声明在核心 `elementFitOf`。
+   */
+  readElementFitDefault?: () => ElementFit | undefined;
   /** 上报（错误与 fail-closed 诊断） */
   report: (message: string) => void;
 }
@@ -101,6 +111,7 @@ export function createElementTree(deps: ElementTreeDeps): ElementTree {
         activate,
         evalDisable,
         resolveResource: deps.resolveResource,
+        elementFitDefault: deps.readElementFitDefault?.(),
         onUnknownType: (type) =>
           deps.report(`元素类型未注册：${type}（fail-closed：不伪造渲染）`),
       });

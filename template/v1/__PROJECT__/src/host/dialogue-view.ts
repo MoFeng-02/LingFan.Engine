@@ -27,6 +27,7 @@ import {
   isDialogueSuppressed,
   isNvlActive,
   isTypingEnabled,
+  nvlPageLines,
   renderInlineMarkup,
   sanitizeFont,
   type DialogueTemplateRegistry,
@@ -203,7 +204,8 @@ export function createDialogueView(options: DialogueViewOptions): DialogueView {
     dom.dialogue.style.display = suppressed ? "none" : "";
     dom.nvl.style.display = nvl ? "block" : "none";
     if (nvl) {
-      dom.nvl.innerHTML = nvlLines
+      // 显示分页只窗口最近 nvlPageSize 行；缓冲全量仍在引擎（回溯/读档可还原整段）
+      dom.nvl.innerHTML = nvlPageLines(nvlLines, preferences?.nvlPageSize)
         .map((line) => renderInlineMarkup(line))
         .join("<br>");
     }
@@ -326,10 +328,15 @@ export function createDialogueView(options: DialogueViewOptions): DialogueView {
       renderChoices();
     },
     setDialogText(text: string, setting: TypingSetting | undefined): void {
-      // 故事级打字机设置（`text_typewriter` 命令）；enabled=false = 整句即时
+      // 故事级打字机设置（`text_typewriter` 命令）；enabled=false = 整句即时。
+      // 玩家 instantText 偏好同样整句直出（无障碍/效率）：与故事 enabled=false 叠加，
+      // 只关显示速度、不改推进语义（noskip 等故事硬闸门不受影响）。
       lastSetting = setting;
       const cps = currentCps();
-      typewriter = isTypingEnabled(setting) ? new Typewriter(text, cps) : null;
+      typewriter =
+        isTypingEnabled(setting) && preferences?.instantText !== true
+          ? new Typewriter(text, cps)
+          : null;
       applySentenceFont();
       if (typewriter === null) {
         shown = text;

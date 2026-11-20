@@ -5,14 +5,17 @@
  * 四层共用一个 `choices` 骨架类（同一处布局约定），故由同一文件承载；各层的可见性
  * 由等待态决定。面板只填内容与样式——点击选项、提交输入都回抛宿主，叙事流向不变。
  */
-import type { LayerId } from "@lingfan-engine/core";
+import type { LayerId, PlayerPreferences } from "@lingfan-engine/core";
+import { resolveReducedMotion } from "@lingfan-engine/core";
 import {
+  applyDialogueAppearance,
+  createReducedMotionQuery,
   renderDialogueLine,
   sanitizeFont,
   type ChoiceTemplateView,
   type DialogueTemplateView,
 } from "@lingfan-engine/ui";
-import { computed, ref } from "vue";
+import { computed, onUnmounted, ref, watch } from "vue";
 import type { InputCandidate, MenuChoice } from "../host";
 
 /** 累积层容器：宿主接线读它做「新行贴底滚动」 */
@@ -66,10 +69,47 @@ const props = defineProps<{
   canAdvance: boolean;
   /** 等待态（显示省略号指示器） */
   inWait: boolean;
+  /** 玩家偏好：对话框外观（透明度/字号/高度/位置）经 CSS 变量投影到此面板 */
+  preferences: PlayerPreferences;
 }>();
 
 /** 过筛后的本句字体（空 = 不上内联样式，正文吃 CSS 变量回退；白名单同 {font=}） */
 const storyFont = computed(() => sanitizeFont(props.dialogFont));
+
+/** 对话框外观偏好 → CSS 变量投影：元素挂载即投一次并订阅偏好改动，拆除时退订 */
+const dialogueBox = ref<HTMLElement | null>(null);
+let stopAppearance: (() => void) | null = null;
+watch(
+  dialogueBox,
+  (el) => {
+    stopAppearance?.();
+    stopAppearance =
+      el === null ? null : applyDialogueAppearance(el, props.preferences);
+  },
+  { immediate: true },
+);
+onUnmounted(() => stopAppearance?.());
+
+/**
+ * 减弱动效三态合成（玩家显式 > 系统偏好 > 内建关）：有效减弱态时停掉本面板的装饰
+ * 动画（推进指示闪烁）。系统层经媒体查询测量，玩家偏好改动与系统设置变化都即时重算。
+ */
+const reducedMotionQuery = createReducedMotionQuery();
+const effectiveReducedMotion = ref(false);
+const syncReducedMotion = (): void => {
+  effectiveReducedMotion.value = resolveReducedMotion({
+    player: props.preferences.reducedMotion,
+    system: reducedMotionQuery.matches(),
+  });
+};
+syncReducedMotion();
+const offReducedPrefs = props.preferences.onChange(syncReducedMotion);
+const offReducedSystem = reducedMotionQuery.onChange(syncReducedMotion);
+onUnmounted(() => {
+  offReducedPrefs();
+  offReducedSystem();
+  reducedMotionQuery.dispose();
+});
 
 /** 事件出口：choose = 选项目标上抛；submit-input = 输入提交上抛。 */
 const emit = defineEmits<{
@@ -164,9 +204,13 @@ const submitCandidate = (value: string): void => {
        （组件身体、纯元素列）都会把上一屏的对话文字重新露出来。 -->
   <section
     v-show="(canAdvance || inWait) && !dialogHidden"
+    ref="dialogueBox"
     class="dialogue"
     :style="{ zIndex: zOf('dialogue') }"
-    :class="[nvlMode === 'active' ? 'nvl-mode' : dialogView.rootClass]"
+    :class="[
+      nvlMode === 'active' ? 'nvl-mode' : dialogView.rootClass,
+      effectiveReducedMotion ? 'lf-reduced-motion' : '',
+    ]"
     aria-live="polite"
   >
     <!-- 累积层保持固定骨架（增量渲染约定），不走模板全量重渲 -->
@@ -222,11 +266,15 @@ const submitCandidate = (value: string): void => {
   width: min(100%, 960px);
   margin: 0 auto;
   /* UI 层（窗口坐标系）：尺寸按窗口折算随窗口自适应，不再被舞台缩放二次放大 */
-  min-height: clamp(104px, 18vh, 150px);
+  /* 外观偏好经 CSS 变量投影（applyDialogueAppearance）：透明度乘底色 alpha、
+     高度倍率乘最小高度；变量缺省回退内建外观（0.8 / 1） */
+  min-height: calc(
+    clamp(104px, 18vh, 150px) * var(--lf-dialogue-height-scale, 1)
+  );
   padding: clamp(10px, 1.6vh, 16px) clamp(16px, 2.4vw, 28px);
   border: 1px solid #4444;
   border-radius: 12px;
-  background: #1e1e2ecc;
+  background: rgba(30, 30, 46, calc(0.8 * var(--lf-dialogue-opacity, 1)));
   box-sizing: border-box;
   pointer-events: auto;
 }
@@ -256,6 +304,8 @@ const submitCandidate = (value: string): void => {
 .text {
   margin: 0;
   white-space: pre-wrap;
+  /* 字号倍率偏好（--lf-dialogue-font-scale）：乘继承字号，缺省 1 不变 */
+  font-size: calc(1em * var(--lf-dialogue-font-scale, 1));
   /* 项目默认字体档：宿主 setProperty(--lf-story-font) 装配；未声明时变量无效，
      属性落到继承值（等价不设），逐句声明的字体以内联样式覆盖在这里之上 */
   font-family: var(--lf-story-font);
@@ -267,6 +317,12 @@ const submitCandidate = (value: string): void => {
   bottom: 8px;
   color: #7aa2f7;
   animation: blink 1.2s infinite;
+}
+
+/* 有效减弱动效态（玩家显式开 或 未设置且系统要求减弱）：停掉装饰性闪烁，
+   指示器静态可见。门控类由三态合成驱动，随玩家偏好与系统设置即时切换。 */
+.dialogue.lf-reduced-motion .advance-hint {
+  animation: none;
 }
 
 /* 选择 / 输入 / 玩法挂载三层共用这个容器：它住在 UI 层（那一层容器是 pointer-events: none，

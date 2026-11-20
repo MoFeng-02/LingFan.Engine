@@ -7,25 +7,17 @@
  * 填充方式（`stretch`）落成两列 CSS：`<img>`/`<video>` 用 `object-fit`，
  * 背景元素用 `background-size` + `background-position`（`object-fit` 对 `div` 无效）。
  */
-import {
-  DEFAULT_ELEMENT_FIT,
-  ELEMENT_FITS,
-  type ElementFit,
-} from "@lingfan-engine/core";
+import { elementFitOf } from "@lingfan-engine/core";
 import { elementSource, fitBackgroundStyle, fitObjectStyle } from "../style";
 import { bindInteraction, isDisabled } from "./bindings";
 import { createRoot, withProps, withStyle } from "./base";
 import type { ElementRenderContext } from "../registry";
 import type { RenderSpec } from "../spec";
 
-/** 元素声明的填充方式（未写或写坏都回退缺省词：属性值来自作者数据，不做抛错） */
-function elementFit(props: Record<string, unknown>): ElementFit {
-  const raw = props.stretch;
-  return typeof raw === "string" &&
-    (ELEMENT_FITS as readonly string[]).includes(raw)
-    ? (raw as ElementFit)
-    : DEFAULT_ELEMENT_FIT;
-}
+/**
+ * 填充方式读法单一声明在核心 `data/elementFit.ts`（三端同一份语义，禁第二份实现）。
+ * 玩家默认槽经 `ctx.elementFitDefault` 注入：op 显式声明赢，玩家只填作者没声明的默认槽。
+ */
 
 /** 解析资源并写回描述树，失败/能力缺失时保留原文（不伪造占位） */
 export function applySource(
@@ -57,7 +49,7 @@ export function applySource(
  * 填充落在 `object-fit` 上。分错支的表现是「背景写着填充方式但画面不动」。
  */
 export function renderImage(ctx: ElementRenderContext): RenderSpec {
-  const fit = elementFit(ctx.element.props);
+  const fit = elementFitOf(ctx.element.props.stretch, ctx.elementFitDefault);
   const root = createRoot("image", ctx);
   if (ctx.element.type === "background") {
     const background = fitBackgroundStyle(fit);
@@ -83,7 +75,9 @@ export function renderImage(ctx: ElementRenderContext): RenderSpec {
  * 因此宿主不接管端口时画面与描述仍一致。
  */
 export function renderVideo(ctx: ElementRenderContext): RenderSpec {
-  const fit = fitObjectStyle(elementFit(ctx.element.props));
+  const fit = fitObjectStyle(
+    elementFitOf(ctx.element.props.stretch, ctx.elementFitDefault),
+  );
   const spec = withStyle(
     withProps(createRoot("media", ctx), { controls: false }),
     {
@@ -106,7 +100,11 @@ export function renderImageButton(ctx: ElementRenderContext): RenderSpec {
       className: "lf-imagebutton-img",
       // 缩略图 canvas 合成：CORS 匿名加载（须先于 src）
       props: { crossOrigin: "anonymous", src: url },
-      style: { objectFit: fitObjectStyle(elementFit(ctx.element.props)) },
+      style: {
+        objectFit: fitObjectStyle(
+          elementFitOf(ctx.element.props.stretch, ctx.elementFitDefault),
+        ),
+      },
     };
     out = { ...spec, children: [image] };
   } else {

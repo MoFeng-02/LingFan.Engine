@@ -16,7 +16,13 @@ import {
 } from "@lingfan-engine/core";
 import { renderDialogueLine } from "@lingfan-engine/ui";
 import { canChooseSlot } from "@lingfan-engine/shell";
-import type { HistoryBlock, SlotPanelMode, SlotView } from "../host";
+import type {
+  HistoryBlock,
+  PreferencesPanel,
+  SlotPanelMode,
+  SlotView,
+} from "../host";
+import PreferenceExtras from "./settings/PreferenceExtras.vue";
 
 defineProps<{
   /** 层级（z 序）：三块各取自己的层 */
@@ -31,6 +37,8 @@ defineProps<{
   showPrefs: boolean;
   /** 偏好快照的响应式镜像（模板读它，才会在偏好变化时重渲染） */
   prefsView: PlayerPrefsData;
+  /** 偏好面板句柄（扩展控件组直调写入口） */
+  prefs: PreferencesPanel;
   /** 音量通道表（面板行） */
   prefChannels: ReadonlyArray<{ channel: AudioChannel; label: string }>;
   /** 正在等待按键的动作（null = 未在捕获） */
@@ -209,6 +217,8 @@ const emit = defineEmits<{
         @change="emit('set-pref-fullscreen', $event)"
       />
     </label>
+    <!-- 扩展偏好控件组（主音量/文本/显示 + 缓办禁用占位）：独立组件，直调偏好句柄 -->
+    <PreferenceExtras :prefs="prefs" :prefs-view="prefsView" />
     <label class="prefs-row">
       <span class="prefs-label">宿主</span>
       <span class="prefs-value">{{ host.os }} · {{ host.form }}</span>

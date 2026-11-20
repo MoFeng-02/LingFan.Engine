@@ -9,6 +9,7 @@
  * 因此本文件不出现任何平台类型。
  */
 import type {
+  ElementFit,
   ElementInstance,
   LayerZTable,
   StoryEngine,
@@ -66,6 +67,16 @@ export interface NarrativeOverlayOptions {
    * 经此注入（解析口径在引擎侧单一声明，宿主只消费）。不给则用 `textSpeed` 定值。
    */
   readTextSpeed?: () => number;
+  /**
+   * 整句直出现读口（可选）：玩家 instantText 偏好为 true 时不建打字机、正文全量上屏
+   * （无障碍/效率）。每句重建时现读，改偏好下一句即生效。不给 = 走打字机。
+   */
+  readInstantText?: () => boolean;
+  /**
+   * NVL 显示分页现读口（可选）：只窗口最近 N 行上屏，缓冲全量不丢（回溯/读档可还原整段）。
+   * 每次投影现读；不给/非正整数 = 不分页。
+   */
+  readNvlPageSize?: () => number | undefined;
   /** 渲染投影变化通知（宿主可作状态指示；每帧打字推进也会触发） */
   onView?: (view: NarrativeOverlayView) => void;
   /** 对话模板注册表（不传 = 内建） */
@@ -100,6 +111,11 @@ export interface NarrativeOverlayOptions {
   >;
   /** 资源解析（元素 source/src/path → URL） */
   resolveResource?: (path: string) => string | undefined;
+  /**
+   * 玩家默认填充槽读面（偏好 `elementFit`）：只填作者没声明 `stretch` 的默认，op 显式声明赢。
+   * 每次渲染现读，跟上偏好改动；不传 = 无玩家默认槽（回内建 cover）。
+   */
+  readElementFitDefault?: () => ElementFit | undefined;
   /** 错误上报（引擎错误、未注册类型/命令；缺省 = 控制台） */
   onError?: (message: string) => void;
 }

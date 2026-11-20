@@ -8,7 +8,7 @@
  * 框架与平台无关：渲染器只产出 `RenderSpec`，不碰 DOM，也不依赖任何 UI 框架
  * （核心只写状态，UI 只渲染；渲染器是宿主可替换的产物）。
  */
-import type { ElementInstance } from "@lingfan-engine/core";
+import type { ElementFit, ElementInstance } from "@lingfan-engine/core";
 import type { RenderSpec } from "./spec";
 
 /** 元素渲染上下文：渲染器只消费宿主提供的能力，不直接接触引擎 */
@@ -29,6 +29,11 @@ export interface ElementRenderContext {
   evalDisable?: (expression: string) => boolean | null;
   /** 资源解析（source/src/path → 可加载 URL）；缺省或失败返回 undefined（不静默伪造） */
   resolveResource?: (path: string) => string | undefined;
+  /**
+   * 玩家默认填充槽（偏好 `elementFit`）：只填作者**没声明** `stretch` 时的默认，
+   * op 显式声明永远赢（填充承载玩法语义）。读法单一声明在核心 `elementFitOf`。
+   */
+  elementFitDefault?: ElementFit;
   /**
    * 控件值变化回写：渲染器把「哪个元素变成了什么值」交给宿主，**不自己写状态**。
    *

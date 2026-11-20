@@ -11,6 +11,7 @@
 import { watch, type Ref } from "vue";
 import {
   SYS,
+  DEFAULT_LANG,
   StoryEngine,
   videoFitOf,
   type AudioConfig,
@@ -73,6 +74,17 @@ export interface AppEngineLifeOptions {
   /** 视频层的呈现容器（重启重建端口时同样注入：舞台根 → 视频层随舞台缩放） */
   readVideoContainer?: () => HTMLElement | null;
   /**
+   * 玩家默认填充槽读面（偏好 `elementFit`）：重启重建视频端口时同样注入，
+   * 只填作者没声明 `stretch` 的默认，op 显式声明赢。不传 = 无玩家默认槽。
+   */
+  readElementFitDefault?: () => ElementFit | undefined;
+  /**
+   * 语言会话启动种子读面（偏好 `language`）：进对局 / 重启起播后按它播种子。
+   * 偏好只是种子，读档时档内语言覆盖它（存档语言赢，见 load.done 重建）。
+   * 返回 undefined / 空串 / 默认语言 = 不播种子（原文直出）。
+   */
+  readLanguageSeed?: () => string | undefined;
+  /**
    * 挂载表出口：引擎写下 `SYS.mounts` 就把整表交给宿主。
    * 订阅不回放历史，所以绑定时先主动喂一次当前值（空表就是空表）。
    */
@@ -129,6 +141,8 @@ export function createAppEngineLife(
     handleState,
     handleEvent,
     readVideoContainer,
+    readElementFitDefault,
+    readLanguageSeed,
     onMounts,
     onBody,
     onPaused,
@@ -218,12 +232,25 @@ export function createAppEngineLife(
     watch(props.story, (fresh) => getEngine().reloadStory(fresh));
   }
   /**
+   * 语言会话启动种子：起播后按偏好语言播种子；偏好只是种子，读档时档内
+   * 语言覆盖它（存档语言赢）。undefined / 空串 / 默认语言不播（原文直出）。
+   */
+  function applyLanguageSeed(): void {
+    const seed = readLanguageSeed?.();
+    if (seed !== undefined && seed !== "" && seed !== DEFAULT_LANG) {
+      void getEngine()
+        .setLanguage(seed)
+        .catch(() => undefined);
+    }
+  }
+  /**
    * 进对局：启动引擎（进入工程入口列），给了列 id 再跳过去。
    * `start()` 本身已进入入口列，所以不传 columnId 时只有一次启动，不重复导航。
    */
   function enterGame(columnId?: string): void {
     const engine = getEngine();
     engine.start();
+    applyLanguageSeed();
     if (columnId !== undefined) engine.navigate(columnId);
   }
   /** 读档继续：从槽位恢复进度（须已进对局，否则命令面按「故事尚未启动」拒绝） */
@@ -245,8 +272,9 @@ export function createAppEngineLife(
     media.videoPort = props.createVideoPort(
       media.reportAudioError,
       readVideoContainer,
-      // 填充读当前列里的 video 元素：端口每次挂载才求值，换列后自动跟随
-      () => videoFitOf(getEngine().elements()),
+      // 填充读当前列里的 video 元素：端口每次挂载才求值，换列后自动跟随；
+      // 玩家默认槽经 readElementFitDefault 注入（op 显式声明赢）
+      () => videoFitOf(getEngine().elements(), readElementFitDefault?.()),
     );
     media.videoPort.setZIndex?.(zOf("video")); // 重建端口后补上当前实例 z
     getEngine().dispose();
@@ -288,6 +316,7 @@ export function createAppEngineLife(
     elementLayerEl.value?.replaceChildren();
     typewriter.set(null);
     getEngine().start();
+    applyLanguageSeed();
   }
   return { initEngine, enterGame, continueGame, restart, unbind };
 }

@@ -5,3 +5,14 @@ export {
   type DomOverlaySurface,
   type NarrativeMounts,
 } from "./overlay-surface";
+export {
+  applyDialogueAppearance,
+  DIALOGUE_FONT_SCALE_VAR,
+  DIALOGUE_HEIGHT_SCALE_VAR,
+  DIALOGUE_OPACITY_VAR,
+  DIALOGUE_POSITION_ATTR,
+} from "./dialogue-appearance";
+export {
+  createReducedMotionQuery,
+  type ReducedMotionQuery,
+} from "./reduced-motion";
