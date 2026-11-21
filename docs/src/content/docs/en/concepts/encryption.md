@@ -87,7 +87,7 @@ In a browser there is no such thing as "the app brings its own key": once a key 
 
 The technical route works: fetch the ciphertext, decrypt to plaintext with WebCrypto, create a temporary address with `URL.createObjectURL()` and hand it to `resolve()`, then revoke it in `release()`. The path is the same as the desktop-shell form; only the decryption happens in the page.
 
-But the current state must be stated clearly: **this implementation does not exist yet**. Encrypted supply exists only in the reference host (playground) desktop shell — the desktop shell bundled with the scaffold template is a plaintext reference implementation, with neither resources nor saves encrypted; the web form does not even have unencrypted static-root translation supply yet — translations in the `Lang/` directory are not read, and the original text is shown directly. The above is a feasible path, not ready-made code.
+But the current state must be stated clearly: **this implementation does not exist yet**. Encrypted supply exists in both the desktop shell and the mobile shells (Android/iOS) of the reference host (playground) — the desktop shell bundled with the scaffold template is a plaintext reference implementation, with neither resources nor saves encrypted; the web form does not even have unencrypted static-root translation supply yet — translations in the `Lang/` directory are not read, and the original text is shown directly. The above is a feasible path, not ready-made code.
 
 The editor's stance is consistent: it only opens plaintext projects. When story files are ciphertext, it tells you directly that it cannot open them and asks you to choose a plaintext project directory — the browser side has no keys, and it does not guess.
 

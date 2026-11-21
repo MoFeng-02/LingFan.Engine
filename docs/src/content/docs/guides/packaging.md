@@ -5,7 +5,7 @@ description: 把明文工程打成玩家能装的加密包：先加密构建前�
 
 开发时工程是明文：`Resources/` 下是能直接打开的文件，`project.json` 里 `resourceEncryption` 是 `false` 或没有这个字段。玩家手上的包不能这样——资源得是密文，前端产物也得是密文，只剩一个入口 `index.html` 明文留给壳加载。
 
-这一步不是一条命令，是三步。下面按顺序说，每步都要看输出。
+这一步分三步，下面按顺序说，每步都要看输出。其中构建与打包可以用一条命令串起来（见「二」），放资源目录仍是手工动作。
 
 ## 一、加密构建前端壳
 
@@ -63,6 +63,20 @@ lfenpack <工程资源根> <输出目录> --dist apps/playground/dist-enc --stri
 
 `--strict` 的语义是：打包照常完成，但只要报告里出现任何「未入包」或额外的明文例外，就以非零码退出。适合放进自动化流程——例外面必须有人显式知情，不能靠翻日志才发现「有几个文件没进包」。
 
+### 用一条命令串起构建、打包与校验
+
+上面的前端构建与 lfenpack 打包，可以交给 `scripts/release/encrypt-publish.mjs` 一条命令串起来，并把产物校验做成强制末环：
+
+```bash
+node scripts/release/encrypt-publish.mjs
+```
+
+它依次跑前端构建（`pnpm --filter @lingfan-engine/playground build`）、加密打包（`lfenpack --force --strict`）、产物校验。默认拒绝任何明文内容文件——豁免集只有 `project.json` 与 `__key__.seed`，其余内容文件必须是带密文魔数的 `.enc`；只有显式 `--allow-plaintext` 才放行明文，并降级为警告留痕。`--dry-run` 只打印步骤计划，不执行。
+
+常用选项：`--input`（明文资源根，缺省 `apps/playground/Resources`）、`--output`（加密发布根，缺省 `build/release-resources`）、`--dist`（前端产物目录，缺省 `apps/playground/dist`）、`--android-assets`（Android 生成 assets 根，缺省 playground 的 `src-tauri/gen/android/app/src/main/assets`）、`--skip-build`（跳过前端构建，直接用已有 dist）。
+
+边界：脚本不做平台打包——`tauri build` 属发布动作，由你在真机环境执行；Android 的 assets 目录若已生成，同样按加密形态校验，防明文资源随 APK 带走。把产物放进壳的 `resource_dir()/Resources/` 仍是下一步的手工动作。
+
 ## 三、把整包放到壳的资源目录
 
 lfenpack 的输出目录整个放进应用的 `resource_dir()/Resources/`。正式分发形态到这里就没有环境变量了：壳启动时找到资源根，读明文清单，看到 `resourceEncryption: true` 就装配加密供给，页面经壳内协议按需取字节。
@@ -73,9 +87,9 @@ lfenpack 的输出目录整个放进应用的 `resource_dir()/Resources/`。正�
 
 说清楚现在缺什么，省得试了半天才发现：
 
-- **没有一条命令把三步串起来。** 加密构建、打包、放资源目录是三次手工动作。构建流程里只挂了「构建 + 收尾」，没有打包那一步。
-- **默认构建不加密。** 不加那个环境变量，`pnpm tauri build` 出来的就是明文包，与加密包长得一样但是能直接看源码。
-- **加密供给只有参考宿主（playground）的桌面壳有。** 脚手架模板自带的桌面壳是明文参考实现，资源与存档都不加密，交付安全需自带 Rust 加密层；浏览器形态不做加密供给，编辑器也只开明文工程——把密文目录丢给编辑器，它会直接说打不开。
+- **平台打包与放资源目录仍是手工动作。** `scripts/release/encrypt-publish.mjs` 已把前端构建、加密打包、产物校验串成一条命令（见「二」），但平台打包（`tauri build`）与把产物放进壳的 `resource_dir()/Resources/`，仍由你在真机环境执行。
+- **默认构建不加密。** 不加那个环境变量，`pnpm tauri build` 出来的就是明文包，与加密包长得一样但是能直接看源码。加密发布走 `encrypt-publish.mjs`（默认拒绝明文产物），别把裸构建当成加密包发出去。
+- **加密供给在参考宿主（playground）的桌面壳与移动壳（Android/iOS）都有。** 脚手架模板自带的桌面壳是明文参考实现，资源与存档都不加密，交付安全需自带 Rust 加密层；浏览器形态不做加密供给，编辑器也只开明文工程——把密文目录丢给编辑器，它会直接说打不开。
 - **playground 的资源加密是 casual 级，不是跨机不可解。** 密钥种子（`__key__.seed`）就是明文 DEK 随包分发，解包拿到它即可离线解密全资源，不依赖目标机密钥。它防 casual 拷贝、保包更新跟随，对持包者只能抬高成本，不承诺无法提取。密钥获取策略是可插拔接缝（组合根选默认适配器）；**交付强 DRM 需自选更强 provider（在线激活 / 白盒 / 许可证绑定）或自带在线激活**。存档则是 MachineBound（跨机不可解），两套口径分开。
 - **打包机需要 Rust 工具链。** `lfenpack` 是单独的二进制，不是随包分发的运行时组件。
 
