@@ -1,0 +1,590 @@
+---
+title: Audio Ops
+description: Signatures, arguments and common mistakes for the four channels bgm, se, ambient and voice, the stop family, and the named-instance audio_play / audio_stop.
+---
+
+import OpCard from "../../../../../components/OpCard.astro";
+
+Audio has two addressing schemes, **coexisting rather than either-or**:
+
+- **Four channels**: `bgm` (background music), `se` (sound effects), `ambient` (ambience), `voice` (voice). Each has one slot; writing a second time replaces the first.
+- **Named instances**: `audio_play` names an id and plays any number of independent tracks at once, each stopped individually by id.
+
+Instance state also travels with saves and rollback; player volume preferences apply to both schemes.
+
+## Channel commands
+
+### bgm
+
+<OpCard name="bgm" summary="Play background music; only one slot." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+bgm "Audio/theme.mp3"
+bgm "Audio/theme.mp3" volume=0.6 loop=true fade=800
+bgm "Audio/theme.mp3" restart=true
+```
+
+**Arguments**
+
+| Field     | Type    | Description                                                |
+| --------- | ------- | ---------------------------------------------------------- |
+| `src`     | string  | Required. Audio resource path                              |
+| `volume`  | number  | Optional, 0–1                                              |
+| `loop`    | boolean | Optional, default `true`                                   |
+| `fade`    | number  | Optional, default 0. Fade-in milliseconds                  |
+| `restart` | boolean | Optional. Replay from the start even for the same resource |
+
+**Minimal example**
+
+```text
+bgm "Audio/theme.mp3"
+say "He walked in."
+```
+
+**Common mistakes**
+
+:::caution
+The same resource written twice does **not** restart by default — the engine compares the resource path and only updates volume/loop if unchanged, keeping the playback position. To restart explicitly add `restart=true`, which increments the sequence number so the host restarts from the beginning.
+
+To change volume without restarting, use `audio_volume`; do not resend `bgm`.
+
+Only one `bgm` slot. Playing a new track replaces the previous one; for two simultaneous tracks use `audio_play`.
+
+`loop` defaults to `true`, so a bare `bgm "…"` line loops. To play once write `loop=false`.
+:::
+
+</OpCard>
+
+### se
+
+<OpCard name="se" summary="Play a one-shot sound effect." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+se "Audio/door.mp3"
+se "Audio/door.mp3" volume=0.8
+```
+
+**Arguments**
+
+| Field    | Type   | Description                   |
+| -------- | ------ | ----------------------------- |
+| `src`    | string | Required. Audio resource path |
+| `volume` | number | Optional, 0–1                 |
+
+**Minimal example**
+
+```text
+se "Audio/door.mp3"
+say "The door creaked open."
+```
+
+**Common mistakes**
+
+:::caution
+`se` has **no `loop`, no `fade`, no `restart`** — it is a one-shot trigger, played once and done. Writing `se "…" loop=true` reports "se unknown payload field: loop".
+
+`se` is one of the four channels, but it has no persistent playback state, so `audio_volume channel=se` and `audio_pause se` do nothing. To adjust a sound effect's volume use `volume=` on the `se` command itself.
+
+Writing the same `se` twice plays two sounds, each overlapping independently. To stop currently-ringing effects use `stop_se`.
+:::
+
+</OpCard>
+
+### ambient
+
+<OpCard name="ambient" summary="Play ambient sound, e.g. rain or wind." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+ambient "Audio/rain.mp3"
+ambient "Audio/rain.mp3" volume=0.4 loop=true fade=1200
+```
+
+**Arguments**
+
+| Field     | Type    | Description                       |
+| --------- | ------- | --------------------------------- |
+| `src`     | string  | Required. Audio resource path     |
+| `volume`  | number  | Optional, 0–1                     |
+| `loop`    | boolean | Optional, default `true`          |
+| `fade`    | number  | Optional, default 0. Milliseconds |
+| `restart` | boolean | Optional. Force a restart         |
+
+**Minimal example**
+
+```text
+ambient "Audio/rain.mp3" volume=0.4
+say "It started to rain."
+```
+
+**Common mistakes**
+
+:::caution
+`ambient` and `bgm` are two independent channels that can ring together. But `ambient` has only one slot — a second `ambient` replaces the first; for several simultaneous ambiences use `audio_play`.
+
+Unlike `stop_bgm`, `stop_ambient` does **not** reset the playback position — whether the same track resumes or restarts after stopping depends on the host implementation. For deterministic behavior switch tracks or write `restart` explicitly.
+:::
+
+</OpCard>
+
+### voice
+
+<OpCard name="voice" summary="Play voice, usually bound to a line." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+voice "Audio/line001.mp3"
+voice "Audio/line001.mp3" auto_stop=true volume=1
+```
+
+**Arguments**
+
+| Field       | Type    | Description                                           |
+| ----------- | ------- | ----------------------------------------------------- |
+| `src`       | string  | Required. Audio resource path                         |
+| `volume`    | number  | Optional, 0–1                                         |
+| `fade`      | number  | Optional, default 0. Milliseconds                     |
+| `auto_stop` | boolean | Optional, default `true`. Stop when the line advances |
+| `restart`   | boolean | Optional. Force a restart                             |
+
+**Minimal example**
+
+```text
+voice "Audio/line001.mp3"
+say "Hello." speaker="A-Che"
+```
+
+**Common mistakes**
+
+:::caution
+`voice` has **no `loop`** — voice is one-shot, and looping it is meaningless. Writing `loop=true` reports "voice unknown payload field: loop".
+
+`auto_stop` defaults to `true`: when the player advances the line, the engine stops the voice. Setting it to `false` lets the voice keep playing across lines — usually not what you want.
+
+The more common way is `say "…" voice="Audio/line001.mp3"`, binding the voice to the line in one step; a standalone `voice` is for "play voice without dialogue".
+:::
+
+</OpCard>
+
+### stop_bgm
+
+<OpCard name="stop_bgm" summary="Stop the background music." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+stop_bgm
+stop_bgm fade=1000
+```
+
+**Arguments**
+
+| Field  | Type   | Description                                |
+| ------ | ------ | ------------------------------------------ |
+| `fade` | number | Optional, default 0. Fade-out milliseconds |
+
+**Minimal example**
+
+```text
+bgm "Audio/theme.mp3"
+say "The music suddenly stopped."
+stop_bgm fade=600
+```
+
+**Common mistakes**
+
+:::caution
+Only `fade` is recognized; anything else reports "stop_bgm unknown payload field".
+
+`stop_bgm` resets the playback position to zero. So playing the same track again afterward restarts it — this differs from `stop_ambient`.
+
+Stopping an already-stopped `bgm` is not an error; it is idempotent.
+:::
+
+</OpCard>
+
+### stop_ambient
+
+<OpCard name="stop_ambient" summary="Stop the ambient sound." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+stop_ambient
+stop_ambient fade=800
+```
+
+**Arguments**
+
+| Field  | Type   | Description                       |
+| ------ | ------ | --------------------------------- |
+| `fade` | number | Optional, default 0. Milliseconds |
+
+**Minimal example**
+
+```text
+stop_ambient fade=800
+bgm "Audio/indoor.mp3"
+```
+
+**Common mistakes**
+
+:::caution
+Unlike `stop_bgm`, `stop_ambient` does **not** touch the playback position — `ambient` has no position-reset logic, so whether the same track restarts or resumes after stopping depends on the host implementation. For deterministic behavior switch tracks or write `restart` explicitly.
+
+Only `fade` is recognized; anything else reports "stop_ambient unknown payload field".
+:::
+
+</OpCard>
+
+### stop_voice
+
+<OpCard name="stop_voice" summary="Stop the voice channel." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+stop_voice
+stop_voice fade=300
+```
+
+**Arguments**
+
+| Field  | Type   | Description                       |
+| ------ | ------ | --------------------------------- |
+| `fade` | number | Optional, default 0. Milliseconds |
+
+**Minimal example**
+
+```text
+say "\"...Never mind.\"" speaker="A-Che"
+stop_voice
+```
+
+**Common mistakes**
+
+:::caution
+Only `fade` is recognized; anything else reports "stop_voice unknown payload field".
+
+Voice usually ends via `auto_stop`, so `stop_voice` is mostly for "the player clicks faster than the voice; cut it off immediately". Too long a fade-out overlaps the next line's voice.
+:::
+
+</OpCard>
+
+### stop_se
+
+<OpCard name="stop_se" summary="Stop currently-ringing one-shot sound effects." rollback="full" since="0.3.0">
+
+**Signature**
+
+```text
+stop_se
+stop_se fade=200
+```
+
+**Arguments**
+
+| Field  | Type   | Description                       |
+| ------ | ------ | --------------------------------- |
+| `fade` | number | Optional, default 0. Milliseconds |
+
+**Minimal example**
+
+```text
+se "Audio/alarm.mp3" volume=0.7
+say "The alarm rang for a long time."
+stop_se fade=400
+say "Finally someone turned it off."
+```
+
+**Common mistakes**
+
+:::caution
+Only `fade` is recognized; anything else reports "stop_se unknown payload field".
+
+`se` is one-shot: writing the same command twice plays two sounds, each overlapping independently. So `stop_se` stops **all effects still ringing right now** — there is no "stop which one" concept. This matches `stop_bgm` / `stop_ambient` / `stop_voice` stopping their respective persistent channels, except the `se` "channel" can ring many sounds at once by nature.
+
+Effects have no position write-back, and `stop_se` does not affect the background music's playback position.
+:::
+
+</OpCard>
+
+### audio_play
+
+<OpCard name="audio_play" summary="Play (or update) an independent track by name." rollback="full" since="0.3.0">
+
+```text
+audio_play <instance id> <channel> "<resource>" [volume=0..1] [loop=true|false] [fade=ms] [restart=true|false]
+```
+
+**Arguments**
+
+| Argument    | Type    | Required | Description                                                                   |
+| ----------- | ------- | -------- | ----------------------------------------------------------------------------- |
+| instance id | text    | Yes      | Short id starting with a lowercase letter (1..32 chars, may contain `_` `-`). |
+| channel     | text    | Yes      | One of `bgm` / `se` / `ambient` / `voice`; decides the preference grouping.   |
+| resource    | text    | Yes      | Audio resource path (relative to `Resources/`).                               |
+| `volume`    | number  | No       | 0–1; if omitted, the project default, else 1.                                 |
+| `loop`      | boolean | No       | Default `true` (rings until `audio_stop`).                                    |
+| `fade`      | number  | No       | Fade-in milliseconds, default 0.                                              |
+| `restart`   | boolean | No       | Explicit replay from the start (even for the same resource).                  |
+
+**Minimal example**
+
+```text
+audio_play rain ambient "Audio/rain.ogg" volume=0.3
+audio_play steps se "Audio/steps.ogg" volume=0.7
+say "The rain and the footsteps play together without interfering."
+```
+
+**Common mistakes**
+
+:::caution
+Both the instance id and the channel are required. A malformed id (uppercase, starting with a digit, over 32 chars, empty string) errors directly and states the expected form — the engine will not guess a name for you.
+
+Repeated `audio_play` on the same instance:
+
+- Same resource → **update** (position kept, volume/loop follow the new arguments), no restart
+- Changed resource or `restart=true` → replay
+
+At most 32 instances may be alive at once. Exceeding that errors and prompts you to `audio_stop` unused instances first — the cap keeps save size bounded, not to save memory.
+:::
+
+</OpCard>
+
+### audio_stop
+
+<OpCard name="audio_stop" summary="Stop one audio instance, or stop all instances." rollback="full" since="0.3.0">
+
+```text
+audio_stop [instance id] [fade=ms]
+```
+
+**Arguments**
+
+| Argument    | Type   | Required | Description                                   |
+| ----------- | ------ | -------- | --------------------------------------------- |
+| instance id | text   | No       | Omitted = stop all current instances.         |
+| `fade`      | number | No       | Fade-out milliseconds, default 0 (immediate). |
+
+**Minimal example**
+
+```text
+audio_play rain ambient "Audio/rain.ogg"
+say "The rain started."
+audio_stop rain fade=800
+say "The rain stopped."
+audio_stop
+say "Every remaining sound stopped."
+```
+
+**Common mistakes**
+
+:::caution
+Stopping a non-existent instance errors and lists the current instances — silent success would make the author think it worked when it did not.
+
+When there are no instances to stop (`audio_stop` with an empty table) it is not an error: the author need not check for emptiness first.
+:::
+
+</OpCard>
+
+### audio_volume
+
+<OpCard name="audio_volume" summary="Change only the volume, without replaying or moving the position. Target is an instance or a channel, pick one." rollback="full" since="0.3.0">
+
+```text
+audio_volume <instance id> volume=0..1
+audio_volume channel=<channel> volume=0..1
+```
+
+**Arguments**
+
+| Argument  | Type   | Required | Description                                                     |
+| --------- | ------ | -------- | --------------------------------------------------------------- |
+| `inst`    | text   | Pick one | Target instance id (may be a positional argument in text form). |
+| `channel` | text   | Pick one | Target channel: `bgm` / `ambient` / `voice`.                    |
+| `volume`  | number | Yes      | 0–1, clamped out of range.                                      |
+
+Give exactly one of `inst` and `channel`: both or neither is rejected. `se` has no persistent playback state, so `channel=se` does nothing.
+
+**Minimal example**
+
+```text
+audio_play rain ambient "Audio/rain.ogg" volume=0.2
+say "The rain is light."
+audio_volume rain volume=0.9
+say "The rain grew louder — but the track did not restart."
+audio_volume channel=bgm volume=0.4
+```
+
+**Common mistakes**
+
+:::caution
+This is the proper entry for "live volume adjustment". Do **not** resend `audio_play` or `bgm` to change volume: that resets the playback position and interrupts the fade-in.
+
+Adjusting the volume of a stopped instance or channel errors (start it first); adjusting a non-existent instance likewise errors.
+:::
+
+</OpCard>
+
+### audio_pause
+
+<OpCard name="audio_pause" summary="Suspend a ringing channel or instance, keeping the position and the player." rollback="full" since="0.3.0">
+
+```text
+audio_pause [channel]
+audio_pause inst=<instance id>
+```
+
+**Arguments**
+
+| Argument | Type | Required | Description                                                                  |
+| -------- | ---- | -------- | ---------------------------------------------------------------------------- |
+| channel  | text | No       | One of `bgm` / `ambient` / `voice`; omitted pauses all persistent channels.  |
+| `inst`   | text | No       | Pause only this instance. Mutually exclusive with channel; cannot give both. |
+
+**Minimal example**
+
+```text
+bgm "Audio/theme.ogg"
+say "Footsteps came from beyond the door."
+audio_pause
+say "The sound was shut behind the door — the track did not restart."
+audio_resume
+say "The door opened, and the track resumed from where it was."
+```
+
+**Common mistakes**
+
+:::caution
+`se` does not participate in pausing: a one-shot trigger has no "resume from the original position", so `audio_pause se` does nothing and reports no error.
+
+It only affects channels or instances currently playing. An already-`stop`ped one is not recorded as paused — on resume it stays silent and does not suddenly ring.
+
+`inst` and channel are pick-one: `audio_pause bgm inst=rain` is rejected. Write pause and resume in pairs; only `audio_pause` without `audio_resume` leaves the target suspended, and loading back into the paused period leaves it suspended too.
+:::
+
+</OpCard>
+
+### audio_resume
+
+<OpCard name="audio_resume" summary="Let a suspended channel or instance continue from its original position." rollback="full" since="0.3.0">
+
+```text
+audio_resume [channel]
+audio_resume inst=<instance id>
+```
+
+**Arguments**
+
+| Argument | Type | Required | Description                                                                   |
+| -------- | ---- | -------- | ----------------------------------------------------------------------------- |
+| channel  | text | No       | One of `bgm` / `ambient` / `voice`; omitted resumes all suspended channels.   |
+| `inst`   | text | No       | Resume only this instance. Mutually exclusive with channel; cannot give both. |
+
+**Minimal example**
+
+```text
+audio_pause bgm
+say "This stretch of memory has no music."
+audio_resume bgm
+say "Back to the present, the track picks up where it left off."
+```
+
+**Common mistakes**
+
+:::caution
+Resume is "continue ringing", not "replay": the same track does not return to the start; position, volume and loop all follow the moment before pausing.
+
+Channels or instances never paused are unaffected; writing `audio_resume` on an already-`stop`ped target does not make it ring again.
+
+If during the pause you start playback again with `bgm` / `ambient` / `voice` / `audio_play` (changed resource or `restart=true`), that target is treated as a fresh start and the pre-pause position is no longer kept.
+:::
+
+</OpCard>
+
+### audio_seek
+
+<OpCard name="audio_seek" summary="Seek a ringing channel or instance to a given number of seconds, without replaying or changing volume." rollback="full" since="0.7.0">
+
+```text
+audio_seek <seconds> inst=<instance id>
+audio_seek <seconds> channel=<channel>
+```
+
+**Arguments**
+
+| Argument  | Type   | Required | Description                                                                      |
+| --------- | ------ | -------- | -------------------------------------------------------------------------------- |
+| `seconds` | number | Yes      | Target seconds, a non-negative finite number (positional argument in text form). |
+| `inst`    | text   | Pick one | Target instance id.                                                              |
+| `channel` | text   | Pick one | Target channel: `bgm` / `ambient` / `voice`.                                     |
+
+Give exactly one of `inst` and `channel`. `se` has no seek semantics, so `channel=se` does nothing.
+
+**Minimal example**
+
+```text
+bgm "Audio/theme.ogg"
+say "Rewind to just before the chorus."
+audio_seek 42 channel=bgm
+say "The track continues from second 42, volume unchanged."
+```
+
+**Common mistakes**
+
+:::caution
+Seeking is "moving the playback position", not replaying: resource, volume and loop stay as they were; only the position changes. To replay from the start, resend `bgm` / `audio_play` with `restart=true`.
+
+It only affects targets currently playing (`play`); seeking a `stop`ped or not-yet-started target errors (start it first). Seeking a non-existent instance likewise errors.
+
+The position after seeking travels with snapshots and saves: rolling back or loading to after the seek, the track continues from the seek point and does not jump back to the start.
+:::
+
+</OpCard>
+
+## Channels and instances
+
+The four channels (`bgm` / `se` / `ambient` / `voice`) and audio instances **coexist**; they are not two implementations:
+
+- A **channel** is "that one stream of sound" in narrative semantics — one each, traveling with saves and rollback, the basis for the player's preference tiers.
+- An **instance** is an arrangement unit the author names — any number, self-named, each overlapping independently.
+
+An instance's state records which channel it belongs to, and the player's preference is multiplied by that channel. So rain placed on the `ambient` channel gets quieter when the player lowers the ambient volume; placed on `bgm`, it is adjusted together with the background music.
+
+For "rings once and done" things like a timeout chime, `se` suffices; only when you need to keep several independent tracks at once, or adjust one individually afterward, do you need instances.
+
+## Volume stacks in three layers
+
+The actual volume computed on the host side takes the first existing of three sources in order:
+
+1. **`volume=` on the command** — the author's intent on this command
+2. **Project default** (`shell.audio.volumes.<channel>` in `project.json`) — the whole work's baseline
+3. **1** — the fallback when the first two are absent (byte-for-byte identical to the old "unspecified = full volume" behavior)
+
+Then it is multiplied by the **player preference**: if the player sets background music to 60% in the settings panel, `bgm "…" volume=0.5` actually rings at 0.3.
+
+The order cannot be reversed: the preference must stay the outermost layer. Pushing the project default into the preference layer becomes "author defaults polluting player settings" — when the player switches works, their preference should not be changed.
+
+## Changing tracks vs not
+
+What the host receives is a state delta, judged by these rules:
+
+- Channel goes from `play` to `stop` or disappears → stop (with the fade-out argument)
+- Resource changed → play
+- Resource unchanged, sequence number changed (i.e. `restart` was written) → replay from the start
+- Resource unchanged, only volume or `loop` changed → update arguments, **no restart**
+
+Background-music position write-back has a 0.5-second threshold: if the position reported by the host differs from the engine's recorded position by less than half a second, it is treated as player jitter and does not trigger a seek. This avoids seeking every frame and making the track crackle.
+
+## Next steps
+
+- [Video ops](/reference/ops/video/) — `cutscene` establishes a wait point; `video` does not.
+- [Dialogue & narrative ops](/reference/ops/dialogue/) — `say voice=` binds voice to a line.
+- [Resources directory conventions](/reference/resources-layout/) — where audio files go and how to write paths.

@@ -1,0 +1,192 @@
+---
+title: Save Ops
+description: Signatures, arguments and common mistakes for save, load, auto_save and save_delete. A save coordinate must be a wait point that can be rebuilt by replay.
+---
+
+import OpCard from "../../../../../components/OpCard.astro";
+
+None of these four creates a wait point. `save` only declares "write a save when the next waiting screen is created", `load` reads a save asynchronously, `auto_save` toggles continuous saving, and `save_delete` removes a slot.
+
+## Ops
+
+### save
+
+<OpCard name="save" summary="Declare a save point: the payload lands on the next waiting screen the player sees." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+save "slot_1"
+save "slot_1" title "Rainy Night · The Dock"
+```
+
+**Arguments**
+
+| Field   | Type   | Description                                     |
+| ------- | ------ | ----------------------------------------------- |
+| `slot`  | string | Required. Alphanumerics, `_`, `-`, length 1..64 |
+| `title` | string | Optional. The save title                        |
+
+**Minimal example**
+
+```text
+say "Want to leave a record here?"
+menu "Save where?"
+  "Save 1" -> save_slot_1
+  "Never mind" -> back_to_story
+```
+
+```text
+label save_slot_1:
+  save "slot_1" title "Rainy Night · The Dock"
+  jump back_to_story
+```
+
+**Common mistakes**
+
+:::caution
+`save` itself **creates no wait point**; after the declaration the story keeps going. The actual write to disk happens the moment the next waiting screen is created — the screen the player sees and the save point must be the same one.
+
+So do not put `save` at the end of a column or right before a `jump`. If no next wait point is reached when the write happens, the declaration is wasted.
+
+An invalid slot name reports `save-invalid-slot` ("save.slot is required and the slot name must be valid (alphanumerics/\_/-, 1..64)"). With no `SavePort` wired up it reports `save-unavailable`.
+
+Saving inside a `type=ui` column stores **the game progress from before entering the UI**, not the UI state. Such columns do not enter history anyway, so the engine replaces the current coordinate with the pre-entry coordinate.
+
+A non-serializable value in state (for example an object mutated in place) rejects the save with `value-not-serializable` ("state contains a non-serializable value; save rejected: … (check whether an already-written value was modified in place; replace the whole value instead)").
+:::
+
+</OpCard>
+
+### load
+
+<OpCard name="load" summary="Load a save and teleport to its coordinate." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+load "slot_1"
+```
+
+**Arguments**
+
+| Field  | Type   | Description            |
+| ------ | ------ | ---------------------- |
+| `slot` | string | Required and non-empty |
+
+**Minimal example**
+
+```text
+menu "Load which save?"
+  "Save 1" -> load_slot_1
+```
+
+```text
+label load_slot_1:
+  load "slot_1"
+```
+
+**Common mistakes**
+
+:::caution
+An empty `slot` reports `load-invalid` ("load.slot is required (slot name)"). It is more lenient than `save` — it only requires a non-empty string and does not validate the character set.
+
+Loading is asynchronous: after the command returns, the engine suspends, waits for `importSave` to finish, then replays from the save coordinate to rebuild the waiting screen. So nothing written after `load` ever executes.
+
+When the save does not match the current story, the whole save is rejected with `save-story-mismatch` ("this save does not match the current story version (column definitions changed)") — this happens if a column was deleted or renamed.
+
+Structural damage reports `save-format` ("save structure is incomplete"); a history checkpoint missing fields reports "save history checkpoint is incomplete (state/rngState missing or wrong type)". None of these enter a recovery flow — they are rejections, not partial recoveries.
+:::
+
+</OpCard>
+
+### auto_save
+
+<OpCard name="auto_save" summary="Toggle automatic saving." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+auto_save true
+auto_save false
+```
+
+**Arguments**
+
+| Field     | Type    | Description                         |
+| --------- | ------- | ----------------------------------- |
+| `enabled` | boolean | Required. Must be `true` or `false` |
+
+**Minimal example**
+
+```text
+auto_save true
+say "From here on, progress is recorded automatically."
+```
+
+**Common mistakes**
+
+:::caution
+A non-boolean `enabled` reports `auto_save-invalid` ("auto_save.enabled must be a boolean (true/false)"). The string `"true"` does not work either.
+
+It writes the system key `__auto_save` (a reserved key — an author's `set` cannot write it; only the `auto_save` op can change it). This switch goes into saves with the state and is restored as-is on load — auto-save that was on before the save point is still on after loading; you do not need to re-enable it.
+
+The consumption point is when a waiting screen is created. Once enabled, every waiting screen writes once to the `auto` slot; saves already written before you disable it are not deleted.
+
+A failed auto-save reports `save-write-failed` ("auto-save write failed: …"), emitted on the `engine.error` event.
+:::
+
+</OpCard>
+
+### save_delete
+
+<OpCard name="save_delete" summary="Delete one slot." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+save_delete "slot_1"
+```
+
+**Arguments**
+
+| Field  | Type   | Description                                       |
+| ------ | ------ | ------------------------------------------------- |
+| `slot` | string | Required. Validation rules are the same as `save` |
+
+**Minimal example**
+
+```text
+save_delete "slot_1"
+notify "Save 1 deleted"
+```
+
+**Common mistakes**
+
+:::caution
+An invalid slot name reports `save_delete-invalid` ("save_delete.slot is required and the slot name must be valid"). With no `SavePort` wired up it reports `save-unavailable`.
+
+Deletion is asynchronous; the command itself moves on immediately. A failed delete reports `save-delete-failed` ("failed to delete slot slot_1: …"), also on `engine.error`.
+
+Deleting **does not move the high-water mark**: deleting the newest save does not make the remaining saves "able to roll further back". This prevents a delete from also rolling back the rollback baseline.
+:::
+
+</OpCard>
+
+## Where slots come from
+
+`slot` is a string; the engine only validates the format and does not maintain a slot list. The default slot names are `slot_1` through `slot_N`, where `N` is set by `shell.saves.slots` in `project.json` (default 6, range 1..32).
+
+`slotIds(count)` generates names by this rule. When a host builds a save screen, listing slots with it keeps the names aligned with what the command surface writes.
+
+Auto-save writes to the `auto` slot — it is not part of the `slot_N` sequence.
+
+## What's in a save
+
+A save contains: the save coordinate (column id + command index), all global variables, the **column-level scope**, the RNG state, the function table, and the history checkpoint list.
+
+Column-level variables must travel with the save: their declaration statements come before the save coordinate, and replaying from the coordinate never reaches those commands. Block-level scope and the frame stack do not travel with the save; they are rebuilt by replay — a wait point inside a block rolls its coordinate back to the block's controlling command, and re-entering the block body re-declares them. So commands on the replay path must be safe to run again: `define` is idempotent (skipped if it already exists), and `random`'s seed is in the state so it draws the same sequence of values.
+
+Saves from before the fix have no `scope` field; on load they are treated as an empty column-level layer and remain readable.
+
+See [Save System](/concepts/saves/) for details.

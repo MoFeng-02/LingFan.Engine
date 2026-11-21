@@ -1,0 +1,194 @@
+---
+title: Flow & Jump Ops
+description: Signatures, arguments and common mistakes for jump, navigate, func, call and return. None of the five creates a wait point — the landing command does.
+---
+
+import OpCard from "../../../../../components/OpCard.astro";
+
+This family decides "where the next line is". `jump` and `navigate` change columns, `func` and `call` reuse a block of commands, and `return` hands control back. None of the five creates a wait point — wait points are created by the command you land on.
+
+## Ops
+
+### jump
+
+<OpCard name="jump" summary="Jump to another column, regardless of the column's type." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+jump target-column-name
+```
+
+**Arguments**
+
+| Field    | Type   | Description                                           |
+| -------- | ------ | ----------------------------------------------------- |
+| `target` | string | Required. The target column id; unquoted in text form |
+
+**Minimal example**
+
+```text
+say "The door closed behind you."
+jump chapter_two
+```
+
+**Common mistakes**
+
+:::caution
+If the target column does not exist, the engine reports `unknown-column` ("target column does not exist: chapter_two") and the story stops here.
+
+`jump` only changes the column; it does not clear dialogue leftovers — the previous line stays on screen. To dismiss the dialogue when changing columns, use `navigate`. It does not create a checkpoint — checkpoints are created by the landing command, such as `say` or `menu`.
+
+The jump target is a column id, not a file name. The two can differ: a column named `chapter1_start` living in `Stories/chapter1/chapter1.story` is perfectly valid.
+:::
+
+</OpCard>
+
+### navigate
+
+<OpCard name="navigate" summary="Switch to a scene column, optionally naming the scene." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+navigate "target-column" [scene "scene-name"]
+```
+
+**Arguments**
+
+| Field   | Type   | Description                                       |
+| ------- | ------ | ------------------------------------------------- |
+| `path`  | string | The target column id                              |
+| `scene` | string | The scene name. When both are given, `scene` wins |
+
+**Minimal example**
+
+```text
+navigate "stage_demo"
+```
+
+**Common mistakes**
+
+:::caution
+Giving neither `path` nor `scene` reports `navigate-invalid` ("navigate needs a path (scene is optional; both are target column ids)").
+
+When both are given, `scene` wins and `path` is ignored. That is counter-intuitive, so do not fill in both.
+
+`navigate` and `jump` differ in exactly one way: `navigate` clears dialogue leftovers (text, speaker, color) before changing columns, while `jump` does not, so the previous line stays on screen. Semantically `navigate` means "change to a different spatial layer" and `jump` means "move the flow forward"; neither creates a checkpoint. Writing `scene "target"` inside a column is equivalent to `navigate "target"`.
+:::
+
+</OpCard>
+
+### func
+
+<OpCard name="func" summary="Declare a reusable block of commands." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+func name(param, param)
+  commands…
+```
+
+**Arguments**
+
+| Field    | Type     | Description                                                                                     |
+| -------- | -------- | ----------------------------------------------------------------------------------------------- |
+| `name`   | string   | Required. May be Chinese; the first character is a letter, an underscore or a Chinese character |
+| `params` | string[] | The parameter name list, bound by position                                                      |
+| `body`   | op[]     | The function body                                                                               |
+
+**Minimal example**
+
+```text
+func give_money(amount)
+  set "player.gold" += {amount}
+
+call give_money(30)
+```
+
+**Common mistakes**
+
+:::caution
+Functions are registered at **execution time**, not load time. Calling a `func` before the line that declares it reports `call-unknown-target`.
+
+Re-registering a function of the same name with different parameters or body reports `func-duplicate` ("function registered twice: give_money"). It is only allowed when the parameters match position by position and the serialized body is identical too — loading a save replays the `func` again, and that pass does not count as a duplicate.
+
+A `return` inside the body truncates the whole function frame. `let` / `local` declared inside a function are gone once it ends.
+:::
+
+</OpCard>
+
+### call
+
+<OpCard name="call" summary="Call a function, or run a flow column once as a sub-procedure." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+call target
+call function-name(arg, arg)
+```
+
+**Arguments**
+
+| Field    | Type      | Description                                                       |
+| -------- | --------- | ----------------------------------------------------------------- |
+| `target` | string    | Required. Looked up as a function name first, then as a column id |
+| `args`   | unknown[] | Only used on the function path                                    |
+
+**Minimal example**
+
+```text
+call give_money(30)
+call common_intro
+```
+
+**Common mistakes**
+
+:::caution
+If neither lookup finds anything, the engine reports `call-unknown-target` ("call target does not exist: xxx (neither a func nor a column)").
+
+A scene column target is rejected with `call-invalid-target` ("call can only call flow columns (flow); xxx is a scene column (scene) — use navigate/jump to switch spatial layers"). The reason is direct: `call` must return to the call site and continue, and a scene column is a spatial layer you cannot return from.
+
+A wrong argument count reports `arity-error` ("function give_money expects 1 argument, got 2"). Arguments bind by position; there are no defaults and no named arguments.
+:::
+
+</OpCard>
+
+### return
+
+<OpCard name="return" summary="End the current function or flow column and hand control back to the call site." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+return
+return value
+```
+
+**Arguments**
+
+| Field   | Type    | Description                |
+| ------- | ------- | -------------------------- |
+| `value` | unknown | Optional. The return value |
+
+**Minimal example**
+
+```text
+func check_gold()
+  assert {player.gold >= 30} "Not enough gold"
+  return
+
+call check_gold()
+```
+
+**Common mistakes**
+
+:::caution
+A `return` outside a function body reports `return-outside-func` ("return must be inside a func body"). It does not end the whole story for you.
+
+`return` searches down from the top of the frame stack for the nearest function frame and discards that frame together with any frames inside it — commands in the function that had not run are not made up.
+:::
+
+</OpCard>

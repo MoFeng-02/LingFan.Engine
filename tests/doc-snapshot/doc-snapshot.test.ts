@@ -136,10 +136,12 @@ describe("文档快照·数字与清单", () => {
     }
   });
 
-  it("en-fallback-list：英文真翻译与回退清单公示", () => {
+  it("en-full-coverage：英文全 40 篇真翻译公示，无回退清单", () => {
     const enIndex = read("docs/src/content/docs/en/index.mdx");
     expect(enIndex).toContain("Translation status");
-    expect(enIndex).toContain("25 Chinese pages");
+    expect(enIndex).toContain("all 40 documentation pages");
+    expect(enIndex).not.toContain("25 Chinese pages");
+    expect(enIndex).not.toContain("English coverage is partial");
   });
 
   it("docs-body-page：列身体专页存在且与代码一致（恰两层/SceneEnv/submit）", () => {

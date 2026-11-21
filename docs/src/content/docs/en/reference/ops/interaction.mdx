@@ -1,0 +1,241 @@
+---
+title: Interaction & Minigame Ops
+description: Signatures, arguments and common mistakes for menu, input, minigame and interaction. All four create wait points, and none of them is cleared by the engine itself.
+---
+
+import OpCard from "../../../../../components/OpCard.astro";
+
+All four create wait points, and **the power to clear them lives outside the engine** — the player picks an option, the player types text, the host fills in a result. The engine writes the waiting state and stops, continuing only when someone calls the command surface.
+
+Their checkpoints are all committed the moment the wait is created, so all four screens can be rolled back and auto-saved.
+
+## menu
+
+<OpCard name="menu" summary="Present options; the player picks one and jumps to the matching column." waits rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+menu "Where to next?"
+  "Go to the dock" -> dock
+  "Go home" -> home
+```
+
+`menu` is a block statement: a prompt line followed by indented option lines, each of the form `"text" -> target-column`.
+
+**Arguments**
+
+| Field     | Type   | Description                                        |
+| --------- | ------ | -------------------------------------------------- |
+| `prompt`  | string | Optional. The menu prompt                          |
+| `options` | array  | Required, at least one. Each `{ text, target }`    |
+| `z`       | number | Optional. Instance z for this menu (choices layer) |
+
+**Minimal example**
+
+```text
+label crossroad:
+  say "Two roads."
+  menu "Which way?"
+    "Left" -> left_way
+    "Right" -> right_way
+```
+
+**Common mistakes**
+
+:::caution
+There must be **at least one option**. An empty block body is rejected at parse time with "menu needs at least one option" — the whole file fails to open, not just at runtime when reached.
+
+The target column is **not quoted**. Writing `"Go to the dock" -> "dock"` fails to parse, reporting the option-grammar hint "menu option grammar: \"text\" -> target-column".
+
+If the target column **does not exist**, `unknown-column` ("target column does not exist: dock") is reported only the moment the player clicks — the menu opens fine and blows up on click. This kind of error is invisible to static checks; when renaming columns, remember to search globally.
+
+Option text is translated; the target column is not. The target column name is a column id, stored in `__menu_targets` and kept as-is.
+
+What the player picked is **not written to a variable**. To remember the choice, `set` it yourself in the target column. `__menu_selected` is internal engine bookkeeping — do not read it as a business variable.
+
+The `menu` op and a `type=ui` column are **not the same thing**. The former is a command: it builds a checkpoint, and rollback lands back on the menu to re-pick. The latter is a column's runtime semantics: it takes no part in history and does not enter saves.
+:::
+
+</OpCard>
+
+## input
+
+<OpCard name="input" summary="Ask the player for a line of text and store it in a variable." waits rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+input "What's your name?" store="player.name"
+input "Password" store="code" z=20
+input "Role" store="role" options=[{"text": "Traveler", "value": "traveler"}, {"text": "Merchant", "value": "merchant"}]
+```
+
+**Arguments**
+
+| Field     | Type     | Description                               |
+| --------- | -------- | ----------------------------------------- |
+| `prompt`  | string   | Required. The input prompt                |
+| `store`   | string   | Required. The variable name               |
+| `options` | object[] | Optional. Shortcut candidates; each below |
+| `z`       | number   | Optional. Instance z (choices layer)      |
+
+Each item of `options`:
+
+| Field   | Type   | Description                                                         |
+| ------- | ------ | ------------------------------------------------------------------- |
+| `text`  | string | Required, non-empty. The label shown on the candidate (translated)  |
+| `value` | string | Required, non-empty. The value written to `store` as-is when picked |
+
+**Minimal example**
+
+```text
+label ask_name:
+  input "First things first: what's your name?" store="player.name"
+  say "Hello, {player.name}!"
+```
+
+**Common mistakes**
+
+:::caution
+`prompt` and `store` are **both required**. Missing either is rejected at parse time in text form with "input needs prompt and store"; JSON form reports a `.prompt` / `.store` issue.
+
+What is written is a **global** variable. The `.` in `store="player.name"` is only a naming convention, not nesting — it is not "the `name` under a `player` object", just a key literally named `player.name`.
+
+**Candidates are shortcuts, not a single-choice question.** With `options`, buttons appear beside the input box; clicking one submits its `value` as the input. The player can still ignore the candidates and type — both paths share the same submit exit. For "pick exactly one of three", use `menu` (`menu` picks a column id; `input` candidates fill a variable value — a deliberate split).
+
+`value` **does not enter the translation table**: under multilingual play the variable value the story logic reads does not drift with language; only `text` is translated. A candidate missing `text` or `value` (including empty strings) is rejected at parse time with "input candidate options[i] needs text and value" — it does not silently degrade to an empty value.
+
+Clearing it is done by the host calling `engine.input("A-Lan")`. Calling it outside an input wait reports `input-invalid` ("input is only valid during an input wait (current \_\_waiting=dialog)"); if the waiting state is present but `store` is lost it reports `input-state-corrupt` ("input wait is missing its store target") — the latter is internal engine inconsistency; report it as a bug if you see it.
+
+An empty string is a legal input value. If the player confirms without typing anything, `""` is what gets written.
+:::
+
+</OpCard>
+
+## minigame
+
+<OpCard name="minigame" summary="Hand control to a minigame registered by the host." waits rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+minigame "coin_flip" on_success "win" on_fail "lose"
+minigame "fishing" config {difficulty: 2} reward {fish: 1} on_success "caught"
+```
+
+**Arguments**
+
+| Field        | Type   | Description                                |
+| ------------ | ------ | ------------------------------------------ |
+| `game`       | string | Required. The minigame identifier          |
+| `config`     | object | Optional. Passed through to the host as-is |
+| `on_success` | string | Optional. Target column on success         |
+| `on_fail`    | string | Optional. Target column on failure         |
+| `reward`     | array  | Optional. A `{key, value}` pair array      |
+| `z`          | number | Optional. Instance z (minigame layer)      |
+
+**Minimal example**
+
+```text
+label fishing_spot:
+  say "Something's moving on the water."
+  minigame "fishing" on_success "caught" on_fail "missed" reward {fish: 1}
+```
+
+**Common mistakes**
+
+:::caution
+`game` has naming restrictions: starts with a lowercase letter, contains only lowercase letters, digits, `_`, `-`, at most 32 characters. Writing `"CoinFlip"` reports `minigame-invalid` ("minigame.game is required and must be a valid system identifier (matching `/^[a-z][a-z0-9_-]{0,31}$/`)").
+
+`reward` is a **pair array**, not an object — JSON form must be written as `[{ "key": "fish", "value": 1 }]`. The text form `reward {fish: 1}` is converted to that shape by the parser, and key order is entry order. `value` supports `{expr}`, evaluated when this command executes, so rollback replay gets the same number.
+
+`reward` is **written only on success**. Failure writes no reward, but `state` is still written — you still get scored for losing.
+
+When `on_success` / `on_fail` are omitted, the column continues without jumping. An empty string reports "minigame.on_success must be a non-empty string (target column)" — note this is different from omitting it; an empty string is an error.
+
+When the identifier is **not in the host registry, there is no default fallback**. The template host shows an "unregistered" notice; it does not pretend the game was played. So if the story writes `minigame` and the host has not registered it, the player is stuck on this screen.
+:::
+
+</OpCard>
+
+## interaction
+
+<OpCard name="interaction" summary="Hand the whole screen to an external gameplay system." waits rollback="full" since="0.1.0">
+
+**Signature**
+
+```json
+{
+  "op": "interaction",
+  "system": "battle",
+  "config": { "enemy": "slime" },
+  "on_success": "battle_win",
+  "on_fail": "battle_lose"
+}
+```
+
+**Arguments**
+
+| Field        | Type   | Description                                       |
+| ------------ | ------ | ------------------------------------------------- |
+| `system`     | string | Required. System identifier, same rules as `game` |
+| `config`     | object | Optional. Passed through to the host as-is        |
+| `on_success` | string | Optional. Target column                           |
+| `on_fail`    | string | Optional. Target column                           |
+| `z`          | number | Optional. Instance z (minigame layer)             |
+
+**Minimal example**
+
+```json
+{
+  "op": "interaction",
+  "system": "battle",
+  "config": { "enemy": "slime", "hp": 40 },
+  "on_success": "battle_win",
+  "on_fail": "battle_lose"
+}
+```
+
+**Common mistakes**
+
+:::caution
+**It has no text form.** `minigame` can be written as one line of text; `interaction` cannot — `interaction` appearing in text form reports "statement not yet supported by the text projection: interaction". In story files this one can only be written in JSON form.
+
+When filling in the result, include the system identifier: `engine.resolveInteraction("battle", { outcome: "success" })`. A mismatch with the originating call reports `interaction-system-mismatch` ("resolveInteraction system identifier mismatch: expected battle, got fishing").
+
+`on_success` / `on_fail` are type-checked but not checked for non-empty — an empty string passes validation, then reports column-not-found on the jump. This is one inconsistency with `minigame`; give a real column name when writing it.
+
+Passing an array, `null` or a non-object as `config` reports "interaction.config must be an object (passed through to the host as-is)". An empty object or omitting it is fine.
+
+Keys in `state` land under the `game.<system>.` namespace. If any one key cannot be written, the whole batch is not written and the pending state is kept — fix it and fill in again.
+:::
+
+</OpCard>
+
+## What the four share
+
+**Waiting-state strings.** Each writes its own waiting state: `menu` → `"menu"`, `input` → `"input"`, `minigame` → `"minigame"`, `interaction` → `"interaction"`. The host can use `__waiting` to decide what to show.
+
+**Mount sequence and abort signal.** `minigame` and `interaction` carry `seq` and `signal` when they emit mount events. Rolling back to this screen remounts — a new `seq`, a new `signal`, and the old `signal.aborted` set. So a factory must rebuild its state on every mount.
+
+**The three-level `z` chain.** `z` is an optional instance-level override and must be a non-negative finite number. An invalid value reports `instance-z-invalid` ("instance-level z must be a non-negative finite number, got -1") and **touches no state** — the command fails in place, never half-written. Omitting `z` deletes the key back to the layer default, so one command's override does not leak into the next.
+
+**The command surface for filling results**:
+
+| Wait          | How to fill                                 |
+| ------------- | ------------------------------------------- |
+| `menu`        | `engine.choose(target-column)`              |
+| `input`       | `engine.input(value)`                       |
+| `minigame`    | `engine.resolveMinigame(result)`            |
+| `interaction` | `engine.resolveInteraction(system, result)` |
+
+Calling any of these in the wrong waiting state is fail-closed: each reports its own `*-invalid`, writing nothing and advancing nothing.
+
+See [Minigames & Gameplay Systems](/concepts/minigame/) for mechanism details and [Menus, Input & Notifications](/guides/menu-input/) for step-by-step usage.
+
+## Next steps
+
+- [Minigames & Gameplay Systems](/concepts/minigame/) — factory signatures, result shapes, and how gameplay state enters saves.
+- [Rollback & History](/concepts/rollback/) — why rollback remounts minigames.
+- [Template Capability Boundaries](/reference/template-boundaries/) — which waiting-state exits the template host wires up.

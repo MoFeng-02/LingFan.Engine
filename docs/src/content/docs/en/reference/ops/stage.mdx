@@ -1,0 +1,605 @@
+---
+title: Stage & Element Ops
+description: Signatures, arguments and common mistakes for element, show, hide, clear, background, zindex, style, window, animate, animate_block, transition, shake, text_typewriter and mount.
+---
+
+import OpCard from "../../../../../components/OpCard.astro";
+
+These ops only write state; the visuals are drawn by the display layer. The engine maintains an element list and a handful of screen-effect state keys; how they are rendered depends on which display layer the host wires up.
+
+Elements are addressed by `id` or `name`, with **`id` taking priority**. If neither hits, most commands fail closed, but `hide` is idempotent.
+
+## Element visibility
+
+### element
+
+<OpCard name="element" summary="Declare a stage element." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+element text id="title" value="Prologue" x=50 y=100
+element image id="bg" src="Images/bg.png" stretch="cover"
+element rect id="mask" width=400 height=300 color="#000000" opacity=0.6
+```
+
+**Arguments**
+
+| Field   | Type   | Description                                                        |
+| ------- | ------ | ------------------------------------------------------------------ |
+| `type`  | string | Required. One of the element types (`text` / `image` / `rect` / …) |
+| `props` | object | Element props; keys must be in the prop table for that type        |
+
+`id` and `name` are addressing keys, not props. `id` must be unique within a column; `name` may repeat (used for batch addressing).
+
+**Minimal example**
+
+```text
+label opening:
+  element text id="title" value="Chapter One" x=100 y=80
+  element image id="hero" src="Images/hero.png" x=200 y=300
+```
+
+**Common mistakes**
+
+:::caution
+`type` must be a known element type; an unknown one reports `element-unknown-type` ("unknown element type: sprite").
+
+Prop keys must be in that type's prop table; an unknown key reports `element-unknown-attr` ("text has no prop zzz"). One misspelled letter fails the whole command.
+
+A duplicate `id` reports `element-duplicate-id` ("duplicate element id: title").
+
+`element` declares; `show` is a shorthand for declaring an image. Both write the element list; there is no essential difference.
+:::
+
+</OpCard>
+
+### show
+
+<OpCard name="show" summary="Shorthand for declaring an image element." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+show "Images/ache.png" id="ache"
+show "Images/ache.png" id="ache" x=100 y=200 opacity=0.8
+```
+
+**Arguments**
+
+| Field                                                   | Type   | Description                   |
+| ------------------------------------------------------- | ------ | ----------------------------- |
+| `src`                                                   | string | Required. Image resource path |
+| `id`                                                    | string | Optional. Element id          |
+| `name`                                                  | string | Optional. Element name        |
+| `x` `y` `opacity` `rotation` `scale` `stretch` `zindex` | —      | Optional image props          |
+
+**Minimal example**
+
+```text
+show "Images/ache.png" id="ache" x=100 y=200
+```
+
+**Common mistakes**
+
+:::caution
+`show` can only show images. For other types use `element`.
+
+A duplicate `id` likewise reports `element-duplicate-id`. To change an already-shown image's props, use `style` rather than another `show`.
+
+The resource path is resolved relative to `Resources/`; a missing file reports a resource error on the host side, not at engine parse time.
+:::
+
+</OpCard>
+
+### hide
+
+<OpCard name="hide" summary="Remove an element." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+hide "ache"
+hide name="npc"
+```
+
+**Arguments**
+
+| Field    | Type   | Description                    |
+| -------- | ------ | ------------------------------ |
+| `target` | string | Required. Element id           |
+| `name`   | string | Optional. Batch-remove by name |
+
+**Minimal example**
+
+```text
+show "Images/ache.png" id="ache"
+say "He appeared."
+hide "ache"
+```
+
+**Common mistakes**
+
+:::caution
+`hide` is **idempotent**: if the target does not exist it does nothing and reports no error. This differs from `style`/`zindex` — removing something already gone is not an error.
+
+Addressing by `name` removes all same-named elements in one batch.
+
+`hide` removes the element from the list; it is not "set opacity to 0". To hide temporarily while keeping the element, use `style` to change `opacity`.
+:::
+
+</OpCard>
+
+### clear
+
+<OpCard name="clear" summary="Clear all elements of the current column." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+clear
+```
+
+**Arguments**
+
+None.
+
+**Minimal example**
+
+```text
+label next_scene:
+  clear
+  background "Images/room.png"
+```
+
+**Common mistakes**
+
+:::caution
+`clear` empties the **whole** element list, not a single element. To remove one, use `hide`.
+
+It does not clear the background. The background is a separate state key; use `background ""` to clear it.
+
+It does not clear audio, video or mounted UI either — those each have their own state keys.
+:::
+
+</OpCard>
+
+### background
+
+<OpCard name="background" summary="Set the stage background image." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+background "Images/night.png"
+background ""
+```
+
+**Arguments**
+
+| Field | Type   | Description                               |
+| ----- | ------ | ----------------------------------------- |
+| `src` | string | Required. Image path; empty string clears |
+
+**Minimal example**
+
+```text
+background "Images/night.png"
+say "Night fell."
+```
+
+**Common mistakes**
+
+:::caution
+The background is not an element; it is a standalone state key. `clear` does not clear it; use `background ""`.
+
+An empty string clears the background; a non-empty string sets it. There is no separate "clear background" command.
+:::
+
+</OpCard>
+
+### zindex
+
+<OpCard name="zindex" summary="Change an element's stacking order." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+zindex "curtain" value=100
+zindex name="npc" value=50
+```
+
+**Arguments**
+
+| Field    | Type   | Description                    |
+| -------- | ------ | ------------------------------ |
+| `target` | string | Required. Element id           |
+| `value`  | number | Required. Stacking order value |
+| `name`   | string | Optional. Batch-change by name |
+
+**Minimal example**
+
+```text
+element rect id="curtain" width=400 height=300 color="#000"
+zindex "curtain" value=100
+```
+
+**Common mistakes**
+
+:::caution
+If the target does not hit, `zindex-target-not-found` is reported ("zindex hit no element: curtain") — this is **not idempotent**, unlike `hide`.
+
+Addressing by `name` batch-changes all same-named elements.
+:::
+
+</OpCard>
+
+### style
+
+<OpCard name="style" summary="Change an element's props." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+style "hud" props={opacity: 0.5}
+style "ache" props={x: "20%", opacity: 1}
+```
+
+**Arguments**
+
+| Field    | Type   | Description                                      |
+| -------- | ------ | ------------------------------------------------ |
+| `target` | string | Required                                         |
+| `props`  | object | Required. Keys must be in the element prop table |
+
+**Minimal example**
+
+```text
+show "Images/ache.png" id="ache"
+style "ache" props={opacity: 0.4, rotation: 8}
+```
+
+**Common mistakes**
+
+:::caution
+`props` keys **must** be names in the element prop table. Writing `props={width2: 100}` reports `style-unknown-attr` ("style unknown element prop: width2"). One misspelled letter fails the whole command.
+
+The merge is a **shallow merge**: `style "ache" props={opacity: 0.4}` changes only `opacity`, keeping other props. But if you pass a nested object, the whole sub-object is replaced — it is not a deep merge.
+
+Passing an array, `null` or a non-object to `props` reports `style-invalid` ("style needs target (non-empty) and props (object)"). An empty object `props={}` is legal — it changes nothing.
+
+If the target does not hit, `style-target-not-found` is reported; also not idempotent.
+
+In text form `props` is written as a brace dictionary, and parsing is more lenient than JSON: a trailing comma (`props={opacity: 0.5,}`) is ignored without error; a fragment without a colon (`props={opacity}`) is silently dropped.
+:::
+
+</OpCard>
+
+### window
+
+<OpCard name="window" summary="Control dialogue-box visibility." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+window hide
+window show
+window auto
+```
+
+**Arguments**
+
+| Field  | Type   | Description                               |
+| ------ | ------ | ----------------------------------------- |
+| `mode` | string | Required. One of `auto` / `show` / `hide` |
+
+**Minimal example**
+
+```text
+window hide
+show "Images/letter.png" id="letter"
+say "The letter had only one line."
+window auto
+```
+
+**Common mistakes**
+
+:::caution
+Any other `mode` value reports `window-invalid` ("window.mode must be \"auto\" | \"show\" | \"hide\"") — note the quotes; the error text includes them.
+
+`auto` follows the dialogue state: shown when there is a `say`, hidden when there is none. `show` and `hide` are forced overrides — once set they persist until another `window` is written.
+
+It **only writes state**; the actual DOM visibility belongs to the display layer. So if the host has not implemented that layer, `window hide` does nothing.
+
+`window` is also one of the element type names (one of the 36 is a `window` container). A bare word `window` in a `scene` column parses as this op by **statement priority**, not as an element — to write a same-named element you must add the prefix explicitly: `element window x=0 y=0`.
+:::
+
+</OpCard>
+
+## Animation
+
+### animate
+
+<OpCard name="animate" summary="Single-property animation." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+animate "hud" property=opacity value=0 duration=0.5
+animate "ache" property=x value=100 easing=EaseInOutQuad
+```
+
+**Arguments**
+
+| Field      | Type   | Description                     |
+| ---------- | ------ | ------------------------------- |
+| `target`   | string | Required                        |
+| `property` | string | Required. Prop name             |
+| `value`    | number | Required. End value             |
+| `duration` | number | Optional, default 0.3. Seconds  |
+| `easing`   | string | Optional, default `EaseOutQuad` |
+
+**Minimal example**
+
+```text
+show "Images/ache.png" id="ache"
+animate "ache" property=opacity value=0 duration=1.2
+wait 1.2
+hide "ache"
+```
+
+**Common mistakes**
+
+:::caution
+`animate` **does not wait**. It writes an animation description into the queue and returns; the story continues. To "wait for the animation to finish" add your own `wait` with matching seconds.
+
+The start point is the element's **current** prop value. If the prop was never set, or is not a number (e.g. `x="10%"`), the start is treated as 0 — so animating from `10%` to `0` starts at 0, not at 10%.
+
+The target in the animation description is an **element id**, not a `name`. Addressing by `name` hits the first one and binds the animation to it; other same-named elements do not move.
+
+After playing, the engine writes the end value back to the element prop. So saves and rollback see the end state, never an intermediate frame. Rolling back mid-animation rolls back the whole animation description, returning the element to its pre-animation position.
+
+An empty `property` or a non-finite `value` reports `animate-invalid` ("animate needs property (non-empty) and value (finite number)"). A target miss reports `animate-target-not-found`.
+:::
+
+</OpCard>
+
+### animate_block
+
+<OpCard name="animate_block" summary="Animate several properties at once." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+animate_block "hud" x=100 opacity=1 duration=0.4
+animate_block "ache" scale=1.2 rotation=15 duration=0.6 easing=EaseOutBack
+```
+
+**Arguments**
+
+| Field                                | Type   | Description                     |
+| ------------------------------------ | ------ | ------------------------------- |
+| `target`                             | string | Required                        |
+| `x` `y` `opacity` `rotation` `scale` | number | Give at least one               |
+| `duration`                           | number | Optional, default 0.3           |
+| `easing`                             | string | Optional, default `EaseOutQuad` |
+
+**Minimal example**
+
+```text
+show "Images/ache.png" id="ache"
+animate_block "ache" x=200 y=50 opacity=0.8 duration=0.8
+```
+
+**Common mistakes**
+
+:::caution
+Only these five properties can be animated: `x`, `y`, `opacity`, `rotation`, `scale`. Writing `animate_block "hud" width=200` reports "animate_block unknown argument: width" (command form reports `animate_block-unknown-field`, "animate_block unknown payload field: width") — `width` is a legal prop in the element prop table but not an animatable one. To change size use `style`.
+
+Giving none reports `animate_block-invalid` ("animate_block needs at least one property (x / y / opacity / rotation / scale)").
+
+Multiple properties start **simultaneously**, sharing one `duration`. It is not "move x then move y". For sequential motion write multiple `animate`s.
+
+Writing duplicate keys like `animate_block "ache" x=100 x=200` — JSON already takes the last one, and the engine does not error — but do not write it that way.
+:::
+
+</OpCard>
+
+## Screen effects
+
+### transition
+
+<OpCard name="transition" summary="Full-screen transition." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+transition "fade"
+transition "fade" duration=1.5
+```
+
+**Arguments**
+
+| Field      | Type   | Description                    |
+| ---------- | ------ | ------------------------------ |
+| `type`     | string | Required. Effect name          |
+| `duration` | number | Optional, default 0.5. Seconds |
+
+**Minimal example**
+
+```text
+transition "fade" duration=1.5
+background "Images/night.png"
+say "It's dark now."
+```
+
+**Common mistakes**
+
+:::caution
+`transition` does not wait; the effect is played by the display layer. To wait for it to finish before continuing, add a `wait`.
+
+`type` is an **effect name**, not a direction word like "fade in" or "fade out". The engine does not validate which effect names exist — `transition "whatever"` passes too; the bundled display layer makes no type distinction and plays the same opacity transition whatever name you write. Only an empty `type` reports `transition-invalid` ("transition.type must be a non-empty effect name").
+
+Only one transition runs at a time. Two consecutive `transition`s let the second supersede the first — the engine-side sequence number increments; the bundled display layer does not track sequence numbers, so when a transition is superseded mid-way the progress continues rather than restarting from zero.
+
+After playing, the display layer calls `transitionFinished()` to clear the state key. If it is not called the key stays set, but the next `transition`'s sequence number still increments, so functionality is unaffected.
+:::
+
+</OpCard>
+
+### shake
+
+<OpCard name="shake" summary="Screen shake." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+shake
+shake intensity=12 duration=0.6
+```
+
+**Arguments**
+
+| Field       | Type   | Description                    |
+| ----------- | ------ | ------------------------------ |
+| `intensity` | number | Optional, default 8. Pixels    |
+| `duration`  | number | Optional, default 0.5. Seconds |
+
+**Minimal example**
+
+```text
+se "Audio/thunder.mp3"
+shake intensity=14 duration=0.8
+say "The roof is rumbling."
+```
+
+**Common mistakes**
+
+:::caution
+Both arguments may be omitted — a bare `shake` line suffices, using defaults. This is the only one of the 12 presentation ops that can be written with no arguments at all.
+
+It does not wait; the shake runs in the background. When done, the display layer calls `shakeFinished()` to clear it.
+
+`intensity` has no upper-bound validation; `intensity=10000` passes. So does a negative number — it is just an offset, and a negative value shakes in the opposite direction.
+
+Like `transition`, two consecutive `shake`s let the latter supersede the former.
+:::
+
+</OpCard>
+
+### text_typewriter
+
+<OpCard name="text_typewriter" summary="Set the story-level typewriter switch and speed." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+text_typewriter enabled=true
+text_typewriter speed=40
+text_typewriter enabled=true speed=40
+```
+
+**Arguments**
+
+| Field     | Type    | Description                   |
+| --------- | ------- | ----------------------------- |
+| `enabled` | boolean | Optional. The switch          |
+| `speed`   | number  | Optional. Positive, chars/sec |
+
+**Minimal example**
+
+```text
+text_typewriter speed=60
+say "This line will type a bit faster."
+```
+
+**Common mistakes**
+
+:::caution
+`enabled` and `speed` — **give at least one**; giving neither reports "text_typewriter needs at least enabled or speed". Unlike `say`, it does not reset on every line shown — this command sets once, and all subsequent dialogue follows it.
+
+Giving only `enabled` keeps the speed unchanged; giving only `speed` keeps the switch unchanged. Writing `text_typewriter speed=40` once does not overwrite a previous `enabled=false`.
+
+`speed` must be positive; 0 or a negative number reports "text_typewriter.speed must be positive (chars/sec)". Note the `duration` convention "0 means instant" does not apply here — to turn off the typewriter use `enabled=false`.
+
+This sets a **story-level** setting. The player's text-speed preference has higher priority and overrides it. So once the player adjusts speed in the settings panel, the story's `text_typewriter` no longer takes effect — this is intentional.
+
+It writes the system key `__typewriter`, which travels with saves and rollback. Rolling back before this command also rolls back the typewriter setting.
+:::
+
+</OpCard>
+
+## Mounted UI
+
+### mount
+
+<OpCard name="mount" summary="Show or hide a host UI component." rollback="full" since="0.3.0">
+
+**Signature**
+
+```text
+mount hub true
+mount hub false
+mount map true props={"scene": "forest"}
+```
+
+```ts
+import hub from "../../ui/hub/hub.vue";
+
+mount(hub, true); // show
+mount(hub, false); // hide
+mount(map, true, { scene: "forest" }); // with props
+```
+
+**Arguments**
+
+| Field     | Type                      | Description                                                 |
+| --------- | ------------------------- | ----------------------------------------------------------- |
+| `name`    | string                    | Required. UI name, i.e. the directory name under `src/ui/`  |
+| `visible` | boolean                   | Required. `true` mounts, `false` unmounts                   |
+| `props`   | `Record<string, unknown>` | Optional. Inputs passed to the component; must be JSON-safe |
+
+**Minimal example**
+
+```text
+label chapter_one:
+  mount hub true
+  say "A hint box appeared on screen."
+  mount hub false
+  say "Tucked away."
+```
+
+**Common mistakes**
+
+:::caution
+**There is no toggle form**. `visible` is required; writing `mount hub` reports "mount needs true|false (visibility is required, there is no toggle form)". For "press once to toggle" use two branches; do not expect it to remember the previous state.
+
+**Hiding is not `display:none`**. `visible=false` removes the component from the render tree; the host no longer renders it and its lifecycle ends. Another `mount(x, true)` is a fresh mount — the component's internal state is not automatically preserved; anything to keep must be persisted by the component itself via `gameState`.
+
+**`props` is a whole replacement, not a shallow merge**. A second `mount hub true props={"a": 1}` replaces the previous inputs wholesale, not "change only a". To keep old values, write them all in the command.
+
+**`props` must be JSON-safe**. Functions, `Map`, `Date`, `undefined` and circular references all report "mount props is not a JSON-safe value", and on failure no state changes at all. This is so it can travel with saves.
+
+**`name` must be a legal short identifier**: starts with a lowercase letter, followed by lowercase letters/digits/`_`/`-`, 1..32 characters. Writing `mount Hub true` reports "mount name is not legal".
+
+**This op only writes state; it does not know components**. The engine does not know what `hub` looks like or how many buttons it has; it only maintains "which name should appear on the render tree, with which inputs". Actually mounting the component is the host's job — the host reads the `__mounts` table and looks up the `uis` name table. So a misspelled name is legal on the engine side; only the type phase (the string argument of `mount("…")`) and the build phase (the column's `uis` declaration) can catch it.
+
+**One whole-table value, traveling with snapshots/saves/rollback**. Rolling back before a `mount` also rolls back visibility and inputs — same rule as instance tables like `audio_play`; there is no need to add "restore" commands in the story.
+:::
+
+</OpCard>
+
+## The two z rules
+
+Element stacking and layer stacking are two different things:
+
+- **Between elements**, instance `z` is compared: take `zindex`, else `order`, else fall back to declaration/append order (evaluated at one place during loading, `data/element.ts:157`). `order` is not exposed in the editor element form but is used by engine loading — do not treat it as a dead prop alongside `zindex`.
+- **Between layers**, configure `shell.layers`; stage, video, dialogue and choices each occupy a layer.
+
+So `zindex "curtain" value=999999` still cannot cover the dialogue box — it only ranks first within the stage layer. To cover dialogue you must change the layer configuration; see [Project manifest project.json](/reference/manifest/).
+
+## Next steps
+
+- [Stage elements](/concepts/elements/) — the 36 types, addressing rules, click actions.
+- [Interaction & minigame ops](/reference/ops/interaction/) — `menu` and `input` are also wait points.
+- [Project manifest project.json](/reference/manifest/) — how to configure layer z in `shell.layers`.

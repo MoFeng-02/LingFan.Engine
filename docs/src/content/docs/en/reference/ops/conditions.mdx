@@ -1,0 +1,423 @@
+---
+title: Condition & Loop Ops
+description: Signatures, arguments and common mistakes for if, while, for, foreach, switch, break, continue, assert and guard.
+---
+
+import OpCard from "../../../../../components/OpCard.astro";
+
+`if` and `switch` pick a branch; `while` / `for` / `foreach` repeat; `break` and `continue` control loop entry and exit; `assert` and `guard` halt when a condition does not hold. None of the nine creates a wait point.
+
+## Ops
+
+### if
+
+<OpCard name="if" summary="Run one block of commands based on a condition." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+if {condition}
+  commands…
+else if {condition}
+  commands…
+else
+  commands…
+```
+
+**Arguments**
+
+| Field  | Type             | Description                                            |
+| ------ | ---------------- | ------------------------------------------------------ |
+| `cond` | string           | The condition expression; wrapped in `{}` in text form |
+| `then` | command[]        | Runs when it matches                                   |
+| `elif` | `{cond, then}[]` | Checked in order; the first true one wins              |
+| `else` | command[]        | Runs when nothing matched                              |
+
+**Minimal example**
+
+```text
+if {player.gold >= 30}
+  say "Enough money."
+else
+  say "Still a little short."
+```
+
+**Common mistakes**
+
+:::caution
+The condition is evaluated **when this line executes**, not at load time. If the variable changes later, the decision changes with it.
+
+A branch body has its own block scope: a variable `let` inside it is gone once the branch ends. To keep a value alive, use `set`.
+
+If a branch body is empty or omitted, `if` simply continues — no frame is pushed and no error is raised.
+:::
+
+</OpCard>
+
+### while
+
+<OpCard name="while" summary="Repeat a block of commands while the condition is true." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+while {condition}
+  commands…
+```
+
+**Arguments**
+
+| Field  | Type      | Description                           |
+| ------ | --------- | ------------------------------------- |
+| `cond` | string    | Re-checked at the start of each round |
+| `body` | command[] | The loop body                         |
+
+**Minimal example**
+
+```text
+set "i" 0
+while {i < 3}
+  set "i" += 1
+  say "Round {i}."
+```
+
+**Common mistakes**
+
+:::caution
+If the loop body contains no command that creates a wait point, it runs to the end in one breath. The example above has a `say` each round, so each round stops and waits for the player.
+
+More than 10000 iterations reports `loop-limit` ("loop iterations exceeded the 10000 limit; aborted (infinite-loop safety net)"). This is a backstop, not an invitation to write 9999 rounds.
+
+When the condition is false no frame is pushed; execution simply continues.
+:::
+
+</OpCard>
+
+### for
+
+<OpCard name="for" summary="Iterate over an array." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+for "item" in {expression}
+  commands…
+```
+
+**Arguments**
+
+| Field  | Type      | Description                                            |
+| ------ | --------- | ------------------------------------------------------ |
+| `var`  | string    | Loop variable name, declared in block scope each round |
+| `in`   | string    | Must evaluate to an array                              |
+| `body` | command[] | The loop body                                          |
+
+**Minimal example**
+
+```text
+array "names" ["A-Che", "A-Lan", "A-Cen"]
+for "who" in {names}
+  say "{who} raised a hand."
+```
+
+**Common mistakes**
+
+:::caution
+If the `in` expression does not evaluate to an array, `type-error` is reported ("for's in expression must be an array"). An empty array is not an error — it is simply skipped.
+
+In text form, `in` must be followed by `{}`: `for "who" in {names}`. A bare variable name is treated as a literal.
+
+The loop variable is re-declared each round; changing it inside the body does not affect the next round.
+:::
+
+</OpCard>
+
+### foreach
+
+<OpCard name="foreach" summary="Look up an array variable by name and iterate it." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+foreach "item" in "variable-name"
+  commands…
+```
+
+**Arguments**
+
+| Field  | Type      | Description                                                 |
+| ------ | --------- | ----------------------------------------------------------- |
+| `var`  | string    | Loop variable name                                          |
+| `key`  | string    | The collection's variable name; a string, not an expression |
+| `body` | command[] | The loop body                                               |
+
+**Minimal example**
+
+```text
+foreach "who" in "names"
+  say "{who} raised a hand."
+```
+
+**Common mistakes**
+
+:::caution
+If the variable does not exist or is not an array, `type-error` is reported ("foreach collection names does not exist or is not an array").
+
+The only difference from `for` is the second argument: `for` takes an expression, `foreach` takes a variable name. The name must be quoted; writing `foreach "who" in names` looks for a literal named `names` and fails.
+
+To iterate the result of an expression (e.g. `{a.concat(b)}`), use `for` — `foreach` cannot do it.
+:::
+
+</OpCard>
+
+### switch
+
+<OpCard name="switch" summary="Pick one branch by value equality." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+switch {expression}
+case literal
+  commands…
+default
+  commands…
+```
+
+**Arguments**
+
+| Field     | Type              | Description                      |
+| --------- | ----------------- | -------------------------------- |
+| `on`      | string            | The expression being compared    |
+| `cases`   | `{value, body}[]` | Compared against `value` in turn |
+| `default` | command[]         | Runs when nothing matched        |
+
+**Minimal example**
+
+```text
+switch {player.route}
+case "north"
+  say "The north road is closed."
+case "south"
+  jump south_gate
+default
+  say "Stay put."
+```
+
+**Common mistakes**
+
+:::caution
+Once a `case` matches, that branch runs and the whole `switch` ends — there is no fall-through to the next `case`. So no `break` is needed; writing `break` would instead end an enclosing loop.
+
+Comparison is value equality, not expression equality: write a literal after `case`.
+
+A `break` inside `switch` exits the **nearest loop** — if the `switch` is inside a loop, it ends the loop, not the `switch`.
+:::
+
+</OpCard>
+
+### break
+
+<OpCard name="break" summary="End the current loop." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+break
+```
+
+**Arguments**
+
+None.
+
+**Minimal example**
+
+```text
+while {true}
+  say "Draw again?"
+  if {player.stop}
+    break
+```
+
+**Common mistakes**
+
+:::caution
+Writing `break` outside a loop body reports `break-outside-loop` ("break must be inside a loop body (while/for/foreach)").
+
+It ends the nearest loop; `switch` does not count as a loop. Function boundaries also block it: writing `break` in a function body with no loop reports the same error.
+:::
+
+</OpCard>
+
+### continue
+
+<OpCard name="continue" summary="Skip the rest of this round and move to the next." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+continue
+```
+
+**Arguments**
+
+None.
+
+**Minimal example**
+
+```text
+foreach "who" in "names"
+  if {who == "A-Lan"}
+    continue
+  say "{who} raised a hand."
+```
+
+**Common mistakes**
+
+:::caution
+Writing `continue` outside a loop body reports `continue-outside-loop` ("continue must be inside a loop body (while/for/foreach)").
+
+It skips only the rest of this round, not the whole loop, and re-evaluates nothing beyond the `while` condition — the `while` condition is still recomputed next round.
+:::
+
+</OpCard>
+
+### block_rollback
+
+<OpCard name="block_rollback" summary="Temporarily lock rollback until fix_rollback unlocks it." rollback="none" since="0.7.0">
+
+**Signature**
+
+```text
+block_rollback
+```
+
+**Arguments**
+
+None.
+
+**Minimal example**
+
+```text
+say "The key choice is made; this stretch can't be taken back."
+block_rollback
+say "The consequences begin to show…"
+fix_rollback
+```
+
+**Common mistakes**
+
+:::caution
+While locked, any player rollback (`back`/`forward`/`rollbackTo`) is refused with `rollback-locked` ("rollback is temporarily locked"); the screen and state stay exactly as they are.
+
+This is a **session-level temporary lock**: it locks only the rollback action and does not affect save/load. Writing `fix_rollback` unlocks it. It is distinct from the project-level master switch `rollbackEnabled` (decided at assembly, governing whether the whole playthrough can roll back).
+:::
+
+</OpCard>
+
+### fix_rollback
+
+<OpCard name="fix_rollback" summary="Release the temporary rollback lock set by block_rollback." rollback="none" since="0.7.0">
+
+**Signature**
+
+```text
+fix_rollback
+```
+
+**Arguments**
+
+None.
+
+**Minimal example**
+
+```text
+block_rollback
+say "This stretch can't be taken back."
+fix_rollback
+say "Rollback is available again."
+```
+
+**Common mistakes**
+
+:::caution
+Writing `fix_rollback` without a prior `block_rollback` is not an error — it just clears the lock to unlocked, idempotent and harmless.
+
+It releases the op-level temporary lock; if the project was assembled with `rollbackEnabled=false`, rollback is still refused by the project-level master switch (`rollback-disabled`), and `fix_rollback` cannot open it.
+:::
+
+</OpCard>
+
+### assert
+
+<OpCard name="assert" summary="Halt with an error if the condition does not hold." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+assert {condition} ["message"]
+```
+
+**Arguments**
+
+| Field     | Type   | Description                                    |
+| --------- | ------ | ---------------------------------------------- |
+| `cond`    | string | Required                                       |
+| `message` | string | Optional. Defaults to the condition's own text |
+
+**Minimal example**
+
+```text
+assert {player.gold >= 30} "Not enough gold to buy this umbrella"
+```
+
+**Common mistakes**
+
+:::caution
+On failure it reports `assert-failed` ("assertion failed: Not enough gold to buy this umbrella"); the story **stops at the current command** and the state stays as-is, advancing nothing.
+
+This is a self-check for the author, not a hint for the player. To explain something to the player, use `say` or `notify`.
+
+When the condition holds it does nothing — no system keys written, no trace left.
+:::
+
+</OpCard>
+
+### guard
+
+<OpCard name="guard" summary="Call a guard function registered by the host; halt on failure." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+guard "guard-name"
+guard "guard-name" {"arg": value}
+```
+
+**Arguments**
+
+| Field  | Type   | Description                                      |
+| ------ | ------ | ------------------------------------------------ |
+| `fn`   | string | Guard name, registered in `EngineOptions.guards` |
+| `args` | object | Optional. Must be a JSON-safe object literal     |
+
+**Minimal example**
+
+```text
+guard "hasItem" {"id": "umbrella"}
+say "You open the umbrella, and the rain suddenly sounds far away."
+```
+
+**Common mistakes**
+
+:::caution
+An unregistered guard reports `guard-unknown` ("unregistered guard: hasItem"). By default no guards are registered, so `guard` always fails.
+
+Arguments containing functions, `undefined` or other non-JSON-safe values report `guard-args-unsafe`. Arguments are **pure JSON** — no expressions. For a variable value, compute it in `set` first and write it in.
+
+A guard calling `fail("...")` reports `guard-failed` with the message you wrote; a guard throwing its own exception reports `guard-threw`.
+
+A guard has no ability to write state (its context only has `get`), so it changes no variables. The same state plus the same arguments always yields the same result.
+:::
+
+</OpCard>

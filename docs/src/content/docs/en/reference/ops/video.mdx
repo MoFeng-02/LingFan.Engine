@@ -1,0 +1,311 @@
+---
+title: Video Ops
+description: Signatures, arguments and common mistakes for video, cutscene, seek_video, pause_video, resume_video, stop_video and video_skipable. Only cutscene establishes a wait point.
+---
+
+import OpCard from "../../../../../components/OpCard.astro";
+
+These seven ops write to the same "video command stream": one monotonically increasing sequence number per command, executed by the host in order. The engine holds no player and does not know whether playback succeeds.
+
+The only difference between `video` and `cutscene` is this: `cutscene` stops and waits for playback to finish; `video` does not.
+
+## Ops
+
+### video
+
+<OpCard name="video" summary="Start playing a video without blocking the story." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+video "Video/op.mp4"
+video "Video/op.mp4" volume=0.8 loop=true
+video "Video/op.mp4" restart
+```
+
+**Arguments**
+
+| Field      | Type    | Description                                                      |
+| ---------- | ------- | ---------------------------------------------------------------- |
+| `resource` | string  | Required. Path relative to the resource root                     |
+| `volume`   | number  | Optional, default 1. Clamped to 0..1 out of range                |
+| `loop`     | boolean | Optional, default `false`                                        |
+| `restart`  | boolean | Optional. Replay from the start when rewriting the same resource |
+| `z`        | number  | Optional. Instance z of the video layer                          |
+
+**Minimal example**
+
+```text
+video "Video/rain_loop.mp4" loop=true
+say "The rain kept falling."
+stop_video
+```
+
+**Common mistakes**
+
+:::caution
+`video` **does not establish a wait point**. It starts playing and immediately continues, so it must be followed by a command that stops, such as `say` or `wait` — otherwise the story rushes past right as the video begins.
+
+`loop` defaults to `false` — the opposite of `bgm`'s default. To loop you must write `loop=true` explicitly.
+
+**Rewriting the same resource resumes seamlessly by default** (same rule as the audio family): the sequence number is unchanged, so the host does not restart. To replay from the start write `restart` (or change the resource), which increments the sequence number so the host replays.
+
+Playback position and pause state are the host's responsibility. The engine only issues commands; it does not record "what second we are at now".
+
+The video layer sits below the dialogue layer by default (100 vs 999), so `say` still overlays the video while it plays. To reverse that, change `shell.layers`; see [Project manifest project.json](/reference/manifest/).
+:::
+
+</OpCard>
+
+### cutscene
+
+<OpCard name="cutscene" summary="Play a cutscene and wait for it to finish." waits rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+cutscene "Video/chapter_two.mp4"
+cutscene "Video/logo.mp4" skipable=false
+```
+
+**Arguments**
+
+| Field      | Type    | Description                                                                          |
+| ---------- | ------- | ------------------------------------------------------------------------------------ |
+| `resource` | string  | Required                                                                             |
+| `volume`   | number  | Optional, default 1                                                                  |
+| `skipable` | boolean | Optional. Defaults to whatever `video_skipable` set                                  |
+| `restart`  | boolean | Optional. Cutscenes always start from the beginning; this field does not change that |
+| `z`        | number  | Optional                                                                             |
+
+**Minimal example**
+
+```text
+label chapter_two:
+  cutscene "Video/chapter_two.mp4"
+  say "Three months later."
+```
+
+**Common mistakes**
+
+:::caution
+`cutscene` is a wait point and also a checkpoint. Rolling back returns to **before** the cutscene — the checkpoint is committed the moment the cutscene is established, so replay does not play it again.
+
+A cutscene is blocking presentation: every call starts from the beginning (the sequence number always increments), even if the resource matches the previous one. The `restart` field is accepted but does not change this — unlike `video`'s "same resource resumes by default".
+
+The `skipable` decision order is: the argument `cutscene` writes itself > the persistent switch set by `video_skipable` > default skippable. So `cutscene skipable=false` means "this segment must be watched to the end", regardless of what was set before.
+
+The host must call `engine.videoFinished()` to release the wait. Without it the story stops here forever — that is a host-integration issue, not a story-writing issue. Calling it outside a video wait reports `video-finish-invalid` ("not currently in a video wait").
+
+When the player wants to skip, they use `engine.advance()`. Calling it during a `skipable=false` cutscene reports `advance-invalid` ("the current cutscene cannot be skipped (cutscene skipable=false)").
+
+After playback finishes or is skipped, the engine collapses the video layer (writes a `stop`). This step cannot be omitted — the video layer's z is usually above the dialogue layer, so leaving it up would keep covering dialogue and the HUD, making the UI look frozen.
+:::
+
+</OpCard>
+
+### seek_video
+
+<OpCard name="seek_video" summary="Seek to a point in the video." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+seek_video 12.5
+```
+
+**Arguments**
+
+| Field     | Type   | Description                                        |
+| --------- | ------ | -------------------------------------------------- |
+| `seconds` | number | Required. A non-negative finite number, in seconds |
+
+**Minimal example**
+
+```text
+video "Video/long_take.mp4"
+wait 1
+seek_video 30
+```
+
+**Common mistakes**
+
+:::caution
+A negative or non-finite `seconds` reports `seek_video-invalid-seconds` ("seek_video needs a non-negative finite number (seconds)").
+
+In text form `seek_video` accepts only a single number. Writing `seek_video 12 seconds` reports "seek_video needs a number of seconds" — the extra word makes it unparseable.
+
+It only pushes a `seek` into the command stream; it does not care whether anything is playing. Calling it when no video is playing gives the host a command it cannot execute, usually silently ignored.
+:::
+
+</OpCard>
+
+### pause_video
+
+<OpCard name="pause_video" summary="Pause the current video." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+pause_video
+```
+
+**Arguments**
+
+None.
+
+**Minimal example**
+
+```text
+video "Video/tutorial.mp4"
+wait 2
+pause_video
+notify "Press Space to continue"
+```
+
+**Common mistakes**
+
+:::caution
+`pause_video` accepts no arguments; one extra word reports "pause_video unknown payload field".
+
+It **does not establish a wait point**. For "pause and wait for the player to continue", add your own `wait` or `menu` — otherwise the story keeps running after the pause, and the player sees a frozen frame with the following dialogue over it.
+:::
+
+</OpCard>
+
+### resume_video
+
+<OpCard name="resume_video" summary="Resume a paused video." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+resume_video
+```
+
+**Arguments**
+
+None.
+
+**Minimal example**
+
+```text
+menu "Keep watching?"
+  "Continue" -> keep_watching
+  "Skip" -> skip_it
+```
+
+```text
+label keep_watching:
+  resume_video
+  jump after_video
+```
+
+**Common mistakes**
+
+:::caution
+Like `pause_video`, it accepts no arguments.
+
+It does not restart from the beginning — it only unpauses. To replay from the start use `seek_video 0`.
+
+If the player rolls back during the pause, the video command stream rolls back with them, and this `resume` command may never have been executed. So do not assume in story logic that "a pause will always be resumed".
+:::
+
+</OpCard>
+
+### stop_video
+
+<OpCard name="stop_video" summary="Stop the video and collapse the video layer." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+stop_video
+```
+
+**Arguments**
+
+None.
+
+**Minimal example**
+
+```text
+video "Video/rain_loop.mp4" loop=true
+say "The rain stopped."
+stop_video
+```
+
+**Common mistakes**
+
+:::caution
+Accepts no arguments.
+
+It is the **only command by which the story actively collapses the video layer** — a finished `cutscene` also collapses it, but that is done by the engine. When using a looping `video` as a background, forgetting `stop_video` leaves it covering the screen forever.
+
+`stop_video` does not release a video wait. If you call it from the host during a `cutscene` wait, the wait state remains and the story stays stopped — the only two ways to release the wait are `videoFinished()` and `advance()`.
+:::
+
+</OpCard>
+
+### video_skipable
+
+<OpCard name="video_skipable" summary="Set the default skippable switch for subsequent videos." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+video_skipable true
+video_skipable false
+```
+
+**Arguments**
+
+| Field   | Type    | Description                         |
+| ------- | ------- | ----------------------------------- |
+| `value` | boolean | Required. Must be `true` or `false` |
+
+**Minimal example**
+
+```text
+video_skipable false
+cutscene "Video/ending.mp4"
+```
+
+**Common mistakes**
+
+:::caution
+Text form accepts only `true` or `false`; anything else reports "video_skipable needs true|false".
+
+This switch writes the system key `__video_skipable` (a reserved key the author's `set` cannot write). It travels with state into saves and is restored verbatim on load — if it was "not skippable" at save time, it stays "not skippable" after loading and does not reset automatically. To restore the default for later story, write `video_skipable true` explicitly once.
+
+It only governs the default. If `cutscene` writes its own `skipable=`, that wins, so `video_skipable true` cannot override `cutscene skipable=false`.
+
+The `video` command is unaffected by this switch — it does not establish a wait point to begin with, so there is no "skip or not" question.
+:::
+
+</OpCard>
+
+## z ordering
+
+`video` and `cutscene` may carry `z=`. It is written into the video layer's instance z, resolved by the host and handed to the player.
+
+Without `z`, **the key is removed** and the layer falls back to its default — it does not inherit the previous command's value. So "this video floats up, the next returns to default" needs no manual reset.
+
+`z` must be a non-negative finite number. Writing `z=-1` or `z=NaN` reports `instance-z-invalid` ("instance-level z must be a non-negative finite number, received -1").
+
+In text form, a non-number after `z=` **does not error at parse time** — `Number("abc")` yields `NaN`, which travels all the way to execution before being caught by `instance-z-invalid`. So a text-form mistake surfaces late.
+
+## Command-stream decision
+
+What the host receives is a state delta, judged by these rules:
+
+- Resource changed, or sequence number changed → execute the new command
+- Sequence number unchanged → do nothing
+
+The sequence number increments on every video command, including argument-less ones like `pause_video`. So two consecutive `pause_video`s are two independent commands and the host receives both — they are not swallowed just because "the state looks the same".
+
+## Next steps
+
+- [Audio ops](/reference/ops/audio/) — track-change and fade-out rules for the four audio channels.
+- [Dialogue & narrative ops](/reference/ops/dialogue/) — how `wait` and `pause` stop the story.
+- [Template capability boundaries](/reference/template-boundaries/) — how the template host wires the video layer.

@@ -1,0 +1,402 @@
+---
+title: Data & Expression Ops
+description: Signatures, arguments and common mistakes for the set, let, local, define, undef, array and dict families, plus random.
+---
+
+import OpCard from "../../../../../components/OpCard.astro";
+
+Variables live on two layers: the global layer travels with saves and rollback, while block scope is destroyed when the frame exits. `set` writes an existing declaration layer, falling back to global if none is found; `let` and `local` always declare in the current innermost layer. Collections start with `array` and `dict`; `random` draws a number.
+
+## Ops
+
+### set
+
+<OpCard name="set" summary="Assign a variable; falls back to global if undeclared." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+set "key" value
+set "key" += value
+```
+
+**Arguments**
+
+| Field   | Type    | Description                                                                |
+| ------- | ------- | -------------------------------------------------------------------------- |
+| `key`   | string  | Required                                                                   |
+| `value` | unknown | A value or `{expression}`. Text form also accepts `+=` `-=` `*=` `/=` `%=` |
+
+**Minimal example**
+
+```text
+set "player.gold" 7
+set "player.gold" += 5
+```
+
+**Common mistakes**
+
+:::caution
+`set` first walks the scope chain looking for a same-named declaration: if found it writes that layer, otherwise it falls back to global. So `set`-ing a variable that an outer layer `let`-declared, from inside a block, changes the outer one.
+
+`.` is only a naming convention, not nesting. `player.gold` is one key name, not `gold` inside `player`.
+
+Compound assignment only works on numbers; writing `+=` on a string reports `type-error` ("compound assignment += only supports number"). A zero divisor with `/=` or `%=` reports `division-by-zero`.
+
+To "give an initial value only if undefined", use `define`.
+:::
+
+</OpCard>
+
+### let
+
+<OpCard name="let" summary="Declare a variable in the current innermost scope." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+let "key" value
+```
+
+**Arguments**
+
+| Field   | Type    | Description             |
+| ------- | ------- | ----------------------- |
+| `key`   | string  | Required. Variable name |
+| `value` | unknown | Required. Initial value |
+
+**Minimal example**
+
+```text
+if {player.gold >= 30}
+  let "hint" "The key is in your hand"
+  say "{hint}"
+```
+
+**Common mistakes**
+
+:::caution
+`let` always declares into the **current innermost** scope, even if an outer layer already has the same name. It is destroyed when the frame exits.
+
+Its relationship to saves/rollback has three layers: the **column-level** layer travels with the save (the declaration statement sits before the save coordinate, so replay never reaches it); the **block-level** layer does not travel with the save — a wait point inside the block rolls back to the block's controlling command, and replay re-enters the block body and re-declares; **rollback** restores both from the snapshot. Because the block-level layer is rebuilt by replay, its initial value must be deterministic — do not put a `random` result in `let` and expect it to be the same every time.
+
+To keep it alive for the whole story, use `set`.
+:::
+
+</OpCard>
+
+### local
+
+<OpCard name="local" summary="Same as let: declares in block scope." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+local "key" value
+```
+
+**Arguments**
+
+| Field   | Type    | Description             |
+| ------- | ------- | ----------------------- |
+| `key`   | string  | Required. Variable name |
+| `value` | unknown | Required. Initial value |
+
+**Minimal example**
+
+```text
+func drawOnce()
+  local "hit" {random 1 6}
+  say "Rolled {hit}."
+```
+
+**Common mistakes**
+
+:::caution
+`local` and `let` behave exactly the same; either spelling works — both names are kept because different authors have different habits.
+
+Like `let`, it does not enter saves. Using it inside a function is safe: when the function frame pops, the variable goes with it.
+
+Do not expect it to be "local to the function". It is local to the **block** — something declared inside an `if` branch in a function body is gone once the branch ends.
+:::
+
+</OpCard>
+
+### define
+
+<OpCard name="define" summary="Global assignment that does not overwrite an existing value." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+define "key" value
+```
+
+**Arguments**
+
+| Field   | Type    | Description             |
+| ------- | ------- | ----------------------- |
+| `key`   | string  | Required. Variable name |
+| `value` | unknown | Required. Initial value |
+
+**Minimal example**
+
+```text
+define "max_hp" 100
+set "max_hp" 200
+```
+
+**Common mistakes**
+
+:::caution
+`define` writes only when the key **does not exist**. After the snippet above, `max_hp` is still 100 — the second line's `set` changed it, but the `define` line truly did nothing.
+
+On load-replay `define` runs again; since the key already exists it is a no-op. That is exactly why it exists: give an initial value without overwriting player progress.
+
+To force an overwrite, use `set`.
+:::
+
+</OpCard>
+
+### undef
+
+<OpCard name="undef" summary="Remove a variable declaration." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+undef "key"
+```
+
+**Arguments**
+
+| Field | Type   | Description             |
+| ----- | ------ | ----------------------- |
+| `key` | string | Required. Variable name |
+
+**Minimal example**
+
+```text
+undef "hint"
+```
+
+**Common mistakes**
+
+:::caution
+If neither the scope chain nor the global layer has the key, `unknown-variable` is reported ("undef: undefined variable hint"). Deleting a non-existent variable is an error, not a no-op.
+
+`undef` removes the declaration from that layer entirely. If an outer layer still has the same name, reads after removing the inner one resolve to the outer one.
+:::
+
+</OpCard>
+
+### array
+
+<OpCard name="array" summary="Declare an array variable." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+array "key" [item, item]
+array "key" [item, item] once
+```
+
+**Arguments**
+
+| Field   | Type      | Description                          |
+| ------- | --------- | ------------------------------------ |
+| `key`   | string    | Required                             |
+| `items` | unknown[] | Array items; `{expression}` allowed  |
+| `once`  | boolean   | When true, skip if it already exists |
+
+**Minimal example**
+
+```text
+array "names" ["A-Che", "A-Lan"]
+array "names" ["A-Cen"] once
+```
+
+**Common mistakes**
+
+:::caution
+`array` without `once` replaces the whole old array every time it executes. The second line above has `once`, so `names` still has two items.
+
+The text-form grammar is picky: `array "key" [item, …]` — neither the brackets nor the commas may be omitted. Writing `array "key" item` reports "array grammar" at parse time.
+
+It declares a **new array**. To add to an existing array, use `array_push`.
+:::
+
+</OpCard>
+
+### array_push
+
+<OpCard name="array_push" summary="Append one item to the end of an array." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+array_push "key" value
+```
+
+**Arguments**
+
+| Field   | Type    | Description                   |
+| ------- | ------- | ----------------------------- |
+| `key`   | string  | Required. Array variable name |
+| `value` | unknown | Required. The value to append |
+
+**Minimal example**
+
+```text
+array_push "names" "A-Cen"
+```
+
+**Common mistakes**
+
+:::caution
+If the target does not exist or is not an array, `type-error` is reported ("array_push target names does not exist or is not an array"). It does **not** create the array for you — declare it with `array` first.
+
+What is pushed is the evaluated value. Writing `{player.gold}` pushes the number at that moment; later changes to `player.gold` do not affect that array item.
+:::
+
+</OpCard>
+
+### array_pop
+
+<OpCard name="array_pop" summary="Pop the last item of an array." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+array_pop "key"
+```
+
+**Arguments**
+
+| Field | Type   | Description                   |
+| ----- | ------ | ----------------------------- |
+| `key` | string | Required. Array variable name |
+
+**Minimal example**
+
+```text
+array_pop "names"
+```
+
+**Common mistakes**
+
+:::caution
+Target missing, not an array, or already empty — all three report the same `type-error` ("array_pop target names does not exist, is not an array, or is empty"). To distinguish them, check the length yourself first.
+
+The popped value is not automatically stored in a variable. To keep it, follow immediately with a `set` to catch it.
+:::
+
+</OpCard>
+
+### dict
+
+<OpCard name="dict" summary="Declare a dictionary variable." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+dict "key" {"field": value}
+dict "key" {"field": value} once
+```
+
+**Arguments**
+
+| Field   | Type    | Description                                             |
+| ------- | ------- | ------------------------------------------------------- |
+| `key`   | string  | Required                                                |
+| `value` | object  | JSON object literal; field values may be `{expression}` |
+| `once`  | boolean | When true, skip if it already exists                    |
+
+**Minimal example**
+
+```text
+dict "player" {"hp": 100, "mp": {base_mp}}
+```
+
+**Common mistakes**
+
+:::caution
+Text form requires a JSON object literal wrapped in braces; anything else reports "dict grammar: dict \"key\" `{...}` [once]" at parse time.
+
+Without `once` it replaces the whole thing. A field you leave out is truly gone — it is not a merge.
+
+Dictionaries and arrays are two distinct value kinds in the engine and are not interchangeable — `array_push` cannot push into a dictionary, and `dict_set` cannot modify an array.
+:::
+
+</OpCard>
+
+### dict_set
+
+<OpCard name="dict_set" summary="Change one field of a dictionary." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+dict_set "key" "field" value
+```
+
+**Arguments**
+
+| Field   | Type    | Description                        |
+| ------- | ------- | ---------------------------------- |
+| `key`   | string  | Required. Dictionary variable name |
+| `field` | string  | Required. Field name               |
+| `value` | unknown | Required. The new value            |
+
+**Minimal example**
+
+```text
+dict_set "player" "hp" 80
+```
+
+**Common mistakes**
+
+:::caution
+If the target does not exist or is not a dictionary (an array does not count), `type-error` is reported ("dict_set target player does not exist or is not a dictionary"). It creates neither dictionaries nor fields — the field must already be there.
+
+It changes a top-level field; there is no nested path. `dict_set "player" "stats.hp" 80` creates a field literally named `stats.hp`.
+:::
+
+</OpCard>
+
+### random
+
+<OpCard name="random" summary="Draw an integer in a closed interval using a given seed." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+random seed=1 min=1 max=6 var="dice"
+```
+
+**Arguments**
+
+| Field   | Type             | Description                                     |
+| ------- | ---------------- | ----------------------------------------------- |
+| `seed`  | number           | Required, an integer                            |
+| `range` | [number, number] | Required, the closed interval `[min, max]`      |
+| `var`   | string           | Required, which variable to write the result to |
+
+**Minimal example**
+
+```text
+random seed=20261010 min=1 max=6 var="dice"
+say "Rolled {dice}."
+```
+
+**Common mistakes**
+
+:::caution
+The seed enters state, so rollback replay draws the same sequence of values. This is not a defect but a design choice — otherwise the player would draw something different every time after loading.
+
+`min > max` reports `invalid-range` ("random lower bound must be ≤ upper bound"). A non-integer `seed`, a `range` that is not an array of two numbers, or an empty `var` all report `type-error`.
+
+The result is written to a **global** variable. In text form none of the four arguments may be omitted; a missing one reports "random needs seed/min/max/var".
+:::
+
+</OpCard>

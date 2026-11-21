@@ -1,0 +1,271 @@
+---
+title: Dialogue & Narrative Ops
+description: Signatures, arguments and common mistakes for say, nvl, character, uncharacter, notify, wait and pause. Of the seven, say, wait and pause create wait points; notify, nvl, character and uncharacter do not stop.
+---
+
+import OpCard from "../../../../../components/OpCard.astro";
+
+`say` puts a line on screen and stops, `nvl` switches to full-screen accumulation, `character` colors a speaker, `uncharacter` unregisters a character, `notify` pops a toast and moves on, and `wait` and `pause` pass time. Of the seven, the ones that create wait points are `say`, `wait` and `pause`; `notify`, `nvl`, `character` and `uncharacter` run and continue.
+
+## Ops
+
+### say
+
+<OpCard name="say" summary="Show one line of dialogue and wait for the player to click or press a key." waits rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+say "text" [speaker="name"] [color="#FFD700"] [template="name"] [voice="Audio/a.mp3"] [z=N] [clickable] [noskip]
+```
+
+**Arguments**
+
+| Field                   | Type      | Description                                                                                      |
+| ----------------------- | --------- | ------------------------------------------------------------------------------------------------ |
+| `text`                  | string    | Required and non-empty. The first quoted string in text form                                     |
+| `speaker`               | string    | The speaker. Text form also accepts `by=`                                                        |
+| `color`                 | string    | Overrides this line's color; only `#888` / `#FFD700` / `#FFD700CC` are accepted                  |
+| `template`              | string    | The dialogue-box template registration name; takes precedence over `character`'s `screen`        |
+| `voice`                 | string    | This line's voice clip, path relative to the resource root                                       |
+| `z`                     | number    | Changes only this line's dialogue-layer z                                                        |
+| `clickable`, `noskip`   | bare word | Written into `__dialog_clickable` / `__dialog_noskip`; the host can use them to disable clicking |
+| `typewriter`, `instant` | —         | Accepted at parse time but not read by the engine. Use `text_typewriter` for typewriter speed    |
+
+**Minimal example**
+
+```text
+say "It's eleven at night, and it's still raining." speaker="A-Che"
+```
+
+:::caution
+An empty `text` reports `say-invalid` ("say payload must have a non-empty text string"). Missing the text in text form fails even earlier — the parser records "say is missing its text string" and the whole file is rejected with it.
+
+`color="red"` reports `say-invalid-color`. Only hexadecimal is accepted: three, six or eight digits; eight digits are `#RRGGBBAA`.
+
+`color` is written per line: the default is an empty string, so one line's override does not leak into the next. To give a character a persistent color, configure `character` instead of writing `color=` on every line.
+:::
+
+</OpCard>
+
+### nvl
+
+<OpCard name="nvl" summary="Switch the full-screen accumulating narrative layer." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+nvl [clear|exit|auto|enter]
+```
+
+**Arguments**
+
+| Field  | Type   | Description                                                                                                                                                         |
+| ------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mode` | string | Defaults to `enter`. `enter` and `auto` are synonyms, both entering the accumulating layer; `clear` empties it but stays in the layer; `exit` empties it and leaves |
+
+**Minimal example**
+
+```text
+nvl
+say "Rainwater ran off the eaves in lines, one line after another."
+say "She did not look back."
+nvl exit
+```
+
+**Common mistakes**
+
+:::caution
+`nvl` is only a switch; every `say` after it still creates a wait point and still waits for a click. What accumulates is text, not "auto-play".
+
+`nvl clear` clears the screen but stays in the accumulating layer — later lines keep piling in. To return to the normal dialogue box, use `nvl exit`.
+
+Writing any other subcommand in text form reports "nvl unknown subcommand" at parse time; it is not silently treated as `enter`.
+:::
+
+</OpCard>
+
+### character
+
+<OpCard name="character" summary="Register a speaker's name, color and default dialogue-box template." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+character "key" [name=] [color=] [size=] [font=] [textColor=] [screen=]
+```
+
+**Arguments**
+
+| Field                       | Type   | Description                                                  |
+| --------------------------- | ------ | ------------------------------------------------------------ |
+| `key`                       | string | Required. The string in `say speaker=` must match it exactly |
+| `name`                      | string | The display name; may differ from `key`                      |
+| `color`                     | string | This character's default color                               |
+| `size`, `font`, `textColor` | —      | Font size, font family, text color                           |
+| `screen`                    | string | The default dialogue-box template registration name          |
+
+**Minimal example**
+
+```text
+character "A-Che" name="A-Che" color="#7aa2f7"
+say "I'm heading off first." speaker="A-Che"
+```
+
+**Common mistakes**
+
+:::caution
+Writing `character` again with the same name is a **whole-entry replacement**, not a merge. If the second write only sets `color=`, the previously set `screen` is gone.
+
+The character table goes into neither snapshots nor saves, so rollback does not revert speaker coloring. It is a global declaration; the earlier you write it, the less trouble.
+
+`color` precedence is `say color=` > `character color` > empty string. If neither is written, the line has no color.
+:::
+
+</OpCard>
+
+### uncharacter
+
+<OpCard name="uncharacter" summary="Unregister a speaker; later say lines no longer apply its coloring. Does not stop." rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+uncharacter "key"
+```
+
+**Arguments**
+
+| Field | Type   | Description                                                     |
+| ----- | ------ | --------------------------------------------------------------- |
+| `key` | string | Required. The character key to unregister, matching `character` |
+
+**Minimal example**
+
+```text
+character "A-Che" color="#7aa2f7"
+say "I'm heading off first." speaker="A-Che"
+uncharacter "A-Che"
+say "(This line no longer has speaker coloring.)" speaker="A-Che"
+```
+
+**Common mistakes**
+
+:::caution
+Unregistering a key that was never registered is not an error — the engine emits a `character.missing` informational event and continues; the host can listen for it to show a hint, and the story itself is not interrupted.
+
+Unregistration rolls back with rollback: returning to a wait point before the unregistration brings the character back. Like registration, it does not go into saves — saves record state, not the character table.
+
+After unregistering, a `say speaker=` with the same key no longer finds the character, and the line renders as if it had no speaker.
+:::
+
+</OpCard>
+
+### notify
+
+<OpCard name="notify" summary="Emit a toast notification event without interrupting the story." rollback="none" since="0.1.0">
+
+**Signature**
+
+```text
+notify "text" [type="category"] [duration=3000] [z=N]
+```
+
+**Arguments**
+
+| Field      | Type   | Description                                                           |
+| ---------- | ------ | --------------------------------------------------------------------- |
+| `text`     | string | Required. Interpolation rules are the same as `say`                   |
+| `type`     | string | A string for the host to categorize; the engine does not interpret it |
+| `duration` | number | Suggested display milliseconds, handed to the host                    |
+| `z`        | number | The notification-layer z                                              |
+
+**Minimal example**
+
+```text
+notify "Quest updated: find the umbrella on a rainy night" type="quest" duration=3000
+```
+
+**Common mistakes**
+
+:::caution
+`notify` creates no wait point and does not advance dialogue state. It emits the event and moves on; whether the player sees it does not affect the plot.
+
+If the host has not subscribed to the event, the notification is silently dropped — the engine does not report an error. The template host subscribes to `notify`, so you can use it directly.
+
+`type` and `duration` are fields passed through to the host as-is; the engine neither validates them nor supplies defaults.
+:::
+
+</OpCard>
+
+### wait
+
+<OpCard name="wait" summary="Wait a number of seconds, optionally allowing the player to skip." waits rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+wait 1.5
+wait 3 skipable
+```
+
+**Arguments**
+
+| Field      | Type    | Description                                                   |
+| ---------- | ------- | ------------------------------------------------------------- |
+| `seconds`  | number  | Required. Seconds; decimals allowed                           |
+| `skipable` | boolean | When true, a player click or key press can end the wait early |
+
+**Minimal example**
+
+```text
+say "A dull thud came from far away."
+wait 1.5
+say "Then a second one."
+```
+
+**Common mistakes**
+
+:::caution
+Calling `engine.advance()` on a `wait` without `skipable` is rejected with `advance-invalid` ("the current wait is not skippable (only a skipable wait can be cleared by clicking)").
+
+Omitting the seconds in text form is not an error — the parser gives a warning and treats it as 0 seconds, so the wait point clears as soon as it is created. For "wait for the player's click", use `say`, not a bare `wait`.
+
+The timer is cleared on rollback and starts again on replay.
+:::
+
+</OpCard>
+
+### pause
+
+<OpCard name="pause" summary="Wait a number of seconds; the player cannot skip." waits rollback="full" since="0.1.0">
+
+**Signature**
+
+```text
+pause 2
+```
+
+**Arguments**
+
+| Field     | Type   | Description                         |
+| --------- | ------ | ----------------------------------- |
+| `seconds` | number | Required. Seconds; decimals allowed |
+
+**Minimal example**
+
+```text
+pause 0.8
+```
+
+**Common mistakes**
+
+:::caution
+`pause` is never skippable and has no `skipable` argument — writing one is rejected as an unknown field.
+
+It shares the same `wait` waiting state as `wait`; the only difference is whether the player can clear it early. Use `pause` for pacing a scene, and `wait ... skipable` for a skippable pause.
+
+A bare `pause` is likewise "warning + treated as 0 seconds".
+:::
+
+</OpCard>
