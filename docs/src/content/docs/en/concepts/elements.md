@@ -1,6 +1,6 @@
 ---
 title: Stage Elements
-description: Element rows in a scene column form the picture: 36 types in seven groups; unknown types and unknown attributes are both rejected. The element table is part of state and travels with saves and rollback.
+description: "Element rows in a scene column form the picture: 36 types in seven groups; unknown types and unknown attributes are both rejected. The element table is part of state and travels with saves and rollback."
 ---
 
 Everything outside the dialogue box and menus — portraits, panels, buttons, progress bars — is written in a `scene` column. This kind of column has no command stream, only an element table.
