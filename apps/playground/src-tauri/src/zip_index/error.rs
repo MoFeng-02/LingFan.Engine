@@ -24,6 +24,8 @@ pub enum ZipIndexError {
     UnsupportedMethod { entry: String, method: u16 },
     /// 归档形态不支持（多卷等）。
     UnsupportedArchive { reason: String },
+    /// 条目声明尺寸超出安全上限（防恶意/损坏头部触发巨额分配）。
+    EntryTooLarge { entry: String, size: u64, limit: u64 },
 }
 
 impl fmt::Display for ZipIndexError {
@@ -54,6 +56,9 @@ impl fmt::Display for ZipIndexError {
                 write!(f, "ZIP 条目压缩方法不支持（{entry}，method={method}）")
             }
             Self::UnsupportedArchive { reason } => write!(f, "ZIP 归档形态不支持：{reason}"),
+            Self::EntryTooLarge { entry, size, limit } => {
+                write!(f, "ZIP 条目声明尺寸超出安全上限（{entry}，size={size} limit={limit}）")
+            }
         }
     }
 }

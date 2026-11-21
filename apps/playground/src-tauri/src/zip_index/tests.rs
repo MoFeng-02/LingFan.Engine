@@ -1,7 +1,7 @@
 //! ZIP 索引与条目读取的行为测试。
 
 use crate::zip_index::entry::{LOCAL_MAGIC};
-use crate::zip_index::index::{CENTRAL_MAGIC, EOCD_MAGIC, U32_MAX};
+use crate::zip_index::index::{CENTRAL_MAGIC, EOCD_MAGIC, MAX_ENTRY_BYTES, U32_MAX};
 
 use super::*;
 use std::io::Cursor;
@@ -406,4 +406,53 @@ fn zip_index_data_offset_skips_local_name_and_extra() {
     let mut cursor = Cursor::new(rebuilt);
     assert_eq!(index.data_offset(&mut cursor, "a.txt").unwrap(), 39);
     assert_eq!(index.read_entry(&mut cursor, "a.txt").unwrap(), b"payload");
+}
+
+// —— 分配护栏：头部声明巨额尺寸时在分配前 fail-closed（不真造大文件，改写中央目录声明字段）——
+
+/// 把单条目 ZIP 中央目录的某个尺寸字段改成超上限声明值（不触碰实际数据）。
+/// 中央目录布局：签名(4)+版本(4)+flags(2)+method(2)+time(2)+date(2)+crc(4)=20，
+/// compressed_size 在 +20..24，uncompressed_size 在 +24..28。
+fn patch_central_size(bytes: &mut [u8], field_offset: usize, value: u32) {
+    let pos = bytes
+        .windows(4)
+        .position(|w| w == CENTRAL_MAGIC.to_le_bytes())
+        .expect("中央目录签名");
+    bytes[pos + field_offset..pos + field_offset + 4].copy_from_slice(&value.to_le_bytes());
+}
+
+#[test]
+fn zip_index_oversized_uncompressed_declaration_rejected_before_alloc() {
+    let mut bytes = build_zip(&[entry("big.bin", b"small")], b"");
+    let over = (MAX_ENTRY_BYTES + 1) as u32;
+    patch_central_size(&mut bytes, 24, over);
+    let index = index_of(bytes.clone());
+    let mut cursor = Cursor::new(bytes);
+    // 索引照常解析（声明值合法 u32），read_entry 在 vec! 分配前按上限拒绝。
+    assert!(matches!(
+        index.read_entry(&mut cursor, "big.bin"),
+        Err(ZipIndexError::EntryTooLarge { limit, .. }) if limit == MAX_ENTRY_BYTES
+    ));
+}
+
+#[test]
+fn zip_index_oversized_compressed_declaration_rejected_before_alloc() {
+    let mut bytes = build_zip(&[deflated("big.bin", b"small")], b"");
+    let over = (MAX_ENTRY_BYTES + 1) as u32;
+    patch_central_size(&mut bytes, 20, over);
+    let index = index_of(bytes.clone());
+    let mut cursor = Cursor::new(bytes);
+    assert!(matches!(
+        index.read_entry(&mut cursor, "big.bin"),
+        Err(ZipIndexError::EntryTooLarge { .. })
+    ));
+}
+
+#[test]
+fn zip_index_normal_entry_still_reads_after_guard() {
+    // 护栏只拦超上限声明：正常小条目读取不受影响（合法结果不变）。
+    let bytes = build_zip(&[entry("ok.txt", b"payload")], b"");
+    let index = index_of(bytes.clone());
+    let mut cursor = Cursor::new(bytes);
+    assert_eq!(index.read_entry(&mut cursor, "ok.txt").unwrap(), b"payload");
 }

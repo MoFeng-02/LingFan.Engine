@@ -101,9 +101,65 @@ impl<R: Read + Seek> Seek for RangedFile<R> {
                 "区间文件 seek 到负偏移",
             ));
         }
+        // 上界同样收紧：seek 到 len（EOF）合法（read 返 0），越过 len 拒绝——
+        // 区间坐标不外溢到底层文件的其它段（卫生护栏）。
+        if target > self.len as i64 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "区间文件 seek 超出区间长度",
+            ));
+        }
         let target = target as u64;
         self.inner.seek(SeekFrom::Start(self.base + target))?;
         self.pos = target;
         Ok(target)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    /// 区间 [4, 12)（base=4, len=8）建立在 16 字节底层文件上。
+    fn ranged() -> RangedFile<Cursor<Vec<u8>>> {
+        RangedFile::new(Cursor::new(vec![7u8; 16]), 4, 8).expect("区间构造")
+    }
+
+    #[test]
+    fn ranged_file_seek_rejects_past_len() {
+        let mut f = ranged();
+        // Start 越过 len、End 正偏移越界、Current 越界——一律拒绝（坐标不外溢）。
+        assert!(f.seek(SeekFrom::Start(9)).is_err());
+        assert!(f.seek(SeekFrom::End(1)).is_err());
+        f.seek(SeekFrom::Start(8)).unwrap();
+        assert!(f.seek(SeekFrom::Current(1)).is_err());
+    }
+
+    #[test]
+    fn ranged_file_seek_to_len_is_eof_and_read_returns_zero() {
+        let mut f = ranged();
+        // seek 到 len（EOF）合法：返回 len，再 read 返 0。
+        assert_eq!(f.seek(SeekFrom::Start(8)).unwrap(), 8);
+        assert_eq!(f.seek(SeekFrom::End(0)).unwrap(), 8);
+        let mut buf = [0u8; 4];
+        assert_eq!(f.read(&mut buf).unwrap(), 0);
+    }
+
+    #[test]
+    fn ranged_file_seek_negative_rejected() {
+        let mut f = ranged();
+        assert!(f.seek(SeekFrom::End(-9)).is_err());
+        assert!(f.seek(SeekFrom::Start(0)).is_ok());
+        assert!(f.seek(SeekFrom::Current(-1)).is_err());
+    }
+
+    #[test]
+    fn ranged_file_read_is_bounded_to_segment() {
+        let mut f = ranged();
+        let mut buf = [0u8; 32];
+        // 底层有 16 字节，但区间只有 8 字节——read 至多吐 8 字节即 EOF。
+        assert_eq!(f.read(&mut buf).unwrap(), 8);
+        assert_eq!(f.read(&mut buf).unwrap(), 0);
     }
 }

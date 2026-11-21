@@ -301,3 +301,22 @@ fn loopback_streams_across_windows() {
     assert_eq!(body, plain);
     std::fs::remove_dir_all(&base).ok();
 }
+
+/// 连接上限护栏（本机 DoS 卫生）：回环服务每连接 spawn 必须有并发上限与计数回收，
+/// 超限连接被拒而非无限堆线程。源级守卫钉死护栏在场（上限常量 + 占用计数 + 离开回收）。
+#[test]
+fn loopback_connection_cap_wired() {
+    let src = include_str!("server.rs");
+    assert!(
+        src.contains("MAX_CONCURRENT_CONNS"),
+        "回环服务缺并发连接上限常量"
+    );
+    assert!(
+        src.contains("fetch_add(1, Ordering::Relaxed)"),
+        "accept 循环缺连接占用计数（先占再判，无竞态）"
+    );
+    assert!(
+        src.contains("impl Drop for ConnGuard") && src.contains("fetch_sub(1, Ordering::Relaxed)"),
+        "连接离开必须回收计数（ConnGuard Drop），否则上限会被耗尽"
+    );
+}

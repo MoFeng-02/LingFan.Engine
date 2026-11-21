@@ -29,6 +29,10 @@ const EOCD_TAIL_WINDOW: usize = 65_557;
 /// 32 位字段的哨兵值：EOCD 里出现它即表示真实值在 ZIP64 扩展记录中，本实现不支持。
 pub(crate) const U32_MAX: u32 = 0xFFFF_FFFF;
 
+/// 单条目分配上限（卫生护栏）：按头部声明尺寸分配前先验此上限，恶意/损坏头部声明巨额
+/// 尺寸时 fail-closed 不触发 OOM。APK 自身包属可信来源，此为护栏而非主威胁面。
+pub(crate) const MAX_ENTRY_BYTES: u64 = 512 * 1024 * 1024;
+
 /// 全量条目索引。键 = 条目名，排序确定性（BTreeMap）。
 #[derive(Debug)]
 pub struct ZipIndex {
@@ -242,6 +246,15 @@ impl ZipIndex {
         if entry.is_dir {
             return Err(ZipIndexError::EntryNotFound {
                 name: name.to_string(),
+            });
+        }
+        // 分配护栏：按头部声明尺寸分配前先验上限（MAX_ENTRY_BYTES）——恶意/损坏头部
+        // 声明巨额尺寸时 fail-closed，不触发 OOM。
+        if entry.uncompressed_size > MAX_ENTRY_BYTES || entry.compressed_size > MAX_ENTRY_BYTES {
+            return Err(ZipIndexError::EntryTooLarge {
+                entry: entry.name.clone(),
+                size: entry.uncompressed_size.max(entry.compressed_size),
+                limit: MAX_ENTRY_BYTES,
             });
         }
         let data_offset = entry_data_offset(r, entry)?;

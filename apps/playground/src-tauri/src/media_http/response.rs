@@ -10,6 +10,11 @@ pub(crate) fn empty<W: Write>(writer: &mut W, status: u16) -> std::io::Result<()
 
 /// 手写响应头（最小 HTTP/1.1）：统一 `Connection: close`（本服务无长连接语义）；
 /// CORS 头必需——媒体元素带 `crossOrigin="anonymous"`，跨源（页面源自 tauri.localhost）。
+///
+/// `Access-Control-Allow-Origin: *` 的边界说明：本服务的访问控制由 URL 里的随机 token
+/// 承担（路由先验 token，未持 token 一律 404/400），CORS 放行不泄露任何未授权内容；
+/// 页面源形态多变（tauri://localhost 与 http(s)://tauri.localhost），固定源白名单反而脆弱。
+/// 故以 token 边界 + 并发连接上限为护栏，CORS 取 `*`（评估结论：token 边界内可接受）。
 pub(crate) fn write_head<W: Write>(
     writer: &mut W,
     status: u16,

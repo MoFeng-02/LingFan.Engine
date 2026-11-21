@@ -15,6 +15,7 @@ pub mod persistent;
 pub mod preferences;
 pub mod project_files;
 pub mod project_writer;
+pub mod protocol_pool;
 pub mod resource_crypto;
 pub mod resource_fs;
 pub mod resource_plain;
@@ -38,26 +39,35 @@ pub fn run() {
     ));
 
     let builder = tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
         // 移动端供给：fs 插件 = asset:// 读取原语（Rust 侧经 FsExt 取可 seek fd）。
-        // 其 JS 命令不在 capabilities 授权面内（default.json 仅 core+opener），对 webview 默认拒绝。
+        // 其 JS 命令不在 capabilities 授权面内（default.json 仅 core + 本应用命令），对 webview 默认拒绝。
+        // opener 插件不装配：前端与 Rust 均无打开外链/揭示目录的需求，未用授权一律不挂（fail-closed）。
         .plugin(tauri_plugin_fs::init())
         // 大资源流式：lfstream 协议双路径——v2 分块按需解密（Range/206，明文不落盘）
         // + v1 token 缓存；缓存文件名信任边界（hex64.ext / v2/逻辑路径 validate）在 handler 内。
         // 明文资源段（`raw/` 前缀）同协议、同 Range 实现，按路径前缀先分流：它供的是构建期
         // 未加密的音视频/图/字体，与加密段的 `v2/`、v1 token 命名空间互不重叠。
-        .register_uri_scheme_protocol("lfstream", |ctx, request| {
-            // 面包屑：主线程可能在启动后一段时间（心跳某一拍）卡住，而该时点正是前端开始拉资源。
-            // 这两条把「卡在协议处理器里」直接夹出来——**只要出现「进入」而无「返回」即为卡点**。
-            let uri = request.uri().to_string();
-            eprintln!("[lfen] lfstream 进入：{uri}");
-            let response = if resource_plain::handles(request.uri().path()) {
-                resource_plain::serve(request, ctx.app_handle())
-            } else {
-                resource_crypto::lfstream_protocol_handler(request, ctx.app_handle())
-            };
-            eprintln!("[lfen] lfstream 返回：{uri}");
-            response
+        //
+        // 异步注册 + 工作线程池：解密/读盘在 worker 线程执行，响应经 responder 异步交付——
+        // WebView 的 UI 线程只投递请求，不被协议供给阻塞（性能契约：协议供给不得阻塞 UI 线程）。
+        .register_asynchronous_uri_scheme_protocol("lfstream", |ctx, request, responder| {
+            let app = ctx.app_handle().clone();
+            protocol_pool::dispatch(move || {
+                // 面包屑仅 debug 构建：把「卡在协议供给里」夹出来（有「进入」无「返回」即卡点）；
+                // release 不打印每请求 URI（避免日志元数据泄露）。
+                #[cfg(debug_assertions)]
+                let uri = request.uri().to_string();
+                #[cfg(debug_assertions)]
+                eprintln!("[lfen] lfstream 进入：{uri}");
+                let response = if resource_plain::handles(request.uri().path()) {
+                    resource_plain::serve(request, &app)
+                } else {
+                    resource_crypto::lfstream_protocol_handler(request, &app)
+                };
+                #[cfg(debug_assertions)]
+                eprintln!("[lfen] lfstream 返回：{uri}");
+                responder.respond(response);
+            });
         })
         .invoke_handler(tauri::generate_handler![
             project_files::project_files,

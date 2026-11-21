@@ -17,7 +17,20 @@ use crate::resource_fs::ResourceFs;
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock};
+
+/// 并发连接上限：回环服务虽以随机 token 为访问边界，仍设连接数护栏——
+/// 本机进程可发起海量连接耗尽线程（本机 DoS），超限直接关闭新连接（fail-closed）。
+const MAX_CONCURRENT_CONNS: usize = 32;
+
+/// 连接计数守卫：连接处理结束（含提前 return / panic）即归还计数，不泄漏名额。
+struct ConnGuard(Arc<AtomicUsize>);
+impl Drop for ConnGuard {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::Relaxed);
+    }
+}
 
 /// 单次 socket 写入窗口：一次 `decrypt_v2_block_range` 的产出即写一段。
 /// 与 `V2_RANGE_MAX_LEN`（lfstream 单次协议响应字节上限）**语义不同**，故独立常量：
@@ -55,6 +68,7 @@ fn start(app: &tauri::AppHandle) -> Option<ServerInfo> {
     let port = listener.local_addr().ok()?.port();
     let app = app.clone();
     let serve_token = token.clone();
+    let active = Arc::new(AtomicUsize::new(0));
     std::thread::Builder::new()
         .name("lfen-media-http".into())
         .spawn(move || {
@@ -62,9 +76,17 @@ fn start(app: &tauri::AppHandle) -> Option<ServerInfo> {
                 let Ok(stream) = stream else {
                     continue;
                 };
+                // 先占名额再判超限：原子自增后越界即回退并关闭（无 load-then-add 竞态）。
+                if active.fetch_add(1, Ordering::Relaxed) >= MAX_CONCURRENT_CONNS {
+                    active.fetch_sub(1, Ordering::Relaxed);
+                    drop(stream);
+                    continue;
+                }
                 let app = app.clone();
                 let token = serve_token.clone();
+                let active = Arc::clone(&active);
                 std::thread::spawn(move || {
+                    let _guard = ConnGuard(active);
                     // 上下文按连接解析（资源根/DEK 与协议 handler 同源，不另持一份事实来源）
                     let Some(ctx) = MediaCtx::resolve(&app) else {
                         return;

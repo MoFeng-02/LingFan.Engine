@@ -1122,3 +1122,20 @@ fn save_machine_bound_unchanged() {
         "默认密钥适配器不得耦合存档链"
     );
 }
+
+#[test]
+fn decrypt_resource_validates_path_before_join() {
+    // 信任边界先行：decrypt_resource 必须在 join/读盘之前校验逻辑路径——
+    // 「先 join 探测、后校验」会让穿越/绝对路径先触达文件系统。源级守卫钉死先后顺序。
+    let src = include_str!("stream/protocol.rs");
+    let validate = src
+        .find("validate_resource_path(&path)")
+        .expect("decrypt_resource 缺逻辑路径校验");
+    let join = src
+        .find("root.join(format!(\"{path}.enc\"))")
+        .expect("decrypt_resource 缺 sealed 路径拼接");
+    assert!(
+        validate < join,
+        "逻辑路径校验必须先于 join/读盘（信任边界先行，fail-closed）"
+    );
+}

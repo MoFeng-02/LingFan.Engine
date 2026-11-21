@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider 可共享路径白名单：只暴露应用缓存下的专用子目录，不开放外部存储根。
+     本应用无对外分享文件的需求，此白名单取最小面（fail-closed）；如未来需要分享，
+     再按需窄化新增子目录，绝不回退到 external-path 根。 -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-  <external-path name="my_images" path="." />
-  <cache-path name="my_cache_images" path="." />
+  <cache-path name="lfen_share" path="lfen-share/" />
 </paths>

@@ -6,7 +6,6 @@
   "permissions": [
     "core:default",
     "core:window:allow-set-fullscreen",
-    "opener:default",
     "allow-project-files",
     "allow-watch-project-files",
     "allow-load-i18n-overlay",

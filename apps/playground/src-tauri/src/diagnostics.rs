@@ -8,5 +8,9 @@
 /// 渲染端上报的键值对（原样打印，不做解析——诊断层不解释业务）
 #[tauri::command]
 pub fn lfen_diag(payload: String) {
+    // 诊断回传仅 debug 构建打印；release 不原样落日志（避免日志元数据泄露/注入）。
+    #[cfg(debug_assertions)]
     eprintln!("[lfen-diag] {payload}");
+    #[cfg(not(debug_assertions))]
+    let _ = payload;
 }

@@ -27,6 +27,44 @@ pub const WS_WHITELIST: &[&str] = &[
 /// WS 监听端口缺省值（紧邻 Vite 1420）
 pub const WS_DEFAULT_PORT: u16 = 1421;
 
+/// 开发期 WS 通道的允许来源：本机 Vite dev server 的两种写法。
+/// 浏览器发起的 WebSocket 握手必带 `Origin`，drive-by 网页的来源不在其中即被拒。
+pub const WS_ALLOWED_ORIGINS: &[&str] = &["http://localhost:1420", "http://127.0.0.1:1420"];
+
+/// 握手准入判定（信任边界，纯函数可测）：
+/// - `Origin` 命中本机 dev server 白名单 → 放行（正常 Vite 页面）；
+/// - 配置了 `LFEN_WS_TOKEN` 且请求 query 的 token 与之相等 → 放行（无 Origin 的脚本/工具）；
+/// - 其余一律拒绝（drive-by 网页既无合法 Origin 也无从得知 token）。
+fn check_ws_access(
+    origin: Option<&str>,
+    token: Option<&str>,
+    expected_token: Option<&str>,
+) -> Result<(), String> {
+    if let Some(o) = origin {
+        if WS_ALLOWED_ORIGINS.contains(&o) {
+            return Ok(());
+        }
+    }
+    if let (Some(t), Some(expected)) = (token, expected_token) {
+        if !expected.is_empty() && t == expected {
+            return Ok(());
+        }
+    }
+    Err("来源未授权：需要本机 dev server 的 Origin 或有效 token".to_string())
+}
+
+/// 从握手请求的 query 串提取 `token` 参数（`?token=...`，容忍多参数与顺序）。
+fn query_token(query: Option<&str>) -> Option<&str> {
+    query?.split('&').find_map(|pair| {
+        let (key, value) = pair.split_once('=')?;
+        if key == "token" {
+            Some(value)
+        } else {
+            None
+        }
+    })
+}
+
 /// 组合根（lib.rs setup）调用：debug 构建启动服务器；失败仅打诊断（浏览器回退 web 端口）
 pub fn setup(app: tauri::AppHandle) {
     let port: u16 = std::env::var("LFEN_WS_PORT")
@@ -45,15 +83,18 @@ async fn run_server(app: tauri::AppHandle, port: u16) -> Result<(), String> {
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
         .map_err(|e| format!("绑定 {addr} 失败：{e}"))?;
-    eprintln!("[lfen-ws] dev 通道就绪：ws://{addr}（仅 127.0.0.1，debug 构建）");
+    // 可选 token：供无 Origin 的脚本/工具准入（未配置时仅本机 dev server Origin 可连）。
+    let expected_token = std::env::var("LFEN_WS_TOKEN").ok();
+    eprintln!("[lfen-ws] dev 通道就绪：ws://{addr}（仅 127.0.0.1，debug 构建，Origin/token 准入）");
     loop {
         let (stream, _peer) = listener
             .accept()
             .await
             .map_err(|e| format!("accept 失败：{e}"))?;
         let app = app.clone();
+        let expected_token = expected_token.clone();
         tauri::async_runtime::spawn(async move {
-            let ws = match tokio_tungstenite::accept_async(stream).await {
+            let ws = match accept_checked(stream, expected_token).await {
                 Ok(ws) => ws,
                 Err(e) => {
                     eprintln!("[lfen-ws] 握手失败：{e}");
@@ -63,6 +104,35 @@ async fn run_server(app: tauri::AppHandle, port: u16) -> Result<(), String> {
             serve_with(app, ws).await;
         });
     }
+}
+
+/// 带准入校验的握手：Origin 白名单或 token 通过才升级为 WS，否则回 403 拒绝。
+/// 校验在握手期完成——未授权的连接拿不到 WS 通道，自然读不到存档/工程。
+async fn accept_checked(
+    stream: tokio::net::TcpStream,
+    expected_token: Option<String>,
+) -> Result<
+    tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>,
+    tokio_tungstenite::tungstenite::Error,
+> {
+    tokio_tungstenite::accept_hdr_async(
+        stream,
+        move |req: &tungstenite::handshake::server::Request,
+              resp: tungstenite::handshake::server::Response| {
+            let origin = req.headers().get("origin").and_then(|v| v.to_str().ok());
+            let token = query_token(req.uri().query());
+            match check_ws_access(origin, token, expected_token.as_deref()) {
+                Ok(()) => Ok(resp),
+                Err(reason) => {
+                    let mut rejection =
+                        tungstenite::handshake::server::ErrorResponse::new(Some(reason));
+                    *rejection.status_mut() = tungstenite::http::StatusCode::FORBIDDEN;
+                    Err(rejection)
+                }
+            }
+        },
+    )
+    .await
 }
 
 use futures_util::{SinkExt, StreamExt};
@@ -360,6 +430,141 @@ mod tests {
                 serde_json::from_str::<Value>(reply.to_text().unwrap()).unwrap(),
                 serde_json::json!({ "id": 1, "ok": true, "data": "host_platform" })
             );
+        });
+    }
+
+    // —— 握手准入（Origin 白名单 / token，drive-by 拒绝）——
+
+    #[test]
+    fn ws_access_origin_whitelist_and_drive_by_rejection() {
+        // 本机 dev server 的两种 Origin 放行
+        assert!(check_ws_access(Some("http://localhost:1420"), None, None).is_ok());
+        assert!(check_ws_access(Some("http://127.0.0.1:1420"), None, None).is_ok());
+        // drive-by：恶意网页 Origin / file:// 的 null / 无 Origin 且无 token 一律拒
+        assert!(check_ws_access(Some("http://evil.example"), None, None).is_err());
+        assert!(check_ws_access(Some("null"), None, None).is_err());
+        assert!(check_ws_access(None, None, None).is_err());
+        // 配置 token 不影响合法 Origin 放行
+        assert!(check_ws_access(Some("http://localhost:1420"), None, Some("secret")).is_ok());
+        // token 通道：相等放行；错值/未配置/空值拒绝
+        assert!(check_ws_access(None, Some("secret"), Some("secret")).is_ok());
+        assert!(check_ws_access(None, Some("wrong"), Some("secret")).is_err());
+        assert!(check_ws_access(None, Some("secret"), None).is_err());
+        assert!(check_ws_access(None, Some(""), Some("")).is_err());
+        // 持有有效 token 的工具即使带陌生 Origin 也放行（token 是显式凭据）
+        assert!(
+            check_ws_access(Some("http://evil.example"), Some("secret"), Some("secret")).is_ok()
+        );
+    }
+
+    #[test]
+    fn ws_query_token_extraction() {
+        assert_eq!(query_token(Some("token=abc")), Some("abc"));
+        assert_eq!(query_token(Some("a=1&token=abc&b=2")), Some("abc"));
+        assert_eq!(query_token(Some("a=1")), None);
+        assert_eq!(query_token(None), None);
+        assert_eq!(query_token(Some("token=")), Some(""));
+    }
+
+    #[test]
+    fn ws_handshake_access_check_is_wired() {
+        // 源级断言（只取生产前缀，测试自身的断言串不计入）：
+        // 握手必须经带准入校验的路径，删掉校验接线即红。
+        let src = include_str!("ws_dev.rs");
+        let prod = src.split("mod tests").next().unwrap_or(src);
+        assert!(
+            prod.contains("accept_hdr_async"),
+            "握手必须走 accept_hdr_async 才能检查 Origin/token"
+        );
+        assert!(
+            prod.contains("check_ws_access(origin, token, expected_token.as_deref())"),
+            "握手回调必须调用准入判定"
+        );
+        assert!(
+            prod.contains("StatusCode::FORBIDDEN"),
+            "未授权握手必须回 403"
+        );
+        assert!(prod.contains("LFEN_WS_TOKEN"), "token 通道必须读 LFEN_WS_TOKEN");
+    }
+
+    #[test]
+    fn drive_by_origin_rejected_at_handshake() {
+        tauri::async_runtime::block_on(async {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+            let server = tauri::async_runtime::spawn(async move {
+                let (stream, _) = listener.accept().await.unwrap();
+                accept_checked(stream, None).await
+            });
+            // 模拟 drive-by 网页：带恶意 Origin 的 WS 升级请求（原始 HTTP 帧）
+            let mut client = tokio::net::TcpStream::connect(addr).await.unwrap();
+            let request = format!(
+                "GET / HTTP/1.1\r\nHost: {addr}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\nOrigin: http://evil.example\r\n\r\n"
+            );
+            tokio::io::AsyncWriteExt::write_all(&mut client, request.as_bytes())
+                .await
+                .unwrap();
+            let mut buf = vec![0u8; 512];
+            let n = tokio::io::AsyncReadExt::read(&mut client, &mut buf)
+                .await
+                .unwrap();
+            let head = String::from_utf8_lossy(&buf[..n]);
+            assert!(head.contains("403"), "drive-by 握手必须收到 403：{head}");
+            assert!(
+                server.await.unwrap().is_err(),
+                "未授权连接不得升级为 WS（读不到存档/工程）"
+            );
+        });
+    }
+
+    #[test]
+    fn dev_server_origin_passes_handshake() {
+        tauri::async_runtime::block_on(async {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+            let server = tauri::async_runtime::spawn(async move {
+                let (stream, _) = listener.accept().await.unwrap();
+                accept_checked(stream, None).await
+            });
+            use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+            let mut req = format!("ws://{addr}").into_client_request().unwrap();
+            req.headers_mut()
+                .insert("origin", "http://localhost:1420".parse().unwrap());
+            let (_ws, _resp) = tokio_tungstenite::connect_async(req).await.unwrap();
+            assert!(server.await.unwrap().is_ok(), "本机 dev server Origin 必须放行");
+        });
+    }
+
+    #[test]
+    fn token_query_passes_handshake_without_origin() {
+        tauri::async_runtime::block_on(async {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+            let server = tauri::async_runtime::spawn(async move {
+                let (stream, _) = listener.accept().await.unwrap();
+                accept_checked(stream, Some("secret".to_string())).await
+            });
+            // 无 Origin 的脚本/工具：query token 相等即放行
+            let (_ws, _resp) = tokio_tungstenite::connect_async(format!("ws://{addr}/?token=secret"))
+                .await
+                .unwrap();
+            assert!(server.await.unwrap().is_ok(), "有效 token 必须放行");
+        });
+    }
+
+    #[test]
+    fn wrong_token_rejected_at_handshake() {
+        tauri::async_runtime::block_on(async {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+            let server = tauri::async_runtime::spawn(async move {
+                let (stream, _) = listener.accept().await.unwrap();
+                accept_checked(stream, Some("secret".to_string())).await
+            });
+            let result =
+                tokio_tungstenite::connect_async(format!("ws://{addr}/?token=wrong")).await;
+            assert!(result.is_err(), "错误 token 必须被拒");
+            assert!(server.await.unwrap().is_err());
         });
     }
 }

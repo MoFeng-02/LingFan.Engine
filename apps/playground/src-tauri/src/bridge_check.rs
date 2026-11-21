@@ -541,6 +541,16 @@ mod tests {
         let template_text = fs::read_to_string(&template_save)
             .unwrap_or_else(|e| panic!("读 {} 失败：{e}", template_save.display()));
         rust_codes.extend(error_enum_codes(&template_text));
+        // 模板偏好/持久化域同样结构化（{code, detail}）过边界——一并纳入跨 crate 互锁，
+        // 确保其错误码也被 TS 消费、variant 与 rename 不漂移。
+        for name in ["preferences.rs", "persistent.rs"] {
+            let path = crate_dir()
+                .join("../../../template/v1/overlays/tauri/src-tauri/src/")
+                .join(name);
+            let text = fs::read_to_string(&path)
+                .unwrap_or_else(|e| panic!("读 {} 失败：{e}", path.display()));
+            rust_codes.extend(error_enum_codes(&text));
+        }
         assert!(
             rust_codes.len() >= 25,
             "错误码提取疑似失效（仅 {} 个：{rust_codes:?}）——枚举形态变更需同步本测试",
@@ -715,6 +725,23 @@ const z = await invokeRust(invoke, "wrapped_cmd", { foo: 1 });"#;
         assert!(
             build_text.contains("app_manifest") && build_text.contains(".commands(COMMANDS)"),
             "build.rs 须经 AppManifest 生成 app 命令权限清单"
+        );
+    }
+
+    #[test]
+    fn unused_opener_authorization_is_not_granted() {
+        // 最小命令面 / 默认拒绝：前端与 Rust 均无打开外链/揭示目录需求，opener 授权一律不挂。
+        // 源级守卫钉死「未用授权不装配」——插件注册与 capabilities 放行都不得回潮。
+        let lib = lib_rs_text();
+        assert!(
+            !lib.contains("tauri_plugin_opener"),
+            "opener 插件未用，不得装配（fail-closed 最小授权面）"
+        );
+        let cap_text =
+            fs::read_to_string(crate_dir().join("capabilities/default.json")).unwrap();
+        assert!(
+            !cap_text.contains("opener:"),
+            "capabilities 不得放行未用的 opener 权限"
         );
     }
 

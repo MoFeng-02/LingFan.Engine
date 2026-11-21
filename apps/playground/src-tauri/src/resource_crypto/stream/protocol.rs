@@ -39,6 +39,10 @@ pub fn decrypt_resource(
     app: tauri::AppHandle,
     path: String,
 ) -> Result<String, ResourceCryptoError> {
+    // 信任边界先行：逻辑路径校验在 join/读盘之前——穿越/绝对路径直接 fail-closed，
+    // 不「先 join 探测、后校验」（与 decrypt_story/分块供给同一口径）。
+    crate::paths::validate_resource_path(&path)
+        .map_err(|e| ResourceCryptoError::invalid_path(&path, e))?;
     use std::io::Read;
     let root = resource_root(&app).map_err(ResourceCryptoError::AppData)?;
     let app_data = app_data(&app).map_err(ResourceCryptoError::AppData)?;

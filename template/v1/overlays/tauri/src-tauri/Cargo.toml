@@ -14,3 +14,12 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# 发布构建优化（与参考宿主同口径）：链接期优化 + 单 codegen 单元 + 去符号，
+# 缩小二进制并去掉调试符号面；panic=abort 省去 unwind 表（交付壳无需捕获 panic 续跑）。
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
