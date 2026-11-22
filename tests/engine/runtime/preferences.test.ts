@@ -4,10 +4,12 @@
  * - 畸形载荷逐字段降级默认（信任边界，绝不翻译成运行时畸形值）
  * - 持久化防抖合并滑块连写 + dispose 补尾不丢末次修改
  * - 偏好不进引擎 SSOT/存档（exportSave 载荷无偏好键）
+ * - auto/skip 节奏偏好三 setter（布尔采纳/整数钳制/同值静默/与 sanitize 同口径）
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PlayerPrefsData } from "@lingfan-engine/core";
 import {
+  AUTO_DELAY_MS_RANGE,
   DEFAULT_PLAYER_PREFS,
   PlayerPreferences,
   SYS,
@@ -451,5 +453,152 @@ describe("全屏偏好（prefs-fullscreen）", () => {
     const payload = JSON.stringify(engine.exportSave());
     expect(payload).not.toContain("keymap");
     expect(payload).not.toContain("fullscreen");
+  });
+});
+
+describe("auto/skip 节奏偏好", () => {
+  it("缺省：开关回落 false、延时回落 1500，快照不含三键（可回落到消费点默认）", () => {
+    const prefs = new PlayerPreferences();
+    expect(prefs.autoEnabled).toBe(false);
+    expect(prefs.skipUnseenOnly).toBe(false);
+    expect(prefs.autoDelayMs).toBe(1500);
+    expect("autoEnabled" in prefs.snapshot()).toBe(false);
+    expect("autoDelayMs" in prefs.snapshot()).toBe(false);
+    expect("skipUnseenOnly" in prefs.snapshot()).toBe(false);
+    expect(prefs.snapshot()).toEqual(DEFAULT_PLAYER_PREFS);
+  });
+
+  it("setAutoEnabled：布尔采纳计入快照；同值不触发变更；非布尔忽略状态原样", () => {
+    const prefs = new PlayerPreferences();
+    const seen: boolean[] = [];
+    prefs.onChange((snap) => seen.push(snap.autoEnabled ?? false));
+    prefs.setAutoEnabled(true);
+    expect(prefs.autoEnabled).toBe(true);
+    expect(prefs.snapshot().autoEnabled).toBe(true);
+    prefs.setAutoEnabled(true); // 同值 no-op
+    expect(seen).toEqual([true]);
+    for (const bad of ["on", 1, null, undefined]) {
+      prefs.setAutoEnabled(bad as never);
+      expect(prefs.autoEnabled).toBe(true);
+    }
+    prefs.setAutoEnabled(false);
+    expect(prefs.autoEnabled).toBe(false);
+    expect(seen).toEqual([true, false]);
+  });
+
+  it("setAutoDelayMs：整数采纳、端点钳制；非整数/非有限数忽略（fail-closed）", () => {
+    const prefs = new PlayerPreferences();
+    prefs.setAutoDelayMs(2500);
+    expect(prefs.autoDelayMs).toBe(2500);
+    expect(prefs.snapshot().autoDelayMs).toBe(2500);
+    prefs.setAutoDelayMs(AUTO_DELAY_MS_RANGE.min - 5);
+    expect(prefs.autoDelayMs).toBe(AUTO_DELAY_MS_RANGE.min);
+    prefs.setAutoDelayMs(AUTO_DELAY_MS_RANGE.max + 1000);
+    expect(prefs.autoDelayMs).toBe(AUTO_DELAY_MS_RANGE.max);
+    for (const bad of [12.5, Number.NaN, Number.POSITIVE_INFINITY, "300"]) {
+      prefs.setAutoDelayMs(bad as never);
+      expect(prefs.autoDelayMs).toBe(AUTO_DELAY_MS_RANGE.max); // 状态原样
+    }
+  });
+
+  it("setAutoDelayMs 同值不触发变更（滑杆连写只在值变时通知）", () => {
+    const prefs = new PlayerPreferences();
+    let count = 0;
+    prefs.onChange(() => {
+      count += 1;
+    });
+    prefs.setAutoDelayMs(2000);
+    prefs.setAutoDelayMs(2000);
+    expect(count).toBe(1);
+  });
+
+  it("setSkipUnseenOnly：布尔采纳计入快照；同值不触发；非布尔忽略", () => {
+    const prefs = new PlayerPreferences();
+    const seen: boolean[] = [];
+    prefs.onChange((snap) => seen.push(snap.skipUnseenOnly ?? false));
+    prefs.setSkipUnseenOnly(true);
+    expect(prefs.skipUnseenOnly).toBe(true);
+    expect(prefs.snapshot().skipUnseenOnly).toBe(true);
+    prefs.setSkipUnseenOnly(true); // 同值 no-op
+    expect(seen).toEqual([true]);
+    for (const bad of ["yes", 0, null]) {
+      prefs.setSkipUnseenOnly(bad as never);
+      expect(prefs.skipUnseenOnly).toBe(true);
+    }
+    prefs.setSkipUnseenOnly(false);
+    expect(seen).toEqual([true, false]);
+  });
+
+  it("与 sanitize 同口径：hydrate 越界整数钳制、非整数/非布尔降级缺省", async () => {
+    const clampPort = new MemoryPrefsPort({
+      v: 1,
+      volumes: { ...DEFAULT_PLAYER_PREFS.volumes },
+      muted: false,
+      textSpeed: 30,
+      autoEnabled: "yes" as never,
+      autoDelayMs: AUTO_DELAY_MS_RANGE.max + 9999,
+      skipUnseenOnly: 1 as never,
+    } as PlayerPrefsData);
+    const prefs = new PlayerPreferences(clampPort);
+    await prefs.hydrate();
+    expect(prefs.autoEnabled).toBe(false); // 非布尔 → 缺省
+    expect(prefs.autoDelayMs).toBe(AUTO_DELAY_MS_RANGE.max); // 越界整数 → 钳制
+    expect(prefs.skipUnseenOnly).toBe(false);
+
+    const dropPort = new MemoryPrefsPort({
+      v: 1,
+      volumes: { ...DEFAULT_PLAYER_PREFS.volumes },
+      muted: false,
+      textSpeed: 30,
+      autoEnabled: true,
+      autoDelayMs: 12.5,
+      skipUnseenOnly: true,
+    });
+    const prefs2 = new PlayerPreferences(dropPort);
+    await prefs2.hydrate();
+    expect(prefs2.autoEnabled).toBe(true);
+    expect(prefs2.autoDelayMs).toBe(1500); // 非整数 → 丢弃回落缺省
+    expect(prefs2.skipUnseenOnly).toBe(true);
+  });
+
+  it("持久化：三字段防抖合并一次落盘，dispose 补尾不丢末次修改", async () => {
+    vi.useFakeTimers();
+    const port = new MemoryPrefsPort();
+    const prefs = new PlayerPreferences(port);
+    prefs.setAutoEnabled(true);
+    prefs.setAutoDelayMs(3000);
+    prefs.setSkipUnseenOnly(true);
+    expect(port.saves).toHaveLength(0); // 静默窗内未落盘
+    await vi.advanceTimersByTimeAsync(300);
+    expect(port.saves).toHaveLength(1);
+    expect(port.saves[0]!.autoEnabled).toBe(true);
+    expect(port.saves[0]!.autoDelayMs).toBe(3000);
+    expect(port.saves[0]!.skipUnseenOnly).toBe(true);
+    prefs.setAutoDelayMs(4000);
+    prefs.dispose();
+    expect(port.saves).toHaveLength(2);
+    expect(port.saves[1]!.autoDelayMs).toBe(4000);
+  });
+
+  it("节奏偏好不进存档（与存档分离）", () => {
+    const prefs = new PlayerPreferences();
+    prefs.setAutoEnabled(true);
+    prefs.setAutoDelayMs(3000);
+    prefs.setSkipUnseenOnly(true);
+    const engine = new StoryEngine(
+      parseStory({
+        formatVersion: 1,
+        id: "t",
+        entry: "a",
+        columns: [
+          { id: "a", kind: "flow", commands: [{ op: "say", text: "x" }] },
+        ],
+      }),
+    );
+    engine.start();
+    const payload = JSON.stringify(engine.exportSave());
+    expect(payload).not.toContain("autoEnabled");
+    expect(payload).not.toContain("autoDelayMs");
+    expect(payload).not.toContain("skipUnseenOnly");
   });
 });

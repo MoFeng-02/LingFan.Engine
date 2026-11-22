@@ -22,6 +22,7 @@ import type {
   WindowSize,
 } from "../../contracts/index.ts";
 import {
+  AUTO_DELAY_MS_RANGE,
   DIALOGUE_HEIGHT_SCALE_RANGE,
   DIALOGUE_POSITIONS,
   ELEMENT_FITS,
@@ -181,14 +182,31 @@ export class PlayerPreferences {
     this.update({ ...this.data, instantText: on });
   }
 
-  /** 自动播放停留时长（毫秒，缺省 1500；消费归自动播放功能） */
+  /** 自动播放停留时长（毫秒，缺省 1500）：打字机完成后距上次推进至少等这么久 */
   get autoDelayMs(): number {
     return this.data.autoDelayMs ?? 1500;
   }
 
-  /** 自动播放开关（缺省 false；消费归自动播放功能） */
+  /** 设置自动播放停留时长：非整数/非有限数忽略，整数钳到值域（与 sanitize 同口径） */
+  setAutoDelayMs(ms: number): void {
+    if (typeof ms !== "number" || !Number.isInteger(ms)) return;
+    const next = Math.min(
+      AUTO_DELAY_MS_RANGE.max,
+      Math.max(AUTO_DELAY_MS_RANGE.min, ms),
+    );
+    if (next === this.data.autoDelayMs) return;
+    this.update({ ...this.data, autoDelayMs: next });
+  }
+
+  /** 自动播放开关（缺省 false）：宿主据此装配自动推进节奏 */
   get autoEnabled(): boolean {
     return this.data.autoEnabled ?? false;
+  }
+
+  /** 设置自动播放开关（非布尔忽略） */
+  setAutoEnabled(on: boolean): void {
+    if (typeof on !== "boolean" || on === this.autoEnabled) return;
+    this.update({ ...this.data, autoEnabled: on });
   }
 
   /** 快进停留时长（毫秒，缺省 50；消费归快进功能） */
@@ -196,9 +214,15 @@ export class PlayerPreferences {
     return this.data.skipDelayMs ?? 50;
   }
 
-  /** 仅快进已读（缺省 false；消费归快进功能） */
+  /** 仅快进已读（缺省 false）：true 时快进遇到未读句即停（Ren'Py 同口径） */
   get skipUnseenOnly(): boolean {
     return this.data.skipUnseenOnly ?? false;
+  }
+
+  /** 设置仅快进已读（非布尔忽略） */
+  setSkipUnseenOnly(on: boolean): void {
+    if (typeof on !== "boolean" || on === this.skipUnseenOnly) return;
+    this.update({ ...this.data, skipUnseenOnly: on });
   }
 
   /** 打字音效开关（缺省 false）：核心只发事件，资源归宿主；无资源时宿主禁用开关 */

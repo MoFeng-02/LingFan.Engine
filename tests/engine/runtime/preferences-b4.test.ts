@@ -390,7 +390,7 @@ describe("不变量混沌：随机游走 setter，值域/三态恒成立", () =>
       arr[Math.floor(rand() * arr.length)] as T;
 
     for (let i = 0; i < 200; i += 1) {
-      const action = Math.floor(rand() * 8);
+      const action = Math.floor(rand() * 11);
       const weird = pick([rand() * 4 - 2, Number.NaN, -5, 999]);
       switch (action) {
         case 0:
@@ -417,6 +417,16 @@ describe("不变量混沌：随机游走 setter，值域/三态恒成立", () =>
           prefs.setElementFit(
             pick(["cover", "contain", "bogus"]) as ElementFit,
           );
+          break;
+        case 7:
+          // 混沌游走故意混入非整数/越界值：setter 须忽略或钳制（fail-closed）
+          prefs.setAutoDelayMs(pick([weird, 12.5, 70000]));
+          break;
+        case 8:
+          prefs.setAutoEnabled(pick([true, false, "on", 1]) as boolean);
+          break;
+        case 9:
+          prefs.setSkipUnseenOnly(pick([true, false, "yes", 0]) as boolean);
           break;
         default:
           prefs.setReducedMotion(rand() > 0.5);
@@ -458,6 +468,19 @@ describe("不变量混沌：随机游走 setter，值域/三态恒成立", () =>
         expect(["fill", "contain", "cover", "none", "scale-down"]).toContain(
           snap.elementFit,
         );
+      }
+      if (snap.autoDelayMs !== undefined) {
+        expect(Number.isInteger(snap.autoDelayMs)).toBe(true);
+        expect(snap.autoDelayMs).toBeGreaterThanOrEqual(
+          AUTO_DELAY_MS_RANGE.min,
+        );
+        expect(snap.autoDelayMs).toBeLessThanOrEqual(AUTO_DELAY_MS_RANGE.max);
+      }
+      if (snap.autoEnabled !== undefined) {
+        expect(typeof snap.autoEnabled).toBe("boolean");
+      }
+      if (snap.skipUnseenOnly !== undefined) {
+        expect(typeof snap.skipUnseenOnly).toBe("boolean");
       }
     }
   });
