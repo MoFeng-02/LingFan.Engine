@@ -31,6 +31,9 @@ import BodyHost from "./BodyHost.vue";
         <div id="mounts">
           <UiHost />
         </div>
+        <!-- 小游戏挂载点：引擎让出控制权时把外部小游戏画进来，随舞台缩放与震动。
+             故意留空——内容由宿主按注册表往这个容器里写节点，不归 Vue 的渲染树。 -->
+        <div id="minigame"></div>
       </div>
     </div>
     <!-- 宿主 UI 层：按窗口像素排布，不随舞台缩放 -->

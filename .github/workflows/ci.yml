@@ -104,6 +104,13 @@ jobs:
         working-directory: ${{ runner.temp }}/work/demo
         run: ${{ matrix.manager }} install
 
+      # 生成器按依赖区间装的是 registry 上**已发布**的引擎包，所以这一步是在验
+      # 「已发布版本能不能撑起当前模板」——仓内源码有新 API 但没发版时，这里会红。
+      # 仓内五门用的是源码路径，抓不到这一类。必须在打包之前跑：vite 只转译不检查。
+      - name: 类型检查
+        working-directory: ${{ runner.temp }}/work/demo
+        run: ${{ matrix.manager }} run typecheck
+
       - name: 编译故事
         working-directory: ${{ runner.temp }}/work/demo
         run: ${{ matrix.manager }} run stories:build
@@ -111,3 +118,55 @@ jobs:
       - name: 打包
         working-directory: ${{ runner.temp }}/work/demo
         run: ${{ matrix.manager }} run build
+
+  # 框架形态的叠加层（Vue / React）改的是入口文件与页面结构，仓内 typecheck 的
+  # include 只覆盖骨架 `__PROJECT__/src`，叠加层那份入口根本不在程序里——
+  # 骨架自带 `src/main.ts`，叠加层另加 `src/main.tsx` 时 tsc 只收前者，
+  # 被 `index.html` 真正加载的那个文件从来没被检查过。这里按形态真生成再查。
+  framework-forms:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [vue, react]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 打出脚手架包
+        run: |
+          mkdir -p "$RUNNER_TEMP/tgz"
+          npm pack ./packages/create --pack-destination "$RUNNER_TEMP/tgz"
+
+      - name: 装上脚手架
+        run: npm install -g "$RUNNER_TEMP/tgz"/lingfan-engine-create-*.tgz
+
+      - name: 生成 ${{ matrix.framework }} 形态工程
+        run: |
+          mkdir -p "$RUNNER_TEMP/work"
+          cd "$RUNNER_TEMP/work"
+          lingfan-create demo --yes --framework ${{ matrix.framework }} --dir .
+          echo "npm_config_allow_scripts=esbuild" >> "$GITHUB_ENV"
+
+      - name: 安装依赖
+        working-directory: ${{ runner.temp }}/work/demo
+        run: npm install
+
+      # 两条都验：入口是否被真正纳入程序（`--listFiles` 里有没有它），
+      # 以及类型是否自洽。只跑 tsc 不够——被遮蔽时它一声不响地绿。
+      - name: 入口文件必须在程序的类型检查范围内
+        working-directory: ${{ runner.temp }}/work/demo
+        run: |
+          entry="${{ matrix.framework == 'vue' && 'src/main.ts' || 'src/main.tsx' }}"
+          npx tsc --noEmit --listFilesOnly | grep -qF "/$entry" || {
+            echo "::error::$entry 没有被纳入类型检查——它很可能被同目录同名的另一个入口遮蔽了"
+            exit 1
+          }
+
+      - name: 类型检查
+        working-directory: ${{ runner.temp }}/work/demo
+        run: npm run typecheck

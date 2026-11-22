@@ -65,6 +65,10 @@ function readDom(): StageDom {
     prefs: optional("#prefs"),
     // UI 挂载层槽位（可选）：本层不给就 null，`mount` 命令只改状态、没有组件出现
     mounts: optional("#mounts"),
+    // 列身体槽位（可选）：本层不给就 null，`body` 只改状态、没有组件出现
+    body: optional("#body"),
+    // 小游戏挂载点（可选）：本层不给就 null，引擎让出控制权时挂载分支静默返回
+    minigame: optional("#minigame"),
   };
 }
 

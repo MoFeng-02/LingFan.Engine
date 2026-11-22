@@ -16,6 +16,7 @@
 import { describe, expect, it } from "vitest";
 import templateMeta from "../../template/v1/template-meta.json?raw";
 import skeletonMain from "../../template/v1/__PROJECT__/src/main.ts?raw";
+import skeletonStageDom from "../../template/v1/__PROJECT__/src/host/stage-dom.ts?raw";
 import skeletonManifest from "../../template/v1/__PROJECT__/package.json?raw";
 import skeletonHtml from "../../template/v1/__PROJECT__/index.html?raw";
 import skeletonStoriesConfig from "../../template/v1/__PROJECT__/src/Stories.src/config.ts?raw";
@@ -915,4 +916,101 @@ describe("模板叠加层：小程序交付物消费 Lang overlay（mp-host-i18n
     expect(page).toContain(".changeLang(code)");
     expect(page).toContain("started.i18n.subscribe(");
   });
+});
+
+describe("模板叠加层：组合根必须交齐 StageDom 的必填句柄", () => {
+  /**
+   * `StageDom` 里除 `continue` 之外全是必填字段（`| null` 表示「本层可以不给这个槽」，
+   * 但字段本身必须存在）。换页面结构的层自己写一份 `readDom()`，漏一个字段就是编译错——
+   * 前提是那份组合根真的进了类型检查。
+   *
+   * 这里刻意不比对 `must()` / `optional()` 的调用：判据要的是「字段交齐了没有」，
+   * 至于它用哪个函数取（`must` 还是 `optional`）是各层自己的取舍。
+   * 页面节点 id 的互锁另有判据（上方「页面节点覆盖组合根的全部 must()」），两者互补。
+   */
+  const stageDomFields = (): {
+    required: Set<string>;
+    optional: Set<string>;
+  } => {
+    const body =
+      /export interface StageDom \{([\s\S]*?)\n\}/.exec(
+        skeletonStageDom,
+      )?.[1] ?? "";
+    const required = new Set<string>();
+    const optional = new Set<string>();
+    for (const m of body.matchAll(/^\s{2}([\w$]+)(\??):/gm)) {
+      const [, name, mark] = m;
+      if (name === "constructor") continue;
+      if (mark === "?") optional.add(name!);
+      else required.add(name!);
+    }
+    return { required, optional };
+  };
+
+  it("从接口正文里取到了字段（防判据因正则失效而空跑）", () => {
+    const { required } = stageDomFields();
+    expect(required.size).toBeGreaterThan(15);
+  });
+
+  /**
+   * 组合根交出 `StageDom` 的写法有两种：`return { … }`（骨架与两个框架层）或
+   * `const dom: StageDom = { … }`。判据只认「那个对象字面量里的键」，不关心形式。
+   */
+  const submittedFields = (source: string): Set<string> => {
+    const block =
+      /function readDom\(\)[^{]*\{([\s\S]*?\n)\}/.exec(source)?.[1] ?? "";
+    const keys = new Set<string>();
+    for (const m of block.matchAll(/^\s{4}([\w$]+):/gm)) keys.add(m[1]!);
+    return keys;
+  };
+
+  /** 换页面结构、且用骨架那套取节点的层（与上方同一条筛法，本组独立再算一次） */
+  const interlockedEntries = ALL_OPTIONS.filter((option) => {
+    if (PERIPHERAL_OPTIONS.has(option.id)) return false;
+    const entry = overlaySource(option.id, ENTRY_NAMES);
+    return entry.includes("must(");
+  }).map((option) => [option.id] as const);
+
+  it.each(interlockedEntries)(
+    "%s 层组合根交齐 StageDom 的全部必填字段",
+    (optionId) => {
+      const entry = overlaySource(optionId, ENTRY_NAMES);
+      const submitted = submittedFields(entry);
+      expect(submitted.size).toBeGreaterThan(10); // 防提取失效
+      const { required } = stageDomFields();
+      const missing = [...required]
+        .filter((field) => !submitted.has(field))
+        .sort();
+      expect(
+        missing,
+        `${optionId} 层组合根漏交 StageDom 必填字段——这些字段缺一个就编译不过，` +
+          `而叠加层的组合根只在生成出来的工程里才被类型检查`,
+      ).toEqual([]);
+    },
+  );
+
+  /**
+   * 换页面结构的层不能自带 `src/main.ts` 又自带 `src/main.tsx`：同目录同 basename 时
+   * tsc 只收 `.ts` 那份，`.tsx` 完全不进程序——它写错了也一声不响地绿。
+   * 骨架自带 `src/main.ts`，故 framew层要么用它（Vue 层替换同名文件），
+   * 要么用 `create.remove` 把它摘掉（React 层）。
+   */
+  it.each(interlockedEntries)(
+    "%s 层的入口不会被同名的另一份遮蔽",
+    (optionId) => {
+      const files = overlayFiles(optionId).map(([path]) => path);
+      const ownTs = files.some((path) => path.endsWith("/src/main.ts"));
+      const ownTsx = files.some((path) => path.endsWith("/src/main.tsx"));
+      if (!ownTsx) return; // 本层不带 .tsx 入口，与骨架的 .ts 不冲突
+      // 骨架恒带 src/main.ts。本层自带 .tsx 时必须摘掉它，否则 tsc 只收 .ts，
+      // index.html 真正加载的 .tsx 根本不进程序。本层自带同名 .ts 也行（整体替换）。
+      if (ownTs) return;
+      const patch = overlaySource(optionId, ["package.patch.json"]);
+      expect(
+        /"remove"\s*:\s*\[[^\]]*"src\/main\.ts"/.test(patch),
+        `${optionId} 层自带 src/main.tsx 却没摘掉骨架的 src/main.ts——` +
+          `tsc 只收 .ts 那份，index.html 真正加载的 .tsx 从不参与类型检查`,
+      ).toBe(true);
+    },
+  );
 });
