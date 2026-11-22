@@ -1,0 +1,4 @@
+{
+  "这一屏由组件来画：点「点名」会把次数写进引擎，回溯也带得走。": "This screen is drawn by a component: clicking “Roll call” writes a count into the engine, and it travels with rollback.",
+  "旁白": "Narrator"
+}

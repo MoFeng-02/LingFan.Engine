@@ -1,9 +1,12 @@
 /**
- * 偏好面板的扩展控件组：主音量 + 文本/显示偏好 + 缓办字段禁用占位。
+ * 偏好面板的扩展控件组：主音量 + 文本/显示偏好 + 播放节奏 + 字体 + 缓办禁用占位。
  *
  * 只渲染真正接了消费的字段（读写 `PlayerPreferences` 即时生效）；契约已增、
- * 尚未接线的字段（打字音效/窗口尺寸/自动播放/快进）画成禁用占位并附说明，
+ * 尚未接线的字段（打字音效/窗口尺寸）画成禁用占位并附说明，
  * 不留「活控件死配置」。值域一律引用核心契约常量，不在这里抄第二份数字。
+ *
+ * 播放节奏三项（自动播放/自动延时/快进只走已读）由 `input-map` 的节奏循环实时读，
+ * 开关变化即起停循环——它们不是占位，是活控件。
  *
  * 字体档不是缓办字段：选项由调用方传入（宿主从 `virtual:story-fonts` 取，与
  * `theme-fonts` 注入 @font-face 的同一份构建期清单），选中值经
@@ -15,6 +18,7 @@
  */
 
 import {
+  AUTO_DELAY_MS_RANGE,
   DIALOGUE_POSITIONS,
   DIALOGUE_HEIGHT_SCALE_RANGE,
   ELEMENT_FITS,
@@ -44,7 +48,7 @@ export interface PreferenceExtras {
 /**
  * 在 `root` 上追加扩展控件行，返回同步句柄。`t` 为宿主静态文案查表（缺省恒等）。
  * `fontNames` 为可用字体名清单（缺省空 = 字体档只有「默认」一项）。
- * 行序即追加序：主音量 → 文本 → 显示 → 字体 → 缓办禁用占位。
+ * 行序即追加序：主音量 → 文本 → 显示 → 播放节奏 → 字体 → 缓办禁用占位。
  */
 export function buildPreferenceExtras(
   root: HTMLElement,
@@ -262,11 +266,35 @@ export function buildPreferenceExtras(
     },
   );
 
+  // —— 播放：自动播放意图、推进延时、快进遇未读即停 ——
+  // 三者都由 input-map 的节奏循环实时读：自动播放开关变化即起停循环，延时决定
+  // 「打字机打完到下一次推进」的间隔，未读即停让快进遇未读文本就停手。
+  addCheckbox(
+    "auto-play",
+    t("自动播放"),
+    () => preferences.autoEnabled,
+    (on) => preferences.setAutoEnabled(on),
+  );
+  addRange(
+    "auto-delay",
+    t("自动延时"),
+    AUTO_DELAY_MS_RANGE.min,
+    AUTO_DELAY_MS_RANGE.max,
+    100,
+    () => preferences.autoDelayMs,
+    (value) => preferences.setAutoDelayMs(value),
+    (value) => `${(value / 1000).toFixed(1)} ${t("秒")}`,
+  );
+  addCheckbox(
+    "skip-unseen",
+    t("快进只走已读"),
+    () => preferences.skipUnseenOnly,
+    (on) => preferences.setSkipUnseenOnly(on),
+  );
+
   // —— 缓办字段：契约已在、消费待后续批，禁用占位 + 说明（不留活控件死配置）——
   addDisabled("type-sound", t("打字音效"), t("待打字机音效接线后启用"));
   addDisabled("window-size", t("窗口尺寸"), t("待桌面壳窗口能力接线后启用"));
-  addDisabled("auto-play", t("自动播放"), t("待自动播放接线后启用"));
-  addDisabled("skip", t("快进"), t("待快进接线后启用"));
 
   return {
     sync(): void {

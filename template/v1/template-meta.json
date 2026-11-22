@@ -1,6 +1,6 @@
 {
-  "version": "1.27.0",
-  "minEngineVersion": "0.5.0",
+  "version": "1.28.0",
+  "minEngineVersion": "0.7.1",
   "placeholder": "__PROJECT__",
   "frameworks": [
     {

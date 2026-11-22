@@ -4,5 +4,6 @@
   "改完保存，在工程根跑 pnpm stories:build 就会重新生成故事文件。": "Save your edits and run pnpm stories:build at the project root to regenerate the story files.",
   "接下来做什么？": "What next?",
   "四处看看": "Look around",
-  "重来一次": "Start over"
+  "重来一次": "Start over",
+  "组件身体示例": "Component body example"
 }

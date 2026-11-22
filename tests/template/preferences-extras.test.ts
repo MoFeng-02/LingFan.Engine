@@ -1,10 +1,10 @@
 /**
- * 模板偏好面板扩展控件组（主音量 + 文本/显示偏好 + 缓办禁用占位）。
+ * 模板偏好面板扩展控件组（主音量 + 文本/显示偏好 + 播放节奏 + 字体 + 缓办禁用占位）。
  *
  * 锁三条纪律：
  * - **只渲染本批接了消费的字段**：每个活控件写回 `PlayerPreferences` 即时生效；
- * - **缓办字段禁用占位**：打字音效/窗口尺寸/自动播放/快进画出来但 disabled，
- *   不留「活控件死配置」；字体档已接线（选项由 `fontNames` 传入），是活控件；
+ * - **缓办字段禁用占位**：打字音效/窗口尺寸画出来但 disabled，不留「活控件死配置」；
+ *   播放节奏三项（自动播放/自动延时/快进只走已读）与字体档都已接线，是活控件；
  * - **三态下拉**：值 "" = 跟随默认 → clear 回未设置（不写默认键进快照）。
  *
  * DOM 替身手法与 preferences-panel.test.ts 同口径（vi.stubGlobal document，不引 jsdom）。
@@ -205,16 +205,58 @@ describe("三态下拉：空值 = 跟随默认 → clear 回未设置", () => {
 });
 
 describe("缓办字段禁用占位（不留活控件死配置）", () => {
-  it("打字音效/窗口尺寸/自动播放/快进均 disabled", () => {
+  it("打字音效/窗口尺寸均 disabled", () => {
     const h = setup();
-    for (const setting of ["type-sound", "window-size", "auto-play", "skip"]) {
+    for (const setting of ["type-sound", "window-size"]) {
       expect(control(h.container, setting).disabled).toBe(true);
     }
   });
 
-  it("字体档已是活控件（不再禁用占位）", () => {
+  it("播放节奏三项与字体档都是活控件（不再禁用占位）", () => {
     const h = setup();
-    expect(control(h.container, "font-family").disabled).toBe(false);
+    for (const setting of [
+      "auto-play",
+      "auto-delay",
+      "skip-unseen",
+      "font-family",
+    ]) {
+      expect(control(h.container, setting).disabled).toBe(false);
+    }
+  });
+});
+
+describe("播放节奏（活控件：自动播放 / 自动延时 / 快进只走已读）", () => {
+  it("自动播放开关 → setAutoEnabled", () => {
+    const h = setup();
+    const input = control(h.container, "auto-play");
+    input.checked = true;
+    input.fire("change");
+    expect(h.prefs.autoEnabled).toBe(true);
+    input.checked = false;
+    input.fire("change");
+    expect(h.prefs.autoEnabled).toBe(false);
+  });
+
+  it("自动延时滑杆 → setAutoDelayMs，读数按秒", () => {
+    const h = setup();
+    slide(h.container, "auto-delay", "2500");
+    expect(h.prefs.autoDelayMs).toBe(2500);
+  });
+
+  it("快进只走已读开关 → setSkipUnseenOnly", () => {
+    const h = setup();
+    const input = control(h.container, "skip-unseen");
+    input.checked = true;
+    input.fire("change");
+    expect(h.prefs.skipUnseenOnly).toBe(true);
+  });
+
+  it("外部改动播放节奏，控件随动", () => {
+    const h = setup();
+    h.prefs.setAutoEnabled(true);
+    h.prefs.setAutoDelayMs(3000);
+    expect(control(h.container, "auto-play").checked).toBe(true);
+    expect(control(h.container, "auto-delay").value).toBe("3000");
   });
 });
 
