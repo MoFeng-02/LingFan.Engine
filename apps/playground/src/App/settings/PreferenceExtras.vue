@@ -6,10 +6,14 @@
  * 端口），显示读响应式快照镜像；值域引用核心契约常量，不抄第二份数字。契约已增、
  * 尚未接线的字段（打字音效/窗口尺寸）画成禁用占位并附说明。
  *
+ * 播放节奏三行（自动播放 / 自动延时 / 阅读速度）+ 未读即停：前两项是自动播放停留时长
+ * 的两个因子，第三项是快进的守卫，都由 `createAutomatedAdvanceLoop` 逐拍现读。
+ *
  * 独立成组件是为了让设置面板群文件不超载；行布局样式自带一份（ scoped 不穿透）。
  */
 import {
   AUTO_DELAY_MS_RANGE,
+  AUTO_READ_CPS_RANGE,
   DIALOGUE_HEIGHT_SCALE_RANGE,
   DIALOGUE_POSITIONS,
   ELEMENT_FITS,
@@ -107,6 +111,21 @@ function positionLabel(position: string): string {
       />
       <span class="prefs-value"
         >{{ ((props.prefsView.autoDelayMs ?? 1500) / 1000).toFixed(1) }} s</span
+      >
+    </label>
+    <label class="prefs-row">
+      <span class="prefs-label">阅读速度</span>
+      <input
+        type="range"
+        :min="AUTO_READ_CPS_RANGE.min"
+        :max="AUTO_READ_CPS_RANGE.max"
+        step="1"
+        :value="props.prefsView.autoReadCps ?? 12"
+        title="每句在基础停留之外，按这个词元速度追加阅读时间——长句停得久"
+        @input="props.prefs.setAutoReadCps($event)"
+      />
+      <span class="prefs-value"
+        >{{ props.prefsView.autoReadCps ?? 12 }} 词元/秒</span
       >
     </label>
     <label class="prefs-row">

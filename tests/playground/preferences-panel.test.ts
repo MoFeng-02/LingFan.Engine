@@ -1,13 +1,17 @@
 /**
  * playground 偏好面板句柄测试（host/panels/views/preferences-panel）。
- * - 播放/文本外观写入口（自动播放/自动延时/未读即停/字体/字速源）把 DOM 事件
+ * - 播放/文本外观写入口（自动播放/自动延时/阅读速度/未读即停/字体/字速源）把 DOM 事件
  *   原样转给核心 setter：面板不自持状态，视图镜像随偏好变更即时刷新
  * - onChanged 与镜像同步触发（宿主「字速即时作用于当前句」的落点信号）
  * - 畸形事件 fail-closed：非法滑杆值/词表外选项被核心忽略，状态原样
  * - dispose 退订：卸载后偏好变更不再刷新镜像（与构造成对）
  */
 import { describe, expect, it, vi } from "vitest";
-import { AUTO_DELAY_MS_RANGE, PlayerPreferences } from "@lingfan-engine/core";
+import {
+  AUTO_DELAY_MS_RANGE,
+  AUTO_READ_CPS_RANGE,
+  PlayerPreferences,
+} from "@lingfan-engine/core";
 import { createPreferencesPanel } from "../../apps/playground/src/host/panels/views/preferences-panel.ts";
 
 /** 最小事件替身：面板只读 target 的控件面（checked/value），不触其余 DOM API */
@@ -41,6 +45,19 @@ describe("播放偏好写入口", () => {
     expect(preferences.autoDelayMs).toBe(AUTO_DELAY_MS_RANGE.max);
     panel.setAutoDelayMs(control("not-a-number"));
     expect(preferences.autoDelayMs).toBe(AUTO_DELAY_MS_RANGE.max); // 原样
+    panel.dispose();
+  });
+
+  it("阅读速度滑杆：数值采纳、越界钳制；非数值忽略状态原样（fail-closed）", () => {
+    const preferences = new PlayerPreferences();
+    const panel = createPreferencesPanel({ preferences });
+    panel.setAutoReadCps(control("24"));
+    expect(preferences.autoReadCps).toBe(24);
+    expect(panel.view.value.autoReadCps).toBe(24);
+    panel.setAutoReadCps(control(String(AUTO_READ_CPS_RANGE.max + 100)));
+    expect(preferences.autoReadCps).toBe(AUTO_READ_CPS_RANGE.max);
+    panel.setAutoReadCps(control("not-a-number"));
+    expect(preferences.autoReadCps).toBe(AUTO_READ_CPS_RANGE.max); // 原样
     panel.dispose();
   });
 

@@ -74,10 +74,12 @@ export interface PreferencesPanel {
   setDialogueHeightScale(event: Event): void;
   /** 元素填充默认下拉（空值 = 清除 = 跟随内建） */
   setElementFit(event: Event): void;
-  /** 自动播放开关（开启后宿主按 autoDelayMs 节奏推进对话） */
+  /** 自动播放开关（开启后宿主按「基础停留 + 句长 / 阅读速度」的节奏推进对话） */
   setAutoEnabled(event: Event): void;
-  /** 自动播放延时滑杆（打字机完成后距上次推进至少等这么久） */
+  /** 自动播放基础停留滑杆（按句长追加的阅读时间在此之上） */
   setAutoDelayMs(event: Event): void;
+  /** 自动播放阅读速度滑杆（词元/秒；越大每句停得越短） */
+  setAutoReadCps(event: Event): void;
   /** 快进遇未读即停开关（关闭则快进越过未读文本） */
   setSkipUnseenOnly(event: Event): void;
   /** 字体下拉（空值 = 清除 = 跟随工程默认） */
@@ -196,6 +198,11 @@ export function createPreferencesPanel(
     },
     setAutoDelayMs(event: Event): void {
       preferences.setAutoDelayMs(
+        Number((event.target as HTMLInputElement).value),
+      );
+    },
+    setAutoReadCps(event: Event): void {
+      preferences.setAutoReadCps(
         Number((event.target as HTMLInputElement).value),
       );
     },
