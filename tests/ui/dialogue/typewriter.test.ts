@@ -159,3 +159,39 @@ describe("setSpeed（SetTextSpeed：玩家偏好即时调整当前句）", () =>
     expect(twZero.visible).toBe("A");
   });
 });
+
+describe("readingTokens（自动播放按它分摊停留）", () => {
+  it("构造时按词元口径数定，与可见字符数 total 是两个数", () => {
+    // 「灵泛」2 词元；可见 2 字。标点计入可见、不计词元。
+    const plain = new Typewriter("灵泛。", 30);
+    expect(plain.total).toBe(3);
+    expect(plain.readingTokens).toBe(2);
+
+    // 拉丁连续串算 1 个词元，但可见 5 个字符。
+    const latin = new Typewriter("hello!", 30);
+    expect(latin.total).toBe(6);
+    expect(latin.readingTokens).toBe(1);
+  });
+
+  it("内联标记既不进可见数、也不进词元数", () => {
+    const tw = new Typewriter("{color=#f00}灵泛{p}{/color}", 30);
+    expect(tw.total).toBe(2);
+    expect(tw.readingTokens).toBe(2);
+  });
+
+  it("空白与换行不计词元", () => {
+    const tw = new Typewriter("灵泛\n\n旅人", 30);
+    expect(tw.readingTokens).toBe(4);
+  });
+
+  it("随 setSpeed 变化不受影响（词元量是文本属性，不是速度属性）", () => {
+    const tw = new Typewriter("夜风穿过长廊", 10);
+    const before = tw.readingTokens;
+    tw.setSpeed(120);
+    expect(tw.readingTokens).toBe(before);
+  });
+
+  it("空文本为 0（自动播放退化为基础停留）", () => {
+    expect(new Typewriter("", 30).readingTokens).toBe(0);
+  });
+});

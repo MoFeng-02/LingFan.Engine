@@ -8,6 +8,8 @@
  *   已完成 → no-op（UI 转 advance）
  */
 
+import { countReadingTokens } from "./reading-pace.ts";
+
 /** 打字流快照：流文本、停顿点坐标与可见字符总数 */
 export interface TypingStream {
   /** 打字流：原文去 {p}/{w}/{fast}；样式标记整段保留（零宽，渲染层据此着色） */
@@ -80,6 +82,8 @@ export class Typewriter {
   private readonly stream: string;
   /** 可见字符总数；`shown` 达到它即打完 */
   private readonly visibleTotal: number;
+  /** 阅读词元量（构造时一次算定，见 `countReadingTokens`）：自动播放按它分摊停留 */
+  private readonly tokenCount: number;
 
   /**
    * @param text 原始富文本（含 {p}/{w}/{fast} 与样式标记），构造时就地分词
@@ -93,6 +97,7 @@ export class Typewriter {
     this.stream = tokenized.stream;
     this.pausePoints = tokenized.pausePoints;
     this.visibleTotal = tokenized.visibleTotal;
+    this.tokenCount = countReadingTokens(text);
   }
 
   /** SetTextSpeed：玩家偏好即时调整当前句打字速度（非法值忽略，下限 1） */
@@ -177,5 +182,15 @@ export class Typewriter {
   /** 本条文本的可见字符总数（`shown` 的上界；进度条与「打完了吗」的分母） */
   get total(): number {
     return this.visibleTotal;
+  }
+
+  /**
+   * 本条文本的阅读词元量（自动播放按句长分摊停留时长时的分子）。
+   *
+   * 与 `total` 是两个口径：`total` 是打字机的可见字符数（含标点——标点也要打出来），
+   * 这里是「读这句要过几个眼睛单位」（标点、空白、内联标记都不计）。
+   */
+  get readingTokens(): number {
+    return this.tokenCount;
   }
 }

@@ -4,8 +4,9 @@
  * 引擎只管模式旗标与守卫（`auto`/`skip`/`advanceAutomated`），「按什么节奏推进」是宿主的事：
  * - **快进（skip）= 按住持续**：起一个按 `skipDelayMs` 节奏的循环，每拍先补完打字机再
  *   `advanceAutomated`；守卫命中（noskip、未读停、回溯期、ui 列）返回 false 即停。
- * - **自动（auto）= 偏好开关**：`autoEnabled` 开启后小步轮询，打字机打完且距上次推进够
- *   `autoDelayMs` 才自动推进；快进时让位。
+ * - **自动（auto）= 偏好开关**：`autoEnabled` 开启后小步轮询，打字机打完且本句停留够了
+ *   才自动推进；快进时让位。**停留时长按句长算**：`autoDelayMs` 是基础停留，
+ *   再按该句词元量 / `autoReadCps` 追加阅读时间——长句停得久、短句停得短。
  *
  * 两者都走引擎 guarded 推进接缝，检查点时机与玩家点击一致。节奏参数逐拍现读偏好，
  * 改滑杆即时生效。本模块零 DOM：打字机经读面注入，定时器用全局 `setInterval`。
@@ -15,11 +16,19 @@ import {
   type PlayerPreferences,
   type StoryEngine,
 } from "@lingfan-engine/core";
+import { autoDwellMs, countReadingTokens } from "../dialogue/reading-pace.ts";
 
-/** 打字机的最小读面：是否打完 + 补完当前句 */
+/** 打字机的最小读面：是否打完 + 补完当前句 + 本句词元量 */
 export interface TypewriterReader {
   done: boolean;
   click(): void;
+  /**
+   * 本句的阅读词元量（自动播放按它分摊停留）。
+   *
+   * 读面做成可选：宿主可以晚一步接上（缺省时退回按引擎里那条正文现数），
+   * 早期宿主的旧实现不会因多一个必填字段而编译不过。
+   */
+  readingTokens?: number;
 }
 
 /** 节奏装配的输入 */
@@ -49,7 +58,25 @@ export function createAutomatedAdvanceLoop(
   const engine = options.getEngine;
   let skipTimer: ReturnType<typeof setInterval> | null = null;
   let autoTimer: ReturnType<typeof setInterval> | null = null;
-  let autoLastAdvance = 0;
+
+  /** 当前对话正文（引擎里的镜像值）；非字符串按空串处理 */
+  function readDialogText(): string {
+    const value = engine().get(SYS.currentDialogText);
+    return typeof value === "string" ? value : "";
+  }
+
+  /**
+   * 本句词元量：优先用打字机读面给的数（它构造时分过词，口径与渲染一致）；
+   * 读面还没接上（无打字机或旧实现）时退回按引擎里那条正文现数。
+   */
+  function readTokens(
+    sentence: string,
+    typewriter: TypewriterReader | null,
+  ): number {
+    const tokens = typewriter?.readingTokens;
+    if (typeof tokens === "number" && Number.isFinite(tokens)) return tokens;
+    return countReadingTokens(sentence);
+  }
 
   function stopSkip(): void {
     if (skipTimer !== null) {
@@ -87,7 +114,10 @@ export function createAutomatedAdvanceLoop(
   function startAuto(): void {
     if (autoTimer !== null) return;
     engine().auto(true);
-    autoLastAdvance = Date.now();
+    // 停留计时以「这一句打完」为起点，而不是上一次推进：否则打字机慢慢打完的那几秒
+    // 会白白抵掉阅读时间，长句反而比短句停得少。
+    let autoSentence = "";
+    let autoTypedAt = -1;
     autoTimer = setInterval(() => {
       if (options.preferences?.autoEnabled !== true) {
         stopAuto();
@@ -96,12 +126,28 @@ export function createAutomatedAdvanceLoop(
       if (engine().skipActive()) return;
       // 自动播放只推进对话（等待 / 视频不自动跳，交给玩家或快进）
       if (engine().get(SYS.waiting) !== "dialog") return;
+      const sentence = readDialogText();
+      if (sentence !== autoSentence) {
+        autoSentence = sentence;
+        autoTypedAt = -1;
+      }
       const typewriter = options.readTypewriter();
-      if (typewriter !== null && !typewriter.done) return;
-      const delay = options.preferences?.autoDelayMs ?? 1500;
-      if (Date.now() - autoLastAdvance < delay) return;
-      if (engine().advanceAutomated()) autoLastAdvance = Date.now();
-      else stopAuto();
+      const typed = typewriter === null || typewriter.done;
+      if (!typed) return;
+      if (autoTypedAt < 0) autoTypedAt = Date.now();
+      const dwell = autoDwellMs({
+        tokens: readTokens(sentence, typewriter),
+        readCps: options.preferences?.autoReadCps ?? 12,
+        baseMs: options.preferences?.autoDelayMs ?? 1500,
+      });
+      if (Date.now() - autoTypedAt < dwell) return;
+      if (engine().advanceAutomated()) {
+        // 下一句重新计时（文本可能同值，靠显式复位而不是靠比对）
+        autoSentence = "";
+        autoTypedAt = -1;
+      } else {
+        stopAuto();
+      }
     }, 100);
   }
 

@@ -11,6 +11,11 @@ export {
 } from "./inline";
 export { Typewriter, tokenizeStream } from "./typewriter";
 export {
+  autoDwellMs,
+  countReadingTokens,
+  type ReadingPaceOptions,
+} from "./reading-pace";
+export {
   renderDialogueLine,
   type DialogueLineInput,
   type DialogueLineView,
