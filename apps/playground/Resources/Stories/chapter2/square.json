@@ -31,7 +31,7 @@
       "reward": [
         {
           "key": "player.gold",
-          "value": 10
+          "value": "{player.gold + 10}"
         }
       ]
     },

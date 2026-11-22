@@ -4,9 +4,61 @@
   "kind": "flow",
   "commands": [
     {
+      "op": "func",
+      "name": "moodNeutral",
+      "params": [],
+      "body": [
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "source": "Images/角色/灵泛_正面.png"
+          }
+        }
+      ]
+    },
+    {
+      "op": "func",
+      "name": "portraitShy",
+      "params": [],
+      "body": [
+        {
+          "op": "hide",
+          "target": "lingfan"
+        },
+        {
+          "op": "show",
+          "target": "Images/角色/灵泛_娇羞.png",
+          "id": "lingfan",
+          "x": 860,
+          "y": 110,
+          "background": false
+        },
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "width": 360,
+            "height": 560,
+            "stretch": "contain"
+          }
+        }
+      ]
+    },
+    {
+      "op": "call",
+      "target": "portraitShy",
+      "args": []
+    },
+    {
       "op": "say",
       "text": "本列播完——列尾之后点击不再推进。",
       "speaker": "灵泛"
+    },
+    {
+      "op": "call",
+      "target": "moodNeutral",
+      "args": []
     },
     {
       "op": "say",

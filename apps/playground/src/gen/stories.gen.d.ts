@@ -5,6 +5,11 @@ declare module "@lingfan-engine/core" {
   interface ColumnNameRegistry {
     "desk_talk": 1;
     "end": 1;
+    "feat_audio": 1;
+    "feat_hub": 1;
+    "feat_play": 1;
+    "feat_rollback": 1;
+    "feat_skip": 1;
     "hall": 1;
     "inn": 1;
     "kitchen_talk": 1;
@@ -12,6 +17,7 @@ declare module "@lingfan-engine/core" {
     "room_study": 1;
     "square": 1;
     "stage_demo": 1;
+    "starfield": 1;
     "start": 1;
     "tour": 1;
     "tour_av": 1;
@@ -27,6 +33,13 @@ declare module "@lingfan-engine/core" {
   interface FuncNameRegistry {
     "farewell": 1;
     "greet": 1;
+    "moodAngry": 1;
+    "moodNeutral": 1;
+    "moodSerious": 1;
+    "moodShy": 1;
+    "moodThinking": 1;
+    "portraitNeutral": 1;
+    "portraitShy": 1;
     "stationsMenu": 1;
   }
   interface InterpolationKeyRegistry {

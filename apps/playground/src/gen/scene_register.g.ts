@@ -2,18 +2,21 @@
 import type { UiHandle } from "@lingfan-engine/editor";
 import hallView from "../scenes/hall/hall.vue";
 import roomView from "../scenes/room/room.vue";
+import starfieldView from "../scenes/starfield/starfield.vue";
 import worldmapView from "../scenes/worldmap/worldmap.vue";
 
 /** 宿主用：「名字 → 组件」表。键就是 `SYS.body.name`，不需要再归一。 */
 export const scenes: Record<string, unknown> = {
   "hall": hallView,
   "room": roomView,
+  "starfield": starfieldView,
   "worldmap": worldmapView,
 };
 
 /** 故事源用：具名句柄，与 `import kitchen from "…/kitchen.vue"` 折叠出同一个名字。 */
 export const hall: UiHandle<"hall"> = { face: "uis", name: "hall" };
 export const room: UiHandle<"room"> = { face: "uis", name: "room" };
+export const starfield: UiHandle<"starfield"> = { face: "uis", name: "starfield" };
 export const worldmap: UiHandle<"worldmap"> = { face: "uis", name: "worldmap" };
 
 /** 场景名的构建期登记处：`body: { name: "…" }` 引用了未登记的名字会在类型期报错。 */
@@ -21,6 +24,7 @@ declare module "@lingfan-engine/core" {
   interface SceneNameRegistry {
     "hall": 1;
     "room": 1;
+    "starfield": 1;
     "worldmap": 1;
   }
 }

@@ -95,7 +95,15 @@ describe("示例工程防腐", () => {
       "kitchen_talk",
       "room_kitchen",
       "room_study",
+      "starfield",
       "world",
+      "feat_audio",
+      "feat_hub",
+      "feat_play",
+      "feat_rollback",
+      "feat_skip",
+      "text_gallery",
+      "text_tale",
     ]);
   });
 

@@ -1,0 +1,99 @@
+{
+  "formatVersion": 1,
+  "id": "feat_hub",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "func",
+      "name": "moodThinking",
+      "params": [],
+      "body": [
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "source": "Images/角色/灵泛_手托下巴_疑问.png"
+          }
+        }
+      ]
+    },
+    {
+      "op": "func",
+      "name": "portraitNeutral",
+      "params": [],
+      "body": [
+        {
+          "op": "hide",
+          "target": "lingfan"
+        },
+        {
+          "op": "show",
+          "target": "Images/角色/灵泛_正面.png",
+          "id": "lingfan",
+          "x": 860,
+          "y": 110,
+          "background": false
+        },
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "width": 360,
+            "height": 560,
+            "stretch": "contain"
+          }
+        }
+      ]
+    },
+    {
+      "op": "call",
+      "target": "portraitNeutral",
+      "args": []
+    },
+    {
+      "op": "say",
+      "text": "功能演示章——这里逐站陈列引擎的玩家功能，每一站都是真机制。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "say",
+      "text": "选一站进去体验；演毕可回枢纽，或去词汇全席继续巡览。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "call",
+      "target": "moodThinking",
+      "args": []
+    },
+    {
+      "op": "menu",
+      "prompt": "体验哪一站？",
+      "options": [
+        {
+          "text": "已读与快进（persistent·skip）",
+          "target": "feat_skip"
+        },
+        {
+          "text": "音频实例多轨（四通道）",
+          "target": "feat_audio"
+        },
+        {
+          "text": "不可回溯段（rollback 锁）",
+          "target": "feat_rollback"
+        },
+        {
+          "text": "小游戏与交互（分流文本列）",
+          "target": "feat_play"
+        },
+        {
+          "text": "回词汇巡览",
+          "target": "tour"
+        },
+        {
+          "text": "回主线菜单",
+          "target": "start"
+        }
+      ]
+    }
+  ]
+}

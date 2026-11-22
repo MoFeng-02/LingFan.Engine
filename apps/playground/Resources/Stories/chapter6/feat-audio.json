@@ -1,0 +1,149 @@
+{
+  "formatVersion": 1,
+  "id": "feat_audio",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "func",
+      "name": "portraitNeutral",
+      "params": [],
+      "body": [
+        {
+          "op": "hide",
+          "target": "lingfan"
+        },
+        {
+          "op": "show",
+          "target": "Images/角色/灵泛_正面.png",
+          "id": "lingfan",
+          "x": 860,
+          "y": 110,
+          "background": false
+        },
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "width": 360,
+            "height": 560,
+            "stretch": "contain"
+          }
+        }
+      ]
+    },
+    {
+      "op": "call",
+      "target": "portraitNeutral",
+      "args": []
+    },
+    {
+      "op": "say",
+      "text": "音频实例多轨站。实例是作者点名的编排单元，可多轨叠加、各自独立。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "audio_play",
+      "inst": "melody",
+      "channel": "bgm",
+      "resource": "Audio/bgm_theme.wav",
+      "volume": 0.5,
+      "loop": true,
+      "fade": 800
+    },
+    {
+      "op": "audio_play",
+      "inst": "wind",
+      "channel": "ambient",
+      "resource": "Audio/ambient_wind.wav",
+      "volume": 0.4,
+      "loop": true,
+      "fade": 800
+    },
+    {
+      "op": "say",
+      "text": "两轨叠加：bgm 实例 melody 与 ambient 实例 wind 同时播放，互不干扰。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "audio_volume",
+      "inst": "melody",
+      "volume": 0.8
+    },
+    {
+      "op": "say",
+      "text": "把 melody 单独调到 0.8，wind 不受影响——实例音量独立。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "audio_pause",
+      "inst": "wind"
+    },
+    {
+      "op": "say",
+      "text": "只暂停 wind 一轨，melody 继续——实例暂停独立。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "audio_resume",
+      "inst": "wind"
+    },
+    {
+      "op": "say",
+      "text": "恢复 wind，从暂停位置续播，不从头重播。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "se",
+      "resource": "Audio/se_ui_click.wav",
+      "volume": 0.6
+    },
+    {
+      "op": "se",
+      "resource": "Audio/se_ui_confirm.wav",
+      "volume": 0.6
+    },
+    {
+      "op": "say",
+      "text": "se 通道一次性触发：点击音与确认音，不进实例、不可暂停。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "se",
+      "resource": "Audio/se_type.wav",
+      "volume": 0.5
+    },
+    {
+      "op": "say",
+      "text": "打字音素材已备（se_type），此处一次性试听；逐字打字接线需宿主钩子，诚实缓办。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "audio_play",
+      "inst": "vox",
+      "channel": "voice",
+      "resource": "Audio/chest_drawer_open.mp3",
+      "volume": 0.6
+    },
+    {
+      "op": "say",
+      "text": "voice 通道实例 vox（既有素材占位演示通道；真配音素材缓办）。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "audio_stop",
+      "inst": "vox"
+    },
+    {
+      "op": "audio_stop"
+    },
+    {
+      "op": "say",
+      "text": "停掉全部实例，声场清空。四通道与实例维度演示完毕。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "jump",
+      "target": "feat_hub"
+    }
+  ]
+}

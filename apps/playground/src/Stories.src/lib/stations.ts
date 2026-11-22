@@ -18,6 +18,7 @@ export function stationsMenu(): void {
     option("舞台窗口", "tour_stage"),
     option("扩展工坊", "tour_ext"),
     option("守卫工坊", "tour_guard"),
+    option("功能演示", "feat_hub"),
     option("沙盒地图", "world"),
     option("回主线菜单", "start"),
     option("离席（终幕）", "end"),

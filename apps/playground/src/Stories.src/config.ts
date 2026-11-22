@@ -11,7 +11,14 @@
 import { Sex } from "./lib/enums";
 
 export default {
-  folders: ["chapter1", "chapter2", "chapter3", "chapter4", "chapter5"],
+  folders: [
+    "chapter1",
+    "chapter2",
+    "chapter3",
+    "chapter4",
+    "chapter5",
+    "chapter6",
+  ],
   start: "start.ts",
   // 新增了状态键（world.*），版本必须跟着升：旧档的 storyVersion 对不上会整档拒绝，
   // 而不是带着缺键的存档进新流程。
@@ -22,7 +29,6 @@ export default {
   vars: defineVars({
     n: "num",
     m: "num",
-    "journal.flag": "num",
   }),
 
   // 形态 A：键集对象声明状态初始树（与旧 stateSchema 全键等值）。
@@ -37,6 +43,8 @@ export default {
     },
     dice: { type: "number", default: 1 },
     supplies: { type: ["string"], default: [] },
+    // 功能演示章的一次性相位标记：feat_play 首访走交互、再访走小游戏。
+    journal: { flag: { type: "number", default: 0 } },
     // 沙盒地图的三格：去过哪些房间、灯亮着没有、地图上正看着哪一间。
     // 组件实际读写的是 `game.world.*`（玩法系统写口只能落在那一段）；这里的同名声明
     // 只给类型面与初始值，两套键互不覆盖，读不到时组件自己兜底。

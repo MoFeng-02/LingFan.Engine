@@ -1,0 +1,128 @@
+{
+  "formatVersion": 1,
+  "id": "feat_skip",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "func",
+      "name": "moodNeutral",
+      "params": [],
+      "body": [
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "source": "Images/角色/灵泛_正面.png"
+          }
+        }
+      ]
+    },
+    {
+      "op": "func",
+      "name": "moodSerious",
+      "params": [],
+      "body": [
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "source": "Images/角色/灵泛_严肃.png"
+          }
+        }
+      ]
+    },
+    {
+      "op": "func",
+      "name": "portraitNeutral",
+      "params": [],
+      "body": [
+        {
+          "op": "hide",
+          "target": "lingfan"
+        },
+        {
+          "op": "show",
+          "target": "Images/角色/灵泛_正面.png",
+          "id": "lingfan",
+          "x": 860,
+          "y": 110,
+          "background": false
+        },
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "width": 360,
+            "height": 560,
+            "stretch": "contain"
+          }
+        }
+      ]
+    },
+    {
+      "op": "call",
+      "target": "portraitNeutral",
+      "args": []
+    },
+    {
+      "op": "say",
+      "text": "已读与快进站。先正常读一遍下面的句子——推进过的会被记为已读。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "say",
+      "text": "引擎把每句 say 的已读坐标存进 persistent 层，跨存档、跨会话存活。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "say",
+      "text": "打开工具栏 Skip，并在偏好里启用「仅未读停」：skip 快进已读、遇到未读停下。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "say",
+      "text": "这一句故意未读——开了「仅未读停」时，skip 会在这里停住等你。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "say",
+      "text": "Auto 则按偏好延时自动推进，与 skip 共用节奏闸门。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "call",
+      "target": "moodSerious",
+      "args": []
+    },
+    {
+      "op": "say",
+      "text": "下面这句是 noskip 硬闸门：skip 与 auto 都不推进它，只能手动点击前进。",
+      "speaker": "灵泛",
+      "noskip": true
+    },
+    {
+      "op": "call",
+      "target": "moodNeutral",
+      "args": []
+    },
+    {
+      "op": "wait",
+      "seconds": 0.8,
+      "skipable": true
+    },
+    {
+      "op": "say",
+      "text": "读完后离开再回来（或读档重来），已读段就能被 skip 快进——这就是跨档已读。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "say",
+      "text": "提示：工具栏 Auto/Skip 快捷按钮与偏好开关由宿主提供，状态实时生效。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "jump",
+      "target": "feat_hub"
+    }
+  ]
+}

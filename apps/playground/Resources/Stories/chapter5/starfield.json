@@ -1,0 +1,9 @@
+{
+  "formatVersion": 1,
+  "id": "starfield",
+  "kind": "scene",
+  "body": {
+    "name": "starfield"
+  },
+  "entry": []
+}

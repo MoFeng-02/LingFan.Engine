@@ -15,8 +15,106 @@
       "body": [
         {
           "op": "say",
-          "text": "{who}，欢迎来到灵泛！12",
+          "text": "{who}，欢迎来到灵泛！",
           "speaker": "{who}"
+        }
+      ]
+    },
+    {
+      "op": "func",
+      "name": "moodAngry",
+      "params": [],
+      "body": [
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "source": "Images/角色/灵泛_愤怒.png"
+          }
+        }
+      ]
+    },
+    {
+      "op": "func",
+      "name": "moodNeutral",
+      "params": [],
+      "body": [
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "source": "Images/角色/灵泛_正面.png"
+          }
+        }
+      ]
+    },
+    {
+      "op": "func",
+      "name": "moodSerious",
+      "params": [],
+      "body": [
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "source": "Images/角色/灵泛_严肃.png"
+          }
+        }
+      ]
+    },
+    {
+      "op": "func",
+      "name": "moodShy",
+      "params": [],
+      "body": [
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "source": "Images/角色/灵泛_娇羞.png"
+          }
+        }
+      ]
+    },
+    {
+      "op": "func",
+      "name": "moodThinking",
+      "params": [],
+      "body": [
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "source": "Images/角色/灵泛_手托下巴_疑问.png"
+          }
+        }
+      ]
+    },
+    {
+      "op": "func",
+      "name": "portraitNeutral",
+      "params": [],
+      "body": [
+        {
+          "op": "hide",
+          "target": "lingfan"
+        },
+        {
+          "op": "show",
+          "target": "Images/角色/灵泛_正面.png",
+          "id": "lingfan",
+          "x": 860,
+          "y": 110,
+          "background": false
+        },
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "width": 360,
+            "height": 560,
+            "stretch": "contain"
+          }
         }
       ]
     },
@@ -27,10 +125,42 @@
       "color": "#7aa2f7"
     },
     {
+      "op": "background",
+      "resource": "Images/hall.svg"
+    },
+    {
+      "op": "call",
+      "target": "portraitNeutral",
+      "args": []
+    },
+    {
+      "op": "style",
+      "target": "lingfan",
+      "props": {
+        "opacity": 0
+      }
+    },
+    {
+      "op": "animate",
+      "target": "lingfan",
+      "property": "opacity",
+      "value": 1,
+      "duration": 1.2,
+      "easing": "EaseOutQuad"
+    },
+    {
       "op": "bgm",
+      "resource": "Audio/bgm_theme.wav",
+      "volume": 0.5,
+      "fade": 1500,
+      "loop": true
+    },
+    {
+      "op": "ambient",
       "resource": "Audio/crickets_night01.mp3",
-      "volume": 0.4,
-      "fade": 1200
+      "volume": 0.35,
+      "fade": 1200,
+      "loop": true
     },
     {
       "op": "mount",
@@ -38,13 +168,8 @@
       "visible": true,
       "props": {
         "label": "进度",
-        "value": "第一章"
+        "value": "序幕"
       }
-    },
-    {
-      "op": "set",
-      "key": "player.gold",
-      "value": "+= {20}"
     },
     {
       "op": "set",
@@ -53,138 +178,22 @@
     },
     {
       "op": "say",
-      "text": "准备数值测试"
-    },
-    {
-      "op": "let",
-      "key": "a",
-      "value": 100
+      "text": "夜风穿过大厅，灯火摇曳。灯影里，一个身影向你走来。"
     },
     {
       "op": "say",
-      "text": "{a} 我是值"
-    },
-    {
-      "op": "let",
-      "key": "a",
-      "value": "*= {2}"
-    },
-    {
-      "op": "say",
-      "text": "{a} 我是乘值"
-    },
-    {
-      "op": "let",
-      "key": "a",
-      "value": "/= {2}"
-    },
-    {
-      "op": "say",
-      "text": "{a} 我是除值"
-    },
-    {
-      "op": "let",
-      "key": "a",
-      "value": "+= {2}"
-    },
-    {
-      "op": "say",
-      "text": "{a} 我是加值"
-    },
-    {
-      "op": "let",
-      "key": "a",
-      "value": "-= {2}"
-    },
-    {
-      "op": "say",
-      "text": "{a} 我是减值"
-    },
-    {
-      "op": "let",
-      "key": "a",
-      "value": 103
-    },
-    {
-      "op": "let",
-      "key": "a",
-      "value": "%= {2}"
-    },
-    {
-      "op": "say",
-      "text": "{a} 我是取余值"
-    },
-    {
-      "op": "let",
-      "key": "c",
-      "value": 100
-    },
-    {
-      "op": "let",
-      "key": "b",
-      "value": 200
-    },
-    {
-      "op": "say",
-      "text": "{c} 我是 c"
-    },
-    {
-      "op": "say",
-      "text": "{b} 我是 b"
-    },
-    {
-      "op": "let",
-      "key": "c",
-      "value": "{c * b}"
-    },
-    {
-      "op": "say",
-      "text": "{c} 我是 c * b"
-    },
-    {
-      "op": "let",
-      "key": "c",
-      "value": "{c / b}"
-    },
-    {
-      "op": "say",
-      "text": "{c} 我是 c / b"
-    },
-    {
-      "op": "let",
-      "key": "a",
-      "value": 66
-    },
-    {
-      "op": "let",
-      "key": "c",
-      "value": "{c * a * b}"
-    },
-    {
-      "op": "say",
-      "text": "{c} 我是 c * a * b"
-    },
-    {
-      "op": "let",
-      "key": "c",
-      "value": "{c / a / b}"
-    },
-    {
-      "op": "say",
-      "text": "{c} 我是 c / a / b"
-    },
-    {
-      "op": "say",
-      "text": "数值测试结束"
-    },
-    {
-      "op": "say",
-      "text": "你有 {player.gold:000} 枚金币（插值 + 补零格式化）。",
+      "text": "旅人，你终于到了。我是灵泛，这台引擎的引路人。",
       "speaker": "灵泛"
     },
     {
       "op": "say",
-      "text": "富文本：{b}加粗{/b}、{i}斜体{/i}、{u}下划线{/u}、{color=#FFD700}金色{/color}、{color=#9ece6a}{size=22}大字{/size}{/color}。"
+      "text": "这里的一草一木、一声一息，都由命令与状态织成——且听我慢慢道来。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "call",
+      "target": "moodThinking",
+      "args": []
     },
     {
       "op": "input",
@@ -192,9 +201,19 @@
       "store": "player.name"
     },
     {
+      "op": "set",
+      "key": "player.gold",
+      "value": "+= {20}"
+    },
+    {
       "op": "if",
       "cond": "{player.gold >= 25}",
       "then": [
+        {
+          "op": "call",
+          "target": "moodShy",
+          "args": []
+        },
         {
           "op": "notify",
           "text": "金币充足！当前 {player.gold} 枚。",
@@ -206,28 +225,49 @@
           "args": [
             "{player.name}"
           ]
+        },
+        {
+          "op": "call",
+          "target": "moodNeutral",
+          "args": []
         }
       ],
       "else": [
         {
+          "op": "call",
+          "target": "moodAngry",
+          "args": []
+        },
+        {
           "op": "say",
           "text": "囊中羞涩……先去赚点钱吧。"
+        },
+        {
+          "op": "call",
+          "target": "moodNeutral",
+          "args": []
         }
       ]
     },
     {
-      "op": "wait",
-      "seconds": 1.5,
-      "skipable": true
+      "op": "say",
+      "text": "这是给你的盘缠：{player.gold:000} 枚金币（插值 + 补零格式化）。",
+      "speaker": "灵泛"
     },
     {
       "op": "say",
-      "text": "（等待 1.5 秒可点击跳过）"
+      "text": "富文本也能入戏：{b}加粗{/b}、{i}斜体{/i}、{u}下划线{/u}、{color=#FFD700}金色{/color}、{color=#9ece6a}{size=22}大字{/size}{/color}。",
+      "speaker": "灵泛"
     },
     {
       "op": "se",
-      "resource": "Audio/chest_drawer_open.mp3",
-      "volume": 0.7
+      "resource": "Audio/se_ui_confirm.wav",
+      "volume": 0.6
+    },
+    {
+      "op": "call",
+      "target": "moodSerious",
+      "args": []
     },
     {
       "op": "nvl",
@@ -235,23 +275,29 @@
     },
     {
       "op": "say",
-      "text": "NVL 累积：第一段。"
+      "text": "灵泛：这台引擎以状态为唯一事实源，命令驱动一切呈现。"
     },
     {
       "op": "say",
-      "text": "第二段（滚动累积）。"
+      "text": "灵泛：对话、立绘、音频、选择，皆是可回溯、可存档的数据。"
     },
     {
       "op": "say",
-      "text": "第三段。"
+      "text": "灵泛：愿你在此看见引擎的全貌，也看见故事的温柔。"
     },
     {
       "op": "nvl",
       "mode": "exit"
     },
     {
+      "op": "call",
+      "target": "moodNeutral",
+      "args": []
+    },
+    {
       "op": "say",
-      "text": "NVL 退出，回到普通对话。"
+      "text": "让我为你放一段世界的剪影。",
+      "speaker": "灵泛"
     },
     {
       "op": "cutscene",
@@ -262,11 +308,27 @@
     },
     {
       "op": "say",
-      "text": "过场结束——播完或点击跳过都会继续。"
+      "text": "过场结束——播完或点击跳过都会继续。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "wait",
+      "seconds": 1,
+      "skipable": true
+    },
+    {
+      "op": "se",
+      "resource": "Audio/se_whoosh.wav",
+      "volume": 0.5
     },
     {
       "op": "guard",
       "fn": "gold-non-negative"
+    },
+    {
+      "op": "call",
+      "target": "moodThinking",
+      "args": []
     },
     {
       "op": "menu",
@@ -287,6 +349,10 @@
         {
           "text": "TS 能力",
           "target": "ts_power"
+        },
+        {
+          "text": "功能演示",
+          "target": "feat_hub"
         },
         {
           "text": "词汇全席",

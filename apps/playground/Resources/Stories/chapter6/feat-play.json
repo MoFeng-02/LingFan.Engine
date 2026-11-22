@@ -1,0 +1,140 @@
+{
+  "formatVersion": 1,
+  "id": "feat_play",
+  "kind": "flow",
+  "commands": [
+    {
+      "op": "func",
+      "name": "moodNeutral",
+      "params": [],
+      "body": [
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "source": "Images/角色/灵泛_正面.png"
+          }
+        }
+      ]
+    },
+    {
+      "op": "func",
+      "name": "moodThinking",
+      "params": [],
+      "body": [
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "source": "Images/角色/灵泛_手托下巴_疑问.png"
+          }
+        }
+      ]
+    },
+    {
+      "op": "func",
+      "name": "portraitNeutral",
+      "params": [],
+      "body": [
+        {
+          "op": "hide",
+          "target": "lingfan"
+        },
+        {
+          "op": "show",
+          "target": "Images/角色/灵泛_正面.png",
+          "id": "lingfan",
+          "x": 860,
+          "y": 110,
+          "background": false
+        },
+        {
+          "op": "style",
+          "target": "lingfan",
+          "props": {
+            "width": 360,
+            "height": 560,
+            "stretch": "contain"
+          }
+        }
+      ]
+    },
+    {
+      "op": "call",
+      "target": "portraitNeutral",
+      "args": []
+    },
+    {
+      "op": "say",
+      "text": "小游戏与交互站：玩法系统分流进文本创作列，演示 TS 流与文本流共存可达。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "if",
+      "cond": "{journal.flag == 0}",
+      "then": [
+        {
+          "op": "set",
+          "key": "journal.flag",
+          "value": 1
+        },
+        {
+          "op": "call",
+          "target": "moodThinking",
+          "args": []
+        },
+        {
+          "op": "say",
+          "text": "先体验交互 walk：用 A/D 或方向键走到终点，成功进入文本画廊列 text_gallery。",
+          "speaker": "灵泛"
+        },
+        {
+          "op": "interaction",
+          "system": "walk",
+          "config": {
+            "target": 120
+          },
+          "on_success": "text_gallery"
+        }
+      ]
+    },
+    {
+      "op": "call",
+      "target": "moodThinking",
+      "args": []
+    },
+    {
+      "op": "say",
+      "text": "再体验小游戏 click3：点够 3 次，成功进入文本故事列 text_tale（金币 +10）。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "minigame",
+      "game": "click3",
+      "config": {
+        "target": 3
+      },
+      "on_success": "text_tale",
+      "reward": [
+        {
+          "key": "player.gold",
+          "value": "{player.gold + 10}"
+        }
+      ]
+    },
+    {
+      "op": "call",
+      "target": "moodNeutral",
+      "args": []
+    },
+    {
+      "op": "say",
+      "text": "两种分流演示完毕。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "jump",
+      "target": "feat_hub"
+    }
+  ]
+}

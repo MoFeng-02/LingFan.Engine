@@ -41,6 +41,10 @@
               "target": "tour_guard"
             },
             {
+              "text": "功能演示",
+              "target": "feat_hub"
+            },
+            {
               "text": "沙盒地图",
               "target": "world"
             },
@@ -129,6 +133,133 @@
     {
       "op": "say",
       "text": "undef 已把 ticket 从变量表回收（这句故意不再插值它）。"
+    },
+    {
+      "op": "say",
+      "text": "数值算术回归：复合赋值逐步改写临时变量，插值即时读出。",
+      "speaker": "灵泛"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": 100
+    },
+    {
+      "op": "say",
+      "text": "{a} 我是值"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": "*= {2}"
+    },
+    {
+      "op": "say",
+      "text": "{a} 我是乘值"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": "/= {2}"
+    },
+    {
+      "op": "say",
+      "text": "{a} 我是除值"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": "+= {2}"
+    },
+    {
+      "op": "say",
+      "text": "{a} 我是加值"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": "-= {2}"
+    },
+    {
+      "op": "say",
+      "text": "{a} 我是减值"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": 103
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": "%= {2}"
+    },
+    {
+      "op": "say",
+      "text": "{a} 我是取余值"
+    },
+    {
+      "op": "let",
+      "key": "c",
+      "value": 100
+    },
+    {
+      "op": "let",
+      "key": "b",
+      "value": 200
+    },
+    {
+      "op": "say",
+      "text": "{c} 我是 c"
+    },
+    {
+      "op": "say",
+      "text": "{b} 我是 b"
+    },
+    {
+      "op": "let",
+      "key": "c",
+      "value": "{c * b}"
+    },
+    {
+      "op": "say",
+      "text": "{c} 我是 c * b"
+    },
+    {
+      "op": "let",
+      "key": "c",
+      "value": "{c / b}"
+    },
+    {
+      "op": "say",
+      "text": "{c} 我是 c / b"
+    },
+    {
+      "op": "let",
+      "key": "a",
+      "value": 66
+    },
+    {
+      "op": "let",
+      "key": "c",
+      "value": "{c * a * b}"
+    },
+    {
+      "op": "say",
+      "text": "{c} 我是 c * a * b"
+    },
+    {
+      "op": "let",
+      "key": "c",
+      "value": "{c / a / b}"
+    },
+    {
+      "op": "say",
+      "text": "{c} 我是 c / a / b"
+    },
+    {
+      "op": "say",
+      "text": "数值测试结束"
     },
     {
       "op": "call",

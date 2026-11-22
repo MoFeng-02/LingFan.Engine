@@ -41,6 +41,10 @@
               "target": "tour_guard"
             },
             {
+              "text": "功能演示",
+              "target": "feat_hub"
+            },
+            {
               "text": "沙盒地图",
               "target": "world"
             },

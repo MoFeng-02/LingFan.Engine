@@ -6,6 +6,9 @@ import type { Sex } from "../Stories.src/lib/enums";
 
 export type StoryState = {
   "dice": number;
+  "journal": {
+    "flag": number;
+  };
   "player": {
     "gold": number;
     "level": number;
