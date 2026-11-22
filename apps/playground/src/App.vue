@@ -12,7 +12,6 @@ import {
   onUnmounted,
   ref,
   shallowRef,
-  watch,
   type Component,
 } from "vue";
 import {
@@ -38,6 +37,7 @@ import {
   type SceneStageState,
 } from "./host";
 import { handleInteractionMount } from "./host/mount";
+import { createAppAutoSkip } from "./host/panels/wiring/app-prefs";
 import {
   DemoHost,
   DialoguePanel,
@@ -306,20 +306,25 @@ const automatedLoop = createAutomatedAdvanceLoop({
   readTypewriter: () => typewriter.get(),
   preferences: props.preferences,
 });
+// 工具条 Auto/Skip 与键盘快进共用同一节奏装配：高亮镜像、切换入口与重启后的复装
+const autoSkip = createAppAutoSkip({
+  loop: automatedLoop,
+  getEngine: () => engine,
+  preferences: props.preferences,
+  inGame,
+  prefsView,
+  shownText,
+  canAdvance,
+  restart,
+});
+const { autoOn, skipActive, toggleAuto, toggleSkip, onRestart } = autoSkip;
 /** 松开快进键即停（按住才持续） */
 function onKeyup(e: KeyboardEvent): void {
   if (inGame.value && keyMatches("skip", DEFAULT_KEYMAP.skip, e)) {
     automatedLoop.stopSkip();
+    autoSkip.notifyModeChange();
   }
 }
-/** 自动播放只在「进了对局 + 偏好开启」时起：偏好改动与进/退对局都即时跟 */
-function syncAuto(): void {
-  if (inGame.value && props.preferences.autoEnabled) automatedLoop.startAuto();
-  else automatedLoop.stopAuto();
-}
-const offAutoPrefs = props.preferences.onChange(syncAuto);
-watch(inGame, syncAuto);
-syncAuto();
 
 /** 叙事键判定：先问输入域（routesToNarrative），再问键位（keyMatches）——顺序是源级契约 */
 function onKeydown(e: KeyboardEvent): void {
@@ -349,6 +354,7 @@ function onKeydown(e: KeyboardEvent): void {
   if (inGame.value && !e.repeat && keyMatches("skip", DEFAULT_KEYMAP.skip, e)) {
     e.preventDefault();
     automatedLoop.startSkip();
+    autoSkip.notifyModeChange();
     return;
   }
   if (keyMatches("advance", DEFAULT_KEYMAP.advance, e)) {
@@ -401,7 +407,7 @@ onUnmounted(() => {
   teardown(); // 订阅解除 → 会话解除 → 偏好退订落盘 → 停播释放 → 引擎释放 → 停帧循环
   bodyLayer.dispose();
   automatedLoop.dispose(); // 停 skip/auto 节奏循环
-  offAutoPrefs(); // 退自动播放偏好订阅
+  autoSkip.dispose(); // 退自动播放偏好订阅与模式观察器
   window.removeEventListener("keydown", onKeydown);
   window.removeEventListener("keyup", onKeyup);
   window.removeEventListener("keydown", onCaptureKeydown, true);
@@ -425,10 +431,15 @@ onUnmounted(() => {
       :resume="resumeSlot"
       :saves="resumeViews"
       :browsing="browsingSaves"
+      :available-langs="availableLangs"
+      :current-lang="currentLang"
+      :t="t"
       @start="onStart"
       @continue="onContinue"
       @toggle-saves="toggleSaves"
       @pick-save="onPickSave"
+      @tour="onEnterColumn('tour')"
+      @change-lang="changeLang"
     />
     <template v-else>
       <!-- 舞台（作者坐标系，基准像素）：只住元素层与扩展覆盖层——宽高与适配变换由适配装配写入 -->
@@ -473,10 +484,14 @@ onUnmounted(() => {
           :available-langs="availableLangs"
           :current-lang="currentLang"
           :t="t"
-          @restart="restart"
+          :auto-on="autoOn"
+          :skip-on="skipActive"
+          @restart="onRestart"
           @open-slot-panel="openSlotPanel"
           @toggle-history="toggleHistory"
           @toggle-prefs="showPrefs = !showPrefs"
+          @toggle-auto="toggleAuto"
+          @toggle-skip="toggleSkip"
           @change-lang="changeLang"
         />
         <!-- RenderTargets.overlay（notify toast）：列表状态与皮肤类经 NotificationLayer 落地 -->

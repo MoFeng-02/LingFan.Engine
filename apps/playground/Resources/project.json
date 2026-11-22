@@ -22,6 +22,7 @@
     "player.name": "旅人",
     "dice": 1,
     "supplies": [],
+    "journal.flag": 0,
     "world.visited": [],
     "world.lamp": 0,
     "world.focus": ""

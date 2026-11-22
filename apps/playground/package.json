@@ -16,12 +16,13 @@
   },
   "dependencies": {
     "@lingfan-engine/adapters": "workspace:*",
-    "@lingfan-engine/editor": "workspace:*",
     "@lingfan-engine/core": "workspace:*",
+    "@lingfan-engine/editor": "workspace:*",
     "@lingfan-engine/shell": "workspace:*",
     "@lingfan-engine/stories-build": "workspace:*",
     "@lingfan-engine/ui": "workspace:*",
     "@tauri-apps/api": "^2.12.1",
+    "pixi.js": "^8.23.0",
     "vue": "^3.5.13"
   },
   "devDependencies": {

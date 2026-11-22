@@ -1,14 +1,15 @@
 <script setup lang="ts">
 /**
- * 偏好面板的扩展控件组：主音量 + 文本/显示偏好 + 缓办字段禁用占位。
+ * 偏好面板的扩展控件组：主音量 + 文本/播放/显示偏好 + 缓办字段禁用占位。
  *
- * 只渲染本批真正接了消费的字段，写入一律经宿主给的偏好面板句柄（`PlayerPreferences`
+ * 只渲染真正接了消费的字段，写入一律经宿主给的偏好面板句柄（`PlayerPreferences`
  * 端口），显示读响应式快照镜像；值域引用核心契约常量，不抄第二份数字。契约已增、
- * 消费尚待后续批的字段（打字音效/窗口尺寸/字体/自动播放/快进）画成禁用占位并附说明。
+ * 消费尚待后续批的字段（打字音效/窗口尺寸）画成禁用占位并附说明。
  *
  * 独立成组件是为了让设置面板群文件不超载；行布局样式自带一份（ scoped 不穿透）。
  */
 import {
+  AUTO_DELAY_MS_RANGE,
   DIALOGUE_HEIGHT_SCALE_RANGE,
   DIALOGUE_POSITIONS,
   ELEMENT_FITS,
@@ -17,6 +18,7 @@ import {
   TRANSITION_SPEED_RANGE,
   type PlayerPrefsData,
 } from "@lingfan-engine/core";
+import { storyFonts } from "virtual:story-fonts";
 import type { PreferencesPanel } from "../../host";
 
 const props = defineProps<{
@@ -82,6 +84,64 @@ function positionLabel(position: string): string {
       <span class="prefs-value"
         >{{ props.prefsView.nvlPageSize ?? NVL_PAGE_SIZE_RANGE.max }} 行</span
       >
+    </label>
+
+    <!-- 播放：自动播放意图 + 推进延时 + 快进遇未读即停（节奏循环按这些偏好装配） -->
+    <label class="prefs-row">
+      <span class="prefs-label">自动播放</span>
+      <input
+        type="checkbox"
+        :checked="props.prefsView.autoEnabled ?? false"
+        @change="props.prefs.setAutoEnabled($event)"
+      />
+    </label>
+    <label class="prefs-row">
+      <span class="prefs-label">自动延时</span>
+      <input
+        type="range"
+        :min="AUTO_DELAY_MS_RANGE.min"
+        :max="AUTO_DELAY_MS_RANGE.max"
+        step="100"
+        :value="props.prefsView.autoDelayMs ?? 1500"
+        @input="props.prefs.setAutoDelayMs($event)"
+      />
+      <span class="prefs-value"
+        >{{ ((props.prefsView.autoDelayMs ?? 1500) / 1000).toFixed(1) }} s</span
+      >
+    </label>
+    <label class="prefs-row">
+      <span class="prefs-label">未读即停</span>
+      <input
+        type="checkbox"
+        :checked="props.prefsView.skipUnseenOnly ?? false"
+        title="快进只走已读文本，遇到未读即停"
+        @change="props.prefs.setSkipUnseenOnly($event)"
+      />
+    </label>
+
+    <!-- 文本外观：字体（工程注册表供给）与字速来源（玩家值或故事作者值） -->
+    <label class="prefs-row">
+      <span class="prefs-label">字体</span>
+      <select
+        :value="props.prefsView.fontFamily ?? ''"
+        @change="props.prefs.setFontFamily($event)"
+      >
+        <option value="">默认</option>
+        <option v-for="font in storyFonts" :key="font.name" :value="font.name">
+          {{ font.name }}
+        </option>
+      </select>
+    </label>
+    <label class="prefs-row">
+      <span class="prefs-label">字速源</span>
+      <select
+        :value="props.prefsView.textSpeedSource ?? ''"
+        @change="props.prefs.setTextSpeedSource($event)"
+      >
+        <option value="">默认（玩家优先）</option>
+        <option value="player">玩家优先</option>
+        <option value="story">跟随故事</option>
+      </select>
     </label>
 
     <!-- 显示：转场/抖动倍率、减弱动效、字号、对话框外观、元素填充默认 -->
@@ -205,18 +265,6 @@ function positionLabel(position: string): string {
     <label class="prefs-row is-deferred">
       <span class="prefs-label">窗口尺寸</span>
       <input type="checkbox" disabled title="待桌面壳窗口能力接线后启用" />
-    </label>
-    <label class="prefs-row is-deferred">
-      <span class="prefs-label">字体</span>
-      <input type="checkbox" disabled title="待字体注册校验接线后启用" />
-    </label>
-    <label class="prefs-row is-deferred">
-      <span class="prefs-label">自动播放</span>
-      <input type="checkbox" disabled title="待自动播放接线后启用" />
-    </label>
-    <label class="prefs-row is-deferred">
-      <span class="prefs-label">快进</span>
-      <input type="checkbox" disabled title="待快进接线后启用" />
     </label>
   </div>
 </template>

@@ -14,6 +14,7 @@ import type {
   OrientationMode,
   PlayerPreferences,
   PlayerPrefsData,
+  TextSpeedSource,
 } from "@lingfan-engine/core";
 
 /** 音量通道与显示名；顺序即面板里的行顺序 */
@@ -35,7 +36,7 @@ export interface PreferencesPanelOptions {
   onChanged?(): void;
 }
 
-/** 偏好面板出口：模板读 `view` 与 `channels`，控件事件交给五个 setter */
+/** 偏好面板出口：模板读 `view` 与 `channels`，控件事件交给对应 setter */
 export interface PreferencesPanel {
   /** 偏好快照的响应式镜像 */
   readonly view: Ref<PlayerPrefsData>;
@@ -73,6 +74,16 @@ export interface PreferencesPanel {
   setDialogueHeightScale(event: Event): void;
   /** 元素填充默认下拉（空值 = 清除 = 跟随内建） */
   setElementFit(event: Event): void;
+  /** 自动播放开关（开启后宿主按 autoDelayMs 节奏推进对话） */
+  setAutoEnabled(event: Event): void;
+  /** 自动播放延时滑杆（打字机完成后距上次推进至少等这么久） */
+  setAutoDelayMs(event: Event): void;
+  /** 快进遇未读即停开关（关闭则快进越过未读文本） */
+  setSkipUnseenOnly(event: Event): void;
+  /** 字体下拉（空值 = 清除 = 跟随工程默认） */
+  setFontFamily(event: Event): void;
+  /** 字速源下拉（空值 = 清除 = 玩家优先） */
+  setTextSpeedSource(event: Event): void;
   /** 退订偏好变更（组件卸载期调用，与构造成对） */
   dispose(): void;
 }
@@ -179,6 +190,33 @@ export function createPreferencesPanel(
         return;
       }
       preferences.setElementFit(value as ElementFit);
+    },
+    setAutoEnabled(event: Event): void {
+      preferences.setAutoEnabled((event.target as HTMLInputElement).checked);
+    },
+    setAutoDelayMs(event: Event): void {
+      preferences.setAutoDelayMs(
+        Number((event.target as HTMLInputElement).value),
+      );
+    },
+    setSkipUnseenOnly(event: Event): void {
+      preferences.setSkipUnseenOnly((event.target as HTMLInputElement).checked);
+    },
+    setFontFamily(event: Event): void {
+      const value = (event.target as HTMLSelectElement).value;
+      if (value === "") {
+        preferences.clearFontFamily();
+        return;
+      }
+      preferences.setFontFamily(value);
+    },
+    setTextSpeedSource(event: Event): void {
+      const value = (event.target as HTMLSelectElement).value;
+      if (value === "") {
+        preferences.clearTextSpeedSource();
+        return;
+      }
+      preferences.setTextSpeedSource(value as TextSpeedSource);
     },
     dispose(): void {
       off();
