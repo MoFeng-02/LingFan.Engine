@@ -58,6 +58,11 @@ export interface PreferencesPanelOptions {
    * 数值读数是数据，不查表。
    */
   translate?: (text: string) => string;
+  /**
+   * 可用字体名清单（可选，缺省空）：扩展组的字体档下拉选项。
+   * 由组合根从 `virtual:story-fonts` 取——面板不直接依赖虚拟模块，测试才能纯数据驱动。
+   */
+  fontNames?: readonly string[];
 }
 
 /** 偏好面板出口 */
@@ -203,7 +208,12 @@ export function createPreferencesPanel(
     buildVolumeRows(root);
     buildMutedRow(root);
     buildTextSpeedRow(root);
-    extras = buildPreferenceExtras(root, preferences, t);
+    extras = buildPreferenceExtras(
+      root,
+      preferences,
+      t,
+      options.fontNames ?? [],
+    );
     container.appendChild(root);
     sync(); // 先按当前偏好铺初值，再订阅——避免挂载瞬间被一次多余通知重画
     off = preferences.onChange(sync);

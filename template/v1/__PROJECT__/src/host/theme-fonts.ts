@@ -4,8 +4,10 @@
  * undefined = 未声明（对话排版走浏览器回退，逐句声明的字体照常生效）。
  *
  * 同时负责注入 @font-face（构建期清单来自 `virtual:story-fonts`，与 stories:build
- * 的字体名注册表同源）——boot 早期一次性调用，纯展示装配，无运行时状态。
+ * 的字体名注册表同源）并装配渲染层的字体名注册表——boot 早期一次性调用，纯展示装配，
+ * 无运行时状态。
  */
+import { configureStoryFonts } from "@lingfan-engine/ui";
 import { storyFonts } from "virtual:story-fonts";
 
 /** 项目默认字体（Resources/Fonts 里的字体名；undefined = 未声明） */
@@ -43,7 +45,12 @@ function applyDefaultFont(): void {
   );
 }
 
-/** 注入 @font-face 并应用主题面（boot 一次性调用；空清单 = 不注入） */
+/** 可用字体名清单（去重保序）：偏好面板字体档的选项来源，与 @font-face 注入同源 */
+export function storyFontNames(): readonly string[] {
+  return [...new Set(storyFonts.map((entry) => entry.name))];
+}
+
+/** 注入 @font-face、应用主题面并装配渲染层字体名注册表（boot 一次性调用；空清单 = 仅装配注册表） */
 export function installStoryFonts(): void {
   if (storyFonts.length > 0) {
     const style = document.createElement("style");
@@ -57,4 +64,14 @@ export function installStoryFonts(): void {
     document.head.appendChild(style);
   }
   applyDefaultFont();
+  // 渲染层字体名注册表：{font=…}/逐句字体/玩家字体偏好都要经它校验，未注册名
+  // fail-closed 回退默认字体并告警，而不是把任意名塞进 font-family 静默变字体。
+  configureStoryFonts({
+    names: new Set(storyFonts.map((entry) => entry.name)),
+    onUnregistered: (name) => {
+      console.warn(
+        `[fonts] 未注册的字体名 "${name}"——Resources/Fonts 里没有对应字体文件，已回退默认字体`,
+      );
+    },
+  });
 }

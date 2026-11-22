@@ -3,8 +3,8 @@
  *
  * 锁三条纪律：
  * - **只渲染本批接了消费的字段**：每个活控件写回 `PlayerPreferences` 即时生效；
- * - **缓办字段禁用占位**：打字音效/窗口尺寸/字体/自动播放/快进画出来但 disabled，
- *   不留「活控件死配置」；
+ * - **缓办字段禁用占位**：打字音效/窗口尺寸/自动播放/快进画出来但 disabled，
+ *   不留「活控件死配置」；字体档已接线（选项由 `fontNames` 传入），是活控件；
  * - **三态下拉**：值 "" = 跟随默认 → clear 回未设置（不写默认键进快照）。
  *
  * DOM 替身手法与 preferences-panel.test.ts 同口径（vi.stubGlobal document，不引 jsdom）。
@@ -205,17 +205,38 @@ describe("三态下拉：空值 = 跟随默认 → clear 回未设置", () => {
 });
 
 describe("缓办字段禁用占位（不留活控件死配置）", () => {
-  it("打字音效/窗口尺寸/字体/自动播放/快进均 disabled", () => {
+  it("打字音效/窗口尺寸/自动播放/快进均 disabled", () => {
     const h = setup();
-    for (const setting of [
-      "type-sound",
-      "window-size",
-      "font-family",
-      "auto-play",
-      "skip",
-    ]) {
+    for (const setting of ["type-sound", "window-size", "auto-play", "skip"]) {
       expect(control(h.container, setting).disabled).toBe(true);
     }
+  });
+
+  it("字体档已是活控件（不再禁用占位）", () => {
+    const h = setup();
+    expect(control(h.container, "font-family").disabled).toBe(false);
+  });
+});
+
+describe("字体档下拉（活控件：选项来自字体清单，写回偏好）", () => {
+  it("选中字体名 → setFontFamily；选「默认」→ clearFontFamily", () => {
+    const prefs = new PlayerPreferences();
+    const container = createFakeNode("div");
+    const panel = createPreferencesPanel({
+      preferences: prefs,
+      container: container as unknown as HTMLElement,
+      fontNames: ["SourceHanSerifCN-VF", "楷体"],
+    });
+    panel.mount();
+    pick(container, "font-family", "SourceHanSerifCN-VF");
+    expect(prefs.fontFamily).toBe("SourceHanSerifCN-VF");
+    pick(container, "font-family", "");
+    expect(prefs.fontFamily).toBeUndefined();
+  });
+
+  it("缺省空清单：只有「默认」一项", () => {
+    const h = setup();
+    expect(control(h.container, "font-family").value).toBe("");
   });
 });
 

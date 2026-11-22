@@ -2,8 +2,13 @@
  * 偏好面板的扩展控件组：主音量 + 文本/显示偏好 + 缓办字段禁用占位。
  *
  * 只渲染本批真正接了消费的字段（读写 `PlayerPreferences` 即时生效）；契约已增、
- * 消费尚待后续批的字段（打字音效/窗口尺寸/字体/自动播放/快进）画成禁用占位并附说明，
+ * 消费尚待后续批的字段（打字音效/窗口尺寸/自动播放/快进）画成禁用占位并附说明，
  * 不留「活控件死配置」。值域一律引用核心契约常量，不在这里抄第二份数字。
+ *
+ * 字体档不是缓办字段：选项由调用方传入（宿主从 `virtual:story-fonts` 取，与
+ * `theme-fonts` 注入 @font-face 的同一份构建期清单），选中值经
+ * `applyDialogueAppearance` 落到对话框 CSS 变量，并由字体名注册表校验——所以它是活控件。
+ * 清单走参数而不是在此直接 import 虚拟模块，面板才能在测试里以纯数据驱动。
  *
  * 与主面板共用 `preferences-dom` 的行构件；本组返回一个 `sync()`，由主面板在
  * 挂载与每次偏好变化时统一调用，控件值与读数都随偏好现读回填。
@@ -38,12 +43,14 @@ export interface PreferenceExtras {
 
 /**
  * 在 `root` 上追加扩展控件行，返回同步句柄。`t` 为宿主静态文案查表（缺省恒等）。
- * 行序即追加序：主音量 → 文本 → 显示 → 缓办禁用占位。
+ * `fontNames` 为可用字体名清单（缺省空 = 字体档只有「默认」一项）。
+ * 行序即追加序：主音量 → 文本 → 显示 → 字体 → 缓办禁用占位。
  */
 export function buildPreferenceExtras(
   root: HTMLElement,
   preferences: PlayerPreferences,
   t: (text: string) => string,
+  fontNames: readonly string[] = [],
 ): PreferenceExtras {
   const syncers: Array<() => void> = [];
 
@@ -238,10 +245,26 @@ export function buildPreferenceExtras(
     },
   );
 
+  // 字体档：选项来自构建期字体清单（与 theme-fonts 注入 @font-face 同源）。
+  // 值 "" = 跟随工程默认字体；选中值经 applyDialogueAppearance 投影到对话框 CSS 变量，
+  // 投影前会再按注册表校验一次，非法/已删字体回退默认而不是静默变字体。
+  addSelect(
+    "font-family",
+    t("字体"),
+    [
+      ["", t("默认")],
+      ...fontNames.map((name): readonly [string, string] => [name, name]),
+    ],
+    () => preferences.fontFamily ?? "",
+    (value) => {
+      if (value === "") preferences.clearFontFamily();
+      else preferences.setFontFamily(value);
+    },
+  );
+
   // —— 缓办字段：契约已在、消费待后续批，禁用占位 + 说明（不留活控件死配置）——
   addDisabled("type-sound", t("打字音效"), t("待打字机音效接线后启用"));
   addDisabled("window-size", t("窗口尺寸"), t("待桌面壳窗口能力接线后启用"));
-  addDisabled("font-family", t("字体"), t("待字体注册校验接线后启用"));
   addDisabled("auto-play", t("自动播放"), t("待自动播放接线后启用"));
   addDisabled("skip", t("快进"), t("待快进接线后启用"));
 

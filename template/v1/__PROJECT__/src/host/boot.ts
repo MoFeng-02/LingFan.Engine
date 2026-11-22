@@ -75,7 +75,7 @@ import { wireEngine } from "./engine-wiring";
 import { startHostFrameLoop } from "./frame-loop";
 import { wireStageFit } from "./stage-fit";
 import { wireInput } from "./input-map";
-import { installStoryFonts } from "./theme-fonts";
+import { installStoryFonts, storyFontNames } from "./theme-fonts";
 import { createPreferencesPanel } from "./panels/preferences";
 import { createHistoryPanel } from "./panels/history";
 import { createNativeMountRenderer } from "./mount/index";
@@ -527,6 +527,7 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
           preferences,
           container: options.prefsContainer,
           translate: i18n.t,
+          fontNames: storyFontNames(),
         });
   prefsPanel?.mount();
 
