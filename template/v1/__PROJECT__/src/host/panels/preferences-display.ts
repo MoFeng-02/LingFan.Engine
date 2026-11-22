@@ -5,8 +5,9 @@
  * 尚未接线的字段（打字音效/窗口尺寸）画成禁用占位并附说明，
  * 不留「活控件死配置」。值域一律引用核心契约常量，不在这里抄第二份数字。
  *
- * 播放节奏三项（自动播放/自动延时/快进只走已读）由 `input-map` 的节奏循环实时读，
- * 开关变化即起停循环——它们不是占位，是活控件。
+ * 播放节奏四项（自动播放/自动延时/阅读速度/快进只走已读）由 `input-map` 的节奏循环实时读，
+ * 开关变化即起停循环——它们不是占位，是活控件。实际停留 = 基础停留 + 该句词元量 /
+ * 阅读速度，长句停得久、短句停得短。
  *
  * 字体档不是缓办字段：选项由调用方传入（宿主从 `virtual:story-fonts` 取，与
  * `theme-fonts` 注入 @font-face 的同一份构建期清单），选中值经
@@ -19,6 +20,7 @@
 
 import {
   AUTO_DELAY_MS_RANGE,
+  AUTO_READ_CPS_RANGE,
   DIALOGUE_POSITIONS,
   DIALOGUE_HEIGHT_SCALE_RANGE,
   ELEMENT_FITS,
@@ -266,9 +268,10 @@ export function buildPreferenceExtras(
     },
   );
 
-  // —— 播放：自动播放意图、推进延时、快进遇未读即停 ——
-  // 三者都由 input-map 的节奏循环实时读：自动播放开关变化即起停循环，延时决定
-  // 「打字机打完到下一次推进」的间隔，未读即停让快进遇未读文本就停手。
+  // —— 播放：自动播放意图、推进延时、阅读速度、快进遇未读即停 ——
+  // 四者都由 input-map 的节奏循环实时读：自动播放开关变化即起停循环，
+  // 实际停留 = 基础停留 + 该句词元量 / 阅读速度，长句停得久、短句停得短；
+  // 未读即停让快进遇未读文本就停手。
   addCheckbox(
     "auto-play",
     t("自动播放"),
@@ -284,6 +287,16 @@ export function buildPreferenceExtras(
     () => preferences.autoDelayMs,
     (value) => preferences.setAutoDelayMs(value),
     (value) => `${(value / 1000).toFixed(1)} ${t("秒")}`,
+  );
+  addRange(
+    "auto-read-cps",
+    t("阅读速度"),
+    AUTO_READ_CPS_RANGE.min,
+    AUTO_READ_CPS_RANGE.max,
+    1,
+    () => preferences.autoReadCps,
+    (value) => preferences.setAutoReadCps(value),
+    (value) => `${value} ${t("词元/秒")}`,
   );
   addCheckbox(
     "skip-unseen",

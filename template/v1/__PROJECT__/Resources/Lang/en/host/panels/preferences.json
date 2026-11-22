@@ -26,6 +26,8 @@
   "元素填充默认": "Default element fit",
   "自动播放": "Auto-play",
   "自动延时": "Auto delay",
+  "阅读速度": "Reading speed",
+  "词元/秒": "tokens/s",
   "快进只走已读": "Skip read only",
   "打字音效": "Typing sound",
   "待打字机音效接线后启用": "Available once the typewriter sound is wired",

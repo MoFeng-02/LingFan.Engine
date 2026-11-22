@@ -4,7 +4,7 @@
  * 锁三条纪律：
  * - **只渲染本批接了消费的字段**：每个活控件写回 `PlayerPreferences` 即时生效；
  * - **缓办字段禁用占位**：打字音效/窗口尺寸画出来但 disabled，不留「活控件死配置」；
- *   播放节奏三项（自动播放/自动延时/快进只走已读）与字体档都已接线，是活控件；
+ *   播放节奏四项（自动播放/自动延时/阅读速度/快进只走已读）与字体档都已接线，是活控件；
  * - **三态下拉**：值 "" = 跟随默认 → clear 回未设置（不写默认键进快照）。
  *
  * DOM 替身手法与 preferences-panel.test.ts 同口径（vi.stubGlobal document，不引 jsdom）。
@@ -212,11 +212,12 @@ describe("缓办字段禁用占位（不留活控件死配置）", () => {
     }
   });
 
-  it("播放节奏三项与字体档都是活控件（不再禁用占位）", () => {
+  it("播放节奏四项与字体档都是活控件（不再禁用占位）", () => {
     const h = setup();
     for (const setting of [
       "auto-play",
       "auto-delay",
+      "auto-read-cps",
       "skip-unseen",
       "font-family",
     ]) {
@@ -225,7 +226,7 @@ describe("缓办字段禁用占位（不留活控件死配置）", () => {
   });
 });
 
-describe("播放节奏（活控件：自动播放 / 自动延时 / 快进只走已读）", () => {
+describe("播放节奏（活控件：自动播放 / 自动延时 / 阅读速度 / 快进只走已读）", () => {
   it("自动播放开关 → setAutoEnabled", () => {
     const h = setup();
     const input = control(h.container, "auto-play");
@@ -243,6 +244,12 @@ describe("播放节奏（活控件：自动播放 / 自动延时 / 快进只走�
     expect(h.prefs.autoDelayMs).toBe(2500);
   });
 
+  it("阅读速度滑杆 → setAutoReadCps，读数按词元/秒", () => {
+    const h = setup();
+    slide(h.container, "auto-read-cps", "30");
+    expect(h.prefs.autoReadCps).toBe(30);
+  });
+
   it("快进只走已读开关 → setSkipUnseenOnly", () => {
     const h = setup();
     const input = control(h.container, "skip-unseen");
@@ -255,8 +262,10 @@ describe("播放节奏（活控件：自动播放 / 自动延时 / 快进只走�
     const h = setup();
     h.prefs.setAutoEnabled(true);
     h.prefs.setAutoDelayMs(3000);
+    h.prefs.setAutoReadCps(24);
     expect(control(h.container, "auto-play").checked).toBe(true);
     expect(control(h.container, "auto-delay").value).toBe("3000");
+    expect(control(h.container, "auto-read-cps").value).toBe("24");
   });
 });
 
