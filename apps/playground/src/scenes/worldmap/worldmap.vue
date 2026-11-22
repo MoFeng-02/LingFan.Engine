@@ -40,7 +40,7 @@ onUnmounted(() => {
 /** 背景图：逻辑路径按资源根写，走绑定而不是静态属性——静态 `src` 会被构建器当模块去解析 */
 const BACKGROUND = "Images/worldmap.svg";
 
-/** 热区：坐标与 `worldmap.svg` 里的三块陆地/石台对齐，`column` 是要去的列名 */
+/** 热区：坐标按同一套 1280×720 基准写，`column` 是要去的列名；观星台通往实时渲染的星穹列 */
 const SPOTS = [
   {
     id: "kitchen",
@@ -68,6 +68,15 @@ const SPOTS = [
     y: 400,
     w: 250,
     h: 150,
+  },
+  {
+    id: "starfield",
+    label: "夜空 · 观星台",
+    column: "starfield",
+    x: 250,
+    y: 470,
+    w: 230,
+    h: 160,
   },
 ] as const;
 

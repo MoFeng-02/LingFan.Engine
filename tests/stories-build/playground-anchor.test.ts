@@ -58,6 +58,7 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -109,8 +110,21 @@ beforeEach(() => {
   );
   copyInput("tsconfig.stories.json");
   copyInput("package.json");
-  // 字体注册表只扫 Fonts 顶层文件名：空目录 = 空注册表（与入库的封闭空类型一致），
-  // 私有字体子目录与媒体二进制都不是构建输入，不拷。
+  // 副本的 node_modules 经仓根解析（与最小工程同口径）。但 playground 独有的运行时
+  // 依赖只装在 apps/playground/node_modules（pnpm 按包隔离，不提升到仓根）——场景组件
+  // starfield.vue 经 scene_register.g 的具名导入被 vue-tsc 拉进程序，它 import 的 2D
+  // 渲染器 pixi.js 在仓根解析不到。把这一份依赖链接进副本的 node_modules，让类型探针
+  // 忠实于真实工程的解析面；其余依赖仍走仓根，口径不变。junction 在 Windows 免管理员
+  // 权限建目录链接，POSIX 上 type 参数被忽略（等价普通符号链接）；afterEach 的 rmSync
+  // 按链接本身删除，不会顺链删到真实依赖。
+  mkdirSync(join(root, "node_modules"), { recursive: true });
+  symlinkSync(
+    join(PLAYGROUND_ROOT, "node_modules/pixi.js"),
+    join(root, "node_modules/pixi.js"),
+    "junction",
+  );
+  // 字体注册表递归扫描 Fonts（子目录分类是常规形态）：副本建空目录 = 空注册表
+  // （与入库的封闭空类型一致）；私有字体文件与媒体二进制都不是构建输入，不拷。
   mkdirSync(join(root, "Resources/Fonts"), { recursive: true });
   copyInput("Resources/Lang");
   copyInput("Resources/Stories");
@@ -281,11 +295,17 @@ describe("真实工程回归锚点（apps/playground 整链）", () => {
       expect(report.added).toEqual([]);
       expect(report.updated).toEqual([]);
       expect(report.removed).toEqual([]);
-      // 工程形状随锚点显式维护：列数变化必须伴随 gen 产物重建（列名注册表随之变化）
-      // 20 = 20 个 default 导出列。`chapter1/start.ts` 里的 `export function goToLabel`
-      // 当前没有被 `jump`/`navigate` 字面量引用（那处调用被注释掉了），label 通道
-      // 不替它产列；要放回 21 就先恢复那处引用。
-      expect(report.columns).toBe(20);
+      // 工程形状随锚点显式维护：列数变化必须伴随 gen 产物重建（列名注册表随之变化）。
+      // 期望列数取自入库列名注册表的键数，而非手写常量：并行新增列（功能演示枢纽、
+      // 实时渲染星穹列等）时不必各自改一个魔术数，注册表即列形状的唯一事实来源；
+      // 下方逐字节一致断言仍独立锚住 gen 新鲜度。`chapter1/start.ts` 的 goToLabel
+      // 当前未被 jump/navigate 字面量引用，label 通道不替它产列；恢复引用会再多一列。
+      const registryBlock =
+        committed.split("interface ColumnNameRegistry {")[1]?.split("}")[0] ??
+        "";
+      const registeredColumns = (registryBlock.match(/"[^"]+": 1;/g) ?? [])
+        .length;
+      expect(report.columns).toBe(registeredColumns);
       expect(readFileSync(join(root, TYPEGEN_REL), "utf8")).toBe(committed);
       expect(readFileSync(join(root, STATE_GEN_REL), "utf8")).toBe(
         committedState,
