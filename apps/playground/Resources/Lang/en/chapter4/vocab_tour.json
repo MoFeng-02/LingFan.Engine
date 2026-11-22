@@ -58,5 +58,20 @@
   "这句是瞬间上屏的（text_typewriter 关）。": "这句是瞬间上屏的（text_typewriter 关）。",
   "链路 = 清单声明 extensions → stories:build 构建期放行校验 → 宿主装载注册 → 运行期分发。": "链路 = 清单声明 extensions → stories:build 构建期放行校验 → 宿主装载注册 → 运行期分发。",
   "（本列由 TS 源第四章生成：站点清单是构建期常量，菜单选项由 map 生成。）": "（本列由 TS 源第四章生成：站点清单是构建期常量，菜单选项由 map 生成。）",
-  "（这句话在窗口隐藏期间上屏——你看不见它才算对。）": "（这句话在窗口隐藏期间上屏——你看不见它才算对。）"
+  "（这句话在窗口隐藏期间上屏——你看不见它才算对。）": "（这句话在窗口隐藏期间上屏——你看不见它才算对。）",
+  "功能演示": "Feature Showcase",
+  "数值算术回归：复合赋值逐步改写临时变量，插值即时读出。": "Numeric arithmetic regression: compound assignment rewrites a temp variable step by step, and interpolation reads it instantly.",
+  "{a} 我是值": "{a} — I'm the value",
+  "{a} 我是乘值": "{a} — I'm the multiplied value",
+  "{a} 我是除值": "{a} — I'm the divided value",
+  "{a} 我是加值": "{a} — I'm the added value",
+  "{a} 我是减值": "{a} — I'm the subtracted value",
+  "{a} 我是取余值": "{a} — I'm the remainder",
+  "{c} 我是 c": "{c} — I'm c",
+  "{b} 我是 b": "{b} — I'm b",
+  "{c} 我是 c * b": "{c} — I'm c * b",
+  "{c} 我是 c / b": "{c} — I'm c / b",
+  "{c} 我是 c * a * b": "{c} — I'm c * a * b",
+  "{c} 我是 c / a / b": "{c} — I'm c / a / b",
+  "数值测试结束": "Numeric test complete"
 }
