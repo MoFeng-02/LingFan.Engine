@@ -6,6 +6,10 @@ target
 # 并行工作树：多智能体协作时在仓内建 worktree，内容随会话生成、不属于本仓源码
 .agents
 
+# 会话产物元数据：只被 `.git/info/exclude` 本地排除，prettier 不读该文件，
+# 不在此显式忽略会把这些生成 JSON 计入格式门禁。
+.box-agent/
+
 # 构建生成物（stories:build 幂等产出——格式由生成器负责，人工排版会被覆盖）
 apps/playground/src/gen/
 # 同上：创作链编译产物（Resources/Stories/** + project.json，由 stories:build 差量写盘）
