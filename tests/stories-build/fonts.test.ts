@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildStories } from "@lingfan-engine/stories-build";
 import { scanFontRegistry } from "../../packages/stories-build/src/fonts/font-registry.ts";
+import { renderFontTypegen } from "../../packages/stories-build/src/typegen/font-render.ts";
 
 const BASE = fileURLToPath(new URL("./.tmp-fonts/", import.meta.url));
 
@@ -254,5 +255,23 @@ describe("字体名注册表 · 递归扫描（子目录分类）", () => {
     const report = await buildStories(root);
     expect(report.columns).toBe(1);
     expect(readStoryText(root)).toContain('"font": "楷体"');
+  });
+});
+
+describe("字体类型面渲染 · 按字体名去重", () => {
+  it("同族多格式同名共存：类型面每个字体名只出现一次", () => {
+    const output = renderFontTypegen([
+      { file: "private_fonts/OTF/宋体.otf", name: "宋体" },
+      { file: "private_fonts/TTF/宋体.ttf", name: "宋体" },
+      { file: "private_fonts/OTF/楷体.otf", name: "楷体" },
+    ]);
+    const keys = output.match(/readonly "[^"]+":/g) ?? [];
+    expect(keys).toEqual(['readonly "宋体":', 'readonly "楷体":']);
+  });
+
+  it("空注册表仍是封闭空类型（键访问改拼必报错）", () => {
+    expect(renderFontTypegen([])).toContain(
+      "declare const font: Record<never, never>;",
+    );
   });
 });

@@ -6,6 +6,9 @@
  * 正名，改拼直接 TS2551。纯编译期声明，不注入运行时对象；模块自有 `font` 声明按
  * TS 遮蔽语义优先。空注册表产出 `Record<never, never>`：TS 里空对象字面量 `{}` 会
  * 放开任意键访问，等于放弃改拼保护，这里必须给封闭空类型。
+ *
+ * 按字体名去重：同一款字体常以多种格式分发（`.otf` 与 `.ttf` 同名），注册表为每个文件
+ * 各记一条，而类型面的键是「字体名」——不去重会让同一键重复成多行，生成物冗余。
  */
 
 import type { FontEntry } from "../fonts/font-registry.ts";
@@ -18,9 +21,9 @@ const HEADER = [
 
 /** 渲染 font.gen.d.ts 全文；空注册表 = 封闭空对象（键访问改拼必报 TS2551） */
 export function renderFontTypegen(entries: readonly FontEntry[]): string {
-  const lines = entries.map(
-    (entry) =>
-      `  readonly ${JSON.stringify(entry.name)}: ${JSON.stringify(entry.name)};`,
+  const names = [...new Set(entries.map((entry) => entry.name))];
+  const lines = names.map(
+    (name) => `  readonly ${JSON.stringify(name)}: ${JSON.stringify(name)};`,
   );
   const declaration =
     lines.length === 0

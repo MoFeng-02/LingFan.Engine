@@ -55,6 +55,7 @@
  */
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   rmSync,
@@ -117,12 +118,18 @@ beforeEach(() => {
   // 忠实于真实工程的解析面；其余依赖仍走仓根，口径不变。junction 在 Windows 免管理员
   // 权限建目录链接，POSIX 上 type 参数被忽略（等价普通符号链接）；afterEach 的 rmSync
   // 按链接本身删除，不会顺链删到真实依赖。
+  //
+  // 源缺失时先给出可读的诊断：symlinkSync 自己抛的 ENOENT 会把「少装了 playground 依赖」
+  // 伪装成「链接目标不存在」，让人误以为是列名或字体校验失败。
+  const pixiSource = join(PLAYGROUND_ROOT, "node_modules/pixi.js");
+  if (!existsSync(pixiSource)) {
+    throw new Error(
+      `本测试需要 playground 的 pixi.js 依赖：${pixiSource} 不存在。` +
+        "先在仓根跑 pnpm install（不要带 --filter 只装根依赖），再重跑本文件。",
+    );
+  }
   mkdirSync(join(root, "node_modules"), { recursive: true });
-  symlinkSync(
-    join(PLAYGROUND_ROOT, "node_modules/pixi.js"),
-    join(root, "node_modules/pixi.js"),
-    "junction",
-  );
+  symlinkSync(pixiSource, join(root, "node_modules/pixi.js"), "junction");
   // 字体注册表递归扫描 Fonts（子目录分类是常规形态）：副本建空目录 = 空注册表
   // （与入库的封闭空类型一致）；私有字体文件与媒体二进制都不是构建输入，不拷。
   mkdirSync(join(root, "Resources/Fonts"), { recursive: true });
