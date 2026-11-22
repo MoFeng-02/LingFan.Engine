@@ -548,6 +548,7 @@ onUnmounted(() => {
           :slot-views="slotViews"
           :save-title-draft="titleDraft"
           :host="host"
+          :t="t"
           @rollback-to-entry="rollbackToEntry"
           @set-pref-volume="setPrefVolume"
           @set-pref-muted="setPrefMuted"

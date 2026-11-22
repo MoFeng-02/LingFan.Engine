@@ -23,6 +23,8 @@ export interface KeybindingPanelOptions {
   preferences: PlayerPreferences;
   /** 读当前绑定表（响应式读取，改绑后判定立即跟着变） */
   readKeymap(): PlayerKeymap | undefined;
+  /** 宿主静态文案查表（原文 → 当前语言）；缺省即原文直出 */
+  t?: (text: string) => string;
 }
 
 /** 键位面板出口 */
@@ -70,6 +72,8 @@ export function createKeybindingPanel(
   options: KeybindingPanelOptions,
 ): KeybindingPanel {
   const captureAction = ref<KeymapAction | null>(null);
+  /** 文案门面：未接入 i18n 时保持原文 */
+  const t = (text: string): string => options.t?.(text) ?? text;
 
   return {
     captureAction,
@@ -98,7 +102,9 @@ export function createKeybindingPanel(
     },
     displayKeys(keys: readonly string[]): string {
       return keys
-        .map((k) => (k === " " ? "空格" : k.length === 1 ? k.toUpperCase() : k))
+        .map((k) =>
+          k === " " ? t("空格") : k.length === 1 ? k.toUpperCase() : k,
+        )
         .join(" / ");
     },
   };

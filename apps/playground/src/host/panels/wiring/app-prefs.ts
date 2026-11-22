@@ -38,6 +38,8 @@ export interface AppPrefsOptions {
   getEngine: () => StoryEngine;
   /** 打字机共享句柄（字速即时生效的落点） */
   typewriter: TypewriterHandle;
+  /** 宿主静态文案查表（原文 → 当前语言）；键位面板的键名显示用它 */
+  t?: (text: string) => string;
 }
 
 /** 偏好面板能力：显隐、视图镜像、各偏好写入口与键位捕获 */
@@ -97,6 +99,7 @@ export function createAppPrefs(options: AppPrefsOptions): AppPrefs {
   const keys = createKeybindingPanel({
     preferences,
     readKeymap: () => prefs.view.value.keymap,
+    t: options.t,
   });
   return {
     showPrefs,

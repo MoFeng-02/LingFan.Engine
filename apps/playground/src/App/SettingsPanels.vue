@@ -24,7 +24,7 @@ import type {
 } from "../host";
 import PreferenceExtras from "./settings/PreferenceExtras.vue";
 
-defineProps<{
+const props = defineProps<{
   /** 层级（z 序）：三块各取自己的层 */
   layerZ: LayerZTable;
   /** 历史面板是否展开 */
@@ -53,7 +53,12 @@ defineProps<{
   saveTitleDraft: string;
   /** 宿主事实（os/form，只读展示） */
   host: HostInfo;
+  /** 宿主静态文案查表（原文 → 当前语言）；缺省即原文直出 */
+  t?: (text: string) => string;
 }>();
+
+/** 文案门面：未接入 i18n 时保持原文（本组件可独立挂载） */
+const t = (text: string): string => props.t?.(text) ?? text;
 
 /** 事件出口：设置项变更与动作逐项上抛（回滚 / 音量 / 静音 / 字速 / 横竖屏 / 全屏 / 按键捕获等），父层负责落地。 */
 const emit = defineEmits<{
@@ -69,7 +74,8 @@ const emit = defineEmits<{
   "update-save-title": [event: Event];
 }>();
 
-/** 键位行：各动作一行（改绑 / 恢复默认），标签面向玩家；组合键由捕获侧拼串 */
+/** 键位行：各动作一行（改绑 / 恢复默认），标签面向玩家；组合键由捕获侧拼串。
+    标签存原文（文案键），渲染时过 `t` 门面——切语言不必重建行表。 */
 const keymapRows: ReadonlyArray<{ action: KeymapAction; label: string }> = [
   { action: "advance", label: "推进键" },
   { action: "history", label: "历史键" },
@@ -89,7 +95,7 @@ const keymapRows: ReadonlyArray<{ action: KeymapAction; label: string }> = [
     data-ui-zone
     :style="{ zIndex: layerZ.history }"
   >
-    <p class="layer-prompt">历史</p>
+    <p class="layer-prompt">{{ t("历史") }}</p>
     <ul>
       <li
         v-for="block in historyBlocks"
@@ -126,9 +132,9 @@ const keymapRows: ReadonlyArray<{ action: KeymapAction; label: string }> = [
     :style="{ zIndex: layerZ.prefs }"
     @click.stop
   >
-    <p class="layer-prompt">设置</p>
+    <p class="layer-prompt">{{ t("设置") }}</p>
     <label v-for="c in prefChannels" :key="c.channel" class="prefs-row">
-      <span class="prefs-label">{{ c.label }}</span>
+      <span class="prefs-label">{{ t(c.label) }}</span>
       <input
         type="range"
         min="0"
@@ -143,7 +149,7 @@ const keymapRows: ReadonlyArray<{ action: KeymapAction; label: string }> = [
       >
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">静音</span>
+      <span class="prefs-label">{{ t("静音") }}</span>
       <input
         type="checkbox"
         :checked="prefsView.muted"
@@ -151,7 +157,7 @@ const keymapRows: ReadonlyArray<{ action: KeymapAction; label: string }> = [
       />
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">文字速度</span>
+      <span class="prefs-label">{{ t("文字速度") }}</span>
       <input
         type="range"
         min="1"
@@ -161,23 +167,23 @@ const keymapRows: ReadonlyArray<{ action: KeymapAction; label: string }> = [
         @input="emit('set-pref-text-speed', $event)"
       />
       <span class="prefs-value"
-        >{{ Math.round(prefsView.textSpeed) }} 字/秒</span
+        >{{ Math.round(prefsView.textSpeed) }} {{ t("字/秒") }}</span
       >
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">屏幕方向</span>
+      <span class="prefs-label">{{ t("屏幕方向") }}</span>
       <select
         :value="prefsView.orientation ?? ''"
         @change="emit('set-pref-orientation', $event)"
       >
-        <option value="">跟随工程</option>
-        <option value="auto">跟随系统</option>
-        <option value="portrait">竖屏</option>
-        <option value="landscape">横屏</option>
+        <option value="">{{ t("跟随工程") }}</option>
+        <option value="auto">{{ t("跟随系统") }}</option>
+        <option value="portrait">{{ t("竖屏") }}</option>
+        <option value="landscape">{{ t("横屏") }}</option>
       </select>
     </label>
     <div v-for="k in keymapRows" :key="k.action" class="prefs-row">
-      <span class="prefs-label">{{ k.label }}</span>
+      <span class="prefs-label">{{ t(k.label) }}</span>
       <button
         type="button"
         class="prefs-key"
@@ -186,7 +192,7 @@ const keymapRows: ReadonlyArray<{ action: KeymapAction; label: string }> = [
       >
         {{
           captureAction === k.action
-            ? "按任意键（Esc 取消）"
+            ? t("按任意键（Esc 取消）")
             : displayKeys(
                 prefsView.keymap?.[k.action] ?? DEFAULT_KEYMAP[k.action],
               )
@@ -197,11 +203,11 @@ const keymapRows: ReadonlyArray<{ action: KeymapAction; label: string }> = [
         class="prefs-key-reset"
         @click.stop="emit('reset-keybinding', k.action)"
       >
-        默认
+        {{ t("默认") }}
       </button>
     </div>
     <label class="prefs-row">
-      <span class="prefs-label">全屏</span>
+      <span class="prefs-label">{{ t("全屏") }}</span>
       <input
         type="checkbox"
         :checked="prefsView.fullscreen ?? false"
@@ -209,9 +215,9 @@ const keymapRows: ReadonlyArray<{ action: KeymapAction; label: string }> = [
       />
     </label>
     <!-- 扩展偏好控件组（主音量/文本/显示 + 缓办禁用占位）：独立组件，直调偏好句柄 -->
-    <PreferenceExtras :prefs="prefs" :prefs-view="prefsView" />
+    <PreferenceExtras :prefs="prefs" :prefs-view="prefsView" :t="props.t" />
     <label class="prefs-row">
-      <span class="prefs-label">宿主</span>
+      <span class="prefs-label">{{ t("宿主") }}</span>
       <span class="prefs-value">{{ host.os }} · {{ host.form }}</span>
     </label>
   </section>
@@ -223,17 +229,17 @@ const keymapRows: ReadonlyArray<{ action: KeymapAction; label: string }> = [
     @click.stop
   >
     <p class="layer-prompt">
-      {{ slotPanel === "save" ? "保存到槽位" : "读取槽位" }}
+      {{ slotPanel === "save" ? t("保存到槽位") : t("读取槽位") }}
     </p>
     <!-- 存档名：只给存档形态用。留空即沿用该槽原名（旧名也没有就自动起名），
          填了就以填的为准；点槽位即写盘，名字是标签不是确认步骤。 -->
     <label v-if="slotPanel === 'save'" class="slot-title-field">
-      <span class="slot-title-label">存档名</span>
+      <span class="slot-title-label">{{ t("存档名") }}</span>
       <input
         type="text"
         class="slot-title-input"
         :value="saveTitleDraft"
-        placeholder="留空则沿用原名或自动起名"
+        :placeholder="t('留空则沿用原名或自动起名')"
         @input="emit('update-save-title', $event)"
       />
     </label>
@@ -244,12 +250,14 @@ const keymapRows: ReadonlyArray<{ action: KeymapAction; label: string }> = [
         type="button"
         class="slot-cell"
         :disabled="!canChooseSlot(v, slotPanel)"
-        :title="v.empty && slotPanel === 'load' ? '空槽位' : undefined"
+        :title="v.empty && slotPanel === 'load' ? t('空槽位') : undefined"
         @click.stop="emit('choose-slot', v)"
       >
         <img v-if="v.screenshot" :src="v.screenshot" alt="" />
         <!-- 占位块有两义：没有存档，或有存档但取不到缩略图（端口拒读旧档等） -->
-        <span v-else class="slot-empty">{{ v.empty ? "空" : "无预览" }}</span>
+        <span v-else class="slot-empty">{{
+          v.empty ? t("空") : t("无预览")
+        }}</span>
         <span class="slot-label">{{ v.label }}</span>
         <span v-if="v.title" class="slot-title">{{ v.title }}</span>
         <span v-if="v.timestamp" class="slot-time">{{

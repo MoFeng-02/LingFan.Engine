@@ -60,6 +60,7 @@ export function createAppPanels(options: AppPanelsOptions): AppPanels {
     preferences: props.preferences,
     getEngine,
     typewriter: options.typewriter,
+    t: lang.t,
   });
   const slots = createAppSlots({
     props,

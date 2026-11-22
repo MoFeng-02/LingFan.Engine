@@ -122,7 +122,10 @@ describe("偏好扩展面板", () => {
   });
 
   it("缓办项保留禁用 + 诚实说明（打字音效/窗口尺寸）", () => {
-    expect(extrasSource).toContain('title="待打字机音效接线后启用"');
-    expect(extrasSource).toContain('title="待桌面壳窗口能力接线后启用"');
+    // 说明文案经文案门面（未命中回原文），故断言的是绑定形态而不是静态属性
+    expect(extrasSource).toContain(":title=\"t('待打字机音效接线后启用')\"");
+    expect(extrasSource).toContain(
+      ":title=\"t('待桌面壳窗口能力接线后启用')\"",
+    );
   });
 });

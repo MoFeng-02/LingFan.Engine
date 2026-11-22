@@ -30,17 +30,22 @@ const props = defineProps<{
   prefs: PreferencesPanel;
   /** 偏好快照的响应式镜像（显示读它） */
   prefsView: PlayerPrefsData;
+  /** 宿主静态文案查表（原文 → 当前语言）；缺省即原文直出 */
+  t?: (text: string) => string;
 }>();
+
+/** 文案门面：未接入 i18n 时保持原文（本组件可独立挂载） */
+const t = (text: string): string => props.t?.(text) ?? text;
 
 /** 对话框位置显示名 */
 function positionLabel(position: string): string {
   switch (position) {
     case "bottom":
-      return "底部";
+      return t("底部");
     case "top":
-      return "顶部";
+      return t("顶部");
     case "center":
-      return "居中";
+      return t("居中");
     default:
       return position;
   }
@@ -51,7 +56,7 @@ function positionLabel(position: string): string {
   <div class="prefs-extras">
     <!-- 音频：主音量（渲染层经 effectiveVolume 自动乘入；静音时禁用） -->
     <label class="prefs-row">
-      <span class="prefs-label">主音量</span>
+      <span class="prefs-label">{{ t("主音量") }}</span>
       <input
         type="range"
         min="0"
@@ -68,7 +73,7 @@ function positionLabel(position: string): string {
 
     <!-- 文本：即时显示 + NVL 每页行数 -->
     <label class="prefs-row">
-      <span class="prefs-label">即时文本</span>
+      <span class="prefs-label">{{ t("即时文本") }}</span>
       <input
         type="checkbox"
         :checked="props.prefsView.instantText ?? false"
@@ -76,7 +81,7 @@ function positionLabel(position: string): string {
       />
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">NVL 行数</span>
+      <span class="prefs-label">{{ t("NVL 行数") }}</span>
       <input
         type="range"
         :min="NVL_PAGE_SIZE_RANGE.min"
@@ -86,13 +91,14 @@ function positionLabel(position: string): string {
         @input="props.prefs.setNvlPageSize($event)"
       />
       <span class="prefs-value"
-        >{{ props.prefsView.nvlPageSize ?? NVL_PAGE_SIZE_RANGE.max }} 行</span
+        >{{ props.prefsView.nvlPageSize ?? NVL_PAGE_SIZE_RANGE.max }}
+        {{ t("行") }}</span
       >
     </label>
 
     <!-- 播放：自动播放意图 + 推进延时 + 快进遇未读即停（节奏循环按这些偏好装配） -->
     <label class="prefs-row">
-      <span class="prefs-label">自动播放</span>
+      <span class="prefs-label">{{ t("自动播放") }}</span>
       <input
         type="checkbox"
         :checked="props.prefsView.autoEnabled ?? false"
@@ -100,7 +106,7 @@ function positionLabel(position: string): string {
       />
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">自动延时</span>
+      <span class="prefs-label">{{ t("自动延时") }}</span>
       <input
         type="range"
         :min="AUTO_DELAY_MS_RANGE.min"
@@ -114,58 +120,58 @@ function positionLabel(position: string): string {
       >
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">阅读速度</span>
+      <span class="prefs-label">{{ t("阅读速度") }}</span>
       <input
         type="range"
         :min="AUTO_READ_CPS_RANGE.min"
         :max="AUTO_READ_CPS_RANGE.max"
         step="1"
         :value="props.prefsView.autoReadCps ?? 12"
-        title="每句在基础停留之外，按这个词元速度追加阅读时间——长句停得久"
+        :title="t('每句在基础停留之外，按这个词元速度追加阅读时间——长句停得久')"
         @input="props.prefs.setAutoReadCps($event)"
       />
       <span class="prefs-value"
-        >{{ props.prefsView.autoReadCps ?? 12 }} 词元/秒</span
+        >{{ props.prefsView.autoReadCps ?? 12 }} {{ t("词元/秒") }}</span
       >
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">未读即停</span>
+      <span class="prefs-label">{{ t("未读即停") }}</span>
       <input
         type="checkbox"
         :checked="props.prefsView.skipUnseenOnly ?? false"
-        title="快进只走已读文本，遇到未读即停"
+        :title="t('快进只走已读文本，遇到未读即停')"
         @change="props.prefs.setSkipUnseenOnly($event)"
       />
     </label>
 
     <!-- 文本外观：字体（工程注册表供给）与字速来源（玩家值或故事作者值） -->
     <label class="prefs-row">
-      <span class="prefs-label">字体</span>
+      <span class="prefs-label">{{ t("字体") }}</span>
       <select
         :value="props.prefsView.fontFamily ?? ''"
         @change="props.prefs.setFontFamily($event)"
       >
-        <option value="">默认</option>
+        <option value="">{{ t("默认") }}</option>
         <option v-for="font in storyFonts" :key="font.name" :value="font.name">
           {{ font.name }}
         </option>
       </select>
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">字速源</span>
+      <span class="prefs-label">{{ t("字速源") }}</span>
       <select
         :value="props.prefsView.textSpeedSource ?? ''"
         @change="props.prefs.setTextSpeedSource($event)"
       >
-        <option value="">默认（玩家优先）</option>
-        <option value="player">玩家优先</option>
-        <option value="story">跟随故事</option>
+        <option value="">{{ t("默认（玩家优先）") }}</option>
+        <option value="player">{{ t("玩家优先") }}</option>
+        <option value="story">{{ t("跟随故事") }}</option>
       </select>
     </label>
 
     <!-- 显示：转场/抖动倍率、减弱动效、字号、对话框外观、元素填充默认 -->
     <label class="prefs-row">
-      <span class="prefs-label">转场倍率</span>
+      <span class="prefs-label">{{ t("转场倍率") }}</span>
       <input
         type="range"
         :min="TRANSITION_SPEED_RANGE.min"
@@ -179,7 +185,7 @@ function positionLabel(position: string): string {
       >
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">抖动强度</span>
+      <span class="prefs-label">{{ t("抖动强度") }}</span>
       <input
         type="range"
         min="0"
@@ -193,7 +199,7 @@ function positionLabel(position: string): string {
       >
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">减弱动效</span>
+      <span class="prefs-label">{{ t("减弱动效") }}</span>
       <select
         :value="
           props.prefsView.reducedMotion === undefined
@@ -204,13 +210,13 @@ function positionLabel(position: string): string {
         "
         @change="props.prefs.setReducedMotion($event)"
       >
-        <option value="">跟随系统</option>
-        <option value="on">开</option>
-        <option value="off">关</option>
+        <option value="">{{ t("跟随系统") }}</option>
+        <option value="on">{{ t("开") }}</option>
+        <option value="off">{{ t("关") }}</option>
       </select>
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">字号倍率</span>
+      <span class="prefs-label">{{ t("字号倍率") }}</span>
       <input
         type="range"
         :min="FONT_SCALE_RANGE.min"
@@ -224,7 +230,7 @@ function positionLabel(position: string): string {
       >
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">框透明度</span>
+      <span class="prefs-label">{{ t("框透明度") }}</span>
       <input
         type="range"
         min="0"
@@ -238,19 +244,19 @@ function positionLabel(position: string): string {
       >
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">框位置</span>
+      <span class="prefs-label">{{ t("框位置") }}</span>
       <select
         :value="props.prefsView.dialoguePosition ?? ''"
         @change="props.prefs.setDialoguePosition($event)"
       >
-        <option value="">默认</option>
+        <option value="">{{ t("默认") }}</option>
         <option v-for="p in DIALOGUE_POSITIONS" :key="p" :value="p">
           {{ positionLabel(p) }}
         </option>
       </select>
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">框高倍率</span>
+      <span class="prefs-label">{{ t("框高倍率") }}</span>
       <input
         type="range"
         :min="DIALOGUE_HEIGHT_SCALE_RANGE.min"
@@ -264,26 +270,30 @@ function positionLabel(position: string): string {
       >
     </label>
     <label class="prefs-row">
-      <span class="prefs-label">填充默认</span>
+      <span class="prefs-label">{{ t("填充默认") }}</span>
       <select
         :value="props.prefsView.elementFit ?? ''"
         @change="props.prefs.setElementFit($event)"
       >
-        <option value="">默认</option>
+        <option value="">{{ t("默认") }}</option>
         <option v-for="fit in ELEMENT_FITS" :key="fit" :value="fit">
           {{ fit }}
         </option>
       </select>
     </label>
 
-    <!-- 缓办字段：契约已在、消费待后续批，禁用占位 + 说明（不留活控件死配置） -->
+    <!-- 缓办字段：契约已在、消费尚未接线，禁用占位 + 说明（不留活控件死配置） -->
     <label class="prefs-row is-deferred">
-      <span class="prefs-label">打字音效</span>
-      <input type="checkbox" disabled title="待打字机音效接线后启用" />
+      <span class="prefs-label">{{ t("打字音效") }}</span>
+      <input type="checkbox" disabled :title="t('待打字机音效接线后启用')" />
     </label>
     <label class="prefs-row is-deferred">
-      <span class="prefs-label">窗口尺寸</span>
-      <input type="checkbox" disabled title="待桌面壳窗口能力接线后启用" />
+      <span class="prefs-label">{{ t("窗口尺寸") }}</span>
+      <input
+        type="checkbox"
+        disabled
+        :title="t('待桌面壳窗口能力接线后启用')"
+      />
     </label>
   </div>
 </template>
