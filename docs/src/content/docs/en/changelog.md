@@ -9,6 +9,46 @@ Change highlights recorded in reverse version order. This page keeps only what r
 
 No unreleased changes.
 
+## v0.7.2
+
+2026-11-22 · [Full description and commit list](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.7.2)
+
+### Added
+
+- **Auto-play spreads its dwell time by sentence length**: previously every line waited the same fixed duration, so a long line flipped before you finished it and a short one made you wait for nothing. Now each line's actual dwell is base dwell + that line's token count ÷ reading speed — long lines linger, short ones move on. The new `autoReadCps` preference (tokens per second, default 12, range 1–200; the lower bound is not 0 because it is a divisor and 0 would make the dwell infinite) comes with `setAutoReadCps` / `clearAutoReadCps`, and `autoDelayMs` narrows to "base dwell". Token counting: each CJK character counts as 1, each contiguous run of Latin letters or digits counts as 1, and whitespace, punctuation, and inline markers count as 0. Both preference panels gain a "reading speed" slider.
+- **The render layer exports token counting and dwell math**: `countReadingTokens` and `autoDwellMs` are exported as pure functions so hosts can reuse the same rules, `Typewriter` gains `readingTokens`, and the `TypewriterReader` surface gains an optional `readingTokens` — **optional on purpose**: an early host's existing implementation should not stop compiling just because a required field appeared, and when it is absent the engine falls back to counting the current line itself.
+
+### Fixed
+
+- **The font-name allowlist now accepts hyphens and dots**: it used to accept only `\w` and CJK, while real font names in the wild look like `SourceHanSerifCN-VF` — every one of them was judged illegal and silently fell back to the default font, breaking `{font=}`, per-line fonts, and the player font preference all at once without a single error. Font-family projection now passes the registry check before reaching the CSS variable, and unregistered names fail closed.
+- **The template's font slot is now a live control instead of a disabled placeholder**: its options come from the build-time scan, the selection is validated against the registry before projection, and the template assembles the font-name registry too, so `{font=}` and the player font preference go through the same check in scaffolded projects.
+
+### Other changes
+
+- **Template version**: `1.26.0` → `1.28.0` (`1.27.0` wired the font chain and three preference setters, `1.28.0` wired playback pacing), with `minEngineVersion` raised from `0.5.0` to `0.7.1` — the old value was already an underestimate: APIs the template calls, such as `setDialogueHeightScale`, simply do not exist in 0.5.0.
+- **Template dependency ranges**: `^0.4.0` → `^0.7.1`, aligned to the then-current version in one step.
+
+## v0.7.1
+
+2026-11-22 · [Full description and commit list](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.7.1)
+
+### Added
+
+- **The font registry scans subdirectories recursively**: fonts are normally filed by category (`OTF` / `TTF` / `WOFF2`), but only the top level of `Resources/Fonts/` used to be scanned, so nothing in a subdirectory ever reached the registry — which is why the font dropdown stayed a dead control. The scan now walks every level, and `file` changes from a bare file name to a path relative to the font root, which hosts use to build resource URLs. The same family may ship in several formats (`.otf` and `.ttf` under one name); the host emits one `@font-face` per file and the browser picks the format it supports.
+- **Three preference setters for auto-play and skip**: `setAutoEnabled` / `setAutoDelayMs` / `setSkipUnseenOnly` enter `PlayerPreferences`, turning playback pacing from "each host figures it out" into an engine capability.
+- **Template playback pacing wiring**: auto-play, auto delay, and skip-read-only go from disabled placeholders to live controls read in real time by the host pacing loop.
+- **Playground façade**: the start page gains language switching and a resume summary, the toolbar's Auto / Skip become visible live controls, the opening becomes a narrative prologue, and there is a new feature-tour chapter (seen-and-skip, multi-instance audio, no-rollback segment, minigame and interaction branching) plus six expression variants of a portrait, and a PixiJS real-time scene column as a column body component.
+
+### Improved
+
+- **`.story` write-back policy settled**: storage is always JSON; the text form of `.story` is an authoring input format that is normalized on save, the path stays as authored (`.story` writes back to `.story`), and the form is detected from the file's first character. The earlier test assertion of "the text form stays byte-identical" rested on the opposite premise — text projection drops comments and hoists `define` lines to the top of the file, so it cannot be byte-idempotent and should not try to be. The assertion now buckets by form: JSON form stays byte-identical, while the text form asserts that the diff set is exactly those files, that re-assembling the written result deep-equals the original story, that nothing is deleted, and that the file set is unchanged.
+- **The font type surface deduplicates by font name**: one font often ships in several formats and the registry records one entry per file, while the type surface keys on the font name — without deduplication the same key would repeat across lines.
+
+### Other changes
+
+- **Gates**: prettier now explicitly ignores the session-artifact metadata directory (it is only excluded locally by `.git/info/exclude`, which prettier does not read).
+- **English element pages**: a colon in a description is now quoted, fixing a YAML frontmatter parse failure.
+
 ## v0.7.0
 
 2026-11-21 · [Full description and commit list](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.7.0)
