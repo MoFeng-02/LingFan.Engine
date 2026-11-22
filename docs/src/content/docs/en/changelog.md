@@ -7,6 +7,63 @@ Change highlights recorded in reverse version order. This page keeps only what r
 
 ## Unreleased
 
+No unreleased changes.
+
+## v0.7.0
+
+2026-11-21 · [Full description and commit list](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.7.0)
+
+### Added
+
+- **Player preferences become an engine capability**: settings such as volume, text speed, typewriter, dialogue box opacity / position / height / font scale, element fill defaults, keybindings, screen orientation, fullscreen, and font family used to be reimplemented by every host. The engine now provides a `PlayerPreferences` contract and a three-way consumption chain (preferences > story > built-in); hosts only own the panel, and changes take effect immediately. Defaults written in the story are the "player has not spoken yet" layer — once the player sets something, the story no longer overrides it.
+- **Machine-level seen records with skip and auto-play**: seen records live independently of preferences, saves, and story state — shared across saves, not cleared when a save is deleted, not captured in snapshots. That is what "seen" should mean: once read, it stays read, even if you later load an older save. Skip and auto-play go through exactly the same advance seam as player clicks, so the existing constraints (no advancing during rollback, interface scenes step aside, story-level unskippable gates, stop on unseen) hold automatically; the mode itself is session state, so neither loading a save nor rolling back leaves residue.
+- **Rollback control surface**: an assembly-time `rollbackEnabled` master switch (defaults to `true`, current behavior unchanged), a session-level temporary lock `SYS.rollbackLocked` (captured in snapshots, not in saves), and two ops — `block_rollback` / `fix_rollback` — so authors can mark "this stretch cannot be rolled back" at segment granularity. When rollback is unavailable no checkpoint is created; saving and loading still work. A project-author-level `historyLimit` is also new: invalid values degrade to the default with a diagnostic, and loading a save walks every history checkpoint — if one cannot be migrated the list is truncated and the player is told.
+- **Host capabilities become assembly-time pure data**: `HostInfo.capabilities`, optional and additive. A body component declares what it needs; if the host does not declare that capability the engine diagnoses and stops rendering — no silent degradation, because a degraded screen is harder to debug than an error. Capability comparison reads two pure data lists and probes no platform.
+- **Security**: resource DEK acquisition moves from a hardcoded endpoint to a port + adapter seam; the default is still the in-package seed (honestly labelled casual grade — the seed ships in plaintext with the package and makes no promise of unextractability), so a stronger provider can replace it later without touching the crypto core. The save header is upgraded to authenticated encryption (mode, counter, and timestamp are authenticated; tampering fails, old saves still read); saves, high-water marks, preferences, and persistence all use atomic writes (temp file + rename, so a crash never leaves half a file); the iOS Keychain item is marked as available only after local unlock, the KEK cache switches to a short TTL refetched on demand with copies zeroed after use. The desktop shell CSP tightens to least privilege (no `unsafe-eval`), save-slot validation is fail-closed, and the debug channel gains an origin allowlist plus token handshake.
+- **Cross-platform**: mini-program video fills the real stage size and expresses instance layering as page data; the template and mini-program build targets drop to safari13, and the legacy-WebView denylist guard extends to both.
+- **Scaffold host wiring completed**: body component assembly, preference consumption, keybindings and wheel / Esc / quick save-load on the input surface, a start-page continue slot, real minigame mounting, extension registration, screen-orientation and fullscreen policy moved down, mini-program settings panel and accessibility.
+
+### Improved
+
+- **Anchor interlock expansion**: regulation anchors whose behavior is already tested are enlisted (31 → 51), with exact bidirectional equality assertions; the interlock rate only grows.
+- **Contract layer free of implementation dependencies**: the contract barrel no longer re-exports back from the decision layer; consumers import directly. Only import paths change, behavior does not.
+- **Single column-change interruption path**: entering a column and leaving the element-sequence path share one interruption function, so a direct `jump` no longer drops the external-takeover signal.
+- **Checkpoints only marked after a real commit**: the "already recorded" flag is set only when a checkpoint actually lands; anything dropped by a guard stays unmarked.
+- **Test probe races**: anchor and story-source probes now run against per-test temporary copies, so the real project tree sees zero writes and parallel runs stay green.
+
+### Fixed
+
+- **Op self-consistency**: `audio_seek` added (instance or channel, one of the two); `audio_pause` / `audio_resume` support the instance dimension; `audio_volume` extends to instance and channel targets. The media family's stop / pause / resume align; `video` / `cutscene` continue by default when the resource is unchanged, and `restart` replays explicitly.
+- **Load-time validation**: 23 + 1 ops gain fail-closed validation at the parse layer; extension `stateVersion` gains integer validation; the loose criteria of `character` / `nvl` / `video_skipable` are tightened; `text_typewriter` keeps `enabled` on merged writes.
+- **Creation-chain type surface**: `label` column collection aligns with the narrowed column-name surface — `option` targets and the second `navigate` argument are collected too, and a `flow` column is produced when they point at an exported function; `call` targets narrow to a union of "known column name or known function name", with the function-name table entering the compile-time type domain.
+
+### Other changes
+
+- **Docs**: regulation snapshots synchronized (op set final at 76, five sources equal); English docs go from 15 real translations + 25 fallbacks to 40 real translations (zh-en reconciliation 40 = 40, no fallback left), with technical terms (op names, error codes, APIs, commands, field names) never translated; a new doc-snapshot guard test pins the numbers in regulations and docs so they cannot drift silently.
+- **Template version**: `1.25.0` → `1.26.0`. The template content changed (host wiring completed, body assembly, security policy), so the version number is raised; the engine version line is independent.
+
+## v0.6.1
+
+2026-11-18 · [Full description and commit list](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.6.1)
+
+### Fixed
+
+- **The scaffold history panel collapses when switching language**: switching used to remount the whole block, so an expanded history list folded shut and the scroll position was lost. It now repaints in place (`refresh()`), keeping the expanded state and scroll position and re-translating only block content and button labels. The preferences panel has no expanded state to lose and still remounts as before.
+
+### Improved
+
+- Element translation comments corrected to the derive-at-read criterion: display text is stored as original text in the single source of truth, re-derived as soon as the language changes, no reload needed.
+- Overlay merge comments corrected: the override order is supply order, not file-name order — the supplier passes them already sorted by disk order and the merge itself does not sort.
+- The "single declaration of the default language" criterion now scans template overlay composition roots too (vue / react / tauri / story forms).
+
+### Other changes
+
+- **Docs**: the README notes that the Rust backend is optional.
+
+## v0.6.0
+
+2026-11-18 · [Full description and commit list](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.6.0)
+
 ### Added
 
 - **Scaffold hosts wired for multilingual**: the scaffold's bundled hosts (native / Vue / React, three forms) and the mini-program form are all wired to translation supply and a page language selector — dropping translation tables into `Resources/Lang/` takes effect, host static copy such as the toolbar and save labels repaints on language switch, and the preferences and history panels switch language in sync. The language list comes from a build-time scan, so adding a language directory needs no list change; the project ships an English example translation table. For usage see [making a multilingual project](/guides/i18n/).
@@ -21,11 +78,56 @@ Change highlights recorded in reverse version order. This page keeps only what r
 - **Saves and state store original text, no longer translations**: dialogue, menus, input, NVL, and element text are uniformly stored as original text in the state container, snapshots, and saves; translations are derived against the current translation table at the moment of reading. After switching language the **current screen re-translates immediately** (including on-screen element text and the history panel); what language is shown after loading a save depends on the language setting at load time. The save format (`SaveDataV1`) field set is unchanged; old-version saves stored translations, and on read the engine marks suspected-translation fields in memory and skips lookup, avoiding re-translating a translation as if it were original; once the engine rewrites the field the mark clears — old saves downgrade automatically, no migration needed.
 - **Known boundary: for sentences containing `{variable}`, the translation target is the template**: for interpolated sentences in speaker names and body text, lookup uses the original template (such as `Hello, {name}!`) rather than the interpolated result; on derivation the template translation is taken first, then the variable values captured at the time are interpolated back. The variable values themselves are not translated.
 
+### Improved
+
+- After a language switch the current screen (dialogue, speaker, menus, input, NVL, elements, history panel) re-translates immediately, with frame-stack depth and column coordinates unchanged — no replay.
+- `setLanguage` converges into a seven-step flow (validate language → supply table → write current language → re-translate visible surfaces / elements / NVL → emit); concurrent switches are last-write-wins, and a failed supply keeps the original language and table while emitting an error event (fail-closed).
+- The default language constant and the `Lang` directory name move into core as a single declaration.
+
+### Fixed
+
+- Legacy-save detection rejects cleanly instead of throwing on a bad payload (state field not an array or missing).
+- Concurrent language switches: an idempotent early return no longer lets a suspended old request beat the newest one.
+
 ### Other changes
 
 - **Template version**: `1.18.0` → `1.19.0`. The template content changed (the three forms and the mini-program host wired for multilingual: translation supply, language selector, static copy repaint, English example translation table), so the version number is raised; the engine version line is independent.
 - **Docs**: the interface-file extension list in the story-source chapter drops `.html`, with a sentence added on why (interface files must be default-importable).
 - **Docs**: the two multilingual pages (concept and guide) are rewritten to the new semantics — when it takes effect, the host facade, the command-line toolchain, health-check diagnostics; corresponding English pages added.
+
+## v0.5.1
+
+2026-11-17 · [Full description and commit list](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.5.1)
+
+### Other changes
+
+- **Template version**: `1.17.0` → `1.18.0`, with the minimum engine version raised to `0.5.0` (the template starts using APIs from that line).
+- **Repository**: the ignore list and end-of-line attribute comments are trimmed.
+
+## v0.5.0
+
+2026-11-17 · [Full description and commit list](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.5.0)
+
+### Added
+
+- **Body components**: a column declaration gains an optional `body` field, mutually exclusive with `elements` — a column is either "elements the engine places" or "your own component", never both. A `scene` column loads its body as declared and writes a system key; a `flow` column without a body declaration keeps the previous screen. Changing columns clears the old body without entering the mount table. Body frames never enter the waiting state and create no checkpoints, so rollback falls back naturally along the existing coordinate rules. A companion `SceneEnv` contract defines which engine capabilities a body component receives.
+- **Build-time scene scanning**: the `scenes/` directory collects body components by the "directory name is the component name" convention and generates a scene registry; an `export function` referenced by a static literal in `jump` / `navigate` produces a `flow` column on demand.
+- **Op payload types and word functions move down to core**: hand-written payload type aliases, `CommandOf` conditional dispatch, per-domain payload maps, and word functions moved over verbatim; the core barrel re-exports the narrowed registry surface and gains a `./script` source-direct entry. Core stays zero-dependency and zero-DOM — op payload types are declared once, in core, and word functions reference no runtime.
+- **Test interlocks**: bidirectional op payload locks (assignable both ways plus key-set equality), a spine interlock (count / landing / name-set completeness / export identity), registry narrowing probes, and a real-value consumption journey (word function → parse → execute → observe state, without going through the editor). Existing assertions are not weakened.
+- **Playground**: a new sandbox-map showcase chapter (world map, hall, kitchen, study body components with matching story columns) and five SVG scene resources; the host wires body loading and `SceneEnv` injection.
+
+### Fixed
+
+- **Editor**: diagnostic classification distinguishes "missing field" from "wrong type" per zod v4.
+- **Publish check**: the tar listing tolerates CRLF line endings and verifies that `exports` subpath targets actually exist.
+
+### Other changes
+
+- **Interface files must be default-importable modules**: HTML is not an ES module and cannot fit the UI channel. Previously the build did not error and only said "the interface did not mount" at runtime; the build now rejects outright.
+- **The editor's vocabulary layer forwards to `core/script`**: type exports forwarded, word functions moved out, zod schemas demoted to validators (with `satisfies` type annotations). The package barrel surface is unchanged, so existing story-source imports are unaffected.
+- **Four build-time emitters** (type generation / unit / scene / interface registry) move their `declare module` augmentation target from the editor to core, landing in the same batch as the registry move.
+- **Gates**: the pure-layer DOM guard extends to the engine core layer; specifier extraction no longer treats field names as external dependencies.
+- **Docs**: the "template not wired yet" wording for `shell.stage` is removed.
 
 ## v0.4.2
 
