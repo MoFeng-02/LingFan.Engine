@@ -74,8 +74,16 @@ export interface PlayerPrefsData {
 
   /** 即时文本（缺省 = false）：true 时整句直出、跳过打字机；不改变故事的跳过权限 */
   instantText?: boolean;
-  /** 自动播放每句停留时长（毫秒，缺省 = 1500；消费归自动播放功能） */
+  /** 自动播放基础停留时长（毫秒，缺省 = 1500；消费归自动播放功能） */
   autoDelayMs?: number;
+  /**
+   * 自动播放阅读速度（词元/秒，缺省 = 12；消费归自动播放功能）。
+   *
+   * 每句实际停留 = `autoDelayMs` + 该句词元量 / 本值 × 1000 ——长句停得久、短句停得短，
+   * 而不是所有句子用同一个定值。词元的定义见渲染层 `countReadingTokens`
+   * （中日韩字符各计 1，拉丁与数字连续串计 1，空白、标点与内联标记不计）。
+   */
+  autoReadCps?: number;
   /** 自动播放开关（缺省 = false；消费归自动播放功能） */
   autoEnabled?: boolean;
   /** 快进每句停留时长（毫秒，缺省 = 50；消费归快进功能） */
@@ -143,6 +151,8 @@ export const FONT_SCALE_RANGE = { min: 0.5, max: 3 } as const;
 export const DIALOGUE_HEIGHT_SCALE_RANGE = { min: 0.5, max: 2 } as const;
 export const NVL_PAGE_SIZE_RANGE = { min: 1, max: 200 } as const;
 export const AUTO_DELAY_MS_RANGE = { min: 0, max: 60000 } as const;
+/** 自动播放阅读速度值域（词元/秒）：下限非 0，除以它算停留时长，0 会让停留变成无穷 */
+export const AUTO_READ_CPS_RANGE = { min: 1, max: 200 } as const;
 export const SKIP_DELAY_MS_RANGE = { min: 0, max: 5000 } as const;
 export const WINDOW_WIDTH_RANGE = { min: 320, max: 16384 } as const;
 export const WINDOW_HEIGHT_RANGE = { min: 200, max: 16384 } as const;

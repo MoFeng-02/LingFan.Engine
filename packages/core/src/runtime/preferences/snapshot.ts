@@ -32,6 +32,7 @@ export function snapshotPrefs(data: PlayerPrefsData): PlayerPrefsData {
   if (data.masterVolume !== undefined) snap.masterVolume = data.masterVolume;
   if (data.instantText !== undefined) snap.instantText = data.instantText;
   if (data.autoDelayMs !== undefined) snap.autoDelayMs = data.autoDelayMs;
+  if (data.autoReadCps !== undefined) snap.autoReadCps = data.autoReadCps;
   if (data.autoEnabled !== undefined) snap.autoEnabled = data.autoEnabled;
   if (data.skipDelayMs !== undefined) snap.skipDelayMs = data.skipDelayMs;
   if (data.skipUnseenOnly !== undefined)

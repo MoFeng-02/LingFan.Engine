@@ -23,6 +23,7 @@ import type {
 } from "../../contracts/index.ts";
 import {
   AUTO_DELAY_MS_RANGE,
+  AUTO_READ_CPS_RANGE,
   DIALOGUE_HEIGHT_SCALE_RANGE,
   DIALOGUE_POSITIONS,
   ELEMENT_FITS,
@@ -182,12 +183,12 @@ export class PlayerPreferences {
     this.update({ ...this.data, instantText: on });
   }
 
-  /** 自动播放停留时长（毫秒，缺省 1500）：打字机完成后距上次推进至少等这么久 */
+  /** 自动播放基础停留时长（毫秒，缺省 1500）：按句长追加的阅读时间在此之上 */
   get autoDelayMs(): number {
     return this.data.autoDelayMs ?? 1500;
   }
 
-  /** 设置自动播放停留时长：非整数/非有限数忽略，整数钳到值域（与 sanitize 同口径） */
+  /** 设置自动播放基础停留时长：非整数/非有限数忽略，整数钳到值域（与 sanitize 同口径） */
   setAutoDelayMs(ms: number): void {
     if (typeof ms !== "number" || !Number.isInteger(ms)) return;
     const next = Math.min(
@@ -196,6 +197,30 @@ export class PlayerPreferences {
     );
     if (next === this.data.autoDelayMs) return;
     this.update({ ...this.data, autoDelayMs: next });
+  }
+
+  /** 自动播放阅读速度（词元/秒，缺省 12）：每句停留时长按它随词元量变化 */
+  get autoReadCps(): number {
+    return this.data.autoReadCps ?? 12;
+  }
+
+  /** 设置自动播放阅读速度：非有限数忽略，钳到值域（下限非 0，禁 0 防停留无穷） */
+  setAutoReadCps(cps: number): void {
+    const next = clampOrIgnore(
+      cps,
+      AUTO_READ_CPS_RANGE.min,
+      AUTO_READ_CPS_RANGE.max,
+    );
+    if (next === undefined || next === this.data.autoReadCps) return;
+    this.update({ ...this.data, autoReadCps: next });
+  }
+
+  /** 清除阅读速度 = 回到内建缺省（12 词元/秒） */
+  clearAutoReadCps(): void {
+    if (this.data.autoReadCps === undefined) return;
+    const next: PlayerPrefsData = { ...this.data };
+    delete next.autoReadCps;
+    this.update(next);
   }
 
   /** 自动播放开关（缺省 false）：宿主据此装配自动推进节奏 */

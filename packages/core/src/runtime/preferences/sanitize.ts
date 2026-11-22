@@ -16,6 +16,7 @@ import type {
 } from "../../contracts/index.ts";
 import {
   AUTO_DELAY_MS_RANGE,
+  AUTO_READ_CPS_RANGE,
   DEFAULT_PLAYER_PREFS,
   DIALOGUE_HEIGHT_SCALE_RANGE,
   DIALOGUE_POSITIONS,
@@ -188,6 +189,13 @@ export function sanitize(raw: unknown): PlayerPrefsData {
     AUTO_DELAY_MS_RANGE.max,
   );
   if (autoDelayMs !== undefined) data.autoDelayMs = autoDelayMs;
+  // 自动播放阅读速度：正浮点，钳到值域（下限非 0，禁 0 防停留时长无穷）
+  const autoReadCps = sanitizeFloat(
+    source.autoReadCps,
+    AUTO_READ_CPS_RANGE.min,
+    AUTO_READ_CPS_RANGE.max,
+  );
+  if (autoReadCps !== undefined) data.autoReadCps = autoReadCps;
   const skipDelayMs = sanitizeInt(
     source.skipDelayMs,
     SKIP_DELAY_MS_RANGE.min,
