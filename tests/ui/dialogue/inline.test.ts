@@ -4,7 +4,12 @@
  * 注册表是模块级单元格，泄漏会污染同文件的其他用例。
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { configureStoryFonts, renderInlineMarkup } from "@lingfan-engine/ui";
+import {
+  configureStoryFonts,
+  isRegisteredFont,
+  renderInlineMarkup,
+  sanitizeFont,
+} from "@lingfan-engine/ui";
 
 afterEach(() => {
   configureStoryFonts(undefined);
@@ -78,5 +83,44 @@ describe("renderInlineMarkup", () => {
     expect(renderInlineMarkup("{font=宋体}字")).toBe("字"); // 无 span，文本保留
     expect(onUnregistered).toHaveBeenCalledTimes(1);
     expect(onUnregistered).toHaveBeenCalledWith("宋体");
+  });
+});
+
+describe("sanitizeFont：字符集白名单", () => {
+  it("真实字体名必须放行（连字符与点）", () => {
+    // Resources/Fonts 里的字体名带连字符；容器格式去末段扩展名后还留 `.otf`
+    expect(sanitizeFont("SourceHanSerifCN-VF")).toBe("SourceHanSerifCN-VF");
+    expect(sanitizeFont("SourceHanSerif-VF.otf")).toBe("SourceHanSerif-VF.otf");
+    expect(sanitizeFont("Noto Sans SC")).toBe("Noto Sans SC");
+    expect(sanitizeFont("楷体")).toBe("楷体");
+  });
+
+  it("能跳出 font-family 引号或注入分号的字符一律拒", () => {
+    expect(sanitizeFont("a';bad")).toBeNull();
+    expect(sanitizeFont("a;color:red")).toBeNull();
+    expect(sanitizeFont("a}b")).toBeNull();
+    expect(sanitizeFont("a)b")).toBeNull();
+    expect(sanitizeFont("a:b")).toBeNull();
+    expect(sanitizeFont("")).toBeNull();
+  });
+
+  it("接入注册表后 {font=} 认连字符名", () => {
+    configureStoryFonts({ names: new Set(["SourceHanSerifCN-VF"]) });
+    expect(renderInlineMarkup("{font=SourceHanSerifCN-VF}字{/font}")).toBe(
+      "<span style=\"font-family:'SourceHanSerifCN-VF'\">字</span>",
+    );
+  });
+});
+
+describe("isRegisteredFont：注册表查询", () => {
+  it("未接入注册表 = 恒 true（保持纯展示不校验）", () => {
+    configureStoryFonts(undefined);
+    expect(isRegisteredFont("任意名")).toBe(true);
+  });
+
+  it("接入后按集合判定", () => {
+    configureStoryFonts({ names: new Set(["楷体"]) });
+    expect(isRegisteredFont("楷体")).toBe(true);
+    expect(isRegisteredFont("宋体")).toBe(false);
   });
 });

@@ -306,9 +306,11 @@ const submitCandidate = (value: string): void => {
   white-space: pre-wrap;
   /* 字号倍率偏好（--lf-dialogue-font-scale）：乘继承字号，缺省 1 不变 */
   font-size: calc(1em * var(--lf-dialogue-font-scale, 1));
-  /* 项目默认字体档：宿主 setProperty(--lf-story-font) 装配；未声明时变量无效，
-     属性落到继承值（等价不设），逐句声明的字体以内联样式覆盖在这里之上 */
-  font-family: var(--lf-story-font);
+  /* 字体档优先级：玩家偏好（--lf-dialogue-font-family，宿主 applyDialogueAppearance
+     已按字体注册表校验过）> 项目默认（--lf-story-font，宿主 installStoryFonts 装配）
+     > 继承值。两个变量都未设时 var() 整条失效，属性落到继承值（等价不设）；
+     逐句声明的字体以内联样式覆盖在这里之上。 */
+  font-family: var(--lf-dialogue-font-family, var(--lf-story-font));
 }
 
 .advance-hint {

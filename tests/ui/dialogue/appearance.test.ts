@@ -6,15 +6,23 @@
  * 五类覆盖：多方位（四字段各自投影）、拟态旅程（调滑杆即时重投）、故意错误（clear 回退）、
  * 不变量（缺省 ≠ 显式：未设置绝不写默认值进变量）、边界（退订）。
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { PlayerPreferences } from "@lingfan-engine/core";
 import {
+  DIALOGUE_FONT_FAMILY_VAR,
   DIALOGUE_FONT_SCALE_VAR,
   DIALOGUE_HEIGHT_SCALE_VAR,
   DIALOGUE_OPACITY_VAR,
   DIALOGUE_POSITION_ATTR,
   applyDialogueAppearance,
+  configureStoryFonts,
+  resolveDialogueFontFamily,
 } from "@lingfan-engine/ui";
+
+afterEach(() => {
+  // 字体名注册表是模块级单元格，用例间必须复位，否则泄漏污染同文件其他用例
+  configureStoryFonts(undefined);
+});
 
 /** 最小 DOM 替身：style 变量 + data 属性，够投影读断言 */
 function fakeElement() {
@@ -98,5 +106,68 @@ describe("拟态旅程：偏好改动即时重投（onChange live）", () => {
     stop();
     prefs.setFontScale(2.5);
     expect(vars.get(DIALOGUE_FONT_SCALE_VAR)).toBe("1");
+  });
+});
+
+describe("字体族投影：必须过注册表校验（fail-closed，不静默落非法名）", () => {
+  it("未设置 → 不写变量（回退宿主默认字体）", () => {
+    const { el, vars } = fakeElement();
+    applyDialogueAppearance(el, new PlayerPreferences());
+    expect(vars.has(DIALOGUE_FONT_FAMILY_VAR)).toBe(false);
+  });
+
+  it("已注册的真实字体名 → 带引号投影", () => {
+    configureStoryFonts({ names: new Set(["SourceHanSerifCN-VF"]) });
+    const { el, vars } = fakeElement();
+    const prefs = new PlayerPreferences();
+    applyDialogueAppearance(el, prefs);
+    prefs.setFontFamily("SourceHanSerifCN-VF");
+    expect(vars.get(DIALOGUE_FONT_FAMILY_VAR)).toBe("'SourceHanSerifCN-VF'");
+  });
+
+  it("未注册名 → 不投影（玩家偏好可能是旧版本残留或手改配置）", () => {
+    configureStoryFonts({ names: new Set(["楷体"]) });
+    const { el, vars } = fakeElement();
+    const prefs = new PlayerPreferences();
+    applyDialogueAppearance(el, prefs);
+    prefs.setFontFamily("已删除的字体");
+    expect(vars.has(DIALOGUE_FONT_FAMILY_VAR)).toBe(false);
+  });
+
+  it("先设合法后改非法 → 变量移除回退", () => {
+    configureStoryFonts({ names: new Set(["楷体"]) });
+    const { el, vars } = fakeElement();
+    const prefs = new PlayerPreferences();
+    applyDialogueAppearance(el, prefs);
+    prefs.setFontFamily("楷体");
+    expect(vars.get(DIALOGUE_FONT_FAMILY_VAR)).toBe("'楷体'");
+    prefs.clearFontFamily();
+    expect(vars.has(DIALOGUE_FONT_FAMILY_VAR)).toBe(false);
+  });
+
+  it("字符集非法（引号逃逸）→ 不投影，即便注册表里有同名项", () => {
+    configureStoryFonts({ names: new Set(["a';bad"]) });
+    const { el, vars } = fakeElement();
+    const prefs = new PlayerPreferences();
+    applyDialogueAppearance(el, prefs);
+    prefs.setFontFamily("a';bad");
+    expect(vars.has(DIALOGUE_FONT_FAMILY_VAR)).toBe(false);
+  });
+});
+
+describe("resolveDialogueFontFamily：单点判定", () => {
+  it("undefined / 空串 / 未注册 / 非法字符集 → null", () => {
+    configureStoryFonts({ names: new Set(["楷体"]) });
+    expect(resolveDialogueFontFamily(undefined)).toBeNull();
+    expect(resolveDialogueFontFamily("")).toBeNull();
+    expect(resolveDialogueFontFamily("宋体")).toBeNull();
+    expect(resolveDialogueFontFamily("a';bad")).toBeNull();
+  });
+
+  it("已注册且字符集合法 → 原样返回", () => {
+    configureStoryFonts({ names: new Set(["SourceHanSerifCN-VF"]) });
+    expect(resolveDialogueFontFamily("SourceHanSerifCN-VF")).toBe(
+      "SourceHanSerifCN-VF",
+    );
   });
 });

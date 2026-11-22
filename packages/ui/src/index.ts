@@ -4,6 +4,7 @@
  */
 export {
   configureStoryFonts,
+  isRegisteredFont,
   renderInlineMarkup,
   sanitizeFont,
   type StoryFontGate,
@@ -148,10 +149,12 @@ export {
   type DomOverlaySurface,
   type NarrativeMounts,
   applyDialogueAppearance,
+  DIALOGUE_FONT_FAMILY_VAR,
   DIALOGUE_FONT_SCALE_VAR,
   DIALOGUE_HEIGHT_SCALE_VAR,
   DIALOGUE_OPACITY_VAR,
   DIALOGUE_POSITION_ATTR,
+  resolveDialogueFontFamily,
   createReducedMotionQuery,
   type ReducedMotionQuery,
 } from "./dom";

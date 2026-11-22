@@ -29,9 +29,26 @@ function sanitizeSize(v: string): string | null {
   return /^\d+(\.\d+)?$/.test(v) ? `${v}px` : null;
 }
 
-/** font 值：字母数字/空格/中文/逗号（防引号逃逸与分号注入）；导出供宿主整句字体落 DOM 前同口径过筛 */
+/**
+ * font 值：字母数字/下划线/空格/中文/逗号/连字符/点（防引号逃逸与分号注入）；
+ * 导出供宿主整句字体落 DOM 前同口径过筛。
+ *
+ * 连字符与点是必须放行的：仓库内真实字体名形如 `SourceHanSerifCN-VF`，容器格式名去末段
+ * 扩展名后还会留下 `SourceHanSerif-VF.otf` 这样的点。收紧到纯 `\w` 会让全部真实字体名被
+ * 判非法并静默回退默认字体——{font=…}/逐句 say.font/玩家字体选择三处同时失效，且不报错。
+ *
+ * 白名单内字符既跳不出 `font-family:'…'` 的单引号，也注入不了分号，故安全性不变。
+ */
 export function sanitizeFont(v: string): string | null {
-  return /^[\w\u4e00-\u9fa5 ,]+$/.test(v) ? v : null;
+  return /^[\w\u4e00-\u9fa5 ,.-]+$/.test(v) ? v : null;
+}
+
+/**
+ * 字体名是否在宿主装配的注册表内。未接入注册表（`configureStoryFonts` 未被调用）时返回
+ * true——保持「纯展示不校验」的旧行为，由调用方自行决定是否另做校验。
+ */
+export function isRegisteredFont(name: string): boolean {
+  return fontGate === undefined || fontGate.names.has(name);
 }
 
 /** 闭合标记集（`/b` `/i` `/u` `/color` `/font` `/size`）；裸 `{color}` 这类也按闭合处理 */
