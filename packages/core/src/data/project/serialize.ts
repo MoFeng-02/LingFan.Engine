@@ -291,7 +291,10 @@ function columnGroupFileText(
 /**
  * 列的写回路径：**有 `sourcePath` 就写回原处，否则新建列走 `Stories/<id>.json`**。
  *
- * 扩展名随原文件（`.story` 写回 `.story`）—— 形态也是作者的选择。
+ * 扩展名随原文件（`.story` 写回 `.story`）—— 路径是作者的选择，保存不改。
+ * 但**内容形态恒为 JSON**：`.story` 的文本形态是创作输入格式，保存即规范化
+ * （`detectWriteNormalization` 把这类文件报成「转换」）。路径与内容格式是两个
+ * 正交问题，`parseStoryFile` 按内容首字符分流，故保路径 + 转内容仍能原样重开。
  * 只认**安全相对路径**（`Stories/` 前缀 + 无 `..`）：`sourcePath` 来自
  * 组装器回填，但仍当不可信输入校验（防目录逃逸）。
  */

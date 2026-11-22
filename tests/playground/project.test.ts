@@ -171,19 +171,40 @@ describe("示例工程防腐", () => {
     }
   });
 
-  it("写回零抖动（真实语料）：无编辑保存时故事文件逐字节不变、清单语义不变", () => {
-    // 写回：以磁盘真文本为基线做差量——期望「零写零删」，
-    // 否则编辑器每次保存都会无谓重写文件（playground 热重载抖动）。
+  it("写回零抖动（真实语料）：JSON 形态逐字节不变、文本形态按设计规范化为 JSON", () => {
+    // 存储形态恒为 JSON：文本形态（`.story`）是**创作输入格式**，保存即规范化
+    //   （`detectWriteNormalization` 把它报成「转换」，`tests/engine/data/project.test.ts`
+    //   锁定同一口径）。故按形态分桶断言，而不是要求所有文件都逐字节不变：
+    //   · JSON 形态：无编辑保存必须逐字节不变——否则编辑器每次保存都无谓重写，
+    //     playground 热重载随之抖动；
+    //   · 文本形态：差异集必须**恰好**等于这批文件（多改一个、少改一个都算回归），
+    //     且规范化后重新组装要深等于原故事（规范化只换载体，不改语义）。
+    const isTextForm = (text: string): boolean =>
+      !text.trimStart().startsWith("{");
     const story = assemble();
     const { files } = serializeProject(story, JSON.parse(manifestRaw));
     const baseline = new Map<string, string>([
       [MANIFEST_FILE, manifestRaw],
       ...Object.entries(FILES),
     ]);
+    const textForm = [...baseline.keys()]
+      .filter((path) => isTextForm(baseline.get(path) ?? ""))
+      .sort();
+    // 防空转：本仓真实语料里确实存在文本形态列（本用例的前提）。
+    //   若哪天它们都被转成 JSON，这条断言会先红——提醒改口径而不是静默放过。
+    expect(textForm.length).toBeGreaterThan(0);
     const diff = diffProjectFiles(files, baseline);
-    expect([...diff.changes.keys()]).toEqual([]);
+    expect([...diff.changes.keys()].sort()).toEqual(textForm);
     expect(diff.deletes).toEqual([]);
     expect([...files.keys()].sort()).toEqual([...baseline.keys()].sort());
+
+    let writtenManifest: unknown;
+    const stories = new Map<string, string>();
+    for (const [path, text] of files) {
+      if (path === MANIFEST_FILE) writtenManifest = JSON.parse(text);
+      else stories.set(path, text);
+    }
+    expect(assembleProject(writtenManifest, stories)).toEqual(story);
   });
 
   it("写回往返（真实语料）：序列化产物再组装深等于原故事", () => {
