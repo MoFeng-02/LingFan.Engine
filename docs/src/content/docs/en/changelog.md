@@ -9,6 +9,27 @@ Change highlights recorded in reverse version order. This page keeps only what r
 
 No unreleased changes.
 
+## v0.7.3
+
+2026-11-23 · [Full description and commit list](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.7.3)
+
+### Fixed
+
+- **Scaffolded projects shipped with type errors out of the box**: generating a project with the published `create@0.7.2` and running `typecheck` failed for vue, react, and miniprogram alike. Three root causes — the vue layer's composition root never supplied the `minigame` mount slot (`StageDom` declares it as required; the `| null` says "this layer may not provide this slot", not "the field may be omitted"); the react layer's `src/main.tsx` was shadowed by the skeleton's `src/main.ts` (TypeScript only picks up `.ts` when both share a basename in the same directory, yet `index.html` loads the `.tsx`), so it never entered type checking and stayed wrong while reporting success; and the miniprogram layer hit three separate mismatches — `ref` wrapping a class instance into a reactive proxy and losing private fields, an `as const` constant narrowing to a literal type, and `<switch>` colliding with the SVG element of the same name so the `@change` payload type did not line up. All fixed; four forms verified clean by real generation.
+- **react form now removes the skeleton entry**: the react overlay explicitly drops the skeleton's `src/main.ts` so `main.tsx` becomes the only entry — a structural fix for shadowing rather than renaming around it.
+- **English projection re-reconciled against current source**: translations had been written against a stale key list, so 54 keys still reported missing after everything was "translated". Now the current source key set and the missing list are diffed first, stale keys removed, real gaps filled; `main.json` also gained the host panel copy.
+
+### Added
+
+- **CI now really checks "can the published version carry the current template"**: the package-manager matrix already installed published packages from the registry but only ran `stories:build` and `build` — and vite only transpiles, it does not type-check, so "new API in source, not yet published" was invisible to it. It now runs `typecheck`, before bundling.
+- **CI generates each form for real and verifies it**: a new job covers the vue, react, miniprogram, and desktop-shell combinations — each one generates a project, installs dependencies, and runs type checking; it also asserts the entry file is actually inside the type-check program, specifically to catch the shadowing above.
+- **Template version-claim interlock criteria**: `minEngineVersion` must equal the lower bound of every engine dependency range and the repository root version; `PlayerPreferences` members used by overlays must really exist in engine source. Both were previously maintained by hand, and missing them stayed green.
+
+### Other changes
+
+- **Template version**: `1.28.0` → `1.31.0` (`1.29.0` reading-speed row wiring, `1.30.0` framework overlay handles, `1.31.0` miniprogram type surface and form matrix).
+- **Playground English projection**: all host panel copy routed through the copy facade; `main.json` grew from 48 to 105 keys.
+
 ## v0.7.2
 
 2026-11-22 · [Full description and commit list](https://github.com/MoFeng-02/LingFan.Engine/releases/tag/v0.7.2)
