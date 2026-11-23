@@ -25,7 +25,10 @@ import { PlayerPreferences } from "@lingfan-engine/core";
 import templateMetaJson from "../../template/v1/template-meta.json?raw";
 import templatePkgJson from "../../template/v1/__PROJECT__/package.json?raw";
 import rootPkgJson from "../../package.json?raw";
-import { floorOfRange } from "../../packages/create/src/shared/semver.ts";
+import {
+  compareSemver,
+  floorOfRange,
+} from "../../packages/create/src/shared/semver.ts";
 
 /** `template-meta.json` 里与本判据相关的字段 */
 interface TemplateMeta {
@@ -191,17 +194,49 @@ describe("模板的两处版本声明必须互相自洽", () => {
     expect(meta.minEngineVersion).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  it("模板不该落后于本仓当前的引擎版本（发行时最容易漏的就是这里）", () => {
+  it("模板声明的引擎版本不得高于本仓当前版本（否则那个版本还不存在）", () => {
     const root = JSON.parse(rootPkgJson) as PackageManifest;
     expect(root.version).toBeDefined();
-    // 模板依赖的下界必须等于仓根版本：发版时 `pnpm release` 只改八份清单，
-    // 模板是第九份、不会被它带着升，于是「发完版模板仍钉旧版」是常态而非意外。
-    for (const [name, range] of Object.entries(pkg.dependencies ?? {})) {
-      if (!name.startsWith(ENGINE_SCOPE)) continue;
-      expect(
-        floorOfRange(range),
-        `${name} 的区间 "${range}" 落后于仓根 ${root.version}——发版后要手工对齐模板依赖与 minEngineVersion`,
-      ).toBe(root.version);
+    const rootVersion = root.version ?? "";
+
+    // 判的是「不得超前」，不是「必须相等」。
+    //
+    // 相等这条约束是错的：`pnpm release` 只升八份清单，模板是第九份、不在它的写入
+    // 范围内，所以发完版模板仍钉旧版是默认结果。更要紧的是，钉旧版往往是**对的**——
+    // 模板依赖区间的下界只该在「模板真的用上了新 API」时前移；纯模板修复（比如
+    // 补一个漏掉的 DOM 槽位）不改引擎面，把下界一起前移等于无端抬高用户门槛，
+    // 让本可以用旧引擎的工程装不上。仓里历来如此：v0.6.0 到 v0.7.1 四个标签时点，
+    // 模板下界一直停在 `^0.4.0`，只在 v0.7.2 真正需要新 API 时才一次对齐。
+    //
+    // 真正要防的是反方向：把下界写到本仓还没发布的版本上。那样 `minEngineVersion`
+    // 会高于 registry 上的最新版，`checkEngineCompatibility` 直接拒绝生成，而离线
+    // 用户因为比对被跳过，要等装完包才在运行期炸。
+    const problems: string[] = [];
+    for (const table of [pkg.dependencies, pkg.devDependencies]) {
+      for (const [name, range] of Object.entries(table ?? {})) {
+        if (!name.startsWith(ENGINE_SCOPE)) continue;
+        const floor = floorOfRange(range);
+        if (floor === undefined) {
+          problems.push(`${name} 的区间 "${range}" 解析不出下界`);
+          continue;
+        }
+        const order = compareSemver(floor, rootVersion);
+        if (order === undefined) {
+          problems.push(
+            `${name} 的区间下界 "${floor}" 与仓根 ${rootVersion} 无法比较`,
+          );
+          continue;
+        }
+        if (order > 0) {
+          problems.push(
+            `${name} 的区间 "${range}" 声明了 ${floor}，高于仓根 ${rootVersion}——那个版本还没发布，生成出来的工程装不上`,
+          );
+        }
+      }
     }
+    expect(
+      problems.sort(),
+      `模板声明了本仓尚未发布的引擎版本：\n${problems.join("\n")}`,
+    ).toEqual([]);
   });
 });
