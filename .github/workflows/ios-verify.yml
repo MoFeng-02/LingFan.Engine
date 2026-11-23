@@ -168,7 +168,8 @@ jobs:
           # 与 Apple 论坛 741088 记录的现象逐条一致（DOM 完好、inspector 能看到元素轮廓、
           # 设备上内容不渲染）。
           # **档位回 debug**：诊断设施（Rust 启动心跳、启动面包屑）都是 `#[cfg(debug_assertions)]`，
-          # release 下整段消失。档位与白屏无关——已测得 release 与 debug 的近白占比同为 0.9858。
+          # release 下整段消失。当时测得 release 与 debug 的近白占比同为 0.9858——那说明白屏与
+          # 构建档位无关，后来定位到真因是宿主桥装载失败（43f81c2），与档位也无关。
           # **`--config visible:true` 实验已撤**：同样无效（仍 0.9858），三轮结构性假设全部证伪。
           cargo tauri ios build --debug --target aarch64-sim x86_64 > /tmp/ios-build.log 2>&1
           status=$?
@@ -270,9 +271,13 @@ jobs:
           ls -la /tmp/ios-smoke.mp4 2>/dev/null || true
 
           # **先校验再断言**：无论存活与否都把诊断回传（否则崩溃日志会随失败一起丢掉）
-          # 画面是否「什么都没画」：逐像素算近白占比（两轮白屏 = 98.60% / 98.59%，
-          # 主屏 = 509KB 量级，差距显著）。**只报警不失败**——「画面有内容」的测量基线还没建立
-          # （iOS 白屏尚未修好），此时设硬性阈值会误报失败；基线建立后再升级为断言。
+          # 画面是否「什么都没画」：逐像素算近白占比。
+          # 白屏已于 43f81c2（宿主桥改由组合根注入）修好——根因是适配器包用变量说明符
+          # 动态导入 `@tauri-apps/api`，打包器不解析、产物留下裸模块名，WebView 执行时
+          # 整个前端入口挂掉。修复前后实测：修复前 0.9789 / 0.9790 / 0.9857 / 0.9858，
+          # 修复后稳定 0.0955～0.0958（十余轮，跨 2026-10-23 至今）。
+          # 阈值取 0.5：距实测值有 5 倍余量，既能容下暗色主题/加载态的画面差异，
+          # 又远低于白屏量级——「只报警不失败」的阶段到此结束。
           sips -s format bmp /tmp/ios-smoke.png --out /tmp/ios-smoke.bmp >/dev/null 2>&1 || true
           python3 - <<'PY' > /tmp/ios-white.txt 2>&1 || echo "near_white_ratio=unknown" > /tmp/ios-white.txt
           import struct
@@ -286,12 +291,18 @@ jobs:
           print(f"near_white_ratio={white/n:.4f} ({white}/{n}) size={w}x{h}")
           PY
           cat /tmp/ios-white.txt
-          if grep -qE "near_white_ratio=0\.9[5-9]|near_white_ratio=1\.0000" /tmp/ios-white.txt; then
-            echo "::warning title=iOS 疑似白屏::$(cat /tmp/ios-white.txt)——近白占比过高，画面可能什么都没画（判据：白屏占比 98.6%）"
+          # 近白占比硬断言：白屏已修（实测 0.0955～0.0958），超 0.5 即视为画面没画出来。
+          # 截图取不到时 near_white_ratio 是 unknown——那是取证链断裂，同样不能放过。
+          # **只记结论、不在这里 exit**：紧跟着的诊断回传必须先跑完，否则一次白屏失败
+          # 会把 oslog/录屏/崩溃报告一起丢掉，正是本步开头「先校验再断言」要避免的。
+          blank=no
+          if ! grep -qE "near_white_ratio=0\.[0-4][0-9]*" /tmp/ios-white.txt; then
+            blank=yes
+            echo "::error title=iOS 画面疑似白屏::$(cat /tmp/ios-white.txt)——近白占比超出基线（修复后实测 0.0955～0.0958，阈值 0.5）"
           fi
 
           {
-            echo "alive=$alive shot=$(ls -la /tmp/ios-smoke.png 2>/dev/null | awk '{print $5}')"
+            echo "alive=$alive blank=$blank shot=$(ls -la /tmp/ios-smoke.png 2>/dev/null | awk '{print $5}')"
             echo "--- launch 输出（pid 或 launch 失败原因）---"
             tail -10 /tmp/ios-launch.log 2>/dev/null
             echo "--- 存活检查命中行 ---"
@@ -315,6 +326,7 @@ jobs:
           echo "::notice title=iOS 冒烟诊断::$(awk '{printf "%s%%0A", $0}' /tmp/ios-smoke-diag.txt | cut -c1-6000)"
 
           [ "$alive" = yes ] || { echo "::error::App 启动后未存活（诊断见上方 notice）"; exit 1; }
+          [ "$blank" = no ] || { echo "::error::画面近白占比超阈值，疑似白屏（诊断见上方 notice）"; exit 1; }
 
       - name: 上传冒烟证据
         if: always()
