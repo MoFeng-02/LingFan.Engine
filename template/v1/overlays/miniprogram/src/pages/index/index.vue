@@ -19,7 +19,7 @@ import {
   DIALOGUE_HEIGHT_SCALE_VAR,
   DIALOGUE_OPACITY_VAR,
 } from "@lingfan-engine/ui";
-import { computed, ref } from "vue";
+import { computed, ref, shallowRef } from "vue";
 import ChoiceLayer from "../../components/ChoiceLayer.vue";
 import DialogueLayer from "../../components/DialogueLayer.vue";
 import NoticeLayer from "../../components/NoticeLayer.vue";
@@ -62,8 +62,12 @@ const slotViews = ref<SlotView[]>([]);
 const currentLang = ref("");
 /** 可选语言清单（门面缺省只含默认语言，端口清单异步补齐后同步） */
 const langs = ref<string[]>([DEFAULT_LANG]);
-/** 玩家偏好实例：装配完成后交给设置面板（此前为 null，面板不展开） */
-const prefs = ref<PlayerPreferences | null>(null);
+/**
+ * 玩家偏好实例：装配完成后交给设置面板（此前为 null，面板不展开）。
+ * 用 `shallowRef` 而不是 `ref`：偏好是 class 实例，`ref` 会把它包成响应式代理，
+ * 代理类型丢掉私有字段，与 `PlayerPreferences` 不再结构相容。
+ */
+const prefs = shallowRef<PlayerPreferences | null>(null);
 /** 设置面板是否展开 */
 const settingsOpen = ref(false);
 /** 对话框外观偏好的响应式投影（CSS 变量 + 位置）：偏好改动经 onChange 重投，模板绑它 */

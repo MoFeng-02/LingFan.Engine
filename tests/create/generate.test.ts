@@ -693,3 +693,70 @@ describe("产物文件数", () => {
     expect(countFiles(result.projectDir)).toBe(SKELETON_MINIMAL_FILE_COUNT);
   });
 });
+
+/**
+ * 真实模板上的 `create.remove`。
+ *
+ * 上面的用例用自建最小模板验机制；这里换真实模板验**那条声明本身还在**。
+ * 两者缺一不可：机制坏了自建模板会红，声明被删掉只有真实模板会红。
+ *
+ * 为什么这条声明不能少：骨架自带 `src/main.ts`，React 层另加 `src/main.tsx`，
+ * 同目录同 basename 并存时 TypeScript 只收 `.ts` 那份——`index.html` 真正加载的
+ * `.tsx` 从不进入类型检查，里面的类型错误一声不响地绿。删掉骨架那份，`.tsx`
+ * 才是唯一入口。判据在 `tests/template/overlays.test.ts` 守声明，这里守产物。
+ *
+ * 为什么直接指 `template/v1` 而不走 `resolveTemplateRoot()`：后者优先返回
+ * `packages/create/template`——那是 gitignore 的派生副本，改源模板不会动它。
+ * 用它来验「源里的声明还在」等于验错了对象，改坏了也照样绿。
+ */
+const REAL_TEMPLATE_ROOT = fileURLToPath(
+  new URL("../../template/v1", import.meta.url),
+);
+
+describe("真实模板的 create.remove", () => {
+  it("React 形态只留 main.tsx，骨架的 main.ts 被摘掉", () => {
+    const result = generateProject({
+      templateRoot: REAL_TEMPLATE_ROOT,
+      targetBase: BASE,
+      projectName: "react-entry",
+      framework: "react",
+      shell: "browser",
+      resolved: new Map<string, string>(),
+    });
+    const srcDir = join(result.projectDir, "src");
+
+    expect(existsSync(join(srcDir, "main.tsx"))).toBe(true);
+    // 同目录同 basename 的 .ts 一旦留下，.tsx 就被遮蔽、永远不被类型检查
+    expect(existsSync(join(srcDir, "main.ts"))).toBe(false);
+  });
+
+  it("摘掉骨架入口后，页面引用的仍是 main.tsx", () => {
+    const result = generateProject({
+      templateRoot: REAL_TEMPLATE_ROOT,
+      targetBase: BASE,
+      projectName: "react-entry-html",
+      framework: "react",
+      shell: "browser",
+      resolved: new Map<string, string>(),
+    });
+
+    // 产物里真正被加载的入口必须就是留下的那个文件——两边一致才谈得上「被检查过」
+    const html = readFileSync(join(result.projectDir, "index.html"), "utf8");
+    expect(html).toContain('src="/src/main.tsx"');
+  });
+
+  it("非 React 形态不动骨架入口（这条声明只作用于 React 层）", () => {
+    const result = generateProject({
+      templateRoot: REAL_TEMPLATE_ROOT,
+      targetBase: BASE,
+      projectName: "vue-entry",
+      framework: "vue",
+      shell: "browser",
+      resolved: new Map<string, string>(),
+    });
+    const srcDir = join(result.projectDir, "src");
+
+    expect(existsSync(join(srcDir, "main.ts"))).toBe(true);
+    expect(existsSync(join(srcDir, "main.tsx"))).toBe(false);
+  });
+});

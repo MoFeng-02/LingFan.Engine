@@ -123,13 +123,30 @@ jobs:
   # include 只覆盖骨架 `__PROJECT__/src`，叠加层那份入口根本不在程序里——
   # 骨架自带 `src/main.ts`，叠加层另加 `src/main.tsx` 时 tsc 只收前者，
   # 被 `index.html` 真正加载的那个文件从来没被检查过。这里按形态真生成再查。
+  # 按形态真生成再验：`--framework` / `--shell` 各自会引入一层叠加层源码，
+  # 而叠加层被根 tsconfig 的 exclude 挡住、不在仓内 typecheck 覆盖面内。
+  # 矩阵按「框架」与「壳」两组取值展开，同一个生成流程跑遍全部组合。
   framework-forms:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        framework: [vue, react]
+        include:
+          # 框架层：换掉组合根与页面结构
+          - framework: vue
+            shell: browser
+            entry: src/main.ts
+          - framework: react
+            shell: browser
+            entry: src/main.tsx
+          # 壳层：小程序换掉整个页面与组件树，桌面壳只补 src-tauri
+          - framework: none
+            shell: miniprogram
+            entry: src/main.ts
+          - framework: none
+            shell: tauri
+            entry: src/main.ts
     steps:
       - uses: actions/checkout@v4
 
@@ -145,11 +162,11 @@ jobs:
       - name: 装上脚手架
         run: npm install -g "$RUNNER_TEMP/tgz"/lingfan-engine-create-*.tgz
 
-      - name: 生成 ${{ matrix.framework }} 形态工程
+      - name: 生成 ${{ matrix.framework }} / ${{ matrix.shell }} 形态工程
         run: |
           mkdir -p "$RUNNER_TEMP/work"
           cd "$RUNNER_TEMP/work"
-          lingfan-create demo --yes --framework ${{ matrix.framework }} --dir .
+          lingfan-create demo --yes --framework ${{ matrix.framework }} --shell ${{ matrix.shell }} --dir .
           echo "npm_config_allow_scripts=esbuild" >> "$GITHUB_ENV"
 
       - name: 安装依赖
@@ -161,7 +178,7 @@ jobs:
       - name: 入口文件必须在程序的类型检查范围内
         working-directory: ${{ runner.temp }}/work/demo
         run: |
-          entry="${{ matrix.framework == 'vue' && 'src/main.ts' || 'src/main.tsx' }}"
+          entry="${{ matrix.entry }}"
           npx tsc --noEmit --listFilesOnly | grep -qF "/$entry" || {
             echo "::error::$entry 没有被纳入类型检查——它很可能被同目录同名的另一个入口遮蔽了"
             exit 1

@@ -15,6 +15,7 @@ import {
   type PlayerPreferences,
 } from "@lingfan-engine/core";
 import { onUnmounted, ref, watch } from "vue";
+import { detailBoolean, detailNumber } from "../mp/event.ts";
 
 const props = defineProps<{
   /** 玩家偏好实例：宿主装配完成前为 null */
@@ -26,7 +27,7 @@ const props = defineProps<{
 /** 扩展字段镜像（偏好层非响应式，订阅 onChange 回填） */
 const masterVolume = ref(1);
 const instantText = ref(false);
-const nvlPageSize = ref(NVL_PAGE_SIZE_RANGE.max);
+const nvlPageSize = ref<number>(NVL_PAGE_SIZE_RANGE.max);
 const fontScale = ref(1);
 const dialogueOpacity = ref(1);
 const dialogueHeightScale = ref(1);
@@ -71,23 +72,23 @@ function t(text: string): string {
   return props.translate?.(text) ?? text;
 }
 
-function onMasterVolume(event: { detail: { value: number } }): void {
-  props.preferences?.setMasterVolume(event.detail.value / 100);
+function onMasterVolume(event: Event): void {
+  props.preferences?.setMasterVolume(detailNumber(event) / 100);
 }
-function onInstantText(event: { detail: { value: boolean } }): void {
-  props.preferences?.setInstantText(event.detail.value);
+function onInstantText(event: Event): void {
+  props.preferences?.setInstantText(detailBoolean(event));
 }
-function onNvlPageSize(event: { detail: { value: number } }): void {
-  props.preferences?.setNvlPageSize(event.detail.value);
+function onNvlPageSize(event: Event): void {
+  props.preferences?.setNvlPageSize(detailNumber(event));
 }
-function onFontScale(event: { detail: { value: number } }): void {
-  props.preferences?.setFontScale(event.detail.value / 100);
+function onFontScale(event: Event): void {
+  props.preferences?.setFontScale(detailNumber(event) / 100);
 }
-function onDialogueOpacity(event: { detail: { value: number } }): void {
-  props.preferences?.setDialogueOpacity(event.detail.value / 100);
+function onDialogueOpacity(event: Event): void {
+  props.preferences?.setDialogueOpacity(detailNumber(event) / 100);
 }
-function onDialogueHeightScale(event: { detail: { value: number } }): void {
-  props.preferences?.setDialogueHeightScale(event.detail.value / 100);
+function onDialogueHeightScale(event: Event): void {
+  props.preferences?.setDialogueHeightScale(detailNumber(event) / 100);
 }
 function pickPosition(value: string): void {
   if (value === "") props.preferences?.clearDialoguePosition();

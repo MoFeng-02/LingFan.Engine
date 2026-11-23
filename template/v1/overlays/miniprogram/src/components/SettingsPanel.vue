@@ -17,6 +17,7 @@ import {
   type PlayerPreferences,
 } from "@lingfan-engine/core";
 import { onUnmounted, ref, watch } from "vue";
+import { detailBoolean, detailNumber } from "../mp/event.ts";
 import SettingsExtras from "./SettingsExtras.vue";
 
 const props = defineProps<{
@@ -92,21 +93,18 @@ function volumePercent(channel: AudioChannel): number {
 }
 
 /** 拖动音量滑杆：写回偏好层（合成与落盘都在那一处），onChange 回填镜像 */
-function onVolume(
-  channel: AudioChannel,
-  event: { detail: { value: number } },
-): void {
-  props.preferences?.setVolume(channel, event.detail.value / 100);
+function onVolume(channel: AudioChannel, event: Event): void {
+  props.preferences?.setVolume(channel, detailNumber(event) / 100);
 }
 
 /** 静音开关：写回偏好层（静音把一切有效音量归零） */
-function onMute(event: { detail: { value: boolean } }): void {
-  props.preferences?.setMuted(event.detail.value);
+function onMute(event: Event): void {
+  props.preferences?.setMuted(detailBoolean(event));
 }
 
 /** 字速滑杆：写回偏好层（归属由 textSpeedSource 声明，下一句即生效） */
-function onTextSpeed(event: { detail: { value: number } }): void {
-  props.preferences?.setTextSpeed(event.detail.value);
+function onTextSpeed(event: Event): void {
+  props.preferences?.setTextSpeed(detailNumber(event));
 }
 </script>
 
