@@ -138,14 +138,22 @@ When switching to your own story, just delete these example columns; you can als
 
 The template's host depends on no UI framework and operates the DOM directly. It has wired these:
 
-| Capability                                                                 | Status                                                              |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Dialogue layer (typewriter, `{p}` `{w}` pauses, style marks)               | Wired                                                               |
-| Waiting-state exits: `menu` / `input` / `wait` / `video`                   | Wired                                                               |
-| Waiting state: `minigame`                                                  | Wired, but shows an "unregistered" prompt, does not fake completion |
-| Stage element layer (36 element types + interaction + 12 presentation ops) | Wired, including frame-driven                                       |
-| Layer z-order (`shell.layers`)                                             | Wired                                                               |
-| Save slots (`shell.saves.slots`)                                           | Wired                                                               |
+| Capability                                                                 | Status                                                                                                                                           |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Dialogue layer (typewriter, `{p}` `{w}` pauses, style marks)               | Wired                                                                                                                                            |
+| Waiting-state exits: `menu` / `input` / `wait` / `video`                   | Wired                                                                                                                                            |
+| Waiting state: `minigame`                                                  | Wired (real mounting) with a sample registry; unregistered names fail closed with a diagnostic, never fake completion                            |
+| Waiting state: `interaction` (full-screen gameplay takeover)               | Wired (real mounting) with a sample registry; narrative keys yield during takeover and are handed back on finish; unregistered names fail closed |
+| Stage element layer (36 element types + interaction + 12 presentation ops) | Wired, including frame-driven                                                                                                                    |
+| Layer z-order (`shell.layers`)                                             | Wired                                                                                                                                            |
+| Save slots (`shell.saves.slots`)                                           | Wired                                                                                                                                            |
+| Save thumbnails (`shell.saves.thumbnail`)                                  | Wired; falls back to no thumbnail when capture fails                                                                                             |
+| History panel and rollback entry                                           | Wired; clicking an entry returns to that checkpoint                                                                                              |
+| Player preferences panel (volume, text speed, keybinding)                  | Wired; edits take effect immediately and persist to `lingfan.prefs.v1`                                                                           |
+| I18N supply                                                                | Wired; the language list comes from a build-time scan of `Lang/`                                                                                 |
+| Dialogue template registration (`say template=`)                           | Wired; the template ships a replaceable skeleton                                                                                                 |
+| Screen orientation lock (`shell.orientation`)                              | Wired; degrades to a no-op in pure Web                                                                                                           |
+| Stage adaptation (`shell.stage`)                                           | Wired; recomputes the transform when the window resizes                                                                                          |
 
 The play interface's text is **not selectable** by default (`user-select: none` on `body`): dragging, rapid clicking, and double-clicking should not leave a selection on lines or buttons. To provide copy capability, add `data-lf-selectable` to that widget to allow it — the input box is already allowed, otherwise the `input` op could not select words to edit.
 
@@ -153,20 +161,17 @@ The play interface's text is **not selectable** by default (`user-select: none` 
 
 The "not wired" entries in this table are all **the template host has not written them**, not that the engine lacks them. The upgrade path is `apps/playground` — it is also the template's first instance.
 
-| Capability                                       | Why it is absent                                                                                                                                                                                                                            |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Save thumbnails                                  | The template's saves do not pass a screenshot, so the saved file has no thumbnail.                                                                                                                                                          |
-| History panel and rollback UI                    | The engine-side interfaces are complete; the template has not built the panel.                                                                                                                                                              |
-| Player preferences panel (volume, text speed)    | When unwired, volume takes the value written in the op, and typewriter speed takes the story-level `text_typewriter`.                                                                                                                       |
-| I18N supply                                      | When `i18nPort` is unwired, the original text is output directly. Translations in the `Lang/` directory are not read.                                                                                                                       |
-| Dialogue template registration (`say template=`) | When unwired, the built-in default skeleton is used.                                                                                                                                                                                        |
-| Screen orientation lock (`shell.orientation`)    | Pure Web has no orientation API; this only takes effect in the desktop shell.                                                                                                                                                               |
-| Stage adaptation (`shell.stage`)                 | The template host is a fixed-viewport layout and has not wired scaling adaptation. To wire: take the result of `resolveStageConfig` and compute the transform with `@lingfan-engine/shell`'s `computeStageLayout`.                          |
-| Resource encryption                              | The template host mounts a static resource root and fetches files directly by path. Encryption requires the platform layer to decrypt before giving the address; see [Encryption and platform supply](/concepts/encryption/) for the chain. |
-| Hot reload                                       | Triggered by watching the source resource root; the pure Web shape has no file-system watching.                                                                                                                                             |
-| Host information                                 | The template host does not read the runtime platform; desktop and mobile go through the same set. Platform facts are only needed for a few resource-fetching methods.                                                                       |
+| Capability          | Why it is absent                                                                                                                                                                                                                                                                                                             |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Resource encryption | The template host mounts a static resource root and fetches files directly by path. Encryption requires the platform layer to decrypt before giving the address; see [Encryption and platform supply](/concepts/encryption/) for the chain.                                                                                  |
+| Hot reload          | Triggered by watching the source resource root; the pure Web shape has no file-system watching.                                                                                                                                                                                                                              |
+| Host information    | The template host does not read the runtime platform; desktop and mobile go through the same set. Platform facts are only needed for a few resource-fetching methods — the exception is desktop-shell detection, where `native-ports.ts` uses `__TAURI_INTERNALS__` at runtime to tell the WebView from an ordinary browser. |
 
-Note the `minigame` row: the template shows "unregistered" and explains how to wire it, rather than treating it as success and continuing. If your story has `minigame`, you must register the implementation yourself.
+To wire the above yourself, use `apps/playground` as the reference — it is also the template's first instance, and it has working implementations of these capabilities.
+
+Note the `minigame` / `interaction` rows: the template ships a sample registry for each (one click completes and writes a piece of state). Add your own implementations following `src/host/minigame-demo.ts` and `src/host/interaction-demo.ts`. A story referencing an unregistered name fails closed with an error and stays in the waiting state (rollback / navigation can leave it), rather than being treated as success.
+
+The miniprogram shape has no rendering channel for `minigame` / `interaction` / `extension` / `mount` / `body`: stories using these capabilities get an explicit diagnostic (no silent stall). Run such stories in the browser / desktop shape, or add the rendering channels to the miniprogram host yourself.
 
 ## Packaging and distribution
 
@@ -182,8 +187,8 @@ Excludes `node_modules/`, `dist/`, `.git/`, `Resources/Saves/`. The last two are
 
 ```json
 {
-  "version": "1.17.0",
-  "minEngineVersion": "0.4.0",
+  "version": "1.32.0",
+  "minEngineVersion": "0.7.2",
   "placeholder": "__PROJECT__",
   "frameworks": [
     {

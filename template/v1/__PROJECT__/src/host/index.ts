@@ -39,6 +39,18 @@ export {
   type NativeUiTable,
 } from "./mount/index";
 export { wireEngine, type HostWiringOptions } from "./engine-wiring";
+export {
+  createInteractionRegistry,
+  registerTemplateInteractions,
+  demoInteraction,
+  type HostInteractionContext,
+  type HostInteractionFactory,
+  type InteractionRegistry,
+} from "./interaction-demo";
+export {
+  handleInteractionMount,
+  type InteractionMountDeps,
+} from "./interaction-mount";
 export { createNativePorts, isTauriHosted } from "./native-ports";
 export { startHostFrameLoop, type HostFrameLoopOptions } from "./frame-loop";
 export { wireStageFit, type StageFitWiring } from "./stage-fit";

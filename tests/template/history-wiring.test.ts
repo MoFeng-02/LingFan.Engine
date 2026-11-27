@@ -7,8 +7,8 @@
  *   写在页面里却不出按钮」，而单元测试跑不到 `bootHost`（它要 fetch、localStorage）。
  * - **语义层**：面板的点击真的翻译成 `engine.rollbackTo(块尾检查点)`，回溯后收起并
  *   调宿主收尾（媒体对齐）。这一层在 `history-panel.test.ts` 用假 DOM 跑，不重复。
- * - **契约层**：回溯之后引擎不会再给「刷新历史」的事件——`rollback.done` 不在模板的
- *   事件处理里，所以面板必须自己收起，靠下次展开重读。这条锁的是「别以为引擎会推」。
+ * - **契约层**：回溯之后引擎发 `rollback.done`，模板 `wireEngine` 统一认领它做媒体
+ *   对齐（滚轮/键位/面板三条入口共用）；面板自己收起，靠下次展开重读。
  *
  * 用 `?raw` 读源码、不碰 fs：`tests/template` 属前端域，禁 Node 导入。
  */
@@ -58,13 +58,16 @@ describe("模板历史面板接线 · 装配层（源码互锁）", () => {
     expect(audioAt).toBeGreaterThan(historyAt);
   });
 
-  it("**回溯后媒体对齐由宿主显式补**（引擎只回状态，不下发端口动作）", () => {
-    const at = bootSource.indexOf("createHistoryPanel(");
-    const tail = bootSource.slice(at, at + 500);
-    expect(tail).toContain("onRollback");
-    // 对齐两路媒体：音频与视频各一次
-    expect(tail).toContain("audio.sync()");
-    expect(tail).toContain("video.sync()");
+  it("**回溯后媒体对齐由 wireEngine 的 rollback.done 分支统一补**（引擎只回状态，不下发端口动作）", () => {
+    const at = wiringSource.indexOf('case "rollback.done":');
+    expect(at).toBeGreaterThan(-1);
+    const tail = wiringSource.slice(at, at + 300);
+    expect(tail).toContain("options.syncMedia()");
+    // boot 的 syncMedia 对齐两路媒体：音频与视频各一次
+    const bootAt = bootSource.indexOf("syncMedia: () =>");
+    const bootTail = bootSource.slice(bootAt, bootAt + 150);
+    expect(bootTail).toContain("audio.sync()");
+    expect(bootTail).toContain("video.sync()");
   });
 
   it("宿主出口转发面板与其类型（消费方只从 `./host` 取，不深入内部路径）", () => {
@@ -97,11 +100,17 @@ describe("模板历史面板接线 · 组合根与页面结构", () => {
 });
 
 describe("模板历史面板接线 · 契约事实（供后来人别猜）", () => {
-  it("**rollback.done 不在模板事件处理里**：面板必须自己收起，等下次展开重读", () => {
-    // 引擎确实发这个事件（`OutboundPayload` 里有），但模板的 `applyEvent` 只处理
-    // engine.error / notify / minigame.mount / save.done / load.done——default 分支吞掉其余。
-    // 所以「回溯完自动刷新列表」这件事没人在做，别指望它；面板的收起是本模块自己做的。
-    expect(wiringSource).not.toContain("rollback.done");
+  it("**rollback.done 由 wireEngine 统一认领**：三条回退入口共用一处媒体对齐", () => {
+    // 滚轮 / 键位 / 历史面板都汇到引擎的 rollback.done 事件；对齐只接在事件分支，
+    // 面板不再单独接 onRollback（两份对齐会在面板入口重复执行）。
+    expect(wiringSource).toContain('case "rollback.done":');
+    const at = wiringSource.indexOf('case "rollback.done":');
+    const tail = wiringSource.slice(at, at + 300);
+    expect(tail).toContain("options.syncMedia()");
+    // 面板装配不再传 onRollback（对齐已收口到事件分支）
+    const bootAt = bootSource.indexOf("createHistoryPanel(");
+    const bootTail = bootSource.slice(bootAt, bootAt + 400);
+    expect(bootTail).not.toContain("onRollback");
   });
 
   it("HostControls 不含回溯（面板必须拿 StoryEngine，不是拿控制面）", () => {

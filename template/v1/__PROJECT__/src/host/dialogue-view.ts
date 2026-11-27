@@ -93,6 +93,8 @@ export interface DialogueView {
   setDialogText(text: string, setting: TypingSetting | undefined): void;
   /** 小游戏接管：提示里带上 game 名，便于作者定位 */
   setMinigame(game: string): void;
+  /** 玩法系统接管（无注册表时的可见提示）：提示里带上 system 名 */
+  setInteraction(system: string): void;
   /** 读当前打字机（整句直出时为 null） */
   readTypewriter(): Typewriter | null;
   /** 上交本帧的可见文本（未变化时不重写 DOM） */
@@ -188,6 +190,8 @@ export function createDialogueView(options: DialogueViewOptions): DialogueView {
   let waiting = "none";
   /** 小游戏接管名（提示文案用） */
   let minigameId = "";
+  /** 玩法系统接管名（提示文案用；与小游戏共用同一渲染层） */
+  let interactionId = "";
 
   /**
    * 对话层与 NVL 层的显隐。
@@ -301,6 +305,14 @@ export function createDialogueView(options: DialogueViewOptions): DialogueView {
         "完成舞台上的小游戏后故事自动继续（回溯 / 导航可离开）；" +
         "未注册的小游戏会 fail-closed 报错而不伪造完成。";
       dom.choices.append(banner);
+    } else if (waiting === "interaction") {
+      const banner = document.createElement("p");
+      banner.className = "banner";
+      banner.textContent =
+        `故事进入了玩法系统等待${interactionId === "" ? "" : `：${interactionId}`}。` +
+        "完成舞台上的玩法后故事自动继续（回溯 / 导航可离开）；" +
+        "未注册的玩法系统会 fail-closed 报错而不伪造完成。";
+      dom.choices.append(banner);
     }
   }
 
@@ -345,6 +357,10 @@ export function createDialogueView(options: DialogueViewOptions): DialogueView {
     },
     setMinigame(game: string): void {
       minigameId = game;
+      renderChoices();
+    },
+    setInteraction(system: string): void {
+      interactionId = system;
       renderChoices();
     },
     readTypewriter(): Typewriter | null {

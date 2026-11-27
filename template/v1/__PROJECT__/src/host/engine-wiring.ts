@@ -9,7 +9,8 @@
  * 比报一行错难查得多。
  *
  * 出站事件按 `payload.kind` 分派：致命错误写错误条，提示类走 toast，存档类给回执，
- * 小游戏挂载换一条可见的 fail-closed 提示（模板不带注册表，不伪造完成）。
+ * 小游戏与玩法系统挂载经注册表真挂载（无注册表时换一条可见的 fail-closed 提示，不伪造完成），
+ * 回溯完成对齐媒体，读档诊断与注销知情以提示条展示。
  */
 
 import {
@@ -17,6 +18,7 @@ import {
   instanceZLayer,
   type ElementInstance,
   type GameStateWriter,
+  type LayerId,
   type OutboundPayload,
   type PlayerPreferences,
   type ResourcePort,
@@ -34,6 +36,7 @@ import {
   resolveElementAction,
   routeElementValueChange,
   type ExtensionMountHandler,
+  type InputScopeState,
   type LayerView,
   type MinigameRegistry,
   type StateIntent,
@@ -41,6 +44,17 @@ import {
 } from "@lingfan-engine/ui";
 import type { StageDom } from "./stage-dom";
 import type { DialogueView } from "./dialogue-view";
+import type { InteractionRegistry } from "./interaction-demo";
+import { handleInteractionMount } from "./interaction-mount";
+
+/**
+ * 实例 z 键 → 渲染层：核心映射之外补一条宿主侧事实——`interaction` 与 `minigame`
+ * 共用同一渲染层（契约明文：两者都是「外部系统整屏接管」形态），`interactionZ`
+ * 因此落到 minigame 层，否则 `interaction z=` 写了没效果。
+ */
+function zLayerOf(key: string): LayerId | undefined {
+  return key === SYS.interactionZ ? "minigame" : instanceZLayer(key);
+}
 
 /** 宿主订阅的状态键表：与引擎的键名一一对应，换键名只改这里 */
 const STATE_KEYS = {
@@ -119,6 +133,19 @@ export interface HostWiringOptions {
    * 的旧降级同一口径。给了就把小游戏画进 `dom.minigame`，结果经 `engine.resolveMinigame` 回填。
    */
   minigames?: MinigameRegistry;
+  /**
+   * 玩法系统注册表（可选）：`interaction.mount` 经它解析工厂真挂载（未注册 fail-closed）。
+   *
+   * 与小游戏共用 `dom.minigame` 挂载点（同一「外部系统整屏接管」渲染层）；
+   * 不给则对话层显示可见的等待提示（不伪造完成，可回溯/导航离开）。
+   */
+  interactions?: InteractionRegistry;
+  /**
+   * 输入域（可选）：玩法系统接管期间切 `world` 让位推进/回溯键，收尾交还 `dialogue`。
+   *
+   * 与 `wireInput` 用同一个实例（组合根建一次两处传）；不给则接管期叙事键不让位。
+   */
+  inputScope?: InputScopeState;
   /**
    * 扩展等待覆盖层处理器（可选）：`extension.mount` 交给它展示「确认即解除」的挂起画面。
    * 不给则扩展等待没有可见界面（等待保持，可回溯/导航离开）。
@@ -237,7 +264,7 @@ export function wireEngine(options: HostWiringOptions): void {
   // —— 状态变更 → 视图意图 → 本宿主的落点 ——
   const toIntent = createStateView({
     keys: STATE_KEYS,
-    resolveLayer: (key) => instanceZLayer(key),
+    resolveLayer: (key) => zLayerOf(key),
     readTypingSetting: () => options.readTypingSetting(),
     readCharacterColor: (name) => {
       const color = engine.getCharacter(name)?.color;
@@ -309,7 +336,8 @@ export function wireEngine(options: HostWiringOptions): void {
     });
   }
 
-  // 小游戏挂载分支的两个值格：可见性本宿主无独立玩法层（复位即可），错误经诊断出口上报。
+  // 外部接管挂载分支的两个值格（小游戏与玩法系统共用）：可见性本宿主无独立玩法层
+  // （复位即可），错误经诊断出口上报。
   const minigameVisible = { value: false };
   const minigameError = {
     get value(): string {
@@ -320,7 +348,7 @@ export function wireEngine(options: HostWiringOptions): void {
     },
   };
 
-  /** 出站事件：致命错误 / 提示 / 小游戏与扩展挂载 / 存档回执 */
+  /** 出站事件：致命错误 / 提示 / 外部接管与扩展挂载 / 存读档回执与诊断 */
   function applyEvent(payload: OutboundPayload): void {
     switch (payload.kind) {
       case "engine.error":
@@ -348,6 +376,24 @@ export function wireEngine(options: HostWiringOptions): void {
           dialogue.setMinigame(payload.game);
         }
         return;
+      case "interaction.mount":
+        // 有注册表就真挂载（解析工厂 → 交接输入域 → 订阅中止 → 回填）；
+        // 没有则对话层显示可见等待提示（不伪造完成，可回溯/导航离开）
+        if (options.interactions !== undefined) {
+          handleInteractionMount(payload, {
+            interactions: options.interactions,
+            readHost: () => dom.minigame,
+            inInteraction: minigameVisible,
+            inputScope: options.inputScope,
+            error: minigameError,
+            resolveInteraction: (system, result) =>
+              engine.resolveInteraction(system, result),
+            writer: engine.gameState,
+          });
+        } else {
+          dialogue.setInteraction(payload.system);
+        }
+        return;
       case "extension.mount":
         options.extensionMount?.(payload);
         return;
@@ -361,6 +407,20 @@ export function wireEngine(options: HostWiringOptions): void {
         // 存档语言赢：读档把译文表置空（import 失效 overlay），这里按档内语言重建。
         // overlay=null 时 setLanguage 不命中幂等早退，译文表按档内语言重新装配。
         void engine.setLanguage(String(engine.get(SYS.currentLanguage) ?? ""));
+        return;
+      case "rollback.done":
+        // 回溯完成：媒体位置显式对齐。滚轮 / 键位 / 历史面板三条回退入口都汇到这个
+        // 事件，对齐只接这一处——挂在某一条入口上会漏掉其余入口。
+        options.syncMedia();
+        return;
+      case "load.notice":
+        // 读档诊断（非致命，宿主应知情）：迁移成功 / 历史截断等，以提示条展示
+        options.toast(payload.text);
+        return;
+      case "character.missing":
+        // 注销知情（非致命）：uncharacter 对未注册键发出，故事继续推进。
+        // 字面量独立成句再拼接：模板串内嵌的 t() 调用不进 i18n 扫描器的键集合
+        options.toast(t("角色未注册，跳过注销：") + payload.key);
         return;
       default:
         return;

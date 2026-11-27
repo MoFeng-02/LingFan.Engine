@@ -65,6 +65,16 @@ textarea,
 #mounts > * {
   pointer-events: auto;
 }
+/* 外部系统接管挂载点：小游戏与玩法系统共用（引擎让出控制权 → 工厂画进来 → 回填收尾清空）。
+   与挂载层同口径：住震动层随舞台缩与抖，槽位不吃事件、里面的控件吃。 */
+#minigame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#minigame > * {
+  pointer-events: auto;
+}
 /* 宿主 UI 层：铺满窗口但整层不吃指针事件——空白处的点击与滚轮要穿到舞台上推进对话。
    层内的原生控件另有兜底（见本文件末尾），面板作者漏写容器时按钮也不会失活。
    层内各层沿用各自的 absolute 定位：它们量的是窗口，不是舞台。 */

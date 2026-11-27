@@ -35,7 +35,10 @@ function writeLayerZ(dom: StageDom, layer: LayerId, z: number): void {
     dom.nvl.style.zIndex = value;
   } else if (layer === "choices") dom.choices.style.zIndex = value;
   else if (layer === "notifications") dom.notifications.style.zIndex = value;
-  else if (layer === "toolbar") dom.toolbar.style.zIndex = value;
+  // 外部系统接管层（minigame 与 interaction 共用同一渲染层）：槽位可选，判空同 history
+  else if (layer === "minigame") {
+    if (dom.minigame !== null) dom.minigame.style.zIndex = value;
+  } else if (layer === "toolbar") dom.toolbar.style.zIndex = value;
   // 历史与偏好两个面板槽位都是可选节点：叠加层可以不给（那时面板本就没装），所以判空
   else if (layer === "history") {
     if (dom.history !== null) dom.history.style.zIndex = value;

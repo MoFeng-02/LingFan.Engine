@@ -72,6 +72,10 @@ import {
   type MiniprogramVideoSurface,
 } from "./video-surface.ts";
 import { stageStyle } from "./view.ts";
+import {
+  createTakeoverNoticeGate,
+  takeoverNoticeOf,
+} from "./takeover-notice.ts";
 // 语言清单来自构建期扫描 Resources/Lang/（虚拟模块声明在骨架 src/vite-env.d.ts，
 // 生成工程两份清单同源）。小程序包体不装内容：译文与故事一样走工程接口的 HTTP 取件。
 import { LANGS } from "virtual:lang-list";
@@ -296,12 +300,33 @@ export async function startMiniprogramHost(
 
   // 读档真正落地晚于命令返回：对齐挂在完成信号上，别在 `loadGame` 里当场同步。
   // 覆盖层 sync 是必须的——引擎重放只驱动「变化量」，读档后的整幅画面要靠一次全量重渲补齐。
+  // 同一订阅里顺带两类知情事件：回溯完成同样对齐媒体（引擎只回状态，不跳播放位置）；
+  // 三种外部接管等待态（minigame/interaction/extension）本宿主没有渲染通道，
+  // fail-closed 报诊断——故事会停在那里，静默等于「永久停滞且无从下手」。
+  const takeoverGate = createTakeoverNoticeGate();
   const stopLoadEvents = engine.onEvent((event) => {
-    if (event.payload.kind !== "load.done") return;
-    overlay.sync();
-    syncMedia();
-    // 存档语言赢：读档把译文表置空（import 失效 overlay），按档内语言重建。
-    void engine.setLanguage(String(engine.get(SYS.currentLanguage) ?? ""));
+    const payload = event.payload;
+    if (payload.kind === "load.done") {
+      overlay.sync();
+      syncMedia();
+      // 存档语言赢：读档把译文表置空（import 失效 overlay），按档内语言重建。
+      void engine.setLanguage(String(engine.get(SYS.currentLanguage) ?? ""));
+      return;
+    }
+    if (payload.kind === "rollback.done") {
+      overlay.sync();
+      syncMedia();
+      return;
+    }
+    if (payload.kind === "load.notice") {
+      // 读档诊断（非致命，宿主应知情）：迁移成功 / 历史截断等，落错误横幅旁的诊断口
+      reportError(payload.text);
+      return;
+    }
+    const notice = takeoverNoticeOf(payload, "小程序宿主");
+    if (notice !== null && takeoverGate.admit(notice.key)) {
+      reportError(notice.text);
+    }
   });
 
   // 玩家默认填充槽改动 → 元素层全量重渲。偏好不是引擎状态，不会驱动投影的变化量，

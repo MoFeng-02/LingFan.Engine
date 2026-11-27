@@ -84,6 +84,10 @@ import { createHostControls } from "./controls";
 import { createHostI18nPort, wireHostI18n } from "./i18n";
 import { templateExtensions } from "./extensions";
 import { registerTemplateMinigames, templateMinigames } from "./minigame-demo";
+import {
+  createInteractionRegistry,
+  registerTemplateInteractions,
+} from "./interaction-demo";
 import { createExtensionOverlay } from "./extension-overlay";
 import { createTemplateDialogueTemplates } from "./dialogue-templates";
 import { createResumePage } from "./resume-page";
@@ -126,8 +130,8 @@ export interface HostBootOptions {
    * 历史面板的挂载容器（可选）：给了就装配「已走过对话」的面板与回溯按钮，
    * 不给就不装——与 `prefsContainer` 同口径（页面结构归组合根，宿主不造节点）。
    *
-   * 面板点一条即 `engine.rollbackTo(检查点)`；回溯后媒体位置由本文件接的
-   * `onRollback` 显式对齐（引擎只回状态，不下发端口动作）。
+   * 面板点一条即 `engine.rollbackTo(检查点)`；回溯后媒体位置由 `wireEngine` 的
+   * `rollback.done` 分支统一对齐（引擎只回状态，不下发端口动作）。
    */
   historyContainer?: HTMLElement | null;
   /**
@@ -368,6 +372,11 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
   // 小游戏注册表：宿主按名字取用工厂（渲染层不内建任何小游戏）；脚手架自带一个示例。
   const minigames = createMinigameRegistry();
   registerTemplateMinigames(minigames);
+  // 玩法系统注册表：与小游戏同口径（未注册 fail-closed）；脚手架自带一个示例。
+  // interaction 不进引擎构造声明——它的状态经 game.demo.* 命名空间随档，
+  // 依赖标记走写入面（引擎按 game. 前缀键校验），与小游戏声明制是两条通道。
+  const interactions = createInteractionRegistry();
+  registerTemplateInteractions(interactions);
   const engine = new StoryEngine(story, {
     // 作者级历史容量（shell.historyLimit）；缺声明交引擎内建默认 200，非法值组装期已拒。
     historyLimit: resolveHistoryLimit(manifest),
@@ -474,6 +483,10 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     hostCapabilities: HOST_CAPABILITY_VALUES,
   });
 
+  // 输入域先于订阅接线建好：玩法接管分支与输入映射共用同一个实例（接管切 world、
+  // 收尾交还 dialogue），两份实例会让「让位」只落在其中一份上。
+  const inputScope = createInputScopeState();
+
   wireEngine({
     dom,
     engine,
@@ -500,6 +513,9 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
     // 小游戏注册表与扩展等待覆盖层：`minigame.mount` / `extension.mount` 的落点
     minigames,
     extensionMount,
+    // 玩法系统注册表与输入域：`interaction.mount` 的落点（与小游戏共用挂载点）
+    interactions,
+    inputScope,
     // 存读档回执前缀走查表（宿主字面量）；notify 正文与诊断不在此二次查表
     translate: i18n.t,
     // 写档成功：续玩入口重算可续槽位（槽位变多，「继续」要能点到新的档）
@@ -533,17 +549,14 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
 
   // —— 历史面板：同样只有组合根给了容器才装 ——
   // 数据整形在 `@lingfan-engine/shell`（块聚合），本面板只管画与点击；回溯后的媒体
-  // 对齐交回这里——`wireEngine` 的 `syncMedia` 同一件事，引擎不会替宿主跳播放位置。
+  // 对齐统一接在 `wireEngine` 的 `rollback.done` 分支（滚轮/键位/面板三条入口共用），
+  // 面板不再单独接一份——两份对齐会在面板入口重复执行。
   const historyPanel =
     options.historyContainer === undefined || options.historyContainer === null
       ? null
       : createHistoryPanel({
           engine,
           container: options.historyContainer,
-          onRollback: () => {
-            audio.sync();
-            video.sync();
-          },
           translate: i18n.t,
         });
   historyPanel?.mount();
@@ -578,7 +591,6 @@ export async function bootHost(options: HostBootOptions): Promise<HostHandle> {
             engine.load(slot);
           },
         });
-  const inputScope = createInputScopeState();
   const disposeInput = wireInput({
     dom,
     engine,

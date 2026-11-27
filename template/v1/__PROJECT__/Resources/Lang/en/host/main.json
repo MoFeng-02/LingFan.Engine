@@ -15,5 +15,6 @@
   "已有存档": "Saved game",
   "输入": "Input",
   "完成": "Done",
-  "完成扩展等待": "Finish extension wait"
+  "完成扩展等待": "Finish extension wait",
+  "角色未注册，跳过注销：": "Character not registered, unregister skipped: "
 }

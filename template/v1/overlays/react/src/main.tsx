@@ -25,6 +25,7 @@ import { STORIES } from "./stories";
 import { LANGS } from "./langs";
 import { controlsStore } from "./controls";
 import { mountStore } from "./mounts";
+import { bodyStore } from "./scenes";
 import { App } from "./App.tsx";
 
 /**
@@ -116,6 +117,8 @@ if (dom !== undefined) {
     // UI 挂载落法由 React 接管：`#mounts` 的子节点归 `UiHost` 渲染，
     // 宿主再往里写节点就会与 React 的渲染树打架（所以不传 mountsContainer）
     onMounts: (raw) => mountStore.set(raw),
+    // 列身体落法由 React 接管：`#body` 的子节点归 `BodyHost` 渲染（所以不传 bodyContainer）
+    onBody: (view) => bodyStore.set(view),
     // 操作句柄另走一条路：值进 mountStore（随存档），句柄进 controlsStore（不进快照）
     onControls: (controls) => controlsStore.set(controls),
   }).catch((error: unknown) => {

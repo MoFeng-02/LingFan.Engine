@@ -9,27 +9,28 @@
 
 ### 覆盖范围 / 有意不做（边界表）
 
-| 能力                                            | 模板           | 说明                                                                                                              |
-| ----------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------- |
-| 对话层（打字机 + 内联标记）                     | 是             | `{p}/{w}` 停顿、样式标记零宽由 `@lingfan-engine/ui` 提供                                                          |
-| 等待态出口：`menu` / `input` / `wait` / `video` | 是             | 缺任何一个，含该命令的故事都会**永久停滞**                                                                        |
-| 等待态：`minigame`                              | 是（真挂载）   | `src/host/minigame-demo.ts` 示例注册表 + `engine.resolveMinigame` 分流；未注册 fail-closed 报诊断，**不伪造完成** |
-| 舞台元素层（36 类型 + 交互 + 12 个表现 op）     | 是             | 含 `animate`/`transition`/`shake` 的帧驱动（不驱动会让动画队列只增不减）                                          |
-| 层级（z 序，`shell.layers`）                    | 是             | 各层 z 由 `resolveLayerZ` 解析后内联写入                                                                          |
-| 存档（`shell.saves.slots` 槽位数）              | 是             | 存/读为命令面；缩略图见下行                                                                                       |
-| 存档缩略图（`shell.saves.thumbnail`）           | 是             | `src/host/thumbnails.ts` 合成卡；尺寸/质量/是否带文本按工程配置，合成失败即无图存                                 |
-| 舞台适配（`shell.stage`）                       | 是             | `resolveStageConfig` 结果算变换写到舞台根；宿主 UI 留在窗口坐标系，不跟缩放                                       |
-| 游玩界面禁选文本                                | 是             | `body` 上 `user-select: none`；要提供复制就给部件加 `data-lf-selectable`                                          |
-| 历史面板与回溯 UI                               | 是             | `src/host/panels/history.ts`，槽位 `#history` 可选；点一条即回到那个检查点                                        |
-| 玩家偏好（音量/文字速度面板）                   | 是             | `src/host/panels/preferences.ts`，槽位 `#prefs` 可选；音量乘偏好、字速三态（偏好>故事>兜底），读写经偏好层        |
-| 界面列（`type=ui`）的渲染                       | 是             | 按 op 渲染即开箱可跑；常驻界面可加 `src/ui/` 挂载（挂载层已接，生成物为空表）                                     |
-| 列身体（组件即整屏）                            | 是             | `src/scenes/<名>/<名>.<扩展名>`，生成物 `scene_register.g`；组件经 `SceneEnv` 读写/`submit`，示例 `hello`         |
-| 默认键位与改绑                                  | 是             | `src/host/input-map.ts` 读偏好 `keymap` 逐项降级；滚轮回溯/前进、Esc 关面板、h 历史、Ctrl+S/L 存读                |
-| 继续上次存档                                    | 是             | `#continue` 按钮，`src/host/resume-page.ts` 按最新存档启用/禁用                                                   |
-| I18N 供给（`Lang/{lang}/` 覆盖）                | 是             | 接 `i18nPort`（Web fetch / 小程序 HTTP）+ 语言选择器；样例 `Lang/en/` 开箱可切                                    |
-| 对话框模板注册（`say template=`）               | 是             | `src/host/dialogue-templates.ts` 注册 bubble（默认）/center；三级优先级，未知名回退默认                           |
-| 屏幕方向锁定（`shell.orientation`）             | 是（尽力而为） | boot 装配方向/全屏策略：玩家偏好>工程配置>auto；Web 无方向 API 只记诊断不报错，Tauri 壳走原生                     |
-| 资源加密 / 热重载 / 宿主信息                    | 不适用         | 都是 Tauri 壳能力，见 playground 的组合根                                                                         |
+| 能力                                            | 模板           | 说明                                                                                                                                   |
+| ----------------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 对话层（打字机 + 内联标记）                     | 是             | `{p}/{w}` 停顿、样式标记零宽由 `@lingfan-engine/ui` 提供                                                                               |
+| 等待态出口：`menu` / `input` / `wait` / `video` | 是             | 缺任何一个，含该命令的故事都会**永久停滞**                                                                                             |
+| 等待态：`minigame`                              | 是（真挂载）   | `src/host/minigame-demo.ts` 示例注册表 + `engine.resolveMinigame` 分流；未注册 fail-closed 报诊断，**不伪造完成**                      |
+| 等待态：`interaction`（玩法系统整屏接管）       | 是（真挂载）   | `src/host/interaction-demo.ts` 示例注册表 + `engine.resolveInteraction` 分流；接管期输入域切 world，收尾交还；未注册 fail-closed       |
+| 舞台元素层（36 类型 + 交互 + 12 个表现 op）     | 是             | 含 `animate`/`transition`/`shake` 的帧驱动（不驱动会让动画队列只增不减）                                                               |
+| 层级（z 序，`shell.layers`）                    | 是             | 各层 z 由 `resolveLayerZ` 解析后内联写入                                                                                               |
+| 存档（`shell.saves.slots` 槽位数）              | 是             | 存/读为命令面；缩略图见下行                                                                                                            |
+| 存档缩略图（`shell.saves.thumbnail`）           | 是             | `src/host/thumbnails.ts` 合成卡；尺寸/质量/是否带文本按工程配置，合成失败即无图存                                                      |
+| 舞台适配（`shell.stage`）                       | 是             | `resolveStageConfig` 结果算变换写到舞台根；宿主 UI 留在窗口坐标系，不跟缩放                                                            |
+| 游玩界面禁选文本                                | 是             | `body` 上 `user-select: none`；要提供复制就给部件加 `data-lf-selectable`                                                               |
+| 历史面板与回溯 UI                               | 是             | `src/host/panels/history.ts`，槽位 `#history` 可选；点一条即回到那个检查点；回溯后媒体对齐统一接 `rollback.done`（滚轮/键位/面板共用） |
+| 玩家偏好（音量/文字速度面板）                   | 是             | `src/host/panels/preferences.ts`，槽位 `#prefs` 可选；音量乘偏好、字速三态（偏好>故事>兜底），读写经偏好层                             |
+| 界面列（`type=ui`）的渲染                       | 是             | 按 op 渲染即开箱可跑；常驻界面可加 `src/ui/` 挂载（挂载层已接，生成物为空表）                                                          |
+| 列身体（组件即整屏）                            | 是             | `src/scenes/<名>/<名>.<扩展名>`，生成物 `scene_register.g`；组件经 `SceneEnv` 读写/`submit`，示例 `hello`                              |
+| 默认键位与改绑                                  | 是             | `src/host/input-map.ts` 读偏好 `keymap` 逐项降级；滚轮回溯/前进、Esc 关面板、h 历史、Ctrl+S/L 存读                                     |
+| 继续上次存档                                    | 是             | `#continue` 按钮，`src/host/resume-page.ts` 按最新存档启用/禁用                                                                        |
+| I18N 供给（`Lang/{lang}/` 覆盖）                | 是             | 接 `i18nPort`（Web fetch / 小程序 HTTP）+ 语言选择器；样例 `Lang/en/` 开箱可切                                                         |
+| 对话框模板注册（`say template=`）               | 是             | `src/host/dialogue-templates.ts` 注册 bubble（默认）/center；三级优先级，未知名回退默认                                                |
+| 屏幕方向锁定（`shell.orientation`）             | 是（尽力而为） | boot 装配方向/全屏策略：玩家偏好>工程配置>auto；Web 无方向 API 只记诊断不报错，Tauri 壳走原生                                          |
+| 资源加密 / 热重载 / 宿主信息                    | 不适用         | 都是 Tauri 壳能力，见 playground 的组合根                                                                                              |
 
 > 「否」行均指**模板宿主未接**，不代表引擎没有该能力——引擎能力面以 `apps/playground` 为准。
 
@@ -118,6 +119,9 @@ npm create @lingfan-engine my-story --yes
 `src/mp/**`（`uni.*` 只在 `src/mp/platform.ts` 出现一处），内容不进包体、走工程接口按基址取。
 它的 `vite` 与 `vue` 是一组钉住的版本（UniApp 插件对这些版本有硬约束），由
 `package.patch.json` 的 `create.pinned` 保住，不会被改写成「跟最新」。
+小程序宿主没有 `minigame` / `interaction` / `extension` / `mount` / `body` 的渲染通道：
+故事用到这些能力时会**显式报诊断**（fail-closed，不静默停滞）——含这些命令的故事请改在
+浏览器 / 桌面形态运行，或为小程序宿主自行补渲染通道。
 
 工程名只允许小写字母、数字、`-` 与 `_`，且不能以下划线或点开头——它同时进 `package.json` 的 `name`、
 `project.json` 的 `id` 与目录名，大写与点开头在 npm 侧非法。
@@ -199,8 +203,8 @@ __PROJECT__/
 
 `#prefs` 与 `#mounts` 都是**可选槽位**：不给就是这一层不接，故事照常跑、`mount` 命令只改状态不出现组件，
 都不报错。`#prefs` 接偏好面板（`src/host/panels/preferences.ts`），`#mounts` 接 UI 挂载层
-（`src/host/mount/`）。`#body` 接列身体层、`#minigame` 接小游戏挂载点、`#continue` 接继续按钮，
-都是可选槽位：不给就是这一层不接，故事照常跑。
+（`src/host/mount/`）。`#body` 接列身体层、`#minigame` 接外部接管挂载点（小游戏与玩法系统共用）、
+`#continue` 接继续按钮，都是可选槽位：不给就是这一层不接，故事照常跑。
 
 ## 列身体：把一整屏交给组件
 
